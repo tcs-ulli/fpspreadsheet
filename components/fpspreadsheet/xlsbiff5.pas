@@ -55,7 +55,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas,
-  fpspreadsheet, fpolestorage;
+  fpspreadsheet, fpolestorage, fpsutils;
 
 type
 
@@ -183,23 +183,6 @@ const
   MASK_XF_VERT_ALIGN                  = $70;
 
 {
-  Endianess helper functions
-
-  Excel files are all written with Little Endian byte order,
-  so it's necessary to swap the data to be able to build a
-  correct file on big endian systems.
-}
-
-function WordToLE(AValue: Word): Word;
-begin
-  {$IFDEF BIG_ENDIAN}
-    Result := ((AValue shl 8) and $FF00) or ((AValue shr 8) and $00FF);
-  {$ELSE}
-    Result := AValue;
-  {$ENDIF}
-end;
-
-{
   Exported functions
 }
 
@@ -224,16 +207,22 @@ procedure TsSpreadBIFF5Writer.WriteToFile(AFileName: string; AData: TsWorkbook);
 var
   MemStream: TMemoryStream;
   OutputStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
 begin
   MemStream := TMemoryStream.Create;
   OutputStorage := TOLEStorage.Create;
   try
     WriteToStream(MemStream, AData);
     
-    OutputStorage.WriteStreamToOLEFile(AFileName, MemStream);
+    SetLength(OLEDocument.Sections, 1);
+    OLEDocument.Sections[0] := MemStream;
+
+    OutputStorage.WriteOLEFile(AFileName, OLEDocument);
   finally
     MemStream.Free;
     OutputStorage.Free;
+
+    SetLength(OLEDocument.Sections, 0);
   end;
 end;
 

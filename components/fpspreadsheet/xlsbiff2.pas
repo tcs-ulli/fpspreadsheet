@@ -29,7 +29,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpspreadsheet;
+  fpspreadsheet, fpsutils;
   
 type
 
@@ -66,23 +66,6 @@ const
   INT_EXCEL_SHEET         = $0010;
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
-
-{
-  Endianess helper functions
-
-  Excel files are all written with Little Endian byte order,
-  so it's necessary to swap the data to be able to build a
-  correct file on big endian systems.
-}
-
-function WordToLE(AValue: Word): Word;
-begin
-  {$IFDEF BIG_ENDIAN}
-    Result := ((AValue shl 8) and $FF00) or ((AValue shr 8) and $00FF);
-  {$ELSE}
-    Result := AValue;
-  {$ENDIF}
-end;
 
 { TsSpreadBIFF2Writer }
 
