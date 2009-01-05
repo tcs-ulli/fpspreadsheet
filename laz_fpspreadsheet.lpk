@@ -1,0 +1,66 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <Package Version="3">
+    <PathDelim Value="\"/>
+    <Name Value="laz_fpspreadsheet"/>
+    <CompilerOptions>
+      <Version Value="8"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="C:\Programas\lazarus-ccr\components\fpspreadsheet\"/>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\"/>
+      </SearchPaths>
+      <Other>
+        <CompilerPath Value="$(CompPath)"/>
+      </Other>
+    </CompilerOptions>
+    <Files Count="8">
+      <Item1>
+        <Filename Value="fpolestorage.pas"/>
+        <UnitName Value="fpolestorage"/>
+      </Item1>
+      <Item2>
+        <Filename Value="fpsallformats.pas"/>
+        <UnitName Value="fpsallformats"/>
+      </Item2>
+      <Item3>
+        <Filename Value="fpsopendocument.pas"/>
+        <UnitName Value="fpsopendocument"/>
+      </Item3>
+      <Item4>
+        <Filename Value="fpspreadsheet.pas"/>
+        <UnitName Value="fpspreadsheet"/>
+      </Item4>
+      <Item5>
+        <Filename Value="xlsbiff2.pas"/>
+        <UnitName Value="xlsbiff2"/>
+      </Item5>
+      <Item6>
+        <Filename Value="xlsbiff5.pas"/>
+        <UnitName Value="xlsbiff5"/>
+      </Item6>
+      <Item7>
+        <Filename Value="xlsbiff8.pas"/>
+        <UnitName Value="xlsbiff8"/>
+      </Item7>
+      <Item8>
+        <Filename Value="xlsxooxml.pas"/>
+        <UnitName Value="xlsxooxml"/>
+      </Item8>
+    </Files>
+    <Type Value="RunAndDesignTime"/>
+    <RequiredPkgs Count="1">
+      <Item1>
+        <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item1>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
