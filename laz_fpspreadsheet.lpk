@@ -14,7 +14,7 @@
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
-    <Files Count="8">
+    <Files Count="9">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -47,6 +47,10 @@
         <Filename Value="xlsxooxml.pas"/>
         <UnitName Value="xlsxooxml"/>
       </Item8>
+      <Item9>
+        <Filename Value="fpsutils.pas"/>
+        <UnitName Value="fpsutils"/>
+      </Item9>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="1">
