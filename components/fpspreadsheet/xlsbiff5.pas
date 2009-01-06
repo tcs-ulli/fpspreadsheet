@@ -214,15 +214,15 @@ begin
   try
     WriteToStream(MemStream, AData);
     
-    SetLength(OLEDocument.Sections, 1);
-    OLEDocument.Sections[0] := MemStream;
+    SetLength(OLEDocument.Streams, 1);
+    OLEDocument.Streams[0] := MemStream;
 
     OutputStorage.WriteOLEFile(AFileName, OLEDocument);
   finally
     MemStream.Free;
     OutputStorage.Free;
 
-    SetLength(OLEDocument.Sections, 0);
+    SetLength(OLEDocument.Streams, 0);
   end;
 end;
 
