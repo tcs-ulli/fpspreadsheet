@@ -37,7 +37,7 @@ unit fpolestorage;
 interface
 
 {$ifdef Windows}
-  {$define FPOLESTORAGE_USE_COM}
+  {.$define FPOLESTORAGE_USE_COM}
 {$endif}
 
 uses
@@ -79,6 +79,7 @@ type
       EntryType, EntryColor: Byte; AIsStorage: Boolean;
       AStreamSize: Cardinal);
     procedure WriteShortSectorAllocationTable(AStream: TStream);
+    procedure WriteUserStream(ADest, ASource: TStream);
   public
     constructor Create;
     destructor Destroy; override;
@@ -125,6 +126,8 @@ begin
   AStream.WriteByte($E1);
 
   { 8 16 Unique identifier (UID) of this file (not of interest in the following, may be all 0) }
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
   AStream.WriteDWord(0);
   AStream.WriteDWord(0);
 
@@ -272,7 +275,9 @@ begin
     storage, ➜7.1), –1 otherwise
   }
 
-  AStream.WriteWord(WordToLE(Length(AName) * 2));
+  if AName = #0 then AStream.WriteWord($0000)
+  else AStream.WriteWord(WordToLE(Length(AName) * 2));
+
   AStream.WriteByte(EntryType);
   AStream.WriteByte(EntryColor);
 
@@ -280,7 +285,7 @@ begin
   AStream.WriteDWord(DWordToLE($FFFFFFFF));
 
   if AIsStorage then AStream.WriteDWord(DWordToLE($00000001))
-  else AStream.WriteDWord(DWordToLE($FFFFFFFF));;
+  else AStream.WriteDWord(DWordToLE($FFFFFFFF));
 
   {00000450H  00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 
@@ -296,7 +301,17 @@ begin
     a valid time stamp, but fill up this space with zero bytes.
    }
 
-  for i := 1 to ($474 - $450) do AStream.WriteByte($00);
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
 
   {Root Storage #1
    00000470H  XX XX XX XX 03 00 00 00 40 03 00 00 00 00 00 00
@@ -335,7 +350,7 @@ procedure TOLEStorage.WriteDirectoryStream(AStream: TStream);
 begin
   WriteDirectoryEntry(AStream, 'Root Entry'#0,
    INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
-   True,  $00000340);
+   True, $00000340);
 
   WriteDirectoryEntry(AStream, 'Book'#0,
    INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
@@ -394,6 +409,18 @@ begin
   AStream.WriteDWord(DWordToLE($FFFFFFFF));
 
   for i := 1 to ($A00 - $840) do AStream.WriteByte($FF);
+end;
+
+procedure TOLEStorage.WriteUserStream(ADest, ASource: TStream);
+var
+  i, PadSize: Integer;
+begin
+  ADest.CopyFrom(ASource, 0);
+
+  // Pad the sector with zeroes
+  PadSize := INT_OLE_SECTOR_SIZE - (ASource.Size mod INT_OLE_SECTOR_SIZE);
+
+  for i := 1 to PadSize do ADest.WriteByte($00);
 end;
 
 constructor TOLEStorage.Create;
@@ -461,15 +488,14 @@ begin
     // Record 0, the SAT
     WriteSectorAllocationTable(AFileStream);
 
-    // Records 1 and 2, the directory stream
-    WriteDirectoryStream(AFileStream);
+    // Record 1, the directory stream
     WriteDirectoryStream(AFileStream);
 
-    // Record 3, the Short SAT
+    // Record 2, the Short SAT
     WriteShortSectorAllocationTable(AFileStream);
 
-    // Records 4 and on, the user data
-    AFileStream.CopyFrom(FOLEDocument.Streams[0]);
+    // Records 3 and on, the user data
+    WriteUserStream(AFileStream, FOLEDocument.Streams[0]);
   finally
     AFileStream.Free;
   end;
