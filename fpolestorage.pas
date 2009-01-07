@@ -5,18 +5,17 @@ Writes an OLE document
 
 AUTHORS: Felipe Monteiro de Carvalho
 
-Limitations of this unit for creating OLE documents:
+Properties of this unit for creating OLE documents:
 
-* Can only create documents with an array of streams. It's not possible
+* Can only create documents with one stream. It's not possible
   to create real directory structures like the OLE format supports.
   This is no problem for most applications.
+* No limitations interfere with the creation of multi-sheet Excel files
 
 The Windows only code, which calls COM to write the documents
-should work very well. It's limitations are:
+should work very well.
 
-* Supports only 1 stream in the file
-
-The cross-platform code at this moment has several limitations,
+The cross-platform code at this moment has some limitations,
 but should work for most documents. Some limitations are:
 
 * Supports only 1 stream in the file
@@ -52,11 +51,8 @@ type
   { Describes an OLE Document }
 
   TOLEDocument = record
-    // Information about the streams
-    // All arrays here should have the same length
-    // Actually at the time all of them should have length 1
-    Streams: array of TMemoryStream;
-    StreamsNumSectors: array of Cardinal;
+    // Information about the document
+    Stream: TMemoryStream;
   end;
 
 
@@ -70,7 +66,9 @@ type
 {$endif}
     { Information filled by the write routines for the helper routines }
     FOLEDocument: TOLEDocument;
-    FNumStreams, FNumSATSectors, FNumStreamSectors, FNumTotalSectors: Cardinal;
+    FNumSATSectors, FNumStreamSectors, FNumTotalSectors: Cardinal;
+    FNumStreamShortSectors: Cardinal;
+    FUseShortSectors: Boolean;
     { Helper routines }
     procedure WriteOLEHeader(AStream: TStream);
     procedure WriteSectorAllocationTable(AStream: TStream);
@@ -92,6 +90,7 @@ const
   INT_OLE_SECTOR_SIZE = 512; // in bytes
   INT_OLE_SECTOR_DWORD_SIZE = 512 div 4; // in dwords
   INT_OLE_SHORT_SECTOR_SIZE = 64; // in bytes
+  INT_OLE_MIN_SIZE_FOR_STANDARD_STREAMS = 4096;
 
   INT_OLE_DIR_ENTRY_TYPE_EMPTY = 0;
   INT_OLE_DIR_ENTRY_TYPE_USER_STREAM = 2;
@@ -138,7 +137,9 @@ begin
   AStream.WriteWord(WordToLE($0003));
 
   { 28 2 Byte order identifier (➜4.2): FEH FFH = Little-Endian
-    FFH FEH = Big-Endian }
+    FFH FEH = Big-Endian
+
+    Real applications only use Little-Endian, so we follow that }
   AStream.WriteByte($FE);
   AStream.WriteByte($FF);
 
@@ -191,38 +192,61 @@ begin
   for i := 1 to 108 do AStream.WriteDWord($FFFFFFFF);
 end;
 
+{
+  The file is organized as following:
+
+  HEADER
+  SECTOR 0 - SAT
+  SECTOR 1 - Directory stream
+  SECTOR 2 - Short SAT
+  SECTOR 3 and on - User data
+
+  And this SAT will describe that.
+
+  This results in the following SecID array for the SAT:
+
+  Array indexes 0  1  2  3 ...  N-1  N  ...
+  SecID array  –3 –1 –2  4 ...  -2  -1  ...
+
+  As expected, sector 0 is marked with the special SAT SecID (➜3.1).
+  Sector 1 and all sectors starting with sector 5 are
+  not used (special Free SecID with value –1).
+}
 procedure TOLEStorage.WriteSectorAllocationTable(AStream: TStream);
 var
-  i: Integer;
+  i, CurrentPos, NextSecID: Integer;
 begin
-  { Simple copy of an example OLE file
+  { Example values:
 
    00000200H  FD FF FF FF FF FF FF FF FE FF FF FF 04 00 00 00
    00000210H  FE FF FF FF FF FF FF FF FF FF FF FF FF FF FF FF
 
-   And from now on only $FFFFFFFF covering $220 to $3FF
-   for a total of $400 - $220 bytes of $FF }
+   And after that only $FFFFFFFF until $400 }
 
-  AStream.WriteDWord(DWordToLE($FFFFFFFD));
-  AStream.WriteDWord($FFFFFFFF);
-  AStream.WriteDWord(DWordToLE($FFFFFFFE));
-  AStream.WriteDWord(DWordToLE($00000004));
-  AStream.WriteDWord(DWordToLE($FFFFFFFE));
-  AStream.WriteDWord($FFFFFFFF);
-  AStream.WriteDWord($FFFFFFFF);
-  AStream.WriteDWord($FFFFFFFF);
+  AStream.WriteDWord(DWordToLE($FFFFFFFD)); // SAT
+  AStream.WriteDWord($FFFFFFFF); // Empty
+  AStream.WriteDWord(DWordToLE($FFFFFFFE)); // Start and End of Short SAT
 
-  for i := 1 to ($400 - $220) do AStream.WriteByte($FF);
+  CurrentPos := $200 + 12;
 
-  {
-  This results in the following SecID array for the SAT:
+  // Now write the user data
 
-  Array indexes 0  1  2  3  4  5  ...
-  SecID array  –3 –1 –2  4 -2 -1  ...
+  NextSecID := $00000004;
 
-  As expected, sector 0 is marked with the special SAT SecID (➜3.1).
-  Sector 1 and all sectors starting with sector 5 are
-  not used (special Free SecID with value –1). }
+  for i := 2 to FNumStreamSectors do
+  begin
+    AStream.WriteDWord(DWordToLE(NextSecID));
+    Inc(NextSecID);
+    CurrentPos := CurrentPos + 4;
+  end;
+
+  AStream.WriteDWord(DWordToLE($FFFFFFFE)); // End of user data
+
+  CurrentPos := CurrentPos + 4;
+
+  // Fill the rest of the sector with $FF
+
+  for i := 1 to ($400 - CurrentPos) do AStream.WriteByte($FF);
 end;
 
 {
@@ -257,9 +281,6 @@ begin
 
    Item #3 e #4
    00000540H  00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF
-
-   Root Storage #5
-   00000640H  16 00 05 00 FF FF FF FF FF FF FF FF 01 00 00 00
 
     64 2 Size of the used area of the character buffer of the name (not character count), including
     the trailing zero character (e.g. 12 for a name with 5 characters: (5+1)∙2 = 12)
@@ -322,19 +343,16 @@ begin
    Item #3 e #4
    00000570H  XX XX XX XX 00 00 00 00 00 00 00 00 00 00 00 00
 
-   Root Storage #5
-   00000670H  XX XX XX XX 03 00 00 00 40 03 00 00 00 00 00 00
-
-   Book #6
-   000004F0H  XX XX XX XX 00 00 00 00 3F 03 00 00 00 00 00 00
-
     First 4 bytes still with the timestamp.
 
     116 4 SecID of first sector or short-sector, if this entry refers to a stream (➜7.2.2), SecID of first
     sector of the short-stream container stream (➜6.1), if this is the root storage entry, 0
     otherwise
-    120 4 Total stream size in bytes, if this entry refers to a stream (➜7.2.2), total size of the short-
-    stream container stream (➜6.1), if this is the root storage entry, 0 otherwise
+
+    120 4 Total stream size in bytes, if this entry refers to a stream (➜7.2.2),
+    total size of the short-stream container stream (➜6.1),
+    if this is the root storage entry, 0 otherwise
+
     124 4 Not used
    }
 
@@ -347,14 +365,20 @@ begin
 end;
 
 procedure TOLEStorage.WriteDirectoryStream(AStream: TStream);
+var
+  FContainerSize: Cardinal;
 begin
+  { Size of the container stream }
+
+  FContainerSize := Ceil(FOLEDocument.Stream.Size / INT_OLE_SECTOR_SIZE) * INT_OLE_SECTOR_SIZE;
+
   WriteDirectoryEntry(AStream, 'Root Entry'#0,
    INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
-   True, $00000340);
+   True, FContainerSize);
 
   WriteDirectoryEntry(AStream, 'Book'#0,
    INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
-   False, $0000033F);
+   False, FOLEDocument.Stream.Size);
 
   WriteDirectoryEntry(AStream, #0,
    INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
@@ -386,29 +410,22 @@ All short-sectors starting with sector 54 are not used (special Free SecID with 
 }
 procedure TOLEStorage.WriteShortSectorAllocationTable(AStream: TStream);
 var
-  i: Integer;
+  i, NextShortSecID, CurrentPos: Integer;
 begin
-  AStream.WriteDWord(DWordToLE($00000001));
-  AStream.WriteDWord(DWordToLE($00000002));
-  AStream.WriteDWord(DWordToLE($00000003));
-  AStream.WriteDWord(DWordToLE($00000004));
+  CurrentPos := $800;
+  NextShortSecID := $00000001;
 
-  AStream.WriteDWord(DWordToLE($00000005));
-  AStream.WriteDWord(DWordToLE($00000006));
-  AStream.WriteDWord(DWordToLE($00000007));
-  AStream.WriteDWord(DWordToLE($00000008));
-
-  AStream.WriteDWord(DWordToLE($00000009));
-  AStream.WriteDWord(DWordToLE($0000000A));
-  AStream.WriteDWord(DWordToLE($0000000B));
-  AStream.WriteDWord(DWordToLE($0000000C));
+  for i := 2 to FNumStreamShortSectors do
+  begin
+    AStream.WriteDWord(DWordToLE(NextShortSecID));
+    Inc(NextShortSecID);
+    Inc(CurrentPos, 4);
+  end;
 
   AStream.WriteDWord(DWordToLE($FFFFFFFE));
-  AStream.WriteDWord(DWordToLE($FFFFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFFFF));
+  Inc(CurrentPos, 4);
 
-  for i := 1 to ($A00 - $840) do AStream.WriteByte($FF);
+  for i := 1 to ($A00 - CurrentPos) do AStream.WriteByte($FF);
 end;
 
 procedure TOLEStorage.WriteUserStream(ADest, ASource: TStream);
@@ -443,23 +460,23 @@ var
 begin
   { Fill information for helper routines }
   FOLEDocument := AOLEDocument;
-  FNumStreams := Length(AOLEDocument.Streams);
 
-  { Calculate the number of sectors necessary for each stream }
-  SetLength(FOLEDocument.StreamsNumSectors, FNumStreams);
+  { Calculate the number of sectors necessary for the stream }
 
-  FNumStreamSectors := 0;
+  FNumStreamSectors := Ceil(AOLEDocument.Stream.Size / INT_OLE_SECTOR_SIZE);
 
-  for i := 0 to FNumStreams - 1 do
-  begin
-    x := Ceil(AOLEDocument.Streams[i].Size / INT_OLE_SECTOR_SIZE);
-    FOLEDocument.StreamsNumSectors[i] := x;
-    FNumStreamSectors := FNumStreamSectors + x;
-  end;
+  { Calculates the number of short sectors for the stream, if it applies }
+
+  FUseShortSectors := AOLEDocument.Stream.Size < INT_OLE_MIN_SIZE_FOR_STANDARD_STREAMS;
+
+  FNumStreamShortSectors := Ceil(AOLEDocument.Stream.Size / INT_OLE_SHORT_SECTOR_SIZE);
+
+  { Numbers of sectors necessary for the SAT }
 
   FNumSATSectors := 1; // Ceil(FNumStreamSectors / INT_OLE_SECTOR_DWORD_SIZE);
 
 {$ifdef FPOLESTORAGE_USE_COM}
+
   { Initialize the Component Object Model (COM) before calling s functions }
   OleCheck(CoInitialize(nil));
 
@@ -468,18 +485,17 @@ begin
    STGM_READWRITE or STGM_FAILIFTHERE or STGM_SHARE_EXCLUSIVE or STGM_DIRECT,
    0, FStorage));
 
-  for i := 0 to FNumStreams - 1 do
-  begin
-    { Create a workbook stream in the storage.  A BIFF5 file must
-      have at least a workbook stream.  This stream *must* be named 'Book' }
-    OleCheck(FStorage.CreateStream('Book',
-     STGM_READWRITE or STGM_SHARE_EXCLUSIVE or STGM_DIRECT, 0, 0, FStream));
+  { Create a workbook stream in the storage.  A BIFF5 file must
+    have at least a workbook stream.  This stream *must* be named 'Book' }
+  OleCheck(FStorage.CreateStream('Book',
+   STGM_READWRITE or STGM_SHARE_EXCLUSIVE or STGM_DIRECT, 0, 0, FStream));
 
-    { Write all data }
-    FStream.Write(FOLEDocument.Streams[i].Memory,
-      FOLEDocument.Streams[i].Size, @cbWritten);
-  end;
+  { Write all data }
+  FStream.Write(FOLEDocument.Stream.Memory,
+    FOLEDocument.Stream.Size, @cbWritten);
+
 {$else}
+
   AFileStream := TFileStream.Create(AFileName, fmOpenWrite or fmCreate);
   try
     // Header
@@ -495,10 +511,11 @@ begin
     WriteShortSectorAllocationTable(AFileStream);
 
     // Records 3 and on, the user data
-    WriteUserStream(AFileStream, FOLEDocument.Streams[0]);
+    WriteUserStream(AFileStream, FOLEDocument.Stream);
   finally
     AFileStream.Free;
   end;
+
 {$endif}
 end;
 

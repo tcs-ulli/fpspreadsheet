@@ -213,16 +213,14 @@ begin
   OutputStorage := TOLEStorage.Create;
   try
     WriteToStream(MemStream, AData);
-    
-    SetLength(OLEDocument.Streams, 1);
-    OLEDocument.Streams[0] := MemStream;
+
+    // Only one stream is necessary for any number of worksheets
+    OLEDocument.Stream := MemStream;
 
     OutputStorage.WriteOLEFile(AFileName, OLEDocument);
   finally
     MemStream.Free;
     OutputStorage.Free;
-
-    SetLength(OLEDocument.Streams, 0);
   end;
 end;
 
@@ -302,6 +300,7 @@ begin
 
   WriteStyle(AStream);
 
+  // A BOUNDSHEET for each worksheet
   for i := 0 to AData.GetWorksheetCount - 1 do
   begin
     len := Length(Boundsheets);
