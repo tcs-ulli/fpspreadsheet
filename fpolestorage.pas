@@ -75,7 +75,7 @@ type
     procedure WriteDirectoryStream(AStream: TStream);
     procedure WriteDirectoryEntry(AStream: TStream; AName: widestring;
       EntryType, EntryColor: Byte; AIsStorage: Boolean;
-      AStreamSize: Cardinal);
+      AFirstSecID, AStreamSize: Cardinal);
     procedure WriteShortSectorAllocationTable(AStream: TStream);
     procedure WriteUserStream(ADest, ASource: TStream);
   public
@@ -193,7 +193,7 @@ begin
 end;
 
 {
-  The file is organized as following:
+  The file is organized as following using Short Sectors:
 
   HEADER
   SECTOR 0 - SAT
@@ -211,6 +211,13 @@ end;
   As expected, sector 0 is marked with the special SAT SecID (➜3.1).
   Sector 1 and all sectors starting with sector 5 are
   not used (special Free SecID with value –1).
+
+  Without Short Sectors the file will be similar, but more compact:
+
+  HEADER
+  SECTOR 0 - SAT
+  SECTOR 1 - Directory stream
+  SECTOR 2 and on - User data
 }
 procedure TOLEStorage.WriteSectorAllocationTable(AStream: TStream);
 var
@@ -225,13 +232,21 @@ begin
 
   AStream.WriteDWord(DWordToLE($FFFFFFFD)); // SAT
   AStream.WriteDWord($FFFFFFFF); // Empty
-  AStream.WriteDWord(DWordToLE($FFFFFFFE)); // Start and End of Short SAT
 
-  CurrentPos := $200 + 12;
+  // If we don't use short sectors we won't write a section for their SSAT
+  if FUseShortSectors then
+  begin
+    AStream.WriteDWord(DWordToLE($FFFFFFFE)); // Start and End of Short SAT
+    CurrentPos := $200 + 12;
+    NextSecID := $00000004;
+  end
+  else
+  begin
+    CurrentPos := $200 + 8;
+    NextSecID := $00000003;
+  end;
 
   // Now write the user data
-
-  NextSecID := $00000004;
 
   for i := 2 to FNumStreamSectors do
   begin
@@ -257,7 +272,7 @@ dir_entry_pos(DirID) = DirID ∙ 128
 }
 procedure TOLEStorage.WriteDirectoryEntry(AStream: TStream; AName: widestring;
   EntryType, EntryColor: Byte; AIsStorage: Boolean;
-  AStreamSize: Cardinal);
+  AFirstSecID, AStreamSize: Cardinal);
 var
   i: Integer;
   EntryName: array[0..31] of WideChar;
@@ -345,9 +360,9 @@ begin
 
     First 4 bytes still with the timestamp.
 
-    116 4 SecID of first sector or short-sector, if this entry refers to a stream (➜7.2.2), SecID of first
-    sector of the short-stream container stream (➜6.1), if this is the root storage entry, 0
-    otherwise
+    116 4 SecID of first sector or short-sector, if this entry refers to a stream (➜7.2.2),
+    SecID of first sector of the short-stream container stream (➜6.1),
+    if this is the root storage entry, 0 otherwise
 
     120 4 Total stream size in bytes, if this entry refers to a stream (➜7.2.2),
     total size of the short-stream container stream (➜6.1),
@@ -356,8 +371,7 @@ begin
     124 4 Not used
    }
 
-  if AIsStorage then AStream.WriteDWord(DWordToLE($00000003))
-  else AStream.WriteDWord(0);
+  AStream.WriteDWord(DWordToLE(AFirstSecID));
 
   AStream.WriteDWord(DWordToLE(AStreamSize));
 
@@ -372,21 +386,42 @@ begin
 
   FContainerSize := Ceil(FOLEDocument.Stream.Size / INT_OLE_SECTOR_SIZE) * INT_OLE_SECTOR_SIZE;
 
-  WriteDirectoryEntry(AStream, 'Root Entry'#0,
-   INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
-   True, FContainerSize);
+  if FUseShortSectors then
+  begin
+    WriteDirectoryEntry(AStream, 'Root Entry'#0,
+     INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
+     True, $00000003, FContainerSize);
 
-  WriteDirectoryEntry(AStream, 'Book'#0,
-   INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
-   False, FOLEDocument.Stream.Size);
+    WriteDirectoryEntry(AStream, 'Book'#0,
+     INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
+     False, 0, FOLEDocument.Stream.Size);
 
-  WriteDirectoryEntry(AStream, #0,
-   INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
-   False, $00000000);
+    WriteDirectoryEntry(AStream, #0,
+     INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
+     False, 0, $00000000);
 
-  WriteDirectoryEntry(AStream, #0,
-   INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
-   False, $00000000);
+    WriteDirectoryEntry(AStream, #0,
+     INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
+     False, 0, $00000000);
+  end
+  else
+  begin
+    WriteDirectoryEntry(AStream, 'Root Entry'#0,
+     INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
+     True,  $FFFFFFFE, 0);
+
+    WriteDirectoryEntry(AStream, 'Book'#0,
+     INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
+     False, $00000002, FOLEDocument.Stream.Size);
+
+    WriteDirectoryEntry(AStream, #0,
+     INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
+     False, 0, $00000000);
+
+    WriteDirectoryEntry(AStream, #0,
+     INT_OLE_DIR_ENTRY_TYPE_EMPTY, INT_OLE_DIR_COLOR_RED,
+     False, 0, $00000000);
+  end;
 end;
 
 {
@@ -496,7 +531,8 @@ begin
 
 {$else}
 
-  AFileStream := TFileStream.Create(AFileName, fmOpenWrite or fmCreate);
+  // Follows the behavior of LCL classes: Fails to write to existing file
+  AFileStream := TFileStream.Create(AFileName, fmCreate);
   try
     // Header
     WriteOLEHeader(AFileStream);
@@ -508,9 +544,9 @@ begin
     WriteDirectoryStream(AFileStream);
 
     // Record 2, the Short SAT
-    WriteShortSectorAllocationTable(AFileStream);
+    if FUseShortSectors then WriteShortSectorAllocationTable(AFileStream);
 
-    // Records 3 and on, the user data
+    // Records 3 and on (or 2 and on without Short Sectors), the user data
     WriteUserStream(AFileStream, FOLEDocument.Stream);
   finally
     AFileStream.Free;
