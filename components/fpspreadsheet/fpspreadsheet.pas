@@ -76,9 +76,12 @@ type
 
 type
 
+  TsCustomSpreadReader = class;
   TsCustomSpreadWriter = class;
 
   {@@ TsWorksheet }
+
+  { TsWorksheet }
 
   TsWorksheet = class
   private
@@ -92,6 +95,9 @@ type
     { Data manipulation methods }
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
+    function  GetCellCount: Cardinal;
+    function  GetCellByIndex(AIndex: Cardinal): PCell;
+    function  ReadAsAnsiText(ARow, ACol: Cardinal): ansistring;
     procedure RemoveAllCells;
     procedure WriteAnsiText(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
@@ -100,15 +106,22 @@ type
 
   {@@ TsWorkbook }
 
+  { TsWorkbook }
+
   TsWorkbook = class
   private
+    { Internal data }
     FWorksheets: TFPList;
+    { Internal methods }
     procedure RemoveCallback(data, arg: pointer);
   public
     { Base methods }
     constructor Create;
     destructor Destroy; override;
+    function  CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
+    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat);
+    procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     procedure WriteToFile(AFileName: string; AFormat: TsSpreadsheetFormat);
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     { Worksheet list handling methods }
@@ -125,6 +138,8 @@ type
   
   {@@ TsCustomSpreadReader }
 
+  { TsCustomSpreadReader }
+
   TsCustomSpreadReader = class
   protected
     FWorkbook: TsWorkbook;
@@ -132,7 +147,7 @@ type
   public
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual; abstract;
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
     { Record reading methods }
     procedure ReadFormula(AStream: TStream); virtual; abstract;
     procedure ReadLabel(AStream: TStream); virtual; abstract;
@@ -145,13 +160,15 @@ type
 
   {@@ TsCustomSpreadWriter }
 
+  { TsCustomSpreadWriter }
+
   TsCustomSpreadWriter = class
   public
     { General writing methods }
     procedure WriteCellCallback(data, arg: pointer);
     procedure WriteCellsToStream(AStream: TStream; ACells: TFPList);
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); virtual;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual; abstract;
+    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     { Record writing methods }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TRPNFormula); virtual; abstract;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); virtual; abstract;
@@ -175,6 +192,10 @@ procedure RegisterSpreadFormat(
   AFormat: TsSpreadsheetFormat);
 
 implementation
+
+var
+  { Translatable strings }
+  lpUnsupportedReadFormat, lpUnsupportedWriteFormat: string;
 
 {@@
   Registers a new reader/writer pair for a format
@@ -294,6 +315,75 @@ begin
 end;
 
 {@@
+  Returns the number of cells in the worksheet with contents.
+
+  This routine is used together with GetCellByIndex to
+  iterate througth all cells in a worksheet efficiently.
+
+  @return The number of cells with contents in the worksheet
+
+  @see    TCell
+  @see    GetCellByIndex
+}
+function TsWorksheet.GetCellCount: Cardinal;
+begin
+  Result := FCells.Count;
+end;
+
+{@@
+  Obtains the cell with a specific index in the internal list of cells.
+
+  The index goes from 0 to GetCellCount - 1.
+
+  This routine is used together with GetCellCount to
+  iterate througth all cells in a worksheet efficiently.
+
+  @param  AIndex    The index of the cell to be obtained
+
+  @return A pointer to the cell, or nil if it doesn't exist
+
+  @see    TCell
+  @see    GetCellCount
+}
+function TsWorksheet.GetCellByIndex(AIndex: Cardinal): PCell;
+begin
+  if FCells.Count > AIndex then Result := PCell(FCells.Items[AIndex])
+  else Result := nil;
+end;
+
+{@@
+  Reads the contents of a cell and converts it to a user readable text,
+  if it isn't already a text.
+
+  @param  ARow      The row of the cell
+  @param  ACol      The column of the cell
+
+  @return The text representation of the cell
+}
+function TsWorksheet.ReadAsAnsiText(ARow, ACol: Cardinal): ansistring;
+var
+  ACell: PCell;
+begin
+  ACell := FindCell(ARow, ACol);
+
+  if ACell = nil then
+  begin
+    Result := '';
+    Exit;
+  end;
+
+  case ACell^.ContentType of
+
+  //cctFormula
+  cctNumber:     Result := FloatToStr(ACell^.NumberValue);
+  cctString:     Result := ACell^.StringValue;
+  cctWideString: Result := ACell^.WideStringValue;
+  else
+    Result := ACell^.StringValue;
+  end;
+end;
+
+{@@
   Clears the list of Cells and releases their memory.
 }
 procedure TsWorksheet.RemoveAllCells;
@@ -375,6 +465,10 @@ begin
   inherited Create;
   
   FWorksheets := TFPList.Create;
+
+  // In the future: add support for translations
+  lpUnsupportedReadFormat := 'Tryed to read a spreadsheet using an unsupported format';
+  lpUnsupportedWriteFormat := 'Tryed to write a spreadsheet using an unsupported format';
 end;
 
 {@@
@@ -387,6 +481,27 @@ begin
   FWorksheets.Free;
 
   inherited Destroy;
+end;
+
+{@@
+  Convenience method which creates the correct
+  reader object for a given spreadsheet format.
+}
+function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
+var
+  i: Integer;
+begin
+  Result := nil;
+
+  for i := 0 to Length(GsSpreadFormats) - 1 do
+    if GsSpreadFormats[i].Format = AFormat then
+    begin
+      Result := GsSpreadFormats[i].ReaderClass.Create;
+
+      Break;
+    end;
+
+  if Result = nil then raise Exception.Create(lpUnsupportedReadFormat);
 end;
 
 {@@
@@ -407,7 +522,41 @@ begin
       Break;
     end;
     
-  if Result = nil then raise Exception.Create('Unsuported spreadsheet format.');
+  if Result = nil then raise Exception.Create(lpUnsupportedWriteFormat);
+end;
+
+{@@
+  Reads the document from a file.
+}
+procedure TsWorkbook.ReadFromFile(AFileName: string;
+  AFormat: TsSpreadsheetFormat);
+var
+  AReader: TsCustomSpreadReader;
+begin
+  AReader := CreateSpreadReader(AFormat);
+
+  try
+    AReader.ReadFromFile(AFileName, Self);
+  finally
+    AReader.Free;
+  end;
+end;
+
+{@@
+  Reads the document from a seekable stream.
+}
+procedure TsWorkbook.ReadFromStream(AStream: TStream;
+  AFormat: TsSpreadsheetFormat);
+var
+  AReader: TsCustomSpreadReader;
+begin
+  AReader := CreateSpreadReader(AFormat);
+
+  try
+    AReader.ReadFromStream(AStream, Self);
+  finally
+    AReader.Free;
+  end;
 end;
 
 {@@
@@ -517,9 +666,34 @@ end;
 
 { TsCustomSpreadReader }
 
-procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
-begin
+{@@
+  Default file reading method.
 
+  Opens the file and calls ReadFromStream
+
+  @param  AFileName The input file name.
+  @param  AData     The Workbook to be filled with information from the file.
+
+  @see    TsWorkbook
+}
+procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+var
+  InputFile: TFileStream;
+begin
+  InputFile := TFileStream.Create(AFileName, fmOpenRead);
+  try
+    ReadFromStream(InputFile, AData);
+  finally
+    InputFile.Free;
+  end;
+end;
+
+{@@
+  This routine should be overriden in descendent classes.
+}
+procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+begin
+  raise Exception.Create(lpUnsupportedReadFormat);
 end;
 
 { TsCustomSpreadWriter }
@@ -578,6 +752,15 @@ begin
   finally
     OutputFile.Free;
   end;
+end;
+
+{@@
+  This routine should be overriden in descendent classes.
+}
+procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+begin
+  raise Exception.Create(lpUnsupportedWriteFormat);
+
 end;
 
 finalization

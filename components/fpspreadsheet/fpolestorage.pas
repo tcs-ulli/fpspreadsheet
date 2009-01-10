@@ -60,16 +60,19 @@ type
 
   TOLEStorage = class
   private
+    { Information filled by the write routines for the helper routines }
 {$ifdef FPOLESTORAGE_USE_COM}
     FStorage: IStorage;
     FStream: IStream;
 {$endif}
-    { Information filled by the write routines for the helper routines }
+    { Fields for the read routines }
+    FReadingStreamSize: Int64;
+    { Fields for both }
     FOLEDocument: TOLEDocument;
+    FUseShortSectors: Boolean;
     FNumSATSectors, FNumStreamSectors, FNumTotalSectors: Cardinal;
     FNumStreamShortSectors: Cardinal;
-    FUseShortSectors: Boolean;
-    { Helper routines }
+    { Writer Helper routines }
     procedure WriteOLEHeader(AStream: TStream);
     procedure WriteSectorAllocationTable(AStream: TStream);
     procedure WriteDirectoryStream(AStream: TStream);
@@ -78,10 +81,21 @@ type
       AFirstSecID, AStreamSize: Cardinal);
     procedure WriteShortSectorAllocationTable(AStream: TStream);
     procedure WriteUserStream(ADest, ASource: TStream);
+    { Reader helper routines }
+    procedure ReadOLEHeader(AStream: TStream);
+    procedure ReadSectorAllocationTable(AStream: TStream);
+    procedure ReadDirectoryStream(AStream: TStream);
+    procedure ReadDirectoryEntry(AStream: TStream; var AName: widestring;
+      var EntryType, EntryColor: Byte; var AIsStorage: Boolean;
+      var AFirstSecID, AStreamSize: Cardinal);
+    procedure ReadShortSectorAllocationTable(AStream: TStream);
+    procedure ReadUserStream(ADest, ASource: TStream);
   public
     constructor Create;
     destructor Destroy; override;
     procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
+    procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
+    procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
 
 implementation
@@ -475,6 +489,183 @@ begin
   for i := 1 to PadSize do ADest.WriteByte($00);
 end;
 
+procedure TOLEStorage.ReadOLEHeader(AStream: TStream);
+var
+  BaseAddr: Int64;
+begin
+  BaseAddr := AStream.Position;
+
+  { 28 2 Byte order identifier (➜4.2): FEH FFH = Little-Endian
+    FFH FEH = Big-Endian }
+
+  // For now just assume little-endian
+
+  { 30 2 Size of a sector in the compound document file (➜3.1) in power-of-two (ssz), real sector
+    size is sec_size = 2ssz bytes (minimum value is 7 which means 128 bytes, most used
+    value is 9 which means 512 bytes) }
+
+  // Assume default value
+
+  { 32 2 Size of a short-sector in the short-stream container stream (➜6.1) in power-of-two (sssz),
+    real short-sector size is short_sec_size = 2sssz bytes (maximum value is sector size
+    ssz, see above, most used value is 6 which means 64 bytes) }
+
+  // Assume default value
+
+  { 44 4 Total number of sectors used for the sector allocation table (➜5.2) }
+
+  // Assume 1
+
+  { 48 4 SecID of first sector of the directory stream (➜7) }
+
+  // Assume 1
+
+  { 56 4 Minimum size of a standard stream (in bytes, minimum allowed and most used size is 4096
+    bytes), streams with an actual size smaller than (and not equal to) this value are stored as
+    short-streams (➜6) }
+
+  // Assume 4096
+
+  { 60 4 SecID of first sector of the short-sector allocation table (➜6.2), or –2 (End Of Chain
+    SecID, ➜3.1) if not extant }
+
+  // Assume 2
+
+  { 64 4 Total number of sectors used for the short-sector allocation table (➜6.2) }
+
+  // Assume 1
+
+  { 68 4 SecID of first sector of the master sector allocation table (➜5.1), or –2 (End Of Chain
+    SecID, ➜3.1) if no additional sectors used }
+
+  // Assume 2
+
+  { 72 4 Total number of sectors used for the master sector allocation table (➜5.1) }
+
+  // Assume 0
+
+  { 76 436 First part of the master sector allocation table (➜5.1) containing 109 SecIDs }
+
+  // Assume: 0, -1, -1, -1 ...
+end;
+
+procedure TOLEStorage.ReadSectorAllocationTable(AStream: TStream);
+begin
+
+end;
+
+procedure TOLEStorage.ReadDirectoryStream(AStream: TStream);
+var
+  EntryName: widestring;
+  EntryType, EntryColor: Byte;
+  EntryIsStorage: Boolean;
+  EntryFirstSecID, EntryStreamSize: Cardinal;
+begin
+  ReadDirectoryEntry(AStream, EntryName,
+    EntryType, EntryColor, EntryIsStorage,
+    EntryFirstSecID, EntryStreamSize);
+
+  ReadDirectoryEntry(AStream, EntryName,
+    EntryType, EntryColor, EntryIsStorage,
+    EntryFirstSecID, EntryStreamSize);
+
+  FReadingStreamSize := EntryStreamSize;
+end;
+
+procedure TOLEStorage.ReadDirectoryEntry(AStream: TStream;
+  var AName: widestring; var EntryType, EntryColor: Byte;
+  var AIsStorage: Boolean; var AFirstSecID, AStreamSize: Cardinal);
+var
+  BaseAddr: Int64;
+  EntryName: array[0..63] of WideChar;
+begin
+  BaseAddr := AStream.Position;
+
+  { Contents of the directory entry structure:
+    Offset Size Contents
+    0 64 Character array of the name of the entry, always 16-bit Unicode characters, with trailing
+    zero character (results in a maximum name length of 31 characters)
+
+   00000400H  52 00 6F 00 6F 00 74 00 20 00 45 00 6E 00 74 00 }
+
+  AStream.ReadBuffer(EntryName, 64);
+
+  AName := EntryName;
+
+  {Root Storage #1
+   00000440H  16 00 05 00 FF FF FF FF FF FF FF FF 01 00 00 00
+
+   Book #2
+   000004C0H  0A 00 02 01 FF FF FF FF FF FF FF FF FF FF FF FF
+
+   Item #3 e #4
+   00000540H  00 00 00 00 FF FF FF FF FF FF FF FF FF FF FF FF
+
+    64 2 Size of the used area of the character buffer of the name (not character count), including
+    the trailing zero character (e.g. 12 for a name with 5 characters: (5+1)∙2 = 12)
+    66 1 Type of the entry: 00H = Empty 03H = LockBytes (unknown)
+    01H = User storage 04H = Property (unknown)
+    02H = User stream 05H = Root storage
+    67 1 Node colour of the entry: 00H = Red 01H = Black
+    68 4 DirID of the left child node inside the red-black tree of all direct members of the parent
+    storage (if this entry is a user storage or stream, ➜7.1), –1 if there is no left child
+    72 4 DirID of the right child node inside the red-black tree of all direct members of the parent
+    storage (if this entry is a user storage or stream, ➜7.1), –1 if there is no right child
+    76 4 DirID of the root node entry of the red-black tree of all storage members (if this entry is a
+    storage, ➜7.1), –1 otherwise
+  }
+
+  AStream.ReadWord();
+
+  EntryType := AStream.ReadByte();
+  EntryColor := AStream.ReadByte();
+
+  AStream.ReadDWord();
+  AStream.ReadDWord();
+
+  AIsStorage := AStream.ReadDWord() <> $FFFFFFFF;
+
+  {Root Storage #1
+   00000470H  XX XX XX XX 03 00 00 00 40 03 00 00 00 00 00 00
+
+   Book #2
+   000004F0H  XX XX XX XX 00 00 00 00 3F 03 00 00 00 00 00 00
+
+   Item #3 e #4
+   00000570H  XX XX XX XX 00 00 00 00 00 00 00 00 00 00 00 00
+
+    First 4 bytes still with the timestamp.
+
+    116 4 SecID of first sector or short-sector, if this entry refers to a stream (➜7.2.2),
+    SecID of first sector of the short-stream container stream (➜6.1),
+    if this is the root storage entry, 0 otherwise
+
+    120 4 Total stream size in bytes, if this entry refers to a stream (➜7.2.2),
+    total size of the short-stream container stream (➜6.1),
+    if this is the root storage entry, 0 otherwise
+
+    124 4 Not used
+   }
+
+  AStream.Seek(BaseAddr + $74, soFromBeginning);
+
+  AFirstSecID := AStream.ReadDWord();
+
+  AStreamSize := AStream.ReadDWord();
+
+  AStream.ReadDWord();
+end;
+
+procedure TOLEStorage.ReadShortSectorAllocationTable(AStream: TStream);
+begin
+
+end;
+
+procedure TOLEStorage.ReadUserStream(ADest, ASource: TStream);
+begin
+  ADest.CopyFrom(ASource, FReadingStreamSize);
+end;
+
 constructor TOLEStorage.Create;
 begin
   inherited Create;
@@ -487,6 +678,12 @@ begin
   inherited Destroy;
 end;
 
+{@@
+  Writes the OLE document specified in AOLEDocument
+  to the file with name AFileName. The routine will fail
+  if the file already exists, or if the directory where
+  it should be placed doesn't exist.
+}
 procedure TOLEStorage.WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
 var
   cbWritten: Cardinal;
@@ -553,6 +750,59 @@ begin
   end;
 
 {$endif}
+end;
+
+{@@
+  Reads an OLE file. Experimental
+}
+procedure TOLEStorage.ReadOLEFile(AFileName: string;
+  AOLEDocument: TOLEDocument);
+var
+  AFileStream: TFileStream;
+  CurrentSectorPos: Int64;
+begin
+  AOLEDocument.Stream := TMemoryStream.Create;
+  AFileStream := TFileStream.Create(AFileName, fmOpenRead);
+  try
+    // Header
+    ReadOLEHeader(AFileStream);
+
+    // Record 0, the SAT
+    CurrentSectorPos := $200;
+    AFileStream.Seek(CurrentSectorPos, soFromBeginning);
+    ReadSectorAllocationTable(AFileStream);
+
+    // Record 1, the directory stream
+    CurrentSectorPos := $400;
+    AFileStream.Seek(CurrentSectorPos, soFromBeginning);
+    ReadDirectoryStream(AFileStream);
+
+    // FReadingStreamSize is filled by ReadDirectoryStream
+    FUseShortSectors := FReadingStreamSize < INT_OLE_MIN_SIZE_FOR_STANDARD_STREAMS;
+
+    CurrentSectorPos := $600;
+
+    // Record 2, the Short SAT, if exists
+    if FUseShortSectors then
+    begin
+      AFileStream.Seek(CurrentSectorPos, soFromBeginning);
+      ReadShortSectorAllocationTable(AFileStream);
+      CurrentSectorPos := $800;
+    end
+    else
+      CurrentSectorPos := $600;
+
+    // Records 3 and on (or 2 and on without Short Sectors), the user data
+    AFileStream.Seek(CurrentSectorPos, soFromBeginning);
+    ReadUserStream(FOLEDocument.Stream, AFileStream);
+  finally
+    AFileStream.Free;
+  end;
+end;
+
+procedure TOLEStorage.FreeOLEDocumentData(AOLEDocument: TOLEDocument);
+begin
+  AOLEDocument.Stream.Free;
 end;
 
 end.
