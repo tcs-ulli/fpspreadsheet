@@ -36,7 +36,7 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  for i := 0 to MyWorksheet.GetCellCount do
+  for i := 0 to MyWorksheet.GetCellCount - 1 do
   begin
     CurCell := MyWorkSheet.GetCellByIndex(i);
     WriteLn('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Value: ',

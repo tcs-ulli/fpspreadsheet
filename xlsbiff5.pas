@@ -59,6 +59,22 @@ uses
 
 type
 
+  { TsSpreadBIFF5Reader }
+
+  TsSpreadBIFF5Reader = class(TsCustomSpreadReader)
+  private
+    RecordSize: Word;
+    FWorksheet: TsWorksheet;
+  public
+    { General reading methods }
+    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    { Record writing methods }
+    procedure ReadFormula(AStream: TStream); override;
+    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadNumber(AStream: TStream); override;
+  end;
+
   { TsSpreadBIFF5Writer }
 
   TsSpreadBIFF5Writer = class(TsCustomSpreadWriter)
@@ -859,9 +875,101 @@ end;
 *  Registers this reader / writer on fpSpreadsheet
 *
 *******************************************************************}
+
+{ TsSpreadBIFF5Reader }
+
+procedure TsSpreadBIFF5Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+var
+  MemStream: TMemoryStream;
+  OLEStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  MemStream := TMemoryStream.Create;
+  OLEStorage := TOLEStorage.Create;
+  try
+    // Only one stream is necessary for any number of worksheets
+    OLEDocument.Stream := MemStream;
+
+    OLEStorage.ReadOLEFile(AFileName, OLEDocument);
+
+    // Rewind the stream and read from it
+    MemStream.Position := 0;
+    ReadFromStream(MemStream, AData);
+  finally
+    MemStream.Free;
+    OLEStorage.Free;
+  end;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+var
+  BIFF5EOF: Boolean;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  BIFF5EOF := False;
+
+  FWorksheet := AData.AddWorksheet('');
+
+  { Read all records in a loop }
+  while not BIFF5EOF do
+  begin
+    { Read the record header }
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+
+    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_BOF:     ;
+    INT_EXCEL_ID_EOF:     BIFF5EOF := True;
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    if AStream.Position >= AStream.Size then BIFF5EOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadFormula(AStream: TStream);
+begin
+
+end;
+
+procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
+begin
+
+end;
+
+procedure TsSpreadBIFF5Reader.ReadNumber(AStream: TStream);
+var
+  ARow, ACol: Word;
+  AValue: Double;
+begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record }
+  AStream.ReadWord();
+
+  { IEE 754 floating-point value }
+  AStream.ReadBuffer(AValue, 8);
+
+  { Save the data }
+  FWorksheet.WriteNumber(ARow, ACol, AValue);
+end;
+
 initialization
 
-  RegisterSpreadFormat(TsCustomSpreadReader, TsSpreadBIFF5Writer, sfExcel5);
+  RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5);
 
 end.
 

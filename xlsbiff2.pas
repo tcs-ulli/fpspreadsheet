@@ -306,8 +306,8 @@ begin
   while not BIFF2EOF do
   begin
     { Read the record header }
-    RecordType := AStream.ReadWord;
-    RecordSize := AStream.ReadWord;
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
 
     CurStreamPos := AStream.Position;
 
@@ -342,8 +342,8 @@ var
   AStrValue: ansistring;
 begin
   { BIFF Record data }
-  ARow := AStream.ReadWord();
-  ACol := AStream.ReadWord();
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
 
   { BIFF2 Attributes }
   AStream.ReadByte();
@@ -366,8 +366,8 @@ var
   AValue: Double;
 begin
   { BIFF Record data }
-  ARow := AStream.ReadWord();
-  ACol := AStream.ReadWord();
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
 
   { BIFF2 Attributes }
   AStream.ReadByte();
