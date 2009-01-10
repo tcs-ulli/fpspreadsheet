@@ -623,7 +623,7 @@ begin
   AStream.ReadDWord();
   AStream.ReadDWord();
 
-  AIsStorage := AStream.ReadDWord() <> $FFFFFFFF;
+  AIsStorage := DWordLEtoN(AStream.ReadDWord) <> $FFFFFFFF;
 
   {Root Storage #1
    00000470H  XX XX XX XX 03 00 00 00 40 03 00 00 00 00 00 00
@@ -649,9 +649,9 @@ begin
 
   AStream.Seek(BaseAddr + $74, soFromBeginning);
 
-  AFirstSecID := AStream.ReadDWord();
+  AFirstSecID := DWordLEtoN(AStream.ReadDWord);
 
-  AStreamSize := AStream.ReadDWord();
+  AStreamSize := DWordLEtoN(AStream.ReadDWord);
 
   AStream.ReadDWord();
 end;
@@ -662,8 +662,12 @@ begin
 end;
 
 procedure TOLEStorage.ReadUserStream(ADest, ASource: TStream);
+var
+  i: Integer;
 begin
-  ADest.CopyFrom(ASource, FReadingStreamSize);
+//  ADest.CopyFrom(ASource, FReadingStreamSize);
+  for i := 1 to FReadingStreamSize do
+    ADest.WriteByte(ASource.ReadByte);
 end;
 
 constructor TOLEStorage.Create;
@@ -753,7 +757,7 @@ begin
 end;
 
 {@@
-  Reads an OLE file. Experimental
+  Reads an OLE file.
 }
 procedure TOLEStorage.ReadOLEFile(AFileName: string;
   AOLEDocument: TOLEDocument);
@@ -761,6 +765,7 @@ var
   AFileStream: TFileStream;
   CurrentSectorPos: Int64;
 begin
+  FOLEDocument := AOLEDocument;
   AOLEDocument.Stream := TMemoryStream.Create;
   AFileStream := TFileStream.Create(AFileName, fmOpenRead);
   try
@@ -800,9 +805,12 @@ begin
   end;
 end;
 
+{@@
+  Frees all internal objects storable in a TOLEDocument structure
+}
 procedure TOLEStorage.FreeOLEDocumentData(AOLEDocument: TOLEDocument);
 begin
-  AOLEDocument.Stream.Free;
+  if Assigned(AOLEDocument.Stream) then FreeAndNil(AOLEDocument.Stream);
 end;
 
 end.
