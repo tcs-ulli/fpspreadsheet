@@ -33,6 +33,21 @@ uses
   
 type
 
+  { TsSpreadBIFF2Reader }
+
+  TsSpreadBIFF2Reader = class(TsCustomSpreadReader)
+  private
+    RecordSize: Word;
+    FWorksheet: TsWorksheet;
+  public
+    { General reading methods }
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    { Record writing methods }
+    procedure ReadFormula(AStream: TStream); override;
+    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadNumber(AStream: TStream); override;
+  end;
+
   { TsSpreadBIFF2Writer }
 
   TsSpreadBIFF2Writer = class(TsCustomSpreadWriter)
@@ -274,15 +289,108 @@ begin
   AStream.WriteBuffer(AValue, 8);
 end;
 
+{ TsSpreadBIFF2Reader }
+
+procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+var
+  BIFF2EOF: Boolean;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  BIFF2EOF := False;
+
+  { In BIFF2 files there is only one worksheet, let's create it }
+  FWorksheet := AData.AddWorksheet('');
+
+  { Read all records in a loop }
+  while not BIFF2EOF do
+  begin
+    { Read the record header }
+    RecordType := AStream.ReadWord;
+    RecordSize := AStream.ReadWord;
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+
+    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_BOF:     ;
+    INT_EXCEL_ID_EOF:     BIFF2EOF := True;
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    if AStream.Position >= AStream.Size then BIFF2EOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadFormula(AStream: TStream);
+begin
+
+end;
+
+procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
+var
+  L: Byte;
+  ARow, ACol: Word;
+  AValue: array[0..255] of Char;
+  AStrValue: ansistring;
+begin
+  { BIFF Record data }
+  ARow := AStream.ReadWord();
+  ACol := AStream.ReadWord();
+
+  { BIFF2 Attributes }
+  AStream.ReadByte();
+  AStream.ReadByte();
+  AStream.ReadByte();
+
+  { String with 8-bit size }
+  L := AStream.ReadByte();
+  AStream.ReadBuffer(AValue, L);
+  AValue[L] := #0;
+  AStrValue := AValue;
+
+  { Save the data }
+  FWorksheet.WriteAnsiText(ARow, ACol, AStrValue);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
+var
+  ARow, ACol: Word;
+  AValue: Double;
+begin
+  { BIFF Record data }
+  ARow := AStream.ReadWord();
+  ACol := AStream.ReadWord();
+
+  { BIFF2 Attributes }
+  AStream.ReadByte();
+  AStream.ReadByte();
+  AStream.ReadByte();
+
+  { IEE 754 floating-point value }
+  AStream.ReadBuffer(AValue, 8);
+
+  { Save the data }
+  FWorksheet.WriteNumber(ARow, ACol, AValue);
+end;
+
 {*******************************************************************
 *  Initialization section
 *
 *  Registers this reader / writer on fpSpreadsheet
 *
 *******************************************************************}
+
 initialization
 
-  RegisterSpreadFormat(TsCustomSpreadReader, TsSpreadBIFF2Writer, sfExcel2);
+  RegisterSpreadFormat(TsSpreadBIFF2Reader, TsSpreadBIFF2Writer, sfExcel2);
 
 end.
 

@@ -1,0 +1,273 @@
+<?xml version="1.0"?>
+<CONFIG>
+  <ProjectOptions>
+    <PathDelim Value="\"/>
+    <Version Value="7"/>
+    <General>
+      <Flags>
+        <LRSInOutputDirectory Value="False"/>
+      </Flags>
+      <MainUnit Value="0"/>
+      <TargetFileExt Value=".exe"/>
+      <Title Value="excel5read"/>
+      <ActiveEditorIndexAtStart Value="1"/>
+    </General>
+    <VersionInfo>
+      <ProjectVersion Value=""/>
+      <Language Value=""/>
+      <CharSet Value=""/>
+    </VersionInfo>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
+      <ExcludeFileFilter Value="*.(bak|ppu|ppw|o|so);*~;backup"/>
+    </PublishOptions>
+    <RunParams>
+      <local>
+        <FormatVersion Value="1"/>
+        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+      </local>
+    </RunParams>
+    <RequiredPackages Count="1">
+      <Item1>
+        <PackageName Value="laz_fpspreadsheet"/>
+      </Item1>
+    </RequiredPackages>
+    <Units Count="13">
+      <Unit0>
+        <Filename Value="excel5read.lpr"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="excel5read"/>
+        <CursorPos X="1" Y="21"/>
+        <TopLine Value="3"/>
+        <EditorIndex Value="0"/>
+        <UsageCount Value="309"/>
+        <Loaded Value="True"/>
+      </Unit0>
+      <Unit1>
+        <Filename Value="..\fpolestorage.pas"/>
+        <UnitName Value="fpolestorage"/>
+        <CursorPos X="1" Y="1"/>
+        <TopLine Value="1"/>
+        <UsageCount Value="19"/>
+      </Unit1>
+      <Unit2>
+        <Filename Value="..\..\..\..\..\lazarus\lcl\interfaces\win32\win32wsstdctrls.pp"/>
+        <UnitName Value="Win32WSStdCtrls"/>
+        <CursorPos X="35" Y="720"/>
+        <TopLine Value="713"/>
+        <UsageCount Value="76"/>
+      </Unit2>
+      <Unit3>
+        <Filename Value="..\..\..\..\..\lazarus\ideintf\componenteditors.pas"/>
+        <UnitName Value="ComponentEditors"/>
+        <CursorPos X="40" Y="332"/>
+        <TopLine Value="330"/>
+        <UsageCount Value="74"/>
+      </Unit3>
+      <Unit4>
+        <Filename Value="..\..\xlsbiff5.pas"/>
+        <UnitName Value="xlsbiff5"/>
+        <CursorPos X="15" Y="64"/>
+        <TopLine Value="54"/>
+        <EditorIndex Value="3"/>
+        <UsageCount Value="140"/>
+        <Loaded Value="True"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="..\..\fpsutils.pas"/>
+        <UnitName Value="fpsutils"/>
+        <CursorPos X="1" Y="49"/>
+        <TopLine Value="30"/>
+        <EditorIndex Value="2"/>
+        <UsageCount Value="140"/>
+        <Loaded Value="True"/>
+      </Unit5>
+      <Unit6>
+        <Filename Value="..\..\xlsbiff2.pas"/>
+        <UnitName Value="xlsbiff2"/>
+        <CursorPos X="1" Y="69"/>
+        <TopLine Value="57"/>
+        <EditorIndex Value="4"/>
+        <UsageCount Value="139"/>
+        <Loaded Value="True"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <UnitName Value="fpolestorage"/>
+        <CursorPos X="30" Y="654"/>
+        <TopLine Value="642"/>
+        <EditorIndex Value="5"/>
+        <UsageCount Value="139"/>
+        <Loaded Value="True"/>
+      </Unit7>
+      <Unit8>
+        <Filename Value="..\..\..\..\..\lazarus26\fpc\2.2.2\source\rtl\objpas\classes\classesh.inc"/>
+        <CursorPos X="19" Y="562"/>
+        <TopLine Value="553"/>
+        <UsageCount Value="41"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="..\..\..\..\..\lazarus26\fpc\2.2.2\source\rtl\objpas\classes\streams.inc"/>
+        <CursorPos X="21" Y="158"/>
+        <TopLine Value="151"/>
+        <UsageCount Value="41"/>
+      </Unit9>
+      <Unit10>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <UnitName Value="fpspreadsheet"/>
+        <CursorPos X="1" Y="197"/>
+        <TopLine Value="189"/>
+        <EditorIndex Value="1"/>
+        <UsageCount Value="92"/>
+        <Loaded Value="True"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="..\..\..\..\..\lazarus\lcl\include\customtrayicon.inc"/>
+        <CursorPos X="22" Y="203"/>
+        <TopLine Value="197"/>
+        <UsageCount Value="67"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="..\..\..\..\..\lazarus26\fpc\2.2.2\source\rtl\objpas\sysutils\sysstrh.inc"/>
+        <CursorPos X="26" Y="154"/>
+        <TopLine Value="144"/>
+        <UsageCount Value="10"/>
+      </Unit12>
+    </Units>
+    <JumpHistory Count="30" HistoryIndex="29">
+      <Position1>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="486" Column="5" TopLine="467"/>
+      </Position1>
+      <Position2>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="510" Column="5" TopLine="491"/>
+      </Position2>
+      <Position3>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="94" Column="46" TopLine="84"/>
+      </Position3>
+      <Position4>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="686" Column="5" TopLine="667"/>
+      </Position4>
+      <Position5>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="567" Column="5" TopLine="548"/>
+      </Position5>
+      <Position6>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="622" Column="1" TopLine="618"/>
+      </Position6>
+      <Position7>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="621" Column="29" TopLine="611"/>
+      </Position7>
+      <Position8>
+        <Filename Value="excel5read.lpr"/>
+        <Caret Line="40" Column="17" TopLine="29"/>
+      </Position8>
+      <Position9>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="85" Column="3" TopLine="83"/>
+      </Position9>
+      <Position10>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="304" Column="5" TopLine="293"/>
+      </Position10>
+      <Position11>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="319" Column="32" TopLine="305"/>
+      </Position11>
+      <Position12>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="363" Column="15" TopLine="349"/>
+      </Position12>
+      <Position13>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="362" Column="36" TopLine="353"/>
+      </Position13>
+      <Position14>
+        <Filename Value="excel5read.lpr"/>
+        <Caret Line="40" Column="17" TopLine="29"/>
+      </Position14>
+      <Position15>
+        <Filename Value="excel5read.lpr"/>
+        <Caret Line="24" Column="1" TopLine="13"/>
+      </Position15>
+      <Position16>
+        <Filename Value="excel5read.lpr"/>
+        <Caret Line="29" Column="6" TopLine="19"/>
+      </Position16>
+      <Position17>
+        <Filename Value="excel5read.lpr"/>
+        <Caret Line="16" Column="17" TopLine="6"/>
+      </Position17>
+      <Position18>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="110" Column="3" TopLine="108"/>
+      </Position18>
+      <Position19>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="475" Column="5" TopLine="456"/>
+      </Position19>
+      <Position20>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="505" Column="42" TopLine="496"/>
+      </Position20>
+      <Position21>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="175" Column="24" TopLine="165"/>
+      </Position21>
+      <Position22>
+        <Filename Value="excel5read.lpr"/>
+        <Caret Line="16" Column="17" TopLine="6"/>
+      </Position22>
+      <Position23>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="143" Column="15" TopLine="115"/>
+      </Position23>
+      <Position24>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="119" Column="67" TopLine="108"/>
+      </Position24>
+      <Position25>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="485" Column="42" TopLine="474"/>
+      </Position25>
+      <Position26>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="161" Column="3" TopLine="159"/>
+      </Position26>
+      <Position27>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="141" Column="3" TopLine="139"/>
+      </Position27>
+      <Position28>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="669" Column="20" TopLine="658"/>
+      </Position28>
+      <Position29>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="158" Column="15" TopLine="143"/>
+      </Position29>
+      <Position30>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="116" Column="71" TopLine="106"/>
+      </Position30>
+    </JumpHistory>
+  </ProjectOptions>
+  <CompilerOptions>
+    <Version Value="8"/>
+    <PathDelim Value="\"/>
+    <SearchPaths>
+      <OtherUnitFiles Value="..\"/>
+      <SrcPath Value="..\"/>
+    </SearchPaths>
+    <Other>
+      <CompilerPath Value="$(CompPath)"/>
+    </Other>
+  </CompilerOptions>
+</CONFIG>

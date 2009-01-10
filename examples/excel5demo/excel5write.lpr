@@ -1,11 +1,11 @@
 {
-excel5demo.dpr
+excel5write.dpr
 
 Demonstrates how to write an Excel 5.x file using the fpspreadsheet library
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
-program excel5demo;
+program excel5write;
 
 {$mode delphi}{$H+}
 

@@ -1,3 +1,3 @@
 del test.xls
-excel5demo.exe
+excel5write.exe
 pause
