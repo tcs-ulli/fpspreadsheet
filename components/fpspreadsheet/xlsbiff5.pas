@@ -65,6 +65,11 @@ type
   private
     RecordSize: Word;
     FWorksheet: TsWorksheet;
+    FWorksheetNames: TStringList;
+    FCurrentWorksheet: Integer;
+    procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
+    procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
+    procedure ReadBoundsheet(AStream: TStream);
   public
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -878,6 +883,96 @@ end;
 
 { TsSpreadBIFF5Reader }
 
+procedure TsSpreadBIFF5Reader.ReadWorkbookGlobals(AStream: TStream;
+  AData: TsWorkbook);
+var
+  SectionEOF: Boolean = False;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  while (not SectionEOF) do
+  begin
+    { Read the record header }
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+     INT_EXCEL_ID_BOF:        ;
+     INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
+     INT_EXCEL_ID_EOF:        SectionEOF := True;
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    // Check for the end of the file
+    if AStream.Position >= AStream.Size then SectionEOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadWorksheet(AStream: TStream; AData: TsWorkbook);
+var
+  SectionEOF: Boolean = False;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  FWorksheet := AData.AddWorksheet(FWorksheetNames.Strings[FCurrentWorksheet]);
+
+  while (not SectionEOF) do
+  begin
+    { Read the record header }
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+
+    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_BOF:     ;
+    INT_EXCEL_ID_EOF:     SectionEOF := True;
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    // Check for the end of the file
+    if AStream.Position >= AStream.Size then SectionEOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
+var
+  Len: Byte;
+  Str: array[0..255] of Char;
+begin
+  { Absolute stream position of the BOF record of the sheet represented
+    by this record }
+  // Just assume that they are in order
+  AStream.ReadDWord();
+
+  { Visibility }
+  AStream.ReadByte();
+
+  { Sheet type }
+  AStream.ReadByte();
+
+  { Sheet name: Byte string, 8-bit length }
+  Len := AStream.ReadByte();
+  AStream.ReadBuffer(Str, Len);
+  Str[Len] := #0;
+
+  FWorksheetNames.Add(Str);
+end;
+
 procedure TsSpreadBIFF5Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
 var
   MemStream: TMemoryStream;
@@ -895,6 +990,9 @@ begin
     // Rewind the stream and read from it
     MemStream.Position := 0;
     ReadFromStream(MemStream, AData);
+
+//    Uncomment to verify if the data was correctly optained from the OLE file
+//    MemStream.SaveToFile(SysUtils.ChangeFileExt(AFileName, 'bin.xls'));
   finally
     MemStream.Free;
     OLEStorage.Free;
@@ -904,38 +1002,37 @@ end;
 procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   BIFF5EOF: Boolean;
-  RecordType: Word;
-  CurStreamPos: Int64;
 begin
+  { Initializations }
+
+  FWorksheetNames := TStringList.Create;
+  FWorksheetNames.Clear;
+  FCurrentWorksheet := 0;
   BIFF5EOF := False;
 
-  FWorksheet := AData.AddWorksheet('');
+  { Read workbook globals }
 
-  { Read all records in a loop }
-  while not BIFF5EOF do
+  ReadWorkbookGlobals(AStream, AData);
+
+  // Check for the end of the file
+  if AStream.Position >= AStream.Size then BIFF5EOF := True;
+
+  { Now read all worksheets }
+
+  while (not BIFF5EOF) do
   begin
-    { Read the record header }
-    RecordType := WordLEToN(AStream.ReadWord);
-    RecordSize := WordLEToN(AStream.ReadWord);
+    ReadWorksheet(AStream, AData);
 
-    CurStreamPos := AStream.Position;
-
-    case RecordType of
-
-    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
-    INT_EXCEL_ID_BOF:     ;
-    INT_EXCEL_ID_EOF:     BIFF5EOF := True;
-    else
-      // nothing
-    end;
-
-    // Make sure we are in the right position for the next record
-    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
-
+    // Check for the end of the file
     if AStream.Position >= AStream.Size then BIFF5EOF := True;
+
+    // Final preparations
+    Inc(FCurrentWorksheet);
   end;
+
+  { Finalizations }
+
+  FWorksheetNames.Free;
 end;
 
 procedure TsSpreadBIFF5Reader.ReadFormula(AStream: TStream);
