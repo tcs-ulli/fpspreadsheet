@@ -657,8 +657,10 @@ procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string);
 var
   L: Word;
+  AnsiValue: ansistring;
 begin
-  L := Length(AValue);
+  AnsiValue := UTF8ToAnsi(AValue);
+  L := Length(AnsiValue);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
@@ -673,7 +675,7 @@ begin
 
   { Byte String with 16-bit size }
   AStream.WriteWord(L);
-  AStream.WriteBuffer(AValue[1], L);
+  AStream.WriteBuffer(AnsiValue[1], L);
 end;
 
 {*******************************************************************

@@ -40,7 +40,8 @@ begin
   begin
     CurCell := MyWorkSheet.GetCellByIndex(i);
     WriteLn('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Value: ',
-     MyWorkSheet.ReadAsAnsiText(CurCell^.Row, CurCell^.Col));
+     UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
+     );
   end;
 
   // Finalization

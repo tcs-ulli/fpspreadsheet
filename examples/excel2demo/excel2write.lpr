@@ -31,10 +31,10 @@ begin
   MyWorksheet.WriteNumber(0, 3, 4.0);
 
   // Write some string cells
-  MyWorksheet.WriteAnsiText(1, 0, 'First');
-  MyWorksheet.WriteAnsiText(1, 1, 'Second');
-  MyWorksheet.WriteAnsiText(1, 2, 'Third');
-  MyWorksheet.WriteAnsiText(1, 3, 'Fourth');
+  MyWorksheet.WriteUTF8Text(1, 0, 'First');
+  MyWorksheet.WriteUTF8Text(1, 1, 'Second');
+  MyWorksheet.WriteUTF8Text(1, 2, 'Third');
+  MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2);

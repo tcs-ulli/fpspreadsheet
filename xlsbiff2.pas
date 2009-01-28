@@ -240,8 +240,10 @@ procedure TsSpreadBIFF2Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string);
 var
   L: Byte;
+  AnsiText: ansistring;
 begin
-  L := Length(AValue);
+  AnsiText := UTF8ToAnsi(AValue);
+  L := Length(AnsiText);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
@@ -258,7 +260,7 @@ begin
 
   { String with 8-bit size }
   AStream.WriteByte(L);
-  AStream.WriteBuffer(AValue[1], L);
+  AStream.WriteBuffer(AnsiText[1], L);
 end;
 
 {*******************************************************************
@@ -357,7 +359,7 @@ begin
   AStrValue := AValue;
 
   { Save the data }
-  FWorksheet.WriteAnsiText(ARow, ACol, AStrValue);
+  FWorksheet.WriteUTF8Text(ARow, ACol, AnsiToUTF8(AStrValue));
 end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
