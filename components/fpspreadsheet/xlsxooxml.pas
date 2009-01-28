@@ -32,7 +32,7 @@ unit xlsxooxml;
 interface
 
 uses
-  Classes, SysUtils, {zipper,}
+  Classes, SysUtils, zipper,
   fpspreadsheet;
   
 type
@@ -41,10 +41,11 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   protected
-//    FZip: TZipper;
+    FZip: TZipper;
     FContentTypes: string;
     FRelsRels: string;
     FWorkbook, FWorkbookRels, FStyles, FSharedString, FSheet1: string;
+    procedure FillFileContentStrings(AData: TsWorkbook);
   public
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
@@ -94,82 +95,7 @@ const
 
 { TsSpreadOOXMLWriter }
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteStringToFile ()
-*
-*  DESCRIPTION:    Writes a string to a file. Helper convenience method.
-*
-*******************************************************************}
-procedure TsSpreadOOXMLWriter.WriteStringToFile(AFileName, AString: string);
-var
-  TheStream : TFileStream;
-  S : String;
-begin
-  TheStream := TFileStream.Create(AFileName, fmCreate);
-  S:=AString;
-  TheStream.WriteBuffer(Pointer(S)^,Length(S));
-  TheStream.Free;
-end;
-
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToFile ()
-*
-*  DESCRIPTION:    Writes an OOXML document to the disc
-*
-*******************************************************************}
-procedure TsSpreadOOXMLWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
-var
-  TempDir: string;
-begin
-  {FZip := TZipper.Create;
-  FZip.ZipFiles(AFileName, x);
-  FZip.Free;}
-  
-  WriteToStream(nil, AData);
-
-  TempDir := IncludeTrailingBackslash(AFileName);
-
-  { files on the root path }
-
-  ForceDirectories(TempDir);
-
-  WriteStringToFile(TempDir + OOXML_PATH_TYPES, FContentTypes);
-  
-  { _rels directory }
-
-  ForceDirectories(TempDir + OOXML_PATH_RELS);
-
-  WriteStringToFile(TempDir + OOXML_PATH_RELS_RELS, FRelsRels);
-
-  { xl directory }
-
-  ForceDirectories(TempDir + OOXML_PATH_XL_RELS);
-  
-  WriteStringToFile(TempDir + OOXML_PATH_XL_RELS_RELS, FWorkbookRels);
-  
-  WriteStringToFile(TempDir + OOXML_PATH_XL_WORKBOOK, FWorkbook);
-
-  WriteStringToFile(TempDir + OOXML_PATH_XL_STYLES, FStyles);
-
-  WriteStringToFile(TempDir + OOXML_PATH_XL_STRINGS, FSharedString);
-  
-  { xl\worksheets directory }
-
-  ForceDirectories(TempDir + OOXML_PATH_XL_WORKSHEETS);
-
-  WriteStringToFile(TempDir + OOXML_PATH_XL_WORKSHEETS + 'sheet1.xml', FSheet1);
-end;
-
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToStream ()
-*
-*  DESCRIPTION:    Writes an Excel 2 file to a stream
-*
-*                  Excel 2.x files support only one Worksheet per Workbook,
-*                  so only the first will be written.
-*
-*******************************************************************}
-procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadOOXMLWriter.FillFileContentStrings(AData: TsWorkbook);
 begin
 //  WriteCellsToStream(AStream, AData.GetFirstWorksheet.FCells);
 
@@ -183,13 +109,13 @@ begin
    '  <Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding +
    '  <Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding +
    '</Types>';
-    
+
   FRelsRels :=
    XML_HEADER + LineEnding +
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
    '<Relationship Type="' + SCHEMAS_DOCUMENT + '" Target="/xl/workbook.xml" Id="rId1" />' + LineEnding +
    '</Relationships>';
-    
+
   FWorkbookRels :=
    XML_HEADER + LineEnding +
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
@@ -305,6 +231,76 @@ begin
    '    </row>' + LineEnding +
    '  </sheetData>' + LineEnding +
    '</worksheet>';
+end;
+
+{*******************************************************************
+*  TsSpreadOOXMLWriter.WriteStringToFile ()
+*
+*  DESCRIPTION:    Writes a string to a file. Helper convenience method.
+*
+*******************************************************************}
+procedure TsSpreadOOXMLWriter.WriteStringToFile(AFileName, AString: string);
+var
+  TheStream : TFileStream;
+  S : String;
+begin
+  TheStream := TFileStream.Create(AFileName, fmCreate);
+  S:=AString;
+  TheStream.WriteBuffer(Pointer(S)^,Length(S));
+  TheStream.Free;
+end;
+
+{*******************************************************************
+*  TsSpreadOOXMLWriter.WriteToFile ()
+*
+*  DESCRIPTION:    Writes an OOXML document to the disc
+*
+*******************************************************************}
+procedure TsSpreadOOXMLWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
+var
+  TempDir: string;
+begin
+{  FZip := TZipper.Create;
+  FZip.ZipFiles(AFileName, x);
+  FZip.Free;}
+  
+  FillFileContentStrings(AData);
+
+  TempDir := IncludeTrailingBackslash(AFileName);
+
+  { files on the root path }
+
+  ForceDirectories(TempDir);
+
+  WriteStringToFile(TempDir + OOXML_PATH_TYPES, FContentTypes);
+  
+  { _rels directory }
+
+  ForceDirectories(TempDir + OOXML_PATH_RELS);
+
+  WriteStringToFile(TempDir + OOXML_PATH_RELS_RELS, FRelsRels);
+
+  { xl directory }
+
+  ForceDirectories(TempDir + OOXML_PATH_XL_RELS);
+  
+  WriteStringToFile(TempDir + OOXML_PATH_XL_RELS_RELS, FWorkbookRels);
+  
+  WriteStringToFile(TempDir + OOXML_PATH_XL_WORKBOOK, FWorkbook);
+
+  WriteStringToFile(TempDir + OOXML_PATH_XL_STYLES, FStyles);
+
+  WriteStringToFile(TempDir + OOXML_PATH_XL_STRINGS, FSharedString);
+  
+  { xl\worksheets directory }
+
+  ForceDirectories(TempDir + OOXML_PATH_XL_WORKSHEETS);
+
+  WriteStringToFile(TempDir + OOXML_PATH_XL_WORKSHEETS + 'sheet1.xml', FSheet1);
+end;
+
+procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+begin
 
 end;
 
