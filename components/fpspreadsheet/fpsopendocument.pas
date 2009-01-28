@@ -200,8 +200,9 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteContent(AData: TsWorkbook);
 var
-  i: Integer;
+  i, j, k: Integer;
   CurSheet: TsWorksheet;
+  CurCell: PCell;
 begin
   FContent :=
    XML_HEADER + LineEnding +
@@ -233,7 +234,19 @@ begin
    '  </office:font-face-decls>' + LineEnding +
 
    // Automatic styles
-   '  <office:automatic-styles>' + LineEnding +
+'<office:automatic-styles>' + LineEnding +
+'<style:style style:name="co1" style:family="table-column">' + LineEnding +
+'<style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>' + LineEnding +
+'</style:style>' + LineEnding +
+'<style:style style:name="ro1" style:family="table-row">' + LineEnding +
+'<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' + LineEnding +
+'</style:style>' + LineEnding +
+'<style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
+'<style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
+'</style:style>' + LineEnding +
+'</office:automatic-styles>' + LineEnding +
+
+{   '  <office:automatic-styles>' + LineEnding +
    '    <style:style style:name="ID0EM" style:family="table-column" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
    '      <style:table-column-properties fo:break-before="auto" style:column-width="1.961cm" />' + LineEnding +
    '    </style:style>' + LineEnding +
@@ -249,7 +262,7 @@ begin
    '    <style:style style:name="scenario" style:family="table" style:master-page-name="Default">' + LineEnding +
    '      <style:table-properties table:display="false" style:writing-mode="lr-tb" />' + LineEnding +
    '    </style:style>' + LineEnding +
-   '  </office:automatic-styles>' + LineEnding +
+   '  </office:automatic-styles>' + LineEnding +}
 
    // Body
    '  <office:body>' + LineEnding +
@@ -260,10 +273,23 @@ begin
      CurSheet := Adata.GetWorksheetByIndex(i);
 
      // Header
-     FContent := FContent + '<table:table table:name="' + CurSheet.Name + '" table:style-name="ID2EY">' + LineEnding;
+     FContent := FContent + '<table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding
+       + '<table:table-column table:style-name="co1" table:number-columns-repeated="' +
+       IntToStr(CurSheet.GetLastColNumber + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
 
      // The cells need to be written in order, row by row
-     WriteCellsToStream(nil, CurSheet.FCells);
+     for j := 0 to CurSheet.GetLastRowNumber do
+     begin
+       FContent := FContent + '<table:table-row table:style-name="ro1">' + LineEnding;
+
+       for k := 0 to CurSheet.FCells.Count - 1 do
+       begin
+         CurCell := CurSheet.FCells.Items[k];
+         if CurCell^.Row = j then WriteCellCallback(CurCell, nil);
+       end;
+
+       FContent := FContent + '</table:table-row>' + LineEnding;
+     end;
 
      // Footer
      FContent := FContent + '</table:table>' + LineEnding;
@@ -365,11 +391,9 @@ procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
 begin
   // The row should already be the correct one
   FContent := FContent +
-    '<table:table-row table:style-name="ro' + IntToStr(ARow) + '">' + LineEnding +
-    '  <table:table-cell office:value-type="float" office:value="' + IntToStr(ACol) + '1">' + LineEnding +
+    '  <table:table-cell office:value-type="float" office:value="' + IntToStr(ACol + 1) + '">' + LineEnding +
     '    <text:p>1</text:p>' + LineEnding +
-    '  </table:table-cell>' + LineEnding +
-    '</table:table-row>' + LineEnding;
+    '  </table:table-cell>' + LineEnding;
 end;
 
 {*******************************************************************
