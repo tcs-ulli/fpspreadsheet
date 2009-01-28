@@ -98,6 +98,8 @@ type
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
     function  GetCellByIndex(AIndex: Cardinal): PCell;
+    function  GetLastColNumber: Cardinal;
+    function  GetLastRowNumber: Cardinal;
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     procedure RemoveAllCells;
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
@@ -350,6 +352,42 @@ function TsWorksheet.GetCellByIndex(AIndex: Cardinal): PCell;
 begin
   if FCells.Count > AIndex then Result := PCell(FCells.Items[AIndex])
   else Result := nil;
+end;
+
+function TsWorksheet.GetLastColNumber: Cardinal;
+var
+  i: Integer;
+  ACell: PCell;
+begin
+  i := 0;
+  Result := 0;
+
+  while (i < FCells.Count) do
+  begin
+    ACell := PCell(FCells.Items[i]);
+
+    if ACell^.Col > Result then Result := ACell^.Col;
+
+    Inc(i);
+  end;
+end;
+
+function TsWorksheet.GetLastRowNumber: Cardinal;
+var
+  i: Integer;
+  ACell: PCell;
+begin
+  i := 0;
+  Result := 0;
+
+  while (i < FCells.Count) do
+  begin
+    ACell := PCell(FCells.Items[i]);
+
+    if ACell^.Row > Result then Result := ACell^.Row;
+
+    Inc(i);
+  end;
 end;
 
 {@@
