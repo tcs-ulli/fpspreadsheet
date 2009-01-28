@@ -59,10 +59,10 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
   // Write some string cells
-  MyWorksheet.WriteAnsiText(0, 0, 'First');
-  MyWorksheet.WriteAnsiText(0, 1, 'Second');
-  MyWorksheet.WriteAnsiText(0, 2, 'Third');
-  MyWorksheet.WriteAnsiText(0, 3, 'Fourth');
+  MyWorksheet.WriteUTF8Text(0, 0, 'First');
+  MyWorksheet.WriteUTF8Text(0, 1, 'Second');
+  MyWorksheet.WriteUTF8Text(0, 2, 'Third');
+  MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel5);

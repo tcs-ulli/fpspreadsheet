@@ -23,6 +23,8 @@ type
 const
   { Default extensions }
   STR_EXCEL_EXTENSION = '.xls';
+  STR_OOXML_EXCEL_EXTENSION = '.xlsx';
+  STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
 
 const
   { TokenID values }
@@ -59,7 +61,7 @@ type
 
   {@@ Describes the type of content of a cell on a TsWorksheet }
 
-  TCellContentType = (cctFormula, cctNumber, cctString, cctWideString);
+  TCellContentType = (cctFormula, cctNumber, cctUTF8String);
   
   {@@ Cell structure for TsWorksheet }
 
@@ -68,8 +70,7 @@ type
     ContentType: TCellContentType;
     FormulaValue: TRPNFormula;
     NumberValue: double;
-    StringValue: string;
-    WideStringValue: widestring;
+    UTF8StringValue: ansistring;
   end;
 
   PCell = ^TCell;
@@ -97,9 +98,9 @@ type
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
     function  GetCellByIndex(AIndex: Cardinal): PCell;
-    function  ReadAsAnsiText(ARow, ACol: Cardinal): ansistring;
+    function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     procedure RemoveAllCells;
-    procedure WriteAnsiText(ARow, ACol: Cardinal; AText: ansistring);
+    procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TRPNFormula);
   end;
@@ -352,15 +353,17 @@ begin
 end;
 
 {@@
-  Reads the contents of a cell and converts it to a user readable text,
-  if it isn't already a text.
+  Reads the contents of a cell and returns an user readable text
+  representing the contents of the cell.
+
+  The resulting ansistring is UTF-8 encoded.
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
 
   @return The text representation of the cell
 }
-function TsWorksheet.ReadAsAnsiText(ARow, ACol: Cardinal): ansistring;
+function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
 var
   ACell: PCell;
 begin
@@ -376,10 +379,9 @@ begin
 
   //cctFormula
   cctNumber:     Result := FloatToStr(ACell^.NumberValue);
-  cctString:     Result := ACell^.StringValue;
-  cctWideString: Result := ACell^.WideStringValue;
+  cctUTF8String:     Result := UTF8ToAnsi(ACell^.UTF8StringValue);
   else
-    Result := ACell^.StringValue;
+    Result := '';
   end;
 end;
 
@@ -392,25 +394,23 @@ begin
 end;
 
 {@@
-  Writes ansi text to a determined cell.
-  
-  The text must be encoded on the system default encoding.
-  
-  On formats the support unicode the text will be converted to the unicode
-  encoding that the format supports.
+  Writes UTF-8 encoded text to a determined cell.
+
+  On formats that only support unicode the text will be converted
+  to the unicode encoding that the format supports.
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  AText     The text to be written encoded with the system encoding
 }
-procedure TsWorksheet.WriteAnsiText(ARow, ACol: Cardinal; AText: ansistring);
+procedure TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
 var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
 
-  ACell^.ContentType := cctString;
-  ACell^.StringValue := AText;
+  ACell^.ContentType := cctUTF8String;
+  ACell^.UTF8StringValue := AText;
 end;
 
 {@@
@@ -714,7 +714,7 @@ begin
   case ACell.ContentType of
     cctFormula: WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue);
     cctNumber:  WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue);
-    cctString:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.StringValue);
+    cctUTF8String:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue);
   end;
 end;
 

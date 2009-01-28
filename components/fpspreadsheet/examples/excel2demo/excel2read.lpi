@@ -10,7 +10,7 @@
       <MainUnit Value="0"/>
       <TargetFileExt Value=".exe"/>
       <Title Value="excel2read"/>
-      <ActiveEditorIndexAtStart Value="3"/>
+      <ActiveEditorIndexAtStart Value="0"/>
     </General>
     <VersionInfo>
       <ProjectVersion Value=""/>
@@ -26,7 +26,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
     </RunParams>
     <RequiredPackages Count="1">
@@ -39,8 +39,8 @@
         <Filename Value="excel2read.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="excel2read"/>
-        <CursorPos X="6" Y="23"/>
-        <TopLine Value="12"/>
+        <CursorPos X="1" Y="42"/>
+        <TopLine Value="24"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="309"/>
         <Loaded Value="True"/>
@@ -69,7 +69,7 @@
       <Unit4>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <UnitName Value="xlsbiff5"/>
-        <CursorPos X="37" Y="934"/>
+        <CursorPos X="20" Y="938"/>
         <TopLine Value="918"/>
         <EditorIndex Value="3"/>
         <UsageCount Value="140"/>

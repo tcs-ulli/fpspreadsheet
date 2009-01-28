@@ -26,7 +26,7 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
     </RunParams>
     <RequiredPackages Count="1">
@@ -39,8 +39,8 @@
         <Filename Value="excel2write.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="excel2write"/>
-        <CursorPos X="30" Y="37"/>
-        <TopLine Value="19"/>
+        <CursorPos X="24" Y="37"/>
+        <TopLine Value="18"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="309"/>
         <Loaded Value="True"/>
@@ -130,7 +130,7 @@
         <UsageCount Value="67"/>
       </Unit11>
     </Units>
-    <JumpHistory Count="26" HistoryIndex="25">
+    <JumpHistory Count="27" HistoryIndex="26">
       <Position1>
         <Filename Value="..\..\fpolestorage.pas"/>
         <Caret Line="40" Column="5" TopLine="31"/>
@@ -235,6 +235,10 @@
         <Filename Value="excel2write.lpr"/>
         <Caret Line="30" Column="21" TopLine="19"/>
       </Position26>
+      <Position27>
+        <Filename Value="excel2write.lpr"/>
+        <Caret Line="37" Column="30" TopLine="18"/>
+      </Position27>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
