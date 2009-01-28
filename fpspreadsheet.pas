@@ -643,7 +643,8 @@ end;
 }
 function TsWorkbook.GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
 begin
-  Result := TsWorksheet(FWorksheets.Items[AIndex]);
+  if AIndex < FWorksheets.Count then Result := TsWorksheet(FWorksheets.Items[AIndex])
+  else Result := nil;
 end;
 
 {@@

@@ -5,15 +5,18 @@ Writes an OpenDocument 1.0 Spreadsheet document
 
 An OpenDocument document is a compressed ZIP file with the following files inside:
 
-content.xml
-meta.xml
-settings.xml
-styles.xml
-META-INF\manifest.xml
+filename\
+  content.xml     - Actual contents
+  meta.xml        - Authoring data
+  settings.xml    - User persistent viewing information, such as zoom, cursor position, etc.
+  styles.xml      - Styles, which are the only way to do formatting
+  mimetype        - application/vnd.oasis.opendocument.spreadsheet
+  META-INF
+    manifest.xml  -
 
 Specifications obtained from:
 
-write url here
+http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
 AUTHORS: Felipe Monteiro de Carvalho
 
@@ -28,7 +31,7 @@ unit fpsopendocument;
 interface
 
 uses
-  Classes, SysUtils, {zipper,}
+  Classes, SysUtils, zipper,
   fpspreadsheet;
   
 type
@@ -37,16 +40,24 @@ type
 
   TsSpreadOpenDocWriter = class(TsCustomSpreadWriter)
   protected
-//    FZip: TZipper;
-    FMetaInfManifest: string;
+    FZip: TZipper;
+    // Strings with the contents of files
+    // filename\
     FMeta, FSettings, FStyles: string;
     FContent: string;
+    FMimetype: string;
+    // filename\META-INF
+    FMetaInfManifest: string;
+    // Routines to write those files
+    procedure WriteGlobalFiles;
+    procedure WriteContent(AData: TsWorkbook);
   public
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TRPNFormula); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
   end;
@@ -62,6 +73,7 @@ const
   OOXML_PATH_META      = 'meta.xml';
   OOXML_PATH_SETTINGS  = 'settings.xml';
   OOXML_PATH_STYLES    = 'styles.xml';
+  OOXML_PATH_MIMETYPE  = 'mimetype.xml';
   OPENDOC_PATH_METAINF = 'META-INF\';
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF\manifest.xml';
 
@@ -94,72 +106,9 @@ const
 
 { TsSpreadOpenDocWriter }
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteStringToFile ()
-*
-*  DESCRIPTION:    Writes a string to a file. Helper convenience method.
-*
-*******************************************************************}
-procedure TsSpreadOpenDocWriter.WriteStringToFile(AFileName, AString: string);
-var
-  TheStream : TFileStream;
-  S : String;
+procedure TsSpreadOpenDocWriter.WriteGlobalFiles;
 begin
-  TheStream := TFileStream.Create(AFileName, fmCreate);
-  S:=AString;
-  TheStream.WriteBuffer(Pointer(S)^,Length(S));
-  TheStream.Free;
-end;
-
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToFile ()
-*
-*  DESCRIPTION:    Writes an OOXML document to the disc
-*
-*******************************************************************}
-procedure TsSpreadOpenDocWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
-var
-  TempDir: string;
-begin
-  {FZip := TZipper.Create;
-  FZip.ZipFiles(AFileName, x);
-  FZip.Free;}
-  
-  WriteToStream(nil, AData);
-
-  TempDir := IncludeTrailingBackslash(AFileName);
-
-  { files on the root path }
-
-  ForceDirectories(TempDir);
-
-  WriteStringToFile(TempDir + OOXML_PATH_CONTENT, FContent);
-  
-  WriteStringToFile(TempDir + OOXML_PATH_META, FMeta);
-
-  WriteStringToFile(TempDir + OOXML_PATH_SETTINGS, FSettings);
-
-  WriteStringToFile(TempDir + OOXML_PATH_STYLES, FStyles);
-
-  { META-INF directory }
-
-  ForceDirectories(TempDir + OPENDOC_PATH_METAINF);
-
-  WriteStringToFile(TempDir + OPENDOC_PATH_METAINF_MANIFEST, FMetaInfManifest);
-end;
-
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToStream ()
-*
-*  DESCRIPTION:    Writes an Excel 2 file to a stream
-*
-*                  Excel 2.x files support only one Worksheet per Workbook,
-*                  so only the first will be written.
-*
-*******************************************************************}
-procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
-begin
-//  WriteCellsToStream(AStream, AData.GetFirstWorksheet.FCells);
+  FMimetype := 'application/vnd.oasis.opendocument.spreadsheet';
 
   FMetaInfManifest :=
    XML_HEADER + LineEnding +
@@ -170,7 +119,7 @@ begin
    '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />' + LineEnding +
    '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />' + LineEnding +
    '</manifest:manifest>';
-  
+
   FMeta :=
    XML_HEADER + LineEnding +
    '<office:document-meta xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -209,7 +158,7 @@ begin
    '    </config:config-item-set>' + LineEnding +
    '  </office:settings>' + LineEnding +
    '</office:document-settings>';
-  
+
   FStyles :=
    XML_HEADER + LineEnding +
    '<office:document-styles xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -247,7 +196,13 @@ begin
    '</style:master-page>' + LineEnding +
    '</office:master-styles>' + LineEnding +
    '</office:document-styles>';
-  
+end;
+
+procedure TsSpreadOpenDocWriter.WriteContent(AData: TsWorkbook);
+var
+  i: Integer;
+  CurSheet: TsWorksheet;
+begin
   FContent :=
    XML_HEADER + LineEnding +
    '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -270,127 +225,151 @@ begin
      '" xmlns:xforms="' + SCHEMAS_XMLNS_XFORMS +
      '" xmlns:xsd="'    + SCHEMAS_XMLNS_XSD +
      '" xmlns:xsi="'    + SCHEMAS_XMLNS_XSI + '">' + LineEnding +
-   '<office:scripts />' + LineEnding +
-   '<office:font-face-decls>' + LineEnding +
-   '<style:font-face style:name="Arial" svg:font-family="Arial" xmlns:v="urn:schemas-microsoft-com:vml" />' + LineEnding +
-   '</office:font-face-decls>' + LineEnding +
-   '<office:automatic-styles>' + LineEnding +
-   '<style:style style:name="ID0EM" style:family="table-column" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '<style:table-column-properties fo:break-before="auto" style:column-width="1.961cm" />' + LineEnding +
-   '</style:style>' + LineEnding +
-   '<style:style style:name="ID0EM" style:family="table-row" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '<style:table-row-properties fo:break-before="auto" style:row-height="0.45cm" />' + LineEnding +
-   '</style:style>' + LineEnding +
-   '<style:style style:name="ID1E6B" style:family="table-cell" style:parent-style-name="Default" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '<style:text-properties fo:font-size="10" style:font-name="Arial" />' + LineEnding +
-   '</style:style>' + LineEnding +
-   '<style:style style:name="ID2EY" style:family="table" style:master-page-name="Default" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '<style:table-properties />' + LineEnding +
-   '</style:style>' + LineEnding +
-   '<style:style style:name="scenario" style:family="table" style:master-page-name="Default">' + LineEnding +
-   '<style:table-properties table:display="false" style:writing-mode="lr-tb" />' + LineEnding +
-   '</style:style>' + LineEnding +
-   '</office:automatic-styles>' + LineEnding +
-   '<office:body>' + LineEnding +
-   '<office:spreadsheet>' + LineEnding +
-   '<table:table table:name="Tabelle1" table:style-name="ID2EY">' + LineEnding +
-   '<table:table-column table:style-name="ID0EM" table:number-columns-repeated="256" table:default-cell-style-name="ID1E6B" xmlns:v="urn:schemas-microsoft-com:vml" />' + LineEnding +
-   '<table:table-row table:style-name="ID0EM" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '<table:table-cell office:value-type="float" office:value="1">' + LineEnding +
-   '<text:p>1</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell office:value-type="float" office:value="2">' + LineEnding +
-   '<text:p>2</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell office:value-type="float" office:value="3">' + LineEnding +
-   '<text:p>3</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell office:value-type="float" office:value="4">' + LineEnding +
-   '<text:p>4</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell table:number-columns-repeated="252" />' + LineEnding +
-   '</table:table-row>' + LineEnding +
-   '<table:table-row table:style-name="ID0EM" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '<table:table-cell office:value-type="string">' + LineEnding +
-   '<text:p>First</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell office:value-type="string">' + LineEnding +
-   '<text:p>Second</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell office:value-type="string">' + LineEnding +
-   '<text:p>Third</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell office:value-type="string">' + LineEnding +
-   '<text:p>Fourth</text:p>' + LineEnding +
-   '</table:table-cell>' + LineEnding +
-   '<table:table-cell table:number-columns-repeated="252" />' + LineEnding +
-   '</table:table-row>' + LineEnding +
-   '</table:table>' + LineEnding +
-   '<table:database-ranges />' + LineEnding +
-   '</office:spreadsheet>' + LineEnding +
-   '</office:body>' + LineEnding +
+   '  <office:scripts />' + LineEnding +
+
+   // Fonts
+   '  <office:font-face-decls>' + LineEnding +
+   '    <style:font-face style:name="Arial" svg:font-family="Arial" xmlns:v="urn:schemas-microsoft-com:vml" />' + LineEnding +
+   '  </office:font-face-decls>' + LineEnding +
+
+   // Automatic styles
+   '  <office:automatic-styles>' + LineEnding +
+   '    <style:style style:name="ID0EM" style:family="table-column" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
+   '      <style:table-column-properties fo:break-before="auto" style:column-width="1.961cm" />' + LineEnding +
+   '    </style:style>' + LineEnding +
+   '    <style:style style:name="ID0EM" style:family="table-row" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
+   '      <style:table-row-properties fo:break-before="auto" style:row-height="0.45cm" />' + LineEnding +
+   '    </style:style>' + LineEnding +
+   '    <style:style style:name="ID1E6B" style:family="table-cell" style:parent-style-name="Default" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
+   '      <style:text-properties fo:font-size="10" style:font-name="Arial" />' + LineEnding +
+   '    </style:style>' + LineEnding +
+   '    <style:style style:name="ID2EY" style:family="table" style:master-page-name="Default" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
+   '      <style:table-properties />' + LineEnding +
+   '    </style:style>' + LineEnding +
+   '    <style:style style:name="scenario" style:family="table" style:master-page-name="Default">' + LineEnding +
+   '      <style:table-properties table:display="false" style:writing-mode="lr-tb" />' + LineEnding +
+   '    </style:style>' + LineEnding +
+   '  </office:automatic-styles>' + LineEnding +
+
+   // Body
+   '  <office:body>' + LineEnding +
+   '    <office:spreadsheet>' + LineEnding;
+
+   for i := 0 to AData.GetWorksheetCount - 1 do
+   begin
+     CurSheet := Adata.GetWorksheetByIndex(i);
+
+     // Header
+     FContent := FContent + '<table:table table:name="' + CurSheet.Name + '" table:style-name="ID2EY">' + LineEnding;
+
+     // The cells need to be written in order, row by row
+     WriteCellsToStream(nil, CurSheet.FCells);
+
+     // Footer
+     FContent := FContent + '</table:table>' + LineEnding;
+   end;
+
+  FContent :=  FContent +
+   '    </office:spreadsheet>' + LineEnding +
+   '  </office:body>' + LineEnding +
    '</office:document-content>';
 end;
 
 {*******************************************************************
-*  TsSpreadOOXMLWriter.WriteLabel ()
+*  TsSpreadOOXMLWriter.WriteStringToFile ()
 *
-*  DESCRIPTION:    Writes an Excel 2 LABEL record
-*
-*                  Writes a string to the sheet
+*  DESCRIPTION:    Writes a string to a file. Helper convenience method.
 *
 *******************************************************************}
-procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string);
+procedure TsSpreadOpenDocWriter.WriteStringToFile(AFileName, AString: string);
 var
-  L: Byte;
+  TheStream : TFileStream;
+  S : String;
 begin
-  L := Length(AValue);
-
-  { BIFF Record header }
-//  AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-//  AStream.WriteWord(WordToLE(8 + L));
-
-  { BIFF Record data }
-//  AStream.WriteWord(WordToLE(ARow));
-//  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-
-  { String with 8-bit size }
-  AStream.WriteByte(L);
-  AStream.WriteBuffer(AValue[1], L);
+  TheStream := TFileStream.Create(AFileName, fmCreate);
+  S:=AString;
+  TheStream.WriteBuffer(Pointer(S)^,Length(S));
+  TheStream.Free;
 end;
 
 {*******************************************************************
-*  TsSpreadOOXMLWriter.WriteNumber ()
+*  TsSpreadOOXMLWriter.WriteToFile ()
 *
-*  DESCRIPTION:    Writes an Excel 2 NUMBER record
-*
-*                  Writes a number (64-bit IEE 754 floating point) to the sheet
+*  DESCRIPTION:    Writes an OOXML document to the disc
 *
 *******************************************************************}
+procedure TsSpreadOpenDocWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
+var
+  TempDir: string;
+begin
+  {FZip := TZipper.Create;
+  FZip.ZipFiles(AFileName, x);
+  FZip.Free;}
+  
+//  WriteToStream(nil, AData);
+
+  WriteGlobalFiles();
+  WriteContent(AData);
+
+  TempDir := IncludeTrailingBackslash(AFileName);
+
+  { files on the root path }
+
+  ForceDirectories(TempDir);
+
+  WriteStringToFile(TempDir + OOXML_PATH_CONTENT, FContent);
+  
+  WriteStringToFile(TempDir + OOXML_PATH_META, FMeta);
+
+  WriteStringToFile(TempDir + OOXML_PATH_SETTINGS, FSettings);
+
+  WriteStringToFile(TempDir + OOXML_PATH_STYLES, FStyles);
+
+  WriteStringToFile(TempDir + OOXML_PATH_MIMETYPE, FMimetype);
+
+  { META-INF directory }
+
+  ForceDirectories(TempDir + OPENDOC_PATH_METAINF);
+
+  WriteStringToFile(TempDir + OPENDOC_PATH_METAINF_MANIFEST, FMetaInfManifest);
+end;
+
+{*******************************************************************
+*  TsSpreadOOXMLWriter.WriteToStream ()
+*
+*  DESCRIPTION:    Writes an Excel 2 file to a stream
+*
+*                  Excel 2.x files support only one Worksheet per Workbook,
+*                  so only the first will be written.
+*
+*******************************************************************}
+procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+begin
+
+end;
+
+procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
+  ACol: Word; const AFormula: TRPNFormula);
+begin
+
+end;
+
+procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
+  ACol: Word; const AValue: string);
+begin
+
+end;
+
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double);
 begin
-  { BIFF Record header }
-//  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
-//  AStream.WriteWord(WordToLE(15));
-
-  { BIFF Record data }
-//  AStream.WriteWord(WordToLE(ARow));
-//  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-
-  { IEE 754 floating-point value }
-  AStream.WriteBuffer(AValue, 8);
+  // The row should already be the correct one
+  FContent := FContent +
+    '<table:table-row table:style-name="ro' + IntToStr(ARow) + '">' + LineEnding +
+    '  <table:table-cell office:value-type="float" office:value="' + IntToStr(ACol) + '1">' + LineEnding +
+    '    <text:p>1</text:p>' + LineEnding +
+    '  </table:table-cell>' + LineEnding +
+    '</table:table-row>' + LineEnding;
 end;
 
 {*******************************************************************
