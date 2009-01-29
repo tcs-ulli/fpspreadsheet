@@ -38,7 +38,7 @@
         <Filename Value="excel2write.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="excel2write"/>
-        <CursorPos X="24" Y="37"/>
+        <CursorPos X="21" Y="43"/>
         <TopLine Value="18"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="309"/>
@@ -116,8 +116,8 @@
       <Unit10>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <CursorPos X="3" Y="428"/>
-        <TopLine Value="420"/>
+        <CursorPos X="21" Y="67"/>
+        <TopLine Value="57"/>
         <EditorIndex Value="1"/>
         <UsageCount Value="92"/>
         <Loaded Value="True"/>

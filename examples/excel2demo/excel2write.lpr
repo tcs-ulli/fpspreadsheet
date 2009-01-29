@@ -25,16 +25,16 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
 
   // Write some number cells
-  MyWorksheet.WriteNumber(0, 0, 1.0);
-  MyWorksheet.WriteNumber(0, 1, 2.0);
-  MyWorksheet.WriteNumber(0, 2, 3.0);
-  MyWorksheet.WriteNumber(0, 3, 4.0);
+  MyWorksheet.WriteNumber(1, 1, 1.0);
+  MyWorksheet.WriteNumber(1, 2, 2.0);
+  MyWorksheet.WriteNumber(1, 3, 3.0);
+  MyWorksheet.WriteNumber(1, 4, 4.0);
 
   // Write some string cells
-  MyWorksheet.WriteUTF8Text(1, 0, 'First');
-  MyWorksheet.WriteUTF8Text(1, 1, 'Second');
-  MyWorksheet.WriteUTF8Text(1, 2, 'Third');
-  MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
+  MyWorksheet.WriteUTF8Text(2, 1, 'First');
+  MyWorksheet.WriteUTF8Text(2, 2, 'Second');
+  MyWorksheet.WriteUTF8Text(2, 3, 'Third');
+  MyWorksheet.WriteUTF8Text(2, 4, 'Fourth');
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2);
