@@ -31,8 +31,7 @@ DIMENSIONS
 WINDOW2
 EOF
 
-The row and column numbering in BIFF files is zero-based,
-while in FPSpreadsheet it is 1-based, so this needs to be considered.
+The row and column numbering in BIFF files is zero-based.
 
 Excel file format specification obtained from:
 
@@ -205,10 +204,6 @@ const
   MASK_XF_TYPE_PROT_PARENT            = $FFF0;
 
   MASK_XF_VERT_ALIGN                  = $70;
-
-  { Marks differences between the BIFF format and FPSpreadsheet }
-  INT_FPS_BIFF_ROW_DELTA  = 1;
-  INT_FPS_BIFF_COL_DELTA  = 1;
 
 {
   Exported functions
@@ -557,8 +552,8 @@ begin
   AStream.WriteWord(WordToLE(22 + RPNLength));
 
   { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow - INT_FPS_BIFF_ROW_DELTA));
-  AStream.WriteWord(WordToLE(ACol - INT_FPS_BIFF_COL_DELTA));
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF Record }
   AStream.WriteWord($0000);
@@ -603,8 +598,8 @@ begin
 
     INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
     begin
-      AStream.WriteWord( (AFormula[i].Row - INT_FPS_BIFF_ROW_DELTA) and MASK_EXCEL_ROW);
-      AStream.WriteByte(AFormula[i].Col - INT_FPS_BIFF_COL_DELTA);
+      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
+      AStream.WriteByte(AFormula[i].Col);
       Inc(RPNLength, 3);
     end;
 
@@ -674,8 +669,8 @@ begin
   AStream.WriteWord(WordToLE(8 + L));
 
   { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow - INT_FPS_BIFF_ROW_DELTA));
-  AStream.WriteWord(WordToLE(ACol - INT_FPS_BIFF_COL_DELTA));
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record }
   AStream.WriteWord(15);
@@ -701,8 +696,8 @@ begin
   AStream.WriteWord(WordToLE(14));
 
   { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow - INT_FPS_BIFF_ROW_DELTA));
-  AStream.WriteWord(WordToLE(ACol - INT_FPS_BIFF_COL_DELTA));
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record }
   AStream.WriteWord($0);
@@ -1060,8 +1055,8 @@ var
   AValue: Double;
 begin
   { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord) + INT_FPS_BIFF_ROW_DELTA;
-  ACol := WordLEToN(AStream.ReadWord) + INT_FPS_BIFF_COL_DELTA;
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
 
   { Index to XF record }
   AStream.ReadWord();

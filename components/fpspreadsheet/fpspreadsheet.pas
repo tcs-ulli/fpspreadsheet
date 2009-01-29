@@ -304,9 +304,6 @@ end;
 }
 function TsWorksheet.GetCell(ARow, ACol: Cardinal): PCell;
 begin
-  // First make sure the row and col values are valid
-  if (ARow = 0) or (ACol = 0) then raise Exception.Create('FPSpreadsheet: Row and Col numbers cannot be zero');
-
   Result := FindCell(ARow, ACol);
   
   if (Result = nil) then

@@ -71,7 +71,7 @@ const
   OOXML_PATH_META      = 'meta.xml';
   OOXML_PATH_SETTINGS  = 'settings.xml';
   OOXML_PATH_STYLES    = 'styles.xml';
-  OOXML_PATH_MIMETYPE  = 'mimetype.xml';
+  OOXML_PATH_MIMETYPE  = 'mimetype';
   OPENDOC_PATH_METAINF = 'META-INF' + PathDelim;
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + PathDelim + 'manifest.xml';
 
@@ -270,27 +270,28 @@ begin
   FContent := FContent +
   '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding +
   '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
-  IntToStr(LastColNum) + '" table:default-cell-style-name="Default"/>' + LineEnding;
+  IntToStr(LastColNum + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
 
   // The cells need to be written in order, row by row, cell by cell
-  for j := 1 to CurSheet.GetLastRowNumber do
+  for j := 0 to CurSheet.GetLastRowNumber do
   begin
     FContent := FContent +
     '      <table:table-row table:style-name="ro1">' + LineEnding;
 
     // First make an array with the cells of this row in their respective order
     // nil pointers indicate empty cells, so it's necessary to initialize the array
-    SetLength(CurRow, LastColNum);
-    for k := 0 to LastColNum - 1 do CurRow[k] := nil;
+    SetLength(CurRow, LastColNum + 1);
+    for k := 0 to LastColNum do CurRow[k] := nil;
 
     // Now fill the array with the cells in their proper place
     for k := 0 to CurSheet.FCells.Count - 1 do
     begin
       CurCell := CurSheet.FCells.Items[k];
-      if CurCell^.Row = j then CurRow[CurCell^.Col - 1] := CurCell;
+      if CurCell^.Row = j then CurRow[CurCell^.Col] := CurCell;
     end;
 
-    for k := 0 to LastColNum - 1 do
+    // And now write all cells from this row
+    for k := 0 to LastColNum do
     begin
       CurCell := CurRow[k];
 
@@ -384,7 +385,11 @@ end;
 procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string);
 begin
-
+  // The row should already be the correct one
+  FContent := FContent +
+    '  <table:table-cell office:value-type="string">' + LineEnding +
+    '    <text:p>' + AValue + '</text:p>' + LineEnding +
+    '  </table:table-cell>' + LineEnding;
 end;
 
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
