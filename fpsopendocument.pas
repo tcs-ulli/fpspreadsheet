@@ -72,8 +72,8 @@ const
   OOXML_PATH_SETTINGS  = 'settings.xml';
   OOXML_PATH_STYLES    = 'styles.xml';
   OOXML_PATH_MIMETYPE  = 'mimetype.xml';
-  OPENDOC_PATH_METAINF = 'META-INF\';
-  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF\manifest.xml';
+  OPENDOC_PATH_METAINF = 'META-INF' + PathDelim;
+  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + PathDelim + 'manifest.xml';
 
   { OpenDocument schemas constants }
   SCHEMAS_XMLNS_OFFICE   = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
@@ -261,30 +261,54 @@ procedure TsSpreadOpenDocWriter.WriteWorksheet(CurSheet: TsWorksheet);
 var
   j, k: Integer;
   CurCell: PCell;
+  CurRow: array of PCell;
+  LastColNum: Cardinal;
 begin
+  LastColNum := CurSheet.GetLastColNumber;
+
   // Header
   FContent := FContent +
   '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding +
   '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
-  IntToStr(CurSheet.GetLastColNumber + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
+  IntToStr(LastColNum) + '" table:default-cell-style-name="Default"/>' + LineEnding;
 
-  // The cells need to be written in order, row by row
-  for j := 0 to CurSheet.GetLastRowNumber do
+  // The cells need to be written in order, row by row, cell by cell
+  for j := 1 to CurSheet.GetLastRowNumber do
   begin
     FContent := FContent +
     '      <table:table-row table:style-name="ro1">' + LineEnding;
 
+    // First make an array with the cells of this row in their respective order
+    // nil pointers indicate empty cells, so it's necessary to initialize the array
+    SetLength(CurRow, LastColNum);
+    for k := 0 to LastColNum - 1 do CurRow[k] := nil;
+
+    // Now fill the array with the cells in their proper place
     for k := 0 to CurSheet.FCells.Count - 1 do
     begin
       CurCell := CurSheet.FCells.Items[k];
-      if CurCell^.Row = j then WriteCellCallback(CurCell, nil);
+      if CurCell^.Row = j then CurRow[CurCell^.Col - 1] := CurCell;
     end;
 
-    FContent := FContent + '      </table:table-row>' + LineEnding;
+    for k := 0 to LastColNum - 1 do
+    begin
+      CurCell := CurRow[k];
+
+      if CurCell = nil then
+        FContent := FContent + '<table:table-cell/>' + LineEnding
+      else WriteCellCallback(CurCell, nil);
+    end;
+
+    FContent := FContent +
+    '      </table:table-row>' + LineEnding;
   end;
 
+  // Clean up
+  SetLength(CurRow, 0);
+
   // Footer
-  FContent := FContent + '    </table:table>' + LineEnding;
+  FContent := FContent +
+  '    </table:table>' + LineEnding;
 end;
 
 {*******************************************************************
@@ -346,15 +370,6 @@ begin
   WriteStringToFile(TempDir + OPENDOC_PATH_METAINF_MANIFEST, FMetaInfManifest);
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToStream ()
-*
-*  DESCRIPTION:    Writes an Excel 2 file to a stream
-*
-*                  Excel 2.x files support only one Worksheet per Workbook,
-*                  so only the first will be written.
-*
-*******************************************************************}
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
 begin
 
@@ -377,8 +392,8 @@ procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
 begin
   // The row should already be the correct one
   FContent := FContent +
-    '  <table:table-cell office:value-type="float" office:value="' + IntToStr(ACol + 1) + '">' + LineEnding +
-    '    <text:p>1</text:p>' + LineEnding +
+    '  <table:table-cell office:value-type="float" office:value="' + FloatToStr(AValue) + '">' + LineEnding +
+    '    <text:p>' + FloatToStr(AValue) + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
 
