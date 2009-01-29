@@ -61,12 +61,13 @@ type
 
   {@@ Describes the type of content of a cell on a TsWorksheet }
 
-  TCellContentType = (cctFormula, cctNumber, cctUTF8String);
+  TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String);
   
   {@@ Cell structure for TsWorksheet }
 
   TCell = record
-    Row, Col: Cardinal;
+    Col: Byte;
+    Row: Word;
     ContentType: TCellContentType;
     FormulaValue: TRPNFormula;
     NumberValue: double;
@@ -303,6 +304,9 @@ end;
 }
 function TsWorksheet.GetCell(ARow, ACol: Cardinal): PCell;
 begin
+  // First make sure the row and col values are valid
+  if (ARow = 0) or (ACol = 0) then raise Exception.Create('FPSpreadsheet: Row and Col numbers cannot be zero');
+
   Result := FindCell(ARow, ACol);
   
   if (Result = nil) then

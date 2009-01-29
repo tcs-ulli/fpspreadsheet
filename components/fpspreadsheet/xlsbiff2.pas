@@ -13,6 +13,9 @@ To ensure a properly formed file, the following order must be respected:
 2nd to Nth record: Any record
 Last record:       EOF
 
+The row and column numbering in BIFF files is zero-based,
+while in FPSpreadsheet it is 1-based, so this needs to be considered.
+
 Excel file format specification obtained from:
 
 http://sc.openoffice.org/excelfileformat.pdf
@@ -81,6 +84,10 @@ const
   INT_EXCEL_SHEET         = $0010;
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
+
+  { Marks differences between the BIFF format and FPSpreadsheet }
+  INT_FPS_BIFF_ROW_DELTA  = 1;
+  INT_FPS_BIFF_COL_DELTA  = 1;
 
 { TsSpreadBIFF2Writer }
 
@@ -165,8 +172,8 @@ begin
   AStream.WriteWord(WordToLE(17 + RPNLength));
 
   { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
+  AStream.WriteWord(WordToLE(ARow - INT_FPS_BIFF_ROW_DELTA));
+  AStream.WriteWord(WordToLE(ACol - INT_FPS_BIFF_COL_DELTA));
 
   { BIFF2 Attributes }
   AStream.WriteByte($0);
@@ -211,8 +218,8 @@ begin
 
     INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
     begin
-      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
-      AStream.WriteByte(AFormula[i].Col);
+      AStream.WriteWord( (AFormula[i].Row - INT_FPS_BIFF_ROW_DELTA) and MASK_EXCEL_ROW);
+      AStream.WriteByte(AFormula[i].Col - INT_FPS_BIFF_COL_DELTA);
       Inc(RPNLength, 3);
     end;
 
@@ -250,8 +257,8 @@ begin
   AStream.WriteWord(WordToLE(8 + L));
 
   { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
+  AStream.WriteWord(WordToLE(ARow - INT_FPS_BIFF_ROW_DELTA));
+  AStream.WriteWord(WordToLE(ACol - INT_FPS_BIFF_COL_DELTA));
 
   { BIFF2 Attributes }
   AStream.WriteByte($0);
@@ -279,8 +286,8 @@ begin
   AStream.WriteWord(WordToLE(15));
 
   { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
+  AStream.WriteWord(WordToLE(ARow - INT_FPS_BIFF_ROW_DELTA));
+  AStream.WriteWord(WordToLE(ACol - INT_FPS_BIFF_COL_DELTA));
 
   { BIFF2 Attributes }
   AStream.WriteByte($0);
@@ -344,8 +351,8 @@ var
   AStrValue: ansistring;
 begin
   { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
+  ARow := WordLEToN(AStream.ReadWord) + INT_FPS_BIFF_ROW_DELTA;
+  ACol := WordLEToN(AStream.ReadWord) + INT_FPS_BIFF_COL_DELTA;
 
   { BIFF2 Attributes }
   AStream.ReadByte();
@@ -368,8 +375,8 @@ var
   AValue: Double;
 begin
   { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
+  ARow := WordLEToN(AStream.ReadWord) + INT_FPS_BIFF_ROW_DELTA;
+  ACol := WordLEToN(AStream.ReadWord) + INT_FPS_BIFF_COL_DELTA;
 
   { BIFF2 Attributes }
   AStream.ReadByte();

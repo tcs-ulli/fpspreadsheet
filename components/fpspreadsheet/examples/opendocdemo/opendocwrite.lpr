@@ -28,10 +28,10 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
 
   // Write some number cells
-  MyWorksheet.WriteNumber(0, 0, 1.0);
-  MyWorksheet.WriteNumber(0, 1, 2.0);
-  MyWorksheet.WriteNumber(0, 2, 3.0);
-  MyWorksheet.WriteNumber(0, 3, 4.0);
+  MyWorksheet.WriteNumber(1, 1, 1.0);
+  MyWorksheet.WriteNumber(1, 2, 2.0);
+  MyWorksheet.WriteNumber(1, 3, 3.0);
+  MyWorksheet.WriteNumber(1, 4, 4.0);
 
 { Uncommend this to test large XLS files
   for i := 2 to 20 do
@@ -59,10 +59,10 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
   // Write some string cells
-  MyWorksheet.WriteUTF8Text(0, 0, 'First');
-  MyWorksheet.WriteUTF8Text(0, 1, 'Second');
-  MyWorksheet.WriteUTF8Text(0, 2, 'Third');
-  MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');
+  MyWorksheet.WriteUTF8Text(1, 1, 'First');
+  MyWorksheet.WriteUTF8Text(1, 2, 'Second');
+  MyWorksheet.WriteUTF8Text(1, 3, 'Third');
+  MyWorksheet.WriteUTF8Text(1, 4, 'Fourth');
   *)
 
   // Save the spreadsheet to a file

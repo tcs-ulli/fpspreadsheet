@@ -5,22 +5,19 @@ Writes an OpenDocument 1.0 Spreadsheet document
 
 An OpenDocument document is a compressed ZIP file with the following files inside:
 
-filename\
-  content.xml     - Actual contents
-  meta.xml        - Authoring data
-  settings.xml    - User persistent viewing information, such as zoom, cursor position, etc.
-  styles.xml      - Styles, which are the only way to do formatting
-  mimetype        - application/vnd.oasis.opendocument.spreadsheet
-  META-INF
-    manifest.xml  -
+content.xml     - Actual contents
+meta.xml        - Authoring data
+settings.xml    - User persistent viewing information, such as zoom, cursor position, etc.
+styles.xml      - Styles, which are the only way to do formatting
+mimetype        - application/vnd.oasis.opendocument.spreadsheet
+META-INF
+  manifest.xml  -
 
 Specifications obtained from:
 
 http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
 AUTHORS: Felipe Monteiro de Carvalho
-
-IMPORTANT: This writer doesn't work yet!!! This is just initial code.
 }
 unit fpsopendocument;
 
@@ -51,6 +48,7 @@ type
     // Routines to write those files
     procedure WriteGlobalFiles;
     procedure WriteContent(AData: TsWorkbook);
+    procedure WriteWorksheet(CurSheet: TsWorksheet);
   public
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
@@ -200,9 +198,7 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteContent(AData: TsWorkbook);
 var
-  i, j, k: Integer;
-  CurSheet: TsWorksheet;
-  CurCell: PCell;
+  i: Integer;
 begin
   FContent :=
    XML_HEADER + LineEnding +
@@ -234,71 +230,61 @@ begin
    '  </office:font-face-decls>' + LineEnding +
 
    // Automatic styles
-'<office:automatic-styles>' + LineEnding +
-'<style:style style:name="co1" style:family="table-column">' + LineEnding +
-'<style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>' + LineEnding +
-'</style:style>' + LineEnding +
-'<style:style style:name="ro1" style:family="table-row">' + LineEnding +
-'<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' + LineEnding +
-'</style:style>' + LineEnding +
-'<style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
-'<style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
-'</style:style>' + LineEnding +
-'</office:automatic-styles>' + LineEnding +
+  '  <office:automatic-styles>' + LineEnding +
+  '    <style:style style:name="co1" style:family="table-column">' + LineEnding +
+  '      <style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>' + LineEnding +
+  '    </style:style>' + LineEnding +
+  '    <style:style style:name="ro1" style:family="table-row">' + LineEnding +
+  '      <style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' + LineEnding +
+  '    </style:style>' + LineEnding +
+  '    <style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
+  '      <style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
+  '    </style:style>' + LineEnding +
+  '  </office:automatic-styles>' + LineEnding +
 
-{   '  <office:automatic-styles>' + LineEnding +
-   '    <style:style style:name="ID0EM" style:family="table-column" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '      <style:table-column-properties fo:break-before="auto" style:column-width="1.961cm" />' + LineEnding +
-   '    </style:style>' + LineEnding +
-   '    <style:style style:name="ID0EM" style:family="table-row" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '      <style:table-row-properties fo:break-before="auto" style:row-height="0.45cm" />' + LineEnding +
-   '    </style:style>' + LineEnding +
-   '    <style:style style:name="ID1E6B" style:family="table-cell" style:parent-style-name="Default" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '      <style:text-properties fo:font-size="10" style:font-name="Arial" />' + LineEnding +
-   '    </style:style>' + LineEnding +
-   '    <style:style style:name="ID2EY" style:family="table" style:master-page-name="Default" xmlns:v="urn:schemas-microsoft-com:vml">' + LineEnding +
-   '      <style:table-properties />' + LineEnding +
-   '    </style:style>' + LineEnding +
-   '    <style:style style:name="scenario" style:family="table" style:master-page-name="Default">' + LineEnding +
-   '      <style:table-properties table:display="false" style:writing-mode="lr-tb" />' + LineEnding +
-   '    </style:style>' + LineEnding +
-   '  </office:automatic-styles>' + LineEnding +}
+  // Body
+  '  <office:body>' + LineEnding +
+  '    <office:spreadsheet>' + LineEnding;
 
-   // Body
-   '  <office:body>' + LineEnding +
-   '    <office:spreadsheet>' + LineEnding;
-
-   for i := 0 to AData.GetWorksheetCount - 1 do
-   begin
-     CurSheet := Adata.GetWorksheetByIndex(i);
-
-     // Header
-     FContent := FContent + '<table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding
-       + '<table:table-column table:style-name="co1" table:number-columns-repeated="' +
-       IntToStr(CurSheet.GetLastColNumber + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
-
-     // The cells need to be written in order, row by row
-     for j := 0 to CurSheet.GetLastRowNumber do
-     begin
-       FContent := FContent + '<table:table-row table:style-name="ro1">' + LineEnding;
-
-       for k := 0 to CurSheet.FCells.Count - 1 do
-       begin
-         CurCell := CurSheet.FCells.Items[k];
-         if CurCell^.Row = j then WriteCellCallback(CurCell, nil);
-       end;
-
-       FContent := FContent + '</table:table-row>' + LineEnding;
-     end;
-
-     // Footer
-     FContent := FContent + '</table:table>' + LineEnding;
-   end;
+  for i := 0 to AData.GetWorksheetCount - 1 do
+  begin
+    WriteWorksheet(Adata.GetWorksheetByIndex(i));
+  end;
 
   FContent :=  FContent +
    '    </office:spreadsheet>' + LineEnding +
    '  </office:body>' + LineEnding +
    '</office:document-content>';
+end;
+
+procedure TsSpreadOpenDocWriter.WriteWorksheet(CurSheet: TsWorksheet);
+var
+  j, k: Integer;
+  CurCell: PCell;
+begin
+  // Header
+  FContent := FContent +
+  '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding +
+  '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
+  IntToStr(CurSheet.GetLastColNumber + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
+
+  // The cells need to be written in order, row by row
+  for j := 0 to CurSheet.GetLastRowNumber do
+  begin
+    FContent := FContent +
+    '      <table:table-row table:style-name="ro1">' + LineEnding;
+
+    for k := 0 to CurSheet.FCells.Count - 1 do
+    begin
+      CurCell := CurSheet.FCells.Items[k];
+      if CurCell^.Row = j then WriteCellCallback(CurCell, nil);
+    end;
+
+    FContent := FContent + '      </table:table-row>' + LineEnding;
+  end;
+
+  // Footer
+  FContent := FContent + '    </table:table>' + LineEnding;
 end;
 
 {*******************************************************************
