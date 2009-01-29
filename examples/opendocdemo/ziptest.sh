@@ -1,4 +1,4 @@
 cd test
-zip test.ods *
+zip -r test.ods *
 mv test.ods ../
 cd ..
