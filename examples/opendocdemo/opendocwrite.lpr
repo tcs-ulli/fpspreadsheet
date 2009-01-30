@@ -60,10 +60,8 @@ begin
   *)
 
   // Write some string cells
-  MyWorksheet.WriteUTF8Text(1, 0, 'First');
-  MyWorksheet.WriteUTF8Text(1, 1, 'Second');
-  MyWorksheet.WriteUTF8Text(1, 2, 'Third');
-  MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
+  MyWorksheet.WriteUTF8Text(4, 2, 'Total:');
+  MyWorksheet.WriteNumber(4, 3, 10.0);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test', sfOpenDocument);

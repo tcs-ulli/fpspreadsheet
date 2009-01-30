@@ -355,6 +355,16 @@ begin
   else Result := nil;
 end;
 
+{@@
+  Returns the number of the last column with a cell with contents.
+
+  If no cells have contents, zero will be returned, which is also a valid value.
+
+  Use GetCellCount to verify if there is at least one cell with contents in the
+  worksheet.
+
+  @see GetCellCount
+}
 function TsWorksheet.GetLastColNumber: Cardinal;
 var
   i: Integer;
@@ -373,6 +383,16 @@ begin
   end;
 end;
 
+{@@
+  Returns the number of the last row with a cell with contents.
+
+  If no cells have contents, zero will be returned, which is also a valid value.
+
+  Use GetCellCount to verify if there is at least one cell with contents in the
+  worksheet.
+
+  @see GetCellCount
+}
 function TsWorksheet.GetLastRowNumber: Cardinal;
 var
   i: Integer;
