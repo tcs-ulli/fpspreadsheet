@@ -43,18 +43,6 @@ begin
   end;
 }
 
-  // Write the formula E1 = A1 + B1
-  // or, in RPN: A1, B1, +
-  SetLength(MyFormula, 3);
-  MyFormula[0].TokenID := INT_EXCEL_TOKEN_TREFV; {A1}
-  MyFormula[0].Col := 0;
-  MyFormula[0].Row := 0;
-  MyFormula[1].TokenID := INT_EXCEL_TOKEN_TREFV; {B1}
-  MyFormula[1].Col := 1;
-  MyFormula[1].Row := 0;
-  MyFormula[2].TokenID := INT_EXCEL_TOKEN_TADD;  {+}
-  MyWorksheet.WriteRPNFormula(0, 4, MyFormula);
-
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
@@ -65,7 +53,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test' + STR_OOXML_EXCEL_EXTENSION, sfOOXML);
+  MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML);
   MyWorkbook.Free;
 end.
 

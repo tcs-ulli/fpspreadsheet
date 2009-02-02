@@ -8,13 +8,13 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <OtherUnitFiles Value="C:\Programas\lazarus-ccr\components\fpspreadsheet\"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\"/>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
-    <Files Count="9">
+    <Files Count="10">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -51,6 +51,10 @@
         <Filename Value="fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
       </Item9>
+      <Item10>
+        <Filename Value="fpszipper.pp"/>
+        <UnitName Value="fpszipper"/>
+      </Item10>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="1">

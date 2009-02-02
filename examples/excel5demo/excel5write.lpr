@@ -15,10 +15,9 @@ uses
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  MyFormula: TRPNFormula;
+  MyFormula: TsFormula;
   MyDir: string;
   i: Integer;
-  a: TStringList;
 begin
   // Open the output file
   MyDir := ExtractFilePath(ParamStr(0));
@@ -44,16 +43,8 @@ begin
 }
 
   // Write the formula E1 = A1 + B1
-  // or, in RPN: A1, B1, +
-  SetLength(MyFormula, 3);
-  MyFormula[0].TokenID := INT_EXCEL_TOKEN_TREFV; {A1}
-  MyFormula[0].Col := 0;
-  MyFormula[0].Row := 0;
-  MyFormula[1].TokenID := INT_EXCEL_TOKEN_TREFV; {B1}
-  MyFormula[1].Col := 1;
-  MyFormula[1].Row := 0;
-  MyFormula[2].TokenID := INT_EXCEL_TOKEN_TADD;  {+}
-  MyWorksheet.WriteRPNFormula(0, 4, MyFormula);
+//  MyFormula.FormulaStr := '';
+//  MyWorksheet.WriteFormula(0, 4, MyFormula);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');

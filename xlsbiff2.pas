@@ -59,7 +59,7 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TRPNFormula); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
   end;
@@ -84,17 +84,43 @@ const
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
 
+  { Types and constants for formulas }
+type
+  TRPNItem = record
+    TokenID: Byte;
+    Col: Byte;
+    Row: Word;
+    DoubleValue: Double;
+  end;
+
+  TRPNFormula = array of TRPNItem;
+
+const
+  { TokenID values }
+
+  { Binary Operator Tokens }
+  INT_EXCEL_TOKEN_TADD    = $03;
+  INT_EXCEL_TOKEN_TSUB    = $04;
+  INT_EXCEL_TOKEN_TMUL    = $05;
+  INT_EXCEL_TOKEN_TDIV    = $06;
+  INT_EXCEL_TOKEN_TPOWER  = $07;
+
+  { Constant Operand Tokens }
+  INT_EXCEL_TOKEN_TNUM    = $1F;
+
+  { Operand Tokens }
+  INT_EXCEL_TOKEN_TREFR   = $24;
+  INT_EXCEL_TOKEN_TREFV   = $44;
+  INT_EXCEL_TOKEN_TREFA   = $64;
+
 { TsSpreadBIFF2Writer }
 
-{*******************************************************************
-*  TsSpreadBIFF2Writer.WriteToStream ()
-*
-*  DESCRIPTION:    Writes an Excel 2 file to a stream
-*
-*                  Excel 2.x files support only one Worksheet per Workbook,
-*                  so only the first will be written.
-*
-*******************************************************************}
+{
+  Writes an Excel 2 file to a stream
+
+  Excel 2.x files support only one Worksheet per Workbook,
+  so only the first will be written.
+}
 procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
 begin
   WriteBOF(AStream);
@@ -104,14 +130,11 @@ begin
   WriteEOF(AStream);
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF2Writer.WriteBOF ()
-*
-*  DESCRIPTION:    Writes an Excel 2 BOF record
-*
-*                  This must be the first record on an Excel 2 stream
-*
-*******************************************************************}
+{
+  Writes an Excel 2 BOF record
+
+  This must be the first record on an Excel 2 stream
+}
 procedure TsSpreadBIFF2Writer.WriteBOF(AStream: TStream);
 begin
   { BIFF Record header }
@@ -125,14 +148,11 @@ begin
   AStream.WriteWord(WordToLE(INT_EXCEL_SHEET));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF2Writer.WriteEOF ()
-*
-*  DESCRIPTION:    Writes an Excel 2 EOF record
-*
-*                  This must be the last record on an Excel 2 stream
-*
-*******************************************************************}
+{
+  Writes an Excel 2 EOF record
+
+  This must be the last record on an Excel 2 stream
+}
 procedure TsSpreadBIFF2Writer.WriteEOF(AStream: TStream);
 begin
   { BIFF Record header }
@@ -140,25 +160,31 @@ begin
   AStream.WriteWord($0000);
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF2Writer.WriteFormula ()
-*
-*  DESCRIPTION:    Writes an Excel 2 FORMULA record
-*
-*                  To input a formula to this method, first convert it
-*                  to RPN, and then list all it's members in the
-*                  AFormula array
-*
-*******************************************************************}
+{
+  Writes an Excel 2 FORMULA record
+
+  The formula needs to be converted from usual user-readable string
+  to an RPN array
+
+  // or, in RPN: A1, B1, +
+  SetLength(MyFormula, 3);
+  MyFormula[0].TokenID := INT_EXCEL_TOKEN_TREFV; A1
+  MyFormula[0].Col := 0;
+  MyFormula[0].Row := 0;
+  MyFormula[1].TokenID := INT_EXCEL_TOKEN_TREFV; B1
+  MyFormula[1].Col := 1;
+  MyFormula[1].Row := 0;
+  MyFormula[2].TokenID := INT_EXCEL_TOKEN_TADD;  +
+}
 procedure TsSpreadBIFF2Writer.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TRPNFormula);
-var
+  ACol: Word; const AFormula: TsFormula);
+{var
   FormulaResult: double;
   i: Integer;
   RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;
+  TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;}
 begin
-  RPNLength := 0;
+(*  RPNLength := 0;
   FormulaResult := 0.0;
 
   { BIFF Record header }
@@ -227,7 +253,7 @@ begin
   AStream.WriteByte(RPNLength);
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(17 + RPNLength));
-  AStream.position := FinalPos;
+  AStream.position := FinalPos;*)
 end;
 
 {*******************************************************************

@@ -8,7 +8,7 @@ interface
 
 uses
   fpolestorage, fpsallformats, fpsopendocument, fpspreadsheet, xlsbiff2, 
-  xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, LazarusPackageIntf;
+  xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpszipper, LazarusPackageIntf;
 
 implementation
 

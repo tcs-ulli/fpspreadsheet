@@ -97,7 +97,7 @@ type
     procedure WriteDimensions(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TRPNFormula); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
@@ -536,14 +536,14 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TRPNFormula);
-var
+  ACol: Word; const AFormula: TsFormula);
+{var
   FormulaResult: double;
   i: Integer;
   RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Int64;
+  TokenArraySizePos, RecordSizePos, FinalPos: Int64;}
 begin
-  RPNLength := 0;
+(*  RPNLength := 0;
   FormulaResult := 0.0;
 
   { BIFF Record header }
@@ -612,7 +612,7 @@ begin
   AStream.WriteByte(RPNLength);
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(22 + RPNLength));
-  AStream.position := FinalPos;
+  AStream.position := FinalPos;*)
 end;
 
 {*******************************************************************

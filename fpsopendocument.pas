@@ -10,8 +10,7 @@ meta.xml        - Authoring data
 settings.xml    - User persistent viewing information, such as zoom, cursor position, etc.
 styles.xml      - Styles, which are the only way to do formatting
 mimetype        - application/vnd.oasis.opendocument.spreadsheet
-META-INF
-  manifest.xml  -
+META-INF\manifest.xml  - Describes the other files in the archive
 
 Specifications obtained from:
 
@@ -28,7 +27,8 @@ unit fpsopendocument;
 interface
 
 uses
-  Classes, SysUtils, zipper,
+  Classes, SysUtils,
+  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released }
   fpspreadsheet;
   
 type
@@ -37,25 +37,23 @@ type
 
   TsSpreadOpenDocWriter = class(TsCustomSpreadWriter)
   protected
-    FZip: TZipper;
     // Strings with the contents of files
-    // filename\
-    FMeta, FSettings, FStyles: string;
-    FContent: string;
-    FMimetype: string;
-    // filename\META-INF
+    FMeta, FSettings, FStyles, FContent, FMimetype: string;
     FMetaInfManifest: string;
+    // Streams with the contents of files
+    FSMeta, FSSettings, FSStyles, FSContent, FSMimetype: TStringStream;
+    FSMetaInfManifest: TStringStream;
     // Routines to write those files
     procedure WriteGlobalFiles;
     procedure WriteContent(AData: TsWorkbook);
     procedure WriteWorksheet(CurSheet: TsWorksheet);
   public
     { General writing methods }
-    procedure WriteStringToFile(AFileName, AString: string);
+    procedure WriteStringToFile(AString, AFileName: string);
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TRPNFormula); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
   end;
@@ -67,11 +65,11 @@ const
   XML_HEADER           = '<?xml version="1.0" encoding="utf-8" ?>';
 
   { OpenDocument Directory structure constants }
-  OOXML_PATH_CONTENT   = 'content.xml';
-  OOXML_PATH_META      = 'meta.xml';
-  OOXML_PATH_SETTINGS  = 'settings.xml';
-  OOXML_PATH_STYLES    = 'styles.xml';
-  OOXML_PATH_MIMETYPE  = 'mimetype';
+  OPENDOC_PATH_CONTENT   = 'content.xml';
+  OPENDOC_PATH_META      = 'meta.xml';
+  OPENDOC_PATH_SETTINGS  = 'settings.xml';
+  OPENDOC_PATH_STYLES    = 'styles.xml';
+  OPENDOC_PATH_MIMETYPE  = 'mimetype';
   OPENDOC_PATH_METAINF = 'META-INF' + PathDelim;
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + PathDelim + 'manifest.xml';
 
@@ -246,6 +244,7 @@ begin
   '  <office:body>' + LineEnding +
   '    <office:spreadsheet>' + LineEnding;
 
+  // Write all worksheets
   for i := 0 to AData.GetWorksheetCount - 1 do
   begin
     WriteWorksheet(Adata.GetWorksheetByIndex(i));
@@ -312,13 +311,10 @@ begin
   '    </table:table>' + LineEnding;
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteStringToFile ()
-*
-*  DESCRIPTION:    Writes a string to a file. Helper convenience method.
-*
-*******************************************************************}
-procedure TsSpreadOpenDocWriter.WriteStringToFile(AFileName, AString: string);
+{
+  Writes a string to a file. Helper convenience method.
+}
+procedure TsSpreadOpenDocWriter.WriteStringToFile(AString, AFileName: string);
 var
   TheStream : TFileStream;
   S : String;
@@ -329,57 +325,70 @@ begin
   TheStream.Free;
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToFile ()
-*
-*  DESCRIPTION:    Writes an OOXML document to the disc
-*
-*******************************************************************}
+{
+  Writes an OOXML document to the disc.
+}
 procedure TsSpreadOpenDocWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
 var
-  TempDir: string;
+  FZip: TZipper;
 begin
-  {FZip := TZipper.Create;
-  FZip.ZipFiles(AFileName, x);
-  FZip.Free;}
-  
-//  WriteToStream(nil, AData);
+  { Fill the strings with the contents of the files }
 
   WriteGlobalFiles();
   WriteContent(AData);
 
-  TempDir := IncludeTrailingBackslash(AFileName);
+  { Write the data to streams }
 
-  { files on the root path }
+  FSMeta := TStringStream.Create(FMeta);
+  FSSettings := TStringStream.Create(FSettings);
+  FSStyles := TStringStream.Create(FStyles);
+  FSContent := TStringStream.Create(FContent);
+  FSMimetype := TStringStream.Create(FMimetype);
+  FSMetaInfManifest := TStringStream.Create(FMetaInfManifest);
 
-  ForceDirectories(TempDir);
+  { Now compress the files }
 
-  WriteStringToFile(TempDir + OOXML_PATH_CONTENT, FContent);
-  
-  WriteStringToFile(TempDir + OOXML_PATH_META, FMeta);
+  FZip := TZipper.Create;
+  try
+    FZip.FileName := AFileName;
 
-  WriteStringToFile(TempDir + OOXML_PATH_SETTINGS, FSettings);
+    FZip.Entries.AddFileEntry(FSMeta, OPENDOC_PATH_META);
+    FZip.Entries.AddFileEntry(FSSettings, OPENDOC_PATH_SETTINGS);
+    FZip.Entries.AddFileEntry(FSStyles, OPENDOC_PATH_STYLES);
+    FZip.Entries.AddFileEntry(FSContent, OPENDOC_PATH_CONTENT);
+    FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
+    FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
 
-  WriteStringToFile(TempDir + OOXML_PATH_STYLES, FStyles);
-
-  WriteStringToFile(TempDir + OOXML_PATH_MIMETYPE, FMimetype);
-
-  { META-INF directory }
-
-  ForceDirectories(TempDir + OPENDOC_PATH_METAINF);
-
-  WriteStringToFile(TempDir + OPENDOC_PATH_METAINF_MANIFEST, FMetaInfManifest);
+    FZip.ZipAllFiles;
+  finally
+    FZip.Free;
+    FSMeta.Free;
+    FSSettings.Free;
+    FSStyles.Free;
+    FSContent.Free;
+    FSMimetype.Free;
+    FSMetaInfManifest.Free;
+  end;
 end;
+
 
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
 begin
-
+  // Not supported at the moment
+  raise Exception.Create('TsSpreadOpenDocWriter.WriteToStream not supported');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TRPNFormula);
+  ACol: Word; const AFormula: TsFormula);
 begin
-
+{  // The row should already be the correct one
+  FContent := FContent +
+    '  <table:table-cell office:value-type="string">' + LineEnding +
+    '    <text:p>' + AFormula.DoubleValue + '</text:p>' + LineEnding +
+    '  </table:table-cell>' + LineEnding;
+<table:table-cell table:formula="of:=[.A1]+[.B2]" office:value-type="float" office:value="1833">
+<text:p>1833</text:p>
+</table:table-cell>}
 end;
 
 procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
@@ -402,12 +411,9 @@ begin
     '  </table:table-cell>' + LineEnding;
 end;
 
-{*******************************************************************
-*  Initialization section
-*
-*  Registers this reader / writer on fpSpreadsheet
-*
-*******************************************************************}
+{
+  Registers this reader / writer on fpSpreadsheet
+}
 initialization
 
   RegisterSpreadFormat(TsCustomSpreadReader, TsSpreadOpenDocWriter, sfOpenDocument);

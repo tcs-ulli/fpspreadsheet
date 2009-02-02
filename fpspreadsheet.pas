@@ -26,38 +26,35 @@ const
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
 
-const
-  { TokenID values }
-
-  { Binary Operator Tokens }
-  INT_EXCEL_TOKEN_TADD    = $03;
-  INT_EXCEL_TOKEN_TSUB    = $04;
-  INT_EXCEL_TOKEN_TMUL    = $05;
-  INT_EXCEL_TOKEN_TDIV    = $06;
-  INT_EXCEL_TOKEN_TPOWER  = $07;
-
-  { Constant Operand Tokens }
-  INT_EXCEL_TOKEN_TNUM    = $1F;
-
-  { Operand Tokens }
-  INT_EXCEL_TOKEN_TREFR   = $24;
-  INT_EXCEL_TOKEN_TREFV   = $44;
-  INT_EXCEL_TOKEN_TREFA   = $64;
-
 type
 
-  {@@ A Token of a RPN Token array for formulas }
+  {@@ Describes a formula
 
-  TRPNToken = record
-    TokenID: Byte;
-    Col: Byte;
-    Row: Word;
+    Supported syntax:
+
+    =A1+B1+C1/D2...  - Array with simple mathematical operations
+
+    =SUM(A1:D1)      - SUM operation in a interval
+  }
+
+  TsFormula = record
+    FormulaStr: string;
     DoubleValue: double;
   end;
 
-  {@@ RPN Token array for formulas }
+  {@@ Expanded formula. Used by backend modules. Provides more information then the text only }
 
-  TRPNFormula = array of TRPNToken;
+  TFEKind = (fekCell, fekAdd, fekSub, fekDiv, fekMul,
+    fekOpSUM);
+
+  TsFormulaElement = record
+    ElementKind: TFEKind;
+    Row1, Row2: Word;
+    Col1, Col2: Byte;
+    DoubleValue: double;
+  end;
+
+  TsExpandedFormula = array of TsFormulaElement;
 
   {@@ Describes the type of content of a cell on a TsWorksheet }
 
@@ -69,7 +66,7 @@ type
     Col: Byte;
     Row: Word;
     ContentType: TCellContentType;
-    FormulaValue: TRPNFormula;
+    FormulaValue: TsFormula;
     NumberValue: double;
     UTF8StringValue: ansistring;
   end;
@@ -80,8 +77,6 @@ type
 
   TsCustomSpreadReader = class;
   TsCustomSpreadWriter = class;
-
-  {@@ TsWorksheet }
 
   { TsWorksheet }
 
@@ -105,10 +100,8 @@ type
     procedure RemoveAllCells;
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
-    procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TRPNFormula);
+    procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
   end;
-
-  {@@ TsWorkbook }
 
   { TsWorkbook }
 
@@ -140,8 +133,6 @@ type
 
   TsSpreadReaderClass = class of TsCustomSpreadReader;
   
-  {@@ TsCustomSpreadReader }
-
   { TsCustomSpreadReader }
 
   TsCustomSpreadReader = class
@@ -162,19 +153,19 @@ type
 
   TsSpreadWriterClass = class of TsCustomSpreadWriter;
 
-  {@@ TsCustomSpreadWriter }
-
   { TsCustomSpreadWriter }
 
   TsCustomSpreadWriter = class
   public
+    { Helper routines }
+    function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     { General writing methods }
     procedure WriteCellCallback(data, arg: pointer);
     procedure WriteCellsToStream(AStream: TStream; ACells: TFPList);
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TRPNFormula); virtual; abstract;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); virtual; abstract;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); virtual; abstract;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); virtual; abstract;
   end;
@@ -494,9 +485,9 @@ end;
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
-  @param  AFormula  The formula in RPN array format
+  @param  AFormula  The formula to be written
 }
-procedure TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TRPNFormula);
+procedure TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
 var
   ACell: PCell;
 begin
@@ -757,6 +748,50 @@ begin
 end;
 
 { TsCustomSpreadWriter }
+
+{@@
+  Expands a formula, separating it in it's constituent parts,
+  so that it is already partially parsed and it is easier to
+  convert it into the format supported by the writer module
+}
+function TsCustomSpreadWriter.ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
+var
+  StrPos: Integer;
+  ResPos: Integer;
+begin
+  ResPos := -1;
+  SetLength(Result, 0);
+
+  // The formula needs to start with a =
+  if AFormula.FormulaStr[1] <> '=' then raise Exception.Create('Formula doesn''t start with =');
+
+  StrPos := 2;
+
+  while Length(AFormula.FormulaStr) <= StrPos do
+  begin
+    // Checks for cell with the format [Letter][Number]
+{    if (AFormula.FormulaStr[StrPos] in [a..zA..Z]) and
+       (AFormula.FormulaStr[StrPos + 1] in [0..9]) then
+    begin
+      Inc(ResPos);
+      SetLength(Result, ResPos + 1);
+      Result[ResPos].ElementKind := fekCell;
+//      Result[ResPos].Col1 := fekCell;
+      Result[ResPos].Row1 := AFormula.FormulaStr[StrPos + 1];
+
+      Inc(StrPos);
+    end
+    // Checks for arithmetical operations
+    else} if AFormula.FormulaStr[StrPos] = '+' then
+    begin
+      Inc(ResPos);
+      SetLength(Result, ResPos + 1);
+      Result[ResPos].ElementKind := fekAdd;
+    end;
+
+    Inc(StrPos);
+  end;
+end;
 
 {@@
   Helper function for the spreadsheet writers.

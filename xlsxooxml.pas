@@ -5,13 +5,13 @@ Writes an OOXML (Office Open XML) document
 
 An OOXML document is a compressed ZIP file with the following files inside:
 
-[Content_Types].xml
-_rels\.rels
-xl\_rels\workbook.xml.rels
-xl\workbook.xml
-xl\styles.xml
-xl\sharedStrings.xml
-xl\worksheets\sheet1.xml
+[Content_Types].xml         -
+_rels\.rels                 -
+xl\_rels\workbook.xml.rels  -
+xl\workbook.xml             - Global workbook data and list of worksheets
+xl\styles.xml               -
+xl\sharedStrings.xml        -
+xl\worksheets\sheet1.xml    - Contents of each worksheet
 ...
 xl\worksheets\sheetN.xml
 
@@ -20,8 +20,6 @@ Specifications obtained from:
 http://openxmldeveloper.org/default.aspx
 
 AUTHORS: Felipe Monteiro de Carvalho
-
-IMPORTANT: This writer doesn't work yet!!! This is just initial code.
 }
 unit xlsxooxml;
 
@@ -32,7 +30,8 @@ unit xlsxooxml;
 interface
 
 uses
-  Classes, SysUtils, zipper,
+  Classes, SysUtils,
+  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released }
   fpspreadsheet;
   
 type
@@ -41,12 +40,23 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   protected
-    FZip: TZipper;
+    { Strings with the contents of files }
     FContentTypes: string;
     FRelsRels: string;
-    FWorkbook, FWorkbookRels, FStyles, FSharedString, FSheet1: string;
-    procedure FillFileContentStrings(AData: TsWorkbook);
+    FWorkbook, FWorkbookRels, FStyles, FSharedStrings: string;
+    FSheets: array of string;
+    FSharedStringsCount: Integer;
+    { Streams with the contents of files }
+    FSContentTypes: TStringStream;
+    FSRelsRels: TStringStream;
+    FSWorkbook, FSWorkbookRels, FSStyles, FSSharedStrings: TStringStream;
+    FSSheets: array of TStringStream;
+    { Routines to write those files }
+    procedure WriteGlobalFiles;
+    procedure WriteContent(AData: TsWorkbook);
+    procedure WriteWorksheet(CurSheet: TsWorksheet);
   public
+    destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
@@ -64,15 +74,15 @@ const
 
   { OOXML Directory structure constants }
   OOXML_PATH_TYPES     = '[Content_Types].xml';
-  OOXML_PATH_RELS      = '_rels\';
-  OOXML_PATH_RELS_RELS = '_rels\.rels';
-  OOXML_PATH_XL        = 'xl\';
-  OOXML_PATH_XL_RELS   = 'xl\_rels\';
-  OOXML_PATH_XL_RELS_RELS = 'xl\_rels\workbook.xml.rels';
-  OOXML_PATH_XL_WORKBOOK = 'xl\workbook.xml';
-  OOXML_PATH_XL_STYLES   = 'xl\styles.xml';
-  OOXML_PATH_XL_STRINGS  = 'xl\sharedStrings.xml';
-  OOXML_PATH_XL_WORKSHEETS = 'xl\worksheets\';
+  OOXML_PATH_RELS      = '_rels' + PathDelim;
+  OOXML_PATH_RELS_RELS = '_rels' + PathDelim + '.rels';
+  OOXML_PATH_XL        = 'xl' + PathDelim;
+  OOXML_PATH_XL_RELS   = 'xl' + PathDelim + '_rels' + PathDelim;
+  OOXML_PATH_XL_RELS_RELS = 'xl' + PathDelim + '_rels' + PathDelim + 'workbook.xml.rels';
+  OOXML_PATH_XL_WORKBOOK = 'xl' + PathDelim + 'workbook.xml';
+  OOXML_PATH_XL_STYLES   = 'xl' + PathDelim + 'styles.xml';
+  OOXML_PATH_XL_STRINGS  = 'xl' + PathDelim + 'sharedStrings.xml';
+  OOXML_PATH_XL_WORKSHEETS = 'xl' + PathDelim + 'worksheets' + PathDelim;
 
   { OOXML schemas constants }
   SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -95,7 +105,7 @@ const
 
 { TsSpreadOOXMLWriter }
 
-procedure TsSpreadOOXMLWriter.FillFileContentStrings(AData: TsWorkbook);
+procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
 begin
 //  WriteCellsToStream(AStream, AData.GetFirstWorksheet.FCells);
 
@@ -115,28 +125,6 @@ begin
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
    '<Relationship Type="' + SCHEMAS_DOCUMENT + '" Target="/xl/workbook.xml" Id="rId1" />' + LineEnding +
    '</Relationships>';
-
-  FWorkbookRels :=
-   XML_HEADER + LineEnding +
-   '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_WORKSHEET + '" Target="/xl/worksheets/sheet1.xml" Id="rId1" />' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_STYLES + '" Target="/xl/styles.xml" Id="rId2" />' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_STRINGS + '" Target="/xl/sharedStrings.xml" Id="rId3" />' + LineEnding +
-   '</Relationships>';
-
-  FWorkbook :=
-   XML_HEADER + LineEnding +
-   '<workbook xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
-   '  <fileVersion appName="xl" lastEdited="4" lowestEdited="4" rupBuild="4505" />' + LineEnding +
-   '  <workbookPr defaultThemeVersion="124226" />' + LineEnding +
-   '  <bookViews>' + LineEnding +
-   '    <workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' + LineEnding +
-   '  </bookViews>' + LineEnding +
-   '  <sheets>' + LineEnding +
-   '    <sheet name="Sheet1" sheetId="1" r:id="rId1" />' + LineEnding +
-   '  </sheets>' + LineEnding +
-   '  <calcPr calcId="114210" />' + LineEnding +
-   '</workbook>';
 
   FStyles :=
    XML_HEADER + LineEnding +
@@ -176,11 +164,71 @@ begin
    '  <dxfs count="0" />' + LineEnding +
    '  <tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16" />' + LineEnding +
    '</styleSheet>';
+end;
 
-  FSharedString :=
+procedure TsSpreadOOXMLWriter.WriteContent(AData: TsWorkbook);
+var
+  i: Integer;
+begin
+  { Workbook relations - Mark relation to all sheets }
+  FWorkbookRels :=
    XML_HEADER + LineEnding +
-   '<sst xmlns="' + SCHEMAS_SPREADML + '" count="4" uniqueCount="4">' + LineEnding +
-   '  <si>' + LineEnding +
+   '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
+   '<Relationship Type="' + SCHEMAS_STYLES + '" Target="/xl/styles.xml" Id="rId1" />' + LineEnding +
+   '<Relationship Type="' + SCHEMAS_STRINGS + '" Target="/xl/sharedStrings.xml" Id="rId2" />' + LineEnding;
+
+  for i := 1 to AData.GetWorksheetCount do
+  begin
+    FWorkbookRels := FWorkbookRels +
+    '<Relationship Type="' + SCHEMAS_WORKSHEET + '" Target="/xl/worksheets/sheet' + IntToStr(i) +
+       '.xml" Id="rId' + IntToStr(i + 2) + '" />' + LineEnding;
+  end;
+
+  FWorkbookRels := FWorkbookRels +
+   '</Relationships>';
+
+  // Global workbook data - Mark all sheets
+  FWorkbook :=
+   XML_HEADER + LineEnding +
+   '<workbook xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
+   '  <fileVersion appName="xl" lastEdited="4" lowestEdited="4" rupBuild="4505" />' + LineEnding +
+   '  <workbookPr defaultThemeVersion="124226" />' + LineEnding +
+   '  <bookViews>' + LineEnding +
+   '    <workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' + LineEnding +
+   '  </bookViews>' + LineEnding;
+
+  for i := 1 to AData.GetWorksheetCount do
+  begin
+    FWorkbook := FWorkbook +
+     '  <sheets>' + LineEnding +
+     '    <sheet name="Sheet' + IntToStr(i) + '" sheetId="'
+      + IntToStr(i) + '" r:id="rId' + IntToStr(i) + '" />' + LineEnding +
+     '  </sheets>' + LineEnding;
+  end;
+
+  FWorkbook := FWorkbook +
+   '  <calcPr calcId="114210" />' + LineEnding +
+   '</workbook>';
+
+  // Preparation for Shared strings
+  FSharedStringsCount := 0;
+  FSharedStrings := '';
+
+  // Write all worksheets, which fills also FSharedStrings
+  SetLength(FSheets, 0);
+
+  for i := 0 to AData.GetWorksheetCount - 1 do
+  begin
+    WriteWorksheet(Adata.GetWorksheetByIndex(i));
+  end;
+
+  // Finalization of the shared strings document
+  FSharedStrings :=
+   XML_HEADER + LineEnding +
+   '<sst xmlns="' + SCHEMAS_SPREADML + '" count="' + IntToStr(FSharedStringsCount) +
+     '" uniqueCount="' + IntToStr(FSharedStringsCount) + '">' + LineEnding +
+   FSharedStrings +
+{   '  <si>' + LineEnding +
    '    <t>First</t>' + LineEnding +
    '  </si>' + LineEnding +
    '  <si>' + LineEnding +
@@ -191,10 +239,18 @@ begin
    '  </si>' + LineEnding +
    '  <si>' + LineEnding +
    '    <t>Fourth</t>' + LineEnding +
-   '  </si>' + LineEnding +
+   '  </si>' + LineEnding + }
    '</sst>';
+end;
 
-  FSheet1 :=
+procedure TsSpreadOOXMLWriter.WriteWorksheet(CurSheet: TsWorksheet);
+var
+  CurStr: Integer;
+begin
+  CurStr := Length(FSheets);
+  SetLength(FSheets, CurStr + 1);
+
+  FSheets[CurStr] :=
    XML_HEADER + LineEnding +
    '<worksheet xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
    '  <sheetViews>' + LineEnding +
@@ -228,17 +284,22 @@ begin
    '    <c r="D2" t="s">' + LineEnding +
    '      <v>3</v>' + LineEnding +
    '    </c>' + LineEnding +
-   '    </row>' + LineEnding +
+   '  </row>' + LineEnding +
    '  </sheetData>' + LineEnding +
    '</worksheet>';
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteStringToFile ()
-*
-*  DESCRIPTION:    Writes a string to a file. Helper convenience method.
-*
-*******************************************************************}
+destructor TsSpreadOOXMLWriter.Destroy;
+begin
+  SetLength(FSheets, 0);
+  SetLength(FSSheets, 0);
+
+  inherited Destroy;
+end;
+
+{
+  Writes a string to a file. Helper convenience method.
+}
 procedure TsSpreadOOXMLWriter.WriteStringToFile(AFileName, AString: string);
 var
   TheStream : TFileStream;
@@ -250,127 +311,92 @@ begin
   TheStream.Free;
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteToFile ()
-*
-*  DESCRIPTION:    Writes an OOXML document to the disc
-*
-*******************************************************************}
+{
+  Writes an OOXML document to the disc
+}
 procedure TsSpreadOOXMLWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
 var
-  TempDir: string;
+  FZip: TZipper;
+  i: Integer;
 begin
-{  FZip := TZipper.Create;
-  FZip.ZipFiles(AFileName, x);
-  FZip.Free;}
-  
-  FillFileContentStrings(AData);
+  { Fill the strings with the contents of the files }
 
-  TempDir := IncludeTrailingBackslash(AFileName);
+  WriteGlobalFiles();
+  WriteContent(AData);
 
-  { files on the root path }
+  { Write the data to streams }
 
-  ForceDirectories(TempDir);
+  FSContentTypes := TStringStream.Create(FContentTypes);
+  FSRelsRels := TStringStream.Create(FRelsRels);
+  FSWorkbookRels := TStringStream.Create(FWorkbookRels);
+  FSWorkbook := TStringStream.Create(FWorkbook);
+  FSStyles := TStringStream.Create(FStyles);
+  FSSharedStrings := TStringStream.Create(FSharedStrings);
 
-  WriteStringToFile(TempDir + OOXML_PATH_TYPES, FContentTypes);
-  
-  { _rels directory }
+  SetLength(FSSheets, Length(FSheets));
 
-  ForceDirectories(TempDir + OOXML_PATH_RELS);
+  for i := 0 to Length(FSheets) - 1 do
+    FSSheets[i] := TStringStream.Create(FSheets[i]);
 
-  WriteStringToFile(TempDir + OOXML_PATH_RELS_RELS, FRelsRels);
+  { Now compress the files }
 
-  { xl directory }
+  FZip := TZipper.Create;
+  try
+    FZip.FileName := AFileName;
 
-  ForceDirectories(TempDir + OOXML_PATH_XL_RELS);
-  
-  WriteStringToFile(TempDir + OOXML_PATH_XL_RELS_RELS, FWorkbookRels);
-  
-  WriteStringToFile(TempDir + OOXML_PATH_XL_WORKBOOK, FWorkbook);
+    FZip.Entries.AddFileEntry(FSContentTypes, OOXML_PATH_TYPES);
+    FZip.Entries.AddFileEntry(FSRelsRels, OOXML_PATH_RELS_RELS);
+    FZip.Entries.AddFileEntry(FSWorkbookRels, OOXML_PATH_XL_RELS_RELS);
+    FZip.Entries.AddFileEntry(FSWorkbook, OOXML_PATH_XL_WORKBOOK);
+    FZip.Entries.AddFileEntry(FSStyles, OOXML_PATH_XL_STYLES);
+    FZip.Entries.AddFileEntry(FSSharedStrings, OOXML_PATH_XL_STRINGS);
 
-  WriteStringToFile(TempDir + OOXML_PATH_XL_STYLES, FStyles);
+    for i := 0 to Length(FSheets) - 1 do
+      FZip.Entries.AddFileEntry(FSSheets[i], OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i + 1) + '.xml');
 
-  WriteStringToFile(TempDir + OOXML_PATH_XL_STRINGS, FSharedString);
-  
-  { xl\worksheets directory }
+    FZip.ZipAllFiles;
+  finally
+    FSContentTypes.Free;
+    FSRelsRels.Free;
+    FSWorkbookRels.Free;
+    FSWorkbook.Free;
+    FSStyles.Free;
+    FSSharedStrings.Free;
 
-  ForceDirectories(TempDir + OOXML_PATH_XL_WORKSHEETS);
+    for i := 0 to Length(FSSheets) - 1 do
+      FSSheets[i].Free;
 
-  WriteStringToFile(TempDir + OOXML_PATH_XL_WORKSHEETS + 'sheet1.xml', FSheet1);
+    FZip.Free;
+  end;
 end;
 
 procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
 begin
-
+  // Not supported at the moment
+  raise Exception.Create('TsSpreadOpenDocWriter.WriteToStream not supported');
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteLabel ()
-*
-*  DESCRIPTION:    Writes an Excel 2 LABEL record
-*
-*                  Writes a string to the sheet
-*
-*******************************************************************}
+{
+  Writes a string to the sheet
+}
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string);
-var
-  L: Byte;
 begin
-  L := Length(AValue);
 
-  { BIFF Record header }
-//  AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-//  AStream.WriteWord(WordToLE(8 + L));
-
-  { BIFF Record data }
-//  AStream.WriteWord(WordToLE(ARow));
-//  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-
-  { String with 8-bit size }
-  AStream.WriteByte(L);
-  AStream.WriteBuffer(AValue[1], L);
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteNumber ()
-*
-*  DESCRIPTION:    Writes an Excel 2 NUMBER record
-*
-*                  Writes a number (64-bit IEE 754 floating point) to the sheet
-*
-*******************************************************************}
+{
+  Writes a number (64-bit IEE 754 floating point) to the sheet
+}
 procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double);
 begin
-  { BIFF Record header }
-//  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
-//  AStream.WriteWord(WordToLE(15));
 
-  { BIFF Record data }
-//  AStream.WriteWord(WordToLE(ARow));
-//  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-
-  { IEE 754 floating-point value }
-  AStream.WriteBuffer(AValue, 8);
 end;
 
-{*******************************************************************
-*  Initialization section
-*
-*  Registers this reader / writer on fpSpreadsheet
-*
-*******************************************************************}
+{
+  Registers this reader / writer on fpSpreadsheet
+}
 initialization
 
   RegisterSpreadFormat(TsCustomSpreadReader, TsSpreadOOXMLWriter, sfOOXML);

@@ -33,13 +33,13 @@
         <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="12">
+    <Units Count="14">
       <Unit0>
         <Filename Value="excel5write.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="excel5write"/>
-        <CursorPos X="35" Y="56"/>
-        <TopLine Value="46"/>
+        <CursorPos X="3" Y="17"/>
+        <TopLine Value="1"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="309"/>
         <Loaded Value="True"/>
@@ -68,8 +68,8 @@
       <Unit4>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <UnitName Value="xlsbiff5"/>
-        <CursorPos X="1" Y="224"/>
-        <TopLine Value="215"/>
+        <CursorPos X="33" Y="539"/>
+        <TopLine Value="526"/>
         <EditorIndex Value="3"/>
         <UsageCount Value="140"/>
         <Loaded Value="True"/>
@@ -86,9 +86,9 @@
       <Unit6>
         <Filename Value="..\..\xlsbiff2.pas"/>
         <UnitName Value="xlsbiff2"/>
-        <CursorPos X="1" Y="69"/>
-        <TopLine Value="57"/>
-        <EditorIndex Value="4"/>
+        <CursorPos X="34" Y="256"/>
+        <TopLine Value="236"/>
+        <EditorIndex Value="6"/>
         <UsageCount Value="139"/>
         <Loaded Value="True"/>
       </Unit6>
@@ -97,7 +97,7 @@
         <UnitName Value="fpolestorage"/>
         <CursorPos X="30" Y="654"/>
         <TopLine Value="642"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="7"/>
         <UsageCount Value="139"/>
         <Loaded Value="True"/>
       </Unit7>
@@ -116,8 +116,8 @@
       <Unit10>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <CursorPos X="40" Y="137"/>
-        <TopLine Value="129"/>
+        <CursorPos X="1" Y="13"/>
+        <TopLine Value="12"/>
         <EditorIndex Value="1"/>
         <UsageCount Value="92"/>
         <Loaded Value="True"/>
@@ -128,108 +128,146 @@
         <TopLine Value="197"/>
         <UsageCount Value="67"/>
       </Unit11>
+      <Unit12>
+        <Filename Value="..\..\fpsopendocument.pas"/>
+        <UnitName Value="fpsopendocument"/>
+        <CursorPos X="20" Y="383"/>
+        <TopLine Value="369"/>
+        <EditorIndex Value="4"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <UnitName Value="xlsbiff8"/>
+        <CursorPos X="34" Y="339"/>
+        <TopLine Value="317"/>
+        <EditorIndex Value="5"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
+      </Unit13>
     </Units>
-    <JumpHistory Count="25" HistoryIndex="24">
+    <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="40" Column="5" TopLine="31"/>
+        <Caret Line="405" Column="5" TopLine="386"/>
       </Position1>
       <Position2>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="472" Column="49" TopLine="461"/>
+        <Caret Line="404" Column="14" TopLine="401"/>
       </Position2>
       <Position3>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="405" Column="5" TopLine="386"/>
+        <Caret Line="79" Column="42" TopLine="72"/>
       </Position3>
       <Position4>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="404" Column="14" TopLine="401"/>
+        <Caret Line="78" Column="31" TopLine="67"/>
       </Position4>
       <Position5>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="79" Column="42" TopLine="72"/>
+        <Caret Line="314" Column="39" TopLine="296"/>
       </Position5>
       <Position6>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="78" Column="31" TopLine="67"/>
+        <Caret Line="479" Column="1" TopLine="469"/>
       </Position6>
       <Position7>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="314" Column="39" TopLine="296"/>
+        <Caret Line="470" Column="1" TopLine="460"/>
       </Position7>
       <Position8>
-        <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="479" Column="1" TopLine="469"/>
-      </Position8>
-      <Position9>
-        <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="470" Column="1" TopLine="460"/>
-      </Position9>
-      <Position10>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <Caret Line="217" Column="3" TopLine="205"/>
-      </Position10>
-      <Position11>
+      </Position8>
+      <Position9>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <Caret Line="218" Column="23" TopLine="208"/>
+      </Position9>
+      <Position10>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="78" Column="10" TopLine="66"/>
+      </Position10>
+      <Position11>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="375" Column="1" TopLine="367"/>
       </Position11>
       <Position12>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="78" Column="10" TopLine="66"/>
+        <Caret Line="76" Column="17" TopLine="65"/>
       </Position12>
       <Position13>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="375" Column="1" TopLine="367"/>
+        <Caret Line="363" Column="1" TopLine="357"/>
       </Position13>
       <Position14>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="76" Column="17" TopLine="65"/>
+        <Caret Line="77" Column="7" TopLine="76"/>
       </Position14>
       <Position15>
-        <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="363" Column="1" TopLine="357"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="137" Column="40" TopLine="129"/>
       </Position15>
       <Position16>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="77" Column="7" TopLine="76"/>
+        <Caret Line="563" Column="5" TopLine="544"/>
       </Position16>
       <Position17>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="137" Column="40" TopLine="129"/>
+        <Filename Value="..\..\fpolestorage.pas"/>
+        <Caret Line="486" Column="5" TopLine="467"/>
       </Position17>
       <Position18>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="563" Column="5" TopLine="544"/>
+        <Caret Line="510" Column="5" TopLine="491"/>
       </Position18>
       <Position19>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="486" Column="5" TopLine="467"/>
+        <Caret Line="94" Column="46" TopLine="84"/>
       </Position19>
       <Position20>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="510" Column="5" TopLine="491"/>
+        <Caret Line="686" Column="5" TopLine="667"/>
       </Position20>
       <Position21>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="94" Column="46" TopLine="84"/>
+        <Caret Line="567" Column="5" TopLine="548"/>
       </Position21>
       <Position22>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="686" Column="5" TopLine="667"/>
+        <Caret Line="622" Column="1" TopLine="618"/>
       </Position22>
       <Position23>
         <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="567" Column="5" TopLine="548"/>
+        <Caret Line="621" Column="29" TopLine="611"/>
       </Position23>
       <Position24>
-        <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="622" Column="1" TopLine="618"/>
+        <Filename Value="..\..\xlsbiff5.pas"/>
+        <Caret Line="100" Column="17" TopLine="92"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\fpolestorage.pas"/>
-        <Caret Line="621" Column="29" TopLine="611"/>
+        <Filename Value="..\..\xlsbiff5.pas"/>
+        <Caret Line="615" Column="34" TopLine="593"/>
       </Position25>
+      <Position26>
+        <Filename Value="..\..\fpsopendocument.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position26>
+      <Position27>
+        <Filename Value="..\..\fpsopendocument.pas"/>
+        <Caret Line="56" Column="88" TopLine="43"/>
+      </Position27>
+      <Position28>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position28>
+      <Position29>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="69" Column="88" TopLine="56"/>
+      </Position29>
+      <Position30>
+        <Filename Value="excel5write.lpr"/>
+        <Caret Line="47" Column="30" TopLine="33"/>
+      </Position30>
     </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
