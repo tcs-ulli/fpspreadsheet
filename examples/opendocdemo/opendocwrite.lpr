@@ -24,15 +24,13 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
 
-  // Write some number cells
-  MyWorksheet.WriteNumber(0, 0, 1.0);
-  MyWorksheet.WriteNumber(0, 1, 2.0);
-  MyWorksheet.WriteNumber(0, 2, 3.0);
-  MyWorksheet.WriteNumber(0, 3, 4.0);
-
-  // Write some string cells
-  MyWorksheet.WriteUTF8Text(4, 2, 'Total:');
-  MyWorksheet.WriteNumber(4, 3, 10.0);
+  // Write some cells
+  MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  MyWorksheet.WriteNumber(0, 1, 2.0);// B1
+  MyWorksheet.WriteNumber(0, 2, 3.0);// C1
+  MyWorksheet.WriteNumber(0, 3, 4.0);// D1
+  MyWorksheet.WriteUTF8Text(4, 2, 'Total:');// C5
+  MyWorksheet.WriteNumber(4, 3, 10);        // D5
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
