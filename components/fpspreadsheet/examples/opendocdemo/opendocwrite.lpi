@@ -11,7 +11,7 @@
       <TargetFileExt Value=".exe"/>
       <Title Value="opendocwrite"/>
       <UseAppBundle Value="False"/>
-      <ActiveEditorIndexAtStart Value="4"/>
+      <ActiveEditorIndexAtStart Value="0"/>
     </General>
     <VersionInfo>
       <ProjectVersion Value=""/>
@@ -38,7 +38,7 @@
         <Filename Value="opendocwrite.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="opendocwrite"/>
-        <CursorPos X="1" Y="34"/>
+        <CursorPos X="33" Y="35"/>
         <TopLine Value="20"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="309"/>
@@ -116,8 +116,8 @@
       <Unit10>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <CursorPos X="1" Y="794"/>
-        <TopLine Value="792"/>
+        <CursorPos X="1" Y="102"/>
+        <TopLine Value="85"/>
         <EditorIndex Value="4"/>
         <UsageCount Value="100"/>
         <Loaded Value="True"/>
@@ -134,7 +134,7 @@
         <CursorPos X="1" Y="384"/>
         <TopLine Value="373"/>
         <EditorIndex Value="2"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit12>
       <Unit13>
@@ -143,7 +143,7 @@
         <CursorPos X="1" Y="35"/>
         <TopLine Value="16"/>
         <EditorIndex Value="3"/>
-        <UsageCount Value="21"/>
+        <UsageCount Value="22"/>
         <Loaded Value="True"/>
       </Unit13>
       <Unit14>
@@ -158,7 +158,7 @@
         <CursorPos X="44" Y="13"/>
         <TopLine Value="1"/>
         <EditorIndex Value="1"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="17"/>
         <Loaded Value="True"/>
       </Unit15>
       <Unit16>
@@ -186,7 +186,7 @@
         <CursorPos X="36" Y="9"/>
         <TopLine Value="1"/>
         <EditorIndex Value="5"/>
-        <UsageCount Value="13"/>
+        <UsageCount Value="14"/>
         <Loaded Value="True"/>
       </Unit19>
     </Units>

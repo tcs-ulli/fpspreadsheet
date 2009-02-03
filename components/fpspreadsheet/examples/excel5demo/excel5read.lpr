@@ -10,7 +10,8 @@ program excel5read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff5, laz_fpspreadsheet;
+  Classes, SysUtils, fpspreadsheet, xlsbiff5,
+  laz_fpspreadsheet;
 
 var
   MyWorkbook: TsWorkbook;
@@ -22,7 +23,7 @@ var
 begin
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
-  InputFileName := MyDir + 'test' + STR_EXCEL_EXTENSION;
+  InputFileName := MyDir + 'test.xls';
   WriteLn('Opening input file ', InputFilename);
 
   // Create the spreadsheet
@@ -39,8 +40,10 @@ begin
   for i := 0 to MyWorksheet.GetCellCount - 1 do
   begin
     CurCell := MyWorkSheet.GetCellByIndex(i);
-    WriteLn('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Value: ',
-     UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
+    WriteLn('Row: ', CurCell^.Row,
+     ' Col: ', CurCell^.Col, ' Value: ',
+     UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
+       CurCell^.Col))
      );
   end;
 
