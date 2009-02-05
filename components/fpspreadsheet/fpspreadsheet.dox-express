@@ -1,4 +1,4 @@
-﻿; This is a Doc-O-Matic version 6.1.0.1246 project file.
+﻿; This is a Doc-O-Matic version 6.4.2.1326 project file.
 ; This file is maintained by Doc-O-Matic, do not edit manually.
 
 [AutoTexts]
@@ -29,15 +29,15 @@ Name2=Help 2
 
 [Configurations\Help 2\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\AdditionalFiles]
 Count=4
-File0=C:\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
-File1=C:\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
-File2=C:\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
-File3=C:\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
+File0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
+File1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
+File2=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
+File3=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
 
 [Configurations\Help 2\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General]
 ClearDirectoryBeforeExport=0
 HelpKind=2
-OutputDir=C:\Documents and Settings\mf75rt\My Documents\Doc-O-Matic\output
+OutputDir=output
 TargetBOM=1
 TargetCodepage=utf-8
 
@@ -77,26 +77,26 @@ WindowPosition_Top=0
 
 [Configurations\Help 2\Image Paths]
 Count=2
-Path0=C:\Program Files\Doc-O-Matic 6 Express\graphics
-Path1=C:\Program Files\Doc-O-Matic 6 Express\graphics\en
+Path0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics
+Path1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\en
 
 [Configurations\Help 2\Output Options]
-ClassHierarchyLayoutOutputDir=C:\Documents and Settings\mf75rt\My Documents\Doc-O-Matic\graphics
+ClassHierarchyLayoutOutputDir=output
 
 [Configurations\Help 2\OutputFormat]
 ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
 
 [Configurations\HTML Help\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\AdditionalFiles]
 Count=4
-File0=C:\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
-File1=C:\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
-File2=C:\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
-File3=C:\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
+File0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
+File1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
+File2=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
+File3=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
 
 [Configurations\HTML Help\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General]
 ClearDirectoryBeforeExport=0
 HelpKind=1
-OutputDir=C:\Documents and Settings\mf75rt\My Documents\Doc-O-Matic\output
+OutputDir=output
 TargetBOM=0
 TargetCodepage=windows-1252
 
@@ -123,7 +123,7 @@ Help2PluginNamespace=0
 Help2PluginNamespaceName=MS.VSIPCC+
 Help2RegisterType=0
 Help2UnregisterNamespace=1
-HelpCompiler=
+HelpCompiler=C:\Program Files\HTML Help Workshop\hhc.exe
 HTMLHelp2Filename=
 HTMLHelpDisplayFontScaleButton=0
 HTMLHelpFilename=
@@ -136,26 +136,26 @@ WindowPosition_Top=0
 
 [Configurations\HTML Help\Image Paths]
 Count=2
-Path0=C:\Program Files\Doc-O-Matic 6 Express\graphics
-Path1=C:\Program Files\Doc-O-Matic 6 Express\graphics\en
+Path0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics
+Path1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\en
 
 [Configurations\HTML Help\Output Options]
-ClassHierarchyLayoutOutputDir=C:\Documents and Settings\mf75rt\My Documents\Doc-O-Matic\graphics
+ClassHierarchyLayoutOutputDir=output
 
 [Configurations\HTML Help\OutputFormat]
 ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
 
 [Configurations\HTML\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\AdditionalFiles]
 Count=4
-File0=C:\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
-File1=C:\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
-File2=C:\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
-File3=C:\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
+File0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
+File1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
+File2=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
+File3=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
 
 [Configurations\HTML\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General]
 ClearDirectoryBeforeExport=0
 HelpKind=0
-OutputDir=C:\Documents and Settings\mf75rt\My Documents\Doc-O-Matic\output
+OutputDir=output
 TargetBOM=0
 TargetCodepage=utf-8
 
@@ -195,11 +195,11 @@ WindowPosition_Top=0
 
 [Configurations\HTML\Image Paths]
 Count=2
-Path0=C:\Program Files\Doc-O-Matic 6 Express\graphics
-Path1=C:\Program Files\Doc-O-Matic 6 Express\graphics\en
+Path0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics
+Path1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\en
 
 [Configurations\HTML\Output Options]
-ClassHierarchyLayoutOutputDir=C:\Documents and Settings\mf75rt\My Documents\Doc-O-Matic\graphics
+ClassHierarchyLayoutOutputDir=output
 
 [Configurations\HTML\OutputFormat]
 ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
@@ -246,7 +246,7 @@ TrailerChars=-+~/#
 WallCharacters="#$%&'*+-/=@[\]^_`{|}~
 
 [Project File Info]
-Version=601
+Version=604
 
 [Section\0]
 Count=3
