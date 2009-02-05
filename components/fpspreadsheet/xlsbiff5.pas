@@ -1045,8 +1045,27 @@ begin
 end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
+var
+  L: Word;
+  ARow, ACol: Word;
+  AValue: array[0..255] of Char;
+  AStrValue: ansistring;
 begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
 
+  { Index to XF record }
+  AStream.ReadWord();
+
+  { Byte String with 16-bit size }
+  L := AStream.ReadWord();
+  AStream.ReadBuffer(AValue, L);
+  AValue[L] := #0;
+  AStrValue := AValue;
+
+  { Save the data }
+  FWorksheet.WriteUTF8Text(ARow, ACol, AnsiToUTF8(AStrValue));
 end;
 
 procedure TsSpreadBIFF5Reader.ReadNumber(AStream: TStream);

@@ -1,7 +1,7 @@
 {
-xlsbiff5.pas
+xlsbiff8.pas
 
-Writes an Excel 5 file
+Writes an Excel 8 file
 
 An Excel worksheet stream consists of a number of subsequent records.
 To ensure a properly formed file, the following order must be respected:
@@ -10,7 +10,7 @@ To ensure a properly formed file, the following order must be respected:
 2nd to Nth record: Any record
 Last record:       EOF
 
-Excel 5 files are OLE compound document files, and must be written using the
+Excel 8 files are OLE compound document files, and must be written using the
 fpOLE library.
 
 Records Needed to Make a BIFF5 File Microsoft Excel Can Use:

@@ -11,7 +11,7 @@
       <TargetFileExt Value=".exe"/>
       <Title Value="excel5write"/>
       <UseAppBundle Value="False"/>
-      <ActiveEditorIndexAtStart Value="0"/>
+      <ActiveEditorIndexAtStart Value="3"/>
     </General>
     <VersionInfo>
       <ProjectVersion Value=""/>
@@ -38,8 +38,8 @@
         <Filename Value="excel5write.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="excel5write"/>
-        <CursorPos X="1" Y="8"/>
-        <TopLine Value="1"/>
+        <CursorPos X="36" Y="32"/>
+        <TopLine Value="26"/>
         <EditorIndex Value="0"/>
         <UsageCount Value="309"/>
         <Loaded Value="True"/>
@@ -68,8 +68,8 @@
       <Unit4>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <UnitName Value="xlsbiff5"/>
-        <CursorPos X="33" Y="539"/>
-        <TopLine Value="526"/>
+        <CursorPos X="1" Y="1063"/>
+        <TopLine Value="1047"/>
         <EditorIndex Value="3"/>
         <UsageCount Value="140"/>
         <Loaded Value="True"/>
