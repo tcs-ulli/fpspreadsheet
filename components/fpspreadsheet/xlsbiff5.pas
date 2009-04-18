@@ -661,6 +661,8 @@ var
   L: Word;
   AnsiValue: ansistring;
 begin
+  if AValue = '' then Exit; // Writing an empty text doesn't work
+
   AnsiValue := UTF8ToAnsi(AValue);
   L := Length(AnsiValue);
 

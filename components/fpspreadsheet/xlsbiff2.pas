@@ -270,6 +270,8 @@ var
   L: Byte;
   AnsiText: ansistring;
 begin
+  if AValue = '' then Exit; // Writing an empty text doesn't work
+
   AnsiText := UTF8ToAnsi(AValue);
   L := Length(AnsiText);
 
