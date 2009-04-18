@@ -70,8 +70,8 @@ const
   OPENDOC_PATH_SETTINGS  = 'settings.xml';
   OPENDOC_PATH_STYLES    = 'styles.xml';
   OPENDOC_PATH_MIMETYPE  = 'mimetype';
-  OPENDOC_PATH_METAINF = 'META-INF' + PathDelim;
-  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + PathDelim + 'manifest.xml';
+  OPENDOC_PATH_METAINF = 'META-INF' + '/';
+  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + '/' + 'manifest.xml';
 
   { OpenDocument schemas constants }
   SCHEMAS_XMLNS_OFFICE   = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
