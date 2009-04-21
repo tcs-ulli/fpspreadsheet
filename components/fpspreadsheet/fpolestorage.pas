@@ -36,7 +36,7 @@ unit fpolestorage;
 interface
 
 {$ifdef Windows}
-  {.$define FPOLESTORAGE_USE_COM}
+  {$define FPOLESTORAGE_USE_COM}
 {$endif}
 
 uses
@@ -75,7 +75,8 @@ type
     { Writer Helper routines }
     procedure WriteOLEHeader(AStream: TStream);
     procedure WriteSectorAllocationTable(AStream: TStream);
-    procedure WriteDirectoryStream(AStream: TStream);
+    procedure WriteDirectoryStream(AStream: TStream;
+      const ABookStreamName: string='Book');
     procedure WriteDirectoryEntry(AStream: TStream; AName: widestring;
       EntryType, EntryColor: Byte; AIsStorage: Boolean;
       AFirstSecID, AStreamSize: Cardinal);
@@ -93,7 +94,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
+    procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
     procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
@@ -195,7 +196,7 @@ begin
 
   { 68 4 SecID of first sector of the master sector allocation table (➜5.1), or –2 (End Of Chain
     SecID, ➜3.1) if no additional sectors used }
-  AStream.WriteDWord(IntegerToLE(-2));
+  AStream.WriteDWord(DWORD(IntegerToLE(-2)));
 
   { 72 4 Total number of sectors used for the master sector allocation table (➜5.1) }
   AStream.WriteDWord(0);
@@ -392,7 +393,7 @@ begin
   AStream.WriteDWord(DWordToLE($00000000));
 end;
 
-procedure TOLEStorage.WriteDirectoryStream(AStream: TStream);
+procedure TOLEStorage.WriteDirectoryStream(AStream: TStream; const ABookStreamName: string='Book');
 var
   FContainerSize: Cardinal;
 begin
@@ -406,7 +407,7 @@ begin
      INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
      True, $00000003, FContainerSize);
 
-    WriteDirectoryEntry(AStream, 'Book'#0,
+    WriteDirectoryEntry(AStream, ABookStreamName+#0,
      INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
      False, 0, FOLEDocument.Stream.Size);
 
@@ -424,7 +425,7 @@ begin
      INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
      True,  $FFFFFFFE, 0);
 
-    WriteDirectoryEntry(AStream, 'Book'#0,
+    WriteDirectoryEntry(AStream, ABookStreamName+#0,
      INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
      False, $00000002, FOLEDocument.Stream.Size);
 
@@ -688,7 +689,8 @@ end;
   if the file already exists, or if the directory where
   it should be placed doesn't exist.
 }
-procedure TOLEStorage.WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
+procedure TOLEStorage.WriteOLEFile(AFileName: string;
+  AOLEDocument: TOLEDocument; const AStreamName: UTF8String);
 var
   cbWritten: Cardinal;
   AFileStream: TFileStream;
@@ -722,8 +724,9 @@ begin
    0, FStorage));
 
   { Create a workbook stream in the storage.  A BIFF5 file must
-    have at least a workbook stream.  This stream *must* be named 'Book' }
-  OleCheck(FStorage.CreateStream('Book',
+    have at least a workbook stream.  This stream *must* be named 'Book',
+    in BIFF8 it is 'Workbook', so use AStreamName }
+  OleCheck(FStorage.CreateStream(PWideChar(UTF8Decode(AStreamName)),
    STGM_READWRITE or STGM_SHARE_EXCLUSIVE or STGM_DIRECT, 0, 0, FStream));
 
   { Write all data }
@@ -733,6 +736,7 @@ begin
 {$else}
 
   // Follows the behavior of LCL classes: Fails to write to existing file
+  if FileExists(AFileName) then Raise EStreamError.Createfmt('File already exists "%s"',[AFileName]);
   AFileStream := TFileStream.Create(AFileName, fmCreate);
   try
     // Header
@@ -742,7 +746,7 @@ begin
     WriteSectorAllocationTable(AFileStream);
 
     // Record 1, the directory stream
-    WriteDirectoryStream(AFileStream);
+    WriteDirectoryStream(AFileStream,AStreamName);
 
     // Record 2, the Short SAT
     if FUseShortSectors then WriteShortSectorAllocationTable(AFileStream);
