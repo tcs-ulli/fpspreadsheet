@@ -10,9 +10,11 @@ uses
 function WordToLE(AValue: Word): Word;
 function DWordToLE(AValue: Cardinal): Cardinal;
 function IntegerToLE(AValue: Integer): Integer;
+function WideStringToLE(const AValue: WideString): WideString;
 
 function WordLEtoN(AValue: Word): Word;
 function DWordLEtoN(AValue: Cardinal): Cardinal;
+function WideStringLEToN(const AValue: WideString): WideString;
 
 implementation
 
@@ -73,6 +75,42 @@ begin
     Result := LEtoN(AValue);
   {$ELSE}
     Result := AValue;
+  {$ENDIF}
+end;
+
+function WideStringToLE(const AValue: WideString): WideString;
+var
+  j: integer;
+begin
+  {$IFDEF FPC}
+    {$IFDEF FPC_LITTLE_ENDIAN}
+      Result:=AValue;
+    {$ELSE}
+      Result:=AValue;
+      for j := 1 to Length(AValue) do begin
+        PWORD(@Result[j])^:=NToLE(PWORD(@Result[j])^);
+      end;
+    {$ENDIF}
+  {$ELSE}
+    Result:=AValue;
+  {$ENDIF}
+end;
+
+function WideStringLEToN(const AValue: WideString): WideString;
+var
+  j: integer;
+begin
+  {$IFDEF FPC}
+    {$IFDEF FPC_LITTLE_ENDIAN}
+      Result:=AValue;
+    {$ELSE}
+      Result:=AValue;
+      for j := 1 to Length(AValue) do begin
+        PWORD(@Result[j])^:=LEToN(PWORD(@Result[j])^);
+      end;
+    {$ENDIF}
+  {$ELSE}
+    Result:=AValue;
   {$ENDIF}
 end;
 

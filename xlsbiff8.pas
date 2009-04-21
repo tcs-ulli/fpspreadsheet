@@ -10,10 +10,10 @@ To ensure a properly formed file, the following order must be respected:
 2nd to Nth record: Any record
 Last record:       EOF
 
-Excel 8 files are OLE compound document files, and must be written using the
+Excel 5 files are OLE compound document files, and must be written using the
 fpOLE library.
 
-Records Needed to Make a BIFF5 File Microsoft Excel Can Use:
+Records Needed to Make a BIFF8 File Microsoft Excel Can Use:
 
 Required Records:
 
@@ -31,45 +31,74 @@ DIMENSIONS
 WINDOW2
 EOF
 
+The row and column numbering in BIFF files is zero-based.
+
 Excel file format specification obtained from:
 
 http://sc.openoffice.org/excelfileformat.pdf
 
-Records Needed to Make a BIFF5 File Microsoft Excel Can Use obtained from:
-
-http://support.microsoft.com/default.aspx?scid=KB;EN-US;Q147732&ID=KB;EN-US;Q147732&LN=EN-US&rnk=2&SD=msdn&FR=0&qry=BIFF&src=DHCS_MSPSS_msdn_SRCH&SPR=MSALL&
-
-AUTHORS: Felipe Monteiro de Carvalho
+AUTHORS:  Felipe Monteiro de Carvalho
+          Jose Mejuto
 }
 unit xlsbiff8;
 
 {$ifdef fpc}
-{$mode delphi}{$H+}
+  {$mode delphi}
 {$endif}
 
 interface
 
 uses
-  Classes, SysUtils,
-  fpspreadsheet;
+  Classes, SysUtils, fpcanvas,
+  fpspreadsheet, fpolestorage, fpsutils;
 
 type
 
-  { TsSpreadBIFF5Writer }
+  { TsSpreadBIFF8Reader }
 
-  TsSpreadBIFF5Writer = class(TsCustomSpreadWriter)
+  TsSpreadBIFF8Reader = class(TsCustomSpreadReader)
+  private
+    RecordSize: Word;
+    FWorksheet: TsWorksheet;
+    FWorksheetNames: TStringList;
+    FCurrentWorksheet: Integer;
+    function ReadWideString(const AStream: TStream;const ALength: WORD): WideString;
+    procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
+    procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
+    procedure ReadBoundsheet(AStream: TStream);
   public
+    { General reading methods }
+    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    { Record writing methods }
+    procedure ReadFormula(AStream: TStream); override;
+    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadNumber(AStream: TStream); override;
+  end;
+
+  { TsSpreadBIFF8Writer }
+
+  TsSpreadBIFF8Writer = class(TsCustomSpreadWriter)
+  public
+//    constructor Create;
+//    destructor Destroy; override;
     { General writing methods }
+    procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    procedure WriteBOF(AStream: TStream);
+    procedure WriteBOF(AStream: TStream; ADataType: Word);
+    function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    procedure WriteDimensions(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFont(AStream: TStream; AFontName: Widestring = 'Arial');
-    procedure WriteFormat(AStream: TStream; AIndex: Word = 0; AFormatString: Widestring = 'General');
+    procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
+    procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
-    procedure WriteXF(AStream: TStream);
+    procedure WriteStyle(AStream: TStream);
+    procedure WriteWindow1(AStream: TStream);
+    procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
+    procedure WriteXF(AStream: TStream; AFontIndex: Word; AXF_TYPE_PROT: Byte);
   end;
 
 implementation
@@ -77,12 +106,17 @@ implementation
 const
   { Excel record IDs }
   INT_EXCEL_ID_BOF        = $0809;
+  INT_EXCEL_ID_BOUNDSHEET = $0085;
   INT_EXCEL_ID_EOF        = $000A;
+  INT_EXCEL_ID_DIMENSIONS = $0200;
   INT_EXCEL_ID_FONT       = $0031;
-  INT_EXCEL_ID_FORMAT     = $041E;
   INT_EXCEL_ID_FORMULA    = $0006;
-  INT_EXCEL_ID_LABEL      = $0004;
+  INT_EXCEL_ID_INDEX      = $020B;
+  INT_EXCEL_ID_LABEL      = $0204;
   INT_EXCEL_ID_NUMBER     = $0203;
+  INT_EXCEL_ID_STYLE      = $0293;
+  INT_EXCEL_ID_WINDOW1    = $003D;
+  INT_EXCEL_ID_WINDOW2    = $023E;
   INT_EXCEL_ID_XF         = $00E0;
 
   { Cell Addresses constants }
@@ -90,126 +124,396 @@ const
   MASK_EXCEL_RELATIVE_ROW = $4000;
   MASK_EXCEL_RELATIVE_COL = $8000;
 
-  { Unicode string constants }
-  INT_EXCEL_UNCOMPRESSED_STRING = $01;
-  
   { BOF record constants }
-  INT_EXCEL_BIFF8_VER     = $0600;
-  INT_EXCEL_WORKBOOK      = $0005;
-  INT_EXCEL_SHEET         = $0010;
-  INT_EXCEL_CHART         = $0020;
-  INT_EXCEL_MACRO_SHEET   = $0040;
-  INT_EXCEL_BUILD_ID      = $1FD2;
-  INT_EXCEL_BUILD_YEAR    = $07CD;
-  INT_EXCEL_FILE_HISTORY  = $0000C0C1;
-  INT_EXCEL_LOWEST_VER    = $00000306;
+  INT_BOF_BIFF8_VER       = $0600;
+  INT_BOF_WORKBOOK_GLOBALS= $0005;
+  INT_BOF_VB_MODULE       = $0006;
+  INT_BOF_SHEET           = $0010;
+  INT_BOF_CHART           = $0020;
+  INT_BOF_MACRO_SHEET     = $0040;
+  INT_BOF_WORKSPACE       = $0100;
+  INT_BOF_BUILD_ID        = $1FD2;
+  INT_BOF_BUILD_YEAR      = $07CD;
 
-  { FONT record constants}
-  INT_EXCEL_FONTWEIGHT_NORMAL = $0190;
+  { FONT record constants }
+  INT_FONT_WEIGHT_NORMAL  = $0190;
+
+  { FORMULA record constants }
+  MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
+  MASK_FORMULA_RECALCULATE_ON_OPEN = $0002;
+  MASK_FORMULA_SHARED_FORMULA      = $0008;
+
+  { STYLE record constants }
+  MASK_STYLE_BUILT_IN     = $8000;
+
+  { WINDOW1 record constants }
+  MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
+  MASK_WINDOW1_OPTION_WINDOW_MINIMISED          = $0002;
+  MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE       = $0008;
+  MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE       = $0010;
+  MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE     = $0020;
+
+  { WINDOW2 record constants }
+  MASK_WINDOW2_OPTION_SHOW_FORMULAS             = $0001;
+  MASK_WINDOW2_OPTION_SHOW_GRID_LINES           = $0002;
+  MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS        = $0004;
+  MASK_WINDOW2_OPTION_PANES_ARE_FROZEN          = $0008;
+  MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES          = $0010;
+  MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR       = $0020;
+  MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT     = $0040;
+  MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS      = $0080;
+  MASK_WINDOW2_OPTION_REMOVE_SPLITS_ON_UNFREEZE = $0100;
+  MASK_WINDOW2_OPTION_SHEET_SELECTED            = $0200;
+  MASK_WINDOW2_OPTION_SHEET_ACTIVE              = $0400;
+
+  { XF substructures }
+
+  { XF_TYPE_PROT - XF Type and Cell protection (3 Bits) - BIFF3-BIFF8 }
+  MASK_XF_TYPE_PROT_LOCKED            = $1;
+  MASK_XF_TYPE_PROT_FORMULA_HIDDEN    = $2;
+  MASK_XF_TYPE_PROT_STYLE_XF          = $4; // 0 = CELL XF
+
+  { XF_USED_ATTRIB - Attributes from parent Style XF (6 Bits) - BIFF3-BIFF8
+  
+    In a CELL XF a cleared bit means that the parent attribute is used,
+    while a set bit indicates that the data in this XF is used
+
+    In a STYLE XF a cleared bit means that the data in this XF is used,
+    while a set bit indicates that the attribute should be ignored }
+  MASK_XF_USED_ATTRIB_NUMBER_FORMAT   = $04;
+  MASK_XF_USED_ATTRIB_FONT            = $08;
+  MASK_XF_USED_ATTRIB_TEXT            = $10;
+  MASK_XF_USED_ATTRIB_BORDER_LINES    = $20;
+  MASK_XF_USED_ATTRIB_BACKGROUND      = $40;
+  MASK_XF_USED_ATTRIB_CELL_PROTECTION = $80;
+
+  { XF_VERT_ALIGN }
+  MASK_XF_VERT_ALIGN_TOP              = $00;
+  MASK_XF_VERT_ALIGN_CENTRED          = $10;
+  MASK_XF_VERT_ALIGN_BOTTOM           = $20;
+  MASK_XF_VERT_ALIGN_JUSTIFIED        = $30;
 
   { XF record constants }
-  INT_EXCEL_XF_TYPE_PROT_STYLEXF = $FFF4;
+  MASK_XF_TYPE_PROT                   = $0007;
+  MASK_XF_TYPE_PROT_PARENT            = $FFF0;
 
-{
-  Excel files are all written with Little Endian number,
-  so it's necessary to swap the numbers to be able to build a
-  correct file on big endian systems.
-  
-  Endianess helper functions
-}
-
-function WordToLE(AValue: Word): Word;
-begin
-  {$IFDEF BIG_ENDIAN}
-    Result := ((AValue shl 8) and $FF00) or ((AValue shr 8) and $00FF);
-  {$ELSE}
-    Result := AValue;
-  {$ENDIF}
-end;
+  MASK_XF_VERT_ALIGN                  = $70;
 
 {
   Exported functions
 }
 
-{ TsSpreadBIFF5Writer }
+{ TsSpreadBIFF8Writer }
 
-procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteToFile ()
+*
+*  DESCRIPTION:    Writes an Excel BIFF8 file to the disc
+*
+*                  The BIFF 8 writer overrides this method because
+*                  BIFF 8 is written as an OLE document, and our
+*                  current OLE document writing method involves:
+*
+*                  1 - Writing the BIFF data to a memory stream
+*
+*                  2 - Write the memory stream data to disk using
+*                      COM functions
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteToFile(AFileName: string; AData: TsWorkbook);
+var
+  MemStream: TMemoryStream;
+  OutputStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
 begin
+  MemStream := TMemoryStream.Create;
+  OutputStorage := TOLEStorage.Create;
+  try
+    WriteToStream(MemStream, AData);
 
+    // Only one stream is necessary for any number of worksheets
+    OLEDocument.Stream := MemStream;
+
+    OutputStorage.WriteOLEFile(AFileName, OLEDocument,'Workbook');
+  finally
+    MemStream.Free;
+    OutputStorage.Free;
+  end;
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteBOF ()
+*  TsSpreadBIFF8Writer.WriteToStream ()
 *
-*  DESCRIPTION:    Writes an Excel 5 BOF record
+*  DESCRIPTION:    Writes an Excel BIFF8 record structure
 *
-*                  This must be the first record on an Excel 5 stream
+*                  Be careful as this method doesn't write the OLE
+*                  part of the document, just the BIFF records
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteBOF(AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
+var
+  FontData: TFPCustomFont;
+  MyData: TMemoryStream;
+  CurrentPos: Int64;
+  Boundsheets: array of Int64;
+  i, len: Integer;
+begin
+  { Write workbook globals }
+
+  WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
+
+  WriteWindow1(AStream);
+
+  FontData := TFPCustomFont.Create;
+  try
+    FontData.Name := 'Arial';
+
+    // FONT0
+    WriteFont(AStream, FontData);
+    // FONT1
+    WriteFont(AStream, FontData);
+    // FONT2
+    WriteFont(AStream, FontData);
+    // FONT3
+    WriteFont(AStream, FontData);
+    // FONT5
+    WriteFont(AStream, FontData);
+  finally
+   FontData.Free;
+  end;
+  
+  // XF0
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF1
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF2
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF3
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF4
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF5
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF6
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF7
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF8
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF9
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF10
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF11
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF12
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF13
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF14
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF15
+  WriteXF(AStream, 0, 0);
+
+  WriteStyle(AStream);
+
+  // A BOUNDSHEET for each worksheet
+  for i := 0 to AData.GetWorksheetCount - 1 do
+  begin
+    len := Length(Boundsheets);
+    SetLength(Boundsheets, len + 1);
+    Boundsheets[len] := WriteBoundsheet(AStream, AData.GetWorksheetByIndex(i).Name);
+  end;
+  
+  WriteEOF(AStream);
+
+  { Write each worksheet }
+
+  for i := 0 to AData.GetWorksheetCount - 1 do
+  begin
+    { First goes back and writes the position of the BOF of the
+      sheet on the respective BOUNDSHEET record }
+    CurrentPos := AStream.Position;
+    AStream.Position := Boundsheets[i];
+    AStream.WriteDWord(DWordToLE(DWORD(CurrentPos)));
+    AStream.Position := CurrentPos;
+
+    WriteBOF(AStream, INT_BOF_SHEET);
+
+    WriteIndex(AStream);
+
+    WriteDimensions(AStream);
+
+    WriteWindow2(AStream, True);
+
+    WriteCellsToStream(AStream, AData.GetWorksheetByIndex(i).FCells);
+
+    WriteEOF(AStream);
+  end;
+  
+  { Cleanup }
+  
+  SetLength(Boundsheets, 0);
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteBOF ()
+*
+*  DESCRIPTION:    Writes an Excel 8 BOF record
+*
+*                  This must be the first record on an Excel 8 stream
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteBOF(AStream: TStream; ADataType: Word);
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOF));
   AStream.WriteWord(WordToLE(16));
 
-  { BIFF version }
-  AStream.WriteWord(WordToLE(INT_EXCEL_BIFF8_VER));
+  { BIFF version. Should only be used if this BOF is for the workbook globals }
+  { OpenOffice rejects to correctly read xls files if this field is
+    omitted as docs. says, or even if it is being written to zero value,
+    Not tested with Excel, but MSExcel reader opens it as expected }
+  AStream.WriteWord(WordToLE(INT_BOF_BIFF8_VER));
 
   { Data type }
-  AStream.WriteWord(WordToLE(INT_EXCEL_WORKBOOK));
+  AStream.WriteWord(WordToLE(ADataType));
 
   { Build identifier, must not be 0 }
-  AStream.WriteWord(WordToLE(INT_EXCEL_BUILD_ID));
+  AStream.WriteWord(WordToLE(INT_BOF_BUILD_ID));
 
   { Build year, must not be 0 }
-  AStream.WriteWord(WordToLE(INT_EXCEL_BUILD_YEAR));
+  AStream.WriteWord(WordToLE(INT_BOF_BUILD_YEAR));
 
   { File history flags }
-//  AStream.WriteDWord($00000000);
-  AStream.WriteWord(WordToLE(INT_EXCEL_FILE_HISTORY));
+  AStream.WriteDWord(DWordToLE(0));
 
-  { Lowest Excel version that can read all records of this file }
-//  AStream.WriteDWord($00000000);
-  AStream.WriteWord(WordToLE(INT_EXCEL_LOWEST_VER));
+  { Lowest Excel version that can read all records in this file 5?}
+  AStream.WriteDWord(DWordToLE(0)); //?????????
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteEOF ()
+*  TsSpreadBIFF8Writer.WriteBoundsheet ()
 *
-*  DESCRIPTION:    Writes an Excel 5 EOF record
+*  DESCRIPTION:    Writes an Excel 8 BOUNDSHEET record
 *
-*                  This must be the last record on an Excel 5 stream
+*                  Always located on the workbook globals substream.
+*
+*                  One BOUNDSHEET is written for each worksheet.
+*
+*  RETURNS:        The stream position where the absolute stream position
+*                  of the BOF of this sheet should be written (4 bytes size).
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteEOF(AStream: TStream);
+function TsSpreadBIFF8Writer.WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+var
+  Len: Byte;
+  WideSheetName: WideString;
+begin
+  WideSheetName:=UTF8Decode(ASheetName);
+  Len := Length(WideSheetName);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOUNDSHEET));
+  AStream.WriteWord(WordToLE(6 + 1 + 1 + Len * Sizeof(WideChar)));
+
+  { Absolute stream position of the BOF record of the sheet represented
+    by this record }
+  Result := AStream.Position;
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Visibility }
+  AStream.WriteByte(0);
+
+  { Sheet type }
+  AStream.WriteByte(0);
+
+  { Sheet name: Unicode string char count 1 byte }
+  AStream.WriteByte(Len);
+  {String flags}
+  AStream.WriteByte(1);
+  AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteIndex ()
+*
+*  DESCRIPTION:    Writes an Excel 8 DIMENSIONS record
+*
+*                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
+  AStream.WriteWord(WordToLE(14));
+
+  { Index to first used row }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Index to last used row, increased by 1 }
+  AStream.WriteDWord(DWordToLE(33));
+
+  { Index to first used column }
+  AStream.WriteWord(WordToLE(0));
+
+  { Index to last used column, increased by 1 }
+  AStream.WriteWord(WordToLE(10));
+
+  { Not used }
+  AStream.WriteWord(WordToLE(0));
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteEOF ()
+*
+*  DESCRIPTION:    Writes an Excel 8 EOF record
+*
+*                  This must be the last record on an Excel 8 stream
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteEOF(AStream: TStream);
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_EOF));
-  AStream.WriteWord($0000);
+  AStream.WriteWord(WordToLE($0000));
 end;
 
-procedure TsSpreadBIFF5Writer.WriteFont(AStream: TStream;
-  AFontName: Widestring);
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteFont ()
+*
+*  DESCRIPTION:    Writes an Excel 8 FONT record
+*
+*                  The font data is passed in an instance of TFPCustomFont
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteFont(AStream: TStream; AFont: TFPCustomFont);
 var
   Len: Byte;
+  WideFontName: WideString;
 begin
-  Len := Length(AFontName);
+  WideFontName:=AFont.Name;
+  Len := Length(WideFontName);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONT));
-  AStream.WriteWord(WordToLE(14 + 2 + Len*2));
+  AStream.WriteWord(WordToLE(14 + 1 + 1 + Len * Sizeof(WideChar)));
 
   { Height of the font in twips = 1/20 of a point }
   AStream.WriteWord(WordToLE(200));
 
   { Option flags }
-  AStream.WriteWord(0);
+  AStream.WriteWord(WordToLE(0));
 
   { Colour index }
-  AStream.WriteWord(0);
+  AStream.WriteWord(WordToLE($7FFF));
 
   { Font weight }
-  AStream.WriteWord(WordToLE(INT_EXCEL_FONTWEIGHT_NORMAL));
+  AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
+
+  { Escapement type }
+  AStream.WriteWord(WordToLE(0));
 
   { Underline type }
   AStream.WriteByte(0);
@@ -223,34 +527,15 @@ begin
   { Not used }
   AStream.WriteByte(0);
 
-  { Font name: Unicode string, 8-bit length }
+  { Font name: Unicodestring, char count in 1 byte }
   AStream.WriteByte(Len);
-  AStream.WriteByte(INT_EXCEL_UNCOMPRESSED_STRING);
-  AStream.WriteBuffer(AFontName[1], Len*2);
-end;
-
-procedure TsSpreadBIFF5Writer.WriteFormat(AStream: TStream; AIndex: Word;
-  AFormatString: Widestring);
-var
-  Len: Integer;
-begin
-  Len := Length(AFormatString);
-
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
-  AStream.WriteWord(WordToLE(2 + 3 + Len*2));
-
-  { Format index used by other records }
-  AStream.WriteWord(WordToLE(AIndex));
-
-  { Unicode string, 16-bit length }
-  AStream.WriteWord(WordToLE(Len));
-  AStream.WriteByte(INT_EXCEL_UNCOMPRESSED_STRING);
-  AStream.WriteBuffer(AFormatString[1], Len*2);
+  { Widestring flags, 1=regular unicode LE string }
+  AStream.WriteByte(1);
+  AStream.WriteBuffer(WideStringToLE(WideFontName)[1], Len * Sizeof(WideChar));
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteFormula ()
+*  TsSpreadBIFF8Writer.WriteFormula ()
 *
 *  DESCRIPTION:    Writes an Excel 5 FORMULA record
 *
@@ -259,13 +544,13 @@ end;
 *                  AFormula array
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteFormula(AStream: TStream; const ARow,
+procedure TsSpreadBIFF8Writer.WriteFormula(AStream: TStream; const ARow,
   ACol: Word; const AFormula: TsFormula);
 {var
   FormulaResult: double;
   i: Integer;
   RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;}
+  TokenArraySizePos, RecordSizePos, FinalPos: Int64;}
 begin
 (*  RPNLength := 0;
   FormulaResult := 0.0;
@@ -273,23 +558,23 @@ begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
   RecordSizePos := AStream.Position;
-  AStream.WriteWord(WordToLE(17 + RPNLength));
+  AStream.WriteWord(WordToLE(22 + RPNLength));
 
   { BIFF Record data }
   AStream.WriteWord(WordToLE(ARow));
   AStream.WriteWord(WordToLE(ACol));
 
-  { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
+  { Index to XF Record }
+  AStream.WriteWord($0000);
 
   { Result of the formula in IEE 754 floating-point value }
   AStream.WriteBuffer(FormulaResult, 8);
 
-  { 0 = Do not recalculate
-    1 = Always recalculate }
-  AStream.WriteByte($1);
+  { Options flags }
+  AStream.WriteWord(WordToLE(MASK_FORMULA_RECALCULATE_ALWAYS));
+
+  { Not used }
+  AStream.WriteDWord(0);
 
   { Formula }
 
@@ -297,7 +582,7 @@ begin
     because it's necessary to calculate if first,
     and this is done at the same time it is written }
   TokenArraySizePos := AStream.Position;
-  AStream.WriteByte(RPNLength);
+  AStream.WriteWord(RPNLength);
 
   { Formula data (RPN token array) }
   for i := 0 to Length(AFormula) - 1 do
@@ -335,52 +620,96 @@ begin
   AStream.position := TokenArraySizePos;
   AStream.WriteByte(RPNLength);
   AStream.Position := RecordSizePos;
-  AStream.WriteWord(WordToLE(17 + RPNLength));
+  AStream.WriteWord(WordToLE(22 + RPNLength));
   AStream.position := FinalPos;*)
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteLabel ()
+*  TsSpreadBIFF8Writer.WriteIndex ()
+*
+*  DESCRIPTION:    Writes an Excel 8 INDEX record
+*
+*                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteIndex(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_INDEX));
+  AStream.WriteWord(WordToLE(16));
+
+  { Not used }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Index to first used row, rf, 0 based }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Index to first row of unused tail of sheet, rl, last used row + 1, 0 based }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Absolute stream position of the DEFCOLWIDTH record of the current sheet.
+    If it doesn't exist, the offset points to where it would occur. }
+  AStream.WriteDWord(DWordToLE($00));
+
+  { Array of nm absolute stream positions of the DBCELL record of each Row Block }
+  
+  { OBS: It seams to be no problem just ignoring this part of the record }
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteLabel ()
 *
 *  DESCRIPTION:    Writes an Excel 8 LABEL record
 *
 *                  Writes a string to the sheet
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
+procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string);
 var
-  L: Byte;
+  L: Word;
+  WideValue: WideString;
 begin
-  L := Length(AValue);
+  WideValue := UTF8Decode(AValue);
+  if WideValue = '' then
+  begin
+    // Bad formatted UTF8String (maybe ANSI?)
+    if Length(AValue)<>0 then begin
+      //It was an ANSI string written as UTF8 quite sure, so raise exception.
+      Raise Exception.CreateFmt('Expected UTF8 text but probably ANSI text found in cell [%d,%d]',[ARow,ACol]);
+    end;
+    Exit;
+  end;
+  L := Length(WideValue);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-  AStream.WriteWord(WordToLE(8 + L));
+  AStream.WriteWord(WordToLE(8 + 1 + L * Sizeof(WideChar)));
 
   { BIFF Record data }
   AStream.WriteWord(WordToLE(ARow));
   AStream.WriteWord(WordToLE(ACol));
 
-  { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
+  { Index to XF record }
+  AStream.WriteWord(WordToLE(15));
 
-  { String with 8-bit size }
-  AStream.WriteByte(L);
-  AStream.WriteBuffer(Pointer(AValue)^, L);
+  { Byte String with 16-bit size }
+  AStream.WriteWord(WordToLE(L));
+
+  { Byte flags. 1 means regular Unicode LE encoding}
+  AStream.WriteByte(1);
+  AStream.WriteBuffer(WideStringToLE(WideValue)[1], L * Sizeof(WideChar));
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteNumber ()
+*  TsSpreadBIFF8Writer.WriteNumber ()
 *
-*  DESCRIPTION:    Writes an Excel 5 NUMBER record
+*  DESCRIPTION:    Writes an Excel 8 NUMBER record
 *
 *                  Writes a number (64-bit floating point) to the sheet
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteNumber(AStream: TStream; const ARow,
+procedure TsSpreadBIFF8Writer.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double);
 begin
   { BIFF Record header }
@@ -392,39 +721,438 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record }
-  AStream.WriteWord($0);
+  AStream.WriteWord(WordToLE($0));
 
-  { IEE 754 floating-point value }
+  { IEE 754 floating-point value (is different in BIGENDIAN???) }
   AStream.WriteBuffer(AValue, 8);
 end;
 
-procedure TsSpreadBIFF5Writer.WriteXF(AStream: TStream);
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteStyle ()
+*
+*  DESCRIPTION:    Writes an Excel 8 STYLE record
+*
+*                  Registers the name of a user-defined style or
+*                  specific options for a built-in cell style.
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteStyle(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STYLE));
+  AStream.WriteWord(WordToLE(4));
+
+  { Index to style XF and defines if it's a built-in or used defined style }
+  AStream.WriteWord(WordToLE(MASK_STYLE_BUILT_IN));
+
+  { Built-in cell style identifier }
+  AStream.WriteByte($00);
+
+  { Level if the identifier for a built-in style is RowLevel or ColLevel, $FF otherwise }
+  AStream.WriteByte($FF);
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteWindow1 ()
+*
+*  DESCRIPTION:    Writes an Excel 8 WINDOW1 record
+*
+*                  This record contains general settings for the
+*                  document window and global workbook settings.
+*
+*                  The values written here are reasonable defaults,
+*                  which should work for most sheets.
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteWindow1(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW1));
+  AStream.WriteWord(WordToLE(18));
+
+  { Horizontal position of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE(0));
+
+  { Vertical position of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($0069));
+
+  { Width of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($339F));
+
+  { Height of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($1B5D));
+
+  { Option flags }
+  AStream.WriteWord(WordToLE(
+   MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE or
+   MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE or
+   MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE));
+
+  { Index to active (displayed) worksheet }
+  AStream.WriteWord(WordToLE($00));
+
+  { Index of first visible tab in the worksheet tab bar }
+  AStream.WriteWord(WordToLE($00));
+
+  { Number of selected worksheets }
+  AStream.WriteWord(WordToLE(1));
+
+  { Width of worksheet tab bar (in 1/1000 of window width).
+    The remaining space is used by the horizontal scroll bar }
+  AStream.WriteWord(WordToLE(600));
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteWindow2 ()
+*
+*  DESCRIPTION:    Writes an Excel 8 WINDOW2 record
+*
+*                  This record contains aditional settings for the
+*                  document window (BIFF2-BIFF4) or for a specific
+*                  worksheet (BIFF5-BIFF8).
+*
+*                  The values written here are reasonable defaults,
+*                  which should work for most sheets.
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteWindow2(AStream: TStream;
+ ASheetSelected: Boolean);
+var
+  Options: Word;
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW2));
+  AStream.WriteWord(WordToLE(18));
+
+  { Options flags }
+  Options := MASK_WINDOW2_OPTION_SHOW_GRID_LINES or
+   MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS or
+   MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES or
+   MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR or
+   MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
+   MASK_WINDOW2_OPTION_SHEET_ACTIVE;
+
+  if ASheetSelected then Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;
+
+  AStream.WriteWord(WordToLE(Options));
+
+  { Index to first visible row }
+  AStream.WriteWord(WordToLE(0));
+
+  { Index to first visible column }
+  AStream.WriteWord(WordToLE(0));
+
+  { Grid line index colour }
+  AStream.WriteWord(WordToLE(0));
+
+  { Not used }
+  AStream.WriteWord(WordToLE(0));
+
+  { Cached magnification factor in page break preview (in percent); 0 = Default (60%) }
+  AStream.WriteWord(WordToLE(0));
+
+  { Cached magnification factor in normal view (in percent); 0 = Default (100%) }
+  AStream.WriteWord(WordToLE(0));
+
+  { Not used }
+  AStream.WriteDWord(DWordToLE(0));
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteXF ()
+*
+*  DESCRIPTION:    Writes an Excel 8 XF record
+*
+*
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
+ AXF_TYPE_PROT: Byte);
+var
+  XFOptions: Word;
+  XFAlignment, XFOrientationAttrib: Byte;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_XF));
-  AStream.WriteWord(WordToLE(12));
+  AStream.WriteWord(WordToLE(20));
 
   { Index to FONT record }
-  AStream.WriteByte($00);
+  AStream.WriteWord(WordToLE(AFontIndex));
 
   { Index to FORMAT record }
-  AStream.WriteByte($00);
+  AStream.WriteWord(WordToLE($00));
 
   { XF type, cell protection and parent style XF }
-  AStream.WriteWord(WordToLE(INT_EXCEL_XF_TYPE_PROT_STYLEXF));
+  XFOptions := AXF_TYPE_PROT and MASK_XF_TYPE_PROT;
 
-  { Alignment, text break and text orientation }
-  AStream.WriteByte($00);
+  if AXF_TYPE_PROT and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then
+   XFOptions := XFOptions or MASK_XF_TYPE_PROT_PARENT;
+   
+  AStream.WriteWord(WordToLE(XFOptions));
 
-  { Flags for used attribute groups }
-  AStream.WriteByte($00);
+  { Alignment and text break }
+  XFAlignment := MASK_XF_VERT_ALIGN_BOTTOM;
 
-  { XF_AREA_34 - Cell background area }
-  AStream.WriteWord($0000);
+  AStream.WriteByte(XFAlignment);
 
-  { XF_BORDER_34 - Cell border lines }
-  AStream.WriteDWord($00000000);
+  { Text rotation }
+  AStream.WriteByte(0);
+
+  { Indentation, shrink and text direction }
+  AStream.WriteByte(0);
+
+  { Used attributes }
+  XFOrientationAttrib :=
+   MASK_XF_USED_ATTRIB_NUMBER_FORMAT or
+   MASK_XF_USED_ATTRIB_FONT or
+   MASK_XF_USED_ATTRIB_TEXT or
+   MASK_XF_USED_ATTRIB_BORDER_LINES or
+   MASK_XF_USED_ATTRIB_BACKGROUND or
+   MASK_XF_USED_ATTRIB_CELL_PROTECTION;
+
+  AStream.WriteByte(XFOrientationAttrib);
+
+  { Cell border lines and background area }
+  AStream.WriteDWord(DWordToLE($00000000));
+  AStream.WriteDWord(DWordToLE($00000000));
+  AStream.WriteByte(0);
+  AStream.WriteByte(0);
 end;
+
+{ TsSpreadBIFF8Reader }
+
+function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
+  const ALength: WORD): WideString;
+var
+  StringFlags: BYTE;
+  AnsiStrValue: AnsiString;
+begin
+  StringFlags:=AStream.ReadByte;
+  if StringFlags and 1 = 1 Then begin
+    //String is WideStringLE
+    SetLength(Result,ALength);
+    AStream.ReadBuffer(Result[1],ALength * SizeOf(WideChar));
+    Result:=WideStringLEToN(Result);
+  end else begin
+    //String is 1 byte per char, maybe ANSI ?
+    SetLength(AnsiStrValue,ALength);
+    AStream.ReadBuffer(AnsiStrValue[1],ALength);
+    Result:=AnsiStrValue; //implicit conversion.
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadWorkbookGlobals(AStream: TStream;
+  AData: TsWorkbook);
+var
+  SectionEOF: Boolean = False;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  while (not SectionEOF) do
+  begin
+    { Read the record header }
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+     INT_EXCEL_ID_BOF:        ;
+     INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
+     INT_EXCEL_ID_EOF:        SectionEOF := True;
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    // Check for the end of the file
+    if AStream.Position >= AStream.Size then SectionEOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadWorksheet(AStream: TStream; AData: TsWorkbook);
+var
+  SectionEOF: Boolean = False;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  FWorksheet := AData.AddWorksheet(FWorksheetNames.Strings[FCurrentWorksheet]);
+
+  while (not SectionEOF) do
+  begin
+    { Read the record header }
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+
+    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_BOF:     ;
+    INT_EXCEL_ID_EOF:     SectionEOF := True;
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    // Check for the end of the file
+    if AStream.Position >= AStream.Size then SectionEOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadBoundsheet(AStream: TStream);
+var
+  Len: Byte;
+  WideName: WideString;
+begin
+  { Absolute stream position of the BOF record of the sheet represented
+    by this record }
+  // Just assume that they are in order
+  AStream.ReadDWord();
+
+  { Visibility }
+  AStream.ReadByte();
+
+  { Sheet type }
+  AStream.ReadByte();
+
+  { Sheet name: 8-bit length }
+  Len := AStream.ReadByte();
+
+  { Read string with flags }
+  WideName:=ReadWideString(AStream,Len);
+
+  FWorksheetNames.Add(UTF8Encode(WideName));
+end;
+
+procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+var
+  MemStream: TMemoryStream;
+  OLEStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  MemStream := TMemoryStream.Create;
+  OLEStorage := TOLEStorage.Create;
+  try
+    // Only one stream is necessary for any number of worksheets
+    OLEDocument.Stream := MemStream;
+
+    OLEStorage.ReadOLEFile(AFileName, OLEDocument);
+
+    // Rewind the stream and read from it
+    MemStream.Position := 0;
+    ReadFromStream(MemStream, AData);
+
+//    Uncomment to verify if the data was correctly optained from the OLE file
+//    MemStream.SaveToFile(SysUtils.ChangeFileExt(AFileName, 'bin.xls'));
+  finally
+    MemStream.Free;
+    OLEStorage.Free;
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+var
+  BIFF8EOF: Boolean;
+begin
+  { Initializations }
+
+  FWorksheetNames := TStringList.Create;
+  FWorksheetNames.Clear;
+  FCurrentWorksheet := 0;
+  BIFF8EOF := False;
+
+  { Read workbook globals }
+
+  ReadWorkbookGlobals(AStream, AData);
+
+  // Check for the end of the file
+  if AStream.Position >= AStream.Size then BIFF8EOF := True;
+
+  { Now read all worksheets }
+
+  while (not BIFF8EOF) do
+  begin
+    ReadWorksheet(AStream, AData);
+
+    // Check for the end of the file
+    if AStream.Position >= AStream.Size then BIFF8EOF := True;
+
+    // Final preparations
+    Inc(FCurrentWorksheet);
+  end;
+
+  { Finalizations }
+
+  FWorksheetNames.Free;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadFormula(AStream: TStream);
+begin
+
+end;
+
+procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
+var
+  L: Word;
+  StringFlags: BYTE;
+  ARow, ACol: Word;
+  WideStrValue: WideString;
+  AnsiStrValue: AnsiString;
+begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record, not used }
+  AStream.ReadWord();
+
+  { Byte String with 16-bit size }
+  L := WordLEtoN(AStream.ReadWord());
+
+  { Read string with flags }
+  WideStrValue:=ReadWideString(AStream,L);
+
+  { Save the data }
+  FWorksheet.WriteUTF8Text(ARow, ACol, UTF8Encode(WideStrValue));
+end;
+
+procedure TsSpreadBIFF8Reader.ReadNumber(AStream: TStream);
+var
+  ARow, ACol: Word;
+  AValue: Double;
+begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record, not used }
+  AStream.ReadWord();
+
+  { IEE 754 floating-point value }
+  AStream.ReadBuffer(AValue, 8);
+
+  { Save the data }
+  FWorksheet.WriteNumber(ARow, ACol, AValue);
+end;
+
+{*******************************************************************
+*  Initialization section
+*
+*  Registers this reader / writer on fpSpreadsheet
+*
+*******************************************************************}
+
+initialization
+
+  RegisterSpreadFormat(nil, TsSpreadBIFF8Writer, sfExcel8);
 
 end.
 

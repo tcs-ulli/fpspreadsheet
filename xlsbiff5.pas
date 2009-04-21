@@ -661,9 +661,16 @@ var
   L: Word;
   AnsiValue: ansistring;
 begin
-  if AValue = '' then Exit; // Writing an empty text doesn't work
-
   AnsiValue := UTF8ToAnsi(AValue);
+  if AnsiValue = '' then
+  begin
+    // Bad formatted UTF8String (maybe ANSI?)
+    if Length(AValue)<>0 then begin
+      //It was an ANSI string written as UTF8 quite sure, so raise exception.
+      Raise Exception.CreateFmt('Expected UTF8 text but probably ANSI text found in cell [%d,%d]',[ARow,ACol]);
+    end;
+    Exit;
+  end;
   L := Length(AnsiValue);
 
   { BIFF Record header }
