@@ -217,6 +217,9 @@ end;
 }
 procedure TsWorksheet.RemoveCallback(data, arg: pointer);
 begin
+  { The UTF8STring must be manually reseted to nil content, because
+    FreeMem only frees the record mem, without checking its content }
+  PCell(data).UTF8StringValue:='';
   FreeMem(data);
 end;
 
