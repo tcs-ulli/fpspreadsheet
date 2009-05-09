@@ -50,7 +50,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas,
-  fpspreadsheet, fpolestorage, fpsutils;
+  fpspreadsheet, fpolebasic, fpsutils;
 
 type
 

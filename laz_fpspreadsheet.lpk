@@ -14,7 +14,7 @@
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
-    <Files Count="10">
+    <Files Count="17">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -55,6 +55,34 @@
         <Filename Value="fpszipper.pp"/>
         <UnitName Value="fpszipper"/>
       </Item10>
+      <Item11>
+        <Filename Value="uvirtuallayer_types.pas"/>
+        <UnitName Value="uvirtuallayer_types"/>
+      </Item11>
+      <Item12>
+        <Filename Value="uvirtuallayer.pas"/>
+        <UnitName Value="uvirtuallayer"/>
+      </Item12>
+      <Item13>
+        <Filename Value="uvirtuallayer_ole.pas"/>
+        <UnitName Value="uvirtuallayer_ole"/>
+      </Item13>
+      <Item14>
+        <Filename Value="uvirtuallayer_ole_helpers.pas"/>
+        <UnitName Value="uvirtuallayer_ole_helpers"/>
+      </Item14>
+      <Item15>
+        <Filename Value="uvirtuallayer_ole_types.pas"/>
+        <UnitName Value="uvirtuallayer_ole_types"/>
+      </Item15>
+      <Item16>
+        <Filename Value="uvirtuallayer_stream.pas"/>
+        <UnitName Value="uvirtuallayer_stream"/>
+      </Item16>
+      <Item17>
+        <Filename Value="fpolebasic.pas"/>
+        <UnitName Value="fpolebasic"/>
+      </Item17>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="1">
