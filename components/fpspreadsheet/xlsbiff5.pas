@@ -951,8 +951,52 @@ begin
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
     else
-      // nothing
+      // Show unsupported record types to console.
+{.$DEFINE SHOWUNSUPPORTED}
+{$IFDEF SHOWUNSUPPORTED}
+      case RecordType of
+        $000C: ; //(CALCCOUNT) This record is part of the Calculation Settings Block. It specifies the maximum number of times the formulas should be iteratively calculated. This is a fail-safe against mutually recursive formulas locking up a spreadsheet application.
+        $000D: ; //(CALCMODE) This record is part of the Calculation Settings Block. It specifies whether to calculate formulas manually, automatically or automatically except for multiple table operations.
+        $000F: ; //(REFMODE) This record is part of the Calculation Settings Block. It stores which method is used to show cell addresses in formulas.
+        $0010: ; //(DELTA) This record is part of the Calculation Settings Block. It stores the maximum change of the result to exit an iteration.
+        $0011: ; //(ITERATION) This record is part of the Calculation Settings Block. It stores if iterations are allowed while calculating recursive formulas.
+        $0014: ; //(HEADER) This record is part of the Page Settings Block. It specifies the page header string for the current worksheet. If this record is not present or completely empty (record size is 0), the sheet does not contain a page header.
+        $0015: ; //(FOOTER) This record is part of the Page Settings Block. It specifies the page footer string for the current worksheet. If this record is not present or completely empty (record size is 0), the sheet does not contain a page footer.
+        $001D: ; //(SELECTION) This record contains the addresses of all selected cell ranges and the position of the active cell for a pane in the current sheet.
+        $0026: ; //(LEFTMARGIN) This record is part of the Page Settings Block. It contains the left page margin of the current worksheet.
+        $0027: ; //(RIGHTMARGIN) This record is part of the Page Settings Block. It contains the right page margin of the current worksheet.
+        $0028: ; //(TOPMARGIN) This record is part of the Page Settings Block. It contains the top page margin of the current worksheet.
+        $0029: ; //(BOTTOMMARGIN) This record is part of the Page Settings Block. It contains the bottom page margin of the current worksheet.
+        $002A: ; //(PRINTHEADERS) This record stores if the row and column headers (the areas with row numbers and column letters) will be printed.
+        $002B: ; //(PRINTGRIDLINES) This record stores if sheet grid lines will be printed.
+        $0055: ; //(DEFCOLWIDTH) This record specifies the default column width for columns that do not have a specific width set using the records COLWIDTH (BIFF2), COLINFO (BIFF3-BIFF8), or STANDARDWIDTH.
+        $005F: ; //(SAVERECALC) This record is part of the Calculation Settings Block. It contains the “Recalculate before save” option in Excel's calculation settings dialogue.
+        $007D: ; //(COLINFO) This record specifies the width and default cell formatting for a given range of columns.
+        $0080: ; //(GUTS) This record contains information about the layout of outline symbols.
+        $0081: ; //(SHEETPR) This record stores a 16-bit value with Boolean options for the current sheet. From BIFF5 on the “Save external linked values” option is moved to the record BOOKBOOL. This record is also used to distinguish standard sheets from dialogue sheets.
+        $0082: ; //(GRIDSET) This record specifies if the option to print sheet grid lines (record PRINTGRIDLINES) has ever been changed.
+        $0083: ; //(HCENTER) This record is part of the Page Settings Block. It specifies if the sheet is centred horizontally when printed.
+        $0084: ; //(VCENTER) This record is part of the Page Settings Block. It specifies if the sheet is centred vertically when printed.
+        $008C: ; //(COUNTRY) This record stores two Windows country identifiers. The first represents the user interface language of the Excel version that has saved the file, and the second represents the system regional settings at the time the file was saved.
+        $00A1: ; //(PAGESETUP) This record is part of the Page Settings Block. It stores the page format settings of the current sheet. The pages may be scaled in percent or by using an absolute number of pages.
+        $00BE: ; //(MULBLANK) This record represents a cell range of empty cells. All cells are located in the same row.
+        $0200: ; //(DIMENSION) This record contains the range address of the used area in the current sheet.
+        $0201: ; //(BLANK) This record represents an empty cell. It contains the cell address and formatting information.
+        $0208: ; //(ROW) This record contains the properties of a single row in a sheet. Rows and cells in a sheet are divided into blocks of 32 rows.
+        $0225: ; //(DEFAULTROWHEIGHT) This record specifies the default height and default flags for rows that do not have a corresponding ROW record.
+        $023E: ; //(WINDOW2) This record contains the range address of the used area in the current sheet.
+        //--------------------------------------------
+        { TODO 6 -cEXCELTAGS : RK support }
+        $027E: ; //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+        { TODO 5 -cEXCELTAGS : MULRK support }
+        $00BD: ; //(MULRK) This record represents a cell range containing RK value cells. All cells are located in the same row.
+        { TODO 6 -cEXCELTAGS : RSTRING support }
+        $00D6: ; //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+      else
+        WriteLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
+      end;
     end;
+{$ENDIF}
 
     // Make sure we are in the right position for the next record
     AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
