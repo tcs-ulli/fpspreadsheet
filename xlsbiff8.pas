@@ -1044,7 +1044,7 @@ begin
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
 
-    OLEStorage.ReadOLEFile(AFileName, OLEDocument);
+    OLEStorage.ReadOLEFile(AFileName, OLEDocument,'Workbook');
 
     // Rewind the stream and read from it
     MemStream.Position := 0;
@@ -1152,7 +1152,7 @@ end;
 
 initialization
 
-  RegisterSpreadFormat(nil, TsSpreadBIFF8Writer, sfExcel8);
+  RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8);
 
 end.
 
