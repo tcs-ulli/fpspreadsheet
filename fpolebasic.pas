@@ -89,7 +89,11 @@ begin
   fsOLE:=TVirtualLayer_OLE.Create(RealFile);
   fsOLE.Initialize(); //Initialize the OLE container.
   OLEStream:=fsOLE.CreateStream(VLAbsolutePath,fmOpenRead);
-  AOLEDocument.Stream:=TMemoryStream.Create;
+  if not Assigned(AOLEDocument.Stream) then begin
+    AOLEDocument.Stream:=TMemoryStream.Create;
+  end else begin
+    AOLEDocument.Stream.Clear;
+  end;
   AOLEDocument.Stream.CopyFrom(OLEStream,OLEStream.Size);
   OLEStream.Free;
   fsOLE.Free;
