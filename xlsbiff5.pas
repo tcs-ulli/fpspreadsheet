@@ -950,10 +950,10 @@ begin
     INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
-    else
       // Show unsupported record types to console.
 {.$DEFINE SHOWUNSUPPORTED}
 {$IFDEF SHOWUNSUPPORTED}
+    else
       case RecordType of
         $000C: ; //(CALCCOUNT) This record is part of the Calculation Settings Block. It specifies the maximum number of times the formulas should be iteratively calculated. This is a fail-safe against mutually recursive formulas locking up a spreadsheet application.
         $000D: ; //(CALCMODE) This record is part of the Calculation Settings Block. It specifies whether to calculate formulas manually, automatically or automatically except for multiple table operations.
@@ -995,8 +995,8 @@ begin
       else
         WriteLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
       end;
-    end;
 {$ENDIF}
+    end;
 
     // Make sure we are in the right position for the next record
     AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);

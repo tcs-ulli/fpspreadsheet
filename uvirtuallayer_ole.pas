@@ -311,7 +311,7 @@ var
     Name: WideString;
     VI: TVirtualLayer_Item;
   begin
-    Name:=UTF8Encode(FDirectory[AStartSibling]._ab);
+    Name:=UTF8Encode(wideString(FDirectory[AStartSibling]._ab));
     if Mask.Matches(Name) Then begin
       VI:=TVirtualLayer_Item.Create;
       VI.Name:=Name;
