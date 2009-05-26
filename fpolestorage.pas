@@ -246,7 +246,7 @@ begin
    And after that only $FFFFFFFF until $400 }
 
   AStream.WriteDWord(DWordToLE($FFFFFFFD)); // SAT
-  AStream.WriteDWord($FFFFFFFF); // Empty
+  AStream.WriteDWord($FFFFFFFE); // Empty, doesn't work with $FFFFFFFF
 
   // If we don't use short sectors we won't write a section for their SSAT
   if FUseShortSectors then
