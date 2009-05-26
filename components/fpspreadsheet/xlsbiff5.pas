@@ -57,7 +57,13 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas,
-  fpspreadsheet, fpolebasic, fpsutils;
+  fpspreadsheet,
+  {$ifdef USE_NEW_OLE}
+  fpolebasic,
+  {$else}
+  fpolestorage,
+  {$endif}
+  fpsutils;
 
 type
 

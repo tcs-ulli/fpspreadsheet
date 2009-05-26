@@ -890,7 +890,11 @@ begin
   LHandle^.FL:=FindL;
   LHandle^.Attr:=Attr;
   {$HINTS OFF}
+  {$ifdef UNIX}
+  Rlst.FindHandle:=LHandle;
+  {$else}
   Rlst.FindHandle:=PtrUint(LHandle);
+  {$endif}
   {$HINTS ON}
   if Assigned(FindL) Then begin
     if FindL.Count>0 Then begin
