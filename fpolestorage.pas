@@ -95,7 +95,7 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
-    procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument);
+    procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
 
@@ -764,7 +764,7 @@ end;
   Reads an OLE file.
 }
 procedure TOLEStorage.ReadOLEFile(AFileName: string;
-  AOLEDocument: TOLEDocument);
+  AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
 var
   AFileStream: TFileStream;
   CurrentSectorPos: Int64;
