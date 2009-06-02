@@ -78,6 +78,12 @@ type
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
+    procedure ReadRichString(AStream: TStream);
+    procedure ReadRKValue(AStream: TStream);
+    procedure ReadMulRKValues(AStream: TStream);
+  protected
+    function DecodeRKValue(const ARK: DWORD): Double;
+    procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD); virtual;
   public
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -130,6 +136,9 @@ const
   INT_EXCEL_ID_WINDOW1    = $003D;
   INT_EXCEL_ID_WINDOW2    = $023E;
   INT_EXCEL_ID_XF         = $00E0;
+  INT_EXCEL_ID_RSTRING    = $00D6;
+  INT_EXCEL_ID_RK         = $027E;
+  INT_EXCEL_ID_MULRK      = $00BD;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -954,6 +963,9 @@ begin
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+    INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+    INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
       // Show unsupported record types to console.
@@ -992,12 +1004,8 @@ begin
         $0225: ; //(DEFAULTROWHEIGHT) This record specifies the default height and default flags for rows that do not have a corresponding ROW record.
         $023E: ; //(WINDOW2) This record contains the range address of the used area in the current sheet.
         //--------------------------------------------
-        { TODO 6 -cEXCELTAGS : RK support }
-        $027E: ; //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
         { TODO 5 -cEXCELTAGS : MULRK support }
         $00BD: ; //(MULRK) This record represents a cell range containing RK value cells. All cells are located in the same row.
-        { TODO 6 -cEXCELTAGS : RSTRING support }
-        $00D6: ; //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
       else
         WriteLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
       end;
@@ -1034,6 +1042,113 @@ begin
   Str[Len] := #0;
 
   FWorksheetNames.Add(Str);
+end;
+
+procedure TsSpreadBIFF5Reader.ReadRichString(AStream: TStream);
+var
+  L: Word;
+  B: BYTE;
+  ARow, ACol, XF: Word;
+  AStrValue: ansistring;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+
+  { Byte String with 16-bit size }
+  L := WordLEtoN(AStream.ReadWord());
+  SetLength(AStrValue,L);
+  AStream.ReadBuffer(AStrValue[1], L);
+
+  { Save the data }
+  FWorksheet.WriteUTF8Text(ARow, ACol, AnsiToUTF8(AStrValue));
+  //Read formatting runs (not supported)
+  B:=AStream.ReadByte;
+  for L := 0 to B-1 do begin
+    AStream.ReadByte; // First formatted character
+    AStream.ReadByte; // Index to FONT record
+  end;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadRKValue(AStream: TStream);
+var
+  L: DWORD;
+  ARow, ACol, XF: WORD;
+  Number: Double;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+
+  {Encoded RK value}
+  L:=DWordLEtoN(AStream.ReadDWord);
+
+  {Check RK codes}
+  Number:=DecodeRKValue(L);
+  FWorksheet.WriteNumber(ARow,ACol,Number);
+end;
+
+procedure TsSpreadBIFF5Reader.ReadMulRKValues(AStream: TStream);
+var
+  ARow, fc,lc,XF: Word;
+  Pending: integer;
+  RK: DWORD;
+  Number: Double;
+begin
+  ARow:=WordLEtoN(AStream.ReadWord);
+  fc:=WordLEtoN(AStream.ReadWord);
+  Pending:=RecordSize-sizeof(fc)-Sizeof(ARow);
+  while Pending > (sizeof(XF)+sizeof(RK)) do begin
+    XF:=AStream.ReadWord; //XF record (not used)
+    RK:=DWordLEtoN(AStream.ReadDWord);
+    Number:=DecodeRKValue(RK);
+    FWorksheet.WriteNumber(ARow,fc,Number);
+    inc(fc);
+    dec(Pending,(sizeof(XF)+sizeof(RK)));
+  end;
+  if Pending=2 then begin
+    //Just for completeness
+    lc:=WordLEtoN(AStream.ReadWord);
+    if lc+1<>fc then begin
+      //Stream error... bypass by now
+    end;
+  end;
+end;
+
+function TsSpreadBIFF5Reader.DecodeRKValue(const ARK: DWORD): Double;
+var
+  Number: Double;
+  Tmp: LongInt;
+begin
+  if ARK and 2 = 2 then begin
+    // Signed integer value
+    if LongInt(ARK)<0 then begin
+      //Simulates a sar
+      Tmp:=LongInt(ARK)*-1;
+      Tmp:=Tmp shr 2;
+      Tmp:=Tmp*-1;
+      Number:=Tmp-1;
+    end else begin
+      Number:=ARK shr 2;
+    end;
+  end else begin
+    // Floating point value
+    // NOTE: This is endian dependent and IEEE dependent (Not checked)
+    PDWORD(@Number)^:=ARK and $FFFFFFFC;
+    (PDWORD(@Number)+1)^:= $00000000;
+  end;
+  if ARK and 1 = 1 then begin
+    // Encoded value is multiplied by 100
+    Number:=Number / 100;
+  end;
+  Result:=Number;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadRowColXF(const AStream: TStream; out ARow,
+  ACol, AXF: WORD);
+begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record }
+  AXF:=WordLEtoN(AStream.ReadWord);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1106,16 +1221,11 @@ end;
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
 var
   L: Word;
-  ARow, ACol: Word;
+  ARow, ACol, XF: WORD;
   AValue: array[0..255] of Char;
   AStrValue: ansistring;
 begin
-  { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { Index to XF record }
-  AStream.ReadWord();
+  ReadRowColXF(AStream,ARow,ACol,XF);
 
   { Byte String with 16-bit size }
   L := AStream.ReadWord();
@@ -1129,15 +1239,10 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadNumber(AStream: TStream);
 var
-  ARow, ACol: Word;
+  ARow, ACol, XF: WORD;
   AValue: Double;
 begin
-  { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { Index to XF record }
-  AStream.ReadWord();
+  ReadRowColXF(AStream,ARow,ACol,XF);
 
   { IEE 754 floating-point value }
   AStream.ReadBuffer(AValue, 8);
