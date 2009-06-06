@@ -687,6 +687,10 @@ begin
     Exit;
   end;
   L := Length(AnsiValue);
+  if L>255 then begin
+    //BIFF 5 does not support labels/text bigger than 255 chars.
+    L:=255;
+  end;
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
@@ -697,10 +701,10 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record }
-  AStream.WriteWord(15);
+  AStream.WriteWord(WordToLE(15));
 
   { Byte String with 16-bit size }
-  AStream.WriteWord(L);
+  AStream.WriteWord(WordToLE(L));
   AStream.WriteBuffer(AnsiValue[1], L);
 end;
 
@@ -1003,9 +1007,6 @@ begin
         $0208: ; //(ROW) This record contains the properties of a single row in a sheet. Rows and cells in a sheet are divided into blocks of 32 rows.
         $0225: ; //(DEFAULTROWHEIGHT) This record specifies the default height and default flags for rows that do not have a corresponding ROW record.
         $023E: ; //(WINDOW2) This record contains the range address of the used area in the current sheet.
-        //--------------------------------------------
-        { TODO 5 -cEXCELTAGS : MULRK support }
-        $00BD: ; //(MULRK) This record represents a cell range containing RK value cells. All cells are located in the same row.
       else
         WriteLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
       end;
@@ -1129,9 +1130,9 @@ begin
     end;
   end else begin
     // Floating point value
-    // NOTE: This is endian dependent and IEEE dependent (Not checked)
-    PDWORD(@Number)^:=ARK and $FFFFFFFC;
-    (PDWORD(@Number)+1)^:= $00000000;
+    // NOTE: This is endian dependent and IEEE dependent (Not checked, working win-i386)
+    PDWORD(@Number)^:= $00000000;
+    (PDWORD(@Number)+1)^:=ARK and $FFFFFFFC;
   end;
   if ARK and 1 = 1 then begin
     // Encoded value is multiplied by 100
