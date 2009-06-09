@@ -55,6 +55,14 @@ begin
   MyRPNFormula[2].ElementKind := fekAdd;
   MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
 
+  // Write the formula F1 = ABS(A1)
+  SetLength(MyRPNFormula, 2);
+  MyRPNFormula[0].ElementKind := fekCell;
+  MyRPNFormula[0].Col := 0;
+  MyRPNFormula[0].Row := 0;
+  MyRPNFormula[1].ElementKind := fekABS;
+  MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
+
   //MyFormula.FormulaStr := '';
 
   // Creates a new worksheet

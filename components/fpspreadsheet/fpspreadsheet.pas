@@ -44,13 +44,22 @@ type
 
   {@@ Expanded formula. Used by backend modules. Provides more information then the text only }
 
-  TFEKind = (fekCell, fekAdd, fekSub, fekDiv, fekMul,
-    fekOpSUM);
+  TFEKind = (
+    { Basic operands }
+    fekCell, fekNum,
+    { Basic operations }
+    fekAdd, fekSub, fekDiv, fekMul,
+    { Build-in Functions}
+    fekABS, fekROUND,
+    { Other operations }
+    fekOpSUM
+    );
 
   TsFormulaElement = record
     ElementKind: TFEKind;
     Row, Row2: Word; // zero-based
     Col, Col2: Byte; // zero-based
+    Param1, Param2: Word; // Extra parameters
     DoubleValue: double;
   end;
 

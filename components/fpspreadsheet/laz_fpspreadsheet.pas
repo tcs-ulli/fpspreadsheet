@@ -7,13 +7,10 @@ unit laz_fpspreadsheet;
 interface
 
 uses
-  fpolestorage, fpsallformats, fpsopendocument, fpspreadsheet, xlsbiff2,
-  xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpszipper,
-  {$ifdef USE_NEW_OLE}
-  uvirtuallayer_types,
+    fpolestorage, fpsallformats, fpsopendocument, fpspreadsheet, xlsbiff2, 
+  xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpszipper, uvirtuallayer_types, 
   uvirtuallayer, uvirtuallayer_ole, uvirtuallayer_ole_helpers, 
-  uvirtuallayer_ole_types, uvirtuallayer_stream, fpolebasic,
-  {$endif}
+  uvirtuallayer_ole_types, uvirtuallayer_stream, fpolebasic, xlscommon, 
   LazarusPackageIntf;
 
 implementation

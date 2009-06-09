@@ -58,6 +58,7 @@ interface
 uses
   Classes, SysUtils, fpcanvas,
   fpspreadsheet,
+  xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -98,7 +99,7 @@ type
 
   TsSpreadBIFF5Writer = class(TsCustomSpreadWriter)
   private
-    function  FEKindToExcelID(AElement: TFEKind): Byte;
+    function  FEKindToExcelID(AElement: TFEKind; var AParamsNum: Byte; var AExtra: Word): Byte;
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -222,38 +223,39 @@ const
 
   MASK_XF_VERT_ALIGN                  = $70;
 
-const
-  { TokenID values }
-
-  { Binary Operator Tokens }
-  INT_EXCEL_TOKEN_TADD    = $03;
-  INT_EXCEL_TOKEN_TSUB    = $04;
-  INT_EXCEL_TOKEN_TMUL    = $05;
-  INT_EXCEL_TOKEN_TDIV    = $06;
-  INT_EXCEL_TOKEN_TPOWER  = $07;
-
-  { Constant Operand Tokens }
-  INT_EXCEL_TOKEN_TNUM    = $1F;
-
-  { Operand Tokens }
-  INT_EXCEL_TOKEN_TREFR   = $24;
-  INT_EXCEL_TOKEN_TREFV   = $44;
-  INT_EXCEL_TOKEN_TREFA   = $64;
-
 {
   Exported functions
 }
 
 { TsSpreadBIFF5Writer }
 
-function TsSpreadBIFF5Writer.FEKindToExcelID(AElement: TFEKind): Byte;
+function TsSpreadBIFF5Writer.FEKindToExcelID(AElement: TFEKind;
+  var AParamsNum: Byte; var AExtra: Word): Byte;
 begin
+  AExtra := 0;
+
   case AElement of
+  { Operands }
   fekCell: Result := INT_EXCEL_TOKEN_TREFV;
+  fekNum: Result := INT_EXCEL_TOKEN_TNUM;
+  { Operators }
   fekAdd:  Result := INT_EXCEL_TOKEN_TADD;
   fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
   fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
   fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
+  { Build-in Function }
+  fekABS:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 1;
+    AExtra := INT_EXCEL_SHEET_FUNC_ABS;
+  end;
+  fekROUND:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 2;
+    AExtra := INT_EXCEL_SHEET_FUNC_ROUND;
+  end;
   end;
 end;
 
@@ -588,7 +590,8 @@ var
   i: Integer;
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Int64;
-  FormulaKind: Byte;
+  FormulaKind, ParamsNum: Byte;
+  ExtraInfo: Word;
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
@@ -626,7 +629,7 @@ begin
   for i := 0 to Length(AFormula) - 1 do
   begin
     { Token identifier }
-    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind);
+    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind, ParamsNum, ExtraInfo);
     AStream.WriteByte(FormulaKind);
     Inc(RPNLength);
 
@@ -648,6 +651,26 @@ begin
     begin
       AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
       AStream.WriteByte(AFormula[i].Col);
+      Inc(RPNLength, 3);
+    end;
+
+    {
+    sOffset Size Contents
+    0 1 22H (tFuncVarR), 42H (tFuncVarV), 62H (tFuncVarA)
+    1 1 Number of arguments
+    Bit Mask Contents
+    6-0 7FH Number of arguments
+    7 80H 1 = User prompt for macro commands (shown by a question mark
+    following the command name)
+    2 2 Index to a sheet function
+    Bit Mask Contents
+    14-0 7FFFH Index to a built-in sheet function (➜3.11) or a macro command
+    15 8000H 0 = Built-in function; 1 = Macro command
+    }
+    INT_EXCEL_TOKEN_FUNCVAR_V:
+    begin
+      AStream.WriteByte(ParamsNum);
+      AStream.WriteWord(WordToLE(ExtraInfo));
       Inc(RPNLength, 3);
     end;
 

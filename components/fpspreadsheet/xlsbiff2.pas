@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpspreadsheet, fpsutils;
+  fpspreadsheet, xlscommon, fpsutils;
   
 type
 
@@ -54,7 +54,7 @@ type
 
   TsSpreadBIFF2Writer = class(TsCustomSpreadWriter)
   private
-    function  FEKindToExcelID(AElement: TFEKind): Byte;
+    function  FEKindToExcelID(AElement: TFEKind; var AParamsNum, AFuncNum: Byte): Byte;
   public
     { General writing methods }
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
@@ -86,34 +86,34 @@ const
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
 
-const
-  { TokenID values }
-
-  { Binary Operator Tokens }
-  INT_EXCEL_TOKEN_TADD    = $03;
-  INT_EXCEL_TOKEN_TSUB    = $04;
-  INT_EXCEL_TOKEN_TMUL    = $05;
-  INT_EXCEL_TOKEN_TDIV    = $06;
-  INT_EXCEL_TOKEN_TPOWER  = $07;
-
-  { Constant Operand Tokens }
-  INT_EXCEL_TOKEN_TNUM    = $1F;
-
-  { Operand Tokens }
-  INT_EXCEL_TOKEN_TREFR   = $24;
-  INT_EXCEL_TOKEN_TREFV   = $44;
-  INT_EXCEL_TOKEN_TREFA   = $64;
-
 { TsSpreadBIFF2Writer }
 
-function TsSpreadBIFF2Writer.FEKindToExcelID(AElement: TFEKind): Byte;
+function TsSpreadBIFF2Writer.FEKindToExcelID(AElement: TFEKind; var AParamsNum, AFuncNum: Byte): Byte;
 begin
+  AFuncNum := 0;
+
   case AElement of
+  { Operands }
   fekCell: Result := INT_EXCEL_TOKEN_TREFV;
+  fekNum: Result := INT_EXCEL_TOKEN_TNUM;
+  { Operators }
   fekAdd:  Result := INT_EXCEL_TOKEN_TADD;
   fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
   fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
   fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
+  { Build-in functions }
+  fekABS:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 1;
+    AFuncNum := INT_EXCEL_SHEET_FUNC_ABS;
+  end;
+  fekROUND:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 2;
+    AFuncNum := INT_EXCEL_SHEET_FUNC_ROUND;
+  end;
   end;
 end;
 
@@ -185,7 +185,7 @@ var
   i: Integer;
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;
-  FormulaKind: Byte;
+  FormulaKind, ParamsNum, ExtraInfo: Byte;
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
@@ -223,7 +223,7 @@ begin
   for i := 0 to Length(AFormula) - 1 do
   begin
     { Token identifier }
-    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind);
+    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind, ParamsNum, ExtraInfo);
     AStream.WriteByte(FormulaKind);
     Inc(RPNLength);
 
@@ -246,6 +246,13 @@ begin
       AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
       AStream.WriteByte(AFormula[i].Col);
       Inc(RPNLength, 3);
+    end;
+
+    INT_EXCEL_TOKEN_FUNCVAR_V:
+    begin
+      AStream.WriteByte(ParamsNum);
+      AStream.WriteByte(ExtraInfo);
+      Inc(RPNLength, 2);
     end;
 
     end;
