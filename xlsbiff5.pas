@@ -97,6 +97,8 @@ type
   { TsSpreadBIFF5Writer }
 
   TsSpreadBIFF5Writer = class(TsCustomSpreadWriter)
+  private
+    function  FEKindToExcelID(AElement: TFEKind): Byte;
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -109,7 +111,7 @@ type
     procedure WriteDimensions(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
@@ -220,11 +222,40 @@ const
 
   MASK_XF_VERT_ALIGN                  = $70;
 
+const
+  { TokenID values }
+
+  { Binary Operator Tokens }
+  INT_EXCEL_TOKEN_TADD    = $03;
+  INT_EXCEL_TOKEN_TSUB    = $04;
+  INT_EXCEL_TOKEN_TMUL    = $05;
+  INT_EXCEL_TOKEN_TDIV    = $06;
+  INT_EXCEL_TOKEN_TPOWER  = $07;
+
+  { Constant Operand Tokens }
+  INT_EXCEL_TOKEN_TNUM    = $1F;
+
+  { Operand Tokens }
+  INT_EXCEL_TOKEN_TREFR   = $24;
+  INT_EXCEL_TOKEN_TREFV   = $44;
+  INT_EXCEL_TOKEN_TREFA   = $64;
+
 {
   Exported functions
 }
 
 { TsSpreadBIFF5Writer }
+
+function TsSpreadBIFF5Writer.FEKindToExcelID(AElement: TFEKind): Byte;
+begin
+  case AElement of
+  fekCell: Result := INT_EXCEL_TOKEN_TREFV;
+  fekAdd:  Result := INT_EXCEL_TOKEN_TADD;
+  fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
+  fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
+  fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
+  end;
+end;
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteToFile ()
@@ -550,15 +581,16 @@ end;
 *                  AFormula array
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsFormula);
-{var
+procedure TsSpreadBIFF5Writer.WriteRPNFormula(AStream: TStream; const ARow,
+  ACol: Word; const AFormula: TsRPNFormula);
+var
   FormulaResult: double;
   i: Integer;
   RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Int64;}
+  TokenArraySizePos, RecordSizePos, FinalPos: Int64;
+  FormulaKind: Byte;
 begin
-(*  RPNLength := 0;
+  RPNLength := 0;
   FormulaResult := 0.0;
 
   { BIFF Record header }
@@ -594,11 +626,12 @@ begin
   for i := 0 to Length(AFormula) - 1 do
   begin
     { Token identifier }
-    AStream.WriteByte(AFormula[i].TokenID);
+    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind);
+    AStream.WriteByte(FormulaKind);
     Inc(RPNLength);
 
     { Additional data }
-    case AFormula[i].TokenID of
+    case FormulaKind of
 
     { binary operation tokens }
 
@@ -627,7 +660,7 @@ begin
   AStream.WriteByte(RPNLength);
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(22 + RPNLength));
-  AStream.position := FinalPos;*)
+  AStream.position := FinalPos;
 end;
 
 {*******************************************************************

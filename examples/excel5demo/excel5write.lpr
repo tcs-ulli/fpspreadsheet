@@ -16,7 +16,7 @@ uses
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  MyFormula: TsFormula;
+  MyRPNFormula: TsRPNFormula;
   MyDir: string;
   i: Integer;
 begin
@@ -45,8 +45,17 @@ begin
 }
 
   // Write the formula E1 = A1 + B1
-//  MyFormula.FormulaStr := '';
-//  MyWorksheet.WriteFormula(0, 4, MyFormula);
+  SetLength(MyRPNFormula, 3);
+  MyRPNFormula[0].ElementKind := fekCell;
+  MyRPNFormula[0].Col := 0;
+  MyRPNFormula[0].Row := 0;
+  MyRPNFormula[1].ElementKind := fekCell;
+  MyRPNFormula[1].Col := 1;
+  MyRPNFormula[1].Row := 0;
+  MyRPNFormula[2].ElementKind := fekAdd;
+  MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
+
+  //MyFormula.FormulaStr := '';
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
