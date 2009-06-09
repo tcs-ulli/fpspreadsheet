@@ -49,24 +49,31 @@ type
 
   TsFormulaElement = record
     ElementKind: TFEKind;
-    Row1, Row2: Word;
-    Col1, Col2: Byte;
+    Row, Row2: Word; // zero-based
+    Col, Col2: Byte; // zero-based
     DoubleValue: double;
   end;
 
   TsExpandedFormula = array of TsFormulaElement;
 
+  {@@ RPN formula. Similar to the expanded formula, but in RPN notation.
+      Simplifies the task of format writers which need RPN }
+
+  TsRPNFormula = array of TsFormulaElement;
+
   {@@ Describes the type of content of a cell on a TsWorksheet }
 
-  TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String);
+  TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber, cctUTF8String);
   
   {@@ Cell structure for TsWorksheet }
 
   TCell = record
-    Col: Byte;
-    Row: Word;
+    Col: Byte; // zero-based
+    Row: Word; // zero-based
     ContentType: TCellContentType;
+    { Possible values for the cells }
     FormulaValue: TsFormula;
+    RPNFormulaValue: TsRPNFormula;
     NumberValue: double;
     UTF8StringValue: ansistring;
   end;
@@ -101,6 +108,7 @@ type
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
+    procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
   end;
 
   { TsWorkbook }
@@ -165,7 +173,8 @@ type
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); virtual; abstract;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); virtual;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); virtual;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); virtual; abstract;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); virtual; abstract;
   end;
@@ -500,6 +509,17 @@ begin
   ACell^.FormulaValue := AFormula;
 end;
 
+procedure TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
+  AFormula: TsRPNFormula);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+
+  ACell^.ContentType := cctRPNFormula;
+  ACell^.RPNFormulaValue := AFormula;
+end;
+
 { TsWorkbook }
 
 {@@
@@ -810,9 +830,10 @@ begin
   AStream := TStream(arg);
 
   case ACell.ContentType of
-    cctFormula: WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue);
     cctNumber:  WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue);
     cctUTF8String:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue);
+    cctFormula: WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue);
+    cctRPNFormula: WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue);
   end;
 end;
 
@@ -858,6 +879,18 @@ end;
 procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
 begin
   raise Exception.Create(lpUnsupportedWriteFormat);
+
+end;
+
+procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream; const ARow,
+  ACol: Word; const AFormula: TsFormula);
+begin
+
+end;
+
+procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
+  ACol: Word; const AFormula: TsRPNFormula);
+begin
 
 end;
 

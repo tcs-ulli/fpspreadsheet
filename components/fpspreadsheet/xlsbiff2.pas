@@ -53,13 +53,15 @@ type
   { TsSpreadBIFF2Writer }
 
   TsSpreadBIFF2Writer = class(TsCustomSpreadWriter)
+  private
+    function  FEKindToExcelID(AElement: TFEKind): Byte;
   public
     { General writing methods }
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
   end;
@@ -84,17 +86,6 @@ const
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
 
-  { Types and constants for formulas }
-type
-  TRPNItem = record
-    TokenID: Byte;
-    Col: Byte;
-    Row: Word;
-    DoubleValue: Double;
-  end;
-
-  TRPNFormula = array of TRPNItem;
-
 const
   { TokenID values }
 
@@ -114,6 +105,17 @@ const
   INT_EXCEL_TOKEN_TREFA   = $64;
 
 { TsSpreadBIFF2Writer }
+
+function TsSpreadBIFF2Writer.FEKindToExcelID(AElement: TFEKind): Byte;
+begin
+  case AElement of
+  fekCell: Result := INT_EXCEL_TOKEN_TREFV;
+  fekAdd:  Result := INT_EXCEL_TOKEN_TADD;
+  fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
+  fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
+  fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
+  end;
+end;
 
 {
   Writes an Excel 2 file to a stream
@@ -176,15 +178,16 @@ end;
   MyFormula[1].Row := 0;
   MyFormula[2].TokenID := INT_EXCEL_TOKEN_TADD;  +
 }
-procedure TsSpreadBIFF2Writer.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsFormula);
-{var
+procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream; const ARow,
+  ACol: Word; const AFormula: TsRPNFormula);
+var
   FormulaResult: double;
   i: Integer;
   RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;}
+  TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;
+  FormulaKind: Byte;
 begin
-(*  RPNLength := 0;
+  RPNLength := 0;
   FormulaResult := 0.0;
 
   { BIFF Record header }
@@ -220,11 +223,12 @@ begin
   for i := 0 to Length(AFormula) - 1 do
   begin
     { Token identifier }
-    AStream.WriteByte(AFormula[i].TokenID);
+    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind);
+    AStream.WriteByte(FormulaKind);
     Inc(RPNLength);
 
     { Additional data }
-    case AFormula[i].TokenID of
+    case FormulaKind of
 
     { binary operation tokens }
 
@@ -253,7 +257,7 @@ begin
   AStream.WriteByte(RPNLength);
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(17 + RPNLength));
-  AStream.position := FinalPos;*)
+  AStream.position := FinalPos;
 end;
 
 {*******************************************************************
