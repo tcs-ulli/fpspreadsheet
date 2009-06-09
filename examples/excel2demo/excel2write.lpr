@@ -15,6 +15,7 @@ uses
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
+  MyRPNFormula: TsRPNFormula;
   MyDir: string;
 begin
   // Open the output file
@@ -29,6 +30,24 @@ begin
   MyWorksheet.WriteNumber(0, 1, 2.0);
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);
+
+  // Write the formula E1 = ABS(A1)
+  SetLength(MyRPNFormula, 2);
+  MyRPNFormula[0].ElementKind := fekCell;
+  MyRPNFormula[0].Col := 0;
+  MyRPNFormula[0].Row := 0;
+  MyRPNFormula[1].ElementKind := fekABS;
+  MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
+
+  // Write the formula F1 = ROUND(A1, 0)
+  SetLength(MyRPNFormula, 3);
+  MyRPNFormula[0].ElementKind := fekCell;
+  MyRPNFormula[0].Col := 0;
+  MyRPNFormula[0].Row := 0;
+  MyRPNFormula[1].ElementKind := fekNum;
+  MyRPNFormula[1].DoubleValue := 0.0;
+  MyRPNFormula[2].ElementKind := fekROUND;
+  MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
 
   // Write some string cells
   MyWorksheet.WriteUTF8Text(1, 0, 'First');

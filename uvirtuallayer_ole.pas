@@ -63,8 +63,11 @@ unit uvirtuallayer_ole;
 interface
 
 uses
-  Classes, SysUtils, Masks
-  ,uvirtuallayer_types
+  Classes, SysUtils,
+  {.$ifdef FPSUSELCL}
+  Masks,
+  {.$endif}
+  uvirtuallayer_types
   ,uvirtuallayer
   ,uvirtuallayer_ole_helpers
   ,uvirtuallayer_ole_types

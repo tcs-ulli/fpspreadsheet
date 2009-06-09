@@ -5,7 +5,10 @@ unit uvirtuallayer;
 interface
 
 uses
-  Classes, SysUtils,strutils, Graphics,
+  Classes, SysUtils,strutils,
+  {$ifdef FPSUSELCL}
+  Graphics,
+  {$endif}
   uvirtuallayer_types,uvirtuallayer_stream;
   
 type
@@ -57,7 +60,9 @@ protected
   function intfCopy(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
   function intfMove(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
 
+  {$ifdef FPSUSELCL}
   function IntfGetIcon(const APath: UTF8String): TIcon; virtual;
+  {$endif}
 
   procedure Lock(); virtual;
   procedure Unlock(); virtual;
@@ -94,7 +99,9 @@ public
   property RootLayer: TVirtualLayer read GetRootLayer;
   property ParentLayer: TVirtualLayer read FParentLayer write SetParentLayer;
 
+  {$ifdef FPSUSELCL}
   function GetIcon(const APath: UTF8String): TIcon;
+  {$endif}
 
   Constructor Create(const AVirtualLayerStream: TStream);
   procedure PrepareDestroy(); virtual;
@@ -556,11 +563,13 @@ begin
                            MountPath+RemoveRootPathDelimiter(ATargetFileName));
 end;
 
+{$ifdef FPSUSELCL}
 function TVirtualLayer.IntfGetIcon(const APath: UTF8String): TIcon;
 begin
   Result:=nil;
   if Length(APath)=0 then Result:=nil; //Avoid hint.
 end;
+{$endif}
 
 function TVirtualLayer.AcrossLayersMove(const ASourceFileName,
   ATargetFileName: UTF8String): Boolean;
@@ -820,6 +829,7 @@ begin
   Unlock();
 end;
 
+{$ifdef FPSUSELCL}
 function TVirtualLayer.GetIcon(const APath: UTF8String): TIcon;
 var
   VL: TVirtualLayer;
@@ -832,6 +842,7 @@ begin
     Result:=IntfGetIcon(APath);
   end;
 end;
+{$endif}
 
 function TVirtualLayer.PathToVirtualLayer(const APath: UTF8String
   ): TVirtualLayer;
