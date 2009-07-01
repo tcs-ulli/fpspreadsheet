@@ -16,7 +16,7 @@ Specifications obtained from:
 
 http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
-AUTHORS: Felipe Monteiro de Carvalho
+AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon
 }
 unit fpsopendocument;
 
@@ -28,10 +28,26 @@ interface
 
 uses
   Classes, SysUtils,
-  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released }
-  fpspreadsheet;
+  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released. Changed by JLJR}
+  fpspreadsheet,
+  xmlread, DOM;
   
 type
+
+  { TsSpreadOpenDocReader }
+
+  TsSpreadOpenDocReader = class(TsCustomSpreadReader)
+  private
+    FWorksheet: TsWorksheet;
+    function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+  public
+    { General reading methods }
+    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
+    { Record writing methods }
+    procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
+    procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
+    procedure ReadNumber(ARow : Word; ACol : Word; ACellNode: TDOMNode);
+  end;
 
   { TsSpreadOpenDocWriter }
 
@@ -99,6 +115,129 @@ const
   SCHEMAS_XMLNS_XFORMS   = 'http://www.w3.org/2002/xforms';
   SCHEMAS_XMLNS_XSD      = 'http://www.w3.org/2001/XMLSchema';
   SCHEMAS_XMLNS_XSI      = 'http://www.w3.org/2001/XMLSchema-instance';
+
+{ TsSpreadOpenDocReader }
+
+function TsSpreadOpenDocReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+var
+  i : integer;
+  Found : Boolean;
+begin
+  Found:=false;
+  i:=0;
+  Result:='';
+  while not Found and (i<ANode.Attributes.Length) do begin
+    if ANode.Attributes.Item[i].NodeName=AAttrName then begin
+      Found:=true;
+      Result:=ANode.Attributes.Item[i].NodeValue;
+    end;
+    inc(i);
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+var
+  Col, Row : integer;
+  FilePath : string;
+  UnZip : TUnZipper;
+  FileList : TStringList;
+  ExitSub : Boolean;
+  Doc : TXMLDocument;
+  BodyNode, SpreadSheetNode, TableNode, RowNode, CellNode : TDOMNode;
+  ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
+  RowsCount, ColsCount : integer;
+begin
+  //unzip content.xml into AFileName path
+  ExitSub:=false;
+  FilePath:=ExtractFilePath(AFileName);
+  UnZip:=TUnZipper.Create;
+  UnZip.OutputPath:=FilePath;
+  FileList:=TStringList.Create;
+  FileList.Add('content.xml');
+  try
+    Unzip.UnZipFiles(AFileName,FileList);
+  Except
+    ExitSub:=true;
+  end; //try
+  FileList.Free;
+  UnZip.Free;
+  if ExitSub then Exit;
+
+  //process the xml file
+  ReadXMLFile(Doc,FilePath+'content.xml');
+  DeleteFile(FilePath+'content.xml');
+
+  BodyNode:= Doc.DocumentElement.FindNode('office:body');
+  if not Assigned(BodyNode) then Exit;
+
+  SpreadSheetNode:=BodyNode.FindNode('office:spreadsheet');
+  if not Assigned(SpreadSheetNode) then Exit;
+
+  //process each table (sheet)
+  TableNode:=SpreadSheetNode.FindNode('table:table');
+  while Assigned(TableNode) do begin
+    FWorkSheet:=aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
+    Row:=0;
+
+    //process each row inside the sheet
+    RowNode:=TableNode.FindNode('table:table-row');
+    while Assigned(RowNode) do begin
+
+      Col:=0;
+
+      ParamRowsRepeated:=GetAttrValue(RowNode,'table:number-rows-repeated');
+      if ParamRowsRepeated='' then ParamRowsRepeated:='1';
+
+      //process each cell of the row
+      CellNode:=RowNode.FindNode('table:table-cell');
+      while Assigned(CellNode) do begin
+        ParamColsRepeated:=GetAttrValue(CellNode,'table:number-columns-repeated');
+        if ParamColsRepeated='' then ParamColsRepeated:='1';
+
+        //select this cell value's type
+        ParamValueType:=GetAttrValue(CellNode,'office:value-type');
+        ParamFormula:=GetAttrValue(CellNode,'table:formula');
+        for RowsCount:=0 to StrToInt(ParamRowsRepeated)-1 do begin
+          for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
+            if ParamValueType='string' then
+              ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
+            else
+            if ParamFormula<>'' then
+              ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
+            else
+            if ParamValueType='float' then
+              ReadNumber(Row+RowsCount,Col+ColsCount,CellNode);
+          end; //for ColsCount
+        end; //for RowsCount
+
+        Inc(Col,ColsCount+1);
+        CellNode:=CellNode.NextSibling;
+      end; //while Assigned(CellNode)
+
+      Inc(Row,RowsCount+1);
+      RowNode:=RowNode.NextSibling;
+    end; // while Assigned(RowNode)
+
+    TableNode:=TableNode.NextSibling;
+  end; //while Assigned(TableNode)
+
+  Doc.Free;
+end;
+
+procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+begin
+
+end;
+
+procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+begin
+  FWorkSheet.WriteUTF8Text(ARow,ACol,ACellNode.TextContent);
+end;
+
+procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+begin
+  FWorkSheet.WriteNumber(Arow,ACol,StrToFloat(ACellNode.TextContent));
+end;
 
 { TsSpreadOpenDocWriter }
 
@@ -416,7 +555,7 @@ end;
 }
 initialization
 
-  RegisterSpreadFormat(TsCustomSpreadReader, TsSpreadOpenDocWriter, sfOpenDocument);
+  RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument);
 
 end.
 
