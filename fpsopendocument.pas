@@ -542,10 +542,13 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double);
+var
+  StrValue: string;
 begin
   // The row should already be the correct one
+  Str(AValue, StrValue);
   FContent := FContent +
-    '  <table:table-cell office:value-type="float" office:value="' + FloatToStr(AValue) + '">' + LineEnding +
+    '  <table:table-cell office:value-type="float" office:value="' + StrValue + '">' + LineEnding +
     '    <text:p>' + FloatToStr(AValue) + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
