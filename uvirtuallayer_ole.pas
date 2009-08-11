@@ -67,57 +67,54 @@ uses
   {.$ifdef FPSUSELCL}
   Masks,
   {.$endif}
-  uvirtuallayer_types
-  ,uvirtuallayer
-  ,uvirtuallayer_ole_helpers
-  ,uvirtuallayer_ole_types
-  ;
+  uvirtuallayer_types, uvirtuallayer,
+  uvirtuallayer_ole_helpers, uvirtuallayer_ole_types;
 
 type
 
-{ TVirtualLayer_wincompound }
+  { TVirtualLayer_wincompound }
 
-TVirtualLayer_OLE=class(TVirtualLayer)
-private
-  procedure UseParameter(const Parameter);
-  procedure SwapEndian_Record(var D: TWCBFStructuredStorageHeader);
-  procedure SwapEndian_Record(var D: TWCBFStructuredStorageDirectoryEntry);
-  Procedure NotImplemented();
-  function ReadData(const Index: integer; const Buffer: PBYTE; const Size: int64): int64;
-  function GetStorageFirstSID(const APath: UTF8String): SID;
-  function GetStreamSID(const APath: UTF8String): SID;
-  function FindFreeOpenFile(): integer;
-  procedure DeleteSIDData(const ASID: SID);
-  function CreateNewSID(const AType: etagSTGTY): SID;
-  procedure InsertInDirectoryTree(const ASID,AMasterSID: SID);
-  OpenedStreams: array of TWCBFOpenStream;
-  FFATIndirect: TFATIndirect;
-protected
-  function intfGetFreeSpace(const APath: UTF8String): int64; override;
-  function intfIsWritableMedia(): Boolean; override;
-  function intfFindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList; override;
+  TVirtualLayer_OLE=class(TVirtualLayer)
+  private
+    procedure UseParameter(const Parameter);
+    procedure SwapEndian_Record(var D: TWCBFStructuredStorageHeader);
+    procedure SwapEndian_Record(var D: TWCBFStructuredStorageDirectoryEntry);
+    Procedure NotImplemented();
+    function ReadData(const Index: integer; const Buffer: PBYTE; const Size: int64): int64;
+    function GetStorageFirstSID(const APath: UTF8String): SID;
+    function GetStreamSID(const APath: UTF8String): SID;
+    function FindFreeOpenFile(): integer;
+    procedure DeleteSIDData(const ASID: SID);
+    function CreateNewSID(const AType: etagSTGTY): SID;
+    procedure InsertInDirectoryTree(const ASID,AMasterSID: SID);
+    OpenedStreams: array of TWCBFOpenStream;
+    FFATIndirect: TFATIndirect;
+  protected
+    function intfGetFreeSpace(const APath: UTF8String): int64; override;
+    function intfIsWritableMedia(): Boolean; override;
+    function intfFindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList; override;
 
-  function intfOpenFile(const AFileName: UTF8String; const AMode: cardinal): TvlHandle; override;
-  function intfCloseFile(const Handle: TvlHandle): Boolean; override;
-  function intfRead(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; override;
-  function intfSeek(const AHandle: TvlHandle; const APosition: int64; const Origin: word): int64; override;
-  function intfGetFileSize(const AHandle: TvlHandle): int64; override;
-  //Not implemented....
-  function intfWrite(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; override;
-  function intfSetFileSize(const AHandle: TvlHandle; const ANewFileSize: int64): Boolean; override;
-  function intfDeleteFile(const AFileName: UTF8String): boolean; override;
-  function intfMakeFolder(const AFolder: UTF8String): Boolean; override;
-  function intfRemoveFolder(const AFolder: UTF8String): Boolean; override;
-  //..Not implemented
+    function intfOpenFile(const AFileName: UTF8String; const AMode: cardinal): TvlHandle; override;
+    function intfCloseFile(const Handle: TvlHandle): Boolean; override;
+    function intfRead(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; override;
+    function intfSeek(const AHandle: TvlHandle; const APosition: int64; const Origin: word): int64; override;
+    function intfGetFileSize(const AHandle: TvlHandle): int64; override;
+    //Not implemented....
+    function intfWrite(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; override;
+    function intfSetFileSize(const AHandle: TvlHandle; const ANewFileSize: int64): Boolean; override;
+    function intfDeleteFile(const AFileName: UTF8String): boolean; override;
+    function intfMakeFolder(const AFolder: UTF8String): Boolean; override;
+    function intfRemoveFolder(const AFolder: UTF8String): Boolean; override;
+    //..Not implemented
 
-  FDirectory: array of TWCBFStructuredStorageDirectoryEntry;
+    FDirectory: array of TWCBFStructuredStorageDirectoryEntry;
 
-  procedure AfterConstruction; override;
-public
-  procedure Format();
-  function Initialize():boolean; override;
-  destructor Destroy(); override;
-end;
+    procedure AfterConstruction; override;
+  public
+    procedure Format();
+    function Initialize():boolean; override;
+    destructor Destroy(); override;
+  end;
 
 implementation
 
