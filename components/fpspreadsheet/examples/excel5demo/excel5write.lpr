@@ -24,7 +24,7 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
+  MyWorksheet := MyWorkbook.AddWorksheet('Meu Relatório');
 
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1

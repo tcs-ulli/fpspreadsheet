@@ -127,7 +127,7 @@ implementation
 const
   { Excel record IDs }
   INT_EXCEL_ID_BOF        = $0809;
-  INT_EXCEL_ID_BOUNDSHEET = $0085;
+  INT_EXCEL_ID_BOUNDSHEET = $0085; // Refered as SHEET in the OpenOffice docs
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
   INT_EXCEL_ID_FONT       = $0031;
@@ -455,8 +455,10 @@ end;
 function TsSpreadBIFF5Writer.WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
 var
   Len: Byte;
+  LatinSheetName: string;
 begin
-  Len := Length(ASheetName);
+  LatinSheetName := UTF8ToAnsi(ASheetName); // Should actually be UTF-8 to Latin 1 ISO
+  Len := Length(LatinSheetName);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOUNDSHEET));
@@ -475,7 +477,7 @@ begin
 
   { Sheet name: Byte string, 8-bit length }
   AStream.WriteByte(Len);
-  AStream.WriteBuffer(ASheetName[1], Len);
+  AStream.WriteBuffer(LatinSheetName[1], Len);
 end;
 
 {*******************************************************************

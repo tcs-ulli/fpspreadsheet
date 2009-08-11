@@ -5,108 +5,108 @@ unit uvirtuallayer;
 interface
 
 uses
-  Classes, SysUtils,strutils,
+  Classes, SysUtils, strutils,
   {$ifdef FPSUSELCL}
   Graphics,
   {$endif}
-  uvirtuallayer_types,uvirtuallayer_stream;
+  uvirtuallayer_types, uvirtuallayer_stream;
   
 type
 
-{ TVirtualLayer }
+  { TVirtualLayer }
 
-TVirtualLayer=class(TObject)
-private
-  FMountPoints: array of TVirtualMountPoint;
-  m_Critical: TRTLCriticalSection;
-  FFreeLayerStreamOnFree: Boolean;
-  function GetIsWritableMedia: Boolean;
-  function GetMountPath: UTF8String;
-  function GetRootLayer: TVirtualLayer;
-  procedure SetParentLayer(const AValue: TVirtualLayer);
-  function PathMountedInCurrentLayer(const APath: UTF8String): TVirtualLayer;
-  function BuildPathFromIndex(const ASplittedPath: TStringList; const Index: integer): UTF8String;
-  function FindMounted(const APath: UTF8String; out ARemainPath: UTF8String): TVirtualLayer; overload;
-  function FindMounted(const APath: UTF8String): TVirtualLayer; overload;
-  function PreviousPath(const APath: UTF8String): UTF8String;
-  function StripMountPoints(const APath: UTF8String): UTF8String;
-protected
-  FParentLayer: TVirtualLayer;
-  FVirtualLayerStream: TStream;
-  FMountedInPath: UTF8String;
-  
-  procedure SplitPath(const APath: UTF8String;const ASplittedPath: TStringList);
-  function FileToVirtualLayer(const ATargetFileName: UTF8String;out TargetVL: TVirtualLayer): Boolean;
-  function AcrossLayersCopy(const ASourceFileName,ATargetFileName: UTF8String): Boolean;
-  function AcrossLayersMove(const ASourceFileName,ATargetFileName: UTF8String): Boolean;
-  function NormalizePath(const APath: UTF8String): UTF8String;
-  function RemoveRootPathDelimiter(const APath: UTF8String): UTF8String;
-  function Initialize(): boolean; virtual;
+  TVirtualLayer=class(TObject)
+  private
+    FMountPoints: array of TVirtualMountPoint;
+    m_Critical: TRTLCriticalSection;
+    FFreeLayerStreamOnFree: Boolean;
+    function GetIsWritableMedia: Boolean;
+    function GetMountPath: UTF8String;
+    function GetRootLayer: TVirtualLayer;
+    procedure SetParentLayer(const AValue: TVirtualLayer);
+    function PathMountedInCurrentLayer(const APath: UTF8String): TVirtualLayer;
+    function BuildPathFromIndex(const ASplittedPath: TStringList; const Index: integer): UTF8String;
+    function FindMounted(const APath: UTF8String; out ARemainPath: UTF8String): TVirtualLayer; overload;
+    function FindMounted(const APath: UTF8String): TVirtualLayer; overload;
+    function PreviousPath(const APath: UTF8String): UTF8String;
+    function StripMountPoints(const APath: UTF8String): UTF8String;
+  protected
+    FParentLayer: TVirtualLayer;
+    FVirtualLayerStream: TStream;
+    FMountedInPath: UTF8String;
 
-  //Functions to be implemented in specializations
-  function intfOpenFile(const AFileName: UTF8String; const AMode: cardinal): TvlHandle; virtual; abstract;
-  function intfCloseFile(const Handle: TvlHandle): Boolean; virtual; abstract;
-  function intfFindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList; virtual; abstract;
-  function intfSeek(const AHandle: TvlHandle; const APosition: int64; const Origin: word): int64; virtual; abstract;
-  function intfRead(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; virtual; abstract;
-  function intfWrite(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; virtual; abstract;
-  function intfGetFileSize(const AHandle: TvlHandle): int64; virtual; abstract;
-  function intfSetFileSize(const AHandle: TvlHandle; const ANewFileSize: int64): Boolean; virtual; abstract;
-  function intfDeleteFile(const AFileName: UTF8String): boolean; virtual; abstract;
-  function intfGetFreeSpace(const APath: UTF8String): int64; virtual; abstract;
-  function intfIsWritableMedia(): Boolean; virtual; abstract;
-  function intfMakeFolder(const AFolder: UTF8String): Boolean; virtual; abstract;
-  function intfRemoveFolder(const AFolder: UTF8String): Boolean; virtual; abstract;
-  function intfCopy(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
-  function intfMove(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
+    procedure SplitPath(const APath: UTF8String;const ASplittedPath: TStringList);
+    function FileToVirtualLayer(const ATargetFileName: UTF8String;out TargetVL: TVirtualLayer): Boolean;
+    function AcrossLayersCopy(const ASourceFileName,ATargetFileName: UTF8String): Boolean;
+    function AcrossLayersMove(const ASourceFileName,ATargetFileName: UTF8String): Boolean;
+    function NormalizePath(const APath: UTF8String): UTF8String;
+    function RemoveRootPathDelimiter(const APath: UTF8String): UTF8String;
+    function Initialize(): boolean; virtual;
 
-  {$ifdef FPSUSELCL}
-  function IntfGetIcon(const APath: UTF8String): TIcon; virtual;
-  {$endif}
+    //Functions to be implemented in specializations
+    function intfOpenFile(const AFileName: UTF8String; const AMode: cardinal): TvlHandle; virtual; abstract;
+    function intfCloseFile(const Handle: TvlHandle): Boolean; virtual; abstract;
+    function intfFindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList; virtual; abstract;
+    function intfSeek(const AHandle: TvlHandle; const APosition: int64; const Origin: word): int64; virtual; abstract;
+    function intfRead(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; virtual; abstract;
+    function intfWrite(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64; virtual; abstract;
+    function intfGetFileSize(const AHandle: TvlHandle): int64; virtual; abstract;
+    function intfSetFileSize(const AHandle: TvlHandle; const ANewFileSize: int64): Boolean; virtual; abstract;
+    function intfDeleteFile(const AFileName: UTF8String): boolean; virtual; abstract;
+    function intfGetFreeSpace(const APath: UTF8String): int64; virtual; abstract;
+    function intfIsWritableMedia(): Boolean; virtual; abstract;
+    function intfMakeFolder(const AFolder: UTF8String): Boolean; virtual; abstract;
+    function intfRemoveFolder(const AFolder: UTF8String): Boolean; virtual; abstract;
+    function intfCopy(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
+    function intfMove(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
 
-  procedure Lock(); virtual;
-  procedure Unlock(); virtual;
-public
+    {$ifdef FPSUSELCL}
+    function IntfGetIcon(const APath: UTF8String): TIcon; virtual;
+    {$endif}
 
-  function MakeFolder(const AFolder: UTF8String): Boolean;
-  function RemoveFolder(const AFolder: UTF8String): Boolean;
-  function DeleteFile(const AFileName: UTF8String): Boolean;
-  function Read(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64;
-  function Write(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64;
-  function FindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList;
-  function OpenFile(const FileName: UTF8String; const Mode: cardinal): TvlHandle;
-  function CloseFile(const Handle: TvlHandle): Boolean;
-  function GetFileSize(const AHandle: TvlHandle): int64;
-  function SetFileSize(const AHandle: TvlHandle; const ANewSize: int64): Boolean;
-  function Seek(const AHandle: TvlHandle; const APosition: int64; const Origin: Word): int64;
-  function FileExists(const AFileName: UTF8String): Boolean; virtual;
-  function MoveFile(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
-  function CopyFile(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
-  function GetFreeSpace(const APath: UTF8String): int64;
-  function FindFirst(const APath: String;const Attr: LongInt;out Rlst: sysutils.TSearchRec): LongInt;
-  function FindNext(var Rlst: sysutils.TSearchRec): LongInt;
-  procedure FindClose(Rlst: sysutils.TSearchRec);
+    procedure Lock(); virtual;
+    procedure Unlock(); virtual;
+  public
 
-  procedure SplitFileNamePath(const AFullPath: UTF8String; out APath: UTF8String; out AFileName: UTF8String);
-  function PathToVirtualLayer(const APath: UTF8String): TVirtualLayer;
-  function CreateStream(const AFileName: UTF8String; const AMode: Cardinal): TVirtualLayer_Stream;
-  function Mount(const AMountPath: UTF8String; const AVirtualLayer: TVirtualLayer): Boolean;
-  function UnMount(const AMountPath: UTF8String; const FreeAssociatedVirtualLayer: Boolean=true): Boolean;
+    function MakeFolder(const AFolder: UTF8String): Boolean;
+    function RemoveFolder(const AFolder: UTF8String): Boolean;
+    function DeleteFile(const AFileName: UTF8String): Boolean;
+    function Read(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64;
+    function Write(const Handle: TvlHandle; const Buffer: PBYTE; const Size: int64): int64;
+    function FindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList;
+    function OpenFile(const FileName: UTF8String; const Mode: cardinal): TvlHandle;
+    function CloseFile(const Handle: TvlHandle): Boolean;
+    function GetFileSize(const AHandle: TvlHandle): int64;
+    function SetFileSize(const AHandle: TvlHandle; const ANewSize: int64): Boolean;
+    function Seek(const AHandle: TvlHandle; const APosition: int64; const Origin: Word): int64;
+    function FileExists(const AFileName: UTF8String): Boolean; virtual;
+    function MoveFile(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
+    function CopyFile(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
+    function GetFreeSpace(const APath: UTF8String): int64;
+    function FindFirst(const APath: String;const Attr: LongInt;out Rlst: sysutils.TSearchRec): LongInt;
+    function FindNext(var Rlst: sysutils.TSearchRec): LongInt;
+    procedure FindClose(Rlst: sysutils.TSearchRec);
 
-  property FreeLayerStreamOnFree: Boolean read FFreeLayerStreamOnFree write FFreeLayerStreamOnFree;
-  property IsWritableMedia: Boolean read GetIsWritableMedia;
-  property MountPath: UTF8String read GetMountPath;
-  property RootLayer: TVirtualLayer read GetRootLayer;
-  property ParentLayer: TVirtualLayer read FParentLayer write SetParentLayer;
+    procedure SplitFileNamePath(const AFullPath: UTF8String; out APath: UTF8String; out AFileName: UTF8String);
+    function PathToVirtualLayer(const APath: UTF8String): TVirtualLayer;
+    function CreateStream(const AFileName: UTF8String; const AMode: Cardinal): TVirtualLayer_Stream;
+    function Mount(const AMountPath: UTF8String; const AVirtualLayer: TVirtualLayer): Boolean;
+    function UnMount(const AMountPath: UTF8String; const FreeAssociatedVirtualLayer: Boolean=true): Boolean;
 
-  {$ifdef FPSUSELCL}
-  function GetIcon(const APath: UTF8String): TIcon;
-  {$endif}
+    property FreeLayerStreamOnFree: Boolean read FFreeLayerStreamOnFree write FFreeLayerStreamOnFree;
+    property IsWritableMedia: Boolean read GetIsWritableMedia;
+    property MountPath: UTF8String read GetMountPath;
+    property RootLayer: TVirtualLayer read GetRootLayer;
+    property ParentLayer: TVirtualLayer read FParentLayer write SetParentLayer;
 
-  Constructor Create(const AVirtualLayerStream: TStream);
-  procedure PrepareDestroy(); virtual;
-  Destructor Destroy(); override;
-end;
+    {$ifdef FPSUSELCL}
+    function GetIcon(const APath: UTF8String): TIcon;
+    {$endif}
+
+    Constructor Create(const AVirtualLayerStream: TStream);
+    procedure PrepareDestroy(); virtual;
+    Destructor Destroy(); override;
+  end;
 
 implementation
 
