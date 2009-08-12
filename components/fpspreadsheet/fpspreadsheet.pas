@@ -450,7 +450,7 @@ begin
 
   //cctFormula
   cctNumber:     Result := FloatToStr(ACell^.NumberValue);
-  cctUTF8String:     Result := UTF8ToAnsi(ACell^.UTF8StringValue);
+  cctUTF8String:     Result := ACell^.UTF8StringValue;
   else
     Result := '';
   end;

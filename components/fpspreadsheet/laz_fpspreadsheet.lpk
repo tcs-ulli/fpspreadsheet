@@ -7,14 +7,14 @@
       <Version Value="8"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="C:\Programas\lazarus-ccr\components\fpspreadsheet\"/>
+        <OtherUnitFiles Value="."/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
-    <Files Count="18">
+    <Files Count="19">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -87,6 +87,10 @@
         <Filename Value="xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
       </Item18>
+      <Item19>
+        <Filename Value="fpsconvencoding.pas"/>
+        <UnitName Value="fpsconvencoding"/>
+      </Item19>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="2">

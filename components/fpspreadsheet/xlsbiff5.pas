@@ -64,7 +64,7 @@ uses
   {$else}
   fpolestorage,
   {$endif}
-  fpsutils;
+  fpsutils, fpsconvencoding;
 
 type
 
@@ -457,7 +457,7 @@ var
   Len: Byte;
   LatinSheetName: string;
 begin
-  LatinSheetName := UTF8ToAnsi(ASheetName); // Should actually be UTF-8 to Latin 1 ISO
+  LatinSheetName := UTF8ToISO_8859_1(ASheetName);
   Len := Length(LatinSheetName);
 
   { BIFF Record header }
@@ -734,7 +734,7 @@ var
   L: Word;
   AnsiValue: ansistring;
 begin
-  AnsiValue := UTF8ToAnsi(AValue);
+  AnsiValue := UTF8ToISO_8859_1(AValue);
   if AnsiValue = '' then
   begin
     // Bad formatted UTF8String (maybe ANSI?)
@@ -1118,7 +1118,7 @@ begin
   AStream.ReadBuffer(AStrValue[1], L);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, AnsiToUTF8(AStrValue));
+  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
   //Read formatting runs (not supported)
   B:=AStream.ReadByte;
   for L := 0 to B-1 do begin
@@ -1293,7 +1293,7 @@ begin
   AStrValue := AValue;
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, AnsiToUTF8(AStrValue));
+  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
 end;
 
 procedure TsSpreadBIFF5Reader.ReadNumber(AStream: TStream);
