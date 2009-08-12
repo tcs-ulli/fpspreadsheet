@@ -76,6 +76,9 @@ type
 
   TVirtualLayer_OLE=class(TVirtualLayer)
   private
+    OpenedStreams: array of TWCBFOpenStream;
+    FFATIndirect: TFATIndirect;
+
     procedure UseParameter(const Parameter);
     procedure SwapEndian_Record(var D: TWCBFStructuredStorageHeader);
     procedure SwapEndian_Record(var D: TWCBFStructuredStorageDirectoryEntry);
@@ -87,9 +90,9 @@ type
     procedure DeleteSIDData(const ASID: SID);
     function CreateNewSID(const AType: etagSTGTY): SID;
     procedure InsertInDirectoryTree(const ASID,AMasterSID: SID);
-    OpenedStreams: array of TWCBFOpenStream;
-    FFATIndirect: TFATIndirect;
   protected
+    FDirectory: array of TWCBFStructuredStorageDirectoryEntry;
+
     function intfGetFreeSpace(const APath: UTF8String): int64; override;
     function intfIsWritableMedia(): Boolean; override;
     function intfFindList(const APath: UTF8String; const AMask: UTF8String): TVirtualLayer_FolderList; override;
@@ -106,8 +109,6 @@ type
     function intfMakeFolder(const AFolder: UTF8String): Boolean; override;
     function intfRemoveFolder(const AFolder: UTF8String): Boolean; override;
     //..Not implemented
-
-    FDirectory: array of TWCBFStructuredStorageDirectoryEntry;
 
     procedure AfterConstruction; override;
   public
