@@ -19,6 +19,9 @@ Excel file format specification obtained from:
 
 http://sc.openoffice.org/excelfileformat.pdf
 
+Encoding information: ISO_8859_1 is used, to have support to
+other characters, please use a format which support unicode
+
 AUTHORS: Felipe Monteiro de Carvalho
 }
 unit xlsbiff2;

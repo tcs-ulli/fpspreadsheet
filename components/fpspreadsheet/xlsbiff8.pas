@@ -112,7 +112,7 @@ implementation
 const
   { Excel record IDs }
   INT_EXCEL_ID_BOF        = $0809;
-  INT_EXCEL_ID_BOUNDSHEET = $0085;
+  INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
   INT_EXCEL_ID_FONT       = $0031;
