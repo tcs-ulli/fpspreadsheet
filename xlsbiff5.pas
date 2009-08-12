@@ -45,6 +45,9 @@ Microsoft BIFF 5 writer example:
 
 http://support.microsoft.com/kb/150447/en-us
 
+Encoding information: ISO_8859_1 is used, to have support to
+other characters, please use a format which support unicode
+
 AUTHORS: Felipe Monteiro de Carvalho
 }
 unit xlsbiff5;
@@ -127,7 +130,7 @@ implementation
 const
   { Excel record IDs }
   INT_EXCEL_ID_BOF        = $0809;
-  INT_EXCEL_ID_BOUNDSHEET = $0085; // Refered as SHEET in the OpenOffice docs
+  INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
   INT_EXCEL_ID_FONT       = $0031;
