@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpspreadsheet, xlscommon, fpsutils;
+  fpspreadsheet, xlscommon, fpsutils, fpsconvencoding;
   
 type
 
@@ -283,7 +283,7 @@ var
 begin
   if AValue = '' then Exit; // Writing an empty text doesn't work
 
-  AnsiText := UTF8ToAnsi(AValue);
+  AnsiText := UTF8ToISO_8859_1(AValue);
   L := Length(AnsiText);
 
   { BIFF Record header }
@@ -400,7 +400,7 @@ begin
   AStrValue := AValue;
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, AnsiToUTF8(AStrValue));
+  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
 end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
