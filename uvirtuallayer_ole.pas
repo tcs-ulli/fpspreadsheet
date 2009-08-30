@@ -435,7 +435,7 @@ end;
 function TVirtualLayer_OLE.intfSeek(const AHandle: TvlHandle;
   const APosition: int64; const Origin: word): int64;
 var
-  index: PtrInt;
+  index: Integer;
 begin
   if not HandleToIndex(AHandle,Index) Then begin
     Result:=-1;
