@@ -770,7 +770,8 @@ var
   CurrentSectorPos: Int64;
 begin
   FOLEDocument := AOLEDocument;
-  AOLEDocument.Stream := TMemoryStream.Create;
+  if not Assigned(AOLEDocument.Stream) then
+    AOLEDocument.Stream := TMemoryStream.Create;
   AFileStream := TFileStream.Create(AFileName, fmOpenRead);
   try
     // Header
