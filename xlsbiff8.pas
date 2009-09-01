@@ -65,13 +65,24 @@ type
   TsSpreadBIFF8Reader = class(TsCustomSpreadReader)
   private
     RecordSize: Word;
+    PendingRecordSize: SizeInt;
     FWorksheet: TsWorksheet;
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
+    FSharedStringTable: TStringList;
+    function DecodeRKValue(const ARK: DWORD): Double;
     function ReadWideString(const AStream: TStream;const ALength: WORD): WideString;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
+
+    procedure ReadRKValue(const AStream: TStream);
+    procedure ReadMulRKValues(const AStream: TStream);
+    procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD);
+    function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
+    procedure ReadRichString(const AStream: TStream);
+    procedure ReadSST(const AStream: TStream);
+    procedure ReadLabelSST(const AStream: TStream);
   public
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -80,6 +91,8 @@ type
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
+
+    destructor Destroy; override;
   end;
 
   { TsSpreadBIFF8Writer }
@@ -124,6 +137,11 @@ const
   INT_EXCEL_ID_WINDOW1    = $003D;
   INT_EXCEL_ID_WINDOW2    = $023E;
   INT_EXCEL_ID_XF         = $00E0;
+  INT_EXCEL_ID_RSTRING    = $00D6;
+  INT_EXCEL_ID_RK         = $027E;
+  INT_EXCEL_ID_MULRK      = $00BD;  INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
+  INT_EXCEL_ID_CONTINUE   = $003C;
+  INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -927,23 +945,94 @@ end;
 
 { TsSpreadBIFF8Reader }
 
+function TsSpreadBIFF8Reader.DecodeRKValue(const ARK: DWORD): Double;
+var
+  Number: Double;
+  Tmp: LongInt;
+begin
+  if ARK and 2 = 2 then begin
+    // Signed integer value
+    if LongInt(ARK)<0 then begin
+      //Simulates a sar
+      Tmp:=LongInt(ARK)*-1;
+      Tmp:=Tmp shr 2;
+      Tmp:=Tmp*-1;
+      Number:=Tmp-1;
+    end else begin
+      Number:=ARK shr 2;
+    end;
+  end else begin
+    // Floating point value
+    // NOTE: This is endian dependent and IEEE dependent (Not checked) (working win-i386)
+    (PDWORD(@Number))^:= $00000000;
+    (PDWORD(@Number)+1)^:=(ARK and $FFFFFFFC);
+  end;
+  if ARK and 1 = 1 then begin
+    // Encoded value is multiplied by 100
+    Number:=Number / 100;
+  end;
+  Result:=Number;
+end;
+
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const ALength: WORD): WideString;
 var
   StringFlags: BYTE;
   AnsiStrValue: AnsiString;
+  RunsCounter: WORD;
+  AsianPhoneticBytes: DWORD;
+  j: SizeUInt;
 begin
   StringFlags:=AStream.ReadByte;
+  Dec(PendingRecordSize);
+  if StringFlags and 4 = 4 then begin
+    //Asian phonetics
+    //Read Asian phonetics Length (not used)
+    AsianPhoneticBytes:=DWordLEtoN(AStream.ReadDWord);
+  end;
+  if StringFlags and 8 = 8 then begin
+    //Rich string
+    RunsCounter:=WordLEtoN(AStream.ReadWord);
+    dec(PendingRecordSize,2);
+  end;
   if StringFlags and 1 = 1 Then begin
     //String is WideStringLE
-    SetLength(Result,ALength);
-    AStream.ReadBuffer(Result[1],ALength * SizeOf(WideChar));
+    if (ALength*SizeOf(WideChar)) > PendingRecordSize then begin
+      SetLength(Result,PendingRecordSize);
+      AStream.ReadBuffer(Result[1],PendingRecordSize * SizeOf(WideChar));
+      Dec(PendingRecordSize,PendingRecordSize * SizeOf(WideChar));
+    end else begin
+      SetLength(Result,ALength);
+      AStream.ReadBuffer(Result[1],ALength * SizeOf(WideChar));
+      Dec(PendingRecordSize,ALength * SizeOf(WideChar));
+    end;
     Result:=WideStringLEToN(Result);
   end else begin
     //String is 1 byte per char, maybe ANSI ?
-    SetLength(AnsiStrValue,ALength);
-    AStream.ReadBuffer(AnsiStrValue[1],ALength);
+    if ALength > PendingRecordSize then begin
+      SetLength(AnsiStrValue,PendingRecordSize);
+      AStream.ReadBuffer(AnsiStrValue[1],PendingRecordSize);
+      dec(PendingRecordSize,PendingRecordSize);
+    end else begin
+      SetLength(AnsiStrValue,ALength);
+      AStream.ReadBuffer(AnsiStrValue[1],ALength);
+      dec(PendingRecordSize,ALength);
+    end;
     Result:=AnsiStrValue; //implicit conversion.
+  end;
+  if StringFlags and 8 = 8 then begin
+    //Rich string (This only happend in BIFF8)
+    for j := 1 to RunsCounter do begin
+      AStream.ReadWord;
+      AStream.ReadWord;
+      dec(PendingRecordSize,2*2);
+    end;
+  end;
+  if StringFlags and 4 = 4 then begin
+    //Asian phonetics
+    //Read Asian phonetics, discarded as not used.
+    SetLength(AnsiStrValue,AsianPhoneticBytes);
+    AStream.ReadBuffer(AnsiStrValue[1],AsianPhoneticBytes);
   end;
 end;
 
@@ -954,20 +1043,25 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  if Assigned(FSharedStringTable) then FreeAndNIL(FSharedStringTable);
   while (not SectionEOF) do
   begin
     { Read the record header }
     RecordType := WordLEToN(AStream.ReadWord);
     RecordSize := WordLEToN(AStream.ReadWord);
+    PendingRecordSize:=RecordSize;
 
     CurStreamPos := AStream.Position;
 
-    case RecordType of
-     INT_EXCEL_ID_BOF:        ;
-     INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
-     INT_EXCEL_ID_EOF:        SectionEOF := True;
-    else
-      // nothing
+    if RecordType<>INT_EXCEL_ID_CONTINUE then begin
+      case RecordType of
+       INT_EXCEL_ID_BOF:        ;
+       INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
+       INT_EXCEL_ID_EOF:        SectionEOF := True;
+       INT_EXCEL_ID_SST:        ReadSST(AStream);
+      else
+        // nothing
+      end;
     end;
 
     // Make sure we are in the right position for the next record
@@ -999,6 +1093,10 @@ begin
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+    INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+    INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
+    INT_EXCEL_ID_LABELSST:ReadLabelSST(AStream); //BIFF8 only
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
     else
@@ -1036,6 +1134,66 @@ begin
   WideName:=ReadWideString(AStream,Len);
 
   FWorksheetNames.Add(UTF8Encode(WideName));
+end;
+
+procedure TsSpreadBIFF8Reader.ReadRKValue(const AStream: TStream);
+var
+  RK: DWORD;
+  ARow, ACol, XF: WORD;
+  Number: Double;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+
+  {Encoded RK value}
+  RK:=DWordLEtoN(AStream.ReadDWord);
+
+  {Check RK codes}
+  Number:=DecodeRKValue(RK);
+  FWorksheet.WriteNumber(ARow,ACol,Number);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadMulRKValues(const AStream: TStream);
+var
+  ARow, fc,lc,XF: Word;
+  Pending: integer;
+  RK: DWORD;
+  Number: Double;
+begin
+  ARow:=WordLEtoN(AStream.ReadWord);
+  fc:=WordLEtoN(AStream.ReadWord);
+  Pending:=RecordSize-sizeof(fc)-Sizeof(ARow);
+  while Pending > (sizeof(XF)+sizeof(RK)) do begin
+    XF:=AStream.ReadWord; //XF record (not used)
+    RK:=DWordLEtoN(AStream.ReadDWord);
+    Number:=DecodeRKValue(RK);
+    FWorksheet.WriteNumber(ARow,fc,Number);
+    inc(fc);
+    dec(Pending,(sizeof(XF)+sizeof(RK)));
+  end;
+  if Pending=2 then begin
+    //Just for completeness
+    lc:=WordLEtoN(AStream.ReadWord);
+    if lc+1<>fc then begin
+      //Stream error... bypass by now
+    end;
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadRowColXF(const AStream: TStream; out ARow,
+  ACol, AXF: WORD);
+begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record }
+  AXF:=WordLEtoN(AStream.ReadWord);
+end;
+
+function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
+  const ALength: WORD): UTF8String;
+begin
+  Result:=UTF8Encode(ReadWideString(AStream, ALength));
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1147,6 +1305,91 @@ begin
 
   { Save the data }
   FWorksheet.WriteNumber(ARow, ACol, AValue);
+end;
+
+destructor TsSpreadBIFF8Reader.Destroy;
+begin
+  if Assigned(FSharedStringTable) then FSharedStringTable.Free;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
+var
+  L: Word;
+  B: WORD;
+  ARow, ACol, XF: Word;
+  AStrValue: ansistring;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+
+  { Byte String with 16-bit size }
+  L := WordLEtoN(AStream.ReadWord());
+  AStrValue:=ReadString(AStream,L);
+
+  { Save the data }
+  FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
+  //Read formatting runs (not supported)
+  B:=WordLEtoN(AStream.ReadWord);
+  for L := 0 to B-1 do begin
+    AStream.ReadWord; // First formatted character
+    AStream.ReadWord; // Index to FONT record
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
+var
+  Items: DWORD;
+  StringLength: WORD;
+  LString: String;
+  Continue: WORD;
+begin
+  //Reads the shared string table, only compatible with BIFF8
+  if not Assigned(FSharedStringTable) then begin
+    //First time SST creation
+    FSharedStringTable:=TStringList.Create;
+
+    DWordLEtoN(AStream.ReadDWord); //Apparences not used
+    Items:=DWordLEtoN(AStream.ReadDWord);
+    Dec(PendingRecordSize,8);
+  end else begin
+    //A second record must not happend. Garbage so skip.
+    Exit;
+  end;
+  while Items>0 do begin
+    StringLength:=0;
+    StringLength:=WordLEtoN(AStream.ReadWord);
+    Dec(PendingRecordSize,2);
+    LString:='';
+    while PendingRecordSize>0 do begin
+      LString:=LString+ReadString(AStream,StringLength);
+      if (PendingRecordSize=0) and (Items>1) then begin
+        //A continue will happend, read the continue
+        //tag and continue linking...
+        Continue:=WordLEtoN(AStream.ReadWord);
+        if Continue<>INT_EXCEL_ID_CONTINUE then begin
+          Raise Exception.Create('Expected CONTINUE not found.');
+        end;
+        PendingRecordSize:=WordLEtoN(AStream.ReadWord);
+        Dec(StringLength,Length(UTF8Decode(LString))); //Dec the used chars
+      end else begin
+        break;
+      end;
+    end;
+    FSharedStringTable.Add(LString);
+    dec(Items);
+  end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadLabelSST(const AStream: TStream);
+var
+  ACol,ARow,XF: WORD;
+  SSTIndex: DWORD;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+  SSTIndex:=DWordLEtoN(AStream.ReadDWord);
+  if SizeInt(SSTIndex)>=FSharedStringTable.Count then begin
+    Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
+  end;
+  FWorksheet.WriteUTF8Text(ARow, ACol, FSharedStringTable[SSTIndex]);
 end;
 
 {*******************************************************************
