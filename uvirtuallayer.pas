@@ -6,9 +6,6 @@ interface
 
 uses
   Classes, SysUtils, strutils,
-  {$ifdef FPSUSELCL}
-  Graphics,
-  {$endif}
   uvirtuallayer_types, uvirtuallayer_stream;
   
 type
@@ -60,10 +57,6 @@ type
     function intfCopy(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
     function intfMove(const ASourceFileName,ATargetFileName: UTF8String): Boolean; virtual;
 
-    {$ifdef FPSUSELCL}
-    function IntfGetIcon(const APath: UTF8String): TIcon; virtual;
-    {$endif}
-
     procedure Lock(); virtual;
     procedure Unlock(); virtual;
   public
@@ -98,10 +91,6 @@ type
     property MountPath: UTF8String read GetMountPath;
     property RootLayer: TVirtualLayer read GetRootLayer;
     property ParentLayer: TVirtualLayer read FParentLayer write SetParentLayer;
-
-    {$ifdef FPSUSELCL}
-    function GetIcon(const APath: UTF8String): TIcon;
-    {$endif}
 
     Constructor Create(const AVirtualLayerStream: TStream);
     procedure PrepareDestroy(); virtual;
@@ -563,14 +552,6 @@ begin
                            MountPath+RemoveRootPathDelimiter(ATargetFileName));
 end;
 
-{$ifdef FPSUSELCL}
-function TVirtualLayer.IntfGetIcon(const APath: UTF8String): TIcon;
-begin
-  Result:=nil;
-  if Length(APath)=0 then Result:=nil; //Avoid hint.
-end;
-{$endif}
-
 function TVirtualLayer.AcrossLayersMove(const ASourceFileName,
   ATargetFileName: UTF8String): Boolean;
 begin
@@ -829,21 +810,6 @@ begin
   Unlock();
 end;
 
-{$ifdef FPSUSELCL}
-function TVirtualLayer.GetIcon(const APath: UTF8String): TIcon;
-var
-  VL: TVirtualLayer;
-  RemainPath: UTF8String;
-begin
-  VL:=FindMounted(APath,RemainPath);
-  if Assigned(VL) Then begin
-    Result:=VL.IntfGetIcon(RemainPath);
-  end else begin
-    Result:=IntfGetIcon(APath);
-  end;
-end;
-{$endif}
-
 function TVirtualLayer.PathToVirtualLayer(const APath: UTF8String
   ): TVirtualLayer;
 var
@@ -935,6 +901,7 @@ begin
     Name:='';
     ExcludeAttr:=0;
   end;
+  //Hint non portable conversion, it should work, but not tested.
   LHandle:=PFileRecLocal(Rlst.FindHandle);
   FindL:=TVirtualLayer_FolderList(LHandle^.FL);
   if Assigned(FindL) Then begin
@@ -957,6 +924,7 @@ var
   FindL: TVirtualLayer_FolderList;
   LHandle: PFileRecLocal;
 begin
+  //Hint: non portable conversion. Not tested but it should work.
   LHandle:=PFileRecLocal(Rlst.FindHandle);
   FindL:=TVirtualLayer_FolderList(LHandle^.FL);
   if Assigned(FindL) Then FindL.Free;

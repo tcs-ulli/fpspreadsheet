@@ -43,6 +43,17 @@ type
     Context: TFATStreamContext;
   end;
 
+{ TMaskFile }
+
+TMaskFile=class
+private
+protected
+  FMask: UTF8String;
+public
+  function Matches(const AFileName: UTF8String): Boolean;
+  Constructor Create(const AMask: UTF8String);
+end;
+
 { TFATIndirect }
 
 TFATIndirect=class
@@ -112,6 +123,8 @@ public
 end;
 
 implementation
+
+function MatchesMask(What, Mask: string): boolean; forward;
 
 procedure TFATIndirect.InitializeMiniDataStream();
 var
@@ -1252,6 +1265,78 @@ begin
   if Assigned(FFATCache.Cache) then Freemem(FFATCache.Cache);
   if Assigned(FMiscSectorBuffer) then FreeMem(FMiscSectorBuffer);
   inherited Destroy;
+end;
+
+//Matches mask taken from FV package of FPC with little changes
+function MatchesMask(What, Mask: string): boolean;
+  Function CmpStr(const hstr1,hstr2:string):boolean;
+  var
+    found : boolean;
+    i1,i2 : SizeInt;
+  begin
+    i1:=0;
+    i2:=0;
+    if hstr1='' then
+      begin
+        CmpStr:=(hstr2='');
+        exit;
+      end;
+    found:=true;
+    repeat
+      inc(i1);
+      if (i1>length(hstr1)) then
+        break;
+      inc(i2);
+      if (i2>length(hstr2)) then
+        break;
+      case hstr1[i1] of
+        '?' :
+          found:=true;
+        '*' :
+          begin
+            found:=true;
+            if (i1=length(hstr1)) then
+             i2:=length(hstr2)
+            else
+             if (i1<length(hstr1)) and (hstr1[i1+1]<>hstr2[i2]) then
+              begin
+                if i2<length(hstr2) then
+                 dec(i1)
+              end
+            else
+             if i2>1 then
+              dec(i2);
+          end;
+        else
+          found:=(hstr1[i1]=hstr2[i2]) or (hstr2[i2]='?');
+      end;
+    until not found;
+    if found then
+      begin
+        found:=(i2>=length(hstr2)) and
+               (
+                (i1>length(hstr1)) or
+                ((i1=length(hstr1)) and
+                 (hstr1[i1]='*'))
+               );
+      end;
+    CmpStr:=found;
+  end;
+
+begin
+  MatchesMask:=CmpStr(Mask,What);
+end;
+
+{ TMaskFile }
+
+function TMaskFile.Matches(const AFileName: UTF8String): Boolean;
+begin
+  Result:=MatchesMask(AFileName,FMask)
+end;
+
+constructor TMaskFile.Create(const AMask: UTF8String);
+begin
+  FMask:=AMask;
 end;
 
 end.

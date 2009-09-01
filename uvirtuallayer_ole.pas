@@ -64,9 +64,6 @@ interface
 
 uses
   Classes, SysUtils,
-  {.$ifdef FPSUSELCL}
-  Masks,
-  {.$endif}
   uvirtuallayer_types, uvirtuallayer,
   uvirtuallayer_ole_helpers, uvirtuallayer_ole_types;
 
@@ -110,10 +107,10 @@ type
     function intfRemoveFolder(const AFolder: UTF8String): Boolean; override;
     //..Not implemented
 
-    procedure AfterConstruction; override;
   public
     procedure Format();
     function Initialize():boolean; override;
+    procedure AfterConstruction; override;
     destructor Destroy(); override;
   end;
 
@@ -305,7 +302,7 @@ function TVirtualLayer_OLE.intfFindList(const APath: UTF8String;
   const AMask: UTF8String): TVirtualLayer_FolderList;
 var
   LI: TVirtualLayer_FolderList;
-  Mask: TMask;
+  Mask: TMaskFile;
   SSID: SID;
   function AddNamesWithSID(const AStartSibling: SID): SID;
   var
@@ -343,7 +340,7 @@ begin
     Exit;
   end;
 
-  Mask:=TMask.Create(AMask);
+  Mask:=TMaskFile.Create(AMask);
   LI:=TVirtualLayer_FolderList.Create(APath);
 
   AddNamesWithSID(SSID);
