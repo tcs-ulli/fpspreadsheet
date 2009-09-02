@@ -30,7 +30,7 @@ uses
   Classes, SysUtils,
   fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released. Changed by JLJR}
   fpspreadsheet,
-  xmlread, DOM;
+  xmlread, DOM, AVL_Tree;
   
 type
 
@@ -404,6 +404,8 @@ var
   CurCell: PCell;
   CurRow: array of PCell;
   LastColNum: Cardinal;
+  ACell: PCell;
+  AVLNode: TAVLTreeNode;
 begin
   LastColNum := CurSheet.GetLastColNumber;
 
@@ -413,40 +415,29 @@ begin
   '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
   IntToStr(LastColNum + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
 
+  ACell := GetMem(SizeOf(TCell));
+
   // The cells need to be written in order, row by row, cell by cell
   for j := 0 to CurSheet.GetLastRowNumber do
   begin
     FContent := FContent +
     '      <table:table-row table:style-name="ro1">' + LineEnding;
 
-    // First make an array with the cells of this row in their respective order
-    // nil pointers indicate empty cells, so it's necessary to initialize the array
-    SetLength(CurRow, LastColNum + 1);
-    for k := 0 to LastColNum do CurRow[k] := nil;
-
-    // Now fill the array with the cells in their proper place
-    for k := 0 to CurSheet.FCells.Count - 1 do
-    begin
-      CurCell := CurSheet.FCells.Items[k];
-      if CurCell^.Row = j then CurRow[CurCell^.Col] := CurCell;
-    end;
-
-    // And now write all cells from this row
+    // Write cells from this row.
     for k := 0 to LastColNum do
     begin
-      CurCell := CurRow[k];
-
-      if CurCell = nil then
-        FContent := FContent + '<table:table-cell/>' + LineEnding
-      else WriteCellCallback(CurCell, nil);
+      ACell^.Row := j;
+      ACell^.Col := k;
+      AVLNode := CurSheet.Cells.Find(ACell);
+      if Assigned(AVLNode) then
+        WriteCellCallback(PCell(AVLNode.Data), nil)
+      else
+        FContent := FContent + '<table:table-cell/>' + LineEnding;
     end;
 
     FContent := FContent +
     '      </table:table-row>' + LineEnding;
   end;
-
-  // Clean up
-  SetLength(CurRow, 0);
 
   // Footer
   FContent := FContent +

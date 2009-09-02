@@ -370,7 +370,7 @@ begin
 
     WriteWindow2(AStream, True);
 
-    WriteCellsToStream(AStream, AData.GetWorksheetByIndex(i).FCells);
+    WriteCellsToStream(AStream, AData.GetWorksheetByIndex(i).Cells);
 
     WriteEOF(AStream);
   end;
