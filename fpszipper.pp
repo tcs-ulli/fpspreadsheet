@@ -259,11 +259,13 @@ Type
     FDateTime: TDateTime;
     FDiskFileName: String;
     FHeaderPos: Longint;
+    FCentralPos: LongInt;
     FSize: Integer;
     FStream: TStream;
     function GetArchiveFileName: String;
   Protected
     Property HdrPos : Longint Read FHeaderPos Write FheaderPos;
+    property CentralPos: LongInt read FCentralPos write FCentralPos;
   Public
     Procedure Assign(Source : TPersistent); override;
     Property Stream : TStream Read FStream Write FStream;
@@ -604,7 +606,6 @@ Var
   Buf : PByte;
   I,Count : Integer;
   C : TDeCompressionStream;
-
 begin
   CRC32Val:=$FFFFFFFF;
   Buf:=GetMem(FBufferSize);
@@ -1401,8 +1402,9 @@ Procedure TUnZipper.ReadZipHeader(Item : TZipFileEntry; out ACRC : LongWord; out
 Var
   S : String;
   D : TDateTime;
-
 Begin
+  FZipFile.Seek(Item.CentralPos,soFromBeginning);
+  FZipFile.ReadBuffer(CentralHdr,SizeOf(CentralHdr));
   FZipFile.Seek(Item.HdrPos,soFromBeginning);
   FZipFile.ReadBuffer(LocalHdr,SizeOf(LocalHdr));
 {$IFDEF FPC_BIG_ENDIAN}
@@ -1415,10 +1417,10 @@ Begin
     FZipFile.Seek(Extra_Field_Length,soCurrent);
     Item.ArchiveFileName:=S;
     Item.DiskFileName:=S;
-    Item.Size:=Uncompressed_Size;
+    Item.Size:=CentralHdr.Uncompressed_Size;
     ZipDateTimeToDateTime(Last_Mod_Date,Last_Mod_Time,D);
     Item.DateTime:=D;
-    ACrc:=Crc32;
+    ACrc:=CentralHdr.Crc32;
     AMethod:=Compress_method;
     end;
 End;
@@ -1461,6 +1463,7 @@ Begin
         raise EZipError.CreateFmt(SErrCorruptZIP,[FZipFile.FileName]);
       NewNode:=FEntries.Add as TZipFileEntry;
       NewNode.HdrPos := Local_Header_Offset;
+      NewNode.CentralPos := FZipFile.Position-SizeOf(CentralHdr);
       SetLength(S,Filename_Length);
       FZipFile.ReadBuffer(S[1],Filename_Length);
       NewNode.ArchiveFileName:=S;
@@ -1495,7 +1498,7 @@ Begin
     OpenOutput(OutputFileName);
     if ZMethod=0 then
       begin
-        Count:=FOutFile.CopyFrom(FZipFile,LocalHdr.Compressed_Size);
+        Count:=FOutFile.CopyFrom(FZipFile,CentralHdr.Compressed_Size);
 {$warning TODO: Implement CRC Check}
       end
     else
