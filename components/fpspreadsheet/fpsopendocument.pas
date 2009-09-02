@@ -235,8 +235,11 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+var
+  FSettings: TFormatSettings;
 begin
-  FWorkSheet.WriteNumber(Arow,ACol,StrToFloat(ACellNode.TextContent));
+  FSettings.DecimalSeparator:='.';
+  FWorkSheet.WriteNumber(Arow,ACol,StrToFloat(ACellNode.TextContent,FSettings));
 end;
 
 { TsSpreadOpenDocWriter }
