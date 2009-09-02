@@ -14,7 +14,7 @@ unit fpspreadsheet;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, AVL_Tree;
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
@@ -98,9 +98,9 @@ type
 
   TsWorksheet = class
   private
+    FCells: TAvlTree;
     procedure RemoveCallback(data, arg: pointer);
   public
-    FCells: TFPList;
     Name: string;
     { Base methods }
     constructor Create;
@@ -109,7 +109,6 @@ type
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
-    function  GetCellByIndex(AIndex: Cardinal): PCell;
     function  GetLastColNumber: Cardinal;
     function  GetLastRowNumber: Cardinal;
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
@@ -118,6 +117,7 @@ type
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
+    property  Cells: TAVLTree read FCells;
   end;
 
   { TsWorkbook }
@@ -178,7 +178,7 @@ type
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     { General writing methods }
     procedure WriteCellCallback(data, arg: pointer);
-    procedure WriteCellsToStream(AStream: TStream; ACells: TFPList);
+    procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
     procedure WriteToFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     { Record writing methods }
@@ -205,6 +205,9 @@ procedure RegisterSpreadFormat(
   AFormat: TsSpreadsheetFormat);
 
 implementation
+
+uses
+  Math;
 
 var
   { Translatable strings }
@@ -241,6 +244,13 @@ begin
   FreeMem(data);
 end;
 
+function CompareCells(Item1, Item2: Pointer): Integer;
+begin
+  result := PCell(Item1).Row - PCell(Item2).Row;
+  if Result = 0 then
+    Result := PCell(Item1).Col - PCell(Item2).Col;
+end;
+
 {@@
   Constructor.
 }
@@ -248,7 +258,7 @@ constructor TsWorksheet.Create;
 begin
   inherited Create;
 
-  FCells := TFPList.Create;
+  FCells := TAVLTree.Create(@CompareCells);
 end;
 
 {@@
@@ -277,24 +287,16 @@ end;
 }
 function TsWorksheet.FindCell(ARow, ACol: Cardinal): PCell;
 var
-  i: Integer;
-  ACell: PCell;
+  LCell: TCell;
+  AVLNode: TAVLTreeNode;
 begin
-  i := 0;
   Result := nil;
-  
-  while (i < FCells.Count) do
-  begin
-    ACell := PCell(FCells.Items[i]);
-    
-    if (ACell^.Row = ARow) and (ACell^.Col = ACol) then
-    begin
-      Result := ACell;
-      Exit;
-    end;
-    
-    Inc(i);
-  end;
+
+  LCell.Row := ARow;
+  LCell.Col := ACol;
+  AVLNode := Cells.Find(@LCell);
+  if Assigned(AVLNode) then
+    result := PCell(AVLNode.Data);
 end;
 
 {@@
@@ -326,7 +328,7 @@ begin
     Result^.Row := ARow;
     Result^.Col := ACol;
 
-    FCells.Add(Result);
+    Cells.Add(Result);
   end;
 end;
 
@@ -343,28 +345,7 @@ end;
 }
 function TsWorksheet.GetCellCount: Cardinal;
 begin
-  Result := FCells.Count;
-end;
-
-{@@
-  Obtains the cell with a specific index in the internal list of cells.
-
-  The index goes from 0 to GetCellCount - 1.
-
-  This routine is used together with GetCellCount to
-  iterate througth all cells in a worksheet efficiently.
-
-  @param  AIndex    The index of the cell to be obtained
-
-  @return A pointer to the cell, or nil if it doesn't exist
-
-  @see    TCell
-  @see    GetCellCount
-}
-function TsWorksheet.GetCellByIndex(AIndex: Cardinal): PCell;
-begin
-  if FCells.Count > AIndex then Result := PCell(FCells.Items[AIndex])
-  else Result := nil;
+  Result := Cells.Count;
 end;
 
 {@@
@@ -379,19 +360,18 @@ end;
 }
 function TsWorksheet.GetLastColNumber: Cardinal;
 var
-  i: Integer;
-  ACell: PCell;
+  AVLNode: TAVLTreeNode;
 begin
-  i := 0;
   Result := 0;
 
-  while (i < FCells.Count) do
+  // Traverse the tree from lowest to highest.
+  // Since tree primary sort order is on Row
+  // highest Col could exist anywhere.
+  AVLNode := Cells.FindLowest;
+  While Assigned(AVLNode) do
   begin
-    ACell := PCell(FCells.Items[i]);
-
-    if ACell^.Col > Result then Result := ACell^.Col;
-
-    Inc(i);
+    Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
+    AVLNode := Cells.FindSuccessor(AVLNode);
   end;
 end;
 
@@ -407,20 +387,13 @@ end;
 }
 function TsWorksheet.GetLastRowNumber: Cardinal;
 var
-  i: Integer;
-  ACell: PCell;
+  AVLNode: TAVLTreeNode;
 begin
-  i := 0;
   Result := 0;
 
-  while (i < FCells.Count) do
-  begin
-    ACell := PCell(FCells.Items[i]);
-
-    if ACell^.Row > Result then Result := ACell^.Row;
-
-    Inc(i);
-  end;
+  AVLNode := FCells.FindHighest;
+  if Assigned(AVLNode) then
+    Result := PCell(AVLNode.Data).Row;
 end;
 
 {@@
@@ -460,8 +433,16 @@ end;
   Clears the list of Cells and releases their memory.
 }
 procedure TsWorksheet.RemoveAllCells;
+var
+  Node: TAVLTreeNode;
 begin
-  FCells.ForEachCall(RemoveCallback, nil);
+  Node:=FCells.FindLowest;
+  while Assigned(Node) do begin
+    RemoveCallback(Node.Data,nil);
+    Node.Data:=nil;
+    Node:=FCells.FindSuccessor(Node);
+  end;
+  FCells.Clear;
 end;
 
 {@@
@@ -725,7 +706,7 @@ end;
 }
 function TsWorkbook.GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
 begin
-  if AIndex < FWorksheets.Count then Result := TsWorksheet(FWorksheets.Items[AIndex])
+  if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then Result := TsWorksheet(FWorksheets.Items[AIndex])
   else Result := nil;
 end;
 
@@ -854,9 +835,16 @@ end;
   @param  AStream The output stream.
   @param  ACells  List of cells to be writeen
 }
-procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream; ACells: TFPList);
+procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
+var
+  AVLNode: TAVLTreeNode;
 begin
-  ACells.ForEachCall(WriteCellCallback, Pointer(AStream));
+  AVLNode := ACells.FindLowest;
+  While Assigned(AVLNode) do
+  begin
+    WriteCellCallback(AVLNode.Data, Pointer(AStream));
+    AVLNode := ACells.FindSuccessor(AVLNode);
+  end;
 end;
 
 {@@

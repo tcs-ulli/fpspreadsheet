@@ -130,7 +130,7 @@ procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream; AData: TsWorkbook)
 begin
   WriteBOF(AStream);
 
-  WriteCellsToStream(AStream, AData.GetFirstWorksheet.FCells);
+  WriteCellsToStream(AStream, AData.GetFirstWorksheet.Cells);
 
   WriteEOF(AStream);
 end;
