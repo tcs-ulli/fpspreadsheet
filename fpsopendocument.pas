@@ -404,7 +404,7 @@ var
   CurCell: PCell;
   CurRow: array of PCell;
   LastColNum: Cardinal;
-  ACell: PCell;
+  LCell: TCell;
   AVLNode: TAVLTreeNode;
 begin
   LastColNum := CurSheet.GetLastColNumber;
@@ -415,8 +415,6 @@ begin
   '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
   IntToStr(LastColNum + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
 
-  ACell := GetMem(SizeOf(TCell));
-
   // The cells need to be written in order, row by row, cell by cell
   for j := 0 to CurSheet.GetLastRowNumber do
   begin
@@ -426,9 +424,9 @@ begin
     // Write cells from this row.
     for k := 0 to LastColNum do
     begin
-      ACell^.Row := j;
-      ACell^.Col := k;
-      AVLNode := CurSheet.Cells.Find(ACell);
+      LCell.Row := j;
+      LCell.Col := k;
+      AVLNode := CurSheet.Cells.Find(@LCell);
       if Assigned(AVLNode) then
         WriteCellCallback(PCell(AVLNode.Data), nil)
       else
