@@ -78,6 +78,7 @@ type
 
     procedure ReadRKValue(const AStream: TStream);
     procedure ReadMulRKValues(const AStream: TStream);
+    procedure ReadFormulaExcel(AStream: TStream);
     procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD);
     function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
     procedure ReadRichString(const AStream: TStream);
@@ -139,7 +140,8 @@ const
   INT_EXCEL_ID_XF         = $00E0;
   INT_EXCEL_ID_RSTRING    = $00D6;
   INT_EXCEL_ID_RK         = $027E;
-  INT_EXCEL_ID_MULRK      = $00BD;  INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
+  INT_EXCEL_ID_MULRK      = $00BD;
+  INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
   INT_EXCEL_ID_CONTINUE   = $003C;
   INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
 
@@ -1092,11 +1094,12 @@ begin
 
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+//    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
     INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
     INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
     INT_EXCEL_ID_LABELSST:ReadLabelSST(AStream); //BIFF8 only
+    INT_EXCEL_ID_FORMULA: ReadFormulaExcel(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
     else
@@ -1177,6 +1180,28 @@ begin
       //Stream error... bypass by now
     end;
   end;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadFormulaExcel(AStream: TStream);
+var
+  ARow, ACol, XF: WORD;
+  ResultFormula: Double;
+  Data: array [0..7] of BYTE;
+  Flags: WORD;
+  FormulaSize: BYTE;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+
+  AStream.ReadBuffer(Data,Sizeof(Data));
+  Flags:=WordLEtoN(AStream.ReadWord);
+  AStream.ReadDWord; //Not used.
+  FormulaSize:=AStream.ReadByte;
+  //RPN data not used by now
+  AStream.Position:=AStream.Position+FormulaSize;
+
+  if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
+  Move(Data[0],ResultFormula,sizeof(Data));
+  FWorksheet.WriteNumber(ARow,ACol,ResultFormula);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadRowColXF(const AStream: TStream; out ARow,
