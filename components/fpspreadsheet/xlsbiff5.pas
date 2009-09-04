@@ -85,6 +85,7 @@ type
     procedure ReadRichString(AStream: TStream);
     procedure ReadRKValue(AStream: TStream);
     procedure ReadMulRKValues(AStream: TStream);
+    procedure ReadFormulaExcel(AStream: TStream);
   protected
     function DecodeRKValue(const ARK: DWORD): Double;
     procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD); virtual;
@@ -1027,10 +1028,11 @@ begin
 
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+//    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
     INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
     INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
+    INT_EXCEL_ID_FORMULA: ReadFormulaExcel(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
       // Show unsupported record types to console.
@@ -1171,6 +1173,28 @@ begin
       //Stream error... bypass by now
     end;
   end;
+end;
+
+procedure TsSpreadBIFF5Reader.ReadFormulaExcel(AStream: TStream);
+var
+  ARow, ACol, XF: WORD;
+  ResultFormula: Double;
+  Data: array [0..7] of BYTE;
+  Flags: WORD;
+  FormulaSize: BYTE;
+begin
+  ReadRowColXF(AStream,ARow,ACol,XF);
+
+  AStream.ReadBuffer(Data,Sizeof(Data));
+  Flags:=WordLEtoN(AStream.ReadWord);
+  AStream.ReadDWord; //Not used.
+  FormulaSize:=AStream.ReadByte;
+  //RPN data not used by now
+  AStream.Position:=AStream.Position+FormulaSize;
+
+  if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
+  Move(Data[0],ResultFormula,sizeof(Data));
+  FWorksheet.WriteNumber(ARow,ACol,ResultFormula);
 end;
 
 function TsSpreadBIFF5Reader.DecodeRKValue(const ARK: DWORD): Double;
