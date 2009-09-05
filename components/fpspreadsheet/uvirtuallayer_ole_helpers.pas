@@ -731,6 +731,7 @@ begin
       //Read it from MiniFAT
       AContext.MiniStream.Position:=AContext.Position;
       Result:=AContext.MiniStream.Read(ABuffer^,ASize);
+      AContext.Position:=AContext.MiniStream.Position;
       Exit;
     end;
   end;
