@@ -99,6 +99,7 @@ type
   TsWorksheet = class
   private
     FCells: TAvlTree;
+    FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     procedure RemoveCallback(data, arg: pointer);
   public
     Name: string;
@@ -109,6 +110,8 @@ type
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
+    function  GetFirstCell(): PCell;
+    function  GetNextCell(): PCell;
     function  GetLastColNumber: Cardinal;
     function  GetLastRowNumber: Cardinal;
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
@@ -294,7 +297,7 @@ begin
 
   LCell.Row := ARow;
   LCell.Col := ACol;
-  AVLNode := Cells.Find(@LCell);
+  AVLNode := FCells.Find(@LCell);
   if Assigned(AVLNode) then
     result := PCell(AVLNode.Data);
 end;
@@ -335,21 +338,65 @@ end;
 {@@
   Returns the number of cells in the worksheet with contents.
 
-  This routine is used together with GetCellByIndex to
-  iterate througth all cells in a worksheet efficiently.
+  This routine is used together with GetFirstCell and GetNextCell
+  to iterate througth all cells in a worksheet efficiently.
 
   @return The number of cells with contents in the worksheet
 
   @see    TCell
-  @see    GetCellByIndex
+  @see    GetFirstCell
+  @see    GetNextCell
 }
 function TsWorksheet.GetCellCount: Cardinal;
 begin
-  Result := Cells.Count;
+  Result := FCells.Count;
 end;
 
 {@@
-  Returns the number of the last column with a cell with contents.
+  Returns the first Cell.
+
+  Use together with GetCellCount and GetNextCell
+  to iterate througth all cells in a worksheet efficiently.
+
+  @return The first cell if any exists, nil otherwise
+
+  @see    TCell
+  @see    GetCellCount
+  @see    GetNextCell
+}
+function TsWorksheet.GetFirstCell(): PCell;
+begin
+  FCurrentNode := FCells.FindLowest();
+  if FCurrentNode <> nil then
+    Result := PCell(FCurrentNode.Data)
+  else Result := nil;
+end;
+
+{@@
+  Returns the next Cell.
+
+  Should always be used either after GetFirstCell or
+  after GetNextCell.
+
+  Use together with GetCellCount and GetFirstCell
+  to iterate througth all cells in a worksheet efficiently.
+
+  @return The first cell if any exists, nil otherwise
+
+  @see    TCell
+  @see    GetCellCount
+  @see    GetFirstCell
+}
+function TsWorksheet.GetNextCell(): PCell;
+begin
+  FCurrentNode := FCells.FindSuccessor(FCurrentNode);
+  if FCurrentNode <> nil then
+    Result := PCell(FCurrentNode.Data)
+  else Result := nil;
+end;
+
+{@@
+  Returns the 0-based number of the last column with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
 
@@ -367,16 +414,16 @@ begin
   // Traverse the tree from lowest to highest.
   // Since tree primary sort order is on Row
   // highest Col could exist anywhere.
-  AVLNode := Cells.FindLowest;
+  AVLNode := FCells.FindLowest;
   While Assigned(AVLNode) do
   begin
     Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
-    AVLNode := Cells.FindSuccessor(AVLNode);
+    AVLNode := FCells.FindSuccessor(AVLNode);
   end;
 end;
 
 {@@
-  Returns the number of the last row with a cell with contents.
+  Returns the 0-based number of the last row with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
 
