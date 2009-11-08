@@ -59,7 +59,8 @@ type
     destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
-    procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
+    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+      const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
@@ -314,7 +315,8 @@ end;
 {
   Writes an OOXML document to the disc
 }
-procedure TsSpreadOOXMLWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
+procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
+  AData: TsWorkbook; const AOverwriteExisting: Boolean);
 var
   FZip: TZipper;
   i: Integer;

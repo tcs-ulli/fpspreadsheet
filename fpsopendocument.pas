@@ -66,7 +66,8 @@ type
   public
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
-    procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
+    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+      const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
@@ -459,7 +460,8 @@ end;
 {
   Writes an OOXML document to the disc.
 }
-procedure TsSpreadOpenDocWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
+procedure TsSpreadOpenDocWriter.WriteToFile(const AFileName: string;
+  AData: TsWorkbook; const AOverwriteExisting: Boolean);
 var
   FZip: TZipper;
 begin
