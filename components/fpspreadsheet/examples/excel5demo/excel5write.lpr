@@ -75,7 +75,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');}
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel5);
+  MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel5, False);
   MyWorkbook.Free;
 end.
 

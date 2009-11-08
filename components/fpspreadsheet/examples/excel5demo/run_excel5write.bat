@@ -1,3 +1,3 @@
-del test.xls
+#del test.xls
 excel5write.exe
 pause

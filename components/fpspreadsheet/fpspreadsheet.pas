@@ -139,7 +139,9 @@ type
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat);
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
-    procedure WriteToFile(AFileName: string; AFormat: TsSpreadsheetFormat);
+    procedure WriteToFile(const AFileName: string;
+      const AFormat: TsSpreadsheetFormat;
+      const AOverwriteExisting: Boolean = False);
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string): TsWorksheet;
@@ -182,7 +184,8 @@ type
     { General writing methods }
     procedure WriteCellCallback(data, arg: pointer);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
-    procedure WriteToFile(AFileName: string; AData: TsWorkbook); virtual;
+    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+      const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     { Record writing methods }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); virtual;
@@ -674,14 +677,15 @@ end;
 
   If the file doesn't exist, it will be created.
 }
-procedure TsWorkbook.WriteToFile(AFileName: string; AFormat: TsSpreadsheetFormat);
+procedure TsWorkbook.WriteToFile(const AFileName: string;
+ const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False);
 var
   AWriter: TsCustomSpreadWriter;
 begin
   AWriter := CreateSpreadWriter(AFormat);
 
   try
-    AWriter.WriteToFile(AFileName, Self);
+    AWriter.WriteToFile(AFileName, Self, AOverwriteExisting);
   finally
     AWriter.Free;
   end;
@@ -905,11 +909,16 @@ end;
 
   @see    TsWorkbook
 }
-procedure TsCustomSpreadWriter.WriteToFile(AFileName: string; AData: TsWorkbook);
+procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
+  AData: TsWorkbook; const AOverwriteExisting: Boolean = False);
 var
   OutputFile: TFileStream;
+  lMode: Word;
 begin
-  OutputFile := TFileStream.Create(AFileName, fmCreate or fmOpenWrite);
+  if AOverwriteExisting then lMode := fmCreate or fmOpenWrite
+  else lMode := fmCreate;
+
+  OutputFile := TFileStream.Create(AFileName, lMode);
   try
     WriteToStream(OutputFile, AData);
   finally

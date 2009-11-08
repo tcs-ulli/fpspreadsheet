@@ -94,7 +94,8 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
+    procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument;
+     const AOverwriteExisting: Boolean = False; const AStreamName: UTF8String='Book');
     procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
@@ -690,12 +691,22 @@ end;
   it should be placed doesn't exist.
 }
 procedure TOLEStorage.WriteOLEFile(AFileName: string;
-  AOLEDocument: TOLEDocument; const AStreamName: UTF8String);
+  AOLEDocument: TOLEDocument; const AOverwriteExisting: Boolean;
+  const AStreamName: UTF8String);
 var
   cbWritten: Cardinal;
   AFileStream: TFileStream;
   i, x: Cardinal;
+  lMode: Word;
 begin
+  // The behavior of LCL classes is failling to write to existing file,
+  // But here we make this settable
+  if AOverwriteExisting then lMode := fmCreate or fmOpenWrite
+  else lMode := fmCreate;
+
+  if (not AOverwriteExisting) and FileExists(AFileName) then
+   Raise EStreamError.Createfmt('File already exists "%s"',[AFileName]);
+
   { Fill information for helper routines }
   FOLEDocument := AOLEDocument;
 
@@ -720,7 +731,7 @@ begin
 
   { Create a Storage Object }
   OleCheck(StgCreateDocfile(PWideChar(WideString(AFileName)),
-   STGM_READWRITE or STGM_FAILIFTHERE or STGM_SHARE_EXCLUSIVE or STGM_DIRECT,
+   STGM_READWRITE or STGM_CREATE or STGM_SHARE_EXCLUSIVE or STGM_DIRECT,
    0, FStorage));
 
   { Create a workbook stream in the storage.  A BIFF5 file must
@@ -735,9 +746,7 @@ begin
 
 {$else}
 
-  // Follows the behavior of LCL classes: Fails to write to existing file
-  if FileExists(AFileName) then Raise EStreamError.Createfmt('File already exists "%s"',[AFileName]);
-  AFileStream := TFileStream.Create(AFileName, fmCreate);
+  AFileStream := TFileStream.Create(AFileName, lMode);
   try
     // Header
     WriteOLEHeader(AFileStream);

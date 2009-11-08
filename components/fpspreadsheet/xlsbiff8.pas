@@ -103,7 +103,8 @@ type
 //    constructor Create;
 //    destructor Destroy; override;
     { General writing methods }
-    procedure WriteToFile(AFileName: string; AData: TsWorkbook); override;
+    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+      const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -246,7 +247,8 @@ const
 *                      COM functions
 *
 *******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteToFile(AFileName: string; AData: TsWorkbook);
+procedure TsSpreadBIFF8Writer.WriteToFile(const AFileName: string;
+  AData: TsWorkbook; const AOverwriteExisting: Boolean);
 var
   MemStream: TMemoryStream;
   OutputStorage: TOLEStorage;
@@ -260,7 +262,7 @@ begin
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
 
-    OutputStorage.WriteOLEFile(AFileName, OLEDocument,'Workbook');
+    OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting, 'Workbook');
   finally
     MemStream.Free;
     OutputStorage.Free;

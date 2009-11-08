@@ -40,14 +40,15 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
+  CurCell := MyWorkSheet.GetFirstCell();
   for i := 0 to MyWorksheet.GetCellCount - 1 do
   begin
-    CurCell := MyWorkSheet.GetCellByIndex(i);
     WriteLn('Row: ', CurCell^.Row,
      ' Col: ', CurCell^.Col, ' Value: ',
      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
        CurCell^.Col))
      );
+    CurCell := MyWorkSheet.GetNextCell();
   end;
 
   // Finalization
