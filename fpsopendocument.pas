@@ -30,7 +30,7 @@ uses
   Classes, SysUtils,
   fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released. Changed by JLJR}
   fpspreadsheet,
-  xmlread, DOM, AVL_Tree;
+  xmlread, DOM, AVL_Tree,math;
   
 type
 
@@ -142,87 +142,86 @@ var
   FilePath : string;
   UnZip : TUnZipper;
   FileList : TStringList;
-  ExitSub : Boolean;
   Doc : TXMLDocument;
   BodyNode, SpreadSheetNode, TableNode, RowNode, CellNode : TDOMNode;
   ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
   RowsCount, ColsCount : integer;
 begin
   //unzip content.xml into AFileName path
-  ExitSub:=false;
-  FilePath:=ExtractFilePath(AFileName);
+  FilePath:=GetTempDir(false);
   UnZip:=TUnZipper.Create;
   UnZip.OutputPath:=FilePath;
   FileList:=TStringList.Create;
   FileList.Add('content.xml');
   try
     Unzip.UnZipFiles(AFileName,FileList);
-  Except
-    ExitSub:=true;
+  finally
+    FreeAndNil(FileList);
+    FreeAndNil(UnZip);
   end; //try
-  FileList.Free;
-  UnZip.Free;
-  if ExitSub then Exit;
 
-  //process the xml file
-  ReadXMLFile(Doc,FilePath+'content.xml');
-  DeleteFile(FilePath+'content.xml');
+  Doc:=nil;
+  try
+    //process the xml file
+    ReadXMLFile(Doc,FilePath+'content.xml');
+    DeleteFile(FilePath+'content.xml');
 
-  BodyNode:= Doc.DocumentElement.FindNode('office:body');
-  if not Assigned(BodyNode) then Exit;
+    BodyNode:= Doc.DocumentElement.FindNode('office:body');
+    if not Assigned(BodyNode) then Exit;
 
-  SpreadSheetNode:=BodyNode.FindNode('office:spreadsheet');
-  if not Assigned(SpreadSheetNode) then Exit;
+    SpreadSheetNode:=BodyNode.FindNode('office:spreadsheet');
+    if not Assigned(SpreadSheetNode) then Exit;
 
-  //process each table (sheet)
-  TableNode:=SpreadSheetNode.FindNode('table:table');
-  while Assigned(TableNode) do begin
-    FWorkSheet:=aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
-    Row:=0;
+    //process each table (sheet)
+    TableNode:=SpreadSheetNode.FindNode('table:table');
+    while Assigned(TableNode) do begin
+      FWorkSheet:=aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
+      Row:=0;
 
-    //process each row inside the sheet
-    RowNode:=TableNode.FindNode('table:table-row');
-    while Assigned(RowNode) do begin
+      //process each row inside the sheet
+      RowNode:=TableNode.FindNode('table:table-row');
+      while Assigned(RowNode) do begin
 
-      Col:=0;
+        Col:=0;
 
-      ParamRowsRepeated:=GetAttrValue(RowNode,'table:number-rows-repeated');
-      if ParamRowsRepeated='' then ParamRowsRepeated:='1';
+        ParamRowsRepeated:=GetAttrValue(RowNode,'table:number-rows-repeated');
+        if ParamRowsRepeated='' then ParamRowsRepeated:='1';
 
-      //process each cell of the row
-      CellNode:=RowNode.FindNode('table:table-cell');
-      while Assigned(CellNode) do begin
-        ParamColsRepeated:=GetAttrValue(CellNode,'table:number-columns-repeated');
-        if ParamColsRepeated='' then ParamColsRepeated:='1';
+        //process each cell of the row
+        CellNode:=RowNode.FindNode('table:table-cell');
+        while Assigned(CellNode) do begin
+          ParamColsRepeated:=GetAttrValue(CellNode,'table:number-columns-repeated');
+          if ParamColsRepeated='' then ParamColsRepeated:='1';
 
-        //select this cell value's type
-        ParamValueType:=GetAttrValue(CellNode,'office:value-type');
-        ParamFormula:=GetAttrValue(CellNode,'table:formula');
-        for RowsCount:=0 to StrToInt(ParamRowsRepeated)-1 do begin
-          for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
-            if ParamValueType='string' then
-              ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
-            else
-            if ParamFormula<>'' then
-              ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
-            else
-            if ParamValueType='float' then
-              ReadNumber(Row+RowsCount,Col+ColsCount,CellNode);
-          end; //for ColsCount
-        end; //for RowsCount
+          //select this cell value's type
+          ParamValueType:=GetAttrValue(CellNode,'office:value-type');
+          ParamFormula:=GetAttrValue(CellNode,'table:formula');
+          for RowsCount:=0 to StrToInt(ParamRowsRepeated)-1 do begin
+            for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
+              if ParamValueType='string' then
+                ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
+              else
+              if ParamFormula<>'' then
+                ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
+              else
+              if ParamValueType='float' then
+                ReadNumber(Row+RowsCount,Col+ColsCount,CellNode);
+            end; //for ColsCount
+          end; //for RowsCount
 
-        Inc(Col,ColsCount+1);
-        CellNode:=CellNode.NextSibling;
-      end; //while Assigned(CellNode)
+          Inc(Col,ColsCount+1);
+          CellNode:=CellNode.NextSibling;
+        end; //while Assigned(CellNode)
 
-      Inc(Row,RowsCount+1);
-      RowNode:=RowNode.NextSibling;
-    end; // while Assigned(RowNode)
+        Inc(Row,RowsCount+1);
+        RowNode:=RowNode.NextSibling;
+      end; // while Assigned(RowNode)
 
-    TableNode:=TableNode.NextSibling;
-  end; //while Assigned(TableNode)
-
-  Doc.Free;
+      TableNode:=TableNode.NextSibling;
+    end; //while Assigned(TableNode)
+  finally
+    Doc.Free;
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
@@ -238,9 +237,15 @@ end;
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 var
   FSettings: TFormatSettings;
+  Value: String;
 begin
   FSettings.DecimalSeparator:='.';
-  FWorkSheet.WriteNumber(Arow,ACol,StrToFloat(ACellNode.TextContent,FSettings));
+  Value:=GetAttrValue(ACellNode,'office:value');
+  if UpperCase(Value)='1.#INF' then begin
+    FWorkSheet.WriteNumber(Arow,ACol,1.0/0.0);
+  end else begin
+    FWorkSheet.WriteNumber(Arow,ACol,StrToFloat(GetAttrValue(ACellNode,'office:value'),FSettings));
+  end;
 end;
 
 { TsSpreadOpenDocWriter }
@@ -538,12 +543,19 @@ procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double);
 var
   StrValue: string;
+  DisplayStr: string;
 begin
   // The row should already be the correct one
-  Str(AValue, StrValue);
+  if IsInfinite(AValue) then begin
+    StrValue:='1.#INF';
+    DisplayStr:='1.#INF';
+  end else begin
+    Str(AValue, StrValue);
+    DisplayStr:=FloatToStr(AValue);
+  end;
   FContent := FContent +
     '  <table:table-cell office:value-type="float" office:value="' + StrValue + '">' + LineEnding +
-    '    <text:p>' + FloatToStr(AValue) + '</text:p>' + LineEnding +
+    '    <text:p>' + DisplayStr + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
 
