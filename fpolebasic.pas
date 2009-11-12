@@ -30,7 +30,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
+    procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AOverwriteExisting: Boolean = False; const AStreamName: UTF8String='Book');
     procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
@@ -54,7 +54,8 @@ end;
   it should be placed doesn't exist.
 }
 procedure TOLEStorage.WriteOLEFile(AFileName: string;
-  AOLEDocument: TOLEDocument; const AStreamName: UTF8String);
+  AOLEDocument: TOLEDocument; const AOverwriteExisting: Boolean;
+  const AStreamName: UTF8String);
 var
   RealFile: TFileStream;
   fsOLE: TVirtualLayer_OLE;
@@ -62,6 +63,9 @@ var
   VLAbsolutePath: UTF8String;
 begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
+  if not AOverwriteExisting and FileExists(AFileName) then begin
+      Raise EStreamError.Createfmt('File already exists "%s"',[AFileName]);
+  end;
   RealFile:=TFileStream.Create(AFileName,fmCreate);
   fsOLE:=TVirtualLayer_OLE.Create(RealFile);
   fsOLE.Format(); //Initialize and format the OLE container.
@@ -85,19 +89,33 @@ var
   VLAbsolutePath: UTF8String;
 begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
-  RealFile:=TFileStream.Create(AFileName,fmOpenRead);
-  fsOLE:=TVirtualLayer_OLE.Create(RealFile);
-  fsOLE.Initialize(); //Initialize the OLE container.
-  OLEStream:=fsOLE.CreateStream(VLAbsolutePath,fmOpenRead);
-  if not Assigned(AOLEDocument.Stream) then begin
-    AOLEDocument.Stream:=TMemoryStream.Create;
-  end else begin
-    AOLEDocument.Stream.Clear;
+  try
+    RealFile:=nil;
+    RealFile:=TFileStream.Create(AFileName,fmOpenRead or fmShareDenyWrite);
+    try
+      fsOLE:=nil;
+      fsOLE:=TVirtualLayer_OLE.Create(RealFile);
+      fsOLE.Initialize(); //Initialize the OLE container.
+      try
+        OLEStream:=nil;
+        OLEStream:=fsOLE.CreateStream(VLAbsolutePath,fmOpenRead);
+        if Assigned(OLEStream) then begin
+          if not Assigned(AOLEDocument.Stream) then begin
+            AOLEDocument.Stream:=TMemoryStream.Create;
+          end else begin
+            AOLEDocument.Stream.Clear;
+          end;
+          AOLEDocument.Stream.CopyFrom(OLEStream,OLEStream.Size);
+        end;
+      finally
+        OLEStream.Free;
+      end;
+    finally
+      fsOLE.Free;
+    end;
+  finally
+    RealFile.Free;
   end;
-  AOLEDocument.Stream.CopyFrom(OLEStream,OLEStream.Size);
-  OLEStream.Free;
-  fsOLE.Free;
-  RealFile.Free;
 end;
 
 {@@
