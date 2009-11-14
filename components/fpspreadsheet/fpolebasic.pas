@@ -7,6 +7,10 @@ Note: Compatibility with previous version (fpolestorage.pas).
 }
 unit fpolebasic;
 
+{$ifdef fpc}
+  {$mode delphi}
+{$endif}
+
 interface
 
 uses
@@ -28,24 +32,12 @@ type
   TOLEStorage = class
   private
   public
-    constructor Create;
-    destructor Destroy; override;
     procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AOverwriteExisting: Boolean = False; const AStreamName: UTF8String='Book');
     procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
 
 implementation
-
-constructor TOLEStorage.Create;
-begin
-  inherited Create;
-end;
-
-destructor TOLEStorage.Destroy;
-begin
-  inherited Destroy;
-end;
 
 {@@
   Writes the OLE document specified in AOLEDocument
