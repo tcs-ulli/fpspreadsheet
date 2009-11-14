@@ -544,14 +544,16 @@ procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
 var
   StrValue: string;
   DisplayStr: string;
+  FSettings: TFormatSettings;
 begin
   // The row should already be the correct one
   if IsInfinite(AValue) then begin
     StrValue:='1.#INF';
     DisplayStr:='1.#INF';
   end else begin
-    Str(AValue, StrValue);
-    DisplayStr:=FloatToStr(AValue);
+    FSettings.DecimalSeparator:='.';
+    StrValue:=FloatToStr(AValue,FSettings); //Uses '.' as decimal separator
+    DisplayStr:=FloatToStr(AValue); // Uses locale decimal separator
   end;
   FContent := FContent +
     '  <table:table-cell office:value-type="float" office:value="' + StrValue + '">' + LineEnding +
