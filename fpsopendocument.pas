@@ -231,7 +231,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 begin
-  FWorkSheet.WriteUTF8Text(ARow,ACol,ACellNode.TextContent);
+  FWorkSheet.WriteUTF8Text(ARow,ACol,UTF8Encode(ACellNode.TextContent));
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
