@@ -1271,6 +1271,9 @@ begin
 
   while (not BIFF8EOF) do
   begin
+    //Safe to not read beyond assigned worksheet names.
+    if FCurrentWorksheet>FWorksheetNames.Count-1 then break;
+
     ReadWorksheet(AStream, AData);
 
     // Check for the end of the file
