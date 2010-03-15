@@ -1390,7 +1390,10 @@ begin
     Dec(PendingRecordSize,2);
     LString:='';
     while PendingRecordSize>0 do begin
-      LString:=LString+ReadString(AStream,StringLength);
+      if StringLength>0 then begin
+        //Read a stream of zero length reads all the stream.
+        LString:=LString+ReadString(AStream,StringLength);
+      end;
       if (PendingRecordSize=0) and (Items>1) then begin
         //A continue will happend, read the continue
         //tag and continue linking...
