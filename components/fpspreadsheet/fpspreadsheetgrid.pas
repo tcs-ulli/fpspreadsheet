@@ -1,3 +1,10 @@
+{
+fpspreadsheetgrid.pas
+
+Grid component which can load and write data from / to FPSpreadsheet documents
+
+AUTHORS: Felipe Monteiro de Carvalho
+}
 unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
@@ -10,14 +17,12 @@ uses
 
 type
 
-  { TsWorksheetGrid }
-
   { TsCustomWorksheetGrid }
 
   TsCustomWorksheetGrid = class(TCustomStringGrid)
   private
-    FDisplayFixedColRow: Boolean;
     FWorksheet: TsWorksheet;
+    FDisplayFixedColRow: Boolean;
     procedure SetDisplayFixedColRow(const AValue: Boolean);
     { Private declarations }
   protected
@@ -26,8 +31,11 @@ type
     { methods }
     constructor Create(AOwner: TComponent); override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure SaveToWorksheet(AWorksheet: TsWorksheet);
     property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
   end;
+
+  { TsWorksheetGrid }
 
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
@@ -135,6 +143,10 @@ begin
   RegisterComponents('Additional',[TsWorksheetGrid]);
 end;
 
+const
+  INT_FPSCOLROW_TO_GRIDCOLROW_WITH_FIXEDCOLROW = 2;
+  INT_FPSCOLROW_TO_GRIDCOLROW = 1;
+
 { TsCustomWorksheetGrid }
 
 procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(const AValue: Boolean);
@@ -181,13 +193,13 @@ begin
   begin
     if DisplayFixedColRow then
     begin
-      ColCount := FWorksheet.GetLastColNumber() + 2;
-      RowCount := FWorksheet.GetLastRowNumber() + 2;
+      ColCount := FWorksheet.GetLastColNumber() + INT_FPSCOLROW_TO_GRIDCOLROW_WITH_FIXEDCOLROW;
+      RowCount := FWorksheet.GetLastRowNumber() + INT_FPSCOLROW_TO_GRIDCOLROW_WITH_FIXEDCOLROW;
     end
     else
     begin
-      ColCount := FWorksheet.GetLastColNumber() + 1;
-      RowCount := FWorksheet.GetLastRowNumber() + 1;
+      ColCount := FWorksheet.GetLastColNumber() + INT_FPSCOLROW_TO_GRIDCOLROW;
+      RowCount := FWorksheet.GetLastRowNumber() + INT_FPSCOLROW_TO_GRIDCOLROW;
     end;
   end;
 
@@ -207,6 +219,23 @@ begin
 
     lCell := FWorksheet.GetNextCell();
   end;
+end;
+
+procedure TsCustomWorksheetGrid.SaveToWorksheet(AWorksheet: TsWorksheet);
+var
+  x, y: Integer;
+  Str: string;
+begin
+  if AWorksheet = nil then Exit;
+
+  { Copy the contents }
+
+  for x := 0 to ColCount - 1 do
+    for y := 0 to RowCount - 1 do
+    begin
+      Str := GetCells(x, y);
+      if Str <> '' then AWorksheet.WriteUTF8Text(y, x, Str);
+    end;
 end;
 
 end.
