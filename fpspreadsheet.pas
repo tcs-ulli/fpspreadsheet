@@ -115,6 +115,7 @@ type
     function  GetLastColNumber: Cardinal;
     function  GetLastRowNumber: Cardinal;
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
+    function  ReadAsNumber(ARow, ACol: Cardinal): Double;
     procedure RemoveAllCells;
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
@@ -476,6 +477,40 @@ begin
   cctUTF8String:     Result := ACell^.UTF8StringValue;
   else
     Result := '';
+  end;
+end;
+
+function TsWorksheet.ReadAsNumber(ARow, ACol: Cardinal): Double;
+var
+  ACell: PCell;
+  Str: string;
+begin
+  ACell := FindCell(ARow, ACol);
+
+  if ACell = nil then
+  begin
+    Result := 0.0;
+    Exit;
+  end;
+
+  case ACell^.ContentType of
+
+  //cctFormula
+  cctNumber:     Result := ACell^.NumberValue;
+  cctUTF8String:
+  begin
+    // The try is necessary to catch errors while converting the string
+    // to a number, an operation which may fail
+    try
+      Str := ACell^.UTF8StringValue;
+      Result := StrToFloat(Str);
+    except
+      Result := 0.0;
+    end;
+  end;
+
+  else
+    Result := 0.0;
   end;
 end;
 

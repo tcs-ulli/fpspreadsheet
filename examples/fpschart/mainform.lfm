@@ -1,0 +1,62 @@
+object FPSChartForm: TFPSChartForm
+  Left = 179
+  Height = 331
+  Top = 157
+  Width = 742
+  Caption = 'FPSpreadsheet Chart Example'
+  ClientHeight = 331
+  ClientWidth = 742
+  LCLVersion = '0.9.29'
+  object MyChart: TChart
+    Left = 400
+    Height = 240
+    Top = 24
+    Width = 336
+    AxisList = <    
+      item
+        Alignment = calLeft
+        Title.Font.Orientation = 900
+      end    
+      item
+        Alignment = calBottom
+      end>
+    Foot.Brush.Color = clBtnFace
+    Foot.Font.Color = clBlue
+    Title.Brush.Color = clBtnFace
+    Title.Font.Color = clBlue
+    Title.Text.Strings = (
+      'TAChart'
+    )
+    ParentColor = False
+    object MyChartLineSeries: TLineSeries
+      LinePen.Color = clRed
+      SeriesColor = clRed
+      Source = FPSChartSource
+    end
+  end
+  object WorksheetGrid: TsWorksheetGrid
+    Left = 16
+    Height = 240
+    Top = 24
+    Width = 360
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
+    TabOrder = 1
+  end
+  object btnCreateGraphic: TButton
+    Left = 104
+    Height = 25
+    Top = 280
+    Width = 128
+    Caption = 'Create Graphic'
+    OnClick = btnCreateGraphicClick
+    TabOrder = 2
+  end
+  object FPSChartSource: TsWorksheetChartSource
+    PointsNumber = 5
+    YFirstCellCol = 1
+    XSelectionDirection = fpsVerticalSelection
+    YSelectionDirection = fpsVerticalSelection
+    left = 376
+    top = 264
+  end
+end
