@@ -35,7 +35,7 @@ var
 begin
   lWorksheet := TsWorksheet.Create;
   try
-    lWorksheet.GetCell(2, 2)^.UTF8StringValue := 'Algo';
+    lWorksheet.WriteUTF8Text(2, 2, 'Algo');
     sWorksheetGrid1.LoadFromWorksheet(lWorksheet);
   finally
     lWorksheet.Free;
