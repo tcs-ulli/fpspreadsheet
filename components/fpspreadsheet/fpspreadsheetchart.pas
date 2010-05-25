@@ -19,11 +19,9 @@ uses
   // FPSpreadsheet Visual
   fpspreadsheetgrid,
   // FPSpreadsheet
-  fpspreadsheet;
+  fpspreadsheet, fpsutils;
 
 type
-
-  TsSelectionDirection = (fpsVerticalSelection, fpsHorizontalSelection);
 
   {@@ Chart data source designed to work together with TChart from Lazarus
     to display the data.
@@ -60,6 +58,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure LoadFromWorksheetGrid(const AValue: TsWorksheetGrid);
+    procedure LoadPropertiesFromStrings(AXInterval, AYInterval, AXTitle, AYTitle, ATitle: string);
   public
   published
 //    property WorksheetGrid: TsWorksheetGrid read FWorksheetGrid write SetWorksheetGrid;
@@ -203,6 +202,18 @@ begin
 
   InvalidateCaches;
   Notify;
+end;
+
+procedure TsWorksheetChartSource.LoadPropertiesFromStrings(AXInterval,
+  AYInterval, AXTitle, AYTitle, ATitle: string);
+var
+  lXCount, lYCount: Integer;
+begin
+  ParseIntervalString(AXInterval, FXFirstCellRow, FXFirstCellCol, lXCount, FXSelectionDirection);
+  ParseIntervalString(AYInterval, FYFirstCellRow, FYFirstCellCol, lYCount, FYSelectionDirection);
+  if lXCount <> lYCount then raise Exception.Create(
+    'TsWorksheetChartSource.LoadPropertiesFromStrings: Interval sizes don''t match');
+  FPointsNumber := lXCount;
 end;
 
 end.

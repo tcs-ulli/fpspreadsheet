@@ -31,6 +31,7 @@ type
     { methods }
     constructor Create(AOwner: TComponent); override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure LoadFromSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
     procedure SaveToWorksheet(AWorksheet: TsWorksheet);
     property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
   end;
@@ -210,7 +211,7 @@ begin
   begin
     lCol := lCell^.Col;
     lRow := lCell^.Row;
-    lStr := lCell^.UTF8StringValue;
+    lStr := FWorksheet.ReadAsUTF8Text(lRow, lCol);
 
     if DisplayFixedColRow then
       SetCells(lCol + 1, lRow + 1, lStr)
@@ -218,6 +219,20 @@ begin
       SetCells(lCol, lRow, lStr);
 
     lCell := FWorksheet.GetNextCell();
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
+  AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
+var
+  lWorkbook: TsWorkbook;
+begin
+  lWorkbook := TsWorkbook.Create;
+  try
+    lWorkbook.ReadFromFile(AFileName, AFormat);
+    LoadFromWorksheet(lWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  finally
+    lWorkbook.Free;
   end;
 end;
 

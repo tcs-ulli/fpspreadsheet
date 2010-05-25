@@ -13,7 +13,6 @@ uses
 {$R *.res}
 
 begin
-  Application.Title:='project1';
   Application.Initialize;
   Application.CreateForm(TFPSChartForm, FPSChartForm);
   Application.Run;
