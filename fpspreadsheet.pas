@@ -74,7 +74,14 @@ type
 
   TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber, cctUTF8String);
   
-  {@@ Cell structure for TsWorksheet }
+  {@@ Cell structure for TsWorksheet
+
+      Never suppose that all *Value fields are valid,
+      only one of the ContentTypes is valid. For other fields
+      use TWorksheet.ReadAsUTF8Text and similar methods
+
+      @see TWorksheet.ReadAsUTF8Text
+  }
 
   TCell = record
     Col: Byte; // zero-based
@@ -210,6 +217,8 @@ procedure RegisterSpreadFormat(
   AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass;
   AFormat: TsSpreadsheetFormat);
+
+
 
 implementation
 

@@ -1,16 +1,17 @@
 object FPSChartForm: TFPSChartForm
-  Left = 179
-  Height = 331
-  Top = 157
-  Width = 742
+  Left = 239
+  Height = 382
+  Top = 154
+  Width = 700
   Caption = 'FPSpreadsheet Chart Example'
-  ClientHeight = 331
-  ClientWidth = 742
+  ClientHeight = 382
+  ClientWidth = 700
+  OnCreate = FormCreate
   LCLVersion = '0.9.29'
   object MyChart: TChart
-    Left = 400
+    Left = 352
     Height = 240
-    Top = 24
+    Top = 136
     Width = 336
     AxisList = <    
       item
@@ -37,26 +38,106 @@ object FPSChartForm: TFPSChartForm
   object WorksheetGrid: TsWorksheetGrid
     Left = 16
     Height = 240
-    Top = 24
-    Width = 360
+    Top = 136
+    Width = 328
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
     TabOrder = 1
   end
   object btnCreateGraphic: TButton
-    Left = 104
+    Left = 464
     Height = 25
-    Top = 280
+    Top = 56
     Width = 128
     Caption = 'Create Graphic'
     OnClick = btnCreateGraphicClick
     TabOrder = 2
+  end
+  object Label1: TLabel
+    Left = 16
+    Height = 34
+    Top = 8
+    Width = 676
+    AutoSize = False
+    Caption = 'Please add data to the grid or load it from a file, then choose the location of the data for the X and Y axises and click on the button "Create Graphic" to generate a chart.'
+    ParentColor = False
+    WordWrap = True
+  end
+  object editSourceFile: TFileNameEdit
+    Left = 152
+    Height = 22
+    Top = 48
+    Width = 136
+    DialogOptions = []
+    FilterIndex = 0
+    HideDirectories = False
+    ButtonWidth = 23
+    NumGlyphs = 0
+    MaxLength = 0
+    TabOrder = 3
+  end
+  object Label2: TLabel
+    Left = 14
+    Height = 18
+    Top = 51
+    Width = 130
+    Caption = 'Source Spreadsheet:'
+    ParentColor = False
+  end
+  object btnLoadSpreadsheet: TButton
+    Left = 320
+    Height = 25
+    Top = 48
+    Width = 75
+    Caption = 'Load'
+    OnClick = btnLoadSpreadsheetClick
+    TabOrder = 4
+  end
+  object editXAxis: TLabeledEdit
+    Left = 64
+    Height = 22
+    Top = 80
+    Width = 80
+    EditLabel.AnchorSideLeft.Control = editXAxis
+    EditLabel.AnchorSideTop.Control = editXAxis
+    EditLabel.AnchorSideTop.Side = asrCenter
+    EditLabel.AnchorSideRight.Control = editXAxis
+    EditLabel.AnchorSideBottom.Control = editXAxis
+    EditLabel.Left = 17
+    EditLabel.Height = 18
+    EditLabel.Top = 82
+    EditLabel.Width = 44
+    EditLabel.Caption = 'X-Axis:'
+    EditLabel.ParentColor = False
+    LabelPosition = lpLeft
+    TabOrder = 5
+    Text = 'A1:A5'
+  end
+  object EditYAxis: TLabeledEdit
+    Left = 208
+    Height = 22
+    Top = 80
+    Width = 80
+    EditLabel.AnchorSideLeft.Control = EditYAxis
+    EditLabel.AnchorSideTop.Control = EditYAxis
+    EditLabel.AnchorSideTop.Side = asrCenter
+    EditLabel.AnchorSideRight.Control = EditYAxis
+    EditLabel.AnchorSideBottom.Control = EditYAxis
+    EditLabel.Left = 161
+    EditLabel.Height = 18
+    EditLabel.Top = 82
+    EditLabel.Width = 44
+    EditLabel.Caption = 'Y-Axis:'
+    EditLabel.ParentColor = False
+    LabelPosition = lpLeft
+    TabOrder = 6
+    Text = 'B1:B5'
   end
   object FPSChartSource: TsWorksheetChartSource
     PointsNumber = 5
     YFirstCellCol = 1
     XSelectionDirection = fpsVerticalSelection
     YSelectionDirection = fpsVerticalSelection
-    left = 376
-    top = 264
+    left = 632
+    top = 56
   end
 end

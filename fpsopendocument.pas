@@ -189,7 +189,8 @@ begin
 
         //process each cell of the row
         CellNode:=RowNode.FindNode('table:table-cell');
-        while Assigned(CellNode) do begin
+        while Assigned(CellNode) do
+        begin
           ParamColsRepeated:=GetAttrValue(CellNode,'table:number-columns-repeated');
           if ParamColsRepeated='' then ParamColsRepeated:='1';
 
@@ -200,11 +201,9 @@ begin
             for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
               if ParamValueType='string' then
                 ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
-              else
-              if ParamFormula<>'' then
+              else if ParamFormula<>'' then
                 ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
-              else
-              if ParamValueType='float' then
+              else if ParamValueType='float' then
                 ReadNumber(Row+RowsCount,Col+ColsCount,CellNode);
             end; //for ColsCount
           end; //for RowsCount
@@ -226,7 +225,8 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 begin
-
+  // For now just read the number
+  ReadNumber(ARow, ACol, ACellNode);
 end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol : Word; ACellNode : TDOMNode);
@@ -237,14 +237,21 @@ end;
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 var
   FSettings: TFormatSettings;
-  Value: String;
+  Value, Str: String;
+  lNumber: Double;
 begin
   FSettings.DecimalSeparator:='.';
   Value:=GetAttrValue(ACellNode,'office:value');
-  if UpperCase(Value)='1.#INF' then begin
+  if UpperCase(Value)='1.#INF' then
+  begin
     FWorkSheet.WriteNumber(Arow,ACol,1.0/0.0);
-  end else begin
-    FWorkSheet.WriteNumber(Arow,ACol,StrToFloat(GetAttrValue(ACellNode,'office:value'),FSettings));
+  end
+  else
+  begin
+    // Don't merge, or else we can't debug
+    Str := GetAttrValue(ACellNode,'office:value');
+    lNumber := StrToFloat(Str,FSettings);
+    FWorkSheet.WriteNumber(Arow,ACol,lNumber);
   end;
 end;
 

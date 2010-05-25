@@ -1234,8 +1234,10 @@ begin
   try
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
-
     OLEStorage.ReadOLEFile(AFileName, OLEDocument,'Workbook');
+
+    // Check if the operation succeded
+    if MemStream.Size = 0 then raise Exception.Create('FPSpreadsheet: Reading the OLE document failed');
 
     // Rewind the stream and read from it
     MemStream.Position := 0;
