@@ -21,8 +21,6 @@ var
   i: Integer;
   CurCell: PCell;
 
-{$IFDEF WINDOWS}{$R excel8read.rc}{$ENDIF}
-
 begin
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
