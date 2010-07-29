@@ -46,6 +46,9 @@ unit xlsbiff8;
   {$mode delphi}
 {$endif}
 
+// The new OLE code is much better, so always use it
+{$define USE_NEW_OLE}
+
 interface
 
 uses
