@@ -1,16 +1,16 @@
 {
-excel5write.dpr
+excel8write.dpr
 
-Demonstrates how to write an Excel 5.x file using the fpspreadsheet library
+Demonstrates how to write an Excel 8+ file using the fpspreadsheet library
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
-program excel5write;
+program excel8write;
 
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff5,
+  Classes, SysUtils, fpspreadsheet, xlsbiff8,
   laz_fpspreadsheet, fpsconvencoding;
 
 const
@@ -81,9 +81,10 @@ begin
   MyWorksheet.WriteUTF8Text(0, 1, Str_Second);
   MyWorksheet.WriteUTF8Text(0, 2, Str_Third);
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
+  MyWorksheet.WriteTextRotation(0, 0, rt90DegreeClockwiseRotation);
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel5, False);
+  MyWorkbook.WriteToFile(MyDir + 'test2.xls', sfExcel8, False);
   MyWorkbook.Free;
 end.
 

@@ -14,7 +14,7 @@ unit fpspreadsheet;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree;
+  Classes, SysUtils, AVL_Tree, fpsconvencoding;
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
@@ -27,6 +27,17 @@ const
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
 
 type
+
+  {@@ Possible encodings for a non-unicode encoded text }
+  TsEncoding = (
+    seLatin1,
+    seLatin2,
+    seCyrillic,
+    seGreek,
+    seTurkish,
+    seHebrew,
+    seArabic
+    );
 
   {@@ Describes a formula
 
@@ -72,8 +83,22 @@ type
 
   {@@ Describes the type of content of a cell on a TsWorksheet }
 
-  TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber, cctUTF8String);
-  
+  TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber,
+    cctUTF8String);
+
+  {@@ List of possible formatting fields }
+
+  TsUsedFormattingField = (uffTextRotation);
+
+  {@@ Describes which formatting fields are active }
+
+  TsUsedFormattingFields = set of TsUsedFormattingField;
+
+  {@@ Text rotation formatting}
+
+  TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
+    rt90DegreeCounterClockwiseRotation);
+
   {@@ Cell structure for TsWorksheet
 
       Never suppose that all *Value fields are valid,
@@ -92,6 +117,9 @@ type
     RPNFormulaValue: TsRPNFormula;
     NumberValue: double;
     UTF8StringValue: ansistring;
+    { Formatting fields }
+    UsedFormattingFields: TsUsedFormattingFields;
+    TextRotation: TsTextRotation;
   end;
 
   PCell = ^TCell;
@@ -128,6 +156,7 @@ type
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
+    procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     property  Cells: TAVLTree read FCells;
   end;
 
@@ -137,6 +166,7 @@ type
   private
     { Internal data }
     FWorksheets: TFPList;
+    FEncoding: TsEncoding;
     { Internal methods }
     procedure RemoveCallback(data, arg: pointer);
   public
@@ -157,6 +187,9 @@ type
     function  GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
     function  GetWorksheetCount: Cardinal;
     procedure RemoveAllWorksheets;
+    {@@ This property is only used for formats which don't support unicode
+      and support a single encoding for the whole document, like Excel 2 to 5 }
+    property Encoding: TsEncoding read FEncoding write FEncoding;
   end;
 
   {@@ TsSpreadReader class reference type }
@@ -198,7 +231,7 @@ type
     { Record writing methods }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); virtual;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); virtual;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); virtual; abstract;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); virtual; abstract;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); virtual; abstract;
   end;
 
@@ -542,12 +575,12 @@ end;
 {@@
   Writes UTF-8 encoded text to a determined cell.
 
-  On formats that only support unicode the text will be converted
-  to the unicode encoding that the format supports.
+  On formats that don't support unicode, the text will be converted
+  to ISO Latin 1.
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
-  @param  AText     The text to be written encoded with the system encoding
+  @param  AText     The text to be written encoded in utf-8
 }
 procedure TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
 var
@@ -602,6 +635,26 @@ begin
 
   ACell^.ContentType := cctRPNFormula;
   ACell^.RPNFormulaValue := AFormula;
+end;
+
+{@@
+  Adds text rotation to the formatting of a cell
+
+  @param  ARow      The row of the cell
+  @param  ACol      The column of the cell
+  @param  ARotation How to rotate the text
+
+  @see    TsTextRotation
+}
+procedure TsWorksheet.WriteTextRotation(ARow, ACol: Cardinal;
+  ARotation: TsTextRotation);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+
+  Include(ACell^.UsedFormattingFields, uffTextRotation);
+  ACell^.TextRotation := ARotation;
 end;
 
 { TsWorkbook }
@@ -916,7 +969,7 @@ begin
 
   case ACell.ContentType of
     cctNumber:  WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue);
-    cctUTF8String:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue);
+    cctUTF8String:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     cctFormula: WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue);
     cctRPNFormula: WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue);
   end;

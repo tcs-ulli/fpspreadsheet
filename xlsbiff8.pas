@@ -114,15 +114,16 @@ type
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     procedure WriteDimensions(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
+    procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
     procedure WriteIndex(AStream: TStream);
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
-    procedure WriteXF(AStream: TStream; AFontIndex: Word; AXF_TYPE_PROT: Byte);
+    procedure WriteXF(AStream: TStream; AFontIndex: Word;
+      AXF_TYPE_PROT, ATextRotation: Byte);
   end;
 
 implementation
@@ -223,6 +224,12 @@ const
   MASK_XF_VERT_ALIGN_BOTTOM           = $20;
   MASK_XF_VERT_ALIGN_JUSTIFIED        = $30;
 
+  { XF_ROTATION }
+
+  XF_ROTATION_HORIZONTAL                 = 0;
+  XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE = 90;
+  XF_ROTATION_90_DEGREE_CLOCKWISE        = 180;
+
   { XF record constants }
   MASK_XF_TYPE_PROT                   = $0007;
   MASK_XF_TYPE_PROT_PARENT            = $FFF0;
@@ -314,37 +321,37 @@ begin
   end;
   
   // XF0
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF1
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF2
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF3
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF4
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF5
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF6
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF7
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF8
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF9
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF10
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF11
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF12
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF13
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE);
   // XF14
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_90_DEGREE_CLOCKWISE);
   // XF15
-  WriteXF(AStream, 0, 0);
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL);
 
   WriteStyle(AStream);
 
@@ -696,7 +703,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string);
+  ACol: Word; const AValue: string; ACell: PCell);
 var
   L: Word;
   WideValue: WideString;
@@ -721,8 +728,18 @@ begin
   AStream.WriteWord(WordToLE(ARow));
   AStream.WriteWord(WordToLE(ACol));
 
-  { Index to XF record }
-  AStream.WriteWord(WordToLE(15));
+  { Index to XF record, according to formatting }
+  if ACell^.UsedFormattingFields = [uffTextRotation] then
+  begin
+    case ACell^.TextRotation of
+      rt90DegreeCounterClockwiseRotation: AStream.WriteWord(WordToLE(13));
+      rt90DegreeClockwiseRotation: AStream.WriteWord(WordToLE(14));
+    else
+      AStream.WriteWord(WordToLE(15));
+    end;
+  end
+  else
+    AStream.WriteWord(WordToLE(15));
 
   { Byte String with 16-bit size }
   AStream.WriteWord(WordToLE(L));
@@ -898,7 +915,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
- AXF_TYPE_PROT: Byte);
+ AXF_TYPE_PROT, ATextRotation: Byte);
 var
   XFOptions: Word;
   XFAlignment, XFOrientationAttrib: Byte;
@@ -927,7 +944,7 @@ begin
   AStream.WriteByte(XFAlignment);
 
   { Text rotation }
-  AStream.WriteByte(0);
+  AStream.WriteByte(ATextRotation); // 0 is horizontal / normal
 
   { Indentation, shrink and text direction }
   AStream.WriteByte(0);

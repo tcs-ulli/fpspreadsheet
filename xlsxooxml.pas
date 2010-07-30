@@ -63,7 +63,7 @@ type
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
   end;
 
@@ -382,7 +382,7 @@ end;
   Writes a string to the sheet
 }
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string);
+  ACol: Word; const AValue: string; ACell: PCell);
 begin
 
 end;

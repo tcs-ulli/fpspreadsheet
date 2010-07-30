@@ -103,6 +103,7 @@ type
 
   TsSpreadBIFF5Writer = class(TsCustomSpreadWriter)
   private
+    WorkBookEncoding: TsEncoding;
     function  FEKindToExcelID(AElement: TFEKind; var AParamsNum: Byte; var AExtra: Word): Byte;
   public
 //    constructor Create;
@@ -114,12 +115,13 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
     procedure WriteDimensions(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
     procedure WriteIndex(AStream: TStream);
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
@@ -147,6 +149,7 @@ const
   INT_EXCEL_ID_RSTRING    = $00D6;
   INT_EXCEL_ID_RK         = $027E;
   INT_EXCEL_ID_MULRK      = $00BD;
+  INT_EXCEL_ID_CODEPAGE   = $0042;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -164,8 +167,43 @@ const
   INT_BOF_BUILD_ID        = $1FD2;
   INT_BOF_BUILD_YEAR      = $07CD;
 
+  { CODEPAGE record constants }
+
+  WORD_ASCII = 367;
+  WORD_UTF_16 = 1200; // BIFF 8
+  WORD_CP_1250_Latin2 = 1250;
+  WORD_CP_1251_Cyrillic = 1251;
+  WORD_CP_1252_Latin1 = 1252; // BIFF4-BIFF5
+  WORD_CP_1253_Greek = 1253;
+  WORD_CP_1254_Turkish = 1254;
+  WORD_CP_1255_Hebrew = 1255;
+  WORD_CP_1256_Arabic = 1256;
+  WORD_CP_1257_Baltic = 1257;
+  WORD_CP_1258_Vietnamese = 1258;
+  WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
+
   { FONT record constants }
   INT_FONT_WEIGHT_NORMAL  = $0190;
+
+  BYTE_ANSILatin1         = $00;
+  BYTE_SYSTEM_DEFAULT     = $01;
+  BYTE_SYMBOL             = $02;
+  BYTE_Apple_Roman        = $4D;
+  BYTE_ANSI_Japanese_Shift_JIS = $80;
+  BYTE_ANSI_Korean_Hangul = $81;
+  BYTE_ANSI_Korean_Johab  = $81;
+  BYTE_ANSI_Chinese_Simplified_GBK = $86;
+  BYTE_ANSI_Chinese_Traditional_BIG5 = $88;
+  BYTE_ANSI_Greek         = $A1;
+  BYTE_ANSI_Turkish       = $A2;
+  BYTE_ANSI_Vietnamese    = $A3;
+  BYTE_ANSI_Hebrew        = $B1;
+  BYTE_ANSI_Arabic        = $B2;
+  BYTE_ANSI_Baltic        = $BA;
+  BYTE_ANSI_Cyrillic      = $CC;
+  BYTE_ANSI_Thai          = $DE;
+  BYTE_ANSI_Latin2        = $EE;
+  BYTE_OEM_Latin1         = $FF;
 
   { FORMULA record constants }
   MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
@@ -318,9 +356,14 @@ var
   Boundsheets: array of Int64;
   i, len: Integer;
 begin
+  { Store some data about the workbook that other routines need }
+  WorkBookEncoding := AData.Encoding;
+
   { Write workbook globals }
 
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
+
+  WriteCodepage(AStream, WorkBookEncoding);
 
   WriteWindow1(AStream);
 
@@ -484,6 +527,29 @@ begin
   { Sheet name: Byte string, 8-bit length }
   AStream.WriteByte(Len);
   AStream.WriteBuffer(LatinSheetName[1], Len);
+end;
+
+procedure TsSpreadBIFF5Writer.WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
+var
+  lCodepage: Word;
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
+  AStream.WriteWord(WordToLE(2));
+
+  { Codepage }
+  case AEncoding of
+    seLatin2:   lCodepage := WORD_CP_1250_Latin2;
+    seCyrillic: lCodepage := WORD_CP_1251_Cyrillic;
+    seGreek:    lCodepage := WORD_CP_1253_Greek;
+    seTurkish:  lCodepage := WORD_CP_1254_Turkish;
+    seHebrew:   lCodepage := WORD_CP_1255_Hebrew;
+    seArabic:   lCodepage := WORD_CP_1256_Arabic;
+  else
+    // Default is Latin1
+    lCodepage := WORD_CP_1252_Latin1;
+  end;
+  AStream.WriteWord(WordToLE(lCodepage));
 end;
 
 {*******************************************************************
@@ -735,12 +801,23 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string);
+  ACol: Word; const AValue: string; ACell: PCell);
 var
   L: Word;
   AnsiValue: ansistring;
 begin
-  AnsiValue := UTF8ToISO_8859_1(AValue);
+  case WorkBookEncoding of
+  seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
+  seCyrillic: AnsiValue := UTF8ToCP1251(AValue);
+  seGreek:    AnsiValue := UTF8ToCP1253(AValue);
+  seTurkish:  AnsiValue := UTF8ToCP1254(AValue);
+  seHebrew:   AnsiValue := UTF8ToCP1255(AValue);
+  seArabic:   AnsiValue := UTF8ToCP1256(AValue);
+  else
+    // Latin 1 is the default
+    AnsiValue := UTF8ToCP1252(AValue);
+  end;
+
   if AnsiValue = '' then
   begin
     // Bad formatted UTF8String (maybe ANSI?)

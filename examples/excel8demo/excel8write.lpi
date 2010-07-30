@@ -11,7 +11,7 @@
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
       <TargetFileExt Value=".exe"/>
-      <Title Value="excel5write"/>
+      <Title Value="excel8write"/>
       <UseAppBundle Value="False"/>
     </General>
     <VersionInfo>
@@ -36,9 +36,9 @@
     </RequiredPackages>
     <Units Count="1">
       <Unit0>
-        <Filename Value="excel5write.lpr"/>
+        <Filename Value="excel8write.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="excel5write"/>
+        <UnitName Value="excel8write"/>
       </Unit0>
     </Units>
   </ProjectOptions>
