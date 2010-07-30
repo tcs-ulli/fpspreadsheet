@@ -347,11 +347,15 @@ begin
   // XF12
   WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF13
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF14
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_90_DEGREE_CLOCKWISE);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
   // XF15
   WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL);
+  // XF16
+  WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE);
+  // XF17
+  WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE);
 
   WriteStyle(AStream);
 
@@ -732,8 +736,8 @@ begin
   if ACell^.UsedFormattingFields = [uffTextRotation] then
   begin
     case ACell^.TextRotation of
-      rt90DegreeCounterClockwiseRotation: AStream.WriteWord(WordToLE(13));
-      rt90DegreeClockwiseRotation: AStream.WriteWord(WordToLE(14));
+      rt90DegreeCounterClockwiseRotation: AStream.WriteWord(WordToLE(16));
+      rt90DegreeClockwiseRotation: AStream.WriteWord(WordToLE(17));
     else
       AStream.WriteWord(WordToLE(15));
     end;
