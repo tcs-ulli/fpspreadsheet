@@ -168,6 +168,7 @@ const
 
   { FONT record constants }
   INT_FONT_WEIGHT_NORMAL  = $0190;
+  INT_FONT_WEIGHT_BOLD    = $02BC;
 
   { FORMULA record constants }
   MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
@@ -306,10 +307,12 @@ begin
   try
     FontData.Name := 'Arial';
 
-    // FONT0
+    // FONT0 - normal
     WriteFont(AStream, FontData);
-    // FONT1
+    // FONT1 - bold
+    FontData.Bold := True;
     WriteFont(AStream, FontData);
+    FontData.Bold := False;
     // FONT2
     WriteFont(AStream, FontData);
     // FONT3
@@ -356,6 +359,8 @@ begin
   WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE);
   // XF17
   WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE);
+  // XF18
+  WriteXF(AStream, 1, 0, XF_ROTATION_HORIZONTAL);
 
   WriteStyle(AStream);
 
@@ -546,13 +551,15 @@ begin
   AStream.WriteWord(WordToLE(200));
 
   { Option flags }
-  AStream.WriteWord(WordToLE(0));
+  if AFont.Bold then AStream.WriteWord(WordToLE(1))
+  else AStream.WriteWord(WordToLE(0));
 
   { Colour index }
   AStream.WriteWord(WordToLE($7FFF));
 
   { Font weight }
-  AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
+  if AFont.Bold then AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_BOLD))
+  else AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
 
   { Escapement type }
   AStream.WriteWord(WordToLE(0));
@@ -741,6 +748,10 @@ begin
     else
       AStream.WriteWord(WordToLE(15));
     end;
+  end
+  else if ACell^.UsedFormattingFields = [uffBold] then
+  begin
+    AStream.WriteWord(WordToLE(18));
   end
   else
     AStream.WriteWord(WordToLE(15));
