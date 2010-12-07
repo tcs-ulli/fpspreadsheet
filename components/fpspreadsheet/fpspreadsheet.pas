@@ -88,7 +88,7 @@ type
 
   {@@ List of possible formatting fields }
 
-  TsUsedFormattingField = (uffTextRotation);
+  TsUsedFormattingField = (uffTextRotation, uffBold);
 
   {@@ Describes which formatting fields are active }
 
@@ -157,6 +157,7 @@ type
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
+    procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
     property  Cells: TAVLTree read FCells;
   end;
 
@@ -655,6 +656,16 @@ begin
 
   Include(ACell^.UsedFormattingFields, uffTextRotation);
   ACell^.TextRotation := ARotation;
+end;
+
+procedure TsWorksheet.WriteUsedFormatting(ARow, ACol: Cardinal;
+  AUsedFormatting: TsUsedFormattingFields);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+
+  ACell^.UsedFormattingFields := AUsedFormatting;
 end;
 
 { TsWorkbook }

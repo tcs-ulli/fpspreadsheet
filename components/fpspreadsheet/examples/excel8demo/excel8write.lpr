@@ -82,6 +82,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 2, Str_Third);
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
   MyWorksheet.WriteTextRotation(0, 0, rt90DegreeClockwiseRotation);
+  MyWorksheet.WriteUsedFormatting(0, 1, [uffBold]);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test2.xls', sfExcel8, False);
