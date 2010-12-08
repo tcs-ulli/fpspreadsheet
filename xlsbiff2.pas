@@ -66,7 +66,7 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
 
 implementation
@@ -316,7 +316,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteNumber(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: double);
+  ACol: Cardinal; const AValue: double; ACell: PCell);
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));

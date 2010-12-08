@@ -64,7 +64,7 @@ type
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
 
 implementation
@@ -391,7 +391,7 @@ end;
   Writes a number (64-bit IEE 754 floating point) to the sheet
 }
 procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: double);
+  ACol: Cardinal; const AValue: double; ACell: PCell);
 begin
 
 end;

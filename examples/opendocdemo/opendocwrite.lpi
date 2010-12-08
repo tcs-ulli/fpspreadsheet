@@ -1,21 +1,23 @@
 <?xml version="1.0"?>
 <CONFIG>
   <ProjectOptions>
+    <Version Value="9"/>
     <PathDelim Value="\"/>
-    <Version Value="7"/>
     <General>
       <Flags>
         <LRSInOutputDirectory Value="False"/>
       </Flags>
+      <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <TargetFileExt Value=".exe"/>
       <Title Value="opendocwrite"/>
       <UseAppBundle Value="False"/>
-      <ActiveEditorIndexAtStart Value="1"/>
     </General>
     <VersionInfo>
-      <ProjectVersion Value=""/>
+      <StringTable ProductVersion=""/>
     </VersionInfo>
+    <BuildModes Count="1">
+      <Item1 Name="default" Default="True"/>
+    </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
       <IgnoreBinaries Value="False"/>
@@ -33,328 +35,30 @@
         <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="24">
+    <Units Count="1">
       <Unit0>
         <Filename Value="opendocwrite.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="opendocwrite"/>
-        <CursorPos X="33" Y="35"/>
-        <TopLine Value="6"/>
-        <EditorIndex Value="0"/>
-        <UsageCount Value="309"/>
-        <Loaded Value="True"/>
       </Unit0>
-      <Unit1>
-        <Filename Value="..\fpolestorage.pas"/>
-        <UnitName Value="fpolestorage"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="19"/>
-      </Unit1>
-      <Unit2>
-        <Filename Value="..\..\..\..\..\lazarus\lcl\interfaces\win32\win32wsstdctrls.pp"/>
-        <UnitName Value="Win32WSStdCtrls"/>
-        <CursorPos X="35" Y="720"/>
-        <TopLine Value="713"/>
-        <UsageCount Value="76"/>
-      </Unit2>
-      <Unit3>
-        <Filename Value="..\..\..\..\..\lazarus\ideintf\componenteditors.pas"/>
-        <UnitName Value="ComponentEditors"/>
-        <CursorPos X="40" Y="332"/>
-        <TopLine Value="330"/>
-        <UsageCount Value="74"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="..\..\xlsbiff5.pas"/>
-        <UnitName Value="xlsbiff5"/>
-        <CursorPos X="38" Y="1059"/>
-        <TopLine Value="1045"/>
-        <EditorIndex Value="10"/>
-        <UsageCount Value="140"/>
-        <Loaded Value="True"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="..\..\fpsutils.pas"/>
-        <UnitName Value="fpsutils"/>
-        <CursorPos X="1" Y="49"/>
-        <TopLine Value="30"/>
-        <EditorIndex Value="9"/>
-        <UsageCount Value="140"/>
-        <Loaded Value="True"/>
-      </Unit5>
-      <Unit6>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <UnitName Value="xlsbiff2"/>
-        <CursorPos X="25" Y="216"/>
-        <TopLine Value="203"/>
-        <EditorIndex Value="11"/>
-        <UsageCount Value="139"/>
-        <Loaded Value="True"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="..\..\fpolestorage.pas"/>
-        <UnitName Value="fpolestorage"/>
-        <CursorPos X="30" Y="654"/>
-        <TopLine Value="642"/>
-        <EditorIndex Value="12"/>
-        <UsageCount Value="139"/>
-        <Loaded Value="True"/>
-      </Unit7>
-      <Unit8>
-        <Filename Value="..\..\..\..\..\lazarus26\fpc\2.2.2\source\rtl\objpas\classes\classesh.inc"/>
-        <CursorPos X="19" Y="562"/>
-        <TopLine Value="553"/>
-        <UsageCount Value="41"/>
-      </Unit8>
-      <Unit9>
-        <Filename Value="..\..\..\..\..\lazarus26\fpc\2.2.2\source\rtl\objpas\classes\streams.inc"/>
-        <CursorPos X="21" Y="158"/>
-        <TopLine Value="151"/>
-        <UsageCount Value="41"/>
-      </Unit9>
-      <Unit10>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <UnitName Value="fpspreadsheet"/>
-        <CursorPos X="20" Y="112"/>
-        <TopLine Value="118"/>
-        <EditorIndex Value="6"/>
-        <UsageCount Value="100"/>
-        <Loaded Value="True"/>
-      </Unit10>
-      <Unit11>
-        <Filename Value="..\..\..\..\..\lazarus\lcl\include\customtrayicon.inc"/>
-        <CursorPos X="22" Y="203"/>
-        <TopLine Value="197"/>
-        <UsageCount Value="67"/>
-      </Unit11>
-      <Unit12>
-        <Filename Value="..\..\fpsopendocument.pas"/>
-        <UnitName Value="fpsopendocument"/>
-        <CursorPos X="1" Y="384"/>
-        <TopLine Value="373"/>
-        <EditorIndex Value="4"/>
-        <UsageCount Value="22"/>
-        <Loaded Value="True"/>
-      </Unit12>
-      <Unit13>
-        <Filename Value="..\..\xlsxooxml.pas"/>
-        <UnitName Value="xlsxooxml"/>
-        <CursorPos X="1" Y="35"/>
-        <TopLine Value="16"/>
-        <EditorIndex Value="5"/>
-        <UsageCount Value="22"/>
-        <Loaded Value="True"/>
-      </Unit13>
-      <Unit14>
-        <Filename Value="..\..\..\..\..\..\usr\local\share\fpcsrc\rtl\objpas\sysutils\sysstrh.inc"/>
-        <CursorPos X="38" Y="145"/>
-        <TopLine Value="141"/>
-        <UsageCount Value="15"/>
-      </Unit14>
-      <Unit15>
-        <Filename Value="..\..\fpsallformats.pas"/>
-        <UnitName Value="fpsallformats"/>
-        <CursorPos X="44" Y="13"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="3"/>
-        <UsageCount Value="17"/>
-        <Loaded Value="True"/>
-      </Unit15>
-      <Unit16>
-        <Filename Value="..\..\..\..\..\..\usr\local\share\fpcsrc\packages\paszlib\src\zipper.pp"/>
-        <UnitName Value="zipper"/>
-        <CursorPos X="24" Y="7"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="12"/>
-      </Unit16>
-      <Unit17>
-        <Filename Value="..\..\..\..\..\..\usr\local\share\fpcsrc\rtl\objpas\sysutils\finah.inc"/>
-        <CursorPos X="27" Y="25"/>
-        <TopLine Value="17"/>
-        <UsageCount Value="10"/>
-      </Unit17>
-      <Unit18>
-        <Filename Value="..\..\..\..\..\..\usr\local\share\fpcsrc\rtl\objpas\sysutils\fina.inc"/>
-        <CursorPos X="28" Y="258"/>
-        <TopLine Value="249"/>
-        <UsageCount Value="10"/>
-      </Unit18>
-      <Unit19>
-        <Filename Value="..\..\fpszipper.pp"/>
-        <UnitName Value="fpszipper"/>
-        <CursorPos X="36" Y="9"/>
-        <TopLine Value="1"/>
-        <EditorIndex Value="8"/>
-        <UsageCount Value="14"/>
-        <Loaded Value="True"/>
-      </Unit19>
-      <Unit20>
-        <Filename Value="unit1.pas"/>
-        <UnitName Value="Unit1"/>
-        <CursorPos X="1" Y="1"/>
-        <TopLine Value="1"/>
-        <UsageCount Value="10"/>
-      </Unit20>
-      <Unit21>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <UnitName Value="fpspreadsheetgrid"/>
-        <CursorPos X="31" Y="66"/>
-        <TopLine Value="36"/>
-        <EditorIndex Value="1"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
-      </Unit21>
-      <Unit22>
-        <Filename Value="..\..\..\..\..\lazarus\lcl\grids.pas"/>
-        <UnitName Value="Grids"/>
-        <CursorPos X="17" Y="1415"/>
-        <TopLine Value="1396"/>
-        <EditorIndex Value="2"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
-      </Unit22>
-      <Unit23>
-        <Filename Value="..\..\..\..\..\lazarus27\fpc\2.2.4\source\packages\fcl-base\src\avl_tree.pp"/>
-        <UnitName Value="AVL_Tree"/>
-        <CursorPos X="1" Y="58"/>
-        <TopLine Value="39"/>
-        <EditorIndex Value="7"/>
-        <UsageCount Value="10"/>
-        <Loaded Value="True"/>
-      </Unit23>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
-      <Position1>
-        <Filename Value="..\..\xlsxooxml.pas"/>
-        <Caret Line="103" Column="31" TopLine="103"/>
-      </Position1>
-      <Position2>
-        <Filename Value="..\..\xlsxooxml.pas"/>
-        <Caret Line="51" Column="15" TopLine="50"/>
-      </Position2>
-      <Position3>
-        <Filename Value="..\..\xlsxooxml.pas"/>
-        <Caret Line="249" Column="5" TopLine="224"/>
-      </Position3>
-      <Position4>
-        <Filename Value="..\..\xlsxooxml.pas"/>
-        <Caret Line="242" Column="1" TopLine="238"/>
-      </Position4>
-      <Position5>
-        <Filename Value="opendocwrite.lpr"/>
-        <Caret Line="30" Column="5" TopLine="10"/>
-      </Position5>
-      <Position6>
-        <Filename Value="..\..\fpsopendocument.pas"/>
-        <Caret Line="51" Column="22" TopLine="39"/>
-      </Position6>
-      <Position7>
-        <Filename Value="..\..\fpsopendocument.pas"/>
-        <Caret Line="68" Column="10" TopLine="55"/>
-      </Position7>
-      <Position8>
-        <Filename Value="..\..\xlsxooxml.pas"/>
-        <Caret Line="268" Column="5" TopLine="244"/>
-      </Position8>
-      <Position9>
-        <Filename Value="..\..\fpsopendocument.pas"/>
-        <Caret Line="38" Column="36" TopLine="32"/>
-      </Position9>
-      <Position10>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="62" Column="4" TopLine="52"/>
-      </Position10>
-      <Position11>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="66" Column="21" TopLine="53"/>
-      </Position11>
-      <Position12>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="102" Column="20" TopLine="89"/>
-      </Position12>
-      <Position13>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="105" Column="20" TopLine="94"/>
-      </Position13>
-      <Position14>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="764" Column="1" TopLine="739"/>
-      </Position14>
-      <Position15>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="777" Column="36" TopLine="767"/>
-      </Position15>
-      <Position16>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="785" Column="10" TopLine="762"/>
-      </Position16>
-      <Position17>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="11" Column="33" TopLine="1"/>
-      </Position17>
-      <Position18>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="9" Column="8" TopLine="1"/>
-      </Position18>
-      <Position19>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="15" Column="3" TopLine="1"/>
-      </Position19>
-      <Position20>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="46" Column="1" TopLine="9"/>
-      </Position20>
-      <Position21>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="14" Column="6" TopLine="9"/>
-      </Position21>
-      <Position22>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="43" Column="36" TopLine="9"/>
-      </Position22>
-      <Position23>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="60" Column="8" TopLine="26"/>
-      </Position23>
-      <Position24>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="344" Column="11" TopLine="335"/>
-      </Position24>
-      <Position25>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
-      </Position25>
-      <Position26>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="338" Column="52" TopLine="319"/>
-      </Position26>
-      <Position27>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="355" Column="5" TopLine="318"/>
-      </Position27>
-      <Position28>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="101" Column="16" TopLine="93"/>
-      </Position28>
-      <Position29>
-        <Filename Value="..\..\..\..\..\lazarus27\fpc\2.2.4\source\packages\fcl-base\src\avl_tree.pp"/>
-        <Caret Line="58" Column="18" TopLine="38"/>
-      </Position29>
-      <Position30>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="362" Column="5" TopLine="325"/>
-      </Position30>
-    </JumpHistory>
   </ProjectOptions>
   <CompilerOptions>
-    <Version Value="8"/>
+    <Version Value="9"/>
     <PathDelim Value="\"/>
     <SearchPaths>
-      <OtherUnitFiles Value="..\"/>
-      <SrcPath Value="..\"/>
+      <OtherUnitFiles Value=".."/>
+      <SrcPath Value=".."/>
     </SearchPaths>
+    <Parsing>
+      <SyntaxOptions>
+        <UseAnsiStrings Value="False"/>
+      </SyntaxOptions>
+    </Parsing>
     <Other>
+      <CompilerMessages>
+        <UseMsgFile Value="True"/>
+      </CompilerMessages>
       <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>

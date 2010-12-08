@@ -118,7 +118,7 @@ type
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
@@ -773,7 +773,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteNumber(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: double);
+  ACol: Cardinal; const AValue: double; ACell: PCell);
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));

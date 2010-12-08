@@ -60,7 +60,11 @@ type
     FSMeta, FSSettings, FSStyles, FSContent, FSMimetype: TStringStream;
     FSMetaInfManifest: TStringStream;
     // Routines to write those files
-    procedure WriteGlobalFiles;
+    procedure WriteMimetype;
+    procedure WriteMetaInfManifest;
+    procedure WriteMeta;
+    procedure WriteSettings;
+    procedure WriteStyles;
     procedure WriteContent(AData: TsWorkbook);
     procedure WriteWorksheet(CurSheet: TsWorksheet);
   public
@@ -72,7 +76,7 @@ type
     { Record writing methods }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
 
 implementation
@@ -257,10 +261,13 @@ end;
 
 { TsSpreadOpenDocWriter }
 
-procedure TsSpreadOpenDocWriter.WriteGlobalFiles;
+procedure TsSpreadOpenDocWriter.WriteMimetype;
 begin
   FMimetype := 'application/vnd.oasis.opendocument.spreadsheet';
+end;
 
+procedure TsSpreadOpenDocWriter.WriteMetaInfManifest;
+begin
   FMetaInfManifest :=
    XML_HEADER + LineEnding +
    '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">' + LineEnding +
@@ -270,7 +277,10 @@ begin
    '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />' + LineEnding +
    '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />' + LineEnding +
    '</manifest:manifest>';
+end;
 
+procedure TsSpreadOpenDocWriter.WriteMeta;
+begin
   FMeta :=
    XML_HEADER + LineEnding +
    '<office:document-meta xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -283,7 +293,10 @@ begin
    '    <meta:document-statistic />' + LineEnding +
    '  </office:meta>' + LineEnding +
    '</office:document-meta>';
+end;
 
+procedure TsSpreadOpenDocWriter.WriteSettings;
+begin
   FSettings :=
    XML_HEADER + LineEnding +
    '<office:document-settings xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -309,7 +322,10 @@ begin
    '    </config:config-item-set>' + LineEnding +
    '  </office:settings>' + LineEnding +
    '</office:document-settings>';
+end;
 
+procedure TsSpreadOpenDocWriter.WriteStyles;
+begin
   FStyles :=
    XML_HEADER + LineEnding +
    '<office:document-styles xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -320,31 +336,31 @@ begin
      '" xmlns:text="' + SCHEMAS_XMLNS_TEXT +
      '" xmlns:v="' + SCHEMAS_XMLNS_V + '">' + LineEnding +
    '<office:font-face-decls>' + LineEnding +
-   '<style:font-face style:name="Arial" svg:font-family="Arial" />' + LineEnding +
+   '  <style:font-face style:name="Arial" svg:font-family="Arial" />' + LineEnding +
    '</office:font-face-decls>' + LineEnding +
    '<office:styles>' + LineEnding +
-   '<style:style style:name="Default" style:family="table-cell">' + LineEnding +
-   '<style:text-properties fo:font-size="10" style:font-name="Arial" />' + LineEnding +
-   '</style:style>' + LineEnding +
+   '  <style:style style:name="Default" style:family="table-cell">' + LineEnding +
+   '    <style:text-properties fo:font-size="10" style:font-name="Arial" />' + LineEnding +
+   '  </style:style>' + LineEnding +
    '</office:styles>' + LineEnding +
    '<office:automatic-styles>' + LineEnding +
-   '<style:page-layout style:name="pm1">' + LineEnding +
-   '<style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />' + LineEnding +
-   '<style:header-style>' + LineEnding +
-   '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />' + LineEnding +
-   '</style:header-style>' + LineEnding +
-   '<style:footer-style>' + LineEnding +
-   '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />' + LineEnding +
-   '</style:footer-style>' + LineEnding +
-   '</style:page-layout>' + LineEnding +
+   '  <style:page-layout style:name="pm1">' + LineEnding +
+   '    <style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />' + LineEnding +
+   '    <style:header-style>' + LineEnding +
+   '    <style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />' + LineEnding +
+   '    </style:header-style>' + LineEnding +
+   '    <style:footer-style>' + LineEnding +
+   '    <style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />' + LineEnding +
+   '    </style:footer-style>' + LineEnding +
+   '  </style:page-layout>' + LineEnding +
    '</office:automatic-styles>' + LineEnding +
    '<office:master-styles>' + LineEnding +
-   '<style:master-page style:name="Default" style:page-layout-name="pm1">' + LineEnding +
-   '<style:header />' + LineEnding +
-   '<style:header-left style:display="false" />' + LineEnding +
-   '<style:footer />' + LineEnding +
-   '<style:footer-left style:display="false" />' + LineEnding +
-   '</style:master-page>' + LineEnding +
+   '  <style:master-page style:name="Default" style:page-layout-name="pm1">' + LineEnding +
+   '    <style:header />' + LineEnding +
+   '    <style:header-left style:display="false" />' + LineEnding +
+   '    <style:footer />' + LineEnding +
+   '    <style:footer-left style:display="false" />' + LineEnding +
+   '  </style:master-page>' + LineEnding +
    '</office:master-styles>' + LineEnding +
    '</office:document-styles>';
 end;
@@ -392,6 +408,9 @@ begin
   '    </style:style>' + LineEnding +
   '    <style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
   '      <style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
+  '    </style:style>' + LineEnding +
+  '    <style:style style:name="bold" style:family="table-cell" style:parent-style-name="Default">' + LineEnding +
+  '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding +
   '    </style:style>' + LineEnding +
   '  </office:automatic-styles>' + LineEnding +
 
@@ -479,7 +498,11 @@ var
 begin
   { Fill the strings with the contents of the files }
 
-  WriteGlobalFiles();
+  WriteMimetype();
+  WriteMetaInfManifest();
+  WriteMeta();
+  WriteSettings();
+  WriteStyles();
   WriteContent(AData);
 
   { Write the data to streams }
@@ -538,21 +561,30 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string; ACell: PCell);
+var
+  lStyle: string = '';
 begin
+  if uffBold in ACell^.UsedFormattingFields then
+    lStyle := ' table:style-name="bold" ';
+
   // The row should already be the correct one
   FContent := FContent +
-    '  <table:table-cell office:value-type="string">' + LineEnding +
+    '  <table:table-cell office:value-type="string"' + lStyle + '>' + LineEnding +
     '    <text:p>' + AValue + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
 
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: double);
+  ACol: Cardinal; const AValue: double; ACell: PCell);
 var
   StrValue: string;
   DisplayStr: string;
   FSettings: TFormatSettings;
+  lStyle: string = '';
 begin
+  if uffBold in ACell^.UsedFormattingFields then
+    lStyle := ' table:style-name="bold" ';
+
   // The row should already be the correct one
   if IsInfinite(AValue) then begin
     StrValue:='1.#INF';
@@ -563,7 +595,7 @@ begin
     DisplayStr:=FloatToStr(AValue); // Uses locale decimal separator
   end;
   FContent := FContent +
-    '  <table:table-cell office:value-type="float" office:value="' + StrValue + '">' + LineEnding +
+    '  <table:table-cell office:value-type="float" office:value="' + StrValue + '"' + lStyle + '>' + LineEnding +
     '    <text:p>' + DisplayStr + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
