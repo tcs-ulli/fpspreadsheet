@@ -233,7 +233,7 @@ type
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); virtual;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); virtual;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); virtual; abstract;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double); virtual; abstract;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
   end;
 
   {@@ List of registered formats }
@@ -979,7 +979,7 @@ begin
   AStream := TStream(arg);
 
   case ACell.ContentType of
-    cctNumber:  WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue);
+    cctNumber:  WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     cctFormula: WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue);
     cctRPNFormula: WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue);
