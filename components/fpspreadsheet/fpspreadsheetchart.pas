@@ -15,7 +15,7 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
   // TChart
-  tasources,
+  {tasources,} TACustomSource,
   // FPSpreadsheet Visual
   fpspreadsheetgrid,
   // FPSpreadsheet
