@@ -369,6 +369,28 @@ begin
   WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbEast]);
   // XF22 - Border
   WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbSouth]);
+  // XF23 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest]);
+  // XF24 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbEast]);
+  // XF25 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbSouth]);
+  // XF26 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbEast]);
+  // XF27 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbSouth]);
+  // XF28 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbEast, cbSouth]);
+  // XF29 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbEast]);
+  // XF30 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbSouth]);
+  // XF31 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbEast, cbSouth]);
+  // XF32 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbEast, cbSouth]);
+  // XF33 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbEast, cbSouth]);
 
   WriteStyle(AStream);
 
@@ -767,7 +789,18 @@ begin
     else if ACell^.Border = [cbNorth] then AStream.WriteWord(WordToLE(19))
     else if ACell^.Border = [cbWest] then AStream.WriteWord(WordToLE(20))
     else if ACell^.Border = [cbEast] then AStream.WriteWord(WordToLE(21))
-    else if ACell^.Border = [cbSouth] then AStream.WriteWord(WordToLE(22));
+    else if ACell^.Border = [cbSouth] then AStream.WriteWord(WordToLE(22))
+    else if ACell^.Border = [cbNorth, cbWest] then AStream.WriteWord(WordToLE(23))
+    else if ACell^.Border = [cbNorth, cbEast] then AStream.WriteWord(WordToLE(24))
+    else if ACell^.Border = [cbNorth, cbSouth] then AStream.WriteWord(WordToLE(25))
+    else if ACell^.Border = [cbWest, cbEast] then AStream.WriteWord(WordToLE(26))
+    else if ACell^.Border = [cbWest, cbSouth] then AStream.WriteWord(WordToLE(27))
+    else if ACell^.Border = [cbEast, cbSouth] then AStream.WriteWord(WordToLE(28))
+    else if ACell^.Border = [cbNorth, cbWest, cbEast] then AStream.WriteWord(WordToLE(29))
+    else if ACell^.Border = [cbNorth, cbWest, cbSouth] then AStream.WriteWord(WordToLE(30))
+    else if ACell^.Border = [cbNorth, cbEast, cbSouth] then AStream.WriteWord(WordToLE(31))
+    else if ACell^.Border = [cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(32))
+    else if ACell^.Border = [cbNorth, cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(33));
   end
   else
     AStream.WriteWord(WordToLE(15));
