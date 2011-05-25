@@ -88,16 +88,28 @@ type
 
   {@@ List of possible formatting fields }
 
-  TsUsedFormattingField = (uffTextRotation, uffBold);
+  TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder{, uffBackgroundColor});
 
   {@@ Describes which formatting fields are active }
 
   TsUsedFormattingFields = set of TsUsedFormattingField;
 
-  {@@ Text rotation formatting}
+  {@@ Text rotation formatting }
 
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
     rt90DegreeCounterClockwiseRotation);
+
+  {@@ Indicates the border for a cell }
+
+  TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth);
+
+  {@@ Indicates the border for a cell }
+
+  TsCellBorders = set of TsCellBorder;
+
+  {.@@ Colors in FPSpreadsheet as given by a list of possible default values }
+
+  //TsColor = ();
 
   {@@ Cell structure for TsWorksheet
 
@@ -120,6 +132,8 @@ type
     { Formatting fields }
     UsedFormattingFields: TsUsedFormattingFields;
     TextRotation: TsTextRotation;
+    Border: TsCellBorders;
+    //BackgroundColor: TsColor;
   end;
 
   PCell = ^TCell;

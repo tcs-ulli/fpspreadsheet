@@ -123,7 +123,7 @@ type
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
-      AXF_TYPE_PROT, ATextRotation: Byte);
+      AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders);
   end;
 
 implementation
@@ -324,43 +324,51 @@ begin
   end;
   
   // XF0
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF1
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF2
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF3
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF4
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF5
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF6
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF7
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF8
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF9
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF10
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF11
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF12
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF13
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF14
-  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL);
-  // XF15
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL);
-  // XF16
-  WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE);
-  // XF17
-  WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE);
-  // XF18
-  WriteXF(AStream, 1, 0, XF_ROTATION_HORIZONTAL);
+  WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF15 - Default, no formatting
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, []);
+  // XF16 - Rotated
+  WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE, []);
+  // XF17 - Rotated
+  WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE, []);
+  // XF18 - Bold
+  WriteXF(AStream, 1, 0, XF_ROTATION_HORIZONTAL, []);
+  // XF19 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth]);
+  // XF20 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest]);
+  // XF21 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbEast]);
+  // XF22 - Border
+  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbSouth]);
 
   WriteStyle(AStream);
 
@@ -753,6 +761,14 @@ begin
   begin
     AStream.WriteWord(WordToLE(18));
   end
+  else if ACell^.UsedFormattingFields = [uffBorder] then
+  begin
+    if ACell^.Border = [] then AStream.WriteWord(WordToLE(15))
+    else if ACell^.Border = [cbNorth] then AStream.WriteWord(WordToLE(19))
+    else if ACell^.Border = [cbWest] then AStream.WriteWord(WordToLE(20))
+    else if ACell^.Border = [cbEast] then AStream.WriteWord(WordToLE(21))
+    else if ACell^.Border = [cbSouth] then AStream.WriteWord(WordToLE(22));
+  end
   else
     AStream.WriteWord(WordToLE(15));
 
@@ -930,10 +946,11 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
- AXF_TYPE_PROT, ATextRotation: Byte);
+ AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders);
 var
   XFOptions: Word;
   XFAlignment, XFOrientationAttrib: Byte;
+  XFBorderDWord1, XFBorderDWord2: DWord;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_XF));
@@ -976,10 +993,22 @@ begin
   AStream.WriteByte(XFOrientationAttrib);
 
   { Cell border lines and background area }
-  AStream.WriteDWord(DWordToLE($00000000));
-  AStream.WriteDWord(DWordToLE($00000000));
-  AStream.WriteByte(0);
-  AStream.WriteByte(0);
+
+  // Left and Right line colors, use black
+  XFBorderDWord1 := 8 * $10000 {left line - black} + 8 * $800000 {right line - black};
+
+  if cbNorth in ABorders then XFBorderDWord1 := XFBorderDWord1 or $100;
+  if cbWest in ABorders  then XFBorderDWord1 := XFBorderDWord1 or $1;
+  if cbEast in ABorders  then XFBorderDWord1 := XFBorderDWord1 or $10;
+  if cbSouth in ABorders then XFBorderDWord1 := XFBorderDWord1 or $1000;
+
+  AStream.WriteDWord(DWordToLE(XFBorderDWord1));
+
+  // Top and Bottom line colors, use black
+  XFBorderDWord2 := 8 {top line - black} + 8 * $80 {bottom line - black};
+  AStream.WriteDWord(DWordToLE(XFBorderDWord2));
+  // Background Pattern Color, always zeroed
+  AStream.WriteWord(0);
 end;
 
 { TsSpreadBIFF8Reader }
