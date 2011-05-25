@@ -29,32 +29,85 @@ begin
 
   // Write some cells
   MyWorksheet.WriteUTF8Text(1, 0, 'Border');// A2
+
   MyWorksheet.WriteUTF8Text(1, 1, '[]');    // B2
-  MyWorksheet.WriteUTF8Text(1, 2, '[North]');// C2
-  MyWorksheet.WriteUTF8Text(1, 3, '[West]');// D2
-  MyWorksheet.WriteUTF8Text(1, 4, '[East]');// E2
-  MyWorksheet.WriteUTF8Text(1, 5, '[South]');// F2
-
-  // Format them
-
   MyCell := MyWorksheet.GetCell(1, 1);
   MyCell^.Border := [];
   MyCell^.UsedFormattingFields := [uffBorder];
 
-  MyCell := MyWorksheet.GetCell(1, 2);
+  MyWorksheet.WriteUTF8Text(1, 3, '[N]');// D2
+  MyCell := MyWorksheet.GetCell(1, 3);
   MyCell^.Border := [cbNorth];
   MyCell^.UsedFormattingFields := [uffBorder];
 
-  MyCell := MyWorksheet.GetCell(1, 3);
+  MyWorksheet.WriteUTF8Text(1, 5, '[W]');// F2
+  MyCell := MyWorksheet.GetCell(1, 5);
   MyCell^.Border := [cbWest];
   MyCell^.UsedFormattingFields := [uffBorder];
 
-  MyCell := MyWorksheet.GetCell(1, 4);
+  MyWorksheet.WriteUTF8Text(1, 7, '[E]');// H2
+  MyCell := MyWorksheet.GetCell(1, 7);
   MyCell^.Border := [cbEast];
   MyCell^.UsedFormattingFields := [uffBorder];
 
-  MyCell := MyWorksheet.GetCell(1, 5);
+  MyWorksheet.WriteUTF8Text(1, 9, '[S]');// J2
+  MyCell := MyWorksheet.GetCell(1, 9);
   MyCell^.Border := [cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(3, 1, '[N,W]');// B4
+  MyCell := MyWorksheet.GetCell(3, 1);
+  MyCell^.Border := [cbNorth, cbWest];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(3, 3, '[N,E]');// D4
+  MyCell := MyWorksheet.GetCell(3, 3);
+  MyCell^.Border := [cbNorth, cbEast];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(3, 5, '[N,S]');// F4
+  MyCell := MyWorksheet.GetCell(3, 5);
+  MyCell^.Border := [cbNorth, cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(3, 7, '[W,E]');// H4
+  MyCell := MyWorksheet.GetCell(3, 7);
+  MyCell^.Border := [cbWest, cbEast];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(3, 9, '[W,S]');// J4
+  MyCell := MyWorksheet.GetCell(3, 9);
+  MyCell^.Border := [cbWest, cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(3, 11, '[E,S]');// L4
+  MyCell := MyWorksheet.GetCell(3, 11);
+  MyCell^.Border := [cbEast, cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(5, 1, '[N,W,E]');// B6
+  MyCell := MyWorksheet.GetCell(5, 1);
+  MyCell^.Border := [cbNorth, cbWest, cbEast];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(5, 3, '[N,W,S]');// D6
+  MyCell := MyWorksheet.GetCell(5, 3);
+  MyCell^.Border := [cbNorth, cbWest, cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(5, 5, '[N,E,S]');// F6
+  MyCell := MyWorksheet.GetCell(5, 5);
+  MyCell^.Border := [cbNorth, cbEast, cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(5, 7, '[W,E,S]');// H6
+  MyCell := MyWorksheet.GetCell(5, 7);
+  MyCell^.Border := [cbWest, cbEast, cbSouth];
+  MyCell^.UsedFormattingFields := [uffBorder];
+
+  MyWorksheet.WriteUTF8Text(5, 9, '[N,W,E,S]');// J6
+  MyCell := MyWorksheet.GetCell(5, 9);
+  MyCell^.Border := [cbNorth, cbWest, cbEast, cbSouth];
   MyCell^.UsedFormattingFields := [uffBorder];
 
   // Save the spreadsheet to a file
