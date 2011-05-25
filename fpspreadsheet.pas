@@ -190,7 +190,8 @@ type
     destructor Destroy; override;
     function  CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
-    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat);
+    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
+    procedure ReadFromFile(AFileName: string); overload;
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     procedure WriteToFile(const AFileName: string;
       const AFormat: TsSpreadsheetFormat;
@@ -775,6 +776,21 @@ begin
   finally
     AReader.Free;
   end;
+end;
+
+{@@
+  Reads the document from a file. This method will try to guess the format from
+  the extension. In the case of the ambiguous xls extension, it will simply
+  assume that it is BIFF8. Note that it could be BIFF2, 3, 4 or 5 too.
+}
+procedure TsWorkbook.ReadFromFile(AFileName: string);
+var
+  Str: String;
+begin
+  Str := ExtractFileExt(AFileName);
+  if Str = STR_EXCEL_EXTENSION then ReadFromFile(AFileName, sfExcel8)
+  else if Str = STR_OOXML_EXCEL_EXTENSION then ReadFromFile(AFileName, sfOOXML)
+  else if Str = STR_OPENDOCUMENT_CALC_EXTENSION then ReadFromFile(AFileName, sfOpenDocument);
 end;
 
 {@@
