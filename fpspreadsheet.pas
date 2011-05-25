@@ -88,7 +88,7 @@ type
 
   {@@ List of possible formatting fields }
 
-  TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder{, uffBackgroundColor});
+  TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder, uffBackgroundColor);
 
   {@@ Describes which formatting fields are active }
 
@@ -109,7 +109,7 @@ type
 
   {.@@ Colors in FPSpreadsheet as given by a list of possible default values }
 
-  //TsColor = ();
+  TsColor = (scLtGrey);
 
   {@@ Cell structure for TsWorksheet
 
@@ -133,7 +133,7 @@ type
     UsedFormattingFields: TsUsedFormattingFields;
     TextRotation: TsTextRotation;
     Border: TsCellBorders;
-    //BackgroundColor: TsColor;
+    BackgroundColor: TsColor;
   end;
 
   PCell = ^TCell;
@@ -232,6 +232,8 @@ type
 
   TsSpreadWriterClass = class of TsCustomSpreadWriter;
 
+  TCellsCallback = procedure (ACell: PCell; AStream: TStream) of object;
+
   { TsCustomSpreadWriter }
 
   TsCustomSpreadWriter = class
@@ -239,8 +241,9 @@ type
     { Helper routines }
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     { General writing methods }
-    procedure WriteCellCallback(data, arg: pointer);
+    procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
+    procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
     procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
       const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
@@ -1000,14 +1003,8 @@ end;
 
   @see    TsCustomSpreadWriter.WriteCellsToStream
 }
-procedure TsCustomSpreadWriter.WriteCellCallback(data, arg: pointer);
-var
-  ACell: PCell;
-  AStream: TStream;
+procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
-  ACell := PCell(data);
-  AStream := TStream(arg);
-
   case ACell.ContentType of
     cctNumber:  WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String:  WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
@@ -1025,13 +1022,18 @@ end;
   @param  ACells  List of cells to be writeen
 }
 procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
+begin
+  IterateThroughCells(AStream, ACells, WriteCellCallback);
+end;
+
+procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
 var
   AVLNode: TAVLTreeNode;
 begin
   AVLNode := ACells.FindLowest;
   While Assigned(AVLNode) do
   begin
-    WriteCellCallback(AVLNode.Data, Pointer(AStream));
+    ACallback(PCell(AVLNode.Data), AStream);
     AVLNode := ACells.FindSuccessor(AVLNode);
   end;
 end;

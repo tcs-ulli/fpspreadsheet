@@ -102,6 +102,12 @@ type
   { TsSpreadBIFF8Writer }
 
   TsSpreadBIFF8Writer = class(TsCustomSpreadWriter)
+  private
+    FFormattingStyles: array of TCell; // An array with cells which are models for the used styles
+    procedure WriteXFIndex(AStream: TStream; ACell: PCell);
+    procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
+    procedure ListAllFormattingStyles(AData: TsWorkbook);
+    procedure WriteXFFieldsForFormattingStyles();
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -242,6 +248,69 @@ const
 }
 
 { TsSpreadBIFF8Writer }
+
+{@@ Index to XF record, according to formatting }
+procedure TsSpreadBIFF8Writer.WriteXFIndex(AStream: TStream; ACell: PCell);
+begin
+  if ACell^.UsedFormattingFields = [uffTextRotation] then
+  begin
+    case ACell^.TextRotation of
+      rt90DegreeCounterClockwiseRotation: AStream.WriteWord(WordToLE(16));
+      rt90DegreeClockwiseRotation: AStream.WriteWord(WordToLE(17));
+    else
+      AStream.WriteWord(WordToLE(15));
+    end;
+  end
+  else if ACell^.UsedFormattingFields = [uffBold] then
+  begin
+    AStream.WriteWord(WordToLE(18));
+  end
+  else if ACell^.UsedFormattingFields = [uffBorder] then
+  begin
+    if ACell^.Border = [] then AStream.WriteWord(WordToLE(15))
+    else if ACell^.Border = [cbNorth] then AStream.WriteWord(WordToLE(19))
+    else if ACell^.Border = [cbWest] then AStream.WriteWord(WordToLE(20))
+    else if ACell^.Border = [cbEast] then AStream.WriteWord(WordToLE(21))
+    else if ACell^.Border = [cbSouth] then AStream.WriteWord(WordToLE(22))
+    else if ACell^.Border = [cbNorth, cbWest] then AStream.WriteWord(WordToLE(23))
+    else if ACell^.Border = [cbNorth, cbEast] then AStream.WriteWord(WordToLE(24))
+    else if ACell^.Border = [cbNorth, cbSouth] then AStream.WriteWord(WordToLE(25))
+    else if ACell^.Border = [cbWest, cbEast] then AStream.WriteWord(WordToLE(26))
+    else if ACell^.Border = [cbWest, cbSouth] then AStream.WriteWord(WordToLE(27))
+    else if ACell^.Border = [cbEast, cbSouth] then AStream.WriteWord(WordToLE(28))
+    else if ACell^.Border = [cbNorth, cbWest, cbEast] then AStream.WriteWord(WordToLE(29))
+    else if ACell^.Border = [cbNorth, cbWest, cbSouth] then AStream.WriteWord(WordToLE(30))
+    else if ACell^.Border = [cbNorth, cbEast, cbSouth] then AStream.WriteWord(WordToLE(31))
+    else if ACell^.Border = [cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(32))
+    else if ACell^.Border = [cbNorth, cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(33));
+  end
+  else
+    AStream.WriteWord(WordToLE(15));
+end;
+
+procedure TsSpreadBIFF8Writer.ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
+begin
+  if ACell^.UsedFormattingFields = [] then Exit;
+
+  // Unfinished ...
+end;
+
+procedure TsSpreadBIFF8Writer.ListAllFormattingStyles(AData: TsWorkbook);
+var
+  i: Integer;
+begin
+  for i := 0 to AData.GetWorksheetCount - 1 do
+  begin
+    IterateThroughCells(nil, AData.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
+  end;
+
+  // Unfinished ...
+end;
+
+procedure TsSpreadBIFF8Writer.WriteXFFieldsForFormattingStyles();
+begin
+  // Unfinished ...
+end;
 
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteToFile ()
@@ -391,6 +460,9 @@ begin
   WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbEast, cbSouth]);
   // XF33 - Border
   WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbEast, cbSouth]);
+  // Add further all non-standard formatting styles
+//  ListAllFormattingStyles(AData);
+//  WriteXFFieldsForFormattingStyles();
 
   WriteStyle(AStream);
 
@@ -770,40 +842,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record, according to formatting }
-  if ACell^.UsedFormattingFields = [uffTextRotation] then
-  begin
-    case ACell^.TextRotation of
-      rt90DegreeCounterClockwiseRotation: AStream.WriteWord(WordToLE(16));
-      rt90DegreeClockwiseRotation: AStream.WriteWord(WordToLE(17));
-    else
-      AStream.WriteWord(WordToLE(15));
-    end;
-  end
-  else if ACell^.UsedFormattingFields = [uffBold] then
-  begin
-    AStream.WriteWord(WordToLE(18));
-  end
-  else if ACell^.UsedFormattingFields = [uffBorder] then
-  begin
-    if ACell^.Border = [] then AStream.WriteWord(WordToLE(15))
-    else if ACell^.Border = [cbNorth] then AStream.WriteWord(WordToLE(19))
-    else if ACell^.Border = [cbWest] then AStream.WriteWord(WordToLE(20))
-    else if ACell^.Border = [cbEast] then AStream.WriteWord(WordToLE(21))
-    else if ACell^.Border = [cbSouth] then AStream.WriteWord(WordToLE(22))
-    else if ACell^.Border = [cbNorth, cbWest] then AStream.WriteWord(WordToLE(23))
-    else if ACell^.Border = [cbNorth, cbEast] then AStream.WriteWord(WordToLE(24))
-    else if ACell^.Border = [cbNorth, cbSouth] then AStream.WriteWord(WordToLE(25))
-    else if ACell^.Border = [cbWest, cbEast] then AStream.WriteWord(WordToLE(26))
-    else if ACell^.Border = [cbWest, cbSouth] then AStream.WriteWord(WordToLE(27))
-    else if ACell^.Border = [cbEast, cbSouth] then AStream.WriteWord(WordToLE(28))
-    else if ACell^.Border = [cbNorth, cbWest, cbEast] then AStream.WriteWord(WordToLE(29))
-    else if ACell^.Border = [cbNorth, cbWest, cbSouth] then AStream.WriteWord(WordToLE(30))
-    else if ACell^.Border = [cbNorth, cbEast, cbSouth] then AStream.WriteWord(WordToLE(31))
-    else if ACell^.Border = [cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(32))
-    else if ACell^.Border = [cbNorth, cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(33));
-  end
-  else
-    AStream.WriteWord(WordToLE(15));
+  WriteXFIndex(AStream, ACell);
 
   { Byte String with 16-bit size }
   AStream.WriteWord(WordToLE(L));
