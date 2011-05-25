@@ -58,6 +58,7 @@ type
   TsSpreadBIFF2Writer = class(TsCustomSpreadWriter)
   private
     function  FEKindToExcelID(AElement: TFEKind; var AParamsNum, AFuncNum: Byte): Byte;
+    procedure WriteCellFormatting(AStream: TStream; ACell: PCell);
   public
     { General writing methods }
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
@@ -118,6 +119,40 @@ begin
     AFuncNum := INT_EXCEL_SHEET_FUNC_ROUND;
   end;
   end;
+end;
+
+procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell);
+var
+  BorderByte: Byte = 0;
+begin
+  if ACell^.UsedFormattingFields = [] then
+  begin
+    AStream.WriteByte($0);
+    AStream.WriteByte($0);
+    AStream.WriteByte($0);
+    Exit;
+  end;
+
+  AStream.WriteByte($0);
+  AStream.WriteByte($0);
+
+  // The Border and Background
+
+  BorderByte := 0;
+
+  if uffBorder in ACell^.UsedFormattingFields then
+  begin
+    if cbNorth in ACell^.Border then BorderByte := BorderByte or $20;
+    if cbWest in ACell^.Border then BorderByte := BorderByte or $08;
+    if cbEast in ACell^.Border then BorderByte := BorderByte or $10;
+    if cbSouth in ACell^.Border then BorderByte := BorderByte or $40;
+  end;
+
+  // BIFF2 does not support a background color, just a "shaded" option
+  if uffBackgroundColor in ACell^.UsedFormattingFields then
+    BorderByte := BorderByte or $80;
+
+  AStream.WriteByte(BorderByte);
 end;
 
 {
@@ -298,9 +333,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
+  WriteCellFormatting(AStream, ACell);
 
   { String with 8-bit size }
   AStream.WriteByte(L);
