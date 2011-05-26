@@ -11,6 +11,26 @@ uses
   fpspreadsheet,
   fpsutils;
 
+{ Excel Constants which don't change across versions }
+const
+  { Built In Color Pallete Indexes }
+  BUILT_IN_COLOR_PALLETE_BLACK     = $08; // 000000H
+  BUILT_IN_COLOR_PALLETE_WHITE     = $09; // FFFFFFH
+  BUILT_IN_COLOR_PALLETE_RED       = $0A; // FF0000H
+  BUILT_IN_COLOR_PALLETE_GREEN     = $0B; // 00FF00H
+  BUILT_IN_COLOR_PALLETE_BLUE      = $0C; // 0000FFH
+  BUILT_IN_COLOR_PALLETE_YELLOW    = $0D; // FFFF00H
+  BUILT_IN_COLOR_PALLETE_MAGENTA   = $0E; // FF00FFH
+  BUILT_IN_COLOR_PALLETE_CYAN      = $0F; // 00FFFFH
+  BUILT_IN_COLOR_PALLETE_DARK_RED  = $10; // 800000H
+  BUILT_IN_COLOR_PALLETE_DARK_GREEN= $11; // 008000H
+  BUILT_IN_COLOR_PALLETE_DARK_BLUE = $12; // 000080H
+  BUILT_IN_COLOR_PALLETE_OLIVE     = $13; // 808000H
+  BUILT_IN_COLOR_PALLETE_PURPLE    = $14; // 800080H
+  BUILT_IN_COLOR_PALLETE_TEAL      = $15; // 008080H
+  BUILT_IN_COLOR_PALLETE_SILVER    = $16; // C0C0C0H
+  BUILT_IN_COLOR_PALLETE_GREY      = $17; // 808080H
+
 type
 
   { TsSpreadBIFFReader }
@@ -29,6 +49,7 @@ type
     }
     FFormattingStyles: array of TCell;
     NextXFIndex: Integer; // Indicates which should be the next XF Index when filling the styles list
+    function FPSColorToEXCELPallete(AColor: TsColor): Word;
     function FindFormattingInList(AFormat: PCell): Integer;
     procedure AddDefaultFormats(); virtual;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
@@ -36,6 +57,28 @@ type
   end;
 
 implementation
+
+function TsSpreadBIFFWriter.FPSColorToEXCELPallete(AColor: TsColor): Word;
+begin
+  case AColor of
+    scBlack: Result := BUILT_IN_COLOR_PALLETE_BLACK;
+    scWhite: Result := BUILT_IN_COLOR_PALLETE_WHITE;
+    scRed: Result := BUILT_IN_COLOR_PALLETE_RED;
+    scGREEN: Result := BUILT_IN_COLOR_PALLETE_GREEN;
+    scBLUE: Result := BUILT_IN_COLOR_PALLETE_BLUE;
+    scYELLOW: Result := BUILT_IN_COLOR_PALLETE_YELLOW;
+    scMAGENTA: Result := BUILT_IN_COLOR_PALLETE_MAGENTA;
+    scCYAN: Result := BUILT_IN_COLOR_PALLETE_CYAN;
+    scDarkRed: Result := BUILT_IN_COLOR_PALLETE_DARK_RED;
+    scDarkGreen: Result := BUILT_IN_COLOR_PALLETE_DARK_GREEN;
+    scDarkBlue: Result := BUILT_IN_COLOR_PALLETE_DARK_BLUE;
+    scOLIVE: Result := BUILT_IN_COLOR_PALLETE_OLIVE;
+    scPURPLE: Result := BUILT_IN_COLOR_PALLETE_PURPLE;
+    scTEAL: Result := BUILT_IN_COLOR_PALLETE_TEAL;
+    scSilver: Result := BUILT_IN_COLOR_PALLETE_SILVER;
+    scGrey: Result := BUILT_IN_COLOR_PALLETE_GREY;
+  end;
+end;
 
 {
   Checks if the style of a cell is in the list FFormattingStyles and returns the index

@@ -121,9 +121,26 @@ type
 
   TsCellBorders = set of TsCellBorder;
 
-  {.@@ Colors in FPSpreadsheet as given by a list of possible default values }
+  {@@ Colors in FPSpreadsheet as given by a pallete to be compatible with Excel }
 
-  TsColor = (scLtGrey);
+  TsColor = (
+    scBlack,    // 000000H
+    scWhite,    // FFFFFFH
+    scRed,      // FF0000H
+    scGREEN,    // 00FF00H
+    scBLUE,     // 0000FFH
+    scYELLOW,   // FFFF00H
+    scMAGENTA,  // FF00FFH
+    scCYAN,     // 00FFFFH
+    scDarkRed,  // 800000H
+    scDarkGreen,// 008000H
+    scDarkBlue, // 000080H
+    scOLIVE,    // 808000H
+    scPURPLE,   // 800080H
+    scTEAL,     // 008080H
+    scSilver,   // C0C0C0H
+    scGrey      // 808080H
+  );
 
   {@@ Cell structure for TsWorksheet
 
