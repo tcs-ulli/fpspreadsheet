@@ -94,7 +94,21 @@ type
 
   TsUsedFormattingFields = set of TsUsedFormattingField;
 
-  {@@ Text rotation formatting }
+  {@@ Text rotation formatting. The text is rotated relative to the standard
+      orientation, which is from left to right horizontal: --->
+                                                           ABC
+
+      So 90 degrees clockwise means that the text will be:
+       |  A
+       |  B
+      \|/ C
+
+      And 90 degree counter clockwise will be:
+
+      /|\ C
+       |  B
+       |  A
+  }
 
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
     rt90DegreeCounterClockwiseRotation);

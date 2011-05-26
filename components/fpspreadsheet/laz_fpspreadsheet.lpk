@@ -4,16 +4,21 @@
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet"/>
     <CompilerOptions>
-      <Version Value="8"/>
+      <Version Value="10"/>
       <PathDelim Value="\"/>
       <SearchPaths>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <UseAnsiStrings Value="False"/>
+        </SyntaxOptions>
+      </Parsing>
       <Other>
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
-    <Files Count="19">
+    <Files Count="20">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -90,6 +95,10 @@
         <Filename Value="fpsconvencoding.pas"/>
         <UnitName Value="fpsconvencoding"/>
       </Item19>
+      <Item20>
+        <Filename Value="xlsbiffcommon.pas"/>
+        <UnitName Value="xlsbiffcommon"/>
+      </Item20>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="1">

@@ -1,4 +1,4 @@
-{ This file was automatically created by Lazarus. do not edit!
+{ This file was automatically created by Lazarus. Do not edit!
   This source is only used to compile and install the package.
  }
 
@@ -11,7 +11,7 @@ uses
   xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpszipper, uvirtuallayer_types, 
   uvirtuallayer, uvirtuallayer_ole, uvirtuallayer_ole_helpers, 
   uvirtuallayer_ole_types, uvirtuallayer_stream, fpolebasic, xlscommon, 
-  fpsconvencoding, LazarusPackageIntf;
+  fpsconvencoding, xlsbiffcommon, LazarusPackageIntf;
 
 implementation
 
