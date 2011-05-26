@@ -20,11 +20,9 @@ var
   MyWorksheet: TsWorksheet;
   MyDir: string;
   MyCell: PCell;
-begin
-  MyDir := ExtractFilePath(ParamStr(0));
 
-  // Create the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
+procedure WriteFirstWorksheet();
+begin
   MyWorksheet := MyWorkbook.AddWorksheet('Worksheet1');
 
   // Write some cells
@@ -110,6 +108,47 @@ begin
   MyCell^.Border := [cbNorth, cbWest, cbEast, cbSouth];
   MyCell^.BackgroundColor := scGreen;
   MyCell^.UsedFormattingFields := [uffBorder, uffBold, uffBackgroundColor];
+end;
+
+procedure WriteSecondWorksheet();
+begin
+  MyWorksheet := MyWorkbook.AddWorksheet('Worksheet2');
+
+  // Write some cells
+  MyWorksheet.WriteUTF8Text(1, 1, ' ');
+  MyCell := MyWorksheet.GetCell(1, 1);
+  MyCell^.Border := [cbNorth, cbWest];
+  MyCell^.BackgroundColor := scGrey10pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+
+  MyWorksheet.WriteUTF8Text(1, 2, ' ');
+  MyCell := MyWorksheet.GetCell(1, 2);
+  MyCell^.Border := [cbNorth, cbEast];
+  MyCell^.BackgroundColor := scGrey10pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+
+  MyWorksheet.WriteUTF8Text(2, 1, ' ');
+  MyCell := MyWorksheet.GetCell(2, 1);
+  MyCell^.Border := [cbWest, cbSouth];
+  MyCell^.BackgroundColor := scGrey10pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+
+  MyWorksheet.WriteUTF8Text(2, 2, ' ');
+  MyCell := MyWorksheet.GetCell(2, 2);
+  MyCell^.Border := [cbEast, cbSouth];
+  MyCell^.BackgroundColor := scGrey10pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+end;
+
+begin
+  MyDir := ExtractFilePath(ParamStr(0));
+
+  // Create the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+
+  WriteFirstWorksheet();
+
+  WriteSecondWorksheet();
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);

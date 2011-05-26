@@ -31,6 +31,9 @@ const
   BUILT_IN_COLOR_PALLETE_SILVER    = $16; // C0C0C0H
   BUILT_IN_COLOR_PALLETE_GREY      = $17; // 808080H
 
+  EXTRA_COLOR_PALETTE_GREY10PCT    = $18; // E6E6E6H
+  EXTRA_COLOR_PALETTE_GREY20PCT    = $19; // E6E6E6H
+
 type
 
   { TsSpreadBIFFReader }
@@ -77,6 +80,9 @@ begin
     scTEAL: Result := BUILT_IN_COLOR_PALLETE_TEAL;
     scSilver: Result := BUILT_IN_COLOR_PALLETE_SILVER;
     scGrey: Result := BUILT_IN_COLOR_PALLETE_GREY;
+    //
+    scGrey10pct: Result := EXTRA_COLOR_PALETTE_GREY10PCT;
+    scGrey20pct: Result := EXTRA_COLOR_PALETTE_GREY20PCT;
   end;
 end;
 
