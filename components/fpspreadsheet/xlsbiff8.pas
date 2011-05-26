@@ -128,7 +128,8 @@ type
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
-      AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders);
+      AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
+      AddBackground: Boolean = False);
   end;
 
 implementation
@@ -242,6 +243,24 @@ const
 
   MASK_XF_VERT_ALIGN                  = $70;
 
+  { Color Indexes }
+  BUILT_IN_COLOR_PALLETE_BLACK     = $08; // 000000H
+  BUILT_IN_COLOR_PALLETE_WHITE     = $09; // FFFFFFH
+  BUILT_IN_COLOR_PALLETE_RED       = $0A; // FF0000H
+  BUILT_IN_COLOR_PALLETE_GREEN     = $0B; // 00FF00H
+  BUILT_IN_COLOR_PALLETE_BLUE      = $0C; // 0000FFH
+  BUILT_IN_COLOR_PALLETE_YELLOW    = $0D; // FFFF00H
+  BUILT_IN_COLOR_PALLETE_MAGENTA   = $0E; // FF00FFH
+  BUILT_IN_COLOR_PALLETE_CYAN      = $0F; // 00FFFFH
+  BUILT_IN_COLOR_PALLETE_DARK_RED  = $10; // 800000H
+  BUILT_IN_COLOR_PALLETE_DARK_GREEN= $11; // 008000H
+  BUILT_IN_COLOR_PALLETE_DARK_BLUE = $12; // 000080H
+  BUILT_IN_COLOR_PALLETE_OLIVE     = $13; // 808000H
+  BUILT_IN_COLOR_PALLETE_PURPLE    = $14; // 800080H
+  BUILT_IN_COLOR_PALLETE_TEAL      = $15; // 008080H
+  BUILT_IN_COLOR_PALLETE_SILVER    = $16; // C0C0C0H
+  BUILT_IN_COLOR_PALLETE_GREY      = $17; // 808080H
+
 {
   Exported functions
 }
@@ -296,6 +315,7 @@ var
   lFontIndex: Word;
   lTextRotation: Byte;
   lBorders: TsCellBorders;
+  lAddBackground: Boolean;
 begin
   // The first 4 styles were already added
   for i := 4 to Length(FFormattingStyles) - 1 do
@@ -304,6 +324,7 @@ begin
     lFontIndex := 0;
     lTextRotation := XF_ROTATION_HORIZONTAL;
     lBorders := [];
+    lAddBackground := False;
 
     // Now apply the modifications
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
@@ -321,11 +342,11 @@ begin
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
       lFontIndex := 1;
 
-//    if uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields then
-//      lFontIndex := 1;
+    if uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields then
+      lAddBackground := True;
 
     // And finally write the style
-    WriteXF(AStream, lFontIndex, 0, lTextRotation, lBorders);
+    WriteXF(AStream, lFontIndex, 0, lTextRotation, lBorders, lAddBackground);
   end;
 end;
 
@@ -1034,7 +1055,8 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
- AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders);
+ AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
+ AddBackground: Boolean = False);
 var
   XFOptions: Word;
   XFAlignment, XFOrientationAttrib: Byte;
@@ -1094,9 +1116,12 @@ begin
 
   // Top and Bottom line colors, use black
   XFBorderDWord2 := 8 {top line - black} + 8 * $80 {bottom line - black};
+  // Add a background, if desired
+  if AddBackground then XFBorderDWord2 := XFBorderDWord2 or $4000000;
   AStream.WriteDWord(DWordToLE(XFBorderDWord2));
   // Background Pattern Color, always zeroed
-  AStream.WriteWord(0);
+  if AddBackground then AStream.WriteWord(WordToLE(BUILT_IN_COLOR_PALLETE_SILVER))
+  else AStream.WriteWord(0);
 end;
 
 { TsSpreadBIFF8Reader }
