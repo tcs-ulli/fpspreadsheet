@@ -115,26 +115,45 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('Worksheet2');
 
   // Write some cells
-  MyWorksheet.WriteUTF8Text(1, 1, ' ');
+
+  // Line 1
+
+  MyWorksheet.WriteUTF8Text(1, 1, 'Relatório');
   MyCell := MyWorksheet.GetCell(1, 1);
-  MyCell^.Border := [cbNorth, cbWest];
-  MyCell^.BackgroundColor := scGrey10pct;
-  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+  MyCell^.Border := [cbNorth, cbWest, cbSouth];
+  MyCell^.BackgroundColor := scGrey20pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor, uffBold];
 
   MyWorksheet.WriteUTF8Text(1, 2, ' ');
   MyCell := MyWorksheet.GetCell(1, 2);
-  MyCell^.Border := [cbNorth, cbEast];
+  MyCell^.Border := [cbNorth, cbEast, cbSouth];
+  MyCell^.BackgroundColor := scGrey20pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+
+  // Line 2
+
+  MyWorksheet.WriteUTF8Text(2, 1, 'Compras');
+  MyCell := MyWorksheet.GetCell(2, 1);
+  MyCell^.Border := [cbWest];
   MyCell^.BackgroundColor := scGrey10pct;
   MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
 
-  MyWorksheet.WriteUTF8Text(2, 1, ' ');
-  MyCell := MyWorksheet.GetCell(2, 1);
+  MyWorksheet.WriteUTF8Text(2, 2, 'R$ 20');
+  MyCell := MyWorksheet.GetCell(2, 2);
+  MyCell^.Border := [cbEast];
+  MyCell^.BackgroundColor := scGrey10pct;
+  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
+
+  // Line 3
+
+  MyWorksheet.WriteUTF8Text(3, 1, 'Total:');
+  MyCell := MyWorksheet.GetCell(3, 1);
   MyCell^.Border := [cbWest, cbSouth];
   MyCell^.BackgroundColor := scGrey10pct;
   MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
 
-  MyWorksheet.WriteUTF8Text(2, 2, ' ');
-  MyCell := MyWorksheet.GetCell(2, 2);
+  MyWorksheet.WriteUTF8Text(3, 2, 'R$ 20');
+  MyCell := MyWorksheet.GetCell(3, 2);
   MyCell^.Border := [cbEast, cbSouth];
   MyCell^.BackgroundColor := scGrey10pct;
   MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
