@@ -124,6 +124,7 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WritePalette(AStream: TStream);
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
@@ -155,6 +156,7 @@ const
   INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
   INT_EXCEL_ID_CONTINUE   = $003C;
   INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
+  INT_EXCEL_ID_PALETTE    = $0092;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -443,6 +445,9 @@ begin
    FontData.Free;
   end;
   
+  // PALETTE
+  WritePalette(AStream);
+
   // XF0
   WriteXF(AStream, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
   // XF1
@@ -897,6 +902,83 @@ begin
 
   { IEE 754 floating-point value (is different in BIGENDIAN???) }
   AStream.WriteBuffer(AValue, 8);
+end;
+
+procedure TsSpreadBIFF8Writer.WritePalette(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PALETTE));
+  AStream.WriteWord(WordToLE(2+4*56));
+
+  { Number of colors }
+  AStream.WriteWord(WordToLE(56));
+
+  { Now the colors, first the standard 16 from Excel }
+  AStream.WriteDWord(DWordToLE($000000)); // $08
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FF0000));
+  AStream.WriteDWord(DWordToLE($00FF00));
+  AStream.WriteDWord(DWordToLE($0000FF));
+  AStream.WriteDWord(DWordToLE($FFFF00));
+  AStream.WriteDWord(DWordToLE($FF00FF));
+  AStream.WriteDWord(DWordToLE($00FFFF));
+  AStream.WriteDWord(DWordToLE($800000));
+  AStream.WriteDWord(DWordToLE($008000));
+  AStream.WriteDWord(DWordToLE($000080));
+  AStream.WriteDWord(DWordToLE($808000));
+  AStream.WriteDWord(DWordToLE($800080));
+  AStream.WriteDWord(DWordToLE($008080));
+  AStream.WriteDWord(DWordToLE($C0C0C0));
+  AStream.WriteDWord(DWordToLE($808080)); //$17
+
+  { Now some colors which we define ourselves }
+
+  AStream.WriteDWord(DWordToLE($E6E6E6)); //$18
+  AStream.WriteDWord(DWordToLE($CCCCCC)); //$19
+
+  { And padding }
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+
+  AStream.WriteDWord(DWordToLE($FFFFFF)); //$20
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+
+  AStream.WriteDWord(DWordToLE($FFFFFF)); //$30
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(DWordToLE($FFFFFF));
 end;
 
 {*******************************************************************

@@ -139,7 +139,10 @@ type
     scPURPLE,   // 800080H
     scTEAL,     // 008080H
     scSilver,   // C0C0C0H
-    scGrey      // 808080H
+    scGrey,     // 808080H
+    //
+    scGrey10pct,// E6E6E6H
+    scGrey20pct // CCCCCCH
   );
 
   {@@ Cell structure for TsWorksheet
