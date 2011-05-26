@@ -53,7 +53,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas,
-  fpspreadsheet,
+  fpspreadsheet, xlsbiffcommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -65,7 +65,7 @@ type
 
   { TsSpreadBIFF8Reader }
 
-  TsSpreadBIFF8Reader = class(TsCustomSpreadReader)
+  TsSpreadBIFF8Reader = class(TsSpreadBIFFReader)
   private
     RecordSize: Word;
     PendingRecordSize: SizeInt;
@@ -101,13 +101,12 @@ type
 
   { TsSpreadBIFF8Writer }
 
-  TsSpreadBIFF8Writer = class(TsCustomSpreadWriter)
+  TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
-    FFormattingStyles: array of TCell; // An array with cells which are models for the used styles
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
-    procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
-    procedure ListAllFormattingStyles(AData: TsWorkbook);
-    procedure WriteXFFieldsForFormattingStyles();
+    procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
+  protected
+    procedure AddDefaultFormats(); override;
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -249,9 +248,19 @@ const
 
 { TsSpreadBIFF8Writer }
 
-{@@ Index to XF record, according to formatting }
+{ Index to XF record, according to formatting }
 procedure TsSpreadBIFF8Writer.WriteXFIndex(AStream: TStream; ACell: PCell);
+var
+  lIndex: Integer;
+  lXFIndex: Word;
 begin
+  // First try the fast methods for default formats
+  if ACell^.UsedFormattingFields = [] then
+  begin
+    AStream.WriteWord(WordToLE(15));
+    Exit;
+  end;
+
   if ACell^.UsedFormattingFields = [uffTextRotation] then
   begin
     case ACell^.TextRotation of
@@ -260,56 +269,93 @@ begin
     else
       AStream.WriteWord(WordToLE(15));
     end;
-  end
-  else if ACell^.UsedFormattingFields = [uffBold] then
-  begin
-    AStream.WriteWord(WordToLE(18));
-  end
-  else if ACell^.UsedFormattingFields = [uffBorder] then
-  begin
-    if ACell^.Border = [] then AStream.WriteWord(WordToLE(15))
-    else if ACell^.Border = [cbNorth] then AStream.WriteWord(WordToLE(19))
-    else if ACell^.Border = [cbWest] then AStream.WriteWord(WordToLE(20))
-    else if ACell^.Border = [cbEast] then AStream.WriteWord(WordToLE(21))
-    else if ACell^.Border = [cbSouth] then AStream.WriteWord(WordToLE(22))
-    else if ACell^.Border = [cbNorth, cbWest] then AStream.WriteWord(WordToLE(23))
-    else if ACell^.Border = [cbNorth, cbEast] then AStream.WriteWord(WordToLE(24))
-    else if ACell^.Border = [cbNorth, cbSouth] then AStream.WriteWord(WordToLE(25))
-    else if ACell^.Border = [cbWest, cbEast] then AStream.WriteWord(WordToLE(26))
-    else if ACell^.Border = [cbWest, cbSouth] then AStream.WriteWord(WordToLE(27))
-    else if ACell^.Border = [cbEast, cbSouth] then AStream.WriteWord(WordToLE(28))
-    else if ACell^.Border = [cbNorth, cbWest, cbEast] then AStream.WriteWord(WordToLE(29))
-    else if ACell^.Border = [cbNorth, cbWest, cbSouth] then AStream.WriteWord(WordToLE(30))
-    else if ACell^.Border = [cbNorth, cbEast, cbSouth] then AStream.WriteWord(WordToLE(31))
-    else if ACell^.Border = [cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(32))
-    else if ACell^.Border = [cbNorth, cbWest, cbEast, cbSouth] then AStream.WriteWord(WordToLE(33));
-  end
-  else
-    AStream.WriteWord(WordToLE(15));
-end;
-
-procedure TsSpreadBIFF8Writer.ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
-begin
-  if ACell^.UsedFormattingFields = [] then Exit;
-
-  // Unfinished ...
-end;
-
-procedure TsSpreadBIFF8Writer.ListAllFormattingStyles(AData: TsWorkbook);
-var
-  i: Integer;
-begin
-  for i := 0 to AData.GetWorksheetCount - 1 do
-  begin
-    IterateThroughCells(nil, AData.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
+    Exit;
   end;
 
-  // Unfinished ...
+  if ACell^.UsedFormattingFields = [uffBold] then
+  begin
+    AStream.WriteWord(WordToLE(18));
+    Exit;
+  end;
+
+  // If not, then we need to search in the list of dynamic formats
+
+  lIndex := FindFormattingInList(ACell);
+  // Carefully check the index
+  if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
+    raise Exception.Create('[TsSpreadBIFF8Writer.WriteXFIndex] Invalid Index, this should not happen!');
+
+  lXFIndex := FFormattingStyles[lIndex].Row;
+
+  AStream.WriteWord(WordToLE(lXFIndex));
 end;
 
-procedure TsSpreadBIFF8Writer.WriteXFFieldsForFormattingStyles();
+procedure TsSpreadBIFF8Writer.WriteXFFieldsForFormattingStyles(AStream: TStream);
+var
+  i: Integer;
+  lFontIndex: Word;
+  lTextRotation: Byte;
+  lBorders: TsCellBorders;
 begin
-  // Unfinished ...
+  // The first 4 styles were already added
+  for i := 4 to Length(FFormattingStyles) - 1 do
+  begin
+    // Default styles
+    lFontIndex := 0;
+    lTextRotation := XF_ROTATION_HORIZONTAL;
+    lBorders := [];
+
+    // Now apply the modifications
+    if uffBorder in FFormattingStyles[i].UsedFormattingFields then
+      lBorders := FFormattingStyles[i].Border;
+
+    if uffTextRotation in FFormattingStyles[i].UsedFormattingFields then
+    begin
+      case FFormattingStyles[i].TextRotation of
+      trHorizontal:                       lTextRotation := XF_ROTATION_HORIZONTAL;
+      rt90DegreeClockwiseRotation:        lTextRotation := XF_ROTATION_90_DEGREE_CLOCKWISE;
+      rt90DegreeCounterClockwiseRotation: lTextRotation := XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE;
+      end;
+    end;
+
+    if uffBold in FFormattingStyles[i].UsedFormattingFields then
+      lFontIndex := 1;
+
+//    if uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields then
+//      lFontIndex := 1;
+
+    // And finally write the style
+    WriteXF(AStream, lFontIndex, 0, lTextRotation, lBorders);
+  end;
+end;
+
+{@@
+  These are default formats which are added as XF fields regardless of being used
+  in the document or not.
+}
+procedure TsSpreadBIFF8Writer.AddDefaultFormats();
+begin
+  NextXFIndex := 19;
+
+  SetLength(FFormattingStyles, 4);
+
+  // XF15 - Default, no formatting
+  FFormattingStyles[0].UsedFormattingFields := [];
+  FFormattingStyles[0].Row := 15;
+
+  // XF16 - Rotated
+  FFormattingStyles[1].UsedFormattingFields := [uffTextRotation];
+  FFormattingStyles[1].Row := 16;
+  FFormattingStyles[1].TextRotation := rt90DegreeCounterClockwiseRotation;
+
+  // XF17 - Rotated
+  FFormattingStyles[2].UsedFormattingFields := [uffTextRotation];
+  FFormattingStyles[2].Row := 17;
+  FFormattingStyles[2].TextRotation := rt90DegreeClockwiseRotation;
+
+  // XF18 - Bold
+  FFormattingStyles[3].UsedFormattingFields := [uffBold];
+  FFormattingStyles[3].Row := 18;
 end;
 
 {*******************************************************************
@@ -430,39 +476,9 @@ begin
   WriteXF(AStream, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE, []);
   // XF18 - Bold
   WriteXF(AStream, 1, 0, XF_ROTATION_HORIZONTAL, []);
-  // XF19 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth]);
-  // XF20 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest]);
-  // XF21 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbEast]);
-  // XF22 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbSouth]);
-  // XF23 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest]);
-  // XF24 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbEast]);
-  // XF25 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbSouth]);
-  // XF26 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbEast]);
-  // XF27 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbSouth]);
-  // XF28 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbEast, cbSouth]);
-  // XF29 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbEast]);
-  // XF30 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbSouth]);
-  // XF31 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbEast, cbSouth]);
-  // XF32 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbWest, cbEast, cbSouth]);
-  // XF33 - Border
-  WriteXF(AStream, 0, 0, XF_ROTATION_HORIZONTAL, [cbNorth, cbWest, cbEast, cbSouth]);
   // Add further all non-standard formatting styles
-//  ListAllFormattingStyles(AData);
-//  WriteXFFieldsForFormattingStyles();
+  ListAllFormattingStyles(AData);
+  WriteXFFieldsForFormattingStyles(AStream);
 
   WriteStyle(AStream);
 
