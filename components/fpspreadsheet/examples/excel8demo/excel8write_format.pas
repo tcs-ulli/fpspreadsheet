@@ -108,7 +108,7 @@ begin
   MyWorksheet.WriteUTF8Text(5, 9, '[N,W,E,S]');// J6
   MyCell := MyWorksheet.GetCell(5, 9);
   MyCell^.Border := [cbNorth, cbWest, cbEast, cbSouth];
-  MyCell^.UsedFormattingFields := [uffBorder];
+  MyCell^.UsedFormattingFields := [uffBorder, uffBold];
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
