@@ -10,6 +10,7 @@
       </Flags>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
+      <Title Value="test_write_formatting"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <Icon Value="0"/>
@@ -40,9 +41,9 @@
     </RequiredPackages>
     <Units Count="1">
       <Unit0>
-        <Filename Value="excel8write_format.pas"/>
+        <Filename Value="test_write_formatting.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="excel8write_format"/>
+        <UnitName Value="test_write_formatting"/>
       </Unit0>
     </Units>
   </ProjectOptions>
@@ -50,7 +51,7 @@
     <Version Value="10"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="excel8write_format"/>
+      <Filename Value="test_write_formatting"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
