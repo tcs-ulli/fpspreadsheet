@@ -844,7 +844,7 @@ end;
 procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string; ACell: PCell);
 var
-  L: Word;
+  L, RecLen: Word;
   WideValue: WideString;
 begin
   WideValue := UTF8Decode(AValue);
@@ -861,7 +861,8 @@ begin
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-  AStream.WriteWord(WordToLE(8 + 1 + L * Sizeof(WideChar)));
+  RecLen := 8 + 1 + L * Sizeof(WideChar);
+  AStream.WriteWord(WordToLE(RecLen));
 
   { BIFF Record data }
   AStream.WriteWord(WordToLE(ARow));
@@ -1332,6 +1333,7 @@ begin
     { Read the record header }
     RecordType := WordLEToN(AStream.ReadWord);
     RecordSize := WordLEToN(AStream.ReadWord);
+    PendingRecordSize:=RecordSize;
 
     CurStreamPos := AStream.Position;
 
