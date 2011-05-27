@@ -1,2 +1,0 @@
-excel8write_format.exe
-pause

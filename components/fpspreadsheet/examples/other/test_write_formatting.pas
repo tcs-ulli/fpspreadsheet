@@ -1,5 +1,5 @@
 {
-excel8write.dpr
+test_write_formatting.pas
 
 Demonstrates how to write an Excel 8+ file using the fpspreadsheet library
 
@@ -7,12 +7,12 @@ Adds formatting to the file
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
-program excel8write_format;
+program test_write_formatting;
 
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8,
+  Classes, SysUtils, fpspreadsheet, xlsbiff8, fpsopendocument,
   laz_fpspreadsheet, fpsconvencoding;
 
 var
@@ -170,7 +170,8 @@ begin
   WriteSecondWorksheet();
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
+  //MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
+  MyWorkbook.WriteToFile(MyDir + 'test3.odt', sfOpenDocument, False);
   MyWorkbook.Free;
 end.
 
