@@ -67,6 +67,8 @@ type
     procedure WriteStyles;
     procedure WriteContent(AData: TsWorkbook);
     procedure WriteWorksheet(CurSheet: TsWorksheet);
+    // Routines to write parts of those files
+    function WriteStylesXMLAsString: string;
   public
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
@@ -368,7 +370,12 @@ end;
 procedure TsSpreadOpenDocWriter.WriteContent(AData: TsWorkbook);
 var
   i: Integer;
+  lStylesCode: string;
 begin
+  ListAllFormattingStyles(AData);
+
+  lStylesCode := WriteStylesXMLAsString();
+
   FContent :=
    XML_HEADER + LineEnding +
    '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -409,9 +416,8 @@ begin
   '    <style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
   '      <style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
   '    </style:style>' + LineEnding +
-  '    <style:style style:name="bold" style:family="table-cell" style:parent-style-name="Default">' + LineEnding +
-  '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding +
-  '    </style:style>' + LineEnding +
+  // Automatically Generated Styles
+  lStylesCode +
   '  </office:automatic-styles>' + LineEnding +
 
   // Body
@@ -472,6 +478,58 @@ begin
   // Footer
   FContent := FContent +
   '    </table:table>' + LineEnding;
+end;
+
+function TsSpreadOpenDocWriter.WriteStylesXMLAsString: string;
+var
+  i: Integer;
+begin
+  Result := '';
+
+  for i := 0 to Length(FFormattingStyles) - 1 do
+  begin
+    // Start and Name
+    Result := Result +
+    '    <style:style style:name="ce' + IntToStr(i) + '" style:family="table-cell" style:parent-style-name="Default">' + LineEnding;
+
+    // Fields
+    if uffBold in FFormattingStyles[i].UsedFormattingFields then
+      Result := Result +
+    '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
+
+    if (uffBorder in FFormattingStyles[i].UsedFormattingFields) or
+     (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
+    begin
+      Result := Result + '      <style:table-cell-properties ';
+
+      if (uffBorder in FFormattingStyles[i].UsedFormattingFields) then
+      begin
+        if cbSouth in FFormattingStyles[i].Border then Result := Result + 'fo:border-bottom="0.002cm solid #000000" '
+        else Result := Result + 'fo:border-bottom="none" ';
+
+        if cbWest in FFormattingStyles[i].Border then Result := Result + 'fo:border-left="0.002cm solid #000000" '
+        else Result := Result + 'fo:border-left="none" ';
+
+        if cbEast in FFormattingStyles[i].Border then Result := Result + 'fo:border-right="0.002cm solid #000000" '
+        else Result := Result + 'fo:border-right="none" ';
+
+        if cbNorth in FFormattingStyles[i].Border then Result := Result + 'fo:border-top="0.002cm solid #000000" '
+        else Result := Result + 'fo:border-top="none" ';
+      end;
+
+      if (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
+      begin
+        Result := Result + 'fo:background-color="#'
+          + FPSColorToHexString(FFormattingStyles[i].BackgroundColor) +'" ';
+      end;
+
+      Result := Result + '/>' + LineEnding;
+    end;
+
+    // End
+    Result := Result +
+    '    </style:style>' + LineEnding;
+  end;
 end;
 
 {
@@ -563,9 +621,13 @@ procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string; ACell: PCell);
 var
   lStyle: string = '';
+  lIndex: Integer;
 begin
-  if uffBold in ACell^.UsedFormattingFields then
-    lStyle := ' table:style-name="bold" ';
+  if ACell^.UsedFormattingFields <> [] then
+  begin
+    lIndex := FindFormattingInList(ACell);
+    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+  end;
 
   // The row should already be the correct one
   FContent := FContent +
