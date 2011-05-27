@@ -284,6 +284,7 @@ type
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
     procedure ListAllFormattingStyles(AData: TsWorkbook);
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
+    function  FPSColorToHexString(AColor: TsColor): string;
     { General writing methods }
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
@@ -1104,6 +1105,31 @@ begin
     end;
 
     Inc(StrPos);
+  end;
+end;
+
+function TsCustomSpreadWriter.FPSColorToHexString(AColor: TsColor): string;
+begin
+  case AColor of
+  scBlack:    Result := '000000';
+  scWhite:    Result := 'FFFFFF';
+  scRed:      Result := 'FF0000';
+  scGREEN:    Result := '00FF00';
+  scBLUE:     Result := '0000FF';
+  scYELLOW:   Result := 'FFFF00';
+  scMAGENTA:  Result := 'FF00FF';
+  scCYAN:     Result := '00FFFF';
+  scDarkRed:  Result := '800000';
+  scDarkGreen:Result := '008000';
+  scDarkBlue: Result := '000080';
+  scOLIVE:    Result := '808000';
+  scPURPLE:   Result := '800080';
+  scTEAL:     Result := '008080';
+  scSilver:   Result := 'C0C0C0';
+  scGrey:     Result := '808080';
+  //
+  scGrey10pct:Result := 'E6E6E6';
+  scGrey20pct:Result := 'CCCCCC';
   end;
 end;
 
