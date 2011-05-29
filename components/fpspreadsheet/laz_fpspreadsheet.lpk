@@ -18,7 +18,7 @@
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
-    <Files Count="20">
+    <Files Count="19">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -95,10 +95,6 @@
         <Filename Value="fpsconvencoding.pas"/>
         <UnitName Value="fpsconvencoding"/>
       </Item19>
-      <Item20>
-        <Filename Value="xlsbiffcommon.pas"/>
-        <UnitName Value="xlsbiffcommon"/>
-      </Item20>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="1">

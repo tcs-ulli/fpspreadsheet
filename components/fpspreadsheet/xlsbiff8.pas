@@ -53,7 +53,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas,
-  fpspreadsheet, xlsbiffcommon,
+  fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -117,7 +117,7 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
-    procedure WriteDimensions(AStream: TStream);
+    procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
@@ -517,7 +517,7 @@ begin
 
     WriteIndex(AStream);
 
-    WriteDimensions(AStream);
+    WriteDimensions(AStream, AData.GetWorksheetByIndex(i));
 
     WriteWindow2(AStream, True);
 
@@ -618,7 +618,10 @@ end;
 *                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
 *
 *******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
+var
+  lLastCol: Word;
+  lLastRow: Integer;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
@@ -628,13 +631,15 @@ begin
   AStream.WriteDWord(DWordToLE(0));
 
   { Index to last used row, increased by 1 }
-  AStream.WriteDWord(DWordToLE(33));
+  lLastRow := GetLastRowIndex(AWorksheet)+1;
+  AStream.WriteDWord(DWordToLE(lLastRow)); // Old dummy value: 33
 
   { Index to first used column }
   AStream.WriteWord(WordToLE(0));
 
   { Index to last used column, increased by 1 }
-  AStream.WriteWord(WordToLE(10));
+  lLastCol := GetLastColIndex(AWorksheet)+1;
+  AStream.WriteWord(WordToLE(lLastCol)); // Old dummy value: 10
 
   { Not used }
   AStream.WriteWord(WordToLE(0));
