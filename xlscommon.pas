@@ -71,7 +71,8 @@ type
 
   TsSpreadBIFFWriter = class(TsCustomSpreadWriter)
   protected
-    FLastRow, FLastCol: Integer;
+    FLastRow: Integer;
+    FLastCol: Word;
     function FPSColorToEXCELPallete(AColor: TsColor): Word;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
@@ -115,6 +116,7 @@ function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
 begin
   FLastRow := 0;
   IterateThroughCells(nil, AWorksheet.Cells, GetLastRowCallback);
+  Result := FLastRow;
 end;
 
 procedure TsSpreadBIFFWriter.GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -126,6 +128,7 @@ function TsSpreadBIFFWriter.GetLastColIndex(AWorksheet: TsWorksheet): Word;
 begin
   FLastCol := 0;
   IterateThroughCells(nil, AWorksheet.Cells, GetLastColCallback);
+  Result := FLastCol;
 end;
 
 end.

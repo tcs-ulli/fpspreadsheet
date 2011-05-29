@@ -170,8 +170,8 @@ begin
   WriteSecondWorksheet();
 
   // Save the spreadsheet to a file
-  //MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
-  MyWorkbook.WriteToFile(MyDir + 'test3.odt', sfOpenDocument, False);
+  MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
+//  MyWorkbook.WriteToFile(MyDir + 'test3.odt', sfOpenDocument, False);
   MyWorkbook.Free;
 end.
 
