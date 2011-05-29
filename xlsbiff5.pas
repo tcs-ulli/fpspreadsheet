@@ -101,7 +101,7 @@ type
 
   { TsSpreadBIFF5Writer }
 
-  TsSpreadBIFF5Writer = class(TsCustomSpreadWriter)
+  TsSpreadBIFF5Writer = class(TsSpreadBIFFWriter)
   private
     WorkBookEncoding: TsEncoding;
     function  FEKindToExcelID(AElement: TFEKind; var AParamsNum: Byte; var AExtra: Word): Byte;
@@ -116,7 +116,7 @@ type
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
-    procedure WriteDimensions(AStream: TStream);
+    procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
@@ -445,7 +445,7 @@ begin
 
     WriteIndex(AStream);
 
-    WriteDimensions(AStream);
+    WriteDimensions(AStream, AData.GetWorksheetByIndex(i));
 
     WriteWindow2(AStream, True);
 
@@ -560,7 +560,9 @@ end;
 *                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteDimensions(AStream: TStream);
+procedure TsSpreadBIFF5Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
+var
+  lLastCol, lLastRow: Word;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
@@ -570,13 +572,15 @@ begin
   AStream.WriteWord(0);
 
   { Index to last used row, increased by 1 }
-  AStream.WriteWord(33);
+  lLastRow := Word(GetLastRowIndex(AWorksheet)+1);
+  AStream.WriteWord(WordToLE(lLastRow)); // Old dummy value: 33
 
   { Index to first used column }
   AStream.WriteWord(0);
 
   { Index to last used column, increased by 1 }
-  AStream.WriteWord(10);
+  lLastCol := Word(GetLastColIndex(AWorksheet)+1);
+  AStream.WriteWord(WordToLE(lLastCol)); // Old dummy value: 10
 
   { Not used }
   AStream.WriteWord(0);
