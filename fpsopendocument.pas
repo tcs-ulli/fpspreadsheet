@@ -30,7 +30,9 @@ uses
   Classes, SysUtils,
   fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released. Changed by JLJR}
   fpspreadsheet,
-  xmlread, DOM, AVL_Tree,math;
+  xmlread, DOM, AVL_Tree,
+  math,
+  fpsutils;
   
 type
 
@@ -632,7 +634,7 @@ begin
   // The row should already be the correct one
   FContent := FContent +
     '  <table:table-cell office:value-type="string"' + lStyle + '>' + LineEnding +
-    '    <text:p>' + AValue + '</text:p>' + LineEnding +
+    '    <text:p>' + UTF8TextToXMLText(AValue) + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
 

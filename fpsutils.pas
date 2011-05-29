@@ -34,6 +34,7 @@ function ParseCellRowString(const AStr: string;
   var AResult: Integer): Boolean;
 function ParseCellColString(const AStr: string;
   var AResult: Integer): Boolean;
+function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 implementation
 
@@ -262,6 +263,43 @@ begin
   else Exit(False);
 
   Result := True;
+end;
+
+{In XML files some chars must be translated}
+function UTF8TextToXMLText(AText: ansistring): ansistring;
+var
+  Idx:Integer;
+  WrkStr, AppoSt:ansistring;
+begin
+  WrkStr:='';
+
+  for Idx:=1 to Length(AText) do
+  begin
+    case AText[Idx] of
+      '&': begin
+        AppoSt:=Copy(AText, Idx, 6);
+
+        if (Pos('&amp;',  AppoSt) = 1) or
+           (Pos('&lt;',   AppoSt) = 1) or
+           (Pos('&gt;',   AppoSt) = 1) or
+           (Pos('&quot;', AppoSt) = 1) or
+           (Pos('&apos;', AppoSt) = 1) then begin
+          //'&' is the first char of a special chat, it must not be converted
+          WrkStr:=WrkStr + AText[Idx];
+        end else begin
+          WrkStr:=WrkStr + '&amp;';
+        end;
+      end;
+      '<': WrkStr:=WrkStr + '&lt;';
+      '>': WrkStr:=WrkStr + '&gt;';
+      '"': WrkStr:=WrkStr + '&quot;';
+      '''':WrkStr:=WrkStr + '&apos;';
+    else
+      WrkStr:=WrkStr + AText[Idx];
+    end;
+  end;
+
+  Result:=WrkStr;
 end;
 
 end.
