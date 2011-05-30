@@ -30,20 +30,42 @@ begin
   MyWorksheet.WriteUTF8Text(0, 1, 'Text Formula');// B1
   MyWorksheet.WriteUTF8Text(0, 2, 'RPN');// C1
 
-  MyWorksheet.WriteUTF8Text(1, 0, '=Sum(D2:d5)'); // A2
-
-  MyFormula.FormulaStr := '=Sum(D2:d5)';
+  // =Sum(E2:e5)
+  MyWorksheet.WriteUTF8Text(1, 0, '=Sum(E2:e5)'); // A2
+  //
+  MyFormula.FormulaStr := '=Sum(DE:e5)';
   MyFormula.DoubleValue := 0.0;
   MyWorksheet.WriteFormula(1, 1, MyFormula);    // B2
-
+  //
   SetLength(MyRPNFormula, 2);
   MyRPNFormula[0].ElementKind := fekCellRange;
   MyRPNFormula[0].Row := 1;
   MyRPNFormula[0].Row2 := 4;
-  MyRPNFormula[0].Col := 3;
-  MyRPNFormula[0].Col2 := 3;
+  MyRPNFormula[0].Col := 4;
+  MyRPNFormula[0].Col2 := 4;
   MyRPNFormula[1].ElementKind := fekOpSUM;
   MyWorksheet.WriteRPNFormula(1, 2, MyRPNFormula);   // C2
+
+  // Write the formula =ABS(E1)
+  MyWorksheet.WriteUTF8Text(2, 0, '=ABS(E1)'); // A3
+  //
+  SetLength(MyRPNFormula, 2);
+  MyRPNFormula[0].ElementKind := fekCell;
+  MyRPNFormula[0].Col := 4;
+  MyRPNFormula[0].Row := 0;
+  MyRPNFormula[1].ElementKind := fekABS;
+  MyWorksheet.WriteRPNFormula(2, 2, MyRPNFormula);
+
+  // Write the formula =4+5
+  MyWorksheet.WriteUTF8Text(3, 0, '=4+5'); // A4
+  //
+  SetLength(MyRPNFormula, 3);
+  MyRPNFormula[0].ElementKind := fekNum;
+  MyRPNFormula[0].DoubleValue := 4.0;
+  MyRPNFormula[1].ElementKind := fekNum;
+  MyRPNFormula[1].DoubleValue := 5.0;
+  MyRPNFormula[2].ElementKind := fekAdd;
+  MyWorksheet.WriteRPNFormula(3, 2, MyRPNFormula);
 end;
 
 procedure WriteSecondWorksheet();

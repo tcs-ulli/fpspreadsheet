@@ -861,7 +861,12 @@ begin
     { Additional data }
     case TokenID of
     { Operand Tokens }
-    //fekCell:  Result := INT_EXCEL_TOKEN_TREFR;
+    INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA: { fekCell }
+    begin
+      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
+      AStream.WriteByte(AFormula[i].Col);
+      Inc(RPNLength, 3);
+    end;
 
     INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
     begin
@@ -889,13 +894,6 @@ begin
     { binary operation tokens }
     INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
      INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER: begin end;
-
-    INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
-    begin
-      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
-      AStream.WriteByte(AFormula[i].Col);
-      Inc(RPNLength, 3);
-    end;
 
     { Other operations }
     INT_EXCEL_TOKEN_TATTR: { fekOpSUM }
