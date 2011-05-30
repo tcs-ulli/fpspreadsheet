@@ -27,19 +27,14 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('Worksheet1');
 
   // Write some cells
-  MyWorksheet.WriteUTF8Text(1, 0, 'Text Formulas');// A2
+  MyWorksheet.WriteUTF8Text(0, 1, 'Text Formula');// B1
+  MyWorksheet.WriteUTF8Text(0, 2, 'RPN');// C1
 
-  MyWorksheet.WriteUTF8Text(1, 1, '=Sum(D2:d5) Text Formula');    // B2
-
-  MyFormula.FormulaStr := '=Sum(D2:d5)';
-  MyFormula.DoubleValue := 0.0;
-  MyWorksheet.WriteFormula(1, 2, MyFormula);    // C2
-
-  MyWorksheet.WriteUTF8Text(1, 1, '=Sum(D2:d5) RPN');    // B3
+  MyWorksheet.WriteUTF8Text(1, 0, '=Sum(D2:d5)'); // A2
 
   MyFormula.FormulaStr := '=Sum(D2:d5)';
   MyFormula.DoubleValue := 0.0;
-  MyWorksheet.WriteFormula(1, 2, MyFormula);    // C3
+  MyWorksheet.WriteFormula(1, 1, MyFormula);    // B2
 
   SetLength(MyRPNFormula, 2);
   MyRPNFormula[0].ElementKind := fekCellRange;
@@ -48,7 +43,7 @@ begin
   MyRPNFormula[0].Col := 3;
   MyRPNFormula[0].Col2 := 3;
   MyRPNFormula[1].ElementKind := fekOpSUM;
-  MyWorksheet.WriteRPNFormula(1, 2, MyRPNFormula);    // C2
+  MyWorksheet.WriteRPNFormula(1, 2, MyRPNFormula);   // C2
 end;
 
 procedure WriteSecondWorksheet();
