@@ -860,17 +860,35 @@ begin
 
     { Additional data }
     case TokenID of
+    { Operand Tokens }
+    //fekCell:  Result := INT_EXCEL_TOKEN_TREFR;
 
-    { binary operation tokens }
+    INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
+    begin
+      {
+      Cell range address, BIFF8:
+      Offset Size Contents
+      0 2 Index to first row (0…65535) or offset of first row (method [B], -32768…32767)
+      2 2 Index to last row (0…65535) or offset of last row (method [B], -32768…32767)
+      4 2 Index to first column or offset of first column, with relative flags (see table above)
+      6 2 Index to last column or offset of last column, with relative flags (see table above)
+      }
+      AStream.WriteWord(WordToLE(AFormula[i].Row));
+      AStream.WriteWord(WordToLE(AFormula[i].Row2));
+      AStream.WriteWord(WordToLE(AFormula[i].Col));
+      AStream.WriteWord(WordToLE(AFormula[i].Col2));
+      Inc(RPNLength, 8);
+    end;
 
-    INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
-     INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER: begin end;
-
-    INT_EXCEL_TOKEN_TNUM:
+    INT_EXCEL_TOKEN_TNUM: { fekNum }
     begin
       AStream.WriteBuffer(AFormula[i].DoubleValue, 8);
       Inc(RPNLength, 8);
     end;
+
+    { binary operation tokens }
+    INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
+     INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER: begin end;
 
     INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
     begin
@@ -879,6 +897,17 @@ begin
       Inc(RPNLength, 3);
     end;
 
+    { Other operations }
+    INT_EXCEL_TOKEN_TATTR: { fekOpSUM }
+    begin
+      // Uniry SUM Operation
+      AStream.WriteByte($10);
+      AStream.WriteByte(0);
+      AStream.WriteByte(0);
+      Inc(RPNLength, 3);
+    end;
+
+    else
     end;
   end;
 
@@ -1526,13 +1555,31 @@ var
   Data: array [0..7] of BYTE;
   Flags: WORD;
   FormulaSize: BYTE;
+  i: Integer;
 begin
+  { BIFF Record header }
+  { BIFF Record data }
+  { Index to XF Record }
   ReadRowColXF(AStream,ARow,ACol,XF);
 
+  { Result of the formula in IEE 754 floating-point value }
   AStream.ReadBuffer(Data,Sizeof(Data));
+
+  { Options flags }
   Flags:=WordLEtoN(AStream.ReadWord);
-  AStream.ReadDWord; //Not used.
-  FormulaSize:=AStream.ReadByte;
+
+  { Not used }
+  AStream.ReadDWord;
+
+  { Formula size }
+  FormulaSize := WordLEtoN(AStream.ReadWord);
+
+  { Formula data, outputed as debug info }
+{  Write('Formula Element: ');
+  for i := 1 to FormulaSize do
+    Write(IntToHex(AStream.ReadByte, 2) + ' ');
+  WriteLn('');}
+
   //RPN data not used by now
   AStream.Position:=AStream.Position+FormulaSize;
 
