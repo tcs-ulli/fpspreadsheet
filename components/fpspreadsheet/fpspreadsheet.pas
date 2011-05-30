@@ -57,7 +57,7 @@ type
 
   TFEKind = (
     { Basic operands }
-    fekCell, fekNum,
+    fekCell, fekCellRange, fekNum,
     { Basic operations }
     fekAdd, fekSub, fekDiv, fekMul,
     { Build-in Functions}
@@ -1161,6 +1161,14 @@ begin
   IterateThroughCells(AStream, ACells, WriteCellCallback);
 end;
 
+{@@
+  A generic method to iterate through all cells in a worksheet and call a callback
+  routine for each cell.
+
+  @param  AStream   The output stream, passed to the callback routine.
+  @param  ACells    List of cells to be iterated
+  @param  ACallback The callback routine
+}
 procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
 var
   AVLNode: TAVLTreeNode;

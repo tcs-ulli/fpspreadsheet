@@ -121,6 +121,7 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
@@ -806,6 +807,88 @@ begin
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(22 + RPNLength));
   AStream.position := FinalPos;*)
+end;
+
+procedure TsSpreadBIFF8Writer.WriteRPNFormula(AStream: TStream; const ARow,
+  ACol: Word; const AFormula: TsRPNFormula);
+var
+  FormulaResult: double;
+  i: Integer;
+  RPNLength: Word;
+  TokenArraySizePos, RecordSizePos, FinalPos: Int64;
+  TokenID: Byte;
+begin
+  RPNLength := 0;
+  FormulaResult := 0.0;
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
+  RecordSizePos := AStream.Position;
+  AStream.WriteWord(WordToLE(22 + RPNLength));
+
+  { BIFF Record data }
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
+
+  { Index to XF Record }
+  AStream.WriteWord($0000);
+
+  { Result of the formula in IEE 754 floating-point value }
+  AStream.WriteBuffer(FormulaResult, 8);
+
+  { Options flags }
+  AStream.WriteWord(WordToLE(MASK_FORMULA_RECALCULATE_ALWAYS));
+
+  { Not used }
+  AStream.WriteDWord(0);
+
+  { Formula }
+
+  { The size of the token array is written later,
+    because it's necessary to calculate if first,
+    and this is done at the same time it is written }
+  TokenArraySizePos := AStream.Position;
+  AStream.WriteWord(RPNLength);
+
+  { Formula data (RPN token array) }
+  for i := 0 to Length(AFormula) - 1 do
+  begin
+    { Token identifier }
+    TokenID := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind);
+    AStream.WriteByte(TokenID);
+    Inc(RPNLength);
+
+    { Additional data }
+    case TokenID of
+
+    { binary operation tokens }
+
+    INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
+     INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER: begin end;
+
+    INT_EXCEL_TOKEN_TNUM:
+    begin
+      AStream.WriteBuffer(AFormula[i].DoubleValue, 8);
+      Inc(RPNLength, 8);
+    end;
+
+    INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
+    begin
+      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
+      AStream.WriteByte(AFormula[i].Col);
+      Inc(RPNLength, 3);
+    end;
+
+    end;
+  end;
+
+  { Write sizes in the end, after we known them }
+  FinalPos := AStream.Position;
+  AStream.position := TokenArraySizePos;
+  AStream.WriteByte(RPNLength);
+  AStream.Position := RecordSizePos;
+  AStream.WriteWord(WordToLE(22 + RPNLength));
+  AStream.position := FinalPos;
 end;
 
 {*******************************************************************
