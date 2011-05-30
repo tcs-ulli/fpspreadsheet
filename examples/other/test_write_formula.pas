@@ -42,12 +42,12 @@ begin
   MyWorksheet.WriteFormula(1, 2, MyFormula);    // C3
 
   SetLength(MyRPNFormula, 2);
-  MyRPNFormula[0].ElementKind := fekOpSUM;
-  MyRPNFormula[1].ElementKind := fekCellRange;
-  MyRPNFormula[1].Row := 1;
-  MyRPNFormula[1].Row := 4;
-  MyRPNFormula[1].Col := 3;
-  MyRPNFormula[1].Col := 3;
+  MyRPNFormula[0].ElementKind := fekCellRange;
+  MyRPNFormula[0].Row := 1;
+  MyRPNFormula[0].Row2 := 4;
+  MyRPNFormula[0].Col := 3;
+  MyRPNFormula[0].Col2 := 3;
+  MyRPNFormula[1].ElementKind := fekOpSUM;
   MyWorksheet.WriteRPNFormula(1, 2, MyRPNFormula);    // C2
 end;
 

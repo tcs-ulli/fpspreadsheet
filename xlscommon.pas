@@ -43,10 +43,20 @@ const
   INT_EXCEL_TOKEN_FUNCVAR_R = $22;
   INT_EXCEL_TOKEN_FUNCVAR_V = $42;
   INT_EXCEL_TOKEN_FUNCVAR_A = $62;
+  INT_EXCEL_TOKEN_TAREA_R = $25;
 
   { Built-in functions }
   INT_EXCEL_SHEET_FUNC_ABS = 24;
   INT_EXCEL_SHEET_FUNC_ROUND = 27;
+
+  { Control Tokens, Special Tokens }
+//  01H tExp Matrix formula or shared formula
+//  02H tTbl Multiple operation table
+//  15H tParen Parentheses
+//  18H tNlr Natural language reference (BIFF8)
+  INT_EXCEL_TOKEN_TATTR = $19; // tAttr Special attribute
+//  1AH tSheet Start of external sheet reference (BIFF2-BIFF4)
+//  1BH tEndSheet End of external sheet reference (BIFF2-BIFF4)
 
   { Built In Color Pallete Indexes }
   BUILT_IN_COLOR_PALLETE_BLACK     = $08; // 000000H
@@ -148,7 +158,7 @@ begin
   case AElementKind of
     { Operand Tokens }
     fekCell:  Result := INT_EXCEL_TOKEN_TREFR;
-    fekCellRange: Result := INT_EXCEL_TOKEN_TRANGE;
+    fekCellRange: Result := INT_EXCEL_TOKEN_TAREA_R;
     fekNum:   Result := INT_EXCEL_TOKEN_TNUM;
     { Basic operations }
     fekAdd:   Result := INT_EXCEL_TOKEN_TADD;
@@ -159,7 +169,7 @@ begin
     fekABS:   Result := INT_EXCEL_SHEET_FUNC_ABS;
     fekROUND: Result := INT_EXCEL_SHEET_FUNC_ROUND;
     { Other operations }
-    fekOpSUM: Result := 0;
+    fekOpSUM: Result := INT_EXCEL_TOKEN_TATTR;
   else
     Result := 0;
   end;
