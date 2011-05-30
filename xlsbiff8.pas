@@ -610,14 +610,16 @@ begin
   AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteIndex ()
-*
-*  DESCRIPTION:    Writes an Excel 8 DIMENSIONS record
-*
-*                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
-*
-*******************************************************************}
+{
+  Writes an Excel 8 DIMENSIONS record
+
+  nm = (rl - rf - 1) / 32 + 1 (using integer division)
+
+  Excel, OpenOffice and FPSpreadsheet ignore the dimensions written in this record,
+  but some other applications really use them, so they need to be correct.
+
+  See bug 18886: excel5 files are truncated when imported
+}
 procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
   lLastCol: Word;

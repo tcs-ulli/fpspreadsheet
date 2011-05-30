@@ -619,6 +619,12 @@ begin
 </table:table-cell>}
 end;
 
+{
+  Writes a cell with text content
+
+  The UTF8 Text needs to be converted, because some chars are invalid in XML
+  See bug with patch 19422
+}
 procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string; ACell: PCell);
 var
