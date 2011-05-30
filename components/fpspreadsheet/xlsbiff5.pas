@@ -552,14 +552,16 @@ begin
   AStream.WriteWord(WordToLE(lCodepage));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF5Writer.WriteIndex ()
-*
-*  DESCRIPTION:    Writes an Excel 5 DIMENSIONS record
-*
-*                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
-*
-*******************************************************************}
+{
+  Writes an Excel 5 DIMENSIONS record
+
+  nm = (rl - rf - 1) / 32 + 1 (using integer division)
+
+  Excel, OpenOffice and FPSpreadsheet ignore the dimensions written in this record,
+  but some other applications really use them, so they need to be correct.
+
+  See bug 18886: excel5 files are truncated when imported
+}
 procedure TsSpreadBIFF5Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
   lLastCol, lLastRow: Word;
