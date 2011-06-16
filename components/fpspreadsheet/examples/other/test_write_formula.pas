@@ -10,7 +10,8 @@ program test_write_formula;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8, fpsopendocument,
+  Classes, SysUtils,
+  fpspreadsheet, xlsbiff5, xlsbiff8, fpsopendocument,
   laz_fpspreadsheet, fpsconvencoding;
 
 var

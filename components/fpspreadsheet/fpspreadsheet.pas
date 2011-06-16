@@ -751,8 +751,8 @@ begin
   FWorksheets := TFPList.Create;
 
   // In the future: add support for translations
-  lpUnsupportedReadFormat := 'Tryed to read a spreadsheet using an unsupported format';
-  lpUnsupportedWriteFormat := 'Tryed to write a spreadsheet using an unsupported format';
+  lpUnsupportedReadFormat := 'Tried to read a spreadsheet using an unsupported format';
+  lpUnsupportedWriteFormat := 'Tried to write a spreadsheet using an unsupported format';
 end;
 
 {@@

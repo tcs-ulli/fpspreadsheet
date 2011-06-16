@@ -54,19 +54,8 @@ begin
 end;
 
 procedure TFPSChartForm.btnLoadSpreadsheetClick(Sender: TObject);
-var
-  Format: TsSpreadsheetFormat;
-  lExt: string;
 begin
-  // First some logic to detect the format from the extension
-  lExt := ExtractFileExt(editSourceFile.Text);
-  if lExt = STR_EXCEL_EXTENSION then Format := sfExcel2
-  else if lExt = STR_OOXML_EXCEL_EXTENSION then Format := sfOOXML
-  else if lExt = STR_OPENDOCUMENT_CALC_EXTENSION then Format := sfOpenDocument
-  else raise Exception.Create('Invalid File Extension');
-
-  // Now the actual loading
-  WorksheetGrid.LoadFromSpreadsheetFile(editSourceFile.Text, Format);
+  WorksheetGrid.LoadFromSpreadsheetFile(editSourceFile.Text);
 end;
 
 procedure TFPSChartForm.FormCreate(Sender: TObject);
