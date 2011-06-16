@@ -31,7 +31,8 @@ type
     { methods }
     constructor Create(AOwner: TComponent); override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
-    procedure LoadFromSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
+    procedure LoadFromSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
+    procedure LoadFromSpreadsheetFile(AFileName: string; AWorksheetIndex: Integer = 0); overload;
     procedure SaveToWorksheet(AWorksheet: TsWorksheet);
     property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
   end;
@@ -230,6 +231,20 @@ begin
   lWorkbook := TsWorkbook.Create;
   try
     lWorkbook.ReadFromFile(AFileName, AFormat);
+    LoadFromWorksheet(lWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  finally
+    lWorkbook.Free;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
+  AWorksheetIndex: Integer);
+var
+  lWorkbook: TsWorkbook;
+begin
+  lWorkbook := TsWorkbook.Create;
+  try
+    lWorkbook.ReadFromFile(AFileName);
     LoadFromWorksheet(lWorkbook.GetWorksheetByIndex(AWorksheetIndex));
   finally
     lWorkbook.Free;
