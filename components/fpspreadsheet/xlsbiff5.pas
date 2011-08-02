@@ -56,6 +56,8 @@ unit xlsbiff5;
   {$mode delphi}
 {$endif}
 
+{$define USE_NEW_OLE}
+
 interface
 
 uses
