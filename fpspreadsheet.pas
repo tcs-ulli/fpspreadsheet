@@ -25,6 +25,7 @@ const
   STR_EXCEL_EXTENSION = '.xls';
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
+  STR_COMMA_SEPARATED_EXTENSION = '.csv';
 
 type
 
@@ -222,6 +223,7 @@ type
     { Base methods }
     constructor Create;
     destructor Destroy; override;
+    class function GetFormatFromFileName(const AFileName: TFileName; var SheetType: TsSpreadsheetFormat): Boolean;
     function  CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
@@ -229,7 +231,8 @@ type
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     procedure WriteToFile(const AFileName: string;
       const AFormat: TsSpreadsheetFormat;
-      const AOverwriteExisting: Boolean = False);
+      const AOverwriteExisting: Boolean = False); overload;
+    procedure WriteToFile(const AFileName: String; const AOverwriteExisting: Boolean = False); overload;
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string): TsWorksheet;
@@ -315,8 +318,6 @@ procedure RegisterSpreadFormat(
   AWriterClass: TsSpreadWriterClass;
   AFormat: TsSpreadsheetFormat);
 
-
-
 implementation
 
 uses
@@ -363,6 +364,7 @@ begin
   if Result = 0 then
     Result := PCell(Item1).Col - PCell(Item2).Col;
 end;
+
 
 {@@
   Constructor.
@@ -768,6 +770,24 @@ begin
 end;
 
 {@@
+  Helper method for determining the spreadsheet type from the file type extension
+
+  Returns: True if the file matches any of the known formats, false otherwise
+}
+class function TsWorkbook.GetFormatFromFileName(const AFileName: TFileName; var SheetType: TsSpreadsheetFormat): Boolean;
+var
+  suffix: String;
+begin
+  Result := True;
+  suffix := ExtractFileExt(AFileName);
+  if suffix = STR_EXCEL_EXTENSION then SheetType := sfExcel8
+  else if suffix = STR_OOXML_EXCEL_EXTENSION then SheetType := sfOOXML
+  else if suffix = STR_OPENDOCUMENT_CALC_EXTENSION then SheetType := sfOpenDocument
+  else if suffix = STR_COMMA_SEPARATED_EXTENSION then SheetType := sfCSV
+  else Result := False;
+end;
+
+{@@
   Convenience method which creates the correct
   reader object for a given spreadsheet format.
 }
@@ -831,14 +851,39 @@ end;
   the extension. In the case of the ambiguous xls extension, it will simply
   assume that it is BIFF8. Note that it could be BIFF2, 3, 4 or 5 too.
 }
-procedure TsWorkbook.ReadFromFile(AFileName: string);
+procedure TsWorkbook.ReadFromFile(AFileName: string); overload;
 var
-  Str: String;
+  SheetType: TsSpreadsheetFormat;
+  valid: Boolean;
+  lException: Exception = nil;
 begin
-  Str := ExtractFileExt(AFileName);
-  if Str = STR_EXCEL_EXTENSION then ReadFromFile(AFileName, sfExcel8)
-  else if Str = STR_OOXML_EXCEL_EXTENSION then ReadFromFile(AFileName, sfOOXML)
-  else if Str = STR_OPENDOCUMENT_CALC_EXTENSION then ReadFromFile(AFileName, sfOpenDocument);
+  valid := GetFormatFromFileName(AFileName, SheetType);
+  if valid then
+  begin
+    if SheetType = sfExcel8 then
+    begin
+      repeat
+        try
+          SheetType := Pred(SheetType);
+          ReadFromFile(AFileName, SheetType);
+          valid := True;
+        except
+          on E: Exception do
+          begin
+            if SheetType = sfExcel8 then lException := E;
+            valid := False
+          end;
+        end;
+      until valid or (SheetType = sfExcel2);
+
+      // A failed attempt to read a file should bring an exception, so re-raise
+      // the exception if necessary. We re-raise the exception brought by Excel 8,
+      // since this is the most common format
+      if (not valid) and (lException <> nil) then raise lException;
+    end
+    else
+      ReadFromFile(AFileName, SheetType);
+  end;
 end;
 
 {@@
@@ -875,6 +920,20 @@ begin
   finally
     AWriter.Free;
   end;
+end;
+
+{@@
+  Writes the document to file based on the extension. If this was an earlier sfExcel type file, it will be upgraded to sfExcel8, 
+}
+procedure TsWorkbook.WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); overload;
+var
+  SheetType: TsSpreadsheetFormat;
+  valid: Boolean;
+begin
+  valid := GetFormatFromFileName(AFileName, SheetType);
+  if valid then WriteToFile(AFileName, SheetType, AOverwriteExisting)
+  else raise Exception.Create(Format(
+    '[TsWorkbook.WriteToFile] Attempted to save a spreadsheet by extension, but the extension %s is invalid.', [ExtractFileExt(AFileName)]));
 end;
 
 {@@
