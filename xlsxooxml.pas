@@ -188,13 +188,13 @@ begin
   FWorkbookRels :=
    XML_HEADER + LineEnding +
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_STYLES + '" Target="xl/styles.xml" Id="rId1" />' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_STRINGS + '" Target="xl/sharedStrings.xml" Id="rId2" />' + LineEnding;
+   '<Relationship Id="rId1" Type="' + SCHEMAS_STYLES + '" Target="styles.xml" />' + LineEnding +
+   '<Relationship Id="rId2" Type="' + SCHEMAS_STRINGS + '" Target="sharedStrings.xml" />' + LineEnding;
 
   for i := 1 to AData.GetWorksheetCount do
   begin
     FWorkbookRels := FWorkbookRels +
-      Format('<Relationship Type="%s" Target="xl/worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
+      Format('<Relationship Type="%s" Target="worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
   end;
 
   FWorkbookRels := FWorkbookRels +
@@ -213,10 +213,9 @@ begin
   for i := 1 to AData.GetWorksheetCount do
   begin
     FWorkbook := FWorkbook +
-     '  <sheets>' + LineEnding +
-     '    <sheet name="Sheet' + IntToStr(i) + '" sheetId="'
-      + IntToStr(i) + '" r:id="rId' + IntToStr(i) + '" />' + LineEnding +
-     '  </sheets>' + LineEnding;
+            '  <sheets>' + LineEnding +
+     Format('    <sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]) + LineEnding +
+            '  </sheets>' + LineEnding;
   end;
 
   FWorkbook := FWorkbook +
@@ -493,11 +492,11 @@ begin
    Format('    <t>%s</t>', [AValue]) + LineEnding +
           '  </si>' + LineEnding;
 
-  Inc(FSharedStringsCount);
-
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
    Format('    <c r="%s" s="0" t="s"><v>%d</v></c>', [CellPosText, FSharedStringsCount]) + LineEnding;
+
+  Inc(FSharedStringsCount);
 end;
 
 {
