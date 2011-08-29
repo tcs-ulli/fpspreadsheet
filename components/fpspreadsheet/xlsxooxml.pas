@@ -493,7 +493,7 @@ begin
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
    Format('    <c r="%s" t="s">', [CellPosText]) + LineEnding +
-          '      <v>2</v>' + LineEnding +
+   Format('      <v>%s</v>', [AValue]) + LineEnding +
           '    </c>' + LineEnding;
 end;
 
@@ -508,7 +508,7 @@ begin
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
    Format('    <c r="%s">', [CellPosText]) + LineEnding +
-          '      <v>1</v>' + LineEnding +
+   Format('      <v>%f</v>', [AValue]) + LineEnding +
           '    </c>' + LineEnding;
 end;
 
