@@ -117,15 +117,18 @@ begin
   FContentTypes :=
    XML_HEADER + LineEnding +
    '<Types xmlns="' + SCHEMAS_TYPES + '">' + LineEnding +
-   '  <Default Extension="xml" ContentType="' + MIME_XML + '" />' + LineEnding +
-   '  <Default Extension="rels" ContentType="' + MIME_RELS + '" />' + LineEnding +
+//   '  <Default Extension="xml" ContentType="' + MIME_XML + '" />' + LineEnding +
+//   '  <Default Extension="rels" ContentType="' + MIME_RELS + '" />' + LineEnding +
+   '  <Override PartName="/_rels/.rels" ContentType="' + MIME_RELS + '" />' + LineEnding +
+//   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+//   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+   '  <Override PartName="/xl/_rels/workbook.xml.rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />' + LineEnding +
    '  <Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding;
   for i := 1 to AData.GetWorksheetCount do
   begin
     FContentTypes := FContentTypes +
     Format('  <Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />', [i, MIME_WORKSHEET]) + LineEnding;
   end;
-
   FContentTypes := FContentTypes +
    '  <Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding +
    '  <Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding +
@@ -191,8 +194,7 @@ begin
   for i := 1 to AData.GetWorksheetCount do
   begin
     FWorkbookRels := FWorkbookRels +
-    '<Relationship Type="' + SCHEMAS_WORKSHEET + '" Target="/xl/worksheets/sheet' + IntToStr(i) +
-       '.xml" Id="rId' + IntToStr(i + 2) + '" />' + LineEnding;
+      Format('<Relationship Type="%s" Target="/xl/worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
   end;
 
   FWorkbookRels := FWorkbookRels +
@@ -202,7 +204,7 @@ begin
   FWorkbook :=
    XML_HEADER + LineEnding +
    '<workbook xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
-   '  <fileVersion appName="xl" lastEdited="4" lowestEdited="4" rupBuild="4505" />' + LineEnding +
+   '  <fileVersion appName="fpspreadsheet" />' + LineEnding + // lastEdited="4" lowestEdited="4" rupBuild="4505"
    '  <workbookPr defaultThemeVersion="124226" />' + LineEnding +
    '  <bookViews>' + LineEnding +
    '    <workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' + LineEnding +
