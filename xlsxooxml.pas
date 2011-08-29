@@ -368,57 +368,13 @@ end;
 procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
   AData: TsWorkbook; const AOverwriteExisting: Boolean);
 var
-  FZip: TZipper;
-  i: Integer;
+  lStream: TFileStream;
 begin
-  { Fill the strings with the contents of the files }
-
-  WriteGlobalFiles(AData);
-  WriteContent(AData);
-
-  { Write the data to streams }
-
-  FSContentTypes := TStringStream.Create(FContentTypes);
-  FSRelsRels := TStringStream.Create(FRelsRels);
-  FSWorkbookRels := TStringStream.Create(FWorkbookRels);
-  FSWorkbook := TStringStream.Create(FWorkbook);
-  FSStyles := TStringStream.Create(FStyles);
-  FSSharedStrings := TStringStream.Create(FSharedStrings);
-
-  SetLength(FSSheets, Length(FSheets));
-
-  for i := 0 to Length(FSheets) - 1 do
-    FSSheets[i] := TStringStream.Create(FSheets[i]);
-
-  { Now compress the files }
-
-  FZip := TZipper.Create;
+  lStream:=TFileStream.Create(AFileName,fmCreate);
   try
-    FZip.FileName := AFileName;
-
-    FZip.Entries.AddFileEntry(FSContentTypes, OOXML_PATH_TYPES);
-    FZip.Entries.AddFileEntry(FSRelsRels, OOXML_PATH_RELS_RELS);
-    FZip.Entries.AddFileEntry(FSWorkbookRels, OOXML_PATH_XL_RELS_RELS);
-    FZip.Entries.AddFileEntry(FSWorkbook, OOXML_PATH_XL_WORKBOOK);
-    FZip.Entries.AddFileEntry(FSStyles, OOXML_PATH_XL_STYLES);
-    FZip.Entries.AddFileEntry(FSSharedStrings, OOXML_PATH_XL_STRINGS);
-
-    for i := 0 to Length(FSheets) - 1 do
-      FZip.Entries.AddFileEntry(FSSheets[i], OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i + 1) + '.xml');
-
-    FZip.ZipAllFiles;
+    WriteToStream(lStream, AData);
   finally
-    FSContentTypes.Free;
-    FSRelsRels.Free;
-    FSWorkbookRels.Free;
-    FSWorkbook.Free;
-    FSStyles.Free;
-    FSSharedStrings.Free;
-
-    for i := 0 to Length(FSSheets) - 1 do
-      FSSheets[i].Free;
-
-    FZip.Free;
+    FreeAndNil(lStream);
   end;
 end;
 
@@ -450,9 +406,6 @@ begin
 
   FZip := TZipper.Create;
   try
-    FZip.OutputDestination:= zodToStream;
-    FZip.OutputStream := AStream;
-
     FZip.Entries.AddFileEntry(FSContentTypes, OOXML_PATH_TYPES);
     FZip.Entries.AddFileEntry(FSRelsRels, OOXML_PATH_RELS_RELS);
     FZip.Entries.AddFileEntry(FSWorkbookRels, OOXML_PATH_XL_RELS_RELS);
@@ -463,7 +416,7 @@ begin
     for i := 0 to Length(FSheets) - 1 do
       FZip.Entries.AddFileEntry(FSSheets[i], OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i + 1) + '.xml');
 
-    FZip.ZipAllFiles;
+    FZip.SaveToStream(AStream);
   finally
     FSContentTypes.Free;
     FSRelsRels.Free;
