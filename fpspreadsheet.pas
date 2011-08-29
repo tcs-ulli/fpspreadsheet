@@ -190,6 +190,8 @@ type
     { Base methods }
     constructor Create;
     destructor Destroy; override;
+    { Utils }
+    class function  CellPosToText(ARow, ACol: Cardinal): string;
     { Data manipulation methods }
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
@@ -386,6 +388,19 @@ begin
   FCells.Free;
 
   inherited Destroy;
+end;
+
+{@@ Converts a FPSpreadsheet cell position, which is Row, Col in numbers
+ and zero based, to a textual representation which is [Col][Row],
+ being that the Col is in letters and the row is in 1-based numbers }
+class function TsWorksheet.CellPosToText(ARow, ACol: Cardinal): string;
+var
+  lStr: string;
+begin
+  lStr := '';
+  if ACol < 26 then lStr := Char(ACol+54);
+
+  Result := Format('%s%d', [lStr, ARow+1]);
 end;
 
 {@@

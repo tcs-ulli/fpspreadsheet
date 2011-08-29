@@ -32,6 +32,7 @@ interface
 uses
   Classes, SysUtils,
   fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released }
+  {xmlread, DOM,} AVL_Tree,
   fpspreadsheet;
   
 type
@@ -51,6 +52,7 @@ type
     FSRelsRels: TStringStream;
     FSWorkbook, FSWorkbookRels, FSStyles, FSSharedStrings: TStringStream;
     FSSheets: array of TStringStream;
+    FCurSheetNum: Integer;
     { Routines to write those files }
     procedure WriteGlobalFiles;
     procedure WriteContent(AData: TsWorkbook);
@@ -244,48 +246,99 @@ begin
    '</sst>';
 end;
 
+{
+FSheets[CurStr] :=
+ XML_HEADER + LineEnding +
+ '<worksheet xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
+ '  <sheetViews>' + LineEnding +
+ '    <sheetView workbookViewId="0" />' + LineEnding +
+ '  </sheetViews>' + LineEnding +
+ '  <sheetData>' + LineEnding +
+ '  <row r="1" spans="1:4">' + LineEnding +
+ '    <c r="A1">' + LineEnding +
+ '      <v>1</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '    <c r="B1">' + LineEnding +
+ '      <v>2</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '    <c r="C1">' + LineEnding +
+ '      <v>3</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '    <c r="D1">' + LineEnding +
+ '      <v>4</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '  </row>' + LineEnding +
+ '  <row r="2" spans="1:4">' + LineEnding +
+ '    <c r="A2" t="s">' + LineEnding +
+ '      <v>0</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '    <c r="B2" t="s">' + LineEnding +
+ '      <v>1</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '    <c r="C2" t="s">' + LineEnding +
+ '      <v>2</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '    <c r="D2" t="s">' + LineEnding +
+ '      <v>3</v>' + LineEnding +
+ '    </c>' + LineEnding +
+ '  </row>' + LineEnding +
+ '  </sheetData>' + LineEnding +
+ '</worksheet>';
+}
 procedure TsSpreadOOXMLWriter.WriteWorksheet(CurSheet: TsWorksheet);
 var
-  CurStr: Integer;
+  j, k: Integer;
+  CurCell: PCell;
+  CurRow: array of PCell;
+  LastColNum: Cardinal;
+  LCell: TCell;
+  AVLNode: TAVLTreeNode;
+  CellPosText: string;
 begin
-  CurStr := Length(FSheets);
-  SetLength(FSheets, CurStr + 1);
+  FCurSheetNum := Length(FSheets);
+  SetLength(FSheets, FCurSheetNum + 1);
 
-  FSheets[CurStr] :=
+  LastColNum := CurSheet.GetLastColNumber;
+
+  // Header
+  FSheets[FCurSheetNum] :=
    XML_HEADER + LineEnding +
    '<worksheet xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
    '  <sheetViews>' + LineEnding +
    '    <sheetView workbookViewId="0" />' + LineEnding +
    '  </sheetViews>' + LineEnding +
-   '  <sheetData>' + LineEnding +
-   '  <row r="1" spans="1:4">' + LineEnding +
-   '    <c r="A1">' + LineEnding +
-   '      <v>1</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '    <c r="B1">' + LineEnding +
-   '      <v>2</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '    <c r="C1">' + LineEnding +
-   '      <v>3</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '    <c r="D1">' + LineEnding +
-   '      <v>4</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '  </row>' + LineEnding +
-   '  <row r="2" spans="1:4">' + LineEnding +
-   '    <c r="A2" t="s">' + LineEnding +
-   '      <v>0</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '    <c r="B2" t="s">' + LineEnding +
-   '      <v>1</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '    <c r="C2" t="s">' + LineEnding +
-   '      <v>2</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '    <c r="D2" t="s">' + LineEnding +
-   '      <v>3</v>' + LineEnding +
-   '    </c>' + LineEnding +
-   '  </row>' + LineEnding +
+   '  <sheetData>' + LineEnding;
+
+  // The cells need to be written in order, row by row, cell by cell
+  for j := 0 to CurSheet.GetLastRowNumber do
+  begin
+    FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
+     Format('  <row r="%d" spans="1:%d">', [j+1,LastColNum+1]) + LineEnding;
+
+    // Write cells from this row.
+    for k := 0 to LastColNum do
+    begin
+      LCell.Row := j;
+      LCell.Col := k;
+      AVLNode := CurSheet.Cells.Find(@LCell);
+      if Assigned(AVLNode) then
+        WriteCellCallback(PCell(AVLNode.Data), nil)
+      else
+      begin
+        CellPosText := CurSheet.CellPosToText(j, k);
+        FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
+         Format('    <c r="%s">', [CellPosText]) + LineEnding +
+         '      <v></v>' + LineEnding +
+         '    </c>' + LineEnding;
+      end;
+    end;
+
+    FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
+     '  </row>' + LineEnding;
+  end;
+
+  // Footer
+  FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
    '  </sheetData>' + LineEnding +
    '</worksheet>';
 end;
@@ -383,8 +436,14 @@ end;
 }
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string; ACell: PCell);
+var
+  CellPosText: string;
 begin
-
+  CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
+   Format('    <c r="%s" t="s">', [CellPosText]) + LineEnding +
+          '      <v>2</v>' + LineEnding +
+          '    </c>' + LineEnding;
 end;
 
 {
@@ -392,8 +451,14 @@ end;
 }
 procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
+var
+  CellPosText: String;
 begin
-
+  CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
+   Format('    <c r="%s">', [CellPosText]) + LineEnding +
+          '      <v>1</v>' + LineEnding +
+          '    </c>' + LineEnding;
 end;
 
 {

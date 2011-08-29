@@ -15,7 +15,6 @@ uses
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  MyFormula: TRPNFormula;
   MyDir: string;
   i: Integer;
   a: TStringList;
