@@ -137,7 +137,7 @@ begin
   FRelsRels :=
    XML_HEADER + LineEnding +
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_DOCUMENT + '" Target="/xl/workbook.xml" Id="rId1" />' + LineEnding +
+   '<Relationship Type="' + SCHEMAS_DOCUMENT + '" Target="xl/workbook.xml" Id="rId1" />' + LineEnding +
    '</Relationships>';
 
   FStyles :=
@@ -188,13 +188,13 @@ begin
   FWorkbookRels :=
    XML_HEADER + LineEnding +
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_STYLES + '" Target="/xl/styles.xml" Id="rId1" />' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_STRINGS + '" Target="/xl/sharedStrings.xml" Id="rId2" />' + LineEnding;
+   '<Relationship Type="' + SCHEMAS_STYLES + '" Target="xl/styles.xml" Id="rId1" />' + LineEnding +
+   '<Relationship Type="' + SCHEMAS_STRINGS + '" Target="xl/sharedStrings.xml" Id="rId2" />' + LineEnding;
 
   for i := 1 to AData.GetWorksheetCount do
   begin
     FWorkbookRels := FWorkbookRels +
-      Format('<Relationship Type="%s" Target="/xl/worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
+      Format('<Relationship Type="%s" Target="xl/worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
   end;
 
   FWorkbookRels := FWorkbookRels +
