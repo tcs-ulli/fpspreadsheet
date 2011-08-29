@@ -398,7 +398,7 @@ var
   lStr: string;
 begin
   lStr := '';
-  if ACol < 26 then lStr := Char(ACol+54);
+  if ACol < 26 then lStr := Char(ACol+65);
 
   Result := Format('%s%d', [lStr, ARow+1]);
 end;
