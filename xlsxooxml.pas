@@ -54,7 +54,7 @@ type
     FSSheets: array of TStringStream;
     FCurSheetNum: Integer;
     { Routines to write those files }
-    procedure WriteGlobalFiles;
+    procedure WriteGlobalFiles(AData: TsWorkbook);
     procedure WriteContent(AData: TsWorkbook);
     procedure WriteWorksheet(CurSheet: TsWorksheet);
   public
@@ -108,7 +108,9 @@ const
 
 { TsSpreadOOXMLWriter }
 
-procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
+procedure TsSpreadOOXMLWriter.WriteGlobalFiles(AData: TsWorkbook);
+var
+  i: Integer;
 begin
 //  WriteCellsToStream(AStream, AData.GetFirstWorksheet.FCells);
 
@@ -117,8 +119,14 @@ begin
    '<Types xmlns="' + SCHEMAS_TYPES + '">' + LineEnding +
    '  <Default Extension="xml" ContentType="' + MIME_XML + '" />' + LineEnding +
    '  <Default Extension="rels" ContentType="' + MIME_RELS + '" />' + LineEnding +
-   '  <Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding +
-   '  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="' + MIME_WORKSHEET + '" />' + LineEnding +
+   '  <Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding;
+  for i := 1 to AData.GetWorksheetCount do
+  begin
+    FContentTypes := FContentTypes +
+    Format('  <Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />', [i, MIME_WORKSHEET]) + LineEnding;
+  end;
+
+  FContentTypes := FContentTypes +
    '  <Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding +
    '  <Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding +
    '</Types>';
@@ -231,18 +239,6 @@ begin
    '<sst xmlns="' + SCHEMAS_SPREADML + '" count="' + IntToStr(FSharedStringsCount) +
      '" uniqueCount="' + IntToStr(FSharedStringsCount) + '">' + LineEnding +
    FSharedStrings +
-{   '  <si>' + LineEnding +
-   '    <t>First</t>' + LineEnding +
-   '  </si>' + LineEnding +
-   '  <si>' + LineEnding +
-   '    <t>Second</t>' + LineEnding +
-   '  </si>' + LineEnding +
-   '  <si>' + LineEnding +
-   '    <t>Third</t>' + LineEnding +
-   '  </si>' + LineEnding +
-   '  <si>' + LineEnding +
-   '    <t>Fourth</t>' + LineEnding +
-   '  </si>' + LineEnding + }
    '</sst>';
 end;
 
@@ -376,7 +372,7 @@ var
 begin
   { Fill the strings with the contents of the files }
 
-  WriteGlobalFiles();
+  WriteGlobalFiles(AData);
   WriteContent(AData);
 
   { Write the data to streams }
@@ -432,7 +428,7 @@ var
 begin
   { Fill the strings with the contents of the files }
 
-  WriteGlobalFiles();
+  WriteGlobalFiles(AData);
   WriteContent(AData);
 
   { Write the data to streams }
@@ -490,11 +486,16 @@ procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
 var
   CellPosText: string;
 begin
+  FSharedStrings := FSharedStrings +
+          '  <si>' + LineEnding +
+   Format('    <t>%s</t>', [AValue]) + LineEnding +
+          '  </si>' + LineEnding;
+
+  Inc(FSharedStringsCount);
+
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   Format('    <c r="%s" t="s">', [CellPosText]) + LineEnding +
-   Format('      <v>%s</v>', [AValue]) + LineEnding +
-          '    </c>' + LineEnding;
+   Format('    <c r="%s" s="0" t="s"><v>%d</v></c>', [CellPosText, FSharedStringsCount]) + LineEnding;
 end;
 
 {
@@ -507,9 +508,7 @@ var
 begin
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   Format('    <c r="%s">', [CellPosText]) + LineEnding +
-   Format('      <v>%f</v>', [AValue]) + LineEnding +
-          '    </c>' + LineEnding;
+   Format('    <c r="%s" s="0" t="n"><v>%f</v></c>', [CellPosText, AValue]) + LineEnding;
 end;
 
 {
