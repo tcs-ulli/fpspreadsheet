@@ -289,18 +289,21 @@ Type
     Property Entries[AIndex : Integer] : TZipFileEntry Read GetZ Write SetZ; default;
   end;
 
+  TZipperOutputDestination = (zodToFile, zodToStream);
 
   { TZipper }
 
   TZipper = Class(TObject)
   Private
     FEntries: TZipFileEntries;
+    FOutputDestination: TZipperOutputDestination;
+    FOutputStream: TStream;
     FZipping    : Boolean;
     FBufSize    : LongWord;
     FFileName   :  String;         { Name of resulting Zip file                 }
     FFiles      : TStrings;
     FInMemSize  : Integer;
-    FOutFile    : TFileStream;
+    FOutFile    : TStream;
     FInFile     : TStream;     { I/O file variables                         }
     LocalHdr    : Local_File_Header_Type;
     CentralHdr  : Central_File_Header_Type;
@@ -342,6 +345,8 @@ Type
     Property Files : TStrings Read FFiles;
     Property InMemSize : Integer Read FInMemSize Write FInMemSize;
     Property Entries : TZipFileEntries Read FEntries Write SetEntries;
+    Property OutputDestination: TZipperOutputDestination Read FOutputDestination Write FOutputDestination;
+    Property OutputStream: TStream Read FOutputStream Write FOutputStream;
   end;
 
   { TYbZipper }
@@ -1045,7 +1050,10 @@ end;
 Procedure TZipper.OpenOutput;
 
 Begin
-  FOutFile:=TFileStream.Create(FFileName,fmCreate);
+  if FOutputDestination = zodToFile then
+    FOutFile:=TFileStream.Create(FFileName,fmCreate)
+  else
+    FOutFile := FOutputStream;
 End;
 
 
@@ -1065,7 +1073,8 @@ End;
 Procedure TZipper.CloseOutput;
 
 Begin
-  FreeAndNil(FOutFile);
+  if FOutputDestination = zodToFile then
+    FreeAndNil(FOutFile);
 end;
 
 

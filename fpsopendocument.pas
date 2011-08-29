@@ -28,7 +28,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.4 is released. Changed by JLJR}
+  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.8 is released}
   fpspreadsheet,
   xmlread, DOM, AVL_Tree,
   math,
