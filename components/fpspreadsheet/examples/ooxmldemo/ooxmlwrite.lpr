@@ -18,6 +18,7 @@ var
   MyDir: string;
   i: Integer;
   a: TStringList;
+  MyCell: PCell;
 begin
   // Open the output file
   MyDir := ExtractFilePath(ParamStr(0));
@@ -32,15 +33,24 @@ begin
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);
 
-{ Uncommend this to test large XLS files
-  for i := 2 to 20 do
+// Uncommend this to test large XLS files
+  for i := 2 to 2{20} do
   begin
-    MyWorksheet.WriteAnsiText(i, 0, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 1, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 2, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 3, ParamStr(0));
+    MyWorksheet.WriteUTF8Text(i, 0, ParamStr(0));
+    MyWorksheet.WriteUTF8Text(i, 1, ParamStr(0));
+    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
+    MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
   end;
-}
+
+  // Test for Bold
+  MyCell := MyWorksheet.GetCell(2, 0);
+  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell := MyWorksheet.GetCell(2, 1);
+  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell := MyWorksheet.GetCell(2, 2);
+  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell := MyWorksheet.GetCell(2, 3);
+  MyCell^.UsedFormattingFields := [uffBold];
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
