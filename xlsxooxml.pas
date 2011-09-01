@@ -57,6 +57,7 @@ type
     procedure WriteGlobalFiles(AData: TsWorkbook);
     procedure WriteContent(AData: TsWorkbook);
     procedure WriteWorksheet(CurSheet: TsWorksheet);
+    function GetStyleIndex(ACell: PCell): Cardinal;
   public
     destructor Destroy; override;
     { General writing methods }
@@ -143,11 +144,9 @@ begin
   FStyles :=
    XML_HEADER + LineEnding +
    '<styleSheet xmlns="' + SCHEMAS_SPREADML + '">' + LineEnding +
-   '  <fonts count="1">' + LineEnding +
-   '    <font>' + LineEnding +
-   '      <sz val="10" />' + LineEnding +
-   '      <name val="Arial" />' + LineEnding +
-   '    </font>' + LineEnding +
+   '  <fonts count="2">' + LineEnding +
+   '    <font><sz val="10" /><name val="Arial" /></font>' + LineEnding +
+   '    <font><sz val="10" /><name val="Arial" /><b val="true"/></font>' + LineEnding +
    '  </fonts>' + LineEnding +
    '  <fills count="2">' + LineEnding +
    '    <fill>' + LineEnding +
@@ -166,11 +165,13 @@ begin
    '      <diagonal />' + LineEnding +
    '    </border>' + LineEnding +
    '  </borders>' + LineEnding +
-   '  <cellStyleXfs count="1">' + LineEnding +
+   '  <cellStyleXfs count="2">' + LineEnding +
    '    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" />' + LineEnding +
+   '    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" />' + LineEnding +
    '  </cellStyleXfs>' + LineEnding +
-   '  <cellXfs count="1">' + LineEnding +
+   '  <cellXfs count="2">' + LineEnding +
    '    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" />' + LineEnding +
+   '    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" />' + LineEnding +
    '  </cellXfs>' + LineEnding +
    '  <cellStyles count="1">' + LineEnding +
    '    <cellStyle name="Normal" xfId="0" builtinId="0" />' + LineEnding +
@@ -340,6 +341,13 @@ begin
    '</worksheet>';
 end;
 
+// This is an index to the section cellXfs from the styles.xml file
+function TsSpreadOOXMLWriter.GetStyleIndex(ACell: PCell): Cardinal;
+begin
+  if uffBold in ACell^.UsedFormattingFields then Result := 1
+  else Result := 0;
+end;
+
 destructor TsSpreadOOXMLWriter.Destroy;
 begin
   SetLength(FSheets, 0);
@@ -439,6 +447,7 @@ procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Word; const AValue: string; ACell: PCell);
 var
   CellPosText: string;
+  lStyleIndex: Cardinal;
 begin
   FSharedStrings := FSharedStrings +
           '  <si>' + LineEnding +
@@ -446,8 +455,9 @@ begin
           '  </si>' + LineEnding;
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  lStyleIndex := GetStyleIndex(ACell);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   Format('    <c r="%s" s="0" t="s"><v>%d</v></c>', [CellPosText, FSharedStringsCount]) + LineEnding;
+   Format('    <c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]) + LineEnding;
 
   Inc(FSharedStringsCount);
 end;
