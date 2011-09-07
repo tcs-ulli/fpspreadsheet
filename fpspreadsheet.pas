@@ -877,9 +877,9 @@ begin
   begin
     if SheetType = sfExcel8 then
     begin
-      repeat
+      while True do
+      begin
         try
-          SheetType := Pred(SheetType);
           ReadFromFile(AFileName, SheetType);
           valid := True;
         except
@@ -889,7 +889,9 @@ begin
             valid := False
           end;
         end;
-      until valid or (SheetType = sfExcel2);
+        if valid or (SheetType = sfExcel2) then Break;
+        SheetType := Pred(SheetType);
+      end;
 
       // A failed attempt to read a file should bring an exception, so re-raise
       // the exception if necessary. We re-raise the exception brought by Excel 8,
