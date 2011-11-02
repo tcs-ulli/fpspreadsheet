@@ -1752,7 +1752,7 @@ var
   Items: DWORD;
   StringLength: WORD;
   LString: String;
-  Continue: WORD;
+  ContinueIndicator: WORD;
 begin
   //Reads the shared string table, only compatible with BIFF8
   if not Assigned(FSharedStringTable) then begin
@@ -1775,16 +1775,22 @@ begin
       if StringLength>0 then begin
         //Read a stream of zero length reads all the stream.
         LString:=LString+ReadString(AStream,StringLength);
+      end else begin
+        //String of 0 chars in length, so just read it empty, reading only the mandatory flags
+        AStream.ReadByte; //And discard it.
+        Dec(PendingRecordSize);
+        //LString:=LString+'';
       end;
       if (PendingRecordSize=0) and (Items>1) then begin
-        //A continue will happend, read the continue
+        //A Continue will happend, read the
         //tag and continue linking...
-        Continue:=WordLEtoN(AStream.ReadWord);
-        if Continue<>INT_EXCEL_ID_CONTINUE then begin
+        ContinueIndicator:=WordLEtoN(AStream.ReadWord);
+        if ContinueIndicator<>INT_EXCEL_ID_CONTINUE then begin
           Raise Exception.Create('Expected CONTINUE not found.');
         end;
         PendingRecordSize:=WordLEtoN(AStream.ReadWord);
         Dec(StringLength,Length(UTF8Decode(LString))); //Dec the used chars
+        if StringLength=0 then break;
       end else begin
         break;
       end;
