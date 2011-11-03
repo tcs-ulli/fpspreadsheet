@@ -501,6 +501,11 @@ var
   NextDIFC: SECT;
   Index: SizeUint;
 begin
+  if not Assigned(FDIFArray) then begin
+    //Nothing to be freed.
+    Result:=true;
+    exit;
+  end;
   //The first DIF is an special one and do not need to be
   //written as it is written with the header updates.
   FDIFArray[0]:=PSECT(@FHeader._sectFat[0]);
