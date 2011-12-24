@@ -9,7 +9,7 @@ interface
 uses
   Classes, SysUtils,
   fpspreadsheet,
-  fpsutils{, lconvencoding};
+  fpsutils, lconvencoding;
 
 const
   { Formula constants TokenID values }

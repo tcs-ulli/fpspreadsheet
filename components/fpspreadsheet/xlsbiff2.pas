@@ -34,7 +34,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpspreadsheet, xlscommon, fpsutils, fpsconvencoding;
+  fpspreadsheet, xlscommon, fpsutils, lconvencoding;
   
 type
 
