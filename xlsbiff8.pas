@@ -59,7 +59,7 @@ uses
   {$else}
   fpolestorage,
   {$endif}
-  fpsutils;
+  fpsutils, lazutf8;
 
 type
 
@@ -87,6 +87,7 @@ type
     procedure ReadRichString(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     procedure ReadLabelSST(const AStream: TStream);
+    procedure ReadFont(const AStream: TStream);
   public
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -158,6 +159,7 @@ const
   INT_EXCEL_ID_CONTINUE   = $003C;
   INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
   INT_EXCEL_ID_PALETTE    = $0092;
+  INT_EXCEL_ID_CODEPAGE   = $0042;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -1424,6 +1426,8 @@ begin
        INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
        INT_EXCEL_ID_EOF:        SectionEOF := True;
        INT_EXCEL_ID_SST:        ReadSST(AStream);
+       INT_EXCEL_ID_CODEPAGE:   ReadCodepage(AStream);
+       INT_EXCEL_ID_FONT:       ReadFont(AStream);
       else
         // nothing
       end;
@@ -1600,7 +1604,7 @@ end;
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
   const ALength: WORD): UTF8String;
 begin
-  Result:=UTF8Encode(ReadWideString(AStream, ALength));
+  Result:=UTF16ToUTF8(ReadWideString(AStream, ALength));
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1697,7 +1701,7 @@ begin
   WideStrValue:=ReadWideString(AStream,L);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, UTF8Encode(WideStrValue));
+  FWorksheet.WriteUTF8Text(ARow, ACol, UTF16ToUTF8(WideStrValue));
 end;
 
 procedure TsSpreadBIFF8Reader.ReadNumber(AStream: TStream);
@@ -1789,13 +1793,16 @@ begin
           Raise Exception.Create('Expected CONTINUE not found.');
         end;
         PendingRecordSize:=WordLEtoN(AStream.ReadWord);
-        Dec(StringLength,Length(UTF8Decode(LString))); //Dec the used chars
+        Dec(StringLength,Length(UTF8ToUTF16(LString))); //Dec the used chars
         if StringLength=0 then break;
       end else begin
         break;
       end;
     end;
     FSharedStringTable.Add(LString);
+    {$ifdef XLSDEBUG}
+    WriteLn('Adding shared string: ' + LString);
+    {$endif}
     dec(Items);
   end;
 end;
@@ -1811,6 +1818,49 @@ begin
     Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
   end;
   FWorksheet.WriteUTF8Text(ARow, ACol, FSharedStringTable[SSTIndex]);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadFont(const AStream: TStream);
+var
+  lCodePage: Word;
+  lHeight: Word;
+  lOptions: Word;
+  Len: Byte;
+  lFontName: UTF8String;
+begin
+  { Height of the font in twips = 1/20 of a point }
+  lHeight := AStream.ReadWord(); // WordToLE(200)
+
+  { Option flags }
+  lOptions := AStream.ReadWord();
+
+  { Colour index }
+  AStream.ReadWord();
+
+  { Font weight }
+  AStream.ReadWord();
+
+  { Escapement type }
+  AStream.ReadWord();
+
+  { Underline type }
+  AStream.ReadByte();
+
+  { Font family }
+  AStream.ReadByte();
+
+  { Character set }
+  lCodepage := AStream.ReadByte();
+  {$ifdef XLSDEBUG}
+  WriteLn('Reading Font Codepage='+IntToStr(lCodepage));
+  {$endif}
+
+  { Not used }
+  AStream.ReadByte();
+
+  { Font name: Unicodestring, char count in 1 byte }
+  Len := AStream.ReadByte();
+  lFontName := ReadString(AStream, Len);
 end;
 
 {*******************************************************************
