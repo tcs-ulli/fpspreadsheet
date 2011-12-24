@@ -69,7 +69,7 @@ uses
   {$else}
   fpolestorage,
   {$endif}
-  fpsutils, fpsconvencoding;
+  fpsutils, lconvencoding;
 
 type
 
