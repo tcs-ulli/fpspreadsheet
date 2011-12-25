@@ -1345,10 +1345,13 @@ function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const ALength: WORD): WideString;
 var
   StringFlags: BYTE;
-  AnsiStrValue: AnsiString;
+  DecomprStrValue: WideString;
+  AnsiStrValue: ansistring;
   RunsCounter: WORD;
   AsianPhoneticBytes: DWORD;
+  i: Integer;
   j: SizeUInt;
+  lLen: SizeInt;
 begin
   StringFlags:=AStream.ReadByte;
   Dec(PendingRecordSize);
@@ -1375,17 +1378,19 @@ begin
     end;
     Result:=WideStringLEToN(Result);
   end else begin
-    //String is 1 byte per char, maybe ANSI ?
-    if ALength > PendingRecordSize then begin
-      SetLength(AnsiStrValue,PendingRecordSize);
-      AStream.ReadBuffer(AnsiStrValue[1],PendingRecordSize);
-      dec(PendingRecordSize,PendingRecordSize);
-    end else begin
-      SetLength(AnsiStrValue,ALength);
-      AStream.ReadBuffer(AnsiStrValue[1],ALength);
-      dec(PendingRecordSize,ALength);
+    //String is 1 byte per char, this is UTF-16 with the high word ommited because it is zero
+    // so decompress and then convert
+    if ALength > PendingRecordSize then lLen := PendingRecordSize
+    else lLen := ALength;
+
+    SetLength(DecomprStrValue, lLen);
+    for i := 1 to lLen do
+    begin
+      DecomprStrValue[i] := WideChar(AStream.ReadByte());
     end;
-    Result:=AnsiStrValue; //implicit conversion.
+    Dec(PendingRecordSize, lLen);
+
+    Result := DecomprStrValue;
   end;
   if StringFlags and 8 = 8 then begin
     //Rich string (This only happend in BIFF8)
