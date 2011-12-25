@@ -230,6 +230,7 @@ type
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
     procedure ReadFromFile(AFileName: string); overload;
+    procedure ReadFromFileIgnoringExtension(AFileName: string);
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
     procedure WriteToFile(const AFileName: string;
       const AFormat: TsSpreadsheetFormat;
@@ -900,6 +901,25 @@ begin
     end
     else
       ReadFromFile(AFileName, SheetType);
+  end;
+end;
+
+procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string);
+var
+  SheetType: TsSpreadsheetFormat;
+  lException: Exception;
+begin
+  while (SheetType in [sfExcel2..sfExcel8]) and (lException <> nil) do
+  begin
+    try
+      Dec(SheetType);
+      ReadFromFile(AFileName, SheetType);
+      lException := nil;
+    except
+      on E: Exception do
+           { do nothing } ;
+    end;
+    if lException = nil then Break;
   end;
 end;
 

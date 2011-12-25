@@ -75,7 +75,7 @@ type
 
   { TsSpreadBIFF5Reader }
 
-  TsSpreadBIFF5Reader = class(TsCustomSpreadReader)
+  TsSpreadBIFF5Reader = class(TsSpreadBIFFReader)
   private
     RecordSize: Word;
     FWorksheet: TsWorksheet;
@@ -117,7 +117,7 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
-    procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
+    //procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding); this is in xlscommon
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
@@ -151,7 +151,7 @@ const
   INT_EXCEL_ID_RSTRING    = $00D6;
   INT_EXCEL_ID_RK         = $027E;
   INT_EXCEL_ID_MULRK      = $00BD;
-  INT_EXCEL_ID_CODEPAGE   = $0042;
+  INT_EXCEL_ID_CODEPAGE   = xlscommon.INT_EXCEL_ID_CODEPAGE;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -168,21 +168,6 @@ const
   INT_BOF_WORKSPACE       = $0100;
   INT_BOF_BUILD_ID        = $1FD2;
   INT_BOF_BUILD_YEAR      = $07CD;
-
-  { CODEPAGE record constants }
-
-  WORD_ASCII = 367;
-  WORD_UTF_16 = 1200; // BIFF 8
-  WORD_CP_1250_Latin2 = 1250;
-  WORD_CP_1251_Cyrillic = 1251;
-  WORD_CP_1252_Latin1 = 1252; // BIFF4-BIFF5
-  WORD_CP_1253_Greek = 1253;
-  WORD_CP_1254_Turkish = 1254;
-  WORD_CP_1255_Hebrew = 1255;
-  WORD_CP_1256_Arabic = 1256;
-  WORD_CP_1257_Baltic = 1257;
-  WORD_CP_1258_Vietnamese = 1258;
-  WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
 
   { FONT record constants }
   INT_FONT_WEIGHT_NORMAL  = $0190;
@@ -529,29 +514,6 @@ begin
   { Sheet name: Byte string, 8-bit length }
   AStream.WriteByte(Len);
   AStream.WriteBuffer(LatinSheetName[1], Len);
-end;
-
-procedure TsSpreadBIFF5Writer.WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
-var
-  lCodepage: Word;
-begin
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
-  AStream.WriteWord(WordToLE(2));
-
-  { Codepage }
-  case AEncoding of
-    seLatin2:   lCodepage := WORD_CP_1250_Latin2;
-    seCyrillic: lCodepage := WORD_CP_1251_Cyrillic;
-    seGreek:    lCodepage := WORD_CP_1253_Greek;
-    seTurkish:  lCodepage := WORD_CP_1254_Turkish;
-    seHebrew:   lCodepage := WORD_CP_1255_Hebrew;
-    seArabic:   lCodepage := WORD_CP_1256_Arabic;
-  else
-    // Default is Latin1
-    lCodepage := WORD_CP_1252_Latin1;
-  end;
-  AStream.WriteWord(WordToLE(lCodepage));
 end;
 
 {
