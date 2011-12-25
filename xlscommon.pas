@@ -12,6 +12,9 @@ uses
   fpsutils, lconvencoding;
 
 const
+  { RECORD IDs which didn't change across versions 2-8 }
+  INT_EXCEL_ID_CODEPAGE   = $0042;
+
   { Formula constants TokenID values }
 
   { Binary Operator Tokens }
@@ -79,6 +82,21 @@ const
   EXTRA_COLOR_PALETTE_GREY10PCT    = $18; // E6E6E6H
   EXTRA_COLOR_PALETTE_GREY20PCT    = $19; // E6E6E6H
 
+  { CODEPAGE record constants }
+
+  WORD_ASCII = 367;
+  WORD_UTF_16 = 1200; // BIFF 8
+  WORD_CP_1250_Latin2 = 1250;
+  WORD_CP_1251_Cyrillic = 1251;
+  WORD_CP_1252_Latin1 = 1252; // BIFF4-BIFF5
+  WORD_CP_1253_Greek = 1253;
+  WORD_CP_1254_Turkish = 1254;
+  WORD_CP_1255_Hebrew = 1255;
+  WORD_CP_1256_Arabic = 1256;
+  WORD_CP_1257_Baltic = 1257;
+  WORD_CP_1258_Vietnamese = 1258;
+  WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
+
 type
 
   { TsSpreadBIFFReader }
@@ -86,6 +104,8 @@ type
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
     FCodepage: string;
+    // Here we can add reading of records which didn't change across BIFF2-8 versions
+    // Workbook Globals records
     procedure ReadCodePage(AStream: TStream);
   end;
 
@@ -101,12 +121,16 @@ type
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function FormulaElementKindToExcelTokenID(AElementKind: TFEKind): Byte;
+    // Other records which didn't change
+    // Workbook Globals records
+    procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
   end;
 
 implementation
 
 { TsSpreadBIFFReader }
 
+// In BIFF 8 it seams to always use the UTF-16 codepage
 procedure TsSpreadBIFFReader.ReadCodePage(AStream: TStream);
 var
   lCodePage: Word;
@@ -227,6 +251,30 @@ begin
   else
     Result := 0;
   end;
+end;
+
+procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
+  AEncoding: TsEncoding);
+var
+  lCodepage: Word;
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
+  AStream.WriteWord(WordToLE(2));
+
+  { Codepage }
+  case AEncoding of
+    seLatin2:   lCodepage := WORD_CP_1250_Latin2;
+    seCyrillic: lCodepage := WORD_CP_1251_Cyrillic;
+    seGreek:    lCodepage := WORD_CP_1253_Greek;
+    seTurkish:  lCodepage := WORD_CP_1254_Turkish;
+    seHebrew:   lCodepage := WORD_CP_1255_Hebrew;
+    seArabic:   lCodepage := WORD_CP_1256_Arabic;
+  else
+    // Default is Latin1
+    lCodepage := WORD_CP_1252_Latin1;
+  end;
+  AStream.WriteWord(WordToLE(lCodepage));
 end;
 
 end.

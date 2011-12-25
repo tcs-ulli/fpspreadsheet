@@ -87,6 +87,9 @@ type
     procedure ReadRichString(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     procedure ReadLabelSST(const AStream: TStream);
+
+    // Workbook Globals records
+    // procedure ReadCodepage in xlscommon
     procedure ReadFont(const AStream: TStream);
   public
     { General reading methods }
@@ -118,6 +121,7 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    // procedure WriteCodepage in xlscommon
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
@@ -1378,7 +1382,7 @@ begin
     end;
     Result:=WideStringLEToN(Result);
   end else begin
-    //String is 1 byte per char, this is UTF-16 with the high word ommited because it is zero
+    //String is 1 byte per char, this is UTF-16 with the high byte ommited because it is zero
     // so decompress and then convert
     if ALength > PendingRecordSize then lLen := PendingRecordSize
     else lLen := ALength;
