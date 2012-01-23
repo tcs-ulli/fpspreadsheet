@@ -7,13 +7,14 @@ unit xlscommon;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, DateUtils,
   fpspreadsheet,
   fpsutils, lconvencoding;
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
   INT_EXCEL_ID_CODEPAGE   = $0042;
+  INT_EXCEL_ID_DATEMODE   = $0022;
 
   { Formula constants TokenID values }
 
@@ -104,9 +105,12 @@ type
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
     FCodepage: string;
+    FBaseDate: TDateTime;
+    constructor Create; override;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
     // Workbook Globals records
     procedure ReadCodePage(AStream: TStream);
+    procedure ReadDateMode(AStream: TStream);
   end;
 
   { TsSpreadBIFFWriter }
@@ -129,6 +133,14 @@ type
 implementation
 
 { TsSpreadBIFFReader }
+
+constructor TsSpreadBIFFReader.Create;
+begin
+  inherited Create;
+  // Initial base date in case it wont be informed
+  FBaseDate := DateUtils.EncodeDateDay(1900, 1);
+  FBaseDate := DateUtils.IncDay(FBaseDate, -1);
+end;
 
 // In BIFF 8 it seams to always use the UTF-16 codepage
 procedure TsSpreadBIFFReader.ReadCodePage(AStream: TStream);
@@ -179,6 +191,30 @@ begin
   8000H = 32768 = Apple Roman
   8001H = 32769 = Windows CP-1252 (Latin I) (BIFF2-BIFF3)}
   end;
+end;
+
+procedure TsSpreadBIFFReader.ReadDateMode(AStream: TStream);
+var
+  lBaseMode: Word;
+begin
+  //5.28 DATEMODE
+  //BIFF2 BIFF3 BIFF4 BIFF5 BIFF8
+  //0022H 0022H 0022H 0022H 0022H
+  //This record specifies the base date for displaying date values. All dates are stored as count of days past this base date. In
+  //BIFF2-BIFF4 this record is part of the Calculation Settings Block (➜4.3). In BIFF5-BIFF8 it is stored in the Workbook
+  //Globals Substream.
+  //Record DATEMODE, BIFF2-BIFF8:
+  //Offset Size Contents
+  //0 2 0 = Base date is 1899-Dec-31 (the cell value 1 represents 1900-Jan-01)
+  //    1 = Base date is 1904-Jan-01 (the cell value 1 represents 1904-Jan-02)
+  lBaseMode := WordLEtoN(AStream.ReadWord);
+  if lBaseMode = 0 then
+  begin
+    FBaseDate := DateUtils.EncodeDateDay(1900, 1);
+    FBaseDate := DateUtils.IncDay(FBaseDate, -1);
+  end
+  else
+    FBaseDate := DateUtils.EncodeDateDay(1904, 1);
 end;
 
 function TsSpreadBIFFWriter.FPSColorToEXCELPallete(AColor: TsColor): Word;

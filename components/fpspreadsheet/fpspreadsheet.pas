@@ -602,7 +602,8 @@ begin
 
   //cctFormula
   cctNumber:     Result := FloatToStr(ACell^.NumberValue);
-  cctUTF8String:     Result := ACell^.UTF8StringValue;
+  cctUTF8String: Result := ACell^.UTF8StringValue;
+  cctDateTime:   Result := SysUtils.DateToStr(ACell^.DateTimeValue);
   else
     Result := '';
   end;
