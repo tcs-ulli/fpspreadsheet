@@ -85,7 +85,7 @@ type
   {@@ Describes the type of content of a cell on a TsWorksheet }
 
   TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber,
-    cctUTF8String);
+    cctUTF8String, cctDateTime);
 
   {@@ List of possible formatting fields }
 
@@ -164,6 +164,7 @@ type
     RPNFormulaValue: TsRPNFormula;
     NumberValue: double;
     UTF8StringValue: ansistring;
+    DateTimeValue: TDateTime;
     { Formatting fields }
     UsedFormattingFields: TsUsedFormattingFields;
     TextRotation: TsTextRotation;
@@ -202,9 +203,11 @@ type
     function  GetLastRowNumber: Cardinal;
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double;
+    function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
     procedure RemoveAllCells;
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
+    procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
@@ -259,6 +262,7 @@ type
     FWorkbook: TsWorkbook;
     FCurrentWorksheet: TsWorksheet;
   public
+    constructor Create; virtual;
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
@@ -639,6 +643,19 @@ begin
 end;
 
 {@@
+  Reads the contents of a cell and returns the date/time value of the cell.
+
+  @param  ARow      The row of the cell
+  @param  ACol      The column of the cell
+
+  @return True if the cell is a datetime value, false otherwise
+}
+function TsWorksheet.ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
+begin
+
+end;
+
+{@@
   Clears the list of Cells and releases their memory.
 }
 procedure TsWorksheet.RemoveAllCells;
@@ -689,6 +706,16 @@ begin
 
   ACell^.ContentType := cctNumber;
   ACell^.NumberValue := ANumber;
+end;
+
+procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+
+  ACell^.ContentType := cctDateTime;
+  ACell^.DateTimeValue := AValue;
 end;
 
 {@@
@@ -1062,6 +1089,11 @@ begin
 end;
 
 { TsCustomSpreadReader }
+
+constructor TsCustomSpreadReader.Create;
+begin
+  inherited Create;
+end;
 
 {@@
   Default file reading method.

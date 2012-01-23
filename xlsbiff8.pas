@@ -62,6 +62,16 @@ uses
   fpsutils, lazutf8;
 
 type
+  TXFRecordData = class
+  public
+    FormatIndex: Integer;
+  end;
+
+  TFormatRecordData = class
+  public
+    Index: Integer;
+    FormatString: widestring;
+  end;
 
   { TsSpreadBIFF8Reader }
 
@@ -73,8 +83,11 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
     FSharedStringTable: TStringList;
+    FXFList: TFPList; // of TXFRecordData
+    FFormatList: TFPList; // of TFormatRecordData
     function DecodeRKValue(const ARK: DWORD): Double;
-    function ReadWideString(const AStream: TStream;const ALength: WORD): WideString;
+    function ReadWideString(const AStream: TStream;const ALength: WORD): WideString; overload;
+    function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
@@ -87,11 +100,18 @@ type
     procedure ReadRichString(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     procedure ReadLabelSST(const AStream: TStream);
+    //
+    procedure ReadXF(const AStream: TStream);
+    procedure ReadFormat(const AStream: TStream);
+    function  FindFormatRecordForCell(const AFXIndex: Integer): TFormatRecordData;
+    class function ConvertExcelDateToTDateTime(const AExcelDateNum: Integer): TDateTime;
 
     // Workbook Globals records
     // procedure ReadCodepage in xlscommon
     procedure ReadFont(const AStream: TStream);
   public
+    constructor Create; override;
+    destructor Destroy; override;
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
@@ -99,8 +119,6 @@ type
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
-
-    destructor Destroy; override;
   end;
 
   { TsSpreadBIFF8Writer }
@@ -164,6 +182,7 @@ const
   INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
   INT_EXCEL_ID_PALETTE    = $0092;
   INT_EXCEL_ID_CODEPAGE   = $0042;
+  INT_EXCEL_ID_FORMAT     = $041E;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -1412,6 +1431,20 @@ begin
   end;
 end;
 
+function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
+  const AUse8BitLength: Boolean): WideString;
+var
+  Len: Word;
+  WideName: WideString;
+begin
+  if AUse8BitLength then
+    Len := AStream.ReadByte()
+  else
+    Len := WordLEtoN(AStream.ReadWord());
+
+  Result := ReadWideString(AStream, Len);
+end;
+
 procedure TsSpreadBIFF8Reader.ReadWorkbookGlobals(AStream: TStream;
   AData: TsWorkbook);
 var
@@ -1437,6 +1470,8 @@ begin
        INT_EXCEL_ID_SST:        ReadSST(AStream);
        INT_EXCEL_ID_CODEPAGE:   ReadCodepage(AStream);
        INT_EXCEL_ID_FONT:       ReadFont(AStream);
+       INT_EXCEL_ID_XF:         ReadXF(AStream);
+       INT_EXCEL_ID_FORMAT:     ReadFormat(AStream);
       else
         // nothing
       end;
@@ -1521,6 +1556,7 @@ var
   RK: DWORD;
   ARow, ACol, XF: WORD;
   Number: Double;
+  lFormatData: TFormatRecordData;
 begin
   ReadRowColXF(AStream,ARow,ACol,XF);
 
@@ -1529,6 +1565,20 @@ begin
 
   {Check RK codes}
   Number:=DecodeRKValue(RK);
+
+  // Now try to figure out if the number is really a number of a date or time value
+  // See: http://www.gaia-gis.it/FreeXL/freexl-1.0.0a-doxy-doc/Format.html
+  // Unfornately Excel doesnt give us a direct way to find this,
+  // we need to guess by the FORMAT field
+{  lFormatData := FindFormatRecordForCell(XF);
+  if lFormatData <> nil then
+  begin
+    // Dates have /
+    if Pos('/', lFormatData.FormatString) > 0 then
+    begin
+    end;
+  end;}
+
   FWorksheet.WriteNumber(ARow,ACol,Number);
 end;
 
@@ -1614,6 +1664,20 @@ function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
   const ALength: WORD): UTF8String;
 begin
   Result:=UTF16ToUTF8(ReadWideString(AStream, ALength));
+end;
+
+constructor TsSpreadBIFF8Reader.Create;
+begin
+  inherited Create;
+  FXFList := TFPList.Create;
+  FFormatList := TFPList.Create;
+end;
+
+destructor TsSpreadBIFF8Reader.Destroy;
+begin
+  FXFList.Free;
+  FFormatList.Free;
+  if Assigned(FSharedStringTable) then FSharedStringTable.Free;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1732,11 +1796,6 @@ begin
   FWorksheet.WriteNumber(ARow, ACol, AValue);
 end;
 
-destructor TsSpreadBIFF8Reader.Destroy;
-begin
-  if Assigned(FSharedStringTable) then FSharedStringTable.Free;
-end;
-
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
 var
   L: Word;
@@ -1827,6 +1886,86 @@ begin
     Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
   end;
   FWorksheet.WriteUTF8Text(ARow, ACol, FSharedStringTable[SSTIndex]);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
+var
+  lData: TXFRecordData;
+begin
+  lData := TXFRecordData.Create;
+
+  // Record XF, BIFF8:
+  // Offset Size Contents
+  // 0 2 Index to FONT record (➜5.45)
+  WordLEtoN(AStream.ReadWord);
+
+  // 2 2 Index to FORMAT record (➜5.49)
+  lData.FormatIndex := WordLEtoN(AStream.ReadWord);
+
+  {4 2 XF type, cell protection, and parent style XF:
+  Bit Mask Contents
+  2-0 0007H XF_TYPE_PROT – XF type, cell protection (see above)
+  15-4 FFF0H Index to parent style XF (always FFFH in style XFs)
+  6 1 Alignment and text break:
+  Bit Mask Contents
+  2-0 07H XF_HOR_ALIGN – Horizontal alignment (see above)
+  3 08H 1 = Text is wrapped at right border
+  6-4 70H XF_VERT_ALIGN – Vertical alignment (see above)
+  7 80H 1 = Justify last line in justified or distibuted text
+  7 1 XF_ROTATION: Text rotation angle (see above)
+  8 1 Indentation, shrink to cell size, and text direction:
+  Bit Mask Contents
+  3-0 0FH Indent level
+  4 10H 1 = Shrink content to fit into cell
+  7-6 C0H Text direction:
+  0 = According to context
+  35
+  ; 1 = Left-to-right; 2 = Right-to-left
+  9 1 Flags for used attribute groups:
+  ....}
+
+  // Add the XF to the list
+  FXFList.Add(lData);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadFormat(const AStream: TStream);
+var
+  lData: TFormatRecordData;
+begin
+  lData := TFormatRecordData.Create;
+
+  // Record FORMAT, BIFF8:
+  // Offset Size Contents
+  // 0 2 Format index used in other records
+  lData.Index := WordLEtoN(AStream.ReadWord);
+
+  // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
+  lData.FormatString := ReadWideString(AStream, False);
+
+  // Add to the list
+  FFormatList.Add(lData);
+end;
+
+function TsSpreadBIFF8Reader.FindFormatRecordForCell(const AFXIndex: Integer
+  ): TFormatRecordData;
+var
+  lXFData: TXFRecordData;
+  lFormatData: TFormatRecordData;
+  i: Integer;
+begin
+  Result := nil;
+  lXFData := TXFRecordData(FXFList.Items[AFXIndex]);
+  for i := 0 to FFormatList.Count-1 do
+  begin
+    lFormatData := TFormatRecordData(FFormatList.Items[i]);
+    if lFormatData.Index = lXFData.FormatIndex then Exit(lFormatData);
+  end;
+end;
+
+class function TsSpreadBIFF8Reader.ConvertExcelDateToTDateTime(
+  const AExcelDateNum: Integer): TDateTime;
+begin
+
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFont(const AStream: TStream);
