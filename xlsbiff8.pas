@@ -52,7 +52,7 @@ unit xlsbiff8;
 interface
 
 uses
-  Classes, SysUtils, fpcanvas,
+  Classes, SysUtils, fpcanvas, DateUtils,
   fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
@@ -104,7 +104,7 @@ type
     procedure ReadXF(const AStream: TStream);
     procedure ReadFormat(const AStream: TStream);
     function  FindFormatRecordForCell(const AFXIndex: Integer): TFormatRecordData;
-    class function ConvertExcelDateToTDateTime(const AExcelDateNum: Integer): TDateTime;
+    class function ConvertExcelDateToTDateTime(const AExcelDateNum: Double; ABaseDate: TDateTime): TDateTime;
 
     // Workbook Globals records
     // procedure ReadCodepage in xlscommon
@@ -1472,6 +1472,7 @@ begin
        INT_EXCEL_ID_FONT:       ReadFont(AStream);
        INT_EXCEL_ID_XF:         ReadXF(AStream);
        INT_EXCEL_ID_FORMAT:     ReadFormat(AStream);
+       INT_EXCEL_ID_DATEMODE:   ReadDateMode(AStream);
       else
         // nothing
       end;
@@ -1557,6 +1558,7 @@ var
   ARow, ACol, XF: WORD;
   Number: Double;
   lFormatData: TFormatRecordData;
+  lDateTime: TDateTime;
 begin
   ReadRowColXF(AStream,ARow,ACol,XF);
 
@@ -1570,14 +1572,17 @@ begin
   // See: http://www.gaia-gis.it/FreeXL/freexl-1.0.0a-doxy-doc/Format.html
   // Unfornately Excel doesnt give us a direct way to find this,
   // we need to guess by the FORMAT field
-{  lFormatData := FindFormatRecordForCell(XF);
+  lFormatData := FindFormatRecordForCell(XF);
   if lFormatData <> nil then
   begin
     // Dates have /
     if Pos('/', lFormatData.FormatString) > 0 then
     begin
+      lDateTime := ConvertExcelDateToTDateTime(Number, FBaseDate);
+      FWorksheet.WriteDateTime(ARow,ACol,lDateTime);
+      Exit;
     end;
-  end;}
+  end;
 
   FWorksheet.WriteNumber(ARow,ACol,Number);
 end;
@@ -1963,9 +1968,9 @@ begin
 end;
 
 class function TsSpreadBIFF8Reader.ConvertExcelDateToTDateTime(
-  const AExcelDateNum: Integer): TDateTime;
+  const AExcelDateNum: Double; ABaseDate: TDateTime): TDateTime;
 begin
-
+  Result := IncDay(ABaseDate, Round(AExcelDateNum));
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFont(const AStream: TStream);
