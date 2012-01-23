@@ -652,8 +652,21 @@ end;
   @return True if the cell is a datetime value, false otherwise
 }
 function TsWorksheet.ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
+var
+  ACell: PCell;
+  Str: string;
 begin
+  ACell := FindCell(ARow, ACol);
 
+  if (ACell = nil) or (ACell^.ContentType <> cctDateTime) then
+  begin
+    AResult := 0;
+    Result := False;
+    Exit;
+  end;
+
+  AResult := ACell^.DateTimeValue;
+  Result := True;
 end;
 
 {@@
