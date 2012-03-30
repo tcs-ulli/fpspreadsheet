@@ -1679,7 +1679,11 @@ begin
 end;
 
 destructor TsSpreadBIFF8Reader.Destroy;
+var
+  j: integer;
 begin
+  for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
+  for j := FFormatList.Count-1 downto 0 do TObject(FFormatList[j]).Free;
   FXFList.Free;
   FFormatList.Free;
   if Assigned(FSharedStringTable) then FSharedStringTable.Free;
