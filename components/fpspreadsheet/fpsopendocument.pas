@@ -55,6 +55,7 @@ type
 
   TsSpreadOpenDocWriter = class(TsCustomSpreadWriter)
   protected
+    FPointSeparatorSettings: TFormatSettings;
     // Strings with the contents of files
     FMeta, FSettings, FStyles, FContent, FMimetype: string;
     FMetaInfManifest: string;
@@ -72,6 +73,7 @@ type
     // Routines to write parts of those files
     function WriteStylesXMLAsString: string;
   public
+    constructor Create; override;
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
     procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
@@ -534,6 +536,14 @@ begin
   end;
 end;
 
+constructor TsSpreadOpenDocWriter.Create;
+begin
+  inherited Create;
+
+  FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator:='.';
+end;
+
 {
   Writes a string to a file. Helper convenience method.
 }
@@ -649,7 +659,6 @@ procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
 var
   StrValue: string;
   DisplayStr: string;
-  FSettings: TFormatSettings;
   lStyle: string = '';
 begin
   if uffBold in ACell^.UsedFormattingFields then
@@ -660,8 +669,7 @@ begin
     StrValue:='1.#INF';
     DisplayStr:='1.#INF';
   end else begin
-    FSettings.DecimalSeparator:='.';
-    StrValue:=FloatToStr(AValue,FSettings); //Uses '.' as decimal separator
+    StrValue:=FloatToStr(AValue,FPointSeparatorSettings); //Uses '.' as decimal separator
     DisplayStr:=FloatToStr(AValue); // Uses locale decimal separator
   end;
   FContent := FContent +

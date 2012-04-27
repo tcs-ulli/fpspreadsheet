@@ -41,6 +41,7 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   protected
+    FPointSeparatorSettings: TFormatSettings;
     { Strings with the contents of files }
     FContentTypes: string;
     FRelsRels: string;
@@ -59,6 +60,7 @@ type
     procedure WriteWorksheet(CurSheet: TsWorksheet);
     function GetStyleIndex(ACell: PCell): Cardinal;
   public
+    constructor Create; override;
     destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
@@ -348,6 +350,14 @@ begin
   else Result := 0;
 end;
 
+constructor TsSpreadOOXMLWriter.Create;
+begin
+  inherited Create;
+
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+end;
+
 destructor TsSpreadOOXMLWriter.Destroy;
 begin
   SetLength(FSheets, 0);
@@ -469,10 +479,12 @@ procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
 var
   CellPosText: String;
+  CellValueText: String;
 begin
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   Format('    <c r="%s" s="0" t="n"><v>%f</v></c>', [CellPosText, AValue]) + LineEnding;
+   Format('    <c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]) + LineEnding;
 end;
 
 {
