@@ -262,7 +262,7 @@ type
     FWorkbook: TsWorkbook;
     FCurrentWorksheet: TsWorksheet;
   public
-    constructor Create; virtual;
+    constructor Create; virtual; // To allow descendents to override it
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
@@ -288,6 +288,7 @@ type
     }
     FFormattingStyles: array of TCell;
     NextXFIndex: Integer; // Indicates which should be the next XF (Style) Index when filling the styles list
+    constructor Create; virtual; // To allow descendents to override it
     { Helper routines }
     function FindFormattingInList(AFormat: PCell): Integer;
     procedure AddDefaultFormats(); virtual;
@@ -1140,6 +1141,11 @@ begin
 end;
 
 { TsCustomSpreadWriter }
+
+constructor TsCustomSpreadWriter.Create;
+begin
+  inherited Create;
+end;
 
 {@@
   Checks if the style of a cell is in the list FFormattingStyles and returns the index
