@@ -213,13 +213,11 @@ begin
    '    <workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' + LineEnding +
    '  </bookViews>' + LineEnding;
 
+  FWorkbook := FWorkbook + '  <sheets>' + LineEnding;
   for i := 1 to AData.GetWorksheetCount do
-  begin
     FWorkbook := FWorkbook +
-            '  <sheets>' + LineEnding +
-     Format('    <sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]) + LineEnding +
-            '  </sheets>' + LineEnding;
-  end;
+      Format('    <sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]) + LineEnding;
+  FWorkbook := FWorkbook + '  </sheets>' + LineEnding;
 
   FWorkbook := FWorkbook +
    '  <calcPr calcId="114210" />' + LineEnding +
