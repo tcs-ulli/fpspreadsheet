@@ -104,7 +104,7 @@ type
 
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
-    FCodepage: string;
+    FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FBaseDate: TDateTime;
     constructor Create; override;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
@@ -157,39 +157,43 @@ begin
   //02E1H = 737 = IBM PC CP-737 (Greek)
   //0307H = 775 = IBM PC CP-775 (Baltic)
   //0352H = 850 = IBM PC CP-850 (Latin I)
+  $0352: FCodepage := 'cp850';
   //0354H = 852 = IBM PC CP-852 (Latin II (Central European))
+  $0354: FCodepage := 'cp852';
   //0357H = 855 = IBM PC CP-855 (Cyrillic)
+  $0357: FCodepage := 'cp855';
   //0359H = 857 = IBM PC CP-857 (Turkish)
   $0359: FCodepage := 'cp857';
-  {035AH = 858 = IBM PC CP-858 (Multilingual Latin I with Euro)
-  035CH = 860 = IBM PC CP-860 (Portuguese)
-  035DH = 861 = IBM PC CP-861 (Icelandic)
-  035EH = 862 = IBM PC CP-862 (Hebrew)
-  035FH = 863 = IBM PC CP-863 (Canadian (French))
-  0360H = 864 = IBM PC CP-864 (Arabic)
-  0361H = 865 = IBM PC CP-865 (Nordic)
-  0362H = 866 = IBM PC CP-866 (Cyrillic (Russian))
-  0365H = 869 = IBM PC CP-869 (Greek (Modern))
-  036AH = 874 = Windows CP-874 (Thai)
-  03A4H = 932 = Windows CP-932 (Japanese Shift-JIS)
-  03A8H = 936 = Windows CP-936 (Chinese Simplified GBK)
-  03B5H = 949 = Windows CP-949 (Korean (Wansung))
-  03B6H = 950 = Windows CP-950 (Chinese Traditional BIG5)
-  04B0H = 1200 = UTF-16 (BIFF8)
-  04E2H = 1250 = Windows CP-1250 (Latin II) (Central European)
-  04E3H = 1251 = Windows CP-1251 (Cyrillic)
-  04E4H = 1252 = Windows CP-1252 (Latin I) (BIFF4-BIFF5)
-  04E5H = 1253 = Windows CP-1253 (Greek)}
+  //035AH = 858 = IBM PC CP-858 (Multilingual Latin I with Euro)
+  //035CH = 860 = IBM PC CP-860 (Portuguese)
+  //035DH = 861 = IBM PC CP-861 (Icelandic)
+  //035EH = 862 = IBM PC CP-862 (Hebrew)
+  //035FH = 863 = IBM PC CP-863 (Canadian (French))
+  //0360H = 864 = IBM PC CP-864 (Arabic)
+  //0361H = 865 = IBM PC CP-865 (Nordic)
+  //0362H = 866 = IBM PC CP-866 (Cyrillic (Russian))
+  //0365H = 869 = IBM PC CP-869 (Greek (Modern))
+  //036AH = 874 = Windows CP-874 (Thai)
+  //03A4H = 932 = Windows CP-932 (Japanese Shift-JIS)
+  //03A8H = 936 = Windows CP-936 (Chinese Simplified GBK)
+  //03B5H = 949 = Windows CP-949 (Korean (Wansung))
+  //03B6H = 950 = Windows CP-950 (Chinese Traditional BIG5)
+  //04B0H = 1200 = UTF-16 (BIFF8)
+  $04B0: FCodepage := 'utf-16';
+  //04E2H = 1250 = Windows CP-1250 (Latin II) (Central European)
+  //04E3H = 1251 = Windows CP-1251 (Cyrillic)
+  //04E4H = 1252 = Windows CP-1252 (Latin I) (BIFF4-BIFF5)
+  //04E5H = 1253 = Windows CP-1253 (Greek)
   //04E6H = 1254 = Windows CP-1254 (Turkish)
   $04E6: FCodepage := 'cp1254';
-  {04E7H = 1255 = Windows CP-1255 (Hebrew)
-  04E8H = 1256 = Windows CP-1256 (Arabic)
-  04E9H = 1257 = Windows CP-1257 (Baltic)
-  04EAH = 1258 = Windows CP-1258 (Vietnamese)
-  0551H = 1361 = Windows CP-1361 (Korean (Johab))
-  2710H = 10000 = Apple Roman
-  8000H = 32768 = Apple Roman
-  8001H = 32769 = Windows CP-1252 (Latin I) (BIFF2-BIFF3)}
+  //04E7H = 1255 = Windows CP-1255 (Hebrew)
+  //04E8H = 1256 = Windows CP-1256 (Arabic)
+  //04E9H = 1257 = Windows CP-1257 (Baltic)
+  //04EAH = 1258 = Windows CP-1258 (Vietnamese)
+  //0551H = 1361 = Windows CP-1361 (Korean (Johab))
+  //2710H = 10000 = Apple Roman
+  //8000H = 32768 = Apple Roman
+  //8001H = 32769 = Windows CP-1252 (Latin I) (BIFF2-BIFF3)
   end;
 end;
 
