@@ -438,8 +438,8 @@ begin
   if ASector<>FFATCache.Sector then begin
     if FFATCache.Dirty then begin
       //Write the dirty cached FAT sector
-      if FHeader._csectFat<FFATCache.Sector then begin
-        FHeader._csectFat:=FFATCache.Sector;
+      if FHeader._csectFat<(FFATCache.Sector div FFATEntriesPerSect)+1 then begin
+        FHeader._csectFat:=(FFATCache.Sector div FFATEntriesPerSect)+1;
       end;
       iDIFFATNToLE(FFATCache.Cache);
       WriteSector(FFATCache.Sector,FFATCache.Cache);
@@ -455,8 +455,8 @@ begin
   if ASector=FFATCache.Sector then begin
     FFATCache.Dirty:=true;
   end else begin
-    if FHeader._csectFat<FFATCache.Sector then begin
-      FHeader._csectFat:=FFATCache.Sector;
+    if FHeader._csectFat<(FFATCache.Sector div FFATEntriesPerSect)+1 then begin
+      FHeader._csectFat:=(FFATCache.Sector div FFATEntriesPerSect)+1;
     end;
     iDIFFATNToLE(FFATCache.Cache);
     //Writes the data
