@@ -89,7 +89,8 @@ type
 
   {@@ List of possible formatting fields }
 
-  TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder, uffBackgroundColor);
+  TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder, uffBackgroundColor,
+    uffWordWrap);
 
   {@@ Describes which formatting fields are active }
 
