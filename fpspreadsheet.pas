@@ -14,7 +14,7 @@ unit fpspreadsheet;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, lconvencoding;
+  Classes, SysUtils, AVL_Tree, avglvltree, lconvencoding;
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
@@ -158,7 +158,7 @@ type
 
   TCell = record
     Col: Byte; // zero-based
-    Row: Word; // zero-based
+    Row: Cardinal; // zero-based
     ContentType: TCellContentType;
     { Possible values for the cells }
     FormulaValue: TsFormula;
@@ -175,6 +175,20 @@ type
 
   PCell = ^TCell;
 
+  TRow = record
+    Row: Cardinal;
+    Height: Single; // in milimeters
+  end;
+
+  PRow = ^TRow;
+
+  TCol = record
+    Col: Byte;
+    Width: Single; // in milimeters
+  end;
+
+  PCol = ^TCol;
+
 type
 
   TsCustomSpreadReader = class;
@@ -184,8 +198,9 @@ type
 
   TsWorksheet = class
   private
-    FCells: TAvlTree;
+    FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
+    FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from the standard
     procedure RemoveCallback(data, arg: pointer);
   public
     Name: string;
@@ -194,7 +209,7 @@ type
     destructor Destroy; override;
     { Utils }
     class function  CellPosToText(ARow, ACol: Cardinal): string;
-    { Data manipulation methods }
+    { Data manipulation methods - For Cells }
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
@@ -213,6 +228,16 @@ type
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
+    { Data manipulation methods - For Rows and Cols }
+    function  FindRow(ARow: Cardinal): PRow;
+    function  FindCol(ACol: Cardinal): PCol;
+    function  GetRow(ARow: Cardinal): PRow;
+    function  GetCol(ACol: Cardinal): PCol;
+    procedure RemoveAllRows;
+    procedure RemoveAllCols;
+    procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
+    procedure WriteColInfo(ACol: Cardinal; AData: TCol);
+    { Properties }
     property  Cells: TAVLTree read FCells;
   end;
 
@@ -374,6 +399,15 @@ begin
     Result := PCell(Item1).Col - PCell(Item2).Col;
 end;
 
+function CompareRows(Item1, Item2: Pointer): Integer;
+begin
+  result := PRow(Item1).Row - PRow(Item2).Row;
+end;
+
+function CompareCols(Item1, Item2: Pointer): Integer;
+begin
+  result := PCol(Item1).Col - PCol(Item2).Col;
+end;
 
 {@@
   Constructor.
@@ -383,6 +417,8 @@ begin
   inherited Create;
 
   FCells := TAVLTree.Create(@CompareCells);
+  FRows := TIndexedAVLTree.Create(@CompareRows);
+  FCols := TIndexedAVLTree.Create(@CompareCols);
 end;
 
 {@@
@@ -391,8 +427,12 @@ end;
 destructor TsWorksheet.Destroy;
 begin
   RemoveAllCells;
+  RemoveAllRows;
+  RemoveAllCols;
 
   FCells.Free;
+  FRows.Free;
+  FCols.Free;
 
   inherited Destroy;
 end;
@@ -790,6 +830,106 @@ begin
   ACell := GetCell(ARow, ACol);
 
   ACell^.UsedFormattingFields := AUsedFormatting;
+end;
+
+function TsWorksheet.FindRow(ARow: Cardinal): PRow;
+var
+  LElement: TRow;
+  AVLNode: TAVGLVLTreeNode;
+begin
+  Result := nil;
+
+  LElement.Row := ARow;
+  AVLNode := FRows.Find(@LElement);
+  if Assigned(AVLNode) then
+    result := PRow(AVLNode.Data);
+end;
+
+function TsWorksheet.FindCol(ACol: Cardinal): PCol;
+var
+  LElement: TCol;
+  AVLNode: TAVGLVLTreeNode;
+begin
+  Result := nil;
+
+  LElement.Col := ACol;
+  AVLNode := FRows.Find(@LElement);
+  if Assigned(AVLNode) then
+    result := PCol(AVLNode.Data);
+end;
+
+function TsWorksheet.GetRow(ARow: Cardinal): PRow;
+begin
+  Result := FindRow(ARow);
+
+  if (Result = nil) then
+  begin
+    Result := GetMem(SizeOf(TRow));
+    FillChar(Result^, SizeOf(TRow), #0);
+
+    Result^.Row := ARow;
+
+    FCols.Add(Result);
+  end;
+end;
+
+function TsWorksheet.GetCol(ACol: Cardinal): PCol;
+begin
+  Result := FindCol(ACol);
+
+  if (Result = nil) then
+  begin
+    Result := GetMem(SizeOf(TCol));
+    FillChar(Result^, SizeOf(TCol), #0);
+
+    Result^.Col := ACol;
+
+    FCols.Add(Result);
+  end;
+end;
+
+procedure TsWorksheet.RemoveAllRows;
+var
+  Node: TAVGLVLTreeNode;
+  i: Integer;
+begin
+  for i := 0 to FRows.Count-1 do
+  begin
+    Node:=FRows.Items[0];
+    FreeMem(PRow(Node.Data));
+  end;
+  FRows.Clear;
+end;
+
+procedure TsWorksheet.RemoveAllCols;
+var
+  Node: TAVGLVLTreeNode;
+  i: Integer;
+begin
+  for i := 0 to FCols.Count-1 do
+  begin
+    Node:=FCols.Items[0];
+    FreeMem(PCol(Node.Data));
+  end;
+  FCols.Clear;
+end;
+
+procedure TsWorksheet.WriteRowInfo(ARow: Cardinal; AData: TRow);
+var
+  AElement: PRow;
+begin
+  AElement := GetRow(ARow);
+
+  AElement^.Height := AData.Height;
+end;
+
+procedure TsWorksheet.WriteColInfo(ACol: Cardinal; AData: TCol);
+var
+  AElement: PCol;
+begin
+  AElement := GetCol(ACol);
+
+  AElement^.Width := AData.Width;
 end;
 
 { TsWorkbook }
