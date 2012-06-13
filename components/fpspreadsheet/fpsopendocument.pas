@@ -497,12 +497,16 @@ begin
     '    <style:style style:name="ce' + IntToStr(i) + '" style:family="table-cell" style:parent-style-name="Default">' + LineEnding;
 
     // Fields
+
+    // style:text-properties
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
       Result := Result +
     '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
 
+    // style:table-cell-properties
     if (uffBorder in FFormattingStyles[i].UsedFormattingFields) or
-     (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
+     (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) or
+     (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
     begin
       Result := Result + '      <style:table-cell-properties ';
 
@@ -525,6 +529,11 @@ begin
       begin
         Result := Result + 'fo:background-color="#'
           + FPSColorToHexString(FFormattingStyles[i].BackgroundColor) +'" ';
+      end;
+
+      if (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
+      begin
+        Result := Result + 'fo:wrap-option="wrap" ';
       end;
 
       Result := Result + '/>' + LineEnding;
@@ -660,9 +669,13 @@ var
   StrValue: string;
   DisplayStr: string;
   lStyle: string = '';
+  lIndex: Integer;
 begin
-  if uffBold in ACell^.UsedFormattingFields then
-    lStyle := ' table:style-name="bold" ';
+  if ACell^.UsedFormattingFields <> [] then
+  begin
+    lIndex := FindFormattingInList(ACell);
+    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+  end;
 
   // The row should already be the correct one
   if IsInfinite(AValue) then begin
