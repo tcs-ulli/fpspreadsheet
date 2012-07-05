@@ -53,6 +53,7 @@ var
   fsOLE: TVirtualLayer_OLE;
   OLEStream: TStream;
   VLAbsolutePath: UTF8String;
+  tmpStream: TStream; // workaround to a compiler bug, see bug 22370
 begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
   if not AOverwriteExisting and FileExists(AFileName) then begin
@@ -62,7 +63,12 @@ begin
   fsOLE:=TVirtualLayer_OLE.Create(RealFile);
   fsOLE.Format(); //Initialize and format the OLE container.
   OLEStream:=fsOLE.CreateStream(VLAbsolutePath,fmCreate);
-  AOLEDocument.Stream.Position:=0; //Ensures it is in the begining.
+
+  // work around code for the bug 22370
+  tmpStream:=AOLEDocument.Stream;
+  tmpStream.Position:=0; //Ensures it is in the begining.
+  //previous code: AOLEDocument.Stream.Position:=0; //Ensures it is in the begining.
+
   OLEStream.CopyFrom(AOLEDocument.Stream,AOLEDocument.Stream.Size);
   OLEStream.Free;
   fsOLE.Free;
