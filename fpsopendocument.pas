@@ -49,6 +49,7 @@ type
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadNumber(ARow : Word; ACol : Word; ACellNode: TDOMNode);
+    procedure ReadDate(ARow : Word; ACol : Word; ACellNode: TDOMNode);
   end;
 
   { TsSpreadOpenDocWriter }
@@ -214,7 +215,9 @@ begin
               else if ParamFormula<>'' then
                 ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
               else if ParamValueType='float' then
-                ReadNumber(Row+RowsCount,Col+ColsCount,CellNode);
+                ReadNumber(Row+RowsCount,Col+ColsCount,CellNode)
+              else if ParamValueType='date' then
+                ReadDate(Row+RowsCount,Col+ColsCount,CellNode);
             end; //for ColsCount
           end; //for RowsCount
 
@@ -263,6 +266,16 @@ begin
     lNumber := StrToFloat(Str,FSettings);
     FWorkSheet.WriteNumber(Arow,ACol,lNumber);
   end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadDate(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+var
+  Value: String;
+  dt:TDateTime;
+begin
+  Value:=GetAttrValue(ACellNode,'office:date-value');
+  dt:=StrToDate(Value,'yyyy-mm-dd','-');
+  FWorkSheet.WriteDateTime(Arow,ACol,dt);
 end;
 
 { TsSpreadOpenDocWriter }
