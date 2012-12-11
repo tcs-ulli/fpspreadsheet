@@ -51,6 +51,7 @@ type
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
+    procedure ReadInteger(AStream: TStream);
   end;
 
   { TsSpreadBIFF2Writer }
@@ -74,6 +75,7 @@ implementation
 
 const
   { Excel record IDs }
+  INT_EXCEL_ID_INTEGER    = $0002;
   INT_EXCEL_ID_NUMBER     = $0003;
   INT_EXCEL_ID_LABEL      = $0004;
   INT_EXCEL_ID_FORMULA    = $0006;
@@ -392,11 +394,13 @@ begin
 
     case RecordType of
 
+    INT_EXCEL_ID_INTEGER: ReadInteger(AStream);
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     BIFF2EOF := True;
+
     else
       // nothing
     end;
@@ -460,6 +464,27 @@ begin
   FWorksheet.WriteNumber(ARow, ACol, AValue);
 end;
 
+procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
+var
+  ARow, ACol: Word;
+  AWord  : Word;
+begin
+  { BIFF Record data }
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { BIFF2 Attributes }
+  AStream.ReadByte();
+  AStream.ReadByte();
+  AStream.ReadByte();
+
+  { 16 bit unsigned integer }
+  AStream.ReadBuffer(AWord, 2);
+
+  { Save the data }
+  FWorksheet.WriteNumber(ARow, ACol, AWord);
+end;
+
 {*******************************************************************
 *  Initialization section
 *
@@ -472,4 +497,3 @@ initialization
   RegisterSpreadFormat(TsSpreadBIFF2Reader, TsSpreadBIFF2Writer, sfExcel2);
 
 end.
-
