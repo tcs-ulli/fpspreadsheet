@@ -44,13 +44,17 @@ const
   INT_EXCEL_TOKEN_TREFA   = $64;
 
   { Function Tokens }
+  INT_EXCEL_TOKEN_FUNC_R = $21;
+  INT_EXCEL_TOKEN_FUNC_V = $41;
+  INT_EXCEL_TOKEN_FUNC_A = $61;
+
   INT_EXCEL_TOKEN_FUNCVAR_R = $22;
   INT_EXCEL_TOKEN_FUNCVAR_V = $42;
   INT_EXCEL_TOKEN_FUNCVAR_A = $62;
   INT_EXCEL_TOKEN_TAREA_R = $25;
 
   { Built-in functions }
-  INT_EXCEL_SHEET_FUNC_ABS = 24;
+  INT_EXCEL_SHEET_FUNC_ABS = 24; // $18
   INT_EXCEL_SHEET_FUNC_ROUND = 27;
 
   { Control Tokens, Special Tokens }
@@ -124,7 +128,7 @@ type
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
-    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind): Byte;
+    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Byte;
     // Other records which didn't change
     // Workbook Globals records
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
@@ -271,8 +275,10 @@ begin
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
-  AElementKind: TFEKind): Byte;
+  AElementKind: TFEKind; out ASecondaryID: Word): Byte;
 begin
+  ASecondaryID := 0;
+
   case AElementKind of
     { Operand Tokens }
     fekCell:  Result := INT_EXCEL_TOKEN_TREFR;
@@ -284,8 +290,16 @@ begin
     fekDiv:   Result := INT_EXCEL_TOKEN_TDIV;
     fekMul:   Result := INT_EXCEL_TOKEN_TMUL;
     { Build-in Functions}
-    fekABS:   Result := INT_EXCEL_SHEET_FUNC_ABS;
-    fekROUND: Result := INT_EXCEL_SHEET_FUNC_ROUND;
+    fekABS:
+    begin
+      Result := INT_EXCEL_TOKEN_FUNC_V;
+      ASecondaryID := INT_EXCEL_SHEET_FUNC_ABS;
+    end;
+    fekROUND:
+    begin
+      Result := INT_EXCEL_TOKEN_FUNC_V;
+      ASecondaryID := INT_EXCEL_SHEET_FUNC_ROUND;
+    end;
     { Other operations }
     fekOpSUM: Result := INT_EXCEL_TOKEN_TATTR;
   else
