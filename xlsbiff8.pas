@@ -48,6 +48,7 @@ unit xlsbiff8;
 
 // The new OLE code is much better, so always use it
 {$define USE_NEW_OLE}
+{.$define XLSDEBUG}
 
 interface
 
@@ -1401,9 +1402,9 @@ begin
   if StringFlags and 1 = 1 Then begin
     //String is WideStringLE
     if (ALength*SizeOf(WideChar)) > PendingRecordSize then begin
-      SetLength(Result,PendingRecordSize);
-      AStream.ReadBuffer(Result[1],PendingRecordSize * SizeOf(WideChar));
-      Dec(PendingRecordSize,PendingRecordSize * SizeOf(WideChar));
+      SetLength(Result,PendingRecordSize div 2);
+      AStream.ReadBuffer(Result[1],PendingRecordSize);
+      Dec(PendingRecordSize,PendingRecordSize);
     end else begin
       SetLength(Result,ALength);
       AStream.ReadBuffer(Result[1],ALength * SizeOf(WideChar));
@@ -1841,7 +1842,7 @@ end;
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
 var
   Items: DWORD;
-  StringLength: WORD;
+  StringLength, CurStrLen: WORD;
   LString: String;
   ContinueIndicator: WORD;
 begin
@@ -1862,25 +1863,36 @@ begin
     StringLength:=WordLEtoN(AStream.ReadWord);
     Dec(PendingRecordSize,2);
     LString:='';
-    while PendingRecordSize>0 do begin
-      if StringLength>0 then begin
+
+    // This loop takes care of the string being split between the STT and the CONTINUE, or between CONTINUE records
+    while PendingRecordSize>0 do
+    begin
+      if StringLength>0 then
+      begin
         //Read a stream of zero length reads all the stream.
-        LString:=LString+ReadString(AStream,StringLength);
-      end else begin
+        LString:=LString+ReadString(AStream, StringLength);
+      end
+      else
+      begin
         //String of 0 chars in length, so just read it empty, reading only the mandatory flags
         AStream.ReadByte; //And discard it.
         Dec(PendingRecordSize);
         //LString:=LString+'';
       end;
-      if (PendingRecordSize=0) and (Items>1) then begin
+
+      // Check if the record finished and we need a CONTINUE record to go on
+      if (PendingRecordSize<=0) and (Items>1) then
+      begin
         //A Continue will happend, read the
         //tag and continue linking...
         ContinueIndicator:=WordLEtoN(AStream.ReadWord);
         if ContinueIndicator<>INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('Expected CONTINUE not found.');
+          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadSST] Expected CONTINUE record not found.');
         end;
         PendingRecordSize:=WordLEtoN(AStream.ReadWord);
-        Dec(StringLength,Length(UTF8ToUTF16(LString))); //Dec the used chars
+        CurStrLen := Length(UTF8ToUTF16(LString));
+        if StringLength<CurStrLen then Exception.Create('[TsSpreadBIFF8Reader.ReadSST] StringLength<CurStrLen');
+        Dec(StringLength, CurStrLen); //Dec the used chars
         if StringLength=0 then break;
       end else begin
         break;
