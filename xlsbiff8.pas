@@ -143,8 +143,8 @@ type
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula; ACell: PCell); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
@@ -755,7 +755,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsFormula);
+  ACol: Word; const AFormula: TsFormula; ACell: PCell);
 {var
   FormulaResult: double;
   i: Integer;
@@ -835,7 +835,7 @@ begin
 end;
 
 procedure TsSpreadBIFF8Writer.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsRPNFormula);
+  ACol: Word; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
   i: Integer;
@@ -855,8 +855,9 @@ begin
   AStream.WriteWord(WordToLE(ARow));
   AStream.WriteWord(WordToLE(ACol));
 
-  { Index to XF Record }
-  AStream.WriteWord($0000);
+  { Index to XF record, according to formatting }
+  //AStream.WriteWord(0);
+  WriteXFIndex(AStream, ACell);
 
   { Result of the formula in IEE 754 floating-point value }
   AStream.WriteBuffer(FormulaResult, 8);
@@ -1040,8 +1041,8 @@ begin
   AStream.WriteWord(WordToLE(ARow));
   AStream.WriteWord(WordToLE(ACol));
 
-  { Index to XF record }
-  AStream.WriteWord(WordToLE($0));
+  { Index to XF record, according to formatting }
+  WriteXFIndex(AStream, ACell);
 
   { IEE 754 floating-point value (is different in BIGENDIAN???) }
   AStream.WriteBuffer(AValue, 8);

@@ -81,7 +81,7 @@ type
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
@@ -639,7 +639,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsFormula);
+  ACol: Word; const AFormula: TsFormula; ACell: PCell);
 begin
 {  // The row should already be the correct one
   FContent := FContent +

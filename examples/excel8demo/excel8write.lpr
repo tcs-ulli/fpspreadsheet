@@ -11,7 +11,7 @@ program excel8write;
 
 uses
   Classes, SysUtils, fpspreadsheet, xlsbiff8,
-  laz_fpspreadsheet, fpsconvencoding;
+  laz_fpspreadsheet;
 
 const
   Str_First = 'First';
@@ -27,6 +27,7 @@ var
   MyRPNFormula: TsRPNFormula;
   MyDir: string;
   i: Integer;
+  lCell: PCell;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
 
@@ -41,6 +42,12 @@ begin
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
   MyWorksheet.WriteUTF8Text(4, 2, Str_Total);// C5
   MyWorksheet.WriteNumber(4, 3, 10);        // D5
+
+  // D6 number with background color
+  MyWorksheet.WriteNumber(5, 3, 10);
+  lCell := MyWorksheet.GetCell(5,3);
+  lCell^.BackgroundColor := scPURPLE;
+  lCell^.UsedFormattingFields := [uffBackgroundColor];
 
 { Uncommend this to test large XLS files
   for i := 2 to 20 do
