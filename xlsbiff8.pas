@@ -186,6 +186,7 @@ const
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
+  MASK_EXCEL_COL_BITS_BIFF8=$00FF;
   MASK_EXCEL_RELATIVE_ROW = $4000;
   MASK_EXCEL_RELATIVE_COL = $8000;
 
@@ -842,6 +843,7 @@ var
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Int64;
   TokenID: Byte;
+  lSecondaryID: Word;
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
@@ -880,7 +882,7 @@ begin
   for i := 0 to Length(AFormula) - 1 do
   begin
     { Token identifier }
-    TokenID := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind);
+    TokenID := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind, lSecondaryID);
     AStream.WriteByte(TokenID);
     Inc(RPNLength);
 
@@ -889,9 +891,9 @@ begin
     { Operand Tokens }
     INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA: { fekCell }
     begin
-      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
-      AStream.WriteByte(AFormula[i].Col);
-      Inc(RPNLength, 3);
+      AStream.WriteWord(AFormula[i].Row);
+      AStream.WriteWord(AFormula[i].Col and MASK_EXCEL_COL_BITS_BIFF8);
+      Inc(RPNLength, 4);
     end;
 
     INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
@@ -929,6 +931,13 @@ begin
       AStream.WriteByte(0);
       AStream.WriteByte(0);
       Inc(RPNLength, 3);
+    end;
+
+    // Functions
+    INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
+    begin
+      AStream.WriteWord(lSecondaryID);
+      Inc(RPNLength, 2);
     end;
 
     else
