@@ -42,6 +42,7 @@ type
 
   TsSpreadBIFF2Reader = class(TsCustomSpreadReader)
   private
+    WorkBookEncoding: TsEncoding;
     RecordSize: Word;
     FWorksheet: TsWorksheet;
   public
@@ -378,6 +379,9 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  { Store some data about the workbook that other routines need }
+  WorkBookEncoding := AData.Encoding;
+
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
@@ -422,7 +426,7 @@ var
   L: Byte;
   ARow, ACol: Word;
   AValue: array[0..255] of Char;
-  AStrValue: ansistring;
+  AStrValue: UTF8String;
 begin
   { BIFF Record data }
   ARow := WordLEToN(AStream.ReadWord);
@@ -437,10 +441,20 @@ begin
   L := AStream.ReadByte();
   AStream.ReadBuffer(AValue, L);
   AValue[L] := #0;
-  AStrValue := AValue;
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
+  case WorkBookEncoding of
+  seLatin2:   AStrValue := CP1250ToUTF8(AValue);
+  seCyrillic: AStrValue := CP1251ToUTF8(AValue);
+  seGreek:    AStrValue := CP1253ToUTF8(AValue);
+  seTurkish:  AStrValue := CP1254ToUTF8(AValue);
+  seHebrew:   AStrValue := CP1255ToUTF8(AValue);
+  seArabic:   AStrValue := CP1256ToUTF8(AValue);
+  else
+    // Latin 1 is the default
+    AStrValue := CP1252ToUTF8(AValue);
+  end;
+  FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
