@@ -256,7 +256,10 @@ begin
         Inc(i);
         lFormatStr := LowerCase(Trim(lFormatStr));
         if lFormatStr = 'color:red' then lCurBackgroundColor := scRED
-        else if lFormatStr = 'color:green' then lCurBackgroundColor := scGREEN;
+        else if lFormatStr = 'color:green' then lCurBackgroundColor := scGREEN
+        else if lFormatStr = 'color:orange' then lCurBackgroundColor := scYELLOW
+        else lCurBackgroundColor := scWHITE;
+        lUseBackgroundColor := True;
         lFormatStr := '';
       end
       else
@@ -366,13 +369,13 @@ begin
       begin
         lCurColor := FWorksheet.ReadBackgroundColor(i, j);
         case lCurColor of
-        {scBlack,    // 000000H
-        scWhite,    // FFFFFFH}
+        scBlack:    lColorStr := 'black';
+        scWhite:    lColorStr := 'white';
         scRed:      lColorStr := 'red';
         scGREEN:    lColorStr := 'green';
-        {scBLUE,     // 0000FFH
-        scYELLOW,   // FFFF00H
-        scMAGENTA,  // FF00FFH
+        scBLUE:     lColorStr := 'blue';
+        scYELLOW:   lColorStr := 'yellow';
+        {scMAGENTA,  // FF00FFH
         scCYAN,     // 00FFFFH
         scDarkRed,  // 800000H
         scDarkGreen,// 008000H
