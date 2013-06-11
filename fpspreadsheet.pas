@@ -18,7 +18,7 @@ uses
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
-   sfOOXML, sfOpenDocument, sfCSV);
+   sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
 const
   { Default extensions }
@@ -26,6 +26,8 @@ const
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
   STR_COMMA_SEPARATED_EXTENSION = '.csv';
+  STR_WIKITABLE_PIPES = '.wikitable_pipes';
+  STR_WIKITABLE_WIKIMEDIA = '.wikitable_wikimedia';
 
 type
 
@@ -210,6 +212,7 @@ type
     { Utils }
     class function  CellPosToText(ARow, ACol: Cardinal): string;
     { Data manipulation methods - For Cells }
+    procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
@@ -220,6 +223,8 @@ type
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
+    function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
+    function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
     procedure RemoveAllCells;
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
@@ -228,6 +233,7 @@ type
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
+    procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
     { Data manipulation methods - For Rows and Cols }
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
@@ -292,6 +298,7 @@ type
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
+    procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
     { Record reading methods }
     procedure ReadFormula(AStream: TStream); virtual; abstract;
     procedure ReadLabel(AStream: TStream); virtual; abstract;
@@ -329,6 +336,7 @@ type
     procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
       const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
+    procedure WriteToStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
     { Record writing methods }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula; ACell: PCell); virtual;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula; ACell: PCell); virtual;
@@ -448,6 +456,24 @@ begin
   if ACol < 26 then lStr := Char(ACol+65);
 
   Result := Format('%s%d', [lStr, ARow+1]);
+end;
+
+procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
+  AFromWorksheet: TsWorksheet);
+var
+  lCurStr: String;
+  lCurUsedFormatting: TsUsedFormattingFields;
+  lCurColor: TsColor;
+begin
+  lCurStr := AFromWorksheet.ReadAsUTF8Text(AFromRow, AFromCol);
+  lCurUsedFormatting := AFromWorksheet.ReadUsedFormatting(AFromRow, AFromCol);
+  lCurColor := AFromWorksheet.ReadBackgroundColor(AFromRow, AFromCol);
+  WriteUTF8Text(AToRow, AToCol, lCurStr);
+  WriteUsedFormatting(AToRow, AToCol, lCurUsedFormatting);
+  if uffBackgroundColor in lCurUsedFormatting then
+  begin
+    WriteBackgroundColor(AToRow, AToCol, lCurColor);
+  end;
 end;
 
 {@@
@@ -711,6 +737,36 @@ begin
   Result := True;
 end;
 
+function TsWorksheet.ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
+var
+  ACell: PCell;
+begin
+  ACell := FindCell(ARow, ACol);
+
+  if ACell = nil then
+  begin
+    Result := [];
+    Exit;
+  end;
+
+  Result := ACell^.UsedFormattingFields;
+end;
+
+function TsWorksheet.ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
+var
+  ACell: PCell;
+begin
+  ACell := FindCell(ARow, ACol);
+
+  if ACell = nil then
+  begin
+    Result := scWhite;
+    Exit;
+  end;
+
+  Result := ACell^.BackgroundColor;
+end;
+
 {@@
   Clears the list of Cells and releases their memory.
 }
@@ -830,6 +886,17 @@ begin
   ACell := GetCell(ARow, ACol);
 
   ACell^.UsedFormattingFields := AUsedFormatting;
+end;
+
+procedure TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
+  AColor: TsColor);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+
+  ACell^.UsedFormattingFields := ACell^.UsedFormattingFields + [uffBackgroundColor];
+  ACell^.BackgroundColor := AColor;
 end;
 
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
@@ -983,6 +1050,8 @@ begin
   else if suffix = STR_OOXML_EXCEL_EXTENSION then SheetType := sfOOXML
   else if suffix = STR_OPENDOCUMENT_CALC_EXTENSION then SheetType := sfOpenDocument
   else if suffix = STR_COMMA_SEPARATED_EXTENSION then SheetType := sfCSV
+  else if suffix = STR_WIKITABLE_PIPES then SheetType := sfWikiTable_Pipes
+  else if suffix = STR_WIKITABLE_WIKIMEDIA then SheetType := sfWikiTable_WikiMedia
   else Result := False;
 end;
 
@@ -1277,6 +1346,25 @@ end;
   This routine should be overriden in descendent classes.
 }
 procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+var
+  AStringStream: TStringStream;
+  AStrings: TStringList;
+begin
+  AStringStream := TStringStream.Create('');
+  AStrings := TStringList.Create;
+  try
+    AStringStream.CopyFrom(AStream, AStream.Size);
+    AStringStream.Seek(0, soFromBeginning);
+    AStrings.Text := AStringStream.DataString;
+    ReadFromStrings(AStrings, AData);
+  finally
+    AStringStream.Free;
+    AStrings.Free;
+  end;
+end;
+
+procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
+  AData: TsWorkbook);
 begin
   raise Exception.Create(lpUnsupportedReadFormat);
 end;
@@ -1502,9 +1590,22 @@ end;
   This routine should be overriden in descendent classes.
 }
 procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+var
+  lStringList: TStringList;
+begin
+  lStringList := TStringList.Create;
+  try
+    WriteToStrings(lStringList, AData);
+    lStringList.SaveToStream(AStream);
+  finally
+    lStringList.Free;
+  end;
+end;
+
+procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings;
+  AData: TsWorkbook);
 begin
   raise Exception.Create(lpUnsupportedWriteFormat);
-
 end;
 
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream; const ARow,

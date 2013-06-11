@@ -2,7 +2,7 @@
   This source is only used to compile and install the package.
  }
 
-unit laz_fpspreadsheet; 
+unit laz_fpspreadsheet;
 
 interface
 
@@ -11,14 +11,14 @@ uses
   xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpszipper, uvirtuallayer_types, 
   uvirtuallayer, uvirtuallayer_ole, uvirtuallayer_ole_helpers, 
   uvirtuallayer_ole_types, uvirtuallayer_stream, fpolebasic, xlscommon, 
-  LazarusPackageIntf;
+  wikitable, LazarusPackageIntf;
 
 implementation
 
-procedure Register; 
+procedure Register;
 begin
-end; 
+end;
 
 initialization
-  RegisterPackage('laz_fpspreadsheet', @Register); 
+  RegisterPackage('laz_fpspreadsheet', @Register);
 end.
