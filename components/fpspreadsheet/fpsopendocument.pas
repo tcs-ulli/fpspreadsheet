@@ -541,7 +541,7 @@ begin
       if (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
       begin
         Result := Result + 'fo:background-color="#'
-          + FPSColorToHexString(FFormattingStyles[i].BackgroundColor) +'" ';
+          + FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
       end;
 
       if (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
