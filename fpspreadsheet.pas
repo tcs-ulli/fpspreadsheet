@@ -14,7 +14,7 @@ unit fpspreadsheet;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, avglvltree, lconvencoding;
+  Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding;
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
@@ -146,7 +146,14 @@ type
     scGrey,     // 808080H
     //
     scGrey10pct,// E6E6E6H
-    scGrey20pct // CCCCCCH
+    scGrey20pct,// CCCCCCH
+    scOrange,   // ffa500
+    scDarkBrown,// a0522d
+    scBrown,    // cd853f
+    scBeige,    // f5f5dc
+    scWheat,    // f5deb3
+    //
+    scRGBCOLOR   // Defined via TFPColor
   );
 
   {@@ Cell structure for TsWorksheet
@@ -173,6 +180,7 @@ type
     TextRotation: TsTextRotation;
     Border: TsCellBorders;
     BackgroundColor: TsColor;
+    RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
   end;
 
   PCell = ^TCell;
@@ -328,7 +336,7 @@ type
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
     procedure ListAllFormattingStyles(AData: TsWorkbook);
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
-    function  FPSColorToHexString(AColor: TsColor): string;
+    function  FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
     { General writing methods }
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
@@ -1485,7 +1493,7 @@ begin
   end;
 end;
 
-function TsCustomSpreadWriter.FPSColorToHexString(AColor: TsColor): string;
+function TsCustomSpreadWriter.FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
 begin
   case AColor of
   scBlack:    Result := '000000';
@@ -1507,6 +1515,13 @@ begin
   //
   scGrey10pct:Result := 'E6E6E6';
   scGrey20pct:Result := 'CCCCCC';
+  scOrange:   Result := 'FFA500';
+  scDarkBrown:Result := 'a0522d';
+  scBrown:    Result := 'cd853f';
+  scBeige:    Result := 'f5f5dc';
+  scWheat:    Result := 'f5deb3';
+  //
+  scRGBCOLOR: Result := Format('%x%x%x', [ARGBColor.Red div $100, ARGBColor.Green div $100, ARGBColor.Blue div $100]);
   end;
 end;
 
