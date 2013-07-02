@@ -1094,12 +1094,8 @@ var
   Sector: SECT;
   DIFIndex,FATInDIF,OffSetInFAT: SECT;
 begin
-try
   DecomposeFATEntry(AFATEntryIndex,DIFIndex,FATInDIF,OffSetInFAT);
   Sector:=FDIFArray[DIFIndex][FATInDIF];
-except
-beep;
-end;
   ReadFATSector(Sector);
   Result:=FFATCache.Cache[OffSetInFAT];
 end;
