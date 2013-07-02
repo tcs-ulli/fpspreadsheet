@@ -501,7 +501,7 @@ var
   NextDIFC: SECT;
   Index: SizeUint;
 begin
-  if not Assigned(FDIFArray) then begin
+  if Length(FDIFArray)=0 then begin
     //Nothing to be freed.
     Result:=true;
     exit;
@@ -659,6 +659,9 @@ begin
   FATInDIF:=0;
   OffsetInFAT:=0;
   Sector:=ComposeFATEntry(DIFIndex,FATInDIF,OffsetInFAT);
+  if DIFIndex=1 then begin
+    FHeader._sectDifStart:=Sector
+  end;
   //Empty free sector
   GetMem(DIFData,FSectorSize); //This memblock will be freed by UnloadDIF
   FillByte(PBYTE(DIFData)^,FSectorSize,$FF);
