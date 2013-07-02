@@ -1385,6 +1385,9 @@ var
   i: Integer;
   j: SizeUInt;
   lLen: SizeInt;
+  RecordType: WORD;
+  RecordSize: WORD;
+  C: char;
 begin
   StringFlags:=AStream.ReadByte;
   Dec(PendingRecordSize);
@@ -1412,22 +1415,43 @@ begin
     Result:=WideStringLEToN(Result);
   end else begin
     //String is 1 byte per char, this is UTF-16 with the high byte ommited because it is zero
-    // so decompress and then convert
-    if ALength > PendingRecordSize then lLen := PendingRecordSize
-    else lLen := ALength;
-
+    //so decompress and then convert
+    lLen:=ALength;
     SetLength(DecomprStrValue, lLen);
     for i := 1 to lLen do
     begin
-      DecomprStrValue[i] := WideChar(AStream.ReadByte());
+      C:=WideChar(AStream.ReadByte());
+      DecomprStrValue[i] := C;
+      Dec(PendingRecordSize);
+      if (PendingRecordSize<=0) and (i<lLen) then begin
+        //A CONTINUE may happend here
+        RecordType := WordLEToN(AStream.ReadWord);
+        RecordSize := WordLEToN(AStream.ReadWord);
+        if RecordType<>INT_EXCEL_ID_CONTINUE then begin
+          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+        end else begin
+          PendingRecordSize:=RecordSize;
+          DecomprStrValue:=copy(DecomprStrValue,1,i)+ReadWideString(AStream,ALength-i);
+          break;
+        end;
+      end;
     end;
-    Dec(PendingRecordSize, lLen);
 
     Result := DecomprStrValue;
   end;
   if StringFlags and 8 = 8 then begin
     //Rich string (This only happend in BIFF8)
     for j := 1 to RunsCounter do begin
+      if (PendingRecordSize<=0) then begin
+        //A CONTINUE may happend here
+        RecordType := WordLEToN(AStream.ReadWord);
+        RecordSize := WordLEToN(AStream.ReadWord);
+        if RecordType<>INT_EXCEL_ID_CONTINUE then begin
+          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+        end else begin
+          PendingRecordSize:=RecordSize;
+        end;
+      end;
       AStream.ReadWord;
       AStream.ReadWord;
       dec(PendingRecordSize,2*2);
