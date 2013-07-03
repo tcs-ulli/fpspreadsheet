@@ -665,6 +665,10 @@ end;
 function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
 var
   ACell: PCell;
+  function FloatToStrNoNaN(const Value: Double): ansistring;
+  begin
+    if IsNan(Value) then Result:='' else Result:=FloatToStr(Value);
+  end;
 begin
   ACell := FindCell(ARow, ACol);
 
@@ -677,7 +681,7 @@ begin
   case ACell^.ContentType of
 
   //cctFormula
-  cctNumber:     Result := FloatToStr(ACell^.NumberValue);
+  cctNumber:     Result := FloatToStrNoNaN(ACell^.NumberValue);
   cctUTF8String: Result := ACell^.UTF8StringValue;
   cctDateTime:   Result := SysUtils.DateToStr(ACell^.DateTimeValue);
   else
