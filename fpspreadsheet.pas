@@ -948,7 +948,7 @@ begin
 
     Result^.Row := ARow;
 
-    FCols.Add(Result);
+    FRows.Add(Result);
   end;
 end;
 
