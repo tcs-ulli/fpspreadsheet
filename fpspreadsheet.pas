@@ -63,8 +63,8 @@ type
     fekCell, fekCellRange, fekNum,
     { Basic operations }
     fekAdd, fekSub, fekDiv, fekMul,
-    { Build-in Functions}
-    fekABS, fekROUND,
+    { Built-in/Worksheet Functions}
+    fekABS, fekDATE, fekROUND, fekTIME,
     { Other operations }
     fekOpSUM
     );
@@ -92,11 +92,17 @@ type
   {@@ List of possible formatting fields }
 
   TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder, uffBackgroundColor,
-    uffWordWrap);
+    uffNumberFormat, uffWordWrap);
 
   {@@ Describes which formatting fields are active }
 
   TsUsedFormattingFields = set of TsUsedFormattingField;
+
+  {@@ Number/cell formatting. Only uses a subset of the default formats,
+      enough to be able to read/write date values.
+  }
+
+  TsNumberFormat = (nfGeneral, nfShortDate, nfShortDateTime);
 
   {@@ Text rotation formatting. The text is rotated relative to the standard
       orientation, which is from left to right horizontal: --->
@@ -125,10 +131,10 @@ type
 
   TsCellBorders = set of TsCellBorder;
 
-  {@@ Colors in FPSpreadsheet as given by a pallete to be compatible with Excel }
+  {@@ Colors in FPSpreadsheet as given by a palette to be compatible with Excel }
 
-  TsColor = (
-    scBlack,    // 000000H
+  TsColor = (   // R G B  color value:
+    scBlack ,   // 000000H
     scWhite,    // FFFFFFH
     scRed,      // FF0000H
     scGREEN,    // 00FF00H
@@ -147,13 +153,13 @@ type
     //
     scGrey10pct,// E6E6E6H
     scGrey20pct,// CCCCCCH
-    scOrange,   // ffa500
-    scDarkBrown,// a0522d
-    scBrown,    // cd853f
-    scBeige,    // f5f5dc
-    scWheat,    // f5deb3
+    scOrange,   // ffa500H
+    scDarkBrown,// a0522dH
+    scBrown,    // cd853fH
+    scBeige,    // f5f5dcH
+    scWheat,    // f5deb3H
     //
-    scRGBCOLOR   // Defined via TFPColor
+    scRGBCOLOR  // Defined via TFPColor
   );
 
   {@@ Cell structure for TsWorksheet
@@ -180,6 +186,7 @@ type
     TextRotation: TsTextRotation;
     Border: TsCellBorders;
     BackgroundColor: TsColor;
+    NumberFormat: TsNumberFormat;
     RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
   end;
 
@@ -238,6 +245,7 @@ type
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
+    procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
@@ -284,6 +292,7 @@ type
     function  AddWorksheet(AName: string): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
     function  GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
+    function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Cardinal;
     procedure RemoveAllWorksheets;
     {@@ This property is only used for formats which don't support unicode
@@ -346,9 +355,10 @@ type
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure WriteToStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula; ACell: PCell); virtual;
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula; ACell: PCell); virtual;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); virtual; abstract;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); virtual;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
   end;
 
@@ -485,7 +495,7 @@ begin
 end;
 
 {@@
-  Tryes to locate a Cell in the list of already
+  Tries to locate a Cell in the list of already
   written Cells
 
   @param  ARow      The row of the cell
@@ -705,7 +715,8 @@ begin
   case ACell^.ContentType of
 
   //cctFormula
-  cctNumber:     Result := ACell^.NumberValue;
+  cctDateTime : Result := ACell^.DateTimeValue; //this is in FPC TDateTime format, not Excel
+  cctNumber   : Result := ACell^.NumberValue;
   cctUTF8String:
   begin
     // The try is necessary to catch errors while converting the string
@@ -832,6 +843,21 @@ begin
   ACell^.NumberValue := ANumber;
 end;
 
+{@@
+  Writes a date/time value to a determined cell
+
+  @param  ARow      The row of the cell
+  @param  ACol      The column of the cell
+  @param  AValue    The date/time/datetime to be written
+
+  Note: at least Excel xls does not recognize a separate datetime cell type:
+  a datetime is stored as a (floating point) Number, and the cell is formatted
+  as a date (either built-in or a custom format).
+  This procedure automatically sets the cell format to short date/time. You may
+  change this format to another date/time format, but changing it to another
+  format (e.g. General) will likely lead to the cell being written out as a
+  plain number.
+}
 procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime);
 var
   ACell: PCell;
@@ -840,6 +866,15 @@ begin
 
   ACell^.ContentType := cctDateTime;
   ACell^.DateTimeValue := AValue;
+  // Date/time is actually a number field in Excel.
+  // To make sure it gets saved correctly, set a date format (instead of General).
+  // The user can choose another date format if he wants to
+  if not(uffNumberFormat in ACell^.UsedFormattingFields) or
+    ((uffNumberFormat in ACell^.UsedFormattingFields) and (ACell^.NumberFormat = nfGeneral)) then
+  begin
+    Include(ACell^.UsedFormattingFields, uffNumberFormat);
+    ACell^.NumberFormat := nfShortDateTime;
+  end;
 end;
 
 {@@
@@ -857,6 +892,26 @@ begin
 
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
+end;
+
+{@@
+  Adds number format to the formatting of a cell
+
+  @param  ARow      The row of the cell
+  @param  ACol      The column of the cell
+  @param  TsNumberFormat What format to apply
+
+  @see    TsNumberFormat
+}
+procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
+  ANumberFormat: TsNumberFormat);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+
+  Include(ACell^.UsedFormattingFields, uffNumberFormat);
+  ACell^.NumberFormat := ANumberFormat;
 end;
 
 procedure TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
@@ -1226,7 +1281,8 @@ end;
 {@@
   Writes the document to file based on the extension. If this was an earlier sfExcel type file, it will be upgraded to sfExcel8, 
 }
-procedure TsWorkbook.WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); overload;
+procedure TsWorkbook.WriteToFile(const AFileName: String;
+  const AOverwriteExisting: Boolean);
 var
   SheetType: TsSpreadsheetFormat;
   valid: Boolean;
@@ -1280,6 +1336,7 @@ end;
           nil otherwise.
 
   @see    TsWorkbook.GetWorksheetByIndex
+  @see    TsWorkbook.GetWorksheetByName
   @see    TsWorksheet
 }
 function TsWorkbook.GetFirstWorksheet: TsWorksheet;
@@ -1299,12 +1356,40 @@ end;
           nil otherwise.
 
   @see    TsWorkbook.GetFirstWorksheet
+  @see    TsWorkbook.GetWorksheetByName
   @see    TsWorksheet
 }
 function TsWorkbook.GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
 begin
   if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then Result := TsWorksheet(FWorksheets.Items[AIndex])
   else Result := nil;
+end;
+
+{@@
+  Gets the worksheet with a given worksheet name
+
+  @param  AName    The name of the worksheet
+
+  @return A TsWorksheet instance if one is found with that name,
+          nil otherwise.
+
+  @see    TsWorkbook.GetFirstWorksheet
+  @see    TsWorkbook.GetWorksheetByIndex
+  @see    TsWorksheet
+}
+function TsWorkbook.GetWorksheetByName(AName: String): TsWorksheet;
+var
+  i:integer;
+begin
+  Result := nil;
+  for i:=0 to FWorksheets.Count-1 do
+  begin
+    if TsWorkSheet(FWorkSheets.Items[i]).Name=AName then
+    begin
+      Result := TsWorksheet(FWorksheets.Items[i]);
+      exit;
+    end;
+  end;
 end;
 
 {@@
@@ -1410,6 +1495,9 @@ begin
 
     if uffBackgroundColor in AFormat^.UsedFormattingFields then
       if (FFormattingStyles[i].BackgroundColor <> AFormat^.BackgroundColor) then Continue;
+
+    if uffNumberFormat in AFormat^.UsedFormattingFields then
+      if (FFormattingStyles[i].NumberFormat <> AFormat^.NumberFormat) then Continue;
 
     // If we arrived here it means that the styles match
     Exit(i);
@@ -1537,6 +1625,7 @@ end;
 procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
   case ACell.ContentType of
+    cctDateTime:   WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
     cctNumber:     WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String: WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     cctFormula:    WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
@@ -1628,15 +1717,15 @@ begin
 end;
 
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsFormula; ACell: PCell);
+  ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
 begin
-
+  // Silently dump the formula; child classes should implement their own support
 end;
 
 procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsRPNFormula; ACell: PCell);
+  ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 begin
-
+  // Silently dump the formula; child classes should implement their own support
 end;
 
 finalization

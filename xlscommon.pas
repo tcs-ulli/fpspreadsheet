@@ -1,5 +1,8 @@
 unit xlscommon;
 
+{ Comments often have links to sections in the
+OpenOffice Microsoft Excel File Format document }
+
 {$ifdef fpc}
   {$mode delphi}
 {$endif}
@@ -18,13 +21,13 @@ const
 
   { Formula constants TokenID values }
 
-  { Binary Operator Tokens }
+  { Binary Operator Tokens 3.6}
   INT_EXCEL_TOKEN_TADD    = $03;
   INT_EXCEL_TOKEN_TSUB    = $04;
   INT_EXCEL_TOKEN_TMUL    = $05;
   INT_EXCEL_TOKEN_TDIV    = $06;
   INT_EXCEL_TOKEN_TPOWER  = $07; // Power Exponentiation
-  INT_EXCEL_TOKEN_TCONCAT = $08;
+  INT_EXCEL_TOKEN_TCONCAT = $08; // Concatenation
   INT_EXCEL_TOKEN_TLT     = $09; // Less than
   INT_EXCEL_TOKEN_TLE     = $0A; // Less than or equal
   INT_EXCEL_TOKEN_TEQ     = $0B; // Equal
@@ -35,27 +38,36 @@ const
   INT_EXCEL_TOKEN_TLIST   = $10; // Cell range list
   INT_EXCEL_TOKEN_TRANGE  = $11; // Cell range
 
-  { Constant Operand Tokens }
-  INT_EXCEL_TOKEN_TNUM    = $1F;
+  { Constant Operand Tokens, 3.8}
+  INT_EXCEL_TOKEN_TSTR    = $17; //string
+  INT_EXCEL_TOKEN_TBOOL   = $1D; //boolean
+  INT_EXCEL_TOKEN_TINT    = $1E; //integer
+  INT_EXCEL_TOKEN_TNUM    = $1F; //floating-point
 
   { Operand Tokens }
+  // _R: reference; _V: value; _A: array
   INT_EXCEL_TOKEN_TREFR   = $24;
   INT_EXCEL_TOKEN_TREFV   = $44;
   INT_EXCEL_TOKEN_TREFA   = $64;
 
   { Function Tokens }
+  // _R: reference; _V: value; _A: array
+  // Offset 0: token; offset 1: index to a built-in sheet function ( ➜ 3.111)
   INT_EXCEL_TOKEN_FUNC_R = $21;
   INT_EXCEL_TOKEN_FUNC_V = $41;
   INT_EXCEL_TOKEN_FUNC_A = $61;
 
+  //VAR: variable number of arguments:
   INT_EXCEL_TOKEN_FUNCVAR_R = $22;
   INT_EXCEL_TOKEN_FUNCVAR_V = $42;
   INT_EXCEL_TOKEN_FUNCVAR_A = $62;
   INT_EXCEL_TOKEN_TAREA_R = $25;
 
-  { Built-in functions }
+  { Built-in/worksheet functions }
   INT_EXCEL_SHEET_FUNC_ABS = 24; // $18
-  INT_EXCEL_SHEET_FUNC_ROUND = 27;
+  INT_EXCEL_SHEET_FUNC_ROUND = 27; // $1B
+  INT_EXCEL_SHEET_FUNC_DATE = 65; // $41
+  INT_EXCEL_SHEET_FUNC_TIME = 66; // $42
 
   { Control Tokens, Special Tokens }
 //  01H tExp Matrix formula or shared formula
@@ -66,29 +78,47 @@ const
 //  1AH tSheet Start of external sheet reference (BIFF2-BIFF4)
 //  1BH tEndSheet End of external sheet reference (BIFF2-BIFF4)
 
-  { Built In Color Pallete Indexes }
-  BUILT_IN_COLOR_PALLETE_BLACK     = $08; // 000000H
-  BUILT_IN_COLOR_PALLETE_WHITE     = $09; // FFFFFFH
-  BUILT_IN_COLOR_PALLETE_RED       = $0A; // FF0000H
-  BUILT_IN_COLOR_PALLETE_GREEN     = $0B; // 00FF00H
-  BUILT_IN_COLOR_PALLETE_BLUE      = $0C; // 0000FFH
-  BUILT_IN_COLOR_PALLETE_YELLOW    = $0D; // FFFF00H
-  BUILT_IN_COLOR_PALLETE_MAGENTA   = $0E; // FF00FFH
-  BUILT_IN_COLOR_PALLETE_CYAN      = $0F; // 00FFFFH
-  BUILT_IN_COLOR_PALLETE_DARK_RED  = $10; // 800000H
-  BUILT_IN_COLOR_PALLETE_DARK_GREEN= $11; // 008000H
-  BUILT_IN_COLOR_PALLETE_DARK_BLUE = $12; // 000080H
-  BUILT_IN_COLOR_PALLETE_OLIVE     = $13; // 808000H
-  BUILT_IN_COLOR_PALLETE_PURPLE    = $14; // 800080H
-  BUILT_IN_COLOR_PALLETE_TEAL      = $15; // 008080H
-  BUILT_IN_COLOR_PALLETE_SILVER    = $16; // C0C0C0H
-  BUILT_IN_COLOR_PALLETE_GREY      = $17; // 808080H
+  { Built In Color Palette Indexes }
+  // Proper spelling
+  BUILT_IN_COLOR_PALETTE_BLACK     = $08; // 000000H
+  BUILT_IN_COLOR_PALETTE_WHITE     = $09; // FFFFFFH
+  BUILT_IN_COLOR_PALETTE_RED       = $0A; // FF0000H
+  BUILT_IN_COLOR_PALETTE_GREEN     = $0B; // 00FF00H
+  BUILT_IN_COLOR_PALETTE_BLUE      = $0C; // 0000FFH
+  BUILT_IN_COLOR_PALETTE_YELLOW    = $0D; // FFFF00H
+  BUILT_IN_COLOR_PALETTE_MAGENTA   = $0E; // FF00FFH
+  BUILT_IN_COLOR_PALETTE_CYAN      = $0F; // 00FFFFH
+  BUILT_IN_COLOR_PALETTE_DARK_RED  = $10; // 800000H
+  BUILT_IN_COLOR_PALETTE_DARK_GREEN= $11; // 008000H
+  BUILT_IN_COLOR_PALETTE_DARK_BLUE = $12; // 000080H
+  BUILT_IN_COLOR_PALETTE_OLIVE     = $13; // 808000H
+  BUILT_IN_COLOR_PALETTE_PURPLE    = $14; // 800080H
+  BUILT_IN_COLOR_PALETTE_TEAL      = $15; // 008080H
+  BUILT_IN_COLOR_PALETTE_SILVER    = $16; // C0C0C0H
+  BUILT_IN_COLOR_PALETTE_GREY      = $17; // 808080H
 
-  EXTRA_COLOR_PALETTE_GREY10PCT    = $18; // E6E6E6H
-  EXTRA_COLOR_PALETTE_GREY20PCT    = $19; // E6E6E6H
+  // Spelling mistake; kept for compatibility
+  BUILT_IN_COLOR_PALLETE_BLACK     = $08 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_WHITE     = $09 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_RED       = $0A deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_GREEN     = $0B deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_BLUE      = $0C deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_YELLOW    = $0D deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_MAGENTA   = $0E deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_CYAN      = $0F deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_DARK_RED  = $10 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_DARK_GREEN= $11 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_DARK_BLUE = $12 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_OLIVE     = $13 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_PURPLE    = $14 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_TEAL      = $15 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_SILVER    = $16 deprecated 'Please use the *_PALETTE version';
+  BUILT_IN_COLOR_PALLETE_GREY      = $17 deprecated 'Please use the *_PALETTE version';
+
+  EXTRA_COLOR_PALETTE_GREY10PCT    = $18; // E6E6E6H //todo: is $18 correct? see 5.74.3 Built-In Default Colour Tables
+  EXTRA_COLOR_PALETTE_GREY20PCT    = $19; // CCCCCCH //todo: is $19 correct? see 5.74.3 Built-In Default Colour Tables
 
   { CODEPAGE record constants }
-
   WORD_ASCII = 367;
   WORD_UTF_16 = 1200; // BIFF 8
   WORD_CP_1250_Latin2 = 1250;
@@ -102,18 +132,39 @@ const
   WORD_CP_1258_Vietnamese = 1258;
   WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
 
+  { DATEMODE record, 5.28 }
+  DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
+  DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
+
+  { FORMAT record constants }
+  // Just a subset; needed for output to date/time records
+  FORMAT_GENERAL = 0; //general/default format
+  FORMAT_SHORT_DATE = 14; //short date
+  FORMAT_SHORT_DATETIME = 22; //short date+time
+
+
 type
+  TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
 
+  // Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
+  function ConvertExcelDateTimeToDateTime
+    (const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
+  // Adjusts TDateTime with the file's base date to get
+  // an Excel float value representing a time/date/datetime
+  function ConvertDateTimeToExcelDateTime
+    (const ADateTime: TDateTime; ADateMode: TDateMode): Double;
+
+type
   { TsSpreadBIFFReader }
-
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
-    FBaseDate: TDateTime;
+    FDateMode: TDateMode;
     constructor Create; override;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
     // Workbook Globals records
     procedure ReadCodePage(AStream: TStream);
+    // Figures out what the base year for dates is for this file
     procedure ReadDateMode(AStream: TStream);
   end;
 
@@ -121,9 +172,10 @@ type
 
   TsSpreadBIFFWriter = class(TsCustomSpreadWriter)
   protected
+    FDateMode: TDateMode;
     FLastRow: Integer;
     FLastCol: Word;
-    function FPSColorToEXCELPallete(AColor: TsColor): Word;
+    function FPSColorToExcelPalette(AColor: TsColor): Word;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -131,19 +183,73 @@ type
     function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Byte;
     // Other records which didn't change
     // Workbook Globals records
+    // Write out used codepage for character encoding
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
+    // Writes out DATEMODE record depending on FDateMode
+    procedure WriteDateMode(AStream: TStream);
+  public
+    constructor Create; override;
   end;
 
 implementation
+
+function ConvertExcelDateTimeToDateTime(
+  const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
+begin
+  // Time only:
+  if (AExcelDateNum<1) and (AExcelDateNum>=0)  then
+  begin
+    Result:=AExcelDateNum;
+  end
+  else
+  begin
+    case ADateMode of
+    dm1900:
+    begin
+      // Check for Lotus 1-2-3 bug with 1900 leap year
+      if AExcelDateNum=61.0 then
+      // 29 feb does not exist, change to 28
+      // Spell out that we remove a day for ehm "clarity".
+        result:=61.0-1.0+DATEMODE_1900_BASE-1.0
+      else
+        result:=AExcelDateNum+DATEMODE_1900_BASE-1.0;
+    end;
+    dm1904:
+      result:=AExcelDateNum+DATEMODE_1904_BASE;
+    else
+      raise Exception.CreateFmt('ConvertExcelDateTimeToDateTime: unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
+    end;
+  end;
+end;
+
+function ConvertDateTimeToExcelDateTime(const ADateTime: TDateTime;
+  ADateMode: TDateMode): Double;
+begin
+  // Time only:
+  if (ADateTime<1) and (ADateTime>=0) then
+  begin
+    Result:=ADateTime;
+  end
+  else
+  begin
+    case ADateMode of
+    dm1900:
+      result:=ADateTime-DATEMODE_1900_BASE+1.0;
+    dm1904:
+      result:=ADateTime-DATEMODE_1904_BASE;
+    else
+      raise Exception.CreateFmt('ConvertDateTimeToExcelDateTime: unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
+    end;
+  end;
+end;
 
 { TsSpreadBIFFReader }
 
 constructor TsSpreadBIFFReader.Create;
 begin
   inherited Create;
-  // Initial base date in case it wont be informed
-  FBaseDate := DateUtils.EncodeDateDay(1900, 1);
-  FBaseDate := DateUtils.IncDay(FBaseDate, -1);
+  // Initial base date in case it won't be read from file
+  FDateMode := dm1900;
 end;
 
 // In BIFF 8 it seams to always use the UTF-16 codepage
@@ -216,16 +322,14 @@ begin
   //0 2 0 = Base date is 1899-Dec-31 (the cell value 1 represents 1900-Jan-01)
   //    1 = Base date is 1904-Jan-01 (the cell value 1 represents 1904-Jan-02)
   lBaseMode := WordLEtoN(AStream.ReadWord);
-  if lBaseMode = 0 then
-  begin
-    FBaseDate := DateUtils.EncodeDateDay(1900, 1);
-    FBaseDate := DateUtils.IncDay(FBaseDate, -1);
-  end
-  else
-    FBaseDate := DateUtils.EncodeDateDay(1904, 1);
+  case lBaseMode of
+    0: FDateMode := dm1900;
+    1: FDateMode := dm1904;
+    else raise Exception.CreateFmt('Error reading file. Got unknown date mode number %d.',[lBaseMode]);
+  end;
 end;
 
-function TsSpreadBIFFWriter.FPSColorToEXCELPallete(AColor: TsColor): Word;
+function TsSpreadBIFFWriter.FPSColorToExcelPalette(AColor: TsColor): Word;
 begin
   case AColor of
     scBlack: Result := BUILT_IN_COLOR_PALLETE_BLACK;
@@ -289,16 +393,26 @@ begin
     fekSub:   Result := INT_EXCEL_TOKEN_TSUB;
     fekDiv:   Result := INT_EXCEL_TOKEN_TDIV;
     fekMul:   Result := INT_EXCEL_TOKEN_TMUL;
-    { Build-in Functions}
+    { Built-in Functions}
     fekABS:
     begin
       Result := INT_EXCEL_TOKEN_FUNC_V;
       ASecondaryID := INT_EXCEL_SHEET_FUNC_ABS;
     end;
+    fekDATE:
+    begin
+      Result := INT_EXCEL_TOKEN_FUNC_V;
+      ASecondaryID := INT_EXCEL_SHEET_FUNC_DATE;
+    end;
     fekROUND:
     begin
       Result := INT_EXCEL_TOKEN_FUNC_V;
       ASecondaryID := INT_EXCEL_SHEET_FUNC_ROUND;
+    end;
+    fekTIME:
+    begin
+      Result := INT_EXCEL_TOKEN_FUNC_V;
+      ASecondaryID := INT_EXCEL_SHEET_FUNC_TIME;
     end;
     { Other operations }
     fekOpSUM: Result := INT_EXCEL_TOKEN_TATTR;
@@ -329,6 +443,28 @@ begin
     lCodepage := WORD_CP_1252_Latin1;
   end;
   AStream.WriteWord(WordToLE(lCodepage));
+end;
+
+procedure TsSpreadBIFFWriter.WriteDateMode(AStream: TStream);
+begin
+  { BIFF Record header }
+  // todo: check whether this is in the right place. should end up in workbook globals stream
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_DATEMODE));
+  AStream.WriteWord(WordToLE(2));
+
+  case FDateMode of
+    dm1900: AStream.WriteWord(WordToLE(0));
+    dm1904: AStream.WriteWord(WordToLE(1));
+    else raise Exception.CreateFmt('Unknown datemode number %d. Please correct fpspreadsheet code.', [FDateMode]);
+  end;
+end;
+
+constructor TsSpreadBIFFWriter.Create;
+begin
+  inherited Create;
+  // Initial base date in case it won't be set otherwise.
+  // Use 1900 to get a bit more range between 1900..1904.
+  FDateMode := dm1900;
 end;
 
 end.

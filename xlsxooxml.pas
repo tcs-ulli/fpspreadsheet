@@ -31,7 +31,11 @@ interface
 
 uses
   Classes, SysUtils,
-  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.8 is released }
+  {$IFDEF FPC_FULLVERSION >= 20701}
+  zipper,
+  {$ELSE}
+  fpszipper,
+  {$ENDIF}
   {xmlread, DOM,} AVL_Tree,
   fpspreadsheet;
   
@@ -68,7 +72,8 @@ type
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
+    //todo: add WriteDate
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
 
@@ -448,18 +453,37 @@ begin
   end;
 end;
 
-{
-  Writes a string to the sheet
-}
+{*******************************************************************
+*  TsSpreadOOXMLWriter.WriteLabel ()
+*
+*  DESCRIPTION:    Writes a string to the sheet
+*                  If the string length exceeds 32767 bytes, the string
+*                  will be truncated and an exception will be raised as
+*                  a warning.
+*
+*******************************************************************}
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string; ACell: PCell);
+  ACol: Cardinal; const AValue: string; ACell: PCell);
+const
+  MaxBytes=32767; //limit for this format
 var
   CellPosText: string;
   lStyleIndex: Cardinal;
+  TextTooLong: boolean=false;
+  ResultingValue: string;
 begin
+  // Office 2007-2010 (at least) support no more characters in a cell;
+  if Length(AValue)>MaxBytes then
+  begin
+    TextTooLong:=true;
+    ResultingValue:=Copy(AValue,1,MaxBytes); //may chop off multicodepoint UTF8 characters but well...
+  end
+  else
+    ResultingValue:=AValue;
+
   FSharedStrings := FSharedStrings +
           '  <si>' + LineEnding +
-   Format('    <t>%s</t>', [AValue]) + LineEnding +
+   Format('    <t>%s</t>', [ResultingValue]) + LineEnding +
           '  </si>' + LineEnding;
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
@@ -468,6 +492,14 @@ begin
    Format('    <c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]) + LineEnding;
 
   Inc(FSharedStringsCount);
+  {
+  //todo: keep a log of errors and show with an exception after writing file or something.
+  We can't just do the following
+
+  if TextTooLong then
+    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
+  because the file wouldn't be written.
+  }
 end;
 
 {
