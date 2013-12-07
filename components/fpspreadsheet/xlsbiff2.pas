@@ -67,8 +67,8 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula; ACell: PCell); override;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
 
@@ -108,18 +108,30 @@ begin
   fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
   fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
   fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
-  { Build-in functions }
+  { Built-in/worksheet functions }
   fekABS:
   begin
     Result := INT_EXCEL_TOKEN_FUNCVAR_V;
     AParamsNum := 1;
     AFuncNum := INT_EXCEL_SHEET_FUNC_ABS;
   end;
+  fekDATE:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 3;
+    AFuncNum := INT_EXCEL_SHEET_FUNC_DATE;
+  end;
   fekROUND:
   begin
     Result := INT_EXCEL_TOKEN_FUNCVAR_V;
     AParamsNum := 2;
     AFuncNum := INT_EXCEL_SHEET_FUNC_ROUND;
+  end;
+  fekTIME:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 3;
+    AFuncNum := INT_EXCEL_SHEET_FUNC_TIME;
   end;
   end;
 end;
@@ -220,7 +232,7 @@ end;
   MyFormula[2].TokenID := INT_EXCEL_TOKEN_TADD;  +
 }
 procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsRPNFormula; ACell: PCell);
+  ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
   i: Integer;
@@ -314,17 +326,33 @@ end;
 *  DESCRIPTION:    Writes an Excel 2 LABEL record
 *
 *                  Writes a string to the sheet
+*                  If the string length exceeds 255 bytes, the string
+*                  will be truncated and an exception will be raised as
+*                  a warning.
 *
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string; ACell: PCell);
+  ACol: Cardinal; const AValue: string; ACell: PCell);
+const
+  MaxBytes=255; //limit for this format
 var
   L: Byte;
   AnsiText: ansistring;
+  TextTooLong: boolean=false;
 begin
   if AValue = '' then Exit; // Writing an empty text doesn't work
 
   AnsiText := UTF8ToISO_8859_1(AValue);
+
+  if Length(AnsiText)>MaxBytes then
+  begin
+    // BIFF 5 does not support labels/text bigger than 255 chars,
+    // so BIFF2 won't either
+    // Rather than lose data when reading it, let the application programmer deal
+    // with the problem or purposefully ignore it.
+    TextTooLong:=true;
+    AnsiText := Copy(AnsiText,1,MaxBytes);
+  end;
   L := Length(AnsiText);
 
   { BIFF Record header }
@@ -341,6 +369,14 @@ begin
   { String with 8-bit size }
   AStream.WriteByte(L);
   AStream.WriteBuffer(AnsiText[1], L);
+
+  {
+  //todo: keep a log of errors and show with an exception after writing file or something.
+  We can't just do the following
+  if TextTooLong then
+    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
+    because the file wouldn't be written.
+  }
 end;
 
 {*******************************************************************

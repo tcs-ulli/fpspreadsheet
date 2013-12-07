@@ -1,0 +1,5 @@
+Excel xls and PowerPoint ppt file dumper written in Python - very handy to list all contents of BIFF files (e.g. ./xls-dump.py file.xls) 
+
+cd ~
+git clone http://cgit.freedesktop.org/libreoffice/contrib/mso-dumper/
+mso-dumper/xls-dump.py yourfile.xls

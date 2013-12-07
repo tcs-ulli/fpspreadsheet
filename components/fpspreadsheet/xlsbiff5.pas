@@ -121,9 +121,9 @@ type
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsRPNFormula; ACell: PCell); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
@@ -273,18 +273,30 @@ begin
   fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
   fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
   fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
-  { Build-in Function }
+  { Built-in/Worksheet Function }
   fekABS:
   begin
     Result := INT_EXCEL_TOKEN_FUNCVAR_V;
     AParamsNum := 1;
     AExtra := INT_EXCEL_SHEET_FUNC_ABS;
   end;
+  fekDATE:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 3;
+    AExtra := INT_EXCEL_SHEET_FUNC_DATE;
+  end;
   fekROUND:
   begin
     Result := INT_EXCEL_TOKEN_FUNCVAR_V;
     AParamsNum := 2;
     AExtra := INT_EXCEL_SHEET_FUNC_ROUND;
+  end;
+  fekTIME:
+  begin
+    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    AParamsNum := 3;
+    AExtra := INT_EXCEL_SHEET_FUNC_TIME;
   end;
   end;
 end;
@@ -628,7 +640,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsRPNFormula; ACell: PCell);
+  ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
   i: Integer;
@@ -765,16 +777,22 @@ end;
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteLabel ()
 *
-*  DESCRIPTION:    Writes an Excel 8 LABEL record
+*  DESCRIPTION:    Writes an Excel 5 LABEL record
 *
 *                  Writes a string to the sheet
+*                  If the string length exceeds 255 bytes, the string
+*                  will be truncated and an exception will be raised as
+*                  a warning.
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string; ACell: PCell);
+  ACol: Cardinal; const AValue: string; ACell: PCell);
+const
+  MaxBytes=255; //limit for this format
 var
   L: Word;
   AnsiValue: ansistring;
+  TextTooLong: boolean=false;
 begin
   case WorkBookEncoding of
   seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
@@ -797,11 +815,15 @@ begin
     end;
     Exit;
   end;
-  L := Length(AnsiValue);
-  if L>255 then begin
-    //BIFF 5 does not support labels/text bigger than 255 chars.
-    L:=255;
+
+  if Length(AnsiValue)>MaxBytes then
+  begin
+    // Rather than lose data when reading it, let the application programmer deal
+    // with the problem or purposefully ignore it.
+    TextTooLong := true;
+    AnsiValue := Copy(AnsiValue,1,MaxBytes);
   end;
+  L := Length(AnsiValue);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
@@ -817,6 +839,14 @@ begin
   { Byte String with 16-bit size }
   AStream.WriteWord(WordToLE(L));
   AStream.WriteBuffer(AnsiValue[1], L);
+
+  {
+  //todo: keep a log of errors and show with an exception after writing file or something.
+  We can't just do the following
+  if TextTooLong then
+    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
+    because the file wouldn't be written.
+  }
 end;
 
 {*******************************************************************
@@ -1194,6 +1224,7 @@ begin
 
   {Check RK codes}
   Number:=DecodeRKValue(L);
+
   FWorksheet.WriteNumber(ARow,ACol,Number);
 end;
 

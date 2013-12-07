@@ -28,7 +28,11 @@ interface
 
 uses
   Classes, SysUtils,
-  fpszipper, {NOTE: fpszipper is the latest zipper.pp Change to standard zipper when FPC 2.8 is released}
+  {$IFDEF FPC_FULLVERSION >= 20701}
+  zipper,
+  {$ELSE}
+  fpszipper,
+  {$ENDIF}
   fpspreadsheet,
   xmlread, DOM, AVL_Tree,
   math,
@@ -81,8 +85,9 @@ type
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Word; const AFormula: TsFormula; ACell: PCell); override;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Word; const AValue: string; ACell: PCell); override;
+    //todo: add WriteDate
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
   end;
 
@@ -639,7 +644,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
-  ACol: Word; const AFormula: TsFormula; ACell: PCell);
+  ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
 begin
 {  // The row should already be the correct one
   FContent := FContent +
@@ -658,7 +663,7 @@ end;
   See bug with patch 19422
 }
 procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
-  ACol: Word; const AValue: string; ACell: PCell);
+  ACol: Cardinal; const AValue: string; ACell: PCell);
 var
   lStyle: string = '';
   lIndex: Integer;

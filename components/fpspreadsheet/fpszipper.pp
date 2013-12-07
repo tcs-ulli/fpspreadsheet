@@ -20,6 +20,18 @@
 {$h+}
 unit fpszipper;
 
+{$IF FPC_FULLVERSION >= 20701}
+// Empty shell; just load fpc zipper unit
+Interface
+
+Uses
+  zipper;
+
+Implementation
+End.
+{$ELSE}
+// FPC 2.6.x or lower: use this custom version
+
 Interface
 
 Uses
@@ -522,14 +534,27 @@ end;
 {$ENDIF FPC_BIG_ENDIAN}
 
 Procedure DateTimeToZipDateTime(DT : TDateTime; out ZD,ZT : Word);
-
 Var
   Y,M,D,H,N,S,MS : Word;
 
 begin
   DecodeDate(DT,Y,M,D);
   DecodeTime(DT,H,N,S,MS);
-  Y:=Y-1980;
+  if Y<1980 then
+  begin
+    // Invalid date/time; set to earliest possible
+    Y:=0;
+    M:=1;
+    D:=1;
+    H:=0;
+    N:=0;
+    S:=0;
+    MS:=0;
+  end
+  else
+  begin
+    Y:=Y-1980;
+  end;
   ZD:=d+(32*M)+(512*Y);
   ZT:=(S div 2)+(32*N)+(2048*h);
 end;
@@ -2092,3 +2117,4 @@ begin
 end;
 
 End.
+{$ENDIF}
