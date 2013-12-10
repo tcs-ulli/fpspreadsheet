@@ -120,7 +120,7 @@ begin
     MyWorkSheet.WriteUTF8Text(Row,0,SollStrings[Row]);
     // Some checks inside worksheet itself
     ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
-    CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(Row));
+    CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
   MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
   MyWorkbook.Free;
@@ -136,7 +136,7 @@ begin
   for Row := Low(SollStrings) to High(SollStrings) do
   begin
     ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
-    CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(Row));
+    CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -180,7 +180,7 @@ begin
       // Some checks inside worksheet itself
       ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
       CheckEquals(length(LocalNormStrings[Row]),length(ActualString),
-        'Test value mismatch cell '+CellNotation(Row)+
+        'Test value mismatch cell '+CellNotation(MyWorkSheet,Row)+
         ' for string length.');
     except
       { When over size limit we expect to hit this:
@@ -236,11 +236,11 @@ begin
     // Allow for truncation of excessive strings by fpspreadsheet
     if length(LocalNormStrings[Row])>MaxBytesBIFF8 then
       CheckEquals(MaxBytesBIFF8,length(ActualString),
-        'Test value mismatch cell '+CellNotation(Row)+
+        'Test value mismatch cell '+CellNotation(MyWorkSheet,Row)+
         ' for string length.')
     else
     CheckEquals(length(LocalNormStrings[Row]),length(ActualString),
-      'Test value mismatch cell '+CellNotation(Row)+
+      'Test value mismatch cell '+CellNotation(MyWorkSheet,Row)+
       ' for string length.');
   end;
   // Finalization
@@ -267,7 +267,7 @@ begin
 
   ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
   CheckEquals(SollStrings[Row],ActualString,'Test value mismatch '
-    +'cell '+CellNotation(Row));
+    +'cell '+CellNotation(MyWorkSheet,Row));
 
   // Finalization
   MyWorkbook.Free;

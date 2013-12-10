@@ -145,8 +145,8 @@ begin
     MyWorkSheet.WriteDateTime(Row,0,SollDates[Row]);
     // Some checks inside worksheet itself
     if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
-      Fail('Failed writing date time for cell '+CellNotation(Row));
-    CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(Row));
+      Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet,Row));
+    CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorksheet,Row));
   end;
   MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
   MyWorkbook.Free;
@@ -162,8 +162,8 @@ begin
   for Row := Low(SollDates) to High(SollDates) do
   begin
     if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
-      Fail('Could not read date time for cell '+CellNotation(Row));
-    CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(Row));
+      Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row));
+    CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -186,11 +186,15 @@ begin
   MyWorksheet:=GetWorksheetByName(MyWorkBook,DatesSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
+  // We know these are valid time/date/datetime values....
+  // Just test for empty string; we'll probably end up in a maze of localized date/time stuff
+  // if we don't.
+  CheckNotEquals(MyWorkSheet.ReadAsUTF8Text(Row, 0), '','Could not read date time as string for cell '+CellNotation(MyWorkSheet,Row));
 
   if not(MyWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
-    Fail('Could not read date time for cell '+CellNotation(Row));
+    Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row));
   CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch '
-    +'cell '+CellNotation(Row));
+    +'cell '+CellNotation(MyWorksheet,Row));
 
   // Finalization
   MyWorkbook.Free;
