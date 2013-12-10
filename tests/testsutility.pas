@@ -20,9 +20,8 @@ const
   NumbersSheet = 'Numbers'; //worksheet name
   StringsSheet = 'Texts'; //worksheet name
 
-// Returns an A.. notation based on row (e.g. A1).
-// Useful as all test values should be put in the A column of the spreadsheet
-function CellNotation(Row: integer): string;
+// Returns an A.. notation based on sheet, row, optional column (e.g. A1).
+function CellNotation(WorkSheet: TsWorksheet; Row: integer; Column: integer=0): string;
 
 // Note: using this function instead of GetWorkSheetByName for compatibility with
 // older fpspreadsheet versions that don't have that function
@@ -56,11 +55,17 @@ begin
   end;
 end;
 
-function CellNotation(Row: integer): string;
+function CellNotation(WorkSheet: TsWorksheet; Row: integer; Column: integer=0): string;
 begin
   // From 0-based to Excel A1 notation
-  // Note: we're only testing in the A column, that's why we hardcode the value
-  result:=DatesSheet+'!A'+inttostr(Row+1);
+  // Only goes from column A to Z...
+  if not(assigned(Worksheet)) then
+    result:='CellNotation: error getting worksheet.'
+  else
+    if Column<26 then
+      result:=WorkSheet.Name+'!'+char(Column+65)+inttostr(Row+1)
+    else
+      result:=WorkSheet.Name+'!'+inttostr(Column+1)+':'+inttostr(Row+1)
 end;
 
 

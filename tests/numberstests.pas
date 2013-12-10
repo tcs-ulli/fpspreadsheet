@@ -134,7 +134,7 @@ begin
     MyWorkSheet.WriteNumber(Row,0,SollNumbers[Row]);
     // Some checks inside worksheet itself
     ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
-    CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(Row));
+    CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
   MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
   MyWorkbook.Free;
@@ -150,7 +150,7 @@ begin
   for Row := Low(SollNumbers) to High(SollNumbers) do
   begin
     ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
-    CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(Row));
+    CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -176,7 +176,7 @@ begin
 
   ActualNumber:=MyWorkSheet.ReadAsNumber(Row, 0);
   CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch '
-    +'cell '+CellNotation(Row));
+    +'cell '+CellNotation(MyWorkSheet,Row));
 
   // Finalization
   MyWorkbook.Free;
