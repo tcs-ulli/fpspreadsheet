@@ -689,11 +689,18 @@ begin
   end;
 
   case ACell^.ContentType of
-
   //cctFormula
   cctNumber:     Result := FloatToStrNoNaN(ACell^.NumberValue);
   cctUTF8String: Result := ACell^.UTF8StringValue;
-  cctDateTime:   Result := SysUtils.DateToStr(ACell^.DateTimeValue);
+  cctDateTime:
+  begin
+    Result := SysUtils.DateToStr(ACell^.DateTimeValue);
+    // User can have specified custom date/time format or one of the other built
+    // in formats that include time. We can't parse all of them so just return
+    // time as well unless absolutely sure we only want a date
+    if ACell^.NumberFormat<>nfShortDate then
+      Result := Result+' ' + SysUtils.TimeToStr(ACell^.DateTimeValue);
+  end;
   else
     Result := '';
   end;
