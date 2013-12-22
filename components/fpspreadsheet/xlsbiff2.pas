@@ -70,6 +70,7 @@ type
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   end;
 
 implementation
@@ -406,6 +407,21 @@ begin
   { IEE 754 floating-point value }
   AStream.WriteBuffer(AValue, 8);
 end;
+
+{*******************************************************************
+*  TsSpreadBIFF2Writer.WriteDateTime ()
+*
+*  DESCRIPTION:    Writes a date/time value as a text
+*
+*                  No further formatting applied.
+*
+*******************************************************************}
+procedure TsSpreadBIFF2Writer.WriteDateTime(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+begin
+  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
+end;
+
 
 { TsSpreadBIFF2Reader }
 

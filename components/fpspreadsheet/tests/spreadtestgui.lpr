@@ -5,7 +5,7 @@ program spreadtestgui;
 uses
   Interfaces, Forms, GuiTestRunner,
   datetests, stringtests,
-  numberstests, manualtests, testsutility, internaltests;
+  numberstests, manualtests, testsutility, internaltests, formattests;
 
 begin
   Application.Initialize;

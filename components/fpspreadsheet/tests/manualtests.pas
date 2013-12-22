@@ -26,7 +26,7 @@ uses
 
 var
   // Norm to test against - list of dates/times that should occur in spreadsheet
-  SollColors: array[0..22] of tsColor; //"Soll" is a German word in Dutch accountancy circles meaning "normative value to check against". There ;)
+  SollColors: array[0..22] of tsColor; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   SollColorNames: array[0..22] of string; //matching names for SollColors
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.

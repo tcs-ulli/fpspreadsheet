@@ -102,7 +102,9 @@ type
       enough to be able to read/write date values.
   }
 
-  TsNumberFormat = (nfGeneral, nfShortDate, nfShortDateTime);
+  TsNumberFormat = (nfGeneral, nfFixed, nfFixedTh, nfExp, nfSci, nfPercentage,
+    nfShortDateTime, nfFmtDateTime, nfShortDate, nfShortTime, nfLongTime,
+    nfShortTimeAM, nfLongTimeAM, nfTimeInterval);
 
   {@@ Text rotation formatting. The text is rotated relative to the standard
       orientation, which is from left to right horizontal: --->
@@ -187,6 +189,8 @@ type
     Border: TsCellBorders;
     BackgroundColor: TsColor;
     NumberFormat: TsNumberFormat;
+    NumberFormatStr: String;
+    NumberDecimals: Word;
     RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
   end;
 
@@ -242,8 +246,10 @@ type
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
     procedure RemoveAllCells;
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
-    procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double);
-    procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime);
+    procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
+      AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2);
+    procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
+      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
@@ -378,10 +384,14 @@ procedure RegisterSpreadFormat(
   AWriterClass: TsSpreadWriterClass;
   AFormat: TsSpreadsheetFormat);
 
+function SciFloat(AValue: Double; ADecimals: Word): String;
+function TimeIntervalToString(AValue: TDateTime): String;
+
+
 implementation
 
 uses
-  Math;
+  Math, StrUtils;
 
 var
   { Translatable strings }
@@ -404,6 +414,51 @@ begin
   GsSpreadFormats[len].WriterClass := AWriterClass;
   GsSpreadFormats[len].Format := AFormat;
 end;
+
+{@@
+  Formats the number AValue in "scientific" format with the given number of
+  decimals. "Scientific" is the same as "exponential", but with exponents rounded
+  to multiples of 3.
+}
+function SciFloat(AValue: Double; ADecimals: Word): String;
+var
+  m: Double;
+  ex: Integer;
+begin
+  if AValue = 0 then
+    Result := '0.0'
+  else begin
+    ex := floor(log10(abs(AValue)));  // exponent
+    // round exponent to multiples of 3
+    ex := (ex div 3) * 3;
+    if ex < 0 then dec(ex, 3);
+    m := AValue * Power(10, -ex);     // mantisse
+    Result := Format('%.*fE%d', [ADecimals, m, ex]);
+  end;
+end;
+
+{@@
+  Formats the number AValue as a time string with hours, minutes and seconds.
+  Unlike TimeToStr there can be more than 24 hours.
+}
+function TimeIntervalToString(AValue: TDateTime): String;
+var
+  hrs: Integer;
+  diff: Double;
+  h,m,s,z: Word;
+  ts: String;
+begin
+  ts := DefaultFormatSettings.TimeSeparator;
+  DecodeTime(frac(abs(AValue)), h, m, s, z);
+  hrs := h + trunc(abs(AValue))*24;
+  if z > 499 then inc(s);
+  if hrs > 0 then
+    Result := Format('%d%s%.2d%s%.2d', [hrs, ts, m, ts, s])
+  else
+    Result := Format('%d%s%.2d', [m, ts, s]);
+  if AValue < 0.0 then Result := '-' + Result;
+end;
+
 
 { TsWorksheet }
 
@@ -673,12 +728,42 @@ end;
   @return The text representation of the cell
 }
 function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
+
+  function FloatToStrNoNaN(const Value: Double;
+    ANumberFormat: TsNumberFormat; ANumberFormatStr: ansistring): ansistring;
+  begin
+    if IsNan(Value) then
+      Result := ''
+    else
+    if ANumberFormat = nfSci then
+      Result := SciFloat(Value, 1)
+    else
+    if (ANumberFormat = nfGeneral) or (ANumberFormatStr = '') then
+      Result := FloatToStr(Value)
+    else
+    if (ANumberFormat = nfPercentage) then
+      Result := FormatFloat(ANumberFormatStr, Value*100) + '%'
+    else
+      Result := FormatFloat(ANumberFormatStr, Value);
+  end;
+
+  function DateTimeToStrNoNaN(const Value: Double;
+    ANumberFormat: TsNumberFormat; ANumberFormatStr: String): ansistring;
+  begin
+    Result := '';
+    if not IsNaN(Value) then begin
+      if ANumberFormat = nfTimeInterval then
+        Result := TimeIntervalToString(Value)
+      else
+      if ANumberFormatStr = '' then
+        Result := FormatDateTime('c', Value)
+      else
+        Result := FormatDateTime(ANumberFormatStr, Value);
+    end;
+  end;
+
 var
   ACell: PCell;
-  function FloatToStrNoNaN(const Value: Double): ansistring;
-  begin
-    if IsNan(Value) then Result:='' else Result:=FloatToStr(Value);
-  end;
 begin
   ACell := FindCell(ARow, ACol);
 
@@ -690,17 +775,9 @@ begin
 
   case ACell^.ContentType of
   //cctFormula
-  cctNumber:     Result := FloatToStrNoNaN(ACell^.NumberValue);
+  cctNumber:     Result := FloatToStrNoNaN(ACell^.NumberValue, ACell^.NumberFormat, ACell^.NumberFormatStr);
   cctUTF8String: Result := ACell^.UTF8StringValue;
-  cctDateTime:
-  begin
-    Result := SysUtils.DateToStr(ACell^.DateTimeValue);
-    // User can have specified custom date/time format or one of the other built
-    // in formats that include time. We can't parse all of them so just return
-    // time as well unless absolutely sure we only want a date
-    if ACell^.NumberFormat<>nfShortDate then
-      Result := Result+' ' + SysUtils.TimeToStr(ACell^.DateTimeValue);
-  end;
+  cctDateTime:   Result := DateTimeToStrNoNaN(ACell^.DateTimeValue, ACell^.NumberFormat, ACell^.NumberFormatStr);
   else
     Result := '';
   end;
@@ -839,35 +916,63 @@ end;
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  ANumber   The number to be written
+  @param  AFormat   The format identifier, e.g. nfFixed (optional)
+  @param  ADecimals The number of decimals used for formatting (optional)
 }
-procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double);
+procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
+  AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2);
 var
   ACell: PCell;
+  decs: String;
 begin
   ACell := GetCell(ARow, ACol);
 
   ACell^.ContentType := cctNumber;
   ACell^.NumberValue := ANumber;
+  ACell^.NumberDecimals := ADecimals;
+  if AFormat <> nfGeneral then begin
+    Include(ACell^.UsedFormattingFields, uffNumberFormat);
+    ACell^.NumberFormat := AFormat;
+    decs := DupeString('0', ADecimals);
+    if ADecimals > 0 then decs := '.' + decs;
+    case AFormat of
+      nfFixed:
+        ACell^.NumberFormatStr := '0' + decs;
+      nfFixedTh:
+        ACell^.NumberFormatStr := '#,##0' + decs;
+      nfExp:
+        ACell^.NumberFormatStr := '0' + decs + 'E+00';
+      nfSci:
+        ACell^.NumberFormatStr := '';
+      nfPercentage:
+        ACell^.NumberFormatStr := '0' + decs;
+    end;
+  end;
 end;
 
 {@@
   Writes a date/time value to a determined cell
 
-  @param  ARow      The row of the cell
-  @param  ACol      The column of the cell
-  @param  AValue    The date/time/datetime to be written
+  @param  ARow       The row of the cell
+  @param  ACol       The column of the cell
+  @param  AValue     The date/time/datetime to be written
+  @param  AFormat    The format specifier, e.g. nfShortDate (optional)
+  @param  AFormatStr Format string, used only for nfFmtDateTime.
+                     Must follow the rules for "FormatDateTime", or use
+                     "dm" as abbreviation for "d/mmm", "my" for "mmm/yy",
+                     "ms" for "nn:ss", "msz" for "nn:ss.z" (optional)
 
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) Number, and the cell is formatted
   as a date (either built-in or a custom format).
-  This procedure automatically sets the cell format to short date/time. You may
-  change this format to another date/time format, but changing it to another
-  format (e.g. General) will likely lead to the cell being written out as a
-  plain number.
+
+  Note: custom formats are currently not supported by the writer.
 }
-procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime);
+procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
+  AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
 var
   ACell: PCell;
+  fmt: String;
 begin
   ACell := GetCell(ARow, ACol);
 
@@ -876,11 +981,32 @@ begin
   // Date/time is actually a number field in Excel.
   // To make sure it gets saved correctly, set a date format (instead of General).
   // The user can choose another date format if he wants to
-  if not(uffNumberFormat in ACell^.UsedFormattingFields) or
-    ((uffNumberFormat in ACell^.UsedFormattingFields) and (ACell^.NumberFormat = nfGeneral)) then
-  begin
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormat := nfShortDateTime;
+  Include(ACell^.UsedFormattingFields, uffNumberFormat);
+  ACell^.NumberFormat := AFormat;
+  case AFormat of
+    nfShortDateTime:
+      ACell^.NumberFormatStr := FormatSettings.ShortDateFormat + ' ' + FormatSettings.ShortTimeFormat;
+    nfShortDate:
+      ACell^.NumberFormatStr := FormatSettings.ShortDateFormat;
+    nfShortTime:
+      ACell^.NumberFormatStr := 't';
+    nfLongTime:
+      ACell^.NumberFormatStr := 'tt';
+    nfShortTimeAM:
+      ACell^.NumberFormatStr := 't am/pm';
+    nfLongTimeAM:
+      ACell^.NumberFormatStr := 'tt am/pm';
+    nfFmtDateTime:
+      begin
+        fmt := lowercase(AFormatStr);
+        if fmt = 'dm' then ACell^.NumberFormatStr := 'd/mmm'
+        else if fmt = 'my' then ACell^.NumberFormatSTr := 'mmm/yy'
+        else if fmt = 'ms' then ACell^.NumberFormatStr := 'nn:ss'
+        else if fmt = 'msz' then ACell^.NumberFormatStr := 'nn:ss.z'
+        else ACell^.NumberFormatStr := AFormatStr;
+      end;
+    nfTimeInterval:
+      ACell^.NumberFormatStr := '';
   end;
 end;
 
@@ -1503,8 +1629,16 @@ begin
     if uffBackgroundColor in AFormat^.UsedFormattingFields then
       if (FFormattingStyles[i].BackgroundColor <> AFormat^.BackgroundColor) then Continue;
 
-    if uffNumberFormat in AFormat^.UsedFormattingFields then
+    if uffNumberFormat in AFormat^.UsedFormattingFields then begin
       if (FFormattingStyles[i].NumberFormat <> AFormat^.NumberFormat) then Continue;
+      case AFormat^.NumberFormat of
+        nfFixed, nfFixedTh, nfPercentage, nfExp:
+          if (FFormattingStyles[i].NumberDecimals <> AFormat^.NumberDecimals) then Continue;
+        nfShortDate, nfShortDateTime, nfShortTime, nfLongTime, nfShortTimeAM,
+        nfLongTimeAM, nfFmtDateTime, nfTimeInterval:
+          if (FFormattingstyles[i].NumberFormatStr <> AFormat^.NumberFormatStr) then Continue;
+      end;
+    end;
 
     // If we arrived here it means that the styles match
     Exit(i);
@@ -1734,6 +1868,7 @@ procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
 begin
   // Silently dump the formula; child classes should implement their own support
 end;
+
 
 finalization
 

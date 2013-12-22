@@ -137,10 +137,30 @@ const
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
   { FORMAT record constants }
-  // Just a subset; needed for output to date/time records
-  FORMAT_GENERAL = 0; //general/default format
-  FORMAT_SHORT_DATE = 14; //short date
-  FORMAT_SHORT_DATETIME = 22; //short date+time
+  // Subset of the built-in formats for US Excel, 
+  // including those needed for date/time output
+  FORMAT_GENERAL = 0;             //general/default format
+  FORMAT_FIXED_0_DECIMALS = 1;    //fixed, 0 decimals
+  FORMAT_FIXED_2_DECIMALS = 2;    //fixed, 2 decimals
+  FORMAT_FIXED_THOUSANDS_0_DECIMALS = 3;  //fixed, w/ thousand separator, 0 decs
+  FORMAT_FIXED_THOUSANDS_2_DECIMALS = 4;  //fixed, w/ thousand separator, 2 decs
+  FORMAT_CURRENCY_0_DECIMALS = 5; //currency (with currency symbol), 0 decs
+  FORMAT_CURRENCY_2_DECIMALS = 7; //currency (with currency symbol), 2 decs
+  FORMAT_PERCENT_0_DECIMALS = 9;  //percent, 0 decimals
+  FORMAT_PERCENT_2_DECIMALS = 10; //percent, 2 decimals
+  FORMAT_EXP_2_DECIMALS = 11;     //exponent, 2 decimals
+  FORMAT_SCI_1_DECIMAL = 48;      //scientific, 1 decimal
+  FORMAT_SHORT_DATE = 14;         //short date
+  FORMAT_DATE_DM = 16;            //date D-MMM
+  FORMAT_DATE_MY = 17;            //date MMM-YYYY
+  FORMAT_SHORT_TIME_AM = 18;      //short time H:MM with AM
+  FORMAT_LONG_TIME_AM = 19;       //long time H:MM:SS with AM
+  FORMAT_SHORT_TIME = 20;         //short time H:MM
+  FORMAT_LONG_TIME = 21;          //long time H:MM:SS
+  FORMAT_SHORT_DATETIME = 22;     //short date+time
+  FORMAT_TIME_MS = 45;            //time MM:SS
+  FORMAT_TIME_MSZ = 47;           //time MM:SS.0
+  FORMAT_TIME_INTERVAL = 46;      //time [hh]:mm:ss, hh can be >24
 
 
 type
@@ -190,6 +210,15 @@ type
   public
     constructor Create; override;
   end;
+
+function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsFixedNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsPercentNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
+
+function IsDateFormat(s: String): Boolean;
+function IsTimeFormat(s: String; out isLong, isAMPM, isMillisec: Boolean): Boolean;
+
 
 implementation
 
@@ -465,6 +494,202 @@ begin
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.
   FDateMode := dm1900;
+end;
+
+
+{ Format checking procedures }
+
+{ This simple parsing procedure of the Excel format string checks for a fixed
+  float format s, i.e. s can be '0', '0.00', '000', '0,000', and returns the
+  number of decimals, i.e. number of zeros behind the decimal point }
+function IsFixedNumberFormat(s: String; out Decimals: Word): Boolean;
+var
+  i: Integer;
+  p: Integer;
+  decs: String;
+begin
+  Decimals := 0;
+
+  // Check if s is a valid format mask.
+  try
+    FormatFloat(s, 1.0);
+  except
+    on EConvertError do begin
+      Result := false;
+      exit;
+    end;
+  end;
+
+  // If it is count the zeros - each one is a decimal.
+  if s = '0' then
+    Result := true
+  else begin
+    p := pos('.', s);  // position of decimal point;
+    if p = 0 then begin
+      Result := false;
+    end else begin
+      Result := true;
+      for i:= p+1 to Length(s) do
+        if s[i] = '0' then begin
+          inc(Decimals)
+        end
+        else
+          exit;     // ignore characters after the last 0
+    end;
+  end;
+end;
+
+{ This function checks whether the format string corresponds to a thousand
+  separator format like "#,##0.000' and returns the number of fixed decimals
+  (i.e. zeros after the decimal point) }
+function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
+var
+  i, p: Integer;
+begin
+  Decimals := 0;
+
+  // Check if s is a valid format string
+  try
+    FormatFloat(s, 1.0);
+  except
+    on EConvertError do begin
+      Result := false;
+      exit;
+    end;
+  end;
+
+  // If it is look for the thousand separator. If found count decimals.
+  Result := (Pos(',', s) > 0);
+  if Result then begin
+    p := pos('.', s);
+    if p > 0 then
+      for i := p+1 to Length(s) do
+        if s[i] = '0' then
+          inc(Decimals)
+        else
+          exit;  // ignore format characters after the last 0
+  end;
+end;
+
+
+{ This function checks whether the format string corresponds to percent
+  formatting and determines the number of decimals }
+function IsPercentNumberFormat(s: String; out Decimals: Word): Boolean;
+var
+  i, p: Integer;
+begin
+  Decimals := 0;
+  // The signature of the percent format is a percent sign at the end of the
+  // format string.
+  Result := (s <> '') and (s[Length(s)] = '%');
+  if Result then begin
+    // Check for a valid format string
+    Delete(s, Length(s), 1);
+    try
+      FormatDateTime(s, 1.0);
+    except
+      on EConvertError do begin
+        Result := false;
+        exit;
+      end;
+    end;
+    // Count decimals
+    p := pos('.', s);
+    if p > 0 then
+      for i := p+1 to Length(s)-1 do
+        if s[i] = '0' then
+          inc(Decimals)
+        else
+          exit;  // ignore characters after last 0
+  end;
+end;
+
+{ This function checks whether the format string corresponds to exponential
+  formatting and determines the number decimals  }
+function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
+var
+  i, p, pe: Integer;
+begin
+  Decimals := 0;
+
+  // Check for a valid format string
+  try
+    FormatDateTime(s, 1.0);
+  except
+    on EConvertError do begin
+      Result := false;
+      exit;
+    end;
+  end;
+
+  // Count decimals
+  pe := pos('e', lowercase(s));
+  result := pe > 0;
+  if Result then begin
+    p := pos('.', s);
+    if (p > 0) then begin
+      if p < pe then
+        for i:=1 to pe-1 do
+          if s[i] = '0' then
+            inc(Decimals)
+          else
+            exit;   // ignore characters after last 0
+    end;
+  end;
+end;
+
+{ IsDateFormat checks if the format string s corresponds to a date format }
+function IsDateFormat(s: String): Boolean;
+begin
+  // Day, month, year are separated by a slash
+  Result := (pos('/', s) > 0);
+  if Result then
+    // Check validity of format string
+    try
+      FormatDateTime(s, now);
+    except on EConvertError do
+      Result := false;
+    end;
+end;
+
+{ IsTimeFormat checks if the format string s is a time format. isLong is
+  true if the string contains hours, minutes and seconds (two colons).
+  isAMPM is true if the string contains "AM/PM", "A/P" or "AMPM".
+  isMilliSec is true if the string ends with a "z". }
+function IsTimeFormat(s: String; out isLong, isAMPM, isMillisec: Boolean): Boolean;
+var
+  p, i, count: Integer;
+begin
+  // Time parts are separated by a colon
+  p := pos(':', s);
+  isLong := false;
+  isAMPM := false;
+  result := p > 0;
+
+  if Result then begin
+    count := 1;
+    s := Uppercase(s);
+
+    // If there are is a second colon s is a "long" time format
+    for i:=p+1 to Length(s) do
+      if s[i] = ':' then begin
+        isLong := true;
+        break;
+      end;
+
+    // Seek for "AM/PM" etc to detect that specific format
+    isAMPM := (pos('AM/PM', s) > 0) or (pos('A/P', s) > 0) or (pos('AMPM', s) > 0);
+
+    // Look for the "milliseconds" character z
+    isMilliSec := (s[Length(s)] = 'Z');
+
+    // Check validity of format string
+    try
+      FormatDateTime(s, now);
+    except on EConvertError do
+      Result := false;
+    end;
+  end;
 end;
 
 end.

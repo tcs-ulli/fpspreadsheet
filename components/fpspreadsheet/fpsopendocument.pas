@@ -89,6 +89,7 @@ type
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   end;
 
 implementation
@@ -707,6 +708,16 @@ begin
     '  <table:table-cell office:value-type="float" office:value="' + StrValue + '"' + lStyle + '>' + LineEnding +
     '    <text:p>' + DisplayStr + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
+end;
+
+{
+  Writes the date/time as a text to the sheet.
+  Currently, no formatting code is written.
+}
+procedure TsSpreadOpenDocWriter.WriteDateTime(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+begin
+  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
 end;
 
 {

@@ -118,6 +118,7 @@ type
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     //procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding); this is in xlscommon
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
@@ -873,6 +874,20 @@ begin
 
   { IEE 754 floating-point value }
   AStream.WriteBuffer(AValue, 8);
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF5Writer.WriteDateTime ()
+*
+*  DESCRIPTION:    Writes a date/time value as a string
+*
+*                  No further formatting of the date
+*
+*******************************************************************}
+procedure TsSpreadBIFF5Writer.WriteDateTime(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+begin
+  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
 end;
 
 {*******************************************************************

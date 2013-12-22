@@ -75,6 +75,7 @@ type
     //todo: add WriteDate
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   end;
 
 implementation
@@ -515,6 +516,16 @@ begin
   CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
    Format('    <c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]) + LineEnding;
+end;
+
+{
+  Writes the date/time as a text to the sheet.
+  No further formatting applied.
+}
+procedure TsSpreadOOXMLWriter.WriteDateTime(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+begin
+  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
 end;
 
 {

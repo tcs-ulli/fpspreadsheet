@@ -22,7 +22,7 @@ uses
 
 var
   // Norm to test against - list of dates/times that should occur in spreadsheet
-  SollDates: array[0..11] of TDateTime; //"Soll" is a German word in Dutch accountancy circles meaning "normative value to check against". There ;)
+  SollDates: array[0..37] of TDateTime; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollDates;
@@ -53,6 +53,32 @@ type
     procedure TestReadDate9;
     procedure TestReadDate10;
     procedure TestReadDate11;
+    procedure TestReadDate12;
+    procedure TestReadDate13;
+    procedure TestReadDate14;
+    procedure TestReadDate15;
+    procedure TestReadDate16;
+    procedure TestReadDate17;
+    procedure TestReadDate18;
+    procedure TestReadDate19;
+    procedure TestReadDate20;
+    procedure TestReadDate21;
+    procedure TestReadDate22;
+    procedure TestReadDate23;
+    procedure TestReadDate24;
+    procedure TestReadDate25;
+    procedure TestReadDate26;
+    procedure TestReadDate27;
+    procedure TestReadDate28;
+    procedure TestReadDate29;
+    procedure TestReadDate30;
+    procedure TestReadDate31;
+    procedure TestReadDate32;
+    procedure TestReadDate33;
+    procedure TestReadDate34;
+    procedure TestReadDate35;
+    procedure TestReadDate36;
+    procedure TestReadDate37;
     procedure TestReadDate1899_0; //same as above except with the 1899/1900 date system set
     procedure TestReadDate1899_1;
     procedure TestReadDate1899_2;
@@ -65,6 +91,32 @@ type
     procedure TestReadDate1899_9;
     procedure TestReadDate1899_10;
     procedure TestReadDate1899_11;
+    procedure TestReadDate1899_12;
+    procedure TestReadDate1899_13;
+    procedure TestReadDate1899_14;
+    procedure TestReadDate1899_15;
+    procedure TestReadDate1899_16;
+    procedure TestReadDate1899_17;
+    procedure TestReadDate1899_18;
+    procedure TestReadDate1899_19;
+    procedure TestReadDate1899_20;
+    procedure TestReadDate1899_21;
+    procedure TestReadDate1899_22;
+    procedure TestReadDate1899_23;
+    procedure TestReadDate1899_24;
+    procedure TestReadDate1899_25;
+    procedure TestReadDate1899_26;
+    procedure TestReadDate1899_27;
+    procedure TestReadDate1899_28;
+    procedure TestReadDate1899_29;
+    procedure TestReadDate1899_30;
+    procedure TestReadDate1899_31;
+    procedure TestReadDate1899_32;
+    procedure TestReadDate1899_33;
+    procedure TestReadDate1899_34;
+    procedure TestReadDate1899_35;
+    procedure TestReadDate1899_36;
+    procedure TestReadDate1899_37;
   end;
 
   { TSpreadWriteReadDateTests }
@@ -109,6 +161,36 @@ begin
   SollDates[9]:=EncodeTime(18,0,0,0);
   SollDates[10]:=EncodeTime(23,59,0,0);
   SollDates[11]:=EncodeTime(23,59,59,0);
+
+  SollDates[12]:=SollDates[1];  // #1 formatted as nfShortDateTime
+  SollDates[13]:=SollDates[1];  // #1 formatted as nfShortTime
+  SollDates[14]:=SollDates[1];  // #1 formatted as nfLongTime
+  SollDates[15]:=SollDates[1];  // #1 formatted as nfShortTimeAM
+  SollDates[16]:=SollDates[1];  // #1 formatted as nfLongTimeAM
+  SollDates[17]:=SollDates[1];  // #1 formatted as nfFmtDateTime dm
+  SollDates[18]:=SollDates[1];  // #1 formatted as nfFmtDateTime my
+  SollDates[19]:=SollDates[1];  // #1 formatted as nfFmtDateTime ms
+
+  SollDates[20]:=SollDates[5];  // #5 formatted as nfShortDateTime
+  SollDates[21]:=SollDates[5];  // #5 formatted as nfShortTime
+  SollDates[22]:=SollDates[5];  // #5 formatted as nfLongTime
+  SollDates[23]:=SollDates[5];  // #5 formatted as nfShortTimeAM
+  SollDates[24]:=SollDates[5];  // #5 formatted as nfLongTimeAM
+  SollDates[25]:=SollDates[5];  // #5 formatted as nfFmtDateTime dm
+  SollDates[26]:=SollDates[5];  // #5 formatted as nfFmtDateTime my
+  SollDates[27]:=SollDates[5];  // #5 formatted as nfFmtDateTime ms
+
+  SollDates[28]:=SollDates[11];  // #11 formatted as nfShortDateTime
+  SollDates[29]:=SollDates[11];  // #11 formatted as nfShortTime
+  SollDates[30]:=SollDates[11];  // #11 formatted as nfLongTime
+  SollDates[31]:=SollDates[11];  // #11 formatted as nfShortTimeAM
+  SollDates[32]:=SollDates[11];  // #11 formatted as nfLongTimeAM
+  SollDates[33]:=SollDates[11];  // #11 formatted as nfFmtDateTime dm
+  SollDates[34]:=SollDates[11];  // #11 formatted as nfFmtDateTime my
+  SollDates[35]:=SollDates[11];  // #11 formatted as nfFmtDateTime ms
+
+  SollDates[36]:=EncodeTime(3,45,12,0);     // formatted as nfTimeDuration
+  SollDates[37]:=EncodeTime(3,45,12,0) + 1  // formatted as nfTimeDuration
 end;
 
 { TSpreadWriteReadDateTests }
@@ -270,6 +352,136 @@ begin
   TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,11);
 end;
 
+procedure TSpreadReadDateTests.TestReadDate12;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,12);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate13;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,13);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate14;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,14);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate15;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,15);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate16;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,16);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate17;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,17);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate18;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,18);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate19;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,19);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate20;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,20);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate21;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,21);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate22;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,22);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate23;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,23);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate24;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,24);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate25;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,25);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate26;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,26);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate27;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,27);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate28;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,28);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate29;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,29);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate30;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,30);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate31;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,31);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate32;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,32);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate33;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,33);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate34;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,34);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate35;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,35);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate36;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,36);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate37;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,37);
+end;
+
 procedure TSpreadReadDateTests.TestReadDate1899_0;
 begin
   TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,0);
@@ -328,6 +540,136 @@ end;
 procedure TSpreadReadDateTests.TestReadDate1899_11;
 begin
   TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,11);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_12;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,12);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_13;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,13);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_14;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,14);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_15;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,15);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_16;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,16);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_17;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,17);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_18;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,18);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_19;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,19);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_20;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,20);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_21;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,21);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_22;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,22);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_23;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,23);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_24;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,24);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_25;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,25);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_26;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,26);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_27;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,27);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_28;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,28);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_29;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,29);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_30;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,30);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_31;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,31);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_32;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,32);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_33;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,33);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_34;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,34);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_35;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,35);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_36;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,36);
+end;
+
+procedure TSpreadReadDateTests.TestReadDate1899_37;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,37);
 end;
 
 
