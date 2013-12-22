@@ -22,7 +22,7 @@ uses
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
-  SollStrings: array[0..6] of string; //"Soll" is a German word in Dutch accountancy circles meaning "normative value to check against". There ;)
+  SollStrings: array[0..12] of string; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollStrings;
@@ -48,6 +48,12 @@ type
     procedure TestReadString4;
     procedure TestReadString5;
     procedure TestReadString6;
+    procedure TestReadString7;
+    procedure TestReadString8;
+    procedure TestReadString9;
+    procedure TestReadString10;
+    procedure TestReadString11;
+    procedure TestReadString12;
   end;
 
   { TSpreadWriteReadStringTests }
@@ -84,6 +90,12 @@ begin
   SollStrings[4]:='café au lait'; //accent aigue on the e
   SollStrings[5]:='водка'; //cyrillic
   SollStrings[6]:='wódka'; //Polish o accent aigue
+  SollStrings[7]:='35%';  // 0.3536 formatted as percentage, no decimals
+  SollStrings[8]:=FormatFloat('0.00', 35.36)+'%';  // 0.3536 formatted as percentage, 2 decimals
+  SollStrings[9]:=FormatFloat('#,##0', 59000000.1234);  // 59 million + 0.1234 formatted with thousand separator, no decimals
+  SollStrings[10]:=FormatFloat('#,##0.00', 59000000.1234);  // 59 million + 0.1234 formatted with thousand separator, 2 decimals
+  SollStrings[11]:=SciFloat(-59000000.1234, 1); // minus 59 million + 0.1234, formatted as "scientific" with 1 decimal
+  SollStrings[12]:=FormatFloat('0.00E+00', -59000000.1234); // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
 end;
 
 { TSpreadWriteReadStringTests }
@@ -317,6 +329,37 @@ procedure TSpreadReadStringTests.TestReadString6;
 begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,6);
 end;
+
+procedure TSpreadReadStringTests.TestReadString7;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,7);
+end;
+
+procedure TSpreadReadStringTests.TestReadString8;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,8);
+end;
+
+procedure TSpreadReadStringTests.TestReadString9;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,9);
+end;
+
+procedure TSpreadReadStringTests.TestReadString10;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,10);
+end;
+
+procedure TSpreadReadStringTests.TestReadString11;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,11);
+end;
+
+procedure TSpreadReadStringTests.TestReadString12;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,12);
+end;
+
 
 initialization
   // Register so these tests are included in a full run

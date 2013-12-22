@@ -87,10 +87,12 @@ type
     FXFList: TFPList; // of TXFRecordData
     FFormatList: TFPList; // of TFormatRecordData
     function DecodeRKValue(const ARK: DWORD): Double;
+    procedure ExtractNumberFormat(AXFIndex: WORD;
+      out ANumberFormat: TsNumberFormat; out ADecimals: Word;
+      out ANumberFormatStr: String);
     // Tries to find if a number cell is actually a date/datetime/time cell
     // and retrieve the value
-    function IsDate(Number: Double; ARow: WORD;
-      ACol: WORD; AXFIndex: WORD; var ADateTime: TDateTime): boolean;
+    function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): Boolean;
     function ReadWideString(const AStream: TStream; const ALength: WORD): WideString; overload;
     function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
@@ -350,6 +352,7 @@ var
   lBorders: TsCellBorders;
   lAddBackground: Boolean;
   lBackgroundColor: TsColor;
+  fmt: String;
 begin
   // The first 4 styles were already added
   for i := 4 to Length(FFormattingStyles) - 1 do
@@ -364,13 +367,63 @@ begin
 
     // Now apply the modifications.
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
-    begin
       case FFormattingStyles[i].NumberFormat of
-      nfGeneral:       lFormatIndex := FORMAT_GENERAL;
-      nfShortDate:     lFormatIndex := FORMAT_SHORT_DATE;
-      nfShortDateTime: lFormatIndex := FORMAT_SHORT_DATETIME;
+        nfFixed:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_FIXED_0_DECIMALS;
+            2: lFormatIndex := FORMAT_FIXED_2_DECIMALS;
+          end;
+        nfFixedTh:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_FIXED_THOUSANDS_0_DECIMALS;
+            2: lFormatIndex := FORMAT_FIXED_THOUSANDS_2_DECIMALS;
+          end;
+        nfExp:
+          lFormatIndex := FORMAT_EXP_2_DECIMALS;
+        nfSci:
+          lFormatIndex := FORMAT_SCI_1_DECIMAL;
+        nfPercentage:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_PERCENT_0_DECIMALS;
+            2: lFormatIndex := FORMAT_PERCENT_2_DECIMALS;
+          end;
+        {
+        nfCurrency:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_CURRENCY_0_DECIMALS;
+            2: lFormatIndex := FORMAT_CURRENCY_2_DECIMALS;
+          end;
+        }
+        nfShortDate:
+          lFormatIndex := FORMAT_SHORT_DATE;
+        nfShortTime:
+          lFormatIndex := FORMAT_SHORT_TIME;
+        nfLongTime:
+          lFormatIndex := FORMAT_LONG_TIME;
+        nfShortTimeAM:
+          lFormatIndex := FORMAT_SHORT_TIME_AM;
+        nfLongTimeAM:
+          lFormatIndex := FORMAT_LONG_TIME_AM;
+        nfShortDateTime:
+          lFormatIndex := FORMAT_SHORT_DATETIME;
+        nfFmtDateTime:
+          begin
+            fmt := lowercase(FFormattingStyles[i].NumberFormatStr);
+            if (fmt = 'dm') or (fmt = 'd-mmm') or (fmt = 'd mmm') or (fmt = 'd. mmm') or (fmt = 'd/mmm') then
+              lFormatIndex := FORMAT_DATE_DM
+            else
+            if (fmt = 'my') or (fmt = 'mmm-yy') or (fmt = 'mmm yy') or (fmt = 'mmm/yy') then
+              lFormatIndex := FORMAT_DATE_MY
+            else
+            if (fmt = 'ms') or (fmt = 'nn:ss') or (fmt = 'mm:ss') then
+              lFormatIndex := FORMAT_TIME_MS
+            else
+            if (fmt = 'msz') or (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or (fmt = 'mm:ss.0') or (fmt = 'mm:ss.z') or (fmt = 'nn:ss.z') then
+              lFormatIndex := FORMAT_TIME_MSZ
+          end;
+        nfTimeInterval:
+          lFormatIndex := FORMAT_TIME_INTERVAL;
       end;
-    end;
 
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
       lBorders := FFormattingStyles[i].Border;
@@ -1451,47 +1504,127 @@ begin
   Result:=Number;
 end;
 
-function TsSpreadBIFF8Reader.IsDate(Number: Double;
-  ARow: WORD; ACol: WORD; AXFIndex: WORD; var ADateTime: TDateTime): boolean;
-// Try to find out if a cell has a date/time and return
-// TheDate if it is
+procedure TsSpreadBIFF8Reader.ExtractNumberFormat(AXFIndex: WORD;
+  out ANumberFormat: TsNumberFormat; out ADecimals: Word;
+  out ANumberFormatStr: String);
+const
+  { see ➜ 5.49 }
+  NOT_USED = nfGeneral;
+  fmts: array[1..58] of TsNumberFormat = (
+    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
+    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
+    nfExp, NOT_USED, NOT_USED, nfShortDate, nfShortDate,             // 11..15
+    nfFmtDateTime, nfFmtDateTime, nfShortTimeAM, nfLongTimeAM, nfShortTime, // 16..20
+    nfLongTime, nfShortDateTime, NOT_USED, NOT_USED, NOT_USED,       // 21..25
+    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 26..30
+    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 31..35
+    NOT_USED, nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh,            // 36..40
+    nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh, nfFmtDateTime,       // 41..45
+    nfTimeInterval, nfFmtDateTime, nfSci, NOT_USED, NOT_USED,        // 46..50
+    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 51..55
+    NOT_USED, NOT_USED, NOT_USED                                     // 56..58
+  );
+  decs: array[1..58] of word = (
+    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
+    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 11..20
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 21..30
+    0, 0, 0, 0, 0, 0, 0, 0, 2, 2,     // 31..40
+    0, 0, 2, 2, 0, 3, 0, 1, 0, 0,     // 41..50    #48 is "scientific", use "exponential" instead
+    0, 0, 0, 0, 0, 0, 0, 0);          // 51..58
 var
   lFormatData: TFormatRecordData;
   lXFData: TXFRecordData;
+  isAMPM: Boolean;
+  isLongTime: Boolean;
+  isMilliSec: Boolean;
+  t,d: Boolean;
 begin
-  result := false;
-  // Try to figure out if the number is really a number of a date or time value
-  // See: http://www.gaia-gis.it/FreeXL/freexl-1.0.0a-doxy-doc/Format.html
-  // Unfornately Excel doesnt give us a direct way to find this,
-  // we need to guess by the FORMAT field
-  // Note FindFormatRecordForCell will not retrieve default format numbers
+  ANumberFormat := nfGeneral;
+  ANumberFormatStr := '';
+  ADecimals := 0;
+
   lFormatData := FindFormatRecordForCell(AXFIndex);
   {Record FORMAT, BIFF8 (5.49):
   Offset Size Contents
        0    2 Format index used in other records
   }
 
-  if lFormatData=nil then
-  begin
-    // No custom format, so first test for default formats
-    lXFData := TXFRecordData(FXFList.Items[AXFIndex]);
-    if (lXFData.FormatIndex in [14..22, 27..36, 45, 46, 47, 50..58]) then
-    begin
-      ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode);
-      Exit(true);
+  if lFormatData = nil then begin
+    // no custom format, so first test for default formats
+    lXFData := TXFRecordData (FXFList.Items[AXFIndex]);
+    case lXFData.FormatIndex of
+      FORMAT_DATE_DM:
+        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'DM'; end;
+      FORMAT_DATE_MY:
+        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MY'; end;
+      FORMAT_TIME_MS:
+        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MS'; end;
+      FORMAT_TIME_MSZ:
+        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MSZ'; end;
+      else
+        if (lXFData.FormatIndex > 0) and (lXFData.FormatIndex <= 58) then begin
+          ANumberFormat := fmts[lXFData.FormatIndex];
+          ADecimals := decs[lXFData.FormatIndex];
+        end;
     end;
-  end
+  end else
+  // Check custom formats if they have / in format string (this can fail for
+  // custom text formats)
+  if IsPercentNumberFormat(lFormatData.FormatString, ADecimals) then
+    ANumberFormat := nfPercentage
   else
-  begin
-    // Check custom formats if they
-    // have / in format string (this can fail for custom text formats)
-    if (Pos('/', lFormatData.FormatString) > 0) then
-    begin
-      ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode);
-      Exit(true);
+  if IsExpNumberFormat(lFormatData.Formatstring, ADecimals) then
+    ANumberFormat := nfExp
+  else
+  if IsThousandSepNumberFormat(lFormatData.FormatString, ADecimals) then
+    ANumberFormat := nfFixedTh
+  else
+  if IsFixedNumberFormat(lFormatData.FormatString, ADecimals) then
+    ANumberFormat := nfFixed
+  else begin
+    t := IsTimeFormat(lFormatData.FormatString, isLongTime, isAMPM, isMilliSec);
+    d := IsDateFormat(lFormatData.FormatString);
+    if d and t then
+      ANumberFormat := nfShortDateTime
+    else
+    if d then
+      ANumberFormat := nfShortDate
+    else
+    if t then begin
+      if isAMPM then begin
+        if isLongTime then
+          ANumberFormat := nfLongTimeAM
+        else
+          ANumberFormat := nfShortTimeAM;
+      end else begin
+        if isLongTime then
+          ANumberFormat := nfLongTime
+        else
+          ANumberFormat := nfShortTime;
+      end;
     end;
   end;
-  ADateTime := 0;
+end;
+
+function TsSpreadBIFF8Reader.IsDateTime(Number: Double;
+  ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): boolean;
+// Convert the number to a date/time and return that if it is
+begin
+  if ANumberFormat in [
+    nfShortDateTime, nfFmtDateTime, nfShortDate,
+    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM] then
+  begin
+    ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode);
+    Result := true;
+  end else
+  if ANumberFormat = nfTimeInterval then begin
+    ADateTime := Number;
+    Result := true;
+  end else
+  begin
+    ADateTime := 0;
+    Result := false;
+  end;
 end;
 
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
@@ -1718,6 +1851,9 @@ var
   ARow, ACol, XF: WORD;
   lDateTime: TDateTime;
   Number: Double;
+  nf: TsNumberFormat;    // Number format
+  nd: word;              // decimals
+  nfs: String;           // Number format string
 begin
   {Retrieve XF record, row and column}
   ReadRowColXF(AStream,ARow,ACol,XF);
@@ -1729,10 +1865,11 @@ begin
   Number:=DecodeRKValue(RK);
 
   {Find out what cell type, set contenttype and value}
-  if IsDate(Number, ARow, ACol, XF, lDateTime) then
-    FWorksheet.WriteDateTime(ARow, ACol, lDateTime)
+  ExtractNumberFormat(XF, nf, nd, nfs);
+  if IsDateTime(Number, nf, lDateTime) then
+    FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow,ACol,Number);
+    FWorksheet.WriteNumber(ARow, ACol, Number, nf);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadMulRKValues(const AStream: TStream);
@@ -1742,6 +1879,9 @@ var
   Pending: integer;
   RK: DWORD;
   Number: Double;
+  nf: TsNumberFormat;
+  nd: word;
+  nfs: String;
 begin
   ARow:=WordLEtoN(AStream.ReadWord);
   fc:=WordLEtoN(AStream.ReadWord);
@@ -1751,10 +1891,11 @@ begin
     RK:=DWordLEtoN(AStream.ReadDWord);
     Number:=DecodeRKValue(RK);
     {Find out what cell type, set contenttype and value}
-    if IsDate(Number, ARow, fc, XF, lDateTime) then
-      FWorksheet.WriteDateTime(ARow, fc, lDateTime)
+    ExtractNumberFormat(XF, nf, nd, nfs);
+    if IsDateTime(Number, nf, lDateTime) then
+      FWorksheet.WriteDateTime(ARow, fc, lDateTime, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow,fc,Number);
+      FWorksheet.WriteNumber(ARow, fc, Number, nf, nd);
     inc(fc);
     dec(Pending,(sizeof(XF)+sizeof(RK)));
   end;
@@ -1941,6 +2082,9 @@ var
   ARow, ACol, XF: Word;
   AValue: Double;
   lDateTime: TDateTime;
+  nf: TsNumberFormat;
+  nd: word;
+  nfs: String;
 begin
   {Retrieve XF record, row and column}
   ReadRowColXF(AStream,ARow,ACol,XF);
@@ -1949,10 +2093,11 @@ begin
   AStream.ReadBuffer(AValue, 8);
 
   {Find out what cell type, set contenttype and value}
-  if IsDate(AValue, ARow, ACol, XF, lDateTime) then
-    FWorksheet.WriteDateTime(ARow, ACol, lDateTime)
+  ExtractNumberFormat(XF, nf, nd, nfs);
+  if IsDateTime(AValue, nf, lDateTime) then
+    FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow,ACol,AValue);
+    FWorksheet.WriteNumber(ARow,ACol,AValue,nf,nd);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);

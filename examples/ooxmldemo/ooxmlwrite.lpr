@@ -33,7 +33,7 @@ begin
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);
 
-// Uncommend this to test large XLS files
+// Uncomment this to test large XLS files
   for i := 2 to 2{20} do
   begin
     MyWorksheet.WriteUTF8Text(i, 0, ParamStr(0));
@@ -60,6 +60,9 @@ begin
   MyWorksheet.WriteUTF8Text(0, 1, 'Second');
   MyWorksheet.WriteUTF8Text(0, 2, 'Third');
   MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');
+
+  // Write current date/time
+  MyWorksheet.WriteDateTime(0, 5, now);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML);

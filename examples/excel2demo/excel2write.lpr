@@ -55,8 +55,11 @@ begin
   MyWorksheet.WriteUTF8Text(1, 2, 'Third');
   MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
 
+  // Write current date/time
+  MyWorksheet.WriteDateTime(2, 0, now);
+
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2);
+  MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);
   MyWorkbook.Free;
 end.
 

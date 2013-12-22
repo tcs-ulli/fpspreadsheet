@@ -10,7 +10,7 @@ uses
   testregistry,
   testdbwriter {used to get results into db},
   datetests, manualtests, numberstests, stringtests, internaltests,
-  testsutility, testutils {the actual tests};
+  testsutility, testutils, formattests {the actual tests};
 
 const
   ShortOpts = 'ac:dhlpr:x';

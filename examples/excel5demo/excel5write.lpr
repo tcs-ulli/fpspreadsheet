@@ -10,8 +10,7 @@ program excel5write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff5,
-  laz_fpspreadsheet, fpsconvencoding;
+  Classes, SysUtils, fpspreadsheet, xlsbiff5;
 
 const
   Str_First = 'First';
@@ -40,9 +39,12 @@ begin
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
   MyWorksheet.WriteUTF8Text(4, 2, Str_Total);// C5
-  MyWorksheet.WriteNumber(4, 3, 10);        // D5
+  MyWorksheet.WriteNumber(4, 3, 10);         // D5
 
-{ Uncommend this to test large XLS files
+  // Write current date/time
+  MyWorksheet.WriteDateTime(5, 0, now);
+
+{ Uncomment this to test large XLS files
   for i := 2 to 20 do
   begin
     MyWorksheet.WriteAnsiText(i, 0, ParamStr(0));
@@ -83,7 +85,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel5, False);
+  MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel5, true);
   MyWorkbook.Free;
 end.
 

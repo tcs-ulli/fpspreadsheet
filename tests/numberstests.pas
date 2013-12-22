@@ -22,7 +22,7 @@ uses
 
 var
   // Norm to test against - list of numbers/times that should occur in spreadsheet
-  SollNumbers: array[0..12] of double; //"Soll" is a German word in Dutch accountancy circles meaning "normative value to check against". There ;)
+  SollNumbers: array[0..20] of double; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollNumbers;
@@ -53,6 +53,14 @@ type
     procedure TestReadNumber9;
     procedure TestReadNumber10;
     procedure TestReadNumber11;
+    procedure TestReadNumber12;
+    procedure TestReadNumber13;
+    procedure TestReadNumber14;
+    procedure TestReadNumber15;
+    procedure TestReadNumber16;
+    procedure TestReadNumber17;
+    procedure TestReadNumber18;
+    procedure TestReadNumber19;
   end;
 
   { TSpreadWriteReadNumberTests }
@@ -98,6 +106,14 @@ begin
   SollNumbers[10]:=3.14159265358979; //some parts of pi
   SollNumbers[11]:=59000000; //59 million
   SollNumbers[12]:=59000000.1; //same + a tenth
+  SollNumbers[13]:=0.3536;  // 0.3536 formatted as percentage, no decimals
+  SollNumbers[14]:=0.3536;  // 0.3536 formatted as percentage, 2 decimals
+  SollNumbers[15]:=59000000.1234;  // 59 million + 0.1234 formatted with thousand separator, no decimals
+  SollNumbers[16]:=59000000.1234;  // 59 million + 0.1234 formatted with thousand separator, 2 decimals
+  SollNumbers[17]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "scientific" with 1 decimal
+  SollNumbers[18]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
+  SollNumbers[19]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (EUROs), 2 decimals
+  SollNumbers[20]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (Dollars), 2 decimals
 end;
 
 { TSpreadWriteReadNumberTests }
@@ -250,6 +266,46 @@ end;
 procedure TSpreadReadNumberTests.TestReadNumber11;
 begin
   TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,11);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber12;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,12);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber13;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,13);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber14;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,14);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber15;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,15);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber16;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,16);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber17;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,17);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber18;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,16);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber19;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,17);
 end;
 
 
