@@ -131,10 +131,10 @@ begin
   MyWorksheet.WriteNumber(30, 4, -1.0/number, nfExp, 2);
 
   number := 1.333333333;
-  MyWorksheet.WriteUTF8Text(35, 0, 'nfPercent, 0 decs');
-  MyWorksheet.WriteNumber(35, 1, number, nfPercent, 0);
-  MyWorksheet.WriteUTF8Text(36, 0, 'nfPercent, 2 decs');
-  MyWorksheet.WriteNumber(36, 1, number, nfPercent, 2);
+  MyWorksheet.WriteUTF8Text(35, 0, 'nfPercentage, 0 decs');
+  MyWorksheet.WriteNumber(35, 1, number, nfPercentage, 0);
+  MyWorksheet.WriteUTF8Text(36, 0, 'nfPercentage, 2 decs');
+  MyWorksheet.WriteNumber(36, 1, number, nfPercentage, 2);
   MyWorksheet.WriteUTF8Text(37, 0, 'nfTimeInterval');
   MyWorksheet.WriteDateTime(37, 1, number, nfTimeInterval);
 
