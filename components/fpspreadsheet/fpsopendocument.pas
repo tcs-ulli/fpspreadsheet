@@ -712,17 +712,26 @@ end;
 {*******************************************************************
 *  TsSpreadOpenDocWriter.WriteDateTime ()
 *
-*  DESCRIPTION:    Writes a date/time value as a text
-*                  ISO 8601 format is used to preserve interoperability
-*                  between locales.
+*  DESCRIPTION:    Writes a date/time value
 *
-*  Note: this should be replaced by writing actual date/time values
 *
 *******************************************************************}
 procedure TsSpreadOpenDocWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+var
+  lStyle: string = '';
+  lIndex: Integer;
 begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
+  if ACell^.UsedFormattingFields <> [] then
+  begin
+    lIndex := FindFormattingInList(ACell);
+    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+  end;
+
+  // The row should already be the correct one
+  FContent := FContent +
+    '  <table:table-cell office:value-type="date" office:date-value="' + FormatDateTime(ISO8601FormatExtended, AValue) + '"' + lStyle + '>' + LineEnding +
+    '  </table:table-cell>' + LineEnding;
 end;
 
 {
