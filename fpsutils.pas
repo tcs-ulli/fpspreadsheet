@@ -18,6 +18,8 @@ const
   // Date formatting string for unambiguous date/time display as strings
   // Can be used for text output when date/time cell support is not available
   ISO8601Format='yyyymmdd"T"hhmmss';
+  // Extended ISO 8601 date/time format, used in e.g. ODF/opendocument
+  ISO8601FormatExtended='yyyy"-"mm"-"dd"T"hh":"mm":"ss';
 
 // Endianess helper functions
 function WordToLE(AValue: Word): Word;
