@@ -3,6 +3,9 @@ unit formattests;
 {$mode objfpc}{$H+}
 
 interface
+//todo: look at getting read tests from existing xls cells
+//todo: date/time sheet name is confusing=>already existing date sheet 'Dates'
+//todo: add incorrect/out of range values for testing
 
 uses
   // Not using lazarus package as the user may be working with multiple versions

@@ -412,14 +412,16 @@ end;
 *  TsSpreadBIFF2Writer.WriteDateTime ()
 *
 *  DESCRIPTION:    Writes a date/time value as a text
+*                  ISO 8601 format is used to preserve interoperability
+*                  between locales.
 *
-*                  No further formatting applied.
+*  Note: this should be replaced by writing actual date/time values
 *
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
+  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
 end;
 
 

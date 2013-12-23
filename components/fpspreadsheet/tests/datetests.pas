@@ -29,10 +29,10 @@ var
 
 type
   { TSpreadReadDateTests }
-  // Read from xls/xml file with known values
+  // Read from xls/xml file with known values to test interoperability with Excel/LibreOffice/OpenOffice
   TSpreadReadDateTests= class(TTestCase)
   private
-    // Tries to read date in column A, specified (0-based) row
+    // Tries to read date from the external file in column A, specified (0-based) row
     procedure TestReadDate(FileName: string; Row: integer);
   protected
     // Set up expected values:

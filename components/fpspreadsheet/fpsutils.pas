@@ -1,5 +1,5 @@
 {
-  Utility functions from FPSpreadsheet
+  Utility functions and constants from FPSpreadsheet
 }
 unit fpsutils;
 
@@ -13,6 +13,11 @@ uses
 // Exported types
 type
   TsSelectionDirection = (fpsVerticalSelection, fpsHorizontalSelection);
+
+const
+  // Date formatting string for unambiguous date/time display as strings
+  // Can be used for text output when date/time cell support is not available
+  ISO8601Format='yyyymmdd"T"hhmmss';
 
 // Endianess helper functions
 function WordToLE(AValue: Word): Word;
