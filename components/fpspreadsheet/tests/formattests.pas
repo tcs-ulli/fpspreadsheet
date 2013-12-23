@@ -50,8 +50,8 @@ type
 implementation
 
 const
-  FmtNumbersSheet = 'Numbers';
-  FmtDateTimesSheet = 'Date/Times';
+  FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
+  FmtDateTimesSheet = 'DateTimesFormat';
 
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
