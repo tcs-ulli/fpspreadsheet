@@ -85,7 +85,6 @@ type
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
-    //todo: add WriteDate
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
@@ -710,14 +709,20 @@ begin
     '  </table:table-cell>' + LineEnding;
 end;
 
-{
-  Writes the date/time as a text to the sheet.
-  Currently, no formatting code is written.
-}
+{*******************************************************************
+*  TsSpreadOpenDocWriter.WriteDateTime ()
+*
+*  DESCRIPTION:    Writes a date/time value as a text
+*                  ISO 8601 format is used to preserve interoperability
+*                  between locales.
+*
+*  Note: this should be replaced by writing actual date/time values
+*
+*******************************************************************}
 procedure TsSpreadOpenDocWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
+  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
 end;
 
 {

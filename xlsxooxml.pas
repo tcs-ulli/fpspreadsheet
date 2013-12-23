@@ -37,7 +37,7 @@ uses
   fpszipper,
   {$ENDIF}
   {xmlread, DOM,} AVL_Tree,
-  fpspreadsheet;
+  fpspreadsheet, fpsutils;
   
 type
 
@@ -518,14 +518,20 @@ begin
    Format('    <c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]) + LineEnding;
 end;
 
-{
-  Writes the date/time as a text to the sheet.
-  No further formatting applied.
-}
+{*******************************************************************
+*  TsSpreadOOXMLWriter.WriteDateTime ()
+*
+*  DESCRIPTION:    Writes a date/time value as a text
+*                  ISO 8601 format is used to preserve interoperability
+*                  between locales.
+*
+*  Note: this should be replaced by writing actual date/time values
+*
+*******************************************************************}
 procedure TsSpreadOOXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime('c', AValue), ACell);
+  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
 end;
 
 {
