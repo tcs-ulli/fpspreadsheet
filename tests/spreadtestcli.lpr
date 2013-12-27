@@ -166,8 +166,6 @@ begin
 end;
 
 procedure TTestRunner.DoRun;
-const
-  RepeatInterval=10;
 var
   FoundTest: boolean;
   I : Integer;
