@@ -133,7 +133,9 @@ type
 
   TsCellBorders = set of TsCellBorder;
 
-  {@@ Colors in FPSpreadsheet as given by a palette to be compatible with Excel }
+  {@@ Colors in FPSpreadsheet as given by a palette to be compatible with Excel.
+   However, please note that they are physically written to XLS file as
+   ABGR (where A is 0) }
 
   TsColor = (   // R G B  color value:
     scBlack ,   // 000000H
@@ -1727,6 +1729,8 @@ begin
 end;
 
 function TsCustomSpreadWriter.FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
+{ We use RGB bytes here, but please note that these are physically written
+  to XLS file as ABGR (where A is 0) }
 begin
   case AColor of
   scBlack:    Result := '000000';
@@ -1749,10 +1753,10 @@ begin
   scGrey10pct:Result := 'E6E6E6';
   scGrey20pct:Result := 'CCCCCC';
   scOrange:   Result := 'FFA500';
-  scDarkBrown:Result := 'a0522d';
-  scBrown:    Result := 'cd853f';
-  scBeige:    Result := 'f5f5dc';
-  scWheat:    Result := 'f5deb3';
+  scDarkBrown:Result := 'A0522D';
+  scBrown:    Result := 'CD853F';
+  scBeige:    Result := 'F5F5DC';
+  scWheat:    Result := 'F5DEB3';
   //
   scRGBCOLOR: Result := Format('%x%x%x', [ARGBColor.Red div $100, ARGBColor.Green div $100, ARGBColor.Blue div $100]);
   end;

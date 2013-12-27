@@ -133,6 +133,8 @@ type
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
+    // Convert our representation of RGB color to physical ARGB in Excel file
+    function LongRGBToExcelPhysical(const RGB: DWord): DWord;
     // Writes index to XF record according to cell's formatting
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
@@ -287,6 +289,24 @@ const
 }
 
 { TsSpreadBIFF8Writer }
+
+function TsSpreadBIFF8Writer.LongRGBToExcelPhysical(const RGB: DWord): DWord;
+// Converts RGB part of a LongRGB logical structure
+// to its physical representation
+// IOW: RGBA (where A is 0 and omitted in the function call) => ABGR
+begin
+  {$IFDEF FPC}
+  {$IFDEF ENDIAN_LITTLE}
+  result:=(RGB shl 8); //tags $00 at end for the A byte
+  result:=NtoBE(LEtoN(result)); //flip byte order
+  {$ELSE}
+  //Big endian
+  result:=RGB; //leave value as is //todo: verify if this turns out ok
+  {$ENDIF}
+  {$ELSE}
+  // messed up result
+  {$ENDIF}
+end;
 
 { Index to XF record, according to formatting }
 procedure TsSpreadBIFF8Writer.WriteXFIndex(AStream: TStream; ACell: PCell);
@@ -1197,71 +1217,70 @@ begin
   AStream.WriteWord(WordToLE(56));
 
   { Now the colors, first the standard 16 from Excel }
-  AStream.WriteDWord(DWordToLE($000000)); // $08
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FF0000));
-  AStream.WriteDWord(DWordToLE($00FF00));
-  AStream.WriteDWord(DWordToLE($0000FF));
-  AStream.WriteDWord(DWordToLE($FFFF00));
-  AStream.WriteDWord(DWordToLE($FF00FF));
-  AStream.WriteDWord(DWordToLE($00FFFF));
-  AStream.WriteDWord(DWordToLE($800000));
-  AStream.WriteDWord(DWordToLE($008000));
-  AStream.WriteDWord(DWordToLE($000080));
-  AStream.WriteDWord(DWordToLE($808000));
-  AStream.WriteDWord(DWordToLE($800080));
-  AStream.WriteDWord(DWordToLE($008080));
-  AStream.WriteDWord(DWordToLE($C0C0C0));
-  AStream.WriteDWord(DWordToLE($808080)); //$17
+  AStream.WriteDWord(LongRGBToExcelPhysical($000000)); // $08
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FF0000));
+  AStream.WriteDWord(LongRGBToExcelPhysical($00FF00));
+  AStream.WriteDWord(LongRGBToExcelPhysical($0000FF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFF00));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FF00FF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($00FFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($800000));
+  AStream.WriteDWord(LongRGBToExcelPhysical($008000));
+  AStream.WriteDWord(LongRGBToExcelPhysical($000080));
+  AStream.WriteDWord(LongRGBToExcelPhysical($808000));
+  AStream.WriteDWord(LongRGBToExcelPhysical($800080));
+  AStream.WriteDWord(LongRGBToExcelPhysical($008080));
+  AStream.WriteDWord(LongRGBToExcelPhysical($C0C0C0));
+  AStream.WriteDWord(LongRGBToExcelPhysical($808080)); //$17
 
   { Now some colors which we define ourselves }
-
-  AStream.WriteDWord(DWordToLE($E6E6E6)); //$18 //todo: shouldn't we write $18..$3F and add this color later? see 5.74.3 Built-In Default Colour Tables
-  AStream.WriteDWord(DWordToLE($CCCCCC)); //$19 //todo: shouldn't we write $18..$3F and add this color later? see 5.74.3 Built-In Default Colour Tables
+  AStream.WriteDWord(LongRGBToExcelPhysical($E6E6E6)); //$18 //todo: shouldn't we write $18..$3F and add this color later? see 5.74.3 Built-In Default Colour Tables
+  AStream.WriteDWord(LongRGBToExcelPhysical($CCCCCC)); //$19 //todo: shouldn't we write $18..$3F and add this color later? see 5.74.3 Built-In Default Colour Tables
 
   { And padding }
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
 
-  AStream.WriteDWord(DWordToLE($FFFFFF)); //$20
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF)); //$20 //todo: is this still correct?
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
 
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
 
-  AStream.WriteDWord(DWordToLE($FFFFFF)); //$30
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF)); //$30
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
 
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
-  AStream.WriteDWord(DWordToLE($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
+  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
 end;
 
 {*******************************************************************
