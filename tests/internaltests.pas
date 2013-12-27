@@ -17,11 +17,12 @@ uses
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
   fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  testsutility;
+  testsutility, md5;
 
 type
   { TSpreadReadInternalTests }
-  // Read from xls/xml file with known values
+  // Tests fpspreadsheet functionality, especially internal functions
+  // Excel/LibreOffice/OpenOffice import/export compatibility should *NOT* be tested here
 
   { TSpreadInternalTests }
 
@@ -38,6 +39,8 @@ type
     // Verify GetSheetByName returns the correct sheet number
     // GetSheetByName was implemented in SVN revision 2857
     procedure GetSheetByName;
+    // Tests whether overwriting existing file works
+    procedure OverwriteExistingFile;
     // Write out date cell and try to read as UTF8; verify if contents the same
     procedure ReadDateAsUTF8;
   end;
@@ -78,6 +81,44 @@ begin
   CheckFalse((MyWorksheet=nil),'GetWorksheetByName should return a valid index');
   CheckEquals(MyWorksheet.Name,InternalSheet,'GetWorksheetByName should return correct name.');
   MyWorkbook.Free;
+end;
+
+procedure TSpreadInternalTests.OverwriteExistingFile;
+const
+  FirstFileCellText='Old version';
+  SecondFileCellText='New version';
+var
+  FirstFileHash: string;
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  TempFile: string;
+begin
+  TempFile:=GetTempFileName;
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+
+  // Write out first file
+  MyWorkbook:=TsWorkbook.Create;
+  try
+    MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
+    MyWorkSheet.WriteUTF8Text(0,0,FirstFileCellText);
+    MyWorkBook.WriteToFile(TempFile,sfExcel8,false);
+  finally
+    MyWorkbook.Free;
+  end;
+  FirstFileHash:=MD5Print(MD5File(TempFile));
+
+  // Now overwrite with second file
+  MyWorkbook:=TsWorkbook.Create;
+  try
+    MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
+    MyWorkSheet.WriteUTF8Text(0,0,SecondFileCellText);
+    MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  finally
+    MyWorkbook.Free;
+  end;
+  if FirstFileHash=MD5Print(MD5File(TempFile)) then
+    fail('File contents are still those of the first file.');
 end;
 
 procedure TSpreadInternalTests.ReadDateAsUTF8;
