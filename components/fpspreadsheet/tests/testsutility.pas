@@ -1,6 +1,6 @@
 unit testsutility;
 
-{ Utility unit with general functions for fpspreadsheet tests,
+{ Utility unit with general functions for the real fpspreadsheet test units,
   e.g. getting temporary files }
 
 {$mode objfpc}{$H+}

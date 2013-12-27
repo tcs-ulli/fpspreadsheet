@@ -106,6 +106,9 @@ begin
   finally
     MyWorkbook.Free;
   end;
+
+  if not(FileExists(TempFile)) then
+    fail('Trying to write first file did not work.');
   FirstFileHash:=MD5Print(MD5File(TempFile));
 
   // Now overwrite with second file
