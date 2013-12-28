@@ -1,26 +1,60 @@
 object Form1: TForm1
   Left = 288
-  Height = 300
-  Top = 204
+  Height = 339
+  Top = 177
   Width = 400
   Caption = 'FPSVisual'
-  ClientHeight = 300
+  ClientHeight = 319
   ClientWidth = 400
-  LCLVersion = '0.9.29'
+  Menu = MainMenu1
+  LCLVersion = '1.3'
   object sWorksheetGrid1: TsWorksheetGrid
     Left = 8
-    Height = 232
-    Top = 8
+    Height = 192
+    Top = 48
     Width = 384
     TabOrder = 0
   end
   object buttonPopulateGrid: TButton
-    Left = 144
+    Left = 136
     Height = 25
-    Top = 256
+    Top = 264
     Width = 112
     Caption = 'Populate Grid'
     OnClick = buttonPopulateGridClick
     TabOrder = 1
+  end
+  object OpenDialog1: TOpenDialog
+    DefaultExt = '.xls'
+    Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlxs|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (pipes) (.wikitable_pipes)|.wikitable_pipes|All files (*.*)|*.*'
+    Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
+    left = 8
+    top = 264
+  end
+  object SaveDialog1: TSaveDialog
+    DefaultExt = '.xls'
+    Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (wikimedia) (.wikitable_wikimedia)|*.wikitable_wikimedia'
+    Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
+    left = 72
+    top = 264
+  end
+  object MainMenu1: TMainMenu
+    left = 296
+    top = 264
+    object mnuFile: TMenuItem
+      Caption = '&File'
+      object mnuOpen: TMenuItem
+        Caption = '&Open...'
+        OnClick = mnuOpenClick
+      end
+      object mnuSaveAs: TMenuItem
+        Caption = '&Save as...'
+        OnClick = mnuSaveAsClick
+      end
+      object mnuQuit: TMenuItem
+        Caption = '&Quit'
+        OnClick = mnuQuitClick
+      end
+    end
   end
 end
