@@ -298,7 +298,7 @@ begin
   {$IFDEF FPC}
   {$IFDEF ENDIAN_LITTLE}
   result:=(RGB shl 8); //tags $00 at end for the A byte
-  result:=NtoBE(LEtoN(result)); //flip byte order
+  result:=SwapEndian(result); //flip byte order
   {$ELSE}
   //Big endian
   result:=RGB; //leave value as is //todo: verify if this turns out ok
