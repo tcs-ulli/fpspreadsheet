@@ -1,3 +1,11 @@
+{$ifdef fpc}
+  {$if FPC_FULLVERSION>20701}
+    //Explicitly specify this is an UTF8 encoded file.
+    //Alternative would be UTF8 with BOM but writing UTF8 BOM is bad practice.
+    //See http://wiki.lazarus.freepascal.org/FPC_Unicode_support#String_constants 
+    {$codepage UTF8} //Win 65001
+   {$endif} //fpc_fullversion
+{$endif fpc}
 unit stringtests;
 
 {$mode objfpc}{$H+}
