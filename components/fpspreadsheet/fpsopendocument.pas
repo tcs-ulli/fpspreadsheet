@@ -275,11 +275,25 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadDate(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 var
-  Value: String;
   dt:TDateTime;
+  Value: String;
+  Fmt : TFormatSettings;
+  PointPos : integer;
 begin
+  // Format expects ISO 8601 type date string
+  fmt.ShortDateFormat:='yyyy-mm-dd';
+  fmt.DateSeparator:='-';
+  fmt.LongTimeFormat:='hh:nn:ss';
+  fmt.TimeSeparator:=':';
   Value:=GetAttrValue(ACellNode,'office:date-value');
-  dt:=StrToDate(Value,'yyyy-mm-dd','-');
+  Value:=StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
+  // Strip milliseconds?
+  PointPos:=Pos('.',Value);
+  if (PointPos>1) then
+  begin
+     Value:=Copy(Value,1,PointPos-1);
+  end;
+  dt:=StrToDateTime(Value,Fmt);
   FWorkSheet.WriteDateTime(Arow,ACol,dt);
 end;
 
