@@ -38,7 +38,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="11">
+    <Units Count="12">
       <Unit0>
         <Filename Value="fpsgrid.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -46,7 +46,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="16" Y="9"/>
-        <UsageCount Value="66"/>
+        <UsageCount Value="67"/>
       </Unit0>
       <Unit1>
         <Filename Value="mainform.pas"/>
@@ -59,19 +59,18 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="11" Y="12"/>
-        <UsageCount Value="66"/>
+        <UsageCount Value="67"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1413"/>
         <CursorPos X="1" Y="1428"/>
-        <UsageCount Value="31"/>
+        <UsageCount Value="32"/>
         <Bookmarks Count="1">
           <Item0 X="28" Y="1425" ID="1"/>
         </Bookmarks>
@@ -80,11 +79,11 @@
       <Unit3>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <UnitName Value="fpspreadsheetgrid"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
         <TopLine Value="129"/>
         <CursorPos X="14" Y="142"/>
-        <UsageCount Value="32"/>
+        <UsageCount Value="33"/>
         <Loaded Value="True"/>
       </Unit3>
       <Unit4>
@@ -129,144 +128,155 @@
       <Unit9>
         <Filename Value="..\..\fpsallformats.pas"/>
         <UnitName Value="fpsallformats"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="3"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="62" Y="13"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit9>
       <Unit10>
         <Filename Value="..\..\wikitable.pas"/>
         <UnitName Value="wikitable"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
         <TopLine Value="329"/>
         <CursorPos X="26" Y="339"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="11"/>
         <Loaded Value="True"/>
       </Unit10>
+      <Unit11>
+        <Filename Value="..\..\fpsopendocument.pas"/>
+        <UnitName Value="fpsopendocument"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="280"/>
+        <CursorPos X="7" Y="291"/>
+        <UsageCount Value="11"/>
+        <Loaded Value="True"/>
+      </Unit11>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="84" Column="8" TopLine="73"/>
-      </Position1>
-      <Position2>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="10" Column="42" TopLine="1"/>
-      </Position2>
-      <Position3>
         <Filename Value="..\..\fpsallformats.pas"/>
         <Caret Line="13" Column="62" TopLine="1"/>
-      </Position3>
-      <Position4>
+      </Position1>
+      <Position2>
         <Filename Value="..\..\wikitable.pas"/>
         <Caret Line="1" Column="1" TopLine="1"/>
+      </Position2>
+      <Position3>
+        <Filename Value="..\..\wikitable.pas"/>
+        <Caret Line="417" Column="63" TopLine="399"/>
+      </Position3>
+      <Position4>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="10" Column="42" TopLine="1"/>
       </Position4>
       <Position5>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="417" Column="63" TopLine="399"/>
+        <Caret Line="350" Column="34" TopLine="342"/>
       </Position5>
       <Position6>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="10" Column="42" TopLine="1"/>
+        <Filename Value="..\..\wikitable.pas"/>
+        <Caret Line="323" Column="29" TopLine="313"/>
       </Position6>
       <Position7>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="350" Column="34" TopLine="342"/>
+        <Caret Line="7" Column="12" TopLine="1"/>
       </Position7>
       <Position8>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="323" Column="29" TopLine="313"/>
+        <Caret Line="131" Column="17" TopLine="113"/>
       </Position8>
       <Position9>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="7" Column="12" TopLine="1"/>
+        <Caret Line="136" Column="50" TopLine="118"/>
       </Position9>
       <Position10>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="131" Column="17" TopLine="113"/>
+        <Caret Line="138" Column="11" TopLine="120"/>
       </Position10>
       <Position11>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="136" Column="50" TopLine="118"/>
+        <Caret Line="176" Column="49" TopLine="159"/>
       </Position11>
       <Position12>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="138" Column="11" TopLine="120"/>
+        <Caret Line="178" Column="29" TopLine="161"/>
       </Position12>
       <Position13>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="176" Column="49" TopLine="159"/>
+        <Caret Line="182" Column="37" TopLine="165"/>
       </Position13>
       <Position14>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="178" Column="29" TopLine="161"/>
+        <Caret Line="205" Column="29" TopLine="188"/>
       </Position14>
       <Position15>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="182" Column="37" TopLine="165"/>
+        <Caret Line="228" Column="29" TopLine="211"/>
       </Position15>
       <Position16>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="205" Column="29" TopLine="188"/>
+        <Caret Line="289" Column="42" TopLine="271"/>
       </Position16>
       <Position17>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="228" Column="29" TopLine="211"/>
+        <Caret Line="293" Column="49" TopLine="275"/>
       </Position17>
       <Position18>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="289" Column="42" TopLine="271"/>
+        <Caret Line="307" Column="40" TopLine="302"/>
       </Position18>
       <Position19>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="293" Column="49" TopLine="275"/>
+        <Caret Line="321" Column="19" TopLine="312"/>
       </Position19>
       <Position20>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="307" Column="40" TopLine="302"/>
+        <Caret Line="53" Column="1" TopLine="32"/>
       </Position20>
       <Position21>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="321" Column="19" TopLine="312"/>
+        <Caret Line="88" Column="79" TopLine="75"/>
       </Position21>
       <Position22>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="53" Column="1" TopLine="32"/>
+        <Caret Line="411" Column="10" TopLine="407"/>
       </Position22>
       <Position23>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="88" Column="79" TopLine="75"/>
+        <Caret Line="102" Column="19" TopLine="85"/>
       </Position23>
       <Position24>
         <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="411" Column="10" TopLine="407"/>
+        <Caret Line="108" Column="1" TopLine="104"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="102" Column="19" TopLine="85"/>
-      </Position25>
-      <Position26>
-        <Filename Value="..\..\wikitable.pas"/>
-        <Caret Line="108" Column="1" TopLine="104"/>
-      </Position26>
-      <Position27>
         <Filename Value="mainform.pas"/>
         <Caret Line="10" Column="16" TopLine="1"/>
+      </Position25>
+      <Position26>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1425" Column="28" TopLine="1416"/>
+      </Position26>
+      <Position27>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1249" Column="3" TopLine="1240"/>
       </Position27>
       <Position28>
         <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1425" Column="28" TopLine="1416"/>
+        <Caret Line="1425" Column="28" TopLine="1413"/>
       </Position28>
       <Position29>
         <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1249" Column="3" TopLine="1240"/>
+        <Caret Line="1428" Column="1" TopLine="1413"/>
       </Position29>
       <Position30>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1425" Column="28" TopLine="1413"/>
+        <Filename Value="..\..\fpsopendocument.pas"/>
+        <Caret Line="295" Column="32" TopLine="279"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
