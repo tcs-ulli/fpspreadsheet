@@ -288,7 +288,7 @@ begin
     // Don't merge, or else we can't debug
     Str := GetAttrValue(ACellNode,'office:value');
     lNumber := StrToFloat(Str,FSettings);
-    FWorkSheet.WriteNumber(Arow,ACol,lNumber);
+    FWorkSheet.WriteNumber(ARow,ACol,lNumber);
   end;
 end;
 
@@ -327,35 +327,34 @@ begin
     Value:=GetAttrValue(ACellNode,'office:time-value');
     if (Value<>'') and (Pos('PT',Value)=1) then
     begin
-      dt:=DATEMODE_1900_BASE; //todo: detect based on sheet format; see xls code
       // Get hours
       HoursPos:=Pos('H',Value);
       if (HoursPos>0) then
-      begin
-        Hours:=StrToInt(Copy(Value,3,HoursPos-3));
-        case Hours of
-        0..23: dt:=dt+EncodeTime(Hours,0,0,0)
-        else dt:=dt+EncodeDateTime(0,0,Hours div 24,Hours mod 24,0,0,0);
-        end;
-      end;
+        Hours:=StrToInt(Copy(Value,3,HoursPos-3))
+      else
+        Hours:=0;
 
       // Get minutes
       MinutesPos:=Pos('M',Value);
       if (MinutesPos>0) and (MinutesPos>HoursPos) then
-      begin
-        Minutes:=StrToInt(Copy(Value,HoursPos+1,MinutesPos-HoursPos-1));
-        if Minutes>0 then
-          dt:=dt+EncodeTime(Minutes div 60,Minutes mod 60,0,0)
-      end;
+        Minutes:=StrToInt(Copy(Value,HoursPos+1,MinutesPos-HoursPos-1))
+      else
+        Minutes:=0;
 
       // Get seconds
       SecondsPos:=Pos('S',Value);
       if (SecondsPos>0) and (SecondsPos>MinutesPos) then
-      begin
-        Seconds:=StrToInt(Copy(Value,MinutesPos+1,SecondsPos-MinutesPos-1));
-        if Seconds>0 then
-          dt:=dt+EncodeTime(0,Seconds div 60,Seconds mod 60,0)
-      end;
+        Seconds:=StrToInt(Copy(Value,MinutesPos+1,SecondsPos-MinutesPos-1))
+      else
+        Seconds:=0;
+
+      // Convert to date/time via Unix timestamp so avoiding limits for number of
+      // hours etc in EncodeDateTime. Perhaps there's a faster way of doing this?
+      dt:=DATEMODE_1900_BASE-UnixEpoch-1+UnixToDateTime(
+        Hours*(MinsPerHour*SecsPerMin)+
+        Minutes*(SecsPerMin)+
+        Seconds
+        ); //todo: detect actually used date mode based on file settings; see xls code
     end;
   end;
   FWorkSheet.WriteDateTime(Arow,ACol,dt);
