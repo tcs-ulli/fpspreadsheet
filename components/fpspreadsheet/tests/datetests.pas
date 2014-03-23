@@ -6,6 +6,7 @@ unit datetests;
 Adding tests/test data:
 1. Add a new value to column A in the relevant worksheet, and save the spreadsheet read-only
    (for dates, there are 2 files, with different datemodes. Use them both...)
+   Repeat this for all supported spreadsheet formats (Excel XLS, ODF, etc)
 2. Increase SollDates array size
 3. Add value from 1) to InitNormVariables so you can test against it
 4. Add your read test(s), read and check read value against SollDates[<added number>]
@@ -117,6 +118,82 @@ type
     procedure TestReadDate1899_35;
     procedure TestReadDate1899_36;
     procedure TestReadDate1899_37;
+    procedure TestReadODFDate0; // same as above except OpenDocument/ODF format
+    procedure TestReadODFDate1; //date and time
+    procedure TestReadODFDate2;
+    procedure TestReadODFDate3;
+    procedure TestReadODFDate4; //time only tests start here
+    procedure TestReadODFDate5;
+    procedure TestReadODFDate6;
+    procedure TestReadODFDate7;
+    procedure TestReadODFDate8;
+    procedure TestReadODFDate9;
+    procedure TestReadODFDate10;
+    procedure TestReadODFDate11;
+    procedure TestReadODFDate12;
+    procedure TestReadODFDate13;
+    procedure TestReadODFDate14;
+    procedure TestReadODFDate15;
+    procedure TestReadODFDate16;
+    procedure TestReadODFDate17;
+    procedure TestReadODFDate18;
+    procedure TestReadODFDate19;
+    procedure TestReadODFDate20;
+    procedure TestReadODFDate21;
+    procedure TestReadODFDate22;
+    procedure TestReadODFDate23;
+    procedure TestReadODFDate24;
+    procedure TestReadODFDate25;
+    procedure TestReadODFDate26;
+    procedure TestReadODFDate27;
+    procedure TestReadODFDate28;
+    procedure TestReadODFDate29;
+    procedure TestReadODFDate30;
+    procedure TestReadODFDate31;
+    procedure TestReadODFDate32;
+    procedure TestReadODFDate33;
+    procedure TestReadODFDate34;
+    procedure TestReadODFDate35;
+    procedure TestReadODFDate36;
+    procedure TestReadODFDate37;
+    procedure TestReadODFDate1899_0; //same as above except with the 1899/1900 date system set
+    procedure TestReadODFDate1899_1;
+    procedure TestReadODFDate1899_2;
+    procedure TestReadODFDate1899_3;
+    procedure TestReadODFDate1899_4;
+    procedure TestReadODFDate1899_5;
+    procedure TestReadODFDate1899_6;
+    procedure TestReadODFDate1899_7;
+    procedure TestReadODFDate1899_8;
+    procedure TestReadODFDate1899_9;
+    procedure TestReadODFDate1899_10;
+    procedure TestReadODFDate1899_11;
+    procedure TestReadODFDate1899_12;
+    procedure TestReadODFDate1899_13;
+    procedure TestReadODFDate1899_14;
+    procedure TestReadODFDate1899_15;
+    procedure TestReadODFDate1899_16;
+    procedure TestReadODFDate1899_17;
+    procedure TestReadODFDate1899_18;
+    procedure TestReadODFDate1899_19;
+    procedure TestReadODFDate1899_20;
+    procedure TestReadODFDate1899_21;
+    procedure TestReadODFDate1899_22;
+    procedure TestReadODFDate1899_23;
+    procedure TestReadODFDate1899_24;
+    procedure TestReadODFDate1899_25;
+    procedure TestReadODFDate1899_26;
+    procedure TestReadODFDate1899_27;
+    procedure TestReadODFDate1899_28;
+    procedure TestReadODFDate1899_29;
+    procedure TestReadODFDate1899_30;
+    procedure TestReadODFDate1899_31;
+    procedure TestReadODFDate1899_32;
+    procedure TestReadODFDate1899_33;
+    procedure TestReadODFDate1899_34;
+    procedure TestReadODFDate1899_35;
+    procedure TestReadODFDate1899_36;
+    procedure TestReadODFDate1899_37;
   end;
 
   { TSpreadWriteReadDateTests }
@@ -137,8 +214,6 @@ type
 implementation
 
 const
-  TestFileBIFF8='testbiff8.xls'; //with 1904 datemode date system
-  TestFileBIFF8_1899='testbiff8_1899.xls'; //with 1899/1900 datemode date system
   DatesSheet = 'Dates'; //worksheet name
 
 // Initialize array with variables that represent the values
@@ -262,9 +337,14 @@ begin
   if Row>High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  case UpperCase(ExtractFileExt(FileName)) of
+    '.XLSX': MyWorkbook.ReadFromFile(FileName, sfOOXML);
+    '.ODS': MyWorkbook.ReadFromFile(FileName, sfOpenDocument);
+    // Excel XLS/BIFF
+    else MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  end;
   MyWorksheet:=GetWorksheetByName(MyWorkBook,DatesSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
@@ -670,6 +750,386 @@ end;
 procedure TSpreadReadDateTests.TestReadDate1899_37;
 begin
   TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileBIFF8_1899,37);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate0;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,0);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,1);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate2;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,2);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate3;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,3);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate4;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,4);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate5;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,5);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate6;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,6);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate7;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,7);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate8;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,8);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate9;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,9);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate10;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,10);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate11;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,11);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate12;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,12);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate13;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate14;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,14);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate15;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,15);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate16;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,16);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate17;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,17);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate18;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,18);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate19;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,19);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate20;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,20);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate21;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,21);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate22;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,22);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate23;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,23);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate24;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,24);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate25;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,25);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate26;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,26);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate27;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,27);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate28;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,28);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate29;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,29);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate30;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,30);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate31;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,31);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate32;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,32);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate33;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,33);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate34;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,34);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate35;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,35);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate36;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,36);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate37;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,37);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_0;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,0);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_1;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,1);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_2;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,2);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_3;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,3);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_4;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,4);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_5;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,5);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_6;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,6);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_7;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,7);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_8;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,8);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_9;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,9);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_10;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,10);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_11;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,11);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_12;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,12);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_13;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,13);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_14;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,14);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_15;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,15);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_16;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,16);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_17;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,17);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_18;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,18);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_19;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,19);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_20;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,20);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_21;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,21);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_22;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,22);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_23;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,23);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_24;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,24);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_25;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,25);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_26;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,26);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_27;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,27);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_28;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,28);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_29;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,29);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_30;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,30);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_31;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,31);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_32;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,32);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_33;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,33);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_34;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,34);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_35;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,35);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_36;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,36);
+end;
+
+procedure TSpreadReadDateTests.TestReadODFDate1899_37;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,37);
 end;
 
 

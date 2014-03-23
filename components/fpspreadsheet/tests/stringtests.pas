@@ -62,6 +62,19 @@ type
     procedure TestReadString10;
     procedure TestReadString11;
     procedure TestReadString12;
+    procedure TestReadODFString0; //OpenDocument/LibreOffice format empty string
+    procedure TestReadODFString1;
+    procedure TestReadODFString2;
+    procedure TestReadODFString3;
+    procedure TestReadODFString4;
+    procedure TestReadODFString5;
+    procedure TestReadODFString6;
+    procedure TestReadODFString7;
+    procedure TestReadODFString8;
+    procedure TestReadODFString9;
+    procedure TestReadODFString10;
+    procedure TestReadODFString11;
+    procedure TestReadODFString12;
   end;
 
   { TSpreadWriteReadStringTests }
@@ -127,6 +140,7 @@ var
   Row: Cardinal;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
+  //todo: add support for ODF/LibreOffice format
   TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -278,9 +292,14 @@ begin
   if Row>High(SollStrings) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  case UpperCase(ExtractFileExt(FileName)) of
+    '.XLSX': MyWorkbook.ReadFromFile(FileName, sfOOXML);
+    '.ODS': MyWorkbook.ReadFromFile(FileName, sfOpenDocument);
+    // Excel XLS/BIFF
+    else MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  end;
   MyWorksheet:=GetWorksheetByName(MyWorkBook,StringsSheet);
   if MyWorksheet=nil then
     fail('Error in test code: could not retrieve worksheet.');
@@ -368,6 +387,70 @@ begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,12);
 end;
 
+procedure TSpreadReadStringTests.TestReadODFString0;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,0);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString1;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,1);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString2;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,2);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString3;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,3);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString4;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,4);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString5;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,5);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString6;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,6);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString7;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,7);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString8;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,8);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString9;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,9);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString10;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,10);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString11;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,11);
+end;
+
+procedure TSpreadReadStringTests.TestReadODFString12;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,12);
+end;
 
 initialization
   // Register so these tests are included in a full run

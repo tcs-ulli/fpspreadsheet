@@ -61,6 +61,26 @@ type
     procedure TestReadNumber17;
     procedure TestReadNumber18;
     procedure TestReadNumber19;
+    procedure TestReadODFNumber0; //number tests using ODF/LibreOffice file format
+    procedure TestReadODFNumber1; //number and time
+    procedure TestReadODFNumber2;
+    procedure TestReadODFNumber3;
+    procedure TestReadODFNumber4; //time only tests start here
+    procedure TestReadODFNumber5;
+    procedure TestReadODFNumber6;
+    procedure TestReadODFNumber7;
+    procedure TestReadODFNumber8;
+    procedure TestReadODFNumber9;
+    procedure TestReadODFNumber10;
+    procedure TestReadODFNumber11;
+    procedure TestReadODFNumber12;
+    procedure TestReadODFNumber13;
+    procedure TestReadODFNumber14;
+    procedure TestReadODFNumber15;
+    procedure TestReadODFNumber16;
+    procedure TestReadODFNumber17;
+    procedure TestReadODFNumber18;
+    procedure TestReadODFNumber19;
   end;
 
   { TSpreadWriteReadNumberTests }
@@ -137,6 +157,7 @@ var
   Row: Cardinal;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
+  //todo: add support for ODF format
   TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -183,9 +204,14 @@ begin
   if Row>High(SollNumbers) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  case UpperCase(ExtractFileExt(FileName)) of
+    '.XLSX': MyWorkbook.ReadFromFile(FileName, sfOOXML);
+    '.ODS': MyWorkbook.ReadFromFile(FileName, sfOpenDocument);
+    // Excel XLS/BIFF
+    else MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  end;
   MyWorksheet:=GetWorksheetByName(MyWorkBook,NumbersSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
@@ -307,6 +333,107 @@ procedure TSpreadReadNumberTests.TestReadNumber19;
 begin
   TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,17);
 end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber0;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,0);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber1;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,1);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber2;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,2);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber3;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,3);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber4;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,4);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber5;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,5);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber6;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,6);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber7;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,7);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber8;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,8);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber9;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,9);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber10;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,10);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber11;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,11);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber12;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,12);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber13;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber14;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,14);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber15;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,15);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber16;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,16);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber17;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,17);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber18;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,16);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber19;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,17);
+end;
+
 
 
 initialization

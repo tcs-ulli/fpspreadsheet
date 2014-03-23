@@ -130,17 +130,10 @@
       <OtherUnitFiles Value=".."/>
     </SearchPaths>
     <CodeGeneration>
-      <SmartLinkUnit Value="True"/>
       <Optimizations>
         <OptimizationLevel Value="0"/>
       </Optimizations>
     </CodeGeneration>
-    <Linking>
-      <Debugging>
-        <GenerateDebugInfo Value="False"/>
-      </Debugging>
-      <LinkSmart Value="True"/>
-    </Linking>
     <Other>
       <CompilerMessages>
         <MsgFileName Value=""/>
@@ -152,15 +145,19 @@
     <Exceptions Count="4">
       <Item1>
         <Name Value="EAbort"/>
+        <Enabled Value="False"/>
       </Item1>
       <Item2>
         <Name Value="ECodetoolError"/>
+        <Enabled Value="False"/>
       </Item2>
       <Item3>
         <Name Value="EFOpenError"/>
+        <Enabled Value="False"/>
       </Item3>
       <Item4>
         <Name Value="EAssertionFailedError"/>
+        <Enabled Value="False"/>
       </Item4>
     </Exceptions>
   </Debugging>
