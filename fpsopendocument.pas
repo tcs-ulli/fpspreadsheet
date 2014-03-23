@@ -36,6 +36,7 @@ uses
   fpspreadsheet,
   xmlread, DOM, AVL_Tree,
   math,
+  dateutils,
   fpsutils;
   
 type
@@ -45,6 +46,8 @@ type
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
   private
     FWorksheet: TsWorksheet;
+    // Gets value for the specified attribute. Returns empty string if attribute
+    // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
   public
     { General reading methods }
@@ -133,6 +136,13 @@ const
   SCHEMAS_XMLNS_XSD      = 'http://www.w3.org/2001/XMLSchema';
   SCHEMAS_XMLNS_XSI      = 'http://www.w3.org/2001/XMLSchema-instance';
 
+  { DATEMODE taken from XLS format; used in time only values. }
+  //todo: detect date mode for an ods file and apply it; move constants out of xlscommon into fpsutils
+  //for now ASSUMES datemode 1900 (default for LibreOffice)
+  DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
+  DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
+
+
 { TsSpreadOpenDocReader }
 
 function TsSpreadOpenDocReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
@@ -210,22 +220,31 @@ begin
           ParamColsRepeated:=GetAttrValue(CellNode,'table:number-columns-repeated');
           if ParamColsRepeated='' then ParamColsRepeated:='1';
 
-          //select this cell value's type
+          // select this cell value's type
           ParamValueType:=GetAttrValue(CellNode,'office:value-type');
           ParamFormula:=GetAttrValue(CellNode,'table:formula');
-          for RowsCount:=0 to StrToInt(ParamRowsRepeated)-1 do begin
-            for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
-              if ParamValueType='string' then
-                ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
-              else if ParamFormula<>'' then
-                ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
-              else if ParamValueType='float' then
-                ReadNumber(Row+RowsCount,Col+ColsCount,CellNode)
-              else if ParamValueType='date' then
-                ReadDate(Row+RowsCount,Col+ColsCount,CellNode);
-            end; //for ColsCount
-          end; //for RowsCount
 
+          // Speed optimization: only read cells that may have contents;
+          // leave rest empty. Update if we support more cell types
+          if (ParamValueType='string') or
+            (ParamValueType='float') or
+            (ParamValueType='date') or
+            (ParamValueType='time') or
+            (ParamFormula<>'') then
+          begin
+            for RowsCount:=0 to StrToInt(ParamRowsRepeated)-1 do begin
+              for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
+                if ParamValueType='string' then
+                  ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
+                else if ParamFormula<>'' then
+                  ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
+                else if ParamValueType='float' then
+                  ReadNumber(Row+RowsCount,Col+ColsCount,CellNode)
+                else if (ParamValueType='date') or (ParamValueType='time') then
+                  ReadDate(Row+RowsCount,Col+ColsCount,CellNode);
+              end; //for ColsCount
+            end; //for RowsCount
+          end;
           Inc(Col,ColsCount+1);
           CellNode:=CellNode.NextSibling;
         end; //while Assigned(CellNode)
@@ -278,22 +297,67 @@ var
   dt:TDateTime;
   Value: String;
   Fmt : TFormatSettings;
-  PointPos : integer;
+  FoundPos : integer;
+  Hours, Minutes, Seconds: integer;
+  HoursPos, MinutesPos, SecondsPos: integer;
 begin
-  // Format expects ISO 8601 type date string
+  // Format expects ISO 8601 type date string or
+  // time string
   fmt.ShortDateFormat:='yyyy-mm-dd';
   fmt.DateSeparator:='-';
   fmt.LongTimeFormat:='hh:nn:ss';
   fmt.TimeSeparator:=':';
   Value:=GetAttrValue(ACellNode,'office:date-value');
-  Value:=StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
-  // Strip milliseconds?
-  PointPos:=Pos('.',Value);
-  if (PointPos>1) then
+  if Value<>'' then
   begin
-     Value:=Copy(Value,1,PointPos-1);
+    // Date or date/time string
+    Value:=StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
+    // Strip milliseconds?
+    FoundPos:=Pos('.',Value);
+    if (FoundPos>1) then
+    begin
+       Value:=Copy(Value,1,FoundPos-1);
+    end;
+    dt:=StrToDateTime(Value,Fmt);
+  end
+  else
+  begin
+    // Try time only, e.g. PT23H59M59S
+    //                     12345678901
+    Value:=GetAttrValue(ACellNode,'office:time-value');
+    if (Value<>'') and (Pos('PT',Value)=1) then
+    begin
+      dt:=DATEMODE_1900_BASE; //todo: detect based on sheet format; see xls code
+      // Get hours
+      HoursPos:=Pos('H',Value);
+      if (HoursPos>0) then
+      begin
+        Hours:=StrToInt(Copy(Value,3,HoursPos-3));
+        case Hours of
+        0..23: dt:=dt+EncodeTime(Hours,0,0,0)
+        else dt:=dt+EncodeDateTime(0,0,Hours div 24,Hours mod 24,0,0,0);
+        end;
+      end;
+
+      // Get minutes
+      MinutesPos:=Pos('M',Value);
+      if (MinutesPos>0) and (MinutesPos>HoursPos) then
+      begin
+        Minutes:=StrToInt(Copy(Value,HoursPos+1,MinutesPos-HoursPos-1));
+        if Minutes>0 then
+          dt:=dt+EncodeTime(Minutes div 60,Minutes mod 60,0,0)
+      end;
+
+      // Get seconds
+      SecondsPos:=Pos('S',Value);
+      if (SecondsPos>0) and (SecondsPos>MinutesPos) then
+      begin
+        Seconds:=StrToInt(Copy(Value,MinutesPos+1,SecondsPos-MinutesPos-1));
+        if Seconds>0 then
+          dt:=dt+EncodeTime(0,Seconds div 60,Seconds mod 60,0)
+      end;
+    end;
   end;
-  dt:=StrToDateTime(Value,Fmt);
   FWorkSheet.WriteDateTime(Arow,ACol,dt);
 end;
 
