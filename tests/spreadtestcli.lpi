@@ -148,12 +148,15 @@
       </Item2>
       <Item3>
         <Name Value="EAssertionFailedError"/>
+        <Enabled Value="False"/>
       </Item3>
       <Item4>
         <Name Value="Exception"/>
+        <Enabled Value="False"/>
       </Item4>
       <Item5>
         <Name Value="EIBDatabaseError"/>
+        <Enabled Value="False"/>
       </Item5>
     </Exceptions>
   </Debugging>
