@@ -223,7 +223,6 @@ begin
           // select this cell value's type
           ParamValueType:=GetAttrValue(CellNode,'office:value-type');
           ParamFormula:=GetAttrValue(CellNode,'table:formula');
-
           // Speed optimization: only read cells that may have contents;
           // leave rest empty. Update if we support more cell types
           if (ParamValueType='string') or
@@ -294,7 +293,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadDate(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 var
-  dt:TDateTime;
+  dt: TDateTime;
   Value: String;
   Fmt : TFormatSettings;
   FoundPos : integer;
@@ -319,6 +318,7 @@ begin
        Value:=Copy(Value,1,FoundPos-1);
     end;
     dt:=StrToDateTime(Value,Fmt);
+    FWorkSheet.WriteDateTime(Arow,ACol,dt);
   end
   else
   begin
@@ -355,9 +355,9 @@ begin
         Minutes*(SecsPerMin)+
         Seconds
         ); //todo: detect actually used date mode based on file settings; see xls code
+      FWorkSheet.WriteDateTime(Arow,ACol,dt);
     end;
   end;
-  FWorkSheet.WriteDateTime(Arow,ACol,dt);
 end;
 
 { TsSpreadOpenDocWriter }
