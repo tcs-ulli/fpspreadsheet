@@ -219,21 +219,29 @@ FROM testresults r inner join resultvalues rv
 on r.RESULTVALUE=rv.id 
 inner join testruns tr 
 on r.testrun=tr.ID
-where rv.name='OK'
+where rv.name='OK' or rv.name='Ignored'
 group by tr.applicationid, tr.os, tr.cpu, r.test;
-CREATE VIEW OKRESULTS (RUNID, APPLICATION, OS, CPU, OKCOUNT, OKPERCENTAGE)
-AS   
-SELECT run.id, a.name, o.osname, c.cpuname, count(rv.name), 
-((count(tr.resultvalue))*100)/(SELECT COUNT(resultvalue) FROM testresults where testresults.testrun=run.id)
+CREATE VIEW TESTRESOK (TESTRESULTID)
+AS 
+SELECT tr.id
 from
 testresults tr inner join
-testruns run on tr.TESTRUN=run.id inner JOIN
+resultvalues rv on 
+tr.resultvalue=rv.id
+where (rv.name='OK' or rv.name='Ignored');
+CREATE VIEW OKRESULTS (RUNID, APPLICATION, OS, CPU, OKCOUNT, OKPERCENTAGE)
+AS       
+SELECT run.id, a.name, o.osname, c.cpuname, count(rv.name), 
+((count(ok.testresultid))*100)/(SELECT COUNT(resultvalue) FROM testresults where testresults.testrun=run.id)
+from
+testresults tr inner join
+testruns run on tr.TESTRUN=run.id inner join
+testresok ok on tr.id=ok.testresultid inner join
 resultvalues rv on tr.resultvalue=rv.id
 inner join applications a on run.applicationid=a.ID
 inner join cpu c on run.cpu=c.ID
 inner join os o on run.os=o.id
-group by run.id, a.name, o.osname, c.cpuname, rv.name
-having rv.name='OK';
+group by run.id, a.name, o.osname, c.cpuname;
 CREATE VIEW REGRESSIONS (APPLICATIONID, CPUID, OSID, TESTID, LASTSUCCESFULREVISION)
 AS     
 select
@@ -605,6 +613,9 @@ GRANT DELETE, INSERT, REFERENCES, SELECT, UPDATE
 
 GRANT DELETE, INSERT, REFERENCES, SELECT, UPDATE
  ON LASTSUCCESS TO  SYSDBA WITH GRANT OPTION;
+
+GRANT DELETE, INSERT, REFERENCES, SELECT, UPDATE
+ ON TESTRESOK TO  SYSDBA WITH GRANT OPTION;
 
 GRANT DELETE, INSERT, REFERENCES, SELECT, UPDATE
  ON OKRESULTS TO  SYSDBA WITH GRANT OPTION;

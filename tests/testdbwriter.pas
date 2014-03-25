@@ -1,6 +1,6 @@
 { testdbwriter
 
-  Copyright (C) 2012-2013 Reinier Olislagers
+  Copyright (C) 2012-2014 Reinier Olislagers
 
   This library is free software; you can redistribute it and/or modify it
   under the terms of the GNU Library General Public License as published by
@@ -134,9 +134,9 @@ type
   TDBResultsWriter = class(TNoRefCountObject, ITestListener)
   protected
     FApplicationName: string;
-    FComment: string;
+    FComment: string; //User-specified comment for test run
     FConn: TSQLConnector;
-    FCPU: string; //Processor used in FPC terminology
+    FCPU: string; //Processor used (name uses FPC terminology)
     FDBProfile: string; //Name of the profile in the ini file the user chose. Only useful in error messages to user
     FDBSetup: boolean; //Track if database is set up including adding test run data
     FDBType: string; //Output database type chosen by user
@@ -145,7 +145,7 @@ type
     FDBUser: string; //Username
     FDBPassword: string; //Password needed for username
     FDBCharset: string; //Character encoding for db connection
-    FOS: string; //Operating system used in FPC terminology
+    FOS: string; //Operating system used (name uses FPC terminology)
     FRevisionID: string; //Unique identifier for source code being tested
     FRootSuite: TStringList; //This list of testsuite names will be prepended to the test suite hierarchy when tests are run
     FTestSuitePath: TStringList; //Stack of suite names (and IDs) up to the current test suite. Will include FRootSuite
@@ -411,6 +411,7 @@ begin
           halt(17);
         end;
       end;
+
       IBTran.Commit;
     finally
       FBScript.Free;
