@@ -40,15 +40,22 @@ uses
   fpsutils;
   
 type
+  TDateMode=(dm1899 {default for ODF; almost same as Excel 1900},
+    dm1900 {StarCalc legacy only},
+    dm1904 {e.g. Quattro Pro,Mac Excel compatibility}
+    );
 
   { TsSpreadOpenDocReader }
 
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
   private
+    FDateMode: TDateMode;
     FWorksheet: TsWorksheet;
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+    // Figures out what the base year for times in this file (dates are unambiguous)
+    procedure ReadDateMode(SpreadSheetNode: TDOMNode);
   public
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -136,10 +143,11 @@ const
   SCHEMAS_XMLNS_XSD      = 'http://www.w3.org/2001/XMLSchema';
   SCHEMAS_XMLNS_XSI      = 'http://www.w3.org/2001/XMLSchema-instance';
 
-  { DATEMODE taken from XLS format; used in time only values. }
-  //todo: detect date mode for an ods file and apply it; move constants out of xlscommon into fpsutils
-  //for now ASSUMES datemode 1900 (default for LibreOffice)
-  DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
+  { DATEMODE similar to but not the same as XLS format; used in time only values. }
+  DATEMODE_1899_BASE=0; //apparently 1899-12-30 for ODF in FPC DateTime;
+  // due to Excel's leap year bug, the date floats in the spreadsheets are the same starting
+  // 1900-03-01
+  DATEMODE_1900_BASE=2; //StarCalc compatibility, 1900-01-01 in FPC DateTime
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
 
@@ -160,6 +168,30 @@ begin
     end;
     inc(i);
   end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
+var
+  CalcSettingsNode, NullDateNode: TDOMNode;
+  NullDateSetting: string;
+begin
+  // Default datemode for ODF:
+  NullDateSetting:='1899-12-30';
+  CalcSettingsNode:=SpreadsheetNode.FindNode('table:calculation-settings');
+  if Assigned(CalcSettingsNode) then
+  begin
+    NullDateNode:=CalcSettingsNode.FindNode('table:null-date');
+    if Assigned(NullDateNode) then
+      NullDateSetting:=GetAttrValue(NullDateNode,'table:date-value');
+  end;
+  if NullDateSetting='1899-12-30' then
+    FDateMode := dm1899
+  else if NullDateSetting='1900-01-01' then
+    FDateMode := dm1900
+  else if NullDateSetting='1904-01-01' then
+    FDateMode := dm1904
+  else
+    raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -197,6 +229,8 @@ begin
 
     SpreadSheetNode:=BodyNode.FindNode('office:spreadsheet');
     if not Assigned(SpreadSheetNode) then Exit;
+
+    ReadDateMode(SpreadSheetNode);
 
     //process each table (sheet)
     TableNode:=SpreadSheetNode.FindNode('table:table');
@@ -309,6 +343,9 @@ begin
   Value:=GetAttrValue(ACellNode,'office:date-value');
   if Value<>'' then
   begin
+    {$IFDEF XLSDEBUG}
+    writeln('Row (1based): ',ARow+1,'office:date-value: '+Value);
+    {$ENDIF}
     // Date or date/time string
     Value:=StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
     // Strip milliseconds?
@@ -325,6 +362,9 @@ begin
     // Try time only, e.g. PT23H59M59S
     //                     12345678901
     Value:=GetAttrValue(ACellNode,'office:time-value');
+    {$IFDEF XLSDEBUG}
+    writeln('Row (1based): ',ARow+1,'office:time-value: '+Value);
+    {$ENDIF}
     if (Value<>'') and (Pos('PT',Value)=1) then
     begin
       // Get hours
@@ -348,13 +388,43 @@ begin
       else
         Seconds:=0;
 
+      // Times smaller than a day can be taken as is
+      // Times larger than a day depend on the file's date mode.
       // Convert to date/time via Unix timestamp so avoiding limits for number of
       // hours etc in EncodeDateTime. Perhaps there's a faster way of doing this?
-      dt:=DATEMODE_1900_BASE-UnixEpoch-1+UnixToDateTime(
-        Hours*(MinsPerHour*SecsPerMin)+
-        Minutes*(SecsPerMin)+
-        Seconds
-        ); //todo: detect actually used date mode based on file settings; see xls code
+      if (Hours>-24) and (Hours<24) then
+      begin
+        dt:=UnixToDateTime(
+          Hours*(MinsPerHour*SecsPerMin)+
+          Minutes*(SecsPerMin)+
+          Seconds
+          )-UnixEpoch;
+      end
+      else
+      begin
+        // A day or longer
+        case FDateMode of
+        dm1899:
+        dt:=DATEMODE_1899_BASE+UnixToDateTime(
+          Hours*(MinsPerHour*SecsPerMin)+
+          Minutes*(SecsPerMin)+
+          Seconds
+          )-UnixEpoch;
+        dm1900:
+        dt:=DATEMODE_1900_BASE+UnixToDateTime(
+          Hours*(MinsPerHour*SecsPerMin)+
+          Minutes*(SecsPerMin)+
+          Seconds
+          )-UnixEpoch;
+        dm1904:
+        dt:=DATEMODE_1904_BASE+UnixToDateTime(
+          Hours*(MinsPerHour*SecsPerMin)+
+          Minutes*(SecsPerMin)+
+          Seconds
+          )-UnixEpoch;
+        end;
+
+      end;
       FWorkSheet.WriteDateTime(Arow,ACol,dt);
     end;
   end;
