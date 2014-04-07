@@ -20,7 +20,7 @@ interface
 uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
+  Classes, SysUtils, fpcunit, testutils, testregistry, testdecorator,
   fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
@@ -33,6 +33,13 @@ var
   procedure InitSollColors;
 
 type
+  { TSpreadManualSetup }
+  TSpreadManualSetup= class(TTestSetup)
+  protected
+    //procedure OneTimeSetup; override;
+    procedure OneTimeTearDown; override;
+  end;
+
   { TSpreadManualTests }
   // Writes to file and let humans figure out if the correct output was generated
   TSpreadManualTests= class(TTestCase)
@@ -42,11 +49,24 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    // Writes all rpn formulas. Use Excel or Open/LibreOffice to check validity.
+    procedure TestRPNFormula;
     // Writes all background colors in A1..A16
     procedure TestBiff8CellBackgroundColor;
   end;
 
 implementation
+
+uses
+  Math, StrUtils,
+  fpsUtils;
+
+const
+  OUTPUT_FORMAT = sfExcel8;
+  FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');
+
+var
+  Workbook: TsWorkbook = nil;
 
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
@@ -107,6 +127,16 @@ begin
   SollColorNames[22]:='scWheat';
 end;
 
+{ TSpreadManualSetup }
+
+procedure TSpreadManualSetup.OneTimeTearDown;
+begin
+  if Workbook <> nil then begin
+    Workbook.WriteToFile(TestFileManual, OUTPUT_FORMAT, TRUE);
+    Workbook.Free;
+  end;
+end;
+
 { TSpreadManualTests }
 procedure TSpreadManualTests.SetUp;
 begin
@@ -118,21 +148,24 @@ begin
 
 end;
 
-
 procedure TSpreadManualTests.TestBiff8CellBackgroundColor();
 // source: forum post
 // http://forum.lazarus.freepascal.org/index.php/topic,19887.msg134114.html#msg134114
 // possible fix for values there too
-const
-  OUTPUT_FORMAT = sfExcel8;
 var
-  Workbook: TsWorkbook;
   Worksheet: TsWorksheet;
   Cell : PCell;
   i: cardinal;
   RowOffset: cardinal;
 begin
-  Workbook := TsWorkbook.Create;
+  // No worksheets in BIFF2. Since main interest is here in formulas we just jump
+  // off here - need to change this in the future...
+  if OUTPUT_FORMAT = sfExcel2 then
+    Ignore('BIFF2 does not support worksheets. Ignoring manual tests for now');
+
+  if Workbook = nil then
+    Workbook := TsWorkbook.Create;
+
   Worksheet := Workbook.AddWorksheet('colorsheet');
   WorkSheet.WriteUTF8Text(0,1,'TSpreadManualTests.TestBiff8CellBackgroundColor');
   RowOffset:=1;
@@ -145,18 +178,17 @@ begin
       include (Cell^.UsedFormattingFields,uffBackgroundColor);
     WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be tsColor value '+SollColorNames[i]+'. Please check.');
   end;
-  // todo: move to a shared workbook object, write at tests suite finish
-  // http://wiki.lazarus.freepascal.org/fpcunit#Test_decorator:_OneTimeSetup_and_OneTimeTearDown
-  Workbook.WriteToFile(TestFileManual, OUTPUT_FORMAT, TRUE);
-  Workbook.Free;
 end;
 
+procedure TSpreadManualTests.TestRPNFormula;
+{$I rpntests.inc}
 
 initialization
   // Register so these tests are included in a full run
   RegisterTest(TSpreadManualTests);
   // Initialize the norm variables in case other units want to use it:
   InitSollColors;
+
 end.
 
 
