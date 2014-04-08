@@ -49,8 +49,13 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    // Current fpspreadsheet does not yet have support for new RPN formulas
+    {.$DEFINE FPSPREAD_HAS_NEWRPNSUPPORT}
+    {$IFDEF FPSPREAD_HAS_NEWRPNSUPPORT}
+    // As described in bug 25718: Feature request & patch: Implementation of writing more functions
     // Writes all rpn formulas. Use Excel or Open/LibreOffice to check validity.
     procedure TestRPNFormula;
+    {$ENDIF}
     // Writes all background colors in A1..A16
     procedure TestBiff8CellBackgroundColor;
   end;
@@ -62,6 +67,8 @@ uses
   fpsUtils;
 
 const
+  COLORSHEETNAME='colorsheet'; //for background color tests
+  RPNSHEETNAME='formula_sheet'; //for rpn formula tests
   OUTPUT_FORMAT = sfExcel8;
   FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');
 
@@ -166,7 +173,7 @@ begin
   if Workbook = nil then
     Workbook := TsWorkbook.Create;
 
-  Worksheet := Workbook.AddWorksheet('colorsheet');
+  Worksheet := Workbook.AddWorksheet(COLORSHEETNAME);
   WorkSheet.WriteUTF8Text(0,1,'TSpreadManualTests.TestBiff8CellBackgroundColor');
   RowOffset:=1;
   for i:=Low(SollColors) to High(SollColors) do
@@ -180,8 +187,11 @@ begin
   end;
 end;
 
+{$IFDEF FPSPREAD_HAS_NEWRPNSUPPORT}
+// As described in bug 25718: Feature request & patch: Implementation of writing more functions
 procedure TSpreadManualTests.TestRPNFormula;
 {$I rpntests.inc}
+{$ENDIF}
 
 initialization
   // Register so these tests are included in a full run
