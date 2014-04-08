@@ -70,7 +70,7 @@ uses
 const
   COLORSHEETNAME='colorsheet'; //for background color tests
   RPNSHEETNAME='formula_sheet'; //for rpn formula tests
-  OUTPUT_FORMAT = sfExcel5; //change manually if you want to test different formats. To do: automatically output all formats
+  OUTPUT_FORMAT = sfExcel8; //change manually if you want to test different formats. To do: automatically output all formats
   FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');
 
 var
