@@ -14,6 +14,9 @@ uses
 type
   TsSelectionDirection = (fpsVerticalSelection, fpsHorizontalSelection);
 
+  TsRelFlag = (rfRelRow, rfRelCol, rfRelRow2, rfRelCol2);
+  TsRelFlags = set of TsRelFlag;
+
 const
   // Date formatting string for unambiguous date/time display as strings
   // Can be used for text output when date/time cell support is not available
@@ -35,8 +38,13 @@ function WideStringLEToN(const AValue: WideString): WideString;
 function ParseIntervalString(const AStr: string;
   var AFirstCellRow, AFirstCellCol, ACount: Integer;
   var ADirection: TsSelectionDirection): Boolean;
+function ParseCellRangeString(const AStr: string;
+  var AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
+  var AFlags: TsRelFlags): Boolean;
 function ParseCellString(const AStr: string;
-  var ACellRow, ACellCol: Integer): Boolean;
+  var ACellRow, ACellCol: Integer; var AFlags: TsRelFlags): Boolean; overload;
+function ParseCellString(const AStr: string;
+  var ACellRow, ACellCol: Integer): Boolean; overload;
 function ParseCellRowString(const AStr: string;
   var AResult: Integer): Boolean;
 function ParseCellColString(const AStr: string;
@@ -148,10 +156,16 @@ function ParseIntervalString(const AStr: string;
   var AFirstCellRow, AFirstCellCol, ACount: Integer;
   var ADirection: TsSelectionDirection): Boolean;
 var
-  Cells: TStringList;
+  //Cells: TStringList;
   LastCellRow, LastCellCol: Integer;
+  p: Integer;
+  s1, s2: String;
 begin
   Result := True;
+
+  { Simpler:
+  use "pos" instead of the TStringList overhead.
+  And: the StringList is not free'ed here
 
   // First get the cells
   Cells := TStringList.Create;
@@ -161,6 +175,19 @@ begin
   Result := ParseCellString(Cells[0], AFirstCellRow, AFirstCellCol);
   if not Result then Exit;
   Result := ParseCellString(Cells[1], LastCellRow, LastCellCol);
+  if not Result then Exit;
+  }
+
+  // First find the position of the colon and split into parts
+  p := pos(':', AStr);
+  if p = 0 then exit(false);
+  s1 := copy(AStr, 1, p-1);
+  s2 := copy(AStr, p+1, Length(AStr));
+
+  // Then parse each of them
+  Result := ParseCellString(s1, AFirstCellRow, AFirstCellCol);
+  if not Result then Exit;
+  Result := ParseCellString(s2, LastCellRow, LastCellCol);
   if not Result then Exit;
 
   if AFirstCellRow = LastCellRow then
@@ -177,6 +204,42 @@ begin
 end;
 
 {@@
+  Parses strings like A5:C10 into a range selection information.
+  Return also information on relative/absolute cells.
+}
+function ParseCellRangeString(const AStr: string;
+  var AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
+  var AFlags: TsRelFlags): Boolean;
+var
+  p: Integer;
+  s: String;
+begin
+  Result := True;
+
+  // First find the colon
+  p := pos(':', AStr);
+  if p = 0 then exit(false);
+
+  // Analyze part after the colon
+  s := copy(AStr, p+1, Length(AStr));
+  Result := ParseCellString(s, ALastCellRow, ALastCellCol, AFlags);
+  if not Result then exit;
+  if (rfRelRow in AFlags) then begin
+    Include(AFlags, rfRelRow2);
+    Exclude(AFlags, rfRelRow);
+  end;
+  if (rfRelCol in AFlags) then begin
+    Include(AFlags, rfRelCol2);
+    Exclude(AFlags, rfRelCol);
+  end;
+
+  // Analyze part before the colon
+  s := copy(AStr, 1, p-1);
+  Result := ParseCellString(s, AFirstCellRow, AFirstCellCol, AFlags);
+end;
+
+
+{@@
   Parses a cell string, like 'A1' into zero-based column and row numbers
 
   The parser is a simple state machine, with the following states:
@@ -184,13 +247,17 @@ end;
   0 - Reading Column part 1 (necesserely needs a letter)
   1 - Reading Column part 2, but could be the first number as well
   2 - Reading Row
+
+  'AFlags' indicates relative addresses.
 }
-function ParseCellString(const AStr: string; var ACellRow, ACellCol: Integer): Boolean;
+function ParseCellString(const AStr: string; var ACellRow, ACellCol: Integer;
+  var AFlags: TsRelFlags): Boolean;
 var
   i: Integer;
   state: Integer;
   Col, Row: string;
   lChar: Char;
+  isAbs: Boolean;
 const
   cLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
    'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'W', 'X', 'Y', 'Z'];
@@ -201,11 +268,20 @@ begin
   state := 0;
   Col := '';
   Row := '';
+  AFlags := [rfRelCol, rfRelRow];
+  isAbs := false;
 
   // Separates the string into a row and a col
-  for i := 0 to Length(AStr) - 1 do
+  for i := 1 to Length(AStr) do
   begin
-    lChar := AStr[i + 1];
+    lChar := AStr[i];
+
+    if lChar = '$' then begin
+      if isAbs then
+        exit(false);
+      isAbs := true;
+      continue;
+    end;
 
     case state of
 
@@ -214,6 +290,9 @@ begin
       if lChar in cLetters then
       begin
         Col := lChar;
+        if isAbs then
+          Exclude(AFlags, rfRelCol);
+        isAbs := false;
         state := 1;
       end
       else Exit(False);
@@ -221,10 +300,14 @@ begin
 
     1:
     begin
-      if lChar in cLetters then Col := Col + lChar
+      if lChar in cLetters then
+        Col := Col + lChar
       else if lChar in cDigits then
       begin
         Row := lChar;
+        if isAbs then
+          Exclude(AFlags, rfRelRow);
+        isAbs := false;
         state := 2;
       end
       else Exit(False);
@@ -242,6 +325,16 @@ begin
   // Now parses each separetely
   ParseCellRowString(Row, ACellRow);
   ParseCellColString(Col, ACellCol);
+end;
+
+{ for compatibility with old version which does not return flags for relative
+  cell addresses }
+function ParseCellString(const AStr: string;
+  var ACellRow, ACellCol: Integer): Boolean;
+var
+  flags: TsRelFlags;
+begin
+  ParseCellString(AStr, ACellRow, ACellCol, flags);
 end;
 
 function ParseCellRowString(const AStr: string; var AResult: Integer): Boolean;
@@ -266,6 +359,12 @@ begin
   begin
     AResult := (Ord(AStr[1]) - Ord('A') + 1) * INT_NUM_LETTERS
      + Ord(AStr[2]) - Ord('A');
+  end
+  else if Length(AStr) = 3 then
+  begin
+    AResult := (Ord(AStr[1]) - Ord('A') + 1) * INT_NUM_LETTERS * INT_NUM_LETTERS
+     + (Ord(AStr[2]) - Ord('A') + 1) * INT_NUM_LETTERS
+     +  Ord(AStr[3]) - Ord('A');
   end
   else Exit(False);
 
