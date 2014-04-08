@@ -20,8 +20,9 @@ interface
 uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry, testdecorator,
-  fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  Classes, SysUtils, testutils, testregistry, testdecorator, fpcunit,
+  fpsallformats, fpspreadsheet,
+  xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 var
@@ -36,7 +37,7 @@ type
   { TSpreadManualSetup }
   TSpreadManualSetup= class(TTestSetup)
   protected
-    //procedure OneTimeSetup; override;
+    procedure OneTimeSetup; override;
     procedure OneTimeTearDown; override;
   end;
 
@@ -69,7 +70,7 @@ uses
 const
   COLORSHEETNAME='colorsheet'; //for background color tests
   RPNSHEETNAME='formula_sheet'; //for rpn formula tests
-  OUTPUT_FORMAT = sfExcel8;
+  OUTPUT_FORMAT = sfExcel5; //change manually if you want to test different formats. To do: automatically output all formats
   FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');
 
 var
@@ -136,6 +137,11 @@ end;
 
 { TSpreadManualSetup }
 
+procedure TSpreadManualSetup.OneTimeSetup;
+begin
+  // One time setup for entire suite: nothing needed here yet
+end;
+
 procedure TSpreadManualSetup.OneTimeTearDown;
 begin
   if Workbook <> nil then begin
@@ -152,7 +158,7 @@ end;
 
 procedure TSpreadManualTests.TearDown;
 begin
-
+  // nothing to do here, yet
 end;
 
 procedure TSpreadManualTests.TestBiff8CellBackgroundColor();
@@ -194,8 +200,8 @@ procedure TSpreadManualTests.TestRPNFormula;
 {$ENDIF}
 
 initialization
-  // Register so these tests are included in a full run
-  RegisterTest(TSpreadManualTests);
+  // Register one time setup/teardown and associated test class to actually run the tests
+  RegisterTestDecorator(TSpreadManualSetup,TSpreadManualTests);
   // Initialize the norm variables in case other units want to use it:
   InitSollColors;
 
