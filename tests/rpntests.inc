@@ -23,7 +23,7 @@ begin
   if Workbook = nil then
     Workbook := TsWorkbook.Create;
 
-  Worksheet := Workbook.AddWorksheet('formula_sheet');
+  Worksheet := Workbook.AddWorksheet(RPNSHEETNAME);
   Worksheet.WriteUTF8Text(0, 0, SBaseCells);
   Worksheet.WriteUsedFormatting(0, 0, [uffBold]);
   Worksheet.WriteNumber(0,1, cellB1);
