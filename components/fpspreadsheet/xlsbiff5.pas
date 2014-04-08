@@ -106,7 +106,6 @@ type
   TsSpreadBIFF5Writer = class(TsSpreadBIFFWriter)
   private
     WorkBookEncoding: TsEncoding;
-    function  FEKindToExcelID(AElement: TFEKind; var AParamsNum: Byte; var AExtra: Word): Byte;
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -156,8 +155,8 @@ const
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
-  MASK_EXCEL_RELATIVE_ROW = $4000;
-  MASK_EXCEL_RELATIVE_COL = $8000;
+  MASK_EXCEL_RELATIVE_COL = $4000;  // This is according to Microsoft documentation,
+  MASK_EXCEL_RELATIVE_ROW = $8000;  // but opposite to OpenOffice documentation!
 
   { BOF record constants }
   INT_BOF_BIFF5_VER       = $0500;
@@ -259,48 +258,6 @@ const
 }
 
 { TsSpreadBIFF5Writer }
-
-function TsSpreadBIFF5Writer.FEKindToExcelID(AElement: TFEKind;
-  var AParamsNum: Byte; var AExtra: Word): Byte;
-begin
-  AExtra := 0;
-
-  case AElement of
-  { Operands }
-  fekCell: Result := INT_EXCEL_TOKEN_TREFV;
-  fekNum: Result := INT_EXCEL_TOKEN_TNUM;
-  { Operators }
-  fekAdd:  Result := INT_EXCEL_TOKEN_TADD;
-  fekSub:  Result := INT_EXCEL_TOKEN_TSUB;
-  fekDiv:  Result := INT_EXCEL_TOKEN_TDIV;
-  fekMul:  Result := INT_EXCEL_TOKEN_TMUL;
-  { Built-in/Worksheet Function }
-  fekABS:
-  begin
-    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
-    AParamsNum := 1;
-    AExtra := INT_EXCEL_SHEET_FUNC_ABS;
-  end;
-  fekDATE:
-  begin
-    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
-    AParamsNum := 3;
-    AExtra := INT_EXCEL_SHEET_FUNC_DATE;
-  end;
-  fekROUND:
-  begin
-    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
-    AParamsNum := 2;
-    AExtra := INT_EXCEL_SHEET_FUNC_ROUND;
-  end;
-  fekTIME:
-  begin
-    Result := INT_EXCEL_TOKEN_FUNCVAR_V;
-    AParamsNum := 3;
-    AExtra := INT_EXCEL_SHEET_FUNC_TIME;
-  end;
-  end;
-end;
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteToFile ()
@@ -647,8 +604,11 @@ var
   i: Integer;
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Int64;
-  FormulaKind, ParamsNum: Byte;
+  FormulaKind: Word;
   ExtraInfo: Word;
+  r: Cardinal;
+  len: Integer;
+  s: ansistring;
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
@@ -665,7 +625,7 @@ begin
   { Index to XF Record }
   AStream.WriteWord($0000);
 
-  { Result of the formula in IEE 754 floating-point value }
+  { Result of the formula in IEEE 754 floating-point value }
   AStream.WriteBuffer(FormulaResult, 8);
 
   { Options flags }
@@ -686,7 +646,7 @@ begin
   for i := 0 to Length(AFormula) - 1 do
   begin
     { Token identifier }
-    FormulaKind := FEKindToExcelID(AFormula[i].ElementKind, ParamsNum, ExtraInfo);
+    FormulaKind := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind, ExtraInfo);
     AStream.WriteByte(FormulaKind);
     Inc(RPNLength);
 
@@ -704,11 +664,46 @@ begin
       Inc(RPNLength, 8);
     end;
 
+    INT_EXCEL_TOKEN_TSTR:
+    begin
+      s := ansistring(AFormula[i].StringValue);
+      len := Length(s);
+      AStream.WriteByte(len);
+      AStream.WriteBuffer(s[1], len);
+      Inc(RPNLength, len + 1);
+    end;
+
+    INT_EXCEL_TOKEN_TBOOL:  { fekBool }
+    begin
+      AStream.WriteByte(ord(AFormula[i].DoubleValue <> 0.0));
+      inc(RPNLength, 1);
+    end;
+
     INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
     begin
-      AStream.WriteWord(AFormula[i].Row and MASK_EXCEL_ROW);
+      r := AFormula[i].Row and MASK_EXCEL_ROW;
+      if (rfRelRow in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
+      if (rfRelCol in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
+      AStream.WriteWord(r);
       AStream.WriteByte(AFormula[i].Col);
       Inc(RPNLength, 3);
+    end;
+
+    INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
+    begin
+      r := AFormula[i].Row and MASK_EXCEL_ROW;
+      if (rfRelRow in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
+      if (rfRelCol in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
+      AStream.WriteWord(WordToLE(r));
+
+      r := AFormula[i].Row2 and MASK_EXCEL_ROW;
+      if (rfRelRow2 in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
+      if (rfRelCol2 in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
+      AStream.WriteWord(WordToLE(r));
+
+      AStream.WriteByte(AFormula[i].Col);
+      AStream.WriteByte(AFormula[i].Col2);
+      Inc(RPNLength, 6);
     end;
 
     {
@@ -724,9 +719,16 @@ begin
     14-0 7FFFH Index to a built-in sheet function (➜3.11) or a macro command
     15 8000H 0 = Built-in function; 1 = Macro command
     }
+    // Functions
+    INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
+    begin
+      AStream.WriteWord(WordToLE(ExtraInfo));
+      Inc(RPNLength, 2);
+    end;
+
     INT_EXCEL_TOKEN_FUNCVAR_V:
     begin
-      AStream.WriteByte(ParamsNum);
+      AStream.WriteByte(AFormula[i].ParamsNum);
       AStream.WriteWord(WordToLE(ExtraInfo));
       Inc(RPNLength, 3);
     end;

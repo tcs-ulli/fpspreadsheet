@@ -14,7 +14,7 @@ unit fpspreadsheet;
 interface
 
 uses
-  Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding;
+  Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding, fpsutils;
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
@@ -56,15 +56,51 @@ type
     DoubleValue: double;
   end;
 
-  {@@ Expanded formula. Used by backend modules. Provides more information then the text only }
+  {@@ Expanded formula. Used by backend modules. Provides more information than the text only
+
+   See http://www.techonthenet.com/excel/formulas/ for an explanation of
+   meaning and parameters of each formula
+
+   NOTE: When adding or rearranging items make sure to keep the TokenID table
+   in TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID, unit xlscommon,
+   in sync !!!
+  }
 
   TFEKind = (
     { Basic operands }
-    fekCell, fekCellRange, fekNum,
+    fekCell, fekCellRef, fekCellRange, fekNum, fekString, fekBool, fekMissingArg,
     { Basic operations }
-    fekAdd, fekSub, fekDiv, fekMul,
+    fekAdd, fekSub, fekDiv, fekMul, fekPercent, fekPower, fekUMinus, fekUPlus,
+    fekConcat,  // string concatenation
+    fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual, fekNotEqual,
     { Built-in/Worksheet Functions}
-    fekABS, fekDATE, fekROUND, fekTIME,
+    // math
+    fekABS, fekACOS, fekACOSH, fekASIN, fekASINH, fekATAN, fekATANH,
+    fekCOS, fekCOSH, fekDEGREES, fekEXP, fekINT, fekLN, fekLOG,
+    fekLOG10, fekPI, fekRADIANS, fekRAND, fekROUND,
+    fekSIGN, fekSIN, fekSINH, fekSQRT,
+    fekTAN, fekTANH,
+    // date/time
+    fekDATE, fekDATEDIF, fekDATEVALUE, fekDAY, fekHOUR, fekMINUTE, fekMONTH,
+    fekNOW, fekSECOND, fekTIME, fekTIMEVALUE, fekTODAY, fekWEEKDAY, fekYEAR,
+    // statistical
+    fekAVEDEV, fekAVERAGE, fekBETADIST, fekBETAINV, fekBINOMDIST, fekCHIDIST,
+    fekCHIINV, fekCOUNT, fekCOUNTA, fekCOUNTBLANK, fekCOUNTIF,
+    fekMAX, fekMEDIAN, fekMIN, fekPERMUT, fekPOISSON, fekPRODUCT,
+    fekSTDEV, fekSTDEVP, fekSUM, fekSUMIF, fekSUMSQ, fekVAR, fekVARP,
+    // financial
+    fekFV, fekNPER, fekPV, fekPMT, fekRATE,
+    // logical
+    fekAND, fekFALSE, fekIF, fekNOT, fekOR, fekTRUE,
+    // string
+    fekCHAR, fekCODE, fekLEFT, fekLOWER, fekMID, fekPROPER, fekREPLACE, fekRIGHT,
+    fekSUBSTITUTE, fekTRIM, fekUPPER,
+    // lookup/reference
+    fekCOLUMN, fekCOLUMNS, fekROW, fekROWS,
+    // info
+    fekCELLINFO, fekINFO, fekIsBLANK, fekIsERR, fekIsERROR,
+    fekIsLOGICAL, fekIsNA, fekIsNONTEXT, fekIsNUMBER, fekIsRef, fekIsTEXT,
+    fekValue,
     { Other operations }
     fekOpSUM
     );
@@ -72,9 +108,13 @@ type
   TsFormulaElement = record
     ElementKind: TFEKind;
     Row, Row2: Word; // zero-based
-    Col, Col2: Byte; // zero-based
+    Col, Col2: Word; // zero-based
     Param1, Param2: Word; // Extra parameters
     DoubleValue: double;
+    IntValue: Word;
+    StringValue: String;
+    RelFlags: TsRelFlags;  // store info on relative/absolute addresses
+    ParamsNum: Byte;
   end;
 
   TsExpandedFormula = array of TsFormulaElement;
@@ -377,7 +417,55 @@ type
     WriterClass: TsSpreadWriterClass;
     Format: TsSpreadsheetFormat;
   end;
-  
+
+  {@@ Helper for simplification of RPN formula creation }
+  PRPNItem = ^TRPNItem;
+  TRPNItem = record
+    FE: TsFormulaElement;
+    Next: PRPNItem;
+  end;
+
+  {@@
+    Simple creation an RPNFormula array to be used in fpspreadsheet.
+    For each formula element, use one of the RPNxxxx functions implemented here.
+    They are designed to be nested into each other. Terminate the chain by
+    using nil.
+
+    Example:
+    The RPN formula for the string expression "$A1+2" can be created as follows:
+
+      var
+        f: TsRPNFormula;
+
+        f := CreateRPNFormula(
+          RPNCellValue('A1',
+          RPNNumber(2,
+          RPNFunc(fekAdd,
+          nil))));
+  }
+
+  function CreateRPNFormula(AItem: PRPNItem): TsRPNFormula;
+
+  function RPNBool(AValue: Boolean;
+    ANext: PRPNItem): PRPNItem;
+  function RPNCellValue(ACellAddress: String;
+    ANext: PRPNItem): PRPNItem; overload;
+  function RPNCellValue(ARow, ACol: Integer; AFlags: TsRelFlags;
+    ANext: PRPNItem): PRPNItem; overload;
+  function RPNCellRef(ACellAddress: String;
+    ANext: PRPNItem): PRPNItem; overload;
+  function RPNCellRef(ARow, ACol: Integer; AFlags: TsRelFlags;
+    ANext: PRPNItem): PRPNItem; overload;
+  function RPNCellRange(ACellRangeAddress: String;
+    ANext: PRPNItem): PRPNItem; overload;
+  function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
+    ANext: PRPNItem): PRPNItem; overload;
+  function RPNMissingArg(ANext: PRPNItem): PRPNItem;
+  function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
+  function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
+  function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem; overload;
+  function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem; overload;
+
 var
   GsSpreadFormats: array of TsSpreadFormatData;
 
@@ -1871,6 +1959,220 @@ procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 begin
   // Silently dump the formula; child classes should implement their own support
+end;
+
+
+{ Simplified creation of RPN formulas }
+
+function NewRPNItem: PRPNItem;
+begin
+  Result := GetMem(SizeOf(TRPNItem));
+  FillChar(Result^.FE, SizeOf(Result^.FE), 0);
+  Result^.FE.StringValue := '';
+end;
+
+procedure DisposeRPNItem(AItem: PRPNItem);
+begin
+  if AItem <> nil then
+    FreeMem(AItem, SizeOf(TRPNItem));
+end;
+
+{@@
+  Creates a boolean value entry in the RPN array.
+}
+function RPNBool(AValue: Boolean; ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekBool;
+  if AValue then Result^.FE.DoubleValue := 1.0 else Result^.FE.DoubleValue := 0.0;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a cell value, specifed by its
+  address, e.g. 'A1'. Takes care of absolute and relative cell addresses.
+}
+function RPNCellValue(ACellAddress: String; ANext: PRPNItem): PRPNItem;
+var
+  r,c: Integer;
+  flags: TsRelFlags;
+begin
+  if not ParseCellString(ACellAddress, r, c, flags) then
+    raise Exception.CreateFmt('"%s" is not a valid cell address.', [ACellAddress]);
+  Result := RPNCellValue(r,c, flags, ANext);
+end;
+
+{@@
+  Creates an entry in the RPN array for a cell value, specifed by its
+  row and column index and a flag containing information on relative addresses.
+}
+function RPNCellValue(ARow, ACol: Integer; AFlags: TsRelFlags;
+  ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekCell;
+  Result^.FE.Row := ARow;
+  Result^.FE.Col := ACol;
+  Result^.FE.RelFlags := AFlags;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a cell reference, specifed by its
+  address, e.g. 'A1'. Takes care of absolute and relative cell addresses.
+  "Cell reference" means that all properties of the cell can be handled.
+  Note that most Excel formulas with cells require the cell value only
+  (--> RPNCellValue)
+}
+function RPNCellRef(ACellAddress: String; ANext: PRPNItem): PRPNItem;
+var
+  r,c: Integer;
+  flags: TsRelFlags;
+begin
+  if not ParseCellString(ACellAddress, r, c, flags) then
+    raise Exception.CreateFmt('"%s" is not a valid cell address.', [ACellAddress]);
+  Result := RPNCellRef(r,c, flags, ANext);
+end;
+
+{@@
+  Creates an entry in the RPN array for a cell reference, specifed by its
+  row and column index and flags containing information on relative addresses.
+  "Cell reference" means that all properties of the cell can be handled.
+  Note that most Excel formulas with cells require the cell value only
+  (--> RPNCellValue)
+}
+function RPNCellRef(ARow, ACol: Integer; AFlags: TsRelFlags;
+  ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekCellRef;
+  Result^.FE.Row := ARow;
+  Result^.FE.Col := ACol;
+  Result^.FE.RelFlags := AFlags;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a range of cells, specified by an
+  Excel-style address, e.g. A1:G5. As in Excel, use a $ sign to indicate
+  absolute addresses.
+}
+function RPNCellRange(ACellRangeAddress: String; ANext: PRPNItem): PRPNItem;
+var
+  r1,c1, r2,c2: Integer;
+  flags: TsRelFlags;
+begin
+  if not ParseCellRangeString(ACellRangeAddress, r1,c1, r2,c2, flags) then
+    raise Exception.CreateFmt('"%s" is not a valid cell range address.', [ACellRangeAddress]);
+  Result := RPNCellRange(r1,c1, r2,c2, flags, ANext);
+end;
+
+{@@
+  Creates an entry in the RPN array for a range of cells, specified by the
+  row/column indexes of the top/left and bottom/right corners of the block.
+  The flags indicate relative indexes.
+}
+function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
+  ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekCellRange;
+  Result^.FE.Row := ARow;
+  Result^.FE.Col := ACol;
+  Result^.FE.Row2 := ARow2;
+  Result^.FE.Col2 := ACol2;
+  Result^.FE.RelFlags := AFlags;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a missing argument in of function call.
+}
+function RPNMissingArg(ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekMissingArg;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a number. Integers and floating-point
+  values can be used likewise.
+}
+function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekNum;
+  Result^.FE.DoubleValue := AValue;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a string.
+}
+function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekString;
+  Result^.FE.StringValue := AValue;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for an Excel function or operation
+  specified by its TokenID (--> TFEKind). Note that array elements for all
+  needed parameters must have been created before.
+}
+function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem;
+begin
+  if ord(AToken) < ord(fekAdd) then
+    raise Exception.Create('No basic tokens allowed here.');
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := AToken;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for an Excel function or operation
+  specified by its TokenID (--> TFEKind). Specify the number of parameters used.
+  They must have been created before.
+}
+function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem;
+begin
+  Result := RPNFunc(AToken, ANext);
+  Result^.FE.ParamsNum := ANumParams;
+end;
+
+{@@
+  Creates an RPN formula by a single call using nested RPN items.
+}
+function CreateRPNFormula(AItem: PRPNItem): TsRPNFormula;
+var
+  item: PRPNItem;
+  nextitem: PRPNItem;
+  n: Integer;
+begin
+  // Determine count of RPN elements
+  n := 0;
+  item := AItem;
+  while item <> nil do begin
+    inc(n);
+    item := item^.Next;
+  end;
+
+  // Set array length of TsRPNFormula result
+  SetLength(Result, n);
+
+  // Copy FormulaElements to result and free temporary RPNItems
+  item := AItem;
+  n := 0;
+  while item <> nil do begin
+    nextitem := item^.Next;
+    Result[n] := item^.FE;
+    inc(n);
+    DisposeRPNItem(item);
+    item := nextitem;
+  end;
 end;
 
 

@@ -176,6 +176,7 @@ const
   { Excel record IDs }
   INT_EXCEL_ID_BOF        = $0809;
   INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
+  INT_EXCEL_ID_COUNTRY    = $008C;
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
   INT_EXCEL_ID_FONT       = $0031;
@@ -196,12 +197,13 @@ const
   INT_EXCEL_ID_PALETTE    = $0092;
   INT_EXCEL_ID_CODEPAGE   = $0042;
   INT_EXCEL_ID_FORMAT     = $041E;
+  INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
   MASK_EXCEL_COL_BITS_BIFF8=$00FF;
-  MASK_EXCEL_RELATIVE_ROW = $4000;
-  MASK_EXCEL_RELATIVE_COL = $8000;
+  MASK_EXCEL_RELATIVE_COL = $4000;  // This is according to Microsoft documentation,
+  MASK_EXCEL_RELATIVE_ROW = $8000;  // but opposite to OpenOffice documentation!
 
   { BOF record constants }
   INT_BOF_BIFF8_VER       = $0600;
@@ -634,7 +636,7 @@ begin
     SetLength(Boundsheets, len + 1);
     Boundsheets[len] := WriteBoundsheet(AStream, AData.GetWorksheetByIndex(i).Name);
   end;
-  
+
   WriteEOF(AStream);
 
   { Write each worksheet }
@@ -872,6 +874,7 @@ begin
   AStream.WriteBuffer(WideStringToLE(WideFontName)[1], Len * Sizeof(WideChar));
 end;
 
+
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteFormula ()
 *
@@ -967,10 +970,13 @@ procedure TsSpreadBIFF8Writer.WriteRPNFormula(AStream: TStream; const ARow,
 var
   FormulaResult: double;
   i: Integer;
+  len: Integer;
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Int64;
-  TokenID: Byte;
+  TokenID: Word;
   lSecondaryID: Word;
+  c: Cardinal;
+  wideStr: WideString;
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
@@ -988,7 +994,7 @@ begin
   //AStream.WriteWord(0);
   WriteXFIndex(AStream, ACell);
 
-  { Result of the formula in IEE 754 floating-point value }
+  { Result of the formula in IEEE 754 floating-point value }
   AStream.WriteBuffer(FormulaResult, 8);
 
   { Options flags }
@@ -1019,7 +1025,10 @@ begin
     INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA: { fekCell }
     begin
       AStream.WriteWord(AFormula[i].Row);
-      AStream.WriteWord(AFormula[i].Col and MASK_EXCEL_COL_BITS_BIFF8);
+      c := AFormula[i].Col and MASK_EXCEL_COL_BITS_BIFF8;
+      if (rfRelRow in AFormula[i].RelFlags) then c := c or MASK_EXCEL_RELATIVE_ROW;
+      if (rfRelCol in AFormula[i].RelFlags) then c := c or MASK_EXCEL_RELATIVE_COL;
+      AStream.WriteWord(c);
       Inc(RPNLength, 4);
     end;
 
@@ -1035,8 +1044,14 @@ begin
       }
       AStream.WriteWord(WordToLE(AFormula[i].Row));
       AStream.WriteWord(WordToLE(AFormula[i].Row2));
-      AStream.WriteWord(WordToLE(AFormula[i].Col));
-      AStream.WriteWord(WordToLE(AFormula[i].Col2));
+      c := AFormula[i].Col;
+      if (rfRelCol in AFormula[i].RelFlags) then c := c or MASK_EXCEL_RELATIVE_COL;
+      if (rfRelRow in AFormula[i].RelFlags) then c := c or MASK_EXCEL_RELATIVE_ROW;
+      AStream.WriteWord(WordToLE(c));
+      c := AFormula[i].Col2;
+      if (rfRelCol2 in AFormula[i].RelFlags) then c := c or MASK_EXCEL_RELATIVE_COL;
+      if (rfRelRow2 in AFormula[i].RelFlags) then c := c or MASK_EXCEL_RELATIVE_ROW;
+      AStream.WriteWord(WordToLE(c));
       Inc(RPNLength, 8);
     end;
 
@@ -1044,6 +1059,23 @@ begin
     begin
       AStream.WriteBuffer(AFormula[i].DoubleValue, 8);
       Inc(RPNLength, 8);
+    end;
+
+    INT_EXCEL_TOKEN_TSTR: { fekString }
+    begin
+      // string constant is stored as widestring in BIFF8
+      wideStr := AFormula[i].StringValue;
+      len := Length(wideStr);
+      AStream.WriteByte(len); // char count in 1 byte
+      AStream.WriteByte(1);   // Widestring flags, 1=regular unicode LE string
+      AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * Sizeof(WideChar));
+      Inc(RPNLength, 1 + 1 + len*SizeOf(WideChar));
+    end;
+
+    INT_EXCEL_TOKEN_TBOOL:  { fekBool }
+    begin
+      AStream.WriteByte(ord(AFormula[i].DoubleValue <> 0.0));
+      inc(RPNLength, 1);
     end;
 
     { binary operation tokens }
@@ -1060,11 +1092,19 @@ begin
       Inc(RPNLength, 3);
     end;
 
-    // Functions
+    // Functions with fixed parameter count
     INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
     begin
-      AStream.WriteWord(lSecondaryID);
+      AStream.WriteWord(WordToLE(lSecondaryID));
       Inc(RPNLength, 2);
+    end;
+
+    // Functions with variable parameter count
+    INT_EXCEL_TOKEN_FUNCVAR_V:
+    begin
+      AStream.WriteByte(AFormula[i].ParamsNum);
+      AStream.WriteWord(WordToLE(lSecondaryID));
+      Inc(RPNLength, 3);
     end;
 
     else

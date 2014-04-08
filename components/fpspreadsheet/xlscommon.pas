@@ -26,19 +26,23 @@ const
   INT_EXCEL_TOKEN_TSUB    = $04;
   INT_EXCEL_TOKEN_TMUL    = $05;
   INT_EXCEL_TOKEN_TDIV    = $06;
-  INT_EXCEL_TOKEN_TPOWER  = $07; // Power Exponentiation
-  INT_EXCEL_TOKEN_TCONCAT = $08; // Concatenation
-  INT_EXCEL_TOKEN_TLT     = $09; // Less than
-  INT_EXCEL_TOKEN_TLE     = $0A; // Less than or equal
-  INT_EXCEL_TOKEN_TEQ     = $0B; // Equal
-  INT_EXCEL_TOKEN_TGE     = $0C; // Greater than or equal
-  INT_EXCEL_TOKEN_TGT     = $0D; // Greater than
-  INT_EXCEL_TOKEN_TNE     = $0E; // Not equal
+  INT_EXCEL_TOKEN_TPOWER  = $07; // Power Exponentiation ^
+  INT_EXCEL_TOKEN_TCONCAT = $08; // Concatenation &
+  INT_EXCEL_TOKEN_TLT     = $09; // Less than <
+  INT_EXCEL_TOKEN_TLE     = $0A; // Less than or equal <=
+  INT_EXCEL_TOKEN_TEQ     = $0B; // Equal =
+  INT_EXCEL_TOKEN_TGE     = $0C; // Greater than or equal >=
+  INT_EXCEL_TOKEN_TGT     = $0D; // Greater than >
+  INT_EXCEL_TOKEN_TNE     = $0E; // Not equal <>
   INT_EXCEL_TOKEN_TISECT  = $0F; // Cell range intersection
   INT_EXCEL_TOKEN_TLIST   = $10; // Cell range list
   INT_EXCEL_TOKEN_TRANGE  = $11; // Cell range
+  INT_EXCEL_TOKEN_TUPLUS  = $12; // Unary plus  +
+  INT_EXCEL_TOKEN_TUMINUS = $13; // Unary minus +
+  INT_EXCEL_TOKEN_TPERCENT= $14; // Percent (%, divides operand by 100)
 
   { Constant Operand Tokens, 3.8}
+  INT_EXCEL_TOKEN_TMISSARG= $16; //missing operand
   INT_EXCEL_TOKEN_TSTR    = $17; //string
   INT_EXCEL_TOKEN_TBOOL   = $1D; //boolean
   INT_EXCEL_TOKEN_TINT    = $1E; //integer
@@ -49,6 +53,9 @@ const
   INT_EXCEL_TOKEN_TREFR   = $24;
   INT_EXCEL_TOKEN_TREFV   = $44;
   INT_EXCEL_TOKEN_TREFA   = $64;
+  INT_EXCEL_TOKEN_TAREA_R = $25;
+  INT_EXCEL_TOKEN_TAREA_V = $45;
+  INT_EXCEL_TOKEN_TAREA_A = $65;
 
   { Function Tokens }
   // _R: reference; _V: value; _A: array
@@ -61,13 +68,109 @@ const
   INT_EXCEL_TOKEN_FUNCVAR_R = $22;
   INT_EXCEL_TOKEN_FUNCVAR_V = $42;
   INT_EXCEL_TOKEN_FUNCVAR_A = $62;
-  INT_EXCEL_TOKEN_TAREA_R = $25;
 
   { Built-in/worksheet functions }
-  INT_EXCEL_SHEET_FUNC_ABS = 24; // $18
-  INT_EXCEL_SHEET_FUNC_ROUND = 27; // $1B
-  INT_EXCEL_SHEET_FUNC_DATE = 65; // $41
-  INT_EXCEL_SHEET_FUNC_TIME = 66; // $42
+  INT_EXCEL_SHEET_FUNC_COUNT      = 0;
+  INT_EXCEL_SHEET_FUNC_IF         = 1;
+  INT_EXCEL_SHEET_FUNC_ISNA       = 2;
+  INT_EXCEL_SHEET_FUNC_ISERROR    = 3;
+  INT_EXCEL_SHEET_FUNC_SUM        = 4;
+  INT_EXCEL_SHEET_FUNC_AVERAGE    = 5;
+  INT_EXCEL_SHEET_FUNC_MIN        = 6;
+  INT_EXCEL_SHEET_FUNC_MAX        = 7;
+  INT_EXCEL_SHEET_FUNC_ROW        = 8;
+  INT_EXCEL_SHEET_FUNC_COLUMN     = 9;
+  INT_EXCEL_SHEET_FUNC_STDEV      = 12;
+  INT_EXCEL_SHEET_FUNC_SIN        = 15;
+  INT_EXCEL_SHEET_FUNC_COS        = 16;
+  INT_EXCEL_SHEET_FUNC_TAN        = 17;
+  INT_EXCEL_SHEET_FUNC_ATAN       = 18;
+  INT_EXCEL_SHEET_FUNC_PI         = 19;
+  INT_EXCEL_SHEET_FUNC_SQRT       = 20;
+  INT_EXCEL_SHEET_FUNC_EXP        = 21;
+  INT_EXCEL_SHEET_FUNC_LN         = 22;
+  INT_EXCEL_SHEET_FUNC_LOG10      = 23;
+  INT_EXCEL_SHEET_FUNC_ABS        = 24; // $18
+  INT_EXCEL_SHEET_FUNC_INT        = 25;
+  INT_EXCEL_SHEET_FUNC_SIGN       = 26;
+  INT_EXCEL_SHEET_FUNC_ROUND      = 27; // $1B
+  INT_EXCEL_SHEET_FUNC_MID        = 31;
+  INT_EXCEL_SHEET_FUNC_VALUE      = 33;
+  INT_EXCEL_SHEET_FUNC_TRUE       = 34;
+  INT_EXCEL_SHEET_FUNC_FALSE      = 35;
+  INT_EXCEL_SHEET_FUNC_AND        = 36;
+  INT_EXCEL_SHEET_FUNC_OR         = 37;
+  INT_EXCEL_SHEET_FUNC_NOT        = 38;
+  INT_EXCEL_SHEET_FUNC_VAR        = 46;
+  INT_EXCEL_SHEET_FUNC_PV         = 56;
+  INT_EXCEL_SHEET_FUNC_FV         = 57;
+  INT_EXCEL_SHEET_FUNC_NPER       = 58;
+  INT_EXCEL_SHEET_FUNC_PMT        = 59;
+  INT_EXCEL_SHEET_FUNC_RATE       = 60;
+  INT_EXCEL_SHEET_FUNC_RAND       = 63;
+  INT_EXCEL_SHEET_FUNC_DATE       = 65; // $41
+  INT_EXCEL_SHEET_FUNC_TIME       = 66; // $42
+  INT_EXCEL_SHEET_FUNC_DAY        = 67;
+  INT_EXCEL_SHEET_FUNC_MONTH      = 68;
+  INT_EXCEL_SHEET_FUNC_YEAR       = 69;
+  INT_EXCEL_SHEET_FUNC_WEEKDAY    = 70;
+  INT_EXCEL_SHEET_FUNC_HOUR       = 71;
+  INT_EXCEL_SHEET_FUNC_MINUTE     = 72;
+  INT_EXCEL_SHEET_FUNC_SECOND     = 73;
+  INT_EXCEL_SHEET_FUNC_NOW        = 74;
+  INT_EXCEL_SHEET_FUNC_ROWS       = 76;
+  INT_EXCEL_SHEET_FUNC_COLUMNS    = 77;
+  INT_EXCEL_SHEET_FUNC_ASIN       = 98;
+  INT_EXCEL_SHEET_FUNC_ACOS       = 99;
+  INT_EXCEL_SHEET_FUNC_ISREF      = 105;
+  INT_EXCEL_SHEET_FUNC_LOG        = 109;
+  INT_EXCEL_SHEET_FUNC_CHAR       = 111;
+  INT_EXCEL_SHEET_FUNC_LOWER      = 112;
+  INT_EXCEL_SHEET_FUNC_UPPER      = 113;
+  INT_EXCEL_SHEET_FUNC_PROPER     = 114;
+  INT_EXCEL_SHEET_FUNC_LEFT       = 115;
+  INT_EXCEL_SHEET_FUNC_RIGHT      = 116;
+  INT_EXCEL_SHEET_FUNC_TRIM       = 118;
+  INT_EXCEL_SHEET_FUNC_REPLACE    = 119;
+  INT_EXCEL_SHEET_FUNC_SUBSTITUTE = 120;
+  INT_EXCEL_SHEET_FUNC_CODE       = 121;
+  INT_EXCEL_SHEET_FUNC_CELL       = 125;
+  INT_EXCEL_SHEET_FUNC_ISERR      = 126;
+  INT_EXCEL_SHEET_FUNC_ISTEXT     = 127;
+  INT_EXCEL_SHEET_FUNC_ISNUMBER   = 128;
+  INT_EXCEL_SHEET_FUNC_ISBLANK    = 129;
+  INT_EXCEL_SHEET_FUNC_DATEVALUE  = 140;
+  INT_EXCEL_SHEET_FUNC_TIMEVALUE  = 141;
+  INT_EXCEL_SHEET_FUNC_COUNTA     = 169;
+  INT_EXCEL_SHEET_FUNC_PRODUCT    = 183;
+  INT_EXCEL_SHEET_FUNC_ISNONTEXT  = 190;
+  INT_EXCEL_SHEET_FUNC_STDEVP     = 193;
+  INT_EXCEL_SHEET_FUNC_VARP       = 194;
+  INT_EXCEL_SHEET_FUNC_ISLOGICAL  = 198;
+  INT_EXCEL_SHEET_FUNC_TODAY      = 221;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_MEDIAN     = 227;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_SINH       = 229;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_COSH       = 230;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_TANH       = 231;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_ASINH      = 232;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_ACOSH      = 233;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_ATANH      = 234;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_INFO       = 244;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_AVEDEV     = 269;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_BETADIST   = 270;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_BETAINV    = 272;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_BINOMDIST  = 273;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_CHIDIST    = 274;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_CHIINV     = 275;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_PERMUT     = 299;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_POISSON    = 300;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_SUMSQ      = 321;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_RADIANS    = 342;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_DEGREES    = 343;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_SUMIF      = 345;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_COUNTIF    = 346;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_COUNTBLANK = 347;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_DATEDIF    = 351;  // not available in BIFF2
 
   { Control Tokens, Special Tokens }
 //  01H tExp Matrix formula or shared formula
@@ -200,7 +303,7 @@ type
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
-    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Byte;
+    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
     // Other records which didn't change
     // Workbook Globals records
     // Write out used codepage for character encoding
@@ -408,45 +511,174 @@ begin
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
-  AElementKind: TFEKind; out ASecondaryID: Word): Byte;
-begin
-  ASecondaryID := 0;
+  AElementKind: TFEKind; out ASecondaryID: Word): Word;
+const
+  { Explanation of first index:
+     0 --> primary token (basic operands and operations)
+     1 --> secondary token of a function with a fixed parameter count
+     2 --> secondary token of a function with a variable parameter count }
+  TokenIDs: array[fekCell..fekOpSum, 0..1] of Word = (
+    // Basic operands
+    (0, INT_EXCEL_TOKEN_TREFV),          {fekCell}
+    (0, INT_EXCEL_TOKEN_TREFR),          {fekCellRef}
+    (0, INT_EXCEL_TOKEN_TAREA_R),        {fekCellRange}
+    (0, INT_EXCEL_TOKEN_TNUM),           {fekNum}
+    (0, INT_EXCEL_TOKEN_TSTR),           {fekString}
+    (0, INT_EXCEL_TOKEN_TBOOL),          {fekBool}
+    (0, INT_EXCEL_TOKEN_TMISSARG),       {fekMissArg, missing argument}
 
-  case AElementKind of
-    { Operand Tokens }
-    fekCell:  Result := INT_EXCEL_TOKEN_TREFR;
-    fekCellRange: Result := INT_EXCEL_TOKEN_TAREA_R;
-    fekNum:   Result := INT_EXCEL_TOKEN_TNUM;
-    { Basic operations }
-    fekAdd:   Result := INT_EXCEL_TOKEN_TADD;
-    fekSub:   Result := INT_EXCEL_TOKEN_TSUB;
-    fekDiv:   Result := INT_EXCEL_TOKEN_TDIV;
-    fekMul:   Result := INT_EXCEL_TOKEN_TMUL;
-    { Built-in Functions}
-    fekABS:
-    begin
-      Result := INT_EXCEL_TOKEN_FUNC_V;
-      ASecondaryID := INT_EXCEL_SHEET_FUNC_ABS;
-    end;
-    fekDATE:
-    begin
-      Result := INT_EXCEL_TOKEN_FUNC_V;
-      ASecondaryID := INT_EXCEL_SHEET_FUNC_DATE;
-    end;
-    fekROUND:
-    begin
-      Result := INT_EXCEL_TOKEN_FUNC_V;
-      ASecondaryID := INT_EXCEL_SHEET_FUNC_ROUND;
-    end;
-    fekTIME:
-    begin
-      Result := INT_EXCEL_TOKEN_FUNC_V;
-      ASecondaryID := INT_EXCEL_SHEET_FUNC_TIME;
-    end;
-    { Other operations }
-    fekOpSUM: Result := INT_EXCEL_TOKEN_TATTR;
-  else
-    Result := 0;
+    // Basic operations
+    (0, INT_EXCEL_TOKEN_TADD),           {fekAdd, +}
+    (0, INT_EXCEL_TOKEN_TSUB),           {fekSub, -}
+    (0, INT_EXCEL_TOKEN_TDIV),           {fekDiv, /}
+    (0, INT_EXCEL_TOKEN_TMUL),           {fekMul, *}
+    (0, INT_EXCEL_TOKEN_TPERCENT),       {fekPercent, %}
+    (0, INT_EXCEL_TOKEN_TPOWER),         {fekPower, ^}
+    (0, INT_EXCEL_TOKEN_TUMINUS),        {fekUMinus, -}
+    (0, INT_EXCEL_TOKEN_TUPLUS),         {fekUPlus, +}
+    (0, INT_EXCEL_TOKEN_TCONCAT),        {fekConcat, &, for strings}
+    (0, INT_EXCEL_TOKEN_TEQ),            {fekEqual, =}
+    (0, INT_EXCEL_TOKEN_TGT),            {fekGreater, >}
+    (0, INT_EXCEL_TOKEN_TGE),            {fekGreaterEqual, >=}
+    (0, INT_EXCEL_TOKEN_TLT),            {fekLess <}
+    (0, INT_EXCEL_TOKEN_TLE),            {fekLessEqual, <=}
+    (0, INT_EXCEL_TOKEN_TNE),            {fekNotEqual, <>}
+
+    // Math functions
+    (1, INT_EXCEL_SHEET_FUNC_ABS),       {fekABS}
+    (1, INT_EXCEL_SHEET_FUNC_ACOS),      {fekACOS}
+    (1, INT_EXCEL_SHEET_FUNC_ACOSH),     {fekACOSH}
+    (1, INT_EXCEL_SHEET_FUNC_ASIN),      {fekASIN}
+    (1, INT_EXCEL_SHEET_FUNC_ASINH),     {fekASINH}
+    (1, INT_EXCEL_SHEET_FUNC_ATAN),      {fekATAN}
+    (1, INT_EXCEL_SHEET_FUNC_ATANH),     {fekATANH}
+    (1, INT_EXCEL_SHEET_FUNC_COS),       {fekCOS}
+    (1, INT_EXCEL_SHEET_FUNC_COSH),      {fekCOSH}
+    (1, INT_EXCEL_SHEET_FUNC_DEGREES),   {fekDEGREES}
+    (1, INT_EXCEL_SHEET_FUNC_EXP),       {fekEXP}
+    (1, INT_EXCEL_SHEET_FUNC_INT),       {fekINT}
+    (1, INT_EXCEL_SHEET_FUNC_LN),        {fekLN}
+    (1, INT_EXCEL_SHEET_FUNC_LOG),       {fekLOG}
+    (1, INT_EXCEL_SHEET_FUNC_LOG10),     {fekLOG10}
+    (1, INT_EXCEL_SHEET_FUNC_PI),        {fekPI}
+    (1, INT_EXCEL_SHEET_FUNC_RADIANS),   {fekRADIANS}
+    (1, INT_EXCEL_SHEET_FUNC_RAND),      {fekRAND}
+    (1, INT_EXCEL_SHEET_FUNC_ROUND),     {fekROUND}
+    (1, INT_EXCEL_SHEET_FUNC_SIGN),      {fekSIGN}
+    (1, INT_EXCEL_SHEET_FUNC_SIN),       {fekSIN}
+    (1, INT_EXCEL_SHEET_FUNC_SINH),      {fekSINH}
+    (1, INT_EXCEL_SHEET_FUNC_SQRT),      {fekSQRT}
+    (1, INT_EXCEL_SHEET_FUNC_TAN),       {fekTAN}
+    (1, INT_EXCEL_SHEET_FUNC_TANH),      {fekTANH}
+
+    // Date/time functions
+    (1, INT_EXCEL_SHEET_FUNC_DATE),      {fekDATE}
+    (1, INT_EXCEL_SHEET_FUNC_DATEDIF),   {fekDATEDIF}
+    (1, INT_EXCEL_SHEET_FUNC_DATEVALUE), {fekDATEVALUE}
+    (1, INT_EXCEL_SHEET_FUNC_DAY),       {fekDAY}
+    (1, INT_EXCEL_SHEET_FUNC_HOUR),      {fekHOUR}
+    (1, INT_EXCEL_SHEET_FUNC_MINUTE),    {fekMINUTE}
+    (1, INT_EXCEL_SHEET_FUNC_MONTH),     {fekMONTH}
+    (1, INT_EXCEL_SHEET_FUNC_NOW),       {fekNOW}
+    (1, INT_EXCEL_SHEET_FUNC_SECOND),    {fekSECOND}
+    (1, INT_EXCEL_SHEET_FUNC_TIME),      {fekTIME}
+    (1, INT_EXCEL_SHEET_FUNC_TIMEVALUE), {fekTIMEVALUE}
+    (1, INT_EXCEL_SHEET_FUNC_TODAY),     {fekTODAY}
+    (2, INT_EXCEL_SHEET_FUNC_WEEKDAY),   {fekWEEKDAY}
+    (1, INT_EXCEL_SHEET_FUNC_YEAR),      {fekYEAR}
+
+    // Statistical functions
+    (2, INT_EXCEL_SHEET_FUNC_AVEDEV),    {fekAVEDEV}
+    (2, INT_EXCEL_SHEET_FUNC_AVERAGE),   {fekAVERAGE}
+    (2, INT_EXCEL_SHEET_FUNC_BETADIST),  {fekBETADIST}
+    (2, INT_EXCEL_SHEET_FUNC_BETAINV),   {fekBETAINV}
+    (1, INT_EXCEL_SHEET_FUNC_BINOMDIST), {fekBINOMDIST}
+    (1, INT_EXCEL_SHEET_FUNC_CHIDIST),   {fekCHIDIST}
+    (1, INT_EXCEL_SHEET_FUNC_CHIINV),    {fekCHIINV}
+    (2, INT_EXCEL_SHEET_FUNC_COUNT),     {fekCOUNT}
+    (2, INT_EXCEL_SHEET_FUNC_COUNTA),    {fekCOUNTA}
+    (1, INT_EXCEL_SHEET_FUNC_COUNTBLANK),{fekCOUNTBLANK}
+    (2, INT_EXCEL_SHEET_FUNC_COUNTIF),   {fekCOUNTIF}
+    (2, INT_EXCEL_SHEET_FUNC_MAX),       {fekMAX}
+    (2, INT_EXCEL_SHEET_FUNC_MEDIAN),    {fekMEDIAN}
+    (2, INT_EXCEL_SHEET_FUNC_MIN),       {fekMIN}
+    (1, INT_EXCEL_SHEET_FUNC_PERMUT),    {fekPERMUT}
+    (1, INT_EXCEL_SHEET_FUNC_POISSON),   {fekPOISSON}
+    (2, INT_EXCEL_SHEET_FUNC_PRODUCT),   {fekPRODUCT}
+    (2, INT_EXCEL_SHEET_FUNC_STDEV),     {fekSTDEV}
+    (2, INT_EXCEL_SHEET_FUNC_STDEVP),    {fekSTDEVP}
+    (2, INT_EXCEL_SHEET_FUNC_SUM),       {fekSUM}
+    (2, INT_EXCEL_SHEET_FUNC_SUMIF),     {fekSUMIF}
+    (2, INT_EXCEL_SHEET_FUNC_SUMSQ),     {fekSUMSQ}
+    (2, INT_EXCEL_SHEET_FUNC_VAR),       {fekVAR}
+    (2, INT_EXCEL_SHEET_FUNC_VARP),      {fekVARP}
+
+    // Financial functions
+    (2, INT_EXCEL_SHEET_FUNC_FV),        {fekFV}
+    (2, INT_EXCEL_SHEET_FUNC_NPER),      {fekNPER}
+    (2, INT_EXCEL_SHEET_FUNC_PV),        {fekPV}
+    (2, INT_EXCEL_SHEET_FUNC_PMT),       {fekPMT}
+    (2, INT_EXCEL_SHEET_FUNC_RATE),      {fekRATE}
+
+    // Logical functions
+    (2, INT_EXCEL_SHEET_FUNC_AND),       {fekAND}
+    (1, INT_EXCEL_SHEET_FUNC_FALSE),     {fekFALSE}
+    (2, INT_EXCEL_SHEET_FUNC_IF),        {fekIF}
+    (1, INT_EXCEL_SHEET_FUNC_NOT),       {fekNOT}
+    (2, INT_EXCEL_SHEET_FUNC_OR),        {fekOR}
+    (1, INT_EXCEL_SHEET_FUNC_TRUE),      {fekTRUE}
+
+    // String functions
+    (1, INT_EXCEL_SHEET_FUNC_CHAR),      {fekCHAR}
+    (1, INT_EXCEL_SHEET_FUNC_CODE),      {fekCODE}
+    (2, INT_EXCEL_SHEET_FUNC_LEFT),      {fekLEFT}
+    (1, INT_EXCEL_SHEET_FUNC_LOWER),     {fekLOWER}
+    (1, INT_EXCEL_SHEET_FUNC_MID),       {fekMID}
+    (1, INT_EXCEL_SHEET_FUNC_PROPER),    {fekPROPER}
+    (1, INT_EXCEL_SHEET_FUNC_REPLACE),   {fekREPLACE}
+    (2, INT_EXCEL_SHEET_FUNC_RIGHT),     {fekRIGHT}
+    (2, INT_EXCEL_SHEET_FUNC_SUBSTITUTE),{fekSUBSTITUTE}
+    (1, INT_EXCEL_SHEET_FUNC_TRIM),      {fekTRIM}
+    (1, INT_EXCEL_SHEET_FUNC_UPPER),     {fekUPPER}
+
+    // lookup/reference functions
+    (2, INT_EXCEL_SHEET_FUNC_COLUMN),    {fekCOLUMN}
+    (1, INT_EXCEL_SHEET_FUNC_COLUMNS),   {fekCOLUMNS}
+    (2, INT_EXCEL_SHEET_FUNC_ROW),       {fekROW}
+    (1, INT_EXCEL_SHEET_FUNC_ROWS),      {fekROWS}
+
+    // Info functions
+    (2, INT_EXCEL_SHEET_FUNC_CELL),      {fekCELLINFO}
+    (1, INT_EXCEL_SHEET_FUNC_INFO),      {fekINFO}
+    (1, INT_EXCEL_SHEET_FUNC_ISBLANK),   {fekIsBLANK}
+    (1, INT_EXCEL_SHEET_FUNC_ISERR),     {fekIsERR}
+    (1, INT_EXCEL_SHEET_FUNC_ISERROR),   {fekIsERROR}
+    (1, INT_EXCEL_SHEET_FUNC_ISLOGICAL), {fekIsLOGICAL}
+    (1, INT_EXCEL_SHEET_FUNC_ISNA),      {fekIsNA}
+    (1, INT_EXCEL_SHEET_FUNC_ISNONTEXT), {fekIsNONTEXT}
+    (1, INT_EXCEL_SHEET_FUNC_ISNUMBER),  {fekIsNUMBER}
+    (1, INT_EXCEL_SHEET_FUNC_ISREF),     {fekIsREF}
+    (1, INT_EXCEL_SHEET_FUNC_ISTEXT),    {fekIsTEXT}
+    (1, INT_EXCEL_SHEET_FUNC_VALUE),     {fekValue}
+
+    // Other operations
+    (0, INT_EXCEL_TOKEN_TATTR)           {fekOpSum}
+  );
+
+begin
+  case TokenIDs[AElementKind, 0] of
+    0: begin
+         Result := TokenIDs[AElementKind, 1];
+         ASecondaryID := 0;
+       end;
+    1: begin
+         Result := INT_EXCEL_TOKEN_FUNC_V;
+         ASecondaryID := TokenIDs[AElementKind, 1]
+       end;
+    2: begin
+         Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+         ASecondaryID := TokenIDs[AElementKind, 1]
+       end;
   end;
 end;
 

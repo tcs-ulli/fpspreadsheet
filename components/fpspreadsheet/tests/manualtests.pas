@@ -50,7 +50,7 @@ type
     procedure TearDown; override;
   published
     // Current fpspreadsheet does not yet have support for new RPN formulas
-    {.$DEFINE FPSPREAD_HAS_NEWRPNSUPPORT}
+    {$DEFINE FPSPREAD_HAS_NEWRPNSUPPORT}
     {$IFDEF FPSPREAD_HAS_NEWRPNSUPPORT}
     // As described in bug 25718: Feature request & patch: Implementation of writing more functions
     // Writes all rpn formulas. Use Excel or Open/LibreOffice to check validity.
