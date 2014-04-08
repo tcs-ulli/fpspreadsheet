@@ -48,7 +48,7 @@ unit xlsbiff8;
 
 // The new OLE code is much better, so always use it
 {$define USE_NEW_OLE}
-{.$define XLSDEBUG}
+{.$define FPSPREADDEBUG} //used to be XLSDEBUG
 
 interface
 
@@ -2242,7 +2242,7 @@ begin
       end;
     end;
     FSharedStringTable.Add(LString);
-    {$ifdef XLSDEBUG}
+    {$ifdef FPSPREADDEBUG}
     WriteLn('Adding shared string: ' + LString);
     {$endif}
     dec(Items);
@@ -2369,7 +2369,7 @@ begin
 
   { Character set }
   lCodepage := AStream.ReadByte();
-  {$ifdef XLSDEBUG}
+  {$ifdef FPSPREADDEBUG}
   WriteLn('Reading Font Codepage='+IntToStr(lCodepage));
   {$endif}
 

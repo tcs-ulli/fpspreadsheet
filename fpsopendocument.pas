@@ -24,6 +24,7 @@ unit fpsopendocument;
   {$mode delphi}
 {$endif}
 
+{.$define FPSPREADDEBUG} //used to be XLSDEBUG
 interface
 
 uses
@@ -343,7 +344,7 @@ begin
   Value:=GetAttrValue(ACellNode,'office:date-value');
   if Value<>'' then
   begin
-    {$IFDEF XLSDEBUG}
+    {$IFDEF FPSPREADDEBUG}
     writeln('Row (1based): ',ARow+1,'office:date-value: '+Value);
     {$ENDIF}
     // Date or date/time string
@@ -362,7 +363,7 @@ begin
     // Try time only, e.g. PT23H59M59S
     //                     12345678901
     Value:=GetAttrValue(ACellNode,'office:time-value');
-    {$IFDEF XLSDEBUG}
+    {$IFDEF FPSPREADDEBUG}
     writeln('Row (1based): ',ARow+1,'office:time-value: '+Value);
     {$ENDIF}
     if (Value<>'') and (Pos('PT',Value)=1) then
