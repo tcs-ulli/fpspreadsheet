@@ -57,7 +57,7 @@ type
     // Writes all rpn formulas. Use Excel or Open/LibreOffice to check validity.
     procedure TestRPNFormula;
     {$ENDIF}
-    // Writes all background colors in A1..A16
+    // For BIFF8 format, writes all background colors in A1..A16
     procedure TestBiff8CellBackgroundColor;
   end;
 
@@ -171,6 +171,9 @@ var
   i: cardinal;
   RowOffset: cardinal;
 begin
+  if OUTPUT_FORMAT <> sfExcel8 then
+    Ignore('This test only applies to BIFF8 XLS output format.');
+
   // No worksheets in BIFF2. Since main interest is here in formulas we just jump
   // off here - need to change this in the future...
   if OUTPUT_FORMAT = sfExcel2 then
