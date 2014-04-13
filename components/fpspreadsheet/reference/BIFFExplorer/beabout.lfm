@@ -1,0 +1,85 @@
+object AboutForm: TAboutForm
+  Left = 338
+  Height = 512
+  Top = 153
+  Width = 642
+  Caption = 'About BIFF Explorer'
+  ClientHeight = 512
+  ClientWidth = 642
+  Color = clWindow
+  OnCreate = FormCreate
+  Position = poMainFormCenter
+  LCLVersion = '1.3'
+  object Panel1: TPanel
+    Left = 0
+    Height = 66
+    Top = 0
+    Width = 642
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 66
+    ClientWidth = 642
+    Color = clWindow
+    ParentColor = False
+    TabOrder = 0
+    object IconImage: TImage
+      Left = 7
+      Height = 48
+      Top = 8
+      Width = 48
+    end
+    object LblTitle: TLabel
+      Left = 69
+      Height = 29
+      Top = 16
+      Width = 158
+      Caption = 'BIFF Explorer'
+      Font.CharSet = ANSI_CHARSET
+      Font.Color = clNavy
+      Font.Height = -24
+      Font.Name = 'Arial'
+      Font.Pitch = fpVariable
+      Font.Quality = fqDraft
+      Font.Style = [fsBold]
+      ParentColor = False
+      ParentFont = False
+    end
+    object BtnClose: TButton
+      Left = 559
+      Height = 29
+      Top = 16
+      Width = 75
+      Anchors = [akTop, akRight]
+      Cancel = True
+      Caption = 'Close'
+      Default = True
+      ModalResult = 1
+      TabOrder = 0
+    end
+  end
+  object Bevel1: TBevel
+    Left = 0
+    Height = 6
+    Top = 66
+    Width = 642
+    Align = alTop
+    Shape = bsTopLine
+  end
+  object HTMLViewer: TIpHtmlPanel
+    Left = 0
+    Height = 440
+    Top = 72
+    Width = 642
+    Align = alClient
+    FixedTypeface = 'Courier New'
+    DefaultTypeFace = 'default'
+    DefaultFontSize = 9
+    FlagErrors = False
+    PrintSettings.MarginLeft = 0.5
+    PrintSettings.MarginTop = 0.5
+    PrintSettings.MarginRight = 0.5
+    PrintSettings.MarginBottom = 0.5
+    TabOrder = 1
+    OnHotClick = HTMLViewerHotClick
+  end
+end
