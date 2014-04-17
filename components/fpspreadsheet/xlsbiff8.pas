@@ -1084,11 +1084,14 @@ begin
 
     { Other operations }
     INT_EXCEL_TOKEN_TATTR: { fekOpSUM }
+    { 3.10, page 71: e.g. =SUM(1) is represented by token array
+    tInt(1),tAttrRum
+    }
     begin
-      // Uniry SUM Operation
-      AStream.WriteByte($10);
-      AStream.WriteByte(0);
-      AStream.WriteByte(0);
+      // Unary SUM Operation
+      AStream.WriteByte($10); //tAttrSum token (SUM with one parameter)
+      AStream.WriteByte(0); // not used
+      AStream.WriteByte(0); // not used
       Inc(RPNLength, 3);
     end;
 
