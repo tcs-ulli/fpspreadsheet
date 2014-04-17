@@ -29,6 +29,8 @@ var
   i: Integer;
   lCell: PCell;
   number: Double;
+  lCol: TCol;
+  lRow: TRow;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
 
@@ -137,6 +139,18 @@ begin
   MyWorksheet.WriteNumber(36, 1, number, nfPercentage, 2);
   MyWorksheet.WriteUTF8Text(37, 0, 'nfTimeInterval');
   MyWorksheet.WriteDateTime(37, 1, number, nfTimeInterval);
+
+  // Set width of columns 1 and 5
+  lCol.Width := 100;  //mm
+  MyWorksheet.WriteColInfo(1, lCol);
+  lCol.Width := 50;
+  MyWorksheet.WriteColInfo(5, lCol);
+
+  // Set height of rows 5 and 6
+  lRow.Height := 10;  // mm
+  MyWorksheet.WriteRowInfo(5, lRow);
+  lRow.Height := 5;
+  MyWorksheet.WriteRowInfo(6, lRow);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);
