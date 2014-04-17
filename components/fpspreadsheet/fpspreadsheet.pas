@@ -557,9 +557,11 @@ end;
 }
 procedure TsWorksheet.RemoveCallback(data, arg: pointer);
 begin
-  { The UTF8STring must be manually reseted to nil content, because
+  { The strings and dyn arrays must be reset to nil content manually, because
     FreeMem only frees the record mem, without checking its content }
-  PCell(data).UTF8StringValue:='';
+  PCell(data).UTF8StringValue := '';
+  PCell(data).NumberFormatStr := '';
+  SetLength(PCell(data).RPNFormulaValue, 0);
   FreeMem(data);
 end;
 
