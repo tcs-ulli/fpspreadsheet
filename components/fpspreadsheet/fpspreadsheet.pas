@@ -1212,7 +1212,7 @@ begin
   Result := nil;
 
   LElement.Col := ACol;
-  AVLNode := FRows.Find(@LElement);
+  AVLNode := FCols.Find(@LElement);
   if Assigned(AVLNode) then
     result := PCol(AVLNode.Data);
 end;
@@ -1249,26 +1249,26 @@ end;
 
 procedure TsWorksheet.RemoveAllRows;
 var
-  Node: TAVGLVLTreeNode;
+  Node: Pointer;
   i: Integer;
 begin
-  for i := 0 to FRows.Count-1 do
+  for i := FRows.Count-1 downto 0 do
   begin
-    Node:=FRows.Items[0];
-    FreeMem(PRow(Node.Data));
+    Node := FRows.Items[i];
+    FreeMem(Node, SizeOf(TRow));
   end;
   FRows.Clear;
 end;
 
 procedure TsWorksheet.RemoveAllCols;
 var
-  Node: TAVGLVLTreeNode;
+  Node: Pointer;
   i: Integer;
 begin
-  for i := 0 to FCols.Count-1 do
+  for i := FCols.Count-1 downto 0 do
   begin
-    Node:=FCols.Items[0];
-    FreeMem(PCol(Node.Data));
+    Node := FCols.Items[i];
+    FreeMem(Node, SizeOf(TCol));
   end;
   FCols.Clear;
 end;
@@ -1278,7 +1278,6 @@ var
   AElement: PRow;
 begin
   AElement := GetRow(ARow);
-
   AElement^.Height := AData.Height;
 end;
 
@@ -1287,7 +1286,6 @@ var
   AElement: PCol;
 begin
   AElement := GetCol(ACol);
-
   AElement^.Width := AData.Width;
 end;
 
