@@ -31,6 +31,8 @@ type
     procedure ShowCalcMode;
     procedure ShowClrtClient;
     procedure ShowCodePage;
+    procedure ShowColInfo;
+    procedure ShowColWidth;
     procedure ShowCountry;
     procedure ShowDateMode;
     procedure ShowDefColWidth;
@@ -56,7 +58,9 @@ type
     procedure ShowLabelSSTCell;
     procedure ShowLeftMargin;
     procedure ShowMMS;
+    procedure ShowNote;
     procedure ShowNumberCell;
+    procedure ShowObj;
     procedure ShowPalette;
     procedure ShowPassword;
     procedure ShowPrecision;
@@ -255,12 +259,16 @@ begin
       ShowFooter;
     $0019:
       ShowWindowProtect;
+    $001C:
+      ShowNote;
     $001D:
       ShowSelection;
     $001E, $041E:
       ShowFormat;
     $0022:
       ShowDateMode;
+    $0024:
+      ShowColWidth;
     $0025, $0225:
       ShowDefRowHeight;
     $0026:
@@ -293,8 +301,12 @@ begin
       ShowFileSharing;
     $005C:
       ShowWriteAccess;
+    $005D:
+      ShowObj;
     $005F:
       ShowRecalc;
+    $007D:
+      ShowColInfo;
     $0085:
       ShowSheet;
     $0086:
@@ -580,11 +592,85 @@ begin
   w := WordLEToN(w);
   s := CodePageName(w);
   if Row = FCurrRow then begin
-    FDetails.Add('Code page:');
+    FDetails.Add('Code page:'#13);
     FDetails.Add(Format('$%.04x = %s', [w, s]));
   end;
   if s <> '' then s := 'Code page identifier (' + s + ')' else s := 'Code page identifier';
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]), s);
+end;
+
+
+procedure TBIFFGrid.ShowColInfo;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  if FFormat = sfExcel2 then
+    exit;
+
+  RowCount := FixedRows + 5;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index of first column in range');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index of last column in range');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Width of the columns in 1/256 of the width of the zero character, using default font (first FONT record in the file)');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to XF record for default column formattingg');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add('Column options:'#13);
+    if w and $0001 = 0
+      then FDetails.Add('Bit  $0001 = 0: Columns are NOT hidden')
+      else FDetails.Add('Bit  $0001 = 1: Columns are hidden');
+    FDetails.Add(Format('Bits $0700 = %d: Outline level of the columns (0 = no outline)', [(w and $0700) shr 8]));
+    if w and $1000 = 0
+      then FDetails.Add('Bit  $1000 = 0: Columns are NOT collapsed')
+      else FDetails.Add('Bit  $1000 = 1: Columns are collapsed');
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w), 'Option flags');
+end;
+
+
+procedure TBIFFGrid.ShowColWidth;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  if FFormat <> sfExcel2 then
+    exit;
+
+  RowCount := FixedRows + 3;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index of first column');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index of last column');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Width of the columns in 1/256 of the width of the zero character, using default font (first FONT record in the file)');
 end;
 
 
@@ -1754,6 +1840,60 @@ begin
 end;
 
 
+procedure TBIFFGrid.ShowNote;
+var
+  numBytes: Integer;
+  w: Word = 0;
+  s: String;
+begin
+  RowCount := IfThen(FFormat = sfExcel8, 6, 4);
+
+  // Offset 0: Row and Col index
+  ShowRowColData(FBufferIndex);
+
+  if FFormat = sfExcel8 then begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    if Row = FCurrRow then begin
+      FDetails.Add('Comment flags:'#13);
+      if (w and $0002 <> 0)
+        then FDetails.Add('Bit 1=1: Comment is shown at all times')
+        else FDetails.Add('Bit 1=0: Comment is not shown at all tiems');
+      if (w and $0080 <> 0)
+        then FDetails.Add('Bit 7=1: Row with comment is hidden')
+        else FDetails.Add('Bit 7=0: Row with comment is visible');
+      if (w and $0100 <> 0)
+        then FDetails.Add('Bit 8=1: Column with comment is hidden')
+        else FDetails.Add('Bit 8=0: Column with comment is visible');
+      FDetails.Add('All other bits are reserved and must be ignored.');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+      'Flags');
+
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Object ID');
+
+    ExtractString(FBufferIndex, IfThen(FFormat=sfExcel8, 2, 1), FFormat=sfExcel8,
+      s, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Author');
+  end else begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+      'Total length of comment');
+
+    numBytes := Min(Length(FBuffer) - FBufferIndex, 2048);
+    SetLength(s, numBytes);
+    Move(FBuffer[FBufferIndex], s[1], numBytes);
+    SetLength(s, Length(s));
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Comment text');
+  end;
+end;
+
+
 procedure TBIFFGrid.ShowNumberCell;
 var
   numBytes: Integer;
@@ -1792,6 +1932,104 @@ begin
   Move(FBuffer[FBufferIndex], dbl, numBytes);
   ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
     'IEEE 764 floating-point value');
+end;
+
+
+procedure TBIFFGrid.ShowObj;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  RowCount := FixedRows + 5;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [WordLEToN(w)]),
+    'ft (must be $15)');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [WordLEToN(w)]),
+    'cb (must be $12)');
+
+  numBytes := 2;
+  w := WordLEToN(w);
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  if Row = FCurrRow then begin
+    FDetails.Add('Object type:'#13);
+    case w of
+      $00: FDetails.Add('$00 = Group');
+      $01: FDetails.Add('$01 = Line');
+      $02: FDetails.Add('$02 = Rectangle');
+      $03: FDetails.Add('$03 = Oval');
+      $04: FDetails.Add('$04 = Arc');
+      $05: FDetails.Add('$05 = Chart');
+      $06: FDetails.Add('$06 = Text');
+      $07: FDetails.Add('$07 = Button');
+      $08: FDetails.Add('$08 = Picture');
+      $09: FDetails.Add('$09 = Polygon');
+      $0B: FDetails.Add('$0B = Checkbox');
+      $0C: FDetails.Add('$0C = Radio button');
+      $0D: FDetails.Add('$0D = Edit box');
+      $0E: FDetails.Add('$0E = Label');
+      $0F: FDetails.Add('$0F = Dialog box');
+      $10: FDetails.Add('$10 = Spin control');
+      $11: FDetails.Add('$11 = Scrollbar');
+      $12: FDetails.Add('$12 = List');
+      $13: FDetails.Add('$13 = Group box');
+      $14: FDetails.ADd('$14 = Dropdown list');
+      $19: FDetails.Add('$19 = Note');
+      $1E: FDetails.Add('$1E = OfficeArt object');
+      else FDetails.Add(IntToStr(w) + ' = (unknown object)');
+    end;
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
+    'Object type (ot)');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [WordLEToN(w)]),
+    'Object ID');
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add('Object flags:'#13);
+    if w and $0001 <> 0
+      then FDetails.Add('Bit $0001 = 1: Object is locked')
+      else FDetails.Add('Bit $0001 = 0: Object is NOT locked');
+    if w and $0002 <> 0
+      then FDetails.Add('Bit $0002 = 1: Reserved - must be zero!!!d')
+      else FDetails.Add('Bit $0002 = 0: Reserved - must be zero');
+    if w and $0004 <> 0
+      then FDetails.Add('Bit $0004 = 1: Application is expected to choose object size')
+      else FDetails.Add('Bit $0004 = 0: Application is NOT expected to choose object size');
+    if w and $0008 <> 0
+      then FDetails.Add('Bit $0008 = 1: Is a chart that is expected to be published when sheet is published')
+      else FDetails.Add('Bit $0008 = 0: Is NOT a chart that is expected to be published when sheet is published');
+    if w and $0010 <> 0
+      then FDetails.Add('Bit $0010 = 1: Image of this object is intended to be included when printing')
+      else FDetails.Add('Bit $0010 = 0: Image of this object is NOT intended to be included when printing');
+    FDetails.Add('Bit $0020    : unused');
+    FDetails.Add('Bit $0040    : unused');
+    if w and $0080 <> 0
+      then FDetails.Add('Bit $0080 = 1: Object is disabled')
+      else FDetails.ADd('Bit $0080 = 0: Object is NOT disabled');
+    if w and $0100 <> 0
+      then FDetails.Add('Bit $0100 = 1: is an auxiliary object that can only be automatically inserted by the application')
+      else FDetails.Add('Bit $0100 = 0: is NOT an auxiliary object that can only be automatically inserted by the application');
+    if w and $0200 <> 0
+      then FDetails.Add('Bit $0200 = 1: is expected to be updated on load to reflect the values in the range associated with the object')
+      else FDetails.Add('Bit $0200 = 0: is NOT expected to be updated on load to reflect the values in the range associated with the object');
+    FDetails.Add('Bit $0400    : unused');
+    FDetails.Add('Bit $0800    : unused');
+    if w and $1000 <> 0
+      then FDetails.Add('Bit $1000 = 1: is expected to be updated whenever the value of a cell in the range associated with the object changes')
+      else FDetails.Add('Bit $1000 = 0: is NOT expected to be updated whenever the value of a cell in the range associated with the object changes');
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
+    'Flags');
 end;
 
 

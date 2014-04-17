@@ -68,7 +68,7 @@ type
     BtnFindNext: TSpeedButton;
     BtnFindPrev: TSpeedButton;
     RecentFilesPopupMenu: TPopupMenu;
-    SpeedButton3: TSpeedButton;
+    BtnCloseFind: TSpeedButton;
     Splitter1: TSplitter;
     HexSplitter: TSplitter;
     AlphaGrid: TStringGrid;
@@ -121,6 +121,8 @@ type
     procedure ListViewSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure PageControlChange(Sender: TObject);
+    procedure ValueGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
+      aState: TGridDrawState);
 
   private
     MemStream: TMemoryStream;
@@ -134,6 +136,8 @@ type
     FMRUMenuManager : TMRUMenuManager;
     procedure AddToHistory(const AText: String);
     procedure AnalysisGridDetails(Sender: TObject; ADetails: TStrings);
+    procedure AnalysisGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
+      aState: TGridDrawState);
     procedure ExecFind(ANext, AKeep: Boolean);
     function  GetNodeData(ANode: PVirtualNode): TBiffNodeData;
     function  GetRecType: Word;
@@ -335,6 +339,13 @@ end;
 procedure TMainForm.AnalysisGridDetails(Sender: TObject; ADetails: TStrings);
 begin
   AnalysisDetails.Lines.Assign(ADetails);
+end;
+
+
+procedure TMainForm.AnalysisGridPrepareCanvas(sender: TObject; aCol,
+  aRow: Integer; aState: TGridDrawState);
+begin
+  if ARow = 0 then FAnalysisGrid.Canvas.Font.Style := [fsBold];
 end;
 
 
@@ -593,6 +604,7 @@ begin
     Options := Options + [goDrawFocusSelected];
     TitleStyle := tsNative;
     OnDetails := @AnalysisGridDetails;
+    OnPrepareCanvas := @AnalysisGridPrepareCanvas;
   end;
 
   with ValueGrid do begin
@@ -1104,6 +1116,13 @@ end;
 procedure TMainForm.UpdateCaption;
 begin
   Caption := Format('BIFF Explorer - "%s', [IfThen(FFileName <> '', FFileName, 'no file loaded')]);
+end;
+
+
+procedure TMainForm.ValueGridPrepareCanvas(sender: TObject; aCol,
+  aRow: Integer; aState: TGridDrawState);
+begin
+  if ARow = 0 then ValueGrid.Canvas.Font.Style := [fsBold];
 end;
 
 
