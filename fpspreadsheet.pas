@@ -102,7 +102,7 @@ type
     fekIsLOGICAL, fekIsNA, fekIsNONTEXT, fekIsNUMBER, fekIsRef, fekIsTEXT,
     fekValue,
     { Other operations }
-    fekOpSUM
+    fekOpSUM {Unary sum operation. Note: CANNOT be used for summing sell contents; use fekSUM}
     );
 
   TsFormulaElement = record
