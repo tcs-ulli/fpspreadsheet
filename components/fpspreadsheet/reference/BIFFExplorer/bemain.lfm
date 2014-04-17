@@ -275,11 +275,11 @@ object MainForm: TMainForm
       OnChange = PageControlChange
       object PgAnalysis: TTabSheet
         Caption = 'Analysis'
-        ClientHeight = 230
+        ClientHeight = 225
         ClientWidth = 657
         object AnalysisDetails: TMemo
           Left = 428
-          Height = 230
+          Height = 225
           Top = 0
           Width = 229
           Align = alRight
@@ -295,7 +295,7 @@ object MainForm: TMainForm
         end
         object DetailsSplitter: TSplitter
           Left = 423
-          Height = 230
+          Height = 225
           Top = 0
           Width = 5
           Align = alRight
@@ -319,6 +319,7 @@ object MainForm: TMainForm
           RowCount = 9
           TabOrder = 0
           TitleStyle = tsNative
+          OnPrepareCanvas = ValueGridPrepareCanvas
           ColWidths = (
             112
             142
@@ -452,10 +453,10 @@ object MainForm: TMainForm
           FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
         }
       end
-      object SpeedButton3: TSpeedButton
+      object BtnCloseFind: TSpeedButton
         Left = 3
         Height = 22
-        Hint = 'Close "find" panel'
+        Hint = 'Close "Find" panel'
         Top = 6
         Width = 23
         Action = AcFindClose
@@ -547,6 +548,7 @@ object MainForm: TMainForm
           Width = 125
         end>
       Header.DefaultHeight = 24
+      Header.Font.Style = [fsBold]
       Header.Height = 24
       Header.Options = [hoAutoResize, hoColumnResize, hoDrag, hoShowSortGlyphs, hoVisible]
       HintMode = hmTooltip

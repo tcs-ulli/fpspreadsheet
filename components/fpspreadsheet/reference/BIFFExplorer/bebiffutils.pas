@@ -158,6 +158,7 @@ begin
     $005A: Result := 'CRN: Non-resident operands';
     $005B: Result := 'FILESHARING: File-sharing information';
     $005C: Result := 'WRITEACCESS: Write access user name';
+    $005D: Result := 'OBJ';
     $005E: Result := 'UNCALCED: Recalculation status';
     $005F: Result := 'SAVERECALC: Recalculate before saving';
     $0060: Result := 'TEMPLATE: Workbook is a template';
