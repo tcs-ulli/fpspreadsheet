@@ -117,6 +117,8 @@ type
     // procedure ReadCodepage in xlscommon
     // procedure ReadDateMode in xlscommon
     procedure ReadFont(const AStream: TStream);
+    // Read col info
+    procedure ReadColInfo(const AStream: TStream);
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -140,6 +142,7 @@ type
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
   protected
     procedure AddDefaultFormats(); override;
+    procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -176,6 +179,7 @@ const
   { Excel record IDs }
   INT_EXCEL_ID_BOF        = $0809;
   INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
+  INT_EXCEL_ID_COLINFO    = $007D;
   INT_EXCEL_ID_COUNTRY    = $008C;
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
@@ -554,7 +558,9 @@ var
   MyData: TMemoryStream;
   CurrentPos: Int64;
   Boundsheets: array of Int64;
-  i, len: Integer;
+  sheet: TsWorksheet;
+  i, j, len: Integer;
+  col: PCol;
 begin
   { Write workbook globals }
 
@@ -643,6 +649,8 @@ begin
 
   for i := 0 to AData.GetWorksheetCount - 1 do
   begin
+    sheet := AData.GetWorksheetByIndex(i);
+
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
     CurrentPos := AStream.Position;
@@ -654,11 +662,16 @@ begin
 
     WriteIndex(AStream);
 
-    WriteDimensions(AStream, AData.GetWorksheetByIndex(i));
+    for j := 0 to sheet.Cols.Count-1 do begin
+      col := PCol(sheet.Cols[j]);
+      WriteColInfo(AStream, sheet, col);
+    end;
+
+    WriteDimensions(AStream, sheet);
 
     WriteWindow2(AStream, True);
 
-    WriteCellsToStream(AStream, AData.GetWorksheetByIndex(i).Cells);
+    WriteCellsToStream(AStream, sheet.Cells);
 
     WriteEOF(AStream);
   end;
@@ -746,6 +759,32 @@ begin
   AStream.WriteByte(1);
   AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
 end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteColumn ()
+*
+*  DESCRIPTION:    Writes a COLINFO record
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteColInfo(AStream: TStream;
+  ASheet: TsWorkSheet; ACol: PCol);
+var
+  w: Integer;
+begin
+  if Assigned(ACol) and Assigned(ASheet) then begin
+    { BIFF Record header }
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLINFO));  // BIFF record header
+    AStream.WriteWord(WordToLE(12));                    // Record size
+    AStream.WriteWord(WordToLE(ACol^.Col));             // start column
+    AStream.WriteWord(WordToLE(ACol^.Col));             // end column
+    { calculate width to be in units of 1/256 of pixel width of character "0" }
+    w := round(ACol^.Width * 256);
+    AStream.WriteWord(WordToLE(w));                     // write width
+    AStream.WriteWord(15);                              // XF record, ignored
+    AStream.WriteWord(0);                               // option flags, ignored
+    AStream.WriteWord(0);                               // "not used"
+  end;
+end;
+
 
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteDateTime ()
@@ -1868,6 +1907,7 @@ begin
     INT_EXCEL_ID_RK:      ReadRKValue(AStream);
     INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
     INT_EXCEL_ID_LABELSST:ReadLabelSST(AStream); //BIFF8 only
+    INT_EXCEL_ID_COLINFO: ReadColInfo(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
     else
@@ -2383,6 +2423,25 @@ begin
   Len := AStream.ReadByte();
   lFontName := ReadString(AStream, Len);
 end;
+
+procedure TsSpreadBiff8Reader.ReadColInfo(const AStream: TStream);
+var
+  c, c1, c2: Cardinal;
+  w: Word;
+  col: TCol;
+begin
+  // read column start and end index of column range
+  c1 := WordLEToN(AStream.ReadWord);
+  c2 := WordLEToN(AStream.ReadWord);
+  // read col width in 1/256 of the width of "0" character
+  w := WordLEToN(AStream.ReadWord);
+  // calculate width in units of "characters"
+  col.Width := w / 256;
+  // assign width to columns
+  for c := c1 to c2 do
+    FWorksheet.WriteColInfo(c, col);
+end;
+
 
 {*******************************************************************
 *  Initialization section

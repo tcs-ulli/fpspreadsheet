@@ -247,7 +247,7 @@ type
 
   TCol = record
     Col: Byte;
-    Width: Single; // in milimeters
+    Width: Single; // in "characters". Excel uses the with of char "0" in 1st font
   end;
 
   PCol = ^TCol;
@@ -309,6 +309,7 @@ type
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
     { Properties }
     property  Cells: TAVLTree read FCells;
+    property  Cols: TIndexedAVLTree read FCols;
   end;
 
   { TsWorkbook }
@@ -1324,6 +1325,7 @@ begin
 
   inherited Destroy;
 end;
+
 
 {@@
   Helper method for determining the spreadsheet type from the file type extension
