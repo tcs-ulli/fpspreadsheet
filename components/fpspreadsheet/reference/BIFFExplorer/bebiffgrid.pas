@@ -2293,7 +2293,7 @@ var
   numBytes: Integer;
   w: Word;
   dw: DWord;
-  encint: Integer;
+  encint: DWord;
   encdbl: QWord;
   dbl: Double absolute encdbl;
   s: String;
@@ -2320,7 +2320,7 @@ begin
   end
   else begin
     s := Format('$%.16x', [-59000000]);
-    encint := ((dw and $FFFFFFFC) shr 2) or (dw and $C0000000);
+    encint := ((dw and DWord($FFFFFFFC)) shr 2) or (dw and DWord($C0000000));
       // "arithmetic shift" = replace left-most bits by original bits
     if dw and $00000001 = 1 then
       s := FloatToStr(encint*0.01)
@@ -3649,16 +3649,16 @@ begin
             3: s := '(theme)';
             else s := '';
           end;
-          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.8x)', [dw, dw]),
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.8x)', [QWord(dw), QWord(dw)]),
             Format('Extension property #%d (Full color extension): value %s', [i, s]));
           numbytes := 4;
           Move(FBuffer[FBufferIndex], dw, numbytes);
           dw := DWordLEToN(dw);
-          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.8x)', [dw, dw]),
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.8x)', [QWord(dw), QWord(dw)]),
             Format('Extension property #%d (Full color extension): Reserved', [i]));
           Move(FBuffer[FBufferIndex], dw, numbytes);
           dw := DWordLEToN(dw);
-          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.8x)', [dw, dw]),
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.8x)', [QWord(dw), QWord(dw)]),
             Format('Extension property #%d (Full color extension): Reserved', [i]));
         end;
 
