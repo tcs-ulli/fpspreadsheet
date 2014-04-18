@@ -142,7 +142,7 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="4">
+    <Exceptions Count="5">
       <Item1>
         <Name Value="EAbort"/>
         <Enabled Value="False"/>
@@ -157,8 +157,10 @@
       </Item3>
       <Item4>
         <Name Value="EAssertionFailedError"/>
-        <Enabled Value="False"/>
       </Item4>
+      <Item5>
+        <Name Value="EIgnoredTest"/>
+      </Item5>
     </Exceptions>
   </Debugging>
 </CONFIG>

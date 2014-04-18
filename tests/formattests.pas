@@ -28,6 +28,8 @@ var
   SollDateTimeFormats: array[0..9] of TsNumberFormat;
   SollDateTimeFormatStrings: array[0..9] of String;
 
+  SollColWidths: array[0..1] of Single;
+
   procedure InitSollFmtData;
 
 type
@@ -45,6 +47,8 @@ type
     procedure TestWriteReadNumberFormats;
     // Repeat with date/times
     procedure TestWriteReadDateTimeFormats;
+    // Test column width
+    procedure TestWriteReadColWidths;
   end;
 
 implementation
@@ -125,6 +129,10 @@ begin
     SollDateTimeStrings[i, 8] := FormatDateTime('nn:ss', SollDateTimes[i]);
     SollDateTimeStrings[i, 9] := TimeIntervalToString(SollDateTimes[i]);
   end;
+
+  // Column width
+  SollColWidths[0] := 20;  // characters based on width of "0"
+  SollColWidths[1] := 40;
 end;
 
 { TSpreadWriteReadFormatTests }
@@ -221,6 +229,51 @@ begin
 
   DeleteFile(TempFile);
 end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths;
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  ActualColWidth: Single;
+  Col: Integer;
+  lpCol: PCol;
+  lCol: TCol;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+  for Col := Low(SollColWidths) to High(SollColWidths) do begin
+    lCol.Width := SollColWidths[Col];
+    MyWorksheet.WriteColInfo(Col, lCol);
+  end;
+  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
+  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  for Col := Low(SollColWidths) to High(SollColWidths) do begin
+    lpCol := MyWorksheet.GetCol(Col);
+    if lpCol = nil then
+      fail('Error in test code. Failed to return saved column width');
+    ActualColWidth := lpCol^.Width;
+    CheckEquals(SollColWidths[Col], ActualColWidth, 'Test saved colwidth mismatch column '+ColNotation(MyWorkSheet,Col));
+  end;
+  // Finalization
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadFormatTests);

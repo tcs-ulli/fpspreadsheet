@@ -25,6 +25,9 @@ const
 // Returns an A.. notation based on sheet, row, optional column (e.g. A1).
 function CellNotation(WorkSheet: TsWorksheet; Row: integer; Column: integer=0): string;
 
+// Returns an A notation of column based on sheed and column
+function ColNotation(WorkSheet: TsWorksheet; Column:Integer): String;
+
 // Note: using this function instead of GetWorkSheetByName for compatibility with
 // older fpspreadsheet versions that don't have that function
 function GetWorksheetByName(AWorkBook: TsWorkBook; AName: String): TsWorksheet;
@@ -70,6 +73,25 @@ begin
       result:=WorkSheet.Name+'!'+inttostr(Column+1)+':'+inttostr(Row+1)
 end;
 
+function ColNotation(WorkSheet: TsWorksheet; Column:Integer): String;
+begin
+  if not Assigned(Worksheet) then
+    Result := 'ColNotation: error getting worksheet.'
+  else begin
+    if Column < 26 then
+      Result := Worksheet.Name + '!' + char(Column+65)
+    else
+    if Column < 26*26 then
+      Result := Worksheet.Name + '!' + char(Column div 26 + 65) + char(Column mod 26 + 65)
+    else
+    if Column < 26*26*26 then
+      Result := Worksheet.Name + '!' + char(Column div (26*26) + 65) +
+        char(Column mod (26*26) div 26 + 65) +
+        char(Column mod (26*26*26) + 65)
+    else
+      Result := 'ColNotation: At most three digits supported.';
+  end;
+end;
 
 end.
 

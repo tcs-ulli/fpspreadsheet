@@ -141,13 +141,13 @@ begin
   MyWorksheet.WriteDateTime(37, 1, number, nfTimeInterval);
 
   // Set width of columns 1 and 5
-  lCol.Width := 100;  //mm
+  lCol.Width := 30;
   MyWorksheet.WriteColInfo(1, lCol);
-  lCol.Width := 50;
+  lCol.Width := 5;
   MyWorksheet.WriteColInfo(5, lCol);
 
   // Set height of rows 5 and 6
-  lRow.Height := 10;  // mm
+  lRow.Height := 10;
   MyWorksheet.WriteRowInfo(5, lRow);
   lRow.Height := 5;
   MyWorksheet.WriteRowInfo(6, lRow);
