@@ -66,6 +66,19 @@ type
   TXFRecordData = class
   public
     FormatIndex: Integer;
+    Borders: TsCellBorders;
+    {
+    FontIndex: Integer;
+    Border: TsBorder;
+    XFType_Protection: Word;
+    Align_TextBreak: Byte;
+    XF_Rotation: Byte;
+    Indent_Shrink_TextDir: Byte;
+    UsedAttrib: Byte;
+    Border_Background1: DWord;
+    Border_Background2: DWord;
+    Border_Background3: Word;
+    }
   end;
 
   TFormatRecordData = class
@@ -87,6 +100,7 @@ type
     FXFList: TFPList; // of TXFRecordData
     FFormatList: TFPList; // of TFormatRecordData
     function DecodeRKValue(const ARK: DWORD): Double;
+    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Integer);
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ADecimals: Word;
       out ANumberFormatStr: String);
@@ -1972,6 +1986,9 @@ begin
     FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
   else
     FWorksheet.WriteNumber(ARow, ACol, Number, nf);
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadMulRKValues(const AStream: TStream);
@@ -2019,6 +2036,26 @@ begin
 
   { Index to XF record }
   AXF:=WordLEtoN(AStream.ReadWord);
+end;
+
+{ Applies the XF formatting given by the given index to the specified cell }
+procedure TsSpreadBIFF8Reader.ApplyCellFormatting(ARow, ACol: Cardinal;
+  XFIndex: Integer);
+var
+  lCell: PCell;
+  XFData: TXFRecordData;
+begin
+  lCell := FWorksheet.FindCell(ARow, ACol);
+  if Assigned(lCell) then begin
+    XFData := TXFRecordData(FXFList.Items[XFIndex]);
+
+    // Borders
+    if XFData.Borders <> [] then begin
+      Include(lCell^.UsedFormattingFields, uffBorder);
+      lCell^.Border := XFData.Borders;
+    end else
+      Exclude(lCell^.UsedFormattingFields, uffBorder);
+  end;
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
@@ -2150,22 +2187,31 @@ begin
   if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
   Move(Data[0],ResultFormula,sizeof(Data));
   FWorksheet.WriteNumber(ARow,ACol,ResultFormula);
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
 var
   L: Word;
   StringFlags: BYTE;
-  ARow, ACol: Word;
+  ARow, ACol, XF: Word;
   WideStrValue: WideString;
   AnsiStrValue: AnsiString;
 begin
-  { BIFF Record data }
+(*
+{ BIFF Record data }
   ARow := WordLEToN(AStream.ReadWord);
   ACol := WordLEToN(AStream.ReadWord);
 
   { Index to XF record, not used }
   AStream.ReadWord();
+*)
+  { BIFF Record header }
+  { BIFF Record data }
+  { Index to XF Record }
+  ReadRowColXF(AStream,ARow,ACol,XF);
 
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
@@ -2175,6 +2221,9 @@ begin
 
   { Save the data }
   FWorksheet.WriteUTF8Text(ARow, ACol, UTF16ToUTF8(WideStrValue));
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadNumber(AStream: TStream);
@@ -2200,6 +2249,9 @@ begin
     FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
   else
     FWorksheet.WriteNumber(ARow,ACol,AValue,nf,nd);
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
@@ -2223,6 +2275,9 @@ begin
     AStream.ReadWord; // First formatted character
     AStream.ReadWord; // Index to FONT record
   end;
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
@@ -2303,14 +2358,52 @@ begin
     Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
   end;
   FWorksheet.WriteUTF8Text(ARow, ACol, FSharedStringTable[SSTIndex]);
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
+type
+  TXFRecord = packed record                // see p. 224
+    FontIndex: Word;                       // Offset 0, Size 2
+    FormatIndex: Word;                     // Offset 2, Size 2
+    XFType_CellProt_ParentStyleXF: Word;   // Offset 4, Size 2
+    Align_TextBreak: Byte;                 // Offset 6, Size 1
+    XFRotation: Byte;                      // Offset 7, Size 1
+    Indent_Shrink_TextDir: Byte;           // Offset 8, Size 1
+    UnusedAttrib: Byte;                    // Offset 9, Size 1
+    Border_Background_1: DWord;            // Offset 10, Size 4
+    Border_Background_2: DWord;            // Offset 14, Size 4
+    Border_Background_3: DWord;            // Offset 18, Size 2
+  end;
 var
   lData: TXFRecordData;
+  xf: TXFRecord;
 begin
+  AStream.ReadBuffer(xf, SizeOf(xf));
+{  xf.FormatIndex := WordLEToN(xf.FormatIndex);
+  xf.XFType_CellProt_ParentStyleXF := WordLEToN(xf.XFType_CellProt_ParentStyleXF);
+ }
   lData := TXFRecordData.Create;
+  // Format index
+  lData.FormatIndex := WordLEToN(xf.FormatIndex);
 
+  // Cell borders
+  xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);
+  xf.Border_Background_2 := DWordLEToN(xf.Border_Background_2);
+  xf.Border_Background_3 := WordLEToN(xf.Border_Background_3);
+  lData.Borders := [];
+  if xf.Border_Background_1 and $0000000F <> 0 then
+    Include(lData.Borders, cbWest);
+  if xf.Border_Background_1 and $000000F0 <> 0 then
+    Include(lData.Borders, cbEast);
+  if xf.Border_Background_1 and $00000F00 <> 0 then
+    Include(lData.Borders, cbNorth);
+  if xf.Border_Background_1 and $0000F000 <> 0 then
+    Include(lData.Borders, cbSouth);
+
+                                           (*
   // Record XF, BIFF8:
   // Offset Size Contents
   //      0    2 Index to FONT record (➜5.45))
@@ -2319,11 +2412,26 @@ begin
   //      2    2 Index to FORMAT record (➜5.49))
   lData.FormatIndex := WordLEtoN(AStream.ReadWord);
 
+  //      4    2 XF type, cell protection, and parent style XF
+  //             Bit Mask Contents
+  //             2-0 0007H XF_TYPE_PROT – XF type, cell protection (see above)
+  //             15-4 FFF0H Index to parent style XF (always FFFH in style XFs)
+  WordLEtoN(AStream.ReadWord);
+
+  //     6     1 Alignment and text break:
+  //             Bit Mask Contents
+  //             2-0 07H XF_HOR_ALIGN – Horizontal alignment (see above)
+  //             3 08H 1 = Text is wrapped at right border
+  //             6-4 70H XF_VERT_ALIGN – Vertical alignment (see above)
+  //             7 80H 1 = Justify last line in justified or distibuted text
+  b
+
   {  Offset Size Contents
           4    2 XF type, cell protection, and parent style XF:
   Bit Mask Contents
   2-0 0007H XF_TYPE_PROT – XF type, cell protection (see above)
   15-4 FFF0H Index to parent style XF (always FFFH in style XFs)
+
   6 1 Alignment and text break:
   Bit Mask Contents
   2-0 07H XF_HOR_ALIGN – Horizontal alignment (see above)
@@ -2341,7 +2449,7 @@ begin
   ; 1 = Left-to-right; 2 = Right-to-left
   9 1 Flags for used attribute groups:
   ....}
-
+                                             *)
   // Add the XF to the list
   FXFList.Add(lData);
 end;
