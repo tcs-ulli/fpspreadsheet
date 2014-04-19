@@ -216,7 +216,7 @@ type
   }
 
   TCell = record
-    Col: Byte; // zero-based
+    Col: Cardinal; // zero-based
     Row: Cardinal; // zero-based
     ContentType: TCellContentType;
     { Possible values for the cells }

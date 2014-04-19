@@ -7,7 +7,7 @@ uses
   Forms, mainform, LResources, laz_fpspreadsheet_visual
   { you can add units after this };
 
-//{$IFDEF WINDOWS}{$R fpsvisual.rc}{$ENDIF}
+{$R *.res}
 
 begin
   Application.Initialize;

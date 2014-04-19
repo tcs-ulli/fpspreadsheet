@@ -49,6 +49,9 @@ function ParseCellRowString(const AStr: string;
   var AResult: Integer): Boolean;
 function ParseCellColString(const AStr: string;
   var AResult: Integer): Boolean;
+
+function GetColString(AColIndex: Integer): String;
+
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 implementation
@@ -369,6 +372,26 @@ begin
   else Exit(False);
 
   Result := True;
+end;
+
+function Letter(AValue: Integer): char;
+begin
+  Result := Char(AValue + ord('A'));
+end;
+
+function GetColString(AColIndex: Integer): String;
+begin
+  if AColIndex < 26 then
+    Result := Letter(AColIndex)
+  else
+  if AColIndex < 26*26 then
+    Result := Letter(AColIndex div 26) + Letter(AColIndex mod 26)
+  else
+  if AColIndex < 26*26*26 then
+    Result := Letter(AColIndex div (26*26)) + Letter((AColIndex mod (26*26)) div 26)
+      + Letter(AColIndex mod (26*26*26))
+  else
+    Result := 'too big';
 end;
 
 {In XML files some chars must be translated}
