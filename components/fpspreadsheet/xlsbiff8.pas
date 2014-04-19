@@ -2382,18 +2382,17 @@ var
   xf: TXFRecord;
 begin
   AStream.ReadBuffer(xf, SizeOf(xf));
-{  xf.FormatIndex := WordLEToN(xf.FormatIndex);
-  xf.XFType_CellProt_ParentStyleXF := WordLEToN(xf.XFType_CellProt_ParentStyleXF);
- }
+
   lData := TXFRecordData.Create;
+
   // Format index
   lData.FormatIndex := WordLEToN(xf.FormatIndex);
 
   // Cell borders
   xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);
-  xf.Border_Background_2 := DWordLEToN(xf.Border_Background_2);
-  xf.Border_Background_3 := WordLEToN(xf.Border_Background_3);
   lData.Borders := [];
+  // the 4 masked bits encode the line style of the border line. 0 = no line
+  // We ignore the line style here. --> check against "no line"
   if xf.Border_Background_1 and $0000000F <> 0 then
     Include(lData.Borders, cbWest);
   if xf.Border_Background_1 and $000000F0 <> 0 then
@@ -2403,53 +2402,6 @@ begin
   if xf.Border_Background_1 and $0000F000 <> 0 then
     Include(lData.Borders, cbSouth);
 
-                                           (*
-  // Record XF, BIFF8:
-  // Offset Size Contents
-  //      0    2 Index to FONT record (➜5.45))
-  WordLEtoN(AStream.ReadWord);
-
-  //      2    2 Index to FORMAT record (➜5.49))
-  lData.FormatIndex := WordLEtoN(AStream.ReadWord);
-
-  //      4    2 XF type, cell protection, and parent style XF
-  //             Bit Mask Contents
-  //             2-0 0007H XF_TYPE_PROT – XF type, cell protection (see above)
-  //             15-4 FFF0H Index to parent style XF (always FFFH in style XFs)
-  WordLEtoN(AStream.ReadWord);
-
-  //     6     1 Alignment and text break:
-  //             Bit Mask Contents
-  //             2-0 07H XF_HOR_ALIGN – Horizontal alignment (see above)
-  //             3 08H 1 = Text is wrapped at right border
-  //             6-4 70H XF_VERT_ALIGN – Vertical alignment (see above)
-  //             7 80H 1 = Justify last line in justified or distibuted text
-  b
-
-  {  Offset Size Contents
-          4    2 XF type, cell protection, and parent style XF:
-  Bit Mask Contents
-  2-0 0007H XF_TYPE_PROT – XF type, cell protection (see above)
-  15-4 FFF0H Index to parent style XF (always FFFH in style XFs)
-
-  6 1 Alignment and text break:
-  Bit Mask Contents
-  2-0 07H XF_HOR_ALIGN – Horizontal alignment (see above)
-  3 08H 1 = Text is wrapped at right border
-  6-4 70H XF_VERT_ALIGN – Vertical alignment (see above)
-  7 80H 1 = Justify last line in justified or distibuted text
-  7 1 XF_ROTATION: Text rotation angle (see above)
-  8 1 Indentation, shrink to cell size, and text direction:
-  Bit Mask Contents
-  3-0 0FH Indent level
-  4 10H 1 = Shrink content to fit into cell
-  7-6 C0H Text direction:
-  0 = According to context
-  35
-  ; 1 = Left-to-right; 2 = Right-to-left
-  9 1 Flags for used attribute groups:
-  ....}
-                                             *)
   // Add the XF to the list
   FXFList.Add(lData);
 end;

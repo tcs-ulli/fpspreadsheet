@@ -19,22 +19,35 @@ type
 
   { TsCustomWorksheetGrid }
 
-  TsCustomWorksheetGrid = class(TCustomStringGrid)
+  TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
+    FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     FDisplayFixedColRow: Boolean;
+    function CalcColWidth(AWidth: Single): Integer;
     procedure SetDisplayFixedColRow(const AValue: Boolean);
     { Private declarations }
   protected
     { Protected declarations }
+    procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
+    procedure DrawCellGrid(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
+    procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
+    function GetCellText(ACol, ARow: Integer): String;
+    procedure Loaded; override;
+    procedure Setup;
   public
     { methods }
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure GetSheets(const ASheets: TStrings);
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
     procedure LoadFromSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string; AWorksheetIndex: Integer = 0); overload;
     procedure SaveToWorksheet(AWorksheet: TsWorksheet);
+    procedure SelectSheetByIndex(AIndex: Integer);
     property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
+    property Worksheet: TsWorksheet read FWorksheet;
+    property Workbook: TsWorkbook read FWorkbook;
   end;
 
   { TsWorksheetGrid }
@@ -52,7 +65,7 @@ type
     property BorderStyle;
     property Color;
     property ColCount;
-    property Columns;
+    //property Columns;
     property Constraints;
     property DefaultColWidth;
     property DefaultDrawing;
@@ -87,7 +100,6 @@ type
     property Visible;
     property VisibleColCount;
     property VisibleRowCount;
-
 
     property OnBeforeSelection;
     property OnChangeBounds;
@@ -140,115 +152,230 @@ procedure Register;
 
 implementation
 
+uses
+  fpsUtils;
+
 procedure Register;
 begin
   RegisterComponents('Additional',[TsWorksheetGrid]);
 end;
 
-const
-  INT_FPSCOLROW_TO_GRIDCOLROW_WITH_FIXEDCOLROW = 2;
-  INT_FPSCOLROW_TO_GRIDCOLROW = 1;
 
 { TsCustomWorksheetGrid }
-
-procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(const AValue: Boolean);
-var
-  x: Integer;
-begin
-  if AValue = FDisplayFixedColRow then Exit;
-
-  FDisplayFixedColRow := AValue;
-
-  if AValue then
-  begin
-    for x := 1 to ColCount - 1 do
-      SetCells(x, 0, 'A');
-    for x := 1 to RowCount - 1 do
-      SetCells(0, x, IntToStr(x));
-  end;
-end;
 
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-
-  FDisplayFixedColRow := False;
-  FixedCols := 0;
-  FixedRows := 0;
+  FDisplayFixedColRow := true;
 end;
 
-procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
-var
-  x, lRow, lCol: Integer;
-  lStr: string;
-  lCell: PCell;
+destructor TsCustomWorksheetGrid.Destroy;
 begin
-  FWorksheet := AWorksheet;
+  FreeAndNil(FWorkbook);
+  inherited Destroy;
+end;
 
-  { First get the size of the table }
-  if FWorksheet.GetCellCount = 0 then
-  begin
-    ColCount := 0;
-    RowCount := 0;
-  end
-  else
-  begin
-    if DisplayFixedColRow then
-    begin
-      ColCount := FWorksheet.GetLastColNumber() + INT_FPSCOLROW_TO_GRIDCOLROW_WITH_FIXEDCOLROW;
-      RowCount := FWorksheet.GetLastRowNumber() + INT_FPSCOLROW_TO_GRIDCOLROW_WITH_FIXEDCOLROW;
+function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
+var
+  w0: Integer;
+begin
+  w0 := Canvas.TextWidth('0');
+  Result := Round(AWidth * w0);
+end;
+
+procedure TsCustomWorksheetGrid.DoPrepareCanvas(ACol, ARow: Integer;
+  AState: TGridDrawState);
+var
+  ts: TTextStyle;
+  lCell: PCell;
+  r, c: Integer;
+begin
+  ts := Canvas.TextStyle;
+  if FDisplayFixedColRow then begin
+    // Formatting of row and column headers
+    if ARow = 0 then
+      ts.Alignment := taCenter
+    else
+    if ACol = 0 then
+      ts.Alignment := taRightJustify;
+  end;
+  if FWorksheet <> nil then begin
+    r := ARow - FixedRows;
+    c := ACol - FixedCols;
+    lCell := FWorksheet.FindCell(r, c);
+    if lCell <> nil then begin
+      // Default alignment of number is right-justify
+      if lCell^.ContentType = cctNumber then
+        ts.Alignment := taRightJustify;
+    end;
+  end;
+  Canvas.TextStyle := ts;
+
+  inherited DoPrepareCanvas(ACol, ARow, AState);
+end;
+
+procedure TsCustomWorksheetGrid.DrawCellGrid(ACol, ARow: Integer; ARect: TRect;
+  AState: TGridDrawState);
+var
+  lCell: PCell;
+  r, c: Integer;
+begin
+  inherited;
+
+  if FWorksheet = nil then exit;
+
+  r := ARow - FixedRows;
+  c := ACol - FixedCols;
+  lCell := FWorksheet.FindCell(r, c);
+  if (lCell <> nil) and (uffBorder in lCell^.UsedFormattingFields) then begin
+    Canvas.Pen.Style := psSolid;
+    Canvas.Pen.Color := clBlack;
+    if (cbNorth in lCell^.Border) then
+      Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Top)
+    else
+    if (cbWest in lCell^.Border) then
+      Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom)
+    else
+    if (cbEast in lCell^.Border) then
+      Canvas.Line(ARect.Right-1, ARect.Top, ARect.Right-1, ARect.Bottom)
+    else
+    if (cbSouth in lCell^.Border) then
+      Canvas.Line(ARect.Left, ARect.Bottom-1, ARect.Right, ARect.Bottom-1)
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect;
+  AState: TGridDrawState);
+begin
+  DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
+end;
+
+function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
+var
+  lCell: PCell;
+  r, c: Integer;
+begin
+  Result := '';
+
+  if FDisplayFixedColRow then begin
+    // Titles
+    if (ARow = 0) and (ACol = 0) then
+      exit;
+    if (ARow = 0) then begin
+      Result := GetColString(ACol-FixedCols);
+      exit;
     end
     else
-    begin
-      ColCount := FWorksheet.GetLastColNumber() + INT_FPSCOLROW_TO_GRIDCOLROW;
-      RowCount := FWorksheet.GetLastRowNumber() + INT_FPSCOLROW_TO_GRIDCOLROW;
+    if (ACol = 0) then begin
+      Result := IntToStr(ARow);
+      exit;
     end;
   end;
 
-  { Now copy the contents }
-
-  lCell := FWorksheet.GetFirstCell();
-  for x := 0 to FWorksheet.GetCellCount() - 1 do
-  begin
-    lCol := lCell^.Col;
-    lRow := lCell^.Row;
-    lStr := FWorksheet.ReadAsUTF8Text(lRow, lCol);
-
-    if DisplayFixedColRow then
-      SetCells(lCol + 1, lRow + 1, lStr)
-    else
-      SetCells(lCol, lRow, lStr);
-
-    lCell := FWorksheet.GetNextCell();
+  if FWorksheet <> nil then begin
+    r := ARow - FixedRows;
+    c := ACol - FixedCols;
+    lCell := FWorksheet.FindCell(r, c);
+    if lCell <> nil then
+      Result := FWorksheet.ReadAsUTF8Text(r, c);
   end;
+end;
+
+procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
+var
+  i: Integer;
+begin
+  ASheets.Clear;
+  if Assigned(FWorkbook) then
+    for i:=0 to FWorkbook.GetWorksheetCount-1 do
+      ASheets.Add(FWorkbook.GetWorksheetByIndex(i).Name);
+end;
+
+procedure TsCustomWorksheetGrid.Loaded;
+begin
+  inherited;
+  Setup;
+end;
+
+procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(const AValue: Boolean);
+begin
+  if AValue = FDisplayFixedColRow then Exit;
+
+  FDisplayFixedColRow := AValue;
+  Setup;
+end;
+
+procedure TsCustomWorksheetGrid.Setup;
+var
+  i: Integer;
+  lCol: PCol;
+begin
+  if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
+    if FDisplayFixedColRow then begin
+      ColCount := 2;
+      RowCount := 2;
+      FixedCols := 1;
+      FixedRows := 1;
+      ColWidths[0] := Canvas.TextWidth(' 999999 ');
+    end else begin
+      FixedCols := 0;
+      FixedRows := 0;
+      ColCount := 0;
+      RowCount := 0;
+    end;
+  end else
+  if FDisplayFixedColRow then begin
+    ColCount := FWorksheet.GetLastColNumber + 2;
+    RowCount := FWorksheet.GetLastRowNumber + 2;
+    FixedCols := 1;
+    FixedRows := 1;
+    ColWidths[0] := Canvas.TextWidth(' 999999 ');
+    // Setup column widths
+    for i := FixedCols to ColCount-1 do begin
+      lCol := FWorksheet.FindCol(i - FixedCols);
+      if (lCol <> nil) then
+        ColWidths[i] := CalcColWidth(lCol^.Width)
+      else
+        ColWidths[i] := DefaultColWidth;
+    end;
+  end else begin
+    ColCount := FWorksheet.GetLastColNumber + 1;
+    RowCount := FWorksheet.GetLastRowNumber + 1;
+    FixedCols := 0;
+    FixedRows := 0;
+    for i := 0 to ColCount-1 do begin
+      lCol := FWorksheet.FindCol(i);
+      if (lCol <> nil) then
+        ColWidths[i] := CalcColWidth(lCol^.Width)
+      else
+        ColWidths[i] := DefaultColWidth;
+    end;
+  end;
+  Invalidate;
+end;
+
+procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
+begin
+  FWorksheet := AWorksheet;
+  Setup;
 end;
 
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
-var
-  lWorkbook: TsWorkbook;
 begin
-  lWorkbook := TsWorkbook.Create;
-  try
-    lWorkbook.ReadFromFile(AFileName, AFormat);
-    LoadFromWorksheet(lWorkbook.GetWorksheetByIndex(AWorksheetIndex));
-  finally
-    lWorkbook.Free;
-  end;
+  FreeAndNil(FWorkbook);
+  FWorkbook := TsWorkbook.Create;
+  FWorkbook.ReadFromFile(AFileName, AFormat);
+  LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
 end;
 
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
-var
-  lWorkbook: TsWorkbook;
 begin
-  lWorkbook := TsWorkbook.Create;
-  try
-    lWorkbook.ReadFromFile(AFileName);
-    LoadFromWorksheet(lWorkbook.GetWorksheetByIndex(AWorksheetIndex));
-  finally
-    lWorkbook.Free;
-  end;
+  FreeAndNil(FWorkbook);
+  FWorkbook := TsWorkbook.Create;
+  FWorkbook.ReadFromFile(AFilename);
+  LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
 end;
 
 procedure TsCustomWorksheetGrid.SaveToWorksheet(AWorksheet: TsWorksheet);
@@ -266,6 +393,11 @@ begin
       Str := GetCells(x, y);
       if Str <> '' then AWorksheet.WriteUTF8Text(y, x, Str);
     end;
+end;
+
+procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
+begin
+  LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AIndex));
 end;
 
 end.
