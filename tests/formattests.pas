@@ -51,6 +51,8 @@ type
     procedure TestWriteReadColWidths;
     // Test word wrapping
     procedure TestWriteReadWordWrap;
+    // Test alignments
+    procedure TestWriteReadAlignments;
   end;
 
 implementation
@@ -323,11 +325,77 @@ begin
   if MyCell = nil then
     fail('Error in test code. Failed to get non-wrapped cell.');
   CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), false, 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
-  // Finalization
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
 end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadAlignments;
+const
+  CELLTEXT = 'This is a text.';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  horAlign: TsHorAlignment;
+  vertAlign: TsVertAlignment;
+  row, col: Integer;
+  MyCell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values: HorAlignments along columns, VertAlignments along rows
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+
+  row := 0;
+  for horAlign in TsHorAlignment do begin
+    col := 0;
+    for vertAlign in TsVertAlignment do begin
+      MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+      MyWorksheet.WriteHorAlignment(row, col, horAlign);
+      MyWorksheet.WriteVertAlignment(row, col, vertAlign);
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      CheckEquals(vertAlign = MyCell^.VertAlignment, true,
+        'Test unsaved word vertical alignment, cell ' + CellNotation(MyWorksheet,0,0));
+      CheckEquals(horAlign = MyCell^.HorAlignment, true,
+        'Test unsaved word horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
+      inc(col);
+    end;
+    inc(row);
+  end;
+  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
+  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  for row := 0 to MyWorksheet.GetLastRowNumber do
+    for col := 0 to MyWorksheet.GetLastColNumber do begin
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      vertAlign := TsVertAlignment(col);
+      if vertAlign = vaDefault then vertAlign := vaBottom;
+      CheckEquals(vertAlign = MyCell^.VertAlignment, true,
+        'Test saved vertical alignment mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
+      horAlign := TsHorAlignment(row);
+      CheckEquals(horAlign = MyCell^.HorAlignment, true,
+        'Test saved horizontal mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
+    end;
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadFormatTests);

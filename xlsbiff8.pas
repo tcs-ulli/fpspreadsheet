@@ -66,6 +66,8 @@ type
   TXFRecordData = class
   public
     FormatIndex: Integer;
+    HorAlignment: TsHorAlignment;
+    VertAlignment: TsVertAlignment;
     WordWrap: Boolean;
     Borders: TsCellBorders;
     {
@@ -159,7 +161,8 @@ type
     procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
       AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
-      AddWordWrap: Boolean = false; AddBackground: Boolean = false;
+      AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
+      AWordWrap: Boolean = false; AddBackground: Boolean = false;
       ABackgroundColor: TsColor = scSilver);
   public
 //    constructor Create;
@@ -289,9 +292,18 @@ const
   MASK_XF_USED_ATTRIB_BACKGROUND      = $40;
   MASK_XF_USED_ATTRIB_CELL_PROTECTION = $80;
 
+  { XF HORIZONTAL ALIGN }
+  MASK_XF_HOR_ALIGN_LEFT              = $01;
+  MASK_XF_HOR_ALIGN_CENTER            = $02;
+  MASK_XF_HOR_ALIGN_RIGHT             = $03;
+  MASK_XF_HOR_ALIGN_FILLED            = $04;
+  MASK_XF_HOR_ALIGN_JUSTIFIED         = $05;  // BIFF4-BIFF8
+  MASK_XF_HOR_ALIGN_CENTERED_SELECTION= $06;  // BIFF4-BIFF8
+  MASK_XF_HOR_ALIGN_DISTRIBUTED       = $07;  // BIFF8
+
   { XF_VERT_ALIGN }
   MASK_XF_VERT_ALIGN_TOP              = $00;
-  MASK_XF_VERT_ALIGN_CENTRED          = $10;
+  MASK_XF_VERT_ALIGN_CENTER           = $10;
   MASK_XF_VERT_ALIGN_BOTTOM           = $20;
   MASK_XF_VERT_ALIGN_JUSTIFIED        = $30;
 
@@ -300,6 +312,12 @@ const
   XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE = 90;
   XF_ROTATION_90_DEGREE_CLOCKWISE        = 180;
 
+  { XF CELL BORDER }
+  MASK_XF_BORDER_LEFT                 = $0000000F;
+  MASK_XF_BORDER_RIGHT                = $000000F0;
+  MASK_XF_BORDER_TOP                  = $00000F00;
+  MASK_XF_BORDER_BOTTOM               = $0000F000;
+
   { XF record constants }
   MASK_XF_TYPE_PROT                   = $0007;
   MASK_XF_TYPE_PROT_PARENT            = $FFF0;
@@ -307,6 +325,7 @@ const
   MASK_XF_HOR_ALIGN                   = $07;
   MASK_XF_VERT_ALIGN                  = $70;
   MASK_XF_TEXTWRAP                    = $08;
+
 
 {
   Exported functions
@@ -396,6 +415,8 @@ var
   lBorders: TsCellBorders;
   lAddBackground: Boolean;
   lBackgroundColor: TsColor;
+  lHorAlign: TsHorAlignment;
+  lVertAlign: TsVertAlignment;
   lWordWrap: Boolean;
   fmt: String;
 begin
@@ -407,6 +428,8 @@ begin
     lFormatIndex := 0; //General format (one of the built-in number formats)
     lTextRotation := XF_ROTATION_HORIZONTAL;
     lBorders := [];
+    lHorAlign := FFormattingStyles[i].HorAlignment;
+    lVertAlign := FFormattingStyles[i].VertAlignment;
     lBackgroundColor := FFormattingStyles[i].BackgroundColor;
 
     // Now apply the modifications.
@@ -488,8 +511,8 @@ begin
     lWordwrap := (uffWordwrap in FFormattingStyles[i].UsedFormattingFields);
 
     // And finally write the style
-    WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders, lWordwrap,
-      lAddBackground, lBackgroundColor);
+    WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders,
+      lHorAlign, lVertAlign, lWordwrap, lAddBackground, lBackgroundColor);
   end;
 end;
 
@@ -648,6 +671,7 @@ begin
   WriteXF(AStream, 0, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE, []);
   // XF18 - Bold
   WriteXF(AStream, 1, 0, 0, XF_ROTATION_HORIZONTAL, []);
+
   // Add all further non-standard/built-in formatting styles
   ListAllFormattingStyles(AData);
   WriteXFFieldsForFormattingStyles(AStream);
@@ -1525,7 +1549,8 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
  AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
- AddWordWrap: Boolean = false; AddBackground: Boolean = false;
+ AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
+ AWordWrap: Boolean = false; AddBackground: Boolean = false;
  ABackgroundColor: TsColor = scSilver);
 var
   XFOptions: Word;
@@ -1551,8 +1576,19 @@ begin
   AStream.WriteWord(WordToLE(XFOptions));
 
   { Alignment and text break }
-  XFAlignment := MASK_XF_VERT_ALIGN_BOTTOM;
-  if AddWordWrap then
+  XFAlignment := 0;
+  case AHorAlignment of
+    haLeft   : XFAlignment := XFAlignment or MASK_XF_HOR_ALIGN_LEFT;
+    haCenter : XFAlignment := XFAlignment or MASK_XF_HOR_ALIGN_CENTER;
+    haRight  : XFAlignment := XFAlignment or MASK_XF_HOR_ALIGN_RIGHT;
+  end;
+  case AVertAlignment of
+    vaTop    : XFAlignment := XFAlignment or MASK_XF_VERT_ALIGN_TOP;
+    vaCenter : XFAlignment := XFAlignment or MASK_XF_VERT_ALIGN_CENTER;
+    vaBottom : XFAlignment := XFAlignment or MASK_XF_VERT_ALIGN_BOTTOM;
+    else       XFAlignment := XFAlignment or MASK_XF_VERT_ALIGN_BOTTOM;
+  end;
+  if AWordWrap then
     XFAlignment := XFAlignment or MASK_XF_TEXTWRAP;
 
   AStream.WriteByte(XFAlignment);
@@ -2058,6 +2094,10 @@ begin
   if Assigned(lCell) then begin
     XFData := TXFRecordData(FXFList.Items[XFIndex]);
 
+    // Alignment
+    lCell^.HorAlignment := XFData.HorAlignment;
+    lCell^.VertAlignment := XFData.VertAlignment;
+
     // Word wrap
     if XFData.WordWrap then
       Include(lCell^.UsedFormattingFields, uffWordWrap)
@@ -2395,6 +2435,7 @@ type
 var
   lData: TXFRecordData;
   xf: TXFRecord;
+  b: Byte;
 begin
   AStream.ReadBuffer(xf, SizeOf(xf));
 
@@ -2402,6 +2443,20 @@ begin
 
   // Format index
   lData.FormatIndex := WordLEToN(xf.FormatIndex);
+
+  // Horizontal text alignment
+  b := xf.Align_TextBreak AND MASK_XF_HOR_ALIGN;
+  if (b <= ord(High(TsHorAlignment))) then
+    lData.HorAlignment := TsHorAlignment(b)
+  else
+    lData.HorAlignment := haDefault;
+
+  // Vertical text alignment
+  b := (xf.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
+  if (b + 1 <= ord(high(TsVertAlignment))) then
+    lData.VertAlignment := tsVertAlignment(b + 1)      // + 1 due to vaDefault
+  else
+    lData.VertAlignment := vaDefault;
 
   // Word wrap
   lData.WordWrap := (xf.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0;
@@ -2411,13 +2466,13 @@ begin
   lData.Borders := [];
   // the 4 masked bits encode the line style of the border line. 0 = no line
   // We ignore the line style here. --> check against "no line"
-  if xf.Border_Background_1 and $0000000F <> 0 then
+  if xf.Border_Background_1 and MASK_XF_BORDER_LEFT <> 0 then
     Include(lData.Borders, cbWest);
-  if xf.Border_Background_1 and $000000F0 <> 0 then
+  if xf.Border_Background_1 and MASK_XF_BORDER_RIGHT <> 0 then
     Include(lData.Borders, cbEast);
-  if xf.Border_Background_1 and $00000F00 <> 0 then
+  if xf.Border_Background_1 and MASK_XF_BORDER_TOP <> 0 then
     Include(lData.Borders, cbNorth);
-  if xf.Border_Background_1 and $0000F000 <> 0 then
+  if xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM <> 0 then
     Include(lData.Borders, cbSouth);
 
   // Add the XF to the list
