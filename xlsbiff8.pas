@@ -66,6 +66,7 @@ type
   TXFRecordData = class
   public
     FormatIndex: Integer;
+    WordWrap: Boolean;
     Borders: TsCellBorders;
     {
     FontIndex: Integer;
@@ -156,6 +157,10 @@ type
   protected
     procedure AddDefaultFormats(); override;
     procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
+    procedure WriteXF(AStream: TStream; AFontIndex: Word;
+      AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
+      AddWordWrap: Boolean = false; AddBackground: Boolean = false;
+      ABackgroundColor: TsColor = scSilver);
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -181,9 +186,6 @@ type
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
-    procedure WriteXF(AStream: TStream; AFontIndex: Word;
-      AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
-      AddBackground: Boolean = False; ABackgroundColor: TsColor = scSilver);
   end;
 
 implementation
@@ -302,7 +304,9 @@ const
   MASK_XF_TYPE_PROT                   = $0007;
   MASK_XF_TYPE_PROT_PARENT            = $FFF0;
 
+  MASK_XF_HOR_ALIGN                   = $07;
   MASK_XF_VERT_ALIGN                  = $70;
+  MASK_XF_TEXTWRAP                    = $08;
 
 {
   Exported functions
@@ -392,6 +396,7 @@ var
   lBorders: TsCellBorders;
   lAddBackground: Boolean;
   lBackgroundColor: TsColor;
+  lWordWrap: Boolean;
   fmt: String;
 begin
   // The first 4 styles were already added
@@ -402,7 +407,6 @@ begin
     lFormatIndex := 0; //General format (one of the built-in number formats)
     lTextRotation := XF_ROTATION_HORIZONTAL;
     lBorders := [];
-    lAddBackground := False;
     lBackgroundColor := FFormattingStyles[i].BackgroundColor;
 
     // Now apply the modifications.
@@ -480,11 +484,12 @@ begin
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
       lFontIndex := 1;
 
-    if uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields then
-      lAddBackground := True;
+    lAddBackground := (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields);
+    lWordwrap := (uffWordwrap in FFormattingStyles[i].UsedFormattingFields);
 
     // And finally write the style
-    WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders, lAddBackground, lBackgroundColor);
+    WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders, lWordwrap,
+      lAddBackground, lBackgroundColor);
   end;
 end;
 
@@ -1520,7 +1525,8 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
  AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
- AddBackground: Boolean = False; ABackgroundColor: TsColor = scSilver);
+ AddWordWrap: Boolean = false; AddBackground: Boolean = false;
+ ABackgroundColor: TsColor = scSilver);
 var
   XFOptions: Word;
   XFAlignment, XFOrientationAttrib: Byte;
@@ -1546,6 +1552,8 @@ begin
 
   { Alignment and text break }
   XFAlignment := MASK_XF_VERT_ALIGN_BOTTOM;
+  if AddWordWrap then
+    XFAlignment := XFAlignment or MASK_XF_TEXTWRAP;
 
   AStream.WriteByte(XFAlignment);
 
@@ -2050,6 +2058,12 @@ begin
   if Assigned(lCell) then begin
     XFData := TXFRecordData(FXFList.Items[XFIndex]);
 
+    // Word wrap
+    if XFData.WordWrap then
+      Include(lCell^.UsedFormattingFields, uffWordWrap)
+    else
+      Exclude(lCell^.UsedFormattingFields, uffWordWrap);
+
     // Borders
     if XFData.Borders <> [] then begin
       Include(lCell^.UsedFormattingFields, uffBorder);
@@ -2388,6 +2402,9 @@ begin
 
   // Format index
   lData.FormatIndex := WordLEToN(xf.FormatIndex);
+
+  // Word wrap
+  lData.WordWrap := (xf.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0;
 
   // Cell borders
   xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);

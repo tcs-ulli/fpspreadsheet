@@ -49,6 +49,8 @@ type
     procedure TestWriteReadDateTimeFormats;
     // Test column width
     procedure TestWriteReadColWidths;
+    // Test word wrapping
+    procedure TestWriteReadWordWrap;
   end;
 
 implementation
@@ -274,6 +276,58 @@ begin
   DeleteFile(TempFile);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteReadWordWrap;
+const
+  LONGTEXT = 'This is a very, very, very, very long text.';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  MyCell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values:
+  // Cell A1 is word-wrapped, Cell B1 is NOT word-wrapped
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+  MyWorksheet.WriteUTF8Text(0, 0, LONGTEXT);
+  MyWorksheet.WriteUsedFormatting(0, 0, [uffWordwrap]);
+  MyCell := MyWorksheet.FindCell(0, 0);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get word-wrapped cell.');
+  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), true, 'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
+  MyWorksheet.WriteUTF8Text(1, 0, LONGTEXT);
+  MyWorksheet.WriteUsedFormatting(1, 0, []);
+  MyCell := MyWorksheet.FindCell(1, 0);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get word-wrapped cell.');
+  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), false, 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
+  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  MyCell := MyWorksheet.FindCell(0, 0);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get word-wrapped cell.');
+  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), true, 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
+  MyCell := MyWorksheet.FindCell(1, 0);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get non-wrapped cell.');
+  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), false, 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
+  // Finalization
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
 
 initialization
   RegisterTest(TSpreadWriteReadFormatTests);

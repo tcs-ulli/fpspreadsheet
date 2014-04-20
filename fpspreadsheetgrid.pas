@@ -217,6 +217,11 @@ begin
       // Default alignment of number is right-justify
       if lCell^.ContentType = cctNumber then
         ts.Alignment := taRightJustify;
+      // Word wrap?
+      if (uffWordWrap in lCell^.UsedFormattingFields) then begin
+        ts.Wordbreak := true;
+        ts.SingleLine := false;
+      end;
     end;
   end;
   Canvas.TextStyle := ts;

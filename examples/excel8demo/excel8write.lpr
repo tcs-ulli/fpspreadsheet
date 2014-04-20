@@ -52,6 +52,10 @@ begin
   lCell^.BackgroundColor := scPURPLE;
   lCell^.UsedFormattingFields := [uffBackgroundColor];
 
+  // Word-wrapped long text
+  MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long text.');
+  MyWorksheet.WriteUsedFormatting(6, 3, [uffWordwrap]);
+
 { Uncomment this to test large XLS files
   for i := 2 to 20 do
   begin
@@ -61,7 +65,6 @@ begin
     MyWorksheet.WriteAnsiText(i, 3, ParamStr(0));
   end;
 }
-
   // Write the formula E1 = A1 + B1
   SetLength(MyRPNFormula, 3);
   MyRPNFormula[0].ElementKind := fekCell;
