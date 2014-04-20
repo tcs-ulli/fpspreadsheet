@@ -70,6 +70,7 @@ type
     VertAlignment: TsVertAlignment;
     WordWrap: Boolean;
     Borders: TsCellBorders;
+    BackgroundColor: TsColor;
     {
     FontIndex: Integer;
     Border: TsBorder;
@@ -1627,9 +1628,12 @@ begin
   // Add a background, if desired
   if AddBackground then XFBorderDWord2 := XFBorderDWord2 or $4000000;
   AStream.WriteDWord(DWordToLE(XFBorderDWord2));
+
   // Background Pattern Color, always zeroed
-  if AddBackground then AStream.WriteWord(WordToLE(FPSColorToEXCELPalette(ABackgroundColor)))
-  else AStream.WriteWord(0);
+  if AddBackground then
+    AStream.WriteWord(WordToLE(FPSColorToEXCELPalette(ABackgroundColor)))
+  else
+    AStream.WriteWord(0);
 end;
 
 { TsSpreadBIFF8Reader }
@@ -2110,6 +2114,10 @@ begin
       lCell^.Border := XFData.Borders;
     end else
       Exclude(lCell^.UsedFormattingFields, uffBorder);
+
+    // Background color
+    Include(lCell^.UsedFormattingFields, uffBackgroundColor);
+    lCell^.BackgroundColor := XFData.BackgroundColor;
   end;
 end;
 
@@ -2474,6 +2482,10 @@ begin
     Include(lData.Borders, cbNorth);
   if xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM <> 0 then
     Include(lData.Borders, cbSouth);
+
+  // Background color;
+  xf.Border_Background_3 := WordLEToN(xf.Border_Background_3);
+  lData.BackgroundColor := ExcelPaletteToFPSColor(xf.Border_Background_3 AND $007F);
 
   // Add the XF to the list
   FXFList.Add(lData);

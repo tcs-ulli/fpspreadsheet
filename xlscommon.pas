@@ -284,6 +284,8 @@ type
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
     constructor Create; override;
+    // converts an Excel color index to a color value.
+    function ExcelPaletteToFPSColor(AIndex: Word): TsColor;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
     // Workbook Globals records
     procedure ReadCodePage(AStream: TStream);
@@ -384,6 +386,31 @@ begin
   inherited Create;
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
+end;
+
+function TsSpreadBIFFReader.ExcelPaletteToFPSColor(AIndex: Word): TsColor;
+begin
+  case AIndex of
+    BUILT_IN_COLOR_PALLETE_BLACK : Result := scBlack;
+    BUILT_IN_COLOR_PALLETE_WHITE: Result := scWhite;
+    BUILT_IN_COLOR_PALLETE_RED: Result := scRed;
+    BUILT_IN_COLOR_PALLETE_GREEN: Result := scGreen;
+    BUILT_IN_COLOR_PALLETE_BLUE: Result := scBlue;
+    BUILT_IN_COLOR_PALLETE_YELLOW: Result := scYellow;
+    BUILT_IN_COLOR_PALLETE_MAGENTA: Result := scMagenta;
+    BUILT_IN_COLOR_PALLETE_CYAN: Result := scCyan;
+    BUILT_IN_COLOR_PALLETE_DARK_RED: Result := scDarkRed;
+    BUILT_IN_COLOR_PALLETE_DARK_GREEN: Result := scDarkGreen;
+    BUILT_IN_COLOR_PALLETE_DARK_BLUE: Result := scDarkBlue;
+    BUILT_IN_COLOR_PALLETE_OLIVE: Result := scOlive;
+    BUILT_IN_COLOR_PALLETE_PURPLE: Result := scPurple;
+    BUILT_IN_COLOR_PALLETE_TEAL: Result := scTeal;
+    BUILT_IN_COLOR_PALLETE_SILVER: Result := scSilver;
+    BUILT_IN_COLOR_PALLETE_GREY: Result := scGrey;
+    //
+    EXTRA_COLOR_PALETTE_GREY10PCT: Result := scGrey10pct;
+    EXTRA_COLOR_PALETTE_GREY20PCT: Result := scGrey20pct;
+  end;
 end;
 
 // In BIFF 8 it seams to always use the UTF-16 codepage

@@ -149,12 +149,45 @@ type
     property OnContextPopup;
   end;
 
+function FPSColorToColor(FPSColor: TsColor): TColor;
+
 procedure Register;
 
 implementation
 
 uses
   fpsUtils;
+
+function FPSColorToColor(FPSColor: TsColor): TColor;
+begin
+  case FPSColor of
+    scBlack    : Result := clBlack;
+    scWhite    : Result := clWhite;
+    scRed      : Result := clRed;
+    scGreen    : Result := clLime;
+    scBlue     : Result := clBlue;
+    scYellow   : Result := clYellow;
+    scMagenta  : Result := clFuchsia;
+    scCyan     : Result := clAqua;
+    scDarkRed  : Result := clMaroon;
+    scDarkGreen: Result := clGreen;
+    scDarkBlue : Result := clNavy;
+    scOlive    : Result := clOlive;
+    scPurple   : Result := clPurple;
+    scTeal     : Result := clTeal;
+    scSilver   : Result := clSilver;
+    scGrey     : Result := clGray;
+    //
+    scGrey10pct: Result := TColor($00E6E6E6);
+    scGrey20pct: Result := TColor($00CCCCCC);
+    scOrange   : Result := TColor($0000A4FF); // FFA500
+    scDarkBrown: Result := TColor($002D53A0); // A0522D
+    scBrown    : Result := TColor($003F85CD); // CD853F
+    scBeige    : Result := TColor($00DCF5F5); // F5F5DC
+    scWheat    : Result := TColor($00B3DEF5); // F5DEB3
+    else         Result := clWhite;
+  end;
+end;
 
 procedure Register;
 begin
@@ -217,6 +250,7 @@ begin
     c := ACol - FixedCols;
     lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
+      // Horizontal alignment
       case lCell^.HorAlignment of
         haDefault: if lCell^.ContentType = cctNumber then
                      ts.Alignment := taRightJustify
@@ -226,16 +260,25 @@ begin
         haCenter : ts.Alignment := taCenter;
         haRight  : ts.Alignment := taRightJustify;
       end;
+      // Vertical alignment
       case lCell^.VertAlignment of
         vaDefault: ts.Layout := tlBottom;
         vaTop    : ts.Layout := tlTop;
         vaCenter : ts.Layout := tlCenter;
         vaBottom : ts.layout := tlBottom;
       end;
-      // Word wrap?
+      // Word wrap
       if (uffWordWrap in lCell^.UsedFormattingFields) then begin
         ts.Wordbreak := true;
         ts.SingleLine := false;
+      end;
+      // Background color
+      if (uffBackgroundColor in lCell^.UsedFormattingFields) then begin
+        Canvas.Brush.Style := bsSolid;
+        Canvas.Brush.Color := FPSColorToColor(lCell^.BackgroundColor);
+      end else begin
+        Canvas.Brush.Style := bsSolid;
+        Canvas.Brush.Color := Color;
       end;
     end;
   end;

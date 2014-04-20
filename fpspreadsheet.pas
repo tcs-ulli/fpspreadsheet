@@ -1938,7 +1938,7 @@ end;
   Opens the file and calls WriteToStream
 
   @param  AFileName The output file name.
-                   If the file already exists it will be replaced.
+                    If the file already exists it will be replaced.
   @param  AData     The Workbook to be saved.
 
   @see    TsWorkbook

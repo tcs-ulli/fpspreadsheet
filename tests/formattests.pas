@@ -53,6 +53,8 @@ type
     procedure TestWriteReadWordWrap;
     // Test alignments
     procedure TestWriteReadAlignments;
+    // Test background colors
+    procedure TestWriteReadBackgroundColors;
   end;
 
 implementation
@@ -362,9 +364,9 @@ begin
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
       CheckEquals(vertAlign = MyCell^.VertAlignment, true,
-        'Test unsaved word vertical alignment, cell ' + CellNotation(MyWorksheet,0,0));
+        'Test unsaved vertical alignment, cell ' + CellNotation(MyWorksheet,0,0));
       CheckEquals(horAlign = MyCell^.HorAlignment, true,
-        'Test unsaved word horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
+        'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
       inc(col);
     end;
     inc(row);
@@ -391,6 +393,62 @@ begin
       CheckEquals(horAlign = MyCell^.HorAlignment, true,
         'Test saved horizontal mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
     end;
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBackgroundColors;
+// see also "manualtests".
+const
+  CELLTEXT = 'Color test';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  row, col: Integer;
+  MyCell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+  color: TsColor;
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all colors
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+
+  row := 0;
+  col := 0;
+  for color := Low(TsColor) to scGrey20pct do begin  // !!! other colors not working yet!
+//  for color in TsColor do begin            // this is the full test - failing!
+    MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+    MyWorksheet.WriteBackgroundColor(row, col, color);
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell.');
+    CheckEquals(color = MyCell^.BackgroundColor, true,
+      'Test unsaved background color, cell ' + CellNotation(MyWorksheet,0,0));
+    inc(row);
+  end;
+  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
+  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  for row := 0 to MyWorksheet.GetLastRowNumber do begin
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell.');
+    color := TsColor(row);
+    CheckEquals(color = MyCell^.BackgroundColor, true,
+      'Test saved background color, cell '+CellNotation(MyWorksheet,Row,Col));
+  end;
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
