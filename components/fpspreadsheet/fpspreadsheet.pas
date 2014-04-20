@@ -132,7 +132,7 @@ type
   {@@ List of possible formatting fields }
 
   TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder, uffBackgroundColor,
-    uffNumberFormat, uffWordWrap);
+    uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign);
 
   {@@ Describes which formatting fields are active }
 
@@ -172,6 +172,10 @@ type
   {@@ Indicates the border for a cell }
 
   TsCellBorders = set of TsCellBorder;
+
+  {@@ Indicates horizontal and vertical text alignment in cells }
+  TsHorAlignment = (haDefault, haLeft, haCenter, haRight);
+  TsVertAlignment = (vaDefault, vaTop, vaCenter, vaBottom);
 
   {@@ Colors in FPSpreadsheet as given by a palette to be compatible with Excel.
    However, please note that they are physically written to XLS file as
@@ -228,6 +232,8 @@ type
     { Formatting fields }
     UsedFormattingFields: TsUsedFormattingFields;
     TextRotation: TsTextRotation;
+    HorAlignment: TsHorAlignment;
+    VertAlignment: TsVertAlignment;
     Border: TsCellBorders;
     BackgroundColor: TsColor;
     NumberFormat: TsNumberFormat;
@@ -298,6 +304,8 @@ type
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
     procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
+    procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
+    procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
     { Data manipulation methods - For Rows and Cols }
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
@@ -485,9 +493,11 @@ implementation
 uses
   Math, StrUtils;
 
-var
-  { Translatable strings }
-  lpUnsupportedReadFormat, lpUnsupportedWriteFormat: string;
+{ Translatable strings }
+resourcestring
+  lpUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
+  lpUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
+  lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file.';
 
 {@@
   Registers a new reader/writer pair for a format
@@ -1193,6 +1203,24 @@ begin
   ACell^.BackgroundColor := AColor;
 end;
 
+procedure TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  lCell^.UsedFormattingFields := lCell^.UsedFormattingFields + [uffHorAlign];
+  lCell^.HorAlignment := AValue;
+end;
+
+procedure TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  lCell^.UsedFormattingFields := lCell^.UsedFormattingFields + [uffVertAlign];
+  lCell^.VertAlignment := AValue;
+end;
+
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
 var
   LElement: TRow;
@@ -1307,12 +1335,7 @@ end;
 constructor TsWorkbook.Create;
 begin
   inherited Create;
-  
   FWorksheets := TFPList.Create;
-
-  // In the future: add support for translations
-  lpUnsupportedReadFormat := 'Tried to read a spreadsheet using an unsupported format';
-  lpUnsupportedWriteFormat := 'Tried to write a spreadsheet using an unsupported format';
 end;
 
 {@@
@@ -1338,7 +1361,7 @@ var
   suffix: String;
 begin
   Result := True;
-  suffix := ExtractFileExt(AFileName);
+  suffix := Lowercase(ExtractFileExt(AFileName));
   if suffix = STR_EXCEL_EXTENSION then SheetType := sfExcel8
   else if suffix = STR_OOXML_EXCEL_EXTENSION then SheetType := sfOOXML
   else if suffix = STR_OPENDOCUMENT_CALC_EXTENSION then SheetType := sfOpenDocument
@@ -1446,7 +1469,8 @@ begin
     end
     else
       ReadFromFile(AFileName, SheetType);
-  end;
+  end else
+    raise Exception.CreateFmt(lpNoValidSpreadsheetFile, [AFileName]);
 end;
 
 procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string);
@@ -1712,6 +1736,12 @@ begin
   for i := 0 to Length(FFormattingStyles) - 1 do
   begin
     if (FFormattingStyles[i].UsedFormattingFields <> AFormat^.UsedFormattingFields) then Continue;
+
+    if uffHorAlign in AFormat^.UsedFormattingFields then
+      if (FFormattingStyles[i].HorAlignment <> AFormat^.HorAlignment) then Continue;
+
+    if uffVertAlign in AFormat^.UsedFormattingFields then
+      if (FFormattingStyles[i].VertAlignment <> AFormat^.VertAlignment) then Continue;
 
     if uffTextRotation in AFormat^.UsedFormattingFields then
       if (FFormattingStyles[i].TextRotation <> AFormat^.TextRotation) then Continue;

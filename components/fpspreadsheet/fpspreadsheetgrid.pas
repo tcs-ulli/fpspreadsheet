@@ -3,7 +3,7 @@ fpspreadsheetgrid.pas
 
 Grid component which can load and write data from / to FPSpreadsheet documents
 
-AUTHORS: Felipe Monteiro de Carvalho
+AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
 }
 unit fpspreadsheetgrid;
 
@@ -190,7 +190,7 @@ end;
 // Converts the row height, given in mm, to pixels
 function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
 begin
-  Result := round(AHeight / 25.4 * Screen.PixelsPerInch);
+  Result := round(AHeight / 25.4 * Screen.PixelsPerInch) + 4;
 end;
 
 procedure TsCustomWorksheetGrid.DoPrepareCanvas(ACol, ARow: Integer;
@@ -203,20 +203,35 @@ begin
   ts := Canvas.TextStyle;
   if FDisplayFixedColRow then begin
     // Formatting of row and column headers
-    if ARow = 0 then
-      ts.Alignment := taCenter
-    else
-    if ACol = 0 then
+    if ARow = 0 then begin
+      ts.Alignment := taCenter;
+      ts.Layout := tlCenter;
+    end else
+    if ACol = 0 then begin
       ts.Alignment := taRightJustify;
+      ts.Layout := tlCenter;
+    end;
   end;
   if FWorksheet <> nil then begin
     r := ARow - FixedRows;
     c := ACol - FixedCols;
     lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
-      // Default alignment of number is right-justify
-      if lCell^.ContentType = cctNumber then
-        ts.Alignment := taRightJustify;
+      case lCell^.HorAlignment of
+        haDefault: if lCell^.ContentType = cctNumber then
+                     ts.Alignment := taRightJustify
+                   else
+                     ts.Alignment := taLeftJustify;
+        haLeft   : ts.Alignment := taLeftJustify;
+        haCenter : ts.Alignment := taCenter;
+        haRight  : ts.Alignment := taRightJustify;
+      end;
+      case lCell^.VertAlignment of
+        vaDefault: ts.Layout := tlBottom;
+        vaTop    : ts.Layout := tlTop;
+        vaCenter : ts.Layout := tlCenter;
+        vaBottom : ts.layout := tlBottom;
+      end;
       // Word wrap?
       if (uffWordWrap in lCell^.UsedFormattingFields) then begin
         ts.Wordbreak := true;

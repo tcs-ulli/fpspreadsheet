@@ -862,19 +862,22 @@ begin
 end;
 
 { This function checks whether the format string corresponds to exponential
-  formatting and determines the number decimals  }
+  formatting and determines the number of decimals  }
 function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
 var
   i, p, pe: Integer;
 begin
+  Result := false;
   Decimals := 0;
+
+  if SameText(s, 'General') then
+    exit;
 
   // Check for a valid format string
   try
     FormatDateTime(s, 1.0);
   except
     on EConvertError do begin
-      Result := false;
       exit;
     end;
   end;

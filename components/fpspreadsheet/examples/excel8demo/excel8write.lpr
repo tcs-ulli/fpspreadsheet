@@ -52,7 +52,7 @@ begin
   lCell^.BackgroundColor := scPURPLE;
   lCell^.UsedFormattingFields := [uffBackgroundColor];
 
-  // Word-wrapped long text
+  // Word-wrapped long text in D7
   MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long text.');
   MyWorksheet.WriteUsedFormatting(6, 3, [uffWordwrap]);
 
