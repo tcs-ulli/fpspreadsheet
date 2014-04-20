@@ -144,6 +144,7 @@ const
   INT_EXCEL_ID_INDEX      = $020B;
   INT_EXCEL_ID_LABEL      = $0204;
   INT_EXCEL_ID_NUMBER     = $0203;
+  INT_EXCEL_ID_ROWINFO    = $0208;
   INT_EXCEL_ID_STYLE      = $0293;
   INT_EXCEL_ID_WINDOW1    = $003D;
   INT_EXCEL_ID_WINDOW2    = $023E;
@@ -1130,6 +1131,7 @@ begin
     INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
     INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
+    INT_EXCEL_ID_ROWINFO: ReadRowInfo(AStream);
     INT_EXCEL_ID_FORMULA: ReadFormulaExcel(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
