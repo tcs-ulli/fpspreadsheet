@@ -45,6 +45,7 @@ type
     WorkBookEncoding: TsEncoding;
     RecordSize: Word;
     FWorksheet: TsWorksheet;
+    procedure ReadRowInfo(AStream: TStream);
   public
     { General reading methods }
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
@@ -80,6 +81,7 @@ const
   INT_EXCEL_ID_NUMBER     = $0003;
   INT_EXCEL_ID_LABEL      = $0004;
   INT_EXCEL_ID_FORMULA    = $0006;
+  INT_EXCEL_ID_ROWINFO    = $0008;
   INT_EXCEL_ID_BOF        = $0009;
   INT_EXCEL_ID_EOF        = $000A;
 
@@ -461,6 +463,7 @@ begin
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
+    INT_EXCEL_ID_ROWINFO: ReadRowInfo(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     BIFF2EOF := True;
 
@@ -556,6 +559,28 @@ begin
 
   { Save the data }
   FWorksheet.WriteNumber(ARow, ACol, AWord);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadRowInfo(AStream: TStream);
+type
+  TRowRecord = packed record
+    RowIndex: Word;
+    Col1: Word;
+    Col2: Word;
+    Height: Word;
+  end;
+var
+  rowrec: TRowRecord;
+  lRow: PRow;
+  h: word;
+begin
+  AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
+  h := WordLEToN(rowrec.Height);
+  if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
+    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
+    // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
+    lRow^.Height := TwipsToMillimeters(h and $7FFF);
+  end;
 end;
 
 {*******************************************************************
