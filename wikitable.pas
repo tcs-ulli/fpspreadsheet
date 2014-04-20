@@ -59,8 +59,6 @@ type
   { TsWikiTableReader }
 
   TsWikiTableReader = class(TsCustomSpreadReader)
-  private
-    FWorksheet: TsWorksheet;
   public
     SubFormat: TsSpreadsheetFormat;
     { General reading methods }

@@ -25,6 +25,7 @@ type
     FWorksheet: TsWorksheet;
     FDisplayFixedColRow: Boolean;
     function CalcColWidth(AWidth: Single): Integer;
+    function CalcRowHeight(AHeight: Single): Integer;
     procedure SetDisplayFixedColRow(const AValue: Boolean);
     { Private declarations }
   protected
@@ -175,12 +176,21 @@ begin
   inherited Destroy;
 end;
 
+// Converts the column width, given in "characters", to pixels
+// All chars are assumed to have the same width defined by the "0".
+// Therefore, this calculation is only approximate.
 function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
 var
   w0: Integer;
 begin
   w0 := Canvas.TextWidth('0');
   Result := Round(AWidth * w0);
+end;
+
+// Converts the row height, given in mm, to pixels
+function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
+begin
+  Result := round(AHeight / 25.4 * Screen.PixelsPerInch);
 end;
 
 procedure TsCustomWorksheetGrid.DoPrepareCanvas(ACol, ARow: Integer;
@@ -309,6 +319,7 @@ procedure TsCustomWorksheetGrid.Setup;
 var
   i: Integer;
   lCol: PCol;
+  lRow: PRow;
 begin
   if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
     if FDisplayFixedColRow then begin
@@ -351,6 +362,20 @@ begin
         ColWidths[i] := DefaultColWidth;
     end;
   end;
+  if FWorksheet <> nil then begin
+    RowHeights[0] := DefaultRowHeight;
+    for i := FixedRows to RowCount-1 do begin
+      lRow := FWorksheet.FindRow(i - FixedRows);
+      if (lRow <> nil) then
+        RowHeights[i] := CalcRowHeight(lRow^.Height)
+      else
+        RowHeights[i] := DefaultRowHeight;
+    end
+  end
+  else
+    for i:=0 to RowCount-1 do begin
+      RowHeights[i] := DefaultRowHeight;
+    end;
   Invalidate;
 end;
 

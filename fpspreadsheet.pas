@@ -240,7 +240,7 @@ type
 
   TRow = record
     Row: Cardinal;
-    Height: Single; // in milimeters
+    Height: Single; // in millimeters
   end;
 
   PRow = ^TRow;
@@ -310,6 +310,7 @@ type
     { Properties }
     property  Cells: TAVLTree read FCells;
     property  Cols: TIndexedAVLTree read FCols;
+    property  Rows: TIndexedAVLTree read FRows;
   end;
 
   { TsWorkbook }
@@ -358,7 +359,7 @@ type
   TsCustomSpreadReader = class
   protected
     FWorkbook: TsWorkbook;
-    FCurrentWorksheet: TsWorksheet;
+    FWorksheet: TsWorksheet;
   public
     constructor Create; virtual; // To allow descendents to override it
     { General writing methods }
