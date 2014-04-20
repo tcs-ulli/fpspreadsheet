@@ -54,6 +54,9 @@ function GetColString(AColIndex: Integer): String;
 
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
+function TwipsToMillimeters(AValue: Integer): Single;
+function MillimetersToTwips(AValue: Single): Integer;
+
 implementation
 
 {
@@ -429,6 +432,19 @@ begin
   end;
 
   Result:=WrkStr;
+end;
+
+{ Excel's unit of row heights is "twips", i.e. 1/20 point. 72 pts = 1 inch = 25.4 mm
+  The procedure TwipsToMillimeters performs the conversion to millimeters. }
+function TwipsToMillimeters(AValue: Integer): Single;
+begin
+  Result := 25.4 * AValue / (20 * 72);
+end;
+
+{ Converts Millimeters to Twips, i.e. 1/20 pt }
+function MillimetersToTwips(AValue: Single): Integer;
+begin
+  Result := Round((AValue * 20 * 72) / 25.4);
 end;
 
 end.

@@ -289,6 +289,8 @@ type
     procedure ReadCodePage(AStream: TStream);
     // Figures out what the base year for dates is for this file
     procedure ReadDateMode(AStream: TStream);
+    // Read row info
+    procedure ReadRowInfo(const AStream: TStream); virtual;
   end;
 
   { TsSpreadBIFFWriter }
@@ -458,6 +460,29 @@ begin
     0: FDateMode := dm1900;
     1: FDateMode := dm1904;
     else raise Exception.CreateFmt('Error reading file. Got unknown date mode number %d.',[lBaseMode]);
+  end;
+end;
+
+// Read the part of the ROW record that is common to all BIFF versions
+procedure TsSpreadBIFFReader.ReadRowInfo(const AStream: TStream);
+type
+  TRowRecord = packed record
+    RowIndex: Word;
+    Col1: Word;
+    Col2: Word;
+    Height: Word;
+  end;
+var
+  rowrec: TRowRecord;
+  lRow: PRow;
+  h: word;
+begin
+  AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
+  h := WordLEToN(rowrec.Height);
+  if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
+    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
+    // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
+    lRow^.Height := TwipsToMillimeters(h and $7FFF);
   end;
 end;
 
