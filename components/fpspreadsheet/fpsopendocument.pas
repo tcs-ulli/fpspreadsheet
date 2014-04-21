@@ -90,10 +90,16 @@ type
     // Routines to write parts of those files
     function WriteStylesXMLAsString: string;
     { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsFormula; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); override;
   public
     constructor Create; override;
     { General writing methods }
@@ -803,6 +809,17 @@ begin
 <table:table-cell table:formula="of:=[.A1]+[.B2]" office:value-type="float" office:value="1833">
 <text:p>1833</text:p>
 </table:table-cell>}
+end;
+
+{
+  Writes an empty cell
+
+  Not clear whether this is needed for ods, but the inherited procedure is abstract.
+}
+procedure TsSpreadOpenDocWriter.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  // no action at the moment...
 end;
 
 {

@@ -136,16 +136,17 @@ type
     procedure ReadFont(const AStream: TStream);
     // Read col info
     procedure ReadColInfo(const AStream: TStream);
+    { Record reading methods }
+    procedure ReadBlank(AStream: TStream); override;
+    procedure ReadFormula(AStream: TStream); override;
+    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadNumber(AStream: TStream); override;
   public
     constructor Create; override;
     destructor Destroy; override;
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
-    { Record writing methods }
-    procedure ReadFormula(AStream: TStream); override;
-    procedure ReadLabel(AStream: TStream); override;
-    procedure ReadNumber(AStream: TStream); override;
   end;
 
   { TsSpreadBIFF8Writer }
@@ -160,21 +161,28 @@ type
   protected
     procedure AddDefaultFormats(); override;
     { Record writing methods }
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     // procedure WriteCodepage in xlscommon; Workbook Globals record
     procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); override;
     // procedure WriteDateMode in xlscommon; Workbook Globals record
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: double; ACell: PCell); override;
     procedure WritePalette(AStream: TStream);
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
@@ -196,6 +204,7 @@ implementation
 
 const
   { Excel record IDs }
+  INT_EXCEL_ID_BLANK      = $0201;
   INT_EXCEL_ID_BOF        = $0809;
   INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
   INT_EXCEL_ID_COLINFO    = $007D;
@@ -724,6 +733,28 @@ begin
   
   SetLength(Boundsheets, 0);
 end;
+
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteBlank
+*
+*  DESCRIPTION:    Writes the record for an empty cell
+*
+*******************************************************************}
+procedure TsSpreadBIFF8Writer.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
+  AStream.WriteWord(WordToLE(6));
+
+  { BIFF Record data }
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
+
+  { Index to XF record, according to formatting }
+  WriteXFIndex(AStream, ACell);
+end;
+
 
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteBOF ()
@@ -1955,6 +1986,7 @@ begin
 
     case RecordType of
 
+    INT_EXCEL_ID_BLANK:   ReadBlank(AStream);
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
@@ -2094,7 +2126,7 @@ var
   lCell: PCell;
   XFData: TXFRecordData;
 begin
-  lCell := FWorksheet.FindCell(ARow, ACol);
+  lCell := FWorksheet.GetCell(ARow, ACol);
   if Assigned(lCell) then begin
     XFData := TXFRecordData(FXFList.Items[XFIndex]);
 
@@ -2210,6 +2242,16 @@ begin
   { Finalizations }
 
   FWorksheetNames.Free;
+end;
+
+procedure TsSpreadBIFF8Reader.ReadBlank(AStream: TStream);
+var
+  ARow, ACol, XF: Word;
+begin
+  { Read row, column, and XF index from BIFF file }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+  { Add attributes to cell}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFormula(AStream: TStream);

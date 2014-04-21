@@ -296,6 +296,7 @@ type
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2);
+    procedure WriteBlank(ARow, ACol: Cardinal);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
@@ -304,6 +305,7 @@ type
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
     procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
+    procedure WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
     procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
     procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
     { Data manipulation methods - For Rows and Cols }
@@ -328,6 +330,7 @@ type
     { Internal data }
     FWorksheets: TFPList;
     FEncoding: TsEncoding;
+    FFormat: TsSpreadsheetFormat;
     { Internal methods }
     procedure RemoveCallback(data, arg: pointer);
   public
@@ -356,6 +359,7 @@ type
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
+    property FileFormat: TsSpreadsheetFormat read FFormat;
   end;
 
   {@@ TsSpreadReader class reference type }
@@ -369,6 +373,7 @@ type
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     { Record reading methods }
+    procedure ReadBlank(AStream: TStream); virtual; abstract;
     procedure ReadFormula(AStream: TStream); virtual; abstract;
     procedure ReadLabel(AStream: TStream); virtual; abstract;
     procedure ReadNumber(AStream: TStream); virtual; abstract;
@@ -401,6 +406,7 @@ type
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
     { Record writing methods }
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual; abstract;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); virtual;
@@ -478,6 +484,7 @@ type
   function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem; overload;
   function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem; overload;
 
+
 var
   GsSpreadFormats: array of TsSpreadFormatData;
 
@@ -485,6 +492,8 @@ procedure RegisterSpreadFormat(
   AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass;
   AFormat: TsSpreadsheetFormat);
+
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 
 function SciFloat(AValue: Double; ADecimals: Word): String;
 function TimeIntervalToString(AValue: TDateTime): String;
@@ -500,6 +509,8 @@ resourcestring
   lpUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   lpUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file.';
+  lpUnknownSpreadsheetFormat = 'unknown format';
+
 
 {@@
   Registers a new reader/writer pair for a format
@@ -518,6 +529,27 @@ begin
   GsSpreadFormats[len].WriterClass := AWriterClass;
   GsSpreadFormats[len].Format := AFormat;
 end;
+
+{@@
+  Returns the name of the given file format.
+}
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
+begin
+  case AFormat of
+    sfExcel2              : Result := 'BIFF2';
+    sfExcel3              : Result := 'BIFF3';
+    sfExcel4              : Result := 'BIFF4';
+    sfExcel5              : Result := 'BIFF5';
+    sfExcel8              : Result := 'BIFF8';
+    sfooxml               : Result := 'OOXML';
+    sfOpenDocument        : Result := 'Open Document';
+    sfCSV                 : Result := 'CSV';
+    sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
+    sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
+    else                    Result := lpUnknownSpreadsheetFormat;
+  end;
+end;
+
 
 {@@
   Formats the number AValue in "scientific" format with the given number of
@@ -1057,6 +1089,22 @@ begin
 end;
 
 {@@
+  Writes as empty cell
+
+  @param  ARow       The row of the cell
+  @param  ACol       The column of the cell
+
+  Note: an empty cell  is required for formatting.
+}
+procedure TsWorksheet.WriteBlank(ARow, ACol: Cardinal);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+  ACell^.ContentType := cctEmpty;
+end;
+
+{@@
   Writes a date/time value to a determined cell
 
   @param  ARow       The row of the cell
@@ -1128,7 +1176,6 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
 end;
@@ -1148,7 +1195,6 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   Include(ACell^.UsedFormattingFields, uffNumberFormat);
   ACell^.NumberFormat := ANumberFormat;
 end;
@@ -1159,7 +1205,6 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   ACell^.ContentType := cctRPNFormula;
   ACell^.RPNFormulaValue := AFormula;
 end;
@@ -1179,7 +1224,6 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   Include(ACell^.UsedFormattingFields, uffTextRotation);
   ACell^.TextRotation := ARotation;
 end;
@@ -1190,7 +1234,6 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   ACell^.UsedFormattingFields := AUsedFormatting;
 end;
 
@@ -1200,9 +1243,17 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   ACell^.UsedFormattingFields := ACell^.UsedFormattingFields + [uffBackgroundColor];
   ACell^.BackgroundColor := AColor;
+end;
+
+procedure TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  Include(lCell^.UsedFormattingFields, uffBorder);
+  lCell^.Border := ABorders;
 end;
 
 procedure TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
@@ -1427,6 +1478,7 @@ begin
 
   try
     AReader.ReadFromFile(AFileName, Self);
+    FFormat := AFormat;
   finally
     AReader.Free;
   end;
@@ -1893,6 +1945,7 @@ end;
 procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
   case ACell.ContentType of
+    cctEmpty:      WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
     cctDateTime:   WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
     cctNumber:     WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String: WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);

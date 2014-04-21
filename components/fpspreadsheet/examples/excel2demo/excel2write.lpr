@@ -58,6 +58,27 @@ begin
   // Write current date/time
   MyWorksheet.WriteDateTime(2, 0, now);
 
+  // Write cell with background color
+  MyWorksheet.WriteUTF8Text(3, 0, 'Text');
+  MyWorksheet.WriteBackgroundColor(3, 0, scSilver);
+
+  // Empty cell with background color
+  MyWorksheet.WriteBackgroundColor(3, 1, scGrey);
+
+  // Cell2 with top and bottom borders
+  MyWorksheet.WriteUTF8Text(4, 0, 'Text');
+  MyWorksheet.WriteBorders(4, 0, [cbNorth, cbSouth]);
+  MyWorksheet.WriteBorders(4, 1, [cbNorth, cbSouth]);
+  MyWorksheet.WriteBorders(4, 2, [cbNorth, cbSouth]);
+
+  // Left, center, right aligned texts
+  MyWorksheet.WriteUTF8Text(5, 0, 'L');
+  MyWorksheet.WriteUTF8Text(5, 1, 'C');
+  MyWorksheet.WriteUTF8Text(5, 2, 'R');
+  MyWorksheet.WriteHorAlignment(5, 0, haLeft);
+  MyWorksheet.WriteHorAlignment(5, 1, haCenter);
+  MyWorksheet.WriteHorAlignment(5, 2, haRight);
+
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);
   MyWorkbook.Free;

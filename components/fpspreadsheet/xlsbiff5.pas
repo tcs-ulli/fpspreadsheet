@@ -83,8 +83,10 @@ type
     FCurrentWorksheet: Integer;
   protected
     { Helpers }
+    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Integer);
     function DecodeRKValue(const ARK: DWORD): Double;
     { Record writing methods }
+    procedure ReadBlank(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadFormulaExcel(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
@@ -109,17 +111,23 @@ type
     WorkBookEncoding: TsEncoding;
   protected
     { Record writing methods }
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     //procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding); this is in xlscommon
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TFPCustomFont);
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: double; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
@@ -135,6 +143,7 @@ implementation
 
 const
   { Excel record IDs }
+  INT_EXCEL_ID_BLANK      = $0201;
   INT_EXCEL_ID_BOF        = $0809;
   INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
   INT_EXCEL_ID_EOF        = $000A;
@@ -415,6 +424,27 @@ begin
   { Cleanup }
   
   SetLength(Boundsheets, 0);
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF5Writer.WriteBlank
+*
+*  DESCRIPTION:    Writes the record for an empty cell
+*
+*******************************************************************}
+procedure TsSpreadBIFF5Writer.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
+  AStream.WriteWord(WordToLE(6));
+
+  { BIFF Record data }
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
+
+  { Index to XF record }
+  AStream.WriteWord(WordToLE(15));
 end;
 
 {*******************************************************************
@@ -1023,7 +1053,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteXF(AStream: TStream; AFontIndex: Word;
- AXF_TYPE_PROT: Byte);
+  AXF_TYPE_PROT: Byte);
 var
   XFOptions: Word;
   XFAlignment, XFOrientationAttrib: Byte;
@@ -1125,9 +1155,9 @@ begin
 
     case RecordType of
 
+    INT_EXCEL_ID_BLANK:   ReadBlank(AStream);
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
-//    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
     INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
     INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
@@ -1230,6 +1260,9 @@ begin
     AStream.ReadByte; // First formatted character
     AStream.ReadByte; // Index to FONT record
   end;
+
+  { Add attributes to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadRKValue(AStream: TStream);
@@ -1247,6 +1280,9 @@ begin
   Number:=DecodeRKValue(L);
 
   FWorksheet.WriteNumber(ARow,ACol,Number);
+
+  { Add attributes to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadMulRKValues(AStream: TStream);
@@ -1296,6 +1332,9 @@ begin
   if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
   Move(Data[0],ResultFormula,sizeof(Data));
   FWorksheet.WriteNumber(ARow,ACol,ResultFormula);
+
+  { Add attributes to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 function TsSpreadBIFF5Reader.DecodeRKValue(const ARK: DWORD): Double;
@@ -1402,6 +1441,16 @@ begin
   FWorksheetNames.Free;
 end;
 
+procedure TsSpreadBIFF5Reader.ReadBlank(AStream: TStream);
+var
+  ARow, ACol, XF: Word;
+begin
+  { Read row, column, and XF index from BIFF file }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+  { Add attributes to cell}
+  ApplyCellFormatting(ARow, ACol, XF);
+end;
+
 procedure TsSpreadBIFF5Reader.ReadFormula(AStream: TStream);
 begin
 
@@ -1424,6 +1473,9 @@ begin
 
   { Save the data }
   FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
+
+  { Add attributes }
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadNumber(AStream: TStream);
@@ -1438,7 +1490,17 @@ begin
 
   { Save the data }
   FWorksheet.WriteNumber(ARow, ACol, AValue);
+
+  { Add attributes to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
+
+procedure TsSpreadBIFF5Reader.ApplyCellFormatting(ARow, ACol: Cardinal;
+  XFIndex: Integer);
+begin
+  // to do...
+end;
+
 
 initialization
 

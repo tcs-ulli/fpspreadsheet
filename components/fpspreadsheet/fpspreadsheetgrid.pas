@@ -31,7 +31,7 @@ type
   protected
     { Protected declarations }
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
-    procedure DrawCellGrid(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
+    procedure DrawAllRows; override;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetCellText(ACol, ARow: Integer): String;
     procedure Loaded; override;
@@ -156,7 +156,23 @@ procedure Register;
 implementation
 
 uses
-  fpsUtils;
+  fpCanvas, fpsUtils;
+
+var
+  FillPattern_BIFF2: TBitmap = nil;
+
+procedure Create_FillPattern_BIFF2(ABkColor: TColor);
+begin
+  FreeAndNil(FillPattern_BIFF2);
+  FillPattern_BIFF2 := TBitmap.Create;
+  with FillPattern_BIFF2 do begin
+    SetSize(4, 4);
+    Canvas.Brush.Color := ABkColor;
+    Canvas.FillRect(0, 0, Width, Height);
+    Canvas.Pixels[0, 0] := clBlack;
+    Canvas.Pixels[2, 2] := clBlack;
+  end;
+end;
 
 function FPSColorToColor(FPSColor: TsColor): TColor;
 begin
@@ -180,8 +196,8 @@ begin
     //
     scGrey10pct: Result := TColor($00E6E6E6);
     scGrey20pct: Result := TColor($00CCCCCC);
-    scOrange   : Result := TColor($0000A4FF); // FFA500
-    scDarkBrown: Result := TColor($002D53A0); // A0522D
+    scOrange   : Result := TColor($0000A5FF); // FFA500
+    scDarkBrown: Result := TColor($002D52A0); // A0522D
     scBrown    : Result := TColor($003F85CD); // CD853F
     scBeige    : Result := TColor($00DCF5F5); // F5F5DC
     scWheat    : Result := TColor($00B3DEF5); // F5DEB3
@@ -226,6 +242,8 @@ begin
   Result := round(AHeight / 25.4 * Screen.PixelsPerInch) + 4;
 end;
 
+{ Adjusts the grid's canvas before painting a given cell. Considers, e.g.
+  background color, horizontal alignment, vertical alignment, etc. }
 procedure TsCustomWorksheetGrid.DoPrepareCanvas(ACol, ARow: Integer;
   AState: TGridDrawState);
 var
@@ -233,6 +251,7 @@ var
   lCell: PCell;
   r, c: Integer;
 begin
+  Canvas.Brush.Bitmap := nil;
   ts := Canvas.TextStyle;
   if FDisplayFixedColRow then begin
     // Formatting of row and column headers
@@ -274,8 +293,15 @@ begin
       end;
       // Background color
       if (uffBackgroundColor in lCell^.UsedFormattingFields) then begin
-        Canvas.Brush.Style := bsSolid;
-        Canvas.Brush.Color := FPSColorToColor(lCell^.BackgroundColor);
+        if FWorkbook.FileFormat = sfExcel2 then begin
+          if (FillPattern_BIFF2 = nil) and (ComponentState = []) then
+            Create_FillPattern_BIFF2(Color);
+          Canvas.Brush.Style := bsImage;
+          Canvas.Brush.Bitmap := FillPattern_BIFF2;
+        end else begin
+          Canvas.Brush.Style := bsSolid;
+          Canvas.Brush.Color := FPSColorToColor(lCell^.BackgroundColor);
+        end;
       end else begin
         Canvas.Brush.Style := bsSolid;
         Canvas.Brush.Color := Color;
@@ -287,42 +313,46 @@ begin
   inherited DoPrepareCanvas(ACol, ARow, AState);
 end;
 
-procedure TsCustomWorksheetGrid.DrawCellGrid(ACol, ARow: Integer; ARect: TRect;
-  AState: TGridDrawState);
+{ Paints the cell borders. This cannot be done in DrawCellGrid because the
+  lower border line is overwritten when painting the next row. }
+procedure TsCustomWorksheetGrid.DrawAllRows;
 var
-  lCell: PCell;
-  r, c: Integer;
+  cell: PCell;
+  c, r: Integer;
+  rect: TRect;
 begin
   inherited;
-
   if FWorksheet = nil then exit;
 
-  r := ARow - FixedRows;
-  c := ACol - FixedCols;
-  lCell := FWorksheet.FindCell(r, c);
-  if (lCell <> nil) and (uffBorder in lCell^.UsedFormattingFields) then begin
-    Canvas.Pen.Style := psSolid;
-    Canvas.Pen.Color := clBlack;
-    if (cbNorth in lCell^.Border) then
-      Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Top)
-    else
-    if (cbWest in lCell^.Border) then
-      Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom)
-    else
-    if (cbEast in lCell^.Border) then
-      Canvas.Line(ARect.Right-1, ARect.Top, ARect.Right-1, ARect.Bottom)
-    else
-    if (cbSouth in lCell^.Border) then
-      Canvas.Line(ARect.Left, ARect.Bottom-1, ARect.Right, ARect.Bottom-1)
+  cell := FWorksheet.GetFirstCell;
+  while cell <> nil do begin
+    if (uffBorder in cell^.UsedFormattingFields) then begin
+      c := cell^.Col + FixedCols;
+      r := cell^.Row + FixedRows;
+      rect := CellRect(c, r);
+      Canvas.Pen.Style := psSolid;
+      Canvas.Pen.Color := clBlack;
+      if (cbNorth in cell^.Border) then
+        Canvas.Line(rect.Left, rect.Top-1, rect.Right, rect.Top-1);
+      if (cbWest in cell^.Border) then
+        Canvas.Line(rect.Left-1, rect.Top, rect.Left-1, rect.Bottom);
+      if (cbEast in cell^.Border) then
+        Canvas.Line(rect.Right-1, rect.Top, rect.Right-1, rect.Bottom);
+      if (cbSouth in cell^.Border) then
+        Canvas.Line(rect.Left, rect.Bottom-1, rect.Right, rect.Bottom-1);
+    end;
+    cell := FWorksheet.GetNextCell;
   end;
 end;
 
+{ Draws the cell text. Calls "GetCellText" to determine the text in the cell. }
 procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect;
   AState: TGridDrawState);
 begin
   DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
 end;
 
+{ This function returns the text to be written in the cell }
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
   lCell: PCell;
@@ -354,6 +384,8 @@ begin
   end;
 end;
 
+{ Returns a list of worksheets contained in the file. Useful for assigning to
+  user controls like TabControl, Combobox etc. in order to select a sheet. }
 procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
 var
   i: Integer;
@@ -487,5 +519,10 @@ procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
   LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AIndex));
 end;
+
+initialization
+
+finalization
+  FreeAndNil(FillPattern_BIFF2);
 
 end.

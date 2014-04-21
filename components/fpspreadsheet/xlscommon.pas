@@ -283,7 +283,6 @@ type
   protected
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
-    constructor Create; override;
     // converts an Excel color index to a color value.
     function ExcelPaletteToFPSColor(AIndex: Word): TsColor;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
@@ -293,6 +292,8 @@ type
     procedure ReadDateMode(AStream: TStream);
     // Read row info
     procedure ReadRowInfo(const AStream: TStream); virtual;
+  public
+    constructor Create; override;
   end;
 
   { TsSpreadBIFFWriter }
