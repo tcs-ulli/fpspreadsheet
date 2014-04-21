@@ -81,24 +81,25 @@ type
     FWorksheet: TsWorksheet;
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
+  protected
+    { Helpers }
+    function DecodeRKValue(const ARK: DWORD): Double;
+    { Record writing methods }
+    procedure ReadFormula(AStream: TStream); override;
+    procedure ReadFormulaExcel(AStream: TStream);
+    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadMulRKValues(AStream: TStream);
+    procedure ReadNumber(AStream: TStream); override;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
     procedure ReadRichString(AStream: TStream);
     procedure ReadRKValue(AStream: TStream);
-    procedure ReadMulRKValues(AStream: TStream);
-    procedure ReadFormulaExcel(AStream: TStream);
-  protected
-    function DecodeRKValue(const ARK: DWORD): Double;
     procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD); virtual;
   public
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
-    { Record writing methods }
-    procedure ReadFormula(AStream: TStream); override;
-    procedure ReadLabel(AStream: TStream); override;
-    procedure ReadNumber(AStream: TStream); override;
   end;
 
   { TsSpreadBIFF5Writer }
@@ -106,13 +107,7 @@ type
   TsSpreadBIFF5Writer = class(TsSpreadBIFFWriter)
   private
     WorkBookEncoding: TsEncoding;
-  public
-//    constructor Create;
-//    destructor Destroy; override;
-    { General writing methods }
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
-      const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
+  protected
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
@@ -129,6 +124,11 @@ type
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
     procedure WriteXF(AStream: TStream; AFontIndex: Word; AXF_TYPE_PROT: Byte);
+  public
+    { General writing methods }
+    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+      const AOverwriteExisting: Boolean = False); override;
+    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
 implementation

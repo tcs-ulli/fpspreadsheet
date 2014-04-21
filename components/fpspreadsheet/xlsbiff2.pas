@@ -46,14 +46,15 @@ type
     RecordSize: Word;
     FWorksheet: TsWorksheet;
     procedure ReadRowInfo(AStream: TStream);
-  public
-    { General reading methods }
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+  protected
     { Record writing methods }
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadInteger(AStream: TStream);
+  public
+    { General reading methods }
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
   { TsSpreadBIFF2Writer }
@@ -61,9 +62,6 @@ type
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell);
-  public
-    { General writing methods }
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
@@ -71,6 +69,9 @@ type
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
+  public
+    { General writing methods }
+    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
 implementation

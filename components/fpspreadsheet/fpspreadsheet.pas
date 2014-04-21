@@ -368,16 +368,16 @@ type
   protected
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
+    { Record reading methods }
+    procedure ReadFormula(AStream: TStream); virtual; abstract;
+    procedure ReadLabel(AStream: TStream); virtual; abstract;
+    procedure ReadNumber(AStream: TStream); virtual; abstract;
   public
     constructor Create; virtual; // To allow descendents to override it
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
-    { Record reading methods }
-    procedure ReadFormula(AStream: TStream); virtual; abstract;
-    procedure ReadLabel(AStream: TStream); virtual; abstract;
-    procedure ReadNumber(AStream: TStream); virtual; abstract;
   end;
 
   {@@ TsSpreadWriter class reference type }
@@ -389,6 +389,23 @@ type
   { TsCustomSpreadWriter }
 
   TsCustomSpreadWriter = class
+  protected
+    { Helper routines }
+    procedure AddDefaultFormats(); virtual;
+    function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
+    function  FindFormattingInList(AFormat: PCell): Integer;
+    function  FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
+    procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
+    procedure ListAllFormattingStyles(AData: TsWorkbook);
+    { Helpers for writing }
+    procedure WriteCellCallback(ACell: PCell; AStream: TStream);
+    procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
+    { Record writing methods }
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); virtual;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
   public
     {@@
     An array with cells which are models for the used styles
@@ -397,27 +414,12 @@ type
     FFormattingStyles: array of TCell;
     NextXFIndex: Integer; // Indicates which should be the next XF (Style) Index when filling the styles list
     constructor Create; virtual; // To allow descendents to override it
-    { Helper routines }
-    function FindFormattingInList(AFormat: PCell): Integer;
-    procedure AddDefaultFormats(); virtual;
-    procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
-    procedure ListAllFormattingStyles(AData: TsWorkbook);
-    function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
-    function  FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
     { General writing methods }
-    procedure WriteCellCallback(ACell: PCell; AStream: TStream);
-    procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
     procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
     procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
       const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure WriteToStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
-    { Record writing methods }
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); virtual;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
   end;
 
   {@@ List of registered formats }

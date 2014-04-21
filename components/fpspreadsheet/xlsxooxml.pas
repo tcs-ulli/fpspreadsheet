@@ -63,6 +63,11 @@ type
     procedure WriteContent(AData: TsWorkbook);
     procedure WriteWorksheet(CurSheet: TsWorksheet);
     function GetStyleIndex(ACell: PCell): Cardinal;
+    { Record writing methods }
+    //todo: add WriteDate
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   public
     constructor Create; override;
     destructor Destroy; override;
@@ -71,11 +76,6 @@ type
     procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
-    { Record writing methods }
-    //todo: add WriteDate
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   end;
 
 implementation
