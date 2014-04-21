@@ -58,7 +58,7 @@ var
 implementation
 
 uses
-  Grids;
+  Grids, fpcanvas;
 
 { TForm1 }
 
@@ -95,7 +95,10 @@ begin
   if OpenDialog1.Execute then
   begin
     sWorksheetGrid1.LoadFromSpreadsheetFile(OpenDialog1.FileName);
-    Caption := Format('fpsGrid - %s', [OpenDialog1.Filename]);
+    Caption := Format('fpsGrid - %s (%s)', [
+      OpenDialog1.Filename,
+      GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
+    ]);
 
     // Create a tab in the pagecontrol for each worksheet contained in the workbook
     // This would be easer with a TTabControl. This has display issues, though.

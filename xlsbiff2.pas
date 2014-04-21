@@ -47,7 +47,11 @@ type
     FWorksheet: TsWorksheet;
     procedure ReadRowInfo(AStream: TStream);
   protected
+    procedure ApplyCellFormatting(ARow, ACol: Word; XF, AFormat, AFont, AStyle: Byte);
+    procedure ReadRowColStyle(AStream: TStream; out ARow, ACol: Word;
+      out XF, AFormat, AFont, AStyle: byte);
     { Record writing methods }
+    procedure ReadBlank(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
@@ -63,6 +67,7 @@ type
   private
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell);
     { Record writing methods }
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteBOF(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
@@ -78,6 +83,7 @@ implementation
 
 const
   { Excel record IDs }
+  INT_EXCEL_ID_BLANK      = $0001;
   INT_EXCEL_ID_INTEGER    = $0002;
   INT_EXCEL_ID_NUMBER     = $0003;
   INT_EXCEL_ID_LABEL      = $0004;
@@ -100,7 +106,7 @@ const
 
 procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell);
 var
-  BorderByte: Byte = 0;
+  b: Byte;
 begin
   if ACell^.UsedFormattingFields = [] then
   begin
@@ -110,26 +116,36 @@ begin
     Exit;
   end;
 
+  // 1st byte:
+  //   Mask $3F: Index to XF record
+  //   Mask $40: 1 = Cell is locked
+  //   Mask $80: 1 = Formula is hidden
   AStream.WriteByte($0);
+
+  // 2nd byte:
+  //   Mask $3F: Index to FORMAT record
+  //   Mask $C0: Index to FONT record
   AStream.WriteByte($0);
 
-  // The Border and Background
-
-  BorderByte := 0;
-
-  if uffBorder in ACell^.UsedFormattingFields then
-  begin
-    if cbNorth in ACell^.Border then BorderByte := BorderByte or $20;
-    if cbWest in ACell^.Border then BorderByte := BorderByte or $08;
-    if cbEast in ACell^.Border then BorderByte := BorderByte or $10;
-    if cbSouth in ACell^.Border then BorderByte := BorderByte or $40;
+  // 3rd byte
+  //   Mask $07: horizontal alignment
+  //   Mask $08: Cell has left border
+  //   Mask $10: Cell has right border
+  //   Mask $20: Cell has top border
+  //   Mask $40: Cell has bottom border
+  //   Mask $80: Cell has shaded background
+  b := 0;
+  if uffHorAlign in ACell^.UsedFormattingFields then
+    b := ord (ACell^.HorAlignment);
+  if uffBorder in ACell^.UsedFormattingFields then begin
+    if cbNorth in ACell^.Border then b := b or $20;
+    if cbWest in ACell^.Border then b := b or $08;
+    if cbEast in ACell^.Border then b := b or $10;
+    if cbSouth in ACell^.Border then b := b or $40;
   end;
-
-  // BIFF2 does not support a background color, just a "shaded" option
   if uffBackgroundColor in ACell^.UsedFormattingFields then
-    BorderByte := BorderByte or $80;
-
-  AStream.WriteByte(BorderByte);
+    b := b or $80;
+  AStream.WriteByte(b);
 end;
 
 {
@@ -330,6 +346,29 @@ begin
 end;
 
 {*******************************************************************
+*  TsSpreadBIFF2Writer.WriteBlank ()
+*
+*  DESCRIPTION:    Writes an Excel 2 record for an empty cell
+*
+*                  Required if this cell should contain formatting
+*
+*******************************************************************}
+procedure TsSpreadBIFF2Writer.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
+  AStream.WriteWord(WordToLE(7));
+
+  { BIFF Record data }
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
+
+  { BIFF2 Attributes }
+  WriteCellFormatting(AStream, ACell);
+end;
+
+{*******************************************************************
 *  TsSpreadBIFF2Writer.WriteLabel ()
 *
 *  DESCRIPTION:    Writes an Excel 2 LABEL record
@@ -435,6 +474,48 @@ end;
 
 { TsSpreadBIFF2Reader }
 
+procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ARow, ACol: Word;
+  XF, AFormat, AFont, AStyle: Byte);
+var
+  lCell: PCell;
+begin
+  lCell := FWorksheet.GetCell(ARow, ACol);
+
+  if Assigned(lCell) then begin
+    // Horizontal justification
+    if AStyle and $07 <> 0 then begin
+      Include(lCell^.UsedFormattingFields, uffHorAlign);
+      lCell^.HorAlignment := TsHorAlignment(AStyle and $07);
+    end;
+
+    // Border
+    if AStyle and $78 <> 0 then begin
+      Include(lCell^.UsedFormattingFields, uffBorder);
+      lCell^.Border := [];
+      if AStyle and $08 <> 0 then Include(lCell^.Border, cbWest);
+      if AStyle and $10 <> 0 then Include(lCell^.Border, cbEast);
+      if AStyle and $20 <> 0 then Include(lCell^.Border, cbNorth);
+      if AStyle and $40 <> 0 then Include(lCell^.Border, cbSouth);
+    end else
+      Exclude(lCell^.UsedFormattingFields, uffBorder);
+
+    // Background
+    if AStyle and $80 <> 0 then begin
+      Include(lCell^.UsedFormattingFields, uffBackgroundColor);
+      // Background color is ignored
+    end;
+  end;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
+var
+  ARow, ACol: Word;
+  XF, AFormat, AFont, AStyle: Byte;
+begin
+  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
+  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
+end;
+
 procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   BIFF2EOF: Boolean;
@@ -460,6 +541,7 @@ begin
 
     case RecordType of
 
+    INT_EXCEL_ID_BLANK:   ReadBlank(AStream);
     INT_EXCEL_ID_INTEGER: ReadInteger(AStream);
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
@@ -488,17 +570,12 @@ procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
 var
   L: Byte;
   ARow, ACol: Word;
+  XF, AFormat, AFont, AStyle: Byte;
   AValue: array[0..255] of Char;
   AStrValue: UTF8String;
 begin
-  { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { BIFF2 Attributes }
-  AStream.ReadByte();
-  AStream.ReadByte();
-  AStream.ReadByte();
+  { BIFF Record row/column/style }
+  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
 
   { String with 8-bit size }
   L := AStream.ReadByte();
@@ -518,48 +595,68 @@ begin
     AStrValue := CP1252ToUTF8(AValue);
   end;
   FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
 var
   ARow, ACol: Word;
+  XF, AFormat, AFont, AStyle: Byte;
   AValue: Double;
 begin
-  { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { BIFF2 Attributes }
-  AStream.ReadByte();
-  AStream.ReadByte();
-  AStream.ReadByte();
+  { BIFF Record row/column/style }
+  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
 
   { IEE 754 floating-point value }
   AStream.ReadBuffer(AValue, 8);
 
   { Save the data }
   FWorksheet.WriteNumber(ARow, ACol, AValue);
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
 var
   ARow, ACol: Word;
+  XF, AFormat, AFont, AStyle: Byte;
   AWord  : Word;
 begin
-  { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { BIFF2 Attributes }
-  AStream.ReadByte();
-  AStream.ReadByte();
-  AStream.ReadByte();
+  { BIFF Record row/column/style }
+  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
 
   { 16 bit unsigned integer }
   AStream.ReadBuffer(AWord, 2);
 
   { Save the data }
   FWorksheet.WriteNumber(ARow, ACol, AWord);
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadRowColStyle(AStream: TStream;
+  out ARow, ACol: Word; out XF, AFormat, AFont, AStyle: byte);
+type
+  TRowColStyleRecord = packed record
+    Row, Col: Word;
+    XFIndex: Byte;
+    Format_Font: Byte;
+    Style: Byte;
+  end;
+var
+  rcs: TRowColStyleRecord;
+begin
+  AStream.ReadBuffer(rcs, SizeOf(TRowColStyleRecord));
+  ARow := WordLEToN(rcs.Row);
+  ACol := WordLEToN(rcs.Col);
+  XF := rcs.XFIndex;
+  AFormat := (rcs.Format_Font AND $3F);
+  AFont := (rcs.Format_Font AND $C0) shr 6;
+  AStyle := rcs.Style;
 end;
 
 procedure TsSpreadBIFF2Reader.ReadRowInfo(AStream: TStream);

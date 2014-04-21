@@ -52,6 +52,12 @@ begin
   lCell^.BackgroundColor := scPURPLE;
   lCell^.UsedFormattingFields := [uffBackgroundColor];
 
+  // E6 empty cell, only background color
+  MyWorksheet.WriteBackgroundColor(5, 4, scYellow);
+
+  // E7 empty cell, only all borders
+  MyWorksheet.WriteBorders(5, 5, [cbNorth, cbEast, cbSouth, cbWest]);
+
   // Word-wrapped long text in D7
   MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long text.');
   MyWorksheet.WriteUsedFormatting(6, 3, [uffWordwrap]);
@@ -65,6 +71,7 @@ begin
     MyWorksheet.WriteAnsiText(i, 3, ParamStr(0));
   end;
 }
+
   // Write the formula E1 = A1 + B1
   SetLength(MyRPNFormula, 3);
   MyRPNFormula[0].ElementKind := fekCell;
@@ -83,8 +90,6 @@ begin
   MyRPNFormula[0].Row := 0;
   MyRPNFormula[1].ElementKind := fekABS;
   MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
-
-  //MyFormula.FormulaStr := '';
 
   // Write current date/time to cells B11:B16
   MyWorksheet.WriteUTF8Text(10, 0, 'nfShortDate');
