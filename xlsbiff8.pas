@@ -159,23 +159,11 @@ type
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
   protected
     procedure AddDefaultFormats(); override;
-    procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
-    procedure WriteXF(AStream: TStream; AFontIndex: Word;
-      AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
-      AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
-      AWordWrap: Boolean = false; AddBackground: Boolean = false;
-      ABackgroundColor: TsColor = scSilver);
-  public
-//    constructor Create;
-//    destructor Destroy; override;
-    { General writing methods }
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
-      const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     // procedure WriteCodepage in xlscommon; Workbook Globals record
+    procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
     // procedure WriteDateMode in xlscommon; Workbook Globals record
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
@@ -190,6 +178,18 @@ type
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
+    procedure WriteXF(AStream: TStream; AFontIndex: Word;
+      AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
+      AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
+      AWordWrap: Boolean = false; AddBackground: Boolean = false;
+      ABackgroundColor: TsColor = scSilver);
+  public
+//    constructor Create;
+//    destructor Destroy; override;
+    { General writing methods }
+    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+      const AOverwriteExisting: Boolean = False); override;
+    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
 implementation

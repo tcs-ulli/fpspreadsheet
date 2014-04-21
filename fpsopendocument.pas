@@ -57,14 +57,15 @@ type
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
     // Figures out what the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
-  public
-    { General reading methods }
-    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
+  protected
     { Record writing methods }
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadNumber(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadDate(ARow : Word; ACol : Word; ACellNode: TDOMNode);
+  public
+    { General reading methods }
+    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
   end;
 
   { TsSpreadOpenDocWriter }
@@ -88,6 +89,11 @@ type
     procedure WriteWorksheet(CurSheet: TsWorksheet);
     // Routines to write parts of those files
     function WriteStylesXMLAsString: string;
+    { Record writing methods }
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   public
     constructor Create; override;
     { General writing methods }
@@ -95,11 +101,6 @@ type
     procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
-    { Record writing methods }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); override;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   end;
 
 implementation
