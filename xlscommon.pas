@@ -16,6 +16,7 @@ uses
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
+  INT_EXCEL_ID_FONT       = $0031;
   INT_EXCEL_ID_CODEPAGE   = $0042;
   INT_EXCEL_ID_DATEMODE   = $0022;
 

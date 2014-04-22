@@ -52,6 +52,7 @@ type
       out XF, AFormat, AFont, AStyle: byte);
     { Record writing methods }
     procedure ReadBlank(AStream: TStream); override;
+    procedure ReadFont(AStream: TStream);
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
@@ -65,11 +66,22 @@ type
 
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
-    procedure WriteCellFormatting(AStream: TStream; ACell: PCell);
+    function  FindXFIndex(ACell: PCell): Word;
     { Record writing methods }
-    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteBOF(AStream: TStream);
+    procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
     procedure WriteEOF(AStream: TStream);
+    procedure WriteFont(AStream: TStream; AData: TsWorkbook; AFontIndex: Integer);
+    procedure WriteFonts(AStream: TStream; AData: TsWorkbook);
+    procedure WriteIXFE(AStream: TStream; XFIndex: Word);
+    procedure WriteXF(AStream: TStream; AFontIndex, AFormatIndex: byte;
+      ABorders: TsCellBorders = []; AHorAlign: TsHorAlignment = haLeft;
+      AddBackground: Boolean = false);
+    procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
+    procedure WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+  protected
+    procedure AddDefaultFormats(); override;
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
@@ -91,6 +103,9 @@ const
   INT_EXCEL_ID_ROWINFO    = $0008;
   INT_EXCEL_ID_BOF        = $0009;
   INT_EXCEL_ID_EOF        = $000A;
+  INT_EXCEL_ID_XF         = $0043;
+  INT_EXCEL_ID_IXFE       = $0044;
+  INT_EXCEL_ID_FONTCOLOR  = $0045;
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -104,9 +119,46 @@ const
 
 { TsSpreadBIFF2Writer }
 
-procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell);
+procedure TsSpreadBIFF2Writer.AddDefaultFormats();
+begin
+  NextXFIndex := 16; //21;
+
+  SetLength(FFormattingStyles, 1);
+
+  // XF0..XF14: Normal style, Row Outline level 1..7,
+  // Column Outline level 1..7.
+
+  // XF15 - Default cell format, no formatting (4.6.2)
+  FFormattingStyles[0].UsedFormattingFields := [];
+  FFormattingStyles[0].Row := 15;
+end;
+
+function TsSpreadBIFF2Writer.FindXFIndex(ACell: PCell): Word;
+var
+  i: Integer;
+begin
+  if ACell^.UsedFormattingFields = [] then
+    Result := 15
+  else begin
+    // If not, then we need to search in the list of dynamic formats
+    i := FindFormattingInList(ACell);
+    // Carefully check the index
+    if (i < 0) or (i > Length(FFormattingStyles)) then
+      raise Exception.Create('[TsSpreadBIFF2Writer.WriteXFIndex] Invalid Index, this should not happen!');
+    Result := FFormattingStyles[i].Row;
+  end;
+end;
+
+{
+  Attaches cell formatting data for the given cell to the current record.
+  Is called from all writing methods of cell contents.
+}
+procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell;
+  XFIndex: Word);
 var
   b: Byte;
+  xf: Word;
+  i: Integer;
 begin
   if ACell^.UsedFormattingFields = [] then
   begin
@@ -120,12 +172,13 @@ begin
   //   Mask $3F: Index to XF record
   //   Mask $40: 1 = Cell is locked
   //   Mask $80: 1 = Formula is hidden
-  AStream.WriteByte($0);
+  AStream.WriteByte(XFIndex and $3F);
 
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record
   //   Mask $C0: Index to FONT record
-  AStream.WriteByte($0);
+  b := ACell.FontIndex shl 6;
+  AStream.WriteByte(b);
 
   // 3rd byte
   //   Mask $07: horizontal alignment
@@ -149,6 +202,18 @@ begin
 end;
 
 {
+  Writes an Excel 2 IXFE record
+  This record contains the "real" XF index if it is > 62.
+}
+procedure TsSpreadBIFF2Writer.WriteIXFE(AStream: TStream; XFIndex: Word);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_IXFE));
+  AStream.WriteWord(WordToLE(2));
+  AStream.WriteWord(WordToLE(XFIndex));
+end;
+
+{
   Writes an Excel 2 file to a stream
 
   Excel 2.x files support only one Worksheet per Workbook,
@@ -158,9 +223,163 @@ procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream; AData: TsWorkbook)
 begin
   WriteBOF(AStream);
 
+  WriteFonts(AStream, AData);
+
+  WriteXFRecords(AStream, AData);
+
   WriteCellsToStream(AStream, AData.GetFirstWorksheet.Cells);
 
   WriteEOF(AStream);
+end;
+
+procedure TsSpreadBIFF2Writer.WriteXF(AStream: TStream;
+  AFontIndex, AFormatIndex: byte; ABorders: TsCellBorders = [];
+  AHorAlign: TsHorAlignment = haLeft; AddBackground: Boolean = false);
+var
+  b: Byte;
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_XF));
+  AStream.WriteWord(WordToLE(4));
+
+  { Index to FONT record }
+  AStream.WriteByte(AFontIndex);
+
+  { not used }
+  AStream.WriteByte(0);
+
+  { number format and cell flags }
+  b := AFormatIndex and $3F;
+  AStream.WriteByte(b);
+
+  { Horizontal alignment, border style, and background }
+  b := byte(AHorAlign);
+  if cbWest in ABorders then b := b or $08;
+  if cbEast in ABorders then b := b or $10;
+  if cbNorth in ABorders then b := b or $20;
+  if cbSouth in ABorders then b := b or $40;
+  if AddBackground then b := b or $80;
+  AStream.WriteByte(b);
+end;
+
+procedure TsSpreadBIFF2Writer.WriteXFFieldsForFormattingStyles(AStream: TStream);
+var
+  i: Integer;
+  lFontIndex: Word;
+  lFormatIndex: Word; //number format
+  lBorders: TsCellBorders;
+  lAddBackground: Boolean;
+  lHorAlign: TsHorAlignment;
+  fmt: String;
+begin
+  // The first style was already added  (see AddDefaultFormats)
+  for i := 1 to Length(FFormattingStyles) - 1 do begin
+    // Default styles
+    lFontIndex := 0;
+    lFormatIndex := 0; //General format (one of the built-in number formats)
+    lBorders := [];
+    lHorAlign := FFormattingStyles[i].HorAlignment;
+
+    // Now apply the modifications.
+    (*
+    if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
+      case FFormattingStyles[i].NumberFormat of
+        nfFixed:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_FIXED_0_DECIMALS;
+            2: lFormatIndex := FORMAT_FIXED_2_DECIMALS;
+          end;
+        nfFixedTh:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_FIXED_THOUSANDS_0_DECIMALS;
+            2: lFormatIndex := FORMAT_FIXED_THOUSANDS_2_DECIMALS;
+          end;
+        nfExp:
+          lFormatIndex := FORMAT_EXP_2_DECIMALS;
+        nfSci:
+          lFormatIndex := FORMAT_SCI_1_DECIMAL;
+        nfPercentage:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_PERCENT_0_DECIMALS;
+            2: lFormatIndex := FORMAT_PERCENT_2_DECIMALS;
+          end;
+        {
+        nfCurrency:
+          case FFormattingStyles[i].NumberDecimals of
+            0: lFormatIndex := FORMAT_CURRENCY_0_DECIMALS;
+            2: lFormatIndex := FORMAT_CURRENCY_2_DECIMALS;
+          end;
+        }
+        nfShortDate:
+          lFormatIndex := FORMAT_SHORT_DATE;
+        nfShortTime:
+          lFormatIndex := FORMAT_SHORT_TIME;
+        nfLongTime:
+          lFormatIndex := FORMAT_LONG_TIME;
+        nfShortTimeAM:
+          lFormatIndex := FORMAT_SHORT_TIME_AM;
+        nfLongTimeAM:
+          lFormatIndex := FORMAT_LONG_TIME_AM;
+        nfShortDateTime:
+          lFormatIndex := FORMAT_SHORT_DATETIME;
+        nfFmtDateTime:
+          begin
+            fmt := lowercase(FFormattingStyles[i].NumberFormatStr);
+            if (fmt = 'dm') or (fmt = 'd-mmm') or (fmt = 'd mmm') or (fmt = 'd. mmm') or (fmt = 'd/mmm') then
+              lFormatIndex := FORMAT_DATE_DM
+            else
+            if (fmt = 'my') or (fmt = 'mmm-yy') or (fmt = 'mmm yy') or (fmt = 'mmm/yy') then
+              lFormatIndex := FORMAT_DATE_MY
+            else
+            if (fmt = 'ms') or (fmt = 'nn:ss') or (fmt = 'mm:ss') then
+              lFormatIndex := FORMAT_TIME_MS
+            else
+            if (fmt = 'msz') or (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or (fmt = 'mm:ss.0') or (fmt = 'mm:ss.z') or (fmt = 'nn:ss.z') then
+              lFormatIndex := FORMAT_TIME_MSZ
+          end;
+        nfTimeInterval:
+          lFormatIndex := FORMAT_TIME_INTERVAL;
+      end;
+      *)
+
+    if uffBorder in FFormattingStyles[i].UsedFormattingFields then
+      lBorders := FFormattingStyles[i].Border;
+
+    if uffBold in FFormattingStyles[i].UsedFormattingFields then
+      lFontIndex := 1;   // must be before uffFont which overrides uffBold
+
+    if uffFont in FFormattingStyles[i].UsedFormattingFields then
+      lFontIndex := FFormattingStyles[i].FontIndex;
+
+    lAddBackground := (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields);
+
+    // And finally write the style
+    WriteXF(AStream, lFontIndex, lFormatIndex, lBorders, lHorAlign, lAddBackground);
+  end;
+end;
+
+procedure TsSpreadBIFF2Writer.WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+begin
+  WriteXF(AStream, 0, 0);  // XF0
+  WriteXF(AStream, 0, 0);  // XF1
+  WriteXF(AStream, 0, 0);  // XF2
+  WriteXF(AStream, 0, 0);  // XF3
+  WriteXF(AStream, 0, 0);  // XF4
+  WriteXF(AStream, 0, 0);  // XF5
+  WriteXF(AStream, 0, 0);  // XF6
+  WriteXF(AStream, 0, 0);  // XF7
+  WriteXF(AStream, 0, 0);  // XF8
+  WriteXF(AStream, 0, 0);  // XF9
+  WriteXF(AStream, 0, 0);  // XF10
+  WriteXF(AStream, 0, 0);  // XF11
+  WriteXF(AStream, 0, 0);  // XF12
+  WriteXF(AStream, 0, 0);  // XF13
+  WriteXF(AStream, 0, 0);  // XF14
+  WriteXF(AStream, 0, 0);  // XF15 - Default, no formatting
+
+   // Add all further non-standard/built-in formatting styles
+  ListAllFormattingStyles(AData);
+  WriteXFFieldsForFormattingStyles(AStream);
 end;
 
 {
@@ -194,6 +413,67 @@ begin
 end;
 
 {
+  Writes an Excel 2 font record
+  The font data is passed as font index.
+}
+procedure TsSpreadBIFF2Writer.WriteFont(AStream: TStream; AData: TsWorkbook;
+  AFontIndex: Integer);
+var
+  Len: Byte;
+  lFontName: AnsiString;
+  optn: Word;
+  font: TsFont;
+begin
+  font := AData.GetFont(AFontIndex);
+  if font = nil then  // this happens for FONT4 in case of BIFF
+    exit;
+
+  if font.FontName = '' then
+    raise Exception.Create('Font name not specified.');
+  if font.Size <= 0.0 then
+    raise Exception.Create('Font size not specified.');
+
+  lFontName := font.FontName;
+  Len := Length(lFontName);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONT));
+  AStream.WriteWord(WordToLE(4 + 1 + Len * Sizeof(AnsiChar)));
+
+  { Height of the font in twips = 1/20 of a point }
+  AStream.WriteWord(WordToLE(round(font.Size*20)));
+
+  { Option flags }
+  optn := 0;
+  if fssBold in font.Style then optn := optn or $0001;
+  if fssItalic in font.Style then optn := optn or $0002;
+  if fssUnderline in font.Style then optn := optn or $0004;
+  if fssStrikeout in font.Style then optn := optn or $0008;
+  AStream.WriteWord(WordToLE(optn));
+
+  { Font name: Unicodestring, char count in 1 byte }
+  AStream.WriteByte(Len);
+  AStream.WriteBuffer(lFontName[1], Len * Sizeof(AnsiChar));
+
+  { Font color: goes into next record! }
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONTCOLOR));
+  AStream.WriteWord(WordToLE(2));
+
+  { Font color index, only first 8 palette entries allowed! }
+  AStream.WriteWord(WordToLE(word(font.Color)));
+end;
+
+procedure TsSpreadBiff2Writer.WriteFonts(AStream: TStream; AData: TsWorkbook);
+var
+  i: Integer;
+begin
+  for i:=0 to AData.GetFontCount-1 do
+    WriteFont(AStream, AData, i);
+end;
+
+{
   Writes an Excel 2 FORMULA record
 
   The formula needs to be converted from usual user-readable string
@@ -220,23 +500,26 @@ var
   r: Cardinal;
   len: Integer;
   s: ansistring;
+  xf: Word;
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
+
+  xf := FindXFIndex(ACell);
+  if xf >= 63 then
+    WriteIXFE(AStream, xf);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
   RecordSizePos := AStream.Position;
   AStream.WriteWord(WordToLE(17 + RPNLength));
 
-  { BIFF Record data }
+  { Row and column }
   AStream.WriteWord(WordToLE(ARow));
   AStream.WriteWord(WordToLE(ACol));
 
   { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
+  WriteCellFormatting(AStream, ACell, xf);
 
   { Result of the formula in IEEE 754 floating-point value }
   AStream.WriteBuffer(FormulaResult, 8);
@@ -355,7 +638,13 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
+var
+  xf: Word;
 begin
+  xf := FindXFIndex(ACell);
+  if xf >= 63 then
+    WriteIXFE(AStream, xf);
+
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
   AStream.WriteWord(WordToLE(7));
@@ -365,7 +654,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { BIFF2 Attributes }
-  WriteCellFormatting(AStream, ACell);
+  WriteCellFormatting(AStream, ACell, xf);
 end;
 
 {*******************************************************************
@@ -387,6 +676,8 @@ var
   L: Byte;
   AnsiText: ansistring;
   TextTooLong: boolean=false;
+var
+  xf: Word;
 begin
   if AValue = '' then Exit; // Writing an empty text doesn't work
 
@@ -403,6 +694,10 @@ begin
   end;
   L := Length(AnsiText);
 
+  xf := FindXFIndex(ACell);
+  if xf >= 63 then
+    WriteIXFE(AStream, xf);
+
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
   AStream.WriteWord(WordToLE(8 + L));
@@ -412,7 +707,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { BIFF2 Attributes }
-  WriteCellFormatting(AStream, ACell);
+  WriteCellFormatting(AStream, ACell, xf);
 
   { String with 8-bit size }
   AStream.WriteByte(L);
@@ -437,7 +732,13 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
+var
+  xf: Word;
 begin
+  xf := FindXFIndex(ACell);
+  if xf >= 63 then
+    WriteIXFE(AStream, xf);
+
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
   AStream.WriteWord(WordToLE(15));
@@ -447,9 +748,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { BIFF2 Attributes }
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
-  AStream.WriteByte($0);
+  WriteCellFormatting(AStream, ACell, xf);
 
   { IEE 754 floating-point value }
   AStream.WriteBuffer(AValue, 8);
@@ -482,6 +781,10 @@ begin
   lCell := FWorksheet.GetCell(ARow, ACol);
 
   if Assigned(lCell) then begin
+    // Font index
+    Include(lCell^.UsedFormattingFields, uffFont);
+    lCell^.FontIndex := AFont;
+
     // Horizontal justification
     if AStyle and $07 <> 0 then begin
       Include(lCell^.UsedFormattingFields, uffHorAlign);
@@ -516,12 +819,47 @@ begin
   ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
 end;
 
+procedure TsSpreadBIFF2Reader.ReadFont(AStream: TStream);
+var
+  lHeight: Word;
+  lOptions: Word;
+  Len: Byte;
+  lFontName: UTF8String;
+  font: TsFont;
+begin
+  font := TsFont.Create;
+
+  { Height of the font in twips = 1/20 of a point }
+  lHeight := WordLEToN(AStream.ReadWord); // WordToLE(200)
+  font.Size := lHeight/20;
+
+  { Option flags }
+  lOptions := WordLEToN(AStream.ReadWord);
+  font.Style := [];
+  if lOptions and $0001 <> 0 then Include(font.Style, fssBold);
+  if lOptions and $0002 <> 0 then Include(font.Style, fssItalic);
+  if lOptions and $0004 <> 0 then Include(font.Style, fssUnderline);
+  if lOptions and $0008 <> 0 then Include(font.Style, fssStrikeout);
+
+  { Font name: Unicodestring, char count in 1 byte }
+  Len := AStream.ReadByte();
+  SetLength(lFontName, Len);
+  AStream.ReadBuffer(lFontName[1], Len);
+  font.FontName := lFontName;
+
+  { Add font to workbook's font list }
+  FWorkbook.AddFont(font);
+end;
+
 procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   BIFF2EOF: Boolean;
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  // Clear existing fonts. They will be replaced by those from the file.
+  FWorkbook.RemoveAllFonts;
+
   { Store some data about the workbook that other routines need }
   WorkBookEncoding := AData.Encoding;
 
@@ -542,6 +880,7 @@ begin
     case RecordType of
 
     INT_EXCEL_ID_BLANK:   ReadBlank(AStream);
+    INT_EXCEL_ID_FONT:    ReadFont(AStream);
     INT_EXCEL_ID_INTEGER: ReadInteger(AStream);
     INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
     INT_EXCEL_ID_LABEL:   ReadLabel(AStream);

@@ -51,6 +51,7 @@ begin
 
   // Write some string cells
   MyWorksheet.WriteUTF8Text(1, 0, 'First');
+  MyWorksheet.WriteFont(1, 0, 'Arial', 12, [fssBold, fssItalic, fssUnderline], scRed);
   MyWorksheet.WriteUTF8Text(1, 1, 'Second');
   MyWorksheet.WriteUTF8Text(1, 2, 'Third');
   MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
@@ -78,6 +79,16 @@ begin
   MyWorksheet.WriteHorAlignment(5, 0, haLeft);
   MyWorksheet.WriteHorAlignment(5, 1, haCenter);
   MyWorksheet.WriteHorAlignment(5, 2, haRight);
+
+  // Red font, italic
+  MyWorksheet.WriteNumber(6, 0, 2014);
+  MyWorksheet.WriteFont(6, 0, 'Calibri', 15, [fssItalic], scRed);
+  MyWorksheet.WriteNumber(6, 1, 2015);
+  MyWorksheet.WriteFont(6, 1, 'Times New Roman', 9, [fssUnderline], scBlue);
+  MyWorksheet.WriteNumber(6, 2, 2016);
+  MyWorksheet.WriteFont(6, 2, 'Courier New', 8, [], scBlue);
+  MyWorksheet.WriteNumber(6, 3, 2017);
+  MyWorksheet.WriteFont(6, 3, 'Arial', 18, [fssBold], scBlue);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);

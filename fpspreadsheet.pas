@@ -131,8 +131,10 @@ type
 
   {@@ List of possible formatting fields }
 
-  TsUsedFormattingField = (uffTextRotation, uffBold, uffBorder, uffBackgroundColor,
-    uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign);
+  TsUsedFormattingField = (uffTextRotation, uffFont, uffBold, uffBorder,
+    uffBackgroundColor, uffNumberFormat, uffWordWrap,
+    uffHorAlign, uffVertAlign
+  );
 
   {@@ Describes which formatting fields are active }
 
@@ -210,6 +212,20 @@ type
     scRGBCOLOR  // Defined via TFPColor
   );
 
+  {@@ Font style (redefined to avoid usage of "Graphics" }
+
+  TsFontStyle = (fssBold, fssItalic, fssStrikeOut, fssUnderline);
+  TsFontStyles = set of TsFontStyle;
+
+  {@@ Font }
+
+  TsFont = class
+    FontName: String;
+    Size: Single;   // in "points"
+    Style: TsFontStyles;
+    Color: TsColor;
+  end;
+
   {@@ Cell structure for TsWorksheet
 
       Never suppose that all *Value fields are valid,
@@ -231,6 +247,7 @@ type
     DateTimeValue: TDateTime;
     { Formatting fields }
     UsedFormattingFields: TsUsedFormattingFields;
+    FontIndex: Integer;
     TextRotation: TsTextRotation;
     HorAlignment: TsHorAlignment;
     VertAlignment: TsVertAlignment;
@@ -262,11 +279,13 @@ type
 
   TsCustomSpreadReader = class;
   TsCustomSpreadWriter = class;
+  TsWorkbook = class;
 
   { TsWorksheet }
 
   TsWorksheet = class
   private
+    FWorkbook: TsWorkbook;
     FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from the standard
@@ -302,6 +321,9 @@ type
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
+    function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
+      AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
+    procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
     procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
@@ -321,6 +343,7 @@ type
     property  Cells: TAVLTree read FCells;
     property  Cols: TIndexedAVLTree read FCols;
     property  Rows: TIndexedAVLTree read FRows;
+    property  Workbook: TsWorkbook read FWorkbook;
   end;
 
   { TsWorkbook }
@@ -331,8 +354,10 @@ type
     FWorksheets: TFPList;
     FEncoding: TsEncoding;
     FFormat: TsSpreadsheetFormat;
+    FFontList: TFPList;
+    FBuiltinFontCount: Integer;
     { Internal methods }
-    procedure RemoveCallback(data, arg: pointer);
+    procedure RemoveWorksheetsCallback(data, arg: pointer);
   public
     { Base methods }
     constructor Create;
@@ -356,6 +381,18 @@ type
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Cardinal;
     procedure RemoveAllWorksheets;
+    { Font handling }
+    function AddFont(const AFontName: String; ASize: Single;
+      AStyle: TsFontStyles; AColor: TsColor): Integer; overload;
+    function AddFont(const AFont: TsFont): Integer; overload;
+    procedure CopyFontList(ASource: TFPList);
+    function FindFont(const AFontName: String; ASize: Single;
+      AStyle: TsFontStyles; AColor: TsColor): Integer;
+    function GetFont(AIndex: Integer): TsFont;
+    function GetFontCount: Integer;
+    procedure InitFonts;
+    procedure RemoveAllFonts;
+    procedure SetDefaultFont(const AFontName: String; ASize: Single);
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
@@ -383,6 +420,7 @@ type
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
+    property Wordbook: TsWorkbook read FWorkbook;
   end;
 
   {@@ TsSpreadWriter class reference type }
@@ -394,6 +432,7 @@ type
   { TsCustomSpreadWriter }
 
   TsCustomSpreadWriter = class
+  private
   protected
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
@@ -508,8 +547,9 @@ uses
 resourcestring
   lpUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   lpUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
-  lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file.';
+  lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
   lpUnknownSpreadsheetFormat = 'unknown format';
+  lpInvalidFontIndex = 'Invalid font index';
 
 
 {@@
@@ -1210,6 +1250,45 @@ begin
 end;
 
 {@@
+  Adds font specification to the formatting of a cell
+
+  @param  ARow        The row of the cell
+  @param  ACol        The column of the cell
+  @param  AFontName   Name of the font
+  @param  AFontSize   Size of the font, in points
+  @param  AFontStyle  Set with font style attributes
+                      (don't use those of unit "graphics" !)
+
+  @result             Index of font in font list
+}
+function TsWorksheet.WriteFont(ARow, ACol: Cardinal; const AFontName: String;
+  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  Include(lCell^.UsedFormattingFields, uffFont);
+  Result := FWorkbook.FindFont(AFontName, AFontSize, AFontStyle, AFontColor);
+  if Result = -1 then
+    result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor);
+  lCell^.FontIndex := Result;
+end;
+
+procedure TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer);
+var
+  lCell: PCell;
+begin
+  if (AFontIndex >= 0) and (AFontIndex < Workbook.GetFontCount) and (AFontIndex <> 4)
+    // note: Font index 4 is not defined in BIFF
+  then begin
+    lCell := GetCell(ARow, ACol);
+    Include(lCell^.UsedFormattingFields, uffFont);
+    lCell^.FontIndex := AFontIndex;
+  end else
+    raise Exception.Create(lpInvalidFontIndex);
+end;
+
+{@@
   Adds text rotation to the formatting of a cell
 
   @param  ARow      The row of the cell
@@ -1377,7 +1456,7 @@ end;
 {@@
   Helper method for clearing the spreadsheet list.
 }
-procedure TsWorkbook.RemoveCallback(data, arg: pointer);
+procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
 begin
   TsWorksheet(data).Free;
 end;
@@ -1389,6 +1468,9 @@ constructor TsWorkbook.Create;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
+  FFontList := TFPList.Create;
+  SetDefaultFont('Arial', 10.0);
+  InitFonts;
 end;
 
 {@@
@@ -1397,8 +1479,10 @@ end;
 destructor TsWorkbook.Destroy;
 begin
   RemoveAllWorksheets;
+  RemoveAllFonts;
 
   FWorksheets.Free;
+  FFontList.Free;
 
   inherited Destroy;
 end;
@@ -1438,7 +1522,7 @@ begin
     if GsSpreadFormats[i].Format = AFormat then
     begin
       Result := GsSpreadFormats[i].ReaderClass.Create;
-
+      Result.FWorkbook := self;
       Break;
     end;
 
@@ -1459,7 +1543,6 @@ begin
     if GsSpreadFormats[i].Format = AFormat then
     begin
       Result := GsSpreadFormats[i].WriterClass.Create;
-    
       Break;
     end;
     
@@ -1629,6 +1712,7 @@ begin
   Result := TsWorksheet.Create;
 
   Result.Name := AName;
+  Result.FWorkbook := Self;
 
   FWorksheets.Add(Pointer(Result));
 end;
@@ -1665,8 +1749,10 @@ end;
 }
 function TsWorkbook.GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
 begin
-  if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then Result := TsWorksheet(FWorksheets.Items[AIndex])
-  else Result := nil;
+  if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then
+    Result := TsWorksheet(FWorksheets.Items[AIndex])
+  else
+    Result := nil;
 end;
 
 {@@
@@ -1711,7 +1797,155 @@ end;
 }
 procedure TsWorkbook.RemoveAllWorksheets;
 begin
-  FWorksheets.ForEachCall(RemoveCallback, nil);
+  FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
+end;
+
+
+{ Font handling }
+
+{@@
+  Adds a font to the font list. Returns the index in the font list.
+}
+function TsWorkbook.AddFont(const AFontName: String; ASize: Single;
+  AStyle: TsFontStyles; AColor: TsColor): Integer;
+var
+  fnt: TsFont;
+begin
+  fnt := TsFont.Create;
+  fnt.FontName := AFontName;
+  fnt.Size := ASize;
+  fnt.Style := AStyle;
+  fnt.Color := AColor;
+  Result := AddFont(fnt);
+end;
+
+function TsWorkbook.AddFont(const AFont: TsFont): Integer;
+begin
+  // Font index 4 does not exist in BIFF. Avoid that a real font gets this index.
+  if FFontList.Count = 4 then
+    FFontList.Add(nil);
+  result := FFontList.Add(AFont);
+end;
+
+{@@
+  Copies the font list "ASource" to the workbook's font list
+}
+procedure TsWorkbook.CopyFontList(ASource: TFPList);
+var
+  fnt: TsFont;
+  i: Integer;
+begin
+  RemoveAllFonts;
+  for i:=0 to ASource.Count-1 do begin
+    fnt := TsFont(ASource.Items[i]);
+    AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  end;
+end;
+
+{@@
+  Checks whether the font with the given specification is already contained in
+  the font list. Returns the index, or -1, if not found.
+}
+function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
+  AStyle: TsFontStyles; AColor: TsColor): Integer;
+var
+  fnt: TsFont;
+begin
+  for Result := 0 to FFontList.Count-1 do begin
+    fnt := TsFont(FFontList.Items[Result]);
+    if (fnt <> nil) and
+       SameText(AFontName, fnt.FontName) and
+      (abs(ASize - fnt.Size) < 0.001) and   // careful when comparing floating point numbers
+      (AStyle = fnt.Style) and
+      (AColor = fnt.Color)
+    then
+      exit;
+  end;
+  Result := -1;
+end;
+
+{@@
+  Initialized the font list. In case of BIFF format, adds 5 fonts
+}
+procedure TsWorkbook.InitFonts;
+var
+  fntName: String;
+  fntSize: Single;
+begin
+  // Memorize old default font
+  with TsFont(FFontList.Items[0]) do begin
+    fntName := FontName;
+    fntSize := Size;
+  end;
+
+  // Remove current font list
+  RemoveAllFonts;
+
+  // Build new font list
+  SetDefaultFont(fntName, fntSize);                      // Default font (FONT0)
+  AddFont(fntName, fntSize, [fssBold], scBlack);         // FONT1 for uffBold
+
+  AddFont(fntName, fntSize, [fssItalic], scBlack);       // FONT2 for uffItalic
+  AddFont(fntName, fntSize, [fssUnderline], scBlack);    // FONT3 for uffUnderline
+  // FONT4 which does not exist in BIFF is added automatically with nil as place-holder
+  AddFont(fntName, fntSize, [fssBold, fssItalic], scBlack); // FONT5 for uffBoldItalic
+
+
+  FBuiltinFontCount := FFontList.Count;
+end;
+
+{@@
+  Clears the list of fonts and releases their memory.
+}
+procedure TsWorkbook.RemoveAllFonts;
+var
+  i, n: Integer;
+  fnt: TsFont;
+begin
+  for i:=FFontList.Count-1 downto 0 do begin
+    fnt := TsFont(FFontList.Items[i]);
+    fnt.Free;
+    FFontList.Delete(i);
+  end;
+end;
+
+{@@
+  Defines the default font. This is the font with index 0 in the FontList.
+  The next built-in fonts will have the same font name and size
+}
+procedure TsWorkbook.SetDefaultFont(const AFontName: String; ASize: Single);
+var
+  i: Integer;
+begin
+  if FFontList.Count = 0 then
+    AddFont(AFontName, ASize, [], scBlack)
+  else
+  for i:=0 to FBuiltinFontCount-1 do begin
+    if (i <> 4) and (i < FFontList.Count) then
+      with TsFont(FFontList[i]) do begin
+        FontName := AFontName;
+        Size := ASize;
+      end;
+  end;
+end;
+
+{@@
+  Returns the font with the given index.
+}
+function TsWorkbook.GetFont(AIndex: Integer): TsFont;
+begin
+  if (AIndex >= 0) and (AIndex < FFontList.Count) then
+    Result := FFontList.Items[AIndex]
+  else
+    Result := nil;
+end;
+
+{@@
+  Returns the count of registered fonts
+}
+function TsWorkbook.GetFontCount: Integer;
+begin
+  Result := FFontList.Count;
 end;
 
 { TsCustomSpreadReader }
@@ -1816,6 +2050,9 @@ begin
           if (FFormattingstyles[i].NumberFormatStr <> AFormat^.NumberFormatStr) then Continue;
       end;
     end;
+
+    if uffFont in AFormat^.UsedFormattingFields then
+      if (FFormattingStyles[i].FontIndex <> AFormat^.FontIndex) then Continue;
 
     // If we arrived here it means that the styles match
     Exit(i);
