@@ -65,6 +65,7 @@ uses
 type
   TXFRecordData = class
   public
+    FontIndex: Integer;
     FormatIndex: Integer;
     HorAlignment: TsHorAlignment;
     VertAlignment: TsVertAlignment;
@@ -172,15 +173,16 @@ type
     // procedure WriteDateMode in xlscommon; Workbook Globals record
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFont(AStream: TStream; AFont: TFPCustomFont);
+    procedure WriteFont(AStream: TStream; AFont: TsFont);
+    procedure WriteFonts(AStream: TStream; AData: TsWorkbook);
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
+    procedure WritePalette(AStream: TStream);
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
-    procedure WritePalette(AStream: TStream);
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
@@ -191,6 +193,7 @@ type
       AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
       AWordWrap: Boolean = false; AddBackground: Boolean = false;
       ABackgroundColor: TsColor = scSilver);
+    procedure WriteXFRecords(AStream: TStream; AData: TsWorkbook);
   public
 //    constructor Create;
 //    destructor Destroy; override;
@@ -211,7 +214,6 @@ const
   INT_EXCEL_ID_COUNTRY    = $008C;
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
-  INT_EXCEL_ID_FONT       = $0031;
   INT_EXCEL_ID_FORMULA    = $0006;
   INT_EXCEL_ID_INDEX      = $020B;
   INT_EXCEL_ID_LABEL      = $0204;
@@ -399,12 +401,6 @@ begin
   end;
   }
 
-  if ACell^.UsedFormattingFields = [uffBold] then
-  begin
-    AStream.WriteWord(WordToLE(18)); //XF_18
-    Exit;
-  end;
-
   // If not, then we need to search in the list of dynamic formats
   lIndex := FindFormattingInList(ACell);
   // Carefully check the index
@@ -430,9 +426,8 @@ var
   lWordWrap: Boolean;
   fmt: String;
 begin
-  // The first 4 styles were already added
-  for i := 4 to Length(FFormattingStyles) - 1 do
-  begin
+  // The first style was already added
+  for i := 1 to Length(FFormattingStyles) - 1 do begin
     // Default styles
     lFontIndex := 0;
     lFormatIndex := 0; //General format (one of the built-in number formats)
@@ -515,7 +510,10 @@ begin
     end;
 
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
-      lFontIndex := 1;
+      lFontIndex := 1;   // must be before uffFont which overrides uffBold
+
+    if uffFont in FFormattingStyles[i].UsedFormattingFields then
+      lFontIndex := FFormattingStyles[i].FontIndex;
 
     lAddBackground := (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields);
     lWordwrap := (uffWordwrap in FFormattingStyles[i].UsedFormattingFields);
@@ -532,9 +530,9 @@ end;
 }
 procedure TsSpreadBIFF8Writer.AddDefaultFormats();
 begin
-  NextXFIndex := 21;
+  NextXFIndex := 16;
 
-  SetLength(FFormattingStyles, 6);
+  SetLength(FFormattingStyles, 1);
 
   // XF0..XF14: Normal style, Row Outline level 1..7,
   // Column Outline level 1..7.
@@ -542,20 +540,6 @@ begin
   // XF15 - Default cell format, no formatting (4.6.2)
   FFormattingStyles[0].UsedFormattingFields := [];
   FFormattingStyles[0].Row := 15;
-
-  // XF16 - Rotated
-  FFormattingStyles[1].UsedFormattingFields := [uffTextRotation];
-  FFormattingStyles[1].Row := 16;
-  FFormattingStyles[1].TextRotation := rt90DegreeCounterClockwiseRotation;
-
-  // XF17 - Rotated
-  FFormattingStyles[2].UsedFormattingFields := [uffTextRotation];
-  FFormattingStyles[2].Row := 17;
-  FFormattingStyles[2].TextRotation := rt90DegreeClockwiseRotation;
-
-  // XF18 - Bold
-  FFormattingStyles[3].UsedFormattingFields := [uffBold];
-  FFormattingStyles[3].Row := 18;
 end;
 
 {*******************************************************************
@@ -606,7 +590,6 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
 var
-  FontData: TFPCustomFont;
   MyData: TMemoryStream;
   CurrentPos: Int64;
   Boundsheets: array of Int64;
@@ -620,72 +603,13 @@ begin
 
   WriteWindow1(AStream);
 
-  FontData := TFPCustomFont.Create;
-  try
-    FontData.Name := 'Arial';
+  WriteFonts(AStream, AData);
 
-    // FONT0 - normal
-    WriteFont(AStream, FontData);
-    // FONT1 - bold
-    FontData.Bold := True;
-    WriteFont(AStream, FontData);
-    FontData.Bold := False;
-    // FONT2
-    WriteFont(AStream, FontData);
-    // FONT3
-    WriteFont(AStream, FontData);
-    // FONT5
-    WriteFont(AStream, FontData);
-  finally
-   FontData.Free;
-  end;
-  
   // PALETTE
   WritePalette(AStream);
 
-  // XF0
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF1
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF2
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF3
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF4
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF5
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF6
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF7
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF8
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF9
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF10
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF11
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF12
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF13
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF14
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
-  // XF15 - Default, no formatting
-  WriteXF(AStream, 0, 0, 0, XF_ROTATION_HORIZONTAL, []);
-  // XF16 - Rotated
-  WriteXF(AStream, 0, 0, 0, XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE, []);
-  // XF17 - Rotated
-  WriteXF(AStream, 0, 0, 0, XF_ROTATION_90_DEGREE_CLOCKWISE, []);
-  // XF18 - Bold
-  WriteXF(AStream, 1, 0, 0, XF_ROTATION_HORIZONTAL, []);
-
-  // Add all further non-standard/built-in formatting styles
-  ListAllFormattingStyles(AData);
-  WriteXFFieldsForFormattingStyles(AStream);
-
+  // XF Records
+  WriteXFRecords(AStream, AData);
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
@@ -937,15 +861,25 @@ end;
 *
 *  DESCRIPTION:    Writes an Excel 8 FONT record
 *
-*                  The font data is passed in an instance of TFPCustomFont
+*                  The font data is passed in an instance of TsFont
 *
 *******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteFont(AStream: TStream; AFont: TFPCustomFont);
+
+procedure TsSpreadBIFF8Writer.WriteFont(AStream: TStream; AFont: TsFont);
 var
   Len: Byte;
   WideFontName: WideString;
+  optn: Word;
 begin
-  WideFontName:=AFont.Name;
+  if AFont = nil then  // this happens for FONT4 in case of BIFF
+    exit;
+
+  if AFont.FontName = '' then
+    raise Exception.Create('Font name not specified.');
+  if AFont.Size <= 0.0 then
+    raise Exception.Create('Font size not specified.');
+
+  WideFontName := AFont.FontName;
   Len := Length(WideFontName);
 
   { BIFF Record header }
@@ -953,24 +887,33 @@ begin
   AStream.WriteWord(WordToLE(14 + 1 + 1 + Len * Sizeof(WideChar)));
 
   { Height of the font in twips = 1/20 of a point }
-  AStream.WriteWord(WordToLE(200));
+  AStream.WriteWord(WordToLE(round(AFont.Size*20)));
 
   { Option flags }
-  if AFont.Bold then AStream.WriteWord(WordToLE(1))
-  else AStream.WriteWord(WordToLE(0));
+  optn := 0;
+  if fssBold in AFont.Style then optn := optn or $0001;
+  if fssItalic in AFont.Style then optn := optn or $0002;
+  if fssUnderline in AFont.Style then optn := optn or $0004;
+  if fssStrikeout in AFont.Style then optn := optn or $0008;
+  AStream.WriteWord(WordToLE(optn));
 
   { Colour index }
-  AStream.WriteWord(WordToLE($7FFF));
+  AStream.WriteWord(WordToLE(8 + ord(AFont.Color))); //WordToLE($7FFF));
 
   { Font weight }
-  if AFont.Bold then AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_BOLD))
-  else AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
+  if fssBold in AFont.Style then
+    AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_BOLD))
+  else
+    AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
 
   { Escapement type }
   AStream.WriteWord(WordToLE(0));
 
   { Underline type }
-  AStream.WriteByte(0);
+  if fssUnderline in AFont.Style then
+    AStream.WriteByte(1)
+  else
+    AStream.WriteByte(0);
 
   { Font family }
   AStream.WriteByte(0);
@@ -988,6 +931,20 @@ begin
   AStream.WriteBuffer(WideStringToLE(WideFontName)[1], Len * Sizeof(WideChar));
 end;
 
+{*******************************************************************
+*  TsSpreadBIFF8Writer.WriteFonts ()
+*
+*  DESCRIPTION:    Writes the Excel 8 FONT records neede for the
+*                  used fonts in the workbook.
+*
+*******************************************************************}
+procedure TsSpreadBiff8Writer.WriteFonts(AStream: TStream; AData: TsWorkbook);
+var
+  i: Integer;
+begin
+  for i:=0 to AData.GetFontCount-1 do
+    WriteFont(AStream, AData.GetFont(i));
+end;
 
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteFormula ()
@@ -1364,6 +1321,14 @@ begin
   AStream.WriteBuffer(AValue, 8);
 end;
 
+
+(*******************************************************************
+*  TsSpreadBIFF8Writer.WritePalette
+*
+*  DESCRIPTION:    Writes Excel PALETTE records
+*
+*******************************************************************)
+
 procedure TsSpreadBIFF8Writer.WritePalette(AStream: TStream);
 begin
   { BIFF Record header }
@@ -1667,6 +1632,47 @@ begin
     AStream.WriteWord(0);
 end;
 
+procedure TsSpreadBIFF8Writer.WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+begin
+  // XF0
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF1
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF2
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF3
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF4
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF5
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF6
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF7
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF8
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF9
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF10
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF11
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF12
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF13
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF14
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  // XF15 - Default, no formatting
+  WriteXF(AStream, 0, 0, 0, XF_ROTATION_HORIZONTAL, []);
+
+  // Add all further non-standard/built-in formatting styles
+  ListAllFormattingStyles(AData);
+  WriteXFFieldsForFormattingStyles(AStream);
+end;
+
+
 { TsSpreadBIFF8Reader }
 
 function TsSpreadBIFF8Reader.DecodeRKValue(const ARK: DWORD): Double;
@@ -1933,6 +1939,9 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  // Clear existing fonts. They will be replaced by those from the file.
+  FWorkbook.RemoveAllFonts;
+
   if Assigned(FSharedStringTable) then FreeAndNil(FSharedStringTable);
   while (not SectionEOF) do
   begin
@@ -2130,6 +2139,10 @@ begin
   if Assigned(lCell) then begin
     XFData := TXFRecordData(FXFList.Items[XFIndex]);
 
+    // Font
+    Include(lCell^.UsedFormattingFields, uffFont);
+    lCell^.FontIndex := XFData.FontIndex;
+
     // Alignment
     lCell^.HorAlignment := XFData.HorAlignment;
     lCell^.VertAlignment := XFData.VertAlignment;
@@ -2305,17 +2318,7 @@ var
   WideStrValue: WideString;
   AnsiStrValue: AnsiString;
 begin
-(*
-{ BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { Index to XF record, not used }
-  AStream.ReadWord();
-*)
-  { BIFF Record header }
-  { BIFF Record data }
-  { Index to XF Record }
+  { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream,ARow,ACol,XF);
 
   { Byte String with 16-bit size }
@@ -2491,6 +2494,9 @@ begin
 
   lData := TXFRecordData.Create;
 
+  // Font index
+  lData.FontIndex := WordLEToN(xf.FontIndex);
+
   // Format index
   lData.FormatIndex := WordLEToN(xf.FormatIndex);
 
@@ -2573,26 +2579,39 @@ var
   lCodePage: Word;
   lHeight: Word;
   lOptions: Word;
+  lColor: Word;
+  lWeight: Word;
   Len: Byte;
   lFontName: UTF8String;
+  font: TsFont;
 begin
+  font := TsFont.Create;
+
   { Height of the font in twips = 1/20 of a point }
-  lHeight := AStream.ReadWord(); // WordToLE(200)
+  lHeight := WordLEToN(AStream.ReadWord); // WordToLE(200)
+  font.Size := lHeight/20;
 
   { Option flags }
-  lOptions := AStream.ReadWord();
+  lOptions := WordLEToN(AStream.ReadWord);
+  font.Style := [];
+  if lOptions and $0001 <> 0 then Include(font.Style, fssBold);
+  if lOptions and $0002 <> 0 then Include(font.Style, fssItalic);
+  if lOptions and $0004 <> 0 then Include(font.Style, fssUnderline);
+  if lOptions and $0008 <> 0 then Include(font.Style, fssStrikeout);
 
   { Colour index }
-  AStream.ReadWord();
+  lColor := WordLEToN(AStream.ReadWord);
+  font.Color := TsColor(lColor - 8);  // Palette colors have an offset 8
 
   { Font weight }
-  AStream.ReadWord();
+  lWeight := WordLEToN(AStream.ReadWord);
+  if lWeight = 700 then Include(font.Style, fssBold);
 
   { Escapement type }
   AStream.ReadWord();
 
   { Underline type }
-  AStream.ReadByte();
+  if AStream.ReadByte > 0 then Include(font.Style, fssUnderline);
 
   { Font family }
   AStream.ReadByte();
@@ -2608,7 +2627,10 @@ begin
 
   { Font name: Unicodestring, char count in 1 byte }
   Len := AStream.ReadByte();
-  lFontName := ReadString(AStream, Len);
+  font.FontName := ReadString(AStream, Len);
+
+  { Add font to workbook's font list }
+  FWorkbook.AddFont(font);
 end;
 
 procedure TsSpreadBiff8Reader.ReadColInfo(const AStream: TStream);

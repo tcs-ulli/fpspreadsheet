@@ -36,6 +36,8 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.SetDefaultFont('Calibri', 9);
+
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
 
   // Write some cells
@@ -48,9 +50,10 @@ begin
 
   // D6 number with background color
   MyWorksheet.WriteNumber(5, 3, 10);
-  lCell := MyWorksheet.GetCell(5,3);
-  lCell^.BackgroundColor := scPURPLE;
+  lCell := MyWorksheet.GetCell(5, 3);
+  lCell^.BackgroundColor := scPurple;
   lCell^.UsedFormattingFields := [uffBackgroundColor];
+  // or: MyWorksheet.WriteBackgroundColor(5, 3, scPurple);
 
   // E6 empty cell, only background color
   MyWorksheet.WriteBackgroundColor(5, 4, scYellow);
@@ -60,7 +63,15 @@ begin
 
   // Word-wrapped long text in D7
   MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long text.');
-  MyWorksheet.WriteUsedFormatting(6, 3, [uffWordwrap]);
+
+  // Cell with changed font in D8
+  MyWorksheet.WriteUTF8Text(7, 3, 'This is 16pt red bold & italic Times New Roman.');
+  Myworksheet.WriteFont(7, 3, 'Times New Roman', 16, [fssBold, fssItalic], scRed);
+
+  // Cell with changed font and background in D9
+  MyWorksheet.WriteUTF8Text(8, 3, 'Colors...');
+  MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
+ // MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 
 { Uncomment this to test large XLS files
   for i := 2 to 20 do
@@ -82,6 +93,7 @@ begin
   MyRPNFormula[1].Row := 0;
   MyRPNFormula[2].ElementKind := fekAdd;
   MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
+  MyWorksheet.WriteFont(0, 4, 'Arial', 10, [fssUnderline], scBlack);
 
   // Write the formula F1 = ABS(A1)
   SetLength(MyRPNFormula, 2);

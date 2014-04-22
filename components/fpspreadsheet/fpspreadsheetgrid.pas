@@ -149,7 +149,7 @@ type
     property OnContextPopup;
   end;
 
-function FPSColorToColor(FPSColor: TsColor): TColor;
+function FPSColorToColor(FPSColor: TsColor; ADefault: TColor): TColor;
 
 procedure Register;
 
@@ -174,7 +174,7 @@ begin
   end;
 end;
 
-function FPSColorToColor(FPSColor: TsColor): TColor;
+function FPSColorToColor(FPSColor: TsColor; ADefault: TColor): TColor;
 begin
   case FPSColor of
     scBlack    : Result := clBlack;
@@ -201,7 +201,7 @@ begin
     scBrown    : Result := TColor($003F85CD); // CD853F
     scBeige    : Result := TColor($00DCF5F5); // F5F5DC
     scWheat    : Result := TColor($00B3DEF5); // F5DEB3
-    else         Result := clWhite;
+    else         Result := ADefault;
   end;
 end;
 
@@ -250,6 +250,8 @@ var
   ts: TTextStyle;
   lCell: PCell;
   r, c: Integer;
+  fnt: TsFont;
+  style: TFontStyles;
 begin
   Canvas.Brush.Bitmap := nil;
   ts := Canvas.TextStyle;
@@ -300,11 +302,26 @@ begin
           Canvas.Brush.Bitmap := FillPattern_BIFF2;
         end else begin
           Canvas.Brush.Style := bsSolid;
-          Canvas.Brush.Color := FPSColorToColor(lCell^.BackgroundColor);
+          Canvas.Brush.Color := FPSColorToColor(lCell^.BackgroundColor, Color);
         end;
       end else begin
         Canvas.Brush.Style := bsSolid;
         Canvas.Brush.Color := Color;
+      end;
+      // Font
+      if (uffFont in lCell^.UsedFormattingFields) then begin
+        fnt := FWorkbook.GetFont(lCell^.FontIndex);
+        if fnt <> nil then begin
+          Canvas.Font.Name := fnt.FontName;
+          Canvas.Font.Color := FPSColorToColor(fnt.Color, clBlack);
+          style := [];
+          if fssBold in fnt.Style then Include(style, fsBold);
+          if fssItalic in fnt.Style then Include(style, fsItalic);
+          if fssUnderline in fnt.Style then Include(style, fsUnderline);
+          if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
+          Canvas.Font.Style := style;
+          Canvas.Font.Size := round(fnt.Size);
+        end;
       end;
     end;
   end;
