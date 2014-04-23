@@ -149,8 +149,6 @@ type
     property OnContextPopup;
   end;
 
-function FPSColorToColor(FPSColor: TsColor; ADefault: TColor): TColor;
-
 procedure Register;
 
 implementation
@@ -171,37 +169,6 @@ begin
     Canvas.FillRect(0, 0, Width, Height);
     Canvas.Pixels[0, 0] := clBlack;
     Canvas.Pixels[2, 2] := clBlack;
-  end;
-end;
-
-function FPSColorToColor(FPSColor: TsColor; ADefault: TColor): TColor;
-begin
-  case FPSColor of
-    scBlack    : Result := clBlack;
-    scWhite    : Result := clWhite;
-    scRed      : Result := clRed;
-    scGreen    : Result := clLime;
-    scBlue     : Result := clBlue;
-    scYellow   : Result := clYellow;
-    scMagenta  : Result := clFuchsia;
-    scCyan     : Result := clAqua;
-    scDarkRed  : Result := clMaroon;
-    scDarkGreen: Result := clGreen;
-    scDarkBlue : Result := clNavy;
-    scOlive    : Result := clOlive;
-    scPurple   : Result := clPurple;
-    scTeal     : Result := clTeal;
-    scSilver   : Result := clSilver;
-    scGrey     : Result := clGray;
-    //
-    scGrey10pct: Result := TColor($00E6E6E6);
-    scGrey20pct: Result := TColor($00CCCCCC);
-    scOrange   : Result := TColor($0000A5FF); // FFA500
-    scDarkBrown: Result := TColor($002D52A0); // A0522D
-    scBrown    : Result := TColor($003F85CD); // CD853F
-    scBeige    : Result := TColor($00DCF5F5); // F5F5DC
-    scWheat    : Result := TColor($00B3DEF5); // F5DEB3
-    else         Result := ADefault;
   end;
 end;
 
@@ -302,7 +269,10 @@ begin
           Canvas.Brush.Bitmap := FillPattern_BIFF2;
         end else begin
           Canvas.Brush.Style := bsSolid;
-          Canvas.Brush.Color := FPSColorToColor(lCell^.BackgroundColor, Color);
+          if lCell^.BackgroundColor < FWorkbook.GetPaletteSize then
+            Canvas.Brush.Color := FWorkbook.GetPaletteColor(lCell^.BackgroundColor)
+          else
+            Canvas.Brush.Color := Color;
         end;
       end else begin
         Canvas.Brush.Style := bsSolid;
@@ -313,7 +283,7 @@ begin
         fnt := FWorkbook.GetFont(lCell^.FontIndex);
         if fnt <> nil then begin
           Canvas.Font.Name := fnt.FontName;
-          Canvas.Font.Color := FPSColorToColor(fnt.Color, clBlack);
+          Canvas.Font.Color := FWorkbook.GetPaletteColor(fnt.Color);
           style := [];
           if fssBold in fnt.Style then Include(style, fsBold);
           if fssItalic in fnt.Style then Include(style, fsItalic);

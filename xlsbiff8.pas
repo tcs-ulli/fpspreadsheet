@@ -143,7 +143,7 @@ type
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -154,8 +154,6 @@ type
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
-    // Convert our representation of RGB color to physical ARGB in Excel file
-    function LongRGBToExcelPhysical(const RGB: DWord): DWord;
     // Writes index to XF record according to cell's formatting
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
@@ -174,13 +172,12 @@ type
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
-    procedure WriteFonts(AStream: TStream; AData: TsWorkbook);
+    procedure WriteFonts(AStream: TStream);
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WritePalette(AStream: TStream);
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -193,15 +190,85 @@ type
       AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
       AWordWrap: Boolean = false; AddBackground: Boolean = false;
       ABackgroundColor: TsColor = scSilver);
-    procedure WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+    procedure WriteXFRecords(AStream: TStream);
   public
-//    constructor Create;
-//    destructor Destroy; override;
     { General writing methods }
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+    procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure WriteToStream(AStream: TStream); override;
   end;
+
+const
+  PALETTE_BIFF8: array[$00..$3F] of DWord = (
+    $000000,  // $00: black            // 8 built-in default colors
+    $FFFFFF,  // $01: white
+    $FF0000,  // $02: red
+    $00FF00,  // $03: green
+    $0000FF,  // $04: blue
+    $FFFF00,  // $05: yellow
+    $FF00FF,  // $06: magenta
+    $00FFFF,  // $07: cyan
+
+    $000000,  // $08: EGA black
+    $FFFFFF,  // $09: EGA white
+    $FF0000,  // $0A: EGA red
+    $00FF00,  // $0B: EGA green
+    $0000FF,  // $0C: EGA blue
+    $FFFF00,  // $0D: EGA yellow
+    $FF00FF,  // $0E: EGA magenta
+    $00FFFF,  // $0F: EGA cyan
+
+    $800000,  // $10: EGA dark red
+    $008000,  // $11: EGA dark green
+    $000080,  // $12: EGA dark blue
+    $808000,  // $13: EGA olive
+    $800080,  // $14: EGA purple
+    $008080,  // $15: EGA teal
+    $C0C0C0,  // $16: EGA silver
+    $808080,  // $17: EGA gray
+    $9999FF,  // $18:
+    $993366,  // $19:
+    $FFFFCC,  // $1A:
+    $CCFFFF,  // $1B:
+    $660066,  // $1C:
+    $FF8080,  // $1D:
+    $0066CC,  // $1E:
+    $CCCCFF,  // $1F:
+
+    $000080,  // $20:
+    $FF00FF,  // $21:
+    $FFFF00,  // $22:
+    $00FFFF,  // $23:
+    $800080,  // $24:
+    $800000,  // $25:
+    $008080,  // $26:
+    $0000FF,  // $27:
+    $00CCFF,  // $28:
+    $CCFFFF,  // $29:
+    $CCFFCC,  // $2A:
+    $FFFF99,  // $2B:
+    $99CCFF,  // $2C:
+    $FF99CC,  // $2D:
+    $CC99FF,  // $2E:
+    $FFCC99,  // $2F:
+
+    $3366FF,  // $30:
+    $33CCCC,  // $31:
+    $99CC00,  // $32:
+    $FFCC00,  // $33:
+    $FF9900,  // $34:
+    $FF6600,  // $35:
+    $666699,  // $36:
+    $969696,  // $37:
+    $003366,  // $38:
+    $339966,  // $39:
+    $003300,  // $3A:
+    $333300,  // $3B:
+    $993300,  // $3C:
+    $993366,  // $3D:
+    $333399,  // $3E:
+    $333333   // $3F:
+  );
 
 implementation
 
@@ -229,8 +296,6 @@ const
   INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
   INT_EXCEL_ID_CONTINUE   = $003C;
   INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
-  INT_EXCEL_ID_PALETTE    = $0092;
-  INT_EXCEL_ID_CODEPAGE   = $0042;
   INT_EXCEL_ID_FORMAT     = $041E;
   INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
 
@@ -344,24 +409,6 @@ const
 }
 
 { TsSpreadBIFF8Writer }
-
-function TsSpreadBIFF8Writer.LongRGBToExcelPhysical(const RGB: DWord): DWord;
-// Converts RGB part of a LongRGB logical structure
-// to its physical representation
-// IOW: RGBA (where A is 0 and omitted in the function call) => ABGR
-begin
-  {$IFDEF FPC}
-  {$IFDEF ENDIAN_LITTLE}
-  result:=(RGB shl 8); //tags $00 at end for the A byte
-  result:=SwapEndian(result); //flip byte order
-  {$ELSE}
-  //Big endian
-  result:=RGB; //leave value as is //todo: verify if this turns out ok
-  {$ENDIF}
-  {$ELSE}
-  // messed up result
-  {$ENDIF}
-end;
 
 { Index to XF record, according to formatting }
 procedure TsSpreadBIFF8Writer.WriteXFIndex(AStream: TStream; ACell: PCell);
@@ -558,7 +605,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteToFile(const AFileName: string;
-  AData: TsWorkbook; const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean);
 var
   MemStream: TMemoryStream;
   OutputStorage: TOLEStorage;
@@ -567,7 +614,7 @@ begin
   MemStream := TMemoryStream.Create;
   OutputStorage := TOLEStorage.Create;
   try
-    WriteToStream(MemStream, AData);
+    WriteToStream(MemStream);
 
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
@@ -588,7 +635,7 @@ end;
 *                  part of the document, just the BIFF records
 *
 *******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream);
 var
   MyData: TMemoryStream;
   CurrentPos: Int64;
@@ -602,31 +649,26 @@ begin
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
 
   WriteWindow1(AStream);
-
-  WriteFonts(AStream, AData);
-
-  // PALETTE
+  WriteFonts(AStream);
   WritePalette(AStream);
-
-  // XF Records
-  WriteXFRecords(AStream, AData);
+  WriteXFRecords(AStream);
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  for i := 0 to AData.GetWorksheetCount - 1 do
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     len := Length(Boundsheets);
     SetLength(Boundsheets, len + 1);
-    Boundsheets[len] := WriteBoundsheet(AStream, AData.GetWorksheetByIndex(i).Name);
+    Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
   end;
 
   WriteEOF(AStream);
 
   { Write each worksheet }
 
-  for i := 0 to AData.GetWorksheetCount - 1 do
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
-    sheet := AData.GetWorksheetByIndex(i);
+    sheet := Workbook.GetWorksheetByIndex(i);
 
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
@@ -938,12 +980,12 @@ end;
 *                  used fonts in the workbook.
 *
 *******************************************************************}
-procedure TsSpreadBiff8Writer.WriteFonts(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBiff8Writer.WriteFonts(AStream: TStream);
 var
   i: Integer;
 begin
-  for i:=0 to AData.GetFontCount-1 do
-    WriteFont(AStream, AData.GetFont(i));
+  for i:=0 to Workbook.GetFontCount-1 do
+    WriteFont(AStream, Workbook.GetFont(i));
 end;
 
 {*******************************************************************
@@ -1321,90 +1363,6 @@ begin
   AStream.WriteBuffer(AValue, 8);
 end;
 
-
-(*******************************************************************
-*  TsSpreadBIFF8Writer.WritePalette
-*
-*  DESCRIPTION:    Writes Excel PALETTE records
-*
-*******************************************************************)
-
-procedure TsSpreadBIFF8Writer.WritePalette(AStream: TStream);
-begin
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PALETTE));
-  AStream.WriteWord(WordToLE(2+4*56));
-
-  { Number of colors }
-  AStream.WriteWord(WordToLE(56));
-
-  { Now the colors, first the standard 16 from Excel }
-  AStream.WriteDWord(LongRGBToExcelPhysical($000000)); // $08
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FF0000));
-  AStream.WriteDWord(LongRGBToExcelPhysical($00FF00));
-  AStream.WriteDWord(LongRGBToExcelPhysical($0000FF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFF00));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FF00FF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($00FFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($800000));
-  AStream.WriteDWord(LongRGBToExcelPhysical($008000));
-  AStream.WriteDWord(LongRGBToExcelPhysical($000080));
-  AStream.WriteDWord(LongRGBToExcelPhysical($808000));
-  AStream.WriteDWord(LongRGBToExcelPhysical($800080));
-  AStream.WriteDWord(LongRGBToExcelPhysical($008080));
-  AStream.WriteDWord(LongRGBToExcelPhysical($C0C0C0));
-  AStream.WriteDWord(LongRGBToExcelPhysical($808080)); //$17
-
-  { Now some colors which we define ourselves }
-  AStream.WriteDWord(LongRGBToExcelPhysical($E6E6E6)); //$18 //todo: shouldn't we write $18..$3F and add this color later? see 5.74.3 Built-In Default Colour Tables
-  AStream.WriteDWord(LongRGBToExcelPhysical($CCCCCC)); //$19 //todo: shouldn't we write $18..$3F and add this color later? see 5.74.3 Built-In Default Colour Tables
-
-  { And padding }
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF)); //$20 //todo: is this still correct?
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF)); //$30
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-  AStream.WriteDWord(LongRGBToExcelPhysical($FFFFFF));
-end;
-
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteStyle ()
 *
@@ -1627,12 +1585,12 @@ begin
 
   // Background Pattern Color, always zeroed
   if AddBackground then
-    AStream.WriteWord(WordToLE(FPSColorToEXCELPalette(ABackgroundColor)))
+    AStream.WriteWord(WordToLE(ABackgroundColor))
   else
     AStream.WriteWord(0);
 end;
 
-procedure TsSpreadBIFF8Writer.WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF8Writer.WriteXFRecords(AStream: TStream);
 begin
   // XF0
   WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
@@ -1668,7 +1626,7 @@ begin
   WriteXF(AStream, 0, 0, 0, XF_ROTATION_HORIZONTAL, []);
 
   // Add all further non-standard/built-in formatting styles
-  ListAllFormattingStyles(AData);
+  ListAllFormattingStyles;
   WriteXFFieldsForFormattingStyles(AStream);
 end;
 
@@ -1952,7 +1910,7 @@ begin
 
     CurStreamPos := AStream.Position;
 
-    if RecordType<>INT_EXCEL_ID_CONTINUE then begin
+    if RecordType <> INT_EXCEL_ID_CONTINUE then begin
       case RecordType of
        INT_EXCEL_ID_BOF:        ;
        INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
@@ -1963,6 +1921,7 @@ begin
        INT_EXCEL_ID_XF:         ReadXF(AStream);
        INT_EXCEL_ID_FORMAT:     ReadFormat(AStream);
        INT_EXCEL_ID_DATEMODE:   ReadDateMode(AStream);
+       INT_EXCEL_ID_PALETTE:    ReadPalette(AStream);
       else
         // nothing
       end;
@@ -2140,8 +2099,10 @@ begin
     XFData := TXFRecordData(FXFList.Items[XFIndex]);
 
     // Font
-    Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := XFData.FontIndex;
+    if XFData.FontIndex > 0 then begin
+      Include(lCell^.UsedFormattingFields, uffFont);
+      lCell^.FontIndex := XFData.FontIndex;
+    end;
 
     // Alignment
     lCell^.HorAlignment := XFData.HorAlignment;
@@ -2161,8 +2122,10 @@ begin
       Exclude(lCell^.UsedFormattingFields, uffBorder);
 
     // Background color
-    Include(lCell^.UsedFormattingFields, uffBackgroundColor);
-    lCell^.BackgroundColor := XFData.BackgroundColor;
+    if XFData.BackgroundColor <> 0 then begin
+      Include(lCell^.UsedFormattingFields, uffBackgroundColor);
+      lCell^.BackgroundColor := XFData.BackgroundColor;
+    end;
   end;
 end;
 
@@ -2172,9 +2135,9 @@ begin
   Result:=UTF16ToUTF8(ReadWideString(AStream, ALength));
 end;
 
-constructor TsSpreadBIFF8Reader.Create;
+constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
   FXFList := TFPList.Create;
   FFormatList := TFPList.Create;
 end;
@@ -2188,6 +2151,7 @@ begin
   FXFList.Free;
   FFormatList.Free;
   if Assigned(FSharedStringTable) then FSharedStringTable.Free;
+  inherited;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -2532,8 +2496,8 @@ begin
     Include(lData.Borders, cbSouth);
 
   // Background color;
-  xf.Border_Background_3 := WordLEToN(xf.Border_Background_3);
-  lData.BackgroundColor := ExcelPaletteToFPSColor(xf.Border_Background_3 AND $007F);
+  xf.Border_Background_3 := DWordLEToN(xf.Border_Background_3);
+  lData.BackgroundColor := xf.Border_Background_3 AND $007F;
 
   // Add the XF to the list
   FXFList.Add(lData);

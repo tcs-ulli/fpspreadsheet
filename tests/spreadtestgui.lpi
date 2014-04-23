@@ -79,7 +79,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="8">
+    <Units Count="10">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -120,6 +120,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="formattests"/>
       </Unit7>
+      <Unit8>
+        <Filename Value="colortests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="colortests"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="fonttests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="fonttests"/>
+      </Unit9>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -142,7 +152,7 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="5">
+    <Exceptions Count="6">
       <Item1>
         <Name Value="EAbort"/>
         <Enabled Value="False"/>
@@ -161,6 +171,10 @@
       <Item5>
         <Name Value="EIgnoredTest"/>
       </Item5>
+      <Item6>
+        <Name Value="EConvertError"/>
+        <Enabled Value="False"/>
+      </Item6>
     </Exceptions>
   </Debugging>
 </CONFIG>

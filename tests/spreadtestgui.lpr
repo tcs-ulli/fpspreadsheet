@@ -3,9 +3,8 @@ program spreadtestgui;
 {$mode objfpc}{$H+}
 
 uses
-  Interfaces, Forms, GuiTestRunner,
-  datetests, stringtests,
-  numberstests, manualtests, testsutility, internaltests, formattests;
+  Interfaces, Forms, GuiTestRunner, datetests, stringtests, numberstests,
+  manualtests, testsutility, internaltests, formattests, colortests, fonttests;
 
 begin
   Application.Initialize;

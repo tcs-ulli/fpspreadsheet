@@ -49,7 +49,7 @@ type
     { Strings with the contents of files }
     FContentTypes: string;
     FRelsRels: string;
-    FWorkbook, FWorkbookRels, FStyles, FSharedStrings: string;
+    FWorkbookString, FWorkbookRelsString, FStylesString, FSharedStrings: string;
     FSheets: array of string;
     FSharedStringsCount: Integer;
     { Streams with the contents of files }
@@ -59,8 +59,8 @@ type
     FSSheets: array of TStringStream;
     FCurSheetNum: Integer;
     { Routines to write those files }
-    procedure WriteGlobalFiles(AData: TsWorkbook);
-    procedure WriteContent(AData: TsWorkbook);
+    procedure WriteGlobalFiles;
+    procedure WriteContent;
     procedure WriteWorksheet(CurSheet: TsWorksheet);
     function GetStyleIndex(ACell: PCell): Cardinal;
     { Record writing methods }
@@ -69,13 +69,12 @@ type
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
-      const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); override;
+    procedure WriteToStream(AStream: TStream); override;
   end;
 
 implementation
@@ -117,7 +116,7 @@ const
 
 { TsSpreadOOXMLWriter }
 
-procedure TsSpreadOOXMLWriter.WriteGlobalFiles(AData: TsWorkbook);
+procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
 var
   i: Integer;
 begin
@@ -133,7 +132,7 @@ begin
 //   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
    '  <Override PartName="/xl/_rels/workbook.xml.rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />' + LineEnding +
    '  <Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding;
-  for i := 1 to AData.GetWorksheetCount do
+  for i := 1 to Workbook.GetWorksheetCount do
   begin
     FContentTypes := FContentTypes +
     Format('  <Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />', [i, MIME_WORKSHEET]) + LineEnding;
@@ -149,7 +148,7 @@ begin
    '<Relationship Type="' + SCHEMAS_DOCUMENT + '" Target="xl/workbook.xml" Id="rId1" />' + LineEnding +
    '</Relationships>';
 
-  FStyles :=
+  FStylesString :=
    XML_HEADER + LineEnding +
    '<styleSheet xmlns="' + SCHEMAS_SPREADML + '">' + LineEnding +
    '  <fonts count="2">' + LineEnding +
@@ -189,28 +188,28 @@ begin
    '</styleSheet>';
 end;
 
-procedure TsSpreadOOXMLWriter.WriteContent(AData: TsWorkbook);
+procedure TsSpreadOOXMLWriter.WriteContent;
 var
   i: Integer;
 begin
   { Workbook relations - Mark relation to all sheets }
-  FWorkbookRels :=
+  FWorkbookRelsString :=
    XML_HEADER + LineEnding +
    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
    '<Relationship Id="rId1" Type="' + SCHEMAS_STYLES + '" Target="styles.xml" />' + LineEnding +
    '<Relationship Id="rId2" Type="' + SCHEMAS_STRINGS + '" Target="sharedStrings.xml" />' + LineEnding;
 
-  for i := 1 to AData.GetWorksheetCount do
+  for i := 1 to Workbook.GetWorksheetCount do
   begin
-    FWorkbookRels := FWorkbookRels +
+    FWorkbookRelsString := FWorkbookRelsString +
       Format('<Relationship Type="%s" Target="worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
   end;
 
-  FWorkbookRels := FWorkbookRels +
+  FWorkbookRelsString := FWorkbookRelsString +
    '</Relationships>';
 
   // Global workbook data - Mark all sheets
-  FWorkbook :=
+  FWorkbookString :=
    XML_HEADER + LineEnding +
    '<workbook xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
    '  <fileVersion appName="fpspreadsheet" />' + LineEnding + // lastEdited="4" lowestEdited="4" rupBuild="4505"
@@ -219,13 +218,13 @@ begin
    '    <workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' + LineEnding +
    '  </bookViews>' + LineEnding;
 
-  FWorkbook := FWorkbook + '  <sheets>' + LineEnding;
-  for i := 1 to AData.GetWorksheetCount do
-    FWorkbook := FWorkbook +
+  FWorkbookString := FWorkbookString + '  <sheets>' + LineEnding;
+  for i := 1 to Workbook.GetWorksheetCount do
+    FWorkbookString := FWorkbookString +
       Format('    <sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]) + LineEnding;
-  FWorkbook := FWorkbook + '  </sheets>' + LineEnding;
+  FWorkbookString := FWorkbookString + '  </sheets>' + LineEnding;
 
-  FWorkbook := FWorkbook +
+  FWorkbookString := FWorkbookString +
    '  <calcPr calcId="114210" />' + LineEnding +
    '</workbook>';
 
@@ -236,10 +235,8 @@ begin
   // Write all worksheets, which fills also FSharedStrings
   SetLength(FSheets, 0);
 
-  for i := 0 to AData.GetWorksheetCount - 1 do
-  begin
-    WriteWorksheet(Adata.GetWorksheetByIndex(i));
-  end;
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
+    WriteWorksheet(Workbook.GetWorksheetByIndex(i));
 
   // Finalization of the shared strings document
   FSharedStrings :=
@@ -354,9 +351,9 @@ begin
   else Result := 0;
 end;
 
-constructor TsSpreadOOXMLWriter.Create;
+constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
 
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
@@ -388,35 +385,35 @@ end;
   Writes an OOXML document to the disc
 }
 procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
-  AData: TsWorkbook; const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean);
 var
   lStream: TFileStream;
 begin
-  lStream:=TFileStream.Create(AFileName,fmCreate);
+  lStream:=TFileStream.Create(AFileName, fmCreate);
   try
-    WriteToStream(lStream, AData);
+    WriteToStream(lStream);
   finally
     FreeAndNil(lStream);
   end;
 end;
 
-procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream);
 var
   FZip: TZipper;
   i: Integer;
 begin
   { Fill the strings with the contents of the files }
 
-  WriteGlobalFiles(AData);
-  WriteContent(AData);
+  WriteGlobalFiles;
+  WriteContent;
 
   { Write the data to streams }
 
   FSContentTypes := TStringStream.Create(FContentTypes);
   FSRelsRels := TStringStream.Create(FRelsRels);
-  FSWorkbookRels := TStringStream.Create(FWorkbookRels);
-  FSWorkbook := TStringStream.Create(FWorkbook);
-  FSStyles := TStringStream.Create(FStyles);
+  FSWorkbookRels := TStringStream.Create(FWorkbookRelsString);
+  FSWorkbook := TStringStream.Create(FWorkbookString);
+  FSStyles := TStringStream.Create(FStylesString);
   FSSharedStrings := TStringStream.Create(FSharedStrings);
 
   SetLength(FSSheets, Length(FSheets));
