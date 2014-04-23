@@ -134,10 +134,84 @@ type
     procedure WriteXF(AStream: TStream; AFontIndex: Word; AXF_TYPE_PROT: Byte);
   public
     { General writing methods }
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+    procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure WriteToStream(AStream: TStream); override;
   end;
+
+const
+  PALETTE_BIFF5: array[$00..$3F] of DWord = (
+    $000000,  // $00: black
+    $FFFFFF,  // $01: white
+    $FF0000,  // $02: red
+    $00FF00,  // $03: green
+    $0000FF,  // $04: blue
+    $FFFF00,  // $05: yellow
+    $FF00FF,  // $06: magenta
+    $00FFFF,  // $07: cyan
+
+    $000000,  // $08: EGA black
+    $FFFFFF,  // $09: EGA white
+    $FF0000,  // $0A: EGA red
+    $00FF00,  // $0B: EGA green
+    $0000FF,  // $0C: EGA blue
+    $FFFF00,  // $0D: EGA yellow
+    $FF00FF,  // $0E: EGA magenta
+    $00FFFF,  // $0F: EGA cyan
+
+    $800000,  // $10: EGA dark red
+    $008000,  // $11: EGA dark green
+    $000080,  // $12: EGA dark blue
+    $808000,  // $13: EGA olive
+    $800080,  // $14: EGA purple
+    $008080,  // $15: EGA teal
+    $C0C0C0,  // $16: EGA silver
+    $808080,  // $17: EGA gray
+
+    $8080FF,  // $18:
+    $802060,  // $19:
+    $FFFFC0,  // $1A:
+    $A0E0F0,  // $1B:
+    $600080,  // $1C:
+    $FF8080,  // $1D:
+    $0080C0,  // $1E:
+    $C0C0FF,  // $1F:
+
+    $000080,  // $20:
+    $FF00FF,  // $21:
+    $FFFF00,  // $22:
+    $00FFFF,  // $23:
+    $800080,  // $24:
+    $800000,  // $25:
+    $008080,  // $26:
+    $0000FF,  // $27:
+    $00CFFF,  // $28:
+    $69FFFF,  // $29:
+    $E0FFE0,  // $2A:
+    $FFFF80,  // $2B:
+    $A6CAF0,  // $2C:
+    $DD9CB3,  // $2D:
+    $B38FEE,  // $2E:
+    $E3E3E3,  // $2F:
+
+    $2A6FF9,  // $30:
+    $3FB8CD,  // $31:
+    $488436,  // $32:
+    $958C41,  // $33:
+    $8E5E42,  // $34:
+    $A0627A,  // $35:
+    $624FAC,  // $36:
+    $969696,  // $37:
+    $1D2FBE,  // $38:
+    $286676,  // $39:
+    $004500,  // $3A:
+    $453E01,  // $3B:
+    $6A2813,  // $3C:
+    $85396A,  // $3D:
+    $4A3285,  // $3E:
+    $424242   // $3F:
+  );
+
 
 implementation
 
@@ -285,7 +359,7 @@ const
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteToFile(const AFileName: string;
-  AData: TsWorkbook; const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean);
 var
   MemStream: TMemoryStream;
   OutputStorage: TOLEStorage;
@@ -294,7 +368,7 @@ begin
   MemStream := TMemoryStream.Create;
   OutputStorage := TOLEStorage.Create;
   try
-    WriteToStream(MemStream, AData);
+    WriteToStream(MemStream);
 
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
@@ -315,7 +389,7 @@ end;
 *                  part of the document, just the BIFF records
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream);
 var
   FontData: TFPCustomFont;
   MyData: TMemoryStream;
@@ -324,14 +398,12 @@ var
   i, len: Integer;
 begin
   { Store some data about the workbook that other routines need }
-  WorkBookEncoding := AData.Encoding;
+  WorkBookEncoding := Workbook.Encoding;
 
   { Write workbook globals }
 
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
-
   WriteCodepage(AStream, WorkBookEncoding);
-
   WriteWindow1(AStream);
 
   FontData := TFPCustomFont.Create;
@@ -388,18 +460,18 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  for i := 0 to AData.GetWorksheetCount - 1 do
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     len := Length(Boundsheets);
     SetLength(Boundsheets, len + 1);
-    Boundsheets[len] := WriteBoundsheet(AStream, AData.GetWorksheetByIndex(i).Name);
+    Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
   end;
   
   WriteEOF(AStream);
 
   { Write each worksheet }
 
-  for i := 0 to AData.GetWorksheetCount - 1 do
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
@@ -411,12 +483,10 @@ begin
     WriteBOF(AStream, INT_BOF_SHEET);
 
     WriteIndex(AStream);
-
-    WriteDimensions(AStream, AData.GetWorksheetByIndex(i));
-
+    WriteDimensions(AStream, Workbook.GetWorksheetByIndex(i));
     WriteWindow2(AStream, True);
 
-    WriteCellsToStream(AStream, AData.GetWorksheetByIndex(i).Cells);
+    WriteCellsToStream(AStream, Workbook.GetWorksheetByIndex(i).Cells);
 
     WriteEOF(AStream);
   end;

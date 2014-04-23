@@ -27,8 +27,8 @@ uses
 
 var
   // Norm to test against - list of dates/times that should occur in spreadsheet
-  SollColors: array[0..22] of tsColor; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
-  SollColorNames: array[0..22] of string; //matching names for SollColors
+  SollColors: array[0..16] of tsColor; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
+  SollColorNames: array[0..16] of string; //matching names for SollColors
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollColors;
@@ -101,6 +101,8 @@ begin
   SollColors[13]:=scTEAL;
   SollColors[14]:=scSilver;
   SollColors[15]:=scGrey;
+  SollColors[16]:=scOrange;
+  {
   SollColors[16]:=scGrey10pct;
   SollColors[17]:=scGrey20pct;
   SollColors[18]:=scOrange;
@@ -108,7 +110,7 @@ begin
   SollColors[20]:=scBrown;
   SollColors[21]:=scBeige;
   SollColors[22]:=scWheat;
-
+   }
   // Corresponding names for display in cells:
   SollColorNames[0]:='scBlack';
   SollColorNames[1]:='scWhite';
@@ -126,6 +128,8 @@ begin
   SollColorNames[13]:='scTEAL';
   SollColorNames[14]:='scSilver';
   SollColorNames[15]:='scGrey';
+  SollColorNames[16]:='scOrange';
+  {
   SollColorNames[16]:='scGrey10pct';
   SollColorNames[17]:='scGrey20pct';
   SollColorNames[18]:='scOrange';
@@ -133,6 +137,7 @@ begin
   SollColorNames[20]:='scBrown';
   SollColorNames[21]:='scBeige';
   SollColorNames[22]:='scWheat';
+  }
 end;
 
 { TSpreadManualSetup }

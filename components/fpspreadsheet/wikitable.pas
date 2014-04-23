@@ -70,7 +70,7 @@ type
 
   TsWikiTable_PipesReader = class(TsWikiTableReader)
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
   end;
 
   { TsWikiTableWriter }
@@ -81,15 +81,15 @@ type
   public
     SubFormat: TsSpreadsheetFormat;
     { General writing methods }
-    procedure WriteToStrings(AStrings: TStrings; AData: TsWorkbook); override;
-    procedure WriteToStrings_WikiMedia(AStrings: TStrings; AData: TsWorkbook);
+    procedure WriteToStrings(AStrings: TStrings); override;
+    procedure WriteToStrings_WikiMedia(AStrings: TStrings);
   end;
 
   { TsWikiTable_WikiMediaWriter }
 
   TsWikiTable_WikiMediaWriter = class(TsWikiTableWriter)
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
   end;
 
 implementation
@@ -318,18 +318,18 @@ end;
 
 { TsWikiTable_PipesReader }
 
-constructor TsWikiTable_PipesReader.Create;
+constructor TsWikiTable_PipesReader.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
   SubFormat := sfWikiTable_Pipes;
 end;
 
 { TsWikiTableWriter }
 
-procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings; AData: TsWorkbook);
+procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings);
 begin
   case SubFormat of
-  sfWikiTable_WikiMedia: WriteToStrings_WikiMedia(AStrings, AData);
+    sfWikiTable_WikiMedia: WriteToStrings_WikiMedia(AStrings);
   end;
 end;
 
@@ -345,8 +345,7 @@ Format mediawiki:
 ! style="background-color:green;color:white;" | PASS
 |}
 *)
-procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings;
-  AData: TsWorkbook);
+procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
 var
   i, j: Integer;
   lCurStr: string = '';
@@ -356,7 +355,7 @@ var
   lColorStr: String;
 begin
   AStrings.Add('{| border="1" cellpadding="2" class="wikitable sortable"');
-  FWorksheet := AData.GetFirstWorksheet();
+  FWorksheet := Workbook.GetFirstWorksheet();
   for i := 0 to FWorksheet.GetLastRowNumber() do
   begin
     AStrings.Add('|-');
@@ -404,9 +403,9 @@ end;
 
 { TsWikiTable_WikiMediaWriter }
 
-constructor TsWikiTable_WikiMediaWriter.Create;
+constructor TsWikiTable_WikiMediaWriter.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
   SubFormat := sfWikiTable_WikiMedia;
 end;
 

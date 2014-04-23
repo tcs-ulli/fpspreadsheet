@@ -19,6 +19,7 @@ const
   INT_EXCEL_ID_FONT       = $0031;
   INT_EXCEL_ID_CODEPAGE   = $0042;
   INT_EXCEL_ID_DATEMODE   = $0022;
+  INT_EXCEL_ID_PALETTE    = $0092;
 
   { Formula constants TokenID values }
 
@@ -285,16 +286,18 @@ type
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
     // converts an Excel color index to a color value.
-    function ExcelPaletteToFPSColor(AIndex: Word): TsColor;
+//    function ExcelPaletteToFPSColor(AIndex: Word): TsColor;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
     // Workbook Globals records
     procedure ReadCodePage(AStream: TStream);
     // Figures out what the base year for dates is for this file
     procedure ReadDateMode(AStream: TStream);
+    // Read palette
+    procedure ReadPalette(AStream: TStream);
     // Read row info
-    procedure ReadRowInfo(const AStream: TStream); virtual;
+    procedure ReadRowInfo(AStream: TStream); virtual;
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
   end;
 
   { TsSpreadBIFFWriter }
@@ -304,7 +307,7 @@ type
     FDateMode: TDateMode;
     FLastRow: Integer;
     FLastCol: Word;
-    function FPSColorToExcelPalette(AColor: TsColor): Word;
+//    function FPSColorToExcelPalette(AColor: TsColor): Word;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -316,8 +319,10 @@ type
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
     // Writes out DATEMODE record depending on FDateMode
     procedure WriteDateMode(AStream: TStream);
+    // Writes out a PALETTE record containing all colors defined in the workbook
+    procedure WritePalette(AStream: TStream);
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
   end;
 
 function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
@@ -383,13 +388,13 @@ end;
 
 { TsSpreadBIFFReader }
 
-constructor TsSpreadBIFFReader.Create;
+constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
 end;
-
+                                                        (*
 function TsSpreadBIFFReader.ExcelPaletteToFPSColor(AIndex: Word): TsColor;
 begin
   case AIndex of
@@ -414,7 +419,7 @@ begin
     EXTRA_COLOR_PALETTE_GREY20PCT: Result := scGrey20pct;
   end;
 end;
-
+                                                          *)
 // In BIFF 8 it seams to always use the UTF-16 codepage
 procedure TsSpreadBIFFReader.ReadCodePage(AStream: TStream);
 var
@@ -492,8 +497,23 @@ begin
   end;
 end;
 
+// Read the palette
+procedure TsSpreadBIFFReader.ReadPalette(AStream: TStream);
+var
+  i, n: Word;
+  pal: Array of DWord;
+begin
+  n := WordLEToN(AStream.ReadWord) + 8;
+  SetLength(pal, n);
+  for i:=0 to 7 do
+    pal[i] := Workbook.GetPaletteColor(i);
+  for i:=8 to n-1 do
+    pal[i] := DWordLEToN(AStream.ReadDWord);
+  Workbook.UsePalette(@pal[0], n, false);
+end;
+
 // Read the part of the ROW record that is common to all BIFF versions
-procedure TsSpreadBIFFReader.ReadRowInfo(const AStream: TStream);
+procedure TsSpreadBIFFReader.ReadRowInfo(AStream: TStream);
 type
   TRowRecord = packed record
     RowIndex: Word;
@@ -515,53 +535,15 @@ begin
   end;
 end;
 
-function TsSpreadBIFFWriter.FPSColorToExcelPalette(AColor: TsColor): Word;
-begin
-  case AColor of
-    scBlack: Result := BUILT_IN_COLOR_PALLETE_BLACK;
-    scWhite: Result := BUILT_IN_COLOR_PALLETE_WHITE;
-    scRed: Result := BUILT_IN_COLOR_PALLETE_RED;
-    scGREEN: Result := BUILT_IN_COLOR_PALLETE_GREEN;
-    scBLUE: Result := BUILT_IN_COLOR_PALLETE_BLUE;
-    scYELLOW: Result := BUILT_IN_COLOR_PALLETE_YELLOW;
-    scMAGENTA: Result := BUILT_IN_COLOR_PALLETE_MAGENTA;
-    scCYAN: Result := BUILT_IN_COLOR_PALLETE_CYAN;
-    scDarkRed: Result := BUILT_IN_COLOR_PALLETE_DARK_RED;
-    scDarkGreen: Result := BUILT_IN_COLOR_PALLETE_DARK_GREEN;
-    scDarkBlue: Result := BUILT_IN_COLOR_PALLETE_DARK_BLUE;
-    scOLIVE: Result := BUILT_IN_COLOR_PALLETE_OLIVE;
-    scPURPLE: Result := BUILT_IN_COLOR_PALLETE_PURPLE;
-    scTEAL: Result := BUILT_IN_COLOR_PALLETE_TEAL;
-    scSilver: Result := BUILT_IN_COLOR_PALLETE_SILVER;
-    scGrey: Result := BUILT_IN_COLOR_PALLETE_GREY;
-    //
-    scGrey10pct: Result := EXTRA_COLOR_PALETTE_GREY10PCT;
-    scGrey20pct: Result := EXTRA_COLOR_PALETTE_GREY20PCT;
-  end;
-end;
 
-procedure TsSpreadBIFFWriter.GetLastRowCallback(ACell: PCell; AStream: TStream);
-begin
-  if ACell^.Row > FLastRow then FLastRow := ACell^.Row;
-end;
+{ TsSpreadBIFFWriter }
 
-function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
+constructor TsSpreadBIFFWriter.Create(AWorkbook: TsWorkbook);
 begin
-  FLastRow := 0;
-  IterateThroughCells(nil, AWorksheet.Cells, GetLastRowCallback);
-  Result := FLastRow;
-end;
-
-procedure TsSpreadBIFFWriter.GetLastColCallback(ACell: PCell; AStream: TStream);
-begin
-  if ACell^.Col > FLastCol then FLastCol := ACell^.Col;
-end;
-
-function TsSpreadBIFFWriter.GetLastColIndex(AWorksheet: TsWorksheet): Word;
-begin
-  FLastCol := 0;
-  IterateThroughCells(nil, AWorksheet.Cells, GetLastColCallback);
-  Result := FLastCol;
+  inherited Create(AWorkbook);
+  // Initial base date in case it won't be set otherwise.
+  // Use 1900 to get a bit more range between 1900..1904.
+  FDateMode := dm1900;
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
@@ -736,6 +718,30 @@ begin
   end;
 end;
 
+procedure TsSpreadBIFFWriter.GetLastRowCallback(ACell: PCell; AStream: TStream);
+begin
+  if ACell^.Row > FLastRow then FLastRow := ACell^.Row;
+end;
+
+function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
+begin
+  FLastRow := 0;
+  IterateThroughCells(nil, AWorksheet.Cells, GetLastRowCallback);
+  Result := FLastRow;
+end;
+
+procedure TsSpreadBIFFWriter.GetLastColCallback(ACell: PCell; AStream: TStream);
+begin
+  if ACell^.Col > FLastCol then FLastCol := ACell^.Col;
+end;
+
+function TsSpreadBIFFWriter.GetLastColIndex(AWorksheet: TsWorksheet): Word;
+begin
+  FLastCol := 0;
+  IterateThroughCells(nil, AWorksheet.Cells, GetLastColCallback);
+  Result := FLastCol;
+end;
+
 procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
   AEncoding: TsEncoding);
 var
@@ -774,12 +780,25 @@ begin
   end;
 end;
 
-constructor TsSpreadBIFFWriter.Create;
+procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
+var
+  i, n: Integer;
 begin
-  inherited Create;
-  // Initial base date in case it won't be set otherwise.
-  // Use 1900 to get a bit more range between 1900..1904.
-  FDateMode := dm1900;
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PALETTE));
+  AStream.WriteWord(WordToLE(2 + 4*56));
+
+  { Number of colors }
+  AStream.WriteWord(WordToLE(56));
+
+  { Take the colors from the palette of the Worksheet }
+  { Skip the first 8 entries - they are hard-coded into Excel }
+  n := Workbook.GetPaletteSize;
+  for i:=8 to 63 do
+    if i < n then
+      AStream.WriteDWord(DWordToLE(Workbook.GetPaletteColor(i)))
+    else
+      AStream.WriteDWord(DWordToLE($FFFFFF));
 end;
 
 

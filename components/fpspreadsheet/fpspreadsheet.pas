@@ -179,12 +179,63 @@ type
   TsHorAlignment = (haDefault, haLeft, haCenter, haRight);
   TsVertAlignment = (vaDefault, vaTop, vaCenter, vaBottom);
 
+  {@@
+    Colors in fpspreadsheet are given as indices into a palette.
+    Use the workbook's GetPaletteColor to determine the color rgb value (with
+    "r" being the low-value byte, in agreement with TColor).
+  }
+  TsColor = Word;
+
+{@@
+  These are some constants for color indices into the default palette.
+  Note, however, that if a different palette is used there may be more colors,
+  and the names of the color constants may no longer be correct.
+}
+const
+  scBlack = $00;
+  scWhite = $01;
+  scRed = $02;
+  scGreen = $03;
+  scBlue = $04;
+  scYellow = $05;
+  scMagenta = $06;
+  scCyan = $07;
+  scEGABlack = $08;
+  scEGAWhite = $09;
+  scEGARed = $0A;
+  scEGAGreen = $0B;
+  scEGABlue = $0C;
+  scEGAYellow = $0D;
+  scEGAMagenta = $0E;
+  scEGACyan = $0F;
+  scDarkRed = $10;
+  scDarkGreen = $11;
+  scDarkBlue = $12;
+  scOLIVE = $13;
+  scPURPLE = $14;
+  scTEAL = $15;
+  scSilver = $16;
+  scGrey = $17;
+  scOrange = $18;
+  scRGBColor = $FFFF;
+  {
+  //
+  scGrey10pct,// E6E6E6H
+  scGrey20pct,// CCCCCCH
+  scOrange,   // ffa500H
+  scDarkBrown,// a0522dH
+  scBrown,    // cd853fH
+  scBeige,    // f5f5dcH
+  scWheat,    // f5deb3H
+   }
+
+
   {@@ Colors in FPSpreadsheet as given by a palette to be compatible with Excel.
    However, please note that they are physically written to XLS file as
    ABGR (where A is 0) }
-
+    (*
   TsColor = (   // R G B  color value:
-    scBlack ,   // 000000H
+    scBlack,    // 000000H
     scWhite,    // FFFFFFH
     scRed,      // FF0000H
     scGREEN,    // 00FF00H
@@ -211,14 +262,18 @@ type
     //
     scRGBCOLOR  // Defined via TFPColor
   );
+      *)
+
+type
+  {@@ Palette of color values }
+  TsPalette = array[0..0] of DWord;
+  PsPalette = ^TsPalette;
 
   {@@ Font style (redefined to avoid usage of "Graphics" }
-
   TsFontStyle = (fssBold, fssItalic, fssStrikeOut, fssUnderline);
   TsFontStyles = set of TsFontStyle;
 
   {@@ Font }
-
   TsFont = class
     FontName: String;
     Size: Single;   // in "points"
@@ -269,7 +324,7 @@ type
   PRow = ^TRow;
 
   TCol = record
-    Col: Byte;
+    Col: Cardinal;
     Width: Single; // in "characters". Excel uses the with of char "0" in 1st font
   end;
 
@@ -324,6 +379,8 @@ type
     function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
+    function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
+    function WriteFontSize(ARow, ACol: Cardinal; ASize: Integer): Integer;
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
     procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
@@ -356,6 +413,7 @@ type
     FFormat: TsSpreadsheetFormat;
     FFontList: TFPList;
     FBuiltinFontCount: Integer;
+    FPalette: array of DWord;
     { Internal methods }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
   public
@@ -393,6 +451,11 @@ type
     procedure InitFonts;
     procedure RemoveAllFonts;
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
+    { Color handling }
+    function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
+    function GetPaletteColor(AColorIndex: TsColor): DWord;
+    function GetPaletteSize: Integer;
+    procedure UsePalette(APalette: PsPalette; APaletteCount: Word; AFlipBytes: Boolean);
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
@@ -415,12 +478,12 @@ type
     procedure ReadLabel(AStream: TStream); virtual; abstract;
     procedure ReadNumber(AStream: TStream); virtual; abstract;
   public
-    constructor Create; virtual; // To allow descendents to override it
+    constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
-    property Wordbook: TsWorkbook read FWorkbook;
+    property Workbook: TsWorkbook read FWorkbook;
   end;
 
   {@@ TsSpreadWriter class reference type }
@@ -433,14 +496,14 @@ type
 
   TsCustomSpreadWriter = class
   private
+    FWorkbook: TsWorkbook;
   protected
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     function  FindFormattingInList(AFormat: PCell): Integer;
-    function  FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
-    procedure ListAllFormattingStyles(AData: TsWorkbook);
+    procedure ListAllFormattingStyles;
     { Helpers for writing }
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
@@ -458,13 +521,13 @@ type
     }
     FFormattingStyles: array of TCell;
     NextXFIndex: Integer; // Indicates which should be the next XF (Style) Index when filling the styles list
-    constructor Create; virtual; // To allow descendents to override it
+    constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
     { General writing methods }
     procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
-      const AOverwriteExisting: Boolean = False); virtual;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); virtual;
-    procedure WriteToStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
+    procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); virtual;
+    procedure WriteToStream(AStream: TStream); virtual;
+    procedure WriteToStrings(AStrings: TStrings); virtual;
+    property Workbook: TsWorkbook read FWorkbook;
   end;
 
   {@@ List of registered formats }
@@ -537,7 +600,6 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 function SciFloat(AValue: Double; ADecimals: Word): String;
 function TimeIntervalToString(AValue: TDateTime): String;
 
-
 implementation
 
 uses
@@ -551,6 +613,38 @@ resourcestring
   lpUnknownSpreadsheetFormat = 'unknown format';
   lpInvalidFontIndex = 'Invalid font index';
 
+const
+  {@@
+    Colors in RGB (red at left). Needs to be inverted to get TColor.
+    The indices into this palette are named as scXXXX color constants.
+  }
+  DEFAULT_PALETTE: array[$0..$18] of DWord = (
+    $000000,  // $00: black
+    $FFFFFF,  // $01: white
+    $FF0000,  // $02: red
+    $00FF00,  // $03: green
+    $0000FF,  // $04: blue
+    $FFFF00,  // $05: yellow
+    $FF00FF,  // $06: magenta
+    $00FFFF,  // $07: cyan
+    $000000,  // $08: EGA black
+    $FFFFFF,  // $09: EGA white
+    $FF0000,  // $0A: EGA red
+    $00FF00,  // $0B: EGA green
+    $0000FF,  // $0C: EGA blue
+    $FFFF00,  // $0D: EGA yellow
+    $FF00FF,  // $0E: EGA magenta
+    $00FFFF,  // $0F: EGA cyan
+    $800000,  // $10: EGA dark red
+    $008000,  // $11: EGA dark green
+    $000080,  // $12: EGA dark blue
+    $808000,  // $13: EGA olive
+    $800080,  // $14: EGA purple
+    $008080,  // $15: EGA teal
+    $C0C0C0,  // $16: EGA silver
+    $808080,  // $17: EGA gray
+    $FFA500   // $18: orange
+  );
 
 {@@
   Registers a new reader/writer pair for a format
@@ -1288,6 +1382,26 @@ begin
     raise Exception.Create(lpInvalidFontIndex);
 end;
 
+function TsWorksheet.WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
+var
+  lCell: PCell;
+  fnt: TsFont;
+begin
+  lCell := GetCell(ARow, ACol);
+  fnt := Workbook.GetFont(lCell^.FontIndex);
+  Result := WriteFont(ARow, ACol, fnt.FontName, fnt.Size, fnt.Style, AFontColor);
+end;
+
+function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Integer): Integer;
+var
+  lCell: PCell;
+  fnt: TsFont;
+begin
+  lCell := GetCell(ARow, ACol);
+  fnt := Workbook.GetFont(lCell^.FontIndex);
+  Result := WriteFont(ARow, ACol, fnt.FontName, ASize, fnt.Style, fnt.Color);
+end;
+
 {@@
   Adds text rotation to the formatting of a cell
 
@@ -1521,8 +1635,7 @@ begin
   for i := 0 to Length(GsSpreadFormats) - 1 do
     if GsSpreadFormats[i].Format = AFormat then
     begin
-      Result := GsSpreadFormats[i].ReaderClass.Create;
-      Result.FWorkbook := self;
+      Result := GsSpreadFormats[i].ReaderClass.Create(self);
       Break;
     end;
 
@@ -1542,7 +1655,7 @@ begin
   for i := 0 to Length(GsSpreadFormats) - 1 do
     if GsSpreadFormats[i].Format = AFormat then
     begin
-      Result := GsSpreadFormats[i].WriterClass.Create;
+      Result := GsSpreadFormats[i].WriterClass.Create(self);
       Break;
     end;
     
@@ -1657,9 +1770,8 @@ var
   AWriter: TsCustomSpreadWriter;
 begin
   AWriter := CreateSpreadWriter(AFormat);
-
   try
-    AWriter.WriteToFile(AFileName, Self, AOverwriteExisting);
+    AWriter.WriteToFile(AFileName, AOverwriteExisting);
   finally
     AWriter.Free;
   end;
@@ -1690,7 +1802,7 @@ begin
   AWriter := CreateSpreadWriter(AFormat);
 
   try
-    AWriter.WriteToStream(AStream, Self);
+    AWriter.WriteToStream(AStream);
   finally
     AWriter.Free;
   end;
@@ -1948,11 +2060,101 @@ begin
   Result := FFontList.Count;
 end;
 
+{@@
+  Converts a fpspreadsheet color into into a string RRGGBB.
+  Note that colors are written to xls files as ABGR (where A is 0).
+  if the color is scRGBColor the color value is taken from the argument
+  ARGBColor, otherwise from the palette entry for the color index.
+}
+function TsWorkbook.FPSColorToHexString(AColor: TsColor;
+  ARGBColor: TFPColor): string;
+type
+  TRgba = packed record Red, Green, Blue, A: Byte end;
+var
+  color: DWord;
+  r,g,b: Byte;
+begin
+  if AColor = scRGBColor then begin
+    r := ARGBColor.Red div $100;
+    g := ARGBColor.Green div $100;
+    b := ARGBColor.Blue div $100;
+  end else begin
+    color := GetPaletteColor(AColor);
+    r := TRgba(color).Red;
+    g := TRgba(color).Green;
+    b := TRgba(color).Blue;
+  end;
+  Result := Format('%x%x%x', [r, g, b]);
+end;
+
+
+
+{@@
+  Reads the rgb color for the given index from the current palette. Can be
+  type-cast to TColor for usage in GUI applications.
+}
+function TsWorkbook.GetPaletteColor(AColorIndex: TsColor): DWord;
+begin
+  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then begin
+    if ((FPalette = nil) or (Length(FPalette) = 0)) then
+      Result := LongRGBToExcelPhysical(DEFAULT_PALETTE[AColorIndex])
+    else
+      Result := FPalette[AColorIndex];
+  end else
+    Result := $000000;  // "black" as default
+end;
+
+{@@
+  Returns the size of color palette
+}
+function TsWorkbook.GetPaletteSize: Integer;
+begin
+  if (FPalette = nil) or (Length(FPalette) = 0) then
+    Result := High(DEFAULT_PALETTE) + 1
+  else
+    Result := Length(FPalette);
+end;
+
+{@@
+  Instructs the Workbook to take colors from the palette pointed to by the parameter
+  This palette is only used for writing. When reading the palette found in the
+  file is used.
+}
+procedure TsWorkbook.UsePalette(APalette: PsPalette; APaletteCount: Word;
+  AFlipBytes: Boolean);
+var
+  i: Integer;
+begin
+ {$IFOPT R+}
+  {$DEFINE RNGCHECK}
+ {$ENDIF}
+  SetLength(FPalette, APaletteCount);
+  if AFlipBytes then
+    for i:=0 to APaletteCount-1 do
+     {$IFDEF RNGCHECK}
+      {$R-}
+     {$ENDIF}
+      FPalette[i] := LongRGBToExcelPhysical(APalette^[i])
+     {$IFDEF RNGCHECK}
+      {$R+}
+     {$ENDIF}
+  else
+    for i:=0 to APaletteCount-1 do
+     {$IFDEF RNGCHECK}
+      {$R-}
+     {$ENDIF}
+      FPalette[i] := APalette^[i];
+     {$IFDEF RNGCHECK}
+      {$R+}
+     {$ENDIF}
+end;
+
 { TsCustomSpreadReader }
 
-constructor TsCustomSpreadReader.Create;
+constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
+  FWorkbook := AWorkbook;
 end;
 
 {@@
@@ -2006,9 +2208,10 @@ end;
 
 { TsCustomSpreadWriter }
 
-constructor TsCustomSpreadWriter.Create;
+constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
+  FWorkbook := AWorkbook;
 end;
 
 {@@
@@ -2082,7 +2285,7 @@ begin
   Inc(NextXFIndex);
 end;
 
-procedure TsCustomSpreadWriter.ListAllFormattingStyles(AData: TsWorkbook);
+procedure TsCustomSpreadWriter.ListAllFormattingStyles;
 var
   i: Integer;
 begin
@@ -2090,9 +2293,9 @@ begin
 
   AddDefaultFormats();
 
-  for i := 0 to AData.GetWorksheetCount - 1 do
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
-    IterateThroughCells(nil, AData.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
+    IterateThroughCells(nil, Workbook.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
   end;
 end;
 
@@ -2139,11 +2342,12 @@ begin
     Inc(StrPos);
   end;
 end;
-
+  (*
 function TsCustomSpreadWriter.FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
 { We use RGB bytes here, but please note that these are physically written
   to XLS file as ABGR (where A is 0) }
 begin
+
   case AColor of
   scBlack:    Result := '000000';
   scWhite:    Result := 'FFFFFF';
@@ -2173,7 +2377,7 @@ begin
   scRGBCOLOR: Result := Format('%x%x%x', [ARGBColor.Red div $100, ARGBColor.Green div $100, ARGBColor.Blue div $100]);
   end;
 end;
-
+    *)
 {@@
   Helper function for the spreadsheet writers.
 
@@ -2228,15 +2432,15 @@ end;
   Default file writting method.
 
   Opens the file and calls WriteToStream
+  The workbook written is the one specified in the constructor of the writer.
 
   @param  AFileName The output file name.
                     If the file already exists it will be replaced.
-  @param  AData     The Workbook to be saved.
 
   @see    TsWorkbook
 }
 procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
-  AData: TsWorkbook; const AOverwriteExisting: Boolean = False);
+  const AOverwriteExisting: Boolean = False);
 var
   OutputFile: TFileStream;
   lMode: Word;
@@ -2246,7 +2450,7 @@ begin
 
   OutputFile := TFileStream.Create(AFileName, lMode);
   try
-    WriteToStream(OutputFile, AData);
+    WriteToStream(OutputFile);
   finally
     OutputFile.Free;
   end;
@@ -2255,21 +2459,20 @@ end;
 {@@
   This routine should be overriden in descendent classes.
 }
-procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream);
 var
   lStringList: TStringList;
 begin
   lStringList := TStringList.Create;
   try
-    WriteToStrings(lStringList, AData);
+    WriteToStrings(lStringList);
     lStringList.SaveToStream(AStream);
   finally
     lStringList.Free;
   end;
 end;
 
-procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings;
-  AData: TsWorkbook);
+procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings);
 begin
   raise Exception.Create(lpUnsupportedWriteFormat);
 end;

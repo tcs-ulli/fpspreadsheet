@@ -37,6 +37,7 @@ begin
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.SetDefaultFont('Calibri', 9);
+  MyWorkbook.UsePalette(@PALETTE_BIFF8, 64, true);
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
 
@@ -54,6 +55,9 @@ begin
   lCell^.BackgroundColor := scPurple;
   lCell^.UsedFormattingFields := [uffBackgroundColor];
   // or: MyWorksheet.WriteBackgroundColor(5, 3, scPurple);
+  MyWorksheet.WriteFontColor(5, 3, scWhite);
+  MyWorksheet.WriteFontSize(5, 3, 12);
+  // or: MyWorksheet.WriteFont(5, 3, 'Arial', 12, [], scWhite);
 
   // E6 empty cell, only background color
   MyWorksheet.WriteBackgroundColor(5, 4, scYellow);
@@ -62,7 +66,8 @@ begin
   MyWorksheet.WriteBorders(5, 5, [cbNorth, cbEast, cbSouth, cbWest]);
 
   // Word-wrapped long text in D7
-  MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long text.');
+  MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long wrapped text.');
+  MyWorksheet.WriteUsedFormatting(6, 3, [uffWordwrap]);
 
   // Cell with changed font in D8
   MyWorksheet.WriteUTF8Text(7, 3, 'This is 16pt red bold & italic Times New Roman.');
@@ -71,7 +76,7 @@ begin
   // Cell with changed font and background in D9
   MyWorksheet.WriteUTF8Text(8, 3, 'Colors...');
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
- // MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
+  MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 
 { Uncomment this to test large XLS files
   for i := 2 to 20 do

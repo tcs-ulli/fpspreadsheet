@@ -45,6 +45,8 @@ type
     WorkBookEncoding: TsEncoding;
     RecordSize: Word;
     FWorksheet: TsWorksheet;
+    FXFList: TFPList;
+    FFont: TsFont;
     procedure ReadRowInfo(AStream: TStream);
   protected
     procedure ApplyCellFormatting(ARow, ACol: Word; XF, AFormat, AFont, AStyle: Byte);
@@ -53,12 +55,16 @@ type
     { Record writing methods }
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(AStream: TStream);
+    procedure ReadFontColor(AStream: TStream);
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadInteger(AStream: TStream);
+    procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
+    constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
@@ -71,14 +77,14 @@ type
     procedure WriteBOF(AStream: TStream);
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFont(AStream: TStream; AData: TsWorkbook; AFontIndex: Integer);
-    procedure WriteFonts(AStream: TStream; AData: TsWorkbook);
+    procedure WriteFont(AStream: TStream; AFontIndex: Integer);
+    procedure WriteFonts(AStream: TStream);
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
     procedure WriteXF(AStream: TStream; AFontIndex, AFormatIndex: byte;
       ABorders: TsCellBorders = []; AHorAlign: TsHorAlignment = haLeft;
       AddBackground: Boolean = false);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
-    procedure WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+    procedure WriteXFRecords(AStream: TStream);
   protected
     procedure AddDefaultFormats(); override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
@@ -88,8 +94,20 @@ type
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   public
     { General writing methods }
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure WriteToStream(AStream: TStream); override;
   end;
+
+const
+  PALETTE_BIFF2: array[$0..$07] of DWord = (
+    $000000,  // $00: black
+    $FFFFFF,  // $01: white
+    $FF0000,  // $02: red
+    $00FF00,  // $03: green
+    $0000FF,  // $04: blue
+    $FFFF00,  // $05: yellow
+    $FF00FF,  // $06: magenta
+    $00FFFF   // $07: cyan
+  );
 
 implementation
 
@@ -116,6 +134,11 @@ const
   INT_EXCEL_SHEET         = $0010;
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
+
+type
+  TXFData = class
+    FontIndex: Integer;
+  end;
 
 { TsSpreadBIFF2Writer }
 
@@ -219,15 +242,13 @@ end;
   Excel 2.x files support only one Worksheet per Workbook,
   so only the first will be written.
 }
-procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream);
 begin
   WriteBOF(AStream);
 
-  WriteFonts(AStream, AData);
-
-  WriteXFRecords(AStream, AData);
-
-  WriteCellsToStream(AStream, AData.GetFirstWorksheet.Cells);
+  WriteFonts(AStream);
+  WriteXFRecords(AStream);
+  WriteCellsToStream(AStream, Workbook.GetFirstWorksheet.Cells);
 
   WriteEOF(AStream);
 end;
@@ -358,7 +379,7 @@ begin
   end;
 end;
 
-procedure TsSpreadBIFF2Writer.WriteXFRecords(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF2Writer.WriteXFRecords(AStream: TStream);
 begin
   WriteXF(AStream, 0, 0);  // XF0
   WriteXF(AStream, 0, 0);  // XF1
@@ -378,7 +399,7 @@ begin
   WriteXF(AStream, 0, 0);  // XF15 - Default, no formatting
 
    // Add all further non-standard/built-in formatting styles
-  ListAllFormattingStyles(AData);
+  ListAllFormattingStyles;
   WriteXFFieldsForFormattingStyles(AStream);
 end;
 
@@ -416,15 +437,14 @@ end;
   Writes an Excel 2 font record
   The font data is passed as font index.
 }
-procedure TsSpreadBIFF2Writer.WriteFont(AStream: TStream; AData: TsWorkbook;
-  AFontIndex: Integer);
+procedure TsSpreadBIFF2Writer.WriteFont(AStream: TStream; AFontIndex: Integer);
 var
   Len: Byte;
   lFontName: AnsiString;
   optn: Word;
   font: TsFont;
 begin
-  font := AData.GetFont(AFontIndex);
+  font := Workbook.GetFont(AFontIndex);
   if font = nil then  // this happens for FONT4 in case of BIFF
     exit;
 
@@ -465,12 +485,12 @@ begin
   AStream.WriteWord(WordToLE(word(font.Color)));
 end;
 
-procedure TsSpreadBiff2Writer.WriteFonts(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBiff2Writer.WriteFonts(AStream: TStream);
 var
   i: Integer;
 begin
-  for i:=0 to AData.GetFontCount-1 do
-    WriteFont(AStream, AData, i);
+  for i:=0 to Workbook.GetFontCount-1 do
+    WriteFont(AStream, i);
 end;
 
 {
@@ -773,17 +793,35 @@ end;
 
 { TsSpreadBIFF2Reader }
 
+constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FXFList := TFPList.Create;
+end;
+
+destructor TsSpreadBIFF2Reader.Destroy;
+var
+  j: integer;
+begin
+  for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
+  FXFList.Free;
+  inherited;
+end;
+
 procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ARow, ACol: Word;
   XF, AFormat, AFont, AStyle: Byte);
 var
   lCell: PCell;
+  xfData: TXFData;
 begin
   lCell := FWorksheet.GetCell(ARow, ACol);
 
   if Assigned(lCell) then begin
+    xfData := TXFData(FXFList.items[xf]);
+
     // Font index
     Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := AFont;
+    lCell^.FontIndex := xfData.FontIndex; //AFont;
 
     // Horizontal justification
     if AStyle and $07 <> 0 then begin
@@ -825,30 +863,34 @@ var
   lOptions: Word;
   Len: Byte;
   lFontName: UTF8String;
-  font: TsFont;
 begin
-  font := TsFont.Create;
+  FFont := TsFont.Create;
 
   { Height of the font in twips = 1/20 of a point }
   lHeight := WordLEToN(AStream.ReadWord); // WordToLE(200)
-  font.Size := lHeight/20;
+  FFont.Size := lHeight/20;
 
   { Option flags }
   lOptions := WordLEToN(AStream.ReadWord);
-  font.Style := [];
-  if lOptions and $0001 <> 0 then Include(font.Style, fssBold);
-  if lOptions and $0002 <> 0 then Include(font.Style, fssItalic);
-  if lOptions and $0004 <> 0 then Include(font.Style, fssUnderline);
-  if lOptions and $0008 <> 0 then Include(font.Style, fssStrikeout);
+  FFont.Style := [];
+  if lOptions and $0001 <> 0 then Include(FFont.Style, fssBold);
+  if lOptions and $0002 <> 0 then Include(FFont.Style, fssItalic);
+  if lOptions and $0004 <> 0 then Include(FFont.Style, fssUnderline);
+  if lOptions and $0008 <> 0 then Include(FFont.Style, fssStrikeout);
 
   { Font name: Unicodestring, char count in 1 byte }
   Len := AStream.ReadByte();
   SetLength(lFontName, Len);
   AStream.ReadBuffer(lFontName[1], Len);
-  font.FontName := lFontName;
+  FFont.FontName := lFontName;
 
   { Add font to workbook's font list }
-  FWorkbook.AddFont(font);
+  FWorkbook.AddFont(FFont);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadFontColor(AStream: TStream);
+begin
+  FFont.Color := WordLEToN(AStream.ReadWord);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
@@ -879,15 +921,17 @@ begin
 
     case RecordType of
 
-    INT_EXCEL_ID_BLANK:   ReadBlank(AStream);
-    INT_EXCEL_ID_FONT:    ReadFont(AStream);
-    INT_EXCEL_ID_INTEGER: ReadInteger(AStream);
-    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA: ReadFormula(AStream);
-    INT_EXCEL_ID_ROWINFO: ReadRowInfo(AStream);
-    INT_EXCEL_ID_BOF:     ;
-    INT_EXCEL_ID_EOF:     BIFF2EOF := True;
+    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
+    INT_EXCEL_ID_FONT      : ReadFont(AStream);
+    INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
+    INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
+    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
+    INT_EXCEL_ID_ROWINFO   : ReadRowInfo(AStream);
+    INT_EXCEL_ID_XF        : ReadXF(AStream);
+    INT_EXCEL_ID_BOF       : ;
+    INT_EXCEL_ID_EOF       : BIFF2EOF := True;
 
     else
       // nothing
@@ -1018,6 +1062,30 @@ begin
     // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
   end;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
+type
+  TXFRecord = packed record                // see p. 224
+    FontIndex: byte;                       // Offset 0, Size 1
+    NotUsed: byte;                         // Offset 1, Size 1
+    NumFormat_Flags: byte;                 // Offset 2, Size 1
+    HorAlign_Border_BackGround: Byte;      // Offset 3, Size 1
+  end;
+var
+  xfData: TXFData;
+  xf: TXFRecord;
+  b: Byte;
+begin
+  AStream.ReadBuffer(xf, SizeOf(xf));
+
+  xfData := TXFData.Create;
+
+  // Font index
+  xfData.FontIndex := xf.FontIndex;
+
+  // Add the XF to the list
+  FXFList.Add(xfData);
 end;
 
 {*******************************************************************

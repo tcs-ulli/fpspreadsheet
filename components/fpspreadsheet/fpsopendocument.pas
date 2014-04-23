@@ -85,7 +85,7 @@ type
     procedure WriteMeta;
     procedure WriteSettings;
     procedure WriteStyles;
-    procedure WriteContent(AData: TsWorkbook);
+    procedure WriteContent;
     procedure WriteWorksheet(CurSheet: TsWorksheet);
     // Routines to write parts of those files
     function WriteStylesXMLAsString: string;
@@ -101,12 +101,12 @@ type
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
   public
-    constructor Create; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
-    procedure WriteToFile(const AFileName: string; AData: TsWorkbook;
+    procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure WriteToStream(AStream: TStream); override;
   end;
 
 implementation
@@ -544,14 +544,14 @@ begin
    '</office:document-styles>';
 end;
 
-procedure TsSpreadOpenDocWriter.WriteContent(AData: TsWorkbook);
+procedure TsSpreadOpenDocWriter.WriteContent;
 var
   i: Integer;
   lStylesCode: string;
 begin
-  ListAllFormattingStyles(AData);
+  ListAllFormattingStyles;
 
-  lStylesCode := WriteStylesXMLAsString();
+  lStylesCode := WriteStylesXMLAsString;
 
   FContent :=
    XML_HEADER + LineEnding +
@@ -602,10 +602,8 @@ begin
   '    <office:spreadsheet>' + LineEnding;
 
   // Write all worksheets
-  for i := 0 to AData.GetWorksheetCount - 1 do
-  begin
-    WriteWorksheet(Adata.GetWorksheetByIndex(i));
-  end;
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
+    WriteWorksheet(Workbook.GetWorksheetByIndex(i));
 
   FContent :=  FContent +
    '    </office:spreadsheet>' + LineEnding +
@@ -701,7 +699,7 @@ begin
       if (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
       begin
         Result := Result + 'fo:background-color="#'
-          + FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
+          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
       end;
 
       if (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
@@ -718,9 +716,9 @@ begin
   end;
 end;
 
-constructor TsSpreadOpenDocWriter.Create;
+constructor TsSpreadOpenDocWriter.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
 
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
@@ -744,7 +742,7 @@ end;
   Writes an OOXML document to the disc.
 }
 procedure TsSpreadOpenDocWriter.WriteToFile(const AFileName: string;
-  AData: TsWorkbook; const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean);
 var
   FZip: TZipper;
 begin
@@ -755,7 +753,7 @@ begin
   WriteMeta();
   WriteSettings();
   WriteStyles();
-  WriteContent(AData);
+  WriteContent;
 
   { Write the data to streams }
 
@@ -792,7 +790,7 @@ begin
 end;
 
 
-procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
 begin
   // Not supported at the moment
   raise Exception.Create('TsSpreadOpenDocWriter.WriteToStream not supported');

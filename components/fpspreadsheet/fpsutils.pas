@@ -34,6 +34,8 @@ function WordLEtoN(AValue: Word): Word;
 function DWordLEtoN(AValue: Cardinal): Cardinal;
 function WideStringLEToN(const AValue: WideString): WideString;
 
+function LongRGBToExcelPhysical(const RGB: DWord): DWord;
+
 // Other routines
 function ParseIntervalString(const AStr: string;
   var AFirstCellRow, AFirstCellCol, ACount: Integer;
@@ -152,6 +154,24 @@ begin
     {$ENDIF}
   {$ELSE}
     Result:=AValue;
+  {$ENDIF}
+end;
+
+{ Converts RGB part of a LongRGB logical structure to its physical representation
+  IOW: RGBA (where A is 0 and omitted in the function call) => ABGR
+  Needed for conversion of palette colors. }
+function LongRGBToExcelPhysical(const RGB: DWord): DWord;
+begin
+  {$IFDEF FPC}
+  {$IFDEF ENDIAN_LITTLE}
+  result := RGB shl 8; //tags $00 at end for the A byte
+  result := SwapEndian(result); //flip byte order
+  {$ELSE}
+  //Big endian
+  result := RGB; //leave value as is //todo: verify if this turns out ok
+  {$ENDIF}
+  {$ELSE}
+  // messed up result
   {$ENDIF}
 end;
 
