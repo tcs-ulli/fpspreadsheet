@@ -11,7 +11,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
-  fpspreadsheet, xlsbiff5, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 type
@@ -23,18 +23,25 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
-    procedure TestWriteReadBackgroundColors(WhichPalette: Integer);
-    procedure TestWriteReadFontColors(WhichPalette: Integer);
+    procedure TestWriteReadBackgroundColors(AFormat: TsSpreadsheetFormat; WhichPalette: Integer);
+    procedure TestWriteReadFontColors(AFormat: TsSpreadsheetFormat; WhichPalette: Integer);
   published
     // Writes out colors & reads back.
+
+    { BIFF2 file format tests }
+    procedure TestWriteReadBIFF2_Font_InternalPal;        // internal palette for BIFF2 file format
+
+    { BIFF8 file format tests }
     // Background colors...
-    procedure TestWriteRead_Background_Internal;  // internal palette
-    procedure TestWriteRead_Background_Biff5;     // official biff5 palette
-    procedure TestWriteRead_Background_Biff8;     // official biff8 palette
+    procedure TestWriteReadBIFF8_Background_InternalPal;  // internal palette
+    procedure TestWriteReadBIFF8_Background_Biff5Pal;     // official biff5 palette
+    procedure TestWriteReadBIFF8_Background_Biff8Pal;     // official biff8 palette
+    procedure TestWriteReadBIFF8_Background_RandomPal;    // palette 64, top 56 entries random
     // Font colors...
-    procedure TestWriteRead_Font_Internal;        // internal palette
-    procedure TestWriteRead_Font_Biff5;           // official biff5 palette
-    procedure TestWriteRead_Font_Biff8;           // official biff8 palette
+    procedure TestWriteReadBIFF8_Font_InternalPal;        // internal palette for BIFF8 file format
+    procedure TestWriteReadBIFF8_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
+    procedure TestWriteReadBIFF8_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
+    procedure TestWriteReadBIFF8_Font_RandomPal;          // palette 64, top 56 entries random
   end;
 
 implementation
@@ -54,7 +61,8 @@ begin
   inherited TearDown;
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBackgroundColors(WhichPalette: Integer);
+procedure TSpreadWriteReadColorTests.TestWriteReadBackgroundColors(AFormat: TsSpreadsheetFormat;
+  WhichPalette: Integer);
 // WhichPalette = 5: BIFF5 palette
 //                8: BIFF8 palette
 //              else internal palette
@@ -70,6 +78,8 @@ var
   color: TsColor;
   expectedRGB: DWord;
   currentRGB: DWord;
+  pal: Array of TsColorValue;
+  i: Integer;
 begin
   TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
@@ -81,8 +91,14 @@ begin
 
   // Define palette
   case whichPalette of
-    5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1, true);
-    8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1, true);
+    5: MyWorkbook.UsePalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
+    8: MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+  999: begin  // Random palette
+         SetLength(pal, 64);
+         for i:=0 to 7 do pal[i] := PALETTE_BIFF8[i];
+         for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
+         MyWorkbook.UsePalette(@pal[0], 64);
+       end;
     // else use default palette
   end;
 
@@ -101,13 +117,16 @@ begin
       'Test unsaved background color, cell ' + CellNotation(MyWorksheet,0,0));
     inc(row);
   end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   for row := 0 to MyWorksheet.GetLastRowNumber do begin
@@ -125,7 +144,8 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadFontColors(WhichPalette: Integer);
+procedure TSpreadWriteReadColorTests.TestWriteReadFontColors(AFormat: TsSpreadsheetFormat;
+  WhichPalette: Integer);
 // WhichPalette = 5: BIFF5 palette
 //                8: BIFF8 palette
 //              else internal palette
@@ -140,6 +160,8 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
   color, colorInFile: TsColor;
   expectedRGB, currentRGB: DWord;
+  pal: Array of TsColorValue;
+  i: Integer;
 begin
   TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
@@ -151,9 +173,15 @@ begin
 
   // Define palette
   case whichPalette of
-    5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1, true);
-    8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1, true);
-    // else use default palette
+     5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1, true);
+     8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1, true);
+   999: begin
+          SetLength(pal, 64);
+          for i:=0 to 7 do pal[i] := PALETTE_BIFF8[i];
+          for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
+          MyWorkbook.UsePalette(@pal[0], 64);
+        end;
+   // else use default palette
   end;
 
   // Write out all colors
@@ -172,13 +200,16 @@ begin
       'Test unsaved font color, cell ' + CellNotation(MyWorksheet,0,0));
     inc(row);
   end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   for row := 0 to MyWorksheet.GetLastRowNumber do begin
@@ -197,34 +228,53 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteRead_Background_Internal;
+{ Tests for BIFF2 file format }
+{ BIFF2 supports only a fixed palette, and no background color --> test only
+  internal palette for font color }
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF2_Font_InternalPal;
 begin
-  TestWriteReadBackgroundColors(0);
+  TestWriteReadFontColors(sfExcel2, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteRead_Background_Biff5;
+{ Tests for BIFF8 file format }
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_InternalPal;
 begin
-  TestWriteReadBackgroundColors(5);
+  TestWriteReadBackgroundColors(sfExcel8, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteRead_Background_Biff8;
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_Biff5Pal;
 begin
-  TestWriteReadBackgroundColors(8);
+  TestWriteReadBackgroundColors(sfExcel8, 5);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteRead_Font_Internal;
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_Biff8Pal;
 begin
-  TestWriteReadFontColors(0);
+  TestWriteReadBackgroundColors(sfExcel8, 8);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteRead_Font_Biff5;
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_RandomPal;
 begin
-  TestWriteReadFontColors(5);
+  TestWriteReadBackgroundColors(sfExcel8, 999);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteRead_Font_Biff8;
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_InternalPal;
 begin
-  TestWriteReadFontColors(8);
+  TestWriteReadFontColors(sfExcel8, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_Biff5Pal;
+begin
+  TestWriteReadFontColors(sfExcel8, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_Biff8Pal;
+begin
+  TestWriteReadFontColors(sfExcel8, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_RandomPal;
+begin
+  TestWriteReadFontColors(sfExcel8, 999);
 end;
 
 initialization

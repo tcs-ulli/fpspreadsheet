@@ -198,8 +198,9 @@ type
     procedure WriteToStream(AStream: TStream); override;
   end;
 
-const
-  PALETTE_BIFF8: array[$00..$3F] of DWord = (
+var
+  // the palette of the default BIFF8 colors as "big-endian color" values
+  PALETTE_BIFF8: array[$00..$3F] of TsColorValue = (
     $000000,  // $00: black            // 8 built-in default colors
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -940,7 +941,8 @@ begin
   AStream.WriteWord(WordToLE(optn));
 
   { Colour index }
-  AStream.WriteWord(WordToLE(8 + ord(AFont.Color))); //WordToLE($7FFF));
+  //AStream.WriteWord(WordToLE(8 + ord(AFont.Color))); //WordToLE($7FFF));
+  AStream.WriteWord(WordToLE(ord(AFont.Color)));
 
   { Font weight }
   if fssBold in AFont.Style then
@@ -2216,9 +2218,13 @@ begin
     Inc(FCurrentWorksheet);
   end;
 
+  if not FPaletteFound then
+    FWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+
   { Finalizations }
 
   FWorksheetNames.Free;
+
 end;
 
 procedure TsSpreadBIFF8Reader.ReadBlank(AStream: TStream);
@@ -2565,7 +2571,8 @@ begin
 
   { Colour index }
   lColor := WordLEToN(AStream.ReadWord);
-  font.Color := TsColor(lColor - 8);  // Palette colors have an offset 8
+  //font.Color := TsColor(lColor - 8);  // Palette colors have an offset 8
+  font.Color := tsColor(lColor);
 
   { Font weight }
   lWeight := WordLEToN(AStream.ReadWord);
@@ -2620,12 +2627,14 @@ end;
 *  Initialization section
 *
 *  Registers this reader / writer on fpSpreadsheet
+*  Converts the palette to litte-endian
 *
 *******************************************************************}
 
 initialization
 
   RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8);
+  MakeLEPalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
 
 end.
 

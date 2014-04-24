@@ -116,8 +116,8 @@
         <EditorIndex Value="0"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
-        <CursorPos X="1" Y="11"/>
-        <UsageCount Value="119"/>
+        <CursorPos X="3" Y="2"/>
+        <UsageCount Value="120"/>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
@@ -131,7 +131,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="47"/>
         <CursorPos X="51" Y="49"/>
-        <UsageCount Value="119"/>
+        <UsageCount Value="120"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
@@ -140,22 +140,23 @@
         <UnitName Value="fpspreadsheet"/>
         <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1916"/>
-        <CursorPos X="1" Y="1940"/>
-        <UsageCount Value="58"/>
+        <TopLine Value="2720"/>
+        <CursorPos X="49" Y="2742"/>
+        <UsageCount Value="59"/>
         <Bookmarks Count="1">
-          <Item0 X="1" Y="1292" ID="1"/>
+          <Item0 X="1" Y="1293" ID="1"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <UnitName Value="fpspreadsheetgrid"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="12"/>
-        <CursorPos X="15" Y="33"/>
-        <UsageCount Value="59"/>
+        <TopLine Value="257"/>
+        <CursorPos X="36" Y="273"/>
+        <UsageCount Value="60"/>
         <Loaded Value="True"/>
       </Unit3>
       <Unit4>
@@ -220,7 +221,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="1" Y="1"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="15"/>
         <Loaded Value="True"/>
       </Unit11>
       <Unit12>
@@ -238,7 +239,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="35"/>
         <CursorPos X="1" Y="62"/>
-        <UsageCount Value="34"/>
+        <UsageCount Value="35"/>
         <Loaded Value="True"/>
       </Unit13>
       <Unit14>
@@ -255,7 +256,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="34"/>
         <CursorPos X="1" Y="64"/>
-        <UsageCount Value="26"/>
+        <UsageCount Value="27"/>
         <Loaded Value="True"/>
       </Unit15>
       <Unit16>
@@ -264,7 +265,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="248"/>
         <CursorPos X="22" Y="263"/>
-        <UsageCount Value="18"/>
+        <UsageCount Value="19"/>
         <Loaded Value="True"/>
       </Unit16>
       <Unit17>
@@ -272,9 +273,9 @@
         <UnitName Value="xlsbiff8"/>
         <EditorIndex Value="10"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="2065"/>
-        <CursorPos X="1" Y="2100"/>
-        <UsageCount Value="33"/>
+        <TopLine Value="185"/>
+        <CursorPos X="1" Y="203"/>
+        <UsageCount Value="34"/>
         <Loaded Value="True"/>
       </Unit17>
       <Unit18>
@@ -297,28 +298,29 @@
         <UnitName Value="xlscommon"/>
         <EditorIndex Value="9"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="494"/>
-        <CursorPos X="1" Y="501"/>
-        <UsageCount Value="29"/>
+        <TopLine Value="493"/>
+        <CursorPos X="16" Y="514"/>
+        <UsageCount Value="30"/>
         <Loaded Value="True"/>
       </Unit20>
       <Unit21>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <UnitName Value="xlsbiff5"/>
+        <EditorIndex Value="11"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1113"/>
-        <CursorPos X="1" Y="1134"/>
-        <UsageCount Value="16"/>
+        <TopLine Value="124"/>
+        <CursorPos X="38" Y="143"/>
+        <UsageCount Value="17"/>
+        <Loaded Value="True"/>
       </Unit21>
       <Unit22>
         <Filename Value="..\..\xlsbiff2.pas"/>
         <UnitName Value="xlsbiff2"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="12"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="944"/>
-        <CursorPos X="37" Y="959"/>
-        <UsageCount Value="17"/>
+        <TopLine Value="82"/>
+        <CursorPos X="38" Y="101"/>
+        <UsageCount Value="18"/>
         <Loaded Value="True"/>
       </Unit22>
       <Unit23>
@@ -351,130 +353,130 @@
         <WindowIndex Value="0"/>
         <TopLine Value="141"/>
         <CursorPos X="3" Y="143"/>
-        <UsageCount Value="16"/>
+        <UsageCount Value="17"/>
         <Loaded Value="True"/>
       </Unit26>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="965" Column="1" TopLine="957"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="2500" Column="1" TopLine="2472"/>
       </Position1>
       <Position2>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="964" Column="48" TopLine="957"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="2504" Column="1" TopLine="2473"/>
       </Position2>
       <Position3>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="972" Column="32" TopLine="957"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="2505" Column="1" TopLine="2474"/>
       </Position3>
       <Position4>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="968" Column="1" TopLine="957"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="2508" Column="5" TopLine="2477"/>
       </Position4>
       <Position5>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="971" Column="1" TopLine="957"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="263" Column="21" TopLine="244"/>
       </Position5>
       <Position6>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="974" Column="1" TopLine="957"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="265" Column="1" TopLine="220"/>
       </Position6>
       <Position7>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="792" Column="1" TopLine="771"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="271" Column="1" TopLine="252"/>
       </Position7>
       <Position8>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="794" Column="1" TopLine="771"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="272" Column="1" TopLine="252"/>
       </Position8>
       <Position9>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="796" Column="1" TopLine="774"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="273" Column="1" TopLine="252"/>
       </Position9>
       <Position10>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="797" Column="26" TopLine="783"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="274" Column="1" TopLine="252"/>
       </Position10>
       <Position11>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="806" Column="1" TopLine="783"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="265" Column="1" TopLine="246"/>
       </Position11>
       <Position12>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="814" Column="1" TopLine="783"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="271" Column="1" TopLine="246"/>
       </Position12>
       <Position13>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="968" Column="1" TopLine="947"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="272" Column="1" TopLine="246"/>
       </Position13>
       <Position14>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="965" Column="1" TopLine="947"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="273" Column="1" TopLine="246"/>
       </Position14>
       <Position15>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1008" Column="1" TopLine="987"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="274" Column="1" TopLine="246"/>
       </Position15>
       <Position16>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1009" Column="1" TopLine="987"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="265" Column="1" TopLine="246"/>
       </Position16>
       <Position17>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1010" Column="1" TopLine="987"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="271" Column="1" TopLine="246"/>
       </Position17>
       <Position18>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1011" Column="1" TopLine="987"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="272" Column="1" TopLine="246"/>
       </Position18>
       <Position19>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1012" Column="1" TopLine="987"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="273" Column="1" TopLine="246"/>
       </Position19>
       <Position20>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1013" Column="1" TopLine="987"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="2482" Column="52" TopLine="2482"/>
       </Position20>
       <Position21>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1014" Column="1" TopLine="987"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position21>
       <Position22>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="104" Column="15" TopLine="86"/>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="273" Column="35" TopLine="212"/>
       </Position22>
       <Position23>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1712" Column="38" TopLine="1676"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="189" Column="35" TopLine="189"/>
       </Position23>
       <Position24>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1005" Column="16" TopLine="996"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="817" Column="3" TopLine="811"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="421" Column="17" TopLine="391"/>
       </Position25>
       <Position26>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="815" Column="18" TopLine="794"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2154" Column="6" TopLine="2154"/>
       </Position26>
       <Position27>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="139" Column="10" TopLine="102"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position27>
       <Position28>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="824" Column="31" TopLine="803"/>
+        <Filename Value="..\..\xlsbiff5.pas"/>
+        <Caret Line="1581" Column="39" TopLine="1543"/>
       </Position28>
       <Position29>
         <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1088" Column="17" TopLine="1055"/>
+        <Caret Line="1076" Column="29" TopLine="1066"/>
       </Position29>
       <Position30>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="1082" Column="16" TopLine="1061"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="618" Column="27" TopLine="580"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>

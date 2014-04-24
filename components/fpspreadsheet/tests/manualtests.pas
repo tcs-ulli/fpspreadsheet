@@ -25,6 +25,7 @@ uses
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
+{
 var
   // Norm to test against - list of dates/times that should occur in spreadsheet
   SollColors: array[0..16] of tsColor; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
@@ -32,6 +33,7 @@ var
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollColors;
+ }
 
 type
   { TSpreadManualSetup }
@@ -75,7 +77,7 @@ const
 
 var
   Workbook: TsWorkbook = nil;
-
+ (*
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
 //
@@ -139,6 +141,7 @@ begin
   SollColorNames[22]:='scWheat';
   }
 end;
+   *)
 
 { TSpreadManualSetup }
 
@@ -158,7 +161,7 @@ end;
 { TSpreadManualTests }
 procedure TSpreadManualTests.SetUp;
 begin
-  InitSollColors;
+//  InitSollColors;
 end;
 
 procedure TSpreadManualTests.TearDown;
@@ -190,14 +193,13 @@ begin
   Worksheet := Workbook.AddWorksheet(COLORSHEETNAME);
   WorkSheet.WriteUTF8Text(0,1,'TSpreadManualTests.TestBiff8CellBackgroundColor');
   RowOffset:=1;
-  for i:=Low(SollColors) to High(SollColors) do
-  begin
+  for i:=0 to Workbook.GetPaletteSize-1 do begin
     WorkSheet.WriteUTF8Text(i+RowOffset,0,'BACKGROUND COLOR TEST');
     Cell := Worksheet.GetCell(i+RowOffset, 0);
-    Cell^.BackgroundColor := SollColors[i];
+    Cell^.BackgroundColor := TsColor(i);
     if not (uffBackgroundColor in Cell^.UsedFormattingFields) then
       include (Cell^.UsedFormattingFields,uffBackgroundColor);
-    WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be tsColor value '+SollColorNames[i]+'. Please check.');
+    WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be '+Workbook.GetColorName(i)+'. Please check.');
   end;
 end;
 
@@ -211,7 +213,7 @@ initialization
   // Register one time setup/teardown and associated test class to actually run the tests
   RegisterTestDecorator(TSpreadManualSetup,TSpreadManualTests);
   // Initialize the norm variables in case other units want to use it:
-  InitSollColors;
+//  InitSollColors;
 
 end.
 

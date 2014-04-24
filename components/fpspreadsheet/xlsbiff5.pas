@@ -139,8 +139,9 @@ type
     procedure WriteToStream(AStream: TStream); override;
   end;
 
-const
-  PALETTE_BIFF5: array[$00..$3F] of DWord = (
+var
+  // the palette of the default BIFF5 colors as "big-endian color" values
+  PALETTE_BIFF5: array[$00..$3F] of TsColorValue = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -1506,6 +1507,9 @@ begin
     Inc(FCurrentWorksheet);
   end;
 
+  if not FPaletteFound then
+    FWorkbook.UsePalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
+
   { Finalizations }
 
   FWorksheetNames.Free;
@@ -1575,6 +1579,7 @@ end;
 initialization
 
   RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5);
+  MakeLEPalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
 
 end.
 
