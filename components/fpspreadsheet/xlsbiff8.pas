@@ -165,7 +165,8 @@ type
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     // procedure WriteCodepage in xlscommon; Workbook Globals record
-    procedure WriteColInfo(AStream: TStream; ASheet: TsWorksheet; ACol: PCol);
+    procedure WriteColInfo(AStream: TStream; ACol: PCol);
+    procedure WriteColInfos(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
     // procedure WriteDateMode in xlscommon; Workbook Globals record
@@ -682,10 +683,7 @@ begin
 
     WriteIndex(AStream);
 
-    for j := 0 to sheet.Cols.Count-1 do begin
-      col := PCol(sheet.Cols[j]);
-      WriteColInfo(AStream, sheet, col);
-    end;
+    WriteColInfos(AStream, sheet);
 
     WriteDimensions(AStream, sheet);
 
@@ -803,16 +801,15 @@ begin
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF8Writer.WriteColumn ()
+*  TsSpreadBIFF8Writer.WriteColInfo ()
 *
 *  DESCRIPTION:    Writes a COLINFO record
 *******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteColInfo(AStream: TStream;
-  ASheet: TsWorkSheet; ACol: PCol);
+procedure TsSpreadBIFF8Writer.WriteColInfo(AStream: TStream; ACol: PCol);
 var
   w: Integer;
 begin
-  if Assigned(ACol) and Assigned(ASheet) then begin
+  if Assigned(ACol) then begin
     { BIFF Record header }
     AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLINFO));  // BIFF record header
     AStream.WriteWord(WordToLE(12));                    // Record size
@@ -827,6 +824,17 @@ begin
   end;
 end;
 
+procedure TsSpreadBIFF8Writer.WriteColInfos(AStream: TStream;
+  ASheet: TsWorksheet);
+var
+  j: Integer;
+  col: PCol;
+begin
+  for j := 0 to ASheet.Cols.Count-1 do begin
+    col := PCol(ASheet.Cols[j]);
+    WriteColInfo(AStream, col);
+  end;
+end;
 
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteDateTime ()

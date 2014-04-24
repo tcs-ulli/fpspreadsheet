@@ -356,6 +356,7 @@ type
     procedure RemoveAllCols;
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
+    procedure WriteColWidth(ACol: Cardinal; AWidth: Single);
     { Properties }
     property  Cells: TAVLTree read FCells;
     property  Cols: TIndexedAVLTree read FCols;
@@ -1573,6 +1574,15 @@ begin
   AElement := GetCol(ACol);
   AElement^.Width := AData.Width;
 end;
+
+procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
+var
+  AElement: PCol;
+begin
+  AElement := GetCol(ACol);
+  AElement^.Width := AWidth;
+end;
+
 
 { TsWorkbook }
 
