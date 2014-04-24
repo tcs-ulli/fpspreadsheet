@@ -42,6 +42,7 @@ begin
     WriteLn('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Value: ',
      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
      );
+    WriteLn(MyWorkbook.GetFont(CurCell^.FontIndex).Size-11);
     CurCell := MyWorkSheet.GetNextCell();
   end;
 

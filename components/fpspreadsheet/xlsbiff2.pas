@@ -868,7 +868,7 @@ begin
   FFont := TsFont.Create;
 
   { Height of the font in twips = 1/20 of a point }
-  lHeight := WordLEToN(AStream.ReadWord); // WordToLE(200)
+  lHeight := WordLEToN(AStream.ReadWord);
   FFont.Size := lHeight/20;
 
   { Option flags }

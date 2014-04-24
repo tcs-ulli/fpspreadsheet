@@ -93,12 +93,19 @@ begin
   case whichPalette of
     5: MyWorkbook.UsePalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
     8: MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+  999: begin  // Random palette: testing of color replacement
+         MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+         for i:=8 to 63 do  // first 8 colors cannot be changed
+           MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
+       end;
+{
   999: begin  // Random palette
          SetLength(pal, 64);
-         for i:=0 to 7 do pal[i] := PALETTE_BIFF8[i];
+         for i:=0 to 67 do pal[i] := PALETTE_BIFF8[i];
          for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
          MyWorkbook.UsePalette(@pal[0], 64);
-       end;
+       end;        }
+
     // else use default palette
   end;
 
@@ -175,12 +182,19 @@ begin
   case whichPalette of
      5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1, true);
      8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1, true);
-   999: begin
-          SetLength(pal, 64);
-          for i:=0 to 7 do pal[i] := PALETTE_BIFF8[i];
-          for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
-          MyWorkbook.UsePalette(@pal[0], 64);
+   999: begin  // Random palette: testing of color replacement
+          MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+          for i:=8 to 63 do  // first 8 colors cannot be changed
+            MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
         end;
+{
+  999: begin
+         SetLength(pal, 64);
+         for i:=0 to 7 do pal[i] := PALETTE_BIFF8[i];
+         for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
+         MyWorkbook.UsePalette(@pal[0], 64);
+       end;
+        }
    // else use default palette
   end;
 
