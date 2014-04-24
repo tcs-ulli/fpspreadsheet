@@ -26,7 +26,7 @@ var
 
 type
   { TSpreadWriteReadFontTests }
-  //Write to xls/xml file and read back
+  // Write to xls/xml file and read back
   TSpreadWriteReadFontTests = class(TTestCase)
   private
   protected
