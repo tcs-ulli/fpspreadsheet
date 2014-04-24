@@ -181,8 +181,9 @@ type
 
   {@@
     Colors in fpspreadsheet are given as indices into a palette.
-    Use the workbook's GetPaletteColor to determine the color rgb value (with
-    "r" being the low-value byte, in agreement with TColor).
+    Use the workbook's GetPaletteColor to determine the color rgb value as
+    little-endian (with "r" being the low-value byte, in agreement with TColor).
+    The data type for rgb values is TsColorValue.
   }
   TsColor = Word;
 
@@ -200,73 +201,32 @@ const
   scYellow = $05;
   scMagenta = $06;
   scCyan = $07;
-  scEGABlack = $08;
-  scEGAWhite = $09;
-  scEGARed = $0A;
-  scEGAGreen = $0B;
-  scEGABlue = $0C;
-  scEGAYellow = $0D;
-  scEGAMagenta = $0E;
-  scEGACyan = $0F;
-  scDarkRed = $10;
-  scDarkGreen = $11;
-  scDarkBlue = $12;
-  scOLIVE = $13;
-  scPURPLE = $14;
-  scTEAL = $15;
-  scSilver = $16;
-  scGrey = $17;
-  scOrange = $18;
+  scDarkRed = $08;
+  scDarkGreen = $09;
+  scDarkBlue = $0A;    scNavy = $0A;
+  scOlive = $0B;
+  scPurple = $0C;
+  scTeal = $0D;
+  scSilver = $0E;
+  scGrey = $0F;        scGray = $0F;       // redefine to allow different kinds of writing
+  scGrey10pct = $10;   scGray10pct = $10;
+  scGrey20pct = $11;   scGray20pct = $11;
+  scOrange = $12;
+  scDarkbrown = $13;
+  scBrown = $14;
+  scBeige = $15;
+  scWheat = $16;
+
+  // not sure - but I think the mechanism with scRGBColor is not working...
+  // Will be removed sooner or later...
   scRGBColor = $FFFF;
-  {
-  //
-  scGrey10pct,// E6E6E6H
-  scGrey20pct,// CCCCCCH
-  scOrange,   // ffa500H
-  scDarkBrown,// a0522dH
-  scBrown,    // cd853fH
-  scBeige,    // f5f5dcH
-  scWheat,    // f5deb3H
-   }
-
-
-  {@@ Colors in FPSpreadsheet as given by a palette to be compatible with Excel.
-   However, please note that they are physically written to XLS file as
-   ABGR (where A is 0) }
-    (*
-  TsColor = (   // R G B  color value:
-    scBlack,    // 000000H
-    scWhite,    // FFFFFFH
-    scRed,      // FF0000H
-    scGREEN,    // 00FF00H
-    scBLUE,     // 0000FFH
-    scYELLOW,   // FFFF00H
-    scMAGENTA,  // FF00FFH
-    scCYAN,     // 00FFFFH
-    scDarkRed,  // 800000H
-    scDarkGreen,// 008000H
-    scDarkBlue, // 000080H
-    scOLIVE,    // 808000H
-    scPURPLE,   // 800080H
-    scTEAL,     // 008080H
-    scSilver,   // C0C0C0H
-    scGrey,     // 808080H
-    //
-    scGrey10pct,// E6E6E6H
-    scGrey20pct,// CCCCCCH
-    scOrange,   // ffa500H
-    scDarkBrown,// a0522dH
-    scBrown,    // cd853fH
-    scBeige,    // f5f5dcH
-    scWheat,    // f5deb3H
-    //
-    scRGBCOLOR  // Defined via TFPColor
-  );
-      *)
 
 type
+  {@@ Data type for rgb color values }
+  TsColorValue = DWord;
+
   {@@ Palette of color values }
-  TsPalette = array[0..0] of DWord;
+  TsPalette = array[0..0] of TsColorValue;
   PsPalette = ^TsPalette;
 
   {@@ Font style (redefined to avoid usage of "Graphics" }
@@ -413,7 +373,7 @@ type
     FFormat: TsSpreadsheetFormat;
     FFontList: TFPList;
     FBuiltinFontCount: Integer;
-    FPalette: array of DWord;
+    FPalette: array of TsColorValue;
     { Internal methods }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
   public
@@ -453,9 +413,12 @@ type
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
     { Color handling }
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
-    function GetPaletteColor(AColorIndex: TsColor): DWord;
+    function GetColorName(AColorIndex: TsColor): string;
+    function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
+    procedure SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
     function GetPaletteSize: Integer;
-    procedure UsePalette(APalette: PsPalette; APaletteCount: Word; AFlipBytes: Boolean);
+    procedure UsePalette(APalette: PsPalette; APaletteCount: Word;
+      ABigEndian: Boolean = false);
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
@@ -600,6 +563,8 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 function SciFloat(AValue: Double; ADecimals: Word): String;
 function TimeIntervalToString(AValue: TDateTime): String;
 
+procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
+
 implementation
 
 uses
@@ -613,12 +578,13 @@ resourcestring
   lpUnknownSpreadsheetFormat = 'unknown format';
   lpInvalidFontIndex = 'Invalid font index';
 
-const
+var
   {@@
-    Colors in RGB (red at left). Needs to be inverted to get TColor.
+    Colors in RGB in "big-endian" notation (red at left). The values are inverted
+    at initialization to be little-endian at run-time!
     The indices into this palette are named as scXXXX color constants.
   }
-  DEFAULT_PALETTE: array[$0..$18] of DWord = (
+  DEFAULT_PALETTE: array[$00..$16] of TsColorValue = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -627,23 +593,47 @@ const
     $FFFF00,  // $05: yellow
     $FF00FF,  // $06: magenta
     $00FFFF,  // $07: cyan
-    $000000,  // $08: EGA black
-    $FFFFFF,  // $09: EGA white
-    $FF0000,  // $0A: EGA red
-    $00FF00,  // $0B: EGA green
-    $0000FF,  // $0C: EGA blue
-    $FFFF00,  // $0D: EGA yellow
-    $FF00FF,  // $0E: EGA magenta
-    $00FFFF,  // $0F: EGA cyan
-    $800000,  // $10: EGA dark red
-    $008000,  // $11: EGA dark green
-    $000080,  // $12: EGA dark blue
-    $808000,  // $13: EGA olive
-    $800080,  // $14: EGA purple
-    $008080,  // $15: EGA teal
-    $C0C0C0,  // $16: EGA silver
-    $808080,  // $17: EGA gray
-    $FFA500   // $18: orange
+    $800000,  // $08: dark red
+    $008000,  // $09: dark green
+    $000080,  // $0A: dark blue
+    $808000,  // $0B: olive
+    $800080,  // $0C: purple
+    $008080,  // $0D: teal
+    $C0C0C0,  // $0E: silver
+    $808080,  // $0F: gray
+    $E6E6E6,  // $10: gray 10%
+    $CCCCCC,  // $11: gray 20%
+    $FFA500,  // $12: orange
+    $A0522D,  // $13: dark brown
+    $CD853F,  // $14: brown
+    $F5F5DC,  // $15: beige
+    $F5DEB3   // $16: wheat
+  );
+
+  DEFAULT_COLORNAMES: array[$00..$16] of string = (
+    'black',      // 0
+    'white',      // 1
+    'red',        // 2
+    'green',      // 3
+    'blue',       // 4
+    'yellow',     // 5
+    'magenta',    // 6
+    'cyan',       // 7
+    'dark red',   // 8
+    'dark green', // 9
+    'dark blue',  // $0A
+    'olive',      // $0B
+    'purple',     // $0C
+    'teal',       // $0D
+    'silver',     // $0E
+    'gray',       // $0F
+    'gray 10%',   // $10
+    'gray 20%',   // $11
+    'orange',     // $12
+    'dark brown', // $13
+    'brown',      // $14
+    'beige',      // $15
+    'wheat'       // $16
   );
 
 {@@
@@ -727,6 +717,25 @@ begin
   else
     Result := Format('%d%s%.2d', [m, ts, s]);
   if AValue < 0.0 then Result := '-' + Result;
+end;
+
+{@@
+  If a palette is coded as big-endian (e.g. by copying the rgb values from
+  the OpenOffice doc) the palette values can be converted by means of this
+  procedure to little-endian which is required internally by TsWorkbook.
+}
+procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
+var
+  i: Integer;
+begin
+  for i := 0 to APaletteSize-1 do
+   {$IFDEF RNGCHECK}
+    {$R-}
+   {$ENDIF}
+    APalette^[i] := LongRGBToExcelPhysical(APalette^[i])
+   {$IFDEF RNGCHECK}
+    {$R+}
+   {$ENDIF}
 end;
 
 
@@ -2071,7 +2080,7 @@ function TsWorkbook.FPSColorToHexString(AColor: TsColor;
 type
   TRgba = packed record Red, Green, Blue, A: Byte end;
 var
-  color: DWord;
+  colorvalue: TsColorValue;
   r,g,b: Byte;
 begin
   if AColor = scRGBColor then begin
@@ -2079,25 +2088,47 @@ begin
     g := ARGBColor.Green div $100;
     b := ARGBColor.Blue div $100;
   end else begin
-    color := GetPaletteColor(AColor);
-    r := TRgba(color).Red;
-    g := TRgba(color).Green;
-    b := TRgba(color).Blue;
+    colorvalue := GetPaletteColor(AColor);
+    r := TRgba(colorvalue).Red;
+    g := TRgba(colorvalue).Green;
+    b := TRgba(colorvalue).Blue;
   end;
   Result := Format('%x%x%x', [r, g, b]);
 end;
 
+{@@
+  Returns the name of the color pointed to by the given color index.
+  If the name is not known the hex string is returned as RRGGBB.
+}
+function TsWorkbook.GetColorName(AColorIndex: TsColor): string;
+var
+  i: Integer;
+  c: TsColorValue;
+begin
+  // Get color rgb value
+  c := GetPaletteColor(AColorIndex);
 
+  // Find color value in default palette
+  for i:=0 to High(DEFAULT_PALETTE) do
+    if DEFAULT_PALETTE[i] = c then begin
+      // if found: get the color name from the default color names array
+      Result := DEFAULT_COLORNAMES[i];
+      exit;
+    end;
+
+  // if not found: construct a string from rgb byte values.
+  Result := FPSColorToHexString(AColorIndex, colBlack);
+end;
 
 {@@
   Reads the rgb color for the given index from the current palette. Can be
   type-cast to TColor for usage in GUI applications.
 }
-function TsWorkbook.GetPaletteColor(AColorIndex: TsColor): DWord;
+function TsWorkbook.GetPaletteColor(AColorIndex: TsColor): TsColorValue;
 begin
   if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then begin
     if ((FPalette = nil) or (Length(FPalette) = 0)) then
-      Result := LongRGBToExcelPhysical(DEFAULT_PALETTE[AColorIndex])
+      Result := DEFAULT_PALETTE[AColorIndex]
     else
       Result := FPalette[AColorIndex];
   end else
@@ -2105,7 +2136,20 @@ begin
 end;
 
 {@@
-  Returns the size of color palette
+  Replaces a color value of the current palette by a new value. The color must
+  be given as ABGR (little-endian), with A=0}
+procedure TsWorkbook.SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
+begin
+  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then begin
+    if ((FPalette = nil) or (Length(FPalette) = 0)) then
+      DEFAULT_PALETTE[AColorIndex] := AColorValue
+    else
+      FPalette[AColorIndex] := AColorValue;
+  end;
+end;
+
+{@@
+  Returns the count of palette colors
 }
 function TsWorkbook.GetPaletteSize: Integer;
 begin
@@ -2121,7 +2165,7 @@ end;
   file is used.
 }
 procedure TsWorkbook.UsePalette(APalette: PsPalette; APaletteCount: Word;
-  AFlipBytes: Boolean);
+  ABigEndian: Boolean);
 var
   i: Integer;
 begin
@@ -2129,7 +2173,7 @@ begin
   {$DEFINE RNGCHECK}
  {$ENDIF}
   SetLength(FPalette, APaletteCount);
-  if AFlipBytes then
+  if ABigEndian then
     for i:=0 to APaletteCount-1 do
      {$IFDEF RNGCHECK}
       {$R-}
@@ -2704,8 +2748,10 @@ begin
 end;
 
 
-finalization
+initialization
+  MakeLEPalette(@DEFAULT_PALETTE, Length(DEFAULT_PALETTE));
 
+finalization
   SetLength(GsSpreadFormats, 0);
 
 end.

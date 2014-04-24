@@ -285,6 +285,7 @@ type
   protected
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
+    FPaletteFound: Boolean;
     // converts an Excel color index to a color value.
 //    function ExcelPaletteToFPSColor(AIndex: Word): TsColor;
     // Here we can add reading of records which didn't change across BIFF2-8 versions
@@ -501,7 +502,7 @@ end;
 procedure TsSpreadBIFFReader.ReadPalette(AStream: TStream);
 var
   i, n: Word;
-  pal: Array of DWord;
+  pal: Array of TsColorValue;
 begin
   n := WordLEToN(AStream.ReadWord) + 8;
   SetLength(pal, n);
@@ -510,6 +511,7 @@ begin
   for i:=8 to n-1 do
     pal[i] := DWordLEToN(AStream.ReadDWord);
   Workbook.UsePalette(@pal[0], n, false);
+  FPaletteFound := true;
 end;
 
 // Read the part of the ROW record that is common to all BIFF versions

@@ -97,8 +97,9 @@ type
     procedure WriteToStream(AStream: TStream); override;
   end;
 
-const
-  PALETTE_BIFF2: array[$0..$07] of DWord = (
+var
+  // the palette of the default BIFF2 colors as "big-endian color" values
+  PALETTE_BIFF2: array[$0..$07] of TsColorValue = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -1092,11 +1093,13 @@ end;
 *  Initialization section
 *
 *  Registers this reader / writer on fpSpreadsheet
+*  Converts the palette to litte-endian
 *
 *******************************************************************}
 
 initialization
 
   RegisterSpreadFormat(TsSpreadBIFF2Reader, TsSpreadBIFF2Writer, sfExcel2);
+  MakeLEPalette(@PALETTE_BIFF2, Length(PALETTE_BIFF2));
 
 end.

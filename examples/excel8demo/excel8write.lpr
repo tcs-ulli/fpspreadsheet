@@ -37,7 +37,7 @@ begin
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.SetDefaultFont('Calibri', 9);
-  MyWorkbook.UsePalette(@PALETTE_BIFF8, 64, true);
+  MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
 
