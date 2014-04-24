@@ -318,6 +318,7 @@ var
   Value, Str: String;
   lNumber: Double;
 begin
+  FSettings := DefaultFormatSettings;
   FSettings.DecimalSeparator:='.';
   Value:=GetAttrValue(ACellNode,'office:value');
   if UpperCase(Value)='1.#INF' then
@@ -344,6 +345,7 @@ var
 begin
   // Format expects ISO 8601 type date string or
   // time string
+  fmt := DefaultFormatSettings;
   fmt.ShortDateFormat:='yyyy-mm-dd';
   fmt.DateSeparator:='-';
   fmt.LongTimeFormat:='hh:nn:ss';
