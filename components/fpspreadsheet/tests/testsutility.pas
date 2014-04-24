@@ -25,7 +25,7 @@ const
 // Returns an A.. notation based on sheet, row, optional column (e.g. A1).
 function CellNotation(WorkSheet: TsWorksheet; Row: integer; Column: integer=0): string;
 
-// Returns an A notation of column based on sheed and column
+// Returns an A notation of column based on sheet and column
 function ColNotation(WorkSheet: TsWorksheet; Column:Integer): String;
 
 // Note: using this function instead of GetWorkSheetByName for compatibility with
@@ -60,37 +60,41 @@ begin
   end;
 end;
 
+// Converts column number to A.. notation
+function ColumnToLetter(Column: integer): string;
+begin
+  begin
+    if Column < 26 then
+      Result := char(Column+65)
+    else
+    if Column < 26*26 then
+      Result := char(Column div 26 + 65) +
+        char(Column mod 26 + 65)
+    else
+    if Column < 26*26*26 then
+      Result := char(Column div (26*26) + 65) +
+        char(Column mod (26*26) div 26 + 65) +
+        char(Column mod (26*26*26) + 65)
+    else
+      Result := 'ColNotation: At most three digits supported.';
+  end;
+end;
+
 function CellNotation(WorkSheet: TsWorksheet; Row: integer; Column: integer=0): string;
 begin
   // From 0-based to Excel A1 notation
-  // Only goes from column A to Z...
   if not(assigned(Worksheet)) then
     result:='CellNotation: error getting worksheet.'
   else
-    if Column<26 then
-      result:=WorkSheet.Name+'!'+char(Column+65)+inttostr(Row+1)
-    else
-      result:=WorkSheet.Name+'!'+inttostr(Column+1)+':'+inttostr(Row+1)
+    result:=WorkSheet.Name+'!'+ColumnToLetter(Column)+inttostr(Row+1)
 end;
 
 function ColNotation(WorkSheet: TsWorksheet; Column:Integer): String;
 begin
   if not Assigned(Worksheet) then
     Result := 'ColNotation: error getting worksheet.'
-  else begin
-    if Column < 26 then
-      Result := Worksheet.Name + '!' + char(Column+65)
-    else
-    if Column < 26*26 then
-      Result := Worksheet.Name + '!' + char(Column div 26 + 65) + char(Column mod 26 + 65)
-    else
-    if Column < 26*26*26 then
-      Result := Worksheet.Name + '!' + char(Column div (26*26) + 65) +
-        char(Column mod (26*26) div 26 + 65) +
-        char(Column mod (26*26*26) + 65)
-    else
-      Result := 'ColNotation: At most three digits supported.';
-  end;
+  else
+    Result := WorkSheet.Name + '!' + ColumnToLetter(Column);
 end;
 
 end.
