@@ -41,6 +41,7 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
+    procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
   published
     // Writes out numbers & reads back.
     // If previous read tests are ok, this effectively tests writing.
@@ -48,7 +49,8 @@ type
     // Repeat with date/times
     procedure TestWriteReadDateTimeFormats;
     // Test column width
-    procedure TestWriteReadColWidths;
+    procedure TestWriteReadBIFF2_ColWidths;
+    procedure TestWriteReadBIFF8_ColWidths;
     // Test word wrapping
     procedure TestWriteReadWordWrap;
     // Test alignments
@@ -60,6 +62,7 @@ implementation
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
   FmtDateTimesSheet = 'DateTimesFormat';
+  ColWidthSheet = 'ColWidths';
 
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
@@ -234,7 +237,7 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths;
+procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -251,18 +254,21 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+  MyWorkSheet:= MyWorkBook.AddWorksheet(ColWidthSheet);
   for Col := Low(SollColWidths) to High(SollColWidths) do begin
     lCol.Width := SollColWidths[Col];
     MyWorksheet.WriteColInfo(Col, lCol);
   end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, ColWidthSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   for Col := Low(SollColWidths) to High(SollColWidths) do begin
@@ -394,6 +400,16 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_ColWidths;
+begin
+  TestWriteReadColWidths(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_ColWidths;
+begin
+  TestWriteReadColWidths(sfExcel8);
 end;
 
 initialization

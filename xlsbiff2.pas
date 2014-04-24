@@ -52,8 +52,9 @@ type
     procedure ApplyCellFormatting(ARow, ACol: Word; XF, AFormat, AFont, AStyle: Byte);
     procedure ReadRowColStyle(AStream: TStream; out ARow, ACol: Word;
       out XF, AFormat, AFont, AStyle: byte);
-    { Record writing methods }
+    { Record reading methods }
     procedure ReadBlank(AStream: TStream); override;
+    procedure ReadColWidth(AStream: TStream);
     procedure ReadFont(AStream: TStream);
     procedure ReadFontColor(AStream: TStream);
     procedure ReadFormula(AStream: TStream); override;
@@ -76,6 +77,8 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
+    procedure WriteColWidth(AStream: TStream; ACol: PCol);
+    procedure WriteColWidths(AStream: TStream);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFontIndex: Integer);
     procedure WriteFonts(AStream: TStream);
@@ -122,6 +125,7 @@ const
   INT_EXCEL_ID_ROWINFO    = $0008;
   INT_EXCEL_ID_BOF        = $0009;
   INT_EXCEL_ID_EOF        = $000A;
+  INT_EXCEL_ID_COLWIDTH   = $0024;
   INT_EXCEL_ID_XF         = $0043;
   INT_EXCEL_ID_IXFE       = $0044;
   INT_EXCEL_ID_FONTCOLOR  = $0045;
@@ -226,6 +230,41 @@ begin
 end;
 
 {
+  Writes an Excel 2 COLWIDTH record
+}
+procedure TsSpreadBIFF2Writer.WriteColWidth(AStream: TStream; ACol: PCol);
+var
+  w: Integer;
+begin
+  if Assigned(ACol) then begin
+    { BIFF Record header }
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLWIDTH));  // BIFF record header
+    AStream.WriteWord(WordToLE(4));                      // Record size
+    AStream.WriteByte(ACol^.Col);                        // start column
+    AStream.WriteByte(ACol^.Col);                        // end column
+    { calculate width to be in units of 1/256 of pixel width of character "0" }
+    w := round(ACol^.Width * 256);
+    AStream.WriteWord(WordToLE(w));                     // write width
+  end;
+end;
+
+{
+  Write COLWIDTH records for all columns
+}
+procedure TsSpreadBIFF2Writer.WriteColWidths(AStream: TStream);
+var
+  j: Integer;
+  sheet: TsWorksheet;
+  col: PCol;
+begin
+  sheet := Workbook.GetFirstWorksheet;
+  for j := 0 to sheet.Cols.Count-1 do begin
+    col := PCol(sheet.Cols[j]);
+    WriteColWidth(AStream, col);
+  end;
+end;
+
+{
   Writes an Excel 2 IXFE record
   This record contains the "real" XF index if it is > 62.
 }
@@ -249,6 +288,7 @@ begin
 
   WriteFonts(AStream);
   WriteXFRecords(AStream);
+  WriteColWidths(AStream);
   WriteCellsToStream(AStream, Workbook.GetFirstWorksheet.Cells);
 
   WriteEOF(AStream);
@@ -858,6 +898,26 @@ begin
   ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
 end;
 
+procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
+var
+  c, c1, c2: Cardinal;
+  w: Word;
+  col: TCol;
+  sheet: TsWorksheet;
+begin
+  sheet := Workbook.GetFirstWorksheet;
+  // read column start and end index of column range
+  c1 := AStream.ReadByte;
+  c2 := AStream.ReadByte;
+  // read col width in 1/256 of the width of "0" character
+  w := WordLEToN(AStream.ReadWord);
+  // calculate width in units of "characters"
+  col.Width := w / 256;
+  // assign width to columns
+  for c := c1 to c2 do
+    sheet.WriteColInfo(c, col);
+end;
+
 procedure TsSpreadBIFF2Reader.ReadFont(AStream: TStream);
 var
   lHeight: Word;
@@ -929,6 +989,7 @@ begin
     INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
     INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
+    INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
     INT_EXCEL_ID_ROWINFO   : ReadRowInfo(AStream);
     INT_EXCEL_ID_XF        : ReadXF(AStream);
     INT_EXCEL_ID_BOF       : ;
