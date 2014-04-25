@@ -29,6 +29,7 @@ var
   SollDateTimeFormatStrings: array[0..9] of String;
 
   SollColWidths: array[0..1] of Single;
+  SollBorders: array[0..15] of TsCellBorders;
 
   procedure InitSollFmtData;
 
@@ -41,28 +42,40 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
+    procedure TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
     procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
   published
     // Writes out numbers & reads back.
     // If previous read tests are ok, this effectively tests writing.
+
+    { BIFF2 Tests }
+    procedure TestWriteReadBIFF2_ColWidths;
+    procedure TestWriteReadBIFF2_Border;
+
+    { BIFF8 Tests }
     procedure TestWriteReadNumberFormats;
     // Repeat with date/times
     procedure TestWriteReadDateTimeFormats;
     // Test column width
-    procedure TestWriteReadBIFF2_ColWidths;
     procedure TestWriteReadBIFF8_ColWidths;
     // Test word wrapping
     procedure TestWriteReadWordWrap;
     // Test alignments
     procedure TestWriteReadAlignments;
+    // Test border
+    procedure TestWriteReadBIFF8_Border;
   end;
 
 implementation
+
+uses
+  TypInfo;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
   FmtDateTimesSheet = 'DateTimesFormat';
   ColWidthSheet = 'ColWidths';
+  BordersSheet = 'CellBorders';
 
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
@@ -140,6 +153,24 @@ begin
   // Column width
   SollColWidths[0] := 20;  // characters based on width of "0"
   SollColWidths[1] := 40;
+
+  // Cell borders
+  SollBorders[0] := [];
+  SollBorders[1] := [cbEast];
+  SollBorders[2] := [cbSouth];
+  SollBorders[3] := [cbWest];
+  SollBorders[4] := [cbNorth];
+  SollBorders[5] := [cbEast, cbSouth];
+  SollBorders[6] := [cbEast, cbWest];
+  SollBorders[7] := [cbEast, cbNorth];
+  SollBorders[8] := [cbSouth, cbWest];
+  SollBorders[9] := [cbSouth, cbNorth];
+  SollBorders[10] := [cbWest, cbNorth];
+  SollBorders[11] := [cbEast, cbSouth, cbWest];
+  SollBorders[12] := [cbEast, cbSouth, cbNorth];
+  SollBorders[13] := [cbSouth, cbWest, cbNorth];
+  SollBorders[14] := [cbWest, cbNorth, cbEast];
+  SollBorders[15] := [cbEast, cbSouth, cbWest, cbNorth];
 end;
 
 { TSpreadWriteReadFormatTests }
@@ -235,6 +266,70 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
+const
+  row = 0;
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  MyCell: PCell;
+  ActualColWidth: Single;
+  col: Integer;
+  expected: String;
+  current: String;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
+  for col := Low(SollBorders) to High(SollBorders) do begin
+    MyWorksheet.WriteUsedFormatting(row, col, [uffBorder]);
+    MyCell := MyWorksheet.GetCell(row, col);
+    Include(MyCell^.UsedFormattingFields, uffBorder);
+    MyCell^.Border := SollBorders[col];
+  end;
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  for col := 0 to MyWorksheet.GetLastColNumber do begin
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell');
+    current := GetEnumName(TypeInfo(TsCellBorders), byte(MyCell^.Border));
+    expected := GetEnumName(TypeInfo(TsCellBorders), byte(SollBorders[col]));
+    CheckEquals(current, expected,
+      'Test saved border mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+  end;
+  // Finalization
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_Border;
+begin
+  TestWriteReadBorder(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Border;
+begin
+  TestWriteReadBorder(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
