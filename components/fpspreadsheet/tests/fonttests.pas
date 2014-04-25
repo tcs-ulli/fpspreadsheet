@@ -34,21 +34,12 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
     procedure TestWriteReadFont(AFormat: TsSpreadsheetFormat; AFontName: String);
+
   published
-    {
     // BIFF2 test cases
     procedure TestWriteReadFontBIFF2_Arial;
     procedure TestWriteReadFontBIFF2_TimesNewRoman;
     procedure TestWriteReadFontBIFF2_CourierNew;
-
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    Currently the BIFF2 tests fail because of a font size mismatch at size 11.
-    Outside the test suite, however, this error is not reproduced,
-    and also not when the conflicting case is used in the SollValues alone.
-
-    STRANGE...
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    }
 
     // BIFF8 test cases
     procedure TestWriteReadFontBIFF8_Arial;
@@ -130,6 +121,7 @@ var
   font: TsFont;
   currValue: String;
   expectedValue: String;
+  counter: Integer;
 begin
   TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
@@ -170,8 +162,11 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
+  counter := 0;
   for row := 0 to MyWorksheet.GetLastRowNumber do
     for col := 0 to MyWorksheet.GetLastColNumber do begin
+      if (AFormat = sfExcel2) and (counter = 4) then
+        break;  // Excel 2 allows only 4 fonts
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
@@ -183,12 +178,13 @@ begin
       expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
       CheckEquals(currValue, expectedValue,
         'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
+      inc(counter);
     end;
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
 end;
-                                  (*
+
 procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF2_Arial;
 begin
   TestWriteReadFont(sfExcel2, 'Arial');
@@ -203,7 +199,6 @@ procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF2_CourierNew;
 begin
   TestWriteReadFont(sfExcel2, 'CourierNew');
 end;
-*)
 
 procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF8_Arial;
 begin
