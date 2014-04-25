@@ -113,10 +113,11 @@
         <Filename Value="fpsgrid.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="fpsgrid"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="0"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
-        <CursorPos X="3" Y="2"/>
+        <CursorPos X="16" Y="7"/>
         <UsageCount Value="120"/>
         <Loaded Value="True"/>
       </Unit0>
@@ -138,7 +139,7 @@
       <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
         <TopLine Value="2720"/>
         <CursorPos X="49" Y="2742"/>
@@ -151,11 +152,10 @@
       <Unit3>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <UnitName Value="fpspreadsheetgrid"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="3"/>
         <WindowIndex Value="0"/>
         <TopLine Value="257"/>
-        <CursorPos X="36" Y="273"/>
+        <CursorPos X="34" Y="260"/>
         <UsageCount Value="60"/>
         <Loaded Value="True"/>
       </Unit3>
@@ -217,12 +217,10 @@
       <Unit11>
         <Filename Value="..\..\fpsopendocument.pas"/>
         <UnitName Value="fpsopendocument"/>
-        <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="1" Y="1"/>
         <UsageCount Value="15"/>
-        <Loaded Value="True"/>
       </Unit11>
       <Unit12>
         <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
@@ -235,7 +233,7 @@
       <Unit13>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
         <TopLine Value="35"/>
         <CursorPos X="1" Y="62"/>
@@ -252,26 +250,22 @@
       <Unit15>
         <Filename Value="d:\lazarus-svn\lcl\graphics.pp"/>
         <UnitName Value="Graphics"/>
-        <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
         <TopLine Value="34"/>
         <CursorPos X="1" Y="64"/>
         <UsageCount Value="27"/>
-        <Loaded Value="True"/>
       </Unit15>
       <Unit16>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\rtl\objpas\classes\classesh.inc"/>
-        <EditorIndex Value="7"/>
         <WindowIndex Value="0"/>
         <TopLine Value="248"/>
         <CursorPos X="22" Y="263"/>
         <UsageCount Value="19"/>
-        <Loaded Value="True"/>
       </Unit16>
       <Unit17>
         <Filename Value="..\..\xlsbiff8.pas"/>
         <UnitName Value="xlsbiff8"/>
-        <EditorIndex Value="10"/>
+        <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
         <TopLine Value="185"/>
         <CursorPos X="1" Y="203"/>
@@ -296,7 +290,7 @@
       <Unit20>
         <Filename Value="..\..\xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
-        <EditorIndex Value="9"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
         <TopLine Value="493"/>
         <CursorPos X="16" Y="514"/>
@@ -306,7 +300,7 @@
       <Unit21>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <UnitName Value="xlsbiff5"/>
-        <EditorIndex Value="11"/>
+        <EditorIndex Value="7"/>
         <WindowIndex Value="0"/>
         <TopLine Value="124"/>
         <CursorPos X="38" Y="143"/>
@@ -316,7 +310,7 @@
       <Unit22>
         <Filename Value="..\..\xlsbiff2.pas"/>
         <UnitName Value="xlsbiff2"/>
-        <EditorIndex Value="12"/>
+        <EditorIndex Value="8"/>
         <WindowIndex Value="0"/>
         <TopLine Value="82"/>
         <CursorPos X="38" Y="101"/>
@@ -349,12 +343,10 @@
       </Unit25>
       <Unit26>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\rtl\objpas\classes\lists.inc"/>
-        <EditorIndex Value="8"/>
         <WindowIndex Value="0"/>
         <TopLine Value="141"/>
         <CursorPos X="3" Y="143"/>
         <UsageCount Value="17"/>
-        <Loaded Value="True"/>
       </Unit26>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
