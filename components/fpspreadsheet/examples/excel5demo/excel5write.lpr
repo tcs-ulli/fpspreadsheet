@@ -33,16 +33,41 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
 
+  MyWorkbook.AddFont('Calibri', 20, [], scRed);
+
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
+  MyWorksheet.WriteBackgroundColor(0, 0, scRed);
+
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
+
   MyWorksheet.WriteUTF8Text(4, 2, Str_Total);// C5
+  MyWorksheet.WriteBorders(4, 2, [cbEast, cbNorth, cbWest, cbSouth]);
+  myWorksheet.WriteFontColor(4, 2, scRed);
+  MyWorksheet.WriteBackgroundColor(4, 2, scSilver);
+  MyWorksheet.WriteVertAlignment(4, 2, vaTop);
+
   MyWorksheet.WriteNumber(4, 3, 10);         // D5
+
+  MyWorksheet.WriteUTF8Text(4, 4, 'This is a long wrapped text.');
+  MyWorksheet.WriteUsedFormatting(4, 4, [uffWordWrap]);
+  MyWorksheet.WriteHorAlignment(4, 4, haCenter);
+
+  MyWorksheet.WriteUTF8Text(4, 5, 'Stacked text');
+  MyWorksheet.WriteTextRotation(4, 5, rtStacked);
+
+  MyWorksheet.WriteUTF8Text(4, 5, 'Rotated text');
+  MyWorksheet.WriteTextRotation(4, 5, rt90DegreeClockwiseRotation);
+
+  MyWorksheet.WriteUTF8Text(4, 6, 'Rotated text');
+  MyWorksheet.WriteTextRotation(4, 5, rt90DegreeCounterClockwiseRotation);
 
   // Write current date/time
   MyWorksheet.WriteDateTime(5, 0, now);
+  MyWorksheet.WriteFont(5, 0, 'Courier New', 20, [fssBold, fssItalic, fssUnderline], scBlue);
 
 { Uncomment this to test large XLS files
   for i := 2 to 20 do
@@ -83,6 +108,14 @@ begin
   MyWorksheet.WriteUTF8Text(0, 1, Str_Second);
   MyWorksheet.WriteUTF8Text(0, 2, Str_Third);
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
+
+  // Creates a new worksheet
+  MyWorksheet := MyWorkbook.AddWorksheet('Colors');
+  for i:=0 to MyWorkbook.GetPaletteSize-1 do begin
+    MyWorksheet.WriteBlank(i, 0);
+    Myworksheet.WriteBackgroundColor(i, 0, TsColor(i));
+    MyWorksheet.WriteUTF8Text(i, 1, MyWorkbook.GetColorName(i));
+  end;
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel5, true);
