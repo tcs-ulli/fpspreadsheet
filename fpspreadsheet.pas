@@ -155,17 +155,17 @@ type
       So 90 degrees clockwise means that the text will be:
        |  A
        |  B
-      \|/ C
+       v  C
 
       And 90 degree counter clockwise will be:
 
-      /|\ C
+       ^  C
        |  B
        |  A
   }
 
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
-    rt90DegreeCounterClockwiseRotation);
+    rt90DegreeCounterClockwiseRotation, rtStacked);
 
   {@@ Indicates the border for a cell }
 

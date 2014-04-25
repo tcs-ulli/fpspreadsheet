@@ -49,6 +49,8 @@ type
     procedure TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
     // Test column widths
     procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
+    // Test word wrapping
+    procedure TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out numbers & reads back.
@@ -56,18 +58,23 @@ type
 
     { BIFF2 Tests }
     procedure TestWriteReadBIFF2_Alignment;
-    procedure TestWriteReadBIFF2_ColWidths;
     procedure TestWriteReadBIFF2_Border;
+    procedure TestWriteReadBIFF2_ColWidths;
+
+    { BIFF5 Tests }
+    procedure TestWriteReadBIFF5_Alignment;
+    procedure TestWriteReadBIFF5_Border;
+    procedure TestWriteReadBIFF5_ColWidths;
+    procedure TestWriteReadBIFF5_WordWrap;
 
     { BIFF8 Tests }
     procedure TestWriteReadBIFF8_Alignment;
-    procedure TestWriteReadBIFF8_ColWidths;
     procedure TestWriteReadBIFF8_Border;
+    procedure TestWriteReadBIFF8_ColWidths;
+    procedure TestWriteReadBIFF8_WordWrap;
     procedure TestWriteReadNumberFormats;
     // Repeat with date/times
     procedure TestWriteReadDateTimeFormats;
-    // Test word wrapping
-    procedure TestWriteReadWordWrap;
   end;
 
 implementation
@@ -81,6 +88,7 @@ const
   ColWidthSheet = 'ColWidths';
   BordersSheet = 'CellBorders';
   AlignmentSheet = 'TextAlignments';
+  WordwrapSheet = 'Wordwrap';
 
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
@@ -364,6 +372,11 @@ begin
   TestWriteReadAlignment(sfExcel2);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_Alignment;
+begin
+  TestWriteReadAlignment(sfExcel5);
+end;
+
 procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Alignment;
 begin
   TestWriteReadAlignment(sfExcel8);
@@ -428,6 +441,11 @@ begin
   TestWriteReadBorder(sfExcel2);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_Border;
+begin
+  TestWriteReadBorder(sfExcel5);
+end;
+
 procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Border;
 begin
   TestWriteReadBorder(sfExcel8);
@@ -485,12 +503,17 @@ begin
   TestWriteReadColWidths(sfExcel2);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_ColWidths;
+begin
+  TestWriteReadColWidths(sfExcel5);
+end;
+
 procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_ColWidths;
 begin
   TestWriteReadColWidths(sfExcel8);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadWordWrap;
+procedure TSpreadWriteReadFormatTests.TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
 const
   LONGTEXT = 'This is a very, very, very, very long text.';
 var
@@ -507,7 +530,7 @@ begin
   // Write out all test values:
   // Cell A1 is word-wrapped, Cell B1 is NOT word-wrapped
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+  MyWorkSheet:= MyWorkBook.AddWorksheet(WordwrapSheet);
   MyWorksheet.WriteUTF8Text(0, 0, LONGTEXT);
   MyWorksheet.WriteUsedFormatting(0, 0, [uffWordwrap]);
   MyCell := MyWorksheet.FindCell(0, 0);
@@ -520,13 +543,16 @@ begin
   if MyCell = nil then
     fail('Error in test code. Failed to get word-wrapped cell.');
   CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), false, 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, WordwrapSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   MyCell := MyWorksheet.FindCell(0, 0);
@@ -540,6 +566,16 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_Wordwrap;
+begin
+  TestWriteReadWordwrap(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Wordwrap;
+begin
+  TestWriteReadWordwrap(sfExcel8);
 end;
 
 initialization

@@ -18,8 +18,14 @@ const
   { RECORD IDs which didn't change across versions 2-8 }
   INT_EXCEL_ID_FONT       = $0031;
   INT_EXCEL_ID_CODEPAGE   = $0042;
+  INT_EXCEL_ID_COLINFO    = $007D;
   INT_EXCEL_ID_DATEMODE   = $0022;
   INT_EXCEL_ID_PALETTE    = $0092;
+  INT_EXCEL_ID_XF         = $00E0;
+
+  { FONT record constants }
+  INT_FONT_WEIGHT_NORMAL  = $0190;
+  INT_FONT_WEIGHT_BOLD    = $02BC;
 
   { Formula constants TokenID values }
 
@@ -183,46 +189,6 @@ const
 //  1AH tSheet Start of external sheet reference (BIFF2-BIFF4)
 //  1BH tEndSheet End of external sheet reference (BIFF2-BIFF4)
 
-  { Built In Color Palette Indexes }
-  // Proper spelling
-  BUILT_IN_COLOR_PALETTE_BLACK     = $08; // 000000H
-  BUILT_IN_COLOR_PALETTE_WHITE     = $09; // FFFFFFH
-  BUILT_IN_COLOR_PALETTE_RED       = $0A; // FF0000H
-  BUILT_IN_COLOR_PALETTE_GREEN     = $0B; // 00FF00H
-  BUILT_IN_COLOR_PALETTE_BLUE      = $0C; // 0000FFH
-  BUILT_IN_COLOR_PALETTE_YELLOW    = $0D; // FFFF00H
-  BUILT_IN_COLOR_PALETTE_MAGENTA   = $0E; // FF00FFH
-  BUILT_IN_COLOR_PALETTE_CYAN      = $0F; // 00FFFFH
-  BUILT_IN_COLOR_PALETTE_DARK_RED  = $10; // 800000H
-  BUILT_IN_COLOR_PALETTE_DARK_GREEN= $11; // 008000H
-  BUILT_IN_COLOR_PALETTE_DARK_BLUE = $12; // 000080H
-  BUILT_IN_COLOR_PALETTE_OLIVE     = $13; // 808000H
-  BUILT_IN_COLOR_PALETTE_PURPLE    = $14; // 800080H
-  BUILT_IN_COLOR_PALETTE_TEAL      = $15; // 008080H
-  BUILT_IN_COLOR_PALETTE_SILVER    = $16; // C0C0C0H
-  BUILT_IN_COLOR_PALETTE_GREY      = $17; // 808080H
-
-  // Spelling mistake; kept for compatibility
-  BUILT_IN_COLOR_PALLETE_BLACK     = $08 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_WHITE     = $09 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_RED       = $0A deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_GREEN     = $0B deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_BLUE      = $0C deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_YELLOW    = $0D deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_MAGENTA   = $0E deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_CYAN      = $0F deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_DARK_RED  = $10 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_DARK_GREEN= $11 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_DARK_BLUE = $12 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_OLIVE     = $13 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_PURPLE    = $14 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_TEAL      = $15 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_SILVER    = $16 deprecated 'Please use the *_PALETTE version';
-  BUILT_IN_COLOR_PALLETE_GREY      = $17 deprecated 'Please use the *_PALETTE version';
-
-  EXTRA_COLOR_PALETTE_GREY10PCT    = $18; // E6E6E6H //todo: is $18 correct? see 5.74.3 Built-In Default Colour Tables
-  EXTRA_COLOR_PALETTE_GREY20PCT    = $19; // CCCCCCH //todo: is $19 correct? see 5.74.3 Built-In Default Colour Tables
-
   { CODEPAGE record constants }
   WORD_ASCII = 367;
   WORD_UTF_16 = 1200; // BIFF 8
@@ -267,6 +233,57 @@ const
   FORMAT_TIME_MSZ = 47;           //time MM:SS.0
   FORMAT_TIME_INTERVAL = 46;      //time [hh]:mm:ss, hh can be >24
 
+  { XF substructures }
+
+  { XF_TYPE_PROT - XF Type and Cell protection (3 Bits) - BIFF3-BIFF8 }
+  MASK_XF_TYPE_PROT_LOCKED               = $1;
+  MASK_XF_TYPE_PROT_FORMULA_HIDDEN       = $2;
+  MASK_XF_TYPE_PROT_STYLE_XF             = $4; // 0 = CELL XF
+
+  { XF_USED_ATTRIB - Attributes from parent Style XF (6 Bits) - BIFF3-BIFF8
+
+    - In a CELL XF a cleared bit means that the parent attribute is used,
+      while a set bit indicates that the data in this XF is used
+    - In a STYLE XF a cleared bit means that the data in this XF is used,
+      while a set bit indicates that the attribute should be ignored }
+
+  MASK_XF_USED_ATTRIB_NUMBER_FORMAT      = $01;
+  MASK_XF_USED_ATTRIB_FONT               = $02;
+  MASK_XF_USED_ATTRIB_TEXT               = $04;
+  MASK_XF_USED_ATTRIB_BORDER_LINES       = $08;
+  MASK_XF_USED_ATTRIB_BACKGROUND         = $10;
+  MASK_XF_USED_ATTRIB_CELL_PROTECTION    = $20;
+  { the following values do not agree with the documentation !!!
+  MASK_XF_USED_ATTRIB_NUMBER_FORMAT      = $04;
+  MASK_XF_USED_ATTRIB_FONT               = $08;
+  MASK_XF_USED_ATTRIB_TEXT               = $10;
+  MASK_XF_USED_ATTRIB_BORDER_LINES       = $20;
+  MASK_XF_USED_ATTRIB_BACKGROUND         = $40;
+  MASK_XF_USED_ATTRIB_CELL_PROTECTION    = $80;         }
+
+  { XF record constants }
+  MASK_XF_TYPE_PROT                      = $0007;
+  MASK_XF_TYPE_PROT_PARENT               = $FFF0;
+
+  MASK_XF_HOR_ALIGN                      = $07;
+  MASK_XF_VERT_ALIGN                     = $70;
+  MASK_XF_TEXTWRAP                       = $08;
+
+  { XF HORIZONTAL ALIGN }
+  MASK_XF_HOR_ALIGN_LEFT                 = $01;
+  MASK_XF_HOR_ALIGN_CENTER               = $02;
+  MASK_XF_HOR_ALIGN_RIGHT                = $03;
+  MASK_XF_HOR_ALIGN_FILLED               = $04;
+  MASK_XF_HOR_ALIGN_JUSTIFIED            = $05;  // BIFF4-BIFF8
+  MASK_XF_HOR_ALIGN_CENTERED_SELECTION   = $06;  // BIFF4-BIFF8
+  MASK_XF_HOR_ALIGN_DISTRIBUTED          = $07;  // BIFF8
+
+  { XF_VERT_ALIGN }
+  MASK_XF_VERT_ALIGN_TOP                 = $00;
+  MASK_XF_VERT_ALIGN_CENTER              = $10;
+  MASK_XF_VERT_ALIGN_BOTTOM              = $20;
+  MASK_XF_VERT_ALIGN_JUSTIFIED           = $30;
+
 
 type
   TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
@@ -280,25 +297,41 @@ type
     (const ADateTime: TDateTime; ADateMode: TDateMode): Double;
 
 type
+  { Contents of the XF record to be stored in the XFList of the reader }
+  TXFListData = class
+  public
+    FontIndex: Integer;
+    FormatIndex: Integer;
+    HorAlignment: TsHorAlignment;
+    VertAlignment: TsVertAlignment;
+    WordWrap: Boolean;
+    Borders: TsCellBorders;
+    BackgroundColor: TsColor;
+  end;
+
   { TsSpreadBIFFReader }
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
-    // converts an Excel color index to a color value.
-//    function ExcelPaletteToFPSColor(AIndex: Word): TsColor;
-    // Here we can add reading of records which didn't change across BIFF2-8 versions
-    // Workbook Globals records
+    FXFList: TFPList;
+    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Integer); virtual;
+    // Here we can add reading of records which didn't change across BIFF5-8 versions
     procedure ReadCodePage(AStream: TStream);
+    // Read column info
+    procedure ReadColInfo(const AStream: TStream);
     // Figures out what the base year for dates is for this file
     procedure ReadDateMode(AStream: TStream);
     // Read palette
     procedure ReadPalette(AStream: TStream);
+    // Read the row, column, and XF index at the current stream position
+    procedure ReadRowColXF(AStream: TStream; out ARow, ACol, AXF: Word);
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
   end;
 
   { TsSpreadBIFFWriter }
@@ -308,16 +341,17 @@ type
     FDateMode: TDateMode;
     FLastRow: Integer;
     FLastCol: Word;
-//    function FPSColorToExcelPalette(AColor: TsColor): Word;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
-    // Other records which didn't change
-    // Workbook Globals records
+
     // Write out used codepage for character encoding
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
+    // Writes out column info(s)
+    procedure WriteColInfo(AStream: TStream; ACol: PCol);
+    procedure WriteColInfos(AStream: TStream; ASheet: TsWorksheet);
     // Writes out DATEMODE record depending on FDateMode
     procedure WriteDateMode(AStream: TStream);
     // Writes out a PALETTE record containing all colors defined in the workbook
@@ -387,40 +421,70 @@ begin
   end;
 end;
 
+
 { TsSpreadBIFFReader }
 
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FXFList := TFPList.Create;
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
 end;
-                                                        (*
-function TsSpreadBIFFReader.ExcelPaletteToFPSColor(AIndex: Word): TsColor;
+
+destructor TsSpreadBIFFReader.Destroy;
+var
+  j: integer;
 begin
-  case AIndex of
-    BUILT_IN_COLOR_PALLETE_BLACK : Result := scBlack;
-    BUILT_IN_COLOR_PALLETE_WHITE: Result := scWhite;
-    BUILT_IN_COLOR_PALLETE_RED: Result := scRed;
-    BUILT_IN_COLOR_PALLETE_GREEN: Result := scGreen;
-    BUILT_IN_COLOR_PALLETE_BLUE: Result := scBlue;
-    BUILT_IN_COLOR_PALLETE_YELLOW: Result := scYellow;
-    BUILT_IN_COLOR_PALLETE_MAGENTA: Result := scMagenta;
-    BUILT_IN_COLOR_PALLETE_CYAN: Result := scCyan;
-    BUILT_IN_COLOR_PALLETE_DARK_RED: Result := scDarkRed;
-    BUILT_IN_COLOR_PALLETE_DARK_GREEN: Result := scDarkGreen;
-    BUILT_IN_COLOR_PALLETE_DARK_BLUE: Result := scDarkBlue;
-    BUILT_IN_COLOR_PALLETE_OLIVE: Result := scOlive;
-    BUILT_IN_COLOR_PALLETE_PURPLE: Result := scPurple;
-    BUILT_IN_COLOR_PALLETE_TEAL: Result := scTeal;
-    BUILT_IN_COLOR_PALLETE_SILVER: Result := scSilver;
-    BUILT_IN_COLOR_PALLETE_GREY: Result := scGrey;
-    //
-    EXTRA_COLOR_PALETTE_GREY10PCT: Result := scGrey10pct;
-    EXTRA_COLOR_PALETTE_GREY20PCT: Result := scGrey20pct;
+  for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
+  FXFList.Free;
+  inherited Destroy;
+end;
+
+{ Applies the XF formatting given by the given index to the specified cell }
+procedure TsSpreadBIFFReader.ApplyCellFormatting(ARow, ACol: Cardinal;
+  XFIndex: Integer);
+var
+  lCell: PCell;
+  XFData: TXFListData;
+begin
+  lCell := FWorksheet.GetCell(ARow, ACol);
+  if Assigned(lCell) then begin
+    XFData := TXFListData(FXFList.Items[XFIndex]);
+
+    // Font
+    if XFData.FontIndex = 1 then
+      Include(lCell^.UsedFormattingFields, uffBold)
+    else
+    if XFData.FontIndex > 1 then
+      Include(lCell^.UsedFormattingFields, uffFont);
+    lCell^.FontIndex := XFData.FontIndex;
+
+    // Alignment
+    lCell^.HorAlignment := XFData.HorAlignment;
+    lCell^.VertAlignment := XFData.VertAlignment;
+
+    // Word wrap
+    if XFData.WordWrap then
+      Include(lCell^.UsedFormattingFields, uffWordWrap)
+    else
+      Exclude(lCell^.UsedFormattingFields, uffWordWrap);
+
+    // Borders
+    if XFData.Borders <> [] then begin
+      Include(lCell^.UsedFormattingFields, uffBorder);
+      lCell^.Border := XFData.Borders;
+    end else
+      Exclude(lCell^.UsedFormattingFields, uffBorder);
+
+    // Background color
+    if XFData.BackgroundColor <> 0 then begin
+      Include(lCell^.UsedFormattingFields, uffBackgroundColor);
+      lCell^.BackgroundColor := XFData.BackgroundColor;
+    end;
   end;
 end;
-                                                          *)
+
 // In BIFF 8 it seams to always use the UTF-16 codepage
 procedure TsSpreadBIFFReader.ReadCodePage(AStream: TStream);
 var
@@ -476,6 +540,24 @@ begin
   end;
 end;
 
+procedure TsSpreadBiffReader.ReadColInfo(const AStream: TStream);
+var
+  c, c1, c2: Cardinal;
+  w: Word;
+  col: TCol;
+begin
+  // read column start and end index of column range
+  c1 := WordLEToN(AStream.ReadWord);
+  c2 := WordLEToN(AStream.ReadWord);
+  // read col width in 1/256 of the width of "0" character
+  w := WordLEToN(AStream.ReadWord);
+  // calculate width in units of "characters"
+  col.Width := w / 256;
+  // assign width to columns
+  for c := c1 to c2 do
+    FWorksheet.WriteColInfo(c, col);
+end;
+
 procedure TsSpreadBIFFReader.ReadDateMode(AStream: TStream);
 var
   lBaseMode: Word;
@@ -512,6 +594,18 @@ begin
     pal[i] := DWordLEToN(AStream.ReadDWord);
   Workbook.UsePalette(@pal[0], n, false);
   FPaletteFound := true;
+end;
+
+// Read the row, column and xf index
+procedure TsSpreadBIFFReader.ReadRowColXF(AStream: TStream; out ARow,
+  ACol, AXF: WORD);
+begin
+  { BIFF Record data for row and column}
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record }
+  AXF := WordLEtoN(AStream.ReadWord);
 end;
 
 // Read the part of the ROW record that is common to all BIFF versions
@@ -766,6 +860,37 @@ begin
     lCodepage := WORD_CP_1252_Latin1;
   end;
   AStream.WriteWord(WordToLE(lCodepage));
+end;
+
+procedure TsSpreadBIFFWriter.WriteColInfo(AStream: TStream; ACol: PCol);
+var
+  w: Integer;
+begin
+  if Assigned(ACol) then begin
+    { BIFF Record header }
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLINFO));  // BIFF record header
+    AStream.WriteWord(WordToLE(12));                    // Record size
+    AStream.WriteWord(WordToLE(ACol^.Col));             // start column
+    AStream.WriteWord(WordToLE(ACol^.Col));             // end column
+    { calculate width to be in units of 1/256 of pixel width of character "0" }
+    w := round(ACol^.Width * 256);
+    AStream.WriteWord(WordToLE(w));                     // write width
+    AStream.WriteWord(15);                              // XF record, ignored
+    AStream.WriteWord(0);                               // option flags, ignored
+    AStream.WriteWord(0);                               // "not used"
+  end;
+end;
+
+procedure TsSpreadBIFFWriter.WriteColInfos(AStream: TStream;
+  ASheet: TsWorksheet);
+var
+  j: Integer;
+  col: PCol;
+begin
+  for j := 0 to ASheet.Cols.Count-1 do begin
+    col := PCol(ASheet.Cols[j]);
+    WriteColInfo(AStream, col);
+  end;
 end;
 
 procedure TsSpreadBIFFWriter.WriteDateMode(AStream: TStream);

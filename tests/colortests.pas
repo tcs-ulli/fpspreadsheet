@@ -31,6 +31,18 @@ type
     { BIFF2 file format tests }
     procedure TestWriteReadBIFF2_Font_InternalPal;        // internal palette for BIFF2 file format
 
+    { BIFF5 file format tests }
+    // Background colors...
+    procedure TestWriteReadBIFF5_Background_InternalPal;  // internal palette
+    procedure TestWriteReadBIFF5_Background_Biff5Pal;     // official biff5 palette
+    procedure TestWriteReadBIFF5_Background_Biff8Pal;     // official biff8 palette
+    procedure TestWriteReadBIFF5_Background_RandomPal;    // palette 64, top 56 entries random
+    // Font colors...
+    procedure TestWriteReadBIFF5_Font_InternalPal;        // internal palette for BIFF8 file format
+    procedure TestWriteReadBIFF5_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
+    procedure TestWriteReadBIFF5_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
+    procedure TestWriteReadBIFF5_Font_RandomPal;          // palette 64, top 56 entries random
+
     { BIFF8 file format tests }
     // Background colors...
     procedure TestWriteReadBIFF8_Background_InternalPal;  // internal palette
@@ -248,6 +260,47 @@ end;
 procedure TSpreadWriteReadColorTests.TestWriteReadBIFF2_Font_InternalPal;
 begin
   TestWriteReadFontColors(sfExcel2, 0);
+end;
+
+{ Tests for BIFF5 file format }
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_InternalPal;
+begin
+  TestWriteReadBackgroundColors(sfExcel5, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_Biff5Pal;
+begin
+  TestWriteReadBackgroundColors(sfExcel5, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_Biff8Pal;
+begin
+  TestWriteReadBackgroundColors(sfExcel5, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_RandomPal;
+begin
+  TestWriteReadBackgroundColors(sfExcel5, 999);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_InternalPal;
+begin
+  TestWriteReadFontColors(sfExcel5, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_Biff5Pal;
+begin
+  TestWriteReadFontColors(sfExcel5, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_Biff8Pal;
+begin
+  TestWriteReadFontColors(sfExcel5, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_RandomPal;
+begin
+  TestWriteReadFontColors(sfExcel5, 999);
 end;
 
 { Tests for BIFF8 file format }

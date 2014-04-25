@@ -43,6 +43,12 @@ type
     procedure TestWriteReadFontBIFF2_TimesNewRoman;
     procedure TestWriteReadFontBIFF2_CourierNew;
 
+    // BIFF5 test cases
+    procedure TestWriteReadBoldBIFF5;
+    procedure TestWriteReadFontBIFF5_Arial;
+    procedure TestWriteReadFontBIFF5_TimesNewRoman;
+    procedure TestWriteReadFontBIFF5_CourierNew;
+
     // BIFF8 test cases
     procedure TestWriteReadBoldBIFF8;
     procedure TestWriteReadFontBIFF8_Arial;
@@ -189,6 +195,11 @@ begin
   TestWriteReadBold(sfExcel2);
 end;
 
+procedure TSpreadWriteReadFontTests.TestWriteReadBoldBIFF5;
+begin
+  TestWriteReadBold(sfExcel5);
+end;
+
 procedure TSpreadWriteReadFontTests.TestWriteReadBoldBIFF8;
 begin
   TestWriteReadBold(sfExcel8);
@@ -270,6 +281,7 @@ begin
   DeleteFile(TempFile);
 end;
 
+{ BIFF2 }
 procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF2_Arial;
 begin
   TestWriteReadFont(sfExcel2, 'Arial');
@@ -285,6 +297,23 @@ begin
   TestWriteReadFont(sfExcel2, 'CourierNew');
 end;
 
+{ BIFF5 }
+procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF5_Arial;
+begin
+  TestWriteReadFont(sfExcel5, 'Arial');
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF5_TimesNewRoman;
+begin
+  TestWriteReadFont(sfExcel5, 'TimesNewRoman');
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF5_CourierNew;
+begin
+  TestWriteReadFont(sfExcel5, 'CourierNew');
+end;
+
+{ BIFF8 }
 procedure TSpreadWriteReadFontTests.TestWriteReadFontBIFF8_Arial;
 begin
   TestWriteReadFont(sfExcel8, 'Arial');
