@@ -63,29 +63,6 @@ uses
   fpsutils, lazutf8;
 
 type
-  TXFRecordData = class
-  public
-    FontIndex: Integer;
-    FormatIndex: Integer;
-    HorAlignment: TsHorAlignment;
-    VertAlignment: TsVertAlignment;
-    WordWrap: Boolean;
-    Borders: TsCellBorders;
-    BackgroundColor: TsColor;
-    {
-    FontIndex: Integer;
-    Border: TsBorder;
-    XFType_Protection: Word;
-    Align_TextBreak: Byte;
-    XF_Rotation: Byte;
-    Indent_Shrink_TextDir: Byte;
-    UsedAttrib: Byte;
-    Border_Background1: DWord;
-    Border_Background2: DWord;
-    Border_Background3: Word;
-    }
-  end;
-
   TFormatRecordData = class
   public
     Index: Integer;
@@ -101,10 +78,9 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
     FSharedStringTable: TStringList;
-    FXFList: TFPList; // of TXFRecordData
     FFormatList: TFPList; // of TFormatRecordData
     function DecodeRKValue(const ARK: DWORD): Double;
-    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Integer);
+//    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Integer);
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ADecimals: Word;
       out ANumberFormatStr: String);
@@ -119,9 +95,8 @@ type
 
     procedure ReadRKValue(const AStream: TStream);
     procedure ReadMulRKValues(const AStream: TStream);
-    procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD);
+//    procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD);
     function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
-    procedure ReadRichString(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     procedure ReadLabelSST(const AStream: TStream);
     // Read XF record
@@ -135,13 +110,12 @@ type
     // procedure ReadCodepage in xlscommon
     // procedure ReadDateMode in xlscommon
     procedure ReadFont(const AStream: TStream);
-    // Read col info
-    procedure ReadColInfo(const AStream: TStream);
     { Record reading methods }
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
+    procedure ReadRichString(const AStream: TStream);
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -164,12 +138,8 @@ type
       ACell: PCell); override;
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
-    // procedure WriteCodepage in xlscommon; Workbook Globals record
-    procedure WriteColInfo(AStream: TStream; ACol: PCol);
-    procedure WriteColInfos(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
-    // procedure WriteDateMode in xlscommon; Workbook Globals record
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
@@ -279,7 +249,6 @@ const
   INT_EXCEL_ID_BLANK      = $0201;
   INT_EXCEL_ID_BOF        = $0809;
   INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
-  INT_EXCEL_ID_COLINFO    = $007D;
   INT_EXCEL_ID_COUNTRY    = $008C;
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
@@ -291,7 +260,6 @@ const
   INT_EXCEL_ID_STYLE      = $0293;
   INT_EXCEL_ID_WINDOW1    = $003D;
   INT_EXCEL_ID_WINDOW2    = $023E;
-  INT_EXCEL_ID_XF         = $00E0;
   INT_EXCEL_ID_RSTRING    = $00D6;
   INT_EXCEL_ID_RK         = $027E;
   INT_EXCEL_ID_MULRK      = $00BD;
@@ -317,10 +285,6 @@ const
   INT_BOF_WORKSPACE       = $0100;
   INT_BOF_BUILD_ID        = $1FD2;
   INT_BOF_BUILD_YEAR      = $07CD;
-
-  { FONT record constants }
-  INT_FONT_WEIGHT_NORMAL  = $0190;
-  INT_FONT_WEIGHT_BOLD    = $02BC;
 
   { FORMULA record constants }
   MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
@@ -352,44 +316,11 @@ const
 
   { XF substructures }
 
-  { XF_TYPE_PROT - XF Type and Cell protection (3 Bits) - BIFF3-BIFF8 }
-  MASK_XF_TYPE_PROT_LOCKED            = $1;
-  MASK_XF_TYPE_PROT_FORMULA_HIDDEN    = $2;
-  MASK_XF_TYPE_PROT_STYLE_XF          = $4; // 0 = CELL XF
-
-  { XF_USED_ATTRIB - Attributes from parent Style XF (6 Bits) - BIFF3-BIFF8
-  
-    In a CELL XF a cleared bit means that the parent attribute is used,
-    while a set bit indicates that the data in this XF is used
-
-    In a STYLE XF a cleared bit means that the data in this XF is used,
-    while a set bit indicates that the attribute should be ignored }
-  MASK_XF_USED_ATTRIB_NUMBER_FORMAT   = $04;
-  MASK_XF_USED_ATTRIB_FONT            = $08;
-  MASK_XF_USED_ATTRIB_TEXT            = $10;
-  MASK_XF_USED_ATTRIB_BORDER_LINES    = $20;
-  MASK_XF_USED_ATTRIB_BACKGROUND      = $40;
-  MASK_XF_USED_ATTRIB_CELL_PROTECTION = $80;
-
-  { XF HORIZONTAL ALIGN }
-  MASK_XF_HOR_ALIGN_LEFT              = $01;
-  MASK_XF_HOR_ALIGN_CENTER            = $02;
-  MASK_XF_HOR_ALIGN_RIGHT             = $03;
-  MASK_XF_HOR_ALIGN_FILLED            = $04;
-  MASK_XF_HOR_ALIGN_JUSTIFIED         = $05;  // BIFF4-BIFF8
-  MASK_XF_HOR_ALIGN_CENTERED_SELECTION= $06;  // BIFF4-BIFF8
-  MASK_XF_HOR_ALIGN_DISTRIBUTED       = $07;  // BIFF8
-
-  { XF_VERT_ALIGN }
-  MASK_XF_VERT_ALIGN_TOP              = $00;
-  MASK_XF_VERT_ALIGN_CENTER           = $10;
-  MASK_XF_VERT_ALIGN_BOTTOM           = $20;
-  MASK_XF_VERT_ALIGN_JUSTIFIED        = $30;
-
   { XF_ROTATION }
-  XF_ROTATION_HORIZONTAL                 = 0;
-  XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE = 90;
-  XF_ROTATION_90_DEGREE_CLOCKWISE        = 180;
+  XF_ROTATION_HORIZONTAL              = 0;
+  XF_ROTATION_90DEG_CCW               = 90;
+  XF_ROTATION_90DEG_CW                = 180;
+  XF_ROTATION_STACKED                 = 255;   // Letters stacked top to bottom, but not rotated
 
   { XF CELL BORDER }
   MASK_XF_BORDER_LEFT                 = $0000000F;
@@ -397,18 +328,6 @@ const
   MASK_XF_BORDER_TOP                  = $00000F00;
   MASK_XF_BORDER_BOTTOM               = $0000F000;
 
-  { XF record constants }
-  MASK_XF_TYPE_PROT                   = $0007;
-  MASK_XF_TYPE_PROT_PARENT            = $FFF0;
-
-  MASK_XF_HOR_ALIGN                   = $07;
-  MASK_XF_VERT_ALIGN                  = $70;
-  MASK_XF_TEXTWRAP                    = $08;
-
-
-{
-  Exported functions
-}
 
 { TsSpreadBIFF8Writer }
 
@@ -425,6 +344,7 @@ begin
     Exit;
   end;
 
+{
   if ACell^.UsedFormattingFields = [uffTextRotation] then
   begin
     case ACell^.TextRotation of
@@ -435,6 +355,7 @@ begin
     end;
     Exit;
   end;
+ }
 
   {
   uffNumberFormat does not seem to have default XF indexes, but perhaps look at XF_21
@@ -553,8 +474,9 @@ begin
     begin
       case FFormattingStyles[i].TextRotation of
       trHorizontal:                       lTextRotation := XF_ROTATION_HORIZONTAL;
-      rt90DegreeClockwiseRotation:        lTextRotation := XF_ROTATION_90_DEGREE_CLOCKWISE;
-      rt90DegreeCounterClockwiseRotation: lTextRotation := XF_ROTATION_90_DEGREE_COUNTERCLOCKWISE;
+      rt90DegreeClockwiseRotation:        lTextRotation := XF_ROTATION_90DEG_CW;
+      rt90DegreeCounterClockwiseRotation: lTextRotation := XF_ROTATION_90DEG_CCW;
+      rtStacked:                          lTextRotation := XF_ROTATION_STACKED;
       end;
     end;
 
@@ -680,17 +602,11 @@ begin
     AStream.Position := CurrentPos;
 
     WriteBOF(AStream, INT_BOF_SHEET);
-
-    WriteIndex(AStream);
-
-    WriteColInfos(AStream, sheet);
-
-    WriteDimensions(AStream, sheet);
-
-    WriteWindow2(AStream, True);
-
-    WriteCellsToStream(AStream, sheet.Cells);
-
+      WriteIndex(AStream);
+      WriteColInfos(AStream, sheet);
+      WriteDimensions(AStream, sheet);
+      WriteWindow2(AStream, True);
+      WriteCellsToStream(AStream, sheet.Cells);
     WriteEOF(AStream);
   end;
   
@@ -798,42 +714,6 @@ begin
   {String flags}
   AStream.WriteByte(1);
   AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
-end;
-
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteColInfo ()
-*
-*  DESCRIPTION:    Writes a COLINFO record
-*******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteColInfo(AStream: TStream; ACol: PCol);
-var
-  w: Integer;
-begin
-  if Assigned(ACol) then begin
-    { BIFF Record header }
-    AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLINFO));  // BIFF record header
-    AStream.WriteWord(WordToLE(12));                    // Record size
-    AStream.WriteWord(WordToLE(ACol^.Col));             // start column
-    AStream.WriteWord(WordToLE(ACol^.Col));             // end column
-    { calculate width to be in units of 1/256 of pixel width of character "0" }
-    w := round(ACol^.Width * 256);
-    AStream.WriteWord(WordToLE(w));                     // write width
-    AStream.WriteWord(15);                              // XF record, ignored
-    AStream.WriteWord(0);                               // option flags, ignored
-    AStream.WriteWord(0);                               // "not used"
-  end;
-end;
-
-procedure TsSpreadBIFF8Writer.WriteColInfos(AStream: TStream;
-  ASheet: TsWorksheet);
-var
-  j: Integer;
-  col: PCol;
-begin
-  for j := 0 to ASheet.Cols.Count-1 do begin
-    col := PCol(ASheet.Cols[j]);
-    WriteColInfo(AStream, col);
-  end;
 end;
 
 {*******************************************************************
@@ -949,7 +829,6 @@ begin
   AStream.WriteWord(WordToLE(optn));
 
   { Colour index }
-  //AStream.WriteWord(WordToLE(8 + ord(AFont.Color))); //WordToLE($7FFF));
   AStream.WriteWord(WordToLE(ord(AFont.Color)));
 
   { Font weight }
@@ -1643,6 +1522,22 @@ end;
 
 { TsSpreadBIFF8Reader }
 
+constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FFormatList := TFPList.Create;
+end;
+
+destructor TsSpreadBIFF8Reader.Destroy;
+var
+  j: integer;
+begin
+  for j := FFormatList.Count-1 downto 0 do TObject(FFormatList[j]).Free;
+  FFormatList.Free;
+  if Assigned(FSharedStringTable) then FSharedStringTable.Free;
+  inherited;
+end;
+
 function TsSpreadBIFF8Reader.DecodeRKValue(const ARK: DWORD): Double;
 var
   Number: Double;
@@ -1701,7 +1596,7 @@ const
     0, 0, 0, 0, 0, 0, 0, 0);          // 51..58
 var
   lFormatData: TFormatRecordData;
-  lXFData: TXFRecordData;
+  lXFData: TXFListData;
   isAMPM: Boolean;
   isLongTime: Boolean;
   isMilliSec: Boolean;
@@ -1719,7 +1614,7 @@ begin
 
   if lFormatData = nil then begin
     // no custom format, so first test for default formats
-    lXFData := TXFRecordData (FXFList.Items[AXFIndex]);
+    lXFData := TXFListData (FXFList.Items[AXFIndex]);
     case lXFData.FormatIndex of
       FORMAT_DATE_DM:
         begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'DM'; end;
@@ -1861,7 +1756,7 @@ begin
     Result := DecomprStrValue;
   end;
   if StringFlags and 8 = 8 then begin
-    //Rich string (This only happend in BIFF8)
+    //Rich string (This only happened in BIFF8)
     for j := 1 to RunsCounter do begin
       if (PendingRecordSize<=0) then begin
         //A CONTINUE may happend here
@@ -1909,14 +1804,13 @@ var
 begin
   // Clear existing fonts. They will be replaced by those from the file.
   FWorkbook.RemoveAllFonts;
-
   if Assigned(FSharedStringTable) then FreeAndNil(FSharedStringTable);
-  while (not SectionEOF) do
-  begin
+
+  while (not SectionEOF) do begin
     { Read the record header }
     RecordType := WordLEToN(AStream.ReadWord);
     RecordSize := WordLEToN(AStream.ReadWord);
-    PendingRecordSize:=RecordSize;
+    PendingRecordSize := RecordSize;
 
     CurStreamPos := AStream.Position;
 
@@ -2086,84 +1980,10 @@ begin
   end;
 end;
 
-procedure TsSpreadBIFF8Reader.ReadRowColXF(const AStream: TStream; out ARow,
-  ACol, AXF: WORD);
-begin
-  { BIFF Record data }
-  ARow := WordLEToN(AStream.ReadWord);
-  ACol := WordLEToN(AStream.ReadWord);
-
-  { Index to XF record }
-  AXF:=WordLEtoN(AStream.ReadWord);
-end;
-
-{ Applies the XF formatting given by the given index to the specified cell }
-procedure TsSpreadBIFF8Reader.ApplyCellFormatting(ARow, ACol: Cardinal;
-  XFIndex: Integer);
-var
-  lCell: PCell;
-  XFData: TXFRecordData;
-begin
-  lCell := FWorksheet.GetCell(ARow, ACol);
-  if Assigned(lCell) then begin
-    XFData := TXFRecordData(FXFList.Items[XFIndex]);
-
-    // Font
-    if XFData.FontIndex = 1 then
-      Include(lCell^.UsedFormattingFields, uffBold)
-    else
-    if XFData.FontIndex > 0 then
-      Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := XFData.FontIndex;
-
-    // Alignment
-    lCell^.HorAlignment := XFData.HorAlignment;
-    lCell^.VertAlignment := XFData.VertAlignment;
-
-    // Word wrap
-    if XFData.WordWrap then
-      Include(lCell^.UsedFormattingFields, uffWordWrap)
-    else
-      Exclude(lCell^.UsedFormattingFields, uffWordWrap);
-
-    // Borders
-    if XFData.Borders <> [] then begin
-      Include(lCell^.UsedFormattingFields, uffBorder);
-      lCell^.Border := XFData.Borders;
-    end else
-      Exclude(lCell^.UsedFormattingFields, uffBorder);
-
-    // Background color
-    if XFData.BackgroundColor <> 0 then begin
-      Include(lCell^.UsedFormattingFields, uffBackgroundColor);
-      lCell^.BackgroundColor := XFData.BackgroundColor;
-    end;
-  end;
-end;
-
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
   const ALength: WORD): UTF8String;
 begin
   Result:=UTF16ToUTF8(ReadWideString(AStream, ALength));
-end;
-
-constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create(AWorkbook);
-  FXFList := TFPList.Create;
-  FFormatList := TFPList.Create;
-end;
-
-destructor TsSpreadBIFF8Reader.Destroy;
-var
-  j: integer;
-begin
-  for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
-  for j := FFormatList.Count-1 downto 0 do TObject(FFormatList[j]).Free;
-  FXFList.Free;
-  FFormatList.Free;
-  if Assigned(FSharedStringTable) then FSharedStringTable.Free;
-  inherited;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -2466,13 +2286,13 @@ type
     Border_Background_3: DWord;            // Offset 18, Size 2
   end;
 var
-  lData: TXFRecordData;
+  lData: TXFListData;
   xf: TXFRecord;
   b: Byte;
 begin
   AStream.ReadBuffer(xf, SizeOf(xf));
 
-  lData := TXFRecordData.Create;
+  lData := TXFListData.Create;
 
   // Font index
   lData.FontIndex := WordLEToN(xf.FontIndex);
@@ -2541,12 +2361,12 @@ end;
 function TsSpreadBIFF8Reader.FindFormatRecordForCell(const AXFIndex: Integer
   ): TFormatRecordData;
 var
-  lXFData: TXFRecordData;
+  lXFData: TXFListData;
   lFormatData: TFormatRecordData;
   i: Integer;
 begin
   Result := nil;
-  lXFData := TXFRecordData(FXFList.Items[AXFIndex]);
+  lXFData := TXFListData(FXFList.Items[AXFIndex]);
   for i := 0 to FFormatList.Count-1 do
   begin
     lFormatData := TFormatRecordData(FFormatList.Items[i]);
@@ -2612,24 +2432,6 @@ begin
 
   { Add font to workbook's font list }
   FWorkbook.AddFont(font);
-end;
-
-procedure TsSpreadBiff8Reader.ReadColInfo(const AStream: TStream);
-var
-  c, c1, c2: Cardinal;
-  w: Word;
-  col: TCol;
-begin
-  // read column start and end index of column range
-  c1 := WordLEToN(AStream.ReadWord);
-  c2 := WordLEToN(AStream.ReadWord);
-  // read col width in 1/256 of the width of "0" character
-  w := WordLEToN(AStream.ReadWord);
-  // calculate width in units of "characters"
-  col.Width := w / 256;
-  // assign width to columns
-  for c := c1 to c2 do
-    FWorksheet.WriteColInfo(c, col);
 end;
 
 
