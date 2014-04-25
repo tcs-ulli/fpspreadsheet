@@ -30,7 +30,7 @@ begin
 
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);
- // MyWorksheet.WriteFont(0, 0, 'Arial', 11, [fssBold, fssItalic], scBlack);
+  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
 
   MyWorksheet.WriteNumber(0, 1, 2.0);
   MyWorksheet.WriteNumber(0, 2, 3.0);
