@@ -5,12 +5,14 @@ unit beUtils;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, Forms;
+  Classes, SysUtils, IniFiles, Forms,
+  fpspreadsheet;
 
 function  CreateIni : TCustomIniFile;
 procedure ReadFormFromIni(ini: TCustomIniFile; ASection: String; AForm: TCustomForm);
 procedure WriteFormToIni(ini: TCustomIniFile; ASection: String; AForm: TCustomForm);
 
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 
 implementation
 
@@ -59,6 +61,23 @@ begin
     ini.WriteInteger(ASection, 'Top', AForm.Top);
     ini.WriteInteger(ASection, 'Width', AForm.Width);
     ini.WriteInteger(ASection, 'Height', AForm.Height);
+  end;
+end;
+
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
+begin
+  case AFormat of
+    sfExcel2              : Result := 'BIFF2';
+    sfExcel3              : Result := 'BIFF3';
+    sfExcel4              : Result := 'BIFF4';
+    sfExcel5              : Result := 'BIFF5';
+    sfExcel8              : Result := 'BIFF8';
+    sfooxml               : Result := 'OOXML';
+    sfOpenDocument        : Result := 'Open Document';
+    sfCSV                 : Result := 'CSV';
+    sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
+    sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
+    else                    Result := '-unknown format-';
   end;
 end;
 

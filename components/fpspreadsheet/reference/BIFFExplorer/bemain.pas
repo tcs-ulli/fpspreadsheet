@@ -757,6 +757,7 @@ end;
 procedure TMainForm.LoadFile(const AFileName: String; AFormat: TsSpreadsheetFormat);
 var
   OLEDocument: TOLEDocument;
+  streamname: UTF8String;
 begin
   if MemStream <> nil then
     FreeAndNil(MemStream);
@@ -773,7 +774,8 @@ begin
 
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
-    OLEStorage.ReadOLEFile(AFileName, OLEDocument, 'Workbook');
+    if AFormat = sfExcel8 then streamname := 'Workbook' else streamname := 'Book';
+    OLEStorage.ReadOLEFile(AFileName, OLEDocument, streamname);
 
     // Check if the operation succeded
     if MemStream.Size = 0 then
@@ -1115,7 +1117,13 @@ end;
 
 procedure TMainForm.UpdateCaption;
 begin
-  Caption := Format('BIFF Explorer - "%s', [IfThen(FFileName <> '', FFileName, 'no file loaded')]);
+  if FFileName = '' then
+    Caption := 'BIFF Explorer - (no file loaded)'
+  else
+    Caption := Format('BIFF Explorer - "%s [%s]', [
+      FFileName,
+      GetFileFormatName(FFormat)
+    ]);
 end;
 
 
