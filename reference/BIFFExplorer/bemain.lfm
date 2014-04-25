@@ -366,7 +366,6 @@ object MainForm: TMainForm
       object BtnFindNext: TSpeedButton
         Left = 240
         Height = 22
-        Hint = 'Find next'
         Top = 6
         Width = 23
         Action = AcFindNext
@@ -411,7 +410,6 @@ object MainForm: TMainForm
       object BtnFindPrev: TSpeedButton
         Left = 216
         Height = 22
-        Hint = 'Find previous'
         Top = 6
         Width = 23
         Action = AcFindPrev
@@ -453,10 +451,9 @@ object MainForm: TMainForm
           FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
         }
       end
-      object BtnCloseFind: TSpeedButton
+      object SpeedButton3: TSpeedButton
         Left = 3
         Height = 22
-        Hint = 'Close "Find" panel'
         Top = 6
         Width = 23
         Action = AcFindClose
