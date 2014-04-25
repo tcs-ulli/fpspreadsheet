@@ -33,15 +33,18 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
+    procedure TestWriteReadBold(AFormat: TsSpreadsheetFormat);
     procedure TestWriteReadFont(AFormat: TsSpreadsheetFormat; AFontName: String);
 
   published
     // BIFF2 test cases
+    procedure TestWriteReadBoldBIFF2;
     procedure TestWriteReadFontBIFF2_Arial;
     procedure TestWriteReadFontBIFF2_TimesNewRoman;
     procedure TestWriteReadFontBIFF2_CourierNew;
 
     // BIFF8 test cases
+    procedure TestWriteReadBoldBIFF8;
     procedure TestWriteReadFontBIFF8_Arial;
     procedure TestWriteReadFontBIFF8_TimesNewRoman;
     procedure TestWriteReadFontBIFF8_CourierNew;
@@ -107,6 +110,88 @@ end;
 procedure TSpreadWriteReadFontTests.TearDown;
 begin
   inherited TearDown;
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteReadBold(AFormat: TsSpreadsheetFormat);
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  row, col: Integer;
+  MyCell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+  currValue: String;
+  expectedValue: String;
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
+
+  // Write out a cell without "bold"formatting style
+  row := 0;
+  col := 0;
+  MyWorksheet.WriteUTF8Text(row, col, 'not bold');
+  MyCell := MyWorksheet.FindCell(row, col);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get cell.');
+  CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
+    'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row,Col));
+
+  // Write out a cell with "bold"formatting style
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, col, 'bold');
+  MyWorksheet.WriteUsedFormatting(row, col, [uffBold]);
+  MyCell := MyWorksheet.FindCell(row, col);
+  if MyCell = nil then
+    fail('Error in test code. Failded to get cell.');
+  CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
+    'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row, Col));
+
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+
+  // Try to read cell without "bold"
+  row := 0;
+  col := 0;
+  MyCell := MyWorksheet.FindCell(row, col);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get cell.');
+  CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
+    'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
+
+  // Try to read cell with "bold"
+  inc(row);
+  MyCell := MyWorksheet.FindCell(row, col);
+  if MyCell = nil then
+    fail('Error in test code. Failed to get cell.');
+  CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
+    'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
+
+  MyWorkbook.Free;
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteReadBoldBIFF2;
+begin
+  TestWriteReadBold(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteReadBoldBIFF8;
+begin
+  TestWriteReadBold(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFontTests.TestWriteReadFont(AFormat: TsSpreadsheetFormat;

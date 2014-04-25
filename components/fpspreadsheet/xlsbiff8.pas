@@ -2109,10 +2109,12 @@ begin
     XFData := TXFRecordData(FXFList.Items[XFIndex]);
 
     // Font
-    if XFData.FontIndex > 0 then begin
+    if XFData.FontIndex = 1 then
+      Include(lCell^.UsedFormattingFields, uffBold)
+    else
+    if XFData.FontIndex > 0 then
       Include(lCell^.UsedFormattingFields, uffFont);
-      lCell^.FontIndex := XFData.FontIndex;
-    end;
+    lCell^.FontIndex := XFData.FontIndex;
 
     // Alignment
     lCell^.HorAlignment := XFData.HorAlignment;

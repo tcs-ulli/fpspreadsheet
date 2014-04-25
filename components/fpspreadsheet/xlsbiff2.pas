@@ -860,9 +860,12 @@ begin
   if Assigned(lCell) then begin
     xfData := TXFData(FXFList.items[xf]);
 
-    // Font index
-    Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := xfData.FontIndex; //AFont;
+    // Font index, "bold" attribute
+    if xfData.FontIndex = 1 then
+      Include(lCell^.UsedFormattingFields, uffBold)
+    else
+      Include(lCell^.UsedFormattingFields, uffFont);
+    lCell^.FontIndex := xfData.FontIndex;
 
     // Horizontal justification
     if AStyle and $07 <> 0 then begin
