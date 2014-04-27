@@ -2317,6 +2317,14 @@ begin
   // Word wrap
   lData.WordWrap := (xf.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0;
 
+  // TextRotation
+  case xf.XFRotation of
+    XF_ROTATION_HORIZONTAL : lData.TextRotation := trHorizontal;
+    XF_ROTATION_90DEG_CCW  : ldata.TextRotation := rt90DegreeCounterClockwiseRotation;
+    XF_ROTATION_90DEG_CW   : lData.TextRotation := rt90DegreeClockwiseRotation;
+    XF_ROTATION_STACKED    : lData.TextRotation := rtStacked;
+  end;
+
   // Cell borders
   xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);
   lData.Borders := [];
