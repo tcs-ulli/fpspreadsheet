@@ -37,9 +37,6 @@ begin
 
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1
-  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
-  MyWorksheet.WriteBackgroundColor(0, 0, scRed);
-
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
@@ -59,11 +56,11 @@ begin
   MyWorksheet.WriteUTF8Text(4, 5, 'Stacked text');
   MyWorksheet.WriteTextRotation(4, 5, rtStacked);
 
-  MyWorksheet.WriteUTF8Text(4, 5, 'Rotated text');
-  MyWorksheet.WriteTextRotation(4, 5, rt90DegreeClockwiseRotation);
+  MyWorksheet.WriteUTF8Text(4, 6, 'CW-rotated text');
+  MyWorksheet.WriteTextRotation(4, 6, rt90DegreeClockwiseRotation);
 
-  MyWorksheet.WriteUTF8Text(4, 6, 'Rotated text');
-  MyWorksheet.WriteTextRotation(4, 5, rt90DegreeCounterClockwiseRotation);
+  MyWorksheet.WriteUTF8Text(4, 7, 'CCW-rotated text');
+  MyWorksheet.WriteTextRotation(4, 7, rt90DegreeCounterClockwiseRotation);
 
   // Write current date/time
   MyWorksheet.WriteDateTime(5, 0, now);

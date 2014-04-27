@@ -1279,10 +1279,10 @@ begin
     if uffTextRotation in FFormattingStyles[i].UsedFormattingFields then
     begin
       case FFormattingStyles[i].TextRotation of
-      trHorizontal                      : lTextRotation := XF_ROTATION_HORIZONTAL;
-      rt90DegreeClockwiseRotation       : lTextRotation := XF_ROTATION_90DEG_CW;
-      rt90DegreeCounterClockwiseRotation: lTextRotation := XF_ROTATION_90DEG_CCW;
-      rtStacked                         : lTextRotation := XF_ROTATION_STACKED;
+        trHorizontal                       : lTextRotation := XF_ROTATION_HORIZONTAL;
+        rt90DegreeClockwiseRotation        : lTextRotation := XF_ROTATION_90DEG_CW;
+        rt90DegreeCounterClockwiseRotation : lTextRotation := XF_ROTATION_90DEG_CCW;
+        rtStacked                          : lTextRotation := XF_ROTATION_STACKED;
       end;
     end;
 
@@ -1733,6 +1733,14 @@ begin
 
   // Word wrap
   lData.WordWrap := (xf.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0;
+
+  // Text rotation
+  case xf.XFRotation of
+    XF_ROTATION_HORIZONTAL : lData.TextRotation := trHorizontal;
+    XF_ROTATION_90DEG_CCW  : ldata.TextRotation := rt90DegreeCounterClockwiseRotation;
+    XF_ROTATION_90DEG_CW   : lData.TextRotation := rt90DegreeClockwiseRotation;
+    XF_ROTATION_STACKED    : lData.TextRotation := rtStacked;
+  end;
 
   // Cell borders and background
   xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);

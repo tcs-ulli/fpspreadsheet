@@ -49,6 +49,8 @@ type
     procedure TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
     // Test column widths
     procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
+    // Test text rotation
+    procedure TestWriteReadTextRotation(AFormat:TsSpreadsheetFormat);
     // Test word wrapping
     procedure TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
 
@@ -60,17 +62,22 @@ type
     procedure TestWriteReadBIFF2_Alignment;
     procedure TestWriteReadBIFF2_Border;
     procedure TestWriteReadBIFF2_ColWidths;
+    // These features are not supported by Excel2 --> no test cases required!
+    // - TextRotation
+    // - Wordwrap
 
     { BIFF5 Tests }
     procedure TestWriteReadBIFF5_Alignment;
     procedure TestWriteReadBIFF5_Border;
     procedure TestWriteReadBIFF5_ColWidths;
+    procedure TestWriteReadBIFF5_TextRotation;
     procedure TestWriteReadBIFF5_WordWrap;
 
     { BIFF8 Tests }
     procedure TestWriteReadBIFF8_Alignment;
     procedure TestWriteReadBIFF8_Border;
     procedure TestWriteReadBIFF8_ColWidths;
+    procedure TestWriteReadBIFF8_TextRotation;
     procedure TestWriteReadBIFF8_WordWrap;
     procedure TestWriteReadNumberFormats;
     // Repeat with date/times
@@ -88,6 +95,7 @@ const
   ColWidthSheet = 'ColWidths';
   BordersSheet = 'CellBorders';
   AlignmentSheet = 'TextAlignments';
+  TextRotationSheet = 'TextRotation';
   WordwrapSheet = 'Wordwrap';
 
 // Initialize array with variables that represent the values
@@ -511,6 +519,69 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_ColWidths;
 begin
   TestWriteReadColWidths(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadTextRotation(AFormat: TsSpreadsheetFormat);
+const
+  col = 0;
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  MyCell: PCell;
+  ActualColWidth: Single;
+  tr: TsTextRotation;
+  row: Integer;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(TextRotationSheet);
+  for tr := Low(TsTextRotation) to High(TsTextRotation) do begin
+    row := ord(tr);
+    MyWorksheet.WriteTextRotation(row, col, tr);
+    MyCell := MyWorksheet.GetCell(row, col);
+    CheckEquals(ord(tr), ord(MyCell^.TextRotation),
+      'Test unsaved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+  end;
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, TextRotationSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  for row := 0 to MyWorksheet.GetLastRowNumber do begin
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell');
+    tr := MyCell^.TextRotation;
+    CheckEquals(ord(TsTextRotation(row)), ord(MyCell^.TextRotation),
+      'Test saved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+  end;
+  // Finalization
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_TextRotation;
+begin
+  TestWriteReadTextRotation(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_TextRotation;
+begin
+  TestWriteReadTextRotation(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);

@@ -305,6 +305,7 @@ type
     HorAlignment: TsHorAlignment;
     VertAlignment: TsVertAlignment;
     WordWrap: Boolean;
+    TextRotation: TsTextRotation;
     Borders: TsCellBorders;
     BackgroundColor: TsColor;
   end;
@@ -469,6 +470,13 @@ begin
       Include(lCell^.UsedFormattingFields, uffWordWrap)
     else
       Exclude(lCell^.UsedFormattingFields, uffWordWrap);
+
+    // Text rotation
+    if XFData.TextRotation > trHorizontal then
+      Include(lCell^.UsedFormattingFields, uffTextRotation)
+    else
+      Exclude(lCell^.UsedFormattingFields, uffTextRotation);
+    lCell^.TextRotation := XFData.TextRotation;
 
     // Borders
     if XFData.Borders <> [] then begin
