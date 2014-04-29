@@ -21,13 +21,13 @@ type
 
   TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
+    { Private declarations }
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     FDisplayFixedColRow: Boolean;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
     procedure SetDisplayFixedColRow(const AValue: Boolean);
-    { Private declarations }
   protected
     { Protected declarations }
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
@@ -37,7 +37,7 @@ type
     procedure Loaded; override;
     procedure Setup;
   public
-    { methods }
+    { public methods }
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure GetSheets(const ASheets: TStrings);
@@ -46,6 +46,7 @@ type
     procedure LoadFromSpreadsheetFile(AFileName: string; AWorksheetIndex: Integer = 0); overload;
     procedure SaveToWorksheet(AWorksheet: TsWorksheet);
     procedure SelectSheetByIndex(AIndex: Integer);
+    { public properties }
     property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
     property Worksheet: TsWorksheet read FWorksheet;
     property Workbook: TsWorkbook read FWorkbook;
@@ -154,7 +155,7 @@ procedure Register;
 implementation
 
 uses
-  fpCanvas, fpsUtils;
+  Types, LCLType, LCLIntf, Math, fpCanvas, fpsUtils;
 
 var
   FillPattern_BIFF2: TBitmap = nil;
@@ -169,6 +170,72 @@ begin
     Canvas.FillRect(0, 0, Width, Height);
     Canvas.Pixels[0, 0] := clBlack;
     Canvas.Pixels[2, 2] := clBlack;
+  end;
+end;
+
+function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): string;
+// code posted by taazz in the Lazarus Forum:
+// http://forum.lazarus.freepascal.org/index.php/topic,21305.msg124743.html#msg124743
+var
+  DC: HDC;
+  textExtent: TSize;
+  S, P, E: PChar;
+  line: string;
+  isFirstLine: boolean;
+begin
+  Result := '';
+  DC := ACanvas.Handle;
+  isFirstLine := True;
+  P := PChar(AText);
+  while P^ = ' ' do
+    Inc(P);
+  while P^ <> #0 do begin
+    S := P;
+    E := nil;
+    while (P^ <> #0) and (P^ <> #13) and (P^ <> #10) do begin
+      LCLIntf.GetTextExtentPoint(DC, S, P - S + 1, textExtent);
+      if (textExtent.CX > AMaxWidth) and (E <> nil) then begin
+        if (P^ <> ' ') and (P^ <> ^I) then begin
+          while (E >= S) do
+            case E^ of
+              '.', ',', ';', '?', '!', '-', ':',
+              ')', ']', '}', '>', '/', '\', ' ':
+                break;
+              else
+                Dec(E);
+            end;
+          if E < S then
+            E := P - 1;
+        end;
+        Break;
+      end;
+      E := P;
+      Inc(P);
+    end;
+    if E <> nil then begin
+      while (E >= S) and (E^ = ' ') do
+        Dec(E);
+    end;
+    if E <> nil then
+      SetString(Line, S, E - S + 1)
+    else
+      SetLength(Line, 0);
+    if (P^ = #13) or (P^ = #10) then begin
+      Inc(P);
+      if (P^ <> (P - 1)^) and ((P^ = #13) or (P^ = #10)) then
+        Inc(P);
+      if P^ = #0 then
+        line := line + LineEnding;
+    end
+    else if P^ <> ' ' then
+      P := E + 1;
+    while P^ = ' ' do
+      Inc(P);
+    if isFirstLine then begin
+      Result := Line;
+      isFirstLine := False;
+    end else
+      Result := Result + LineEnding + line;
   end;
 end;
 
@@ -238,28 +305,6 @@ begin
     c := ACol - FixedCols;
     lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
-      // Horizontal alignment
-      case lCell^.HorAlignment of
-        haDefault: if lCell^.ContentType = cctNumber then
-                     ts.Alignment := taRightJustify
-                   else
-                     ts.Alignment := taLeftJustify;
-        haLeft   : ts.Alignment := taLeftJustify;
-        haCenter : ts.Alignment := taCenter;
-        haRight  : ts.Alignment := taRightJustify;
-      end;
-      // Vertical alignment
-      case lCell^.VertAlignment of
-        vaDefault: ts.Layout := tlBottom;
-        vaTop    : ts.Layout := tlTop;
-        vaCenter : ts.Layout := tlCenter;
-        vaBottom : ts.layout := tlBottom;
-      end;
-      // Word wrap
-      if (uffWordWrap in lCell^.UsedFormattingFields) then begin
-        ts.Wordbreak := true;
-        ts.SingleLine := false;
-      end;
       // Background color
       if (uffBackgroundColor in lCell^.UsedFormattingFields) then begin
         if FWorkbook.FileFormat = sfExcel2 then begin
@@ -293,10 +338,10 @@ begin
           Canvas.Font.Size := round(fnt.Size);
         end;
       end;
+      // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;
   Canvas.TextStyle := ts;
-
   inherited DoPrepareCanvas(ACol, ARow, AState);
 end;
 
@@ -332,18 +377,177 @@ begin
   end;
 end;
 
-{ Draws the cell text. Calls "GetCellText" to determine the text in the cell. }
+{ Draws the cell text. Calls "GetCellText" to determine the text in the cell.
+  Takes care of horizontal and vertical text alignment, text rotation and
+  text wrapping }
 procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect;
   AState: TGridDrawState);
+const
+  HOR_ALIGNMENTS: array[haLeft..haRight] of TAlignment = (
+    taLeftJustify, taCenter, taRightJustify
+  );
+  VERT_ALIGNMENTS: array[TsVertAlignment] of TTextLayout = (
+    tlBottom, tlTop, tlCenter, tlBottom
+  );
+var
+  ts: TTextStyle;
+  flags: Cardinal;
+  txt: String;
+  txtRect: TRect;
+  P: TPoint;
+  w, h, h0, hline: Integer;
+  i: Integer;
+  L: TStrings;
+  c, r: Integer;
+  wordwrap: Boolean;
+  horAlign: TsHorAlignment;
+  vertAlign: TsVertAlignment;
+  lCell: PCell;
 begin
-  DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
+  if FWorksheet = nil then
+    exit;
+
+  c := ACol - FixedCols;
+  r := ARow - FixedRows;
+  lCell := FWorksheet.FindCell(r, c);
+  if lCell = nil then begin
+    if FDisplayFixedColRow and ((ACol = 0) or (ARow = 0)) then begin
+      ts.Alignment := taCenter;
+      ts.Layout := tlCenter;
+      Canvas.TextStyle := ts;
+    end;
+    inherited DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
+    exit;
+  end;
+
+  txt := GetCellText(ACol, ARow);
+  if txt = '' then
+    exit;
+
+  if lCell^.HorAlignment <> haDefault then
+    horAlign := lCell^.HorAlignment
+  else begin
+    if lCell^.ContentType = cctNumber then
+      horAlign := haRight
+    else
+      horAlign := haLeft;
+    if lCell^.TextRotation = rt90DegreeCounterClockwiseRotation then begin
+      if horAlign = haRight then horAlign := haLeft else horAlign := haRight;
+    end;
+  end;
+  vertAlign := lCell^.VertAlignment;
+  wordwrap := (uffWordWrap in lCell^.UsedFormattingFields)
+    or (lCell^.TextRotation = rtStacked);
+
+  InflateRect(ARect, -constCellPadding, -constCellPadding);
+
+  if lCell^.TextRotation in [trHorizontal, rtStacked] then begin
+    // HORIZONAL TEXT DRAWING DIRECTION
+    ts := Canvas.TextStyle;
+    if wordwrap then begin
+      ts.Wordbreak := true;
+      ts.SingleLine := false;
+      flags := DT_WORDBREAK and not DT_SINGLELINE;
+      LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect,
+        DT_CALCRECT or flags);
+      w := txtRect.Right - txtRect.Left;
+      h := txtRect.Bottom - txtRect.Top;
+    end else begin
+      ts.WordBreak := false;
+      ts.SingleLine := false;
+      w := Canvas.TextWidth(txt);
+      h := Canvas.TextHeight('Tg');
+    end;
+
+    Canvas.Font.Orientation := 0;
+    ts.Alignment := HOR_ALIGNMENTS[horAlign];
+    if h > ARect.Bottom - ARect.Top then
+      ts.Layout := tlTop
+    else
+      ts.Layout := VERT_ALIGNMENTS[vertAlign];
+
+    Canvas.TextStyle := ts;
+    Canvas.TextRect(ARect, ARect.Left, ARect.Top, txt);
+  end
+  else
+  begin
+    // ROTATED TEXT DRAWING DIRECTION
+    L := TStringList.Create;
+    try
+      txtRect := Bounds(ARect.Left, ARect.Top, ARect.Bottom - ARect.Top, ARect.Right - ARect.Left);
+      hline := Canvas.TextHeight('Tg');
+      if wordwrap then begin
+        L.Text := WrapText(Canvas, txt, txtRect.Right - txtRect.Left);
+        flags := DT_WORDBREAK and not DT_SINGLELINE;
+        LCLIntf.DrawText(Canvas.Handle, PChar(L.Text), Length(L.Text), txtRect,
+          DT_CALCRECT or flags);
+        w := txtRect.Right - txtRect.Left;
+        h := txtRect.Bottom - txtRect.Top;
+        h0 := hline;
+      end
+      else begin
+        L.Text := txt;
+        w := Canvas.TextWidth(txt);
+        h := hline;
+        h0 := 0;
+      end;
+
+      ts := Canvas.TextStyle;
+      ts.SingleLine := true;      // Draw text line by line
+      ts.Clipping := false;
+      ts.Layout := tlTop;
+      ts.Alignment := taLeftJustify;
+
+      if lCell^.TextRotation = rt90DegreeClockwiseRotation then begin
+        // Clockwise
+        Canvas.Font.Orientation := -900;
+        case horAlign of
+          haLeft   : P.X := Min(ARect.Right-1, ARect.Left + h - h0);
+          haCenter : P.X := Min(ARect.Right-1, (ARect.Left + ARect.Right + h) div 2);
+          haRight  : P.X := ARect.Right - 1;
+        end;
+        for i:= 0 to L.Count-1 do begin
+          w := Canvas.TextWidth(L[i]);
+          case vertAlign of
+            vaTop    : P.Y := ARect.Top;
+            vaCenter : P.Y := Max(ARect.Top, (ARect.Top + ARect.Bottom - w) div 2);
+            vaBottom : P.Y := Max(ARect.Top, ARect.Bottom - w);
+          end;
+          Canvas.TextRect(ARect, P.X, P.Y, L[i], ts);
+          dec(P.X, hline);
+        end
+      end
+      else begin
+        // Counter-clockwise
+        Canvas.Font.Orientation := +900;
+        case horAlign of
+          haLeft   : P.X := ARect.Left;
+          haCenter : P.X := Max(ARect.Left, (ARect.Left + ARect.Right - h + h0) div 2);
+          haRight  : P.X := MAx(ARect.Left, ARect.Right - h + h0);
+        end;
+        for i:= 0 to L.Count-1 do begin
+          w := Canvas.TextWidth(L[i]);
+          case vertAlign of
+            vaTop    : P.Y := Min(ARect.Bottom, ARect.Top + w);
+            vaCenter : P.Y := Min(ARect.Bottom, (ARect.Top + ARect.Bottom + w) div 2);
+            vaBottom : P.Y := ARect.Bottom;
+          end;
+          Canvas.TextRect(ARect, P.X, P.Y, L[i], ts);
+          inc(P.X, hline);
+        end;
+      end;
+    finally
+      L.Free;
+    end;
+  end;
 end;
 
-{ This function returns the text to be written in the cell }
+{ GetCellText function returns the text to be written in the cell }
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
   lCell: PCell;
-  r, c: Integer;
+  r, c, i: Integer;
+  s: String;
 begin
   Result := '';
 
@@ -366,8 +570,16 @@ begin
     r := ARow - FixedRows;
     c := ACol - FixedCols;
     lCell := FWorksheet.FindCell(r, c);
-    if lCell <> nil then
+    if lCell <> nil then begin
       Result := FWorksheet.ReadAsUTF8Text(r, c);
+      if lCell^.TextRotation = rtStacked then begin
+        s := Result;
+        Result := '';
+        for i:=1 to Length(s)-1 do
+          Result := Result + s[i] + LineEnding;
+        Result := Result + s[Length(s)];
+      end;
+    end;
   end;
 end;
 
@@ -392,7 +604,6 @@ end;
 procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(const AValue: Boolean);
 begin
   if AValue = FDisplayFixedColRow then Exit;
-
   FDisplayFixedColRow := AValue;
   Setup;
 end;
@@ -493,7 +704,6 @@ begin
   if AWorksheet = nil then Exit;
 
   { Copy the contents }
-
   for x := 0 to ColCount - 1 do
     for y := 0 to RowCount - 1 do
     begin

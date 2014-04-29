@@ -1,12 +1,13 @@
 object Form1: TForm1
-  Left = 288
+  Left = 370
   Height = 339
-  Top = 177
+  Top = 258
   Width = 400
   Caption = 'fpsGrid'
   ClientHeight = 319
   ClientWidth = 400
   Menu = MainMenu1
+  OnActivate = FormActivate
   ShowHint = True
   LCLVersion = '1.3'
   object Panel1: TPanel
@@ -72,7 +73,7 @@ object Form1: TForm1
         Top = 0
         Width = 392
         Align = alClient
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll, goCellEllipsis]
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll]
         TabOrder = 0
         TitleStyle = tsNative
       end

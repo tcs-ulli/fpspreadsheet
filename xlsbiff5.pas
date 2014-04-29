@@ -1737,7 +1737,7 @@ begin
   // Text rotation
   case xf.XFRotation of
     XF_ROTATION_HORIZONTAL : lData.TextRotation := trHorizontal;
-    XF_ROTATION_90DEG_CCW  : ldata.TextRotation := rt90DegreeCounterClockwiseRotation;
+    XF_ROTATION_90DEG_CCW  : lData.TextRotation := rt90DegreeCounterClockwiseRotation;
     XF_ROTATION_90DEG_CW   : lData.TextRotation := rt90DegreeClockwiseRotation;
     XF_ROTATION_STACKED    : lData.TextRotation := rtStacked;
   end;
@@ -1887,7 +1887,7 @@ var
   AValue: array[0..255] of Char;
   AStrValue: ansistring;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
   L := AStream.ReadWord();

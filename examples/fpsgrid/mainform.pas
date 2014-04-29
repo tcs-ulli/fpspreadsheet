@@ -45,9 +45,11 @@ type
     procedure acOpenExecute(Sender: TObject);
     procedure acQuitExecute(Sender: TObject);
     procedure acSaveAsExecute(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
   private
     { private declarations }
+    procedure LoadFile(const AFileName: String);
   public
     { public declarations }
   end; 
@@ -87,33 +89,9 @@ begin
 end;
 
 procedure TForm1.acOpenExecute(Sender: TObject);
-// Loads first worksheet from file into grid
-var
-  pages: TStrings;
-  i: Integer;
 begin
   if OpenDialog1.Execute then
-  begin
-    sWorksheetGrid1.LoadFromSpreadsheetFile(OpenDialog1.FileName);
-    Caption := Format('fpsGrid - %s (%s)', [
-      OpenDialog1.Filename,
-      GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
-    ]);
-
-    // Create a tab in the pagecontrol for each worksheet contained in the workbook
-    // This would be easer with a TTabControl. This has display issues, though.
-    pages := TStringList.Create;
-    try
-      sWorksheetGrid1.GetSheets(pages);
-      sWorksheetGrid1.Parent := PageControl1.Pages[0];
-      while PageControl1.PageCount > pages.Count do PageControl1.Pages[1].Free;
-      while PageControl1.PageCount < pages.Count do PageControl1.AddTabSheet;
-      for i:=0 to PageControl1.PageCount-1 do
-        PageControl1.Pages[i].Caption := pages[i];
-    finally
-      pages.Free;
-    end;
-  end;
+    LoadFile(OpenDialog1.FileName);
 end;
 
 procedure TForm1.acQuitExecute(Sender: TObject);
@@ -143,12 +121,44 @@ begin
   end;
 end;
 
+procedure TForm1.FormActivate(Sender: TObject);
+begin
+  if ParamCount > 0 then
+    LoadFile(ParamStr(1));
+end;
+
+procedure TForm1.LoadFile(const AFileName: String);
+// Loads first worksheet from file into grid
+var
+  pages: TStrings;
+  i: Integer;
+begin
+  sWorksheetGrid1.LoadFromSpreadsheetFile(AFileName);
+  Caption := Format('fpsGrid - %s (%s)', [
+    AFilename,
+    GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
+  ]);
+
+  // Create a tab in the pagecontrol for each worksheet contained in the workbook
+  // This would be easer with a TTabControl. This has display issues, though.
+  pages := TStringList.Create;
+  try
+    sWorksheetGrid1.GetSheets(pages);
+    sWorksheetGrid1.Parent := PageControl1.Pages[0];
+    while PageControl1.PageCount > pages.Count do PageControl1.Pages[1].Free;
+    while PageControl1.PageCount < pages.Count do PageControl1.AddTabSheet;
+    for i:=0 to PageControl1.PageCount-1 do
+      PageControl1.Pages[i].Caption := pages[i];
+  finally
+    pages.Free;
+  end;
+end;
+
 procedure TForm1.PageControl1Change(Sender: TObject);
 begin
   sWorksheetGrid1.Parent := PageControl1.Pages[PageControl1.ActivePageIndex];
   sWorksheetGrid1.SelectSheetByIndex(PageControl1.ActivePageIndex);
 end;
-
 
 initialization
   {$I mainform.lrs}
