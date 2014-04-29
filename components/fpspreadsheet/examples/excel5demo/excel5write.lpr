@@ -37,6 +37,9 @@ begin
 
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  MyWorksheet.WriteVertAlignment(0, 0, vaCenter);
+
+
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
@@ -55,12 +58,31 @@ begin
 
   MyWorksheet.WriteUTF8Text(4, 5, 'Stacked text');
   MyWorksheet.WriteTextRotation(4, 5, rtStacked);
+  MyWorksheet.WriteHorAlignment(4, 5, haCenter);
 
   MyWorksheet.WriteUTF8Text(4, 6, 'CW-rotated text');
   MyWorksheet.WriteTextRotation(4, 6, rt90DegreeClockwiseRotation);
 
   MyWorksheet.WriteUTF8Text(4, 7, 'CCW-rotated text');
   MyWorksheet.WriteTextRotation(4, 7, rt90DegreeCounterClockwiseRotation);
+
+  MyWorksheet.WriteUTF8Text(4, 8, 'CW-rotated text');
+  MyWorksheet.WriteTextRotation(4, 8, rt90DegreeClockwiseRotation);
+  MyWorksheet.WriteVertAlignment(4, 8, vaTop);
+  MyWorksheet.WriteHorAlignment(4, 8, haLeft);
+
+  MyWorksheet.WriteUTF8Text(4, 9, 'CCW-rotated text');
+  MyWorksheet.WriteTextRotation(4, 9, rt90DegreeCounterClockwiseRotation);
+  MyWorksheet.WriteVertAlignment(4, 9, vaTop);
+  Myworksheet.WriteHorAlignment(4, 9, haRight);
+
+  MyWorksheet.WriteUTF8Text(4, 10, 'CW-rotated text');
+  MyWorksheet.WriteTextRotation(4, 10, rt90DegreeClockwiseRotation);
+  MyWorksheet.WriteVertAlignment(4, 10, vaCenter);
+
+  MyWorksheet.WriteUTF8Text(4, 11, 'CCW-rotated text');
+  MyWorksheet.WriteTextRotation(4, 11, rt90DegreeCounterClockwiseRotation);
+  MyWorksheet.WriteVertAlignment(4, 11, vaCenter);
 
   // Write current date/time
   MyWorksheet.WriteDateTime(5, 0, now);

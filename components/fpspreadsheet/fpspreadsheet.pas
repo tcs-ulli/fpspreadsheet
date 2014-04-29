@@ -347,6 +347,7 @@ type
     procedure WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
     procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
     procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
+    procedure WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean);
     { Data manipulation methods - For Rows and Cols }
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
@@ -1477,6 +1478,17 @@ begin
   lCell^.VertAlignment := AValue;
 end;
 
+procedure TsWorksheet.WriteWordWrap(ARow, ACol: Cardinal; AValue: Boolean);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  if AValue then
+    Include(lCell^.UsedFormattingFields, uffWordwrap)
+  else
+    Exclude(lCell^.UsedFormattingFields, uffWordwrap);
+end;
+
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
 var
   LElement: TRow;
@@ -1690,7 +1702,6 @@ var
   AReader: TsCustomSpreadReader;
 begin
   AReader := CreateSpreadReader(AFormat);
-
   try
     AReader.ReadFromFile(AFileName, Self);
     FFormat := AFormat;
