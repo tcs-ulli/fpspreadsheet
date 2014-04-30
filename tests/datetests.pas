@@ -198,16 +198,18 @@ type
 
   { TSpreadWriteReadDateTests }
   //Write to xls/xml file and read back
-  TSpreadWriteReadDateTests= class(TTestCase)
+  TSpreadWriteReadDateTests = class(TTestCase)
   private
   protected
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
-  published
     // Reads dates, date/time and time values from spreadsheet and checks against list
     // One cell per test so some tests can fail and those further below may still work
-    procedure TestWriteReadDates;
+    procedure TestWriteReadDates(AFormat: TsSpreadsheetFormat);
+  published
+    procedure TestWriteReadDates_BIFF5;
+    procedure TestWriteReadDates_BIFF8;
   end;
 
 
@@ -281,7 +283,7 @@ begin
   inherited TearDown;
 end;
 
-procedure TSpreadWriteReadDateTests.TestWriteReadDates;
+procedure TSpreadWriteReadDateTests.TestWriteReadDates(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -305,13 +307,16 @@ begin
       Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet,Row));
     CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorksheet,Row));
   end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet:=GetWorksheetByName(MyWorkBook,DatesSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook,DatesSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
 
@@ -326,6 +331,16 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF5;
+begin
+  TestWriteReadDates(sfExcel5);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF8;
+begin
+  TestWriteReadDates(sfExcel8);
 end;
 
 procedure TSpreadReadDateTests.TestReadDate(FileName: string; Row: integer);

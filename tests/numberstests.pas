@@ -91,10 +91,12 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
-  published
     // Reads numbers values from spreadsheet and checks against list
     // One cell per test so some tests can fail and those further below may still work
-    procedure TestWriteReadNumbers;
+    procedure TestWriteReadNumbers(AFormat: TsSpreadsheetFormat);
+  published
+    procedure TestWriteReadNumbers_BIFF5;
+    procedure TestWriteReadNumbers_BIFF8;
   end;
 
 
@@ -149,7 +151,7 @@ begin
   inherited TearDown;
 end;
 
-procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers;
+procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -165,7 +167,7 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:=MyWorkBook.AddWorksheet(NumbersSheet);
+  MyWorkSheet := MyWorkBook.AddWorksheet(NumbersSheet);
   for Row := Low(SollNumbers) to High(SollNumbers) do
   begin
     MyWorkSheet.WriteNumber(Row,0,SollNumbers[Row]);
@@ -173,13 +175,16 @@ begin
     ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
     CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet:=GetWorksheetByName(MyWorkBook,NumbersSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook,NumbersSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
 
@@ -193,6 +198,16 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_BIFF5;
+begin
+  TestWriteReadNumbers(sfExcel5);
+end;
+
+procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_BIFF8;
+begin
+  TestWriteReadNumbers(sfExcel8);
 end;
 
 procedure TSpreadReadNumberTests.TestReadNumber(FileName: string; Row: integer);
