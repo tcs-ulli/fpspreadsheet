@@ -84,6 +84,7 @@ object Form1: TForm1
     Height = 26
     Top = 0
     Width = 400
+    ButtonHeight = 24
     Caption = 'ToolBar1'
     EdgeBorders = []
     Images = ImageList1

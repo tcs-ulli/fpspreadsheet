@@ -25,17 +25,23 @@ type
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     FDisplayFixedColRow: Boolean;
+    FAutoRowHeights: Boolean;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
-    procedure SetDisplayFixedColRow(const AValue: Boolean);
+    procedure SetAutoRowHeights(AValue: Boolean);
+    procedure SetDisplayFixedColRow(AValue: Boolean);
   protected
     { Protected declarations }
+    procedure DoAutoRowHeights;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
+    function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
     procedure Loaded; override;
     procedure Setup;
+    property AutoRowHeights: Boolean read FAutoRowHeights write SetAutoRowHeights default true;
+    property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
   public
     { public methods }
     constructor Create(AOwner: TComponent); override;
@@ -47,7 +53,6 @@ type
     procedure SaveToWorksheet(AWorksheet: TsWorksheet);
     procedure SelectSheetByIndex(AIndex: Integer);
     { public properties }
-    property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
     property Worksheet: TsWorksheet read FWorksheet;
     property Workbook: TsWorkbook read FWorkbook;
   end;
@@ -56,6 +61,11 @@ type
 
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
+    // inherited from TsCustomWorksheetGrid
+    property AutoRowHeights;
+    property DisplayFixedColRow;
+
+    // inherited from other ancestors
     property Align;
     property AlternateColor;
     property Anchors;
@@ -250,6 +260,7 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FAutoRowHeights := true;
   FDisplayFixedColRow := true;
 end;
 
@@ -274,6 +285,23 @@ end;
 function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
 begin
   Result := round(AHeight / 25.4 * Screen.PixelsPerInch) + 4;
+end;
+
+{ Finds the max cell height per row and uses this to define the RowHeights[]. }
+procedure TsCustomWorksheetGrid.DoAutoRowHeights;
+var
+  r, c: Integer;
+  h: Integer;
+begin
+  for r := FixedRows to RowCount-1 do begin
+    h := 0;
+    for c := FixedCols to ColCount-1 do
+      h := Max(h, GetCellHeight(c, r));
+    if h = 0 then
+      RowHeights[r] := DefaultRowHeight
+    else
+      RowHeights[r] := h;
+  end;
 end;
 
 { Adjusts the grid's canvas before painting a given cell. Considers, e.g.
@@ -414,6 +442,7 @@ begin
     if FDisplayFixedColRow and ((ACol = 0) or (ARow = 0)) then begin
       ts.Alignment := taCenter;
       ts.Layout := tlCenter;
+      ts.Opaque := false;
       Canvas.TextStyle := ts;
     end;
     inherited DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
@@ -441,7 +470,9 @@ begin
 
   InflateRect(ARect, -constCellPadding, -constCellPadding);
 
-  if lCell^.TextRotation in [trHorizontal, rtStacked] then begin
+  if (lCell^.TextRotation in [trHorizontal, rtStacked]) or
+     (not (uffTextRotation in lCell^.UsedFormattingFields))
+  then begin
     // HORIZONAL TEXT DRAWING DIRECTION
     ts := Canvas.TextStyle;
     if wordwrap then begin
@@ -461,6 +492,7 @@ begin
 
     Canvas.Font.Orientation := 0;
     ts.Alignment := HOR_ALIGNMENTS[horAlign];
+    ts.Opaque := false;
     if h > ARect.Bottom - ARect.Top then
       ts.Layout := tlTop
     else
@@ -497,6 +529,7 @@ begin
       ts.Clipping := false;
       ts.Layout := tlTop;
       ts.Alignment := taLeftJustify;
+      ts.Opaque := false;
 
       if lCell^.TextRotation = rt90DegreeClockwiseRotation then begin
         // Clockwise
@@ -542,6 +575,65 @@ begin
   end;
 end;
 
+{ Returns the height (in pixels) of the cell at ACol/ARow. }
+function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
+var
+  lCell: PCell;
+  s: String;
+  wordwrap: Boolean;
+  txtR: TRect;
+  cellR: TRect;
+  flags: Cardinal;
+begin
+  Result := 0;
+  if FDisplayFixedColRow and ((ACol = 0) or (ARow = 0)) then
+    exit;
+  if FWorksheet = nil then
+    exit;
+
+  lCell := FWorksheet.FindCell(ARow-FixedRows, ACol-FixedCols);
+  if lCell <> nil then begin
+    s := GetCellText(ACol, ARow);
+    if s = '' then
+      exit;
+    DoPrepareCanvas(ACol, ARow, []);
+    wordwrap := (uffWordWrap in lCell^.UsedFormattingFields)
+      or (lCell^.TextRotation = rtStacked);
+    // *** multi-line text ***
+    if wordwrap then begin
+      // horizontal
+      if ( (uffTextRotation in lCell^.UsedFormattingFields) and
+           (lCell^.TextRotation in [trHorizontal, rtStacked]))
+         or not (uffTextRotation in lCell^.UsedFormattingFields)
+      then begin
+        cellR := CellRect(ACol, ARow);
+        InflateRect(cellR, -constCellPadding, -constCellPadding);
+        txtR := Bounds(cellR.Left, cellR.Top, cellR.Right-cellR.Left, cellR.Bottom-cellR.Top);
+        flags := DT_WORDBREAK and not DT_SINGLELINE;
+        LCLIntf.DrawText(Canvas.Handle, PChar(s), Length(s), txtR,
+          DT_CALCRECT or flags);
+        Result := txtR.Bottom - txtR.Top + 2*constCellPadding;
+      end;
+      // rotated wrapped text:
+      // do not consider this because wrapping affects cell height.
+    end else
+    // *** single-line text ***
+    begin
+      // not rotated
+      if ( not (uffTextRotation in lCell^.UsedFormattingFields) or
+           (lCell^.TextRotation = trHorizontal) )
+      then
+        Result := Canvas.TextHeight(s) + 2*constCellPadding
+      else
+      // rotated by +/- 90°
+      if (uffTextRotation in lCell^.UsedFormattingFields) and
+         (lCell^.TextRotation in [rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation])
+      then
+        Result := Canvas.TextWidth(s) + 2*constCellPadding;
+    end;
+  end;
+end;
+
 { GetCellText function returns the text to be written in the cell }
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
@@ -575,9 +667,9 @@ begin
       if lCell^.TextRotation = rtStacked then begin
         s := Result;
         Result := '';
-        for i:=1 to Length(s)-1 do
+        for i:=1 to Length(s) do
           Result := Result + s[i] + LineEnding;
-        Result := Result + s[Length(s)];
+//        Result := Result + s[Length(s)];
       end;
     end;
   end;
@@ -601,7 +693,14 @@ begin
   Setup;
 end;
 
-procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(const AValue: Boolean);
+procedure TsCustomWorksheetGrid.SetAutoRowHeights(AValue: Boolean);
+begin
+  if AValue = FAutoRowHeights then Exit;
+  FAutoRowHeights := AValue;
+  Setup;
+end;
+
+procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(AValue: Boolean);
 begin
   if AValue = FDisplayFixedColRow then Exit;
   FDisplayFixedColRow := AValue;
@@ -656,14 +755,18 @@ begin
     end;
   end;
   if FWorksheet <> nil then begin
-    RowHeights[0] := DefaultRowHeight;
-    for i := FixedRows to RowCount-1 do begin
-      lRow := FWorksheet.FindRow(i - FixedRows);
-      if (lRow <> nil) then
-        RowHeights[i] := CalcRowHeight(lRow^.Height)
-      else
-        RowHeights[i] := DefaultRowHeight;
-    end
+    if FAutoRowHeights then
+      DoAutoRowHeights
+    else begin
+      RowHeights[0] := DefaultRowHeight;
+      for i := FixedRows to RowCount-1 do begin
+        lRow := FWorksheet.FindRow(i - FixedRows);
+        if (lRow <> nil) then
+          RowHeights[i] := CalcRowHeight(lRow^.Height)
+        else
+          RowHeights[i] := DefaultRowHeight;
+      end;
+    end;
   end
   else
     for i:=0 to RowCount-1 do begin
