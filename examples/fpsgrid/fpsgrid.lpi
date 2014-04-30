@@ -113,11 +113,10 @@
         <Filename Value="fpsgrid.lpr"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="fpsgrid"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="0"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
-        <CursorPos X="16" Y="7"/>
+        <CursorPos X="10" Y="7"/>
         <UsageCount Value="120"/>
         <Loaded Value="True"/>
       </Unit0>
@@ -128,6 +127,7 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="mainform"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
         <WindowIndex Value="0"/>
         <TopLine Value="47"/>
