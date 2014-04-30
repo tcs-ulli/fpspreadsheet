@@ -63,11 +63,6 @@ uses
   fpsutils, lazutf8;
 
 type
-  TFormatRecordData = class
-  public
-    Index: Integer;
-    FormatString: widestring;
-  end;
 
   { TsSpreadBIFF8Reader }
 
@@ -78,46 +73,30 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
     FSharedStringTable: TStringList;
-    FFormatList: TFPList; // of TFormatRecordData
     function DecodeRKValue(const ARK: DWORD): Double;
-//    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Integer);
-    procedure ExtractNumberFormat(AXFIndex: WORD;
-      out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-      out ANumberFormatStr: String);
-    // Tries to find if a number cell is actually a date/datetime/time cell
-    // and retrieve the value
-    function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): Boolean;
     function ReadWideString(const AStream: TStream; const ALength: WORD): WideString; overload;
     function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
-
     procedure ReadRKValue(const AStream: TStream);
     procedure ReadMulRKValues(const AStream: TStream);
-//    procedure ReadRowColXF(const AStream: TStream; out ARow,ACol,AXF: WORD);
     function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
     procedure ReadSST(const AStream: TStream);
     procedure ReadLabelSST(const AStream: TStream);
     // Read XF record
     procedure ReadXF(const AStream: TStream);
-    // Read FORMAT record (cell formatting)
-    procedure ReadFormat(const AStream: TStream);
-    // Finds format record for XF record pointed to by cell
-    // Will not return info for built-in formats
-    function  FindFormatRecordForCell(const AXFIndex: Integer): TFormatRecordData;
     // Workbook Globals records
     // procedure ReadCodepage in xlscommon
     // procedure ReadDateMode in xlscommon
     procedure ReadFont(const AStream: TStream);
+    procedure ReadFormat(AStream: TStream); override;
     { Record reading methods }
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
-    procedure ReadNumber(AStream: TStream); override;
     procedure ReadRichString(const AStream: TStream);
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     { General reading methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
@@ -138,8 +117,8 @@ type
       ACell: PCell); override;
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TDateTime; ACell: PCell); override;
+//    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+//      const AValue: TDateTime; ACell: PCell); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
@@ -716,24 +695,6 @@ begin
   AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteDateTime ()
-*
-*  DESCRIPTION:    Writes a date/time/datetime to an
-*                  Excel 8 NUMBER record, with a date/time format
-*                  (There is no separate date record type in xls)
-*******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteDateTime(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
-var
-  ExcelDateSerial: double;
-begin
-  ExcelDateSerial:=ConvertDateTimeToExcelDateTime(AValue,FDateMode);
-  // fpspreadsheet must already have set formatting to a date/datetime format, so
-  // this will get written out as a pointer to the relevant XF record.
-  // In the end, dates in xls are just numbers with a format. Pass it on to WriteNumber:
-  WriteNumber(AStream,ARow,ACol,ExcelDateSerial,ACell);
-end;
 
 {
   Writes an Excel 8 DIMENSIONS record
@@ -1522,18 +1483,8 @@ end;
 
 { TsSpreadBIFF8Reader }
 
-constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create(AWorkbook);
-  FFormatList := TFPList.Create;
-end;
-
 destructor TsSpreadBIFF8Reader.Destroy;
-var
-  j: integer;
 begin
-  for j := FFormatList.Count-1 downto 0 do TObject(FFormatList[j]).Free;
-  FFormatList.Free;
   if Assigned(FSharedStringTable) then FSharedStringTable.Free;
   inherited;
 end;
@@ -1565,129 +1516,6 @@ begin
     Number:=Number / 100;
   end;
   Result:=Number;
-end;
-
-procedure TsSpreadBIFF8Reader.ExtractNumberFormat(AXFIndex: WORD;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-  out ANumberFormatStr: String);
-const
-  { see ➜ 5.49 }
-  NOT_USED = nfGeneral;
-  fmts: array[1..58] of TsNumberFormat = (
-    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
-    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
-    nfExp, NOT_USED, NOT_USED, nfShortDate, nfShortDate,             // 11..15
-    nfFmtDateTime, nfFmtDateTime, nfShortTimeAM, nfLongTimeAM, nfShortTime, // 16..20
-    nfLongTime, nfShortDateTime, NOT_USED, NOT_USED, NOT_USED,       // 21..25
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 26..30
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 31..35
-    NOT_USED, nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh,            // 36..40
-    nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh, nfFmtDateTime,       // 41..45
-    nfTimeInterval, nfFmtDateTime, nfSci, NOT_USED, NOT_USED,        // 46..50
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 51..55
-    NOT_USED, NOT_USED, NOT_USED                                     // 56..58
-  );
-  decs: array[1..58] of word = (
-    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
-    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 11..20
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 21..30
-    0, 0, 0, 0, 0, 0, 0, 0, 2, 2,     // 31..40
-    0, 0, 2, 2, 0, 3, 0, 1, 0, 0,     // 41..50    #48 is "scientific", use "exponential" instead
-    0, 0, 0, 0, 0, 0, 0, 0);          // 51..58
-var
-  lFormatData: TFormatRecordData;
-  lXFData: TXFListData;
-  isAMPM: Boolean;
-  isLongTime: Boolean;
-  isMilliSec: Boolean;
-  t,d: Boolean;
-begin
-  ANumberFormat := nfGeneral;
-  ANumberFormatStr := '';
-  ADecimals := 0;
-
-  lFormatData := FindFormatRecordForCell(AXFIndex);
-  {Record FORMAT, BIFF8 (5.49):
-  Offset Size Contents
-       0    2 Format index used in other records
-  }
-
-  if lFormatData = nil then begin
-    // no custom format, so first test for default formats
-    lXFData := TXFListData (FXFList.Items[AXFIndex]);
-    case lXFData.FormatIndex of
-      FORMAT_DATE_DM:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'DM'; end;
-      FORMAT_DATE_MY:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MY'; end;
-      FORMAT_TIME_MS:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MS'; end;
-      FORMAT_TIME_MSZ:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MSZ'; end;
-      else
-        if (lXFData.FormatIndex > 0) and (lXFData.FormatIndex <= 58) then begin
-          ANumberFormat := fmts[lXFData.FormatIndex];
-          ADecimals := decs[lXFData.FormatIndex];
-        end;
-    end;
-  end else
-  // Check custom formats if they have / in format string (this can fail for
-  // custom text formats)
-  if IsPercentNumberFormat(lFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfPercentage
-  else
-  if IsExpNumberFormat(lFormatData.Formatstring, ADecimals) then
-    ANumberFormat := nfExp
-  else
-  if IsThousandSepNumberFormat(lFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfFixedTh
-  else
-  if IsFixedNumberFormat(lFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfFixed
-  else begin
-    t := IsTimeFormat(lFormatData.FormatString, isLongTime, isAMPM, isMilliSec);
-    d := IsDateFormat(lFormatData.FormatString);
-    if d and t then
-      ANumberFormat := nfShortDateTime
-    else
-    if d then
-      ANumberFormat := nfShortDate
-    else
-    if t then begin
-      if isAMPM then begin
-        if isLongTime then
-          ANumberFormat := nfLongTimeAM
-        else
-          ANumberFormat := nfShortTimeAM;
-      end else begin
-        if isLongTime then
-          ANumberFormat := nfLongTime
-        else
-          ANumberFormat := nfShortTime;
-      end;
-    end;
-  end;
-end;
-
-function TsSpreadBIFF8Reader.IsDateTime(Number: Double;
-  ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): boolean;
-// Convert the number to a date/time and return that if it is
-begin
-  if ANumberFormat in [
-    nfShortDateTime, nfFmtDateTime, nfShortDate,
-    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM] then
-  begin
-    ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode);
-    Result := true;
-  end else
-  if ANumberFormat = nfTimeInterval then begin
-    ADateTime := Number;
-    Result := true;
-  end else
-  begin
-    ADateTime := 0;
-    Result := false;
-  end;
 end;
 
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
@@ -1917,7 +1745,8 @@ end;
 procedure TsSpreadBIFF8Reader.ReadRKValue(const AStream: TStream);
 var
   RK: DWORD;
-  ARow, ACol, XF: WORD;
+  ARow, ACol: Cardinal;
+  XF: WORD;
   lDateTime: TDateTime;
   Number: Double;
   nf: TsNumberFormat;    // Number format
@@ -1925,7 +1754,7 @@ var
   nfs: String;           // Number format string
 begin
   {Retrieve XF record, row and column}
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   {Encoded RK value}
   RK:=DWordLEtoN(AStream.ReadDWord);
@@ -2059,7 +1888,8 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadBlank(AStream: TStream);
 var
-  ARow, ACol, XF: Word;
+  ARow, ACol: Cardinal;
+  XF: Word;
 begin
   { Read row, column, and XF index from BIFF file }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -2069,7 +1899,8 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadFormula(AStream: TStream);
 var
-  ARow, ACol, XF: WORD;
+  ARow, ACol: Cardinal;
+  XF: WORD;
   ResultFormula: Double;
   Data: array [0..7] of BYTE;
   Flags: WORD;
@@ -2079,7 +1910,7 @@ begin
   { BIFF Record header }
   { BIFF Record data }
   { Index to XF Record }
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Result of the formula in IEE 754 floating-point value }
   AStream.ReadBuffer(Data,Sizeof(Data));
@@ -2114,12 +1945,13 @@ procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
 var
   L: Word;
   StringFlags: BYTE;
-  ARow, ACol, XF: Word;
+  ARow, ACol: Cardinal;
+  XF: Word;
   WideStrValue: WideString;
   AnsiStrValue: AnsiString;
 begin
   { BIFF Record data: Row, Column, XF Index }
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
@@ -2134,42 +1966,15 @@ begin
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
-procedure TsSpreadBIFF8Reader.ReadNumber(AStream: TStream);
-// Tries to read number from stream and write result to worksheet.
-// Needs to check if a number is actually a date format
-var
-  ARow, ACol, XF: Word;
-  AValue: Double;
-  lDateTime: TDateTime;
-  nf: TsNumberFormat;
-  nd: word;
-  nfs: String;
-begin
-  {Retrieve XF record, row and column}
-  ReadRowColXF(AStream,ARow,ACol,XF);
-
-  { IEE 754 floating-point value }
-  AStream.ReadBuffer(AValue, 8);
-
-  {Find out what cell type, set contenttype and value}
-  ExtractNumberFormat(XF, nf, nd, nfs);
-  if IsDateTime(AValue, nf, lDateTime) then
-    FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
-  else
-    FWorksheet.WriteNumber(ARow,ACol,AValue,nf,nd);
-
-  {Add attributes}
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
 var
   L: Word;
   B: WORD;
-  ARow, ACol, XF: Word;
+  ARow, ACol: Cardinal;
+  XF: Word;
   AStrValue: ansistring;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
@@ -2257,12 +2062,13 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadLabelSST(const AStream: TStream);
 var
-  ACol,ARow,XF: WORD;
+  ACol,ARow: Cardinal;
+  XF: WORD;
   SSTIndex: DWORD;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
-  SSTIndex:=DWordLEtoN(AStream.ReadDWord);
-  if SizeInt(SSTIndex)>=FSharedStringTable.Count then begin
+  ReadRowColXF(AStream, ARow, ACol, XF);
+  SSTIndex := DWordLEtoN(AStream.ReadDWord);
+  if SizeInt(SSTIndex) >= FSharedStringTable.Count then begin
     Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
   end;
   FWorksheet.WriteUTF8Text(ARow, ACol, FSharedStringTable[SSTIndex]);
@@ -2347,41 +2153,6 @@ begin
   FXFList.Add(lData);
 end;
 
-procedure TsSpreadBIFF8Reader.ReadFormat(const AStream: TStream);
-var
-  lData: TFormatRecordData;
-begin
-  lData := TFormatRecordData.Create;
-
-  // Record FORMAT, BIFF8 (5.49):
-  // Offset Size Contents
-  // 0 2 Format index used in other records
-  // From BIFF5 on: indexes 0..163 are built in
-  lData.Index := WordLEtoN(AStream.ReadWord);
-
-  // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
-  lData.FormatString := ReadWideString(AStream, False);
-
-  // Add to the list
-  FFormatList.Add(lData);
-end;
-
-function TsSpreadBIFF8Reader.FindFormatRecordForCell(const AXFIndex: Integer
-  ): TFormatRecordData;
-var
-  lXFData: TXFListData;
-  lFormatData: TFormatRecordData;
-  i: Integer;
-begin
-  Result := nil;
-  lXFData := TXFListData(FXFList.Items[AXFIndex]);
-  for i := 0 to FFormatList.Count-1 do
-  begin
-    lFormatData := TFormatRecordData(FFormatList.Items[i]);
-    if lFormatData.Index = lXFData.FormatIndex then Exit(lFormatData);
-  end;
-end;
-
 procedure TsSpreadBIFF8Reader.ReadFont(const AStream: TStream);
 var
   lCodePage: Word;
@@ -2440,6 +2211,27 @@ begin
 
   { Add font to workbook's font list }
   FWorkbook.AddFont(font);
+end;
+
+// Read the FORMAT record for formatting numerical data
+procedure TsSpreadBIFF8Reader.ReadFormat(AStream: TStream);
+var
+  lData: TFormatListData;
+begin
+  lData := TFormatListData.Create;
+
+  // Record FORMAT, BIFF 8 (5.49):
+  // Offset Size Contents
+  // 0      2     Format index used in other records
+  // 2      var   Number format string (Unicode string, 16-bit string length)
+  // From BIFF5 on: indexes 0..163 are built in
+  lData.Index := WordLEtoN(AStream.ReadWord);
+
+  // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
+  lData.FormatString := ReadWideString(AStream, False);
+
+  // Add to the list
+  FFormatList.Add(lData);
 end;
 
 
