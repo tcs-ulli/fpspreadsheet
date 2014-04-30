@@ -86,11 +86,11 @@ type
     { Record writing methods }
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(const AStream: TStream);
+    procedure ReadFormat(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadFormulaExcel(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadMulRKValues(AStream: TStream);
-    procedure ReadNumber(AStream: TStream); override;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
@@ -115,8 +115,6 @@ type
       ACell: PCell); override;
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TDateTime; ACell: PCell); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TsFont);
@@ -231,6 +229,7 @@ const
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
   INT_EXCEL_ID_FONT       = $0031;
+  INT_EXCEL_ID_FORMAT     = $041E;
   INT_EXCEL_ID_FORMULA    = $0006;
   INT_EXCEL_ID_INDEX      = $020B;
   INT_EXCEL_ID_LABEL      = $0204;
@@ -969,7 +968,7 @@ begin
   { IEE 754 floating-point value }
   AStream.WriteBuffer(AValue, 8);
 end;
-
+                                              (*
 {*******************************************************************
 *  TsSpreadBIFF2Writer.WriteDateTime ()
 *
@@ -985,6 +984,7 @@ procedure TsSpreadBIFF5Writer.WriteDateTime(AStream: TStream;
 begin
   WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
 end;
+                             *)
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteStyle ()
@@ -1211,7 +1211,7 @@ begin
     lHorAlign := FFormattingStyles[i].HorAlignment;
     lVertAlign := FFormattingStyles[i].VertAlignment;
     lBackgroundColor := FFormattingStyles[i].BackgroundColor;
-                       (*
+
     // Now apply the modifications.
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
       case FFormattingStyles[i].NumberFormat of
@@ -1271,7 +1271,6 @@ begin
         nfTimeInterval:
           lFormatIndex := FORMAT_TIME_INTERVAL;
       end;
-                         *)
 
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
       lBorders := FFormattingStyles[i].Border;
@@ -1418,6 +1417,7 @@ begin
      INT_EXCEL_ID_BOF        : ;
      INT_EXCEL_ID_BOUNDSHEET : ReadBoundSheet(AStream);
      INT_EXCEL_ID_FONT       : ReadFont(AStream);
+     INT_EXCEL_ID_FORMAT     : ReadFormat(AStream);
      INT_EXCEL_ID_XF         : ReadXF(AStream);
      INT_EXCEL_ID_PALETTE    : ReadPalette(AStream);
      INT_EXCEL_ID_EOF        : SectionEOF := True;
@@ -1539,10 +1539,11 @@ procedure TsSpreadBIFF5Reader.ReadRichString(AStream: TStream);
 var
   L: Word;
   B: BYTE;
-  ARow, ACol, XF: Word;
+  ARow, ACol: Cardinal;
+  XF: Word;
   AStrValue: ansistring;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
@@ -1565,10 +1566,11 @@ end;
 procedure TsSpreadBIFF5Reader.ReadRKValue(AStream: TStream);
 var
   L: DWORD;
-  ARow, ACol, XF: WORD;
+  ARow, ACol: Cardinal;
+  XF: WORD;
   Number: Double;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   {Encoded RK value}
   L:=DWordLEtoN(AStream.ReadDWord);
@@ -1611,13 +1613,14 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadFormulaExcel(AStream: TStream);
 var
-  ARow, ACol, XF: WORD;
+  ARow, ACol: Cardinal;
+  XF: WORD;
   ResultFormula: Double;
   Data: array [0..7] of BYTE;
   Flags: WORD;
   FormulaSize: BYTE;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   AStream.ReadBuffer(Data,Sizeof(Data));
   Flags:=WordLEtoN(AStream.ReadWord);
@@ -1628,7 +1631,7 @@ begin
 
   if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
   Move(Data[0],ResultFormula,sizeof(Data));
-  FWorksheet.WriteNumber(ARow,ACol,ResultFormula);
+  FWorksheet.WriteNumber(ARow, ACol, ResultFormula);
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -1805,7 +1808,8 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadBlank(AStream: TStream);
 var
-  ARow, ACol, XF: Word;
+  ARow, ACol: Cardinal;
+  XF: Word;
 begin
   { Read row, column, and XF index from BIFF file }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1875,6 +1879,34 @@ begin
   FWorkbook.AddFont(font);
 end;
 
+// Read the FORMAT record for formatting numerical data
+procedure TsSpreadBIFF5Reader.ReadFormat(AStream: TStream);
+var
+  lData: TFormatListData;
+  str: AnsiString;
+  len: byte;
+begin
+  lData := TFormatListData.Create;
+
+  // Record FORMAT, BIFF 8 (5.49):
+  // Offset Size Contents
+  // 0      2     Format index used in other records
+  // 2      var   Number format string (byte string, 8-bit string length)
+  // From BIFF5 on: indexes 0..163 are built in
+
+  // format index
+  lData.Index := WordLEtoN(AStream.ReadWord);
+
+  // number format string
+  len := AStream.ReadByte;
+  SetLength(str, len);
+  AStream.ReadBuffer(str[1], len);
+  lData.FormatString := str;
+
+  // Add to the list
+  FFormatList.Add(lData);
+end;
+
 procedure TsSpreadBIFF5Reader.ReadFormula(AStream: TStream);
 begin
 
@@ -1883,7 +1915,8 @@ end;
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
 var
   L: Word;
-  ARow, ACol, XF: WORD;
+  ARow, ACol: Cardinal;
+  XF: WORD;
   AValue: array[0..255] of Char;
   AStrValue: ansistring;
 begin
@@ -1899,23 +1932,6 @@ begin
   FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
 
   { Add attributes }
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
-procedure TsSpreadBIFF5Reader.ReadNumber(AStream: TStream);
-var
-  ARow, ACol, XF: WORD;
-  AValue: Double;
-begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
-
-  { IEE 754 floating-point value }
-  AStream.ReadBuffer(AValue, 8);
-
-  { Save the data }
-  FWorksheet.WriteNumber(ARow, ACol, AValue);
-
-  { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
