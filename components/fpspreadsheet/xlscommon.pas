@@ -320,6 +320,7 @@ type
   { TsSpreadBIFFReader }
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
+    RecordSize: Word;
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
@@ -344,11 +345,11 @@ type
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
     // Read floating point number
-    procedure ReadNumber(AStream: TStream); virtual;
+    procedure ReadNumber(AStream: TStream); override;
     // Read palette
     procedure ReadPalette(AStream: TStream);
     // Read the row, column, and XF index at the current stream position
-    procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word);
+    procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
   public
@@ -806,6 +807,7 @@ begin
 end;
 
 // Read the row, column and xf index
+// NOT VALID for BIFF2
 procedure TsSpreadBIFFReader.ReadRowColXF(AStream: TStream;
   out ARow, ACol: Cardinal; out AXF: WORD);
 begin
@@ -1116,8 +1118,9 @@ begin
   end;
 end;
 
-{ Writes a date/time/datetime to a Biff 5/8 NUMBER record, with a date/time format
-  (There is no separate date record type in xls) }
+{ Writes a date/time/datetime to a Biff NUMBER record, with a date/time format
+  (There is no separate date record type in xls)
+  Valid for all BIFF versions. }
 procedure TsSpreadBIFFWriter.WriteDateTime(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var

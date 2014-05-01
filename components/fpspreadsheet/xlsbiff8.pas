@@ -68,7 +68,6 @@ type
 
   TsSpreadBIFF8Reader = class(TsSpreadBIFFReader)
   private
-    RecordSize: Word;
     PendingRecordSize: SizeInt;
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
@@ -1913,10 +1912,10 @@ begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Result of the formula in IEE 754 floating-point value }
-  AStream.ReadBuffer(Data,Sizeof(Data));
+  AStream.ReadBuffer(Data, Sizeof(Data));
 
   { Options flags }
-  Flags:=WordLEtoN(AStream.ReadWord);
+  Flags := WordLEtoN(AStream.ReadWord);
 
   { Not used }
   AStream.ReadDWord;
@@ -1931,11 +1930,12 @@ begin
   WriteLn('');}
 
   //RPN data not used by now
-  AStream.Position:=AStream.Position+FormulaSize;
+  AStream.Position := AStream.Position + FormulaSize;
 
-  if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
-  Move(Data[0],ResultFormula,sizeof(Data));
-  FWorksheet.WriteNumber(ARow,ACol,ResultFormula);
+  if SizeOf(Double) <> 8 then
+    raise Exception.Create('Double is not 8 bytes');
+  Move(Data[0], ResultFormula, SizeOf(Data));
+  FWorksheet.WriteNumber(ARow, ACol, ResultFormula);
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);

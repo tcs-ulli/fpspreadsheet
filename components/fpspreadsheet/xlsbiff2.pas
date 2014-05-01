@@ -40,32 +40,27 @@ type
 
   { TsSpreadBIFF2Reader }
 
-  TsSpreadBIFF2Reader = class(TsCustomSpreadReader)
+  TsSpreadBIFF2Reader = class(TsSpreadBIFFReader)
   private
     WorkBookEncoding: TsEncoding;
-    RecordSize: Word;
     FWorksheet: TsWorksheet;
-    FXFList: TFPList;
     FFont: TsFont;
     procedure ReadRowInfo(AStream: TStream);
   protected
-    procedure ApplyCellFormatting(ARow, ACol: Word; XF, AFormat, AFont, AStyle: Byte);
-    procedure ReadRowColStyle(AStream: TStream; out ARow, ACol: Word;
-      out XF, AFormat, AFont, AStyle: byte);
-    { Record reading methods }
+    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
     procedure ReadFont(AStream: TStream);
     procedure ReadFontColor(AStream: TStream);
     procedure ReadFormula(AStream: TStream); override;
+    procedure ReadInteger(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
-    procedure ReadInteger(AStream: TStream);
+    procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
+
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
-    constructor Create(AWorkbook: TsWorkbook); override;
-    destructor Destroy; override;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
@@ -94,7 +89,6 @@ type
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
   public
     { General writing methods }
     procedure WriteToStream(AStream: TStream); override;
@@ -125,6 +119,7 @@ const
   INT_EXCEL_ID_ROWINFO    = $0008;
   INT_EXCEL_ID_BOF        = $0009;
   INT_EXCEL_ID_EOF        = $000A;
+  INT_EXCEL_ID_FORMAT     = $001E;
   INT_EXCEL_ID_COLWIDTH   = $0024;
   INT_EXCEL_ID_XF         = $0043;
   INT_EXCEL_ID_IXFE       = $0044;
@@ -140,10 +135,363 @@ const
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
 
-type
-  TXFData = class
-    FontIndex: Integer;
+
+{ TsSpreadBIFF2Reader }
+
+procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ARow, ACol: Cardinal;
+  XFIndex: Word);
+var
+  lCell: PCell;
+  xfData: TXFListData;
+  style: Byte;
+begin
+  lCell := FWorksheet.GetCell(ARow, ACol);
+
+  if Assigned(lCell) then begin
+    xfData := TXFListData(FXFList.items[XFIndex]);
+
+    // Font index, "bold" attribute
+    if xfData.FontIndex = 1 then
+      Include(lCell^.UsedFormattingFields, uffBold)
+    else
+      Include(lCell^.UsedFormattingFields, uffFont);
+    lCell^.FontIndex := xfData.FontIndex;
+
+    // Alignment
+    lCell^.HorAlignment := xfData.HorAlignment;
+    lCell^.VertAlignment := xfData.VertAlignment;
+
+    // Wordwrap not supported by BIFF2
+    Exclude(lCell^.UsedFormattingFields, uffWordwrap);
+    // Text rotation not supported by BIFF2
+    Exclude(lCell^.UsedFormattingFields, uffTextRotation);
+
+    // Border
+    if xfData.Borders <> [] then begin
+      Include(lCell^.UsedFormattingFields, uffBorder);
+      lCell^.Border := xfData.Borders;
+    end else
+      Exclude(lCell^.UsedFormattingFields, uffBorder);
+
+    // Background, only shaded, color is ignored
+    if xfData.BackgroundColor <> 0 then
+      Include(lCell^.UsedFormattingFields, uffBackgroundColor)
+    else
+      Exclude(lCell^.UsedFormattingFields, uffBackgroundColor);
   end;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
+var
+  ARow, ACol: Cardinal;
+  XF: Word;
+begin
+  ReadRowColXF(AStream, ARow, ACol, XF);
+  ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
+var
+  c, c1, c2: Cardinal;
+  w: Word;
+  col: TCol;
+  sheet: TsWorksheet;
+begin
+  sheet := Workbook.GetFirstWorksheet;
+  // read column start and end index of column range
+  c1 := AStream.ReadByte;
+  c2 := AStream.ReadByte;
+  // read col width in 1/256 of the width of "0" character
+  w := WordLEToN(AStream.ReadWord);
+  // calculate width in units of "characters"
+  col.Width := w / 256;
+  // assign width to columns
+  for c := c1 to c2 do
+    sheet.WriteColInfo(c, col);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadFont(AStream: TStream);
+var
+  lHeight: Word;
+  lOptions: Word;
+  Len: Byte;
+  lFontName: UTF8String;
+begin
+  FFont := TsFont.Create;
+
+  { Height of the font in twips = 1/20 of a point }
+  lHeight := WordLEToN(AStream.ReadWord);
+  FFont.Size := lHeight/20;
+
+  { Option flags }
+  lOptions := WordLEToN(AStream.ReadWord);
+  FFont.Style := [];
+  if lOptions and $0001 <> 0 then Include(FFont.Style, fssBold);
+  if lOptions and $0002 <> 0 then Include(FFont.Style, fssItalic);
+  if lOptions and $0004 <> 0 then Include(FFont.Style, fssUnderline);
+  if lOptions and $0008 <> 0 then Include(FFont.Style, fssStrikeout);
+
+  { Font name: Unicodestring, char count in 1 byte }
+  Len := AStream.ReadByte();
+  SetLength(lFontName, Len);
+  AStream.ReadBuffer(lFontName[1], Len);
+  FFont.FontName := lFontName;
+
+  { Add font to workbook's font list }
+  FWorkbook.AddFont(FFont);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadFontColor(AStream: TStream);
+begin
+  FFont.Color := WordLEToN(AStream.ReadWord);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+var
+  BIFF2EOF: Boolean;
+  RecordType: Word;
+  CurStreamPos: Int64;
+begin
+  // Clear existing fonts. They will be replaced by those from the file.
+  FWorkbook.RemoveAllFonts;
+
+  { Store some data about the workbook that other routines need }
+  WorkBookEncoding := AData.Encoding;
+
+  BIFF2EOF := False;
+
+  { In BIFF2 files there is only one worksheet, let's create it }
+  FWorksheet := AData.AddWorksheet('');
+
+  { Read all records in a loop }
+  while not BIFF2EOF do
+  begin
+    { Read the record header }
+    RecordType := WordLEToN(AStream.ReadWord);
+    RecordSize := WordLEToN(AStream.ReadWord);
+
+    CurStreamPos := AStream.Position;
+
+    case RecordType of
+
+    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
+    INT_EXCEL_ID_FONT      : ReadFont(AStream);
+    INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
+    INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
+    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
+    INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
+    INT_EXCEL_ID_ROWINFO   : ReadRowInfo(AStream);
+    INT_EXCEL_ID_XF        : ReadXF(AStream);
+    INT_EXCEL_ID_BOF       : ;
+    INT_EXCEL_ID_EOF       : BIFF2EOF := True;
+
+    else
+      // nothing
+    end;
+
+    // Make sure we are in the right position for the next record
+    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
+
+    if AStream.Position >= AStream.Size then BIFF2EOF := True;
+  end;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadFormula(AStream: TStream);
+begin
+
+end;
+
+procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
+var
+  L: Byte;
+  ARow, ACol: Cardinal;
+  XF: Word;
+  AValue: array[0..255] of Char;
+  AStrValue: UTF8String;
+begin
+  { BIFF Record row/column/style }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+
+  { String with 8-bit size }
+  L := AStream.ReadByte();
+  AStream.ReadBuffer(AValue, L);
+  AValue[L] := #0;
+
+  { Save the data }
+  case WorkBookEncoding of
+    seLatin2:   AStrValue := CP1250ToUTF8(AValue);
+    seCyrillic: AStrValue := CP1251ToUTF8(AValue);
+    seGreek:    AStrValue := CP1253ToUTF8(AValue);
+    seTurkish:  AStrValue := CP1254ToUTF8(AValue);
+    seHebrew:   AStrValue := CP1255ToUTF8(AValue);
+    seArabic:   AStrValue := CP1256ToUTF8(AValue);
+  else
+    // Latin 1 is the default
+    AStrValue := CP1252ToUTF8(AValue);
+  end;
+  FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
+var
+  ARow, ACol: Cardinal;
+  XF: Word;
+  AValue: Double;
+begin
+  { BIFF Record row/column/style }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+
+  { IEE 754 floating-point value }
+  AStream.ReadBuffer(AValue, 8);
+
+  { Save the data }
+  FWorksheet.WriteNumber(ARow, ACol, AValue);
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
+var
+  ARow, ACol: Cardinal;
+  XF: Word;
+  AWord  : Word;
+begin
+  { BIFF Record row/column/style }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+
+  { 16 bit unsigned integer }
+  AStream.ReadBuffer(AWord, 2);
+
+  { Save the data }
+  FWorksheet.WriteNumber(ARow, ACol, AWord);
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+// Read the row, column and xf index
+procedure TsSpreadBIFF2Reader.ReadRowColXF(AStream: TStream;
+  out ARow, ACol: Cardinal; out AXF: WORD);
+begin
+  { BIFF Record data for row and column}
+  ARow := WordLEToN(AStream.ReadWord);
+  ACol := WordLEToN(AStream.ReadWord);
+
+  { Index to XF record }
+  AXF := AStream.ReadByte;
+
+  { Index to format and font record, Cell style - ignored because contained in XF
+    Must read to keep the record in sync. }
+  AStream.ReadWord;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadRowInfo(AStream: TStream);
+type
+  TRowRecord = packed record
+    RowIndex: Word;
+    Col1: Word;
+    Col2: Word;
+    Height: Word;
+  end;
+var
+  rowrec: TRowRecord;
+  lRow: PRow;
+  h: word;
+begin
+  AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
+  h := WordLEToN(rowrec.Height);
+  if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
+    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
+    // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
+    lRow^.Height := TwipsToMillimeters(h and $7FFF);
+  end;
+end;
+
+procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
+{
+Offset Size Contents
+ 0     1   Index to FONT record (➜5.45)
+ 1     1   Not used
+ 2     1   Number format and cell flags:
+             Bit  Mask  Contents
+             5-0  3FH   Index to FORMAT record (➜5.49)
+              6   40H   1 = Cell is locked
+              7   80H   1 = Formula is hidden
+ 3     1   Horizontal alignment, border style, and background:
+             Bit  Mask  Contents
+             2-0  07H   XF_HOR_ALIGN – Horizontal alignment
+                            0 General, 1 Left, 2 Centred, 3 Right, 4 Filled
+              3   08H   1 = Cell has left black border
+              4   10H   1 = Cell has right black border
+              5   20H   1 = Cell has top black border
+              6   40H   1 = Cell has bottom black border
+              7   80H   1 = Cell has shaded background
+}
+type
+  TXFRecord = packed record                // see p. 224
+    FontIndex: byte;                       // Offset 0, Size 1
+    NotUsed: byte;                         // Offset 1, Size 1
+    NumFormat_Flags: byte;                 // Offset 2, Size 1
+    HorAlign_Border_BackGround: Byte;      // Offset 3, Size 1
+  end;
+var
+  lData: TXFListData;
+  xf: TXFRecord;
+  b: Byte;
+begin
+  AStream.ReadBuffer(xf, SizeOf(xf));
+
+  lData := TXFListData.Create;
+
+  // Font index
+  lData.FontIndex := xf.FontIndex;
+
+  // Format index
+  lData.FormatIndex := xf.NumFormat_Flags and $07;
+
+  // Horizontal alignment
+  b := xf.HorAlign_Border_Background and MASK_XF_HOR_ALIGN;
+  if (b <= ord(High(TsHorAlignment))) then
+    lData.HorAlignment := TsHorAlignment(b)
+  else
+    lData.HorAlignment := haDefault;
+
+  // Vertical alignment - not used in BIFF2
+  lData.VertAlignment := vaBottom;
+
+  // Word wrap - not used in BIFF2
+  lData.WordWrap := false;
+
+  // Text rotation - not used in BIFF2
+  lData.TextRotation := trHorizontal;
+
+  // Borders
+  lData.Borders := [];
+  if xf.HorAlign_Border_Background and $08 <> 0 then
+    Include(lData.Borders, cbWest);
+  if xf.HorAlign_Border_Background and $10 <> 0 then
+    Include(lData.Borders, cbEast);
+  if xf.HorAlign_Border_Background and $20 <> 0 then
+    Include(lData.Borders, cbNorth);
+  if xf.HorAlign_Border_Background and $40 <> 0 then
+    Include(lData.Borders, cbSouth);
+
+  // Background color not supported, only shaded background
+  if xf.HorAlign_Border_Background and $80 <> 0 then
+    lData.BackgroundColor := 1    // shaded background = "true"
+  else
+    ldata.BackgroundColor := 0;   // shaded background = "false"
+
+  // Add the decoded data to the list
+  FXFList.Add(lData);
+end;
+
 
 { TsSpreadBIFF2Writer }
 
@@ -341,9 +689,8 @@ begin
     lFormatIndex := 0; //General format (one of the built-in number formats)
     lBorders := [];
     lHorAlign := FFormattingStyles[i].HorAlignment;
-
+(*
     // Now apply the modifications.
-    (*
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
       case FFormattingStyles[i].NumberFormat of
         nfFixed:
@@ -402,8 +749,7 @@ begin
         nfTimeInterval:
           lFormatIndex := FORMAT_TIME_INTERVAL;
       end;
-      *)
-
+  *)
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
       lBorders := FFormattingStyles[i].Border;
 
@@ -815,343 +1161,6 @@ begin
   AStream.WriteBuffer(AValue, 8);
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF2Writer.WriteDateTime ()
-*
-*  DESCRIPTION:    Writes a date/time value as a text
-*                  ISO 8601 format is used to preserve interoperability
-*                  between locales.
-*
-*  Note: this should be replaced by writing actual date/time values
-*
-*******************************************************************}
-procedure TsSpreadBIFF2Writer.WriteDateTime(AStream: TStream;
-  const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
-begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
-end;
-
-
-{ TsSpreadBIFF2Reader }
-
-constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create(AWorkbook);
-  FXFList := TFPList.Create;
-end;
-
-destructor TsSpreadBIFF2Reader.Destroy;
-var
-  j: integer;
-begin
-  for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
-  FXFList.Free;
-  inherited;
-end;
-
-procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ARow, ACol: Word;
-  XF, AFormat, AFont, AStyle: Byte);
-var
-  lCell: PCell;
-  xfData: TXFData;
-begin
-  lCell := FWorksheet.GetCell(ARow, ACol);
-
-  if Assigned(lCell) then begin
-    xfData := TXFData(FXFList.items[xf]);
-
-    // Font index, "bold" attribute
-    if xfData.FontIndex = 1 then
-      Include(lCell^.UsedFormattingFields, uffBold)
-    else
-      Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := xfData.FontIndex;
-
-    // Horizontal justification
-    if AStyle and $07 <> 0 then begin
-      Include(lCell^.UsedFormattingFields, uffHorAlign);
-      lCell^.HorAlignment := TsHorAlignment(AStyle and $07);
-    end;
-
-    // Border
-    if AStyle and $78 <> 0 then begin
-      Include(lCell^.UsedFormattingFields, uffBorder);
-      lCell^.Border := [];
-      if AStyle and $08 <> 0 then Include(lCell^.Border, cbWest);
-      if AStyle and $10 <> 0 then Include(lCell^.Border, cbEast);
-      if AStyle and $20 <> 0 then Include(lCell^.Border, cbNorth);
-      if AStyle and $40 <> 0 then Include(lCell^.Border, cbSouth);
-    end else
-      Exclude(lCell^.UsedFormattingFields, uffBorder);
-
-    // Background
-    if AStyle and $80 <> 0 then begin
-      Include(lCell^.UsedFormattingFields, uffBackgroundColor);
-      // Background color is ignored
-    end;
-  end;
-end;
-
-procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
-var
-  ARow, ACol: Word;
-  XF, AFormat, AFont, AStyle: Byte;
-begin
-  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
-  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
-var
-  c, c1, c2: Cardinal;
-  w: Word;
-  col: TCol;
-  sheet: TsWorksheet;
-begin
-  sheet := Workbook.GetFirstWorksheet;
-  // read column start and end index of column range
-  c1 := AStream.ReadByte;
-  c2 := AStream.ReadByte;
-  // read col width in 1/256 of the width of "0" character
-  w := WordLEToN(AStream.ReadWord);
-  // calculate width in units of "characters"
-  col.Width := w / 256;
-  // assign width to columns
-  for c := c1 to c2 do
-    sheet.WriteColInfo(c, col);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadFont(AStream: TStream);
-var
-  lHeight: Word;
-  lOptions: Word;
-  Len: Byte;
-  lFontName: UTF8String;
-begin
-  FFont := TsFont.Create;
-
-  { Height of the font in twips = 1/20 of a point }
-  lHeight := WordLEToN(AStream.ReadWord);
-  FFont.Size := lHeight/20;
-
-  { Option flags }
-  lOptions := WordLEToN(AStream.ReadWord);
-  FFont.Style := [];
-  if lOptions and $0001 <> 0 then Include(FFont.Style, fssBold);
-  if lOptions and $0002 <> 0 then Include(FFont.Style, fssItalic);
-  if lOptions and $0004 <> 0 then Include(FFont.Style, fssUnderline);
-  if lOptions and $0008 <> 0 then Include(FFont.Style, fssStrikeout);
-
-  { Font name: Unicodestring, char count in 1 byte }
-  Len := AStream.ReadByte();
-  SetLength(lFontName, Len);
-  AStream.ReadBuffer(lFontName[1], Len);
-  FFont.FontName := lFontName;
-
-  { Add font to workbook's font list }
-  FWorkbook.AddFont(FFont);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadFontColor(AStream: TStream);
-begin
-  FFont.Color := WordLEToN(AStream.ReadWord);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
-var
-  BIFF2EOF: Boolean;
-  RecordType: Word;
-  CurStreamPos: Int64;
-begin
-  // Clear existing fonts. They will be replaced by those from the file.
-  FWorkbook.RemoveAllFonts;
-
-  { Store some data about the workbook that other routines need }
-  WorkBookEncoding := AData.Encoding;
-
-  BIFF2EOF := False;
-
-  { In BIFF2 files there is only one worksheet, let's create it }
-  FWorksheet := AData.AddWorksheet('');
-
-  { Read all records in a loop }
-  while not BIFF2EOF do
-  begin
-    { Read the record header }
-    RecordType := WordLEToN(AStream.ReadWord);
-    RecordSize := WordLEToN(AStream.ReadWord);
-
-    CurStreamPos := AStream.Position;
-
-    case RecordType of
-
-    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
-    INT_EXCEL_ID_FONT      : ReadFont(AStream);
-    INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
-    INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
-    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
-    INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
-    INT_EXCEL_ID_ROWINFO   : ReadRowInfo(AStream);
-    INT_EXCEL_ID_XF        : ReadXF(AStream);
-    INT_EXCEL_ID_BOF       : ;
-    INT_EXCEL_ID_EOF       : BIFF2EOF := True;
-
-    else
-      // nothing
-    end;
-
-    // Make sure we are in the right position for the next record
-    AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
-
-    if AStream.Position >= AStream.Size then BIFF2EOF := True;
-  end;
-end;
-
-procedure TsSpreadBIFF2Reader.ReadFormula(AStream: TStream);
-begin
-
-end;
-
-procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
-var
-  L: Byte;
-  ARow, ACol: Word;
-  XF, AFormat, AFont, AStyle: Byte;
-  AValue: array[0..255] of Char;
-  AStrValue: UTF8String;
-begin
-  { BIFF Record row/column/style }
-  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
-
-  { String with 8-bit size }
-  L := AStream.ReadByte();
-  AStream.ReadBuffer(AValue, L);
-  AValue[L] := #0;
-
-  { Save the data }
-  case WorkBookEncoding of
-  seLatin2:   AStrValue := CP1250ToUTF8(AValue);
-  seCyrillic: AStrValue := CP1251ToUTF8(AValue);
-  seGreek:    AStrValue := CP1253ToUTF8(AValue);
-  seTurkish:  AStrValue := CP1254ToUTF8(AValue);
-  seHebrew:   AStrValue := CP1255ToUTF8(AValue);
-  seArabic:   AStrValue := CP1256ToUTF8(AValue);
-  else
-    // Latin 1 is the default
-    AStrValue := CP1252ToUTF8(AValue);
-  end;
-  FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
-
-  { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
-var
-  ARow, ACol: Word;
-  XF, AFormat, AFont, AStyle: Byte;
-  AValue: Double;
-begin
-  { BIFF Record row/column/style }
-  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
-
-  { IEE 754 floating-point value }
-  AStream.ReadBuffer(AValue, 8);
-
-  { Save the data }
-  FWorksheet.WriteNumber(ARow, ACol, AValue);
-
-  { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
-var
-  ARow, ACol: Word;
-  XF, AFormat, AFont, AStyle: Byte;
-  AWord  : Word;
-begin
-  { BIFF Record row/column/style }
-  ReadRowColStyle(AStream, ARow, ACol, XF, AFormat, AFont, AStyle);
-
-  { 16 bit unsigned integer }
-  AStream.ReadBuffer(AWord, 2);
-
-  { Save the data }
-  FWorksheet.WriteNumber(ARow, ACol, AWord);
-
-  { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF, AFormat, AFont, AStyle);
-end;
-
-procedure TsSpreadBIFF2Reader.ReadRowColStyle(AStream: TStream;
-  out ARow, ACol: Word; out XF, AFormat, AFont, AStyle: byte);
-type
-  TRowColStyleRecord = packed record
-    Row, Col: Word;
-    XFIndex: Byte;
-    Format_Font: Byte;
-    Style: Byte;
-  end;
-var
-  rcs: TRowColStyleRecord;
-begin
-  AStream.ReadBuffer(rcs, SizeOf(TRowColStyleRecord));
-  ARow := WordLEToN(rcs.Row);
-  ACol := WordLEToN(rcs.Col);
-  XF := rcs.XFIndex;
-  AFormat := (rcs.Format_Font AND $3F);
-  AFont := (rcs.Format_Font AND $C0) shr 6;
-  AStyle := rcs.Style;
-end;
-
-procedure TsSpreadBIFF2Reader.ReadRowInfo(AStream: TStream);
-type
-  TRowRecord = packed record
-    RowIndex: Word;
-    Col1: Word;
-    Col2: Word;
-    Height: Word;
-  end;
-var
-  rowrec: TRowRecord;
-  lRow: PRow;
-  h: word;
-begin
-  AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
-  h := WordLEToN(rowrec.Height);
-  if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
-    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
-    // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
-    lRow^.Height := TwipsToMillimeters(h and $7FFF);
-  end;
-end;
-
-procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
-type
-  TXFRecord = packed record                // see p. 224
-    FontIndex: byte;                       // Offset 0, Size 1
-    NotUsed: byte;                         // Offset 1, Size 1
-    NumFormat_Flags: byte;                 // Offset 2, Size 1
-    HorAlign_Border_BackGround: Byte;      // Offset 3, Size 1
-  end;
-var
-  xfData: TXFData;
-  xf: TXFRecord;
-  b: Byte;
-begin
-  AStream.ReadBuffer(xf, SizeOf(xf));
-
-  xfData := TXFData.Create;
-
-  // Font index
-  xfData.FontIndex := xf.FontIndex;
-
-  // Add the XF to the list
-  FXFList.Add(xfData);
-end;
 
 {*******************************************************************
 *  Initialization section
