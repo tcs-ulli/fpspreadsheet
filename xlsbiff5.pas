@@ -77,7 +77,6 @@ type
 
   TsSpreadBIFF5Reader = class(TsSpreadBIFFReader)
   private
-    RecordSize: Word;
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
   protected
@@ -1296,7 +1295,6 @@ begin
     lWordwrap := (uffWordwrap in FFormattingStyles[i].UsedFormattingFields);
 
     // And finally write the style
-
     WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders,
       lHorAlign, lVertAlign, lWordwrap, lAddBackground, lBackgroundColor);
   end;
