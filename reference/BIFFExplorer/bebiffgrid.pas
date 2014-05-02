@@ -48,6 +48,7 @@ type
     procedure ShowFont;
     procedure ShowFooter;
     procedure ShowFormat;
+    procedure ShowFormatCount;
     procedure ShowFormula;
     procedure ShowHeader;
     procedure ShowHideObj;
@@ -268,6 +269,8 @@ begin
       ShowSelection;
     $001E, $041E:
       ShowFormat;
+    $001F:
+      ShowFormatCount;
     $0022:
       ShowDateMode;
     $0024:
@@ -1216,6 +1219,21 @@ begin
   ExtractString(FBufferIndex, b, (FFormat=sfExcel8), s, numBytes);
   ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
     Format('Number format string (%s string, %d-bit string length)', [GetStringType, b*8]));
+end;
+
+
+procedure TBIFFGrid.ShowFormatCount;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  if FFormat = sfExcel2 then begin
+    RowCount := 1 + FixedRows;
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+      'Number of FORMAT records');
+  end;
 end;
 
 

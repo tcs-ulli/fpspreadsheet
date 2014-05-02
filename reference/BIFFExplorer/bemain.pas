@@ -595,11 +595,6 @@ begin
     OnRecentFile := @MRUMenuManagerRecentFile;
   end;
 
-  FXFIndex := -1;
-  FFontIndex := -1;
-  FFormatIndex := -1;
-  FRowIndex := -1;
-
   HexGrid.ColWidths[HexGrid.ColCount-1] := 5;
   HexGrid.DefaultRowHeight := HexGrid.Canvas.TextHeight('Tg') + 4;
   AlphaGrid.DefaultRowHeight := HexGrid.DefaultRowHeight;
@@ -1059,6 +1054,10 @@ begin
     Screen.Cursor := crHourGlass;
     BiffTree.Clear;
     parentnode := nil;
+    FXFIndex := -1;
+    FFontIndex := -1;
+    FFormatIndex := -1;
+    FRowIndex := -1;
     AStream.Position := 0;
     while AStream.Position < AStream.Size do begin
       p := AStream.Position;
