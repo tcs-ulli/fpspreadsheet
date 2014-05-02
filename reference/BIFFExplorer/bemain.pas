@@ -22,6 +22,7 @@ type
     RecordID: Integer;
     RecordName: String;
     RecordDescription: String;
+    Index: Integer;
     destructor Destroy; override;
   end;
 
@@ -131,6 +132,10 @@ type
     FFormat: TsSpreadsheetFormat;
     FBuffer: TBIFFBuffer;
     FCurrOffset: Integer;
+    FXFIndex: Integer;
+    FFontIndex: Integer;
+    FFormatIndex: Integer;
+    FRowIndex: Integer;
     FLockHexDumpGrids: Integer;
     FAnalysisGrid: TBIFFGrid;
     FMRUMenuManager : TMRUMenuManager;
@@ -441,12 +446,13 @@ begin
     data := TBiffNodeData(ptr^.Data);
     case Sender.GetNodeLevel(Node) of
       0: if Column = 0 then
-           CellText := data.RecordName;
+             CellText := data.RecordName;
       1: case Column of
            0: CellText := IntToStr(data.Offset);
            1: CellText := Format('$%.4x', [data.RecordID]);
            2: CellText := data.RecordName;
-           3: CellText := data.RecordDescription;
+           3: if data.Index > -1 then CellText := IntToStr(data.Index);
+           4: CellText := data.RecordDescription;
          end;
     end;
   end;
@@ -588,6 +594,11 @@ begin
     PopupMenu := RecentFilesPopupMenu;
     OnRecentFile := @MRUMenuManagerRecentFile;
   end;
+
+  FXFIndex := -1;
+  FFontIndex := -1;
+  FFormatIndex := -1;
+  FRowIndex := -1;
 
   HexGrid.ColWidths[HexGrid.ColCount-1] := 5;
   HexGrid.DefaultRowHeight := HexGrid.Canvas.TextHeight('Tg') + 4;
@@ -1000,7 +1011,7 @@ begin
   try
     ReadFormFromIni(ini, 'MainForm', self);
 
-    BiffTree.Width := ini.ReadInteger('MainForm', 'RecordList_Width', BiffTree.Width);
+    TreePanel.Width := ini.ReadInteger('MainForm', 'RecordList_Width', TreePanel.Width);
     for i:=0 to BiffTree.Header.Columns.Count-1 do
       BiffTree.Header.Columns[i].Width := ini.ReadInteger('MainForm',
         Format('RecordList_ColWidth_%d', [i+1]), BiffTree.Header.Columns[i].Width);
@@ -1010,7 +1021,7 @@ begin
       ValueGrid.ColWidths[i] := ini.ReadInteger('MainForm',
         Format('ValueGrid_ColWidth_%d', [i+1]), ValueGrid.ColWidths[i]);
 
-    AlphaGrid.Width := ini.ReadInteger('MainForm', 'AlphaGrid_Width', AlphaGrid.Width);
+    AlphaGrid.Height := ini.ReadInteger('MainForm', 'AlphaGrid_Height', AlphaGrid.Height);
     for i:=0 to AlphaGrid.ColCount-1 do
       AlphaGrid.ColWidths[i] := ini.ReadInteger('MainForm',
         Format('AlphaGrid_ColWidth_%d', [i+1]), AlphaGrid.ColWidths[i]);
@@ -1019,9 +1030,8 @@ begin
       FAnalysisGrid.ColWidths[i] := ini.ReadInteger('MainForm',
         Format('AnalysisGrid_ColWidth_%d', [i+1]), FAnalysisGrid.ColWidths[i]);
 
-    AnalysisDetails.Width := ini.ReadInteger('MainForm', 'AnalysisDetails_Width', AnalysisDetails.Width);
+    AnalysisDetails.Height := ini.ReadInteger('MainForm', 'AnalysisDetails_Height', AnalysisDetails.Height);
 
-    PageControl.Height := ini.ReadInteger('MainForm', 'PageControl_Height', PageControl.Height);
     PageControl.ActivePageIndex := ini.ReadInteger('MainForm', 'PageIndex', PageControl.ActivePageIndex);
   finally
     ini.Free;
@@ -1071,6 +1081,7 @@ begin
         parentnode := BIFFTree.AddChild(nil);
         ptr := BIFFTree.GetNodeData(parentnode);
         ptr^.Data := parentdata;
+        FRowIndex := -1;
       end;
       // add node to parent node
       data := TBiffNodeData.Create;
@@ -1082,6 +1093,30 @@ begin
       end else begin
         data.RecordName := s;
         data.RecordDescription := '';
+      end;
+      case recType of
+        $0008, $0208:  // Row
+          begin
+            inc(FRowIndex);
+            data.Index := FRowIndex;
+          end;
+        $0031, $0231:  // Font record
+          begin
+            inc(FFontIndex);
+            data.Index := FFontIndex;
+          end;
+        $0043, $00E0:  // XF record
+          begin
+            inc(FXFIndex);
+            data.Index := FXFIndex;
+          end;
+        $001E, $041E:  // Format record
+          begin
+            inc(FFormatIndex);
+            data.Index := FFormatIndex;
+          end;
+        else
+          data.Index := -1;
       end;
       node := BIFFTree.AddChild(parentnode);
       ptr := BIFFTree.GetNodeData(node);
@@ -1143,7 +1178,7 @@ begin
   try
     WriteFormToIni(ini, 'MainForm', self);
 
-    ini.WriteInteger('MainForm', 'RecordList_Width', BiffTree.Width);
+    ini.WriteInteger('MainForm', 'RecordList_Width', TreePanel.Width);
     for i:=0 to BiffTree.Header.Columns.Count-1 do
       ini.WriteInteger('MainForm', Format('RecordList_ColWidth_%d', [i+1]), BiffTree.Header.Columns[i].Width);
 
@@ -1158,10 +1193,9 @@ begin
     for i:=0 to FAnalysisGrid.ColCount-1 do
       ini.WriteInteger('MainForm', Format('AnalysisGrid_ColWidth_%d', [i+1]), FAnalysisGrid.ColWidths[i]);
 
-    ini.WriteInteger('MainForm', 'AnalysisDetails_Width', AnalysisDetails.Width);
+    ini.WriteInteger('MainForm', 'AnalysisDetails_Height', AnalysisDetails.Height);
 
     ini.WriteInteger('MainForm', 'PageIndex', PageControl.ActivePageIndex);
-    ini.WriteInteger('MainForm', 'PageControl_Height', PageControl.Height);
   finally
     ini.Free;
   end;
