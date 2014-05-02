@@ -364,6 +364,7 @@ type
     FDateMode: TDateMode;
     FLastRow: Integer;
     FLastCol: Word;
+    procedure AddDefaultFormats; override;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -863,6 +864,27 @@ end;
 destructor TsSpreadBIFFWriter.Destroy;
 begin
   inherited Destroy;
+end;
+
+{ These are default style formats which are added as XF fields regardless of
+  being used in the document or not.
+  Currently, only one additional default format is supported ("bold").
+  Here are the changes to be made when extending this list:
+  - SetLength(FFormattingstyles, <number of predefined styles>)
+}
+procedure TsSpreadBIFFWriter.AddDefaultFormats();
+begin
+  SetLength(FFormattingStyles, 1);
+
+  // XF0..XF14: Normal style, Row Outline level 1..7,
+  // Column Outline level 1..7.
+
+  // XF15 - Default cell format, no formatting (4.6.2)
+  FFormattingStyles[0].UsedFormattingFields := [];
+  FFormattingStyles[0].Row := 15;
+
+  NextXFIndex := 15 + Length(FFormattingStyles);
+  // "15" is the index of the last pre-defined xf record
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(

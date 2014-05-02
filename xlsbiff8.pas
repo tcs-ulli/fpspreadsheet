@@ -110,7 +110,6 @@ type
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
   protected
-    procedure AddDefaultFormats(); override;
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -471,24 +470,6 @@ begin
     WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders,
       lHorAlign, lVertAlign, lWordwrap, lAddBackground, lBackgroundColor);
   end;
-end;
-
-{@@
-  These are default style formats which are added as XF fields regardless of being used
-  in the document or not.
-}
-procedure TsSpreadBIFF8Writer.AddDefaultFormats();
-begin
-  NextXFIndex := 16;
-
-  SetLength(FFormattingStyles, 1);
-
-  // XF0..XF14: Normal style, Row Outline level 1..7,
-  // Column Outline level 1..7.
-
-  // XF15 - Default cell format, no formatting (4.6.2)
-  FFormattingStyles[0].UsedFormattingFields := [];
-  FFormattingStyles[0].Row := 15;
 end;
 
 {*******************************************************************
