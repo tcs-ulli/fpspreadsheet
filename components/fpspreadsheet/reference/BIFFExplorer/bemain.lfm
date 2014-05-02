@@ -62,227 +62,26 @@ object MainForm: TMainForm
     ClientHeight = 507
     ClientWidth = 665
     TabOrder = 2
-    object HexSplitter: TSplitter
-      Cursor = crVSplit
-      Left = 0
-      Height = 5
-      Top = 244
-      Width = 665
-      Align = alBottom
-      ResizeAnchor = akBottom
-    end
-    object HexPanel: TPanel
-      Left = 0
-      Height = 244
-      Top = 0
-      Width = 665
-      Align = alClient
-      Caption = 'HexPanel'
-      ClientHeight = 244
-      ClientWidth = 665
-      TabOrder = 1
-      object HexGrid: TStringGrid
-        Left = 1
-        Height = 242
-        Top = 1
-        Width = 398
-        Align = alClient
-        AutoFillColumns = True
-        ColCount = 17
-        DefaultColWidth = 28
-        ExtendedSelect = False
-        Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goThumbTracking, goSmoothScroll]
-        ParentFont = False
-        TabOrder = 0
-        TitleStyle = tsNative
-        OnClick = GridClick
-        OnPrepareCanvas = HexGridPrepareCanvas
-        OnSelection = HexGridSelection
-        ColWidths = (
-          28
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          36
-        )
-        Cells = (
-          16
-          1
-          0
-          '0'
-          2
-          0
-          '1'
-          3
-          0
-          '2'
-          4
-          0
-          '3'
-          5
-          0
-          '4'
-          6
-          0
-          '5'
-          7
-          0
-          '6'
-          8
-          0
-          '7'
-          9
-          0
-          '8'
-          10
-          0
-          '9'
-          11
-          0
-          '10'
-          12
-          0
-          '11'
-          13
-          0
-          '12'
-          14
-          0
-          '13'
-          15
-          0
-          '14'
-          16
-          0
-          '15'
-        )
-      end
-      object AlphaGrid: TStringGrid
-        Left = 404
-        Height = 242
-        Top = 1
-        Width = 260
-        Align = alRight
-        AutoFillColumns = True
-        ColCount = 16
-        FixedCols = 0
-        Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goThumbTracking, goSmoothScroll]
-        ParentFont = False
-        TabOrder = 1
-        TitleStyle = tsNative
-        OnClick = GridClick
-        OnSelection = AlphaGridSelection
-        ColWidths = (
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-          16
-        )
-        Cells = (
-          16
-          0
-          0
-          '0'
-          1
-          0
-          '1'
-          2
-          0
-          '2'
-          3
-          0
-          '3'
-          4
-          0
-          '4'
-          5
-          0
-          '5'
-          6
-          0
-          '6'
-          7
-          0
-          '7'
-          8
-          0
-          '8'
-          9
-          0
-          '9'
-          10
-          0
-          'A'
-          11
-          0
-          'B'
-          12
-          0
-          'C'
-          13
-          0
-          'D'
-          14
-          0
-          'E'
-          15
-          0
-          'F'
-        )
-      end
-      object HexDumpSplitter: TSplitter
-        Left = 399
-        Height = 242
-        Top = 1
-        Width = 5
-        Align = alRight
-        ResizeAnchor = akRight
-      end
-    end
     object PageControl: TPageControl
       Left = 0
-      Height = 258
-      Top = 249
+      Height = 507
+      Top = 0
       Width = 665
       ActivePage = PgValues
-      Align = alBottom
+      Align = alClient
       TabIndex = 1
-      TabOrder = 2
+      TabOrder = 0
       OnChange = PageControlChange
       object PgAnalysis: TTabSheet
         Caption = 'Analysis'
-        ClientHeight = 225
+        ClientHeight = 479
         ClientWidth = 657
         object AnalysisDetails: TMemo
-          Left = 428
-          Height = 225
-          Top = 0
-          Width = 229
-          Align = alRight
+          Left = 0
+          Height = 191
+          Top = 288
+          Width = 657
+          Align = alBottom
           Font.CharSet = ANSI_CHARSET
           Font.Height = -12
           Font.Name = 'Courier New'
@@ -294,24 +93,25 @@ object MainForm: TMainForm
           WordWrap = False
         end
         object DetailsSplitter: TSplitter
-          Left = 423
-          Height = 225
-          Top = 0
-          Width = 5
-          Align = alRight
-          ResizeAnchor = akRight
+          Cursor = crVSplit
+          Left = 0
+          Height = 5
+          Top = 283
+          Width = 657
+          Align = alBottom
+          ResizeAnchor = akBottom
         end
       end
       object PgValues: TTabSheet
         Caption = 'Values'
-        ClientHeight = 230
+        ClientHeight = 479
         ClientWidth = 657
         object ValueGrid: TStringGrid
           Left = 0
-          Height = 230
-          Top = 0
+          Height = 158
+          Top = 321
           Width = 657
-          Align = alClient
+          Align = alBottom
           ColCount = 3
           DefaultColWidth = 100
           FixedCols = 0
@@ -337,6 +137,207 @@ object MainForm: TMainForm
             0
             'Offset range'
           )
+        end
+        object HexPanel: TPanel
+          Left = 0
+          Height = 316
+          Top = 0
+          Width = 657
+          Align = alClient
+          Caption = 'HexPanel'
+          ClientHeight = 316
+          ClientWidth = 657
+          TabOrder = 1
+          object HexGrid: TStringGrid
+            Left = 1
+            Height = 314
+            Top = 1
+            Width = 390
+            Align = alClient
+            AutoFillColumns = True
+            ColCount = 17
+            DefaultColWidth = 28
+            ExtendedSelect = False
+            Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goThumbTracking, goSmoothScroll]
+            ParentFont = False
+            TabOrder = 0
+            TitleStyle = tsNative
+            OnClick = GridClick
+            OnPrepareCanvas = HexGridPrepareCanvas
+            OnSelection = HexGridSelection
+            ColWidths = (
+              28
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              22
+              28
+            )
+            Cells = (
+              16
+              1
+              0
+              '0'
+              2
+              0
+              '1'
+              3
+              0
+              '2'
+              4
+              0
+              '3'
+              5
+              0
+              '4'
+              6
+              0
+              '5'
+              7
+              0
+              '6'
+              8
+              0
+              '7'
+              9
+              0
+              '8'
+              10
+              0
+              '9'
+              11
+              0
+              '10'
+              12
+              0
+              '11'
+              13
+              0
+              '12'
+              14
+              0
+              '13'
+              15
+              0
+              '14'
+              16
+              0
+              '15'
+            )
+          end
+          object AlphaGrid: TStringGrid
+            Left = 396
+            Height = 314
+            Top = 1
+            Width = 260
+            Align = alRight
+            AutoFillColumns = True
+            ColCount = 16
+            FixedCols = 0
+            Options = [goFixedVertLine, goFixedHorzLine, goHorzLine, goRangeSelect, goDrawFocusSelected, goThumbTracking, goSmoothScroll]
+            ParentFont = False
+            TabOrder = 1
+            TitleStyle = tsNative
+            OnClick = GridClick
+            OnSelection = AlphaGridSelection
+            ColWidths = (
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+            )
+            Cells = (
+              16
+              0
+              0
+              '0'
+              1
+              0
+              '1'
+              2
+              0
+              '2'
+              3
+              0
+              '3'
+              4
+              0
+              '4'
+              5
+              0
+              '5'
+              6
+              0
+              '6'
+              7
+              0
+              '7'
+              8
+              0
+              '8'
+              9
+              0
+              '9'
+              10
+              0
+              'A'
+              11
+              0
+              'B'
+              12
+              0
+              'C'
+              13
+              0
+              'D'
+              14
+              0
+              'E'
+              15
+              0
+              'F'
+            )
+          end
+          object HexDumpSplitter: TSplitter
+            Left = 391
+            Height = 314
+            Top = 1
+            Width = 5
+            Align = alRight
+            ResizeAnchor = akRight
+          end
+        end
+        object HexSplitter: TSplitter
+          Cursor = crVSplit
+          Left = 0
+          Height = 5
+          Top = 316
+          Width = 657
+          Align = alBottom
+          ResizeAnchor = akBottom
         end
       end
     end
@@ -514,7 +515,7 @@ object MainForm: TMainForm
       Align = alClient
       ButtonStyle = bsTriangle
       DefaultText = 'Node'
-      Header.AutoSizeIndex = 3
+      Header.AutoSizeIndex = 4
       Header.Columns = <      
         item
           Alignment = taRightJustify
@@ -539,10 +540,16 @@ object MainForm: TMainForm
           Width = 130
         end      
         item
-          MinWidth = 80
+          Alignment = taCenter
+          MinWidth = 50
           Position = 3
+          Text = 'Index'
+        end      
+        item
+          MinWidth = 80
+          Position = 4
           Text = 'Record description'
-          Width = 125
+          Width = 80
         end>
       Header.DefaultHeight = 24
       Header.Font.Style = [fsBold]

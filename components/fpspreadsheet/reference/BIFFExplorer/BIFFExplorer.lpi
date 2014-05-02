@@ -154,7 +154,7 @@
       <Unit3>
         <Filename Value="bebiffutils.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="bebiffutils"/>
+        <UnitName Value="beBIFFUtils"/>
       </Unit3>
       <Unit4>
         <Filename Value="behtml.pas"/>

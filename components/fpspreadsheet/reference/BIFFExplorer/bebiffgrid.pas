@@ -24,6 +24,7 @@ type
     function  GetStringType: String;
 
     procedure ShowBackup;
+    procedure ShowBlankCell;
     procedure ShowBOF;
     procedure ShowBookBool;
     procedure ShowBottomMargin;
@@ -221,6 +222,8 @@ begin
   case FRecType of
     $0000, $0200:
       ShowDimensions;
+    $0001, $0201:
+      ShowBlankCell;
     $0002:
       ShowInteger;
     $0003, $0203:
@@ -394,6 +397,86 @@ begin
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x', [w]),
     'Save backup copy of workbook');
+end;
+
+
+procedure TBIFFGrid.ShowBlankCell;
+var
+  numBytes: Integer;
+  b: Byte = 0;
+  w: Word = 0;
+  dbl: Double;
+begin
+  RowCount := IfThen(FFormat = sfExcel2, FixedRows + 5, FixedRows + 3);
+  // Offset 0: Row & Offset 2: Column
+  ShowRowColData(FBufferIndex);
+
+  // Offset 4: Cell attributes (BIFF2) or XF record index (> BIFF2)
+  if FFormat = sfExcel2 then begin
+    numBytes := 1;
+    Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell protection and XF index:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      case b and $40 of
+        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+      end;
+      case b and $80 of
+        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+      end;
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b, b]),
+      'Cell protection and XF index');
+
+    numBytes := 1;
+    Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Indexes to format and font records:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: Index to FORMAT record', [b and $3f]));
+      FDetails.Add(Format('Bits 7-6 = %d: Index to FONT record', [(b and $C0) shr 6]));
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b, b]),
+      'Indexes of format and font records');
+
+    numBytes := 1;
+    Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell style:'#13);
+      case b and $07 of
+        0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
+        1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
+        2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
+        3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
+        4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+      end;
+      if b and $08 = 0
+        then FDetails.Add('Bit 3 = 0: Cell has NO left border')
+        else FDetails.Add('Bit 3 = 1: Cell has left black border');
+      if b and $10 = 0
+        then FDetails.Add('Bit 4 = 0: Cell has NO right border')
+        else FDetails.Add('Bit 4 = 1: Cell has right black border');
+      if b and $20 = 0
+        then FDetails.Add('Bit 5 = 0: Cell has NO top border')
+        else FDetails.Add('Bit 5 = 1: Cell has top black border');
+      if b and $40 = 0
+        then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
+        else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+      if b and $80 = 0
+        then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
+        else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
+      'Cell style');
+  end else
+  begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrROw, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+      'Index of XF record');
+  end;
 end;
 
 
@@ -1162,16 +1245,58 @@ begin
   if FFormat = sfExcel2 then begin
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell protection and XF index:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      case b and $40 of
+        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+      end;
+      case b and $80 of
+        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+      end;
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
       'Cell protection and XF index');
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Indexes to format and font records:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: Index to FORMAT record', [b and $3f]));
+      FDetails.Add(Format('Bits 7-6 = %d: Index to FONT record', [(b and $C0) shr 6]));
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
       'Indexes of format and font records');
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell style:'#13);
+      case b and $07 of
+        0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
+        1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
+        2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
+        3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
+        4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+      end;
+      if b and $08 = 0
+        then FDetails.Add('Bit 3 = 0: Cell has NO left border')
+        else FDetails.Add('Bit 3 = 1: Cell has left black border');
+      if b and $10 = 0
+        then FDetails.Add('Bit 4 = 0: Cell has NO right border')
+        else FDetails.Add('Bit 4 = 1: Cell has right black border');
+      if b and $20 = 0
+        then FDetails.Add('Bit 5 = 0: Cell has NO top border')
+        else FDetails.Add('Bit 5 = 1: Cell has top black border');
+      if b and $40 = 0
+        then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
+        else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+      if b and $80 = 0
+        then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
+        else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
       'Cell style');
   end else begin
@@ -1692,12 +1817,56 @@ begin
 
   numBytes := 1;
   b := FBuffer[FBufferIndex];
+  if Row = FCurrRow then begin
+    FDetails.Add('Cell protection and XF index:'#13);
+    FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+    case b and $40 of
+      0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
+      1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+    end;
+    case b and $80 of
+      0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
+      1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+    end;
+  end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
     'Cell protection and XF index');
+
   b := FBuffer[FBufferIndex];
+  if Row = FCurrRow then begin
+    FDetails.Add('Indexes to format and font records:'#13);
+    FDetails.Add(Format('Bits 5-0 = %d: Index to FORMAT record', [b and $3f]));
+    FDetails.Add(Format('Bits 7-6 = %d: Index to FONT record', [(b and $C0) shr 6]));
+  end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
     'Indexes of format and font records');
+
   b := FBuffer[FBufferIndex];
+  if Row = FCurrRow then begin
+    FDetails.Add('Cell style:'#13);
+    case b and $07 of
+      0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
+      1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
+      2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
+      3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
+      4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+    end;
+    if b and $08 = 0
+      then FDetails.Add('Bit 3 = 0: Cell has NO left border')
+      else FDetails.Add('Bit 3 = 1: Cell has left black border');
+    if b and $10 = 0
+      then FDetails.Add('Bit 4 = 0: Cell has NO right border')
+      else FDetails.Add('Bit 4 = 1: Cell has right black border');
+    if b and $20 = 0
+      then FDetails.Add('Bit 5 = 0: Cell has NO top border')
+      else FDetails.Add('Bit 5 = 1: Cell has top black border');
+    if b and $40 = 0
+      then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
+      else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+    if b and $80 = 0
+      then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
+      else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+  end;
   ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
     'Cell style');
 
@@ -1765,16 +1934,58 @@ begin
   if (FFormat = sfExcel2) then begin
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell protection and XF index:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      case b and $40 of
+        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+      end;
+      case b and $80 of
+        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+      end;
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
       'Cell protection and XF index');
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Indexes to format and font records:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: Index to FORMAT record', [b and $3f]));
+      FDetails.Add(Format('Bits 7-6 = %d: Index to FONT record', [(b and $C0) shr 6]));
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
       'Indexes of format and font records');
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell style:'#13);
+      case b and $07 of
+        0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
+        1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
+        2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
+        3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
+        4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+      end;
+      if b and $08 = 0
+        then FDetails.Add('Bit 3 = 0: Cell has NO left border')
+        else FDetails.Add('Bit 3 = 1: Cell has left black border');
+      if b and $10 = 0
+        then FDetails.Add('Bit 4 = 0: Cell has NO right border')
+        else FDetails.Add('Bit 4 = 1: Cell has right black border');
+      if b and $20 = 0
+        then FDetails.Add('Bit 5 = 0: Cell has NO top border')
+        else FDetails.Add('Bit 5 = 1: Cell has top black border');
+      if b and $40 = 0
+        then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
+        else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+      if b and $80 = 0
+        then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
+        else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
       'Cell style');
   end else begin
@@ -1908,16 +2119,58 @@ begin
   if FFormat = sfExcel2 then begin
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell protection and XF index:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      case b and $40 of
+        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+      end;
+      case b and $80 of
+        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+      end;
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
       'Cell protection and XF index');
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Indexes to format and font records:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: Index to FORMAT record', [b and $3f]));
+      FDetails.Add(Format('Bits 7-6 = %d: Index to FONT record', [(b and $C0) shr 6]));
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
       'Indexes of format and font records');
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell style:'#13);
+      case b and $07 of
+        0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
+        1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
+        2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
+        3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
+        4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+      end;
+      if b and $08 = 0
+        then FDetails.Add('Bit 3 = 0: Cell has NO left border')
+        else FDetails.Add('Bit 3 = 1: Cell has left black border');
+      if b and $10 = 0
+        then FDetails.Add('Bit 4 = 0: Cell has NO right border')
+        else FDetails.Add('Bit 4 = 1: Cell has right black border');
+      if b and $20 = 0
+        then FDetails.Add('Bit 5 = 0: Cell has NO top border')
+        else FDetails.Add('Bit 5 = 1: Cell has top black border');
+      if b and $40 = 0
+        then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
+        else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+      if b and $80 = 0
+        then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
+        else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
       'Cell style');
   end else begin
@@ -3052,7 +3305,7 @@ begin
         then FDetails.Add('Bit 7    = 0: Formula is not hidden')
         else FDetails.Add('Bit 7    = 1: Formula is hidden');
     end;
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]),
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b, b]),
       'Number format and cell flags');
 
     b := FBuffer[FBufferIndex];
