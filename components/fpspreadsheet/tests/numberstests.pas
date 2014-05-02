@@ -95,6 +95,7 @@ type
     // One cell per test so some tests can fail and those further below may still work
     procedure TestWriteReadNumbers(AFormat: TsSpreadsheetFormat);
   published
+    procedure TestWriteReadNumbers_BIFF2;
     procedure TestWriteReadNumbers_BIFF5;
     procedure TestWriteReadNumbers_BIFF8;
   end;
@@ -198,6 +199,11 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_BIFF2;
+begin
+  TestWriteReadNumbers(sfExcel2);
 end;
 
 procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_BIFF5;

@@ -17,6 +17,9 @@ var
   MyWorksheet: TsWorksheet;
   MyRPNFormula: TsRPNFormula;
   MyDir: string;
+  number: Double;
+  lCol: TCol;
+  lRow: TRow;
 begin
   // Open the output file
   MyDir := ExtractFilePath(ParamStr(0));
@@ -30,8 +33,7 @@ begin
 
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);
-  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
-
+  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
   MyWorksheet.WriteNumber(0, 1, 2.0);
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);
@@ -94,6 +96,74 @@ begin
   MyWorksheet.WriteFont(6, 2, 'Courier New', 8, [], scBlue);
   MyWorksheet.WriteNumber(6, 3, 2017);
   MyWorksheet.WriteFont(6, 3, 'Arial', 18, [fssBold], scBlue);
+
+  // Write current date/time to cells B11:B16
+  MyWorksheet.WriteUTF8Text(10, 0, 'nfShortDate');
+  MyWorksheet.WriteDateTime(10, 1, now, nfShortDate);
+  MyWorksheet.WriteUTF8Text(11, 0, 'nfShortTime');
+  MyWorksheet.WriteDateTime(11, 1, now, nfShortTime);
+  MyWorksheet.WriteUTF8Text(12, 0, 'nfLongTime');
+  MyWorksheet.WriteDateTime(12, 1, now, nfLongTime);
+  MyWorksheet.WriteUTF8Text(13, 0, 'nfShortDateTime');
+  MyWorksheet.WriteDateTime(13, 1, now, nfShortDateTime);
+  MyWorksheet.WriteUTF8Text(14, 0, 'nfFmtDateTime, DM');
+  MyWorksheet.WriteDateTime(14, 1, now, nfFmtDateTime, 'DM');
+  MyWorksheet.WriteUTF8Text(15, 0, 'nfFmtDateTime, MY');
+  MyWorksheet.WriteDateTime(15, 1, now, nfFmtDateTime, 'MY');
+  MyWorksheet.WriteUTF8Text(16, 0, 'nfShortTimeAM');
+  MyWorksheet.WriteDateTime(16, 1, now, nfShortTimeAM);
+  MyWorksheet.WriteUTF8Text(17, 0, 'nfLongTimeAM');
+  MyWorksheet.WriteDateTime(17, 1, now, nfLongTimeAM);
+  MyWorksheet.WriteUTF8Text(18, 0, 'nfFmtDateTime, MS');
+  MyWorksheet.WriteDateTime(18, 1, now, nfFmtDateTime, 'MS');
+  MyWorksheet.WriteUTF8Text(19, 0, 'nfFmtDateTime, MSZ');
+  MyWorksheet.WriteDateTime(19, 1, now, nfFmtDateTime, 'MSZ');
+
+  // Write formatted numbers
+  number := 12345.67890123456789;
+  MyWorksheet.WriteUTF8Text(24, 1, '12345.67890123456789');
+  MyWorksheet.WriteUTF8Text(24, 2, '-12345.67890123456789');
+  MyWorksheet.WriteUTF8Text(25, 0, 'nfFixed, 0 decs');
+  MyWorksheet.WriteNumber(25, 1, number, nfFixed, 0);
+  MyWorksheet.WriteNumber(25, 2, -number, nfFixed, 0);
+  MyWorksheet.WriteUTF8Text(26, 0, 'nfFixed, 2 decs');
+  MyWorksheet.WriteNumber(26, 1, number, nfFixed, 2);
+  MyWorksheet.WriteNumber(26, 2, -number, nfFixed, 2);
+  MyWorksheet.WriteUTF8Text(27, 0, 'nfFixedTh, 0 decs');
+  MyWorksheet.WriteNumber(27, 1, number, nfFixedTh, 0);
+  MyWorksheet.WriteNumber(27, 2, -number, nfFixedTh, 0);
+  MyWorksheet.WriteUTF8Text(28, 0, 'nfFixedTh, 2 decs');
+  MyWorksheet.WriteNumber(28, 1, number, nfFixedTh, 2);
+  MyWorksheet.WriteNumber(28, 2, -number, nfFixedTh, 2);
+  MyWorksheet.WriteUTF8Text(29, 0, 'nfSci, 1 dec');
+  MyWorksheet.WriteNumber(29, 1, number, nfSci);
+  MyWorksheet.WriteNumber(29, 2, -number, nfSci);
+  MyWorksheet.WriteNumber(29, 3, 1.0/number, nfSci);
+  MyWorksheet.WriteNumber(29, 4, -1.0/number, nfSci);
+  MyWorksheet.WriteUTF8Text(30, 0, 'nfExp, 2 decs');
+  MyWorksheet.WriteNumber(30, 1, number, nfExp, 2);
+  MyWorksheet.WriteNumber(30, 2, -number, nfExp, 2);
+  MyWorksheet.WriteNumber(30, 3, 1.0/number, nfExp, 2);
+  MyWorksheet.WriteNumber(30, 4, -1.0/number, nfExp, 2);
+
+  number := 1.333333333;
+  MyWorksheet.WriteUTF8Text(35, 0, 'nfPercentage, 0 decs');
+  MyWorksheet.WriteNumber(35, 1, number, nfPercentage, 0);
+  MyWorksheet.WriteUTF8Text(36, 0, 'nfPercentage, 2 decs');
+  MyWorksheet.WriteNumber(36, 1, number, nfPercentage, 2);
+  MyWorksheet.WriteUTF8Text(37, 0, 'nfTimeInterval');
+  MyWorksheet.WriteDateTime(37, 1, number, nfTimeInterval);
+
+  // Set width of columns 0 and 1
+  MyWorksheet.WriteColWidth(0, 40);
+  lCol.Width := 35;
+  MyWorksheet.WriteColInfo(1, lCol);
+
+  // Set height of rows 5 and 6
+  lRow.Height := 10;
+  MyWorksheet.WriteRowInfo(5, lRow);
+  lRow.Height := 5;
+  MyWorksheet.WriteRowInfo(6, lRow);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);

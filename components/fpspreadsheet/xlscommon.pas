@@ -207,7 +207,7 @@ const
   DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
-  { FORMAT record constants }
+  { FORMAT record constants for BIFF5-BIFF8}
   // Subset of the built-in formats for US Excel, 
   // including those needed for date/time output
   FORMAT_GENERAL = 0;             //general/default format
@@ -330,7 +330,7 @@ type
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-      out ANumberFormatStr: String);
+      out ANumberFormatStr: String); virtual;
     // Finds format record for XF record pointed to by cell
     // Will not return info for built-in formats
     function FindFormatDataForCell(const AXFIndex: Integer): TFormatListData;
@@ -382,8 +382,10 @@ type
       const AValue: TDateTime; ACell: PCell); override;
     // Writes out a PALETTE record containing all colors defined in the workbook
     procedure WritePalette(AStream: TStream);
+
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
   end;
 
 function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
@@ -470,7 +472,7 @@ begin
   inherited Destroy;
 end;
 
-{ Applies the XF formatting given by the given index to the specified cell }
+{ Applies the XF formatting referred to by XFIndex to the specified cell }
 procedure TsSpreadBIFFReader.ApplyCellFormatting(ARow, ACol: Cardinal;
   XFIndex: Word);
 var
@@ -521,6 +523,8 @@ begin
   end;
 end;
 
+{ Extracts number format data from an XF record index by AXFIndex.
+  Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
   out ANumberFormat: TsNumberFormat; out ADecimals: Word;
   out ANumberFormatStr: String);
@@ -568,7 +572,7 @@ begin
 
   if lFormatData = nil then begin
     // no custom format, so first test for default formats
-    lXFData := TXFListData (FXFList.Items[AXFIndex]);
+    lXFData := TXFListData(FXFList.Items[AXFIndex]);
     case lXFData.FormatIndex of
       FORMAT_DATE_DM:
         begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'DM'; end;
@@ -716,6 +720,9 @@ begin
   end;
 end;
 
+{ Read column info (column width) from the stream.
+  Valid for BIFF3-BIFF8.
+  For BIFF2 use the records COLWIDTH and COLUMNDEFAULT. }
 procedure TsSpreadBiffReader.ReadColInfo(const AStream: TStream);
 var
   c, c1, c2: Cardinal;
@@ -768,8 +775,8 @@ procedure TsSpreadBIFFReader.ReadNumber(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: WORD;
-  AValue: Double;
-  lDateTime: TDateTime;
+  value: Double;
+  dt: TDateTime;
   nf: TsNumberFormat;
   nd: word;
   nfs: String;
@@ -777,14 +784,14 @@ begin
   ReadRowColXF(AStream,ARow,ACol,XF);
 
   { IEE 754 floating-point value }
-  AStream.ReadBuffer(AValue, 8);
+  AStream.ReadBuffer(value, 8);
 
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nd, nfs);
-  if IsDateTime(AValue, nf, lDateTime) then
-    FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
+  if IsDateTime(value, nf, dt) then
+    FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, AValue, nf, nd);
+    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd);
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -851,6 +858,11 @@ begin
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.
   FDateMode := dm1900;
+end;
+
+destructor TsSpreadBIFFWriter.Destroy;
+begin
+  inherited Destroy;
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
@@ -1126,7 +1138,7 @@ procedure TsSpreadBIFFWriter.WriteDateTime(AStream: TStream; const ARow,
 var
   ExcelDateSerial: double;
 begin
-  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue,FDateMode);
+  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
   // fpspreadsheet must already have set formatting to a date/datetime format, so
   // this will get written out as a pointer to the relevant XF record.
   // In the end, dates in xls are just numbers with a format. Pass it on to WriteNumber:

@@ -48,6 +48,9 @@ type
     procedure ReadRowInfo(AStream: TStream);
   protected
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
+    procedure ExtractNumberFormat(AXFIndex: WORD;
+      out ANumberFormat: TsNumberFormat; out ADecimals: Word;
+      out ANumberFormatStr: String); override;
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
     procedure ReadFont(AStream: TStream);
@@ -57,7 +60,6 @@ type
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
-
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
@@ -77,6 +79,9 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFontIndex: Integer);
     procedure WriteFonts(AStream: TStream);
+    procedure WriteFormat(AStream: TStream; AFormatCode: String);
+    procedure WriteFormatCount(AStream: TStream);
+    procedure WriteFormats(AStream: TStream);
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
     procedure WriteXF(AStream: TStream; AFontIndex, AFormatIndex: byte;
       ABorders: TsCellBorders = []; AHorAlign: TsHorAlignment = haLeft;
@@ -95,7 +100,7 @@ type
   end;
 
 var
-  // the palette of the default BIFF2 colors as "big-endian color" values
+  { the palette of the default BIFF2 colors as "big-endian color" values }
   PALETTE_BIFF2: array[$0..$07] of TsColorValue = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
@@ -105,6 +110,36 @@ var
     $FFFF00,  // $05: yellow
     $FF00FF,  // $06: magenta
     $00FFFF   // $07: cyan
+  );
+
+  { These are the built-in number formats of BIFF 2. They are not stored in
+    the file. Note that, compared to the BUFF5+ built-in formats, two formats
+    are missing and the indexes are offset by 2 after #11.
+    It seems that BIFF2 can handle only these 21 formats. The other formats
+    available in fpspreadsheet are mapped to these 21 formats such that least
+    destruction is made. }
+  NUMFORMAT_BIFF2: array[0..20] of string = (
+    'General',               // 0
+    '0',
+    '0.00',
+    '#,##0',
+    '#,##0.00',
+    '"$"#,##0_);("$"#,##0)', // 5
+    '"$"#,##0_);[Red]("$"#,##0)',
+    '"$"#,##0.00_);("$"#,##0.00)',
+    '"$"#,##0.00_);[Red]("$"#,##0.00)',
+    '0%',
+    '0.00%',                 // 10
+    '0.00E+00',
+    'M/D/YY',
+    'D-MMM-YY',
+    'D-MMM',
+    'MMM-YY',                // 15
+    'h:mm AM/PM',
+    'h:mm:ss AM/PM',
+    'h:mm',
+    'h:mm:ss',
+    'M/D/YY h:mm'            // 20
   );
 
 implementation
@@ -120,6 +155,7 @@ const
   INT_EXCEL_ID_BOF        = $0009;
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_FORMAT     = $001E;
+  INT_EXCEL_ID_FORMATCOUNT= $001F;
   INT_EXCEL_ID_COLWIDTH   = $0024;
   INT_EXCEL_ID_XF         = $0043;
   INT_EXCEL_ID_IXFE       = $0044;
@@ -135,6 +171,34 @@ const
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
 
+  { FORMAT record constants for BIFF2 }
+  // Subset of the built-in formats for US Excel,
+  // including those needed for date/time output
+  FORMAT_GENERAL = 0;             //general/default format
+  FORMAT_FIXED_0_DECIMALS = 1;    //fixed, 0 decimals
+  FORMAT_FIXED_2_DECIMALS = 2;    //fixed, 2 decimals
+  FORMAT_FIXED_THOUSANDS_0_DECIMALS = 3;  //fixed, w/ thousand separator, 0 decs
+  FORMAT_FIXED_THOUSANDS_2_DECIMALS = 4;  //fixed, w/ thousand separator, 2 decs
+  FORMAT_CURRENCY_0_DECIMALS = 5; //currency (with currency symbol), 0 decs
+  FORMAT_CURRENCY_2_DECIMALS = 7; //currency (with currency symbol), 2 decs
+  FORMAT_PERCENT_0_DECIMALS = 9;  //percent, 0 decimals
+  FORMAT_PERCENT_2_DECIMALS = 10; //percent, 2 decimals
+  FORMAT_EXP_2_DECIMALS = 11;     //exponent, 2 decimals
+  FORMAT_SCI_1_DECIMAL = 11;      //scientific, 1 decimal -- not present in BIFF2 -- mapped to EXP_2_DECIMALS
+  FORMAT_SHORT_DATE = 12;         //short date
+  FORMAT_DATE_DM = 14;            //date D-MMM
+  FORMAT_DATE_MY = 15;            //date MMM-YYYY
+  FORMAT_SHORT_TIME_AM = 16;      //short time H:MM with AM
+  FORMAT_LONG_TIME_AM = 17;       //long time H:MM:SS with AM
+  FORMAT_SHORT_TIME = 18;         //short time H:MM
+  FORMAT_LONG_TIME = 19;          //long time H:MM:SS
+  FORMAT_SHORT_DATETIME = 20;     //short date+time
+  { The next three formats are not available in BIFF2. They should not be used
+    when a file is to be saved in BIFF2. If it IS saved as BIFF2 the formats
+    are mapped to FORMAT_LONG_TIME}
+  FORMAT_TIME_MS = 19;            //time MM:SS
+  FORMAT_TIME_MSZ = 19;           //time MM:SS.0
+  FORMAT_TIME_INTERVAL = 19;      //time [hh]:mm:ss, hh can be >24
 
 { TsSpreadBIFF2Reader }
 
@@ -178,6 +242,81 @@ begin
       Include(lCell^.UsedFormattingFields, uffBackgroundColor)
     else
       Exclude(lCell^.UsedFormattingFields, uffBackgroundColor);
+  end;
+end;
+
+{ Extracts the number format data from an XF record indexed by AXFIndex.
+  Note that BIFF2 supports only 21 formats. }
+procedure TsSpreadBIFF2Reader.ExtractNumberFormat(AXFIndex: WORD;
+  out ANumberFormat: TsNumberFormat; out ADecimals: Word;
+  out ANumberFormatStr: String);
+const
+  NOT_USED = nfGeneral;
+  fmts: array[1..20] of TsNumberFormat = (
+    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
+    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
+    nfExp, nfShortDate, nfShortDate, nfFmtDateTime, nfFmtDateTime,   // 11..15
+    nfShortTimeAM, nfLongTimeAM, nfShortTime, nfLongTime, nfShortDateTime// 16..20
+  );
+  decs: array[1..20] of word = (
+    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
+    2, 0, 0, 0, 0, 0, 0, 0, 0, 0      // 11..20
+  );
+var
+  lFormatData: TFormatListData;
+  lXFData: TXFListData;
+  isAMPM: Boolean;
+  isLongTime: Boolean;
+  isMilliSec: Boolean;
+  t,d: Boolean;
+begin
+  ANumberFormat := nfGeneral;
+  ANumberFormatStr := '';
+  ADecimals := 0;
+
+  lFormatData := FindFormatDataForCell(AXFIndex);
+  if lFormatData = nil then begin
+    // no custom format, so first test for default formats
+    lXFData := TXFListData (FXFList.Items[AXFIndex]);
+    if (lXFData.FormatIndex > 0) and (lXFData.FormatIndex <= 20) then begin
+      ANumberFormat := fmts[lXFData.FormatIndex];
+      ADecimals := decs[lXFData.FormatIndex];
+    end;
+  end else
+  // The next is copied from xlscommon - I think it's not necessary here
+  if IsPercentNumberFormat(lFormatData.FormatString, ADecimals) then
+    ANumberFormat := nfPercentage
+  else
+  if IsExpNumberFormat(lFormatData.Formatstring, ADecimals) then
+    ANumberFormat := nfExp
+  else
+  if IsThousandSepNumberFormat(lFormatData.FormatString, ADecimals) then
+    ANumberFormat := nfFixedTh
+  else
+  if IsFixedNumberFormat(lFormatData.FormatString, ADecimals) then
+    ANumberFormat := nfFixed
+  else begin
+    t := IsTimeFormat(lFormatData.FormatString, isLongTime, isAMPM, isMilliSec);
+    d := IsDateFormat(lFormatData.FormatString);
+    if d and t then
+      ANumberFormat := nfShortDateTime
+    else
+    if d then
+      ANumberFormat := nfShortDate
+    else
+    if t then begin
+      if isAMPM then begin
+        if isLongTime then
+          ANumberFormat := nfLongTimeAM
+        else
+          ANumberFormat := nfShortTimeAM;
+      end else begin
+        if isLongTime then
+          ANumberFormat := nfLongTime
+        else
+          ANumberFormat := nfShortTime;
+      end;
+    end;
   end;
 end;
 
@@ -341,16 +480,24 @@ procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: Word;
-  AValue: Double;
+  value: Double;
+  dt: TDateTime;
+  nf: TsNumberFormat;
+  nd: Word;
+  nfs: String;
 begin
   { BIFF Record row/column/style }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { IEE 754 floating-point value }
-  AStream.ReadBuffer(AValue, 8);
+  AStream.ReadBuffer(value, 8);
 
-  { Save the data }
-  FWorksheet.WriteNumber(ARow, ACol, AValue);
+  {Find out what cell type, set content type and value}
+  ExtractNumberFormat(XF, nf, nd, nfs);
+  if IsDateTime(value, nf, dt) then
+    FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
+  else
+    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd);
 
   { Apply formatting to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -414,31 +561,29 @@ begin
 end;
 
 procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
-{
-Offset Size Contents
- 0     1   Index to FONT record (➜5.45)
- 1     1   Not used
- 2     1   Number format and cell flags:
-             Bit  Mask  Contents
-             5-0  3FH   Index to FORMAT record (➜5.49)
-              6   40H   1 = Cell is locked
-              7   80H   1 = Formula is hidden
- 3     1   Horizontal alignment, border style, and background:
-             Bit  Mask  Contents
-             2-0  07H   XF_HOR_ALIGN – Horizontal alignment
-                            0 General, 1 Left, 2 Centred, 3 Right, 4 Filled
-              3   08H   1 = Cell has left black border
-              4   10H   1 = Cell has right black border
-              5   20H   1 = Cell has top black border
-              6   40H   1 = Cell has bottom black border
-              7   80H   1 = Cell has shaded background
-}
+{ Offset Size Contents
+    0      1   Index to FONT record (➜5.45)
+    1      1   Not used
+    2      1   Number format and cell flags:
+                 Bit  Mask  Contents
+                 5-0  3FH   Index to FORMAT record (➜5.49)
+                  6   40H   1 = Cell is locked
+                  7   80H   1 = Formula is hidden
+    3      1   Horizontal alignment, border style, and background:
+                 Bit  Mask  Contents
+                 2-0  07H   XF_HOR_ALIGN – Horizontal alignment
+                              0 General, 1 Left, 2 Center, 3 Right, 4 Filled
+                  3   08H   1 = Cell has left black border
+                  4   10H   1 = Cell has right black border
+                  5   20H   1 = Cell has top black border
+                  6   40H   1 = Cell has bottom black border
+                  7   80H   1 = Cell has shaded background }
 type
-  TXFRecord = packed record                // see p. 224
-    FontIndex: byte;                       // Offset 0, Size 1
-    NotUsed: byte;                         // Offset 1, Size 1
-    NumFormat_Flags: byte;                 // Offset 2, Size 1
-    HorAlign_Border_BackGround: Byte;      // Offset 3, Size 1
+  TXFRecord = packed record
+    FontIndex: byte;
+    NotUsed: byte;
+    NumFormat_Flags: byte;
+    HorAlign_Border_BackGround: Byte;
   end;
 var
   lData: TXFListData;
@@ -453,7 +598,7 @@ begin
   lData.FontIndex := xf.FontIndex;
 
   // Format index
-  lData.FormatIndex := xf.NumFormat_Flags and $07;
+  lData.FormatIndex := xf.NumFormat_Flags and $3F;
 
   // Horizontal alignment
   b := xf.HorAlign_Border_Background and MASK_XF_HOR_ALIGN;
@@ -490,6 +635,8 @@ begin
 
   // Add the decoded data to the list
   FXFList.Add(lData);
+
+  ldata := TXFListData(FXFList.Items[FXFList.Count-1]);
 end;
 
 
@@ -635,6 +782,7 @@ begin
   WriteBOF(AStream);
 
   WriteFonts(AStream);
+  WriteFormats(AStream);
   WriteXFRecords(AStream);
   WriteColWidths(AStream);
   WriteCellsToStream(AStream, Workbook.GetFirstWorksheet.Cells);
@@ -658,7 +806,7 @@ begin
   { not used }
   AStream.WriteByte(0);
 
-  { number format and cell flags }
+  { Number format index and cell flags }
   b := AFormatIndex and $3F;
   AStream.WriteByte(b);
 
@@ -689,7 +837,7 @@ begin
     lFormatIndex := 0; //General format (one of the built-in number formats)
     lBorders := [];
     lHorAlign := FFormattingStyles[i].HorAlignment;
-(*
+
     // Now apply the modifications.
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
       case FFormattingStyles[i].NumberFormat of
@@ -740,16 +888,18 @@ begin
             if (fmt = 'my') or (fmt = 'mmm-yy') or (fmt = 'mmm yy') or (fmt = 'mmm/yy') then
               lFormatIndex := FORMAT_DATE_MY
             else
+            { Because of limitations of BIFF2 the next two formats are mapped
+              to the same format index! }
             if (fmt = 'ms') or (fmt = 'nn:ss') or (fmt = 'mm:ss') then
               lFormatIndex := FORMAT_TIME_MS
             else
             if (fmt = 'msz') or (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or (fmt = 'mm:ss.0') or (fmt = 'mm:ss.z') or (fmt = 'nn:ss.z') then
-              lFormatIndex := FORMAT_TIME_MSZ
+              lFormatIndex := FORMAT_TIME_MSZ;
           end;
         nfTimeInterval:
           lFormatIndex := FORMAT_TIME_INTERVAL;
       end;
-  *)
+
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
       lBorders := FFormattingStyles[i].Border;
 
@@ -879,6 +1029,110 @@ begin
   for i:=0 to Workbook.GetFontCount-1 do
     WriteFont(AStream, i);
 end;
+
+procedure TsSpreadBIFF2Writer.WriteFormat(AStream: TStream; AFormatCode: String);
+var
+  len: Integer;
+  s: AnsiString;
+begin
+  if AFormatCode = '' then
+    exit;
+
+  s := AFormatCode;
+  len := Length(s);
+
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
+  AStream.WriteWord(WordToLE(len + 1));
+
+  { Write format string }
+  AStream.WriteByte(len);
+  AStream.WriteBuffer(s[1], len);
+end;
+
+procedure TsSpreadBIFF2Writer.WriteFormatCount(AStream: TStream);
+begin
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMATCOUNT));
+  AStream.WriteWord(WordToLE(2));
+  AStream.WriteWord(WordToLE(High(NUMFORMAT_BIFF2)+1));
+end;
+
+procedure TsSpreadBIFF2Writer.WriteFormats(AStream: TStream);
+var
+  i: Integer;
+begin
+  WriteFormatCount(AStream);
+  for i:=0 to High(NUMFORMAT_BIFF2) do
+    WriteFormat(AStream, NUMFORMAT_BIFF2[i]);
+end;
+(*
+var
+  ds, ts: Char;  //decimal separator, thousand separator
+begin
+  ds := DefaultFormatSettings.DecimalSeparator;
+  ts := DefaultFormatSettings.ThousandSeparator;
+  { 0} WriteFormat(AStream, 'General');  // 0
+  { 1} WriteFormat(AStream, '0');
+  { 2} WriteFormat(AStream, '0'+ds+'00');                           // 0.00
+  { 3} WriteFormat(AStream, '#'+ts+'##0');                          // #,##0
+  { 4} WriteFormat(AStream, '#'+ts+'##0'+ds+'00');                  // #,##0.00
+  { 5} WriteFormat(AStream, '"$"#'+ts+'##0_);("$"#'+ts+'##0)');
+  { 6} WriteFormat(AStream, '"$"#'+ts+'##0_);[Red]("$"#'+ts+'##0)');
+  { 7} WriteFormat(AStream, '"$"#'+ts+'##0'+ds+'00_);("$"#'+ts+'##0'+ds+'00)');
+  { 8} WriteFormat(AStream, '"$"#'+ts+'##0'+ds+'00_);[Red]("$"#'+ts+'##0'+ds+'00)');
+  { 9} WriteFormat(AStream, '0%');
+  {10} WriteFormat(AStream, '0'+ds+'00%');                          // 0.00%
+  {11} WriteFormat(AStream, '0'+ds+'00E+00');                       // 0.00E+00
+  {12} WriteFormat(AStream, 'm/d/yy');
+  {13} WriteFormat(AStream, 'd-mmm-yy');
+  {14} WriteFormat(AStream, 'd-mmm');
+  {15} WriteFormat(AStream, 'mmm-yy');
+  {16} WriteFormat(AStream, 'h:mm AM/PM');
+  {17} WriteFormat(AStream, 'h:mm:ss AM/PM');
+  {18} WriteFormat(AStream, 'h:mm');
+  {19} WriteFormat(AStream, 'h:mm:ss');
+  {20} WriteFormat(AStream, 'm/d/yy h:mm');
+
+  { # TODO: locale support
+     0 => 'GENERAL',
+     1 => '0',
+     2 => '0.00',
+     3 => '#,##0',
+     4 => '#,##0.00',
+     5 => '"$"#,##0_);("$"#,##0)',
+     6 => '"$"#,##0_);[Red]("$"#,##0)',
+     7 => '"$"#,##0.00_);("$"#,##0.00)',
+     8 => '"$"#,##0.00_);[Red]("$"#,##0.00)',
+     9 => '0%',
+    10 => '0.00%',
+    11 => '0.00E+00',
+    12 => '# ?/?',
+    13 => '# ??/??',
+    14 => 'M/D/YY',
+    15 => 'D-MMM-YY',
+    16 => 'D-MMM',
+    17 => 'MMM-YY',
+    18 => 'h:mm AM/PM',
+    19 => 'h:mm:ss AM/PM',
+    20 => 'h:mm',
+    21 => 'h:mm:ss',
+    22 => 'M/D/YY h:mm',
+    37 => '_(#,##0_);(#,##0)',
+    38 => '_(#,##0_);[Red](#,##0)',
+    39 => '_(#,##0.00_);(#,##0.00)',
+    40 => '_(#,##0.00_);[Red](#,##0.00)',
+    41 => '_("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)',
+    42 => '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)',
+    43 => '_("$"* #,##0.00_);_("$"* (#,##0.00);_("$"* "-"??_);_(@_)',
+    44 => '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)',
+    45 => 'mm:ss',
+    46 => '[h]:mm:ss',
+    47 => 'mm:ss.0',
+    48 => '##0.0E+0',
+    49 => '@',
+  }
+end;
+  *)
 
 {
   Writes an Excel 2 FORMULA record

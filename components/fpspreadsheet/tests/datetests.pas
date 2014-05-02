@@ -208,6 +208,7 @@ type
     // One cell per test so some tests can fail and those further below may still work
     procedure TestWriteReadDates(AFormat: TsSpreadsheetFormat);
   published
+    procedure TestWriteReadDates_BIFF2;
     procedure TestWriteReadDates_BIFF5;
     procedure TestWriteReadDates_BIFF8;
   end;
@@ -331,6 +332,11 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF2;
+begin
+  TestWriteReadDates(sfExcel2);
 end;
 
 procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF5;
