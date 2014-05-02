@@ -108,7 +108,6 @@ type
   private
     WorkBookEncoding: TsEncoding;
   protected
-    procedure AddDefaultFormats; override;
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -331,20 +330,6 @@ const
 
 
 { TsSpreadBIFF5Writer }
-
-procedure TsSpreadBIFF5Writer.AddDefaultFormats();
-begin
-  NextXFIndex := 16;
-
-  SetLength(FFormattingStyles, 1);
-
-  // XF0..XF14: Normal style, Row Outline level 1..7,
-  // Column Outline level 1..7.
-
-  // XF15 - Default cell format, no formatting (4.6.2)
-  FFormattingStyles[0].UsedFormattingFields := [];
-  FFormattingStyles[0].Row := 15;
-end;
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteToFile ()

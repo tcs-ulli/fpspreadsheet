@@ -89,7 +89,6 @@ type
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
     procedure WriteXFRecords(AStream: TStream);
   protected
-    procedure AddDefaultFormats(); override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
@@ -642,20 +641,6 @@ end;
 
 { TsSpreadBIFF2Writer }
 
-procedure TsSpreadBIFF2Writer.AddDefaultFormats();
-begin
-  NextXFIndex := 16; //21;
-
-  SetLength(FFormattingStyles, 1);
-
-  // XF0..XF14: Normal style, Row Outline level 1..7,
-  // Column Outline level 1..7.
-
-  // XF15 - Default cell format, no formatting (4.6.2)
-  FFormattingStyles[0].UsedFormattingFields := [];
-  FFormattingStyles[0].Row := 15;
-end;
-
 function TsSpreadBIFF2Writer.FindXFIndex(ACell: PCell): Word;
 var
   i: Integer;
@@ -830,7 +815,8 @@ var
   lHorAlign: TsHorAlignment;
   fmt: String;
 begin
-  // The first style was already added  (see AddDefaultFormats)
+  // The loop starts with the first style added manually.
+  // First style was already added  (see AddDefaultFormats)
   for i := 1 to Length(FFormattingStyles) - 1 do begin
     // Default styles
     lFontIndex := 0;
