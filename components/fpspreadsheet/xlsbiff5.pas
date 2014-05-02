@@ -109,8 +109,10 @@ type
     WorkBookEncoding: TsEncoding;
   protected
     { Record writing methods }
+    {
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+    }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
@@ -120,8 +122,6 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: double; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
@@ -133,7 +133,6 @@ type
       AWordWrap: Boolean = false; AddBackground: Boolean = false;
       ABackgroundColor: TsColor = scSilver);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
-    procedure WriteXFIndex(AStream: TStream; ACell: PCell);
     procedure WriteXFRecords(AStream: TStream);
   public
     { General writing methods }
@@ -221,17 +220,13 @@ implementation
 
 const
   { Excel record IDs }
-  INT_EXCEL_ID_BLANK      = $0201;
   INT_EXCEL_ID_BOF        = $0809;
   INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
   INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_DIMENSIONS = $0200;
-  INT_EXCEL_ID_FONT       = $0031;
   INT_EXCEL_ID_FORMAT     = $041E;
   INT_EXCEL_ID_FORMULA    = $0006;
   INT_EXCEL_ID_INDEX      = $020B;
-  INT_EXCEL_ID_LABEL      = $0204;
-  INT_EXCEL_ID_NUMBER     = $0203;
   INT_EXCEL_ID_ROWINFO    = $0208;
   INT_EXCEL_ID_STYLE      = $0293;
   INT_EXCEL_ID_WINDOW1    = $003D;
@@ -434,7 +429,7 @@ begin
   
   SetLength(Boundsheets, 0);
 end;
-
+  (*
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteBlank
 *
@@ -455,7 +450,7 @@ begin
   { Index to XF record }
   WriteXFIndex(AStream, ACell);
 end;
-
+    *)
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteBOF ()
 *
@@ -928,49 +923,6 @@ begin
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteNumber ()
-*
-*  DESCRIPTION:    Writes an Excel 5 NUMBER record
-*
-*                  Writes a number (64-bit floating point) to the sheet
-*
-*******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteNumber(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: double; ACell: PCell);
-begin
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
-  AStream.WriteWord(WordToLE(14));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF record }
-  WriteXFIndex(AStream, ACell);
-
-  { IEE 754 floating-point value }
-  AStream.WriteBuffer(AValue, 8);
-end;
-                                              (*
-{*******************************************************************
-*  TsSpreadBIFF2Writer.WriteDateTime ()
-*
-*  DESCRIPTION:    Writes a date/time value as a text
-*                  ISO 8601 format is used to preserve interoperability
-*                  between locales.
-*
-*  Note: this should be replaced by writing actual date/time values
-*
-*******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteDateTime(AStream: TStream;
-  const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
-begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
-end;
-                             *)
-
-{*******************************************************************
 *  TsSpreadBIFF5Writer.WriteStyle ()
 *
 *  DESCRIPTION:    Writes an Excel 5 STYLE record
@@ -1283,56 +1235,6 @@ begin
     WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders,
       lHorAlign, lVertAlign, lWordwrap, lAddBackground, lBackgroundColor);
   end;
-end;
-
-{ Index to XF record, according to formatting }
-procedure TsSpreadBIFF5Writer.WriteXFIndex(AStream: TStream; ACell: PCell);
-var
-  lIndex: Integer;
-  lXFIndex: Word;
-begin
-  // First try the fast methods for default formats
-  if ACell^.UsedFormattingFields = [] then
-  begin
-    AStream.WriteWord(WordToLE(15)); //XF15; see TsSpreadBIFF8Writer.AddDefaultFormats
-    Exit;
-  end;
-                             (*
-  if ACell^.UsedFormattingFields = [uffTextRotation] then
-  begin
-    case ACell^.TextRotation of
-      rt90DegreeCounterClockwiseRotation: AStream.WriteWord(WordToLE(16)); //XF_16
-      rt90DegreeClockwiseRotation: AStream.WriteWord(WordToLE(17)); //XF_17
-    else
-      AStream.WriteWord(WordToLE(15)); //XF_15
-    end;
-    Exit;
-  end;
-                               *)
-
-  {
-  uffNumberFormat does not seem to have default XF indexes, but perhaps look at XF_21
-  if ACell^.UsedFormattingFields = [uffNumberFormat] then
-  begin
-    case ACell^.NumberFormat of
-      nfShortDate:     AStream.WriteWord(WordToLE(???)); //what XF index?
-      nfShortDateTime: AStream.WriteWord(WordToLE(???)); //what XF index?
-    else
-      AStream.WriteWord(WordToLE(15)); //e.g. nfGeneral: XF_15
-    end;
-    Exit;
-  end;
-  }
-
-  // If not, then we need to search in the list of dynamic formats
-  lIndex := FindFormattingInList(ACell);
-  // Carefully check the index
-  if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
-    raise Exception.Create('[TsSpreadBIFF5Writer.WriteXFIndex] Invalid Index, this should not happen!');
-
-  lXFIndex := FFormattingStyles[lIndex].Row;
-
-  AStream.WriteWord(WordToLE(lXFIndex));
 end;
 
 procedure TsSpreadBIFF5Writer.WriteXFRecords(AStream: TStream);

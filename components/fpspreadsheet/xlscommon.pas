@@ -23,6 +23,11 @@ const
   INT_EXCEL_ID_PALETTE    = $0092;
   INT_EXCEL_ID_XF         = $00E0;
 
+  { RECORD IDs which did not change across versions 5-8 }
+  INT_EXCEL_ID_BLANK      = $0201;
+  INT_EXCEL_ID_NUMBER     = $0203;
+  INT_EXCEL_ID_LABEL      = $0204;
+
   { FONT record constants }
   INT_FONT_WEIGHT_NORMAL  = $0190;
   INT_FONT_WEIGHT_BOLD    = $02BC;
@@ -371,6 +376,9 @@ type
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
 
+    // Write out BLANK cell record
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
     // Write out used codepage for character encoding
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
     // Writes out column info(s)
@@ -381,8 +389,13 @@ type
     // Writes out a TIME/DATE/TIMETIME
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
+    // Writes out a floating point NUMBER record
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Double; ACell: PCell); override;
     // Writes out a PALETTE record containing all colors defined in the workbook
     procedure WritePalette(AStream: TStream);
+    // Writes the index of the XF record used in the given cell
+    procedure WriteXFIndex(AStream: TStream; ACell: PCell);
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -1083,6 +1096,24 @@ begin
   Result := FLastCol;
 end;
 
+{ Writes an empty ("blank") cell. Needed for formatting empty cells.
+  Valid for BIFF5 and BIFF8. Needs to be overridden for BIFF2 which has a
+  different record structure. }
+procedure TsSpreadBIFFWriter.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
+  AStream.WriteWord(WordToLE(6));
+
+  { Row and column index }
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
+
+  { Index to XF record, according to formatting }
+  WriteXFIndex(AStream, ACell);
+end;
+
 procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
   AEncoding: TsEncoding);
 var
@@ -1107,6 +1138,8 @@ begin
   AStream.WriteWord(WordToLE(lCodepage));
 end;
 
+{ Writes column info for the given column. Currently only the colum width is used.
+  Valid for BIFF5 and BIFF8 (BIFF2 uses a different record. }
 procedure TsSpreadBIFFWriter.WriteColInfo(AStream: TStream; ACol: PCol);
 var
   w: Integer;
@@ -1126,6 +1159,7 @@ begin
   end;
 end;
 
+{ Writes the column info records for all used columns. }
 procedure TsSpreadBIFFWriter.WriteColInfos(AStream: TStream;
   ASheet: TsWorksheet);
 var
@@ -1167,6 +1201,26 @@ begin
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
 end;
 
+{ Writes a 64-bit floating point NUMBER record.
+  Valid for BIFF5 and BIFF8 (BIFF2 has a different record structure.). }
+procedure TsSpreadBIFFWriter.WriteNumber(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: double; ACell: PCell);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
+  AStream.WriteWord(WordToLE(14));
+
+  { BIFF Record data }
+  AStream.WriteWord(WordToLE(ARow));
+  AStream.WriteWord(WordToLE(ACol));
+
+  { Index to XF record }
+  WriteXFIndex(AStream, ACell);
+
+  { IEE 754 floating-point value }
+  AStream.WriteBuffer(AValue, 8);
+end;
+
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 var
   i, n: Integer;
@@ -1186,6 +1240,33 @@ begin
       AStream.WriteDWord(DWordToLE(Workbook.GetPaletteColor(i)))
     else
       AStream.WriteDWord(DWordToLE($FFFFFF));
+end;
+
+
+{ Write the index of the XF record, according to formatting of the given cell
+  Valid for BIFF5 and BIFF8.
+  BIFF2 is handled differently. }
+procedure TsSpreadBIFFWriter.WriteXFIndex(AStream: TStream; ACell: PCell);
+var
+  lIndex: Integer;
+  lXFIndex: Word;
+begin
+  // First try the fast methods for default formats
+  if ACell^.UsedFormattingFields = [] then begin
+    AStream.WriteWord(WordToLE(15)); //XF15; see TsSpreadBIFF8Writer.AddDefaultFormats
+    Exit;
+  end;
+
+  // If not, then we need to search in the list of dynamic formats
+  lIndex := FindFormattingInList(ACell);
+
+  // Carefully check the index
+  if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
+    raise Exception.Create('[TsSpreadBIFFWriter.WriteXFIndex] Invalid Index, this should not happen!');
+
+  lXFIndex := FFormattingStyles[lIndex].Row;
+
+  AStream.WriteWord(WordToLE(lXFIndex));
 end;
 
 
