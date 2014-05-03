@@ -19,8 +19,8 @@ type
     AcQuit: TAction;
     ActionList1: TActionList;
     btnPopulateGrid: TButton;
-    CbDisplayFixedColRow: TCheckBox;
-    CbDisplayGrid: TCheckBox;
+    CbShowHeaders: TCheckBox;
+    CbShowGridLines: TCheckBox;
     ImageList1: TImageList;
     MainMenu1: TMainMenu;
     MenuItem1: TMenuItem;
@@ -40,8 +40,8 @@ type
     ToolButton3: TToolButton;
     ToolButton5: TToolButton;
     procedure btnPopulateGridClick(Sender: TObject);
-    procedure CbDisplayFixedColRowClick(Sender: TObject);
-    procedure CbDisplayGridClick(Sender: TObject);
+    procedure CbShowHeadersClick(Sender: TObject);
+    procedure CbShowGridLinesClick(Sender: TObject);
     procedure acOpenExecute(Sender: TObject);
     procedure acQuitExecute(Sender: TObject);
     procedure acSaveAsExecute(Sender: TObject);
@@ -75,17 +75,14 @@ begin
   sWorksheetGrid1.Invalidate;
 end;
 
-procedure TForm1.CbDisplayFixedColRowClick(Sender: TObject);
+procedure TForm1.CbShowHeadersClick(Sender: TObject);
 begin
-  sWorksheetGrid1.DisplayFixedColRow := CbDisplayFixedColRow.Checked;
+  sWorksheetGrid1.ShowHeaders := CbShowHeaders.Checked;
 end;
 
-procedure TForm1.CbDisplayGridClick(Sender: TObject);
+procedure TForm1.CbShowGridLinesClick(Sender: TObject);
 begin
-  if CbDisplayGrid.Checked then
-    sWorksheetGrid1.Options := sWorksheetGrid1.Options + [goHorzLine, goVertLine]
-  else
-    sWorksheetGrid1.Options := sWorksheetGrid1.Options - [goHorzLine, goVertLine];
+  sWorksheetGrid1.ShowGridLines := CbShowGridLines.Checked;
 end;
 
 procedure TForm1.acOpenExecute(Sender: TObject);
@@ -138,7 +135,8 @@ begin
     AFilename,
     GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
   ]);
-  CbDisplayGrid.Checked := sWorksheetGrid1.Worksheet.ShowGridLines;
+  CbShowGridLines.Checked := sWorksheetGrid1.Worksheet.ShowGridLines;
+  CbShowHeaders.Checked := sWorksheetGrid1.Worksheet.ShowHeaders;
 
   // Create a tab in the pagecontrol for each worksheet contained in the workbook
   // This would be easer with a TTabControl. This has display issues, though.
