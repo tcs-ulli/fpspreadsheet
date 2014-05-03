@@ -866,6 +866,9 @@ type
     Col1: Word;
     Col2: Word;
     Height: Word;
+    NotUsed1: Word;
+    NotUsed2: Word;  // not used in BIFF5-BIFF8
+    Flags: DWord;
   end;
 var
   rowrec: TRowRecord;
@@ -878,7 +881,11 @@ begin
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
     // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
-  end;
+  end else
+    lRow^.Height := 0;
+  lRow^.AutoHeight := rowrec.Flags and $00000040 = 0;
+  // If this bit is set row height does not change font height, i.e. has been
+  // changed manually.
 end;
 
 { Reads the WINDOW2 record containing information like "show grid lines", or

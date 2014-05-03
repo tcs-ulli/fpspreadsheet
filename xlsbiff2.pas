@@ -45,7 +45,6 @@ type
     WorkBookEncoding: TsEncoding;
     FWorksheet: TsWorksheet;
     FFont: TsFont;
-    procedure ReadRowInfo(AStream: TStream);
   protected
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
     procedure ExtractNumberFormat(AXFIndex: WORD;
@@ -60,6 +59,7 @@ type
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
+    procedure ReadRowInfo(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
@@ -556,7 +556,8 @@ begin
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
     // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
-  end;
+  end else
+    lRow^.AutoHeight := true;
 end;
 
 procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
