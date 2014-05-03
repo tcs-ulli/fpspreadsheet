@@ -27,6 +27,7 @@ const
   INT_EXCEL_ID_BLANK      = $0201;
   INT_EXCEL_ID_NUMBER     = $0203;
   INT_EXCEL_ID_LABEL      = $0204;
+  INT_EXCEL_ID_WINDOW2    = $023E;
 
   { FONT record constants }
   INT_FONT_WEIGHT_NORMAL  = $0190;
@@ -225,7 +226,6 @@ const
   FORMAT_PERCENT_0_DECIMALS = 9;  //percent, 0 decimals
   FORMAT_PERCENT_2_DECIMALS = 10; //percent, 2 decimals
   FORMAT_EXP_2_DECIMALS = 11;     //exponent, 2 decimals
-  FORMAT_SCI_1_DECIMAL = 48;      //scientific, 1 decimal
   FORMAT_SHORT_DATE = 14;         //short date
   FORMAT_DATE_DM = 16;            //date D-MMM
   FORMAT_DATE_MY = 17;            //date MMM-YYYY
@@ -235,8 +235,22 @@ const
   FORMAT_LONG_TIME = 21;          //long time H:MM:SS
   FORMAT_SHORT_DATETIME = 22;     //short date+time
   FORMAT_TIME_MS = 45;            //time MM:SS
-  FORMAT_TIME_MSZ = 47;           //time MM:SS.0
   FORMAT_TIME_INTERVAL = 46;      //time [hh]:mm:ss, hh can be >24
+  FORMAT_TIME_MSZ = 47;           //time MM:SS.0
+  FORMAT_SCI_1_DECIMAL = 48;      //scientific, 1 decimal
+
+  { WINDOW2 record constants - BIFF3-BIFF8}
+  MASK_WINDOW2_OPTION_SHOW_FORMULAS             = $0001;
+  MASK_WINDOW2_OPTION_SHOW_GRID_LINES           = $0002;
+  MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS        = $0004;
+  MASK_WINDOW2_OPTION_PANES_ARE_FROZEN          = $0008;
+  MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES          = $0010;
+  MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR       = $0020;
+  MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT     = $0040;
+  MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS      = $0080;
+  MASK_WINDOW2_OPTION_REMOVE_SPLITS_ON_UNFREEZE = $0100;  //BIFF5-BIFF8
+  MASK_WINDOW2_OPTION_SHEET_SELECTED            = $0200;  //BIFF5-BIFF8
+  MASK_WINDOW2_OPTION_SHEET_ACTIVE              = $0400;  //BIFF5-BIFF8
 
   { XF substructures }
 
@@ -358,6 +372,8 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
+    // Read WINDOW2 record (gridlines, sheet headers)
+    procedure ReadWindow2(AStream: TStream); virtual;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -864,6 +880,22 @@ begin
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
   end;
 end;
+
+{ Reads the WINDOW2 record containing information like "show grid lines", or
+  "show sheet headers".
+  The record structure is different for BIFF5 and BIFF8, but we use here only
+  the common part.
+  BIFF2 is completely different and has to be overridden. }
+procedure TsSpreadBIFFReader.ReadWindow2(AStream: TStream);
+var
+  flags: Word;
+begin
+  flags := WordLEToN(AStream.ReadWord);
+  FWorksheet.ShowGridLines := (flags and MASK_WINDOW2_OPTION_SHOW_GRID_LINES <> 0);
+  FWorksheet.ShowHeaders := (flags and MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS <> 0);
+  FWorksheet.Selected := (flags and MASK_WINDOW2_OPTION_SHEET_SELECTED <> 0);
+end;
+
 
 
 { TsSpreadBIFFWriter }

@@ -813,6 +813,10 @@ begin
           RowHeights[i] := DefaultRowHeight;
       end;
     end;
+    if FWorksheet.ShowGridLines then
+      Options := Options + [goHorzLine, goVertLine]
+    else
+      Options := Options - [goHorzLine, goVertLine];
   end
   else
     for i:=0 to RowCount-1 do begin

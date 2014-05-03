@@ -40,6 +40,7 @@ begin
   MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
+  MyWorksheet.ShowGridLines := false;
 
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1

@@ -315,6 +315,9 @@ type
     FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from the standard
+    FShowGridLines: Boolean;
+    FShowHeaders: Boolean;
+    FSelected: Boolean;
     procedure RemoveCallback(data, arg: pointer);
   public
     Name: string;
@@ -384,6 +387,10 @@ type
     property  Cols: TIndexedAVLTree read FCols;
     property  Rows: TIndexedAVLTree read FRows;
     property  Workbook: TsWorkbook read FWorkbook;
+    // These are properties to interface to fpspreadsheetgrid.
+    property  ShowGridLines: Boolean read FShowGridLines write FShowGridLines;
+    property  ShowHeaders: Boolean read FShowHeaders write FShowHeaders;
+    property  Selected: Boolean read FSelected write FSelected;
   end;
 
   { TsWorkbook }

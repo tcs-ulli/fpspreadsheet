@@ -127,7 +127,7 @@ type
       const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow1(AStream: TStream);
-    procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
+    procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
       AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
       const ABorderStyles: TsCellBorderStyles; AHorAlignment: TsHorAlignment = haDefault;
@@ -269,19 +269,6 @@ const
   MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE       = $0008;
   MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE       = $0010;
   MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE     = $0020;
-
-  { WINDOW2 record constants }
-  MASK_WINDOW2_OPTION_SHOW_FORMULAS             = $0001;
-  MASK_WINDOW2_OPTION_SHOW_GRID_LINES           = $0002;
-  MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS        = $0004;
-  MASK_WINDOW2_OPTION_PANES_ARE_FROZEN          = $0008;
-  MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES          = $0010;
-  MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR       = $0020;
-  MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT     = $0040;
-  MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS      = $0080;
-  MASK_WINDOW2_OPTION_REMOVE_SPLITS_ON_UNFREEZE = $0100;
-  MASK_WINDOW2_OPTION_SHEET_SELECTED            = $0200;
-  MASK_WINDOW2_OPTION_SHEET_ACTIVE              = $0400;
 
   { XF substructures }
 
@@ -514,7 +501,7 @@ begin
       WriteIndex(AStream);
       WriteColInfos(AStream, sheet);
       WriteDimensions(AStream, sheet);
-      WriteWindow2(AStream, True);
+      WriteWindow2(AStream, sheet);
       WriteCellsToStream(AStream, sheet.Cells);
     WriteEOF(AStream);
   end;
@@ -1185,7 +1172,7 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteWindow2(AStream: TStream;
- ASheetSelected: Boolean);
+ ASheet: TsWorksheet);
 var
   Options: Word;
 begin
@@ -1194,14 +1181,18 @@ begin
   AStream.WriteWord(WordToLE(18));
 
   { Options flags }
-  Options := MASK_WINDOW2_OPTION_SHOW_GRID_LINES or
-   MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS or
-   MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES or
-   MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR or
-   MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
-   MASK_WINDOW2_OPTION_SHEET_ACTIVE;
+  Options :=
+    MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES or
+    MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR or
+    MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
+    MASK_WINDOW2_OPTION_SHEET_ACTIVE;
 
-  if ASheetSelected then Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;
+  if ASheet.ShowGridLines then
+    Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
+  if ASheet.ShowHeaders then
+    Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
+  if ASheet.Selected then
+    Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;
 
   AStream.WriteWord(WordToLE(Options));
 
@@ -1601,6 +1592,7 @@ begin
     INT_EXCEL_ID_LABELSST:ReadLabelSST(AStream); //BIFF8 only
     INT_EXCEL_ID_COLINFO: ReadColInfo(AStream);
     INT_EXCEL_ID_ROWINFO: ReadRowInfo(AStream);
+    INT_EXCEL_ID_WINDOW2: ReadWindow2(AStream);
     INT_EXCEL_ID_BOF:     ;
     INT_EXCEL_ID_EOF:     SectionEOF := True;
     else
