@@ -1977,6 +1977,17 @@ begin
 end;
 
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
+
+  function FixLineStyle(dw: DWord): TsLineStyle;
+  { Not all line styles defined in BIFF8 are supported by fpspreadsheet. }
+  begin
+    case dw of
+      $01..$06: result := TsLineStyle(dw-1);
+      $07: Result := lsDotted;
+      else Result := lsDashed;
+    end;
+  end;
+
 type
   TXFRecord = packed record                // see p. 224
     FontIndex: Word;                       // Offset 0, Size 2
@@ -2040,22 +2051,22 @@ begin
   dw := xf.Border_Background_1 and MASK_XF_BORDER_LEFT;
   if dw <> 0 then begin
     Include(lData.Borders, cbWest);
-    lData.BorderStyles[cbWest].LineStyle := TsLineStyle(dw - 1);
+    lData.BorderStyles[cbWest].LineStyle := FixLineStyle(dw);
   end;
   dw := xf.Border_Background_1 and MASK_XF_BORDER_RIGHT;
   if dw <> 0 then begin
     Include(lData.Borders, cbEast);
-    lData.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 4 - 1);
+    lData.BorderStyles[cbEast].LineStyle := FixLineStyle(dw shr 4);
   end;
   dw := xf.Border_Background_1 and MASK_XF_BORDER_TOP;
   if dw <> 0 then begin
     Include(lData.Borders, cbNorth);
-    lData.BorderStyles[cbNorth].LineStyle := TsLineStyle(dw shr 8 - 1);
+    lData.BorderStyles[cbNorth].LineStyle := FixLineStyle(dw shr 8);
   end;
   dw := xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM;
   if dw <> 0 then begin
     Include(lData.Borders, cbSouth);
-    lData.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 12 - 1);
+    lData.BorderStyles[cbSouth].LineStyle := FixLineStyle(dw shr 12);
   end;
 
   // Border line colors
