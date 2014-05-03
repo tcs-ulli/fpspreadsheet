@@ -57,6 +57,10 @@ type
     procedure TestWriteReadTextRotation(AFormat:TsSpreadsheetFormat);
     // Test word wrapping
     procedure TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
+    // Test number formats
+    procedure TestWriteReadNumberFormats(AFormat: TsSpreadsheetFormat);
+    // Repeat with date/times
+    procedure TestWriteReadDateTimeFormats(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out numbers & reads back.
@@ -66,6 +70,8 @@ type
     procedure TestWriteReadBIFF2_Alignment;
     procedure TestWriteReadBIFF2_Border;
     procedure TestWriteReadBIFF2_ColWidths;
+    procedure TestWriteReadBIFF2_DateTimeFormats;
+    procedure TestWriteReadBIFF2_NumberFormats;
     // These features are not supported by Excel2 --> no test cases required!
     // - BorderStyle
     // - TextRotation
@@ -76,6 +82,8 @@ type
     procedure TestWriteReadBIFF5_Border;
     procedure TestWriteReadBIFF5_BorderStyles;
     procedure TestWriteReadBIFF5_ColWidths;
+    procedure TestWriteReadBIFF5_DateTimeFormats;
+    procedure TestWriteReadBIFF5_NumberFormats;
     procedure TestWriteReadBIFF5_TextRotation;
     procedure TestWriteReadBIFF5_WordWrap;
 
@@ -84,11 +92,10 @@ type
     procedure TestWriteReadBIFF8_Border;
     procedure TestWriteReadBIFF8_BorderStyles;
     procedure TestWriteReadBIFF8_ColWidths;
+    procedure TestWriteReadBIFF8_DateTimeFormats;
+    procedure TestWriteReadBIFF8_NumberFormats;
     procedure TestWriteReadBIFF8_TextRotation;
     procedure TestWriteReadBIFF8_WordWrap;
-    procedure TestWriteReadNumberFormats;
-    // Repeat with date/times
-    procedure TestWriteReadDateTimeFormats;
   end;
 
 implementation
@@ -131,9 +138,9 @@ begin
   SollNumberFormats[3] := nfFixedTh;      SollNumberDecimals[3] := 0;
   SollNumberFormats[4] := nfFixedTh;      SollNumberDecimals[4] := 2;
   SollNumberFormats[5] := nfExp;          SollNumberDecimals[5] := 2;
-  SollNumberFormats[6] := nfSci;          SollNumberDecimals[6] := 1;
-  SollNumberFormats[7] := nfPercentage;   SollNumberDecimals[7] := 0;
-  SollNumberFormats[8] := nfPercentage;   SollNumberDecimals[8] := 2;
+  SollNumberFormats[6] := nfPercentage;   SollNumberDecimals[6] := 0;
+  SollNumberFormats[7] := nfPercentage;   SollNumberDecimals[7] := 2;
+  SollNumberFormats[8] := nfSci;          SollNumberDecimals[8] := 1;
 
   for i:=Low(SollNumbers) to High(SollNumbers) do begin
     SollNumberStrings[i, 0] := FloatToStr(SollNumbers[i]);
@@ -142,9 +149,9 @@ begin
     SollNumberStrings[i, 3] := FormatFloat('#,##0', SollNumbers[i]);
     SollNumberStrings[i, 4] := FormatFloat('#,##0.00', SollNumbers[i]);
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i]);
-    SollNumberStrings[i, 6] := SciFloat(SollNumbers[i], 1);
-    SollNumberStrings[i, 7] := FormatFloat('0', SollNumbers[i]*100) + '%';
-    SollNumberStrings[i, 8] := FormatFloat('0.00', SollNumbers[i]*100) + '%';
+    SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100) + '%';
+    SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100) + '%';
+    SollNumberStrings[i, 8] := SciFloat(SollNumbers[i], 1);
   end;
 
   // Date/time values
@@ -229,7 +236,7 @@ begin
   inherited TearDown;
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadNumberFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteReadNumberFormats(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -249,19 +256,26 @@ begin
     for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do begin
       MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
+      if (AFormat=sfExcel2) and (SollNumberFormats[Col] = nfSci) then
+        Continue;  // BIFF2 does not support nfSci -> ignore
       CheckEquals(SollNumberStrings[Row, Col], ActualString, 'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
     end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet:=GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollNumbers) to High(SollNumbers) do
     for Col := Low(SollNumberFormats) to High(SollNumberFormats) do begin
+      if (AFormat=sfExcel2) and (SollNumberFormats[Col] = nfSci) then
+        Continue;  // BIFF2 does not support nfSci --> ignore
       ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
       CheckEquals(SollNumberStrings[Row,Col],ActualString,'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
     end;
@@ -272,7 +286,22 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadDateTimeFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_NumberFormats;
+begin
+  TestWriteReadNumberFormats(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_NumberFormats;
+begin
+  TestWriteReadNumberFormats(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_NumberFormats;
+begin
+  TestWriteReadNumberFormats(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadDateTimeFormats(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -286,22 +315,29 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet(FmtDateTimesSheet);
   for Row := Low(SollDateTimes) to High(SollDateTimes) do
     for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do begin
+      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfFmtDateTime, nfTimeInterval]) then
+        Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
       CheckEquals(SollDateTimeStrings[Row, Col], ActualString, 'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
     end;
-  MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, sfExcel8);
-  MyWorksheet := GetWorksheetByName(MyWorkbook, FmtDateTimesSheet);
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkbook, FmtDateTimesSheet);
   if MyWorksheet = nil then
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollDateTimes) to High(SollDateTimes) do
     for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do begin
-      ActualString := myWorksheet.ReadAsUTF8Text(Row,Col);
+      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfFmtDateTime, nfTimeInterval]) then
+        Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
+      ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
       CheckEquals(SollDateTimeStrings[Row, Col], ActualString, 'Test saved string mismatch cell '+CellNotation(MyWorksheet,Row,Col));
     end;
 
@@ -309,6 +345,21 @@ begin
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_DateTimeFormats;
+begin
+  TestWriteReadDateTimeFormats(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_DateTimeFormats;
+begin
+  TestWriteReadDateTimeFormats(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_DateTimeFormats;
+begin
+  TestWriteReadDateTimeFormats(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadAlignment(AFormat: TsSpreadsheetFormat);
