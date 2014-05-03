@@ -289,7 +289,8 @@ type
 
   TRow = record
     Row: Cardinal;
-    Height: Single; // in millimeters
+    Height: Single;       // in millimeters
+    AutoHeight: Boolean;  // true: height corresponds to font; false: use Height
   end;
 
   PRow = ^TRow;
@@ -811,6 +812,10 @@ begin
   FCells := TAVLTree.Create(@CompareCells);
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
+
+  FShowGridLines := true;
+  FShowHeaders := true;
+  FSelected := true;
 end;
 
 {@@

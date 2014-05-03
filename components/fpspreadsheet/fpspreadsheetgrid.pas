@@ -25,14 +25,12 @@ type
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     FDisplayFixedColRow: Boolean;
-    FAutoRowHeights: Boolean;
+    function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
-    procedure SetAutoRowHeights(AValue: Boolean);
     procedure SetDisplayFixedColRow(AValue: Boolean);
   protected
     { Protected declarations }
-    procedure DoAutoRowHeights;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
@@ -40,7 +38,6 @@ type
     function GetCellText(ACol, ARow: Integer): String;
     procedure Loaded; override;
     procedure Setup;
-    property AutoRowHeights: Boolean read FAutoRowHeights write SetAutoRowHeights default true;
     property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
   public
     { public methods }
@@ -62,7 +59,6 @@ type
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
-    property AutoRowHeights;
     property DisplayFixedColRow;
 
     // inherited from other ancestors
@@ -260,7 +256,6 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FAutoRowHeights := true;
   FDisplayFixedColRow := true;
 end;
 
@@ -281,27 +276,26 @@ begin
   Result := Round(AWidth * w0);
 end;
 
-// Converts the row height, given in mm, to pixels
+{ Finds the max cell height per row and uses this to define the RowHeights[].
+  Returns DefaultRowHeight if the row does not contain any cells. }
+function TsCustomWorksheetGrid.CalcAutoRowHeight(ARow: Integer): Integer;
+var
+  c: Integer;
+  h: Integer;
+begin
+  h := 0;
+  for c := FixedCols to ColCount-1 do
+    h := Max(h, GetCellHeight(c, ARow));
+  if h = 0 then
+    Result := DefaultRowHeight
+  else
+    Result := h;
+end;
+
+{ Converts the row height, given in mm, to pixels }
 function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
 begin
   Result := round(AHeight / 25.4 * Screen.PixelsPerInch) + 4;
-end;
-
-{ Finds the max cell height per row and uses this to define the RowHeights[]. }
-procedure TsCustomWorksheetGrid.DoAutoRowHeights;
-var
-  r, c: Integer;
-  h: Integer;
-begin
-  for r := FixedRows to RowCount-1 do begin
-    h := 0;
-    for c := FixedCols to ColCount-1 do
-      h := Max(h, GetCellHeight(c, r));
-    if h = 0 then
-      RowHeights[r] := DefaultRowHeight
-    else
-      RowHeights[r] := h;
-  end;
 end;
 
 { Adjusts the grid's canvas before painting a given cell. Considers, e.g.
@@ -315,6 +309,7 @@ var
   fnt: TsFont;
   style: TFontStyles;
 begin
+  Canvas.Font.Assign(Font);
   Canvas.Brush.Bitmap := nil;
   ts := Canvas.TextStyle;
   if FDisplayFixedColRow then begin
@@ -380,6 +375,7 @@ var
   cell: PCell;
   c, r: Integer;
   rect: TRect;
+  headerRect: TRect;
 
   procedure DrawBorderLine(ACell: PCell; ARect: TRect; ABorder: TsCellBorder;
     ALineStyle: TsLineStyle);
@@ -394,6 +390,7 @@ var
       ($FFFFFFFF, $FFFFFFFF, $07070707, $AAAAAAAA, $FFFFFFFF, $FFFFFFFF);
   var
     w: Integer;
+    r: TRect;
   begin
     if ALineStyle = lsDouble then
       case ABorder of
@@ -419,11 +416,17 @@ var
       Canvas.Pen.Color := FWorkBook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
       //Canvas.Pen.Pattern := PEN_PATTERNS[ACell^.BorderStyles[ABorder].LineStyle];
       //Canvas.Pen.EndCap := pecSquare;
+
+      if ARect.Bottom < headerRect.Bottom then exit;
+      r := ARect;
+      if ARect.Top < headerRect.Bottom then r.Top := headerRect.Bottom;
+
       case ABorder of
-        cbEast : Canvas.Line(ARect.Right-1, ARect.Top, ARect.Right-1, ARect.Bottom-w);
+        cbEast : Canvas.Line(ARect.Right-1, r.Top, ARect.Right-1, ARect.Bottom-w);
         cbSouth: Canvas.Line(ARect.Left-1, ARect.Bottom-1, ARect.Right-w, ARect.Bottom-1);
-        cbWest : Canvas.Line(ARect.Left-1, ARect.Top, ARect.Left-1, ARect.Bottom-w);
-        cbNorth: Canvas.Line(ARect.Left-1, ARect.Top-1, ARect.Right-w, ARect.Top-1);
+        cbWest : Canvas.Line(ARect.Left-1, r.Top, ARect.Left-1, ARect.Bottom-w);
+        cbNorth: if ARect.Top >= headerRect.Bottom then
+                   Canvas.Line(ARect.Left-1, ARect.Top-1, ARect.Right-w, ARect.Top-1);
       end;
     end;
   end;
@@ -431,6 +434,11 @@ var
 begin
   inherited;
   if FWorksheet = nil then exit;
+
+  if (FixedRows > 0) then
+    HeaderRect := CellRect(0, 0)
+  else
+    HeaderRect := Classes.Rect(0, 0, 0, 0);
 
   cell := FWorksheet.GetFirstCell;
   while cell <> nil do begin
@@ -739,13 +747,6 @@ begin
   Setup;
 end;
 
-procedure TsCustomWorksheetGrid.SetAutoRowHeights(AValue: Boolean);
-begin
-  if AValue = FAutoRowHeights then Exit;
-  FAutoRowHeights := AValue;
-  Setup;
-end;
-
 procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(AValue: Boolean);
 begin
   if AValue = FDisplayFixedColRow then Exit;
@@ -801,17 +802,13 @@ begin
     end;
   end;
   if FWorksheet <> nil then begin
-    if FAutoRowHeights then
-      DoAutoRowHeights
-    else begin
-      RowHeights[0] := DefaultRowHeight;
-      for i := FixedRows to RowCount-1 do begin
-        lRow := FWorksheet.FindRow(i - FixedRows);
-        if (lRow <> nil) then
-          RowHeights[i] := CalcRowHeight(lRow^.Height)
-        else
-          RowHeights[i] := DefaultRowHeight;
-      end;
+    RowHeights[0] := DefaultRowHeight;
+    for i := FixedRows to RowCount-1 do begin
+      lRow := FWorksheet.FindRow(i - FixedRows);
+      if (lRow = nil) or lRow^.AutoHeight then
+        RowHeights[i] := CalcAutoRowHeight(i)
+      else
+        RowHeights[i] := CalcRowHeight(lRow^.Height);
     end;
     if FWorksheet.ShowGridLines then
       Options := Options + [goHorzLine, goVertLine]
