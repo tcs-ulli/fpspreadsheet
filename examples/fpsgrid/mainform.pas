@@ -138,6 +138,7 @@ begin
     AFilename,
     GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
   ]);
+  CbDisplayGrid.Checked := sWorksheetGrid1.Worksheet.ShowGridLines;
 
   // Create a tab in the pagecontrol for each worksheet contained in the workbook
   // This would be easer with a TTabControl. This has display issues, though.
