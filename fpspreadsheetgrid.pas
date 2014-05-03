@@ -24,11 +24,14 @@ type
     { Private declarations }
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
-    FDisplayFixedColRow: Boolean;
+    FHeaderCount: Integer;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
-    procedure SetDisplayFixedColRow(AValue: Boolean);
+    function GetShowGridLines: Boolean;
+    function GetShowHeaders: Boolean;
+    procedure SetShowGridLines(AValue: Boolean);
+    procedure SetShowHeaders(AValue: Boolean);
   protected
     { Protected declarations }
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
@@ -38,7 +41,9 @@ type
     function GetCellText(ACol, ARow: Integer): String;
     procedure Loaded; override;
     procedure Setup;
-    property DisplayFixedColRow: Boolean read FDisplayFixedColRow write SetDisplayFixedColRow;
+    property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
+    property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
+    property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
   public
     { public methods }
     constructor Create(AOwner: TComponent); override;
@@ -59,7 +64,9 @@ type
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
-    property DisplayFixedColRow;
+    property DisplayFixedColRow; deprecated 'Use ShowHeaders';
+    property ShowGridLines;
+    property ShowHeaders;
 
     // inherited from other ancestors
     property Align;
@@ -256,7 +263,7 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FDisplayFixedColRow := true;
+  FHeaderCount := 1;
 end;
 
 destructor TsCustomWorksheetGrid.Destroy;
@@ -284,7 +291,7 @@ var
   h: Integer;
 begin
   h := 0;
-  for c := FixedCols to ColCount-1 do
+  for c := FHeaderCount to ColCount-1 do
     h := Max(h, GetCellHeight(c, ARow));
   if h = 0 then
     Result := DefaultRowHeight
@@ -312,7 +319,7 @@ begin
   Canvas.Font.Assign(Font);
   Canvas.Brush.Bitmap := nil;
   ts := Canvas.TextStyle;
-  if FDisplayFixedColRow then begin
+  if ShowHeaders then begin
     // Formatting of row and column headers
     if ARow = 0 then begin
       ts.Alignment := taCenter;
@@ -324,8 +331,8 @@ begin
     end;
   end;
   if FWorksheet <> nil then begin
-    r := ARow - FixedRows;
-    c := ACol - FixedCols;
+    r := ARow - FHeaderCount;
+    c := ACol - FHeaderCount;
     lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
       // Background color
@@ -435,7 +442,7 @@ begin
   inherited;
   if FWorksheet = nil then exit;
 
-  if (FixedRows > 0) then
+  if (FHeaderCount > 0) then
     HeaderRect := CellRect(0, 0)
   else
     HeaderRect := Classes.Rect(0, 0, 0, 0);
@@ -443,8 +450,8 @@ begin
   cell := FWorksheet.GetFirstCell;
   while cell <> nil do begin
     if (uffBorder in cell^.UsedFormattingFields) then begin
-      c := cell^.Col + FixedCols;
-      r := cell^.Row + FixedRows;
+      c := cell^.Col + FHeaderCount;
+      r := cell^.Row + FHeaderCount;
       rect := CellRect(c, r);
       if (cbNorth in cell^.Border) then
         DrawBorderLine(cell, rect, cbNorth, cell^.BorderStyles[cbNorth].LineStyle);
@@ -489,11 +496,11 @@ begin
   if FWorksheet = nil then
     exit;
 
-  c := ACol - FixedCols;
-  r := ARow - FixedRows;
+  c := ACol - FHeaderCount;
+  r := ARow - FHeaderCount;
   lCell := FWorksheet.FindCell(r, c);
   if lCell = nil then begin
-    if FDisplayFixedColRow and ((ACol = 0) or (ARow = 0)) then begin
+    if ShowHeaders and ((ACol = 0) or (ARow = 0)) then begin
       ts.Alignment := taCenter;
       ts.Layout := tlCenter;
       ts.Opaque := false;
@@ -640,12 +647,12 @@ var
   flags: Cardinal;
 begin
   Result := 0;
-  if FDisplayFixedColRow and ((ACol = 0) or (ARow = 0)) then
+  if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
     exit;
   if FWorksheet = nil then
     exit;
 
-  lCell := FWorksheet.FindCell(ARow-FixedRows, ACol-FixedCols);
+  lCell := FWorksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then begin
     s := GetCellText(ACol, ARow);
     if s = '' then
@@ -697,12 +704,12 @@ var
 begin
   Result := '';
 
-  if FDisplayFixedColRow then begin
-    // Titles
+  if ShowHeaders then begin
+    // Headers
     if (ARow = 0) and (ACol = 0) then
       exit;
     if (ARow = 0) then begin
-      Result := GetColString(ACol-FixedCols);
+      Result := GetColString(ACol-FHeaderCount);
       exit;
     end
     else
@@ -713,8 +720,8 @@ begin
   end;
 
   if FWorksheet <> nil then begin
-    r := ARow - FixedRows;
-    c := ACol - FixedCols;
+    r := ARow - FHeaderCount;
+    c := ACol - FHeaderCount;
     lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
       Result := FWorksheet.ReadAsUTF8Text(r, c);
@@ -741,16 +748,35 @@ begin
       ASheets.Add(FWorkbook.GetWorksheetByIndex(i).Name);
 end;
 
+function TsCustomWorksheetGrid.GetShowGridLines: Boolean;
+begin
+  Result := (Options * [goHorzLine, goVertLine] <> []);
+end;
+
+function TsCustomWorksheetGrid.GetShowHeaders: Boolean;
+begin
+  Result := FHeaderCount <> 0;
+end;
+
 procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
   Setup;
 end;
 
-procedure TsCustomWorksheetGrid.SetDisplayFixedColRow(AValue: Boolean);
+procedure TsCustomWorksheetGrid.SetShowGridLines(AValue: Boolean);
 begin
-  if AValue = FDisplayFixedColRow then Exit;
-  FDisplayFixedColRow := AValue;
+  if AValue = GetShowGridLines then Exit;
+  if AValue then
+    Options := Options + [goHorzLine, goVertLine]
+  else
+    Options := Options - [goHorzLine, goVertLine];
+end;
+
+procedure TsCustomWorksheetGrid.SetShowHeaders(AValue: Boolean);
+begin
+  if AValue = GetShowHeaders then Exit;
+  FHeaderCount := ord(AValue);
   Setup;
 end;
 
@@ -761,7 +787,7 @@ var
   lRow: PRow;
 begin
   if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
-    if FDisplayFixedColRow then begin
+    if ShowHeaders then begin
       ColCount := 2;
       RowCount := 2;
       FixedCols := 1;
@@ -774,15 +800,15 @@ begin
       RowCount := 0;
     end;
   end else
-  if FDisplayFixedColRow then begin
+  if ShowHeaders then begin
     ColCount := FWorksheet.GetLastColNumber + 2;
     RowCount := FWorksheet.GetLastRowNumber + 2;
     FixedCols := 1;
     FixedRows := 1;
     ColWidths[0] := Canvas.TextWidth(' 999999 ');
     // Setup column widths
-    for i := FixedCols to ColCount-1 do begin
-      lCol := FWorksheet.FindCol(i - FixedCols);
+    for i := FHeaderCount to ColCount-1 do begin
+      lCol := FWorksheet.FindCol(i - FHeaderCount);
       if (lCol <> nil) then
         ColWidths[i] := CalcColWidth(lCol^.Width)
       else
@@ -803,17 +829,13 @@ begin
   end;
   if FWorksheet <> nil then begin
     RowHeights[0] := DefaultRowHeight;
-    for i := FixedRows to RowCount-1 do begin
-      lRow := FWorksheet.FindRow(i - FixedRows);
+    for i := FHeaderCount to RowCount-1 do begin
+      lRow := FWorksheet.FindRow(i - FHeaderCount);
       if (lRow = nil) or lRow^.AutoHeight then
         RowHeights[i] := CalcAutoRowHeight(i)
       else
         RowHeights[i] := CalcRowHeight(lRow^.Height);
     end;
-    if FWorksheet.ShowGridLines then
-      Options := Options + [goHorzLine, goVertLine]
-    else
-      Options := Options - [goHorzLine, goVertLine];
   end
   else
     for i:=0 to RowCount-1 do begin
@@ -825,6 +847,10 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
 begin
   FWorksheet := AWorksheet;
+  if FWorksheet <> nil then begin
+    ShowHeaders := FWorksheet.ShowHeaders;
+    ShowGridLines := FWorksheet.ShowGridLines;
+  end;
   Setup;
 end;
 
