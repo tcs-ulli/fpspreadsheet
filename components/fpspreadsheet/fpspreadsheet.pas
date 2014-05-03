@@ -121,29 +121,23 @@ type
 
   {@@ RPN formula. Similar to the expanded formula, but in RPN notation.
       Simplifies the task of format writers which need RPN }
-
   TsRPNFormula = array of TsFormulaElement;
 
   {@@ Describes the type of content of a cell on a TsWorksheet }
-
   TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber,
     cctUTF8String, cctDateTime);
 
   {@@ List of possible formatting fields }
-
   TsUsedFormattingField = (uffTextRotation, uffFont, uffBold, uffBorder,
     uffBackgroundColor, uffNumberFormat, uffWordWrap,
     uffHorAlign, uffVertAlign
   );
 
   {@@ Describes which formatting fields are active }
-
   TsUsedFormattingFields = set of TsUsedFormattingField;
 
   {@@ Number/cell formatting. Only uses a subset of the default formats,
-      enough to be able to read/write date values.
-  }
-
+      enough to be able to read/write date values. }
   TsNumberFormat = (nfGeneral, nfFixed, nfFixedTh, nfExp, nfSci, nfPercentage,
     nfShortDateTime, nfFmtDateTime, nfShortDate, nfShortTime, nfLongTime,
     nfShortTimeAM, nfLongTimeAM, nfTimeInterval);
@@ -163,17 +157,8 @@ type
        |  B
        |  A
   }
-
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
     rt90DegreeCounterClockwiseRotation, rtStacked);
-
-  {@@ Indicates the border for a cell }
-
-  TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth);
-
-  {@@ Indicates the border for a cell }
-
-  TsCellBorders = set of TsCellBorder;
 
   {@@ Indicates horizontal and vertical text alignment in cells }
   TsHorAlignment = (haDefault, haLeft, haCenter, haRight);
@@ -183,8 +168,7 @@ type
     Colors in fpspreadsheet are given as indices into a palette.
     Use the workbook's GetPaletteColor to determine the color rgb value as
     little-endian (with "r" being the low-value byte, in agreement with TColor).
-    The data type for rgb values is TsColorValue.
-  }
+    The data type for rgb values is TsColorValue. }
   TsColor = Word;
 
 {@@
@@ -241,6 +225,32 @@ type
     Color: TsColor;
   end;
 
+  {@@ Indicates the border for a cell }
+  TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth);
+
+  {@@ Indicates the border for a cell }
+  TsCellBorders = set of TsCellBorder;
+
+  {@@ Line style (for cell borders) }
+  TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble);
+
+  {@@ Cell border style }
+  TsCellBorderStyle = record
+    LineStyle: TsLineStyle;
+    Color: TsColor;
+  end;
+
+  TsCellBorderStyles = array[TsCellBorder] of TsCellBorderStyle;
+
+const
+  DEFAULT_BORDERSTYLES: TsCellBorderStyles = (
+    (LineStyle: lsThin; Color: scBlack),
+    (LineStyle: lsThin; Color: scBlack),
+    (LineStyle: lsThin; Color: scBlack),
+    (LineStyle: lsThin; Color: scBlack)
+  );
+
+type
   {@@ Cell structure for TsWorksheet
 
       Never suppose that all *Value fields are valid,
@@ -267,6 +277,7 @@ type
     HorAlignment: TsHorAlignment;
     VertAlignment: TsVertAlignment;
     Border: TsCellBorders;
+    BorderStyles: TsCelLBorderStyles;
     BackgroundColor: TsColor;
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
@@ -327,6 +338,7 @@ type
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
     procedure RemoveAllCells;
+    { Writing of values }
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2);
@@ -334,8 +346,9 @@ type
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
-    procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
+    { Writing of cell attributes }
+    procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat);
     function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
@@ -344,7 +357,15 @@ type
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
     procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
+    procedure WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder; AColor: TsColor);
+    procedure WriteBorderLineStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      ALineStyle: TsLineStyle);
     procedure WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
+    procedure WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      AStyle: TsCellBorderStyle); overload;
+    procedure WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      ALineStyle: TsLineStyle; AColor: TsColor); overload;
+    procedure WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles);
     procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
     procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
     procedure WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean);
@@ -886,6 +907,7 @@ begin
 
     Result^.Row := ARow;
     Result^.Col := ACol;
+    Result^.BorderStyles := DEFAULT_BORDERSTYLES;
 
     Cells.Add(Result);
   end;
@@ -1451,6 +1473,30 @@ begin
   ACell^.BackgroundColor := AColor;
 end;
 
+{ Sets the color of a cell border line.
+  Note: the border must be included in Borders set in order to be shown! }
+procedure TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; AColor: TsColor);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  lCell^.BorderStyles[ABorder].Color := AColor;
+end;
+
+{ Sets the linestyle of a cell border.
+  Note: the border must be included in the "Borders" set in order to be shown! }
+procedure TsWorksheet.WriteBorderLineStyle(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; ALineStyle: TsLineStyle);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  lCell^.BorderStyles[ABorder].LineStyle := ALineStyle;
+end;
+
+{ Shows the cell borders included in the set ABorders. The borders are drawn
+  using the "BorderStyles" assigned to the cell. }
 procedure TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
 var
   lCell: PCell;
@@ -1458,6 +1504,41 @@ begin
   lCell := GetCell(ARow, ACol);
   Include(lCell^.UsedFormattingFields, uffBorder);
   lCell^.Border := ABorders;
+end;
+
+{ Sets the style of a cell border, i.e. line style and line color.
+  Note: the border must be included in the "Borders" set in order to be shown! }
+procedure TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; AStyle: TsCellBorderStyle);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  lCell^.BorderStyles[ABorder] := AStyle;
+end;
+
+{ Sets line style and line color of a cell border.
+  Note: the border must be included in the "Borders" set in order to be shown! }
+procedure TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; ALineStyle: TsLinestyle; AColor: TsColor);
+var
+  lCell: PCell;
+begin
+  lCell := GetCell(ARow, ACol);
+  lCell^.BorderStyles[ABorder].LineStyle := ALineStyle;
+  lCell^.BorderStyles[ABorder].Color := AColor;
+end;
+
+{ Sets the style of all cell border of a cell, i.e. line style and line color.
+  Note: Only those borders included in the "Borders" set are shown! }
+procedure TsWorksheet.WriteBorderStyles(ARow, ACol: Cardinal;
+  const AStyles: TsCellBorderStyles);
+var
+  b: TsCellBorder;
+  cell: PCell;
+begin
+  cell := GetCell(ARow, ACol);
+  for b in TsCellBorder do cell^.BorderStyles[b] := AStyles[b];
 end;
 
 procedure TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
@@ -2280,12 +2361,14 @@ begin
 end;
 
 {@@
-  Checks if the style of a cell is in the list FFormattingStyles and returns the index
-  or -1 if it isn't
+  Checks if the style of a cell is in the list of manually added FFormattingStyles
+  and returns the index or -1 if it isn't
 }
 function TsCustomSpreadWriter.FindFormattingInList(AFormat: PCell): Integer;
 var
   i: Integer;
+  b: TsCellBorder;
+  equ: Boolean;
 begin
   Result := -1;
 
@@ -2302,8 +2385,23 @@ begin
     if uffTextRotation in AFormat^.UsedFormattingFields then
       if (FFormattingStyles[i].TextRotation <> AFormat^.TextRotation) then Continue;
 
-    if uffBorder in AFormat^.UsedFormattingFields then
+    if uffBorder in AFormat^.UsedFormattingFields then begin
       if (FFormattingStyles[i].Border <> AFormat^.Border) then Continue;
+      equ := true;
+      for b in TsCellBorder do begin
+        if FFormattingStyles[i].BorderStyles[b].LineStyle <> AFormat^.BorderStyles[b].LineStyle
+        then begin
+          equ := false;
+          Break;
+        end;
+        if FFormattingStyles[i].BorderStyles[b].Color <> AFormat^.BorderStyles[b].Color
+        then begin
+          equ := false;
+          Break;
+        end;
+      end;
+      if not equ then Continue;
+    end;
 
     if uffBackgroundColor in AFormat^.UsedFormattingFields then
       if (FFormattingStyles[i].BackgroundColor <> AFormat^.BackgroundColor) then Continue;

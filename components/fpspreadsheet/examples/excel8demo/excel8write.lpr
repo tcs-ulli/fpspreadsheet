@@ -62,8 +62,43 @@ begin
   // E6 empty cell, only background color
   MyWorksheet.WriteBackgroundColor(5, 4, scYellow);
 
-  // E7 empty cell, only all borders
+  // F6 empty cell, all borders
   MyWorksheet.WriteBorders(5, 5, [cbNorth, cbEast, cbSouth, cbWest]);
+  MyWorksheet.WriteBorderStyle(5, 5, cbSouth, lsDotted, scRed);
+  MyWorksheet.WriteBorderLineStyle(5, 5, cbNorth, lsThick);
+
+  // H6 empty cell, all medium borders
+  MyWorksheet.WriteBorders(5, 7, [cbNorth, cbEast, cbSouth, cbWest]);
+  MyWorksheet.WriteBorderColor(5, 7, cbSouth, scBlack);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbSouth, lsMedium);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbEast, lsMedium);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbWest, lsMedium);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbNorth, lsMedium);
+
+  // J6 empty cell, all thick borders
+  MyWorksheet.WriteBorders(5, 9, [cbNorth, cbEast, cbSouth, cbWest]);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbSouth, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbEast, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbWest, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbNorth, lsThick);
+
+  // K6 empty cell, top border thick
+  MyWorksheet.WriteBorders(5, 11, [cbNorth]);
+  MyWorksheet.WriteBorderLineStyle(5, 11, cbNorth, lsThick);
+
+  // L6 empty cell, bottom border medium
+  MyWorksheet.WriteBorders(5, 12, [cbSouth]);
+  MyWorksheet.WriteBorderLineStyle(5, 12, cbSouth, lsMedium);
+
+  // M6 empty cell, top & bottom border dashed and dotted
+  MyWorksheet.WriteBorders(5, 13, [cbNorth, cbSouth]);
+  MyWorksheet.WriteBorderLineStyle(5, 13, cbNorth, lsDashed);
+  MyWorksheet.WriteBorderLineStyle(5, 13, cbSouth, lsDotted);
+
+  // N6 empty cell, left border: double
+//  MyWorksheet.WriteBlank(5, 14);
+  MyWorksheet.WriteBorders(5, 14, [cbWest]);
+  MyWorksheet.WriteBorderLineStyle(5, 14, cbWest, lsDouble);
 
   // Word-wrapped long text in D7
   MyWorksheet.WriteUTF8Text(6, 3, 'This is a very, very, very, very long wrapped text.');

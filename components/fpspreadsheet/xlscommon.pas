@@ -312,6 +312,7 @@ type
     WordWrap: Boolean;
     TextRotation: TsTextRotation;
     Borders: TsCellBorders;
+    BorderStyles: TsCellBorderStyles;
     BackgroundColor: TsColor;
   end;
 
@@ -523,6 +524,7 @@ begin
     lCell^.TextRotation := XFData.TextRotation;
 
     // Borders
+    lCell^.BorderStyles := XFData.BorderStyles;
     if XFData.Borders <> [] then begin
       Include(lCell^.UsedFormattingFields, uffBorder);
       lCell^.Border := XFData.Borders;
@@ -887,13 +889,13 @@ end;
 }
 procedure TsSpreadBIFFWriter.AddDefaultFormats();
 begin
-  SetLength(FFormattingStyles, 1);
-
   // XF0..XF14: Normal style, Row Outline level 1..7,
   // Column Outline level 1..7.
 
   // XF15 - Default cell format, no formatting (4.6.2)
+  SetLength(FFormattingStyles, 1);
   FFormattingStyles[0].UsedFormattingFields := [];
+  FFormattingStyles[0].BorderStyles := DEFAULT_BORDERSTYLES;
   FFormattingStyles[0].Row := 15;
 
   NextXFIndex := 15 + Length(FFormattingStyles);
