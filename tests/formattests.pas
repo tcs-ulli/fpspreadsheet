@@ -30,6 +30,8 @@ var
 
   SollColWidths: array[0..1] of Single;
   SollBorders: array[0..15] of TsCellBorders;
+  SollBorderLineStyles: array[0..6] of TsLineStyle;
+  SollBorderColors: array[0..5] of TsColor;
 
   procedure InitSollFmtData;
 
@@ -47,6 +49,8 @@ type
     procedure TestWriteReadAlignment(AFormat: TsSpreadsheetFormat);
     // Test border
     procedure TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
+    // Test border styles
+    procedure TestWriteReadBorderStyles(AFormat: TsSpreadsheetFormat);
     // Test column widths
     procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
     // Test text rotation
@@ -63,12 +67,14 @@ type
     procedure TestWriteReadBIFF2_Border;
     procedure TestWriteReadBIFF2_ColWidths;
     // These features are not supported by Excel2 --> no test cases required!
+    // - BorderStyle
     // - TextRotation
     // - Wordwrap
 
     { BIFF5 Tests }
     procedure TestWriteReadBIFF5_Alignment;
     procedure TestWriteReadBIFF5_Border;
+    procedure TestWriteReadBIFF5_BorderStyles;
     procedure TestWriteReadBIFF5_ColWidths;
     procedure TestWriteReadBIFF5_TextRotation;
     procedure TestWriteReadBIFF5_WordWrap;
@@ -76,6 +82,7 @@ type
     { BIFF8 Tests }
     procedure TestWriteReadBIFF8_Alignment;
     procedure TestWriteReadBIFF8_Border;
+    procedure TestWriteReadBIFF8_BorderStyles;
     procedure TestWriteReadBIFF8_ColWidths;
     procedure TestWriteReadBIFF8_TextRotation;
     procedure TestWriteReadBIFF8_WordWrap;
@@ -192,6 +199,21 @@ begin
   SollBorders[13] := [cbSouth, cbWest, cbNorth];
   SollBorders[14] := [cbWest, cbNorth, cbEast];
   SollBorders[15] := [cbEast, cbSouth, cbWest, cbNorth];
+
+  SollBorderLineStyles[0] := lsThin;
+  SollBorderLineStyles[1] := lsMedium;
+  SollBorderLineStyles[2] := lsThick;
+  SollBorderLineStyles[3] := lsThick;
+  SollBorderLineStyles[4] := lsDashed;
+  SollBorderLineStyles[5] := lsDotted;
+  SollBorderLineStyles[6] := lsDouble;
+
+  SollBorderColors[0] := scBlue;
+  SollBorderColors[1] := scRed;
+  SollBorderColors[2] := scBlue;
+  SollBorderColors[3] := scGray;
+  SollBorderColors[4] := scSilver;
+  SollBorderColors[5] := scMagenta;
 end;
 
 { TSpreadWriteReadFormatTests }
@@ -457,6 +479,107 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Border;
 begin
   TestWriteReadBorder(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBorderStyles(AFormat: TsSpreadsheetFormat);
+{ This test paints 10x10 cells with all borders, each separated by an empty
+  column and an empty row. The border style varies from border to border
+  according to the line styles defined in SollBorderStyles. At first, all border
+  lines use the first color in SollBorderColors. When all BorderStyles are used
+  the next color is taken, etc. }
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  MyCell: PCell;
+  ActualColWidth: Single;
+  row, col: Integer;
+  b: TsCellBorder;
+  expected: Integer;
+  current: Integer;
+  TempFile: string; //write xls/xml to this file and read back from it
+  c, ls: Integer;
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
+
+  c := 0;
+  ls := 0;
+  for row := 1 to 10 do begin
+    for col := 1 to 10 do begin
+      MyWorksheet.WriteBorders(row*2, col*2, [cbNorth, cbSouth, cbEast, cbWest]);
+      for b in TsCellBorders do begin
+        MyWorksheet.WriteBorderLineStyle(row*2, col*2, b, SollBorderLineStyles[ls]);
+        MyWorksheet.WriteBorderColor(row*2, col*2, b, SollBorderColors[c]);
+        inc(ls);
+        if ls > High(SollBorderLineStyles) then begin
+          ls := 0;
+          inc(c);
+          if c > High(SollBorderColors) then
+            c := 0;
+        end;
+      end;
+    end;
+  end;
+
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  c := 0;
+  ls := 0;
+  for row := 1 to 10 do begin
+    for col := 1 to 10 do begin
+      MyCell := MyWorksheet.FindCell(row*2, col*2);
+      if myCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      for b in TsCellBorder do begin
+        current := ord(MyCell^.BorderStyles[b].LineStyle);
+        expected := ord(SollBorderLineStyles[ls]);
+        CheckEquals(current, expected,
+          'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
+        current := MyCell^.BorderStyles[b].Color;
+        expected := SollBorderColors[c];
+        CheckEquals(current, expected,
+          'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
+        inc(ls);
+        if ls > High(SollBorderLineStyles) then begin
+          ls := 0;
+          inc(c);
+          if c > High(SollBorderColors) then
+            c := 0;
+        end;
+      end;
+    end;
+  end;
+
+  // Finalization
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_BorderStyles;
+begin
+  TestWriteReadBorderStyles(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_BorderStyles;
+begin
+  TestWriteReadBorderStyles(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);

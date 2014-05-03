@@ -107,7 +107,6 @@ type
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
     // Writes index to XF record according to cell's formatting
-    //procedure WriteXFIndex(AStream: TStream; ACell: PCell);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
   protected
     { Record writing methods }
@@ -131,9 +130,9 @@ type
     procedure WriteWindow2(AStream: TStream; ASheetSelected: Boolean);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
       AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
-      AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
-      AWordWrap: Boolean = false; AddBackground: Boolean = false;
-      ABackgroundColor: TsColor = scSilver);
+      const ABorderStyles: TsCellBorderStyles; AHorAlignment: TsHorAlignment = haDefault;
+      AVertAlignment: TsVertAlignment = vaDefault; AWordWrap: Boolean = false;
+      AddBackground: Boolean = false; ABackgroundColor: TsColor = scSilver);
     procedure WriteXFRecords(AStream: TStream);
   public
     { General writing methods }
@@ -292,11 +291,17 @@ const
   XF_ROTATION_90DEG_CW                = 180;
   XF_ROTATION_STACKED                 = 255;   // Letters stacked top to bottom, but not rotated
 
-  { XF CELL BORDER }
+  { XF CELL BORDER LINE STYLES }
   MASK_XF_BORDER_LEFT                 = $0000000F;
   MASK_XF_BORDER_RIGHT                = $000000F0;
   MASK_XF_BORDER_TOP                  = $00000F00;
   MASK_XF_BORDER_BOTTOM               = $0000F000;
+
+  { XF CELL BORDER COLORS }
+  MASK_XF_BORDER_LEFT_COLOR           = $007F0000;
+  MASK_XF_BORDER_RIGHT_COLOR          = $3F800000;
+  MASK_XF_BORDER_TOP_COLOR            = $0000007F;
+  MASK_XF_BORDER_BOTTOM_COLOR         = $00003F80;
 
 
 { TsSpreadBIFF8Writer }
@@ -308,6 +313,7 @@ var
   lFormatIndex: Word; //number format
   lTextRotation: Byte;
   lBorders: TsCellBorders;
+  lBorderStyles: TsCellBorderStyles;
   lAddBackground: Boolean;
   lBackgroundColor: TsColor;
   lHorAlign: TsHorAlignment;
@@ -322,6 +328,7 @@ begin
     lFormatIndex := 0; //General format (one of the built-in number formats)
     lTextRotation := XF_ROTATION_HORIZONTAL;
     lBorders := [];
+    lBorderStyles := FFormattingStyles[i].BorderStyles;
     lHorAlign := FFormattingStyles[i].HorAlignment;
     lVertAlign := FFormattingStyles[i].VertAlignment;
     lBackgroundColor := FFormattingStyles[i].BackgroundColor;
@@ -410,7 +417,8 @@ begin
 
     // And finally write the style
     WriteXF(AStream, lFontIndex, lFormatIndex, 0, lTextRotation, lBorders,
-      lHorAlign, lVertAlign, lWordwrap, lAddBackground, lBackgroundColor);
+      lBorderStyles, lHorAlign, lVertAlign, lWordwrap, lAddBackground,
+      lBackgroundColor);
   end;
 end;
 
@@ -1229,9 +1237,9 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
  AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
- AHorAlignment: TsHorAlignment = haDefault; AVertAlignment: TsVertAlignment = vaDefault;
- AWordWrap: Boolean = false; AddBackground: Boolean = false;
- ABackgroundColor: TsColor = scSilver);
+ const ABorderStyles: TsCellBorderStyles; AHorAlignment: TsHorAlignment = haDefault;
+ AVertAlignment: TsVertAlignment = vaDefault; AWordWrap: Boolean = false;
+ AddBackground: Boolean = false; ABackgroundColor: TsColor = scSilver);
 var
   XFOptions: Word;
   XFAlignment, XFOrientationAttrib: Byte;
@@ -1292,18 +1300,33 @@ begin
 
   { Cell border lines and background area }
 
-  // Left and Right line colors, use black
+  // Left and Right line colors
+  XFBorderDWord1 := ABorderStyles[cbWest].Color shl 16 +
+                    ABorderStyles[cbEast].Color shl 23;
+
+  // Border line styles
+  if cbWest in ABorders then
+    XFBorderDWord1 := XFBorderDWord1 or (ord(ABorderStyles[cbWest].LineStyle)+1);
+  if cbEast in ABorders then
+    XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbEast].LineStyle)+1) shl 4);
+  if cbNorth in ABorders then
+    XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbNorth].LineStyle)+1) shl 8);
+  if cbSouth in ABorders then
+    XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbSouth].LineStyle)+1) shl 12);
+  (*
   XFBorderDWord1 := 8 * $10000 {left line - black} + 8 * $800000 {right line - black};
 
   if cbNorth in ABorders then XFBorderDWord1 := XFBorderDWord1 or $100;
   if cbWest in ABorders  then XFBorderDWord1 := XFBorderDWord1 or $1;
   if cbEast in ABorders  then XFBorderDWord1 := XFBorderDWord1 or $10;
   if cbSouth in ABorders then XFBorderDWord1 := XFBorderDWord1 or $1000;
-
+   *)
   AStream.WriteDWord(DWordToLE(XFBorderDWord1));
 
-  // Top and Bottom line colors, use black
-  XFBorderDWord2 := 8 {top line - black} + 8 * $80 {bottom line - black};
+  // Top and Bottom line colors
+  XFBorderDWord2 := ABorderStyles[cbNorth].Color + ABorderStyles[cbSouth].Color shl 7;
+//  XFBorderDWord2 := 8 {top line - black} + 8 * $80 {bottom line - black};
+
   // Add a background, if desired
   if AddBackground then XFBorderDWord2 := XFBorderDWord2 or $4000000;
   AStream.WriteDWord(DWordToLE(XFBorderDWord2));
@@ -1318,37 +1341,37 @@ end;
 procedure TsSpreadBIFF8Writer.WriteXFRecords(AStream: TStream);
 begin
   // XF0
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF1
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF2
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF3
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF4
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF5
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF6
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF7
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF8
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF9
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF10
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF11
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF12
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF13
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF14
-  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF15 - Default, no formatting
-  WriteXF(AStream, 0, 0, 0, XF_ROTATION_HORIZONTAL, []);
+  WriteXF(AStream, 0, 0, 0, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
 
   // Add all further non-standard/built-in formatting styles
   ListAllFormattingStyles;
@@ -1971,6 +1994,7 @@ var
   lData: TXFListData;
   xf: TXFRecord;
   b: Byte;
+  dw: DWord;
 begin
   AStream.ReadBuffer(xf, SizeOf(xf));
 
@@ -2010,16 +2034,35 @@ begin
   // Cell borders
   xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);
   lData.Borders := [];
+  lData.BorderStyles := DEFAULT_BORDERSTYLES;
+
   // the 4 masked bits encode the line style of the border line. 0 = no line
-  // We ignore the line style here. --> check against "no line"
-  if xf.Border_Background_1 and MASK_XF_BORDER_LEFT <> 0 then
+  dw := xf.Border_Background_1 and MASK_XF_BORDER_LEFT;
+  if dw <> 0 then begin
     Include(lData.Borders, cbWest);
-  if xf.Border_Background_1 and MASK_XF_BORDER_RIGHT <> 0 then
+    lData.BorderStyles[cbWest].LineStyle := TsLineStyle(dw - 1);
+  end;
+  dw := xf.Border_Background_1 and MASK_XF_BORDER_RIGHT;
+  if dw <> 0 then begin
     Include(lData.Borders, cbEast);
-  if xf.Border_Background_1 and MASK_XF_BORDER_TOP <> 0 then
+    lData.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 4 - 1);
+  end;
+  dw := xf.Border_Background_1 and MASK_XF_BORDER_TOP;
+  if dw <> 0 then begin
     Include(lData.Borders, cbNorth);
-  if xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM <> 0 then
+    lData.BorderStyles[cbNorth].LineStyle := TsLineStyle(dw shr 8 - 1);
+  end;
+  dw := xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM;
+  if dw <> 0 then begin
     Include(lData.Borders, cbSouth);
+    lData.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 12 - 1);
+  end;
+
+  // Border line colors
+  lData.BorderStyles[cbWest].Color := (xf.Border_Background_1 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
+  lData.BorderStyles[cbEast].Color := (xf.Border_Background_1 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
+  lData.BorderStyles[cbNorth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_TOP_COLOR);
+  lData.BorderStyles[cbSouth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_BOTTOM_COLOR) shr 7;
 
   // Background color;
   xf.Border_Background_3 := DWordLEToN(xf.Border_Background_3);

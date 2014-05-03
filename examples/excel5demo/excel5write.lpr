@@ -89,6 +89,28 @@ begin
   MyWorksheet.WriteDateTime(5, 0, now);
   MyWorksheet.WriteFont(5, 0, 'Courier New', 20, [fssBold, fssItalic, fssUnderline], scBlue);
 
+  // F6 empty cell, only all thin borders
+  MyWorksheet.WriteBorders(5, 5, [cbNorth, cbEast, cbSouth, cbWest]);
+  MyWorksheet.WriteBorderLineStyle(5, 5, cbSouth, lsDotted);
+  MyWorksheet.WriteBorderColor(5, 5, cbSouth, scRed);
+  MyWorksheet.WriteBorderLineStyle(5, 5, cbNorth, lsThick);
+
+  // H6 empty cell, only all medium borders
+  MyWorksheet.WriteBorders(5, 7, [cbNorth, cbEast, cbSouth, cbWest]);
+  MyWorksheet.WriteBorderColor(5, 7, cbSouth, scBlack);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbSouth, lsMedium);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbEast, lsMedium);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbWest, lsMedium);
+  MyWorksheet.WriteBorderLineStyle(5, 7, cbNorth, lsMedium);
+
+  // J6 empty cell, only all thick borders
+  MyWorksheet.WriteBorders(5, 9, [cbNorth, cbEast, cbSouth, cbWest]);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbSouth, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbEast, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbWest, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbNorth, lsThick);
+
+
 { Uncomment this to test large XLS files
   for i := 2 to 20 do
   begin

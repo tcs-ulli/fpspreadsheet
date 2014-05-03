@@ -380,6 +380,54 @@ var
   cell: PCell;
   c, r: Integer;
   rect: TRect;
+
+  procedure DrawBorderLine(ACell: PCell; ARect: TRect; ABorder: TsCellBorder;
+    ALineStyle: TsLineStyle);
+  const
+    // TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble);
+    PEN_WIDTHS: array[TsLineStyle] of Byte =
+      (1, 2, 1, 1, 3, 1);
+    PEN_STYLES: array[TsLineStyle] of TPenStyle =
+      (psSolid, psSolid, psDash, psDot, psSolid, psSolid);
+//      (psSolid, psSolid, psPattern, psPattern, psSolid, psSolid);
+    PEN_PATTERNS: array[TsLineStyle] of TPenPattern =
+      ($FFFFFFFF, $FFFFFFFF, $07070707, $AAAAAAAA, $FFFFFFFF, $FFFFFFFF);
+  var
+    w: Integer;
+  begin
+    if ALineStyle = lsDouble then
+      case ABorder of
+        cbEast, cbWest:
+          begin
+            InflateRect(ARect, -1, 0);
+            DrawBorderLine(ACell, ARect, ABorder, lsThin);
+            InflateRect(ARect, +2, 0);
+            DrawBorderLine(ACell, ARect, ABorder, lsThin);
+          end;
+        cbNorth, cbSouth:
+          begin
+            InflateRect(ARect, 0, -1);
+            DrawBorderLine(ACell, ARect, ABorder, lsThin);
+            InflateRect(ARect, 0, +2);
+            DrawBorderLine(ACell, ARect, ABorder, lsThin)
+          end;
+      end
+    else begin
+      w := PEN_WIDTHS[ACell^.BorderStyles[ABorder].LineStyle] div 2;
+      Canvas.Pen.Style := PEN_STYLES[ACell^.BorderStyles[ABorder].LineStyle];
+      Canvas.Pen.Width := PEN_WIDTHS[ACell^.BorderStyles[ABorder].LineStyle];
+      Canvas.Pen.Color := FWorkBook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
+      //Canvas.Pen.Pattern := PEN_PATTERNS[ACell^.BorderStyles[ABorder].LineStyle];
+      //Canvas.Pen.EndCap := pecSquare;
+      case ABorder of
+        cbEast : Canvas.Line(ARect.Right-1, ARect.Top, ARect.Right-1, ARect.Bottom-w);
+        cbSouth: Canvas.Line(ARect.Left-1, ARect.Bottom-1, ARect.Right-w, ARect.Bottom-1);
+        cbWest : Canvas.Line(ARect.Left-1, ARect.Top, ARect.Left-1, ARect.Bottom-w);
+        cbNorth: Canvas.Line(ARect.Left-1, ARect.Top-1, ARect.Right-w, ARect.Top-1);
+      end;
+    end;
+  end;
+
 begin
   inherited;
   if FWorksheet = nil then exit;
@@ -390,16 +438,14 @@ begin
       c := cell^.Col + FixedCols;
       r := cell^.Row + FixedRows;
       rect := CellRect(c, r);
-      Canvas.Pen.Style := psSolid;
-      Canvas.Pen.Color := clBlack;
       if (cbNorth in cell^.Border) then
-        Canvas.Line(rect.Left, rect.Top-1, rect.Right, rect.Top-1);
-      if (cbWest in cell^.Border) then
-        Canvas.Line(rect.Left-1, rect.Top, rect.Left-1, rect.Bottom);
-      if (cbEast in cell^.Border) then
-        Canvas.Line(rect.Right-1, rect.Top, rect.Right-1, rect.Bottom);
-      if (cbSouth in cell^.Border) then
-        Canvas.Line(rect.Left, rect.Bottom-1, rect.Right, rect.Bottom-1);
+        DrawBorderLine(cell, rect, cbNorth, cell^.BorderStyles[cbNorth].LineStyle);
+      if cbEast in cell^.Border then
+        DrawBorderLine(cell, rect, cbEast, cell^.BorderStyles[cbEast].LineStyle);
+      if cbSouth in cell^.Border then
+        DrawBorderLine(cell, rect, cbSouth, cell^.BorderStyles[cbSouth].LineStyle);
+      if cbWest in cell^.Border then
+        DrawBorderLine(cell, rect, cbWest, cell^.BorderStyles[cbWest].LineStyle);
     end;
     cell := FWorksheet.GetNextCell;
   end;
