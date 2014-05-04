@@ -89,6 +89,7 @@ type
       AddBackground: Boolean = false);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
     procedure WriteXFRecords(AStream: TStream);
+    procedure WriteWindow1(AStream: TStream); override;
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
@@ -827,12 +828,39 @@ begin
     WriteFormats(AStream);
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
-    { -- currently not working
+    WriteCellsToStream(AStream, sheet.Cells);
+
+    WriteWindow1(AStream);
+    //  { -- currently not working
     WriteWindow2(AStream, sheet);
     WritePane(AStream, sheet, false);  // false for "is not BIFF5 or BIFF8"
-    }
-    WriteCellsToStream(AStream, sheet.Cells);
+      //}
   WriteEOF(AStream);
+end;
+
+{
+  Writes an Excel 2 WINDOW1 record
+}
+procedure TsSpreadBIFF2Writer.WriteWindow1(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW1));
+  AStream.WriteWord(WordToLE(9));
+
+  { Horizontal position of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE(0));
+
+  { Vertical position of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($0069));
+
+  { Width of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($339F));
+
+  { Height of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($1B5D));
+
+  { Window is visible (1) / hidden (0) }
+  AStream.WriteByte(WordToLE(0));
 end;
 
 {
