@@ -917,9 +917,9 @@ end;
 
 { Reads the WINDOW2 record containing information like "show grid lines",
   "show sheet headers", "panes are frozen", etc.
-  The record structure is different for BIFF5 and BIFF8, but we use here only
-  the common part.
-  BIFF2 is completely different and has to be overridden. }
+  The record structure is slightly different for BIFF5 and BIFF8, but we use
+  here only the common part.
+  BIFF2 has a different structure and has to be re-written. }
 procedure TsSpreadBIFFReader.ReadWindow2(AStream: TStream);
 var
   flags: Word;
