@@ -15,7 +15,7 @@ uses
   testsutility;
 
 type
-  { TSpreadWriteReadColorTests }
+  { TSpreadWriteReadOptionTests }
   //Write to xls/xml file and read back
   TSpreadWriteReadOptionsTests = class(TTestCase)
   private
@@ -29,27 +29,30 @@ type
       AShowGridLines, AShowHeaders: Boolean);
 
   published
-    // Writes out colors & reads back.
+    // Writes out sheet options & reads back.
 
-    { BIFF2 file format tests }
-//    procedure TestWriteReadBIFF2_Font_InternalPal;        // internal palette for BIFF2 file format
+    { BIFF2 tests }
+    procedure TestWriteReadBIFF2_ShowGridLines_ShowHeaders;
+    procedure TestWriteReadBIFF2_ShowGridLines_HideHeaders;
+    procedure TestWriteReadBIFF2_HideGridLines_ShowHeaders;
+    procedure TestWriteReadBIFF2_HideGridLines_HideHeaders;
 
-    { BIFF5 file format tests }
-    procedure TestWriteReadBIFF5_GridLines_Headers;
-    procedure TestWriteReadBIFF5_GridLines;
-    procedure TestWriteReadBIFF5_Headers;
-    procedure TestWriteReadBIFF5_NoGridLines_NoHeaders;
+    { BIFF5 tests }
+    procedure TestWriteReadBIFF5_ShowGridLines_ShowHeaders;
+    procedure TestWriteReadBIFF5_ShowGridLines_HideHeaders;
+    procedure TestWriteReadBIFF5_HideGridLines_ShowHeaders;
+    procedure TestWriteReadBIFF5_HideGridLines_HideHeaders;
 
     procedure TestWriteReadBIFF5_Panes_HorVert;
     procedure TestWriteReadBIFF5_Panes_Hor;
     procedure TestWriteReadBIFF5_Panes_Vert;
     procedure TestWriteReadBIFF5_Panes_None;
 
-    { BIFF8 file format tests }
-    procedure TestWriteReadBIFF8_GridLines_Headers;
-    procedure TestWriteReadBIFF8_GridLines;
-    procedure TestWriteReadBIFF8_Headers;
-    procedure TestWriteReadBIFF8_NoGridLines_NoHeaders;
+    { BIFF8 tests }
+    procedure TestWriteReadBIFF8_ShowGridLines_ShowHeaders;
+    procedure TestWriteReadBIFF8_ShowGridLines_HideHeaders;
+    procedure TestWriteReadBIFF8_HideGridLines_ShowHeaders;
+    procedure TestWriteReadBIFF8_HideGridLines_HideHeaders;
 
     procedure TestWriteReadBIFF8_Panes_HorVert;
     procedure TestWriteReadBIFF8_Panes_Hor;
@@ -122,44 +125,65 @@ begin
   DeleteFile(TempFile);
 end;
 
+{ Tests for BIFF2 grid lines and/or headers }
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF2_ShowGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcel2, true, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF2_ShowGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcel2, true, false);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF2_HideGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcel2, false, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF2_HideGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcel2, false, false);
+end;
+
 { Tests for BIFF5 grid lines and/or headers }
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_GridLines_Headers;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_ShowGridLines_ShowHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel5, true, true);
 end;
 
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_GridLines;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_ShowGridLines_HideHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel5, true, false);
 end;
 
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_Headers;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_HideGridLines_ShowHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel5, false, true);
 end;
 
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_NoGridLines_NoHeaders;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF5_HideGridLines_HideHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel5, false, false);
 end;
 
 { Tests for BIFF8 grid lines and/or headers }
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_GridLines_Headers;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_ShowGridLines_ShowHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel8, true, true);
 end;
 
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_GridLines;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_ShowGridLines_HideHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel8, true, false);
 end;
 
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_Headers;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_HideGridLines_ShowHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel8, false, true);
 end;
 
-procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_NoGridLines_NoHeaders;
+procedure TSpreadWriteReadOptionsTests.TestWriteReadBIFF8_HideGridLines_HideHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel8, false, false);
 end;

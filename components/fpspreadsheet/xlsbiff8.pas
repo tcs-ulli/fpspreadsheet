@@ -126,7 +126,6 @@ type
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
-    procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
       AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
@@ -227,7 +226,6 @@ const
   INT_EXCEL_ID_INDEX      = $020B;
   INT_EXCEL_ID_ROWINFO    = $0208;
   INT_EXCEL_ID_STYLE      = $0293;
-  INT_EXCEL_ID_WINDOW1    = $003D;
   INT_EXCEL_ID_WINDOW2    = $023E;
   INT_EXCEL_ID_RSTRING    = $00D6;
   INT_EXCEL_ID_RK         = $027E;
@@ -262,13 +260,6 @@ const
 
   { STYLE record constants }
   MASK_STYLE_BUILT_IN     = $8000;
-
-  { WINDOW1 record constants }
-  MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
-  MASK_WINDOW1_OPTION_WINDOW_MINIMISED          = $0002;
-  MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE       = $0008;
-  MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE       = $0010;
-  MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE     = $0020;
 
   { XF substructures }
 
@@ -1107,56 +1098,6 @@ begin
 
   { Level if the identifier for a built-in style is RowLevel or ColLevel, $FF otherwise }
   AStream.WriteByte($FF);
-end;
-
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteWindow1 ()
-*
-*  DESCRIPTION:    Writes an Excel 8 WINDOW1 record
-*
-*                  This record contains general settings for the
-*                  document window and global workbook settings.
-*
-*                  The values written here are reasonable defaults,
-*                  which should work for most sheets.
-*
-*******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteWindow1(AStream: TStream);
-begin
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW1));
-  AStream.WriteWord(WordToLE(18));
-
-  { Horizontal position of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE(0));
-
-  { Vertical position of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE($0069));
-
-  { Width of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE($339F));
-
-  { Height of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE($1B5D));
-
-  { Option flags }
-  AStream.WriteWord(WordToLE(
-   MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE or
-   MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE or
-   MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE));
-
-  { Index to active (displayed) worksheet }
-  AStream.WriteWord(WordToLE($00));
-
-  { Index of first visible tab in the worksheet tab bar }
-  AStream.WriteWord(WordToLE($00));
-
-  { Number of selected worksheets }
-  AStream.WriteWord(WordToLE(1));
-
-  { Width of worksheet tab bar (in 1/1000 of window width).
-    The remaining space is used by the horizontal scroll bar }
-  AStream.WriteWord(WordToLE(600));
 end;
 
 {*******************************************************************

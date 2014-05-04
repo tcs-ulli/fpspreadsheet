@@ -22,6 +22,7 @@ const
   INT_EXCEL_ID_COLINFO    = $007D;
   INT_EXCEL_ID_DATEMODE   = $0022;
   INT_EXCEL_ID_PALETTE    = $0092;
+  INT_EXCEL_ID_WINDOW1    = $003D;
   INT_EXCEL_ID_XF         = $00E0;
 
   { RECORD IDs which did not change across versions 5-8 }
@@ -240,7 +241,14 @@ const
   FORMAT_TIME_MSZ = 47;           //time MM:SS.0
   FORMAT_SCI_1_DECIMAL = 48;      //scientific, 1 decimal
 
-  { WINDOW2 record constants - BIFF3-BIFF8}
+  { WINDOW1 record constants - BIFF5-BIFF8 }
+  MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
+  MASK_WINDOW1_OPTION_WINDOW_MINIMISED          = $0002;
+  MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE       = $0008;
+  MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE       = $0010;
+  MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE     = $0020;
+
+  { WINDOW2 record constants - BIFF3-BIFF8 }
   MASK_WINDOW2_OPTION_SHOW_FORMULAS             = $0001;
   MASK_WINDOW2_OPTION_SHOW_GRID_LINES           = $0002;
   MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS        = $0004;
@@ -416,6 +424,8 @@ type
     procedure WritePalette(AStream: TStream);
     // Writes out a PANE record
     procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean);
+    // Writes out a WINDOW1 record
+    procedure WriteWindow1(AStream: TStream); virtual;
     // Writes the index of the XF record used in the given cell
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
 
@@ -1390,6 +1400,50 @@ begin
   if IsBIFF58 then
     AStream.WriteByte(0);
     { Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4 }
+end;
+
+{ Writes an Excel 5/8 WINDOW1 record
+  This record contains general settings for the document window and
+  global workbook settings.
+  The values written here are reasonable defaults which should work for most
+  sheets.
+  Valid for BIFF5-BIFF8. }
+procedure TsSpreadBIFFWriter.WriteWindow1(AStream: TStream);
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW1));
+  AStream.WriteWord(WordToLE(18));
+
+  { Horizontal position of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE(0));
+
+  { Vertical position of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($0069));
+
+  { Width of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($339F));
+
+  { Height of the document window, in twips = 1 / 20 of a point }
+  AStream.WriteWord(WordToLE($1B5D));
+
+  { Option flags }
+  AStream.WriteWord(WordToLE(
+   MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE or
+   MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE or
+   MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE));
+
+  { Index to active (displayed) worksheet }
+  AStream.WriteWord(WordToLE($00));
+
+  { Index of first visible tab in the worksheet tab bar }
+  AStream.WriteWord(WordToLE($00));
+
+  { Number of selected worksheets }
+  AStream.WriteWord(WordToLE(1));
+
+  { Width of worksheet tab bar (in 1/1000 of window width).
+    The remaining space is used by the horizontal scroll bar }
+  AStream.WriteWord(WordToLE(600));
 end;
 
 { Write the index of the XF record, according to formatting of the given cell

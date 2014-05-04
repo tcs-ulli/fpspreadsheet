@@ -125,7 +125,6 @@ type
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteStyle(AStream: TStream);
-    procedure WriteWindow1(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
       AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
@@ -940,66 +939,9 @@ begin
 end;
 
 {*******************************************************************
-*  TsSpreadBIFF5Writer.WriteWindow1 ()
+*  TsSpreadBIFF5Writer.WriteWindow2 ()
 *
-*  DESCRIPTION:    Writes an Excel 5 WINDOW1 record
-*
-*                  This record contains general settings for the
-*                  document window and global workbook settings.
-*
-*                  The values written here are reasonable defaults,
-*                  which should work for most sheets.
-*
-*******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteWindow1(AStream: TStream);
-begin
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW1));
-  AStream.WriteWord(WordToLE(18));
-
-  { Horizontal position of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(0);
-
-  { Vertical position of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE($0069));
-
-  { Width of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE($339F));
-
-  { Height of the document window, in twips = 1 / 20 of a point }
-  AStream.WriteWord(WordToLE($1B5D));
-
-  { Option flags }
-  AStream.WriteWord(WordToLE(
-   MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE or
-   MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE or
-   MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE));
-
-  { Index to active (displayed) worksheet }
-  AStream.WriteWord($00);
-
-  { Index of first visible tab in the worksheet tab bar }
-  AStream.WriteWord($00);
-
-  { Number of selected worksheets }
-  AStream.WriteWord(WordToLE(1));
-
-  { Width of worksheet tab bar (in 1/1000 of window width).
-    The remaining space is used by the horizontal scroll bar }
-  AStream.WriteWord(WordToLE(600));
-end;
-
-{*******************************************************************
-*  TsSpreadBIFF5Writer.WriteWindow1 ()
-*
-*  DESCRIPTION:    Writes an Excel 5 WINDOW1 record
-*
-*                  This record contains aditional settings for the
-*                  document window (BIFF2-BIFF4) or for a specific
-*                  worksheet (BIFF5-BIFF8).
-*
-*                  The values written here are reasonable defaults,
-*                  which should work for most sheets.
+*  DESCRIPTION:    Writes an Excel 5 WINDOW2 record
 *
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteWindow2(AStream: TStream;
