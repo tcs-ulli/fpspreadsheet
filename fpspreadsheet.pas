@@ -302,6 +302,9 @@ type
 
   PCol = ^TCol;
 
+  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soSelected);
+  TsSheetOptions = set of TsSheetOption;
+
 type
 
   TsCustomSpreadReader = class;
@@ -316,9 +319,9 @@ type
     FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from the standard
-    FShowGridLines: Boolean;
-    FShowHeaders: Boolean;
-    FSelected: Boolean;
+    FLeftPaneWidth: Integer;
+    FTopPaneHeight: Integer;
+    FOptions: TsSheetOptions;
     procedure RemoveCallback(data, arg: pointer);
   public
     Name: string;
@@ -389,9 +392,9 @@ type
     property  Rows: TIndexedAVLTree read FRows;
     property  Workbook: TsWorkbook read FWorkbook;
     // These are properties to interface to fpspreadsheetgrid.
-    property  ShowGridLines: Boolean read FShowGridLines write FShowGridLines;
-    property  ShowHeaders: Boolean read FShowHeaders write FShowHeaders;
-    property  Selected: Boolean read FSelected write FSelected;
+    property  Options: TsSheetOptions read FOptions write FOptions;
+    property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
+    property  TopPaneHeight: Integer read FTopPaneHeight write FTopPaneHeight;
   end;
 
   { TsWorkbook }
@@ -813,9 +816,7 @@ begin
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
 
-  FShowGridLines := true;
-  FShowHeaders := true;
-  FSelected := true;
+  FOptions := [soShowGridLines, soShowHeaders];
 end;
 
 {@@

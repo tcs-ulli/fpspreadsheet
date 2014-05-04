@@ -60,6 +60,7 @@ type
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
+    procedure ReadWindow2(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
@@ -88,6 +89,7 @@ type
       AddBackground: Boolean = false);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
     procedure WriteXFRecords(AStream: TStream);
+    procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
@@ -143,6 +145,9 @@ var
 
 implementation
 
+uses
+  Math;
+
 const
   { Excel record IDs }
   INT_EXCEL_ID_BLANK      = $0001;
@@ -156,6 +161,7 @@ const
   INT_EXCEL_ID_FORMAT     = $001E;
   INT_EXCEL_ID_FORMATCOUNT= $001F;
   INT_EXCEL_ID_COLWIDTH   = $0024;
+  INT_EXCEL_ID_WINDOW2    = $003E;
   INT_EXCEL_ID_XF         = $0043;
   INT_EXCEL_ID_IXFE       = $0044;
   INT_EXCEL_ID_FONTCOLOR  = $0045;
@@ -421,6 +427,8 @@ begin
     INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
     INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
     INT_EXCEL_ID_ROWINFO   : ReadRowInfo(AStream);
+    INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
+    INT_EXCEL_ID_PANE      : ReadPane(AStream);
     INT_EXCEL_ID_XF        : ReadXF(AStream);
     INT_EXCEL_ID_BOF       : ;
     INT_EXCEL_ID_EOF       : BIFF2EOF := True;
@@ -558,6 +566,51 @@ begin
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
   end else
     lRow^.AutoHeight := true;
+end;
+
+{ Reads the WINDOW2 record containing information like "show grid lines",
+  "show sheet headers", "panes are frozen", etc. }
+procedure TsSpreadBIFF2Reader.ReadWindow2(AStream: TStream);
+var
+  b: byte;
+  w: Word;
+  rgb: DWord;
+begin
+  // Show formulas, not results
+  b := AStream.ReadByte;
+
+  // Show grid lines
+  if AStream.ReadByte <> 0 then
+    FWorksheet.Options := FWorksheet.Options + [soShowGridLines]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soShowGridLines];
+
+  // Show sheet headers
+  if AStream.ReadByte <> 0 then
+    FWorksheet.Options := FWorksheet.Options + [soShowHeaders]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
+
+  // Panes are frozen
+  if AStream.ReadByte <> 0 then
+    FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+
+  // Show zero values
+  b := AStream.ReadByte;
+
+  // Index to first visible row
+  w := WordLEToN(AStream.ReadWord);
+
+  // Indoex to first visible column
+  w := WordLEToN(AStream.ReadWord);
+
+  // Use automatic grid line color (0= manual)
+  b := AStream.ReadByte;
+
+  // Manual grid line line color (rgb)
+  rgb := DWordToLE(AStream.ReadDWord);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
@@ -764,16 +817,65 @@ end;
   so only the first will be written.
 }
 procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream);
+var
+  sheet: TsWorksheet;
 begin
+  sheet := Workbook.GetFirstWorksheet;
+
   WriteBOF(AStream);
-
-  WriteFonts(AStream);
-  WriteFormats(AStream);
-  WriteXFRecords(AStream);
-  WriteColWidths(AStream);
-  WriteCellsToStream(AStream, Workbook.GetFirstWorksheet.Cells);
-
+    WriteFonts(AStream);
+    WriteFormats(AStream);
+    WriteXFRecords(AStream);
+    WriteColWidths(AStream);
+    { -- currently not working
+    WriteWindow2(AStream, sheet);
+    WritePane(AStream, sheet, false);  // false for "is not BIFF5 or BIFF8"
+    }
+    WriteCellsToStream(AStream, sheet.Cells);
   WriteEOF(AStream);
+end;
+
+{
+  Writes an Excel 2 WINDOW2 record
+}
+procedure TsSpreadBIFF2Writer.WriteWindow2(AStream: TStream;
+ ASheet: TsWorksheet);
+var
+  b: Byte;
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW2));
+  AStream.WriteWord(WordToLE(14));
+
+  { Show formulas, not results }
+  AStream.WriteByte(0);
+
+  { Show grid lines }
+  b := IfThen(soShowGridLines in ASheet.Options, 1, 0);
+  AStream.WriteByte(b);
+
+  { Show sheet headers }
+  b := IfThen(soShowHeaders in ASheet.Options, 1, 0);
+  AStream.WriteByte(b);
+
+  { Panes are frozen? }
+  b := IfThen(soHasFrozenPanes in ASheet.Options, 1, 0);
+  AStream.WriteByte(b);
+
+  { Show zero values as zeros, not empty cells }
+  AStream.WriteByte(1);
+
+  { Index to first visible row }
+  AStream.WriteWord(0);
+
+  { Index to first visible column }
+  AStream.WriteWord(0);
+
+  { Use automatic grid line color }
+  AStream.WriteByte(1);
+
+  { RGB of manual grid line color }
+  AStream.WriteDWord(0);
 end;
 
 procedure TsSpreadBIFF2Writer.WriteXF(AStream: TStream;

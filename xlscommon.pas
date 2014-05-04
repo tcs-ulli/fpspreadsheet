@@ -17,6 +17,7 @@ uses
 const
   { RECORD IDs which didn't change across versions 2-8 }
   INT_EXCEL_ID_FONT       = $0031;
+  INT_EXCEL_ID_PANE       = $0041;
   INT_EXCEL_ID_CODEPAGE   = $0042;
   INT_EXCEL_ID_COLINFO    = $007D;
   INT_EXCEL_ID_DATEMODE   = $0022;
@@ -368,6 +369,8 @@ type
     procedure ReadNumber(AStream: TStream); override;
     // Read palette
     procedure ReadPalette(AStream: TStream);
+    // Read PANE record
+    procedure ReadPane(AStream: TStream);
     // Read the row, column, and XF index at the current stream position
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
@@ -411,6 +414,8 @@ type
       const AValue: Double; ACell: PCell); override;
     // Writes out a PALETTE record containing all colors defined in the workbook
     procedure WritePalette(AStream: TStream);
+    // Writes out a PANE record
+    procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean);
     // Writes the index of the XF record used in the given cell
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
 
@@ -845,6 +850,28 @@ begin
   FPaletteFound := true;
 end;
 
+{ Read pane sizes
+  Valid for all BIFF versions }
+procedure TsSpreadBIFFReader.ReadPane(AStream: TStream);
+begin
+  { Position of horizontal split:
+    - Unfrozen pane: Width of the left pane(s) (in twips = 1/20 of a point)
+    - Frozen pane: Number of visible columns in left pane(s) }
+  FWorksheet.LeftPaneWidth := WordLEToN(AStream.ReadWord);
+
+  { Position of vertical split:
+    - Unfrozen pane: Height of the top pane(s) (in twips = 1/20 of a point)
+    - Frozen pane: Number of visible rows in top pane(s) }
+  FWorksheet.TopPaneHeight := WordLEToN(AStream.ReadWord);
+
+  { There's more information which is not supported here:
+    Offset Size Description
+      4     2   Index to first visible row in bottom pane(s)
+      6     2   Index to first visible column in right pane(s)
+      8     1   Identifier of pane with active cell cursor (see below)
+     [9]    1   Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4) }
+end;
+
 // Read the row, column and xf index
 // NOT VALID for BIFF2
 procedure TsSpreadBIFFReader.ReadRowColXF(AStream: TStream;
@@ -888,8 +915,8 @@ begin
   // changed manually.
 end;
 
-{ Reads the WINDOW2 record containing information like "show grid lines", or
-  "show sheet headers".
+{ Reads the WINDOW2 record containing information like "show grid lines",
+  "show sheet headers", "panes are frozen", etc.
   The record structure is different for BIFF5 and BIFF8, but we use here only
   the common part.
   BIFF2 is completely different and has to be overridden. }
@@ -898,9 +925,26 @@ var
   flags: Word;
 begin
   flags := WordLEToN(AStream.ReadWord);
-  FWorksheet.ShowGridLines := (flags and MASK_WINDOW2_OPTION_SHOW_GRID_LINES <> 0);
-  FWorksheet.ShowHeaders := (flags and MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS <> 0);
-  FWorksheet.Selected := (flags and MASK_WINDOW2_OPTION_SHEET_SELECTED <> 0);
+
+  if (flags and MASK_WINDOW2_OPTION_SHOW_GRID_LINES <> 0) then
+    FWorksheet.Options := FWorksheet.Options + [soShowGridLines]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soShowGridLines];
+
+  if (flags and MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS <> 0) then
+    FWorksheet.Options := FWorksheet.Options + [soShowHeaders]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
+
+  if (flags and MASK_WINDOW2_OPTION_SHEET_SELECTED <> 0) then
+    FWorksheet.Options := FWorksheet.Options + [soSelected]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soSelected];
+
+  if (flags and MASK_WINDOW2_OPTION_PANES_ARE_FROZEN <> 0) then
+    FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
+  else
+    FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
 end;
 
 
@@ -1283,6 +1327,70 @@ begin
       AStream.WriteDWord(DWordToLE($FFFFFF));
 end;
 
+{ Writes a PANE record to the stream.
+  Valid for all BIFF versions. The difference for BIFF5-BIFF8 is a non-used
+  byte at the end. Activate IsBiff58 in these cases. }
+procedure TsSpreadBIFFWriter.WritePane(AStream: TStream; ASheet: TsWorksheet;
+  IsBiff58: Boolean);
+var
+  n: Word;
+  active_pane: Byte;
+begin
+  if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
+    exit;
+
+  if not (soHasFrozenPanes in ASheet.Options) then
+    exit;
+  { Non-frozen panes should work in principle, but they are not read without
+    error. They possibly require an additional SELECTION record. }
+
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PANE));
+  if isBIFF58 then n := 10 else n := 9;
+  AStream.WriteWord(WordToLE(n));
+
+  { Position of the vertical split (px, 0 = No vertical split):
+    - Unfrozen pane: Width of the left pane(s) (in twips = 1/20 of a point)
+    - Frozen pane: Number of visible columns in left pane(s) }
+  AStream.WriteWord(WordToLE(ASheet.LeftPaneWidth));
+
+  { Position of the horizontal split (py, 0 = No horizontal split):
+    - Unfrozen pane: Height of the top pane(s) (in twips = 1/20 of a point)
+    - Frozen pane: Number of visible rows in top pane(s) }
+  AStream.WriteWord(WordToLE(ASheet.TopPaneHeight));
+
+  { Index to first visible row in bottom pane(s) }
+  if (soHasFrozenPanes in ASheet.Options) then
+    AStream.WriteWord(WordToLE(ASheet.TopPaneHeight))
+  else
+    AStream.WriteWord(WordToLE(0));
+
+  { Index to first visible column in right pane(s) }
+  if (soHasFrozenPanes in ASheet.Options) then
+    AStream.WriteWord(WordToLE(ASheet.LeftPaneWidth))
+  else
+    AStream.WriteWord(WordToLE(0));
+
+  { Identifier of pane with active cell cursor }
+  if (soHasFrozenPanes in ASheet.Options) then begin
+    if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
+      active_pane := 3
+    else
+    if (ASheet.LeftPaneWidth = 0) then
+      active_pane := 2
+    else
+    if (ASheet.TopPaneHeight =0) then
+      active_pane := 1
+    else
+      active_pane := 0;
+  end else
+    active_pane := 0;
+  AStream.WriteByte(active_pane);
+
+  if IsBIFF58 then
+    AStream.WriteByte(0);
+    { Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4 }
+end;
 
 { Write the index of the XF record, according to formatting of the given cell
   Valid for BIFF5 and BIFF8.
