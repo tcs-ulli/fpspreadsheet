@@ -412,6 +412,7 @@ begin
       WriteColInfos(AStream, sheet);
       WriteDimensions(AStream, sheet);
       WriteWindow2(AStream, sheet);
+      WritePane(AStream, sheet, true);  // true for "is BIFF5 or BIFF8"
       WriteCellsToStream(AStream, sheet.Cells);
     WriteEOF(AStream);
   end;
@@ -1017,11 +1018,13 @@ begin
     MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
     MASK_WINDOW2_OPTION_SHEET_ACTIVE;
 
-  if ASheet.ShowGridLines then
+  if (soShowGridLines in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
-  if ASheet.ShowHeaders then
+  if (soShowHeaders in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
-  if ASheet.Selected then
+  if (soHasFrozenPanes in ASheet.Options) then
+    Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
+  if (soSelected in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;
 
   AStream.WriteWord(WordToLE(Options));
@@ -1033,7 +1036,7 @@ begin
   AStream.WriteWord(WordToLE(0));
 
   { Grid line RGB colour }
-  AStream.WriteDWord(WordToLE(0));
+  AStream.WriteDWord(DWordToLE(0));
 end;
 
 {*******************************************************************
@@ -1332,18 +1335,19 @@ begin
 
     case RecordType of
 
-    INT_EXCEL_ID_BLANK:   ReadBlank(AStream);
-    INT_EXCEL_ID_NUMBER:  ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL:   ReadLabel(AStream);
-    INT_EXCEL_ID_RSTRING: ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RK:      ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
-    INT_EXCEL_ID_MULRK:   ReadMulRKValues(AStream);
-    INT_EXCEL_ID_COLINFO: ReadColInfo(AStream);
-    INT_EXCEL_ID_ROWINFO: ReadRowInfo(AStream);
-    INT_EXCEL_ID_FORMULA: ReadFormulaExcel(AStream);
-    INT_EXCEL_ID_WINDOW2: ReadWindow2(AStream);
-    INT_EXCEL_ID_BOF:     ;
-    INT_EXCEL_ID_EOF:     SectionEOF := True;
+    INT_EXCEL_ID_BLANK   : ReadBlank(AStream);
+    INT_EXCEL_ID_NUMBER  : ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL   : ReadLabel(AStream);
+    INT_EXCEL_ID_RSTRING : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+    INT_EXCEL_ID_RK      : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+    INT_EXCEL_ID_MULRK   : ReadMulRKValues(AStream);
+    INT_EXCEL_ID_COLINFO : ReadColInfo(AStream);
+    INT_EXCEL_ID_ROWINFO : ReadRowInfo(AStream);
+    INT_EXCEL_ID_FORMULA : ReadFormulaExcel(AStream);
+    INT_EXCEL_ID_WINDOW2 : ReadWindow2(AStream);
+    INT_EXCEL_ID_PANE    : ReadPane(AStream);
+    INT_EXCEL_ID_BOF     : ;
+    INT_EXCEL_ID_EOF     : SectionEOF := True;
       // Show unsupported record types to console.
 {.$DEFINE SHOWUNSUPPORTED}
 {$IFDEF SHOWUNSUPPORTED}

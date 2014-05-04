@@ -31,6 +31,12 @@ begin
   //MyWorksheet.WriteColWidth(0, 5);
   //MyWorksheet.WriteColWidth(1, 30);
 
+  {  -- currently not working
+  MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
+  MyWorksheet.LeftPaneWidth := 1;
+  MyWorksheet.TopPaneHeight := 2;
+  }
+
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);

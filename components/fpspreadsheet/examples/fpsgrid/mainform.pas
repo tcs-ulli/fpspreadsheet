@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList,
+  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin,
   fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
@@ -21,7 +21,10 @@ type
     btnPopulateGrid: TButton;
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
+    EdFrozenRows: TSpinEdit;
     ImageList1: TImageList;
+    Label1: TLabel;
+    Label2: TLabel;
     MainMenu1: TMainMenu;
     MenuItem1: TMenuItem;
     mnuFile: TMenuItem;
@@ -32,6 +35,7 @@ type
     PageControl1: TPageControl;
     Panel1: TPanel;
     SaveDialog1: TSaveDialog;
+    EdFrozenCols: TSpinEdit;
     sWorksheetGrid1: TsWorksheetGrid;
     TabSheet1: TTabSheet;
     ToolBar1: TToolBar;
@@ -45,6 +49,8 @@ type
     procedure acOpenExecute(Sender: TObject);
     procedure acQuitExecute(Sender: TObject);
     procedure acSaveAsExecute(Sender: TObject);
+    procedure EdFrozenColsChange(Sender: TObject);
+    procedure EdFrozenRowsChange(Sender: TObject);
     procedure FormActivate(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
   private
@@ -118,6 +124,16 @@ begin
   end;
 end;
 
+procedure TForm1.EdFrozenColsChange(Sender: TObject);
+begin
+  sWorksheetGrid1.FrozenCols := EdFrozenCols.Value;
+end;
+
+procedure TForm1.EdFrozenRowsChange(Sender: TObject);
+begin
+  sWorksheetGrid1.FrozenRows := EdFrozenRows.Value;
+end;
+
 procedure TForm1.FormActivate(Sender: TObject);
 begin
   if ParamCount > 0 then
@@ -130,13 +146,18 @@ var
   pages: TStrings;
   i: Integer;
 begin
+  // Load file
   sWorksheetGrid1.LoadFromSpreadsheetFile(AFileName);
+
+  // Update user interface
   Caption := Format('fpsGrid - %s (%s)', [
     AFilename,
     GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
   ]);
-  CbShowGridLines.Checked := sWorksheetGrid1.Worksheet.ShowGridLines;
-  CbShowHeaders.Checked := sWorksheetGrid1.Worksheet.ShowHeaders;
+  CbShowGridLines.Checked := (soShowGridLines in sWorksheetGrid1.Worksheet.Options);
+  CbShowHeaders.Checked := (soShowHeaders in sWorksheetGrid1.Worksheet.Options);
+  EdFrozenCols.Value := sWorksheetGrid1.FrozenCols;
+  EdFrozenRows.Value := sWorksheetGrid1.FrozenRows;
 
   // Create a tab in the pagecontrol for each worksheet contained in the workbook
   // This would be easer with a TTabControl. This has display issues, though.

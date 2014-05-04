@@ -34,6 +34,13 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
 
+  MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
+  MyWorksheet.LeftPaneWidth := 1;
+  MyWorksheet.TopPaneHeight := 2;
+
+  { unfrozen panes not working at the moment
+  MyWorksheet.LeftPaneWidth := 20*72*2; // 72 pt = inch  --> 2 inches = 5 cm }
+
   MyWorkbook.AddFont('Calibri', 20, [], scRed);
 
   // Write some cells

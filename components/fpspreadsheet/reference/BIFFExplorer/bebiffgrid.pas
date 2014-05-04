@@ -64,6 +64,7 @@ type
     procedure ShowNumberCell;
     procedure ShowObj;
     procedure ShowPalette;
+    procedure ShowPane;
     procedure ShowPassword;
     procedure ShowPrecision;
     procedure ShowPrintGridLines;
@@ -297,6 +298,8 @@ begin
       ShowWindow2;
     $0040:
       ShowBackup;
+    $0041:
+      ShowPane;
     $0042:
       ShowCodePage;
     $0043:
@@ -2344,6 +2347,42 @@ begin
   end;
 end;
 
+
+procedure TBIFFGrid.ShowPane;
+var
+  numBytes: Integer;
+  w: Word;
+  b: Byte;
+begin
+  RowCount := FixedRows + IfThen(FFormat < sfExcel5, 5, 6);
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Position of vertical split (twips or columns (if frozen))');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Position of horizontal split (twips or rows (if frozen))');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index to first visible row in bottom pane(s)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index to first visible column in right pane(s)');
+
+  numBytes := 1;
+  b := FBuffer[FBufferIndex];
+  ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(b),
+    'Identifier of pane with active cell cursor');
+
+  if FFormat >= sfExcel5 then begin
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(b), 'not used');
+  end;
+end;
 
 procedure TBIFFGrid.ShowPassword;
 var
