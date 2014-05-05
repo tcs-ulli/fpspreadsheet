@@ -16,6 +16,7 @@ uses
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
+  INT_EXCEL_ID_SELECTION  = $001D;
   INT_EXCEL_ID_FONT       = $0031;
   INT_EXCEL_ID_PANE       = $0041;
   INT_EXCEL_ID_CODEPAGE   = $0042;
@@ -424,6 +425,9 @@ type
     procedure WritePalette(AStream: TStream);
     // Writes out a PANE record
     procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean);
+    // Writes out a SELECTION record
+    procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
+    procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
     // Writes the index of the XF record used in the given cell
@@ -1381,7 +1385,11 @@ begin
   else
     AStream.WriteWord(WordToLE(0));
 
-  { Identifier of pane with active cell cursor }
+  { Identifier of pane with active cell cursor
+      0 = right-bottom
+      1 = right-top
+      2 = left-bottom
+      3 = left-top }
   if (soHasFrozenPanes in ASheet.Options) then begin
     if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
       active_pane := 3
@@ -1400,6 +1408,81 @@ begin
   if IsBIFF58 then
     AStream.WriteByte(0);
     { Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4 }
+end;
+
+{ Writes an Excel 2-8 SELECTION record
+  Writes just reasonable default values
+  APane is 0..3 (see below)
+  Valid für BIFF2-BIFF8 }
+procedure TsSpreadBIFFWriter.WriteSelection(AStream: TStream;
+  ASheet: TsWorksheet; APane: Byte);
+var
+  activeCellRow, activeCellCol: Word;
+begin
+  case APane of
+    0: begin // right-bottom
+         activeCellRow := ASheet.TopPaneHeight;
+         activeCellCol := ASheet.LeftPaneWidth;
+       end;
+    1: begin  // right-top
+         activeCellRow := 0;
+         activeCellCol := ASheet.LeftPaneWidth;
+       end;
+    2: begin  // left-bottom
+         activeCellRow := ASheet.TopPaneHeight;
+         activeCellCol := 0;
+       end;
+    3: begin  // left-top
+         activeCellRow := 0;
+         activeCellCol := 0;
+       end;
+  end;
+
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SELECTION));
+  AStream.WriteWord(WordToLE(15));
+
+  { Pane identifier }
+  AStream.WriteByte(APane);
+
+  { Index to row of the active cell }
+  AStream.WriteWord(WordToLE(activeCellRow));
+
+  { Index to column of the active cell }
+  AStream.WriteWord(WordToLE(activeCellCol));
+
+  { Index into the following cell range list to the entry that contains the active cell }
+  AStream.WriteWord(WordToLE(0));   // there's only 1 item
+
+  { Cell range array }
+
+  { Count of items }
+  AStream.WriteWord(WordToLE(1));  // only 1 item
+
+  { Index to first and last row - are the same here }
+
+  AStream.WriteWord(WordTOLE(activeCellRow));
+  AStream.WriteWord(WordTOLE(activeCellRow));
+
+  { Index to first and last column - they are the same here again. }
+  { Note: BIFF8 writes bytes here! }
+  AStream.WriteByte(activeCellCol);
+  AStream.WriteByte(activeCellCol);
+end;
+
+procedure TsSpreadBIFFWriter.WriteSelections(AStream: TStream;
+  ASheet: TsWorksheet);
+begin
+  WriteSelection(AStream, ASheet, 3);
+  if (ASheet.LeftPaneWidth = 0) then begin
+    if ASheet.TopPaneHeight > 0 then WriteSelection(AStream, ASheet, 2);
+  end else begin
+    WriteSelection(AStream, ASheet, 1);
+    if ASheet.TopPaneHeight > 0 then begin
+      WriteSelection(AStream, ASheet, 2);
+      WriteSelection(AStream, ASheet, 0);
+    end;
+  end;
 end;
 
 { Writes an Excel 5/8 WINDOW1 record

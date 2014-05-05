@@ -834,6 +834,7 @@ begin
     //  { -- currently not working
     WriteWindow2(AStream, sheet);
     WritePane(AStream, sheet, false);  // false for "is not BIFF5 or BIFF8"
+    WriteSelections(AStream, sheet);
       //}
   WriteEOF(AStream);
 end;

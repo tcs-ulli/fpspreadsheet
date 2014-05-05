@@ -34,11 +34,11 @@ begin
   // Turn off grid lines and hide headers
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines, soShowHeaders];
 
-  {  -- currently not working
-  MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
+{    -- currently not working
+  //MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
   MyWorksheet.LeftPaneWidth := 1;
-  MyWorksheet.TopPaneHeight := 2;
-  }
+  MyWorksheet.TopPaneHeight := 3;
+}
 
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);

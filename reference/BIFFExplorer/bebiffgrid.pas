@@ -3179,13 +3179,11 @@ var
   dw : DWord;
 begin
   if FFormat = sfExcel2 then begin
+    RowCount := FixedRows + 9;
     numBytes := 1;
     b := FBuffer[FBufferIndex];
     ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
       '0 = Show formula results; 1 = Show formulas');
-    b := FBuffer[FBufferIndex];
-    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
-      '0 = Do not show grid lines; 1 = Show grid lines');
     b := FBuffer[FBufferIndex];
     ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
       '0 = Do not show grid lines; 1 = Show grid lines');
