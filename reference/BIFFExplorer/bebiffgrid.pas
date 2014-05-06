@@ -46,6 +46,7 @@ type
     procedure ShowFileSharing;
     procedure ShowFnGroupCount;
     procedure ShowFont;
+    procedure ShowFontColor;
     procedure ShowFooter;
     procedure ShowFormat;
     procedure ShowFormatCount;
@@ -304,6 +305,8 @@ begin
       ShowCodePage;
     $0043:
       ShowXF;
+    $0045:
+      ShowFontColor;
     $0055:
       ShowDefColWidth;
     $005B:
@@ -494,6 +497,7 @@ var
 begin
   case FFormat of
     sfExcel2: RowCount := FixedRows + 2;
+    sfExcel3, sfExcel4: RowCount := FixedRows + 3;
     sfExcel5: RowCount := FixedRows + 4;
     sfExcel8: RowCount := FixedRows + 6;
   end;
@@ -503,17 +507,26 @@ begin
   w := WordLEToN(w);
   if Row = FCurrRow then begin
     FDetails.Add('BIFF version:'#13);
-    case w of
-      $0000: FDetails.Add('$0000 = BIFF5');
-      $0200: FDetails.Add('$0200 = BIFF2');
-      $0300: FDetails.Add('$0300 = BIFF3');
-      $0400: FDetails.Add('$0400 = BIFF4');
-      $0500: FDetails.Add('$0500 = BIFF5');
-      $0600: FDetails.Add('$0600 = BIFF8');
+    case FRecType of
+      $0009,
+      $0209,
+      $0409: FDetails.Add('not used');
+      $0809: case FFormat of
+               sfExcel5: FDetails.Add('$0500 = BIFF5');
+               sfExcel8: FDetails.Add('$0600 = BIFF8');
+             end;
+      else   case w of
+               $0000: FDetails.Add('$0000 = BIFF5');
+               $0200: FDetails.Add('$0200 = BIFF2');
+               $0300: FDetails.Add('$0300 = BIFF3');
+               $0400: FDetails.Add('$0400 = BIFF4');
+               $0500: FDetails.Add('$0500 = BIFF5');
+               $0600: FDetails.Add('$0600 = BIFF8');
+             end;
     end;
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x', [w]),
-    'BIFF version ($0500=BIFF5, $0600=BIFF8)');
+    'BIFF version');
 
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numBytes);
@@ -531,13 +544,18 @@ begin
   if FFormat > sfExcel2 then begin
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-      'Build identifier (must not be zero)');
+    if FFormat in [sfExcel3, sfExcel4] then
+      ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(WordLEToN(w)),
+        'not used')
+    else begin
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+        'Build identifier (must not be zero)');
 
-    numBytes := 2;
-    Move(FBuffer[FBufferIndex], w, numBytes);
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-      'Build year (must not be zero)');
+      numBytes := 2;
+      Move(FBuffer[FBufferIndex], w, numBytes);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+        'Build year (must not be zero)');
+    end;
   end;
 
   if FFormat = sfExcel8 then begin
@@ -1186,6 +1204,31 @@ begin
     ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Font name (byte string, 8-bit string length)');
 end;
 
+
+procedure TBIFFGrid.ShowFontColor;
+var
+  numBytes: Integer;
+  w: Word;
+  s: String;
+begin
+  RowCount := FixedRows + 1;
+  NumBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  case w of
+    $0000: s := 'EGA Black (rgb = $000000)';
+    $0001: s := 'EGA White (rgb = $FFFFFF)';
+    $0002: s := 'EGA Red (rgb = $0000FF)';
+    $0003: s := 'EGA Green (rgb = $00FF00)';
+    $0004: s := 'EGA Blue (rgb = $FF0000)';
+    $0005: s := 'EGA Yellow (rgb = $00FFFF)';
+    $0006: s := 'EGA Magenta (rgb = $FF00FF)';
+    $0007: s := 'EGA Cyan (rgb = $FFFF00)';
+    $7FFF: s := 'Automatic (system window text colour)';
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.04x)', [w, w]),
+    Format('Font color index into preceding FONT record (%s)', [s]));
+end;
 
 procedure TBIFFGrid.ShowFooter;
 var

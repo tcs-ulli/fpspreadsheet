@@ -1062,6 +1062,8 @@ begin
     while AStream.Position < AStream.Size do begin
       p := AStream.Position;
       recType := WordLEToN(AStream.ReadWord);
+      if recType = 0 then
+        break;
       recSize := WordLEToN(AStream.ReadWord);
       s := RecTypeName(recType);
       i := pos(':', s);
