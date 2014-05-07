@@ -1413,7 +1413,7 @@ end;
 { Writes an Excel 2-8 SELECTION record
   Writes just reasonable default values
   APane is 0..3 (see below)
-  Valid für BIFF2-BIFF8 }
+  Valid for BIFF2-BIFF8 }
 procedure TsSpreadBIFFWriter.WriteSelection(AStream: TStream;
   ASheet: TsWorksheet; APane: Byte);
 var
