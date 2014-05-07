@@ -46,7 +46,7 @@ begin
   myWorksheet.LeftPaneWidth := 1;
   MyWorksheet.TopPaneHeight := 2;
 
-  { non-frozen panes not working, at the moment. Require SELECTION records?
+  { non-frozen panes not working, at the moment. Requires SELECTION records?
   MyWorksheet.LeftPaneWidth := 20*72*2; // 72 pt = inch  --> 2 inches = 5 cm
   }
 
@@ -122,15 +122,16 @@ begin
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 
-{ Uncomment this to test large XLS files
-  for i := 2 to 20 do
+
+  // Uncomment this to test large XLS files
+  for i := 40 to 1000 do
   begin
-    MyWorksheet.WriteAnsiText(i, 0, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 1, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 2, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 3, ParamStr(0));
+//    MyWorksheet.WriteUTF8Text(i, 0, ParamStr(0));
+//    MyWorksheet.WriteUTF8Text(i, 1, ParamStr(0));
+//    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
+    MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
   end;
-}
+
 
   // Write the formula E1 = A1 + B1
   SetLength(MyRPNFormula, 3);
@@ -209,17 +210,15 @@ begin
   MyWorksheet.WriteUTF8Text(37, 0, 'nfTimeInterval');
   MyWorksheet.WriteDateTime(37, 1, number, nfTimeInterval);
 
-  // Set width of columns 1 and 5
-  lCol.Width := 30;
+  // Set width of columns 0, 1 and 5
+  MyWorksheet.WriteColWidth(0, 25);
+  lCol.Width := 20;
   MyWorksheet.WriteColInfo(1, lCol);
   lCol.Width := 5;
   MyWorksheet.WriteColInfo(5, lCol);
 
-  // Set height of rows 5 and 6
-  lRow.Height := 10;
-  MyWorksheet.WriteRowInfo(5, lRow);
-  lRow.Height := 5;
-  MyWorksheet.WriteRowInfo(6, lRow);
+  // Set height of rows 0
+  MyWorksheet.WriteRowHeight(0, 30);  // 30 mm
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);

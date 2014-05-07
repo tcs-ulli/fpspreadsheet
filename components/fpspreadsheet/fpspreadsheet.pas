@@ -290,7 +290,6 @@ type
   TRow = record
     Row: Cardinal;
     Height: Single;       // in millimeters
-    AutoHeight: Boolean;  // true: height corresponds to font; false: use Height
   end;
 
   PRow = ^TRow;
@@ -337,6 +336,8 @@ type
     function  GetCellCount: Cardinal;
     function  GetFirstCell(): PCell;
     function  GetNextCell(): PCell;
+    function  GetFirstCellOfRow(ARow: Cardinal): PCell;
+    function  GetLastCellOfRow(ARow: Cardinal): PCell;
     function  GetLastColNumber: Cardinal;
     function  GetLastRowNumber: Cardinal;
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
@@ -385,6 +386,7 @@ type
     procedure RemoveAllRows;
     procedure RemoveAllCols;
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
+    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single);
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single);
     { Properties }
@@ -1014,6 +1016,32 @@ begin
   end;
 end;
 
+function TsWorksheet.GetFirstCellOfRow(ARow: Cardinal): PCell;
+var
+  c, n: Cardinal;
+begin
+  n := GetLastColNumber;
+  c := 0;
+  Result := FindCell(ARow, c);
+  while (result = nil) and (c < n) do begin
+    inc(c);
+    result := FindCell(ARow, c);
+  end;
+end;
+
+function TsWorksheet.GetLastCellOfRow(ARow: Cardinal): PCell;
+var
+  c, n: Cardinal;
+begin
+  n := GetLastColNumber;
+  c := n;
+  Result := FindCell(ARow, c);
+  while (Result = nil) and (c > 0) do begin
+    dec(c);
+    Result := FindCell(ARow, c);
+  end;
+end;
+
 {@@
   Returns the 0-based number of the last row with a cell with contents.
 
@@ -1624,14 +1652,10 @@ end;
 function TsWorksheet.GetRow(ARow: Cardinal): PRow;
 begin
   Result := FindRow(ARow);
-
-  if (Result = nil) then
-  begin
+  if (Result = nil) then begin
     Result := GetMem(SizeOf(TRow));
     FillChar(Result^, SizeOf(TRow), #0);
-
     Result^.Row := ARow;
-
     FRows.Add(Result);
   end;
 end;
@@ -1639,14 +1663,10 @@ end;
 function TsWorksheet.GetCol(ACol: Cardinal): PCol;
 begin
   Result := FindCol(ACol);
-
-  if (Result = nil) then
-  begin
+  if (Result = nil) then begin
     Result := GetMem(SizeOf(TCol));
     FillChar(Result^, SizeOf(TCol), #0);
-
     Result^.Col := ACol;
-
     FCols.Add(Result);
   end;
 end;
@@ -1656,8 +1676,7 @@ var
   Node: Pointer;
   i: Integer;
 begin
-  for i := FRows.Count-1 downto 0 do
-  begin
+  for i := FRows.Count-1 downto 0 do begin
     Node := FRows.Items[i];
     FreeMem(Node, SizeOf(TRow));
   end;
@@ -1669,8 +1688,7 @@ var
   Node: Pointer;
   i: Integer;
 begin
-  for i := FCols.Count-1 downto 0 do
-  begin
+  for i := FCols.Count-1 downto 0 do begin
     Node := FCols.Items[i];
     FreeMem(Node, SizeOf(TCol));
   end;
@@ -1683,6 +1701,14 @@ var
 begin
   AElement := GetRow(ARow);
   AElement^.Height := AData.Height;
+end;
+
+procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
+var
+  AElement: PRow;
+begin
+  AElement := GetRow(ARow);
+  AElement^.Height := AHeight;
 end;
 
 procedure TsWorksheet.WriteColInfo(ACol: Cardinal; AData: TCol);

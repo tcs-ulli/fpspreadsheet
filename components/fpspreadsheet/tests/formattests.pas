@@ -29,6 +29,7 @@ var
   SollDateTimeFormatStrings: array[0..9] of String;
 
   SollColWidths: array[0..1] of Single;
+  SollRowHeights: Array[0..2] of Single;
   SollBorders: array[0..15] of TsCellBorders;
   SollBorderLineStyles: array[0..6] of TsLineStyle;
   SollBorderColors: array[0..5] of TsColor;
@@ -53,6 +54,8 @@ type
     procedure TestWriteReadBorderStyles(AFormat: TsSpreadsheetFormat);
     // Test column widths
     procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
+    // Test row heights
+    procedure TestWriteReadRowHeights(AFormat: TsSpreadsheetFormat);
     // Test text rotation
     procedure TestWriteReadTextRotation(AFormat:TsSpreadsheetFormat);
     // Test word wrapping
@@ -70,6 +73,7 @@ type
     procedure TestWriteReadBIFF2_Alignment;
     procedure TestWriteReadBIFF2_Border;
     procedure TestWriteReadBIFF2_ColWidths;
+    procedure TestWriteReadBIFF2_RowHeights;
     procedure TestWriteReadBIFF2_DateTimeFormats;
     procedure TestWriteReadBIFF2_NumberFormats;
     // These features are not supported by Excel2 --> no test cases required!
@@ -82,6 +86,7 @@ type
     procedure TestWriteReadBIFF5_Border;
     procedure TestWriteReadBIFF5_BorderStyles;
     procedure TestWriteReadBIFF5_ColWidths;
+    procedure TestWriteReadBIFF5_RowHeights;
     procedure TestWriteReadBIFF5_DateTimeFormats;
     procedure TestWriteReadBIFF5_NumberFormats;
     procedure TestWriteReadBIFF5_TextRotation;
@@ -92,6 +97,7 @@ type
     procedure TestWriteReadBIFF8_Border;
     procedure TestWriteReadBIFF8_BorderStyles;
     procedure TestWriteReadBIFF8_ColWidths;
+    procedure TestWriteReadBIFF8_RowHeights;
     procedure TestWriteReadBIFF8_DateTimeFormats;
     procedure TestWriteReadBIFF8_NumberFormats;
     procedure TestWriteReadBIFF8_TextRotation;
@@ -101,12 +107,13 @@ type
 implementation
 
 uses
-  TypInfo;
+  TypInfo, fpsutils;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
   FmtDateTimesSheet = 'DateTimesFormat';
   ColWidthSheet = 'ColWidths';
+  RowHeightSheet = 'RowHeights';
   BordersSheet = 'CellBorders';
   AlignmentSheet = 'TextAlignments';
   TextRotationSheet = 'TextRotation';
@@ -188,6 +195,11 @@ begin
   // Column width
   SollColWidths[0] := 20;  // characters based on width of "0"
   SollColWidths[1] := 40;
+
+  // Row heights
+  SollRowHeights[0] := 5;
+  SollRowHeights[1] := 10;
+  SollRowHeights[2] := 50;
 
   // Cell borders
   SollBorders[0] := [];
@@ -672,7 +684,8 @@ begin
     if lpCol = nil then
       fail('Error in test code. Failed to return saved column width');
     ActualColWidth := lpCol^.Width;
-    CheckEquals(SollColWidths[Col], ActualColWidth, 'Test saved colwidth mismatch column '+ColNotation(MyWorkSheet,Col));
+    CheckEquals(SollColWidths[Col], ActualColWidth,
+      'Test saved colwidth mismatch, column '+ColNotation(MyWorkSheet,Col));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -693,6 +706,68 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_ColWidths;
 begin
   TestWriteReadColWidths(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadRowHeights(AFormat: TsSpreadsheetFormat);
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  ActualRowHeight: Single;
+  Row: Integer;
+  lpRow: PRow;
+  TempFile: string; //write xls/xml to this file and read back from it
+begin
+  TempFile:=GetTempFileName;
+  {// Not needed: use workbook.writetofile with overwrite=true
+  if fileexists(TempFile) then
+    DeleteFile(TempFile);
+  }
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
+  for Row := Low(SollRowHeights) to High(SollRowHeights) do
+    MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row]);
+  MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  MyWorkbook.Free;
+
+  // Open the spreadsheet, as biff8
+  MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFromFile(TempFile, AFormat);
+  if AFormat = sfExcel2 then
+    MyWorksheet := MyWorkbook.GetFirstWorksheet
+  else
+    MyWorksheet := GetWorksheetByName(MyWorkBook, RowHeightSheet);
+  if MyWorksheet=nil then
+    fail('Error in test code. Failed to get named worksheet');
+  for Row := Low(SollRowHeights) to High(SollRowHeights) do begin
+    lpRow := MyWorksheet.GetRow(Row);
+    if lpRow = nil then
+      fail('Error in test code. Failed to return saved row height');
+    // Rounding to twips in Excel would cause severe rounding error if we'd compare millimeters
+    // --> go back to twips
+    ActualRowHeight := MillimetersToTwips(lpRow^.Height);
+    CheckEquals(MillimetersToTwips(SollRowHeights[Row]), ActualRowHeight,
+      'Test saved row height mismatch, row '+RowNotation(MyWorkSheet,Row));
+  end;
+  // Finalization
+  MyWorkbook.Free;
+
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_RowHeights;
+begin
+  TestWriteReadRowHeights(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_RowHeights;
+begin
+  TestWriteReadRowHeights(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_RowHeights;
+begin
+  TestWriteReadRowHeights(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadTextRotation(AFormat: TsSpreadsheetFormat);

@@ -16,21 +16,41 @@ uses
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
+  INT_EXCEL_ID_EOF        = $000A;
   INT_EXCEL_ID_SELECTION  = $001D;
-  INT_EXCEL_ID_FONT       = $0031;
+  INT_EXCEL_ID_CONTINUE   = $003C;
   INT_EXCEL_ID_PANE       = $0041;
   INT_EXCEL_ID_CODEPAGE   = $0042;
-  INT_EXCEL_ID_COLINFO    = $007D;
   INT_EXCEL_ID_DATEMODE   = $0022;
-  INT_EXCEL_ID_PALETTE    = $0092;
   INT_EXCEL_ID_WINDOW1    = $003D;
-  INT_EXCEL_ID_XF         = $00E0;
+
+  { RECORD IDs which did not change across versions 2, 5, 8}
+  INT_EXCEL_ID_FORMULA    = $0006;    // BIFF3: $0206, BIFF4: $0406
+  INT_EXCEL_ID_FONT       = $0031;    // BIFF3-4: $0231
+
+  { RECORD IDs which did not change across version 3-8}
+  INT_EXCEL_ID_COLINFO    = $007D;    // does not exist in BIFF2
+  INT_EXCEL_ID_COUNTRY    = $008C;    // does not exist in BIFF2
+  INT_EXCEL_ID_PALETTE    = $0092;    // does not exist in BIFF2
+  INT_EXCEL_ID_DIMENSIONS = $0200;    // BIFF2: $0000
+  INT_EXCEL_ID_BLANK      = $0201;    // BIFF2: $0001
+  INT_EXCEL_ID_NUMBER     = $0203;    // BIFF2: $0003
+  INT_EXCEL_ID_LABEL      = $0204;    // BIFF2: $0004
+  INT_EXCEL_ID_ROW        = $0208;    // BIFF2: $0008
+  INT_EXCEL_ID_INDEX      = $020B;    // BIFF2: $000B
+  INT_EXCEL_ID_WINDOW2    = $023E;    // BIFF2: $003E
+  INT_EXCEL_ID_RK         = $027E;    // does not exist in BIFF2
+  INT_EXCEL_ID_STYLE      = $0293;    // does not exist in BIFF2
+
+  { RECORD IDs which did not change across version 4-8 }
+  INT_EXCEL_ID_FORMAT     = $041E;    // BIFF2-3: $001E
 
   { RECORD IDs which did not change across versions 5-8 }
-  INT_EXCEL_ID_BLANK      = $0201;
-  INT_EXCEL_ID_NUMBER     = $0203;
-  INT_EXCEL_ID_LABEL      = $0204;
-  INT_EXCEL_ID_WINDOW2    = $023E;
+  INT_EXCEL_ID_BOUNDSHEET = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
+  INT_EXCEL_ID_MULRK      = $00BD;    // does not exist before BIFF5
+  INT_EXCEL_ID_XF         = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
+  INT_EXCEL_ID_RSTRING    = $00D6;    // does not exist before BIFF5
+  INT_EXCEL_ID_BOF        = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
 
   { FONT record constants }
   INT_FONT_WEIGHT_NORMAL  = $0190;
@@ -408,6 +428,12 @@ type
     // Write out BLANK cell record
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+
+    {
+    procedure WriteCellBlock(AStream: TStream; ASheet: TsWorksheet;
+      AFirstRow, ALastRow: Cardinal);
+     }
+
     // Write out used codepage for character encoding
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
     // Writes out column info(s)
@@ -425,6 +451,11 @@ type
     procedure WritePalette(AStream: TStream);
     // Writes out a PANE record
     procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean);
+    // Writes out a ROW record
+    procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
+      ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); virtual;
+    // Write all ROW records for a sheet
+    procedure WriteRows(AStream: TStream; ASheet: TsWorksheet);
     // Writes out a SELECTION record
     procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
@@ -924,8 +955,8 @@ begin
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
   end else
     lRow^.Height := 0;
-  lRow^.AutoHeight := rowrec.Flags and $00000040 = 0;
-  // If this bit is set row height does not change font height, i.e. has been
+  //lRow^.AutoHeight := rowrec.Flags and $00000040 = 0;
+  // If this bit is set row height does not change with font height, i.e. has been
   // changed manually.
 end;
 
@@ -1410,6 +1441,88 @@ begin
     { Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4 }
 end;
 
+{ Writes an Excel 3-8 ROW record
+  Valid for BIFF3-BIFF8 }
+procedure TsSpreadBIFFWriter.WriteRow(AStream: TStream; ASheet: TsWorksheet;
+  ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
+var
+  w: Word;
+  dw: DWord;
+  cell: PCell;
+  spaceabove, spacebelow: Boolean;
+  colindex: Cardinal;
+  rowheight: Word;
+begin
+  // Check for additional space above/below row
+  spaceabove := false;
+  spacebelow := false;
+  colindex := AFirstColIndex;
+  while colindex <= ALastColIndex do begin
+    cell := ASheet.FindCell(ARowindex, colindex);
+    if (cell <> nil) and (uffBorder in cell^.UsedFormattingFields) then begin
+      if (cbNorth in cell^.Border) and (cell^.BorderStyles[cbNorth].LineStyle = lsThick)
+        then spaceabove := true;
+      if (cbSouth in cell^.Border) and (cell^.BorderStyles[cbSouth].LineStyle = lsThick)
+        then spacebelow := true;
+    end;
+    if spaceabove and spacebelow then break;
+    inc(colindex);
+  end;
+
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_ROW));
+  AStream.WriteWord(WordToLE(16));
+
+  { Index of row }
+  AStream.WriteWord(WordToLE(Word(ARowIndex)));
+
+  { Index to column of the first cell which is described by a cell record }
+  AStream.WriteWord(WordToLE(Word(AFirstColIndex)));
+
+  { Index to column of the last cell which is described by a cell record, increased by 1 }
+  AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
+
+  { Row height (in twips, 1/20 point) and info on custom row height }
+  if (ARow = nil) or (ARow^.Height = 0) then
+    rowheight := round(Workbook.GetFont(0).Size*20)
+  else
+    rowheight := MillimetersToTwips(ARow^.Height);
+  w := rowheight and $7FFF;
+  AStream.WriteWord(WordToLE(w));
+
+  { 2 words not used }
+  AStream.WriteDWord(0);
+
+  { Option flags }
+  dw := $00000100;  // bit 8 is always 1
+  if spaceabove then dw := dw or $10000000;
+  if spacebelow then dw := dw or $20000000;
+  if (ARow <> nil) then
+    dw := dw or $00000040;  // Row height and font height do not match
+  AStream.WriteDWord(DWordToLE(dw));
+end;
+
+{ Writes all ROW records for the given sheet.
+  Note that the OpenOffice documentation says that rows must be written in
+  groups of 32, followed by the cells on these rows, etc. THIS IS NOT NECESSARY!
+  Valid for BIFF2-BIFF8 }
+procedure TsSpreadBIFFWriter.WriteRows(AStream: TStream; ASheet: TsWorksheet);
+var
+  row: PRow;
+  i: Integer;
+  cell1, cell2: PCell;
+begin
+  for i := 0 to ASheet.Rows.Count-1 do begin
+    row := ASheet.Rows[i];
+    cell1 := ASheet.GetFirstCellOfRow(row^.Row);
+    if cell1 <> nil then begin
+      cell2 := ASheet.GetLastCellOfRow(row^.Row);
+      WriteRow(AStream, ASheet, row^.Row, cell1^.Col, cell2^.Col, row);
+    end else
+      WriteRow(AStream, ASheet, row^.Row, 0, 0, row);
+  end;
+end;
+
 { Writes an Excel 2-8 SELECTION record
   Writes just reasonable default values
   APane is 0..3 (see below)
@@ -1420,19 +1533,19 @@ var
   activeCellRow, activeCellCol: Word;
 begin
   case APane of
-    0: begin // right-bottom
+    0: begin   // right-bottom
          activeCellRow := ASheet.TopPaneHeight;
          activeCellCol := ASheet.LeftPaneWidth;
        end;
-    1: begin  // right-top
+    1: begin   // right-top
          activeCellRow := 0;
          activeCellCol := ASheet.LeftPaneWidth;
        end;
-    2: begin  // left-bottom
+    2: begin   // left-bottom
          activeCellRow := ASheet.TopPaneHeight;
          activeCellCol := 0;
        end;
-    3: begin  // left-top
+    3: begin   // left-top
          activeCellRow := 0;
          activeCellCol := 0;
        end;

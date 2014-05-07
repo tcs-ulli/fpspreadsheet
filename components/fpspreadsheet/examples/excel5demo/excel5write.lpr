@@ -43,6 +43,14 @@ begin
 
   MyWorkbook.AddFont('Calibri', 20, [], scRed);
 
+  // Change row height
+  MyWorksheet.WriteRowHeight(0, 20);  // modify height of row 0 to 20 mm
+
+  // Change colum widths
+  MyWorksheet.WriteColWidth(0, 40);
+  MyWorksheet.WriteColWidth(1, 20);
+  MyWorksheet.WriteColWidth(2, 20);
+
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1
   MyWorksheet.WriteVertAlignment(0, 0, vaCenter);

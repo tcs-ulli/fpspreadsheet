@@ -720,7 +720,6 @@ end;
 
 procedure TMainForm.LoadFile(const AFileName: String);
 var
-  fmt: TsSpreadsheetFormat;
   valid: Boolean;
   excptn: Exception = nil;
 begin
@@ -735,19 +734,19 @@ begin
     exit;
   end;
 
-  fmt := sfExcel8;
+  FFormat := sfExcel8;
   while True do begin
     try
-      LoadFile(AFileName, fmt);
+      LoadFile(AFileName, FFormat);
       valid := True;
     except
       on E: Exception do begin
-        if fmt = sfExcel8 then excptn := E;
+        if FFormat = sfExcel8 then excptn := E;
         valid := False
       end;
     end;
-    if valid or (fmt = sfExcel2) then Break;
-    fmt := Pred(fmt);
+    if valid or (FFormat = sfExcel2) then Break;
+    FFormat := Pred(FFormat);
   end;
 
   // A failed attempt to read a file should bring an exception, so re-raise
@@ -755,8 +754,6 @@ begin
   // since this is the most common format
   if (not valid) and (excptn <> nil) then
     raise excptn;
-
-  FFormat := fmt;
 end;
 
 
@@ -793,7 +790,9 @@ begin
   FFileName := ExpandFileName(AFileName);
   ReadFromStream(MemStream);
 
+  FFormat := AFormat;
   UpdateCaption;
+
   FMRUMenuManager.AddToRecent(AFileName);
 end;
 
@@ -1062,9 +1061,9 @@ begin
     while AStream.Position < AStream.Size do begin
       p := AStream.Position;
       recType := WordLEToN(AStream.ReadWord);
-      if recType = 0 then
-        break;
       recSize := WordLEToN(AStream.ReadWord);
+      if (recType = 0) and (recSize = 0) then
+        break;
       s := RecTypeName(recType);
       i := pos(':', s);
       // in case of BOF record: create new parent node for this substream

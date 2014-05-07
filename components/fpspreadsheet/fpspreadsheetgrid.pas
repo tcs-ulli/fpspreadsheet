@@ -876,7 +876,7 @@ begin
     end;
     for i := FHeaderCount to RowCount-1 do begin
       lRow := FWorksheet.FindRow(i - FHeaderCount);
-      if (lRow = nil) or lRow^.AutoHeight then
+      if (lRow = nil) then
         RowHeights[i] := CalcAutoRowHeight(i)
       else
         RowHeights[i] := CalcRowHeight(lRow^.Height);

@@ -217,23 +217,8 @@ implementation
 
 const
   { Excel record IDs }
-  INT_EXCEL_ID_BOF        = $0809;
-  INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
-  INT_EXCEL_ID_COUNTRY    = $008C;
-  INT_EXCEL_ID_EOF        = $000A;
-  INT_EXCEL_ID_DIMENSIONS = $0200;
-  INT_EXCEL_ID_FORMULA    = $0006;
-  INT_EXCEL_ID_INDEX      = $020B;
-  INT_EXCEL_ID_ROWINFO    = $0208;
-  INT_EXCEL_ID_STYLE      = $0293;
-  INT_EXCEL_ID_WINDOW2    = $023E;
-  INT_EXCEL_ID_RSTRING    = $00D6;
-  INT_EXCEL_ID_RK         = $027E;
-  INT_EXCEL_ID_MULRK      = $00BD;
   INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
-  INT_EXCEL_ID_CONTINUE   = $003C;
   INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
-  INT_EXCEL_ID_FORMAT     = $041E;
   INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
 
   { Cell Addresses constants }
@@ -447,6 +432,8 @@ end;
 *
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream);
+const
+  isBIFF8 = true;
 var
   MyData: TMemoryStream;
   CurrentPos: Int64;
@@ -492,14 +479,17 @@ begin
       WriteIndex(AStream);
       WriteColInfos(AStream, sheet);
       WriteDimensions(AStream, sheet);
+      //WriteRowAndCellBlock(AStream, sheet);
+
+      WriteRows(AStream, sheet);
       WriteCellsToStream(AStream, sheet.Cells);
+
       WriteWindow2(AStream, sheet);
-      WritePane(AStream, sheet, true);  // true for "is BIFF5 or BIFF8"
+      WritePane(AStream, sheet, isBIFF8);
     WriteEOF(AStream);
   end;
   
   { Cleanup }
-  
   SetLength(Boundsheets, 0);
 end;
 
@@ -1535,7 +1525,7 @@ begin
     INT_EXCEL_ID_MULRK   : ReadMulRKValues(AStream);
     INT_EXCEL_ID_LABELSST: ReadLabelSST(AStream); //BIFF8 only
     INT_EXCEL_ID_COLINFO : ReadColInfo(AStream);
-    INT_EXCEL_ID_ROWINFO : ReadRowInfo(AStream);
+    INT_EXCEL_ID_ROW     : ReadRowInfo(AStream);
     INT_EXCEL_ID_WINDOW2 : ReadWindow2(AStream);
     INT_EXCEL_ID_PANE    : ReadPane(AStream);
     INT_EXCEL_ID_BOF     : ;
