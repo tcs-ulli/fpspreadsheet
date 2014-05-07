@@ -27,9 +27,13 @@ type
     FHeaderCount: Integer;
     FFrozenCols: Integer;
     FFrozenRows: Integer;
+    FEditText: String;
+    FLockCount: Integer;
+    FEditing: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
+    procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
     procedure SetFrozenCols(AValue: Integer);
@@ -41,10 +45,14 @@ type
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
+    procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
+    function GetEditText(ACol, ARow: Integer): String; override;
     procedure Loaded; override;
+    procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
@@ -55,15 +63,25 @@ type
     { public methods }
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure BeginUpdate;
+    procedure EditingDone; override;
+    procedure EndUpdate;
     procedure GetSheets(const ASheets: TStrings);
-    procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
-    procedure LoadFromSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
-    procedure LoadFromSpreadsheetFile(AFileName: string; AWorksheetIndex: Integer = 0); overload;
-    procedure SaveToWorksheet(AWorksheet: TsWorksheet);
+    function GetWorksheetCol(AGridCol: Integer): Cardinal;
+    function GetWorksheetRow(AGridRow: Integer): Cardinal;
+    procedure LoadFromSpreadsheetFile(AFileName: string;
+      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
+    procedure LoadFromSpreadsheetFile(AFileName: string;
+      AWorksheetIndex: Integer = 0); overload;
+    procedure SaveToSpreadsheetFile(AFileName: string;
+      AOverwriteExisting: Boolean = true); overload;
+    procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
+      AOverwriteExisting: Boolean = true); overload;
     procedure SelectSheetByIndex(AIndex: Integer);
     { public properties }
     property Worksheet: TsWorksheet read FWorksheet;
     property Workbook: TsWorkbook read FWorkbook;
+    property HeaderCount: Integer read FHeaderCount;
   end;
 
   { TsWorksheetGrid }
@@ -281,6 +299,12 @@ begin
   inherited Destroy;
 end;
 
+{ Suppresses unnecessary repaints. }
+procedure TsCustomWorksheetGrid.BeginUpdate;
+begin
+  inc(FLockCount);
+end;
+
 // Converts the column width, given in "characters", to pixels
 // All chars are assumed to have the same width defined by the "0".
 // Therefore, this calculation is only approximate.
@@ -312,6 +336,11 @@ end;
 function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
 begin
   Result := round(AHeight / 25.4 * Screen.PixelsPerInch) + 4;
+end;
+
+procedure TsCustomWorksheetGrid.ChangedCellHandler(ASender: TObject; ARow, ACol:Cardinal);
+begin
+  if FLockCount = 0 then Invalidate;
 end;
 
 procedure TsCustomWorksheetGrid.DefaultDrawCell(aCol, aRow: Integer; var aRect: TRect;
@@ -511,6 +540,15 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.DrawFocusRect(aCol, aRow: Integer; ARect: TRect);
+begin
+  Canvas.Pen.Color := clBlack;
+  Canvas.Pen.Width := 3;
+  Canvas.Brush.Style := bsClear;
+  InflateRect(ARect, -1, -1);
+  Canvas.Rectangle(ARect);
+end;
+
 { Draws the cell text. Calls "GetCellText" to determine the text in the cell.
   Takes care of horizontal and vertical text alignment, text rotation and
   text wrapping }
@@ -681,6 +719,51 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.EditingDone;
+var
+  oldText: String;
+  cell: PCell;
+begin
+  if (not EditorShowing) and FEditing then begin
+    oldText := GetCellText(Col, Row);
+    if oldText <> FEditText then begin
+      if FWorksheet = nil then
+        FWorksheet := TsWorksheet.Create;
+      cell := FWorksheet.GetCell(Row-FHeaderCount, Col-FHeaderCount);
+      if FEditText = '' then
+        cell^.ContentType := cctEmpty
+      else
+      if TryStrToFloat(FEditText, cell^.NumberValue) then
+        cell^.ContentType := cctNumber
+      else
+      if TryStrToDateTime(FEditText, cell^.DateTimeValue) then begin
+        cell^.ContentType := cctDateTime;
+        if cell^.DateTimeValue < 1.0 then begin
+          if not (cell^.NumberFormat in [nfShortDateTime, nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM])
+            then cell^.NumberFormat := nfLongTime;
+        end else
+        if frac(cell^.DateTimeValue) = 0 then begin  // this is a TDate
+          if not (cell^.NumberFormat in [nfShortDateTime, nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM])
+            then cell^.NumberFormat := nfShortDate
+        end else
+          cell^.NumberFormat := nfShortDateTime;
+      end else begin
+        cell^.UTF8StringValue := FEditText;
+        cell^.ContentType := cctUTF8String;
+      end;
+      FEditText := '';
+    end;
+    inherited EditingDone;
+  end;
+  FEditing := false;
+end;
+
+procedure TsCustomWorksheetGrid.EndUpdate;
+begin
+  dec(FLockCount);
+  if FLockCount = 0 then Invalidate;
+end;
+
 { Returns the height (in pixels) of the cell at ACol/ARow. }
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
@@ -781,6 +864,13 @@ begin
   end;
 end;
 
+{ Determines the text to be passed to the cell editor. }
+function TsCustomWorksheetGrid.GetEditText(aCol, aRow: Integer): string;
+begin
+  Result := GetCellText(aCol, aRow);
+  if Assigned(OnGetEditText) then OnGetEditText(Self, aCol, aRow, result);
+end;
+
 { Returns a list of worksheets contained in the file. Useful for assigning to
   user controls like TabControl, Combobox etc. in order to select a sheet. }
 procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
@@ -801,6 +891,16 @@ end;
 function TsCustomWorksheetGrid.GetShowHeaders: Boolean;
 begin
   Result := FHeaderCount <> 0;
+end;
+
+function TsCustomWorksheetGrid.GetWorksheetCol(AGridCol: Integer): cardinal;
+begin
+  Result := AGridCol - FHeaderCount;
+end;
+
+function TsCustomWorksheetGrid.GetWorksheetRow(AGridRow: Integer): Cardinal;
+begin
+  Result := AGridRow - FHeaderCount;
 end;
 
 procedure TsCustomWorksheetGrid.Loaded;
@@ -835,6 +935,13 @@ begin
   if AValue = GetShowHeaders then Exit;
   FHeaderCount := ord(AValue);
   Setup;
+end;
+
+procedure TsCustomWorksheetGrid.SetEditText(ACol, ARow: Longint; const AValue: string);
+begin
+  FEditText := AValue;
+  FEditing := true;
+  inherited SetEditText(aCol, aRow, aValue);
 end;
 
 procedure TsCustomWorksheetGrid.Setup;
@@ -882,12 +989,14 @@ begin
         RowHeights[i] := CalcRowHeight(lRow^.Height);
     end;
   end;
+  Invalidate;
 end;
 
 procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
 begin
   FWorksheet := AWorksheet;
   if FWorksheet <> nil then begin
+    FWorksheet.OnChangeCell := @ChangedCellHandler;
     ShowHeaders := (soShowHeaders in FWorksheet.Options);
     ShowGridLines := (soShowGridLines in FWorksheet.Options);
     if (soHasFrozenPanes in FWorksheet.Options) then begin
@@ -904,35 +1013,44 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
-  FreeAndNil(FWorkbook);
-  FWorkbook := TsWorkbook.Create;
-  FWorkbook.ReadFromFile(AFileName, AFormat);
-  LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  BeginUpdate;
+  try
+    FreeAndNil(FWorkbook);
+    FWorkbook := TsWorkbook.Create;
+    FWorkbook.ReadFromFile(AFileName, AFormat);
+    LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  finally
+    EndUpdate;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
-  FreeAndNil(FWorkbook);
-  FWorkbook := TsWorkbook.Create;
-  FWorkbook.ReadFromFile(AFilename);
-  LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  BeginUpdate;
+  try
+    FreeAndNil(FWorkbook);
+    FWorkbook := TsWorkbook.Create;
+    FWorkbook.ReadFromFile(AFilename);
+    LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  finally
+    EndUpdate;
+  end;
 end;
 
-procedure TsCustomWorksheetGrid.SaveToWorksheet(AWorksheet: TsWorksheet);
-var
-  x, y: Integer;
-  Str: string;
+{ Writes the workbook behind the grid to a spreadsheet file. }
+procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
+  AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
 begin
-  if AWorksheet = nil then Exit;
+  if FWorksheet <> nil then
+    FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+end;
 
-  { Copy the contents }
-  for x := 0 to ColCount - 1 do
-    for y := 0 to RowCount - 1 do
-    begin
-      Str := GetCells(x, y);
-      if Str <> '' then AWorksheet.WriteUTF8Text(y, x, Str);
-    end;
+procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
+  AOverwriteExisting: Boolean = true);
+begin
+  if FWorksheet <> nil then
+    FWorkbook.WriteToFile(AFileName, AOverwriteExisting);
 end;
 
 procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
