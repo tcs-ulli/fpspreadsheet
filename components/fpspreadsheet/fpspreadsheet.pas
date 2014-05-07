@@ -310,7 +310,10 @@ type
   TsCustomSpreadWriter = class;
   TsWorkbook = class;
 
+
   { TsWorksheet }
+
+  TsCellEvent = procedure (Sender: TObject; ARow, ACol: Cardinal) of object;
 
   TsWorksheet = class
   private
@@ -321,14 +324,17 @@ type
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
+    FOnChangeCell: TsCellEvent;
     procedure RemoveCallback(data, arg: pointer);
+  protected
+    procedure ChangedCell(ARow, ACol: Cardinal);
   public
     Name: string;
     { Base methods }
     constructor Create;
     destructor Destroy; override;
     { Utils }
-    class function  CellPosToText(ARow, ACol: Cardinal): string;
+    class function CellPosToText(ARow, ACol: Cardinal): string;
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
     function  FindCell(ARow, ACol: Cardinal): PCell;
@@ -398,7 +404,9 @@ type
     property  Options: TsSheetOptions read FOptions write FOptions;
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     property  TopPaneHeight: Integer read FTopPaneHeight write FTopPaneHeight;
+    property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
   end;
+
 
   { TsWorkbook }
 
@@ -851,6 +859,12 @@ begin
   Result := Format('%s%d', [lStr, ARow+1]);
 end;
 
+{ Is called whenever a cell value or formatting has changed. }
+procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
+begin
+  if Assigned(FOnChangeCell) then FOnChangeCell(Self, ARow, ACol);
+end;
+
 procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
   AFromWorksheet: TsWorksheet);
 var
@@ -1252,9 +1266,9 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-
   ACell^.ContentType := cctUTF8String;
   ACell^.UTF8StringValue := AText;
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -1295,6 +1309,7 @@ begin
         ACell^.NumberFormatStr := '0' + decs;
     end;
   end;
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -1311,6 +1326,7 @@ var
 begin
   ACell := GetCell(ARow, ACol);
   ACell^.ContentType := cctEmpty;
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -1371,6 +1387,7 @@ begin
     nfTimeInterval:
       ACell^.NumberFormatStr := '';
   end;
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -1387,6 +1404,7 @@ begin
   ACell := GetCell(ARow, ACol);
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -1406,6 +1424,7 @@ begin
   ACell := GetCell(ARow, ACol);
   Include(ACell^.UsedFormattingFields, uffNumberFormat);
   ACell^.NumberFormat := ANumberFormat;
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
@@ -1416,6 +1435,7 @@ begin
   ACell := GetCell(ARow, ACol);
   ACell^.ContentType := cctRPNFormula;
   ACell^.RPNFormulaValue := AFormula;
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -1441,6 +1461,7 @@ begin
   if Result = -1 then
     result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor);
   lCell^.FontIndex := Result;
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer);
@@ -1453,6 +1474,7 @@ begin
     lCell := GetCell(ARow, ACol);
     Include(lCell^.UsedFormattingFields, uffFont);
     lCell^.FontIndex := AFontIndex;
+    ChangedCell(ARow, ACol);
   end else
     raise Exception.Create(lpInvalidFontIndex);
 end;
@@ -1505,6 +1527,7 @@ begin
   ACell := GetCell(ARow, ACol);
   Include(ACell^.UsedFormattingFields, uffTextRotation);
   ACell^.TextRotation := ARotation;
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteUsedFormatting(ARow, ACol: Cardinal;
@@ -1514,6 +1537,7 @@ var
 begin
   ACell := GetCell(ARow, ACol);
   ACell^.UsedFormattingFields := AUsedFormatting;
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
@@ -1524,6 +1548,7 @@ begin
   ACell := GetCell(ARow, ACol);
   ACell^.UsedFormattingFields := ACell^.UsedFormattingFields + [uffBackgroundColor];
   ACell^.BackgroundColor := AColor;
+  ChangedCell(ARow, ACol);
 end;
 
 { Sets the color of a cell border line.
@@ -1535,6 +1560,7 @@ var
 begin
   lCell := GetCell(ARow, ACol);
   lCell^.BorderStyles[ABorder].Color := AColor;
+  ChangedCell(ARow, ACol);
 end;
 
 { Sets the linestyle of a cell border.
@@ -1546,6 +1572,7 @@ var
 begin
   lCell := GetCell(ARow, ACol);
   lCell^.BorderStyles[ABorder].LineStyle := ALineStyle;
+  ChangedCell(ARow, ACol);
 end;
 
 { Shows the cell borders included in the set ABorders. The borders are drawn
@@ -1557,6 +1584,7 @@ begin
   lCell := GetCell(ARow, ACol);
   Include(lCell^.UsedFormattingFields, uffBorder);
   lCell^.Border := ABorders;
+  ChangedCell(ARow, ACol);
 end;
 
 { Sets the style of a cell border, i.e. line style and line color.
@@ -1568,6 +1596,7 @@ var
 begin
   lCell := GetCell(ARow, ACol);
   lCell^.BorderStyles[ABorder] := AStyle;
+  ChangedCell(ARow, ACol);
 end;
 
 { Sets line style and line color of a cell border.
@@ -1580,6 +1609,7 @@ begin
   lCell := GetCell(ARow, ACol);
   lCell^.BorderStyles[ABorder].LineStyle := ALineStyle;
   lCell^.BorderStyles[ABorder].Color := AColor;
+  ChangedCell(ARow, ACol);
 end;
 
 { Sets the style of all cell border of a cell, i.e. line style and line color.
@@ -1592,6 +1622,7 @@ var
 begin
   cell := GetCell(ARow, ACol);
   for b in TsCellBorder do cell^.BorderStyles[b] := AStyles[b];
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
@@ -1601,6 +1632,7 @@ begin
   lCell := GetCell(ARow, ACol);
   lCell^.UsedFormattingFields := lCell^.UsedFormattingFields + [uffHorAlign];
   lCell^.HorAlignment := AValue;
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
@@ -1610,6 +1642,7 @@ begin
   lCell := GetCell(ARow, ACol);
   lCell^.UsedFormattingFields := lCell^.UsedFormattingFields + [uffVertAlign];
   lCell^.VertAlignment := AValue;
+  ChangedCell(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteWordWrap(ARow, ACol: Cardinal; AValue: Boolean);
@@ -1621,6 +1654,7 @@ begin
     Include(lCell^.UsedFormattingFields, uffWordwrap)
   else
     Exclude(lCell^.UsedFormattingFields, uffWordwrap);
+  ChangedCell(ARow, ACol);
 end;
 
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
