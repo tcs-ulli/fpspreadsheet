@@ -28,6 +28,9 @@ function CellNotation(WorkSheet: TsWorksheet; Row: integer; Column: integer=0): 
 // Returns an A notation of column based on sheet and column
 function ColNotation(WorkSheet: TsWorksheet; Column:Integer): String;
 
+// Returns a notation for row bassed on sheet and row
+function RowNotation(Worksheet: TsWorksheet; Row: Integer): String;
+
 // Note: using this function instead of GetWorkSheetByName for compatibility with
 // older fpspreadsheet versions that don't have that function
 function GetWorksheetByName(AWorkBook: TsWorkBook; AName: String): TsWorksheet;
@@ -95,6 +98,14 @@ begin
     Result := 'ColNotation: error getting worksheet.'
   else
     Result := WorkSheet.Name + '!' + ColumnToLetter(Column);
+end;
+
+function RowNotation(Worksheet: TsWorksheet; Row: Integer): String;
+begin
+  if not Assigned(Worksheet) then
+    Result := 'RowNotation: error getting worksheet.'
+  else
+    Result := Worksheet.Name + '!' + IntToStr(Row+1);
 end;
 
 end.

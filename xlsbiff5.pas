@@ -219,20 +219,7 @@ implementation
 
 const
   { Excel record IDs }
-  INT_EXCEL_ID_BOF        = $0809;
-  INT_EXCEL_ID_BOUNDSHEET = $0085; // Renamed to SHEET in the latest OpenOffice docs
-  INT_EXCEL_ID_EOF        = $000A;
-  INT_EXCEL_ID_DIMENSIONS = $0200;
-  INT_EXCEL_ID_FORMAT     = $041E;
-  INT_EXCEL_ID_FORMULA    = $0006;
-  INT_EXCEL_ID_INDEX      = $020B;
-  INT_EXCEL_ID_ROWINFO    = $0208;
-  INT_EXCEL_ID_STYLE      = $0293;
-  INT_EXCEL_ID_WINDOW1    = $003D;
-  INT_EXCEL_ID_RSTRING    = $00D6;
-  INT_EXCEL_ID_RK         = $027E;
-  INT_EXCEL_ID_MULRK      = $00BD;
-  INT_EXCEL_ID_CODEPAGE   = xlscommon.INT_EXCEL_ID_CODEPAGE;
+  // see: in xlscommon
 
   { Cell Addresses constants }
   MASK_EXCEL_ROW          = $3FFF;
@@ -412,6 +399,7 @@ begin
       WriteDimensions(AStream, sheet);
       WriteWindow2(AStream, sheet);
       WritePane(AStream, sheet, true);  // true for "is BIFF5 or BIFF8"
+      WriteRows(AStream, sheet);
       WriteCellsToStream(AStream, sheet.Cells);
     WriteEOF(AStream);
   end;
@@ -1284,7 +1272,7 @@ begin
     INT_EXCEL_ID_RK      : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_MULRK   : ReadMulRKValues(AStream);
     INT_EXCEL_ID_COLINFO : ReadColInfo(AStream);
-    INT_EXCEL_ID_ROWINFO : ReadRowInfo(AStream);
+    INT_EXCEL_ID_ROW     : ReadRowInfo(AStream);
     INT_EXCEL_ID_FORMULA : ReadFormulaExcel(AStream);
     INT_EXCEL_ID_WINDOW2 : ReadWindow2(AStream);
     INT_EXCEL_ID_PANE    : ReadPane(AStream);

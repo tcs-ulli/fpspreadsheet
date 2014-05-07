@@ -31,6 +31,8 @@ begin
   //MyWorksheet.WriteColWidth(0, 5);
   //MyWorksheet.WriteColWidth(1, 30);
 
+  MyWorksheet.WriteRowHeight(0, 30);  // 30 mm
+
   // Turn off grid lines and hide headers
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines, soShowHeaders];
 

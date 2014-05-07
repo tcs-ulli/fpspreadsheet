@@ -535,7 +535,7 @@ begin
     s := '$0005=WB globals, $0006=VB module, ' + s + ', $0100=Workspace';
   w := WordLEToN(w);
   if Row = FCurrRow then begin
-    FDetails.Add('Type of data:');
+    FDetails.Add('Type of data:'#13);
     FDetails.Add(Format('$%.4x = %s', [w, BofName(w)]));
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x', [w]),
@@ -906,7 +906,6 @@ begin
     ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(DWordLEToN(dw)),
       'Index to first used row');
 
-    numBytes := 4;
     Move(FBuffer[FBufferIndex], dw, numBytes);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(DWordLEToN(dw)),
       'Index to last used row, increased by 1');
@@ -916,7 +915,6 @@ begin
     ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
       'Index to first used row');
 
-    numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
       'Index to last used row, increased by 1');
@@ -932,9 +930,11 @@ begin
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
     'Index to last used column, increased by 1');
 
-  numBytes := 2;
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, '',
-    '(not used)');
+  if FFormat <> sfExcel2 then begin
+    numBytes := 2;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, '',
+      '(not used)');
+  end;
 end;
 
 
@@ -2714,7 +2714,17 @@ begin
 
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numbytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x', [WordLEToN(w)]),
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add('Row height:'#13);
+    FDetails.Add(Format('Bits 14-0 = %d: Row height in twips (1/20 pt) --> %.1f-pt',
+      [w and $7FFF, (w and $7FFF)/20.0])
+    );
+    if w and $8000 = 0
+      then FDetails.Add('Bit 15 = 0: Row has custom height')
+      else FDetails.Add('Bit 15 = 1: Row has default height');
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x', [w]),
     'Bits 14-0: Height of row in twips (1/20 pt), Bit 15: Row has default height');
 
   numBytes := 2;

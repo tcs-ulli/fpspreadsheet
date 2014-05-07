@@ -89,13 +89,15 @@ type
       AddBackground: Boolean = false);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
     procedure WriteXFRecords(AStream: TStream);
-    procedure WriteWindow1(AStream: TStream); override;
-    procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
+      ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
+    procedure WriteWindow1(AStream: TStream); override;
+    procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
   public
     { General writing methods }
     procedure WriteToStream(AStream: TStream); override;
@@ -155,10 +157,9 @@ const
   INT_EXCEL_ID_INTEGER    = $0002;
   INT_EXCEL_ID_NUMBER     = $0003;
   INT_EXCEL_ID_LABEL      = $0004;
-  INT_EXCEL_ID_FORMULA    = $0006;
-  INT_EXCEL_ID_ROWINFO    = $0008;
+  INT_EXCEL_ID_ROW        = $0008;
   INT_EXCEL_ID_BOF        = $0009;
-  INT_EXCEL_ID_EOF        = $000A;
+  INT_EXCEL_ID_INDEX      = $000B;
   INT_EXCEL_ID_FORMAT     = $001E;
   INT_EXCEL_ID_FORMATCOUNT= $001F;
   INT_EXCEL_ID_COLWIDTH   = $0024;
@@ -427,7 +428,7 @@ begin
     INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
     INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
-    INT_EXCEL_ID_ROWINFO   : ReadRowInfo(AStream);
+    INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
     INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
     INT_EXCEL_ID_PANE      : ReadPane(AStream);
     INT_EXCEL_ID_XF        : ReadXF(AStream);
@@ -565,8 +566,7 @@ begin
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
     // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
-  end else
-    lRow^.AutoHeight := true;
+  end;
 end;
 
 { Reads the WINDOW2 record containing information like "show grid lines",
@@ -828,6 +828,7 @@ begin
     WriteFormats(AStream);
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
+    WriteRows(AStream, sheet);
     WriteCellsToStream(AStream, sheet.Cells);
 
     WriteWindow1(AStream);
@@ -1533,6 +1534,55 @@ begin
   AStream.WriteBuffer(AValue, 8);
 end;
 
+procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsWorksheet;
+  ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
+var
+  containsXF: Boolean;
+  rowheight: Word;
+  w: Word;
+begin
+  containsXF := false;
+
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_ROW));
+  AStream.WriteWord(WordToLE(IfThen(containsXF, 18, 13)));
+
+  { Index of row }
+  AStream.WriteWord(WordToLE(Word(ARowIndex)));
+
+  { Index to column of the first cell which is described by a cell record }
+  AStream.WriteWord(WordToLE(Word(AFirstColIndex)));
+
+  { Index to column of the last cell which is described by a cell record, increased by 1 }
+  AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
+
+  { Row height (in twips, 1/20 point) and info on custom row height }
+  if (ARow = nil) or (ARow^.Height = 0) then
+    rowheight := round(Workbook.GetFont(0).Size*20)
+  else
+    rowheight := MillimetersToTwips(ARow^.Height);
+  w := rowheight and $7FFF;
+  AStream.WriteWord(WordToLE(w));
+
+  { not used }
+  AStream.WriteWord(0);
+
+  { Contains row attribute field and XF index }
+  AStream.WriteByte(ord(containsXF));
+
+  { Relative offset to calculate stream position of the first cell record for this row }
+  AStream.WriteWord(0);
+
+  if containsXF then begin
+    { Default row attributes }
+    AStream.WriteByte(0);
+    AStream.WriteByte(0);
+    AStream.WriteByte(0);
+
+    { Index to XF record }
+    AStream.WriteWord(WordToLE(15));
+  end;
+end;
 
 {*******************************************************************
 *  Initialization section

@@ -37,7 +37,6 @@
           <CodeGeneration>
             <Checks>
               <IOChecks Value="True"/>
-              <RangeChecks Value="True"/>
               <OverflowChecks Value="True"/>
               <StackChecks Value="True"/>
             </Checks>
