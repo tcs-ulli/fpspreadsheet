@@ -429,6 +429,9 @@ object Form1: TForm1
     end
     object mnuFormat: TMenuItem
       Caption = 'Format'
+      object MenuItem6: TMenuItem
+        Action = AcFont
+      end
       object MnuHorAlignment: TMenuItem
         Caption = 'Horizontal alignment'
         object MnuHorDefault: TMenuItem
@@ -1002,5 +1005,17 @@ object Form1: TForm1
       ImageIndex = 10
       OnExecute = AcFontStyleExecute
     end
+    object AcFont: TAction
+      Category = 'Format'
+      Caption = 'Font...'
+      Hint = 'Font'
+      OnExecute = AcFontExecute
+    end
+  end
+  object FontDialog1: TFontDialog
+    MinFontSize = 0
+    MaxFontSize = 0
+    left = 176
+    top = 234
   end
 end

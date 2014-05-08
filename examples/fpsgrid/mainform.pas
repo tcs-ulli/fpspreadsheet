@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, ColorBox,
+  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, ColorBox,graphutil,
   fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
@@ -26,11 +26,13 @@ type
     AcFontItalic: TAction;
     AcFontStrikeout: TAction;
     AcFontUnderline: TAction;
+    AcFont: TAction;
     ActionList1: TActionList;
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
     FontComboBox: TComboBox;
     EdFrozenRows: TSpinEdit;
+    FontDialog1: TFontDialog;
     FontSizeComboBox: TComboBox;
     ImageList1: TImageList;
     Label1: TLabel;
@@ -41,6 +43,7 @@ type
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
     MenuItem5: TMenuItem;
+    MenuItem6: TMenuItem;
     MnuHorDefault: TMenuItem;
     MnuHorAlignment: TMenuItem;
     mnuFormat: TMenuItem;
@@ -73,9 +76,9 @@ type
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
     procedure AcEditExecute(Sender: TObject);
+    procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
-    procedure btnPopulateGridClick(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
     procedure acOpenExecute(Sender: TObject);
@@ -112,23 +115,42 @@ const
 
 { TForm1 }
 
-procedure TForm1.btnPopulateGridClick(Sender: TObject);
-// Populate grid with some demo data
-var
-  lCell: PCell;
-begin
-  // create a cell (2,2) if not yet available
-  lCell := sWorksheetGrid1.Worksheet.GetCell(2, 2);
-  sWorksheetGrid1.Worksheet.WriteUTF8Text(2, 2, 'Algo');
-  sWorksheetGrid1.Invalidate;
-end;
-
 procedure TForm1.AcEditExecute(Sender: TObject);
 begin
   if AcEdit.Checked then
     sWorksheetGrid1.Options := sWorksheetGrid1.Options + [goEditing]
   else
     sWorksheetGrid1.Options := sWorksheetGrid1.Options - [goEditing];
+end;
+
+{ Changes the font of the selected cell by calling a standard font dialog.
+  Note that the worksheet's and grid's fonts are implemented differently.
+  In particular, the worksheet's font color is an index into the workbook's
+  palette while the grid's font color is an rgb value. }
+procedure TForm1.AcFontExecute(Sender: TObject);
+var
+  r,c: Cardinal;
+  f: Integer;
+  style: TsFontStyles;
+  lFont: TsFont;
+begin
+  with sWorksheetGrid1 do begin
+    if Worksheet <> nil then begin
+      c := GetWorksheetCol(Col);
+      r := GetWorksheetRow(Row);
+      f := Worksheet.GetCell(r, c)^.FontIndex;
+      Convert_sFont_to_Font(Workbook.GetFont(f), FontDialog1.Font);
+      if FontDialog1.Execute then begin
+        lFont := TsFont.Create;
+        try
+          Convert_Font_to_sFont(FontDialog1.Font, lFont);
+          WorkSheet.WriteFont(r, c, lFont.FontName, lFont.Size, lFont.Style, lFont.Color);
+        finally
+          lFont.Free;
+        end;
+      end;
+    end;
+  end;
 end;
 
 procedure TForm1.AcFontStyleExecute(Sender: TObject);
