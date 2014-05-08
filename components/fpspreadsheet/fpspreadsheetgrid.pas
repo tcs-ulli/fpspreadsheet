@@ -28,6 +28,7 @@ type
     FFrozenCols: Integer;
     FFrozenRows: Integer;
     FEditText: String;
+    FOldEditText: String;
     FLockCount: Integer;
     FEditing: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
@@ -50,8 +51,10 @@ type
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
+    procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
@@ -1016,10 +1019,27 @@ begin
   Result := AGridRow - FHeaderCount;
 end;
 
+{ Catches the ESC key during editing in order to restore the old cell text }
+procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
+begin
+  if (Key = VK_ESCAPE) and FEditing then begin
+    SetEditText(Col, Row, FOldEditText);
+    EditorHide;
+  end;
+end;
+
 procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
   Setup;
+end;
+
+{ Is called when editing starts. Stores the old text just in case the user
+  presses ESC to cancel editing. }
+procedure TsCustomWorksheetGrid.SelectEditor;
+begin
+  FOldEditText := GetCellText(Col, Row);
+  inherited;
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
@@ -1034,6 +1054,7 @@ begin
   Setup;
 end;
 
+{ Shows / hides the worksheet's grid lines }
 procedure TsCustomWorksheetGrid.SetShowGridLines(AValue: Boolean);
 begin
   if AValue = GetShowGridLines then Exit;
@@ -1043,6 +1064,7 @@ begin
     Options := Options - [goHorzLine, goVertLine];
 end;
 
+{ Shows / hides the worksheet's row and column headers. }
 procedure TsCustomWorksheetGrid.SetShowHeaders(AValue: Boolean);
 begin
   if AValue = GetShowHeaders then Exit;
@@ -1050,6 +1072,8 @@ begin
   Setup;
 end;
 
+{ fetches the text that is currently in the editor. It is not yet transferred
+  to the Worksheet because input is checked only at the end of editing. }
 procedure TsCustomWorksheetGrid.SetEditText(ACol, ARow: Longint; const AValue: string);
 begin
   FEditText := AValue;
