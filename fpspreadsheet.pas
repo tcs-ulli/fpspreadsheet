@@ -330,9 +330,11 @@ type
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
     FOnChangeCell: TsCellEvent;
+    FOnChangeFont: TsCellEvent;
     procedure RemoveCallback(data, arg: pointer);
   protected
     procedure ChangedCell(ARow, ACol: Cardinal);
+    procedure ChangedFont(ARow, ACol: Cardinal);
   public
     Name: string;
     { Base methods }
@@ -410,6 +412,7 @@ type
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     property  TopPaneHeight: Integer read FTopPaneHeight write FTopPaneHeight;
     property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
+    property  OnChangeFont: TsCellEvent read FOnChangeFont write FOnChangeFont;
   end;
 
 
@@ -868,6 +871,13 @@ end;
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
 begin
   if Assigned(FOnChangeCell) then FOnChangeCell(Self, ARow, ACol);
+end;
+
+{ Is called whenever a font height changes. Event can be caught by the grid
+  to update the row height. }
+procedure TsWorksheet.ChangedFont(ARow, ACol: Cardinal);
+begin
+  if Assigned(FonChangeFont) then FOnChangeFont(Self, ARow, ACol);
 end;
 
 procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
@@ -1466,7 +1476,7 @@ begin
   if Result = -1 then
     result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor);
   lCell^.FontIndex := Result;
-  ChangedCell(ARow, ACol);
+  ChangedFont(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer);
@@ -1479,7 +1489,7 @@ begin
     lCell := GetCell(ARow, ACol);
     Include(lCell^.UsedFormattingFields, uffFont);
     lCell^.FontIndex := AFontIndex;
-    ChangedCell(ARow, ACol);
+    ChangedFont(ARow, ACol);
   end else
     raise Exception.Create(lpInvalidFontIndex);
 end;
@@ -1532,7 +1542,7 @@ begin
   ACell := GetCell(ARow, ACol);
   Include(ACell^.UsedFormattingFields, uffTextRotation);
   ACell^.TextRotation := ARotation;
-  ChangedCell(ARow, ACol);
+  ChangedFont(ARow, ACol);
 end;
 
 procedure TsWorksheet.WriteUsedFormatting(ARow, ACol: Cardinal;

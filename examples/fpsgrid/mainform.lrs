@@ -2,74 +2,74 @@
 
 LazarusResources.Add('TForm1','FORMDATA',[
   'TPF0'#6'TForm1'#5'Form1'#4'Left'#3'r'#1#6'Height'#3#150#1#3'Top'#3#2#1#5'Wid'
-  +'th'#3'|'#2#7'Caption'#6#7'fpsGrid'#12'ClientHeight'#3'}'#1#11'ClientWidth'#3
-  +'|'#2#4'Menu'#7#9'MainMenu1'#10'OnActivate'#7#12'FormActivate'#8'OnCreate'#7
-  +#10'FormCreate'#8'ShowHint'#9#10'LCLVersion'#6#3'1.3'#0#6'TPanel'#6'Panel1'#4
-  +'Left'#2#0#6'Height'#2'I'#3'Top'#3'4'#1#5'Width'#3'|'#2#5'Align'#7#8'alBotto'
-  +'m'#10'BevelOuter'#7#6'bvNone'#12'ClientHeight'#2'I'#11'ClientWidth'#3'|'#2#8
-  +'TabOrder'#2#0#0#9'TCheckBox'#13'CbShowHeaders'#4'Left'#2#8#6'Height'#2#24#3
-  +'Top'#2#11#5'Width'#2't'#7'Caption'#6#12'Show headers'#7'Checked'#9#7'OnClic'
-  +'k'#7#18'CbShowHeadersClick'#5'State'#7#9'cbChecked'#8'TabOrder'#2#0#0#0#9'T'
-  +'CheckBox'#15'CbShowGridLines'#4'Left'#2#8#6'Height'#2#24#3'Top'#2'$'#5'Widt'
-  +'h'#2'}'#7'Caption'#6#15'Show grid lines'#7'Checked'#9#7'OnClick'#7#20'CbSho'
-  +'wGridLinesClick'#5'State'#7#9'cbChecked'#8'TabOrder'#2#1#0#0#9'TSpinEdit'#12
-  +'EdFrozenCols'#4'Left'#3#238#0#6'Height'#2#28#3'Top'#2#8#5'Width'#2'4'#8'OnC'
-  +'hange'#7#18'EdFrozenColsChange'#8'TabOrder'#2#2#0#0#9'TSpinEdit'#12'EdFroze'
-  +'nRows'#4'Left'#3#238#0#6'Height'#2#28#3'Top'#2''''#5'Width'#2'4'#8'OnChange'
-  +#7#18'EdFrozenRowsChange'#8'TabOrder'#2#3#0#0#6'TLabel'#6'Label1'#4'Left'#3
-  +#152#0#6'Height'#2#20#3'Top'#2#13#5'Width'#2'M'#7'Caption'#6#12'Frozen cols:'
-  +#12'FocusControl'#7#12'EdFrozenCols'#11'ParentColor'#8#0#0#6'TLabel'#6'Label'
-  +'2'#4'Left'#3#153#0#6'Height'#2#20#3'Top'#2'('#5'Width'#2'R'#7'Caption'#6#12
-  +'Frozen rows:'#12'FocusControl'#7#12'EdFrozenRows'#11'ParentColor'#8#0#0#0#12
-  +'TPageControl'#12'PageControl1'#4'Left'#2#0#6'Height'#3#250#0#3'Top'#2':'#5
-  +'Width'#3'|'#2#10'ActivePage'#7#9'TabSheet1'#5'Align'#7#8'alClient'#8'TabInd'
-  +'ex'#2#0#8'TabOrder'#2#1#8'OnChange'#7#18'PageControl1Change'#0#9'TTabSheet'
-  +#9'TabSheet1'#7'Caption'#6#6'Sheet1'#12'ClientHeight'#3#217#0#11'ClientWidth'
-  +#3't'#2#0#15'TsWorksheetGrid'#15'sWorksheetGrid1'#4'Left'#2#0#6'Height'#3#217
-  +#0#3'Top'#2#0#5'Width'#3't'#2#10'FrozenCols'#2#0#10'FrozenRows'#2#0#5'Align'
-  +#7#8'alClient'#8'ColCount'#2#2#14'ExtendedSelect'#8#7'Options'#11#15'goFixed'
-  +'VertLine'#15'goFixedHorzLine'#10'goVertLine'#10'goHorzLine'#13'goRangeSelec'
-  +'t'#11'goRowSizing'#11'goColSizing'#15'goThumbTracking'#14'goSmoothScroll'#16
-  +'goFixedColSizing'#0#8'RowCount'#2#2#8'TabOrder'#2#0#10'TitleStyle'#7#8'tsNa'
-  +'tive'#12'OnSelectCell'#7#25'sWorksheetGrid1SelectCell'#9'ColWidths'#1#2'8'#2
-  +'@'#0#0#0#0#0#8'TToolBar'#8'ToolBar1'#4'Left'#2#0#6'Height'#2#26#3'Top'#2#0#5
-  +'Width'#3'|'#2#12'ButtonHeight'#2#24#7'Caption'#6#8'ToolBar1'#11'EdgeBorders'
-  +#11#0#6'Images'#7#10'ImageList1'#8'TabOrder'#2#2#0#11'TToolButton'#11'ToolBu'
-  +'tton1'#4'Left'#2#1#3'Top'#2#0#6'Action'#7#6'AcOpen'#0#0#11'TToolButton'#11
-  +'ToolButton2'#4'Left'#2#24#3'Top'#2#0#6'Action'#7#8'AcSaveAs'#0#0#11'TToolBu'
-  +'tton'#11'ToolButton3'#4'Left'#2'P'#3'Top'#2#0#6'Action'#7#6'AcQuit'#0#0#11
-  +'TToolButton'#11'ToolButton5'#4'Left'#2'/'#3'Top'#2#0#5'Width'#2#5#7'Caption'
-  +#6#11'ToolButton5'#5'Style'#7#10'tbsDivider'#0#0#11'TToolButton'#11'ToolButt'
-  +'on4'#4'Left'#2'4'#3'Top'#2#0#6'Action'#7#6'AcEdit'#0#0#11'TToolButton'#11'T'
-  +'oolButton6'#4'Left'#2'K'#3'Top'#2#0#5'Width'#2#5#7'Caption'#6#11'ToolButton'
-  +'6'#5'Style'#7#10'tbsDivider'#0#0#0#8'TToolBar'#13'FormatToolBar'#4'Left'#2#0
-  +#3'Top'#2#26#5'Width'#3'|'#2#12'ButtonHeight'#2#28#7'Caption'#6#13'FormatToo'
-  +'lBar'#6'Images'#7#10'ImageList1'#8'TabOrder'#2#3#0#11'TToolButton'#12'ToolB'
-  +'utton10'#4'Left'#3#17#1#3'Top'#2#2#6'Action'#7#11'AcLeftAlign'#0#0#11'TTool'
-  +'Button'#12'ToolButton12'#4'Left'#3'('#1#3'Top'#2#2#6'Action'#7#16'AcHorCent'
-  +'erAlign'#0#0#11'TToolButton'#12'ToolButton13'#4'Left'#3'?'#1#3'Top'#2#2#6'A'
-  +'ction'#7#12'AcRightAlign'#0#0#9'TComboBox'#12'FontComboBox'#4'Left'#2#1#6'H'
-  +'eight'#2#28#3'Top'#2#2#5'Width'#2#127#10'ItemHeight'#2#20#8'OnSelect'#7#18
-  +'FontComboBoxSelect'#8'TabOrder'#2#0#0#0#9'TComboBox'#16'FontSizeComboBox'#4
-  +'Left'#3#128#0#6'Height'#2#28#3'Top'#2#2#5'Width'#2'0'#10'ItemHeight'#2#20#13
-  +'Items.Strings'#1#6#1'8'#6#1'9'#6#2'10'#6#2'11'#6#2'12'#6#2'14'#6#2'16'#6#2
-  +'18'#6#2'20'#6#2'24'#0#8'OnSelect'#7#18'FontComboBoxSelect'#8'TabOrder'#2#1#0
-  +#0#11'TToolButton'#11'ToolButton7'#4'Left'#3#176#0#3'Top'#2#2#6'Action'#7#10
-  +'AcFontBold'#0#0#11'TToolButton'#11'ToolButton8'#4'Left'#3#199#0#3'Top'#2#2#6
-  +'Action'#7#12'AcFontItalic'#0#0#11'TToolButton'#11'ToolButton9'#4'Left'#3#222
-  +#0#3'Top'#2#2#6'Action'#7#15'AcFontUnderline'#0#0#11'TToolButton'#12'ToolBut'
-  +'ton11'#4'Left'#3#245#0#3'Top'#2#2#6'Action'#7#15'AcFontStrikeout'#0#0#11'TT'
-  +'oolButton'#12'ToolButton14'#4'Left'#3#12#1#3'Top'#2#2#5'Width'#2#5#7'Captio'
-  +'n'#6#12'ToolButton14'#5'Style'#7#10'tbsDivider'#0#0#11'TToolButton'#12'Tool'
-  +'Button15'#4'Left'#3'V'#1#3'Top'#2#2#5'Width'#2#5#7'Caption'#6#12'ToolButton'
-  +'15'#5'Style'#7#10'tbsDivider'#0#0#11'TToolButton'#12'ToolButton16'#4'Left'#3
-  +'['#1#3'Top'#2#2#6'Action'#7#11'AcVAlignTop'#0#0#11'TToolButton'#12'ToolButt'
-  +'on17'#4'Left'#3'r'#1#3'Top'#2#2#6'Action'#7#14'AcVAlignCenter'#0#0#11'TTool'
-  ,'Button'#12'ToolButton18'#4'Left'#3#137#1#3'Top'#2#2#6'Action'#7#14'AcVAlign'
-  +'Bottom'#0#0#11'TToolButton'#12'ToolButton19'#4'Left'#3#160#1#3'Top'#2#2#5'W'
-  +'idth'#2#5#7'Caption'#6#12'ToolButton19'#5'Style'#7#10'tbsDivider'#0#0#11'TT'
-  +'oolButton'#12'ToolButton20'#4'Left'#3#165#1#3'Top'#2#2#6'Action'#7#12'AcBor'
-  +'derLeft'#0#0#11'TToolButton'#12'ToolButton21'#4'Left'#3#188#1#3'Top'#2#2#6
+  +'th'#3'|'#2#7'Caption'#6#7'fpsGrid'#12'ClientHeight'#3#130#1#11'ClientWidth'
+  +#3'|'#2#4'Menu'#7#9'MainMenu1'#10'OnActivate'#7#12'FormActivate'#8'OnCreate'
+  +#7#10'FormCreate'#8'ShowHint'#9#10'LCLVersion'#6#3'1.3'#0#6'TPanel'#6'Panel1'
+  +#4'Left'#2#0#6'Height'#2'I'#3'Top'#3'9'#1#5'Width'#3'|'#2#5'Align'#7#8'alBot'
+  +'tom'#10'BevelOuter'#7#6'bvNone'#12'ClientHeight'#2'I'#11'ClientWidth'#3'|'#2
+  +#8'TabOrder'#2#0#0#9'TCheckBox'#13'CbShowHeaders'#4'Left'#2#8#6'Height'#2#19
+  +#3'Top'#2#11#5'Width'#2']'#7'Caption'#6#12'Show headers'#7'Checked'#9#7'OnCl'
+  +'ick'#7#18'CbShowHeadersClick'#5'State'#7#9'cbChecked'#8'TabOrder'#2#0#0#0#9
+  +'TCheckBox'#15'CbShowGridLines'#4'Left'#2#8#6'Height'#2#19#3'Top'#2'$'#5'Wid'
+  +'th'#2'd'#7'Caption'#6#15'Show grid lines'#7'Checked'#9#7'OnClick'#7#20'CbSh'
+  +'owGridLinesClick'#5'State'#7#9'cbChecked'#8'TabOrder'#2#1#0#0#9'TSpinEdit'
+  +#12'EdFrozenCols'#4'Left'#3#238#0#6'Height'#2#23#3'Top'#2#8#5'Width'#2'4'#8
+  +'OnChange'#7#18'EdFrozenColsChange'#8'TabOrder'#2#2#0#0#9'TSpinEdit'#12'EdFr'
+  +'ozenRows'#4'Left'#3#238#0#6'Height'#2#23#3'Top'#2''''#5'Width'#2'4'#8'OnCha'
+  +'nge'#7#18'EdFrozenRowsChange'#8'TabOrder'#2#3#0#0#6'TLabel'#6'Label1'#4'Lef'
+  +'t'#3#152#0#6'Height'#2#15#3'Top'#2#13#5'Width'#2'>'#7'Caption'#6#12'Frozen '
+  +'cols:'#12'FocusControl'#7#12'EdFrozenCols'#11'ParentColor'#8#0#0#6'TLabel'#6
+  +'Label2'#4'Left'#3#153#0#6'Height'#2#15#3'Top'#2'('#5'Width'#2'B'#7'Caption'
+  +#6#12'Frozen rows:'#12'FocusControl'#7#12'EdFrozenRows'#11'ParentColor'#8#0#0
+  +#0#12'TPageControl'#12'PageControl1'#4'Left'#2#0#6'Height'#3#255#0#3'Top'#2
+  +':'#5'Width'#3'|'#2#10'ActivePage'#7#9'TabSheet1'#5'Align'#7#8'alClient'#8'T'
+  +'abIndex'#2#0#8'TabOrder'#2#1#8'OnChange'#7#18'PageControl1Change'#0#9'TTabS'
+  +'heet'#9'TabSheet1'#7'Caption'#6#6'Sheet1'#12'ClientHeight'#3#227#0#11'Clien'
+  +'tWidth'#3't'#2#0#15'TsWorksheetGrid'#15'sWorksheetGrid1'#4'Left'#2#0#6'Heig'
+  +'ht'#3#227#0#3'Top'#2#0#5'Width'#3't'#2#10'FrozenCols'#2#0#10'FrozenRows'#2#0
+  +#5'Align'#7#8'alClient'#8'ColCount'#2#2#14'ExtendedSelect'#8#7'Options'#11#15
+  +'goFixedVertLine'#15'goFixedHorzLine'#10'goVertLine'#10'goHorzLine'#13'goRan'
+  +'geSelect'#11'goRowSizing'#11'goColSizing'#15'goThumbTracking'#14'goSmoothSc'
+  +'roll'#16'goFixedColSizing'#0#8'RowCount'#2#2#8'TabOrder'#2#0#10'TitleStyle'
+  +#7#8'tsNative'#12'OnSelectCell'#7#25'sWorksheetGrid1SelectCell'#9'ColWidths'
+  +#1#2'*'#2'@'#0#0#0#0#0#8'TToolBar'#8'ToolBar1'#4'Left'#2#0#6'Height'#2#26#3
+  +'Top'#2#0#5'Width'#3'|'#2#12'ButtonHeight'#2#24#7'Caption'#6#8'ToolBar1'#11
+  +'EdgeBorders'#11#0#6'Images'#7#10'ImageList1'#8'TabOrder'#2#2#0#11'TToolButt'
+  +'on'#11'ToolButton1'#4'Left'#2#1#3'Top'#2#0#6'Action'#7#6'AcOpen'#0#0#11'TTo'
+  +'olButton'#11'ToolButton2'#4'Left'#2#24#3'Top'#2#0#6'Action'#7#8'AcSaveAs'#0
+  +#0#11'TToolButton'#11'ToolButton3'#4'Left'#2'P'#3'Top'#2#0#6'Action'#7#6'AcQ'
+  +'uit'#0#0#11'TToolButton'#11'ToolButton5'#4'Left'#2'/'#3'Top'#2#0#5'Width'#2
+  +#5#7'Caption'#6#11'ToolButton5'#5'Style'#7#10'tbsDivider'#0#0#11'TToolButton'
+  +#11'ToolButton4'#4'Left'#2'4'#3'Top'#2#0#6'Action'#7#6'AcEdit'#0#0#11'TToolB'
+  +'utton'#11'ToolButton6'#4'Left'#2'K'#3'Top'#2#0#5'Width'#2#5#7'Caption'#6#11
+  +'ToolButton6'#5'Style'#7#10'tbsDivider'#0#0#0#8'TToolBar'#13'FormatToolBar'#4
+  +'Left'#2#0#3'Top'#2#26#5'Width'#3'|'#2#12'ButtonHeight'#2#28#7'Caption'#6#13
+  +'FormatToolBar'#6'Images'#7#10'ImageList1'#8'TabOrder'#2#3#0#11'TToolButton'
+  +#12'ToolButton10'#4'Left'#3#17#1#3'Top'#2#2#6'Action'#7#11'AcLeftAlign'#0#0
+  +#11'TToolButton'#12'ToolButton12'#4'Left'#3'('#1#3'Top'#2#2#6'Action'#7#16'A'
+  +'cHorCenterAlign'#0#0#11'TToolButton'#12'ToolButton13'#4'Left'#3'?'#1#3'Top'
+  +#2#2#6'Action'#7#12'AcRightAlign'#0#0#9'TComboBox'#12'FontComboBox'#4'Left'#2
+  +#1#6'Height'#2#23#3'Top'#2#2#5'Width'#2#127#10'ItemHeight'#2#15#8'OnSelect'#7
+  +#18'FontComboBoxSelect'#8'TabOrder'#2#0#0#0#9'TComboBox'#16'FontSizeComboBox'
+  +#4'Left'#3#128#0#6'Height'#2#23#3'Top'#2#2#5'Width'#2'0'#10'ItemHeight'#2#15
+  +#13'Items.Strings'#1#6#1'8'#6#1'9'#6#2'10'#6#2'11'#6#2'12'#6#2'14'#6#2'16'#6
+  +#2'18'#6#2'20'#6#2'24'#0#8'OnSelect'#7#18'FontComboBoxSelect'#8'TabOrder'#2#1
+  +#0#0#11'TToolButton'#11'ToolButton7'#4'Left'#3#176#0#3'Top'#2#2#6'Action'#7
+  +#10'AcFontBold'#0#0#11'TToolButton'#11'ToolButton8'#4'Left'#3#199#0#3'Top'#2
+  +#2#6'Action'#7#12'AcFontItalic'#0#0#11'TToolButton'#11'ToolButton9'#4'Left'#3
+  +#222#0#3'Top'#2#2#6'Action'#7#15'AcFontUnderline'#0#0#11'TToolButton'#12'Too'
+  +'lButton11'#4'Left'#3#245#0#3'Top'#2#2#6'Action'#7#15'AcFontStrikeout'#0#0#11
+  +'TToolButton'#12'ToolButton14'#4'Left'#3#12#1#3'Top'#2#2#5'Width'#2#5#7'Capt'
+  +'ion'#6#12'ToolButton14'#5'Style'#7#10'tbsDivider'#0#0#11'TToolButton'#12'To'
+  +'olButton15'#4'Left'#3'V'#1#3'Top'#2#2#5'Width'#2#5#7'Caption'#6#12'ToolButt'
+  +'on15'#5'Style'#7#10'tbsDivider'#0#0#11'TToolButton'#12'ToolButton16'#4'Left'
+  +#3'['#1#3'Top'#2#2#6'Action'#7#11'AcVAlignTop'#0#0#11'TToolButton'#12'ToolBu'
+  +'tton17'#4'Left'#3'r'#1#3'Top'#2#2#6'Action'#7#14'AcVAlignCenter'#0#0#11'TTo'
+  ,'olButton'#12'ToolButton18'#4'Left'#3#137#1#3'Top'#2#2#6'Action'#7#14'AcVAli'
+  +'gnBottom'#0#0#11'TToolButton'#12'ToolButton19'#4'Left'#3#160#1#3'Top'#2#2#5
+  +'Width'#2#5#7'Caption'#6#12'ToolButton19'#5'Style'#7#10'tbsDivider'#0#0#11'T'
+  +'ToolButton'#12'ToolButton20'#4'Left'#3#165#1#3'Top'#2#2#6'Action'#7#12'AcBo'
+  +'rderLeft'#0#0#11'TToolButton'#12'ToolButton21'#4'Left'#3#188#1#3'Top'#2#2#6
   +'Action'#7#11'AcBorderTop'#0#0#11'TToolButton'#12'ToolButton22'#4'Left'#3#211
   +#1#3'Top'#2#2#6'Action'#7#14'AcBorderBottom'#0#0#11'TToolButton'#12'ToolButt'
   +'on23'#4'Left'#3#234#1#3'Top'#2#2#6'Action'#7#17'AcBorderBottomDbl'#0#0#11'T'

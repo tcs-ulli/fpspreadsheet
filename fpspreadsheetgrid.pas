@@ -35,6 +35,7 @@ type
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
+    procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
     procedure SetFrozenCols(AValue: Integer);
@@ -51,6 +52,7 @@ type
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
+    procedure HeaderSized(IsColumn: Boolean; index: Integer); override;
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
@@ -314,19 +316,21 @@ begin
   inc(FLockCount);
 end;
 
-// Converts the column width, given in "characters", to pixels
+// Converts the column width, given in "characters" of the default font, to pixels
 // All chars are assumed to have the same width defined by the "0".
 // Therefore, this calculation is only approximate.
 function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
 var
   w0: Integer;
 begin
+  Convert_sFont_to_Font(FWorkbook.GetFont(0), Canvas.Font);
   w0 := Canvas.TextWidth('0');
   Result := Round(AWidth * w0);
 end;
 
 { Finds the max cell height per row and uses this to define the RowHeights[].
-  Returns DefaultRowHeight if the row does not contain any cells. }
+  Returns DefaultRowHeight if the row does not contain any cells.
+  ARow is a grid row index. }
 function TsCustomWorksheetGrid.CalcAutoRowHeight(ARow: Integer): Integer;
 var
   c: Integer;
@@ -350,6 +354,26 @@ end;
 procedure TsCustomWorksheetGrid.ChangedCellHandler(ASender: TObject; ARow, ACol:Cardinal);
 begin
   if FLockCount = 0 then Invalidate;
+end;
+
+{ Handler for the event that the font has changed in a given cell.
+  As a consequence, the row height may have to be adapted.
+  Row/Col coordinates are in worksheet units here! }
+procedure TsCustomWorksheetGrid.ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
+var
+  h: Integer;
+  lRow: PRow;
+begin
+  if (FWorksheet <> nil) then begin
+    lRow := FWorksheet.FindRow(ARow);
+    if lRow = nil then begin
+      // There is no row record --> row height changes according to font height
+      // Otherwise the row height would be fixed according to the value in the row record.
+      ARow := ARow + FHeaderCount;  // convert row index to grid units
+      RowHeights[ARow] := CalcAutoRowHeight(ARow);
+    end;
+    Invalidate;
+  end;
 end;
 
 { Converts a spreadsheet font to a font used for painting (TCanvas.Font). }
@@ -880,7 +904,7 @@ begin
 end;
 
 
-{ Returns the height (in pixels) of the cell at ACol/ARow. }
+{ Returns the height (in pixels) of the cell at ACol/ARow (of the grid). }
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
   lCell: PCell;
@@ -1009,14 +1033,44 @@ begin
   Result := FHeaderCount <> 0;
 end;
 
+{ Calculates the index of the worksheet column that is displayed in the
+  given column of the grid. If the sheet headers are turned on, both numbers
+  differ by 1, otherwise they are equal. Saves an "if" in cases. }
 function TsCustomWorksheetGrid.GetWorksheetCol(AGridCol: Integer): cardinal;
 begin
   Result := AGridCol - FHeaderCount;
 end;
 
+{ Calculates the index of the worksheet row that is displayed in the
+  given row of the grid. If the sheet headers are turned on, both numbers
+  differ by 1, otherwise they are equal. Save an "if" in cases. }
 function TsCustomWorksheetGrid.GetWorksheetRow(AGridRow: Integer): Cardinal;
 begin
   Result := AGridRow - FHeaderCount;
+end;
+
+{ Column width or row heights have changed. Stores the new number in the
+  worksheet. }
+procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; index: Integer);
+var
+  w0: Integer;
+  h: Single;
+begin
+  if FWorksheet = nil then
+    exit;
+
+  Convert_sFont_to_Font(FWorkbook.GetFont(0), Canvas.Font);
+  if IsColumn then begin
+    // The grid's column width is in "pixels", the worksheet's column width is
+    // in "characters".
+    w0 := Canvas.TextWidth('0');
+    FWorksheet.WriteColWidth(GetWorksheetCol(Index), ColWidths[Index] div w0);
+  end else begin
+    // The grid's row heights are in "pixels", the worksheet's row heights are
+    // in millimeters.
+    h := (RowHeights[Index] - 2*constCellPadding) / Screen.PixelsPerInch * 25.4;
+    FWorksheet.WriteRowHeight(GetWorksheetRow(Index), h);
+  end;
 end;
 
 { Catches the ESC key during editing in order to restore the old cell text }
@@ -1034,8 +1088,8 @@ begin
   Setup;
 end;
 
-{ Is called when editing starts. Stores the old text just in case the user
-  presses ESC to cancel editing. }
+{ Is called when editing starts. Stores the old text just for the case that
+  the user presses ESC to cancel editing. }
 procedure TsCustomWorksheetGrid.SelectEditor;
 begin
   FOldEditText := GetCellText(Col, Row);
@@ -1134,6 +1188,7 @@ begin
   FWorksheet := AWorksheet;
   if FWorksheet <> nil then begin
     FWorksheet.OnChangeCell := @ChangedCellHandler;
+    FWorksheet.OnChangeFont := @ChangedFontHandler;
     ShowHeaders := (soShowHeaders in FWorksheet.Options);
     ShowGridLines := (soShowGridLines in FWorksheet.Options);
     if (soHasFrozenPanes in FWorksheet.Options) then begin
