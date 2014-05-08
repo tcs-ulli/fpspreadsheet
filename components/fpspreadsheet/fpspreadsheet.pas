@@ -143,8 +143,9 @@ type
     nfShortTimeAM, nfLongTimeAM, nfTimeInterval);
 
   {@@ Text rotation formatting. The text is rotated relative to the standard
-      orientation, which is from left to right horizontal: --->
-                                                           ABC
+      orientation, which is from left to right horizontal:
+       --->
+       ABC
 
       So 90 degrees clockwise means that the text will be:
        |  A
@@ -156,6 +157,10 @@ type
        ^  C
        |  B
        |  A
+
+      Due to limitations of the text mode the characters are not rotated here.
+      There is, however, also a "stacked" variant which looks exactly like
+      the former case.
   }
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
     rt90DegreeCounterClockwiseRotation, rtStacked);

@@ -78,6 +78,12 @@ type
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
       AOverwriteExisting: Boolean = true); overload;
     procedure SelectSheetByIndex(AIndex: Integer);
+
+    { Utilities related to Workbooks }
+    procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
+    procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
+    function FindNearestPaletteIndex(AColor: TColor): TsColor;
+
     { public properties }
     property Worksheet: TsWorksheet read FWorksheet;
     property Workbook: TsWorkbook read FWorkbook;
@@ -195,7 +201,7 @@ procedure Register;
 implementation
 
 uses
-  Types, LCLType, LCLIntf, Math, fpCanvas, fpsUtils;
+  Types, LCLType, LCLIntf, Math, fpCanvas, GraphUtil, fpsUtils;
 
 var
   FillPattern_BIFF2: TBitmap = nil;
@@ -341,6 +347,36 @@ end;
 procedure TsCustomWorksheetGrid.ChangedCellHandler(ASender: TObject; ARow, ACol:Cardinal);
 begin
   if FLockCount = 0 then Invalidate;
+end;
+
+{ Converts a spreadsheet font to a font used for painting (TCanvas.Font). }
+procedure TsCustomWorksheetGrid.Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
+begin
+  if Assigned(AFont) then begin
+    AFont.Name := sFont.FontName;
+    AFont.Size := round(sFont.Size);
+    AFont.Style := [];
+    if fssBold in sFont.Style then AFont.Style := AFont.Style + [fsBold];
+    if fssItalic in sFont.Style then AFont.Style := AFont.Style + [fsItalic];
+    if fssUnderline in sFont.Style then AFont.Style := AFont.Style + [fsUnderline];
+    if fssStrikeout in sFont.Style then AFont.Style := AFont.Style + [fsStrikeout];
+    AFont.Color := Workbook.GetPaletteColor(sFont.Color);
+  end;
+end;
+
+{ Converts a font used for painting (TCanvas.Font) to a spreadsheet font }
+procedure TsCustomWorksheetGrid.Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
+begin
+  if Assigned(AFont) and Assigned(sFont) then begin
+    sFont.FontName := AFont.Name;
+    sFont.Size := AFont.Size;
+    sFont.Style := [];
+    if fsBold in AFont.Style then Include(sFont.Style, fssBold);
+    if fsItalic in AFont.Style then Include(sFont.Style, fssItalic);
+    if fsUnderline in AFont.Style then Include(sFont.Style, fssUnderline);
+    if fsStrikeout in AFont.Style then Include(sFont.Style, fssStrikeout);
+    sFont.Color := FindNearestPaletteIndex(AFont.Color);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.DefaultDrawCell(aCol, aRow: Integer; var aRect: TRect;
@@ -764,6 +800,83 @@ begin
   if FLockCount = 0 then Invalidate;
 end;
 
+{ The "colors" used by the spreadsheet are indexes into the workbook's color
+  palette. If the user wants to set a color to a particular rgb value this is
+  not possible in general. The method FindNearestPaletteIndex finds the bast
+  matching color in the palette. }
+function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
+
+  procedure ColorToHSL(RGB: TColor; var H, S, L : double);
+  // Taken from https://code.google.com/p/thtmlviewer/source/browse/trunk/source/HSLUtils.pas?r=277
+  // The procedure in GraphUtils is crashing for clFuchsia.
+  var
+    R, G, B, D, Cmax, Cmin: double;
+  begin
+    R := GetRValue(RGB) / 255;
+    G := GetGValue(RGB) / 255;
+    B := GetBValue(RGB) / 255;
+    Cmax := Max(R, Max(G, B));
+    Cmin := Min(R, Min(G, B));
+
+    // calculate luminosity
+    L := (Cmax + Cmin) / 2;
+
+    if Cmax = Cmin then begin // it's grey
+      H := 0; // it's actually undefined
+      S := 0
+    end else begin
+      D := Cmax - Cmin;
+
+      // calculate Saturation
+      if L < 0.5 then
+        S := D / (Cmax + Cmin)
+      else
+        S := D / (2 - Cmax - Cmin);
+
+      // calculate Hue
+      if R = Cmax then
+        H := (G - B) / D
+      else
+      if G = Cmax then
+        H := 2 + (B - R) /D
+      else
+        H := 4 + (R - G) / D;
+
+      H := H / 6;
+      if H < 0 then
+        H := H + 1
+    end
+  end;
+
+  function ColorDistance(color1, color2: TColor): Double;
+  type
+    TRGBA = packed record R,G,B,A: Byte end;
+  var
+    H1,S1,L1, H2,S2,L2: Double;
+  begin
+    ColorToHSL(color1, H1, S1, L1);
+    ColorToHSL(color2, H2, S2, L2);
+    Result := sqr(H1-H2) + sqr(S1-S2) + sqr(L1-L2);
+  end;
+
+var
+  i: Integer;
+  dist, mindist: Double;
+begin
+  Result := 0;
+  if Workbook <> nil then begin
+    mindist := 1E308;
+    for i:=0 to Workbook.GetPaletteSize-1 do begin
+      dist := ColorDistance(AColor, TColor(Workbook.GetPaletteColor(i)));
+      if dist < mindist then begin
+        mindist := dist;
+        Result := i;
+      end;
+    end;
+  end;
+end;
+
+
 { Returns the height (in pixels) of the cell at ACol/ARow. }
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
@@ -1057,6 +1170,7 @@ procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
   LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AIndex));
 end;
+
 
 initialization
 
