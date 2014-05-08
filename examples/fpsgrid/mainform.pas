@@ -27,6 +27,10 @@ type
     AcFontStrikeout: TAction;
     AcFontUnderline: TAction;
     AcFont: TAction;
+    AcVAlignDefault: TAction;
+    AcVAlignTop: TAction;
+    AcVAlignCenter: TAction;
+    AcVAlignBottom: TAction;
     ActionList1: TActionList;
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
@@ -44,6 +48,13 @@ type
     MenuItem4: TMenuItem;
     MenuItem5: TMenuItem;
     MenuItem6: TMenuItem;
+    MenuItem7: TMenuItem;
+    MnuVertBottom: TMenuItem;
+    MnuVertCentered: TMenuItem;
+    MnuVertTop: TMenuItem;
+    MnuVertDefault: TMenuItem;
+    MnuVertAlignment: TMenuItem;
+    MnuFOnt: TMenuItem;
     MnuHorDefault: TMenuItem;
     MnuHorAlignment: TMenuItem;
     mnuFormat: TMenuItem;
@@ -67,6 +78,10 @@ type
     ToolButton12: TToolButton;
     ToolButton13: TToolButton;
     ToolButton14: TToolButton;
+    ToolButton15: TToolButton;
+    ToolButton16: TToolButton;
+    ToolButton17: TToolButton;
+    ToolButton18: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
@@ -79,6 +94,7 @@ type
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
+    procedure AcVertAlignmentExecute(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
     procedure acOpenExecute(Sender: TObject);
@@ -97,6 +113,7 @@ type
     procedure LoadFile(const AFileName: String);
     procedure UpdateHorAlignment(AValue: TsHorAlignment);
     procedure UpdateFont(AFont: TsFont);
+    procedure UpdateVertAlignment(AValue: TsVertAlignment);
   public
     { public declarations }
   end; 
@@ -111,6 +128,7 @@ uses
 
 const
   HORALIGN_TAG = 100;
+  VERTALIGN_TAG = 110;
 
 
 { TForm1 }
@@ -190,6 +208,23 @@ begin
     r := GetWorksheetRow(Row);
     if Worksheet <> nil then
       Worksheet.WriteHorAlignment(r, c, horalign);
+  end;
+end;
+
+procedure TForm1.AcVertAlignmentExecute(Sender: TObject);
+var
+  vertalign: TsVertAlignment;
+  c, r: Cardinal;
+begin
+  vertalign := TsVertAlignment(TAction(Sender).Tag - VERTALIGN_TAG);
+  if TAction(Sender).Checked then
+    vertalign := vaDefault;
+  UpdateVertAlignment(vertalign);
+  with sWorksheetGrid1 do begin
+    c := GetWorksheetCol(Col);
+    r := GetWorksheetRow(Row);
+    if Worksheet <> nil then
+      Worksheet.WriteVertAlignment(r, c, vertalign);
   end;
 end;
 
@@ -333,6 +368,7 @@ begin
   if cell = nil then
     exit;
   UpdateHorAlignment(cell^.HorAlignment);
+  UpdateVertAlignment(cell^.VertAlignment);
   lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
   UpdateFont(lFont);
 end;
@@ -358,6 +394,19 @@ begin
   AcFontUnderline.Checked := fssUnderline in AFont.Style;
   AcFontStrikeout.Checked := fssStrikeOut in AFont.Style;
 end;
+
+procedure TForm1.UpdateVertAlignment(AValue: TsVertAlignment);
+var
+  i: Integer;
+  ac: TAction;
+begin
+  for i:=0 to ActionList1.ActionCount-1 do begin
+    ac := TAction(ActionList1.Actions[i]);
+    if (ac.Tag >= VERTALIGN_TAG) and (ac.Tag < VERTALIGN_TAG+10) then
+      ac.Checked := ((ac.Tag - VERTALIGN_TAG) = ord(AValue));
+  end;
+end;
+
 
 initialization
   {$I mainform.lrs}
