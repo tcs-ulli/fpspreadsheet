@@ -27,6 +27,12 @@ type
     AcFontStrikeout: TAction;
     AcFontUnderline: TAction;
     AcFont: TAction;
+    AcBorderTop: TAction;
+    AcBorderBottom: TAction;
+    AcBorderBottomDbl: TAction;
+    AcBorderBottomMedium: TAction;
+    AcBorderLeft: TAction;
+    AcBorderRight: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
     AcVAlignCenter: TAction;
@@ -82,7 +88,14 @@ type
     ToolButton16: TToolButton;
     ToolButton17: TToolButton;
     ToolButton18: TToolButton;
+    ToolButton19: TToolButton;
     ToolButton2: TToolButton;
+    ToolButton20: TToolButton;
+    ToolButton21: TToolButton;
+    ToolButton22: TToolButton;
+    ToolButton23: TToolButton;
+    ToolButton24: TToolButton;
+    ToolButton25: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
@@ -90,6 +103,7 @@ type
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
+    procedure AcBorderExecute(Sender: TObject);
     procedure AcEditExecute(Sender: TObject);
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
@@ -111,6 +125,7 @@ type
   private
     { private declarations }
     procedure LoadFile(const AFileName: String);
+    procedure UpdateBorders(ACell: PCell);
     procedure UpdateHorAlignment(AValue: TsHorAlignment);
     procedure UpdateFont(AFont: TsFont);
     procedure UpdateVertAlignment(AValue: TsVertAlignment);
@@ -139,6 +154,33 @@ begin
     sWorksheetGrid1.Options := sWorksheetGrid1.Options + [goEditing]
   else
     sWorksheetGrid1.Options := sWorksheetGrid1.Options - [goEditing];
+end;
+
+procedure TForm1.AcBorderExecute(Sender: TObject);
+var
+  r,c: Cardinal;
+  borders: TsCellBorders;
+  lCell: PCell;
+begin
+  with sWorksheetGrid1 do begin
+    if Worksheet <> nil then begin
+      c := GetWorksheetCol(Col);
+      r := GetWorksheetRow(Row);
+      borders := [];
+      if AcBorderTop.Checked then borders := borders + [cbNorth];
+      if AcBorderLeft.Checked then borders := borders + [cbWest];
+      if AcBorderRight.Checked then borders := borders + [cbEast];
+      if AcBorderBottom.Checked or AcBorderBottomDbl.Checked or AcBorderBottomMedium.Checked then
+        borders := borders + [cbSouth];
+      Worksheet.WriteBorders(r, c, borders);
+      if AcBorderBottom.Checked then
+        Worksheet.WriteBorderLineStyle(r, c, cbSouth, lsThin);
+      if AcBorderBottomMedium.Checked then
+        Worksheet.WriteBorderLineStyle(r, c, cbSouth, lsMedium);
+      if AcBorderBottomDbl.Checked then
+        Worksheet.WriteBorderLineStyle(r, c, cbSouth, lsDouble);
+    end;
+  end;
 end;
 
 { Changes the font of the selected cell by calling a standard font dialog.
@@ -367,10 +409,24 @@ begin
   end;
   if cell = nil then
     exit;
+  UpdateBorders(cell);
   UpdateHorAlignment(cell^.HorAlignment);
   UpdateVertAlignment(cell^.VertAlignment);
   lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
   UpdateFont(lFont);
+end;
+
+procedure TForm1.UpdateBorders(ACell: PCell);
+begin
+  AcBorderTop.Checked := cbNorth in ACell^.Border;
+  AcBorderLeft.Checked := cbWest in ACell^.Border;
+  AcBorderRight.Checked := cbEast in ACell^.Border;
+  AcBorderBottom.Checked := (cbSouth in ACell^.BOrder) and
+   (ACell^.BorderStyles[cbSouth].LineStyle = lsThin);
+  AcBorderBottomDbl.Checked := (cbSouth in ACell^.Border) and
+    (ACell^.BorderStyles[cbSouth].LineStyle = lsDouble);
+  AcBorderBottomMedium.Checked := (cbSouth in ACell^.Border) and
+    (ACell^.BorderStyles[cbSouth].LineStyle = lsMedium);
 end;
 
 procedure TForm1.UpdateHorAlignment(AValue: TsHorAlignment);
