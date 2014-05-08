@@ -22,6 +22,10 @@ type
     AcHorCenterAlign: TAction;
     AcRightAlign: TAction;
     AcHorDefaultAlign: TAction;
+    AcFontBold: TAction;
+    AcFontItalic: TAction;
+    AcFontStrikeout: TAction;
+    AcFontUnderline: TAction;
     ActionList1: TActionList;
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
@@ -56,14 +60,20 @@ type
     FormatToolBar: TToolBar;
     ToolButton1: TToolButton;
     ToolButton10: TToolButton;
+    ToolButton11: TToolButton;
     ToolButton12: TToolButton;
     ToolButton13: TToolButton;
+    ToolButton14: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
     ToolButton6: TToolButton;
+    ToolButton7: TToolButton;
+    ToolButton8: TToolButton;
+    ToolButton9: TToolButton;
     procedure AcEditExecute(Sender: TObject);
+    procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
     procedure btnPopulateGridClick(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
@@ -119,6 +129,29 @@ begin
     sWorksheetGrid1.Options := sWorksheetGrid1.Options + [goEditing]
   else
     sWorksheetGrid1.Options := sWorksheetGrid1.Options - [goEditing];
+end;
+
+procedure TForm1.AcFontStyleExecute(Sender: TObject);
+var
+  style: TsFontstyles;
+  f: Integer;
+  r,c: Cardinal;
+  lFont: TsFont;
+begin
+  with sWorksheetGrid1 do begin
+    c := GetWorksheetCol(Col);
+    r := GetWorksheetRow(Row);
+    if Worksheet <> nil then begin
+      f := Worksheet.GetCell(r, c)^.FontIndex;
+      lFont := Workbook.GetFont(f);
+      style := lFont.Style;
+      if TAction(Sender).Checked then
+        Include(style, TsFontStyle(TAction(Sender).Tag))
+      else
+        Exclude(style, TsFontStyle(TAction(Sender).Tag));
+      Worksheet.WriteFontStyle(r, c, style);
+    end;
+  end;
 end;
 
 procedure TForm1.AcHorAlignmentExecute(Sender: TObject);
@@ -298,6 +331,10 @@ procedure TForm1.UpdateFont(AFont: TsFont);
 begin
   FontCombobox.ItemIndex := FontCombobox.Items.IndexOf(AFont.FontName);
   FontsizeCombobox.ItemIndex := FontSizeCombobox.Items.IndexOf(IntToStr(Round(AFont.Size)));
+  AcFontBold.Checked := fssBold in AFont.Style;
+  AcFontItalic.Checked := fssItalic in AFont.Style;
+  AcFontUnderline.Checked := fssUnderline in AFont.Style;
+  AcFontStrikeout.Checked := fssStrikeOut in AFont.Style;
 end;
 
 initialization
