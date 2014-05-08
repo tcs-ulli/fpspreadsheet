@@ -5,6 +5,12 @@ Grid component which can load and write data from / to FPSpreadsheet documents
 
 AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
 }
+
+{ To do:
+ - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
+   FindNearestPaletteIndex.
+}
+
 unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
@@ -42,6 +48,7 @@ type
     procedure SetFrozenRows(AValue: Integer);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
+
   protected
     { Protected declarations }
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
@@ -64,6 +71,7 @@ type
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
+
   public
     { public methods }
     constructor Create(AOwner: TComponent); override;
@@ -143,6 +151,7 @@ type
     property PopupMenu;
     property RowCount;
     property ScrollBars;
+    property SelectedColor default $00E8E8E8;
     property ShowHint;
     property TabOrder;
     property TabStop;
@@ -290,6 +299,22 @@ begin
   end;
 end;
 
+function DimColorByPercent(c: TColor; APercentage: Integer) : TColor;
+type
+  TRGBA = record R,G,B,A: Byte end;
+begin
+  c := ColorToRGB(c);
+  Result := rgb(Integer(TRGBA(c).R) * (100 - APercentage) div 100,
+                Integer(TRGBA(c).G) * (100 - APercentage) div 100,
+                Integer(TRGBA(c).B) * (100 - APercentage) div 100
+  );
+  {
+  Result := rgb(Max(0, Min(255, TRGBA(c1).R + TRGBA(c2).R))),
+                Max(0, Min(255, TRGBA(c1).G + TRGBA(c2).G)),
+                Max(0, Min(255, TRGBA(c1).B + TRGBA(c2).B)));
+                }
+end;
+
 procedure Register;
 begin
   RegisterComponents('Additional',[TsWorksheetGrid]);
@@ -302,6 +327,7 @@ constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHeaderCount := 1;
+  SelectedColor := $00E8E8E8;
 end;
 
 destructor TsCustomWorksheetGrid.Destroy;
@@ -447,7 +473,9 @@ var
   r, c: Integer;
   fnt: TsFont;
   style: TFontStyles;
+  isSelected: Boolean;
 begin
+  GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
   Canvas.Brush.Bitmap := nil;
   ts := Canvas.TextStyle;
@@ -503,6 +531,10 @@ begin
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;
+
+  if IsSelected then
+    Canvas.Brush.Color := DimColorByPercent(Canvas.Brush.Color, 15);
+
   Canvas.TextStyle := ts;
 
   inherited DoPrepareCanvas(ACol, ARow, AState);
@@ -835,7 +867,7 @@ function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
 
   procedure ColorToHSL(RGB: TColor; var H, S, L : double);
   // Taken from https://code.google.com/p/thtmlviewer/source/browse/trunk/source/HSLUtils.pas?r=277
-  // The procedure in GraphUtils is crashing for clFuchsia.
+  // The procedure in GraphUtils is crashing for some colors in Laz < 1.3
   var
     R, G, B, D, Cmax, Cmin: double;
   begin
@@ -885,6 +917,20 @@ function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
     ColorToHSL(color2, H2, S2, L2);
     Result := sqr(H1-H2) + sqr(S1-S2) + sqr(L1-L2);
   end;
+
+  (*
+  // will be activated when Lazarus 1.4 is available. (RgbToHLS bug in Laz < 1.3)
+
+  function ColorDistance(color1, color2: TColor): Integer;
+  type
+    TRGBA = packed record R, G, B, A: Byte end;
+  var
+    H1,L1,S1, H2,L2,S2: Byte;
+  begin
+    ColorToHLS(color1, H1,L1,S1);
+    ColorToHLS(color2, H2,L2,S2);
+    result := sqr(Integer(H1)-H2) + sqr(Integer(L1)-L2) + sqr(Integer(S1)-S2);
+  end;            *)
 
 var
   i: Integer;
