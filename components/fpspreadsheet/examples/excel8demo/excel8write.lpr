@@ -76,6 +76,11 @@ begin
   MyWorksheet.WriteBorderStyle(5, 5, cbSouth, lsDotted, scRed);
   MyWorksheet.WriteBorderLineStyle(5, 5, cbNorth, lsThick);
 
+  // F7, top border only, but different color
+  MyWorksheet.WriteBorderColor(6, 5, cbNorth, scGreen);
+  MyWorksheet.WriteUTF8Text(6, 5, 'top border green or red?');
+  // Excel shows it to be red --> the upper border wins
+
   // H6 empty cell, all medium borders
   MyWorksheet.WriteBorders(5, 7, [cbNorth, cbEast, cbSouth, cbWest]);
   MyWorksheet.WriteBorderColor(5, 7, cbSouth, scBlack);

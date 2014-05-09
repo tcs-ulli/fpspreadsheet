@@ -48,6 +48,7 @@ const
   { RECORD IDs which did not change across versions 5-8 }
   INT_EXCEL_ID_BOUNDSHEET = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
   INT_EXCEL_ID_MULRK      = $00BD;    // does not exist before BIFF5
+  INT_EXCEL_ID_MULBLANK   = $00BE;    // does not exist before BIFF5
   INT_EXCEL_ID_XF         = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
   INT_EXCEL_ID_RSTRING    = $00D6;    // does not exist before BIFF5
   INT_EXCEL_ID_BOF        = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
@@ -394,6 +395,8 @@ type
     procedure ReadDateMode(AStream: TStream);
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
+    // Read multiple blank cells
+    procedure ReadMulBlank(AStream: TStream);
     // Read floating point number
     procedure ReadNumber(AStream: TStream); override;
     // Read palette
@@ -849,6 +852,31 @@ end;
 procedure TsSpreadBIFFReader.ReadFormat(AStream: TStream);
 begin
   // to be overridden
+end;
+
+// Reads multiple blank cell records
+procedure TsSpreadBIFFReader.ReadMulBlank(AStream: TStream);
+var
+  ARow, fc, lc, XF: Word;
+  pending: integer;
+begin
+  ARow := WordLEtoN(AStream.ReadWord);
+  fc := WordLEtoN(AStream.ReadWord);
+  pending := RecordSize - Sizeof(fc) - Sizeof(ARow);
+  while pending > SizeOf(XF) do begin
+    XF := AStream.ReadWord; //XF record (not used)
+    FWorksheet.WriteBlank(ARow, fc);
+    ApplyCellFormatting(ARow, fc, XF);
+    inc(fc);
+    dec(pending, SizeOf(XF));
+  end;
+  if pending = 2 then begin
+    //Just for completeness
+    lc := WordLEtoN(AStream.ReadWord);
+    if lc + 1 <> fc then begin
+      //Stream error... bypass by now
+    end;
+  end;
 end;
 
 // Reads a floating point number and seeks the number format

@@ -1266,6 +1266,7 @@ begin
     case RecordType of
 
     INT_EXCEL_ID_BLANK   : ReadBlank(AStream);
+    INT_EXCEL_ID_MULBLANK: ReadMulBlank(AStream);
     INT_EXCEL_ID_NUMBER  : ReadNumber(AStream);
     INT_EXCEL_ID_LABEL   : ReadLabel(AStream);
     INT_EXCEL_ID_RSTRING : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
