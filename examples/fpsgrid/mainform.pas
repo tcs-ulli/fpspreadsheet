@@ -361,7 +361,7 @@ var
   i: Integer;
 begin
   // Load file
-  sWorksheetGrid1.LoadFromSpreadsheetFile(AFileName);
+  sWorksheetGrid1.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
 
   // Update user interface
   Caption := Format('fpsGrid - %s (%s)', [
@@ -407,9 +407,9 @@ begin
     r := GetWorksheetRow(ARow);
     cell := Worksheet.FindCell(r, c);
   end;
+  UpdateBorders(cell);
   if cell = nil then
     exit;
-  UpdateBorders(cell);
   UpdateHorAlignment(cell^.HorAlignment);
   UpdateVertAlignment(cell^.VertAlignment);
   lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
@@ -418,14 +418,14 @@ end;
 
 procedure TForm1.UpdateBorders(ACell: PCell);
 begin
-  AcBorderTop.Checked := cbNorth in ACell^.Border;
-  AcBorderLeft.Checked := cbWest in ACell^.Border;
-  AcBorderRight.Checked := cbEast in ACell^.Border;
-  AcBorderBottom.Checked := (cbSouth in ACell^.BOrder) and
+  AcBorderTop.Checked := (ACell <> nil) and (cbNorth in ACell^.Border);
+  AcBorderLeft.Checked := (ACell <> nil) and (cbWest in ACell^.Border);
+  AcBorderRight.Checked := (ACell <> nil) and (cbEast in ACell^.Border);
+  AcBorderBottom.Checked := (ACell <> nil) and (cbSouth in ACell^.Border) and
    (ACell^.BorderStyles[cbSouth].LineStyle = lsThin);
-  AcBorderBottomDbl.Checked := (cbSouth in ACell^.Border) and
+  AcBorderBottomDbl.Checked := (ACell <> nil) and (cbSouth in ACell^.Border) and
     (ACell^.BorderStyles[cbSouth].LineStyle = lsDouble);
-  AcBorderBottomMedium.Checked := (cbSouth in ACell^.Border) and
+  AcBorderBottomMedium.Checked := (ACell <> nil) and (cbSouth in ACell^.Border) and
     (ACell^.BorderStyles[cbSouth].LineStyle = lsMedium);
 end;
 

@@ -44,6 +44,8 @@ type
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
+    function IsSelection(ACol, ARow: Integer; ABorder: TsCellBorder): Boolean;
+    function IsSelectionNeighbor(ACol, ARow: Integer; ABorder: TsCellBorder): Boolean;
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetShowGridLines(AValue: Boolean);
@@ -53,9 +55,15 @@ type
     { Protected declarations }
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
-    procedure DrawAllRows; override;
+//    procedure DrawAllRows; override;
+    procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect);
+    procedure DrawCellGrid(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
+    procedure DrawSelectionBorders(ACol, ARow: Integer; ARect: TRect);
+//    procedure DrawSelectionBorders(ACol, ARow: Integer; ARect: TRect);
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
+    function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
+      var ABorderStyle: TsCellBorderStyle): Boolean;
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
@@ -63,6 +71,7 @@ type
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure MoveSelection; override;
     procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
@@ -151,7 +160,6 @@ type
     property PopupMenu;
     property RowCount;
     property ScrollBars;
-    property SelectedColor default $00E8E8E8;
     property ShowHint;
     property TabOrder;
     property TabStop;
@@ -299,20 +307,21 @@ begin
   end;
 end;
 
-function DimColorByPercent(c: TColor; APercentage: Integer) : TColor;
+function CalcSelectionColor(c: TColor; ADelta: Byte) : TColor;
 type
   TRGBA = record R,G,B,A: Byte end;
 begin
   c := ColorToRGB(c);
-  Result := rgb(Integer(TRGBA(c).R) * (100 - APercentage) div 100,
-                Integer(TRGBA(c).G) * (100 - APercentage) div 100,
-                Integer(TRGBA(c).B) * (100 - APercentage) div 100
-  );
-  {
-  Result := rgb(Max(0, Min(255, TRGBA(c1).R + TRGBA(c2).R))),
-                Max(0, Min(255, TRGBA(c1).G + TRGBA(c2).G)),
-                Max(0, Min(255, TRGBA(c1).B + TRGBA(c2).B)));
-                }
+  TRGBA(Result).A := 0;
+  if TRGBA(c).R < 128
+    then TRGBA(Result).R := TRGBA(c).R + ADelta
+    else TRGBA(Result).R := TRGBA(c).R - ADelta;
+  if TRGBA(c).G < 128
+    then TRGBA(Result).G := TRGBA(c).G + ADelta
+    else TRGBA(Result).G := TRGBA(c).G - ADelta;
+  if TRGBA(c).B < 128
+    then TRGBA(Result).B := TRGBA(c).B + ADelta
+    else TRGBA(Result).B := TRGBA(c).B - ADelta;
 end;
 
 procedure Register;
@@ -327,7 +336,6 @@ constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHeaderCount := 1;
-  SelectedColor := $00E8E8E8;
 end;
 
 destructor TsCustomWorksheetGrid.Destroy;
@@ -478,6 +486,7 @@ begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
   Canvas.Brush.Bitmap := nil;
+  Canvas.Brush.Color := Color;
   ts := Canvas.TextStyle;
   if ShowHeaders then begin
     // Formatting of row and column headers
@@ -533,115 +542,276 @@ begin
   end;
 
   if IsSelected then
-    Canvas.Brush.Color := DimColorByPercent(Canvas.Brush.Color, 15);
+    Canvas.Brush.Color := CalcSelectionColor(Canvas.Brush.Color, 16);
 
   Canvas.TextStyle := ts;
 
   inherited DoPrepareCanvas(ACol, ARow, AState);
 end;
 
-{ Paints the cell borders. This cannot be done in DrawCellGrid because the
-  lower border line is overwritten when painting the next row. }
-procedure TsCustomWorksheetGrid.DrawAllRows;
-var
-  cell: PCell;
-  c, r, tmp: Integer;
-  rect, cliprect: TRect;
-  rgn: HRGN;
+{ Draws the border lines around a given cell. Note that when this procedure is
+  called the output is clipped by the cell rectangle, but thick and double
+  border styles extend into the neighbor cell. Therefore, these border lines
+  are drawn in parts. }
+procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer; ARect: TRect);
 
-  procedure DrawBorderLine(ACell: PCell; ARect: TRect; ABorder: TsCellBorder;
-    ALineStyle: TsLineStyle);
+  procedure DrawBorderLine(ACoord: Integer; ARect: TRect; IsHor: Boolean;
+    ABorderStyle: TsCellBorderStyle);
   const
     // TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble);
-    PEN_WIDTHS: array[TsLineStyle] of Byte =
-      (1, 2, 1, 1, 3, 1);
     PEN_STYLES: array[TsLineStyle] of TPenStyle =
       (psSolid, psSolid, psDash, psDot, psSolid, psSolid);
-//      (psSolid, psSolid, psPattern, psPattern, psSolid, psSolid);
+  {
     PEN_PATTERNS: array[TsLineStyle] of TPenPattern =
-      ($FFFFFFFF, $FFFFFFFF, $07070707, $AAAAAAAA, $FFFFFFFF, $FFFFFFFF);
-  var
-    w: Integer;
+      ($FFFFFFFF, $FFFFFFFF, $07070707, $AAAAAAAA, $FFFFFFFF, $FFFFFFFF); }
   begin
-    if ALineStyle = lsDouble then
-      case ABorder of
-        cbEast, cbWest:
-          begin
-            InflateRect(ARect, -1, 0);
-            DrawBorderLine(ACell, ARect, ABorder, lsThin);
-            InflateRect(ARect, +2, 0);
-            DrawBorderLine(ACell, ARect, ABorder, lsThin);
-          end;
-        cbNorth, cbSouth:
-          begin
-            InflateRect(ARect, 0, -1);
-            DrawBorderLine(ACell, ARect, ABorder, lsThin);
-            InflateRect(ARect, 0, +2);
-            DrawBorderLine(ACell, ARect, ABorder, lsThin)
-          end;
-      end
-    else begin
-      w := PEN_WIDTHS[ACell^.BorderStyles[ABorder].LineStyle] div 2;
-      Canvas.Pen.Style := PEN_STYLES[ACell^.BorderStyles[ABorder].LineStyle];
-      Canvas.Pen.Width := PEN_WIDTHS[ACell^.BorderStyles[ABorder].LineStyle];
-      Canvas.Pen.Color := FWorkBook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
-      //Canvas.Pen.Pattern := PEN_PATTERNS[ACell^.BorderStyles[ABorder].LineStyle];
-      //Canvas.Pen.EndCap := pecSquare;
-
-      case ABorder of
-        cbEast : Canvas.Line(ARect.Right-1, ARect.Top, ARect.Right-1, ARect.Bottom-w);
-        cbSouth: Canvas.Line(ARect.Left-1, ARect.Bottom-1, ARect.Right-w, ARect.Bottom-1);
-        cbWest : Canvas.Line(ARect.Left-1, ARect.Top, ARect.Left-1, ARect.Bottom-w);
-        cbNorth: Canvas.Line(ARect.Left-1, ARect.Top-1, ARect.Right-w, ARect.Top-1);
-      end;
+    Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
+    Canvas.Pen.Width := 1;
+    Canvas.Pen.Color := FWorkbook.GetPaletteColor(ABorderStyle.Color);
+    if IsHor then begin
+      if ABorderStyle.LineStyle <> lsDouble then
+        Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord);
+      if (ACoord = ARect.Top-1) and (ABorderStyle.LineStyle in [lsDouble, lsThick]) then
+        Canvas.Line(ARect.Left, ACoord+1, ARect.Right, ACoord+1);
+      if (ACoord = ARect.Bottom-1) and (ABorderStyle.LineStyle in [lsDouble, lsMedium, lsThick]) then
+        Canvas.Line(ARect.Left, ACoord-1, ARect.Right, ACoord-1);
+    end else begin
+      if ABorderStyle.LineStyle <> lsDouble then
+        Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);
+      if (ACoord = ARect.Left-1) and (ABorderStyle.LineStyle in [lsDouble, lsThick]) then
+        Canvas.Line(ACoord+1, ARect.Top, ACoord+1, ARect.Bottom);
+      if (ACoord = ARect.Right-1) and (ABorderStyle.LineStyle in [lsDouble, lsMedium, lsThick]) then
+        Canvas.Line(ACoord-1, ARect.Top, ACoord-1, ARect.Bottom);
     end;
   end;
+
+var
+  bs: TsCellBorderStyle;
+begin
+  if Assigned(FWorksheet) then begin
+    // Left border
+    if GetBorderStyle(ACol, ARow, -1, 0, bs) then
+      DrawBorderLine(ARect.Left-1, ARect, false, bs);
+    // Right border
+    if GetBorderStyle(ACol, ARow, +1, 0, bs) then
+      DrawBorderLine(ARect.Right-1, ARect, false, bs);
+    // Top border
+    if GetBorderstyle(ACol, ARow, 0, -1, bs) then
+      DrawBorderLine(ARect.Top-1, ARect, true, bs);
+    // Bottom border
+    if GetBorderStyle(ACol, ARow, 0, +1, bs) then
+      DrawBorderLine(ARect.Bottom-1, ARect, true, bs);
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.DrawCellGrid(ACol, ARow: Integer; ARect: TRect;
+  AState: TGridDrawState);
+const
+  // TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble);
+  PEN_WIDTHS: array[TsLineStyle] of Byte =
+    (1, 2, 1, 1, 3, 1);
+  PEN_STYLES: array[TsLineStyle] of TPenStyle =
+    (psSolid, psSolid, psDash, psDot, psSolid, psSolid);
+//      (psSolid, psSolid, psPattern, psPattern, psSolid, psSolid);
+  PEN_PATTERNS: array[TsLineStyle] of TPenPattern =
+    ($FFFFFFFF, $FFFFFFFF, $07070707, $AAAAAAAA, $FFFFFFFF, $FFFFFFFF);
+
+  procedure DrawHorBorderLine(x1, x2, y: Integer; ABorderStyle: TsCellBorderStyle;
+    IsAtBottom: Boolean);
+  begin
+    Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
+    Canvas.Pen.Width := 1;
+    Canvas.Pen.Color := FWorkBook.GetPaletteColor(ABorderStyle.Color);
+    case ABorderStyle.LineStyle of
+      lsThin, lsDashed, lsDotted:
+        Canvas.Line(x1, y, x2, y);
+      lsMedium:
+        begin
+          Canvas.Line(x1, y, x2, y);
+          if IsAtBottom then Canvas.Line(x1, y-1, x2, y-1);
+        end;
+      lsThick:
+        begin
+          Canvas.Line(x1, y, x2, y);
+          if IsAtBottom
+            then Canvas.Line(x1, y-1, x2, y-1)
+            else Canvas.Line(x1, y+1, x2, y+1);
+        end;
+      lsDouble:
+        if IsAtBottom
+          then Canvas.Line(x1, y-1, x2, y-1)
+          else Canvas.Line(x1, y+1, x2, y+1);
+    end;
+  end;
+
+  procedure DrawVertBorderLine(x, y1, y2: Integer; ABorderStyle: TsCellBorderStyle;
+    IsAtRight: Boolean);
+  begin
+    Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
+    Canvas.Pen.Width := 1;
+    Canvas.Pen.Color := FWorkBook.GetPaletteColor(ABorderStyle.Color);
+    case ABorderStyle.LineStyle of
+      lsThin, lsDashed, lsDotted:
+        Canvas.Line(x, y1, x, y2);
+      lsMedium:
+        begin
+          Canvas.Line(x, y1, x, y2);
+          if IsAtRight then Canvas.Line(x-1, y1, x-1, y2);
+        end;
+      lsThick:
+        begin
+          Canvas.Line(x, y1, x, y2);
+          if IsAtRight
+            then Canvas.Line(x-1, y1, x-1, y2)
+            else Canvas.Line(x+1, y1, x+1, y2);
+        end;
+      lsDouble:
+        if IsAtRight
+          then Canvas.Line(x-1, y1, x-1, y2)
+          else Canvas.Line(x+2, y1, x+2, y2);
+    end;
+  end;
+
+var
+  dv,dh: Boolean;
+  isSelH, isSelV: Boolean;
+  isSelNeighbor: Boolean;
+//  cell: PCell;
+  c, r: Cardinal;
 
 begin
-  inherited;
-  if FWorksheet = nil then exit;
 
-  Canvas.SaveHandleState;
-  try
-    // Avoid painting into the fixed cells
-    cliprect := ClientRect;
-    if FixedCols > 0 then
-      ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
-    if FixedRows > 0 then
-      ColRowToOffset(False, True, FixedRows-1, tmp, cliprect.Top);
-    rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
-    SelectClipRgn(Canvas.Handle, Rgn);
+  with Canvas, ARect do begin
 
-    cell := FWorksheet.GetFirstCell;
-    while cell <> nil do begin
-      if (uffBorder in cell^.UsedFormattingFields) then begin
-        c := cell^.Col + FHeaderCount;
-        r := cell^.Row + FHeaderCount;
-        rect := CellRect(c, r);
-        if (cbNorth in cell^.Border) then
-          DrawBorderLine(cell, rect, cbNorth, cell^.BorderStyles[cbNorth].LineStyle);
-        if cbEast in cell^.Border then
-          DrawBorderLine(cell, rect, cbEast, cell^.BorderStyles[cbEast].LineStyle);
-        if cbSouth in cell^.Border then
-          DrawBorderLine(cell, rect, cbSouth, cell^.BorderStyles[cbSouth].LineStyle);
-        if cbWest in cell^.Border then
-          DrawBorderLine(cell, rect, cbWest, cell^.BorderStyles[cbWest].LineStyle);
+    // fixed cells
+    if (gdFixed in aState) then begin
+      Dv := goFixedVertLine in Options;
+      Dh := goFixedHorzLine in Options;
+      Pen.Style := psSolid;
+      if GridLineWidth > 0 then
+        Pen.Width := 1
+      else
+        Pen.Width := 0;
+      if not Flat then begin
+        if TitleStyle = tsNative then
+          exit
+        else
+        if GridLineWidth > 0 then begin
+          if gdPushed in aState then
+            Pen.Color := cl3DShadow
+          else
+            Pen.Color := cl3DHilight;
+          if UseRightToLeftAlignment then begin
+            //the light still on the left but need to new x
+            MoveTo(Right, Top);
+            LineTo(Left + 1, Top);
+            LineTo(Left + 1, Bottom);
+          end else begin
+            MoveTo(Right - 1, Top);
+            LineTo(Left, Top);
+            LineTo(Left, Bottom);
+          end;
+          if TitleStyle=tsStandard then begin
+            // more contrast
+            if gdPushed in aState then
+              Pen.Color := cl3DHilight
+            else
+              Pen.Color := cl3DShadow;
+            if UseRightToLeftAlignment then begin
+              MoveTo(Left+2, Bottom-2);
+              LineTo(Right, Bottom-2);
+              LineTo(Right, Top);
+            end else begin
+              MoveTo(Left+1, Bottom-2);
+              LineTo(Right-2, Bottom-2);
+              LineTo(Right-2, Top);
+            end;
+          end;
+        end;
       end;
-      cell := FWorksheet.GetNextCell;
+      Pen.Color := cl3DDKShadow;
+    end else begin
+      Dv := (goVertLine in Options);
+      Dh := (goHorzLine in Options);
+      Pen.Style := GridLineStyle;
+      Pen.Color := GridLineColor;
+      Pen.Width := GridLineWidth;
     end;
-    DeleteObject(rgn);
-  finally
-    Canvas.RestoreHandleState;
-  end;
+
+    // non-fixed cells
+    if (GridLineWidth > 0) then begin
+      if Dh then begin
+        MoveTo(Left, Bottom - 1);
+        LineTo(Right, Bottom - 1);
+      end;
+      if Dv then begin
+        if UseRightToLeftAlignment then begin
+          MoveTo(Left, Top);
+          LineTo(Left, Bottom);
+        end else begin
+          MoveTo(Right - 1, Top);
+          LineTo(Right - 1, Bottom);
+        end;
+      end;
+    end;
+
+    // Draw cell border
+    DrawCellBorders(ACol, ARow, ARect);
+
+    // Draw Selection
+    DrawSelectionBorders(ACol, ARow, ARect);
+  end; // with canvas,rect
 end;
 
 procedure TsCustomWorksheetGrid.DrawFocusRect(aCol, aRow: Integer; ARect: TRect);
 begin
-  Canvas.Pen.Color := clBlack;
-  Canvas.Pen.Width := 3;
-  Canvas.Brush.Style := bsClear;
-  InflateRect(ARect, -1, -1);
-  Canvas.Rectangle(ARect);
+  // We don't want the red dashed focus rectangle here, but the thick Excel-like
+  // border line. Since this frame extends into neighboring cells painting of
+  // focus rect has been added to the DrawCellGrid method.
+end;
+
+{ Draws the selection rectangle.
+  Note that painting is clipped at the edges of ARect. Since the selection
+  rectangle is 3 pixels wide and extends into the neighboring cell this
+  method is called from several cells to complete. }
+procedure TsCustomWorksheetGrid.DrawSelectionBorders(ACol, ARow: Integer;
+  ARect: TRect);
+begin
+  with Canvas, ARect do begin
+    Pen.Color := clBlack;
+    Pen.Width := 1;
+    Pen.Style := psSolid;
+
+    if IsSelection(ACol, ARow, cbNorth) then begin
+      Line(Left, Top, Right, Top);
+      Line(Left, Top+1, Right, Top+1);
+      if ARow = TopRow then
+        Line(Left, Top+2, Right, Top+2);
+    end;
+    if IsSelection(ACol, ARow, cbSouth) then begin
+      Line(Left, Bottom-1, Right, Bottom-1);
+      Line(Left, Bottom-2, Right, Bottom-2);
+    end;
+    if IsSelection(ACol, ARow, cbWest) then begin
+      Line(Left, Top, Left, Bottom);
+      Line(Left+1, Top, Left+1, Bottom);
+      if ACol = LeftCol then
+        Line(Left+2, Top, Left+2, Bottom);
+    end;
+    if IsSelection(ACol, ARow, cbEast) then begin
+      Line(Right-1, Top, Right-1, Bottom);
+      Line(Right-2, Top, Right-2, Bottom);
+    end;
+
+    if IsSelectionNeighbor(ACol, ARow, cbEast) then
+      Line(Right-1, Top, Right-1, Bottom);
+    if IsSelectionNeighbor(ACol, ARow, cbWest) then
+      Line(Left, Top, Left, Bottom);
+    if IsSelectionNeighbor(ACol, ARow, cbNorth) then
+      Line(Left, Top, Right, Top);
+    if IsSelectionNeighbor(ACol, ARow, cbSouth) then
+      Line(Left, Bottom-1, Right, Bottom-1);
+  end;
 end;
 
 { Draws the cell text. Calls "GetCellText" to determine the text in the cell.
@@ -833,7 +1003,7 @@ begin
       else
       if TryStrToDateTime(FEditText, cell^.DateTimeValue) then begin
         cell^.ContentType := cctDateTime;
-        if cell^.DateTimeValue < 1.0 then begin
+        if cell^.DateTimeValue < 1.0 then begin      // this is a TTime
           if not (cell^.NumberFormat in [nfShortDateTime, nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM])
             then cell^.NumberFormat := nfLongTime;
         end else
@@ -1057,6 +1227,62 @@ begin
   if Assigned(OnGetEditText) then OnGetEditText(Self, aCol, aRow, result);
 end;
 
+{ Determines the style of the border between a cell and its neighbor given by
+  ADeltaCol and ADeltaRow (one of them must be 0, the other one can only be +/-1).
+  ACol and ARow are in grid units. }
+function TsCustomWorksheetGrid.GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
+  var ABorderStyle: TsCellBorderStyle): Boolean;
+var
+  cell, neighborcell: PCell;
+  border, neighborborder: TsCellBorder;
+  r, c: Cardinal;
+begin
+  Result := true;
+  if (ADeltaCol = -1) and (ADeltaRow = 0) then begin
+    border := cbWest;
+    neighborborder := cbEast;
+  end else
+  if (ADeltaCol = +1) and (ADeltaRow = 0) then begin
+    border := cbEast;
+    neighborborder := cbWest;
+  end else
+  if (ADeltaCol = 0) and (ADeltaRow = -1) then begin
+    border := cbNorth;
+    neighborborder := cbSouth;
+  end else
+  if (ADeltaCol = 0) and (ADeltaRow = +1) then begin
+    border := cbSouth;
+    neighborBorder := cbNorth;
+  end else
+    raise Exception.Create('TsCustomWorksheetGrid: incorrect col/row for GetBorderStyle.');
+  r := GetWorksheetRow(ARow);
+  c := GetWorksheetCol(ACol);
+  cell := FWorksheet.FindCell(r, c);
+  neighborcell := FWorksheet.FindCell(r+ADeltaRow, c+ADeltaCol);
+  // Only cell has border, but neighbor has not
+  if ((cell <> nil) and (border in cell^.Border)) and
+     ((neighborcell = nil) or (neighborborder in neighborcell^.Border))
+  then
+    ABorderStyle := cell^.BorderStyles[border]
+  else
+  // Only neighbor has border, cell has not
+  if ((cell = nil) or not (border in cell^.Border)) and
+     (neighborcell <> nil) and (neighborborder in neighborcell^.Border)
+  then
+    ABorderStyle := neighborcell^.BorderStyles[neighborborder]
+  else
+  // Both cells have shared border -> use top or left border
+  if (cell <> nil) and (border in cell^.Border) and
+     (neighborcell <> nil) and (neighborborder in neighborcell^.Border)
+  then begin
+    if (border in [cbNorth, cbWest]) then
+      ABorderStyle := neighborcell^.BorderStyles[neighborborder]
+    else
+      ABorderStyle := cell^.BorderStyles[border];
+  end else
+    Result := false;
+end;
+
 { Returns a list of worksheets contained in the file. Useful for assigning to
   user controls like TabControl, Combobox etc. in order to select a sheet. }
 procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
@@ -1114,8 +1340,51 @@ begin
   end else begin
     // The grid's row heights are in "pixels", the worksheet's row heights are
     // in millimeters.
-    h := (RowHeights[Index] - 2*constCellPadding) / Screen.PixelsPerInch * 25.4;
+    h := (RowHeights[Index] - 4) / Screen.PixelsPerInch * 25.4;
     FWorksheet.WriteRowHeight(GetWorksheetRow(Index), h);
+  end;
+end;
+
+{ Determines if the current cell is at the given edge of the selection. }
+function TsCustomWorksheetGrid.IsSelection(ACol, ARow: Integer;
+  ABorder: TsCellBorder): Boolean;
+var
+  selRect: TGridRect;
+begin
+  selRect := Selection;
+  case ABorder of
+    cbNorth:
+      Result := InRange(ACol, selRect.Left, selRect.Right) and (ARow = selRect.Top);
+    cbSouth:
+      Result := InRange(ACol, selRect.Left, selRect.Right) and (ARow = selRect.Bottom);
+    cbEast:
+      Result := InRange(ARow, selRect.Top, selRect.Bottom) and (ACol = selRect.Right);
+    cbWest:
+      Result := InRange(ARow, selRect.Top, selRect.Bottom) and (ACol = selRect.Left);
+  end;
+end;
+
+{ Determines if the neighbor cell is selected (for drawing of the rest of the
+  thick selection border that extends into the current cell):
+  ABorder = cbNorth: look for the top neighbor
+  ABorder = cbSouth: look for the bottom neighbor
+  ABorder = cbLeft: look for the left neighbor
+  ABorder = cbRight: look for the right neighbor }
+function TsCustomWorksheetGrid.IsSelectionNeighbor(ACol, ARow: Integer;
+  ABorder: TsCellBorder): Boolean;
+var
+  selRect: TGridRect;
+begin
+  selRect := Selection;
+  case ABorder of
+    cbNorth :
+      Result := InRange(ACol, selRect.Left, selRect.Right) and (ARow - 1 = selRect.Bottom);
+    cbSouth :
+      Result := InRange(ACol, selRect.Left, selRect.Right) and (ARow + 1 = selRect.Top);
+    cbEast :
+      Result := InRange(ARow, selRect.Top, selRect.Bottom) and (ACol + 1 = selRect.Left);
+    cbWest :
+      Result := InRange(ARow, selRect.Top, selRect.Bottom) and (ACol - 1 = selRect.Right);
   end;
 end;
 
@@ -1132,6 +1401,14 @@ procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
   Setup;
+end;
+
+{ Repaints after moving selection to avoid spurious rests of the old thick
+  selection border. }
+procedure TsCustomWorksheetGrid.MoveSelection;
+begin
+  Refresh;
+  Inherited;
 end;
 
 { Is called when editing starts. Stores the old text just for the case that
@@ -1172,7 +1449,7 @@ begin
   Setup;
 end;
 
-{ fetches the text that is currently in the editor. It is not yet transferred
+{ Fetches the text that is currently in the editor. It is not yet transferred
   to the Worksheet because input is checked only at the end of editing. }
 procedure TsCustomWorksheetGrid.SetEditText(ACol, ARow: Longint; const AValue: string);
 begin
