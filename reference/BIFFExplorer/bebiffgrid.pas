@@ -61,6 +61,7 @@ type
     procedure ShowLabelSSTCell;
     procedure ShowLeftMargin;
     procedure ShowMMS;
+    procedure ShowMulBlank;
     procedure ShowNote;
     procedure ShowNumberCell;
     procedure ShowObj;
@@ -333,6 +334,8 @@ begin
       ShowMMS;
     $009C:
       ShowFnGroupCount;
+    $00BE:
+      ShowMulBlank;
     $00DA:
       ShowBookBool;
     $00E0:
@@ -2112,6 +2115,36 @@ begin
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numbytes);
   ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w), 'Reserved, MUST be ignored');
+end;
+
+
+procedure TBIFFGrid.ShowMulBlank;
+var
+  w: Word;
+  numbytes: Integer;
+  i, nc: Integer;
+begin
+  nc := (Length(FBuffer) - 6) div 2;
+  RowCount := FixedRows + 3 + nc;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to row');
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to first column');
+
+  for i:=0 to nc-1 do begin
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+      Format('Index to XF record #%d', [i]));
+  end;
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to last column');
 end;
 
 
