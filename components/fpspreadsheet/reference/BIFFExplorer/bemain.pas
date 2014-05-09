@@ -723,12 +723,12 @@ var
   valid: Boolean;
   excptn: Exception = nil;
 begin
-  if not FileExists(AFileName) then begin
+  if not FileExistsUTF8(AFileName) then begin
     MessageDlg(Format('File "%s" not found.', [AFileName]), mtError, [mbOK], 0);
     exit;
   end;
 
-  if not SameText(ExtractFileExt(AFileName), '.xls') then begin
+  if Lowercase(ExtractFileExt(AFileName)) <> '.xls' then begin
     MessageDlg('BIFFExplorer can only process binary Excel files (extension ".xls")',
       mtError, [mbOK], 0);
     exit;
@@ -771,14 +771,14 @@ begin
   MemStream := TMemoryStream.Create;
 
   if AFormat = sfExcel2 then begin
-    MemStream.LoadFromFile(AFileName);
+    MemStream.LoadFromFile(UTF8ToSys(AFileName));
   end else begin
     OLEStorage := TOLEStorage.Create;
 
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
     if AFormat = sfExcel8 then streamname := 'Workbook' else streamname := 'Book';
-    OLEStorage.ReadOLEFile(AFileName, OLEDocument, streamname);
+    OLEStorage.ReadOLEFile(UTF8ToSys(AFileName), OLEDocument, streamname);
 
     // Check if the operation succeded
     if MemStream.Size = 0 then
@@ -787,7 +787,7 @@ begin
 
   // Rewind the stream and read from it
   MemStream.Position := 0;
-  FFileName := ExpandFileName(AFileName);
+  FFileName := ExpandFileName(UTF8ToSys(AFileName));
   ReadFromStream(MemStream);
 
   FFormat := AFormat;
