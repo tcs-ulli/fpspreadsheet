@@ -42,25 +42,31 @@ type
     function CalcRowHeight(AHeight: Single): Integer;
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
+    function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
+    function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
+    function GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
+    function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
     function IsSelection(ACol, ARow: Integer; ABorder: TsCellBorder): Boolean;
     function IsSelectionNeighbor(ACol, ARow: Integer; ABorder: TsCellBorder): Boolean;
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
+    procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
+    procedure SetHorAlignments(ARect: TGridRect; AValue: TsHorAlignment);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
+    procedure SetVertAlignment(ACol, ARow: Integer; AValue: TsVertAlignment);
+    procedure SetVertAlignments(ARect: TGridRect; AValue: TsVertAlignment);
 
   protected
     { Protected declarations }
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
-//    procedure DrawAllRows; override;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect);
     procedure DrawCellGrid(aCol,aRow: Integer; aRect: TRect; aState: TGridDrawState); override;
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawSelectionBorders(ACol, ARow: Integer; ARect: TRect);
-//    procedure DrawSelectionBorders(ACol, ARow: Integer; ARect: TRect);
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
       var ABorderStyle: TsCellBorderStyle): Boolean;
@@ -110,6 +116,16 @@ type
     property Worksheet: TsWorksheet read FWorksheet;
     property Workbook: TsWorkbook read FWorkbook;
     property HeaderCount: Integer read FHeaderCount;
+
+    { maybe these should become published ... }
+    property HorAlignment[ACol, ARow: Integer]: TsHorAlignment
+        read GetHorAlignment write SetHorAlignment;
+    property HorAlignments[ARect: TGridRect]: TsHorAlignment
+        read GetHorAlignments write SetHorAlignments;
+    property VertAlignment[ACol, ARow: Integer]: TsVertAlignment
+        read GetVertAlignment write SetVertAlignment;
+    property VertAlignments[ARect: TGridRect]: TsVertAlignment
+        read GetVertAlignments write SetVertAlignments;
   end;
 
   { TsWorksheetGrid }
@@ -1283,6 +1299,35 @@ begin
     Result := false;
 end;
 
+function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
+var
+  cell: PCell;
+begin
+  Result := haDefault;
+  if Assigned(FWorksheet) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if cell <> nil then
+      Result := cell^.HorAlignment;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetHorAlignments(ARect: TGridRect): TsHorAlignment;
+var
+  c, r: Integer;
+  horalign: TsHorAlignment;
+begin
+  Result := GetHorAlignment(ARect.Left, ARect.Top);
+  horalign := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetHorAlignment(c, r);
+      if Result <> horalign then begin
+        Result := haDefault;
+        exit;
+      end;
+    end;
+end;
+
 { Returns a list of worksheets contained in the file. Useful for assigning to
   user controls like TabControl, Combobox etc. in order to select a sheet. }
 procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
@@ -1303,6 +1348,35 @@ end;
 function TsCustomWorksheetGrid.GetShowHeaders: Boolean;
 begin
   Result := FHeaderCount <> 0;
+end;
+
+function TsCustomWorksheetGrid.GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
+var
+  cell: PCell;
+begin
+  Result := vaDefault;
+  if Assigned(FWorksheet) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if cell <> nil then
+      Result := cell^.VertAlignment;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetVertAlignments(ARect: TGridRect): TsVertAlignment;
+var
+  c, r: Integer;
+  vertalign: TsVertAlignment;
+begin
+  Result := GetVertalignment(ARect.Left, ARect.Top);
+  vertalign := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetVertAlignment(c, r);
+      if Result <> vertalign then begin
+        Result := vaDefault;
+        exit;
+      end;
+    end;
 end;
 
 { Calculates the index of the worksheet column that is displayed in the
@@ -1431,6 +1505,28 @@ begin
   Setup;
 end;
 
+procedure TsCustomWorksheetGrid.SetHorAlignment(ACol, ARow: Integer;
+  AValue: TsHorAlignment);
+begin
+  if Assigned(FWorkbook) then
+    FWorksheet.WriteHorAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetHorAlignments(ARect: TGridRect;
+  AValue: TsHorAlignment);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetHorAlignment(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
 { Shows / hides the worksheet's grid lines }
 procedure TsCustomWorksheetGrid.SetShowGridLines(AValue: Boolean);
 begin
@@ -1504,6 +1600,28 @@ begin
     end;
   end;
   Invalidate;
+end;
+
+procedure TsCustomWorksheetGrid.SetVertAlignment(ACol, ARow: Integer;
+  AValue: TsVertAlignment);
+begin
+  if Assigned(FWorkbook) then
+    FWorksheet.WriteVertAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetVertAlignments(ARect: TGridRect;
+  AValue: TsVertAlignment);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetVertAlignment(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);

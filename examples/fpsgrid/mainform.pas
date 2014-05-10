@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, ColorBox,graphutil,
+  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids, graphutil,
   fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
@@ -120,15 +120,14 @@ type
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
-    procedure sWorksheetGrid1SelectCell(Sender: TObject; aCol, aRow: Integer;
-      var CanSelect: Boolean);
+    procedure sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
   private
     { private declarations }
     procedure LoadFile(const AFileName: String);
-    procedure UpdateBorders(ACell: PCell);
-    procedure UpdateHorAlignment(AValue: TsHorAlignment);
-    procedure UpdateFont(AFont: TsFont);
-    procedure UpdateVertAlignment(AValue: TsVertAlignment);
+    procedure UpdateBorderActions(ACell: PCell);
+    procedure UpdateHorAlignmentActions;
+    procedure UpdateFontActions(AFont: TsFont);
+    procedure UpdateVertAlignmentActions;
   public
     { public declarations }
   end; 
@@ -139,7 +138,7 @@ var
 implementation
 
 uses
-  fpcanvas, Grids;
+  fpcanvas;
 
 const
   HORALIGN_TAG = 100;
@@ -238,36 +237,26 @@ end;
 
 procedure TForm1.AcHorAlignmentExecute(Sender: TObject);
 var
-  horalign: TsHorAlignment;
-  c, r: Cardinal;
+  hor_align: TsHorAlignment;
 begin
-  horalign := TsHorAlignment(TAction(Sender).Tag - HORALIGN_TAG);
   if TAction(Sender).Checked then
-    horalign := haDefault;
-  UpdateHorAlignment(horalign);
-  with sWorksheetGrid1 do begin
-    c := GetWorksheetCol(Col);
-    r := GetWorksheetRow(Row);
-    if Worksheet <> nil then
-      Worksheet.WriteHorAlignment(r, c, horalign);
-  end;
+    hor_align := TsHorAlignment(TAction(Sender).Tag - HORALIGN_TAG)
+  else
+    hor_align := haDefault;
+  with sWorksheetGrid1 do HorAlignments[Selection] := hor_align;
+  UpdateHorAlignmentActions;
 end;
 
 procedure TForm1.AcVertAlignmentExecute(Sender: TObject);
 var
-  vertalign: TsVertAlignment;
-  c, r: Cardinal;
+  vert_align: TsVertAlignment;
 begin
-  vertalign := TsVertAlignment(TAction(Sender).Tag - VERTALIGN_TAG);
   if TAction(Sender).Checked then
-    vertalign := vaDefault;
-  UpdateVertAlignment(vertalign);
-  with sWorksheetGrid1 do begin
-    c := GetWorksheetCol(Col);
-    r := GetWorksheetRow(Row);
-    if Worksheet <> nil then
-      Worksheet.WriteVertAlignment(r, c, vertalign);
-  end;
+    vert_align := TsVertAlignment(TAction(Sender).Tag - VERTALIGN_TAG)
+  else
+    vert_align := vaDefault;
+  with sWorksheetGrid1 do VertAlignments[Selection] := vert_align;
+  UpdateVertAlignmentActions;
 end;
 
 procedure TForm1.CbShowHeadersClick(Sender: TObject);
@@ -394,8 +383,7 @@ begin
   sWorksheetGrid1.SelectSheetByIndex(PageControl1.ActivePageIndex);
 end;
 
-procedure TForm1.sWorksheetGrid1SelectCell(Sender: TObject;
-  aCol, aRow: Integer; var CanSelect: Boolean);
+procedure TForm1.sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
 var
   cell: PCell;
   c, r: Cardinal;
@@ -403,20 +391,22 @@ var
 begin
   with sWorksheetGrid1 do begin
     if Worksheet = nil then exit;
+
     c := GetWorksheetCol(ACol);
     r := GetWorksheetRow(ARow);
     cell := Worksheet.FindCell(r, c);
+
   end;
-  UpdateBorders(cell);
+  UpdateHorAlignmentActions;
+  UpdateVertAlignmentActions;
+  UpdateBorderactions(cell);
   if cell = nil then
     exit;
-  UpdateHorAlignment(cell^.HorAlignment);
-  UpdateVertAlignment(cell^.VertAlignment);
   lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
-  UpdateFont(lFont);
+  UpdateFontActions(lFont);
 end;
 
-procedure TForm1.UpdateBorders(ACell: PCell);
+procedure TForm1.UpdateBorderActions(ACell: PCell);
 begin
   AcBorderTop.Checked := (ACell <> nil) and (cbNorth in ACell^.Border);
   AcBorderLeft.Checked := (ACell <> nil) and (cbWest in ACell^.Border);
@@ -429,19 +419,21 @@ begin
     (ACell^.BorderStyles[cbSouth].LineStyle = lsMedium);
 end;
 
-procedure TForm1.UpdateHorAlignment(AValue: TsHorAlignment);
+procedure TForm1.UpdateHorAlignmentActions;
 var
   i: Integer;
   ac: TAction;
+  hor_align: TsHorAlignment;
 begin
+  with sWorksheetGrid1 do hor_align := HorAlignments[Selection];
   for i:=0 to ActionList1.ActionCount-1 do begin
     ac := TAction(ActionList1.Actions[i]);
     if (ac.Tag >= HORALIGN_TAG) and (ac.Tag < HORALIGN_TAG+10) then
-      ac.Checked := ((ac.Tag - HORALIGN_TAG) = ord(AValue));
+      ac.Checked := ((ac.Tag - HORALIGN_TAG) = ord(hor_align));
   end;
 end;
 
-procedure TForm1.UpdateFont(AFont: TsFont);
+procedure TForm1.UpdateFontActions(AFont: TsFont);
 begin
   FontCombobox.ItemIndex := FontCombobox.Items.IndexOf(AFont.FontName);
   FontsizeCombobox.ItemIndex := FontSizeCombobox.Items.IndexOf(IntToStr(Round(AFont.Size)));
@@ -451,15 +443,19 @@ begin
   AcFontStrikeout.Checked := fssStrikeOut in AFont.Style;
 end;
 
-procedure TForm1.UpdateVertAlignment(AValue: TsVertAlignment);
+procedure TForm1.UpdateVertAlignmentActions;
 var
   i: Integer;
   ac: TAction;
+  vert_align: TsVertAlignment;
+  t: Integer;
 begin
+  with sWorksheetGrid1 do vert_align := VertAlignments[Selection];
   for i:=0 to ActionList1.ActionCount-1 do begin
     ac := TAction(ActionList1.Actions[i]);
+    t := ac.tag;
     if (ac.Tag >= VERTALIGN_TAG) and (ac.Tag < VERTALIGN_TAG+10) then
-      ac.Checked := ((ac.Tag - VERTALIGN_TAG) = ord(AValue));
+      ac.Checked := ((ac.Tag - VERTALIGN_TAG) = ord(vert_align));
   end;
 end;
 

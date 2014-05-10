@@ -106,7 +106,7 @@ object Form1: TForm1
         RowCount = 2
         TabOrder = 0
         TitleStyle = tsNative
-        OnSelectCell = sWorksheetGrid1SelectCell
+        OnSelection = sWorksheetGrid1Selection
         ColWidths = (
           42
           64
@@ -531,12 +531,14 @@ object Form1: TForm1
         Caption = 'Horizontal alignment'
         object MnuHorDefault: TMenuItem
           Action = AcHorDefaultAlign
+          AutoCheck = True
         end
         object MenuItem6: TMenuItem
           Caption = '-'
         end
         object MenuItem3: TMenuItem
           Action = AcLeftAlign
+          AutoCheck = True
           Bitmap.Data = {
             36040000424D3604000000000000360000002800000010000000100000000100
             2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -576,6 +578,7 @@ object Form1: TForm1
         end
         object MenuItem4: TMenuItem
           Action = AcHorCenterAlign
+          AutoCheck = True
           Bitmap.Data = {
             36040000424D3604000000000000360000002800000010000000100000000100
             2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -615,6 +618,7 @@ object Form1: TForm1
         end
         object MenuItem5: TMenuItem
           Action = AcRightAlign
+          AutoCheck = True
           Bitmap.Data = {
             36040000424D3604000000000000360000002800000010000000100000000100
             2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -657,12 +661,14 @@ object Form1: TForm1
         Caption = 'Vertical alignment'
         object MnuVertDefault: TMenuItem
           Action = AcVAlignDefault
+          AutoCheck = True
         end
         object MenuItem7: TMenuItem
           Caption = '-'
         end
         object MnuVertTop: TMenuItem
           Action = AcVAlignTop
+          AutoCheck = True
           Bitmap.Data = {
             36040000424D3604000000000000360000002800000010000000100000000100
             2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -702,6 +708,7 @@ object Form1: TForm1
         end
         object MnuVertCentered: TMenuItem
           Action = AcVAlignCenter
+          AutoCheck = True
           Bitmap.Data = {
             36040000424D3604000000000000360000002800000010000000100000000100
             2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -741,6 +748,7 @@ object Form1: TForm1
         end
         object MnuVertBottom: TMenuItem
           Action = AcVAlignBottom
+          AutoCheck = True
           Bitmap.Data = {
             36040000424D3604000000000000360000002800000010000000100000000100
             2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -1489,6 +1497,7 @@ object Form1: TForm1
     object AcHorDefaultAlign: TAction
       Tag = 100
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Default'
       Checked = True
       OnExecute = AcHorAlignmentExecute
@@ -1496,6 +1505,7 @@ object Form1: TForm1
     object AcLeftAlign: TAction
       Tag = 101
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Left'
       ImageIndex = 4
       OnExecute = AcHorAlignmentExecute
@@ -1503,6 +1513,7 @@ object Form1: TForm1
     object AcHorCenterAlign: TAction
       Tag = 102
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Centered'
       ImageIndex = 5
       OnExecute = AcHorAlignmentExecute
@@ -1510,6 +1521,7 @@ object Form1: TForm1
     object AcRightAlign: TAction
       Tag = 103
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Right'
       ImageIndex = 6
       OnExecute = AcHorAlignmentExecute
@@ -1559,12 +1571,14 @@ object Form1: TForm1
     object AcVAlignDefault: TAction
       Tag = 110
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Default'
       OnExecute = AcVertAlignmentExecute
     end
     object AcVAlignTop: TAction
       Tag = 111
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Top'
       ImageIndex = 12
       OnExecute = AcVertAlignmentExecute
@@ -1572,6 +1586,7 @@ object Form1: TForm1
     object AcVAlignCenter: TAction
       Tag = 112
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Centered'
       ImageIndex = 13
       OnExecute = AcVertAlignmentExecute
@@ -1579,6 +1594,7 @@ object Form1: TForm1
     object AcVAlignBottom: TAction
       Tag = 113
       Category = 'Format'
+      AutoCheck = True
       Caption = 'Bottom'
       ImageIndex = 14
       OnExecute = AcVertAlignmentExecute
