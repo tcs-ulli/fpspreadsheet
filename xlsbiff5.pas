@@ -80,8 +80,6 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
   protected
-    { Helpers }
-    function DecodeRKValue(const ARK: DWORD): Double;
     { Record writing methods }
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(const AStream: TStream);
@@ -89,12 +87,10 @@ type
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadFormulaExcel(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
-    procedure ReadMulRKValues(AStream: TStream);
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
     procedure ReadRichString(AStream: TStream);
-    procedure ReadRKValue(AStream: TStream);
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
@@ -1380,54 +1376,6 @@ begin
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
-procedure TsSpreadBIFF5Reader.ReadRKValue(AStream: TStream);
-var
-  L: DWORD;
-  ARow, ACol: Cardinal;
-  XF: WORD;
-  Number: Double;
-begin
-  ReadRowColXF(AStream, ARow, ACol, XF);
-
-  {Encoded RK value}
-  L:=DWordLEtoN(AStream.ReadDWord);
-
-  {Check RK codes}
-  Number:=DecodeRKValue(L);
-
-  FWorksheet.WriteNumber(ARow,ACol,Number);
-
-  { Add attributes to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
-procedure TsSpreadBIFF5Reader.ReadMulRKValues(AStream: TStream);
-var
-  ARow, fc,lc,XF: Word;
-  Pending: integer;
-  RK: DWORD;
-  Number: Double;
-begin
-  ARow:=WordLEtoN(AStream.ReadWord);
-  fc:=WordLEtoN(AStream.ReadWord);
-  Pending:=RecordSize-sizeof(fc)-Sizeof(ARow);
-  while Pending > (sizeof(XF)+sizeof(RK)) do begin
-    XF:=AStream.ReadWord; //XF record (not used)
-    RK:=DWordLEtoN(AStream.ReadDWord);
-    Number:=DecodeRKValue(RK);
-    FWorksheet.WriteNumber(ARow,fc,Number);
-    inc(fc);
-    dec(Pending,(sizeof(XF)+sizeof(RK)));
-  end;
-  if Pending=2 then begin
-    //Just for completeness
-    lc:=WordLEtoN(AStream.ReadWord);
-    if lc+1<>fc then begin
-      //Stream error... bypass by now
-    end;
-  end;
-end;
-
 procedure TsSpreadBIFF5Reader.ReadFormulaExcel(AStream: TStream);
 var
   ARow, ACol: Cardinal;
@@ -1454,35 +1402,6 @@ begin
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
-function TsSpreadBIFF5Reader.DecodeRKValue(const ARK: DWORD): Double;
-var
-  Number: Double;
-  Tmp: LongInt;
-begin
-  if ARK and 2 = 2 then begin
-    // Signed integer value
-    if LongInt(ARK)<0 then begin
-      //Simulates a sar
-      Tmp:=LongInt(ARK)*-1;
-      Tmp:=Tmp shr 2;
-      Tmp:=Tmp*-1;
-      Number:=Tmp-1;
-    end else begin
-      Number:=ARK shr 2;
-    end;
-  end else begin
-    // Floating point value
-    // NOTE: This is endian dependent and IEEE dependent (Not checked, working win-i386)
-    PDWORD(@Number)^:= $00000000;
-    (PDWORD(@Number)+1)^:=ARK and $FFFFFFFC;
-  end;
-  if ARK and 1 = 1 then begin
-    // Encoded value is multiplied by 100
-    Number:=Number / 100;
-  end;
-  Result:=Number;
-end;
-
 procedure TsSpreadBIFF5Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
 var
   MemStream: TMemoryStream;
@@ -1503,7 +1422,7 @@ begin
     MemStream.Position := 0;
     ReadFromStream(MemStream, AData);
 
-//    Uncomment to verify if the data was correctly optained from the OLE file
+//    Uncomment to verify if the data was correctly obtained from the OLE file
 //    MemStream.SaveToFile(SysUtils.ChangeFileExt(AFileName, 'bin.xls'));
   finally
     MemStream.Free;

@@ -72,14 +72,11 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
     FSharedStringTable: TStringList;
-    function DecodeRKValue(const ARK: DWORD): Double;
     function ReadWideString(const AStream: TStream; const ALength: WORD): WideString; overload;
     function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
-    procedure ReadRKValue(const AStream: TStream);
-    procedure ReadMulRKValues(const AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
     procedure ReadSST(const AStream: TStream);
     procedure ReadLabelSST(const AStream: TStream);
@@ -1312,35 +1309,6 @@ begin
   inherited;
 end;
 
-function TsSpreadBIFF8Reader.DecodeRKValue(const ARK: DWORD): Double;
-var
-  Number: Double;
-  Tmp: LongInt;
-begin
-  if ARK and 2 = 2 then begin
-    // Signed integer value
-    if LongInt(ARK)<0 then begin
-      //Simulates a sar
-      Tmp:=LongInt(ARK)*-1;
-      Tmp:=Tmp shr 2;
-      Tmp:=Tmp*-1;
-      Number:=Tmp-1;
-    end else begin
-      Number:=ARK shr 2;
-    end;
-  end else begin
-    // Floating point value
-    // NOTE: This is endian dependent and IEEE dependent (Not checked) (working win-i386)
-    (PDWORD(@Number))^:= $00000000;
-    (PDWORD(@Number)+1)^:=(ARK and $FFFFFFFC);
-  end;
-  if ARK and 1 = 1 then begin
-    // Encoded value is multiplied by 100
-    Number:=Number / 100;
-  end;
-  Result:=Number;
-end;
-
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const ALength: WORD): WideString;
 var
@@ -1568,77 +1536,10 @@ begin
   FWorksheetNames.Add(UTF8Encode(WideName));
 end;
 
-procedure TsSpreadBIFF8Reader.ReadRKValue(const AStream: TStream);
-var
-  RK: DWORD;
-  ARow, ACol: Cardinal;
-  XF: WORD;
-  lDateTime: TDateTime;
-  Number: Double;
-  nf: TsNumberFormat;    // Number format
-  nd: word;              // decimals
-  nfs: String;           // Number format string
-begin
-  {Retrieve XF record, row and column}
-  ReadRowColXF(AStream, ARow, ACol, XF);
-
-  {Encoded RK value}
-  RK:=DWordLEtoN(AStream.ReadDWord);
-
-  {Check RK codes}
-  Number:=DecodeRKValue(RK);
-
-  {Find out what cell type, set contenttype and value}
-  ExtractNumberFormat(XF, nf, nd, nfs);
-  if IsDateTime(Number, nf, lDateTime) then
-    FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
-  else
-    FWorksheet.WriteNumber(ARow, ACol, Number, nf);
-
-  {Add attributes}
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
-procedure TsSpreadBIFF8Reader.ReadMulRKValues(const AStream: TStream);
-var
-  ARow, fc,lc,XF: Word;
-  lDateTime: TDateTime;
-  Pending: integer;
-  RK: DWORD;
-  Number: Double;
-  nf: TsNumberFormat;
-  nd: word;
-  nfs: String;
-begin
-  ARow:=WordLEtoN(AStream.ReadWord);
-  fc:=WordLEtoN(AStream.ReadWord);
-  Pending:=RecordSize-sizeof(fc)-Sizeof(ARow);
-  while Pending > (sizeof(XF)+sizeof(RK)) do begin
-    XF:=AStream.ReadWord; //XF record (used for date checking)
-    RK:=DWordLEtoN(AStream.ReadDWord);
-    Number:=DecodeRKValue(RK);
-    {Find out what cell type, set contenttype and value}
-    ExtractNumberFormat(XF, nf, nd, nfs);
-    if IsDateTime(Number, nf, lDateTime) then
-      FWorksheet.WriteDateTime(ARow, fc, lDateTime, nf, nfs)
-    else
-      FWorksheet.WriteNumber(ARow, fc, Number, nf, nd);
-    inc(fc);
-    dec(Pending,(sizeof(XF)+sizeof(RK)));
-  end;
-  if Pending=2 then begin
-    //Just for completeness
-    lc:=WordLEtoN(AStream.ReadWord);
-    if lc+1<>fc then begin
-      //Stream error... bypass by now
-    end;
-  end;
-end;
-
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
   const ALength: WORD): UTF8String;
 begin
-  Result:=UTF16ToUTF8(ReadWideString(AStream, ALength));
+  Result := UTF16ToUTF8(ReadWideString(AStream, ALength));
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
