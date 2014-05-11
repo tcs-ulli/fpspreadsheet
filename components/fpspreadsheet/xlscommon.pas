@@ -378,6 +378,8 @@ type
     FXFList: TFPList;     // of TXFListData
     FFormatList: TFPList; // of TFormatListData
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); virtual;
+    // Extracts a number out of an RK value
+    function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ADecimals: Word;
@@ -397,12 +399,16 @@ type
     procedure ReadFormat(AStream: TStream); virtual;
     // Read multiple blank cells
     procedure ReadMulBlank(AStream: TStream);
+    // Read multiple RK cells
+    procedure ReadMulRKValues(const AStream: TStream);
     // Read floating point number
     procedure ReadNumber(AStream: TStream); override;
     // Read palette
     procedure ReadPalette(AStream: TStream);
     // Read PANE record
     procedure ReadPane(AStream: TStream);
+    // Read an RK value cell
+    procedure ReadRKValue(AStream: TStream);
     // Read the row, column, and XF index at the current stream position
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
@@ -607,6 +613,38 @@ begin
     end;
   end;
 end;
+
+{ Extracts a number out of an RK value.
+  Valid since BIFF3. }
+function TsSpreadBIFFReader.DecodeRKValue(const ARK: DWORD): Double;
+var
+  Number: Double;
+  Tmp: LongInt;
+begin
+  if ARK and 2 = 2 then begin
+    // Signed integer value
+    if LongInt(ARK) < 0 then begin
+      //Simulates a sar
+      Tmp := LongInt(ARK) * (-1);
+      Tmp := Tmp shr 2;
+      Tmp := Tmp * (-1);
+      Number := Tmp - 1;
+    end else begin
+      Number := ARK shr 2;
+    end;
+  end else begin
+    // Floating point value
+    // NOTE: This is endian dependent and IEEE dependent (Not checked) (working win-i386)
+    (PDWORD(@Number))^ := $00000000;
+    (PDWORD(@Number)+1)^ := ARK and $FFFFFFFC;
+  end;
+  if ARK and 1 = 1 then begin
+    // Encoded value is multiplied by 100
+    Number := Number / 100;
+  end;
+  Result := Number;
+end;
+
 
 { Extracts number format data from an XF record index by AXFIndex.
   Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
@@ -855,6 +893,7 @@ begin
 end;
 
 // Reads multiple blank cell records
+// Valid for BIFF5 and BIFF8 (does not exist before)
 procedure TsSpreadBIFFReader.ReadMulBlank(AStream: TStream);
 var
   ARow, fc, lc, XF: Word;
@@ -869,6 +908,44 @@ begin
     ApplyCellFormatting(ARow, fc, XF);
     inc(fc);
     dec(pending, SizeOf(XF));
+  end;
+  if pending = 2 then begin
+    //Just for completeness
+    lc := WordLEtoN(AStream.ReadWord);
+    if lc + 1 <> fc then begin
+      //Stream error... bypass by now
+    end;
+  end;
+end;
+
+{ Reads multiple RK records.
+  Valid for BIFF5 and BIFF8 (does not exist before) }
+procedure TsSpreadBIFFReader.ReadMulRKValues(const AStream: TStream);
+var
+  ARow, fc, lc, XF: Word;
+  lNumber: Double;
+  lDateTime: TDateTime;
+  pending: integer;
+  RK: DWORD;
+  nf: TsNumberFormat;
+  nd: word;
+  nfs: String;
+begin
+  ARow := WordLEtoN(AStream.ReadWord);
+  fc := WordLEtoN(AStream.ReadWord);
+  pending := RecordSize - SizeOf(fc) - SizeOf(ARow);
+  while pending > SizeOf(XF) + SizeOf(RK) do begin
+    XF := AStream.ReadWord; //XF record (used for date checking)
+    RK := DWordLEtoN(AStream.ReadDWord);
+    lNumber := DecodeRKValue(RK);
+    {Find out what cell type, set contenttype and value}
+    ExtractNumberFormat(XF, nf, nd, nfs);
+    if IsDateTime(lNumber, nf, lDateTime) then
+      FWorksheet.WriteDateTime(ARow, fc, lDateTime, nf, nfs)
+    else
+      FWorksheet.WriteNumber(ARow, fc, lNumber, nf, nd);
+    inc(fc);
+    dec(pending, SizeOf(XF) + SizeOf(RK));
   end;
   if pending = 2 then begin
     //Just for completeness
@@ -956,6 +1033,39 @@ begin
 
   { Index to XF record }
   AXF := WordLEtoN(AStream.ReadWord);
+end;
+
+{ Reads an RK value cell from the stream
+  Valid since BIFF3. }
+procedure TsSpreadBIFFReader.ReadRKValue(AStream: TStream);
+var
+  RK: DWord;
+  ARow, ACol: Cardinal;
+  XF: Word;
+  lDateTime: TDateTime;
+  Number: Double;
+  nf: TsNumberFormat;    // Number format
+  nd: Word;              // decimals
+  nfs: String;           // Number format string
+begin
+  {Retrieve XF record, row and column}
+  ReadRowColXF(AStream, ARow, ACol, XF);
+
+  {Encoded RK value}
+  RK := DWordLEtoN(AStream.ReadDWord);
+
+  {Check RK codes}
+  Number := DecodeRKValue(RK);
+
+  {Find out what cell type, set contenttype and value}
+  ExtractNumberFormat(XF, nf, nd, nfs);
+  if IsDateTime(Number, nf, lDateTime) then
+    FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
+  else
+    FWorksheet.WriteNumber(ARow, ACol, Number, nf);
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 // Read the part of the ROW record that is common to all BIFF versions
