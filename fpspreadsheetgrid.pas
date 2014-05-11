@@ -37,6 +37,7 @@ type
     FOldEditText: String;
     FLockCount: Integer;
     FEditing: Boolean;
+    FCellFont: TFont;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
@@ -51,6 +52,16 @@ type
     function GetCellBorders(ARect: TGridRect): TsCellBorders;
     function GetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder): TsCellBorderStyle;
     function GetCellBorderStyles(ARect: TGridRect; ABorder: TsCellBorder): TsCellBorderStyle;
+    function GetCellFont(ACol, ARow: Integer): TFont;
+    function GetCellFonts(ARect: TGridRect): TFont;
+    function GetCellFontColor(ACol, ARow: Integer): TsColor;
+    function GetCellFontColors(ARect: TGridRect): TsColor;
+    function GetCellFontName(ACol, ARow: Integer): String;
+    function GetCellFontNames(ARect: TGridRect): String;
+    function GetCellFontSize(ACol, ARow: Integer): Single;
+    function GetCellFontSizes(ARect: TGridRect): Single;
+    function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
+    function GetCellFontStyles(ARect: TGridRect): TsFontStyles;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetShowGridLines: Boolean;
@@ -67,6 +78,16 @@ type
     procedure SetCellBorders(ARect: TGridRect; AValue: TsCellBorders);
     procedure SetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
     procedure SetCellBorderStyles(ARect: TGridRect; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
+    procedure SetCellFont(ACol, ARow: Integer; AValue: TFont);
+    procedure SetCellFonts(ARect: TGridRect; AValue: TFont);
+    procedure SetCellFontColor(ACol, ARow: Integer; AValue: TsColor);
+    procedure SetCellFontColors(ARect: TGridRect; AValue: TsColor);
+    procedure SetCellFontName(ACol, ARow: Integer; AValue: String);
+    procedure SetCellFontNames(ARect: TGridRect; AValue: String);
+    procedure SetCellFontStyle(ACol, ARow: Integer; AValue: TsFontStyles);
+    procedure SetCellFontStyles(ARect: TGridRect; AValue: TsFontStyles);
+    procedure SetCellFontSize(ACol, ARow: Integer; AValue: Single);
+    procedure SetCellFontSizes(ARect: TGridRect; AValue: Single);
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
@@ -153,6 +174,22 @@ type
         read GetCellBorderStyle write SetCellBorderStyle;
     property CellBorderStyles[ARect: TGridRect; ABorder: TsCellBorder]: TsCellBorderStyle
         read GetCellBorderStyles write SetCellBorderStyles;
+    property CellFont[ACol, ARow: Integer]: TFont
+        read GetCellFont write SetCellFont;
+    property CellFonts[ARect: TGridRect]: TFont
+        read GetCellFonts write SetCellFonts;
+    property CellFontName[ACol, ARow: Integer]: String
+        read GetCellFontName write SetCellFontName;
+    property CellFontNames[ARect: TGridRect]: String
+        read GetCellFontNames write SetCellFontNames;
+    property CellFontStyle[ACol, ARow: Integer]: TsFontStyles
+        read GetCellFontStyle write SetCellFontStyle;
+    property CellFontStyles[ARect: TGridRect]: TsFontStyles
+        read GetCellFontStyles write SetCellFontStyles;
+    property CellFontSize[ACol, ARow: Integer]: Single
+        read GetCellFontSize write SetCellFontSize;
+    property CellFontSizes[ARect: TGridRect]: Single
+        read GetCellFontSizes write SetCellFontSizes;
     property HorAlignment[ACol, ARow: Integer]: TsHorAlignment
         read GetHorAlignment write SetHorAlignment;
     property HorAlignments[ARect: TGridRect]: TsHorAlignment
@@ -423,11 +460,13 @@ constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHeaderCount := 1;
+  FCellFont := TFont.Create;
 end;
 
 destructor TsCustomWorksheetGrid.Destroy;
 begin
   FreeAndNil(FWorkbook);
+  FreeAndNil(FCellFont);
   inherited Destroy;
 end;
 
@@ -1243,6 +1282,178 @@ begin
     end;
 end;
 
+function TsCustomWorksheetGrid.GetCellFont(ACol, ARow: Integer): TFont;
+var
+  cell: PCell;
+  fnt: TsFont;
+begin
+  Result := nil;
+  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) then begin
+      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      Convert_sFont_to_Font(fnt, FCellFont);
+      Result := FCellFont;
+    end;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFonts(ARect: TGridRect): TFont;
+var
+  c, r: Integer;
+  sFont, sDefFont: TsFont;
+  cell: PCell;
+begin
+  Result := GetCellFont(ARect.Left, ARect.Top);
+  sDefFont := FWorkbook.GetFont(0);  // Default font
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      cell := FWorksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
+      if cell <> nil then begin
+        sFont := FWorkbook.GetFont(cell^.FontIndex);
+        if (sFont.FontName <> sDefFont.FontName) and (sFont.Size <> sDefFont.Size)
+          and (sFont.Style <> sDefFont.Style) and (sFont.Color <> sDefFont.Color)
+        then begin
+          Convert_sFont_to_Font(sDefFont, FCellFont);
+          Result := FCellFont;
+          exit;
+        end;
+      end;
+    end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontColor(ACol, ARow: Integer): TsColor;
+var
+  cell: PCell;
+  fnt: TsFont;
+begin
+  Result := scNotDefined;
+  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) then begin
+      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      if fnt <> nil then
+        Result := fnt.Color;
+    end;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontColors(ARect: TGridRect): TsColor;
+var
+  c, r: Integer;
+  clr: TsColor;
+begin
+  Result := GetCellFontColor(ARect.Left, ARect.Top);
+  clr := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetCellFontColor(c, r);
+      if (Result <> clr) then begin
+        Result := scNotDefined;
+        exit;
+      end;
+    end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontName(ACol, ARow: Integer): String;
+var
+  cell: PCell;
+  fnt: TsFont;
+begin
+  Result := '';
+  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) then begin
+      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      if fnt <> nil then
+        Result := fnt.FontName;
+    end;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontNames(ARect: TGridRect): String;
+var
+  c, r: Integer;
+  s: String;
+begin
+  Result := GetCellFontName(ARect.Left, ARect.Top);
+  s := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetCellFontName(c, r);
+      if (Result <> '') and (Result <> s) then begin
+        Result := '';
+        exit;
+      end;
+    end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontSize(ACol, ARow: Integer): Single;
+var
+  cell: PCell;
+  fnt: TsFont;
+begin
+  Result := -1.0;
+  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) then begin
+      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      if fnt <> nil then
+        Result := fnt.Size;
+    end;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontSizes(ARect: TGridRect): Single;
+var
+  c, r: Integer;
+  sz: Single;
+begin
+  Result := GetCellFontSize(ARect.Left, ARect.Top);
+  sz := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetCellFontSize(c, r);
+      if (Result <> -1) and not SameValue(Result, sz, 1E-3) then begin
+        Result := -1.0;
+        exit;
+      end;
+    end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
+var
+  cell: PCell;
+  fnt: TsFont;
+begin
+  Result := [];
+  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) then begin
+      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      if fnt <> nil then
+        Result := fnt.Style;
+    end;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetCellFontStyles(ARect: TGridRect): TsFontStyles;
+var
+  c, r: Integer;
+  style: TsFontStyles;
+begin
+  Result := GetCellFontStyle(ARect.Left, ARect.Top);
+  style := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetCellFontStyle(c, r);
+      if Result <> style then begin
+        Result := [];
+        exit;
+      end;
+    end;
+end;
+
 { Returns the height (in pixels) of the cell at ACol/ARow (of the grid). }
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
@@ -1627,7 +1838,7 @@ procedure TsCustomWorksheetGrid.SetBackgroundColor(ACol, ARow: Integer;
 var
   c, r: Cardinal;
 begin
-  if Assigned(FWorkbook) then begin
+  if Assigned(FWorksheet) then begin
     BeginUpdate;
     try
       c := GetWorksheetCol(ACol);
@@ -1659,7 +1870,7 @@ procedure TsCustomWorksheetGrid.SetCellBorder(ACol, ARow: Integer;
 var
   c, r: Cardinal;
 begin
-  if Assigned(FWorkbook) then begin
+  if Assigned(FWorksheet) then begin
     BeginUpdate;
     try
       c := GetWorksheetCol(ACol);
@@ -1690,7 +1901,7 @@ end;
 procedure TsCustomWorksheetGrid.SetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder; AValue: TsCellBorderStyle);
 begin
-  if Assigned(FWorkbook) then begin
+  if Assigned(FWorksheet) then begin
     BeginUpdate;
     try
       FWorksheet.WriteBorderStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), ABorder, AValue);
@@ -1711,6 +1922,122 @@ begin
     for c := ARect.Left to ARect.Right do
       for r := ARect.Top to ARect.Bottom do
         SetCellBorderStyle(c, r, ABorder, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFont(ACol, ARow: Integer; AValue: TFont);
+var
+  fnt: TsFont;
+begin
+  FCellFont.Assign(AValue);
+  if Assigned(FWorksheet) then begin
+    fnt := TsFont.Create;
+    try
+      Convert_Font_To_sFont(FCellFont, fnt);
+      FWorksheet.WriteFont(GetWorksheetRow(ARow), GetWorksheetCol(ACol),
+        fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+    finally
+      fnt.Free;
+    end;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFonts(ARect: TGridRect;
+  AValue: TFont);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetCellFont(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontColor(ACol, ARow: Integer; AValue: TsColor);
+begin
+  if Assigned(FWorksheet) then
+    FWorksheet.WriteFontColor(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontColors(ARect: TGridRect; AValue: TsColor);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetCellFontColor(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontName(ACol, ARow: Integer; AValue: String);
+begin
+  if Assigned(FWorksheet) then
+    FWorksheet.WriteFontName(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontNames(ARect: TGridRect; AValue: String);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetCellFontName(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontSize(ACol, ARow: Integer;
+  AValue: Single);
+begin
+  if Assigned(FWorksheet) then
+    FWorksheet.WriteFontSize(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontSizes(ARect: TGridRect;
+  AValue: Single);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetCellFontSize(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontStyle(ACol, ARow: Integer;
+  AValue: TsFontStyles);
+begin
+  if Assigned(FWorksheet) then
+    FWorksheet.WriteFontStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFontStyles(ARect: TGridRect;
+  AValue: TsFontStyles);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetCellFontStyle(c, r, AValue);
   finally
     EndUpdate;
   end;
@@ -1740,7 +2067,7 @@ end;
 procedure TsCustomWorksheetGrid.SetHorAlignment(ACol, ARow: Integer;
   AValue: TsHorAlignment);
 begin
-  if Assigned(FWorkbook) then
+  if Assigned(FWorksheet) then
     FWorksheet.WriteHorAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
@@ -1782,7 +2109,7 @@ end;
 procedure TsCustomWorksheetGrid.SetTextRotation(ACol, ARow: Integer;
   AValue: TsTextRotation);
 begin
-  if Assigned(FWorkbook) then
+  if Assigned(FWorksheet) then
     FWorksheet.WriteTextRotation(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
@@ -1852,7 +2179,7 @@ end;
 procedure TsCustomWorksheetGrid.SetVertAlignment(ACol, ARow: Integer;
   AValue: TsVertAlignment);
 begin
-  if Assigned(FWorkbook) then
+  if Assigned(FWorksheet) then
     FWorksheet.WriteVertAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
@@ -1874,7 +2201,7 @@ end;
 procedure TsCustomWorksheetGrid.SetWordwrap(ACol, ARow: Integer;
   AValue: Boolean);
 begin
-  if Assigned(FWorkbook) then
+  if Assigned(FWorksheet) then
     FWorksheet.WriteWordwrap(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
@@ -1946,20 +2273,21 @@ end;
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
 begin
-  if FWorksheet <> nil then
+  if FWorkbook <> nil then
     FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
 end;
 
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
 begin
-  if FWorksheet <> nil then
+  if FWorkbook <> nil then
     FWorkbook.WriteToFile(AFileName, AOverwriteExisting);
 end;
 
 procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
-  LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AIndex));
+  if FWorkbook <> nil then
+    LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AIndex));
 end;
 
 

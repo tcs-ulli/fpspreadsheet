@@ -169,22 +169,22 @@ object Form1: TForm1
     Images = ImageList1
     TabOrder = 3
     object ToolButton10: TToolButton
-      Left = 273
+      Left = 296
       Top = 2
       Action = AcLeftAlign
     end
     object ToolButton12: TToolButton
-      Left = 296
+      Left = 319
       Top = 2
       Action = AcHorCenterAlign
     end
     object ToolButton13: TToolButton
-      Left = 319
+      Left = 342
       Top = 2
       Action = AcRightAlign
     end
     object FontComboBox: TComboBox
-      Left = 1
+      Left = 24
       Height = 23
       Top = 2
       Width = 127
@@ -193,7 +193,7 @@ object Form1: TForm1
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
-      Left = 128
+      Left = 151
       Height = 23
       Top = 2
       Width = 48
@@ -210,82 +210,75 @@ object Form1: TForm1
         '20'
         '24'
       )
-      OnSelect = FontComboBoxSelect
+      OnSelect = FontSizeComboBoxSelect
       TabOrder = 1
     end
     object ToolButton7: TToolButton
-      Left = 176
+      Left = 199
       Top = 2
       Action = AcFontBold
     end
     object ToolButton8: TToolButton
-      Left = 199
+      Left = 222
       Top = 2
       Action = AcFontItalic
     end
     object ToolButton9: TToolButton
-      Left = 222
+      Left = 245
       Top = 2
       Action = AcFontUnderline
     end
     object ToolButton11: TToolButton
-      Left = 245
+      Left = 268
       Top = 2
       Action = AcFontStrikeout
     end
     object ToolButton14: TToolButton
-      Left = 268
+      Left = 291
       Top = 2
       Width = 5
       Caption = 'ToolButton14'
       Style = tbsDivider
     end
     object ToolButton15: TToolButton
-      Left = 342
+      Left = 365
       Top = 2
       Width = 5
       Caption = 'ToolButton15'
       Style = tbsDivider
     end
     object ToolButton16: TToolButton
-      Left = 347
+      Left = 370
       Top = 2
       Action = AcVAlignTop
     end
     object ToolButton17: TToolButton
-      Left = 370
+      Left = 393
       Top = 2
       Action = AcVAlignCenter
     end
     object ToolButton18: TToolButton
-      Left = 393
+      Left = 416
       Top = 2
       Action = AcVAlignBottom
     end
     object ToolButton19: TToolButton
-      Left = 416
+      Left = 439
       Top = 2
       Width = 5
       Caption = 'ToolButton19'
       Style = tbsDivider
     end
     object TbBorders: TToolButton
-      Left = 421
+      Left = 444
       Top = 2
       Action = AcBorderNone
       DropdownMenu = BordersPopupMenu
       Style = tbsDropDown
     end
-    object ToolButton20: TToolButton
-      Left = 456
-      Top = 2
-      Width = 5
-      Caption = 'ToolButton20'
-      Style = tbsDivider
-    end
     object CbBackgroundColor: TColorBox
-      Left = 461
-      Height = 24
+      Left = 479
+      Height = 22
       Top = 2
       Width = 132
       Style = [cbPrettyNames, cbCustomColors]
@@ -293,6 +286,11 @@ object Form1: TForm1
       ItemHeight = 16
       OnSelect = CbBackgroundColorSelect
       TabOrder = 2
+    end
+    object ToolButton21: TToolButton
+      Left = 1
+      Top = 2
+      Action = AcFont
     end
   end
   object OpenDialog1: TOpenDialog
@@ -1842,7 +1840,6 @@ object Form1: TForm1
       OnExecute = AcFontStyleExecute
     end
     object AcFontItalic: TAction
-      Tag = 1
       Category = 'Format'
       AutoCheck = True
       Caption = 'Italic'
@@ -1851,7 +1848,6 @@ object Form1: TForm1
       OnExecute = AcFontStyleExecute
     end
     object AcFontStrikeout: TAction
-      Tag = 2
       Category = 'Format'
       AutoCheck = True
       Caption = 'Strike out'
@@ -1860,7 +1856,7 @@ object Form1: TForm1
       OnExecute = AcFontStyleExecute
     end
     object AcFontUnderline: TAction
-      Tag = 3
+      Tag = 9
       Category = 'Format'
       AutoCheck = True
       Caption = 'Underline'

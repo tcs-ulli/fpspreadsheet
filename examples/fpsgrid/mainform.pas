@@ -134,7 +134,7 @@ type
     ToolButton19: TToolButton;
     ToolButton2: TToolButton;
     TbBorders: TToolButton;
-    ToolButton20: TToolButton;
+    ToolButton21: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
@@ -147,19 +147,20 @@ type
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
+    procedure AcOpenExecute(Sender: TObject);
+    procedure AcQuitExecute(Sender: TObject);
+    procedure AcSaveAsExecute(Sender: TObject);
     procedure AcTextRotationExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
     procedure CbBackgroundColorSelect(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
-    procedure AcOpenExecute(Sender: TObject);
-    procedure AcQuitExecute(Sender: TObject);
-    procedure AcSaveAsExecute(Sender: TObject);
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
     procedure EdFrozenColsChange(Sender: TObject);
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
+    procedure FontSizeComboBoxSelect(Sender: TObject);
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
@@ -169,7 +170,9 @@ type
     procedure LoadFile(const AFileName: String);
     procedure SetupBackgroundColorBox;
     procedure UpdateBackgroundColorIndex;
-    procedure UpdateFontActions(AFont: TsFont);
+    procedure UpdateFontNameIndex;
+    procedure UpdateFontSizeIndex;
+    procedure UpdateFontStyleActions;
     procedure UpdateHorAlignmentActions;
     procedure UpdateTextRotationActions;
     procedure UpdateVertAlignmentActions;
@@ -208,7 +211,7 @@ const
   BOTTOM_BORDER_MASK     = $7000;
   LR_INNER_BORDER        = $0008;
   TB_INNER_BORDER        = $0800;
-  // Use a combination of these bits for the "Tag" of the Border actions.
+  // Use a combination of these bits for the "Tag" of the Border actions - see FormCreate.
 
 { TForm1 }
 
@@ -304,56 +307,31 @@ begin
   end;
 end;
 
-{ Changes the font of the selected cell by calling a standard font dialog.
-  Note that the worksheet's and grid's fonts are implemented differently.
-  In particular, the worksheet's font color is an index into the workbook's
-  palette while the grid's font color is an rgb value. }
+{ Changes the font of the selected cell by calling a standard font dialog. }
 procedure TForm1.AcFontExecute(Sender: TObject);
-var
-  r,c: Cardinal;
-  f: Integer;
-  style: TsFontStyles;
-  lFont: TsFont;
 begin
   with sWorksheetGrid1 do begin
-    if Worksheet <> nil then begin
-      c := GetWorksheetCol(Col);
-      r := GetWorksheetRow(Row);
-      f := Worksheet.GetCell(r, c)^.FontIndex;
-      Convert_sFont_to_Font(Workbook.GetFont(f), FontDialog1.Font);
-      if FontDialog1.Execute then begin
-        lFont := TsFont.Create;
-        try
-          Convert_Font_to_sFont(FontDialog1.Font, lFont);
-          WorkSheet.WriteFont(r, c, lFont.FontName, lFont.Size, lFont.Style, lFont.Color);
-        finally
-          lFont.Free;
-        end;
-      end;
-    end;
+    if Workbook = nil then
+      exit;
+    FontDialog1.Font := CellFonts[Selection];
+    if FontDialog1.Execute then
+      CellFonts[Selection] := FontDialog1.Font;
   end;
 end;
 
 procedure TForm1.AcFontStyleExecute(Sender: TObject);
 var
   style: TsFontstyles;
-  f: Integer;
-  r,c: Cardinal;
-  lFont: TsFont;
 begin
   with sWorksheetGrid1 do begin
-    c := GetWorksheetCol(Col);
-    r := GetWorksheetRow(Row);
-    if Worksheet <> nil then begin
-      f := Worksheet.GetCell(r, c)^.FontIndex;
-      lFont := Workbook.GetFont(f);
-      style := lFont.Style;
-      if TAction(Sender).Checked then
-        Include(style, TsFontStyle(TAction(Sender).Tag))
-      else
-        Exclude(style, TsFontStyle(TAction(Sender).Tag));
-      Worksheet.WriteFontStyle(r, c, style);
-    end;
+    if Workbook = nil then
+      exit;
+    style := [];
+    if AcFontBold.Checked then Include(style, fssBold);
+    if AcFontItalic.Checked then Include(style, fssItalic);
+    if AcFontStrikeout.Checked then Include(style, fssStrikeout);
+    if AcFontUnderline.Checked then Include(style, fssUnderline);
+    CellFontStyles[Selection] := style;
   end;
 end;
 
@@ -464,33 +442,20 @@ end;
 
 procedure TForm1.FontComboBoxSelect(Sender: TObject);
 var
-  c, r: Cardinal;
-  f: Integer;
-  lFont: TsFont;
-  h: Integer;
-  s: String;
+  fname: String;
 begin
-  if sWorksheetGrid1.Workbook = nil then
-    exit;
+  fname := FontCombobox.Items[FontCombobox.ItemIndex];
+  if fname <> '' then
+    with sWorksheetGrid1 do CellFontNames[Selection] := fName;
+end;
 
-  with sWorksheetGrid1 do begin
-    c := GetWorksheetCol(Col);
-    r := GetWorksheetRow(Row);
-    f := Worksheet.GetCell(r, c)^.FontIndex;
-    lFont := Workbook.GetFont(f);
-
-    if FontCombobox.ItemIndex = -1 then
-      s := lFont.FontName
-    else
-      s := FontCombobox.Items[FontCombobox.ItemIndex];
-
-    if FontSizeCombobox.ItemIndex = -1 then
-      h := round(lFont.Size)
-    else
-      h := StrToInt(FontSizeCombobox.Items[FontSizeCombobox.ItemIndex]);
-
-    Worksheet.WriteFont(r, c, s, h, lFont.Style, lFont.Color);
-  end;
+procedure TForm1.FontSizeComboBoxSelect(Sender: TObject);
+var
+  sz: Integer;
+begin
+  sz := StrToInt(FontSizeCombobox.Items[FontSizeCombobox.ItemIndex]);
+  if sz > 0 then
+    with sWorksheetGrid1 do CellFontSizes[Selection] := sz;
 end;
 
 procedure TForm1.FormActivate(Sender: TObject);
@@ -578,27 +543,18 @@ begin
 end;
 
 procedure TForm1.sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
-var
-  cell: PCell;
-  c, r: Cardinal;
-  lFont: TsFont;
 begin
-  with sWorksheetGrid1 do begin
-    if Worksheet = nil then exit;
+  if sWorksheetGrid1.Workbook = nil then
+    exit;
 
-    c := GetWorksheetCol(ACol);
-    r := GetWorksheetRow(ARow);
-    cell := Worksheet.FindCell(r, c);
-
-  end;
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;
   UpdateWordwraps;
   UpdateBackgroundColorIndex;
-  if cell = nil then
-    exit;
-  lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
-  UpdateFontActions(lFont);
+//  UpdateFontActions;
+  UpdateFontNameIndex;
+  UpdateFontSizeIndex;
+  UpdateFontStyleActions;
 end;
 
 procedure TForm1.UpdateBackgroundColorIndex;
@@ -626,14 +582,37 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateFontActions(AFont: TsFont);
+procedure TForm1.UpdateFontNameIndex;
+var
+  fname: String;
 begin
-  FontCombobox.ItemIndex := FontCombobox.Items.IndexOf(AFont.FontName);
-  FontsizeCombobox.ItemIndex := FontSizeCombobox.Items.IndexOf(IntToStr(Round(AFont.Size)));
-  AcFontBold.Checked := fssBold in AFont.Style;
-  AcFontItalic.Checked := fssItalic in AFont.Style;
-  AcFontUnderline.Checked := fssUnderline in AFont.Style;
-  AcFontStrikeout.Checked := fssStrikeOut in AFont.Style;
+  with sWorksheetGrid1 do fname := CellFontNames[Selection];
+  if fname = '' then
+    FontCombobox.ItemIndex := -1
+  else
+    FontCombobox.ItemIndex := FontCombobox.Items.IndexOf(fname);
+end;
+
+procedure TForm1.UpdateFontSizeIndex;
+var
+  sz: Single;
+begin
+  with sWorksheetGrid1 do sz := CellFontSizes[Selection];
+  if sz < 0 then
+    FontSizeCombobox.ItemIndex := -1
+  else
+    FontSizeCombobox.ItemIndex := FontSizeCombobox.Items.IndexOf(IntToStr(Round(sz)));
+end;
+
+procedure TForm1.UpdateFontStyleActions;
+var
+  style: TsFontStyles;
+begin
+  with sWorksheetGrid1 do style := CellFontStyles[Selection];
+  AcFontBold.Checked := fssBold in style;
+  AcFontItalic.Checked := fssItalic in style;
+  AcFontUnderline.Checked := fssUnderline in style;
+  AcFontStrikeout.Checked := fssStrikeOut in style;
 end;
 
 procedure TForm1.UpdateTextRotationActions;

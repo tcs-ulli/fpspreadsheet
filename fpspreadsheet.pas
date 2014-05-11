@@ -376,7 +376,8 @@ type
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
     function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
-    function WriteFontSize(ARow, ACol: Cardinal; ASize: Integer): Integer;
+    function WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
+    function WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
     function WriteFontStyle(ARow, ACol: Cardinal; AStyle: TsFontStyles): Integer;
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
@@ -1506,7 +1507,17 @@ begin
   Result := WriteFont(ARow, ACol, fnt.FontName, fnt.Size, fnt.Style, AFontColor);
 end;
 
-function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Integer): Integer;
+function TsWorksheet.WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
+var
+  lCell: PCell;
+  fnt: TsFont;
+begin
+  lCell := GetCell(ARow, ACol);
+  fnt := Workbook.GetFont(lCell^.FontIndex);
+  result := WriteFont(ARow, ACol, AFontName, fnt.Size, fnt.Style, fnt.Color);
+end;
+
+function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
 var
   lCell: PCell;
   fnt: TsFont;
