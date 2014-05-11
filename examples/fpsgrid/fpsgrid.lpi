@@ -139,8 +139,8 @@
         <UnitName Value="fpspreadsheet"/>
         <EditorIndex Value="8"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="2255"/>
-        <CursorPos X="19" Y="2262"/>
+        <TopLine Value="280"/>
+        <CursorPos X="17" Y="312"/>
         <UsageCount Value="100"/>
         <Loaded Value="True"/>
       </Unit2>
@@ -150,8 +150,8 @@
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="2007"/>
-        <CursorPos X="1" Y="1983"/>
+        <TopLine Value="2096"/>
+        <CursorPos X="1" Y="2120"/>
         <UsageCount Value="100"/>
         <Bookmarks Count="1">
           <Item0 X="7" Y="1938" ID="1"/>
@@ -585,123 +585,123 @@
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1360" Column="1" TopLine="1335"/>
+        <Caret Line="1368" Column="1" TopLine="1336"/>
       </Position1>
       <Position2>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1361" Column="1" TopLine="1335"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="610" Column="1" TopLine="602"/>
       </Position2>
       <Position3>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1362" Column="1" TopLine="1335"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="613" Column="1" TopLine="602"/>
       </Position3>
       <Position4>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1363" Column="1" TopLine="1335"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="603" Column="19" TopLine="603"/>
       </Position4>
       <Position5>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1368" Column="1" TopLine="1336"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="310" Column="3" TopLine="310"/>
       </Position5>
       <Position6>
         <Filename Value="mainform.pas"/>
-        <Caret Line="610" Column="1" TopLine="602"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position6>
       <Position7>
         <Filename Value="mainform.pas"/>
-        <Caret Line="613" Column="1" TopLine="602"/>
+        <Caret Line="173" Column="29" TopLine="142"/>
       </Position7>
       <Position8>
         <Filename Value="mainform.pas"/>
-        <Caret Line="603" Column="19" TopLine="603"/>
+        <Caret Line="556" Column="17" TopLine="524"/>
       </Position8>
       <Position9>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="310" Column="3" TopLine="310"/>
-      </Position9>
-      <Position10>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
-      </Position10>
-      <Position11>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="173" Column="29" TopLine="142"/>
-      </Position11>
-      <Position12>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="556" Column="17" TopLine="524"/>
-      </Position12>
-      <Position13>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <Caret Line="2038" Column="1" TopLine="2031"/>
-      </Position13>
-      <Position14>
+      </Position9>
+      <Position10>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <Caret Line="2041" Column="1" TopLine="2031"/>
-      </Position14>
-      <Position15>
+      </Position10>
+      <Position11>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <Caret Line="2044" Column="1" TopLine="2031"/>
+      </Position11>
+      <Position12>
+        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
+        <Caret Line="2483" Column="1" TopLine="2464"/>
+      </Position12>
+      <Position13>
+        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
+        <Caret Line="2484" Column="1" TopLine="2464"/>
+      </Position13>
+      <Position14>
+        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
+        <Caret Line="2485" Column="1" TopLine="2464"/>
+      </Position14>
+      <Position15>
+        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
+        <Caret Line="2486" Column="1" TopLine="2464"/>
       </Position15>
       <Position16>
         <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2483" Column="1" TopLine="2464"/>
+        <Caret Line="2490" Column="1" TopLine="2464"/>
       </Position16>
       <Position17>
         <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2484" Column="1" TopLine="2464"/>
+        <Caret Line="2492" Column="1" TopLine="2464"/>
       </Position17>
       <Position18>
         <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2485" Column="1" TopLine="2464"/>
+        <Caret Line="2494" Column="1" TopLine="2464"/>
       </Position18>
       <Position19>
         <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2486" Column="1" TopLine="2464"/>
+        <Caret Line="2495" Column="1" TopLine="2464"/>
       </Position19>
       <Position20>
-        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2490" Column="1" TopLine="2464"/>
-      </Position20>
-      <Position21>
-        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2492" Column="1" TopLine="2464"/>
-      </Position21>
-      <Position22>
-        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2494" Column="1" TopLine="2464"/>
-      </Position22>
-      <Position23>
-        <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
-        <Caret Line="2495" Column="1" TopLine="2464"/>
-      </Position23>
-      <Position24>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <Caret Line="2038" Column="1" TopLine="2031"/>
-      </Position24>
-      <Position25>
+      </Position20>
+      <Position21>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <Caret Line="1626" Column="1" TopLine="1607"/>
-      </Position25>
-      <Position26>
+      </Position21>
+      <Position22>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <Caret Line="414" Column="14" TopLine="397"/>
-      </Position26>
-      <Position27>
+      </Position22>
+      <Position23>
         <Filename Value="mainform.pas"/>
         <Caret Line="564" Column="1" TopLine="557"/>
-      </Position27>
-      <Position28>
+      </Position23>
+      <Position24>
         <Filename Value="mainform.pas"/>
         <Caret Line="640" Column="31" TopLine="604"/>
-      </Position28>
-      <Position29>
+      </Position24>
+      <Position25>
         <Filename Value="mainform.pas"/>
         <Caret Line="641" Column="31" TopLine="605"/>
-      </Position29>
-      <Position30>
+      </Position25>
+      <Position26>
         <Filename Value="mainform.pas"/>
         <Caret Line="640" Column="31" TopLine="604"/>
+      </Position26>
+      <Position27>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="2024" Column="25" TopLine="2007"/>
+      </Position27>
+      <Position28>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2262" Column="19" TopLine="2255"/>
+      </Position28>
+      <Position29>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
+      </Position29>
+      <Position30>
+        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
+        <Caret Line="2104" Column="68" TopLine="2087"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>

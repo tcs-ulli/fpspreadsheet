@@ -2096,13 +2096,26 @@ begin
     Options := Options + [goHorzLine, goVertLine]
   else
     Options := Options - [goHorzLine, goVertLine];
+
+  if FWorksheet <> nil then
+    if AValue then
+      FWorksheet.Options := FWorksheet.Options + [soShowGridLines]
+    else
+      FWorksheet.Options := FWorksheet.Options - [soShowGridLines];
 end;
 
 { Shows / hides the worksheet's row and column headers. }
 procedure TsCustomWorksheetGrid.SetShowHeaders(AValue: Boolean);
 begin
   if AValue = GetShowHeaders then Exit;
+
   FHeaderCount := ord(AValue);
+  if FWorksheet <> nil then
+    if AValue then
+      FWorksheet.Options := FWorksheet.Options + [soShowHeaders]
+    else
+      FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
+
   Setup;
 end;
 
