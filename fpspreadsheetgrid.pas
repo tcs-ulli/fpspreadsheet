@@ -43,6 +43,8 @@ type
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure FixNeighborCellBorders(ACol, ARow: Integer);
+
+    // Setter/Getter
     function GetCellBorder(ACol, ARow: Integer): TsCellBorders;
     function GetCellBorders(ARect: TGridRect): TsCellBorders;
     function GetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder): TsCellBorderStyle;
@@ -51,6 +53,8 @@ type
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
+    function GetTextRotation(ACol, ARow: Integer): TsTextRotation;
+    function GetTextRotations(ARect: TGridRect): TsTextRotation;
     function GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
     function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
@@ -65,6 +69,8 @@ type
     procedure SetHorAlignments(ARect: TGridRect; AValue: TsHorAlignment);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
+    procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
+    procedure SetTextRotations(ARect: TGridRect; AValue: TsTextRotation);
     procedure SetVertAlignment(ACol, ARow: Integer; AValue: TsVertAlignment);
     procedure SetVertAlignments(ARect: TGridRect; AValue: TsVertAlignment);
     procedure SetWordwrap(ACol, ARow: Integer; AValue: boolean);
@@ -143,6 +149,10 @@ type
         read GetHorAlignment write SetHorAlignment;
     property HorAlignments[ARect: TGridRect]: TsHorAlignment
         read GetHorAlignments write SetHorAlignments;
+    property TextRotation[ACol, ARow: Integer]: TsTextRotation
+        read GetTextRotation write SetTextRotation;
+    property TextRotations[ARect: TGridRect]: TsTextRotation
+        read GetTextRotations write SetTextRotations;
     property VertAlignment[ACol, ARow: Integer]: TsVertAlignment
         read GetVertAlignment write SetVertAlignment;
     property VertAlignments[ARect: TGridRect]: TsVertAlignment
@@ -1409,6 +1419,35 @@ begin
   Result := FHeaderCount <> 0;
 end;
 
+function TsCustomWorksheetGrid.GetTextRotation(ACol, ARow: Integer): TsTextRotation;
+var
+  cell: PCell;
+begin
+  Result := trHorizontal;
+  if Assigned(FWorksheet) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) then
+      Result := cell^.TextRotation;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetTextRotations(ARect: TGridRect): TsTextRotation;
+var
+  c, r: Integer;
+  textrot: TsTextRotation;
+begin
+  Result := GetTextRotation(ARect.Left, ARect.Top);
+  textrot := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetTextRotation(c, r);
+      if Result <> textrot then begin
+        Result := trHorizontal;
+        exit;
+      end;
+    end;
+end;
+
 function TsCustomWorksheetGrid.GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
 var
   cell: PCell;
@@ -1669,6 +1708,28 @@ begin
   if AValue = GetShowHeaders then Exit;
   FHeaderCount := ord(AValue);
   Setup;
+end;
+
+procedure TsCustomWorksheetGrid.SetTextRotation(ACol, ARow: Integer;
+  AValue: TsTextRotation);
+begin
+  if Assigned(FWorkbook) then
+    FWorksheet.WriteTextRotation(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetTextRotations(ARect: TGridRect;
+  AValue: TsTextRotation);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetTextRotation(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.Setup;

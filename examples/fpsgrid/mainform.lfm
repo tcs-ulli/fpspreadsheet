@@ -512,6 +512,25 @@ object Form1: TForm1
           FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
         }
       end
+      object MnuTextRotation: TMenuItem
+        Caption = 'Text rotation'
+        object MenuItem29: TMenuItem
+          Action = AcTextHoriz
+          AutoCheck = True
+        end
+        object MenuItem30: TMenuItem
+          Action = AcTextVertCW
+          AutoCheck = True
+        end
+        object MenuItem31: TMenuItem
+          Action = AcTextVertCCW
+          AutoCheck = True
+        end
+        object MenuItem32: TMenuItem
+          Action = AcTextStacked
+          AutoCheck = True
+        end
+      end
       object MnuHorAlignment: TMenuItem
         Caption = 'Horizontal alignment'
         object MnuHorDefault: TMenuItem
@@ -1975,6 +1994,39 @@ object Form1: TForm1
       Caption = 'Word wrap'
       Hint = 'Wrap text'
       OnExecute = AcWordwrapExecute
+    end
+    object AcTextHoriz: TAction
+      Tag = 130
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Horizontal'
+      Checked = True
+      Hint = 'Use horizontal text'
+      OnExecute = AcTextRotationExecute
+    end
+    object AcTextVertCW: TAction
+      Tag = 131
+      Category = 'Format'
+      AutoCheck = True
+      Caption = '90° clockwise'
+      Hint = 'Text rotated by 90° clockwise'
+      OnExecute = AcTextRotationExecute
+    end
+    object AcTextVertCCW: TAction
+      Tag = 132
+      Category = 'Format'
+      AutoCheck = True
+      Caption = '90° counter-clockwise'
+      Hint = 'Text rotated by 90° counter-clockwise'
+      OnExecute = AcTextRotationExecute
+    end
+    object AcTextStacked: TAction
+      Tag = 133
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Stacked characters'
+      Hint = 'Text characters stacked'
+      OnExecute = AcTextRotationExecute
     end
   end
   object FontDialog1: TFontDialog
