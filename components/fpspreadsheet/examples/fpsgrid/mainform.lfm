@@ -283,6 +283,17 @@ object Form1: TForm1
       Caption = 'ToolButton20'
       Style = tbsDivider
     end
+    object CbBackgroundColor: TColorBox
+      Left = 461
+      Height = 24
+      Top = 2
+      Width = 132
+      Style = [cbPrettyNames, cbCustomColors]
+      OnGetColors = CbBackgroundColorGetColors
+      ItemHeight = 16
+      OnSelect = CbBackgroundColorSelect
+      TabOrder = 2
+    end
   end
   object OpenDialog1: TOpenDialog
     DefaultExt = '.xls'

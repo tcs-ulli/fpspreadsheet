@@ -210,6 +210,8 @@ const
   // Will be removed sooner or later...
   scRGBColor = $FFFF;
 
+  scNotDefined = $FFFF;
+
 type
   {@@ Data type for rgb color values }
   TsColorValue = DWord;

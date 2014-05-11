@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids, graphutil,
-  fpspreadsheetgrid, fpspreadsheet, fpsallformats;
+  ColorBox, fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
 
@@ -54,6 +54,7 @@ type
     ActionList1: TActionList;
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
+    CbBackgroundColor: TColorBox;
     FontComboBox: TComboBox;
     EdFrozenRows: TSpinEdit;
     FontDialog1: TFontDialog;
@@ -149,11 +150,13 @@ type
     procedure AcTextRotationExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
+    procedure CbBackgroundColorSelect(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
     procedure AcOpenExecute(Sender: TObject);
     procedure AcQuitExecute(Sender: TObject);
     procedure AcSaveAsExecute(Sender: TObject);
+    procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
     procedure EdFrozenColsChange(Sender: TObject);
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
@@ -164,6 +167,8 @@ type
   private
     { private declarations }
     procedure LoadFile(const AFileName: String);
+    procedure SetupBackgroundColorBox;
+    procedure UpdateBackgroundColorIndex;
     procedure UpdateFontActions(AFont: TsFont);
     procedure UpdateHorAlignmentActions;
     procedure UpdateTextRotationActions;
@@ -393,6 +398,11 @@ begin
   with sWorksheetGrid1 do Wordwraps[Selection] := TAction(Sender).Checked;
 end;
 
+procedure TForm1.CbBackgroundColorSelect(Sender: TObject);
+begin
+  with sWorksheetGrid1 do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
+end;
+
 procedure TForm1.CbShowHeadersClick(Sender: TObject);
 begin
   sWorksheetGrid1.ShowHeaders := CbShowHeaders.Checked;
@@ -422,6 +432,24 @@ begin
 
   if SaveDialog1.Execute then
     sWorksheetGrid1.SaveToSpreadsheetFile(SaveDialog1.FileName);
+end;
+
+procedure TForm1.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
+type
+  TRGB = packed record R,G,B: byte end;
+var
+  clr: TColor;
+  rgb: TRGB absolute clr;
+  i: Integer;
+begin
+  if sWorksheetGrid1.Workbook <> nil then begin
+    Items.Clear;
+    for i:=0 to sWorksheetGrid1.Workbook.GetPaletteSize-1 do begin
+      clr := sWorksheetGrid1.Workbook.GetPaletteColor(i);
+      Items.AddObject(Format('Color %d: %.2x%.2x%.2x', [i, rgb.R, rgb.G, rgb.B]),
+        TObject(PtrInt(clr)));
+    end;
+  end;
 end;
 
 procedure TForm1.EdFrozenColsChange(Sender: TObject);
@@ -516,6 +544,7 @@ begin
   CbShowHeaders.Checked := (soShowHeaders in sWorksheetGrid1.Worksheet.Options);
   EdFrozenCols.Value := sWorksheetGrid1.FrozenCols;
   EdFrozenRows.Value := sWorksheetGrid1.FrozenRows;
+  SetupBackgroundColorBox;
 
   // Create a tab in the pagecontrol for each worksheet contained in the workbook
   // This would be easer with a TTabControl. This has display issues, though.
@@ -530,12 +559,22 @@ begin
   finally
     pages.Free;
   end;
+
+  sWorksheetGrid1Selection(nil, sWorksheetGrid1.Col, sWorksheetGrid1.Row);
 end;
 
 procedure TForm1.PageControl1Change(Sender: TObject);
 begin
   sWorksheetGrid1.Parent := PageControl1.Pages[PageControl1.ActivePageIndex];
   sWorksheetGrid1.SelectSheetByIndex(PageControl1.ActivePageIndex);
+end;
+
+procedure TForm1.SetupBackgroundColorBox;
+begin
+  // This change triggers re-reading of the workbooks palette by the OnGetColors
+  // event of the ColorBox.
+  CbBackgroundColor.Style := CbBackgroundColor.Style - [cbCustomColors];
+  CbBackgroundColor.Style := CbBackgroundColor.Style + [cbCustomColors];
 end;
 
 procedure TForm1.sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
@@ -555,10 +594,22 @@ begin
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;
   UpdateWordwraps;
+  UpdateBackgroundColorIndex;
   if cell = nil then
     exit;
   lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
   UpdateFontActions(lFont);
+end;
+
+procedure TForm1.UpdateBackgroundColorIndex;
+var
+  sClr: TsColor;
+begin
+  with sWorksheetGrid1 do sClr := BackgroundColors[Selection];
+  if sClr = scNotDefined then
+    CbBackgroundColor.ItemIndex := -1
+  else
+    CbBackgroundColor.ItemIndex := sClr;
 end;
 
 procedure TForm1.UpdateHorAlignmentActions;
