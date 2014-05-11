@@ -1910,8 +1910,8 @@ procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
   { Not all line styles defined in BIFF8 are supported by fpspreadsheet. }
   begin
     case dw of
-      $01..$06: result := TsLineStyle(dw-1);
-      $07: Result := lsDotted;
+      $01..$07: result := TsLineStyle(dw-1);
+//      $07: Result := lsDotted;
       else Result := lsDashed;
     end;
   end;

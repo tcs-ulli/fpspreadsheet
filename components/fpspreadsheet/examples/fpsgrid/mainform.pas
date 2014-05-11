@@ -33,6 +33,16 @@ type
     AcBorderBottomMedium: TAction;
     AcBorderLeft: TAction;
     AcBorderRight: TAction;
+    AcBorderNone: TAction;
+    AcBorderHCenter: TAction;
+    AcBorderVCenter: TAction;
+    AcBorderTopBottom: TAction;
+    AcBorderTopBottomThick: TAction;
+    AcBorderInner: TAction;
+    AcBorderAll: TAction;
+    AcBorderOuter: TAction;
+    AcBorderOuterMedium: TAction;
+    AcWordwrap: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
     AcVAlignCenter: TAction;
@@ -49,12 +59,34 @@ type
     Label2: TLabel;
     MainMenu1: TMainMenu;
     MenuItem1: TMenuItem;
+    MenuItem10: TMenuItem;
+    MenuItem11: TMenuItem;
+    MenuItem12: TMenuItem;
+    MenuItem13: TMenuItem;
+    MenuItem14: TMenuItem;
+    MenuItem15: TMenuItem;
+    MenuItem16: TMenuItem;
+    MenuItem17: TMenuItem;
+    MenuItem18: TMenuItem;
+    MenuItem19: TMenuItem;
     MenuItem2: TMenuItem;
+    MenuItem20: TMenuItem;
+    MenuItem21: TMenuItem;
+    MenuItem22: TMenuItem;
+    MenuItem23: TMenuItem;
+    MenuItem24: TMenuItem;
+    MenuItem25: TMenuItem;
+    MenuItem26: TMenuItem;
+    MenuItem27: TMenuItem;
+    MenuItem28: TMenuItem;
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
     MenuItem5: TMenuItem;
     MenuItem6: TMenuItem;
     MenuItem7: TMenuItem;
+    MenuItem8: TMenuItem;
+    MenuItem9: TMenuItem;
+    MnuWordwrap: TMenuItem;
     MnuVertBottom: TMenuItem;
     MnuVertCentered: TMenuItem;
     MnuVertTop: TMenuItem;
@@ -72,6 +104,7 @@ type
     OpenDialog1: TOpenDialog;
     PageControl1: TPageControl;
     Panel1: TPanel;
+    BordersPopupMenu: TPopupMenu;
     SaveDialog1: TSaveDialog;
     EdFrozenCols: TSpinEdit;
     sWorksheetGrid1: TsWorksheetGrid;
@@ -90,12 +123,8 @@ type
     ToolButton18: TToolButton;
     ToolButton19: TToolButton;
     ToolButton2: TToolButton;
+    TbBorders: TToolButton;
     ToolButton20: TToolButton;
-    ToolButton21: TToolButton;
-    ToolButton22: TToolButton;
-    ToolButton23: TToolButton;
-    ToolButton24: TToolButton;
-    ToolButton25: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
@@ -109,11 +138,12 @@ type
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
+    procedure AcWordwrapExecute(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
-    procedure acOpenExecute(Sender: TObject);
-    procedure acQuitExecute(Sender: TObject);
-    procedure acSaveAsExecute(Sender: TObject);
+    procedure AcOpenExecute(Sender: TObject);
+    procedure AcQuitExecute(Sender: TObject);
+    procedure AcSaveAsExecute(Sender: TObject);
     procedure EdFrozenColsChange(Sender: TObject);
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
@@ -124,10 +154,10 @@ type
   private
     { private declarations }
     procedure LoadFile(const AFileName: String);
-    procedure UpdateBorderActions(ACell: PCell);
-    procedure UpdateHorAlignmentActions;
     procedure UpdateFontActions(AFont: TsFont);
+    procedure UpdateHorAlignmentActions;
     procedure UpdateVertAlignmentActions;
+    procedure UpdateWordwraps;
   public
     { public declarations }
   end; 
@@ -144,6 +174,24 @@ const
   HORALIGN_TAG = 100;
   VERTALIGN_TAG = 110;
 
+  LEFT_BORDER_THIN       = $0001;
+  LEFT_BORDER_THICK      = $0002;
+  LR_INNER_BORDER_THIN   = $0008;
+  RIGHT_BORDER_THIN      = $0010;
+  RIGHT_BORDER_THICK     = $0020;
+  TOP_BORDER_THIN        = $0100;
+  TOP_BORDER_THICK       = $0200;
+  TB_INNER_BORDER_THIN   = $0800;
+  BOTTOM_BORDER_THIN     = $1000;
+  BOTTOM_BORDER_THICK    = $2000;
+  BOTTOM_BORDER_DOUBLE   = $3000;
+  LEFT_BORDER_MASK       = $0007;
+  RIGHT_BORDER_MASK      = $0070;
+  TOP_BORDER_MASK        = $0700;
+  BOTTOM_BORDER_MASK     = $7000;
+  LR_INNER_BORDER        = $0008;
+  TB_INNER_BORDER        = $0800;
+  // Use a combination of these bits for the "Tag" of the Border actions.
 
 { TForm1 }
 
@@ -156,28 +204,85 @@ begin
 end;
 
 procedure TForm1.AcBorderExecute(Sender: TObject);
+const
+  LINESTYLES: Array[1..3] of TsLinestyle = (lsThin, lsMedium, lsDouble);
 var
-  r,c: Cardinal;
-  borders: TsCellBorders;
-  lCell: PCell;
+  r,c: Integer;
+  ls: integer;
+  bs: TsCellBorderStyle;
 begin
+  bs.Color := scBlack;
+
   with sWorksheetGrid1 do begin
-    if Worksheet <> nil then begin
-      c := GetWorksheetCol(Col);
-      r := GetWorksheetRow(Row);
-      borders := [];
-      if AcBorderTop.Checked then borders := borders + [cbNorth];
-      if AcBorderLeft.Checked then borders := borders + [cbWest];
-      if AcBorderRight.Checked then borders := borders + [cbEast];
-      if AcBorderBottom.Checked or AcBorderBottomDbl.Checked or AcBorderBottomMedium.Checked then
-        borders := borders + [cbSouth];
-      Worksheet.WriteBorders(r, c, borders);
-      if AcBorderBottom.Checked then
-        Worksheet.WriteBorderLineStyle(r, c, cbSouth, lsThin);
-      if AcBorderBottomMedium.Checked then
-        Worksheet.WriteBorderLineStyle(r, c, cbSouth, lsMedium);
-      if AcBorderBottomDbl.Checked then
-        Worksheet.WriteBorderLineStyle(r, c, cbSouth, lsDouble);
+    TbBorders.Action := TAction(Sender);
+
+    BeginUpdate;
+    try
+      if TAction(Sender).Tag = 0 then begin
+        CellBorders[Selection] := [];
+        exit;
+      end;
+      // Top and bottom edges
+      for c := Selection.Left to Selection.Right do begin
+        ls := (TAction(Sender).Tag and TOP_BORDER_MASK) shr 8;
+        if (ls <> 0) then begin
+          CellBorder[c, Selection.Top] := CellBorder[c, Selection.Top] + [cbNorth];
+          bs.LineStyle := LINESTYLES[ls];
+          CellBorderStyle[c, Selection.Top, cbNorth] := bs;
+        end;
+        ls := (TAction(Sender).Tag and BOTTOM_BORDER_MASK) shr 12;
+        if ls <> 0 then begin
+          CellBorder[c, Selection.Bottom] := CellBorder[c, Selection.Bottom] + [cbSouth];
+          bs.LineStyle := LINESTYLES[ls];
+          CellBorderStyle[c, Selection.Bottom, cbSouth] := bs;
+        end;
+      end;
+      // Left and right edges
+      for r := Selection.Top to Selection.Bottom do begin
+        ls := (TAction(Sender).Tag and LEFT_BORDER_MASK);
+        if ls <> 0 then begin
+          CellBorder[Selection.Left, r] := CellBorder[Selection.Left, r] + [cbWest];
+          bs.LineStyle := LINESTYLES[ls];
+          CellBorderStyle[Selection.Left, r, cbWest] := bs;
+        end;
+        ls := (TAction(Sender).Tag and RIGHT_BORDER_MASK) shr 4;
+        if ls <> 0 then begin
+          CellBorder[Selection.Right, r] := CellBorder[Selection.Right, r] + [cbEast];
+          bs.LineStyle := LINESTYLES[ls];
+          CellBorderStyle[Selection.Right, r, cbEast] := bs;
+        end;
+      end;
+      // Inner edges along row (vertical border lines) - we assume only thin lines.
+      bs.LineStyle := lsThin;
+      if (TAction(Sender).Tag and LR_INNER_BORDER <> 0) and (Selection.Right > Selection.Left)
+      then
+        for r := Selection.Top to Selection.Bottom do begin
+          CellBorder[Selection.Left, r] := CellBorder[Selection.Left, r] + [cbEast];
+          CellBorderStyle[Selection.Left, r, cbEast] := bs;
+          for c := Selection.Left+1 to Selection.Right-1 do begin
+            CellBorder[c,r] := CellBorder[c, r] + [cbEast, cbWest];
+            CellBorderStyle[c, r, cbEast] := bs;
+            CellBorderStyle[c, r, cbWest] := bs;
+          end;
+          CellBorder[Selection.Right, r] := CellBorder[Selection.Right, r] + [cbWest];
+          CellBorderStyle[Selection.Right, r, cbWest] := bs;
+        end;
+      // Inner edges along column (horizontal border lines)
+      if (TAction(Sender).Tag and TB_INNER_BORDER <> 0) and (Selection.Bottom > Selection.Top)
+      then
+        for c := Selection.Left to Selection.Right do begin
+          CellBorder[c, Selection.Top] := CellBorder[c, Selection.Top] + [cbSouth];
+          CellBorderStyle[c, Selection.Top, cbSouth] := bs;
+          for r := Selection.Top+1 to Selection.Bottom-1 do begin
+            CellBorder[c, r] := CellBorder[c, r] + [cbNorth, cbSouth];
+            CellBorderStyle[c, r, cbNorth] := bs;
+            CellBorderStyle[c, r, cbSouth] := bs;
+          end;
+          CellBorder[c, Selection.Bottom] := CellBorder[c, Selection.Bottom] + [cbNorth];
+          CellBorderStyle[c, Selection.Bottom, cbNorth] := bs;
+        end;
+    finally
+      EndUpdate;
     end;
   end;
 end;
@@ -257,6 +362,11 @@ begin
     vert_align := vaDefault;
   with sWorksheetGrid1 do VertAlignments[Selection] := vert_align;
   UpdateVertAlignmentActions;
+end;
+
+procedure TForm1.AcWordwrapExecute(Sender: TObject);
+begin
+  with sWorksheetGrid1 do Wordwraps[Selection] := TAction(Sender).Checked;
 end;
 
 procedure TForm1.CbShowHeadersClick(Sender: TObject);
@@ -339,8 +449,29 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+  // Adjust format toolbar height, looks strange at 120 dpi
+  FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
+  FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
+
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);
+
+  // Set the Tags of the Border actions
+  AcBorderNone.Tag := 0;
+  AcBorderLeft.Tag := LEFT_BORDER_THIN;
+  AcBorderHCenter.Tag := LR_INNER_BORDER_THIN;
+  AcBorderRight.Tag := RIGHT_BORDER_THIN;
+  AcBorderTop.Tag := TOP_BORDER_THIN;
+  AcBorderVCenter.Tag := TB_INNER_BORDER_THIN;
+  AcBorderBottom.Tag := BOTTOM_BORDER_THIN;
+  AcBorderBottomDbl.Tag := BOTTOM_BORDER_DOUBLE;
+  AcBorderBottomMedium.Tag := BOTTOM_BORDER_THICK;
+  AcBorderTopBottom.Tag := TOP_BORDER_THIN + BOTTOM_BORDER_THIN;
+  AcBorderTopBottomThick.Tag := TOP_BORDER_THIN + BOTTOM_BORDER_THICK;
+  AcBorderInner.Tag := LR_INNER_BORDER_THIN + TB_INNER_BORDER_THIN;
+  AcBorderOuter.Tag := LEFT_BORDER_THIN + RIGHT_BORDER_THIN + TOP_BORDER_THIN + BOTTOM_BORDER_THIN;
+  AcBorderOuterMedium.Tag := LEFT_BORDER_THICK + RIGHT_BORDER_THICK + TOP_BORDER_THICK + BOTTOM_BORDER_THICK;
+  AcBorderAll.Tag := AcBorderOuter.Tag + AcBorderInner.Tag;
 end;
 
 procedure TForm1.LoadFile(const AFileName: String);
@@ -399,24 +530,11 @@ begin
   end;
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;
-  UpdateBorderactions(cell);
+  UpdateWordwraps;
   if cell = nil then
     exit;
   lFont := sWorksheetGrid1.Workbook.GetFont(cell^.FontIndex);
   UpdateFontActions(lFont);
-end;
-
-procedure TForm1.UpdateBorderActions(ACell: PCell);
-begin
-  AcBorderTop.Checked := (ACell <> nil) and (cbNorth in ACell^.Border);
-  AcBorderLeft.Checked := (ACell <> nil) and (cbWest in ACell^.Border);
-  AcBorderRight.Checked := (ACell <> nil) and (cbEast in ACell^.Border);
-  AcBorderBottom.Checked := (ACell <> nil) and (cbSouth in ACell^.Border) and
-   (ACell^.BorderStyles[cbSouth].LineStyle = lsThin);
-  AcBorderBottomDbl.Checked := (ACell <> nil) and (cbSouth in ACell^.Border) and
-    (ACell^.BorderStyles[cbSouth].LineStyle = lsDouble);
-  AcBorderBottomMedium.Checked := (ACell <> nil) and (cbSouth in ACell^.Border) and
-    (ACell^.BorderStyles[cbSouth].LineStyle = lsMedium);
 end;
 
 procedure TForm1.UpdateHorAlignmentActions;
@@ -459,6 +577,13 @@ begin
   end;
 end;
 
+procedure TForm1.UpdateWordwraps;
+var
+  wrapped: Boolean;
+begin
+  with sWorksheetGrid1 do wrapped := Wordwraps[Selection];
+  AcWordwrap.Checked := wrapped;
+end;
 
 initialization
   {$I mainform.lrs}
