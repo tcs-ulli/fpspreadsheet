@@ -237,7 +237,7 @@ type
   TsCellBorders = set of TsCellBorder;
 
   {@@ Line style (for cell borders) }
-  TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble);
+  TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair);
 
   {@@ Cell border style }
   TsCellBorderStyle = record
