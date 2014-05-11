@@ -45,6 +45,8 @@ type
     procedure FixNeighborCellBorders(ACol, ARow: Integer);
 
     // Setter/Getter
+    function GetBackgroundColor(ACol, ARow: Integer): TsColor;
+    function GetBackgroundColors(ARect: TGridRect): TsColor;
     function GetCellBorder(ACol, ARow: Integer): TsCellBorders;
     function GetCellBorders(ARect: TGridRect): TsCellBorders;
     function GetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder): TsCellBorderStyle;
@@ -59,6 +61,8 @@ type
     function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
     function GetWordwraps(ARect: TGridRect): Boolean;
+    procedure SetBackgroundColor(ACol, ARow: Integer; AValue: TsColor);
+    procedure SetBackgroundColors(ARect: TGridRect; AValue: TsColor);
     procedure SetCellBorder(ACol, ARow: Integer; AValue: TsCellBorders);
     procedure SetCellBorders(ARect: TGridRect; AValue: TsCellBorders);
     procedure SetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
@@ -137,6 +141,10 @@ type
     property HeaderCount: Integer read FHeaderCount;
 
     { maybe these should become published ... }
+    property BackgroundColor[ACol, ARow: Integer]: TsColor
+        read GetBackgroundColor write SetBackgroundColor;
+    property BackgroundColors[ARect: TGridRect]: TsColor
+        read GetBackgroundColors write SetBackgroundColors;
     property CellBorder[ACol, ARow: Integer]: TsCellBorders
         read GetCellBorder write SetCellBorder;
     property CellBorders[ARect: TGridRect]: TsCellBorders
@@ -1146,6 +1154,35 @@ begin
   end;
 end;
 
+function TsCustomWorksheetGrid.GetBackgroundColor(ACol, ARow: Integer): TsColor;
+var
+  cell: PCell;
+begin
+  Result := scNotDefined;
+  if Assigned(FWorksheet) then begin
+    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if (cell <> nil) and (uffBackgroundColor in cell^.UsedFormattingFields) then
+      Result := cell^.BackgroundColor;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetBackgroundColors(ARect: TGridRect): TsColor;
+var
+  c, r: Integer;
+  clr: TsColor;
+begin
+  Result := GetBackgroundColor(ARect.Left, ARect.Top);
+  clr := Result;
+  for c := ARect.Left to ARect.Right do
+    for r := ARect.Top to ARect.Bottom do begin
+      Result := GetBackgroundColor(c, r);
+      if Result <> clr then begin
+        Result := scNotDefined;
+        exit;
+      end;
+    end;
+end;
+
 function TsCustomWorksheetGrid.GetCellBorder(ACol, ARow: Integer): TsCellBorders;
 var
   cell: PCell;
@@ -1583,6 +1620,38 @@ procedure TsCustomWorksheetGrid.SelectEditor;
 begin
   FOldEditText := GetCellText(Col, Row);
   inherited;
+end;
+
+procedure TsCustomWorksheetGrid.SetBackgroundColor(ACol, ARow: Integer;
+  AValue: TsColor);
+var
+  c, r: Cardinal;
+begin
+  if Assigned(FWorkbook) then begin
+    BeginUpdate;
+    try
+      c := GetWorksheetCol(ACol);
+      r := GetWorksheetRow(ARow);
+      FWorksheet.WriteBackgroundColor(r, c, AValue);
+    finally
+      EndUpdate;
+    end;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetBackgroundColors(ARect: TGridRect;
+  AValue: TsColor);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetBackgroundColor(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetCellBorder(ACol, ARow: Integer;
