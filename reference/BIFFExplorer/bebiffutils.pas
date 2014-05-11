@@ -288,7 +288,7 @@ begin
     $0236: Result := 'TABLE: Data table';
     $023E: Result := 'WINDOW2: Sheet window information';
     $0243: Result := 'XF: Extended format';
-    $027E: Result := 'RK';
+    $027E: Result := 'RK: Cell value, RK number';
     $0293: Result := 'STYLE: Style information';
     $0406: Result := 'FORMULA: Cell formula';
     $0409: Result := 'BOF';

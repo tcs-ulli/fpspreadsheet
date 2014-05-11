@@ -62,6 +62,7 @@ type
     procedure ShowLeftMargin;
     procedure ShowMMS;
     procedure ShowMulBlank;
+    procedure ShowMulRK;
     procedure ShowNote;
     procedure ShowNumberCell;
     procedure ShowObj;
@@ -336,6 +337,8 @@ begin
       ShowFnGroupCount;
     $00BE:
       ShowMulBlank;
+    $00BD:
+      ShowMulRK;
     $00DA:
       ShowBookBool;
     $00E0:
@@ -2148,6 +2151,77 @@ begin
 end;
 
 
+procedure TBIFFGrid.ShowMulRK;
+var
+  w: Word;
+  numBytes: Integer;
+  i, nc: Integer;
+  dw: DWord;
+  encint: DWord;
+  encdbl: QWord;
+  dbl: Double absolute encdbl;
+  s: String;
+begin
+  nc := (Length(FBuffer) - 6) div 6;
+  RowCount := FixedRows + 3 + nc*2;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to row');
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to first column');
+
+  for i:=0 to nc-1 do begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+      Format('Index to XF record #%d', [i]));
+
+    numBytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    dw := DWordLEToN(dw);
+
+    if Row = FCurrRow then begin
+      FDetails.Add('RK Value:'#13);
+      if dw and $00000001 = 0
+        then FDetails.Add('Bit 0 = 0: Value not changed')
+        else FDetails.Add('Bit 0 = 1: Encoded value is multiplied by 100.');
+      if dw and $00000002 = 0
+        then FDetails.Add('Bit 1 = 0: Floating point value')
+        else FDetails.Add('Bit 1 = 1: Signed integer value');
+      if dw and $00000002 = 0 then begin
+        encdbl := (QWord(dw) and QWord($FFFFFFFFFFFFFFFC)) shl 32;
+        if dw and $00000001 = 1 then
+          s := Format('%.2f', [dbl*0.01])
+        else
+          s := Format('%.0f', [dbl]);
+      end
+      else begin
+        s := Format('$%.16x', [-59000000]);
+        encint := ((dw and DWord($FFFFFFFC)) shr 2) or (dw and DWord($C0000000));
+          // "arithmetic shift" = replace left-most bits by original bits
+        if dw and $00000001 = 1 then
+          s := FloatToStr(encint*0.01)
+        else
+          s := IntToStr(encint);
+      end;
+      FDetails.Add('Bits 31-2: Encoded value ' + s);
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes,
+      Format('$%.8x', [dw]),
+      Format('RK value #%d', [i])
+    );
+  end;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+    'Index to last column');
+end;
+
 procedure TBIFFGrid.ShowNote;
 var
   numBytes: Integer;
@@ -2697,27 +2771,34 @@ begin
   Move(FBuffer[FBufferIndex], dw, numBytes);
   dw := DWordLEToN(dw);
 
-  if dw and $00000002 = 0 then begin
-    encdbl := (QWord(dw) and QWord($FFFFFFFFFFFFFFFC)) shl 32;
-    if dw and $00000001 = 1 then
-      s := Format('%.2f', [dbl*0.01])
-    else
-      s := Format('%.0f', [dbl]);
-  end
-  else begin
-    s := Format('$%.16x', [-59000000]);
-    encint := ((dw and DWord($FFFFFFFC)) shr 2) or (dw and DWord($C0000000));
-      // "arithmetic shift" = replace left-most bits by original bits
-    if dw and $00000001 = 1 then
-      s := FloatToStr(encint*0.01)
-    else
-      s := IntToStr(encint);
+  if Row = FCurrRow then begin
+    FDetails.Add('RK Value:'#13);
+    if dw and $00000001 = 0
+      then FDetails.Add('Bit 0 = 0: Value not changed')
+      else FDetails.Add('Bit 0 = 1: Encoded value is multiplied by 100.');
+    if dw and $00000002 = 0
+      then FDetails.Add('Bit 1 = 0: Floating point value')
+      else FDetails.Add('Bit 1 = 1: Signed integer value');
+    if dw and $00000002 = 0 then begin
+      encdbl := (QWord(dw) and QWord($FFFFFFFFFFFFFFFC)) shl 32;
+      if dw and $00000001 = 1 then
+        s := Format('%.2f', [dbl*0.01])
+      else
+        s := Format('%.0f', [dbl]);
+    end
+    else begin
+      s := Format('$%.16x', [-59000000]);
+      encint := ((dw and DWord($FFFFFFFC)) shr 2) or (dw and DWord($C0000000));
+        // "arithmetic shift" = replace left-most bits by original bits
+      if dw and $00000001 = 1 then
+        s := FloatToStr(encint*0.01)
+      else
+        s := IntToStr(encint);
+    end;
+    FDetails.Add('Bits 31-2: Encoded value ' + s);
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes,
-    Format('$%.8x', [dw]),
-    Format('RK value (Bit 0=Unchanged/Encoded value multiplied by 100, Bit 1=float/signed int, '+
-           'Bits 2-31=encoded value (here: %s)', [s])
-  );
+    Format('$%.8x', [dw]), 'RK value');
 end;
 
 
