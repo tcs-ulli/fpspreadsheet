@@ -42,6 +42,10 @@ type
     AcBorderAll: TAction;
     AcBorderOuter: TAction;
     AcBorderOuterMedium: TAction;
+    AcTextHoriz: TAction;
+    AcTextVertCW: TAction;
+    AcTextVertCCW: TAction;
+    AcTextStacked: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
@@ -79,6 +83,11 @@ type
     MenuItem26: TMenuItem;
     MenuItem27: TMenuItem;
     MenuItem28: TMenuItem;
+    MenuItem29: TMenuItem;
+    MenuItem30: TMenuItem;
+    MenuItem31: TMenuItem;
+    MenuItem32: TMenuItem;
+    MnuTextRotation: TMenuItem;
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
     MenuItem5: TMenuItem;
@@ -137,6 +146,7 @@ type
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
+    procedure AcTextRotationExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
@@ -156,6 +166,7 @@ type
     procedure LoadFile(const AFileName: String);
     procedure UpdateFontActions(AFont: TsFont);
     procedure UpdateHorAlignmentActions;
+    procedure UpdateTextRotationActions;
     procedure UpdateVertAlignmentActions;
     procedure UpdateWordwraps;
   public
@@ -173,6 +184,7 @@ uses
 const
   HORALIGN_TAG = 100;
   VERTALIGN_TAG = 110;
+  TEXTROT_TAG = 130;
 
   LEFT_BORDER_THIN       = $0001;
   LEFT_BORDER_THICK      = $0002;
@@ -350,6 +362,18 @@ begin
     hor_align := haDefault;
   with sWorksheetGrid1 do HorAlignments[Selection] := hor_align;
   UpdateHorAlignmentActions;
+end;
+
+procedure TForm1.AcTextRotationExecute(Sender: TObject);
+var
+  text_rot: TsTextRotation;
+begin
+  if TAction(Sender).Checked then
+    text_rot := TsTextRotation(TAction(Sender).Tag - TEXTROT_TAG)
+  else
+    text_rot := trHorizontal;
+  with sWorksheetGrid1 do TextRotations[Selection] := text_rot;
+  UpdateTextRotationActions;
 end;
 
 procedure TForm1.AcVertAlignmentExecute(Sender: TObject);
@@ -559,6 +583,20 @@ begin
   AcFontItalic.Checked := fssItalic in AFont.Style;
   AcFontUnderline.Checked := fssUnderline in AFont.Style;
   AcFontStrikeout.Checked := fssStrikeOut in AFont.Style;
+end;
+
+procedure TForm1.UpdateTextRotationActions;
+var
+  i: Integer;
+  ac: TAction;
+  text_rot: TsTextRotation;
+begin
+  with sWorksheetGrid1 do text_rot := TextRotations[Selection];
+  for i:=0 to ActionList1.ActionCount-1 do begin
+    ac := TAction(ActionList1.Actions[i]);
+    if (ac.Tag >= TEXTROT_TAG) and (ac.Tag < TEXTROT_TAG+10) then
+      ac.Checked := ((ac.Tag - TEXTROT_TAG) = ord(text_rot));
+  end;
 end;
 
 procedure TForm1.UpdateVertAlignmentActions;
