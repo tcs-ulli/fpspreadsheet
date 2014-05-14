@@ -11,7 +11,7 @@ program excel8read;
 
 uses
   Classes, SysUtils, fpspreadsheet, xlsbiff8,
-  laz_fpspreadsheet;
+  laz_fpspreadsheet, fpsutils;
 
 var
   MyWorkbook: TsWorkbook;
@@ -20,6 +20,8 @@ var
   MyDir: string;
   i: Integer;
   CurCell: PCell;
+
+{$R *.res}
 
 begin
   // Open the input file

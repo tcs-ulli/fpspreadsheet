@@ -236,7 +236,7 @@ const
   { DATEMODE record, 5.28 }
   DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
-
+                         (*
   { FORMAT record constants for BIFF5-BIFF8}
   // Subset of the built-in formats for US Excel, 
   // including those needed for date/time output
@@ -262,6 +262,7 @@ const
   FORMAT_TIME_INTERVAL = 46;      //time [hh]:mm:ss, hh can be >24
   FORMAT_TIME_MSZ = 47;           //time MM:SS.0
   FORMAT_SCI_1_DECIMAL = 48;      //scientific, 1 decimal
+                           *)
 
   { WINDOW1 record constants - BIFF5-BIFF8 }
   MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
@@ -361,11 +362,12 @@ type
     BackgroundColor: TsColor;
   end;
 
-  { Contents of the format record for BIFF5/8 }
-  TFormatListData = class
+  { TsBIFFNumFormatList }
+  TsBIFFNumFormatList = class(TsCustomNumFormatList)
+  protected
+    procedure AddBuiltinFormats; override;
   public
-    Index: Integer;
-    FormatString: widestring;
+    function FormatStringForWriting(AIndex: Integer): String; override;
   end;
 
   { TsSpreadBIFFReader }
@@ -376,8 +378,8 @@ type
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
     FXFList: TFPList;     // of TXFListData
-    FFormatList: TFPList; // of TFormatListData
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); virtual;
+    procedure CreateNumFormatList; override;
     // Extracts a number out of an RK value
     function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
@@ -386,7 +388,7 @@ type
       out ANumberFormatStr: String); virtual;
     // Finds format record for XF record pointed to by cell
     // Will not return info for built-in formats
-    function FindFormatDataForCell(const AXFIndex: Integer): TFormatListData;
+    function FindNumFormatDataForCell(const AXFIndex: Integer): TsNumFormatData;
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): Boolean;
     // Here we can add reading of records which didn't change across BIFF5-8 versions
@@ -397,6 +399,8 @@ type
     procedure ReadDateMode(AStream: TStream);
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
+    // Read FORMULA record
+    procedure ReadFormula(AStream: TStream); override;
     // Read multiple blank cells
     procedure ReadMulBlank(AStream: TStream);
     // Read multiple RK cells
@@ -428,6 +432,7 @@ type
     FLastRow: Integer;
     FLastCol: Word;
     procedure AddDefaultFormats; override;
+    procedure CreateNumFormatList; override;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -453,6 +458,11 @@ type
     // Writes out a TIME/DATE/TIMETIME
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
+    // Writes out a FORMAT record
+    procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
+      AListIndex: Integer); virtual;
+    // Writes out all FORMAT records
+    procedure WriteFormats(AStream: TStream);
     // Writes out a floating point NUMBER record
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Double; ACell: PCell); override;
@@ -478,16 +488,37 @@ type
     destructor Destroy; override;
   end;
 
-function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
-function IsFixedNumberFormat(s: String; out Decimals: Word): Boolean;
-function IsPercentNumberFormat(s: String; out Decimals: Word): Boolean;
-function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
-
-function IsDateFormat(s: String): Boolean;
-function IsTimeFormat(s: String; out isLong, isAMPM, isMillisec: Boolean): Boolean;
-
 
 implementation
+
+uses
+  StrUtils;
+
+const
+  { see ➜ 5.49 }
+  COUNT_DEFAULT_FORMATS = 58;
+  NOT_USED = nfGeneral;
+  DEFAULT_NUM_FORMATS: array[1..COUNT_DEFAULT_FORMATS] of TsNumberFormat = (
+    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
+    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
+    nfExp, NOT_USED, NOT_USED, nfShortDate, nfShortDate,             // 11..15
+    nfFmtDateTime, nfFmtDateTime, nfShortTimeAM, nfLongTimeAM, nfShortTime, // 16..20
+    nfLongTime, nfShortDateTime, NOT_USED, NOT_USED, NOT_USED,       // 21..25
+    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 26..30
+    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 31..35
+    NOT_USED, nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh,            // 36..40
+    nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh, nfFmtDateTime,       // 41..45
+    nfTimeInterval, nfFmtDateTime, nfSci, NOT_USED, NOT_USED,        // 46..50
+    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 51..55
+    NOT_USED, NOT_USED, NOT_USED                                     // 56..58
+  );
+  DEFAULT_NUM_FORMAT_DECIMALS: array[1..COUNT_DEFAULT_FORMATS] of word = (
+    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
+    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 11..20
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 21..30
+    0, 0, 0, 0, 0, 0, 0, 0, 2, 2,     // 31..40
+    0, 0, 2, 2, 0, 3, 0, 1, 0, 0,     // 41..50    #48 is "scientific", use "exponential" instead
+    0, 0, 0, 0, 0, 0, 0, 0);          // 51..58
 
 function ConvertExcelDateTimeToDateTime(
   const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
@@ -540,13 +571,75 @@ begin
 end;
 
 
+{ TsBIFFNumFormatList }
+
+{ These are the built-in number formats as used by fpc. Before writing to file
+  some code will be modified to become compatible with Excel
+  (--> FormatStringForWriting) }
+procedure TsBIFFNumFormatList.AddBuiltinFormats;
+begin
+  AddFormat( 0, nfGeneral);
+  AddFormat( 1, nfFixed, '0', 0);
+  AddFormat( 2, nfFixed, '0.00', 2);
+  AddFormat( 3, nfFixedTh, '#,##0', 0);
+  AddFormat( 4, nfFixedTh, '#,##0.00', 2);
+  // 5..8 currently not supported
+  AddFormat( 9, nfPercentage, '0%', 0);
+  AddFormat(10, nfPercentage, '0.00%', 2);
+  AddFormat(11, nfExp, '0.00E+00', 2);
+  // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
+  AddFormat(14, nfShortDate);
+  AddFormat(15, nfLongDate);
+  AddFormat(16, nfFmtDateTime, 'D-MMM');
+  AddFormat(17, nfFmtDateTime, 'MMM-YY');
+  AddFormat(18, nfShortTimeAM);
+  AddFormat(19, nfLongTimeAM);
+  AddFormat(20, nfShortTime);
+  AddFormat(21, nfLongTime);
+  AddFormat(22, nfShortDateTime);
+  // 23..44 not supported
+  AddFormat(45, nfFmtDateTime, 'mm:ss');
+  AddFormat(46, nfTimeInterval, '[h]:mm:ss');
+  AddFormat(47, nfFmtDateTime, 'mm:ss.z');   // z will be replace by 0 later
+  AddFormat(48, nfSci, '##0.0E+0', 1);
+  // 49 ("Text") not supported
+
+  // All indexes from 0 to 163 are reserved for built-in formats.
+  // The first user-defined format starts at 164.
+  FFirstFormatIndexInFile := 164;
+  FNextFormatIndex := 164;
+end;
+
+{ Creates formatting strings that are written into the file. }
+function TsBIFFNumFormatList.FormatStringForWriting(AIndex: Integer): String;
+var
+  item: TsNumFormatData;
+  i: Integer;
+begin
+  Result := inherited FormatStringForWriting(AIndex);
+  item := Items[AIndex];
+  case item.NumFormat of
+    nfFmtDateTime:
+      begin
+        Result := lowercase(item.FormatString);
+        for i:=1 to Length(Result) do
+          if Result[i] in ['z', 'Z'] then Result[i] := '0';
+      end;
+    nfTimeInterval:
+      // Time interval format string could still be without square brackets
+      // if added by user.
+      // We check here for safety and add the brackets if not there.
+      MakeTimeIntervalMask(item.FormatString, Result);
+  end;
+end;
+
+
 { TsSpreadBIFFReader }
 
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   FXFList := TFPList.Create;
-  FFormatList := TFPList.Create;
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
 end;
@@ -557,8 +650,6 @@ var
 begin
   for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
   FXFList.Free;
-  for j := FFormatList.Count-1 downto 0 do TObject(FFormatList[j]).Free;
-  FFormatList.Free;
   inherited Destroy;
 end;
 
@@ -614,6 +705,15 @@ begin
   end;
 end;
 
+{ Creates the correct version of the number format list. It is for BIFF file
+  formats.
+  Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2. }
+procedure TsSpreadBIFFReader.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsBIFFNumFormatList.Create;
+end;
+
 { Extracts a number out of an RK value.
   Valid since BIFF3. }
 function TsSpreadBIFFReader.DecodeRKValue(const ARK: DWORD): Double;
@@ -651,120 +751,51 @@ end;
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
   out ANumberFormat: TsNumberFormat; out ADecimals: Word;
   out ANumberFormatStr: String);
-const
-  { see ➜ 5.49 }
-  NOT_USED = nfGeneral;
-  fmts: array[1..58] of TsNumberFormat = (
-    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
-    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
-    nfExp, NOT_USED, NOT_USED, nfShortDate, nfShortDate,             // 11..15
-    nfFmtDateTime, nfFmtDateTime, nfShortTimeAM, nfLongTimeAM, nfShortTime, // 16..20
-    nfLongTime, nfShortDateTime, NOT_USED, NOT_USED, NOT_USED,       // 21..25
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 26..30
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 31..35
-    NOT_USED, nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh,            // 36..40
-    nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh, nfFmtDateTime,       // 41..45
-    nfTimeInterval, nfFmtDateTime, nfSci, NOT_USED, NOT_USED,        // 46..50
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 51..55
-    NOT_USED, NOT_USED, NOT_USED                                     // 56..58
-  );
-  decs: array[1..58] of word = (
-    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
-    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 11..20
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 21..30
-    0, 0, 0, 0, 0, 0, 0, 0, 2, 2,     // 31..40
-    0, 0, 2, 2, 0, 3, 0, 1, 0, 0,     // 41..50    #48 is "scientific", use "exponential" instead
-    0, 0, 0, 0, 0, 0, 0, 0);          // 51..58
-var
-  lFormatData: TFormatListData;
-  lXFData: TXFListData;
-  isAMPM: Boolean;
-  isLongTime: Boolean;
-  isMilliSec: Boolean;
-  t,d: Boolean;
-begin
-  ANumberFormat := nfGeneral;
-  ANumberFormatStr := '';
-  ADecimals := 0;
 
-  lFormatData := FindFormatDataForCell(AXFIndex);
-  {Record FORMAT, BIFF 5/8 (5.49):
-  Offset Size Contents
-       0    2 Format index used in other records
-  }
-
-  if lFormatData = nil then begin
-    // no custom format, so first test for default formats
-    lXFData := TXFListData(FXFList.Items[AXFIndex]);
-    case lXFData.FormatIndex of
-      FORMAT_DATE_DM:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'DM'; end;
-      FORMAT_DATE_MY:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MY'; end;
-      FORMAT_TIME_MS:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MS'; end;
-      FORMAT_TIME_MSZ:
-        begin ANumberFormat := nfFmtDateTime; ANumberFormatStr := 'MSZ'; end;
-      else
-        if (lXFData.FormatIndex > 0) and (lXFData.FormatIndex <= 58) then begin
-          ANumberFormat := fmts[lXFData.FormatIndex];
-          ADecimals := decs[lXFData.FormatIndex];
+  procedure FixMilliseconds;
+  var
+    isLong, isAMPM, isInterval: Boolean;
+    decs: Word;
+    i: Integer;
+  begin
+    if IsTimeFormat(ANumberFormatStr, isLong, isAMPM, isInterval, decs)
+      and (decs > 0)
+    then
+      for i:= Length(ANumberFormatStr) downto 1 do
+        case ANumberFormatStr[i] of
+          '0': ANumberFormatStr[i] := 'z';
+          '.': break;
         end;
-    end;
-  end else
-  // Check custom formats if they have "/" in format string (this can fail for
-  // custom text formats)
-  if IsPercentNumberFormat(lFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfPercentage
-  else
-  if IsExpNumberFormat(lFormatData.Formatstring, ADecimals) then
-    ANumberFormat := nfExp
-  else
-  if IsThousandSepNumberFormat(lFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfFixedTh
-  else
-  if IsFixedNumberFormat(lFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfFixed
-  else begin
-    t := IsTimeFormat(lFormatData.FormatString, isLongTime, isAMPM, isMilliSec);
-    d := IsDateFormat(lFormatData.FormatString);
-    if d and t then
-      ANumberFormat := nfShortDateTime
-    else
-    if d then
-      ANumberFormat := nfShortDate
-    else
-    if t then begin
-      if isAMPM then begin
-        if isLongTime then
-          ANumberFormat := nfLongTimeAM
-        else
-          ANumberFormat := nfShortTimeAM;
-      end else begin
-        if isLongTime then
-          ANumberFormat := nfLongTime
-        else
-          ANumberFormat := nfShortTime;
-      end;
-    end;
+  end;
+
+var
+  lNumFormatData: TsNumFormatData;
+begin
+  lNumFormatData := FindNumFormatDataForCell(AXFIndex);
+  if lNumFormatData <> nil then begin
+    ANumberFormat := lNumFormatData.NumFormat;
+    ANumberFormatStr := lNumFormatData.FormatString;
+    ADecimals := lNumFormatData.Decimals;
+    FixMilliseconds;
+  end else begin
+    ANumberFormat := nfGeneral;
+    ANumberFormatStr := '';
+    ADecimals := 0;
   end;
 end;
 
 { Determines the format data (for numerical formatting) which belong to a given
-  XF record.
-  Does not return data for built-in formats. }
-function TsSpreadBIFFReader.FindFormatDataForCell(const AXFIndex: Integer
-  ): TFormatListData;
+  XF record. }
+function TsSpreadBIFFReader.FindNumFormatDataForCell(const AXFIndex: Integer
+  ): TsNumFormatData;
 var
   lXFData: TXFListData;
   i: Integer;
 begin
-  lXFData := TXFListData(FXFList.Items[AXFIndex]);
-  for i := 0 to FFormatList.Count-1 do begin
-    Result := TFormatListData(FFormatList.Items[i]);
-    if Result.Index = lXFData.FormatIndex then Exit;
-  end;
   Result := nil;
+  lXFData := TXFListData(FXFList.Items[AXFIndex]);
+  i := NumFormatList.Find(lXFData.FormatIndex);
+  if i <> -1 then Result := NumFormatList[i];
 end;
 
 { Convert the number to a date/time and return that if it is }
@@ -772,7 +803,7 @@ function TsSpreadBIFFReader.IsDateTime(Number: Double;
   ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): boolean;
 begin
   if ANumberFormat in [
-    nfShortDateTime, nfFmtDateTime, nfShortDate,
+    nfShortDateTime, nfFmtDateTime, nfShortDate, nfLongDate,
     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM] then
   begin
     ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode);
@@ -788,7 +819,7 @@ begin
   end;
 end;
 
-// In BIFF 8 it seams to always use the UTF-16 codepage
+// In BIFF8 it seams to always use the UTF-16 codepage
 procedure TsSpreadBIFFReader.ReadCodePage(AStream: TStream);
 var
   lCodePage: Word;
@@ -890,6 +921,76 @@ end;
 procedure TsSpreadBIFFReader.ReadFormat(AStream: TStream);
 begin
   // to be overridden
+end;
+
+{ Reads a FORMULA record, retrieves the RPN formula and puts the result in the
+  corresponding field. The formula is not recalculated here!
+  Valid for BIFF5 and BIFF8. }
+procedure TsSpreadBIFFReader.ReadFormula(AStream: TStream);
+var
+  ARow, ACol: Cardinal;
+  XF: WORD;
+  ResultFormula: Double;
+  Data: array [0..7] of BYTE;
+  Flags: WORD;
+  FormulaSize: BYTE;
+  i: Integer;
+  dt: TDateTime;
+  nf: TsNumberFormat;
+  nd: Word;
+  nfs: String;
+
+begin
+  { BIFF Record header }
+  { BIFF Record data }
+  { Index to XF Record }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+
+  { Result of the formula in IEE 754 floating-point value }
+  AStream.ReadBuffer(Data, Sizeof(Data));
+
+  { Options flags }
+  Flags := WordLEtoN(AStream.ReadWord);
+
+  { Not used }
+  AStream.ReadDWord;
+
+  { Formula size }
+  FormulaSize := WordLEtoN(AStream.ReadWord);
+
+  { Formula data, output as debug info }
+{  Write('Formula Element: ');
+  for i := 1 to FormulaSize do
+    Write(IntToHex(AStream.ReadByte, 2) + ' ');
+  WriteLn('');}
+
+  //RPN data not used by now
+  AStream.Position := AStream.Position + FormulaSize;
+
+  if (Data[6] = $FF) and (Data[7] = $FF) then
+    case Data[0] of
+      0: FWorksheet.WriteUTF8Text(ARow, ACol, '(String)');
+      1: FWorksheet.WriteUTF8Text(ARow, ACol, '(Bool)');
+      2: FWorksheet.WriteUTF8Text(ARow, ACol, '(ERROR)');
+      3: FWorksheet.WriteUTF8Text(ARow, ACol, '(empty)');
+    end
+  else begin
+    if SizeOf(Double) <> 8 then
+      raise Exception.Create('Double is not 8 bytes');
+
+    // Result is a number or a date/time
+    Move(Data[0], ResultFormula, SizeOf(Data));
+
+  {Find out what cell type, set content type and value}
+    ExtractNumberFormat(XF, nf, nd, nfs);
+    if IsDateTime(ResultFormula, nf, dt) then
+      FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
+    else
+      FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd);
+  end;
+
+  {Add attributes}
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 // Reads multiple blank cell records
@@ -1166,6 +1267,15 @@ begin
 
   NextXFIndex := 15 + Length(FFormattingStyles);
   // "15" is the index of the last pre-defined xf record
+end;
+
+{ Creates the correct version of the number format list. It is for BIFF file
+  formats.
+  Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2. }
+procedure TsSpreadBIFFWriter.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsBIFFNumFormatList.Create;
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
@@ -1467,6 +1577,30 @@ begin
   // this will get written out as a pointer to the relevant XF record.
   // In the end, dates in xls are just numbers with a format. Pass it on to WriteNumber:
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
+end;
+
+{ Writes a BIFF format record defined in AFormatData. AListIndex the index of
+  the formatdata in the format list (not the FormatIndex!).
+  Needs to be overridden by descendants. }
+procedure TsSpreadBIFFWriter.WriteFormat(AStream: TStream;
+  AFormatData: TsNumFormatData; AListIndex: Integer);
+begin
+  // needs to be overridden
+end;
+
+{ Writes all number formats to the stream. Saving starts at the item with the
+  FirstFormatIndexInFile. }
+procedure TsSpreadBIFFWriter.WriteFormats(AStream: TStream);
+var
+  i: Integer;
+begin
+  ListAllNumFormats;
+  i := NumFormatList.Find(NumFormatList.FirstFormatIndexInFile);
+  while i < NumFormatList.Count do begin
+    if NumFormatList[i] <> nil then
+      WriteFormat(AStream, NumFormatList[i], i);
+    inc(i);
+  end;
 end;
 
 { Writes a 64-bit floating point NUMBER record.
@@ -1804,205 +1938,6 @@ begin
   lXFIndex := FFormattingStyles[lIndex].Row;
 
   AStream.WriteWord(WordToLE(lXFIndex));
-end;
-
-
-{ Format checking procedures }
-
-{ This simple parsing procedure of the Excel format string checks for a fixed
-  float format s, i.e. s can be '0', '0.00', '000', '0,000', and returns the
-  number of decimals, i.e. number of zeros behind the decimal point }
-function IsFixedNumberFormat(s: String; out Decimals: Word): Boolean;
-var
-  i: Integer;
-  p: Integer;
-  decs: String;
-begin
-  Decimals := 0;
-
-  // Check if s is a valid format mask.
-  try
-    FormatFloat(s, 1.0);
-  except
-    on EConvertError do begin
-      Result := false;
-      exit;
-    end;
-  end;
-
-  // If it is count the zeros - each one is a decimal.
-  if s = '0' then
-    Result := true
-  else begin
-    p := pos('.', s);  // position of decimal point;
-    if p = 0 then begin
-      Result := false;
-    end else begin
-      Result := true;
-      for i:= p+1 to Length(s) do
-        if s[i] = '0' then begin
-          inc(Decimals)
-        end
-        else
-          exit;     // ignore characters after the last 0
-    end;
-  end;
-end;
-
-{ This function checks whether the format string corresponds to a thousand
-  separator format like "#,##0.000' and returns the number of fixed decimals
-  (i.e. zeros after the decimal point) }
-function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
-var
-  i, p: Integer;
-begin
-  Decimals := 0;
-
-  // Check if s is a valid format string
-  try
-    FormatFloat(s, 1.0);
-  except
-    on EConvertError do begin
-      Result := false;
-      exit;
-    end;
-  end;
-
-  // If it is look for the thousand separator. If found count decimals.
-  Result := (Pos(',', s) > 0);
-  if Result then begin
-    p := pos('.', s);
-    if p > 0 then
-      for i := p+1 to Length(s) do
-        if s[i] = '0' then
-          inc(Decimals)
-        else
-          exit;  // ignore format characters after the last 0
-  end;
-end;
-
-
-{ This function checks whether the format string corresponds to percent
-  formatting and determines the number of decimals }
-function IsPercentNumberFormat(s: String; out Decimals: Word): Boolean;
-var
-  i, p: Integer;
-begin
-  Decimals := 0;
-  // The signature of the percent format is a percent sign at the end of the
-  // format string.
-  Result := (s <> '') and (s[Length(s)] = '%');
-  if Result then begin
-    // Check for a valid format string
-    Delete(s, Length(s), 1);
-    try
-      FormatDateTime(s, 1.0);
-    except
-      on EConvertError do begin
-        Result := false;
-        exit;
-      end;
-    end;
-    // Count decimals
-    p := pos('.', s);
-    if p > 0 then
-      for i := p+1 to Length(s)-1 do
-        if s[i] = '0' then
-          inc(Decimals)
-        else
-          exit;  // ignore characters after last 0
-  end;
-end;
-
-{ This function checks whether the format string corresponds to exponential
-  formatting and determines the number of decimals  }
-function IsExpNumberFormat(s: String; out Decimals: Word): Boolean;
-var
-  i, p, pe: Integer;
-begin
-  Result := false;
-  Decimals := 0;
-
-  if SameText(s, 'General') then
-    exit;
-
-  // Check for a valid format string
-  try
-    FormatDateTime(s, 1.0);
-  except
-    on EConvertError do begin
-      exit;
-    end;
-  end;
-
-  // Count decimals
-  pe := pos('e', lowercase(s));
-  result := pe > 0;
-  if Result then begin
-    p := pos('.', s);
-    if (p > 0) then begin
-      if p < pe then
-        for i:=1 to pe-1 do
-          if s[i] = '0' then
-            inc(Decimals)
-          else
-            exit;   // ignore characters after last 0
-    end;
-  end;
-end;
-
-{ IsDateFormat checks if the format string s corresponds to a date format }
-function IsDateFormat(s: String): Boolean;
-begin
-  // Day, month, year are separated by a slash
-  Result := (pos('/', s) > 0);
-  if Result then
-    // Check validity of format string
-    try
-      FormatDateTime(s, now);
-    except on EConvertError do
-      Result := false;
-    end;
-end;
-
-{ IsTimeFormat checks if the format string s is a time format. isLong is
-  true if the string contains hours, minutes and seconds (two colons).
-  isAMPM is true if the string contains "AM/PM", "A/P" or "AMPM".
-  isMilliSec is true if the string ends with a "z". }
-function IsTimeFormat(s: String; out isLong, isAMPM, isMillisec: Boolean): Boolean;
-var
-  p, i, count: Integer;
-begin
-  // Time parts are separated by a colon
-  p := pos(':', s);
-  isLong := false;
-  isAMPM := false;
-  result := p > 0;
-
-  if Result then begin
-    count := 1;
-    s := Uppercase(s);
-
-    // If there are is a second colon s is a "long" time format
-    for i:=p+1 to Length(s) do
-      if s[i] = ':' then begin
-        isLong := true;
-        break;
-      end;
-
-    // Seek for "AM/PM" etc to detect that specific format
-    isAMPM := (pos('AM/PM', s) > 0) or (pos('A/P', s) > 0) or (pos('AMPM', s) > 0);
-
-    // Look for the "milliseconds" character z
-    isMilliSec := (s[Length(s)] = 'Z');
-
-    // Check validity of format string
-    try
-      FormatDateTime(s, now);
-    except on EConvertError do
-      Result := false;
-    end;
-  end;
 end;
 
 end.
