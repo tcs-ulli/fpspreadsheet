@@ -1,11 +1,11 @@
 object Form1: TForm1
-  Left = 370
-  Height = 406
-  Top = 258
-  Width = 636
+  Left = 359
+  Height = 593
+  Top = 193
+  Width = 722
   Caption = 'fpsGrid'
-  ClientHeight = 386
-  ClientWidth = 636
+  ClientHeight = 568
+  ClientWidth = 722
   Menu = MainMenu1
   OnActivate = FormActivate
   OnCreate = FormCreate
@@ -13,19 +13,19 @@ object Form1: TForm1
   LCLVersion = '1.3'
   object Panel1: TPanel
     Left = 0
-    Height = 73
-    Top = 313
-    Width = 636
+    Height = 76
+    Top = 492
+    Width = 722
     Align = alBottom
     BevelOuter = bvNone
-    ClientHeight = 73
-    ClientWidth = 636
+    ClientHeight = 76
+    ClientWidth = 722
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 11
-      Width = 93
+      Width = 116
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 36
-      Width = 100
+      Width = 125
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -45,7 +45,7 @@ object Form1: TForm1
     end
     object EdFrozenCols: TSpinEdit
       Left = 238
-      Height = 23
+      Height = 28
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -53,7 +53,7 @@ object Form1: TForm1
     end
     object EdFrozenRows: TSpinEdit
       Left = 238
-      Height = 23
+      Height = 28
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -61,18 +61,18 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 152
-      Height = 15
+      Height = 20
       Top = 13
-      Width = 62
+      Width = 77
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 153
-      Height = 15
+      Height = 20
       Top = 40
-      Width = 66
+      Width = 82
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
@@ -80,9 +80,9 @@ object Form1: TForm1
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 260
+    Height = 439
     Top = 53
-    Width = 636
+    Width = 722
     ActivePage = TabSheet1
     Align = alClient
     TabIndex = 0
@@ -90,13 +90,13 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 232
-      ClientWidth = 628
+      ClientHeight = 406
+      ClientWidth = 714
       object sWorksheetGrid1: TsWorksheetGrid
         Left = 0
-        Height = 232
+        Height = 406
         Top = 0
-        Width = 628
+        Width = 714
         FrozenCols = 0
         FrozenRows = 0
         Align = alClient
@@ -108,7 +108,7 @@ object Form1: TForm1
         TitleStyle = tsNative
         OnSelection = sWorksheetGrid1Selection
         ColWidths = (
-          42
+          56
           64
         )
       end
@@ -118,7 +118,7 @@ object Form1: TForm1
     Left = 0
     Height = 26
     Top = 0
-    Width = 636
+    Width = 722
     ButtonHeight = 24
     Caption = 'ToolBar1'
     EdgeBorders = []
@@ -163,7 +163,7 @@ object Form1: TForm1
     Left = 0
     Height = 27
     Top = 26
-    Width = 636
+    Width = 722
     ButtonHeight = 23
     Caption = 'FormatToolBar'
     Images = ImageList1
@@ -185,19 +185,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 24
-      Height = 23
+      Height = 28
       Top = 2
       Width = 127
-      ItemHeight = 15
+      ItemHeight = 20
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 151
-      Height = 23
+      Height = 28
       Top = 2
       Width = 48
-      ItemHeight = 15
+      ItemHeight = 20
       Items.Strings = (
         '8'
         '9'

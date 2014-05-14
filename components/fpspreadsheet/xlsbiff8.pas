@@ -89,7 +89,6 @@ type
     procedure ReadFormat(AStream: TStream); override;
     { Record reading methods }
     procedure ReadBlank(AStream: TStream); override;
-    procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadRichString(const AStream: TStream);
   public
@@ -115,6 +114,8 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
+    procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
+      AListIndex: Integer); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsFormula; ACell: PCell); override;
     procedure WriteIndex(AStream: TStream);
@@ -131,6 +132,7 @@ type
       AddBackground: Boolean = false; ABackgroundColor: TsColor = scSilver);
     procedure WriteXFRecords(AStream: TStream);
   public
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
@@ -263,12 +265,24 @@ const
   MASK_XF_BORDER_TOP_COLOR            = $0000007F;
   MASK_XF_BORDER_BOTTOM_COLOR         = $00003F80;
 
+  TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
+    XF_ROTATION_HORIZONTAL,
+    XF_ROTATION_90DEG_CW,
+    XF_ROTATION_90DEG_CCW,
+    XF_ROTATION_STACKED
+  );
+
 
 { TsSpreadBIFF8Writer }
 
+constructor TsSpreadBIFF8Writer.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+end;
+
 procedure TsSpreadBIFF8Writer.WriteXFFieldsForFormattingStyles(AStream: TStream);
 var
-  i: Integer;
+  i, j: Integer;
   lFontIndex: Word;
   lFormatIndex: Word; //number format
   lTextRotation: Byte;
@@ -281,7 +295,7 @@ var
   lWordWrap: Boolean;
   fmt: String;
 begin
-  // The first style was already added
+  // The first style was already added --> begin loop with 1
   for i := 1 to Length(FFormattingStyles) - 1 do begin
     // Default styles
     lFontIndex := 0;
@@ -294,77 +308,17 @@ begin
     lBackgroundColor := FFormattingStyles[i].BackgroundColor;
 
     // Now apply the modifications.
-    if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
-      case FFormattingStyles[i].NumberFormat of
-        nfFixed:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_FIXED_0_DECIMALS;
-            2: lFormatIndex := FORMAT_FIXED_2_DECIMALS;
-          end;
-        nfFixedTh:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_FIXED_THOUSANDS_0_DECIMALS;
-            2: lFormatIndex := FORMAT_FIXED_THOUSANDS_2_DECIMALS;
-          end;
-        nfExp:
-          lFormatIndex := FORMAT_EXP_2_DECIMALS;
-        nfSci:
-          lFormatIndex := FORMAT_SCI_1_DECIMAL;
-        nfPercentage:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_PERCENT_0_DECIMALS;
-            2: lFormatIndex := FORMAT_PERCENT_2_DECIMALS;
-          end;
-        {
-        nfCurrency:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_CURRENCY_0_DECIMALS;
-            2: lFormatIndex := FORMAT_CURRENCY_2_DECIMALS;
-          end;
-        }
-        nfShortDate:
-          lFormatIndex := FORMAT_SHORT_DATE;
-        nfShortTime:
-          lFormatIndex := FORMAT_SHORT_TIME;
-        nfLongTime:
-          lFormatIndex := FORMAT_LONG_TIME;
-        nfShortTimeAM:
-          lFormatIndex := FORMAT_SHORT_TIME_AM;
-        nfLongTimeAM:
-          lFormatIndex := FORMAT_LONG_TIME_AM;
-        nfShortDateTime:
-          lFormatIndex := FORMAT_SHORT_DATETIME;
-        nfFmtDateTime:
-          begin
-            fmt := lowercase(FFormattingStyles[i].NumberFormatStr);
-            if (fmt = 'dm') or (fmt = 'd-mmm') or (fmt = 'd mmm') or (fmt = 'd. mmm') or (fmt = 'd/mmm') then
-              lFormatIndex := FORMAT_DATE_DM
-            else
-            if (fmt = 'my') or (fmt = 'mmm-yy') or (fmt = 'mmm yy') or (fmt = 'mmm/yy') then
-              lFormatIndex := FORMAT_DATE_MY
-            else
-            if (fmt = 'ms') or (fmt = 'nn:ss') or (fmt = 'mm:ss') then
-              lFormatIndex := FORMAT_TIME_MS
-            else
-            if (fmt = 'msz') or (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or (fmt = 'mm:ss.0') or (fmt = 'mm:ss.z') or (fmt = 'nn:ss.z') then
-              lFormatIndex := FORMAT_TIME_MSZ
-          end;
-        nfTimeInterval:
-          lFormatIndex := FORMAT_TIME_INTERVAL;
-      end;
+    if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then begin
+      j := NumFormatList.Find(@FFormattingStyles[i]);
+      if j > -1 then
+        lFormatIndex := NumFormatList[j].Index;
+    end;
 
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
       lBorders := FFormattingStyles[i].Border;
 
     if uffTextRotation in FFormattingStyles[i].UsedFormattingFields then
-    begin
-      case FFormattingStyles[i].TextRotation of
-      trHorizontal:                       lTextRotation := XF_ROTATION_HORIZONTAL;
-      rt90DegreeClockwiseRotation:        lTextRotation := XF_ROTATION_90DEG_CW;
-      rt90DegreeCounterClockwiseRotation: lTextRotation := XF_ROTATION_90DEG_CCW;
-      rtStacked:                          lTextRotation := XF_ROTATION_STACKED;
-      end;
-    end;
+      lTextRotation := TEXT_ROTATIONS[FFormattingStyles[i].TextRotation];
 
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
       lFontIndex := 1;   // must be before uffFont which overrides uffBold
@@ -445,6 +399,7 @@ begin
 
   WriteWindow1(AStream);
   WriteFonts(AStream);
+  WriteFormats(AStream);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -711,6 +666,34 @@ var
 begin
   for i:=0 to Workbook.GetFontCount-1 do
     WriteFont(AStream, Workbook.GetFont(i));
+end;
+
+procedure TsSpreadBiff8Writer.WriteFormat(AStream: TStream;
+  AFormatData: TsNumFormatData; AListIndex: Integer);
+var
+  len: Integer;
+  s: widestring;
+begin
+  if (AFormatData = nil) or (AFormatData.FormatString = '') then
+    exit;
+
+  s := NumFormatList.FormatStringForWriting(AListIndex);
+  len := Length(s);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
+  AStream.WriteWord(WordToLE(2 + 2 + 1 + len * SizeOf(WideChar)));
+
+  { Format index }
+  AStream.WriteWord(WordToLE(AFormatData.Index));
+
+  { Format string }
+  { - Unicodestring, char count in 2 bytes  }
+  AStream.WriteWord(WordToLE(len));
+  { - Widestring flags, 1=regular unicode LE string }
+  AStream.WriteByte(1);
+  { - String data }
+  AStream.WriteBuffer(WideStringToLE(s)[1], len * Sizeof(WideChar));
 end;
 
 {*******************************************************************
@@ -1435,16 +1418,16 @@ begin
 
     if RecordType <> INT_EXCEL_ID_CONTINUE then begin
       case RecordType of
-       INT_EXCEL_ID_BOF:        ;
+       INT_EXCEL_ID_BOF       : ;
        INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
-       INT_EXCEL_ID_EOF:        SectionEOF := True;
-       INT_EXCEL_ID_SST:        ReadSST(AStream);
-       INT_EXCEL_ID_CODEPAGE:   ReadCodepage(AStream);
-       INT_EXCEL_ID_FONT:       ReadFont(AStream);
-       INT_EXCEL_ID_XF:         ReadXF(AStream);
-       INT_EXCEL_ID_FORMAT:     ReadFormat(AStream);
-       INT_EXCEL_ID_DATEMODE:   ReadDateMode(AStream);
-       INT_EXCEL_ID_PALETTE:    ReadPalette(AStream);
+       INT_EXCEL_ID_EOF       : SectionEOF := True;
+       INT_EXCEL_ID_SST       : ReadSST(AStream);
+       INT_EXCEL_ID_CODEPAGE  : ReadCodepage(AStream);
+       INT_EXCEL_ID_FONT      : ReadFont(AStream);
+       INT_EXCEL_ID_FORMAT    : ReadFormat(AStream);
+       INT_EXCEL_ID_XF        : ReadXF(AStream);
+       INT_EXCEL_ID_DATEMODE  : ReadDateMode(AStream);
+       INT_EXCEL_ID_PALETTE   : ReadPalette(AStream);
       else
         // nothing
       end;
@@ -1621,51 +1604,6 @@ begin
   { Read row, column, and XF index from BIFF file }
   ReadRowColXF(AStream, ARow, ACol, XF);
   { Add attributes to cell}
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
-procedure TsSpreadBIFF8Reader.ReadFormula(AStream: TStream);
-var
-  ARow, ACol: Cardinal;
-  XF: WORD;
-  ResultFormula: Double;
-  Data: array [0..7] of BYTE;
-  Flags: WORD;
-  FormulaSize: BYTE;
-  i: Integer;
-begin
-  { BIFF Record header }
-  { BIFF Record data }
-  { Index to XF Record }
-  ReadRowColXF(AStream, ARow, ACol, XF);
-
-  { Result of the formula in IEE 754 floating-point value }
-  AStream.ReadBuffer(Data, Sizeof(Data));
-
-  { Options flags }
-  Flags := WordLEtoN(AStream.ReadWord);
-
-  { Not used }
-  AStream.ReadDWord;
-
-  { Formula size }
-  FormulaSize := WordLEtoN(AStream.ReadWord);
-
-  { Formula data, output as debug info }
-{  Write('Formula Element: ');
-  for i := 1 to FormulaSize do
-    Write(IntToHex(AStream.ReadByte, 2) + ' ');
-  WriteLn('');}
-
-  //RPN data not used by now
-  AStream.Position := AStream.Position + FormulaSize;
-
-  if SizeOf(Double) <> 8 then
-    raise Exception.Create('Double is not 8 bytes');
-  Move(Data[0], ResultFormula, SizeOf(Data));
-  FWorksheet.WriteNumber(ARow, ACol, ResultFormula);
-
-  {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
@@ -1975,22 +1913,21 @@ end;
 // Read the FORMAT record for formatting numerical data
 procedure TsSpreadBIFF8Reader.ReadFormat(AStream: TStream);
 var
-  lData: TFormatListData;
+  fmtString: String;
+  fmtIndex: Integer;
 begin
-  lData := TFormatListData.Create;
-
   // Record FORMAT, BIFF 8 (5.49):
   // Offset Size Contents
   // 0      2     Format index used in other records
   // 2      var   Number format string (Unicode string, 16-bit string length)
   // From BIFF5 on: indexes 0..163 are built in
-  lData.Index := WordLEtoN(AStream.ReadWord);
+  fmtIndex := WordLEtoN(AStream.ReadWord);
 
   // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
-  lData.FormatString := ReadWideString(AStream, False);
+  fmtString := ReadWideString(AStream, False);
 
   // Add to the list
-  FFormatList.Add(lData);
+  NumFormatList.AnalyzeAndAdd(fmtIndex, fmtString);
 end;
 
 

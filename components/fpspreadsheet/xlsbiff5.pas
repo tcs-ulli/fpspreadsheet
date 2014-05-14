@@ -84,8 +84,6 @@ type
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(const AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
-    procedure ReadFormula(AStream: TStream); override;
-    procedure ReadFormulaExcel(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
@@ -115,6 +113,8 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
+    procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
+      AListIndex: Integer); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
@@ -130,6 +130,7 @@ type
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
     procedure WriteXFRecords(AStream: TStream);
   public
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
@@ -296,8 +297,20 @@ const
   MASK_XF_BKGR_BACKGROUND_COLOR       = $00003F80;
   MASK_XF_BKGR_FILLPATTERN            = $003F0000;
 
+  TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
+    XF_ROTATION_HORIZONTAL,
+    XF_ROTATION_90DEG_CW,
+    XF_ROTATION_90DEG_CCW,
+    XF_ROTATION_STACKED
+  );
+
 
 { TsSpreadBIFF5Writer }
+
+constructor TsSpreadBIFF5Writer.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+end;
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteToFile ()
@@ -362,6 +375,7 @@ begin
   WriteCodepage(AStream, WorkBookEncoding);
   WriteWindow1(AStream);
   WriteFonts(AStream);
+  WriteFormats(AStream);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -630,6 +644,36 @@ var
 begin
   for i:=0 to Workbook.GetFontCount-1 do
     WriteFont(AStream, Workbook.GetFont(i));
+end;
+
+{*******************************************************************
+*  TsSpreadBIFF5Writer.WriteFormat
+*
+*  DESCRIPTION:    Writes an Excel 5 FORMAT record
+*
+*******************************************************************}
+procedure TsSpreadBiff5Writer.WriteFormat(AStream: TStream;
+  AFormatData: TsNumFormatData; AListIndex: Integer);
+var
+  len: Integer;
+  s: ansistring;
+begin
+  if (AFormatData = nil) or (AFormatData.FormatString = '') then
+    exit;
+
+  s := NumFormatList.FormatStringForWriting(AListIndex);
+  len := Length(s);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
+  AStream.WriteWord(WordToLE(2 + 1 + len * SizeOf(AnsiChar)));
+
+  { Format index }
+  AStream.WriteWord(WordToLE(AFormatData.Index));
+
+  { Format string }
+  AStream.WriteByte(len);        // AnsiString, char count in 1 byte
+  AStream.WriteBuffer(s[1], len * SizeOf(AnsiChar));  // String data
 end;
 
 {*******************************************************************
@@ -1047,7 +1091,7 @@ end;
 
 procedure TsSpreadBIFF5Writer.WriteXFFieldsForFormattingStyles(AStream: TStream);
 var
-  i: Integer;
+  i, j: Integer;
   lFontIndex: Word;
   lFormatIndex: Word; //number format
   lTextRotation: Byte;
@@ -1073,77 +1117,17 @@ begin
     lBackgroundColor := FFormattingStyles[i].BackgroundColor;
 
     // Now apply the modifications.
-    if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then
-      case FFormattingStyles[i].NumberFormat of
-        nfFixed:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_FIXED_0_DECIMALS;
-            2: lFormatIndex := FORMAT_FIXED_2_DECIMALS;
-          end;
-        nfFixedTh:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_FIXED_THOUSANDS_0_DECIMALS;
-            2: lFormatIndex := FORMAT_FIXED_THOUSANDS_2_DECIMALS;
-          end;
-        nfExp:
-          lFormatIndex := FORMAT_EXP_2_DECIMALS;
-        nfSci:
-          lFormatIndex := FORMAT_SCI_1_DECIMAL;
-        nfPercentage:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_PERCENT_0_DECIMALS;
-            2: lFormatIndex := FORMAT_PERCENT_2_DECIMALS;
-          end;
-        {
-        nfCurrency:
-          case FFormattingStyles[i].NumberDecimals of
-            0: lFormatIndex := FORMAT_CURRENCY_0_DECIMALS;
-            2: lFormatIndex := FORMAT_CURRENCY_2_DECIMALS;
-          end;
-        }
-        nfShortDate:
-          lFormatIndex := FORMAT_SHORT_DATE;
-        nfShortTime:
-          lFormatIndex := FORMAT_SHORT_TIME;
-        nfLongTime:
-          lFormatIndex := FORMAT_LONG_TIME;
-        nfShortTimeAM:
-          lFormatIndex := FORMAT_SHORT_TIME_AM;
-        nfLongTimeAM:
-          lFormatIndex := FORMAT_LONG_TIME_AM;
-        nfShortDateTime:
-          lFormatIndex := FORMAT_SHORT_DATETIME;
-        nfFmtDateTime:
-          begin
-            fmt := lowercase(FFormattingStyles[i].NumberFormatStr);
-            if (fmt = 'dm') or (fmt = 'd-mmm') or (fmt = 'd mmm') or (fmt = 'd. mmm') or (fmt = 'd/mmm') then
-              lFormatIndex := FORMAT_DATE_DM
-            else
-            if (fmt = 'my') or (fmt = 'mmm-yy') or (fmt = 'mmm yy') or (fmt = 'mmm/yy') then
-              lFormatIndex := FORMAT_DATE_MY
-            else
-            if (fmt = 'ms') or (fmt = 'nn:ss') or (fmt = 'mm:ss') then
-              lFormatIndex := FORMAT_TIME_MS
-            else
-            if (fmt = 'msz') or (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or (fmt = 'mm:ss.0') or (fmt = 'mm:ss.z') or (fmt = 'nn:ss.z') then
-              lFormatIndex := FORMAT_TIME_MSZ
-          end;
-        nfTimeInterval:
-          lFormatIndex := FORMAT_TIME_INTERVAL;
-      end;
+    if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then begin
+      j := NumFormatList.Find(@FFormattingStyles[i]);
+      if j > -1 then
+        lFormatIndex := NumFormatList[j].Index;
+    end;
 
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
       lBorders := FFormattingStyles[i].Border;
 
     if uffTextRotation in FFormattingStyles[i].UsedFormattingFields then
-    begin
-      case FFormattingStyles[i].TextRotation of
-        trHorizontal                       : lTextRotation := XF_ROTATION_HORIZONTAL;
-        rt90DegreeClockwiseRotation        : lTextRotation := XF_ROTATION_90DEG_CW;
-        rt90DegreeCounterClockwiseRotation : lTextRotation := XF_ROTATION_90DEG_CCW;
-        rtStacked                          : lTextRotation := XF_ROTATION_STACKED;
-      end;
-    end;
+      lTextRotation := TEXT_ROTATIONS[FFormattingStyles[i].TextRotation];
 
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
       lFontIndex := 1;   // must be before uffFont which overrides uffBold
@@ -1270,7 +1254,7 @@ begin
     INT_EXCEL_ID_MULRK   : ReadMulRKValues(AStream);
     INT_EXCEL_ID_COLINFO : ReadColInfo(AStream);
     INT_EXCEL_ID_ROW     : ReadRowInfo(AStream);
-    INT_EXCEL_ID_FORMULA : ReadFormulaExcel(AStream);
+    INT_EXCEL_ID_FORMULA : ReadFormula(AStream);
     INT_EXCEL_ID_WINDOW2 : ReadWindow2(AStream);
     INT_EXCEL_ID_PANE    : ReadPane(AStream);
     INT_EXCEL_ID_BOF     : ;
@@ -1371,32 +1355,6 @@ begin
     AStream.ReadByte; // First formatted character
     AStream.ReadByte; // Index to FONT record
   end;
-
-  { Add attributes to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
-procedure TsSpreadBIFF5Reader.ReadFormulaExcel(AStream: TStream);
-var
-  ARow, ACol: Cardinal;
-  XF: WORD;
-  ResultFormula: Double;
-  Data: array [0..7] of BYTE;
-  Flags: WORD;
-  FormulaSize: BYTE;
-begin
-  ReadRowColXF(AStream, ARow, ACol, XF);
-
-  AStream.ReadBuffer(Data,Sizeof(Data));
-  Flags:=WordLEtoN(AStream.ReadWord);
-  AStream.ReadDWord; //Not used.
-  FormulaSize:=AStream.ReadByte;
-  //RPN data not used by now
-  AStream.Position:=AStream.Position+FormulaSize;
-
-  if SizeOf(Double)<>8 then Raise Exception.Create('Double is not 8 bytes');
-  Move(Data[0],ResultFormula,sizeof(Data));
-  FWorksheet.WriteNumber(ARow, ACol, ResultFormula);
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -1638,12 +1596,10 @@ end;
 // Read the FORMAT record for formatting numerical data
 procedure TsSpreadBIFF5Reader.ReadFormat(AStream: TStream);
 var
-  lData: TFormatListData;
-  str: AnsiString;
   len: byte;
+  fmtIndex: Integer;
+  fmtString: AnsiString;
 begin
-  lData := TFormatListData.Create;
-
   // Record FORMAT, BIFF 8 (5.49):
   // Offset Size Contents
   // 0      2     Format index used in other records
@@ -1651,21 +1607,15 @@ begin
   // From BIFF5 on: indexes 0..163 are built in
 
   // format index
-  lData.Index := WordLEtoN(AStream.ReadWord);
+  fmtIndex := WordLEtoN(AStream.ReadWord);
 
   // number format string
   len := AStream.ReadByte;
-  SetLength(str, len);
-  AStream.ReadBuffer(str[1], len);
-  lData.FormatString := str;
+  SetLength(fmtString, len);
+  AStream.ReadBuffer(fmtString[1], len);
 
   // Add to the list
-  FFormatList.Add(lData);
-end;
-
-procedure TsSpreadBIFF5Reader.ReadFormula(AStream: TStream);
-begin
-
+  NumFormatList.AnalyzeAndAdd(fmtIndex, fmtString);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
