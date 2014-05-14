@@ -36,6 +36,7 @@ const
   INT_EXCEL_ID_BLANK      = $0201;    // BIFF2: $0001
   INT_EXCEL_ID_NUMBER     = $0203;    // BIFF2: $0003
   INT_EXCEL_ID_LABEL      = $0204;    // BIFF2: $0004
+  INT_EXCEL_ID_STRING     = $0207;    // BIFF2: $0007;
   INT_EXCEL_ID_ROW        = $0208;    // BIFF2: $0008
   INT_EXCEL_ID_INDEX      = $020B;    // BIFF2: $000B
   INT_EXCEL_ID_WINDOW2    = $023E;    // BIFF2: $003E
@@ -417,6 +418,8 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
+    // Read STRING record (result of string formula)
+    procedure ReadStringRecord(AStream: TStream; var AResultString: String); virtual;
     // Read WINDOW2 record (gridlines, sheet headers)
     procedure ReadWindow2(AStream: TStream); virtual;
   public
@@ -939,6 +942,7 @@ var
   nf: TsNumberFormat;
   nd: Word;
   nfs: String;
+  resultStr: String;
 
 begin
   { BIFF Record header }
@@ -969,7 +973,10 @@ begin
 
   if (Data[6] = $FF) and (Data[7] = $FF) then
     case Data[0] of
-      0: FWorksheet.WriteUTF8Text(ARow, ACol, '(String)');
+      0: begin
+           ReadStringRecord(AStream, resultStr);
+           FWorksheet.WriteUTF8Text(ARow, ACol, resultStr);
+          end;
       1: FWorksheet.WriteUTF8Text(ARow, ACol, '(Bool)');
       2: FWorksheet.WriteUTF8Text(ARow, ACol, '(ERROR)');
       3: FWorksheet.WriteUTF8Text(ARow, ACol, '(empty)');
@@ -1197,6 +1204,15 @@ begin
   //lRow^.AutoHeight := rowrec.Flags and $00000040 = 0;
   // If this bit is set row height does not change with font height, i.e. has been
   // changed manually.
+end;
+
+{ Reads a STRING record. It immediately precedes a FORMULA record which has a
+  string result.
+  Returns here just a dummy string. Has to be overridden to read the real text. }
+procedure TsSpreadBIFFReader.ReadStringRecord(AStream: TStream;
+  var AResultString: String);
+begin
+  AResultString := '(STRING)';
 end;
 
 { Reads the WINDOW2 record containing information like "show grid lines",

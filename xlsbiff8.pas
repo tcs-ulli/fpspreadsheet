@@ -91,6 +91,8 @@ type
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadRichString(const AStream: TStream);
+  protected
+    procedure ReadStringRecord(AStream: TStream; var AStringResult: String); override;
   public
     destructor Destroy; override;
     { General reading methods }
@@ -1741,6 +1743,23 @@ begin
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream;
+  var AStringResult: String);
+var
+  record_id: Word;
+  record_size: word;
+  p: Cardinal;
+begin
+  record_id := WordLEToN(AStream.ReadWord);
+  if record_id <> INT_EXCEL_ID_STRING then
+    raise Exception.Create('ReadStringRecord: wrong record found.');
+  record_size := WordLEToN(AStream.ReadWord);
+  p := AStream.Position;
+
+  AStringResult := ReadWideString(AStream, false);
+  AStream.Position := p + record_size;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
