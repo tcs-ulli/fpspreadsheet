@@ -125,7 +125,18 @@ type
 
   {@@ Describes the type of content of a cell on a TsWorksheet }
   TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber,
-    cctUTF8String, cctDateTime);
+    cctUTF8String, cctDateTime, cctBool, cctError);
+
+  {@@ Error code values }
+  TErrorValue = (
+    errEmptyIntersection,  // #NULL!
+    errDivideByZero,       // #DIV/0!
+    errWrongType,          // #VALUE!
+    errIllegalRef,         // #REF!
+    errWrongName,          // #NAME?
+    errOverflow,           // #NUM!
+    errArgNotAvail         // #N/A
+  );
 
   {@@ List of possible formatting fields }
   TsUsedFormattingField = (uffTextRotation, uffFont, uffBold, uffBorder,
@@ -278,6 +289,8 @@ type
     NumberValue: double;
     UTF8StringValue: ansistring;
     DateTimeValue: TDateTime;
+    BoolValue: Boolean;
+    StatusValue: Byte;
     { Formatting fields }
     UsedFormattingFields: TsUsedFormattingFields;
     FontIndex: Integer;
@@ -369,8 +382,10 @@ type
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormatString: String); overload;
     procedure WriteBlank(ARow, ACol: Cardinal);
+    procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+    procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     { Writing of cell attributes }
@@ -688,6 +703,15 @@ resourcestring
   lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
   lpUnknownSpreadsheetFormat = 'unknown format';
   lpInvalidFontIndex = 'Invalid font index';
+  lpTRUE = 'TRUE';
+  lpFALSE = 'FALSE';
+  lpErrEmptyIntersection = '#NULL!';
+  lpErrDivideByZero = '#DIV/0!';
+  lpErrWrongType = '#VALUE!';
+  lpErrIllegalRef = '#REF!';
+  lpErrWrongName = '#NAME?';
+  lpErrOverflow = '#NUM!';
+  lpErrArgNotAvail = '#N/A';
 
 var
   {@@
@@ -1173,6 +1197,18 @@ begin
         Result := UTF8StringValue;
       cctDateTime:
         Result := DateTimeToStrNoNaN(DateTimeValue, NumberFormat, NumberFormatStr, NumberDecimals);
+      cctBool:
+        Result := IfThen(BoolValue, lpTRUE, lpFALSE);
+      cctError:
+        case TErrorValue(StatusValue and $0F) of
+          errEmptyIntersection: Result := lpErrEmptyIntersection;
+          errDivideByZero     : Result := lpErrDivideByZero;
+          errWrongType        : Result := lpErrWrongType;
+          errIllegalRef       : Result := lpErrIllegalRef;
+          errWrongName        : Result := lpErrWrongName;
+          errOverflow         : Result := lpErrOverflow;
+          errArgNotAvail      : Result := lpErrArgNotAvail;
+        end;
       else
         Result := '';
     end;
@@ -1383,6 +1419,23 @@ begin
 end;
 
 {@@
+  Writes as boolean cell
+
+  @param  ARow       The row of the cell
+  @param  ACol       The column of the cell
+  @param  AValue     The boolean value
+}
+procedure TsWorksheet.WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+  ACell^.ContentType := cctBool;
+  ACell^.BoolValue := AValue;
+  ChangedCell(ARow, ACol);
+end;
+
+{@@
   Writes a date/time value to a determined cell
 
   @param  ARow       The row of the cell
@@ -1443,6 +1496,23 @@ begin
       if AFormatStr = '' then ACell^.NumberFormatStr := '[h]:mm:ss'
         else ACell^.NumberFormatStr := AFormatStr;
   end;
+  ChangedCell(ARow, ACol);
+end;
+
+{@@
+  Writes a cell with an error.
+
+  @param  ARow       The row of the cell
+  @param  ACol       The column of the cell
+  @param  AValue     The error code value
+}
+procedure TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+  ACell^.ContentType := cctError;
+  ACell^.StatusValue := (ACell^.StatusValue and $F0) or ord(AValue);
   ChangedCell(ARow, ACol);
 end;
 
@@ -2553,8 +2623,12 @@ begin
       ANumFormat := nfShortDateTime
     else if isDate then
       ANumFormat := SHORT_LONG_DATE[isLongDate]
-    else if isTime then
-      ANumFormat := AMPM_SHORT_LONG_TIME[isAMPM, isLongTime]
+    else if isTime then begin
+      if (ADecimals > 0) and (not isAMPM) then
+        ANumFormat := nfFmtDateTime
+      else
+        ANumFormat := AMPM_SHORT_LONG_TIME[isAMPM, isLongTime]
+    end
     else if AFormatString <> '' then
       ANumFormat := nfCustom;
   end;

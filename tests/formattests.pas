@@ -189,7 +189,7 @@ begin
     SollDateTimeStrings[i, 6] := FormatDateTime('dd/mmm', SollDateTimes[i]);
     SollDateTimeStrings[i, 7] := FormatDateTime('mmm/yy', SollDateTimes[i]);
     SollDateTimeStrings[i, 8] := FormatDateTime('nn:ss', SollDateTimes[i]);
-    SollDateTimeStrings[i, 9] := TimeIntervalToString(SollDateTimes[i]);
+    SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i]);
   end;
 
   // Column width

@@ -78,21 +78,16 @@ type
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
-    procedure ReadSST(const AStream: TStream);
-    procedure ReadLabelSST(const AStream: TStream);
-    // Read XF record
-    procedure ReadXF(const AStream: TStream);
-    // Workbook Globals records
-    // procedure ReadCodepage in xlscommon
-    // procedure ReadDateMode in xlscommon
+  protected
+    procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(const AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
-    { Record reading methods }
-    procedure ReadBlank(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
+    procedure ReadLabelSST(const AStream: TStream);
     procedure ReadRichString(const AStream: TStream);
-  protected
+    procedure ReadSST(const AStream: TStream);
     procedure ReadStringRecord(AStream: TStream; var AStringResult: String); override;
+    procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
     { General reading methods }
@@ -1750,16 +1745,13 @@ procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream;
 var
   record_id: Word;
   record_size: word;
-  p: Cardinal;
 begin
   record_id := WordLEToN(AStream.ReadWord);
   if record_id <> INT_EXCEL_ID_STRING then
     raise Exception.Create('ReadStringRecord: wrong record found.');
   record_size := WordLEToN(AStream.ReadWord);
-  p := AStream.Position;
 
   AStringResult := ReadWideString(AStream, false);
-  AStream.Position := p + record_size;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
