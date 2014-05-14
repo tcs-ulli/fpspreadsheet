@@ -69,6 +69,13 @@ begin
   MyRPNFormula[2].ElementKind := fekROUND;
   MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
 
+  // Write a string formula to G1 = "A" & "B"
+  MyWorksheet.WriteRPNFormula(0, 6, CreateRPNFormula(
+    RPNString('A',
+    RPNSTring('B',
+    RPNFunc(fekConcat,
+    nil)))));
+
   // Write some string cells
   MyWorksheet.WriteUTF8Text(1, 0, 'First');
   MyWorksheet.WriteFont(1, 0, 'Arial', 12, [fssBold, fssItalic, fssUnderline], scRed);

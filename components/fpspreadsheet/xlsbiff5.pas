@@ -89,6 +89,7 @@ type
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
     procedure ReadRichString(AStream: TStream);
+    procedure ReadStringRecord(AStream: TStream; var AStringResult: String); override;
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
@@ -1358,6 +1359,30 @@ begin
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+{ Reads a STRING record which contains the result of string formula. }
+procedure TsSpreadBIFF5Reader.ReadStringRecord(AStream: TStream;
+  var AStringResult: String);
+var
+  record_id: Word;
+  record_size: word;
+  len: Word;
+  s: ansistring;
+begin
+  record_id := WordLEToN(AStream.ReadWord);
+  if record_id <> INT_EXCEL_ID_STRING then
+    raise Exception.Create('ReadStringRecord: wrong record found.');
+  record_size := WordLEToN(AStream.ReadWord);
+
+  // The string is a byte-string with 16 bit length
+  len := WordLEToN(AStream.ReadWord);
+  if len > 0 then begin
+    SetLength(s, Len);
+    AStream.ReadBuffer(s[1], len);
+  end else
+    s := '';
+  AStringResult := s;
 end;
 
 procedure TsSpreadBIFF5Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);

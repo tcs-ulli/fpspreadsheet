@@ -156,7 +156,14 @@ begin
   MyRPNFormula[1].ElementKind := fekABS;
   MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
 
-  r:= 10;
+  // Write a string formula to G1 = "A" & "B"
+  MyWorksheet.WriteRPNFormula(0, 6, CreateRPNFormula(
+    RPNString('A',
+    RPNSTring('B',
+    RPNFunc(fekConcat,
+    nil)))));
+
+  r := 10;
   // Write current date/time to cells B11:B16
   MyWorksheet.WriteUTF8Text(r, 0, 'nfShortDate');
   MyWorksheet.WriteDateTime(r, 1, now, nfShortDate);
