@@ -237,33 +237,6 @@ const
   { DATEMODE record, 5.28 }
   DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
-                         (*
-  { FORMAT record constants for BIFF5-BIFF8}
-  // Subset of the built-in formats for US Excel, 
-  // including those needed for date/time output
-  FORMAT_GENERAL = 0;             //general/default format
-  FORMAT_FIXED_0_DECIMALS = 1;    //fixed, 0 decimals
-  FORMAT_FIXED_2_DECIMALS = 2;    //fixed, 2 decimals
-  FORMAT_FIXED_THOUSANDS_0_DECIMALS = 3;  //fixed, w/ thousand separator, 0 decs
-  FORMAT_FIXED_THOUSANDS_2_DECIMALS = 4;  //fixed, w/ thousand separator, 2 decs
-  FORMAT_CURRENCY_0_DECIMALS = 5; //currency (with currency symbol), 0 decs
-  FORMAT_CURRENCY_2_DECIMALS = 7; //currency (with currency symbol), 2 decs
-  FORMAT_PERCENT_0_DECIMALS = 9;  //percent, 0 decimals
-  FORMAT_PERCENT_2_DECIMALS = 10; //percent, 2 decimals
-  FORMAT_EXP_2_DECIMALS = 11;     //exponent, 2 decimals
-  FORMAT_SHORT_DATE = 14;         //short date
-  FORMAT_DATE_DM = 16;            //date D-MMM
-  FORMAT_DATE_MY = 17;            //date MMM-YYYY
-  FORMAT_SHORT_TIME_AM = 18;      //short time H:MM with AM
-  FORMAT_LONG_TIME_AM = 19;       //long time H:MM:SS with AM
-  FORMAT_SHORT_TIME = 20;         //short time H:MM
-  FORMAT_LONG_TIME = 21;          //long time H:MM:SS
-  FORMAT_SHORT_DATETIME = 22;     //short date+time
-  FORMAT_TIME_MS = 45;            //time MM:SS
-  FORMAT_TIME_INTERVAL = 46;      //time [hh]:mm:ss, hh can be >24
-  FORMAT_TIME_MSZ = 47;           //time MM:SS.0
-  FORMAT_SCI_1_DECIMAL = 48;      //scientific, 1 decimal
-                           *)
 
   { WINDOW1 record constants - BIFF5-BIFF8 }
   MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
@@ -336,6 +309,14 @@ const
   MASK_XF_VERT_ALIGN_BOTTOM              = $20;
   MASK_XF_VERT_ALIGN_JUSTIFIED           = $30;
 
+  { Error codes }
+  ERR_INTERSECTION_EMPTY                 = $00;  // #NULL!
+  ERR_DIVIDE_BY_ZERO                     = $07;  // #DIV/0!
+  ERR_WRONG_TYPE_OF_OPERAND              = $0F;  // #VALUE!
+  ERR_ILLEGAL_REFERENCE                  = $17;  // #REF!
+  ERR_WRONG_NAME                         = $1D;  // #NAME?
+  ERR_OVERFLOW                           = $24;  // #NUM!
+  ERR_NOT_AVAILABLE                      = $2A;  // #N/A
 
 type
   TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
@@ -943,6 +924,7 @@ var
   nd: Word;
   nfs: String;
   resultStr: String;
+  err: TErrorValue;
 
 begin
   { BIFF Record header }
@@ -970,18 +952,33 @@ begin
 
   //RPN data not used by now
   AStream.Position := AStream.Position + FormulaSize;
-
+                         (*
+  // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
     case Data[0] of
       0: begin
            ReadStringRecord(AStream, resultStr);
-           FWorksheet.WriteUTF8Text(ARow, ACol, resultStr);
-          end;
-      1: FWorksheet.WriteUTF8Text(ARow, ACol, '(Bool)');
-      2: FWorksheet.WriteUTF8Text(ARow, ACol, '(ERROR)');
-      3: FWorksheet.WriteUTF8Text(ARow, ACol, '(empty)');
+           if resultStr = '' then
+             FWorksheet.WriteBlank(ARow, ACol)
+           else
+             FWorksheet.WriteUTF8Text(ARow, ACol, resultStr);
+         end;
+      1: FWorksheet.WriteBoolValue(ARow, ACol, Data[2] = 1);
+      2: begin
+           case Data[2] of
+             ERR_INTERSECTION_EMPTY   : err := errEmptyIntersection;
+             ERR_DIVIDE_BY_ZERO       : err := errDivideByZero;
+             ERR_WRONG_TYPE_OF_OPERAND: err := errWrongType;
+             ERR_ILLEGAL_REFERENCE    : err := errIllegalRef;
+             ERR_WRONG_NAME           : err := errWrongName;
+             ERR_OVERFLOW             : err := errOverflow;
+             ERR_NOT_AVAILABLE        : err := errArgNotAvail;
+           end;
+           FWorksheet.WriteErrorValue(ARow, ACol, err);
+         end;
+      3: FWorksheet.WriteBlank(ARow, ACol);
     end
-  else begin
+  else begin             *)
     if SizeOf(Double) <> 8 then
       raise Exception.Create('Double is not 8 bytes');
 
@@ -994,7 +991,7 @@ begin
       FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
     else
       FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd);
-  end;
+//  end;
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);
@@ -1076,7 +1073,7 @@ var
   nd: word;
   nfs: String;
 begin
-  ReadRowColXF(AStream,ARow,ACol,XF);
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
   { IEE 754 floating-point value }
   AStream.ReadBuffer(value, 8);
@@ -1609,14 +1606,21 @@ end;
 procedure TsSpreadBIFFWriter.WriteFormats(AStream: TStream);
 var
   i: Integer;
+
+  item: TsNumFormatData;
+
 begin
   ListAllNumFormats;
+
+  item := NumFormatList[20];
+
   i := NumFormatList.Find(NumFormatList.FirstFormatIndexInFile);
-  while i < NumFormatList.Count do begin
-    if NumFormatList[i] <> nil then
-      WriteFormat(AStream, NumFormatList[i], i);
-    inc(i);
-  end;
+  if i > -1 then
+    while i < NumFormatList.Count do begin
+      if NumFormatList[i] <> nil then
+        WriteFormat(AStream, NumFormatList[i], i);
+      inc(i);
+    end;
 end;
 
 { Writes a 64-bit floating point NUMBER record.

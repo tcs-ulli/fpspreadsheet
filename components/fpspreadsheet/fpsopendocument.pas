@@ -46,6 +46,14 @@ type
     dm1904 {e.g. Quattro Pro,Mac Excel compatibility}
     );
 
+  { TsSpreadOpenDocNumFormatList }
+  TsSpreadOpenDocNumFormatList = class(TsCustomNumFormatList)
+  protected
+    procedure AddBuiltinFormats; override;
+  public
+//    function FormatStringForWriting(AIndex: Integer): String; override;
+  end;
+
   { TsSpreadOpenDocReader }
 
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
@@ -58,6 +66,7 @@ type
     // Figures out what the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
   protected
+    procedure CreateNumFormatList; override;
     { Record writing methods }
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
@@ -79,6 +88,8 @@ type
     // Streams with the contents of files
     FSMeta, FSSettings, FSStyles, FSContent, FSMimetype: TStringStream;
     FSMetaInfManifest: TStringStream;
+    // Helpers
+    procedure CreateNumFormatList; override;
     // Routines to write those files
     procedure WriteMimetype;
     procedure WriteMetaInfManifest;
@@ -159,7 +170,22 @@ const
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
 
+{ TsSpreadOpenDocNumFormatList }
+
+procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
+begin
+  // to be filled later...
+end;
+
 { TsSpreadOpenDocReader }
+
+{ Creates the correct version of the number format list.
+  It is for ods file formats. }
+procedure TsSpreadOpenDocReader.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsSpreadOpenDocNumFormatList.Create;
+end;
 
 function TsSpreadOpenDocReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 var
@@ -441,6 +467,12 @@ begin
 end;
 
 { TsSpreadOpenDocWriter }
+
+procedure TsSpreadOpenDocWriter.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsSpreadOpenDocNumFormatList.Create;
+end;
 
 procedure TsSpreadOpenDocWriter.WriteMimetype;
 begin

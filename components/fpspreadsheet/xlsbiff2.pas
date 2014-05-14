@@ -130,37 +130,6 @@ var
     $00FFFF   // $07: cyan
   );
 
-(*
-{ These are the built-in number formats of BIFF2. They are not stored in
-    the file. Note that, compared to the BUFF5+ built-in formats, two formats
-    are missing and the indexes are offset by 2 after #11.
-    It seems that BIFF2 can handle only these 21 formats. The other formats
-    available in fpspreadsheet are mapped to these 21 formats such that least
-    destruction is made. }
-  NUMFORMAT_BIFF2: array[0..20] of string = (
-    'General',               // 0
-    '0',
-    '0.00',
-    '#,##0',
-    '#,##0.00',
-    '"$"#,##0_);("$"#,##0)', // 5
-    '"$"#,##0_);[Red]("$"#,##0)',
-    '"$"#,##0.00_);("$"#,##0.00)',
-    '"$"#,##0.00_);[Red]("$"#,##0.00)',
-    '0%',
-    '0.00%',                 // 10
-    '0.00E+00',
-    'M/D/YY',
-    'D-MMM-YY',
-    'D-MMM',
-    'MMM-YY',                // 15
-    'h:mm AM/PM',
-    'h:mm:ss AM/PM',
-    'h:mm',
-    'h:mm:ss',
-    'M/D/YY h:mm'            // 20
-  );
-*)
 
 implementation
 
@@ -193,36 +162,7 @@ const
   INT_EXCEL_SHEET         = $0010;
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
-                                 (*
-  { FORMAT record constants for BIFF2 }
-  // Subset of the built-in formats for US Excel,
-  // including those needed for date/time output
-  FORMAT_GENERAL = 0;             //general/default format
-  FORMAT_FIXED_0_DECIMALS = 1;    //fixed, 0 decimals
-  FORMAT_FIXED_2_DECIMALS = 2;    //fixed, 2 decimals
-  FORMAT_FIXED_THOUSANDS_0_DECIMALS = 3;  //fixed, w/ thousand separator, 0 decs
-  FORMAT_FIXED_THOUSANDS_2_DECIMALS = 4;  //fixed, w/ thousand separator, 2 decs
-  FORMAT_CURRENCY_0_DECIMALS = 5; //currency (with currency symbol), 0 decs
-  FORMAT_CURRENCY_2_DECIMALS = 7; //currency (with currency symbol), 2 decs
-  FORMAT_PERCENT_0_DECIMALS = 9;  //percent, 0 decimals
-  FORMAT_PERCENT_2_DECIMALS = 10; //percent, 2 decimals
-  FORMAT_EXP_2_DECIMALS = 11;     //exponent, 2 decimals
-  FORMAT_SCI_1_DECIMAL = 11;      //scientific, 1 decimal -- not present in BIFF2 -- mapped to EXP_2_DECIMALS
-  FORMAT_SHORT_DATE = 12;         //short date
-  FORMAT_DATE_DM = 14;            //date D-MMM
-  FORMAT_DATE_MY = 15;            //date MMM-YYYY
-  FORMAT_SHORT_TIME_AM = 16;      //short time H:MM with AM
-  FORMAT_LONG_TIME_AM = 17;       //long time H:MM:SS with AM
-  FORMAT_SHORT_TIME = 18;         //short time H:MM
-  FORMAT_LONG_TIME = 19;          //long time H:MM:SS
-  FORMAT_SHORT_DATETIME = 20;     //short date+time
-  { The next three formats are not available in BIFF2. They should not be used
-    when a file is to be saved in BIFF2. If it IS saved as BIFF2 the formats
-    are mapped to FORMAT_LONG_TIME}
-  FORMAT_TIME_MS = 19;            //time MM:SS
-  FORMAT_TIME_MSZ = 19;           //time MM:SS.0
-  FORMAT_TIME_INTERVAL = 19;      //time [hh]:mm:ss, hh can be >24
-                                  *)
+
 
 { TsBIFF2NumFormatList }
 
@@ -351,74 +291,19 @@ end;
 procedure TsSpreadBIFF2Reader.ExtractNumberFormat(AXFIndex: WORD;
   out ANumberFormat: TsNumberFormat; out ADecimals: Word;
   out ANumberFormatStr: String);
-const
-  NOT_USED = nfGeneral;
-  fmts: array[1..20] of TsNumberFormat = (
-    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
-    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
-    nfExp, nfShortDate, nfShortDate, nfFmtDateTime, nfFmtDateTime,   // 11..15
-    nfShortTimeAM, nfLongTimeAM, nfShortTime, nfLongTime, nfShortDateTime// 16..20
-  );
-  decs: array[1..20] of word = (
-    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
-    2, 0, 0, 0, 0, 0, 0, 0, 0, 0      // 11..20
-  );
 var
   lNumFormatData: TsNumFormatData;
-  lXFData: TXFListData;
-  isAMPM: Boolean;
-  isLongTime: Boolean;
-  isMilliSec: Boolean;
-  t,d: Boolean;
 begin
-  ANumberFormat := nfGeneral;
-  ANumberFormatStr := '';
-  ADecimals := 0;
-                          (*
   lNumFormatData := FindNumFormatDataForCell(AXFIndex);
-  if lNumFormatData = nil then begin
-    // no custom format, so first test for default formats
-    lXFData := TXFListData (FXFList.Items[AXFIndex]);
-    if (lXFData.FormatIndex > 0) and (lXFData.FormatIndex <= 20) then begin
-      ANumberFormat := fmts[lXFData.FormatIndex];
-      ADecimals := decs[lXFData.FormatIndex];
-    end;
-  end else
-  // The next is copied from xlscommon - I think it's not necessary here
-  if IsPercentNumberFormat(lNumFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfPercentage
-  else
-  if IsExpNumberFormat(lNumFormatData.Formatstring, ADecimals) then
-    ANumberFormat := nfExp
-  else
-  if IsThousandSepNumberFormat(lNumFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfFixedTh
-  else
-  if IsFixedNumberFormat(lNumFormatData.FormatString, ADecimals) then
-    ANumberFormat := nfFixed
-  else begin
-    t := IsTimeFormat(lNumFormatData.FormatString, isLongTime, isAMPM, isMilliSec);
-    d := IsDateFormat(lNumFormatData.FormatString, isLongDate);
-    if d and t then
-      ANumberFormat := nfShortDateTime
-    else
-    if d then
-      ANumberFormat := nfShortDate
-    else
-    if t then begin
-      if isAMPM then begin
-        if isLongTime then
-          ANumberFormat := nfLongTimeAM
-        else
-          ANumberFormat := nfShortTimeAM;
-      end else begin
-        if isLongTime then
-          ANumberFormat := nfLongTime
-        else
-          ANumberFormat := nfShortTime;
-      end;
-    end;
-  end;          *)
+  if lNumFormatData <> nil then begin
+    ANumberFormat := lNumFormatData.NumFormat;
+    ANumberFormatStr := lNumFormatData.FormatString;
+    ADecimals := lNumFormatData.Decimals;
+  end else begin
+    ANumberFormat := nfGeneral;
+    ANumberFormatStr := '';
+    ADecimals := 0;
+  end;
 end;
 
 procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
@@ -513,22 +398,20 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
-
-    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
-    INT_EXCEL_ID_FONT      : ReadFont(AStream);
-    INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
-    INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
-    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
-    INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
-    INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
-    INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
-    INT_EXCEL_ID_PANE      : ReadPane(AStream);
-    INT_EXCEL_ID_XF        : ReadXF(AStream);
-    INT_EXCEL_ID_BOF       : ;
-    INT_EXCEL_ID_EOF       : BIFF2EOF := True;
-
+      INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
+      INT_EXCEL_ID_FONT      : ReadFont(AStream);
+      INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
+      INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
+      INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
+      INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
+      INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
+      INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
+      INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
+      INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
+      INT_EXCEL_ID_PANE      : ReadPane(AStream);
+      INT_EXCEL_ID_XF        : ReadXF(AStream);
+      INT_EXCEL_ID_BOF       : ;
+      INT_EXCEL_ID_EOF       : BIFF2EOF := True;
     else
       // nothing
     end;

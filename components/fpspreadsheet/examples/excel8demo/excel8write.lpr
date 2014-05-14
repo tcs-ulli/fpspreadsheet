@@ -75,6 +75,7 @@ begin
   MyWorksheet.WriteBorderLineStyle(5, 5, cbNorth, lsThick);
 
   // F7, top border only, but different color
+  MyWorksheet.WriteBorders(6, 5, [cbNorth]);
   MyWorksheet.WriteBorderColor(6, 5, cbNorth, scGreen);
   MyWorksheet.WriteUTF8Text(6, 5, 'top border green or red?');
   // Excel shows it to be red --> the upper border wins
@@ -200,6 +201,10 @@ begin
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, mm:ss.zzz');
   MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'mm:ss.zzz');
+  // NOTE: The upper option "MSZ" = "mm:ss.z" should result only in 1 decimal.
+  // This is true for writing, but in reading always 3 decimals are displayed.
+  // This is due to fpc's SysUtile.FormatDateTime which does not distinguish
+  // both cases.
 
   // Write formatted numbers
   number := 12345.67890123456789;
