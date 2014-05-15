@@ -41,6 +41,20 @@ uses
   
 type
 
+  { TsOOXMLFormatList }
+  TsOOXMLNumFormatList = class(TsCustomNumFormatList)
+  protected
+    {
+    procedure AddBuiltinFormats; override;
+    procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Word); override;
+      }
+  public
+    {
+    function FormatStringForWriting(AIndex: Integer): String; override;
+    }
+  end;
+
   { TsSpreadOOXMLWriter }
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
@@ -52,22 +66,30 @@ type
     FWorkbookString, FWorkbookRelsString, FStylesString, FSharedStrings: string;
     FSheets: array of string;
     FSharedStringsCount: Integer;
+
+  protected
+    { Helper routines }
+    procedure CreateNumFormatList; override;
+  protected
     { Streams with the contents of files }
     FSContentTypes: TStringStream;
     FSRelsRels: TStringStream;
     FSWorkbook, FSWorkbookRels, FSStyles, FSSharedStrings: TStringStream;
     FSSheets: array of TStringStream;
     FCurSheetNum: Integer;
+  protected
     { Routines to write those files }
     procedure WriteGlobalFiles;
     procedure WriteContent;
     procedure WriteWorksheet(CurSheet: TsWorksheet);
     function GetStyleIndex(ACell: PCell): Cardinal;
+  protected
     { Record writing methods }
     //todo: add WriteDate
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
+
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -113,6 +135,7 @@ const
   MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
   MIME_STYLES          = MIME_SPREADML + '.styles+xml';
   MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
+
 
 { TsSpreadOOXMLWriter }
 
@@ -365,6 +388,12 @@ begin
   SetLength(FSSheets, 0);
 
   inherited Destroy;
+end;
+
+procedure TsSpreadOOXMLWriter.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsOOXMLNumFormatList.Create;
 end;
 
 {

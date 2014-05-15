@@ -107,7 +107,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="57">
+    <Units Count="59">
       <Unit0>
         <Filename Value="fpsgrid.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -139,9 +139,12 @@
         <UnitName Value="fpspreadsheet"/>
         <EditorIndex Value="3"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="2539"/>
-        <CursorPos X="19" Y="2550"/>
+        <TopLine Value="1"/>
+        <CursorPos X="1" Y="1"/>
         <UsageCount Value="100"/>
+        <Bookmarks Count="1">
+          <Item0 X="13" Y="2613" ID="1"/>
+        </Bookmarks>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
@@ -149,8 +152,8 @@
         <UnitName Value="fpspreadsheetgrid"/>
         <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="525"/>
-        <CursorPos X="30" Y="533"/>
+        <TopLine Value="1774"/>
+        <CursorPos X="26" Y="1785"/>
         <UsageCount Value="100"/>
         <Loaded Value="True"/>
       </Unit3>
@@ -160,7 +163,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="25"/>
         <CursorPos X="4" Y="44"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit4>
       <Unit5>
         <Filename Value="c:\lazarus27\fpc\2.2.4\source\packages\winunits-base\src\activex.pp"/>
@@ -168,7 +171,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="49"/>
         <CursorPos X="10" Y="24"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit5>
       <Unit6>
         <Filename Value="c:\lazarus27\fpc\2.2.4\source\packages\fcl-base\src\avl_tree.pp"/>
@@ -176,7 +179,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="37"/>
         <CursorPos X="14" Y="83"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit6>
       <Unit7>
         <Filename Value="c:\Lazarus\lcl\grids.pas"/>
@@ -184,14 +187,14 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1516"/>
         <CursorPos X="28" Y="1534"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit7>
       <Unit8>
         <Filename Value="c:\Lazarus\lcl\include\customform.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="2021"/>
         <CursorPos X="1" Y="2041"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit8>
       <Unit9>
         <Filename Value="..\..\fpsallformats.pas"/>
@@ -199,7 +202,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="62" Y="13"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit9>
       <Unit10>
         <Filename Value="..\..\wikitable.pas"/>
@@ -207,7 +210,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="48"/>
         <CursorPos X="41" Y="60"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit10>
       <Unit11>
         <Filename Value="..\..\fpsopendocument.pas"/>
@@ -215,27 +218,25 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1"/>
         <CursorPos X="1" Y="1"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit11>
       <Unit12>
         <Filename Value="d:\lazarus-svn\lcl\grids.pas"/>
         <UnitName Value="Grids"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
         <TopLine Value="4852"/>
         <CursorPos X="16" Y="4884"/>
-        <UsageCount Value="48"/>
-        <Loaded Value="True"/>
+        <UsageCount Value="47"/>
       </Unit12>
       <Unit13>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="9"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="614"/>
-        <CursorPos X="23" Y="621"/>
-        <UsageCount Value="47"/>
+        <TopLine Value="65"/>
+        <CursorPos X="1" Y="78"/>
+        <UsageCount Value="51"/>
         <Loaded Value="True"/>
       </Unit13>
       <Unit14>
@@ -243,7 +244,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1212"/>
         <CursorPos X="3" Y="1218"/>
-        <UsageCount Value="4"/>
+        <UsageCount Value="3"/>
       </Unit14>
       <Unit15>
         <Filename Value="d:\lazarus-svn\lcl\graphics.pp"/>
@@ -251,26 +252,23 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1937"/>
         <CursorPos X="11" Y="1956"/>
-        <UsageCount Value="33"/>
+        <UsageCount Value="32"/>
       </Unit15>
       <Unit16>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\rtl\objpas\classes\classesh.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="248"/>
         <CursorPos X="22" Y="263"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit16>
       <Unit17>
         <Filename Value="..\..\xlsbiff8.pas"/>
         <UnitName Value="xlsbiff8"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1747"/>
-        <CursorPos X="25" Y="1779"/>
-        <UsageCount Value="78"/>
-        <Bookmarks Count="1">
-          <Item0 X="1" Y="1761" ID="1"/>
-        </Bookmarks>
+        <TopLine Value="62"/>
+        <CursorPos X="15" Y="90"/>
+        <UsageCount Value="82"/>
         <Loaded Value="True"/>
       </Unit17>
       <Unit18>
@@ -279,23 +277,23 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1091"/>
         <CursorPos X="12" Y="1122"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit18>
       <Unit19>
         <Filename Value="d:\lazarus-svn\lcl\include\wincontrol.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="7344"/>
         <CursorPos X="30" Y="7349"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit19>
       <Unit20>
         <Filename Value="..\..\xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
         <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1207"/>
-        <CursorPos X="1" Y="1217"/>
-        <UsageCount Value="74"/>
+        <TopLine Value="608"/>
+        <CursorPos X="31" Y="634"/>
+        <UsageCount Value="78"/>
         <Loaded Value="True"/>
       </Unit20>
       <Unit21>
@@ -305,7 +303,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1363"/>
         <CursorPos X="1" Y="1364"/>
-        <UsageCount Value="61"/>
+        <UsageCount Value="65"/>
         <Loaded Value="True"/>
       </Unit21>
       <Unit22>
@@ -315,7 +313,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="664"/>
         <CursorPos X="21" Y="677"/>
-        <UsageCount Value="62"/>
+        <UsageCount Value="66"/>
         <Loaded Value="True"/>
       </Unit22>
       <Unit23>
@@ -324,7 +322,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="841"/>
         <CursorPos X="19" Y="852"/>
-        <UsageCount Value="1"/>
+        <UsageCount Value="10"/>
       </Unit23>
       <Unit24>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\packages\fcl-image\src\fpcanvas.pp"/>
@@ -332,7 +330,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="111"/>
         <CursorPos X="3" Y="112"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="13"/>
       </Unit24>
       <Unit25>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\packages\fcl-image\src\fpimage.pp"/>
@@ -340,14 +338,14 @@
         <WindowIndex Value="0"/>
         <TopLine Value="74"/>
         <CursorPos X="3" Y="93"/>
-        <UsageCount Value="2"/>
+        <UsageCount Value="1"/>
       </Unit25>
       <Unit26>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\rtl\objpas\classes\lists.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="141"/>
         <CursorPos X="3" Y="143"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit26>
       <Unit27>
         <Filename Value="d:\Prog_Delphi\common\units\XLS.pas"/>
@@ -355,14 +353,14 @@
         <WindowIndex Value="0"/>
         <TopLine Value="114"/>
         <CursorPos X="42" Y="152"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit27>
       <Unit28>
         <Filename Value="d:\lazarus-svn\lcl\include\pen.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="354"/>
         <CursorPos X="1" Y="385"/>
-        <UsageCount Value="15"/>
+        <UsageCount Value="14"/>
       </Unit28>
       <Unit29>
         <Filename Value="d:\lazarus-svn\lcl\controls.pp"/>
@@ -370,14 +368,14 @@
         <WindowIndex Value="0"/>
         <TopLine Value="2222"/>
         <CursorPos X="14" Y="2242"/>
-        <UsageCount Value="10"/>
+        <UsageCount Value="9"/>
       </Unit29>
       <Unit30>
         <Filename Value="d:\lazarus-svn\lcl\include\control.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="4129"/>
         <CursorPos X="1" Y="4161"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit30>
       <Unit31>
         <Filename Value="..\..\fpspreadsheetchart.pas"/>
@@ -385,7 +383,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="170"/>
         <CursorPos X="37" Y="204"/>
-        <UsageCount Value="5"/>
+        <UsageCount Value="4"/>
       </Unit31>
       <Unit32>
         <Filename Value="d:\lazarus-svn\components\lazutils\lazutf8.pas"/>
@@ -393,7 +391,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="3180"/>
         <CursorPos X="1" Y="3212"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit32>
       <Unit33>
         <Filename Value="d:\lazarus-svn\lcl\colorbox.pas"/>
@@ -401,7 +399,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="584"/>
         <CursorPos X="3" Y="598"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="13"/>
       </Unit33>
       <Unit34>
         <Filename Value="d:\lazarus-svn\lcl\dialogs.pp"/>
@@ -409,7 +407,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="222"/>
         <CursorPos X="3" Y="253"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit34>
       <Unit35>
         <Filename Value="d:\lazarus-svn\lcl\forms.pp"/>
@@ -417,7 +415,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="932"/>
         <CursorPos X="3" Y="939"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit35>
       <Unit36>
         <Filename Value="C:\development\lazarus\lcl\graphics.pp"/>
@@ -425,7 +423,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="2053"/>
         <CursorPos X="30" Y="1945"/>
-        <UsageCount Value="9"/>
+        <UsageCount Value="8"/>
       </Unit36>
       <Unit37>
         <Filename Value="C:\development\fpc\packages\fcl-image\src\fpcanvas.pp"/>
@@ -433,14 +431,14 @@
         <WindowIndex Value="0"/>
         <TopLine Value="89"/>
         <CursorPos X="15" Y="97"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit37>
       <Unit38>
         <Filename Value="C:\development\fpc\packages\fcl-image\src\fpfont.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="54"/>
         <CursorPos X="3" Y="57"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit38>
       <Unit39>
         <Filename Value="C:\development\lazarus\lcl\graphmath.pp"/>
@@ -448,7 +446,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="584"/>
         <CursorPos X="3" Y="439"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit39>
       <Unit40>
         <Filename Value="C:\development\lazarus\lcl\graphtype.pp"/>
@@ -456,7 +454,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="234"/>
         <CursorPos X="3" Y="33"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit40>
       <Unit41>
         <Filename Value="C:\development\lazarus\lcl\lcltype.pp"/>
@@ -464,7 +462,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1628"/>
         <CursorPos X="3" Y="1643"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit41>
       <Unit42>
         <Filename Value="C:\development\lazarus\lcl\graphutil.pp"/>
@@ -472,7 +470,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="128"/>
         <CursorPos X="12" Y="143"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit42>
       <Unit43>
         <Filename Value="C:\development\fpc\rtl\objpas\math.pp"/>
@@ -480,14 +478,16 @@
         <WindowIndex Value="0"/>
         <TopLine Value="144"/>
         <CursorPos X="10" Y="159"/>
-        <UsageCount Value="11"/>
+        <UsageCount Value="10"/>
       </Unit43>
       <Unit44>
         <Filename Value="C:\development\fpc\rtl\i386\i386.inc"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1551"/>
-        <CursorPos X="3" Y="1563"/>
-        <UsageCount Value="9"/>
+        <TopLine Value="1497"/>
+        <CursorPos X="1" Y="1515"/>
+        <UsageCount Value="13"/>
+        <Loaded Value="True"/>
       </Unit44>
       <Unit45>
         <Filename Value="C:\development\lazarus\lcl\grids.pas"/>
@@ -495,7 +495,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="794"/>
         <CursorPos X="15" Y="1010"/>
-        <UsageCount Value="15"/>
+        <UsageCount Value="14"/>
       </Unit45>
       <Unit46>
         <Filename Value="..\..\..\spktoolbar\SpkGraphTools\SpkGraphTools.pas"/>
@@ -503,199 +503,213 @@
         <WindowIndex Value="0"/>
         <TopLine Value="136"/>
         <CursorPos X="1" Y="143"/>
-        <UsageCount Value="6"/>
+        <UsageCount Value="5"/>
       </Unit46>
       <Unit47>
         <Filename Value="C:\development\fpc\rtl\objpas\classes\lists.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="34"/>
         <CursorPos X="1" Y="49"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="13"/>
       </Unit47>
       <Unit48>
         <Filename Value="C:\development\lazarus\lcl\include\canvas.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1705"/>
         <CursorPos X="1" Y="1720"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="13"/>
       </Unit48>
       <Unit49>
         <Filename Value="C:\development\lazarus\lcl\include\font.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1139"/>
         <CursorPos X="25" Y="1161"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="13"/>
       </Unit49>
       <Unit50>
         <Filename Value="C:\development\lazarus\lcl\include\winapih.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="156"/>
         <CursorPos X="10" Y="171"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit50>
       <Unit51>
         <Filename Value="C:\development\lazarus\lcl\include\intfbasewinapi.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1577"/>
         <CursorPos X="3" Y="1579"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="7"/>
       </Unit51>
       <Unit52>
         <Filename Value="C:\development\fpc\rtl\inc\except.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="202"/>
         <CursorPos X="1" Y="227"/>
-        <UsageCount Value="8"/>
+        <UsageCount Value="12"/>
       </Unit52>
       <Unit53>
         <Filename Value="d:\lazarus-svn\lcl\include\menuitem.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="69"/>
         <CursorPos X="28" Y="82"/>
-        <UsageCount Value="14"/>
+        <UsageCount Value="13"/>
       </Unit53>
       <Unit54>
         <Filename Value="d:\lazarus-svn\lcl\include\application.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1371"/>
         <CursorPos X="1" Y="1390"/>
-        <UsageCount Value="13"/>
+        <UsageCount Value="12"/>
       </Unit54>
       <Unit55>
         <Filename Value="d:\lazarus-svn\lcl\include\font.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="648"/>
         <CursorPos X="1" Y="675"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit55>
       <Unit56>
         <Filename Value="d:\lazarus-svn\lcl\include\fontdialog.inc"/>
         <WindowIndex Value="0"/>
         <TopLine Value="24"/>
         <CursorPos X="1" Y="49"/>
-        <UsageCount Value="12"/>
+        <UsageCount Value="11"/>
       </Unit56>
+      <Unit57>
+        <Filename Value="C:\development\fpc\rtl\objpas\sysutils\sysinth.inc"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="50"/>
+        <CursorPos X="3" Y="57"/>
+        <UsageCount Value="10"/>
+      </Unit57>
+      <Unit58>
+        <Filename Value="C:\development\fpc\rtl\inc\wstrings.inc"/>
+        <WindowIndex Value="0"/>
+        <TopLine Value="169"/>
+        <CursorPos X="1" Y="185"/>
+        <UsageCount Value="10"/>
+      </Unit58>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1753" Column="1" TopLine="1738"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="783" Column="1" TopLine="768"/>
       </Position1>
       <Position2>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1968" Column="1" TopLine="1928"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="804" Column="1" TopLine="788"/>
       </Position2>
       <Position3>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="805" Column="1" TopLine="788"/>
       </Position3>
       <Position4>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="80" Column="21" TopLine="47"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="817" Column="32" TopLine="788"/>
       </Position4>
       <Position5>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1760" Column="1" TopLine="1744"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="807" Column="1" TopLine="788"/>
       </Position5>
       <Position6>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="95" Column="22" TopLine="75"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="808" Column="1" TopLine="788"/>
       </Position6>
       <Position7>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="784" Column="1" TopLine="769"/>
       </Position7>
       <Position8>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1524" Column="37" TopLine="1516"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="785" Column="1" TopLine="769"/>
       </Position8>
       <Position9>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1649" Column="21" TopLine="1622"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="786" Column="1" TopLine="769"/>
       </Position9>
       <Position10>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1527" Column="3" TopLine="1524"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="787" Column="1" TopLine="769"/>
       </Position10>
       <Position11>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1758" Column="3" TopLine="1733"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="788" Column="1" TopLine="769"/>
       </Position11>
       <Position12>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="794" Column="1" TopLine="769"/>
       </Position12>
       <Position13>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="51" Column="19" TopLine="18"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="1108" Column="1" TopLine="1093"/>
       </Position13>
       <Position14>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="57" Column="11" TopLine="24"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="1109" Column="1" TopLine="1093"/>
       </Position14>
       <Position15>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="67" Column="13" TopLine="34"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1461" Column="1" TopLine="1445"/>
       </Position15>
       <Position16>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1394" Column="3" TopLine="1388"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1462" Column="1" TopLine="1445"/>
       </Position16>
       <Position17>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1761" Column="3" TopLine="1738"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1464" Column="1" TopLine="1445"/>
       </Position17>
       <Position18>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="95" Column="75" TopLine="76"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1465" Column="1" TopLine="1451"/>
       </Position18>
       <Position19>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1749" Column="8" TopLine="1747"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1469" Column="1" TopLine="1451"/>
       </Position19>
       <Position20>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="95" Column="55" TopLine="95"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1470" Column="1" TopLine="1451"/>
       </Position20>
       <Position21>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1748" Column="49" TopLine="1733"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1471" Column="1" TopLine="1451"/>
       </Position21>
       <Position22>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="95" Column="55" TopLine="95"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1485" Column="39" TopLine="1468"/>
       </Position22>
       <Position23>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1749" Column="8" TopLine="1747"/>
+        <Filename Value="..\..\fpsutils.pas"/>
+        <Caret Line="913" Column="46" TopLine="884"/>
       </Position23>
       <Position24>
-        <Filename Value="..\..\xlsbiff5.pas"/>
-        <Caret Line="1370" Column="1" TopLine="1358"/>
+        <Filename Value="..\..\fpsutils.pas"/>
+        <Caret Line="83" Column="3" TopLine="52"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="39" Column="3" TopLine="10"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1485" Column="42" TopLine="1459"/>
       </Position25>
       <Position26>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="677" Column="21" TopLine="664"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position26>
       <Position27>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="524" Column="27" TopLine="524"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2612" Column="3" TopLine="2674"/>
       </Position27>
       <Position28>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="581" Column="3" TopLine="573"/>
       </Position28>
       <Position29>
-        <Filename Value="..\..\fpspreadsheetgrid.pas"/>
-        <Caret Line="1787" Column="3" TopLine="1779"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position29>
       <Position30>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1779" Column="25" TopLine="1747"/>
+        <Filename Value="..\..\fpsutils.pas"/>
+        <Caret Line="1157" Column="1" TopLine="1131"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -725,15 +739,6 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <BreakPoints Count="1">
-      <Item1>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="..\..\fpspreadsheetgrid.pas"/>
-        <Line Value="1790"/>
-      </Item1>
-    </BreakPoints>
     <Watches Count="2">
       <Item1>
         <Expression Value="acol"/>
