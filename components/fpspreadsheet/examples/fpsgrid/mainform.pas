@@ -46,6 +46,15 @@ type
     AcTextVertCW: TAction;
     AcTextVertCCW: TAction;
     AcTextStacked: TAction;
+    AcNFFixed: TAction;
+    AcNFFixedTh: TAction;
+    AcNFPercentage: TAction;
+    AcIncDecimals: TAction;
+    AcDecDecimals: TAction;
+    AcNFGeneral: TAction;
+    AcNFExp: TAction;
+    AcNFSci: TAction;
+    AcCopyFormat: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
@@ -88,6 +97,19 @@ type
     MenuItem30: TMenuItem;
     MenuItem31: TMenuItem;
     MenuItem32: TMenuItem;
+    MenuItem33: TMenuItem;
+    MenuItem34: TMenuItem;
+    MenuItem35: TMenuItem;
+    MenuItem36: TMenuItem;
+    MenuItem37: TMenuItem;
+    MenuItem38: TMenuItem;
+    MnuNumberFormat: TMenuItem;
+    MnuNFFixed: TMenuItem;
+    MnuNFFixedTh: TMenuItem;
+    MnuNFPercentage: TMenuItem;
+    MnuNFExp: TMenuItem;
+    MnuNFSci: TMenuItem;
+    MnuNFGeneral: TMenuItem;
     MnuTextRotation: TMenuItem;
     MenuItem3: TMenuItem;
     MenuItem4: TMenuItem;
@@ -115,6 +137,7 @@ type
     PageControl1: TPageControl;
     Panel1: TPanel;
     BordersPopupMenu: TPopupMenu;
+    NumFormatPopupMenu: TPopupMenu;
     SaveDialog1: TSaveDialog;
     EdFrozenCols: TSpinEdit;
     sWorksheetGrid1: TsWorksheetGrid;
@@ -134,7 +157,12 @@ type
     ToolButton19: TToolButton;
     ToolButton2: TToolButton;
     TbBorders: TToolButton;
+    TbNumFormats: TToolButton;
+    ToolButton20: TToolButton;
     ToolButton21: TToolButton;
+    ToolButton24: TToolButton;
+    ToolButton25: TToolButton;
+    ToolButton26: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
@@ -143,10 +171,13 @@ type
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
     procedure AcBorderExecute(Sender: TObject);
+    procedure AcCopyFormatExecute(Sender: TObject);
     procedure AcEditExecute(Sender: TObject);
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
+    procedure AcIncDecDecimalsExecute(Sender: TObject);
+    procedure AcNumFormatExecute(Sender: TObject);
     procedure AcOpenExecute(Sender: TObject);
     procedure AcQuitExecute(Sender: TObject);
     procedure AcSaveAsExecute(Sender: TObject);
@@ -167,6 +198,7 @@ type
     procedure sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
   private
     { private declarations }
+    FCopiedFormat: TCell;
     procedure LoadFile(const AFileName: String);
     procedure SetupBackgroundColorBox;
     procedure UpdateBackgroundColorIndex;
@@ -174,6 +206,7 @@ type
     procedure UpdateFontSizeIndex;
     procedure UpdateFontStyleActions;
     procedure UpdateHorAlignmentActions;
+    procedure UpdateNumFormatActions;
     procedure UpdateTextRotationActions;
     procedure UpdateVertAlignmentActions;
     procedure UpdateWordwraps;
@@ -193,6 +226,7 @@ const
   HORALIGN_TAG = 100;
   VERTALIGN_TAG = 110;
   TEXTROT_TAG = 130;
+  NUMFMT_TAG = 150;  // needs 20
 
   LEFT_BORDER_THIN       = $0001;
   LEFT_BORDER_THICK      = $0002;
@@ -307,6 +341,25 @@ begin
   end;
 end;
 
+procedure TForm1.AcCopyFormatExecute(Sender: TObject);
+var
+  cell: PCell;
+  r, c: Cardinal;
+begin
+  with sWorksheetGrid1 do begin
+    if Workbook = nil then
+      exit;
+
+    if AcCopyFormat.Checked then begin
+      r := GetWorksheetRow(Row);
+      c := GetWorksheetCol(Col);
+      cell := Worksheet.FindCell(r, c);
+      if cell <> nil then
+        FCopiedFormat := cell^;
+    end;
+  end;
+end;
+
 { Changes the font of the selected cell by calling a standard font dialog. }
 procedure TForm1.AcFontExecute(Sender: TObject);
 begin
@@ -345,6 +398,47 @@ begin
     hor_align := haDefault;
   with sWorksheetGrid1 do HorAlignments[Selection] := hor_align;
   UpdateHorAlignmentActions;
+end;
+
+procedure TForm1.AcIncDecDecimalsExecute(Sender: TObject);
+var
+  cell: PCell;
+  decs: Byte;
+begin
+  with sWorksheetGrid1 do begin
+    if Workbook = nil then
+      exit;
+    cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+    if (cell <> nil) then begin
+      decs := cell^.NumberDecimals;
+      if (Sender = AcIncDecimals) then
+        Worksheet.WriteDecimals(cell, decs+1);
+      if (Sender = AcDecDecimals) and (decs > 0) then
+        Worksheet.WriteDecimals(cell, decs-1);
+    end;
+  end;
+end;
+
+procedure TForm1.AcNumFormatExecute(Sender: TObject);
+var
+  nf: TsNumberFormat;
+  c, r: Cardinal;
+begin
+  if sWorksheetGrid1.Worksheet = nil then
+    exit;
+
+  if TAction(Sender).Checked then
+    nf := TsNumberFormat(TAction(Sender).Tag - NUMFMT_TAG)
+  else
+    nf := nfGeneral;
+
+  with sWorksheetGrid1 do begin
+    c := GetWorksheetCol(Col);
+    r := GetWorksheetRow(Row);
+    Worksheet.WriteNumberFormat(r, c, nf);
+  end;
+
+  UpdateNumFormatActions;
 end;
 
 procedure TForm1.AcTextRotationExecute(Sender: TObject);
@@ -543,9 +637,18 @@ begin
 end;
 
 procedure TForm1.sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
+var
+  r, c: Cardinal;
 begin
   if sWorksheetGrid1.Workbook = nil then
     exit;
+
+  if AcCopyFormat.Checked then begin
+    r := sWorksheetGrid1.GetWorksheetRow(ARow);
+    c := sWorksheetGrid1.GetWorksheetCol(ACol);
+    sWorksheetGrid1.Worksheet.CopyFormat(@FCopiedFormat, r, c);
+    AcCopyFormat.Checked := false;
+  end;
 
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;
@@ -555,6 +658,7 @@ begin
   UpdateFontNameIndex;
   UpdateFontSizeIndex;
   UpdateFontStyleActions;
+  UpdateNumFormatActions;
 end;
 
 procedure TForm1.UpdateBackgroundColorIndex;
@@ -613,6 +717,30 @@ begin
   AcFontItalic.Checked := fssItalic in style;
   AcFontUnderline.Checked := fssUnderline in style;
   AcFontStrikeout.Checked := fssStrikeOut in style;
+end;
+
+procedure TForm1.UpdateNumFormatActions;
+var
+  i: Integer;
+  ac: TAction;
+  nf: TsNumberFormat;
+  cell: PCell;
+  r,c: Cardinal;
+begin
+  with sWorksheetGrid1 do begin
+    r := GetWorksheetRow(Row);
+    c := GetWorksheetCol(Col);
+    cell := Worksheet.FindCell(r, c);
+    if (cell = nil) or (cell^.ContentType <> cctNumber) then
+      nf := nfGeneral
+    else
+      nf := cell^.NumberFormat;
+    for i:=0 to ActionList1.ActionCount-1 do begin
+      ac := TAction(ActionList1.Actions[i]);
+      if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 20) then
+        ac.Checked := ((ac.Tag - NUMFMT_TAG) = ord(nf));
+    end;
+  end;
 end;
 
 procedure TForm1.UpdateTextRotationActions;

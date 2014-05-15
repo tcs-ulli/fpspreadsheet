@@ -12,14 +12,11 @@ unit fpsutils;
 interface
 
 uses
-  Classes, SysUtils, StrUtils;
+  Classes, SysUtils, StrUtils, fpspreadsheet;
 
 // Exported types
 type
   TsSelectionDirection = (fpsVerticalSelection, fpsHorizontalSelection);
-
-  TsRelFlag = (rfRelRow, rfRelCol, rfRelRow2, rfRelCol2);
-  TsRelFlags = set of TsRelFlag;
 
 const
   // Date formatting string for unambiguous date/time display as strings
@@ -70,6 +67,8 @@ function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
 function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
 function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
   out SecDecimals: Word): Boolean;
+
+function BuildNumFormatString(ANumberFormat: TsNumberFormat; ADecimals: Byte): String;
 
 function SciFloat(AValue: Double; ADecimals: Word): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
@@ -729,6 +728,31 @@ begin
     except on EConvertError do
       Result := false;
     end;
+  end;
+end;
+
+{ Builds a number format string from the numberformat code and the count of
+  decimals. }
+function BuildNumFormatString(ANumberFormat: TsNumberFormat;
+  ADecimals: Byte): String;
+var
+  decs: String;
+begin
+  decs := DupeString('0', ADecimals);
+  if ADecimals > 0 then decs := '.' + decs;
+  case ANumberFormat of
+    nfFixed:
+      Result := '0' + decs;
+    nfFixedTh:
+      Result := '#,##0' + decs;
+    nfExp:
+      Result := '0' + decs + 'E+00';
+    nfSci:
+      Result := '##0' + decs + 'E+0';
+    nfPercentage:
+      Result := '0' + decs + '%';
+    else
+      Result := '';
   end;
 end;
 
