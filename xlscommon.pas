@@ -561,7 +561,7 @@ begin
   AddFormat(45, nfFmtDateTime, 'nn:ss');
   AddFormat(46, nfTimeInterval, '[h]:nn:ss');
   AddFormat(47, nfFmtDateTime, 'nn:ss.z');   // z will be replace by 0 later
-  AddFormat(48, nfSci, '##0.0E+0', 1);
+  AddFormat(48, nfSci, '##0.0E+00', 1);
   // 49 ("Text") not supported
 
   // All indexes from 0 to 163 are reserved for built-in formats.
@@ -579,13 +579,17 @@ var
   fmt: String;
 begin
   fmt := Lowercase(AFormatString);
-  { Check the built-in formats first }
+  { Check the built-in formats first:
+    The prefix "[$-F400]" before the formatting string means that the system's
+    long Time format string is used. }
   if (pos('[$-F400]', AFormatString) = 1) then begin
     ANumFormat := nfLongTime;
     AFormatString := '';  // will be replaced by system's format setting
     ADecimals := 0;
     exit;
   end;
+  { Excel often has the locale ID [$-409] (for Germany) in front of the format
+    string. We currently ignore this because it confuses fpc. }
   if (pos('[$', fmt) = 1) then begin
     if (pos('h:mm:ss\', fmt) > 0) then begin
       // long time format

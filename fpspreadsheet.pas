@@ -14,7 +14,7 @@ unit fpspreadsheet;
 interface
 
 uses
-  Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding, fpsutils;
+  Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding;
 
 type
   TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
@@ -104,6 +104,9 @@ type
     { Other operations }
     fekOpSUM {Unary sum operation. Note: CANNOT be used for summing sell contents; use fekSUM}
     );
+
+  TsRelFlag = (rfRelRow, rfRelCol, rfRelRow2, rfRelCol2);
+  TsRelFlags = set of TsRelFlag;
 
   TsFormulaElement = record
     ElementKind: TFEKind;
@@ -292,6 +295,7 @@ type
     BoolValue: Boolean;
     StatusValue: Byte;
     { Formatting fields }
+    { When adding/deleting formatting fields don't forget to update CopyFormat! }
     UsedFormattingFields: TsUsedFormattingFields;
     FontIndex: Integer;
     TextRotation: TsTextRotation;
@@ -360,6 +364,7 @@ type
     class function CellPosToText(ARow, ACol: Cardinal): string;
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
+    procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
@@ -385,12 +390,14 @@ type
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+    procedure WriteDecimals(ARow, ACol: Cardinal; ADecimals: byte); overload;
+    procedure WriteDecimals(ACell: PCell; ADecimals: Byte); overload;
     procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue);
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
     { Writing of cell attributes }
     procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
-      const AFormatString: String);
+      const AFormatString: String = '');
     function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
@@ -694,7 +701,7 @@ procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 implementation
 
 uses
-  Math, StrUtils;
+  Math, StrUtils, fpsutils;
 
 { Translatable strings }
 resourcestring
@@ -921,10 +928,21 @@ end;
 procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
   AFromWorksheet: TsWorksheet);
 var
+  lSrcCell, lDestCell: PCell;
+  {
   lCurStr: String;
   lCurUsedFormatting: TsUsedFormattingFields;
   lCurColor: TsColor;
+  }
 begin
+  lSrcCell := AFromWorksheet.FindCell(AFromRow, AFromCol);
+  lDestCell := GetCell(AToRow, AToCol);
+  lDestCell^ := lSrcCell^;
+  lDestCell^.Row := AToRow;
+  lDestCell^.Col := AToCol;
+  ChangedCell(AToRow, AToCol);
+  ChangedFont(AToRow, AToCol);
+  {
   lCurStr := AFromWorksheet.ReadAsUTF8Text(AFromRow, AFromCol);
   lCurUsedFormatting := AFromWorksheet.ReadUsedFormatting(AFromRow, AFromCol);
   lCurColor := AFromWorksheet.ReadBackgroundColor(AFromRow, AFromCol);
@@ -934,6 +952,34 @@ begin
   begin
     WriteBackgroundColor(AToRow, AToCol, lCurColor);
   end;
+  }
+end;
+
+{@@
+  Copies all format parameters from the format cell to another cell.
+}
+procedure TsWorksheet.CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
+var
+  cell: PCell;
+begin
+  if AFormat = nil then
+    exit;
+
+  cell := GetCell(AToRow, AToCol);
+  cell^.UsedFormattingFields := AFormat^.UsedFormattingFields;
+  cell^.BackgroundColor := AFormat^.BackgroundColor;
+  cell^.Border := AFormat^.Border;
+  cell^.BorderStyles := AFormat^.BorderStyles;
+  cell^.FontIndex := AFormat^.FontIndex;
+  cell^.HorAlignment := AFormat^.HorAlignment;
+  cell^.VertAlignment := AFormat^.VertAlignment;
+  cell^.TextRotation := AFormat^.TextRotation;
+  cell^.NumberFormat := AFormat^.NumberFormat;
+  cell^.NumberFormatStr := AFormat^.NumberFormatStr;
+  cell^.NumberDecimals := AFormat^.NumberDecimals;
+
+  ChangedCell(AToRow, AToCol);
+  ChangedFont(AToRow, AToCol);
 end;
 
 {@@
@@ -1354,7 +1400,6 @@ procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
   AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2);
 var
   ACell: PCell;
-  decs: String;
 begin
   ACell := GetCell(ARow, ACol);
 
@@ -1364,20 +1409,7 @@ begin
   if AFormat <> nfGeneral then begin
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
     ACell^.NumberFormat := AFormat;
-    decs := DupeString('0', ADecimals);
-    if ADecimals > 0 then decs := '.' + decs;
-    case AFormat of
-      nfFixed:
-        ACell^.NumberFormatStr := '0' + decs;
-      nfFixedTh:
-        ACell^.NumberFormatStr := '#,##0' + decs;
-      nfExp:
-        ACell^.NumberFormatStr := '0' + decs + 'E+00';
-      nfSci:
-        ACell^.NumberFormatStr := '##0' + decs + 'E+0';
-      nfPercentage:
-        ACell^.NumberFormatStr := '0' + decs + '%';
-    end;
+    WriteDecimals(ACell, ADecimals);
   end;
   ChangedCell(ARow, ACol);
 end;
@@ -1499,6 +1531,20 @@ begin
   ChangedCell(ARow, ACol);
 end;
 
+procedure TsWorksheet.WriteDecimals(ARow, ACol: Cardinal; ADecimals: Byte);
+begin
+  WriteDecimals(FindCell(ARow, ACol), ADecimals);
+end;
+
+procedure TsWorksheet.WriteDecimals(ACell: PCell; ADecimals: Byte);
+begin
+  if (ACell <> nil) and (ACell^.ContentType = cctNumber) then begin
+    ACell^.NumberDecimals := ADecimals;
+    ACell^.NumberFormatStr := BuildNumFormatString(ACell^.NumberFormat, ADecimals);
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
+end;
+
 {@@
   Writes a cell with an error.
 
@@ -1544,14 +1590,17 @@ end;
   @see    TsNumberFormat
 }
 procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
-  ANumberFormat: TsNumberFormat; const AFormatString: String);
+  ANumberFormat: TsNumberFormat; const AFormatString: String = '');
 var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
   Include(ACell^.UsedFormattingFields, uffNumberFormat);
   ACell^.NumberFormat := ANumberFormat;
-  ACell^.NumberFormatStr := AFormatString;
+  if (AFormatString = '') then
+    ACell^.NumberFormatStr := BuildNumFormatString(ANumberFormat, ACell^.NumberDecimals)
+  else
+    ACell^.NumberFormatStr := AFormatString;
   ChangedCell(ARow, ACol);
 end;
 

@@ -128,29 +128,30 @@
         <UnitName Value="mainform"/>
         <EditorIndex Value="1"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="309"/>
-        <CursorPos X="18" Y="327"/>
+        <TopLine Value="628"/>
+        <CursorPos X="30" Y="639"/>
         <UsageCount Value="200"/>
+        <Bookmarks Count="1">
+          <Item0 X="3" Y="361" ID="1"/>
+        </Bookmarks>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <EditorIndex Value="3"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1"/>
-        <CursorPos X="1" Y="1"/>
+        <TopLine Value="2655"/>
+        <CursorPos X="3" Y="2680"/>
         <UsageCount Value="100"/>
-        <Bookmarks Count="1">
-          <Item0 X="13" Y="2613" ID="1"/>
-        </Bookmarks>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <UnitName Value="fpspreadsheetgrid"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="3"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1774"/>
         <CursorPos X="26" Y="1785"/>
@@ -231,12 +232,11 @@
       <Unit13>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="9"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="65"/>
-        <CursorPos X="1" Y="78"/>
-        <UsageCount Value="51"/>
+        <TopLine Value="37"/>
+        <CursorPos X="1" Y="21"/>
+        <UsageCount Value="53"/>
         <Loaded Value="True"/>
       </Unit13>
       <Unit14>
@@ -268,7 +268,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="62"/>
         <CursorPos X="15" Y="90"/>
-        <UsageCount Value="82"/>
+        <UsageCount Value="84"/>
         <Loaded Value="True"/>
       </Unit17>
       <Unit18>
@@ -289,11 +289,11 @@
       <Unit20>
         <Filename Value="..\..\xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
-        <EditorIndex Value="4"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="608"/>
-        <CursorPos X="31" Y="634"/>
-        <UsageCount Value="78"/>
+        <TopLine Value="588"/>
+        <CursorPos X="61" Y="592"/>
+        <UsageCount Value="80"/>
         <Loaded Value="True"/>
       </Unit20>
       <Unit21>
@@ -303,7 +303,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="1363"/>
         <CursorPos X="1" Y="1364"/>
-        <UsageCount Value="65"/>
+        <UsageCount Value="67"/>
         <Loaded Value="True"/>
       </Unit21>
       <Unit22>
@@ -313,7 +313,7 @@
         <WindowIndex Value="0"/>
         <TopLine Value="664"/>
         <CursorPos X="21" Y="677"/>
-        <UsageCount Value="66"/>
+        <UsageCount Value="68"/>
         <Loaded Value="True"/>
       </Unit22>
       <Unit23>
@@ -372,10 +372,12 @@
       </Unit29>
       <Unit30>
         <Filename Value="d:\lazarus-svn\lcl\include\control.inc"/>
+        <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="4129"/>
-        <CursorPos X="1" Y="4161"/>
-        <UsageCount Value="8"/>
+        <TopLine Value="2696"/>
+        <CursorPos X="23" Y="2712"/>
+        <UsageCount Value="10"/>
+        <Loaded Value="True"/>
       </Unit30>
       <Unit31>
         <Filename Value="..\..\fpspreadsheetchart.pas"/>
@@ -482,12 +484,10 @@
       </Unit43>
       <Unit44>
         <Filename Value="C:\development\fpc\rtl\i386\i386.inc"/>
-        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
         <TopLine Value="1497"/>
         <CursorPos X="1" Y="1515"/>
         <UsageCount Value="13"/>
-        <Loaded Value="True"/>
       </Unit44>
       <Unit45>
         <Filename Value="C:\development\lazarus\lcl\grids.pas"/>
@@ -592,124 +592,124 @@
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="783" Column="1" TopLine="768"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="633" Column="1" TopLine="631"/>
       </Position1>
       <Position2>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="804" Column="1" TopLine="788"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="638" Column="43" TopLine="619"/>
       </Position2>
       <Position3>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="805" Column="1" TopLine="788"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="633" Column="43" TopLine="619"/>
       </Position3>
       <Position4>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="817" Column="32" TopLine="788"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="195" Column="1" TopLine="168"/>
       </Position4>
       <Position5>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="807" Column="1" TopLine="788"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="643" Column="25" TopLine="631"/>
       </Position5>
       <Position6>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="808" Column="1" TopLine="788"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="640" Column="1" TopLine="631"/>
       </Position6>
       <Position7>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="784" Column="1" TopLine="769"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="342" Column="3" TopLine="337"/>
       </Position7>
       <Position8>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="785" Column="1" TopLine="769"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="343" Column="1" TopLine="336"/>
       </Position8>
       <Position9>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="786" Column="1" TopLine="769"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="346" Column="1" TopLine="336"/>
       </Position9>
       <Position10>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="787" Column="1" TopLine="769"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="354" Column="1" TopLine="336"/>
       </Position10>
       <Position11>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="788" Column="1" TopLine="769"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="346" Column="8" TopLine="336"/>
       </Position11>
       <Position12>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="794" Column="1" TopLine="769"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="343" Column="1" TopLine="336"/>
       </Position12>
       <Position13>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1108" Column="1" TopLine="1093"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="346" Column="1" TopLine="336"/>
       </Position13>
       <Position14>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1109" Column="1" TopLine="1093"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="347" Column="1" TopLine="336"/>
       </Position14>
       <Position15>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1461" Column="1" TopLine="1445"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="348" Column="1" TopLine="336"/>
       </Position15>
       <Position16>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1462" Column="1" TopLine="1445"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="349" Column="1" TopLine="336"/>
       </Position16>
       <Position17>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1464" Column="1" TopLine="1445"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="350" Column="1" TopLine="336"/>
       </Position17>
       <Position18>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1465" Column="1" TopLine="1451"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="351" Column="1" TopLine="336"/>
       </Position18>
       <Position19>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1469" Column="1" TopLine="1451"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="354" Column="1" TopLine="336"/>
       </Position19>
       <Position20>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1470" Column="1" TopLine="1451"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="640" Column="1" TopLine="621"/>
       </Position20>
       <Position21>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1471" Column="1" TopLine="1451"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="641" Column="1" TopLine="621"/>
       </Position21>
       <Position22>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1485" Column="39" TopLine="1468"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="343" Column="1" TopLine="324"/>
       </Position22>
       <Position23>
-        <Filename Value="..\..\fpsutils.pas"/>
-        <Caret Line="913" Column="46" TopLine="884"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="632" Column="30" TopLine="621"/>
       </Position23>
       <Position24>
-        <Filename Value="..\..\fpsutils.pas"/>
-        <Caret Line="83" Column="3" TopLine="52"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="633" Column="30" TopLine="622"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1485" Column="42" TopLine="1459"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="634" Column="30" TopLine="623"/>
       </Position25>
       <Position26>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="635" Column="30" TopLine="624"/>
       </Position26>
       <Position27>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="2612" Column="3" TopLine="2674"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="636" Column="30" TopLine="625"/>
       </Position27>
       <Position28>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="581" Column="3" TopLine="573"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="637" Column="30" TopLine="626"/>
       </Position28>
       <Position29>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="mainform.pas"/>
+        <Caret Line="638" Column="30" TopLine="627"/>
       </Position29>
       <Position30>
-        <Filename Value="..\..\fpsutils.pas"/>
-        <Caret Line="1157" Column="1" TopLine="1131"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="592" Column="61" TopLine="588"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
