@@ -653,8 +653,11 @@ end;
 { IsDateFormat checks if the format string s corresponds to a date format }
 function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
 begin
+  s := Lowercase(s);
   // Day, month, year are separated by a slash
-  Result := (pos('/', s) > 0);
+  // We also check part of the year/month/day symbol because there may be
+  // other control code with a slash.
+  Result := (pos('y/', s) > 0) or (pos('m/', s) > 0) or (pos('/m', s) > 0) or (pos('/d', s) > 0);
   if Result then
     // Check validity of format string
     try
@@ -688,6 +691,13 @@ begin
     count := 1;
     s := Uppercase(s);
 
+    // Seek for "H:MM:SS" or "H:MM" to see if it is a long or short time format.
+    if pos('H:MM:SS', s) <> 0 then
+      isLong := true
+    else
+    if pos('H:MM', s) <> 0 then
+      isLong := false
+    else
     // If there are is a second colon s is a "long" time format
     for i:=p+1 to Length(s) do
       if s[i] = ':' then begin
@@ -698,9 +708,11 @@ begin
     // Seek for "AM/PM" etc to detect that specific format
     isAMPM := (pos('AM/PM', s) > 0) or (pos('A/P', s) > 0) or (pos('AMPM', s) > 0);
 
-    // Look for square brackets indicating the interval format.
-    p := pos('[', s);
-    if p > 0 then isInterval := (pos(']', s) > 0) else isInterval := false;
+    // Look for special square bracket symbols indicating the interval format.
+    isInterval := (pos('[H]', s) <> 0) or (pos('[HH]', s) <> 0) or
+                  (pos('[M]', s) <> 0) or (pos('[MM]', s) <> 0) or
+                  (pos('[N]', s) <> 0) or (pos('[NN]', s) <> 0) or
+                  (pos('[S]', s) <> 0) or (pos('[SS]', s) <> 0);
 
     // Count decimals
     pdp := pos('.', s);

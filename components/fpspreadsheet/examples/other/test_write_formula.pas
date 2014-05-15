@@ -12,7 +12,7 @@ program test_write_formula;
 uses
   Classes, SysUtils,
   fpspreadsheet, xlsbiff5, xlsbiff8, fpsopendocument,
-  laz_fpspreadsheet, fpsconvencoding;
+  laz_fpspreadsheet;
 
 var
   MyWorkbook: TsWorkbook;

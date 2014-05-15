@@ -182,10 +182,10 @@ begin
   for i:=Low(SollDateTimes) to High(SollDateTimes) do begin
     SollDateTimeStrings[i, 0] := DateToStr(SollDateTimes[i]) + ' ' + FormatDateTime('t', SollDateTimes[i]);
     SollDateTimeStrings[i, 1] := DateToStr(SollDateTimes[i]);
-    SollDateTimeStrings[i, 2] := FormatDateTime('t', SollDateTimes[i]);
-    SolLDateTimeStrings[i, 3] := FormatDateTime('tt', SollDateTimes[i]);
-    SollDateTimeStrings[i, 4] := FormatDateTime('t am/pm', SollDateTimes[i]);
-    SollDateTimeStrings[i, 5] := FormatDateTime('tt am/pm', SollDateTimes[i]);
+    SollDateTimeStrings[i, 2] := FormatDateTime('hh:nn', SollDateTimes[i]);
+    SolLDateTimeStrings[i, 3] := FormatDateTime('hh:nn:ss', SollDateTimes[i]);
+    SollDateTimeStrings[i, 4] := FormatDateTime('hh:nn am/pm', SollDateTimes[i]);   // dont't use "t" - it does the hours wrong
+    SollDateTimeStrings[i, 5] := FormatDateTime('hh:nn:ss am/pm', SollDateTimes[i]);
     SollDateTimeStrings[i, 6] := FormatDateTime('dd/mmm', SollDateTimes[i]);
     SollDateTimeStrings[i, 7] := FormatDateTime('mmm/yy', SollDateTimes[i]);
     SollDateTimeStrings[i, 8] := FormatDateTime('nn:ss', SollDateTimes[i]);
@@ -331,7 +331,11 @@ begin
         Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
-      CheckEquals(SollDateTimeStrings[Row, Col], ActualString, 'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
+      CheckEquals(
+        Lowercase(SollDateTimeStrings[Row, Col]),
+        Lowercase(ActualString),
+        'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col)
+      );
     end;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
@@ -350,7 +354,11 @@ begin
       if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfFmtDateTime, nfTimeInterval]) then
         Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
-      CheckEquals(SollDateTimeStrings[Row, Col], ActualString, 'Test saved string mismatch cell '+CellNotation(MyWorksheet,Row,Col));
+      CheckEquals(
+        Lowercase(SollDateTimeStrings[Row, Col]),
+        Lowercase(ActualString),
+        'Test saved string mismatch cell '+CellNotation(MyWorksheet,Row,Col)
+      );
     end;
 
   // Finalization

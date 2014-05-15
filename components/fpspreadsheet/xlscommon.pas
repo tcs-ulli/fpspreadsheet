@@ -348,6 +348,8 @@ type
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
+    procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Word); override;
   public
     function FormatStringForWriting(AIndex: Integer): String; override;
   end;
@@ -478,32 +480,6 @@ implementation
 uses
   StrUtils;
 
-const
-  { see ➜ 5.49 }
-  COUNT_DEFAULT_FORMATS = 58;
-  NOT_USED = nfGeneral;
-  DEFAULT_NUM_FORMATS: array[1..COUNT_DEFAULT_FORMATS] of TsNumberFormat = (
-    nfFixed, nfFixed, nfFixedTh, nfFixedTh, nfFixedTh,               // 1..5
-    nfFixedTh, nfFixedTh, nfFixedTh, nfPercentage, nfPercentage,     // 6..10
-    nfExp, NOT_USED, NOT_USED, nfShortDate, nfShortDate,             // 11..15
-    nfFmtDateTime, nfFmtDateTime, nfShortTimeAM, nfLongTimeAM, nfShortTime, // 16..20
-    nfLongTime, nfShortDateTime, NOT_USED, NOT_USED, NOT_USED,       // 21..25
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 26..30
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 31..35
-    NOT_USED, nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh,            // 36..40
-    nfFixedTh, nfFixedTh, nfFixedTh, nfFixedTh, nfFmtDateTime,       // 41..45
-    nfTimeInterval, nfFmtDateTime, nfSci, NOT_USED, NOT_USED,        // 46..50
-    NOT_USED, NOT_USED, NOT_USED, NOT_USED, NOT_USED,                // 51..55
-    NOT_USED, NOT_USED, NOT_USED                                     // 56..58
-  );
-  DEFAULT_NUM_FORMAT_DECIMALS: array[1..COUNT_DEFAULT_FORMATS] of word = (
-    0, 2, 0, 2, 0, 0, 2, 2, 0, 2,     // 1..10
-    2, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 11..20
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,     // 21..30
-    0, 0, 0, 0, 0, 0, 0, 0, 2, 2,     // 31..40
-    0, 0, 2, 2, 0, 3, 0, 1, 0, 0,     // 41..50    #48 is "scientific", use "exponential" instead
-    0, 0, 0, 0, 0, 0, 0, 0);          // 51..58
-
 function ConvertExcelDateTimeToDateTime(
   const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
 begin
@@ -574,17 +550,17 @@ begin
   // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
   AddFormat(14, nfShortDate);
   AddFormat(15, nfLongDate);
-  AddFormat(16, nfFmtDateTime, 'D-MMM');
-  AddFormat(17, nfFmtDateTime, 'MMM-YY');
+  AddFormat(16, nfFmtDateTime, 'd/mmm');
+  AddFormat(17, nfFmtDateTime, 'mmm/yy');
   AddFormat(18, nfShortTimeAM);
   AddFormat(19, nfLongTimeAM);
   AddFormat(20, nfShortTime);
   AddFormat(21, nfLongTime);
   AddFormat(22, nfShortDateTime);
   // 23..44 not supported
-  AddFormat(45, nfFmtDateTime, 'mm:ss');
-  AddFormat(46, nfTimeInterval, '[h]:mm:ss');
-  AddFormat(47, nfFmtDateTime, 'mm:ss.z');   // z will be replace by 0 later
+  AddFormat(45, nfFmtDateTime, 'nn:ss');
+  AddFormat(46, nfTimeInterval, '[h]:nn:ss');
+  AddFormat(47, nfFmtDateTime, 'nn:ss.z');   // z will be replace by 0 later
   AddFormat(48, nfSci, '##0.0E+0', 1);
   // 49 ("Text") not supported
 
@@ -592,6 +568,51 @@ begin
   // The first user-defined format starts at 164.
   FFirstFormatIndexInFile := 164;
   FNextFormatIndex := 164;
+end;
+
+{ Considers some Excel specialities for format detection.
+  The output values will be passed to fpc. }
+procedure TsBIFFNumFormatList.Analyze(AFormatIndex: Integer;
+  var AFormatString: String; var ANumFormat: TsNumberFormat;
+  var ADecimals: Word);
+var
+  fmt: String;
+begin
+  fmt := Lowercase(AFormatString);
+  { Check the built-in formats first }
+  if (pos('[$-F400]', AFormatString) = 1) then begin
+    ANumFormat := nfLongTime;
+    AFormatString := '';  // will be replaced by system's format setting
+    ADecimals := 0;
+    exit;
+  end;
+  if (pos('[$', fmt) = 1) then begin
+    if (pos('h:mm:ss\', fmt) > 0) then begin
+      // long time format
+      if (pos('am/pm', fmt) > 0) or (pos('a/p',fmt) > 0) then begin
+        ANumFormat := nfLongTimeAM;
+        AFormatString := '';
+      end else begin
+         ANumFormat := nfLongTime;
+         AFormatString := '';
+      end;
+      ADecimals := 0;
+      exit;
+    end;
+    if (pos('h:mm\', fmt) > 0) then begin
+      if (pos('am/pm', fmt) > 0) or (pos ('a/p', fmt) > 0) then begin
+        ANumFormat := nfShortTimeAM;
+        AFormatString := '';
+      end else begin
+        ANumFormat := nfShortTime;
+        AFormatString := '';
+      end;
+    end;
+    ADecimals := 0;
+    exit;
+  end;
+
+  inherited Analyze(AFormatIndex, AFormatString, ANumFormat, ADecimals);
 end;
 
 { Creates formatting strings that are written into the file. }
@@ -606,8 +627,12 @@ begin
     nfFmtDateTime:
       begin
         Result := lowercase(item.FormatString);
-        for i:=1 to Length(Result) do
+        for i:=1 to Length(Result) do begin
+          // The milliseccond format contains the symbol "z" in fpc, but Excel wants "0"
           if Result[i] in ['z', 'Z'] then Result[i] := '0';
+          // The minutes in short time formats are coded by "n" in fpc, but Excel wants "m".
+          if Result[i] in ['n', 'N'] then Result[i] := 'm';
+        end;
       end;
     nfTimeInterval:
       // Time interval format string could still be without square brackets

@@ -521,8 +521,8 @@ type
     FFirstFormatIndexInFile: Integer;
     FNextFormatIndex: Integer;
     procedure AddBuiltinFormats; virtual;
-    procedure Analyze(var AFormatString: String; var ANumFormat: TsNumberFormat;
-      var ADecimals: Word); virtual;
+    procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Word); virtual;
     procedure RemoveFormat(AIndex: Integer);
   public
     constructor Create;
@@ -555,7 +555,7 @@ type
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     FNumFormatList: TsCustomNumFormatList;
-    procedure CreateNumFormatList; virtual; abstract;
+    procedure CreateNumFormatList; virtual;
     { Record reading methods }
     procedure ReadBlank(AStream: TStream); virtual; abstract;
     procedure ReadFormula(AStream: TStream); virtual; abstract;
@@ -587,7 +587,7 @@ type
     FNumFormatList: TsCustomNumFormatList;
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
-    procedure CreateNumFormatList; virtual; abstract;
+    procedure CreateNumFormatList; virtual;
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     function  FindFormattingInList(AFormat: PCell): Integer;
     procedure FixFormat(ACell: PCell); virtual;
@@ -1480,20 +1480,20 @@ begin
     nfLongTime:
       ACell^.NumberFormatStr := 'tt';
     nfShortTimeAM:
-      ACell^.NumberFormatStr := 't am/pm';
+      ACell^.NumberFormatStr := 'hh:nn AM/PM';
     nfLongTimeAM:
-      ACell^.NumberFormatStr := 'tt am/pm';
+      ACell^.NumberFormatStr := 'hh:nn:ss AM/PM';
     nfFmtDateTime:
       begin
         fmt := lowercase(AFormatStr);
         if fmt = 'dm' then ACell^.NumberFormatStr := 'd/mmm'
         else if fmt = 'my' then ACell^.NumberFormatStr := 'mmm/yy'
-        else if fmt = 'ms' then ACell^.NumberFormatStr := 'mm:ss'     // Excel does not like the "n"
-        else if fmt = 'msz' then ACell^.NumberFormatStr := 'mm:ss.z'
+        else if fmt = 'ms' then ACell^.NumberFormatStr := 'nn:ss'
+        else if fmt = 'msz' then ACell^.NumberFormatStr := 'nn:ss.z'
         else ACell^.NumberFormatStr := AFormatStr;
       end;
     nfTimeInterval:
-      if AFormatStr = '' then ACell^.NumberFormatStr := '[h]:mm:ss'
+      if AFormatStr = '' then ACell^.NumberFormatStr := '[h]:nn:ss'
         else ACell^.NumberFormatStr := AFormatStr;
   end;
   ChangedCell(ARow, ACol);
@@ -2564,10 +2564,14 @@ begin
   inc(FNextFormatIndex);
 end;
 
-{ Adds the builtin format items to the list. Must be called before user items
-  are added. Must specify FFirstFormatIndexInFile (BIFF5-8, e.g. don't save
-  formats <164) and must initialize the index of the first user format
-  (FNextFormatIndex) which is automatically incremented when adding user formats. }
+{ Adds the builtin format items to the list. The formats must be specified in
+  a way which can be understood by fpc.
+  If fpc and file speak different languages "translation" must be made in
+  "Analyze" for reading and "FormatStringForWriting" for writing.
+  Must be called before user items are added.
+  Must specify FFirstFormatIndexInFile (BIFF5-8, e.g. doesn't save formats <164)
+  and must initialize the index of the first user format (FNextFormatIndex)
+  which is automatically incremented when adding user formats. }
 procedure TsCustomNumFormatList.AddBuiltinFormats;
 begin
   // must be overridden
@@ -2575,12 +2579,13 @@ end;
 
 { Takes the format string (AFormatString) as it is read from the file and
   extracts the number format type (ANumFormat) and the number of decimals
-  (ADecimals) out of it. If the format string cannot be directly handled by
-  fpc it has to be transformed to make it compatible. Can be done in
-  overridden versions which know more about the structure of the string in
-  the actual file format. }
-procedure TsCustomNumFormatList.Analyze(var AFormatString: String;
-  var ANumFormat: TsNumberFormat; var ADecimals: Word);
+  (ADecimals) out of it for use by fpc.
+  If the format string cannot be directly handled by fpc it has to be transformed
+  to make it compatible. Can be done in overridden versions which know more
+  about the structure of the string in the actual file format. }
+procedure TsCustomNumFormatList.Analyze(AFormatIndex: Integer;
+  var AFormatString: String; var ANumFormat: TsNumberFormat;
+  var ADecimals: Word);
 const
   SHORT_LONG_DATE: array[boolean] of TsNumberFormat = (
     nfShortDate, nfLongDate
@@ -2600,7 +2605,42 @@ var
   isInterval: Boolean;
   isSci: Boolean;
   isTime, isDate: Boolean;
+  lFormatData: TsNumFormatData;
+  i: Integer;
+  fmt: String;
 begin
+  { Check the built-in formats first }
+  i := Find(AFormatIndex);
+  if i > 0 then begin
+    lFormatData := Items[i];
+    case lFormatData.NumFormat of
+      nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci:
+        begin
+          ANumFormat := lFormatData.NumFormat;
+          AFormatString := lFormatData.FormatString;
+          ADecimals := lFormatData.Decimals;
+          exit;
+        end;
+      nfShortDateTime, nfShortDate, nfLongDate,
+      nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval:
+        begin
+          ANumFormat := lFormatData.NumFormat;
+          AFormatString := lFormatData.FormatString;
+          ADecimals := 0;
+          exit;
+        end;
+      nfFmtDateTime:
+        begin
+          ANumFormat := lFormatData.NumFormat;
+          AFormatString := lFormatData.FormatString;
+          IsTimeFormat(AFormatString, isLongTime, isAMPM, isInterval, ADecimals);
+          exit;
+        end;
+    end;
+  end;
+
+  { Then check the non-standard formats. There is a chance that they may not be
+    reckognized correctly... }
   ANumFormat := nfGeneral;
   if IsPercentNumberFormat(AFormatString, ADecimals) then
     ANumFormat := nfPercentage
@@ -2648,7 +2688,7 @@ begin
     raise Exception.Create('TsCustomNumFormatList.AnalyzeAndAdd: Format index must be unique.');
 
   // Analyze the format string and extract information for internal formatting
-  Analyze(AFormatString, nf, decs);
+  Analyze(AFormatIndex, AFormatString, nf, decs);
 
   // Add the new item
   AddFormat(AFormatIndex, nf, AFormatString, decs);
@@ -2828,6 +2868,12 @@ begin
   inherited Destroy;
 end;
 
+procedure TsCustomSpreadReader.CreateNumFormatList;
+begin
+  { The format list needs to be created by descendants who know about the
+    special requirements of the file format. }
+end;
+
 {@@
   Default file reading method.
 
@@ -2977,6 +3023,12 @@ procedure TsCustomSpreadWriter.AddDefaultFormats();
 begin
   SetLength(FFormattingStyles, 0);
   NextXFIndex := 0;
+end;
+
+procedure TsCustomSpreadWriter.CreateNumFormatList;
+begin
+  { The format list needs to be created by descendants who know about the
+    special requirements of the file format. }
 end;
 
 procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);

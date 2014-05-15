@@ -13,7 +13,7 @@ program test_write_formatting;
 
 uses
   Classes, SysUtils, fpspreadsheet, xlsbiff8, fpsopendocument,
-  laz_fpspreadsheet, fpsconvencoding;
+  laz_fpspreadsheet;
 
 var
   MyWorkbook: TsWorkbook;
