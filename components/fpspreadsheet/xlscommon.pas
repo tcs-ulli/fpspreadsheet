@@ -362,6 +362,7 @@ type
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
     FXFList: TFPList;     // of TXFListData
+    FIncompleteCell: PCell;
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); virtual;
     procedure CreateNumFormatList; override;
     // Extracts a number out of an RK value
@@ -402,7 +403,7 @@ type
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
     // Read STRING record (result of string formula)
-    procedure ReadStringRecord(AStream: TStream; var AResultString: String); virtual;
+    procedure ReadStringRecord(AStream: TStream); virtual;
     // Read WINDOW2 record (gridlines, sheet headers)
     procedure ReadWindow2(AStream: TStream); virtual;
   public
@@ -981,19 +982,17 @@ begin
 
   //RPN data not used by now
   AStream.Position := AStream.Position + FormulaSize;
-                         (*
+
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
     case Data[0] of
-      0: begin
-           ReadStringRecord(AStream, resultStr);
-           if resultStr = '' then
-             FWorksheet.WriteBlank(ARow, ACol)
-           else
-             FWorksheet.WriteUTF8Text(ARow, ACol, resultStr);
-         end;
-      1: FWorksheet.WriteBoolValue(ARow, ACol, Data[2] = 1);
-      2: begin
+      0: // String -> Value is found in next record (STRING)
+         FIncompleteCell := FWorksheet.GetCell(ARow, ACol);
+
+      1: // Boolean value
+         FWorksheet.WriteBoolValue(ARow, ACol, Data[2] = 1);
+
+      2: begin  // Error value
            case Data[2] of
              ERR_INTERSECTION_EMPTY   : err := errEmptyIntersection;
              ERR_DIVIDE_BY_ZERO       : err := errDivideByZero;
@@ -1007,20 +1006,20 @@ begin
          end;
       3: FWorksheet.WriteBlank(ARow, ACol);
     end
-  else begin             *)
+  else begin
     if SizeOf(Double) <> 8 then
       raise Exception.Create('Double is not 8 bytes');
 
     // Result is a number or a date/time
     Move(Data[0], ResultFormula, SizeOf(Data));
 
-  {Find out what cell type, set content type and value}
+    {Find out what cell type, set content type and value}
     ExtractNumberFormat(XF, nf, nd, nfs);
     if IsDateTime(ResultFormula, nf, dt) then
       FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
     else
       FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd);
-//  end;
+  end;
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);
@@ -1233,12 +1232,11 @@ begin
 end;
 
 { Reads a STRING record. It immediately precedes a FORMULA record which has a
-  string result.
-  Returns here just a dummy string. Has to be overridden to read the real text. }
-procedure TsSpreadBIFFReader.ReadStringRecord(AStream: TStream;
-  var AResultString: String);
+  string result. The read value is applied to the FIncompleteCell.
+  Must be overridden because the implementation depends on BIFF version. }
+procedure TsSpreadBIFFReader.ReadStringRecord(AStream: TStream);
 begin
-  AResultString := '(STRING)';
+  //
 end;
 
 { Reads the WINDOW2 record containing information like "show grid lines",

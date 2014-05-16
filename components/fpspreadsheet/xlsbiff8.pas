@@ -86,7 +86,7 @@ type
     procedure ReadLabelSST(const AStream: TStream);
     procedure ReadRichString(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
-    procedure ReadStringRecord(AStream: TStream; var AStringResult: String); override;
+    procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
@@ -1462,6 +1462,7 @@ begin
     INT_EXCEL_ID_NUMBER  : ReadNumber(AStream);
     INT_EXCEL_ID_LABEL   : ReadLabel(AStream);
     INT_EXCEL_ID_FORMULA : ReadFormula(AStream);
+    INT_EXCEL_ID_STRING  : ReadStringRecord(AStream);
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
     // In BIFF8 it is usually replaced by the LABELSST record. Excel still
     // uses this record, if it copies formatted text cells to the clipboard.
@@ -1740,18 +1741,16 @@ begin
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
-procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream;
-  var AStringResult: String);
+procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream);
 var
-  record_id: Word;
-  record_size: word;
+  s: String;
 begin
-  record_id := WordLEToN(AStream.ReadWord);
-  if record_id <> INT_EXCEL_ID_STRING then
-    raise Exception.Create('ReadStringRecord: wrong record found.');
-  record_size := WordLEToN(AStream.ReadWord);
-
-  AStringResult := ReadWideString(AStream, false);
+  s := ReadWideString(AStream, false);
+  if (FIncompleteCell <> nil) and (s <> '') then begin
+    FIncompleteCell^.UTF8StringValue := s;
+    FIncompleteCell^.ContentType := cctUTF8String;
+  end;
+  FIncompleteCell := nil;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
