@@ -1941,4 +1941,56 @@ begin
     RPNFunc(fekSUBSTITUTE, 3,
     nil))))));
   Worksheet.WriteUTF8Text(Row, 2, 'He..o Wor.d!');
+
+  inc(Row, 2);
+  Worksheet.WriteUTF8Text(Row, 0, 'Errors');
+  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+
+  // Division by 0
+
+  // These tests partly produce an error messsage when the file is read by Excel.
+  // In order to avoid confusion they are deactivated by default.
+  // Remove the comment below to see these tests.
+
+                    (*
+  inc(Row);
+  Worksheet.WriteUTF8Text(Row, 0, '=1/0');
+  Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1,
+    RPNNumber(0,
+    RPNFunc(fekDiv,
+    nil)))));
+  Worksheet.WriteUTF8Text(Row, 2, 'Error #DIV/0!');
+
+  // Not enough operands  for operation
+  inc(Row);
+  Worksheet.WriteUTF8Text(Row, 0, '=1/2 ("2" forgotten from formula)" ');
+  Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1,
+    // here we'd normally put "RPNFormula(2," - but we "forget" it...
+    RPNFunc(fekDiv,
+    nil))));
+  Worksheet.WriteUTF8Text(Row, 2, 'Error #N/A"');
+
+  // Too many operands given
+  inc(Row);
+  Worksheet.WriteUTF8Text(Row, 0, '=1/2 (too many operands)');
+  Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1,
+    RPNNumber(2,
+    RPNNumber(3,       // This line is too much
+    RPNFunc(fekDiv,
+    nil))))));
+  Worksheet.WriteUTF8Text(Row, 2, 'Error #N/A!');
+
+  // Parameter count not specified
+  inc(Row);
+  Worksheet.WriteUTF8Text(Row, 0, '=SUM(1, 2) (parameter count not specified');
+  Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1,
+    RPNNumber(2,
+    RPNFunc(fekSum,  // We "forget" to specify the number of arguments
+    nil)))));
+  Worksheet.WriteUTF8Text(Row, 2, 'Error #N/A');
+                       *)
 end;

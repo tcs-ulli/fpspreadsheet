@@ -70,7 +70,7 @@ type
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
-    procedure ReadStringRecord(AStream: TStream; var AStringResult: String); override;
+    procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadWindow2(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
@@ -405,6 +405,7 @@ begin
       INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
       INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
       INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
+      INT_EXCEL_ID_STRING    : ReadStringRecord(AStream);
       INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
       INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
       INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
@@ -547,27 +548,22 @@ begin
 end;
 
 { Reads a STRING record which contains the result of string formula. }
-procedure TsSpreadBIFF2Reader.ReadStringRecord(AStream: TStream;
-  var AStringResult: String);
+procedure TsSpreadBIFF2Reader.ReadStringRecord(AStream: TStream);
 var
-  record_id: Word;
-  record_size: word;
   len: Byte;
   s: ansistring;
 begin
-  record_id := WordLEToN(AStream.ReadWord);
-  if record_id <> INT_EXCEL_ID_STRING then
-    raise Exception.Create('ReadStringRecord: wrong record found.');
-  record_size := WordLEToN(AStream.ReadWord);
-
   // The string is a byte-string with 16 bit length
   len := AStream.ReadByte;
   if len > 0 then begin
     SetLength(s, Len);
     AStream.ReadBuffer(s[1], len);
-  end else
-    s := '';
-  AStringResult := s;
+    if (FIncompleteCell <> nil) and (s <> '') then begin
+      FIncompleteCell^.UTF8StringValue := s;
+      FIncompleteCell^.ContentType := cctUTF8String;
+    end;
+  end;
+  FIncompleteCell := nil;
 end;
 
 { Reads the WINDOW2 record containing information like "show grid lines",
