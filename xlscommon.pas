@@ -349,7 +349,8 @@ type
   protected
     procedure AddBuiltinFormats; override;
     procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Word); override;
+      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
+      var ACurrencySymbol: String); override;
   public
     function FormatStringForWriting(AIndex: Integer): String; override;
   end;
@@ -369,8 +370,8 @@ type
     function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
-      out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-      out ANumberFormatStr: String); virtual;
+      out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
+      out ACurrencySymbol: String; out ANumberFormatStr: String); virtual;
     // Finds format record for XF record pointed to by cell
     // Will not return info for built-in formats
     function FindNumFormatDataForCell(const AXFIndex: Integer): TsNumFormatData;
@@ -532,19 +533,41 @@ begin
 end;
 
 
+{ TsBIFFNumFormatParser }      (*
+
+constructor TsBIFFNumFormatParser.Create(AFormatString: String);
+begin
+  inherited;
+  FFormatString := AFormatString;
+  Parse;
+end;
+
+procedure TsBIFFNumFormatParser.Parse;
+begin
+  //
+end;
+                                 *)
+
 { TsBIFFNumFormatList }
 
 { These are the built-in number formats as used by fpc. Before writing to file
   some code will be modified to become compatible with Excel
   (--> FormatStringForWriting) }
 procedure TsBIFFNumFormatList.AddBuiltinFormats;
+var
+  cs: String;
 begin
+  cs := DefaultFormatSettings.CurrencyString;
+
   AddFormat( 0, nfGeneral);
   AddFormat( 1, nfFixed, '0', 0);
   AddFormat( 2, nfFixed, '0.00', 2);
   AddFormat( 3, nfFixedTh, '#,##0', 0);
   AddFormat( 4, nfFixedTh, '#,##0.00', 2);
-  // 5..8 currently not supported
+  AddFormat( 5, nfCurrency, '', 0);
+  AddFormat( 6, nfCurrencyRed, '', 0);  // negative numbers in red
+  AddFormat( 7, nfCurrency, '', 2);
+  AddFormat( 8, nfCurrencyRed, '', 2);
   AddFormat( 9, nfPercentage, '0%', 0);
   AddFormat(10, nfPercentage, '0.00%', 2);
   AddFormat(11, nfExp, '0.00E+00', 2);
@@ -558,10 +581,18 @@ begin
   AddFormat(20, nfShortTime);
   AddFormat(21, nfLongTime);
   AddFormat(22, nfShortDateTime);
-  // 23..44 not supported
+  // 23..36 not supported
+  AddFormat(37, nfCurrency, '', 0);
+  AddFormat(38, nfCurrencyRed, '', 0);
+  AddFormat(39, nfCurrency, '', 2);
+  AddFormat(40, nfCurrencyRed, '', 2);
+  AddFormat(41, nfCurrencyDash, '', 0);
+  AddFormat(42, nfCurrencyDashRed, '', 0);
+  AddFormat(43, nfCurrencyDash, '', 2);
+  AddFormat(44, nfCurrencyDashRed, '', 2);
   AddFormat(45, nfFmtDateTime, 'nn:ss');
   AddFormat(46, nfTimeInterval, '[h]:nn:ss');
-  AddFormat(47, nfFmtDateTime, 'nn:ss.z');   // z will be replace by 0 later
+  AddFormat(47, nfFmtDateTime, 'nn:ss.z');   // z will be replaced by 0 later
   AddFormat(48, nfSci, '##0.0E+00', 1);
   // 49 ("Text") not supported
 
@@ -575,7 +606,7 @@ end;
   The output values will be passed to fpc. }
 procedure TsBIFFNumFormatList.Analyze(AFormatIndex: Integer;
   var AFormatString: String; var ANumFormat: TsNumberFormat;
-  var ADecimals: Word);
+  var ADecimals: Byte; var ACurrencySymbol: String);
 var
   fmt: String;
 begin
@@ -612,12 +643,14 @@ begin
         ANumFormat := nfShortTime;
         AFormatString := '';
       end;
+      ADecimals := 0;
+      exit;
     end;
-    ADecimals := 0;
-    exit;
+
+    // TO DO: Analyze currency
   end;
 
-  inherited Analyze(AFormatIndex, AFormatString, ANumFormat, ADecimals);
+  inherited Analyze(AFormatIndex, AFormatString, ANumFormat, ADecimals, ACurrencySymbol);
 end;
 
 { Creates formatting strings that are written into the file. }
@@ -644,6 +677,11 @@ begin
       // if added by user.
       // We check here for safety and add the brackets if not there.
       MakeTimeIntervalMask(item.FormatString, Result);
+    nfCurrencyRed, nfCurrencyDashRed:
+      begin
+        i := Pos(';', item.FormatString);
+        Result := Copy(item.FormatString, 1, i) + '[RED]'+ Copy(item.FormatString, i+1, Length(item.FormatString));
+      end;
   end;
 end;
 
@@ -763,13 +801,13 @@ end;
 { Extracts number format data from an XF record index by AXFIndex.
   Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-  out ANumberFormatStr: String);
+  out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
+  out ACurrencySymbol: String; out ANumberFormatStr: String);
 
   procedure FixMilliseconds;
   var
     isLong, isAMPM, isInterval: Boolean;
-    decs: Word;
+    decs: Byte;
     i: Integer;
   begin
     if IsTimeFormat(ANumberFormatStr, isLong, isAMPM, isInterval, decs)
@@ -790,11 +828,13 @@ begin
     ANumberFormat := lNumFormatData.NumFormat;
     ANumberFormatStr := lNumFormatData.FormatString;
     ADecimals := lNumFormatData.Decimals;
+    ACurrencySymbol := lNumFormatData.CurrencySymbol;
     FixMilliseconds;
   end else begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
     ADecimals := 0;
+    ACurrencySymbol := '';
   end;
 end;
 
@@ -951,7 +991,8 @@ var
   i: Integer;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: Word;
+  nd: Byte;
+  ncs: String;
   nfs: String;
   resultStr: String;
   err: TErrorValue;
@@ -1014,11 +1055,11 @@ begin
     Move(Data[0], ResultFormula, SizeOf(Data));
 
     {Find out what cell type, set content type and value}
-    ExtractNumberFormat(XF, nf, nd, nfs);
+    ExtractNumberFormat(XF, nf, nd, ncs, nfs);
     if IsDateTime(ResultFormula, nf, dt) then
       FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd);
+      FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd, ncs);
   end;
 
   {Add attributes}
@@ -1061,8 +1102,9 @@ var
   pending: integer;
   RK: DWORD;
   nf: TsNumberFormat;
-  nd: word;
+  nd: Byte;
   nfs: String;
+  ncs: String;
 begin
   ARow := WordLEtoN(AStream.ReadWord);
   fc := WordLEtoN(AStream.ReadWord);
@@ -1072,11 +1114,11 @@ begin
     RK := DWordLEtoN(AStream.ReadDWord);
     lNumber := DecodeRKValue(RK);
     {Find out what cell type, set contenttype and value}
-    ExtractNumberFormat(XF, nf, nd, nfs);
+    ExtractNumberFormat(XF, nf, nd, ncs, nfs);
     if IsDateTime(lNumber, nf, lDateTime) then
       FWorksheet.WriteDateTime(ARow, fc, lDateTime, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow, fc, lNumber, nf, nd);
+      FWorksheet.WriteNumber(ARow, fc, lNumber, nf, nd, ncs);
     inc(fc);
     dec(pending, SizeOf(XF) + SizeOf(RK));
   end;
@@ -1098,8 +1140,9 @@ var
   value: Double;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: word;
+  nd: Byte;
   nfs: String;
+  ncs: String;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -1107,11 +1150,11 @@ begin
   AStream.ReadBuffer(value, 8);
 
   {Find out what cell type, set content type and value}
-  ExtractNumberFormat(XF, nf, nd, nfs);
+  ExtractNumberFormat(XF, nf, nd, ncs, nfs);
   if IsDateTime(value, nf, dt) then
     FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd);
+    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd, ncs);
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -1178,7 +1221,8 @@ var
   lDateTime: TDateTime;
   Number: Double;
   nf: TsNumberFormat;    // Number format
-  nd: Word;              // decimals
+  nd: Byte;              // decimals
+  ncs: String;           // Currency symbol
   nfs: String;           // Number format string
 begin
   {Retrieve XF record, row and column}
@@ -1191,11 +1235,11 @@ begin
   Number := DecodeRKValue(RK);
 
   {Find out what cell type, set contenttype and value}
-  ExtractNumberFormat(XF, nf, nd, nfs);
+  ExtractNumberFormat(XF, nf, nd, ncs, nfs);
   if IsDateTime(Number, nf, lDateTime) then
     FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, Number, nf);
+    FWorksheet.WriteNumber(ARow, ACol, Number, nf, nd, ncs);
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);

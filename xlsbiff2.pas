@@ -58,8 +58,8 @@ type
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
     procedure CreateNumFormatList; override;
     procedure ExtractNumberFormat(AXFIndex: WORD;
-      out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-      out ANumberFormatStr: String); override;
+      out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
+      out ACurrencySymbol: String; out ANumberFormatStr: String); override;
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
     procedure ReadFont(AStream: TStream);
@@ -289,8 +289,8 @@ end;
 { Extracts the number format data from an XF record indexed by AXFIndex.
   Note that BIFF2 supports only 21 formats. }
 procedure TsSpreadBIFF2Reader.ExtractNumberFormat(AXFIndex: WORD;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Word;
-  out ANumberFormatStr: String);
+  out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
+  out ACurrencySymbol: String; out ANumberFormatStr: String);
 var
   lNumFormatData: TsNumFormatData;
 begin
@@ -299,10 +299,12 @@ begin
     ANumberFormat := lNumFormatData.NumFormat;
     ANumberFormatStr := lNumFormatData.FormatString;
     ADecimals := lNumFormatData.Decimals;
+    ACurrencySymbol := lNumFormatData.CurrencySymbol;
   end else begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
     ADecimals := 0;
+    ACurrencySymbol := '';
   end;
 end;
 
@@ -470,7 +472,8 @@ var
   value: Double;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: Word;
+  nd: Byte;
+  ncs: String;
   nfs: String;
 begin
   { BIFF Record row/column/style }
@@ -480,11 +483,11 @@ begin
   AStream.ReadBuffer(value, 8);
 
   {Find out what cell type, set content type and value}
-  ExtractNumberFormat(XF, nf, nd, nfs);
+  ExtractNumberFormat(XF, nf, nd, ncs, nfs);
   if IsDateTime(value, nf, dt) then
     FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd);
+    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd, ncs);
 
   { Apply formatting to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -723,15 +726,17 @@ var
 begin
   case ACell.NumberFormat of
     nfExp:
-      if ACell.NumberDecimals <> 2 then begin
-        ACell.NumberDecimals := 2;
+      if ACell.Decimals <> 2 then begin
+        ACell.Decimals := 2;
+        ACell.CurrencySymbol := '';
         ACell.NumberFormatStr := '0.00E+00';
       end;
     nfSci:
       begin
         ACell.NumberFormat := nfExp;
         ACell.NumberFormatStr := '0.00E+00';
-        ACell.NumberDecimals := 2;
+        ACell.Decimals := 2;
+        ACell.CurrencySymbol := '';
       end;
     nfFmtDateTime:
       begin

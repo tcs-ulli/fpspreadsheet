@@ -267,7 +267,29 @@ begin
   MyWorksheet.WriteFontColor(r, 3, scGray);
   MyWorksheet.WriteNumber(r, 4, -1.0/number, nfExp, 3);
   MyWorksheet.WriteFontColor(r, 4, scGray);
+
+  inc(r,2);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrency, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrency, 0, '$');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrency, 0, '$');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrency, 0, '$');
   inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyRed, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyDash, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDash, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDash, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDash, 0, 'USD');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyDashRed, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDashRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDashRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDashRed, 0, 'USD');
+
+  inc(r, 2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0_);("$"#,##0)');
   MyWorksheet.WriteNumber(r, 1, number);
   MyWorksheet.WriteFontColor(r, 1, scGray);
@@ -344,6 +366,7 @@ begin
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h');
   MyWorksheet.WriteFontColor(r, 1, scGray);
+  inc(r);
 
   // Set width of columns 0 to 3
   MyWorksheet.WriteColWidth(0, 50);

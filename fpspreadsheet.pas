@@ -153,9 +153,18 @@ type
   {@@ Number/cell formatting. Only uses a subset of the default formats,
       enough to be able to read/write date/time values.
       nfCustom allows to apply a format string directly. }
-  TsNumberFormat = (nfGeneral, nfFixed, nfFixedTh, nfExp, nfSci, nfPercentage,
+  TsNumberFormat = (
+    // general-purpose for all numbers
+    nfGeneral,
+    // numbers
+    nfFixed, nfFixedTh, nfExp, nfSci, nfPercentage,
+    // currency
+    nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed,
+    // dates and times
     nfShortDateTime, nfFmtDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
-    nfShortTimeAM, nfLongTimeAM, nfTimeInterval, nfCustom);
+    nfShortTimeAM, nfLongTimeAM, nfTimeInterval,
+    // other (format string goes directly into the file)
+    nfCustom);
 
   {@@ Text rotation formatting. The text is rotated relative to the standard
       orientation, which is from left to right horizontal:
@@ -306,7 +315,8 @@ type
     BackgroundColor: TsColor;
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
-    NumberDecimals: Word;
+    Decimals: Byte;
+    CurrencySymbol: String;
     RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
   end;
 
@@ -383,7 +393,8 @@ type
     { Writing of values }
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-      AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2); overload;
+      AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
+      ACurrencySymbol: String = ''); overload;
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormatString: String); overload;
     procedure WriteBlank(ARow, ACol: Cardinal);
@@ -459,6 +470,7 @@ type
     { Internal methods }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
   public
+    FormatSettings: TFormatSettings;
     { Base methods }
     constructor Create;
     destructor Destroy; override;
@@ -514,7 +526,8 @@ type
   public
     Index: Integer;
     NumFormat: TsNumberFormat;
-    Decimals: Integer;
+    Decimals: Byte;
+    CurrencySymbol: String;
     FormatString: string;
   end;
 
@@ -529,20 +542,22 @@ type
     FNextFormatIndex: Integer;
     procedure AddBuiltinFormats; virtual;
     procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Word); virtual;
+      var ANumFormat: TsNumberFormat; var ADecimals: byte;
+      var ACurrencySymbol: String); virtual;
     procedure RemoveFormat(AIndex: Integer);
   public
     constructor Create;
     destructor Destroy; override;
     function AddFormat(AFormatCell: PCell): Integer; overload;
     function AddFormat(AFormatIndex: Integer; ANumFormat: TsNumberFormat;
-      AFormatString: String = ''; ADecimals: Integer = 0): Integer; overload;
+      AFormatString: String = ''; ADecimals: Byte = 0;
+      ACurrencySymbol: String = ''): Integer; overload;
     procedure AnalyzeAndAdd(AFormatIndex: Integer; AFormatString: String);
     procedure Clear;
     procedure Delete(AIndex: Integer);
     function Find(AFormatCell: PCell): integer; overload;
     function Find(ANumFormat: TsNumberFormat; AFormatString: String;
-      ADecimals: Integer): Integer; overload;
+      ADecimals: Byte; ACurrencySymbol: String): Integer; overload;
     function Find(AFormatIndex: Integer): Integer; overload;
     function FormatStringForWriting(AIndex: Integer): String; virtual;
     procedure Sort;
@@ -976,7 +991,8 @@ begin
   cell^.TextRotation := AFormat^.TextRotation;
   cell^.NumberFormat := AFormat^.NumberFormat;
   cell^.NumberFormatStr := AFormat^.NumberFormatStr;
-  cell^.NumberDecimals := AFormat^.NumberDecimals;
+  cell^.Decimals := AFormat^.Decimals;
+  cell^.CurrencySymbol := AFormat^.CurrencySymbol;
 
   ChangedCell(AToRow, AToCol);
   ChangedFont(AToRow, AToCol);
@@ -1190,8 +1206,11 @@ end;
 function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
 
   function FloatToStrNoNaN(const Value: Double;
-    ANumberFormat: TsNumberFormat; ANumberFormatStr: string; ADecimals: Word): ansistring;
+    ANumberFormat: TsNumberFormat; ANumberFormatStr: string; ADecimals: byte): ansistring;
+  var
+    fs: TFormatSettings;
   begin
+    fs := FWorkbook.FormatSettings;
     if IsNan(Value) then
       Result := ''
     else
@@ -1199,12 +1218,12 @@ function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
       Result := SciFloat(Value, ADecimals)
     else
     if (ANumberFormat = nfGeneral) or (ANumberFormatStr = '') then
-      Result := FloatToStr(Value)
+      Result := FloatToStr(Value, fs)
     else
     if (ANumberFormat = nfPercentage) then
-      Result := FormatFloat(ANumberFormatStr, Value*100)  // '%' is already added to FormatStr.
+      Result := FormatFloat(ANumberFormatStr, Value*100, fs)
     else
-      Result := FormatFloat(ANumberFormatStr, Value);
+      Result := FormatFloat(ANumberFormatStr, Value, fs)
   end;
 
   function DateTimeToStrNoNaN(const Value: Double;
@@ -1212,15 +1231,10 @@ function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
   begin
     Result := '';
     if not IsNaN(Value) then begin
-      (*
-      if ANumberFormat = nfTimeInterval then
-        Result := TimeIntervalToString(Value, ANumberFormatStr)
-      else
-      *)
       if ANumberFormatStr = '' then
         Result := FormatDateTime('c', Value)
       else
-        Result := FormatDateTime(ANumberFormatStr, Value);
+        Result := FormatDateTimeEx(ANumberFormatStr, Value);
     end;
   end;
 
@@ -1238,11 +1252,11 @@ begin
   with ACell^ do
     case ContentType of
       cctNumber:
-        Result := FloatToStrNoNaN(NumberValue, NumberFormat, NumberFormatStr, NumberDecimals);
+        Result := FloatToStrNoNaN(NumberValue, NumberFormat, NumberFormatStr, Decimals);
       cctUTF8String:
         Result := UTF8StringValue;
       cctDateTime:
-        Result := DateTimeToStrNoNaN(DateTimeValue, NumberFormat, NumberFormatStr, NumberDecimals);
+        Result := DateTimeToStrNoNaN(DateTimeValue, NumberFormat, NumberFormatStr, Decimals);
       cctBool:
         Result := IfThen(BoolValue, lpTRUE, lpFALSE);
       cctError:
@@ -1265,33 +1279,15 @@ var
   ACell: PCell;
   Str: string;
 begin
+  Result := 0.0;
   ACell := FindCell(ARow, ACol);
-
   if ACell = nil then
-  begin
-    Result := 0.0;
-    Exit;
-  end;
+    exit;
 
   case ACell^.ContentType of
-
-  //cctFormula
-  cctDateTime : Result := ACell^.DateTimeValue; //this is in FPC TDateTime format, not Excel
-  cctNumber   : Result := ACell^.NumberValue;
-  cctUTF8String:
-  begin
-    // The try is necessary to catch errors while converting the string
-    // to a number, an operation which may fail
-    try
-      Str := ACell^.UTF8StringValue;
-      Result := StrToFloat(Str);
-    except
-      Result := 0.0;
-    end;
-  end;
-
-  else
-    Result := 0.0;
+    cctDateTime   : Result := ACell^.DateTimeValue; //this is in FPC TDateTime format, not Excel
+    cctNumber     : Result := ACell^.NumberValue;
+    cctUTF8String : TryStrToFloat(ACell^.UTF8StringValue, Result);
   end;
 end;
 
@@ -1395,21 +1391,27 @@ end;
   @param  ANumber   The number to be written
   @param  AFormat   The format identifier, e.g. nfFixed (optional)
   @param  ADecimals The number of decimals used for formatting (optional)
+  @param  ACurrencySymbol The currency symbol in case of currency format (nfCurrency)
 }
 procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-  AFormat: TsNumberFormat = nfGeneral; ADecimals: Word = 2);
+  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
+  ACurrencySymbol: String = '');
 var
   ACell: PCell;
+  fs: TFormatSettings;
 begin
   ACell := GetCell(ARow, ACol);
 
   ACell^.ContentType := cctNumber;
   ACell^.NumberValue := ANumber;
-  ACell^.NumberDecimals := ADecimals;
+  ACell^.Decimals := ADecimals;
   if AFormat <> nfGeneral then begin
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
     ACell^.NumberFormat := AFormat;
-    WriteDecimals(ACell, ADecimals);
+    ACell^.Decimals := ADecimals;
+    ACell^.CurrencySymbol := ACurrencySymbol;
+    ACell^.NumberFormatStr := BuildNumFormatString(ACell^.NumberFormat,
+      Workbook.FormatSettings, ADecimals, ACurrencySymbol);
   end;
   ChangedCell(ARow, ACol);
 end;
@@ -1539,8 +1541,9 @@ end;
 procedure TsWorksheet.WriteDecimals(ACell: PCell; ADecimals: Byte);
 begin
   if (ACell <> nil) and (ACell^.ContentType = cctNumber) then begin
-    ACell^.NumberDecimals := ADecimals;
-    ACell^.NumberFormatStr := BuildNumFormatString(ACell^.NumberFormat, ADecimals);
+    ACell^.Decimals := ADecimals;
+    ACell^.NumberFormatStr := BuildNumFormatString(ACell^.NumberFormat,
+      FWorkbook.FormatSettings, ADecimals, ACell^.CurrencySymbol);
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
@@ -1598,7 +1601,8 @@ begin
   Include(ACell^.UsedFormattingFields, uffNumberFormat);
   ACell^.NumberFormat := ANumberFormat;
   if (AFormatString = '') then
-    ACell^.NumberFormatStr := BuildNumFormatString(ANumberFormat, ACell^.NumberDecimals)
+    ACell^.NumberFormatStr := BuildNumFormatString(ANumberFormat,
+      Workbook.FormatSettings, ACell^.Decimals, ACell^.CurrencySymbol)
   else
     ACell^.NumberFormatStr := AFormatString;
   ChangedCell(ARow, ACol);
@@ -1966,6 +1970,7 @@ constructor TsWorkbook.Create;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
+  FormatSettings := DefaultFormatSettings;
   FFontList := TFPList.Create;
   SetDefaultFont('Arial', 10.0);
   InitFonts;
@@ -2585,7 +2590,7 @@ end;
 { Adds a new number format data to the list and returns the list index of the
   new (or present) item. }
 function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer; ANumFormat: TsNumberFormat;
-  AFormatString: String = ''; ADecimals: Integer = 0): integer;
+  AFormatString: String = ''; ADecimals: byte = 0; ACurrencySymbol: String = ''): integer;
 var
   item: TsNumFormatData;
 begin
@@ -2594,6 +2599,7 @@ begin
   item.NumFormat := ANumFormat;
   item.FormatString := AFormatString;
   item.Decimals := ADecimals;
+  item.CurrencySymbol := ACurrencySymbol;
   Result := inherited Add(item);
 end;
 
@@ -2607,8 +2613,12 @@ begin
   if Count = 0 then
     raise Exception.Create('TsCustomNumFormatList: Error in program logics: You must provide built-in formats first.');
 
-  Result := AddFormat(FNextFormatIndex, AFormatCell^.NumberFormat,
-    AFormatCell^.NumberFormatStr, AFormatCell^.NumberDecimals);
+  Result := AddFormat(FNextFormatIndex,
+    AFormatCell^.NumberFormat,
+    AFormatCell^.NumberFormatStr,
+    AFormatCell^.Decimals,
+    AFormatCell^.CurrencySymbol
+  );
 
   inc(FNextFormatIndex);
 end;
@@ -2634,7 +2644,7 @@ end;
   about the structure of the string in the actual file format. }
 procedure TsCustomNumFormatList.Analyze(AFormatIndex: Integer;
   var AFormatString: String; var ANumFormat: TsNumberFormat;
-  var ADecimals: Word);
+  var ADecimals: Byte; var ACurrencySymbol: String);
 const
   SHORT_LONG_DATE: array[boolean] of TsNumberFormat = (
     nfShortDate, nfLongDate
@@ -2646,6 +2656,10 @@ const
   EXP_SCI: array[boolean] of TsNumberFormat = (
     nfExp, nfSci
   );
+  CURR_FMT: array[boolean, boolean] of TsNumberFormat = (
+    (nfCurrency, nfCurrencyDash),
+    (nfCurrencyRed, nfCurrencyDashRed)
+  );
 var
   decs: Word;
   isAMPM: Boolean;
@@ -2654,6 +2668,7 @@ var
   isInterval: Boolean;
   isSci: Boolean;
   isTime, isDate: Boolean;
+  isCurrRed, isCurrDash: Boolean;
   lFormatData: TsNumFormatData;
   i: Integer;
   fmt: String;
@@ -2685,6 +2700,13 @@ begin
           IsTimeFormat(AFormatString, isLongTime, isAMPM, isInterval, ADecimals);
           exit;
         end;
+      nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed:
+        begin
+          ANumFormat := lFormatData.NumFormat;
+          AFormatString := lFormatData.FormatString;
+          ADecimals := lFormatData.Decimals;
+          ACurrencySymbol := lFormatData.CurrencySymbol;
+        end;
     end;
   end;
 
@@ -2702,6 +2724,9 @@ begin
   else
   if IsFixedNumberFormat(AFormatString, ADecimals) then
     ANumFormat := nfFixed
+  else
+  if IsCurrencyFormat(AFormatString, ADecimals, ACurrencySymbol, isCurrRed, isCurrDash) then
+    ANumFormat := CURR_FMT[isCurrRed, isCurrDash]
   else begin
     isTime := IsTimeFormat(AFormatString, isLongTime, isAMPM, isInterval, ADecimals);
     isDate := IsDateFormat(AFormatString, isLongDate);
@@ -2731,16 +2756,17 @@ procedure TsCustomNumFormatList.AnalyzeAndAdd(AFormatIndex: Integer;
   AFormatString: String);
 var
   nf: TsNumberFormat;
-  decs: Word;
+  decs: Byte;
+  currsym: String;
 begin
   if Find(AFormatIndex) > -1 then
-    raise Exception.Create('TsCustomNumFormatList.AnalyzeAndAdd: Format index must be unique.');
+    exit;
 
   // Analyze the format string and extract information for internal formatting
-  Analyze(AFormatIndex, AFormatString, nf, decs);
+  Analyze(AFormatIndex, AFormatString, nf, decs, currsym);
 
   // Add the new item
-  AddFormat(AFormatIndex, nf, AFormatString, decs);
+  AddFormat(AFormatIndex, nf, AFormatString, decs, currSym);
 end;
 
 { Clears the list and frees memory occupied by the format items. }
@@ -2767,13 +2793,14 @@ begin
   if AFormatCell = nil then
     Result := -1
   else
-    Result := Find(AFormatCell^.NumberFormat, AFormatCell^.NumberFormatStr, AFormatCell^.NumberDecimals);
+    Result := Find(AFormatCell^.NumberFormat, AFormatCell^.NumberFormatStr,
+      AFormatCell^.Decimals, AFormatCell^.CurrencySymbol);
 end;
 
 { Seeks a format item with the given properties and returns its list index,
   or -1 if not found. }
 function TsCustomNumFormatList.Find(ANumFormat: TsNumberFormat;
-  AFormatString: String; ADecimals: Integer): Integer;
+  AFormatString: String; ADecimals: Byte; ACurrencySymbol: String): Integer;
 var
   item: TsNumFormatData;
   fmt: String;
@@ -2837,6 +2864,8 @@ begin
       and (item.NumFormat = ANumFormat)
       and (item.FormatString = AFormatString)
       and (item.Decimals = ADecimals)
+      and (not (item.NumFormat in [nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed])
+            or (item.CurrencySymbol = ACurrencySymbol))
     then
       exit;
   end;
@@ -3037,7 +3066,12 @@ begin
       if (FFormattingStyles[i].NumberFormat <> AFormat^.NumberFormat) then Continue;
       case AFormat^.NumberFormat of
         nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci:
-          if (FFormattingStyles[i].NumberDecimals <> AFormat^.NumberDecimals) then Continue;
+          if (FFormattingStyles[i].Decimals <> AFormat^.Decimals) then Continue;
+        nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed:
+          begin
+            if (FFormattingStyles[i].Decimals <> AFormat^.Decimals) then Continue;
+            if (FFormattingStyles[i].CurrencySymbol <> AFormat^.CurrencySymbol) then Continue;
+          end;
         nfShortDate, nfLongDate, nfShortDateTime, nfShortTime, nfLongTime,
         nfShortTimeAM, nfLongTimeAM, nfFmtDateTime, nfTimeInterval, nfCustom:
           if (FFormattingstyles[i].NumberFormatStr <> AFormat^.NumberFormatStr) then Continue;
@@ -3058,11 +3092,11 @@ end;
 procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 var
   isLong, isAMPM, isInterval: Boolean;
-  decs: Word;
+  decs: Byte;
 begin
   if ACell^.NumberFormat = nfFmtDateTime then begin
     if IsTimeFormat(ACell^.NumberFormatStr, isLong, isAMPM, isInterval, decs) then
-      ACell^.NumberDecimals := decs;
+      ACell^.Decimals := decs;
   end;
 end;
 
