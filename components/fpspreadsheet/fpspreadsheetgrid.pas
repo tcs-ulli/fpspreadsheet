@@ -665,6 +665,10 @@ begin
           Canvas.Font.Size := round(fnt.Size);
         end;
       end;
+      if (lCell^.NumberFormat in [nfCurrencyRed, nfCurrencyDashRed]) and
+         not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
+      then
+        Canvas.Font.Color := FWorkbook.GetPaletteColor(scRed);
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;

@@ -410,7 +410,7 @@ begin
       exit;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if (cell <> nil) then begin
-      decs := cell^.NumberDecimals;
+      decs := cell^.Decimals;
       if (Sender = AcIncDecimals) then
         Worksheet.WriteDecimals(cell, decs+1);
       if (Sender = AcDecDecimals) and (decs > 0) then

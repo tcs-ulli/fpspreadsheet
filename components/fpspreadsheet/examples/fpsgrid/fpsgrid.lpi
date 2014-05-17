@@ -128,8 +128,8 @@
         <UnitName Value="mainform"/>
         <EditorIndex Value="1"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="628"/>
-        <CursorPos X="30" Y="639"/>
+        <TopLine Value="394"/>
+        <CursorPos X="40" Y="412"/>
         <UsageCount Value="200"/>
         <Bookmarks Count="1">
           <Item0 X="3" Y="361" ID="1"/>
@@ -140,20 +140,20 @@
       <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <EditorIndex Value="3"/>
+        <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="2655"/>
-        <CursorPos X="3" Y="2680"/>
+        <TopLine Value="2748"/>
+        <CursorPos X="1" Y="2748"/>
         <UsageCount Value="100"/>
         <Loaded Value="True"/>
       </Unit2>
       <Unit3>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <UnitName Value="fpspreadsheetgrid"/>
-        <EditorIndex Value="2"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1774"/>
-        <CursorPos X="23" Y="1783"/>
+        <TopLine Value="636"/>
+        <CursorPos X="20" Y="647"/>
         <UsageCount Value="100"/>
         <Loaded Value="True"/>
       </Unit3>
@@ -231,11 +231,11 @@
       <Unit13>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="37"/>
-        <CursorPos X="1" Y="21"/>
-        <UsageCount Value="53"/>
+        <TopLine Value="1206"/>
+        <CursorPos X="21" Y="1222"/>
+        <UsageCount Value="54"/>
         <Loaded Value="True"/>
       </Unit13>
       <Unit14>
@@ -264,10 +264,10 @@
         <Filename Value="..\..\xlsbiff8.pas"/>
         <UnitName Value="xlsbiff8"/>
         <IsVisibleTab Value="True"/>
-        <EditorIndex Value="5"/>
+        <EditorIndex Value="3"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1727"/>
-        <CursorPos X="1" Y="1744"/>
+        <TopLine Value="1920"/>
+        <CursorPos X="11" Y="1932"/>
         <UsageCount Value="84"/>
         <Loaded Value="True"/>
       </Unit17>
@@ -289,32 +289,26 @@
       <Unit20>
         <Filename Value="..\..\xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
-        <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="974"/>
-        <CursorPos X="21" Y="990"/>
+        <TopLine Value="509"/>
+        <CursorPos X="68" Y="517"/>
         <UsageCount Value="80"/>
-        <Loaded Value="True"/>
       </Unit20>
       <Unit21>
         <Filename Value="..\..\xlsbiff5.pas"/>
         <UnitName Value="xlsbiff5"/>
-        <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
         <TopLine Value="76"/>
         <CursorPos X="49" Y="92"/>
         <UsageCount Value="67"/>
-        <Loaded Value="True"/>
       </Unit21>
       <Unit22>
         <Filename Value="..\..\xlsbiff2.pas"/>
         <UnitName Value="xlsbiff2"/>
-        <EditorIndex Value="7"/>
         <WindowIndex Value="0"/>
         <TopLine Value="548"/>
         <CursorPos X="1" Y="560"/>
         <UsageCount Value="68"/>
-        <Loaded Value="True"/>
       </Unit22>
       <Unit23>
         <Filename Value="d:\lazarus-svn\lcl\lclproc.pas"/>
@@ -590,124 +584,124 @@
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="346" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1437" Column="1" TopLine="1407"/>
       </Position1>
       <Position2>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="354" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1410" Column="1" TopLine="1403"/>
       </Position2>
       <Position3>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="346" Column="8" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1411" Column="1" TopLine="1403"/>
       </Position3>
       <Position4>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="343" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1412" Column="1" TopLine="1403"/>
       </Position4>
       <Position5>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="346" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1414" Column="1" TopLine="1403"/>
       </Position5>
       <Position6>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="347" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1416" Column="1" TopLine="1403"/>
       </Position6>
       <Position7>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="348" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1417" Column="1" TopLine="1403"/>
       </Position7>
       <Position8>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="349" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1423" Column="1" TopLine="1403"/>
       </Position8>
       <Position9>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="350" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1437" Column="1" TopLine="1406"/>
       </Position9>
       <Position10>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="351" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1929" Column="3" TopLine="1920"/>
       </Position10>
       <Position11>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="354" Column="1" TopLine="336"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1567" Column="1" TopLine="1548"/>
       </Position11>
       <Position12>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="640" Column="1" TopLine="621"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1934" Column="1" TopLine="1915"/>
       </Position12>
       <Position13>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="641" Column="1" TopLine="621"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1937" Column="1" TopLine="1915"/>
       </Position13>
       <Position14>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="343" Column="1" TopLine="324"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1940" Column="1" TopLine="1915"/>
       </Position14>
       <Position15>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="632" Column="30" TopLine="621"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2761" Column="1" TopLine="2742"/>
       </Position15>
       <Position16>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="633" Column="30" TopLine="622"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2762" Column="1" TopLine="2742"/>
       </Position16>
       <Position17>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="634" Column="30" TopLine="623"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2763" Column="1" TopLine="2742"/>
       </Position17>
       <Position18>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="635" Column="30" TopLine="624"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1925" Column="17" TopLine="1915"/>
       </Position18>
       <Position19>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="636" Column="30" TopLine="625"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2765" Column="3" TopLine="2751"/>
       </Position19>
       <Position20>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="637" Column="30" TopLine="626"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1567" Column="1" TopLine="1548"/>
       </Position20>
       <Position21>
-        <Filename Value="mainform.pas"/>
-        <Caret Line="638" Column="30" TopLine="627"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1934" Column="1" TopLine="1915"/>
       </Position21>
       <Position22>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="592" Column="61" TopLine="588"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1937" Column="1" TopLine="1915"/>
       </Position22>
       <Position23>
         <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="89" Column="48" TopLine="62"/>
+        <Caret Line="1940" Column="1" TopLine="1915"/>
       </Position23>
       <Position24>
-        <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1751" Column="16" TopLine="1743"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2761" Column="1" TopLine="2751"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1237" Column="67" TopLine="1222"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2762" Column="1" TopLine="2751"/>
       </Position25>
       <Position26>
-        <Filename Value="..\..\xlsbiff2.pas"/>
-        <Caret Line="73" Column="48" TopLine="61"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="2772" Column="1" TopLine="2751"/>
       </Position26>
       <Position27>
         <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="89" Column="29" TopLine="73"/>
+        <Caret Line="1934" Column="1" TopLine="1915"/>
       </Position27>
       <Position28>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="365" Column="16" TopLine="353"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1937" Column="1" TopLine="1915"/>
       </Position28>
       <Position29>
-        <Filename Value="..\..\xlsbiff5.pas"/>
-        <Caret Line="1379" Column="1" TopLine="1363"/>
+        <Filename Value="..\..\xlsbiff8.pas"/>
+        <Caret Line="1940" Column="1" TopLine="1915"/>
       </Position29>
       <Position30>
         <Filename Value="..\..\xlsbiff8.pas"/>
-        <Caret Line="1754" Column="1" TopLine="1742"/>
+        <Caret Line="1439" Column="1" TopLine="1421"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -739,7 +733,7 @@
   <Debugging>
     <Watches Count="2">
       <Item1>
-        <Expression Value="acol"/>
+        <Expression Value="recordtype"/>
       </Item1>
       <Item2>
         <Expression Value="arow"/>

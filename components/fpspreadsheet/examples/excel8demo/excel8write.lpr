@@ -37,6 +37,8 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.SetDefaultFont('Calibri', 9);
   MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+  MyWorkbook.FormatSettings.CurrencyFormat := 2;
+  MyWorkbook.FormatSettings.NegCurrFormat := 14;
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];
@@ -247,7 +249,8 @@ begin
   MyWorksheet.WriteUTF8Text(r, 0, 'nfFixedTh, 3 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfFixedTh, 3);
   MyWorksheet.WriteNumber(r, 2, -number, nfFixedTh, 3);
-  inc(r);
+
+  inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 1 dec');
   MyWorksheet.WriteNumber(r, 1, number, nfSci, 1);
   MyWorksheet.WriteNumber(r, 2, -number, nfSci, 1);
@@ -283,7 +286,29 @@ begin
   MyWorksheet.WriteNumber(r, 2, -number, nfExp, 3);
   MyWorksheet.WriteNumber(r, 3, 1.0/number, nfExp, 3);
   MyWorksheet.WriteNumber(r, 4, -1.0/number, nfExp, 3);
+
+  inc(r,2);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrency, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrency, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrency, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrency, 0, 'USD');
   inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyRed, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyDash, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDash, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDash, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDash, 0, 'USD');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyDashRed, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDashRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDashRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDashRed, 0, 'USD');
+
+  inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "EUR "#,##0_);("EUR "#,##0)');
   MyWorksheet.WriteDateTime(r, 1, number);
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"EUR "#,##0_);("EUR "#,##0)');

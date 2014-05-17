@@ -60,21 +60,25 @@ function UTF8TextToXMLText(AText: ansistring): ansistring;
 function TwipsToMillimeters(AValue: Integer): Single;
 function MillimetersToTwips(AValue: Single): Integer;
 
-function IsExpNumberFormat(s: String; out Decimals: Word; out IsSci: Boolean): Boolean;
-function IsFixedNumberFormat(s: String; out Decimals: Word): Boolean;
-function IsPercentNumberFormat(s: String; out Decimals: Word): Boolean;
-function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsCurrencyFormat(s: String; out Decimals: Byte; out CurrSymbol: String;
+  out IsCurrencyRedFmt, IsCurrencyDashFmt: Boolean): Boolean;
+function IsExpNumberFormat(s: String; out Decimals: Byte; out IsSci: Boolean): Boolean;
+function IsFixedNumberFormat(s: String; out Decimals: Byte): Boolean;
+function IsPercentNumberFormat(s: String; out Decimals: Byte): Boolean;
+function IsThousandSepNumberFormat(s: String; out Decimals: Byte): Boolean;
 function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
 function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
-  out SecDecimals: Word): Boolean;
+  out SecDecimals: Byte): Boolean;
 
-function BuildNumFormatString(ANumberFormat: TsNumberFormat; ADecimals: Byte): String;
+function BuildNumFormatString(ANumberFormat: TsNumberFormat;
+  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
+  ACurrencySymbol: String = '?'): String;
 
-function SciFloat(AValue: Double; ADecimals: Word): String;
+function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
-function FormatDateTime(const FormatStr: string; DateTime: TDateTime): string;
+function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): string;
 
 implementation
 
@@ -493,7 +497,7 @@ end;
 { This simple parsing procedure of the Excel format string checks for a fixed
   float format s, i.e. s can be '0', '0.00', '000', '0,000', and returns the
   number of decimals, i.e. number of zeros behind the decimal point }
-function IsFixedNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsFixedNumberFormat(s: String; out Decimals: Byte): Boolean;
 var
   i: Integer;
   p: Integer;
@@ -540,7 +544,7 @@ end;
 { This function checks whether the format string corresponds to a thousand
   separator format like "#,##0.000' and returns the number of fixed decimals
   (i.e. zeros after the decimal point) }
-function IsThousandSepNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsThousandSepNumberFormat(s: String; out Decimals: Byte): Boolean;
 var
   i, p: Integer;
 begin
@@ -571,7 +575,7 @@ end;
 
 { This function checks whether the format string corresponds to percent
   formatting and determines the number of decimals }
-function IsPercentNumberFormat(s: String; out Decimals: Word): Boolean;
+function IsPercentNumberFormat(s: String; out Decimals: Byte): Boolean;
 var
   i, p: Integer;
 begin
@@ -600,11 +604,18 @@ begin
   end;
 end;
 
+{ This function checks whether the format string corresponds to a currency format. }
+function IsCurrencyFormat(s: String; out Decimals: Byte; out CurrSymbol: String;
+  out IsCurrencyRedFmt, IsCurrencyDashFmt: Boolean): Boolean;
+begin
+  Result := false;           // TO DO !!!!
+end;
+
 { This function checks whether the format string corresponds to exponential
   formatting and determines the number of decimals. If it contains a # character
   the function assumes a "scientific" format rounding the exponent to multiples
   of 2. }
-function IsExpNumberFormat(s: String; out Decimals: Word;
+function IsExpNumberFormat(s: String; out Decimals: Byte;
   out IsSci: Boolean): Boolean;
 var
   i, pdp, pe, ph: Integer;
@@ -674,7 +685,7 @@ end;
   isInterval is true if the string contains square bracket codes for time intervals.
   SecDecimals is the number of decimals for the seconds. }
 function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
-  out SecDecimals: Word): Boolean;
+  out SecDecimals: Byte): Boolean;
 var
   p, pdp, i, count: Integer;
 begin
@@ -734,10 +745,41 @@ end;
 { Builds a number format string from the numberformat code and the count of
   decimals. }
 function BuildNumFormatString(ANumberFormat: TsNumberFormat;
-  ADecimals: Byte): String;
+  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
+  ACurrencySymbol: String = '?'): String;
+const
+  POS_FMT: array[0..3] of string = (  //0: value, 1: currency symbol
+    '"%1:s"%0:s',
+    '%0:s"%1:s"',
+    '"%1:s" %0:s',
+    '%0:s "%1:s"'
+  );
+  NEG_FMT: array[0..15] of string = (
+    '("%1:s"%0:s)',  // 0
+    '-"%1:s"%0:s',   // 1
+    '"%1:s"-%0:s',   // 2
+    '"%1:s"%0:s-',   // 3
+    '(%0:s"%1:s")',  // 4
+    '-%0:s"%1:s"',   // 5
+    '-%0:s-"%1:s"',  // 6
+    '%0:s"%1:s"-',   // 7
+    '-%0:s "%1:s"',  // 8
+    '-"%1:s" %0:s',  // 9
+    '%0:s "%1:s"-',  // 10
+    '"%1:s" %0:s-',  // 11
+    '"%1:s" -%0:s',  // 12
+    '%0:s- "%1:s"',  // 13
+    '("%1:s" %0:s)', // 14
+    '(%0:s "%1:s")'  // 15
+  );
 var
   decs: String;
+  cf, ncf: Byte;
 begin
+  cf := AFormatSettings.CurrencyFormat;
+  ncf := AFormatSettings.NegCurrFormat;
+  if ADecimals = -1 then ADecimals := AFormatSettings.CurrencyDecimals;
+  if ACurrencySymbol = '?' then ACurrencySymbol := AFormatSettings.CurrencyString;
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
   case ANumberFormat of
@@ -751,15 +793,39 @@ begin
       Result := '##0' + decs + 'E+0';
     nfPercentage:
       Result := '0' + decs + '%';
-    else
-      Result := '';
+    nfCurrency,
+    nfCurrencyRed,
+    nfCurrencyDash,
+    nfCurrencyDashRed:
+      begin
+        Result := '';
+        if ACurrencySymbol <> '' then
+          Result := Format(POS_FMT[cf], ['#,##0' + decs, ACurrencySymbol]) + ';'
+                  + Format(NEG_FMT[ncf], ['#,##0' + decs, ACurrencySymbol])
+        else begin
+          Result := '#,##0' + decs;
+          case ncf of
+            0, 14, 15        : Result := Result + ';(#,##0' + decs + ')';
+            1, 5, 6, 8, 9, 12: Result := Result + ';-#,##0' + decs;
+            else               Result := Result + ';#,##0' + decs + '-';
+          end;
+        end;
+        if ANumberFormat in [nfCurrency, nfCurrencyRed] then begin
+          Result := Result + ';0' + decs;
+          if cf in [2,3] then
+            Result := Format('%s "%s"', [Result, ACurrencySymbol])
+          else
+            Result := Format('%s"%s"', [Result, ACurrencySymbol]);
+        end else
+          Result := Result + ';-';
+      end;
   end;
 end;
 
 { Formats the number AValue in "scientific" format with the given number of
   decimals. "Scientific" is the same as "exponential", but with exponents rounded
   to multiples of 3 (like for "kilo" - "Mega" - "Giga" etc.). }
-function SciFloat(AValue: Double; ADecimals: Word): String;
+function SciFloat(AValue: Double; ADecimals: Byte): String;
 var
   m: Double;
   ex: Integer;
@@ -1177,7 +1243,7 @@ begin
   result := StrPas(@ResultBuffer[0]);
 end ;
 
-function FormatDateTime(const FormatStr: string; DateTime: TDateTime): string;
+function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): string;
 begin
   DateTimeToString(Result, FormatStr, DateTime, DefaultFormatSettings);
 end;
