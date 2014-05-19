@@ -78,7 +78,9 @@ function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
-function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): string;
+function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): String; overload;
+function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime;
+  AFormatSettings: TFormatSettings): string; overload;
 
 implementation
 
@@ -1246,6 +1248,12 @@ end ;
 function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): string;
 begin
   DateTimeToString(Result, FormatStr, DateTime, DefaultFormatSettings);
+end;
+
+function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime;
+  AFormatSettings: TFormatSettings): string;
+begin
+  DateTimeToString(Result, FormatStr, DateTime, AFormatSettings);
 end;
 
 end.

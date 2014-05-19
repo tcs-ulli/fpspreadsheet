@@ -480,7 +480,7 @@ type
 implementation
 
 uses
-  StrUtils;
+  StrUtils, fpsNumFormatParser;
 
 function ConvertExcelDateTimeToDateTime(
   const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
@@ -532,21 +532,6 @@ begin
   end;
 end;
 
-
-{ TsBIFFNumFormatParser }      (*
-
-constructor TsBIFFNumFormatParser.Create(AFormatString: String);
-begin
-  inherited;
-  FFormatString := AFormatString;
-  Parse;
-end;
-
-procedure TsBIFFNumFormatParser.Parse;
-begin
-  //
-end;
-                                 *)
 
 { TsBIFFNumFormatList }
 
@@ -608,12 +593,29 @@ procedure TsBIFFNumFormatList.Analyze(AFormatIndex: Integer;
   var AFormatString: String; var ANumFormat: TsNumberFormat;
   var ADecimals: Byte; var ACurrencySymbol: String);
 var
+  parser: TsNumFormatParser;
   fmt: String;
 begin
+
+               {
+  AFormatString := 'hh:mm AM/PM'; //"€" #,##.0;[red]"$" -#,##.000;-';
+
+
+  parser := TsNumFormatParser.Create(Workbook, AFormatString);
+  try
+    fmt := parser.FormatString;
+    ANumFormat := parser.ParsedSections[0].NumFormat;
+    ADecimals := parser.ParsedSections[0].Decimals;
+    ACurrencySymbol := parser.ParsedSections[0].CurrencySymbol;
+  finally
+    parser.Free;
+  end;
+                }
+
   fmt := Lowercase(AFormatString);
   { Check the built-in formats first:
     The prefix "[$-F400]" before the formatting string means that the system's
-    long Time format string is used. }
+    long time format string is used. }
   if (pos('[$-F400]', AFormatString) = 1) then begin
     ANumFormat := nfLongTime;
     AFormatString := '';  // will be replaced by system's format setting

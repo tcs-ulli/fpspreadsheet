@@ -538,6 +538,7 @@ type
     function GetItem(AIndex: Integer): TsNumFormatData;
     procedure SetItem(AIndex: Integer; AValue: TsNumFormatData);
   protected
+    FWorkbook: TsWorkbook;
     FFirstFormatIndexInFile: Integer;
     FNextFormatIndex: Integer;
     procedure AddBuiltinFormats; virtual;
@@ -562,6 +563,7 @@ type
     function FormatStringForWriting(AIndex: Integer): String; virtual;
     procedure Sort;
 
+    property Workbook: TsWorkbook read FWorkbook;
     property FirstFormatIndexInFile: Integer read FFirstFormatIndexInFile;
     property Items[AIndex: Integer]: TsNumFormatData read GetItem write SetItem; default;
   end;
@@ -2938,6 +2940,7 @@ begin
   inherited Create;
   FWorkbook := AWorkbook;
   CreateNumFormatList;
+  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
 destructor TsCustomSpreadReader.Destroy;
@@ -3008,6 +3011,7 @@ begin
   inherited Create;
   FWorkbook := AWorkbook;
   CreateNumFormatList;
+  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
 destructor TsCustomSpreadWriter.Destroy;

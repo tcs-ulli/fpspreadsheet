@@ -42,16 +42,19 @@ begin
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];
+  {
   MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
   myWorksheet.LeftPaneWidth := 1;
   MyWorksheet.TopPaneHeight := 2;
+  }
 
   { non-frozen panes not working, at the moment. Requires SELECTION records?
   MyWorksheet.LeftPaneWidth := 20*72*2; // 72 pt = inch  --> 2 inches = 5 cm
   }
 
   // Write some cells
-  MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+//  MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  MyWorksheet.WriteNumber(0, 0, 1.0, nfFixed, 3);// A1
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
