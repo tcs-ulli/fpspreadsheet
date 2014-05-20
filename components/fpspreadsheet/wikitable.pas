@@ -352,7 +352,7 @@ end;
 procedure TsWikiTableWriter.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsWikiTableNumFormatList.Create;
+  FNumFormatList := TsWikiTableNumFormatList.Create(Workbook);
 end;
 
 procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings);

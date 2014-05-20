@@ -137,8 +137,7 @@
       <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="6"/>
+        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
         <TopLine Value="132"/>
         <CursorPos X="16" Y="164"/>
@@ -148,7 +147,7 @@
       <Unit3>
         <Filename Value="..\..\fpspreadsheetgrid.pas"/>
         <UnitName Value="fpspreadsheetgrid"/>
-        <EditorIndex Value="8"/>
+        <EditorIndex Value="6"/>
         <WindowIndex Value="0"/>
         <TopLine Value="636"/>
         <CursorPos X="20" Y="647"/>
@@ -286,10 +285,11 @@
       <Unit20>
         <Filename Value="..\..\xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="4"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="1181"/>
-        <CursorPos X="31" Y="1194"/>
+        <TopLine Value="650"/>
+        <CursorPos X="16" Y="662"/>
         <UsageCount Value="88"/>
         <Bookmarks Count="1">
           <Item0 X="41" Y="1209" ID="1"/>
@@ -577,143 +577,139 @@
       </Unit57>
       <Unit58>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\rtl\objpas\sysutils\dati.inc"/>
-        <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
         <TopLine Value="890"/>
         <CursorPos X="16" Y="796"/>
         <UsageCount Value="15"/>
-        <Loaded Value="True"/>
       </Unit58>
       <Unit59>
         <Filename Value="d:\lazarus-svn\fpc\2.6.2\source\rtl\objpas\sysutils\sysinth.inc"/>
-        <EditorIndex Value="7"/>
         <WindowIndex Value="0"/>
         <TopLine Value="36"/>
         <CursorPos X="5" Y="43"/>
         <UsageCount Value="13"/>
-        <Loaded Value="True"/>
       </Unit59>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Caret Line="164" Column="60" TopLine="132"/>
       </Position1>
       <Position2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="164" Column="60" TopLine="132"/>
+        <Caret Line="1511" Column="15" TopLine="1478"/>
       </Position2>
       <Position3>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1511" Column="15" TopLine="1478"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="1170" Column="36" TopLine="1170"/>
       </Position3>
       <Position4>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1170" Column="36" TopLine="1170"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position4>
       <Position5>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Caret Line="940" Column="14" TopLine="908"/>
       </Position5>
       <Position6>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="940" Column="14" TopLine="908"/>
+        <Caret Line="960" Column="14" TopLine="928"/>
       </Position6>
       <Position7>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="960" Column="14" TopLine="928"/>
+        <Caret Line="1013" Column="14" TopLine="982"/>
       </Position7>
       <Position8>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1013" Column="14" TopLine="982"/>
+        <Caret Line="1059" Column="14" TopLine="1027"/>
       </Position8>
       <Position9>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1059" Column="14" TopLine="1027"/>
+        <Caret Line="1081" Column="41" TopLine="1049"/>
       </Position9>
       <Position10>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1081" Column="41" TopLine="1049"/>
+        <Caret Line="1089" Column="43" TopLine="1057"/>
       </Position10>
       <Position11>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1089" Column="43" TopLine="1057"/>
+        <Caret Line="1093" Column="14" TopLine="1061"/>
       </Position11>
       <Position12>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1093" Column="14" TopLine="1061"/>
+        <Caret Line="1157" Column="14" TopLine="1126"/>
       </Position12>
       <Position13>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1157" Column="14" TopLine="1126"/>
+        <Caret Line="1197" Column="20" TopLine="1177"/>
       </Position13>
       <Position14>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1197" Column="20" TopLine="1177"/>
+        <Caret Line="403" Column="16" TopLine="397"/>
       </Position14>
       <Position15>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="403" Column="16" TopLine="397"/>
+        <Caret Line="924" Column="14" TopLine="893"/>
       </Position15>
       <Position16>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="924" Column="14" TopLine="893"/>
+        <Caret Line="413" Column="19" TopLine="402"/>
       </Position16>
       <Position17>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="413" Column="19" TopLine="402"/>
+        <Caret Line="414" Column="33" TopLine="388"/>
       </Position17>
       <Position18>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="414" Column="33" TopLine="388"/>
+        <Caret Line="854" Column="39" TopLine="825"/>
       </Position18>
       <Position19>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="854" Column="39" TopLine="825"/>
+        <Caret Line="672" Column="1" TopLine="648"/>
       </Position19>
       <Position20>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="672" Column="1" TopLine="648"/>
+        <Caret Line="870" Column="1" TopLine="832"/>
       </Position20>
       <Position21>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="870" Column="1" TopLine="832"/>
+        <Caret Line="867" Column="24" TopLine="848"/>
       </Position21>
       <Position22>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="867" Column="24" TopLine="848"/>
+        <Caret Line="926" Column="34" TopLine="907"/>
       </Position22>
       <Position23>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="926" Column="34" TopLine="907"/>
+        <Caret Line="956" Column="1" TopLine="937"/>
       </Position23>
       <Position24>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="956" Column="1" TopLine="937"/>
+        <Caret Line="1024" Column="63" TopLine="1006"/>
       </Position24>
       <Position25>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1024" Column="63" TopLine="1006"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="1478" Column="48" TopLine="1478"/>
       </Position25>
       <Position26>
         <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1478" Column="48" TopLine="1478"/>
+        <Caret Line="1" Column="1" TopLine="1"/>
       </Position26>
       <Position27>
-        <Filename Value="..\..\fpspreadsheet.pas"/>
-        <Caret Line="1" Column="1" TopLine="1"/>
+        <Filename Value="..\..\xlscommon.pas"/>
+        <Caret Line="1058" Column="9" TopLine="1039"/>
       </Position27>
       <Position28>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1058" Column="9" TopLine="1039"/>
+        <Caret Line="1055" Column="44" TopLine="1039"/>
       </Position28>
       <Position29>
         <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1055" Column="44" TopLine="1039"/>
+        <Caret Line="1135" Column="22" TopLine="1120"/>
       </Position29>
       <Position30>
-        <Filename Value="..\..\xlscommon.pas"/>
-        <Caret Line="1135" Column="22" TopLine="1120"/>
+        <Filename Value="..\..\fpspreadsheet.pas"/>
+        <Caret Line="164" Column="16" TopLine="132"/>
       </Position30>
     </JumpHistory>
   </ProjectOptions>
@@ -743,15 +739,6 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <BreakPoints Count="1">
-      <Item1>
-        <Kind Value="bpkSource"/>
-        <WatchScope Value="wpsLocal"/>
-        <WatchKind Value="wpkWrite"/>
-        <Source Value="..\..\xlscommon.pas"/>
-        <Line Value="664"/>
-      </Item1>
-    </BreakPoints>
     <Watches Count="2">
       <Item1>
         <Expression Value="recordtype"/>

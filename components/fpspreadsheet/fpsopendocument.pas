@@ -184,7 +184,7 @@ end;
 procedure TsSpreadOpenDocReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsSpreadOpenDocNumFormatList.Create;
+  FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
 function TsSpreadOpenDocReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
@@ -471,7 +471,7 @@ end;
 procedure TsSpreadOpenDocWriter.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsSpreadOpenDocNumFormatList.Create;
+  FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMimetype;

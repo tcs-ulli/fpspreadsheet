@@ -29,7 +29,8 @@ var
   number: Double;
   lCell: PCell;
   lCol: TCol;
-  i, r: Integer;
+  i: Integer;
+  r: Integer = 10;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
 
@@ -53,7 +54,7 @@ begin
   }
 
   // Write some cells
-//  MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  MyWorksheet.WriteDateTime(0, 20, now, nfShortTime); //1.0);// A1
   MyWorksheet.WriteNumber(0, 0, 1.0, nfFixed, 3);// A1
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
@@ -206,10 +207,6 @@ begin
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, mm:ss.zzz');
   MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'mm:ss.zzz');
-  // NOTE: The upper option "MSZ" = "mm:ss.z" should result only in 1 decimal.
-  // This is true for writing, but in reading always 3 decimals are displayed.
-  // This is due to fpc's SysUtile.FormatDateTime which does not distinguish
-  // both cases.
 
   // Write formatted numbers
   number := 12345.67890123456789;
@@ -252,7 +249,6 @@ begin
   MyWorksheet.WriteUTF8Text(r, 0, 'nfFixedTh, 3 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfFixedTh, 3);
   MyWorksheet.WriteNumber(r, 2, -number, nfFixedTh, 3);
-
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 1 dec');
   MyWorksheet.WriteNumber(r, 1, number, nfSci, 1);
