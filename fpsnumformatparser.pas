@@ -27,6 +27,8 @@ type
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
   );
 
+  TsConversionDirection = (cdToFPSpreadsheet, cdFromFPSpreadsheet);
+
   TsNumFormatSection = record
     FormatString: String;
     CompareOperation: TsCompareOperation;
@@ -38,17 +40,23 @@ type
     NumFormat: TsNumberFormat;
   end;
 
+  TsNumFormatSections = array of TsNumFormatSection;
+
   TsNumFormatParser = class
   private
+    FCreateMethod: Byte;
     FWorkbook: TsWorkbook;
     FCurrent: PChar;
     FStart: PChar;
     FEnd: PChar;
     FCurrSection: Integer;
-    FSections: array of TsNumFormatSection;
+    FSections: TsNumFormatSections;
     FFormatSettings: TFormatSettings;
     FFormatString: String;
+    FNumFormat: TsNumberFormat;
+    FConversionDirection: TsConversionDirection;
     FStatus: Integer;
+    function GetFormatString: String;
     function GetParsedSectionCount: Integer;
     function GetParsedSections(AIndex: Integer): TsNumFormatSection;
 
@@ -58,6 +66,8 @@ type
     procedure AnalyzeBracket(const AValue: String);
     procedure AnalyzeText(const AValue: String);
     procedure CheckSections;
+    function CreateFormatStringFromSection(ASection: Integer): String; virtual;
+    function CreateFormatStringFromSections: String;
     procedure Parse(const AFormatString: String);
     procedure ScanAMPM(var s: String);
     procedure ScanBrackets;
@@ -68,9 +78,16 @@ type
     procedure ScanText;
 
   public
-    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
+    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
+      AConversionDirection: TsConversionDirection = cdToFPSpreadsheet); overload;
+    constructor Create(AWorkbook: TsWorkbook; const AFormatSections: TsNumFormatSections;
+      AConversionDirection: TsConversionDirection = cdFromFPSpreadsheet); overload;
     destructor Destroy; override;
-    property FormatString: String read FFormatString;
+    procedure CopySections(const FromSections: TsNumFormatSections;
+      var ToSections: TsNumFormatSections);
+    procedure CopySectionsTo(var ADestination: TsNumFormatSections);
+    property Builtin_NumFormat: TsNumberFormat read FNumFormat;
+    property FormatString: String read GetFormatString;
     property ParsedSectionCount: Integer read GetParsedSectionCount;
     property ParsedSections[AIndex: Integer]: TsNumFormatSection read GetParsedSections;
     property Status: Integer read FStatus;
@@ -88,15 +105,36 @@ const
 
 { TsNumFormatParser }
 
+{ Creates a number format parser for analyzing a formatstring that has been read
+  from a spreadsheet file. The conversion, by default, will go FROM the file TO
+  the fpspreadsheet procedures. }
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String);
+  const AFormatString: String; AConversionDirection: TsConversionDirection = cdToFPSpreadsheet);
 begin
   inherited Create;
+  FCreateMethod := 0;
+  FConversionDirection := AConversionDirection;
   FWorkbook := AWorkbook;
   FFormatSettings := DefaultFormatSettings;
   FFormatSettings.DecimalSeparator := '.';
   FFormatSettings.ThousandSeparator := ',';
   Parse(AFormatString);
+end;
+
+{ Creates a number format parser to create a format string from the individual
+  format sections given in "AFormatSections". It is assumed by default that the
+  format string will be written to file. Therefore, it can contain features of
+  the destination file format and, in general, will not work if called by
+  fpspreadsheet. }
+constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
+  const AFormatSections: TsNumFormatSections;
+  AConversionDirection: TsConversionDirection = cdFromFPSpreadsheet);
+begin
+  inherited Create;
+  FCreateMethod := 1;
+  FConversionDirection := AConversionDirection;
+  FWorkbook := AWorkbook;
+  CopySections(AFormatSections, FSections);
 end;
 
 destructor TsNumFormatParser.Destroy;
@@ -119,7 +157,7 @@ begin
     FormatString := '';
     CompareOperation := coNotUsed;
     CompareValue := 0.0;
-    Color := scBlack;
+    Color := scNotDefined;
     CountryCode := '';
     CurrencySymbol := '';
     Decimals := 0;
@@ -221,6 +259,7 @@ begin
       exit;
     end;
 
+    // Check format strings
     case FSections[i].NumFormat of
       nfGeneral, nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci, nfCurrency:
         try
@@ -241,6 +280,29 @@ begin
     end;
   end;
 
+  // Extract built-in NumFormat identifier for currency (needs several entries in
+  // three sections).
+  if (ns = 3) and
+     (FSections[0].NumFormat = nfCurrency) and
+     (FSections[1].NumFormat = nfCurrency) and
+     (FSections[2].NumFormat = nfCurrency)
+  then begin
+    if ((FSections[2].FormatString = '-') or (FSections[2].FormatString = '"-"')) then begin
+      if (FSections[1].Color = scRed) then
+        FNumFormat := nfCurrencyDashRed
+      else
+        FNumFormat := nfCurrencyDash;
+    end else begin
+      if (FSections[1].Color = scRed) then
+        FNumFormat := nfCurrencyRed;
+    end;
+  end else
+  // If there are other multi-section formatstrings they must be a custom format
+  if (ns > 1) then
+    FNumFormat := nfCustom
+  else
+    FNumFormat := FSections[0].NumFormat;
+
   if ns = 2 then
     FFormatString := Format('%s;%s;%s', [
       FSections[0].FormatString,
@@ -256,33 +318,79 @@ begin
     FStatus := psErrNoUsableFormat;
 end;
 
-{
-function TsNumFormatParser.GetNumFormat: TsNumberFormat;
+procedure TsNumFormatParser.CopySections(
+  const FromSections: TsNumFormatSections; var ToSections: TsNumformatSections);
 var
   i: Integer;
 begin
-  if FStatus <> psOK then
-    Result := nfGeneral
-  else
-  if (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency) and
-     (FSections[2].NumFormat = nfCurrency)
-  then begin
-    if (FSections[1].Color = scNotDefined) then begin
-      if (FSections[2].FormatString = '-') then
-        Result := nfCurrencyDash
-      else
-        Result := nfCurrency;
-    end else
-    if FSections[1].Color = scRed then begin
-      if (FSections[2].Formatstring = '-') then
-        Result := nfCurrencyDashRed
-      else
-        Result := nfCurrencyRed;
-    end;
-  end else
-    Result := FSections[0].NumFormat;
+  SetLength(ToSections, Length(FromSections));
+  for i:= 0 to High(FromSections) do begin
+    ToSections[i].FormatString := FromSections[i].FormatString;
+    ToSections[i].CompareOperation := FromSections[i].CompareOperation;
+    ToSections[i].CompareValue := FromSections[i].CompareValue;
+    ToSections[i].Color := FromSections[i].Color;
+    ToSections[i].CurrencySymbol := FromSections[i].CurrencySymbol;
+    ToSections[i].Decimals := FromSections[i].Decimals;
+    ToSections[i].NumFormat := FromSections[i].NumFormat;
+  end;
 end;
-}
+
+procedure TsNumFormatParser.CopySectionsTo(var ADestination: TsNumFormatSections);
+begin
+  CopySections(FSections, ADestination);
+end;
+
+function TsNumFormatParser.CreateFormatStringFromSections: String;
+var
+  i: Integer;
+begin
+  if Length(FSections) = 0 then
+    Result := ''
+  else begin
+    Result := CreateFormatStringFromSection(0);
+    for i:=1 to High(FSections) do
+      Result := Result + ';' + CreateFormatStringFromSection(i);
+  end;
+end;
+
+function TsNumFormatParser.CreateFormatStringFromSection(ASection: Integer): String;
+begin
+  with FSections[ASection] do
+    if (NumFormat = nfFmtDateTime) or (NumFormat = nfCustom) then begin
+      Result := FormatString;
+      exit;
+    end;
+
+  Result := BuildNumberFormatString(FSections[ASection].NumFormat,
+    FWorkbook.FormatSettings,
+    FSections[ASection].Decimals,
+    FSections[ASection].CurrencySymbol
+  );
+  if FConversionDirection = cdFromFPSpreadsheet then begin
+    // This is typical of Excel, but is valid for all others as well.
+    // Override if you need to change
+    if FSections[ASection].Color < 8 then
+      Result := Format('[%s]%s', [FWorkbook.GetColorName(FSections[ASection].Color), Result])
+    else
+    if FSections[ASection].Color < scNotDefined then
+      Result := Format('[Color%d]%s', [FSections[ASection].Color, Result]);
+
+    if FSections[ASection].CompareOperation <> coNotUsed then
+      Result := Format('[%s%g]%s', [
+        COMPARE_STR[FSections[ASection].CompareOperation],
+        FSections[ASection].CompareValue,
+        Result
+      ]);
+  end;
+end;
+
+function TsNumFormatParser.GetFormatString: String;
+begin
+  case FCreateMethod of
+    0: Result := FFormatString;
+    1: Result := CreateFormatStringFromSections;
+  end;
+end;
 
 function TsNumFormatParser.GetParsedSectionCount: Integer;
 begin
@@ -355,74 +463,77 @@ begin
   while (FCurrent <= FEnd) and (FStatus = psOK) and (not done) do begin
     token := FCurrent^;
     case token of
-      '\'       : begin
-                    inc(FCurrent);
-                    token := FCurrent^;
-                    s := s + token;
-                  end;
-      'Y', 'y'  : begin
-                    ScanDateTimeParts(token, token, s);
-                    isTime := false;
-                  end;
-      'M', 'm'  : if isTime then    // help fpc to separate "month" and "minute"
-                    ScanDateTimeParts(token, 'n', s)
-                  else   // both "month" and "minute" work in fpc to some degree
-                    ScanDateTimeParts(token, token, s);
-      'D', 'd'  : begin
-                    ScanDateTimeParts(token, token, s);
-                    isTime := false;
-                  end;
-      'H', 'h'  : begin
-                    ScanDateTimeParts(token, token, s);
-                    isTime := true;
-                  end;
-      'S', 's'  : begin
-                    ScanDateTimeParts(token, token, s);
-                    isTime := true;
-                  end;
-      '/', ':', '.', ']', '[', ' '
-                : s := s + token;
-      '0'       : ScanDateTimeParts(token, 'z', s);
-      'A', 'a'  : begin
-                    ScanAMPM(s);
-                    isAMPM := true;
-                  end;
-      else        begin
-                    done := true;
-                    dec(FCurrent);
-                    // char pointer must be at end of date/time mask.
-                  end;
+      '\':
+        begin
+          inc(FCurrent);
+          token := FCurrent^;
+          s := s + token;
+        end;
+      'Y', 'y':
+        begin
+          ScanDateTimeParts(token, token, s);
+          isTime := false;
+        end;
+      'M', 'm':
+        ScanDateTimeParts(token, token, s);
+        {if isTime then    // help fpc to separate "month" and "minute"
+           ScanDateTimeParts(token, 'n', s)
+         else   // both "month" and "minute" work in fpc to some degree
+           ScanDateTimeParts(token, token, s);}
+      'N', 'n':
+        ScanDateTimeParts(token, 'n', s);  // fpc dialect for "minutes"
+      'D', 'd':
+        begin
+          ScanDateTimeParts(token, token, s);
+          isTime := false;
+        end;
+      'H', 'h':
+        begin
+          ScanDateTimeParts(token, token, s);
+          isTime := true;
+        end;
+      'S', 's':
+        begin
+          ScanDateTimeParts(token, token, s);
+          isTime := true;
+        end;
+      '/', ':', '.', ']', '[', ' ':
+        s := s + token;
+      '0', 'z', 'Z':
+        ScanDateTimeParts(token, token, s);
+      'A', 'a':
+        begin
+          ScanAMPM(s);
+          isAMPM := true;
+        end;
+      else
+        begin
+          done := true;
+          dec(FCurrent);
+          // char pointer must be at end of date/time mask.
+        end;
     end;
     if not done then inc(FCurrent);
   end;
 
   FSections[FCurrSection].FormatString := FSections[FCurrSection].FormatString + s;
   s := FSections[FCurrSection].FormatString;
+  if s <> '' then begin
+    if s = FWorkbook.FormatSettings.LongDateFormat then
+      nf := nfLongDate
+    else
+    if s = FWorkbook.FormatSettings.ShortDateFormat then
+      nf := nfShortDate
+    else
+    if s = StripAMPM(FWorkbook.FormatSettings.LongTimeFormat) then
+      nf := IfThen(isAMPM, nfLongTimeAM, nfLongTime)
+    else
+    if s = StripAMPM(FWorkbook.FormatSettings.ShortTimeFormat) then
+      nf := IfThen(isAMPM, nfShortTimeAM, nfShortTime)
+    else
+      nf := nfFmtDateTime;
 
-  // Check format
-  try
-    if s <> '' then begin
-      FormatDateTime(s, now);
-      // !!!! MODIFY TO USE EXTENDED SYNTAX !!!!!
-
-      if s = FWorkbook.FormatSettings.LongDateFormat then
-        nf := nfLongDate
-      else
-      if s = FWorkbook.FormatSettings.ShortDateFormat then
-        nf := nfShortDate
-      else
-      if s = FWorkbook.FormatSettings.LongTimeFormat then
-        nf := nfLongTime
-      else
-      if s = FWorkbook.FormatSettings.ShortTimeFormat then
-        nf := nfShortTime
-      else
-        nf := nfFmtDateTime;
-      FSections[FCurrSection].NumFormat := nf;
-    end;
-
-  except
-    FStatus := psErrNoValidDateTimeFormat;
+    FSections[FCurrSection].NumFormat := nf;
   end;
 end;
 
@@ -470,21 +581,27 @@ begin
     token := FCurrent^;
     case token of
       // Strip Excel's formatting symbols
-      '\', '*'               : ;
-      '_'                    : inc(FCurrent);
-      '"'                    : begin
-                                 inc(FCurrent);
-                                 ScanText;
-                               end;
-      '0', '#', '.', ',', '-': ScanNumber;
-      'y', 'Y', 'm', 'M',
-      'd', 'D', 'h', 's', '[': ScanDateTime;
-      ' '                    : AddChar(token);
-      ';'                    : begin
-                                 done := true;
-                                 dec(FCurrent);
-                                 // Cursor must stay on the ";"
-                               end;
+      '\', '*':
+        ;
+      '_':
+        inc(FCurrent);
+      '"':
+        begin
+          inc(FCurrent);
+          ScanText;
+        end;
+      '0', '#', '.', ',', '-':
+        ScanNumber;
+      'y', 'Y', 'm', 'M',  'd', 'D', 'h', 'N', 'n', 's', '[':
+        ScanDateTime;
+      ' ':
+        AddChar(token);
+      ';':
+        begin
+          done := true;
+          dec(FCurrent);
+          // Cursor must stay on the ";"
+        end;
     end;
     if not done then inc(FCurrent);
   end;

@@ -43,7 +43,7 @@ type
   protected
     procedure AddBuiltinFormats; override;
   public
-    constructor Create;
+    constructor Create(AWorkbook: TsWorkbook);
     function FormatStringForWriting(AIndex: Integer): String; override;
   end;
 
@@ -166,9 +166,9 @@ const
 
 { TsBIFF2NumFormatList }
 
-constructor TsBIFF2NumFormatList.Create;
+constructor TsBIFF2NumFormatList.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
+  inherited Create(AWorkbook);
 end;
 
 procedure TsBIFF2NumFormatList.AddBuiltinFormats;
@@ -283,7 +283,7 @@ end;
 procedure TsSpreadBIFF2Reader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsBIFF2NumFormatList.Create;
+  FNumFormatList := TsBIFF2NumFormatList.Create(Workbook);
 end;
 
 { Extracts the number format data from an XF record indexed by AXFIndex.
@@ -701,7 +701,7 @@ end;
 procedure TsSpreadBIFF2Writer.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsBIFF2NumFormatList.Create;
+  FNumFormatList := TsBIFF2NumFormatList.Create(Workbook);
 end;
 
 function TsSpreadBIFF2Writer.FindXFIndex(ACell: PCell): Word;

@@ -393,7 +393,7 @@ end;
 procedure TsSpreadOOXMLWriter.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsOOXMLNumFormatList.Create;
+  FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
 end;
 
 {

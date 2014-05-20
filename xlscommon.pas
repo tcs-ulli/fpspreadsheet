@@ -593,13 +593,15 @@ procedure TsBIFFNumFormatList.Analyze(AFormatIndex: Integer;
   var AFormatString: String; var ANumFormat: TsNumberFormat;
   var ADecimals: Byte; var ACurrencySymbol: String);
 var
-  parser: TsNumFormatParser;
   fmt: String;
+{
+  parser: TsNumFormatParser;
+  sections: TsNumFormatSections;
+}
 begin
 
-               {
-  AFormatString := 'hh:mm AM/PM'; //"€" #,##.0;[red]"$" -#,##.000;-';
-
+(*
+  AFormatString := 'hh:mm:ss.0 AM/PM'; //"€" #,##.0;[red]"$" -#,##.000;-';
 
   parser := TsNumFormatParser.Create(Workbook, AFormatString);
   try
@@ -607,10 +609,18 @@ begin
     ANumFormat := parser.ParsedSections[0].NumFormat;
     ADecimals := parser.ParsedSections[0].Decimals;
     ACurrencySymbol := parser.ParsedSections[0].CurrencySymbol;
+    parser.CopySectionsTo(sections);
   finally
     parser.Free;
   end;
-                }
+
+  parser := TsNumFormatParser.Create(Workbook, sections);
+  try
+    fmt := parser.FormatString;
+  finally
+    parser.Free;
+  end;
+  *)
 
   fmt := Lowercase(AFormatString);
   { Check the built-in formats first:
@@ -660,6 +670,18 @@ function TsBIFFNumFormatList.FormatStringForWriting(AIndex: Integer): String;
 var
   item: TsNumFormatData;
   i: Integer;
+
+  procedure FixN(var s: String);
+  // The minutes in short time formats are coded by "n" in fpc, but Excel wants "m".
+  var
+    i: Integer;
+  begin
+    for i:=1 to Length(s) do
+      case s[i] of
+        'n', 'N': s[i] := 'm'; // no "M" which will be interpreted as "Month"
+      end;
+  end;
+
 begin
   Result := inherited FormatStringForWriting(AIndex);
   item := Items[AIndex];
@@ -670,15 +692,19 @@ begin
         for i:=1 to Length(Result) do begin
           // The milliseccond format contains the symbol "z" in fpc, but Excel wants "0"
           if Result[i] in ['z', 'Z'] then Result[i] := '0';
-          // The minutes in short time formats are coded by "n" in fpc, but Excel wants "m".
-          if Result[i] in ['n', 'N'] then Result[i] := 'm';
         end;
+        FixN(Result);
       end;
     nfTimeInterval:
-      // Time interval format string could still be without square brackets
-      // if added by user.
-      // We check here for safety and add the brackets if not there.
-      MakeTimeIntervalMask(item.FormatString, Result);
+      begin
+        // Time interval format string could still be without square brackets
+        // if added by user.
+        // We check here for safety and add the brackets if not there.
+        MakeTimeIntervalMask(item.FormatString, Result);
+        FixN(Result);
+      end;
+    nfShortTime, nfShortTimeAM, nfLongTime, nfLongTimeAM:
+      FixN(Result);
     nfCurrencyRed, nfCurrencyDashRed:
       begin
         i := Pos(';', item.FormatString);
@@ -765,7 +791,7 @@ end;
 procedure TsSpreadBIFFReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsBIFFNumFormatList.Create;
+  FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
 end;
 
 { Extracts a number out of an RK value.
@@ -812,9 +838,11 @@ procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
     decs: Byte;
     i: Integer;
   begin
-    if IsTimeFormat(ANumberFormatStr, isLong, isAMPM, isInterval, decs)
+    decs := CountDecs(ANumberFormatStr, ['0', 'z', 'Z']);
+{    if IsTimeFormat(ANumberFormatStr, isLong, isAMPM, isInterval, decs)
       and (decs > 0)
-    then
+    then }
+    if decs > 0 then
       for i:= Length(ANumberFormatStr) downto 1 do
         case ANumberFormatStr[i] of
           '0': ANumberFormatStr[i] := 'z';
@@ -1361,7 +1389,7 @@ end;
 procedure TsSpreadBIFFWriter.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsBIFFNumFormatList.Create;
+  FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
@@ -1679,19 +1707,16 @@ end;
 procedure TsSpreadBIFFWriter.WriteFormats(AStream: TStream);
 var
   i: Integer;
-
   item: TsNumFormatData;
-
 begin
   ListAllNumFormats;
-
-  item := NumFormatList[20];
-
   i := NumFormatList.Find(NumFormatList.FirstFormatIndexInFile);
   if i > -1 then
     while i < NumFormatList.Count do begin
-      if NumFormatList[i] <> nil then
-        WriteFormat(AStream, NumFormatList[i], i);
+      item := NumFormatList[i];
+      if item <> nil then begin
+        WriteFormat(AStream, item, i);
+      end;
       inc(i);
     end;
 end;

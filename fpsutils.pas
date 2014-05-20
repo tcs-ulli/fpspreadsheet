@@ -17,6 +17,7 @@ uses
 // Exported types
 type
   TsSelectionDirection = (fpsVerticalSelection, fpsHorizontalSelection);
+  TsDecsChars = set of char;
 
 const
   // Date formatting string for unambiguous date/time display as strings
@@ -60,19 +61,29 @@ function UTF8TextToXMLText(AText: ansistring): ansistring;
 function TwipsToMillimeters(AValue: Integer): Single;
 function MillimetersToTwips(AValue: Single): Integer;
 
+function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
+
+function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
+         (*
 function IsCurrencyFormat(s: String; out Decimals: Byte; out CurrSymbol: String;
   out IsCurrencyRedFmt, IsCurrencyDashFmt: Boolean): Boolean;
 function IsExpNumberFormat(s: String; out Decimals: Byte; out IsSci: Boolean): Boolean;
 function IsFixedNumberFormat(s: String; out Decimals: Byte): Boolean;
 function IsPercentNumberFormat(s: String; out Decimals: Byte): Boolean;
 function IsThousandSepNumberFormat(s: String; out Decimals: Byte): Boolean;
-function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
-function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
-  out SecDecimals: Byte): Boolean;
 
-function BuildNumFormatString(ANumberFormat: TsNumberFormat;
+function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
+{function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
+  out SecDecimals: Byte): Boolean;
+*)
+
+function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
   ACurrencySymbol: String = '?'): String;
+function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
+  const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
+function StripAMPM(const ATimeFormatString: String): String;
+function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 
 function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
@@ -494,8 +505,21 @@ begin
 end;
 
 
+{ Returns either AValue1 or AValue2, depending on the condition.
+  For reduciton of typing... }
+function IfThen(ACondition: Boolean; AValue1, AValue2: TsNumberFormat): TsNumberFormat;
+begin
+  if ACondition then Result := AValue1 else Result := AValue2;
+end;
+
 { Format checking procedures }
 
+function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
+begin
+  Result := AFormat in [nfFmtDateTime, nfShortDateTime, nfShortDate, nfLongDate,
+    nfShortTime. nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
+end;
+                               (*
 { This simple parsing procedure of the Excel format string checks for a fixed
   float format s, i.e. s can be '0', '0.00', '000', '0,000', and returns the
   number of decimals, i.e. number of zeros behind the decimal point }
@@ -661,7 +685,7 @@ begin
     if ph > 0 then IsSci := true;
   end;
 end;
-
+                                   *)
 { IsDateFormat checks if the format string s corresponds to a date format }
 function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
 begin
@@ -744,9 +768,58 @@ begin
   end;
 end;
 
-{ Builds a number format string from the numberformat code and the count of
-  decimals. }
-function BuildNumFormatString(ANumberFormat: TsNumberFormat;
+{ Builds a date/time format string from the numberformat code. If the format code
+  is nfFmtDateTime the given AFormatString is used. AFormatString can use the
+  abbreviations "dm" (for "d/mmm"), "my" (for "mmm/yy"), "ms" (for "mm:ss")
+  and "msz" (for "mm:ss.z"). }
+function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
+  const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
+var
+  fmt: String;
+begin
+  case ANumberFormat of
+    nfFmtDateTime:
+      begin
+        fmt := lowercase(AFormatString);
+        if (fmt = 'dm') then Result := 'd/mmm'
+        else if (fmt = 'my') then Result := 'mmm/yy'
+        else if (fmt = 'ms') then Result := 'nn:ss'
+        else if (fmt = 'msz') then Result := 'nn:ss.z'
+        else Result := AFormatString;
+      end;
+    nfShortDateTime:
+      Result := AFormatSettings.ShortDateFormat + ' ' + FormatSettings.ShortTimeFormat;
+    nfShortDate:
+      Result := AFormatSettings.ShortDateFormat;
+    nfLongDate:
+      Result := AFormatSettings.LongDateFormat;
+    nfShortTime:
+      Result := StripAMPM(AFormatSettings.ShortTimeFormat);
+    nfLongTime:
+      Result := StripAMPM(AFormatSettings.LongTimeFormat);
+    nfShortTimeAM:
+      begin
+        Result := AFormatSettings.ShortTimeFormat;
+        if pos('a', lowercase(AFormatSettings.ShortTimeFormat)) = 0 then
+          Result := Format('%s %s/%s', [Result, AFormatSettings.TimeAMString, AFormatSettings.TimePMString]);
+      end;
+    nfLongTimeAM:
+      begin
+        Result := AFormatSettings.LongTimeFormat;
+        if pos('a', lowercase(AFormatSettings.LongTimeFormat)) = 0 then
+          Result := Format('%s %s/%s', [Result, AFormatSettings.TimeAMString, AFormatSettings.TimePMString]);
+      end;
+    nfTimeInterval:
+      if AFormatString = '' then
+        Result := '[h]:mm:ss'
+      else
+        Result := AFormatString;
+  end;
+end;
+
+{ Builds a number format string from the numberformat code, the count of
+  decimals, and the currencysymbol (if not empty). }
+function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
   ACurrencySymbol: String = '?'): String;
 const
@@ -778,6 +851,7 @@ var
   decs: String;
   cf, ncf: Byte;
 begin
+  Result := '';
   cf := AFormatSettings.CurrencyFormat;
   ncf := AFormatSettings.NegCurrFormat;
   if ADecimals = -1 then ADecimals := AFormatSettings.CurrencyDecimals;
@@ -823,6 +897,37 @@ begin
       end;
   end;
 end;
+
+function StripAMPM(const ATimeFormatString: String): String;
+var
+  i: Integer;
+begin
+  Result := '';
+  i := 1;
+  while i <= Length(ATimeFormatString) do begin
+    if ATimeFormatString[i] in ['a', 'A'] then begin
+      inc(i);
+      while (i <= Length(ATimeFormatString)) and (ATimeFormatString[i] in ['p', 'P', 'm', 'M', '/'])  do
+        inc(i);
+    end else
+      Result := Result + ATimeFormatString[i];
+    inc(i);
+  end;
+end;
+
+function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
+var
+  i: Integer;
+begin
+  Result := 0;
+  for i:=Length(AFormatString) downto 1 do begin
+    if AFormatString[i] in ADecChars then inc(Result);
+    if AFormatString[i] = '.' then exit;
+  end;
+  // Comes to this point when there is no decimal separtor.
+  Result := 0;
+end;
+
 
 { Formats the number AValue in "scientific" format with the given number of
   decimals. "Scientific" is the same as "exponential", but with exponents rounded
