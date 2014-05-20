@@ -3104,8 +3104,8 @@ begin
   end;
 end;
 
-{ Each descendent should define it's own default formats, if any.
-  Always add the normal, unformatted style first to speed up. }
+{ Each descendent should define its own default formats, if any.
+  Always add the normal, unformatted style first to speed things up. }
 procedure TsCustomSpreadWriter.AddDefaultFormats();
 begin
   SetLength(FFormattingStyles, 0);
