@@ -300,7 +300,7 @@ end;
 procedure TsWikiTableReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
-  FNumFormatList := TsWikiTableNumFormatList.Create;
+  FNumFormatList := TsWikiTableNumFormatList.Create(Workbook);
 end;
 
 procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings;
