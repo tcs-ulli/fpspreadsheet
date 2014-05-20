@@ -56,6 +56,15 @@ type
     procedure TokenizeString_Pipes(AStr: string);
   end;
 
+  { TsWikiTableNumFormatList }
+  TsWikiTableNumFormatList = class(TsCustomNumFormatList)
+  protected
+    //procedure AddBuiltinFormats; override;
+  public
+//    function FormatStringForWriting(AIndex: Integer): String; override;
+  end;
+
+
   { TsWikiTableReader }
 
   TsWikiTableReader = class(TsCustomSpreadReader)
@@ -78,6 +87,9 @@ type
   TsWikiTableWriter = class(TsCustomSpreadWriter)
   private
     FWorksheet: TsWorksheet;
+  protected
+    // Helpers
+    procedure CreateNumFormatList; override;
   public
     SubFormat: TsSpreadsheetFormat;
     { General writing methods }
@@ -93,6 +105,9 @@ type
   end;
 
 implementation
+
+{ TsWikiTableNumFormatList }
+
 
 { TWikiTableTokenizer }
 
@@ -325,6 +340,12 @@ begin
 end;
 
 { TsWikiTableWriter }
+
+procedure TsWikiTableWriter.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsWikiTableNumFormatList.Create;
+end;
 
 procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings);
 begin
