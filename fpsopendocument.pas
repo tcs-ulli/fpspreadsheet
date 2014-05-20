@@ -63,7 +63,7 @@ type
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
-    // Figures out what the base year for times in this file (dates are unambiguous)
+    // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
   protected
     procedure CreateNumFormatList; override;
@@ -179,8 +179,8 @@ end;
 
 { TsSpreadOpenDocReader }
 
-{ Creates the correct version of the number format list.
-  It is for ods file formats. }
+{ Creates the correct version of the number format list
+  suited for ODS file formats. }
 procedure TsSpreadOpenDocReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
