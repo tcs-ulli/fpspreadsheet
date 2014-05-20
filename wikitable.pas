@@ -59,7 +59,7 @@ type
   { TsWikiTableNumFormatList }
   TsWikiTableNumFormatList = class(TsCustomNumFormatList)
   protected
-    //procedure AddBuiltinFormats; override;
+//    procedure AddBuiltinFormats; override;
   public
 //    function FormatStringForWriting(AIndex: Integer): String; override;
   end;
@@ -68,6 +68,8 @@ type
   { TsWikiTableReader }
 
   TsWikiTableReader = class(TsCustomSpreadReader)
+  protected
+    procedure CreateNumFormatList; override;
   public
     SubFormat: TsSpreadsheetFormat;
     { General reading methods }
@@ -294,6 +296,12 @@ begin
 end;
 
 { TsWikiTableReader }
+
+procedure TsWikiTableReader.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsWikiTableNumFormatList.Create;
+end;
 
 procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings;
   AData: TsWorkbook);
