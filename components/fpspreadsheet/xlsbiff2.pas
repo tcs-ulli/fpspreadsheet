@@ -42,9 +42,12 @@ type
   TsBIFF2NumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
+    procedure ConvertBeforeWriting(var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String); override;
+    function FindFormatOf(AFormatCell: PCell): Integer; override;
   public
     constructor Create(AWorkbook: TsWorkbook);
-//    function FormatStringForWriting(AIndex: Integer): String; override;
+    function FormatStringForWriting(AIndex: Integer): String; override;
   end;
 
   { TsSpreadBIFF2Reader }
@@ -82,7 +85,7 @@ type
 
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
-    function  FindXFIndex(ACell: PCell): Word;
+    function FindXFIndex(ACell: PCell): Word;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
@@ -100,7 +103,7 @@ type
     procedure WriteXFRecords(AStream: TStream);
   protected
     procedure CreateNumFormatList; override;
-    procedure FixFormat(ACell: PCell); override;
+    procedure ListAllFormattingStyles; override;
     procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
@@ -172,19 +175,24 @@ begin
 end;
 
 procedure TsBIFF2NumFormatList.AddBuiltinFormats;
+var
+  ds, ts, cs: string;
 begin
+  ds := DefaultFormatSettings.DecimalSeparator;
+  ts := DefaultFormatSettings.ThousandSeparator;
+  cs := DefaultFormatSettings.CurrencyString;
   AddFormat( 0, '', nfGeneral);
   AddFormat( 1, '0', nfFixed, 0);
-  AddFormat( 2, '0.00', nfFixed, 2);
-  AddFormat( 3, '#,##0', nfFixedTh, 0);
-  AddFormat( 4, '#,##0.00', nfFixedTh, 2);
-  AddFormat( 5, '"$"#,##0_);("$"#,##0)', nfCurrency, 0);
-  AddFormat( 6, '"$"#,##0_);[Red]("$"#,##0)', nfCurrencyRed, 2);
-  AddFormat( 7, '"$"#,##0.00_);("$"#,##0.00)', nfCurrency, 0);
-  AddFormat( 8, '"$"#,##0.00_);[Red]("$"#,##0.00)', nfCurrency, 2);
+  AddFormat( 2, '0'+ds+'00', nfFixed, 2);                  // 0.00
+  AddFormat( 3, '#'+ts+'##0', nfFixedTh, 0);               // #,##0
+  AddFormat( 4, '#'+ts+'##0'+ds+'00', nfFixedTh, 2);       // #,##0.00
+  AddFormat( 5, UTF8ToAnsi('"'+cs+'"#'+ts+'##0_);("'+cs+'"#'+ts+'##0)'), nfCurrency, 0);
+  AddFormat( 6, UTF8ToAnsi('"'+cs+'"#'+ts+'##0_);[Red]("'+cs+'"#'+ts+'##0)'), nfCurrencyRed, 2);
+  AddFormat( 7, UTF8ToAnsi('"'+cs+'"#'+ts+'##0'+ds+'00_);("'+cs+'"#'+ts+'##0'+ds+'00)'), nfCurrency, 0);
+  AddFormat( 8, UTF8ToAnsi('"'+cs+'"#'+ts+'##0'+ds+'00_);[Red]("'+cs+'"#'+ts+'##0'+ds+'00)'), nfCurrency, 2);
   AddFormat( 9, '0%', nfPercentage, 0);
-  AddFormat(10, '0.00%', nfPercentage, 2);
-  AddFormat(11, '0.00E+00', nfExp, 2);
+  AddFormat(10, '0'+ds+'00%', nfPercentage, 2);
+  AddFormat(11, '0'+ds+'00E+00', nfExp, 2);
   AddFormat(12, 'M/D/YY', nfShortDate);
   AddFormat(13, 'D-MMM-YY', nfLongDate);
   AddFormat(14, 'D-MMM', nfFmtDateTime);
@@ -199,40 +207,126 @@ begin
   FNextFormatIndex := 21;    // not needed - there are not user-defined formats
 end;
 
-{ Creates formatting strings that are written into the file. }
-(*
-function TsBIFF2NumFormatList.FormatStringForWriting(AIndex: Integer): String;
+
+procedure TsBIFF2NumFormatList.ConvertBeforeWriting(var AFormatString: String;
+  var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String);
 var
-  ds, ts, cs: string;
+  fmt: String;
 begin
-  ds := DefaultFormatSettings.DecimalSeparator;
-  ts := DefaultFormatSettings.ThousandSeparator;
-  cs := DefaultFormatSettings.CurrencyString;
-  case AIndex of
-    0: Result := 'General';
-    1: Result := '0';
-    2: Result := '0' + ds + '00';              // 0.00
-    3: Result := '#' + ts + '#0';              // #,##0
-    4: Result := '#' + ts + '#0' + ds + '0';   // #,##0.00
-    5: Result := UTF8ToAnsi(Format('"%s"#%s##0_);("%s"#%s##0)', [cs, ts, cs, ts]));
-    6: Result := UTF8ToAnsi(Format('"%s"#%s##0_);[Red]("%s"#%s##0)', [cs, ts, cs, ts]));
-    7: Result := UTF8ToAnsi(Format('"%s"#%s##0%s00_);("%s"#%s##0%s00)', [cs, ts, ds, cs, ts, ds]));
-    8: Result := UTF8ToAnsi(Format('"%s"#%s##0%s00_);[Red]("%s"#%s##0%s00)', [cs, ts, ds, cs, ts, ds]));
-    9: Result := '0%';
-   10: Result := '0' + ds + '00%';             // 0.00%
-   11: Result := '0' + ds + '00E+00';          // 0.00E+00
-   12: Result := 'm/d/yy';
-   13: Result := 'd-mmm-yy';
-   14: Result := 'd-mmm';
-   15: Result := 'mmm-yy';
-   16: Result := 'h:mm AM/PM';
-   17: Result := 'h:mm:ss AM/PM';
-   18: Result := 'h:mm';
-   19: Result := 'h:mm:ss';
-   20: Result := 'm/d/yy h:mm';
+  case ANumFormat of
+    nfGeneral:
+      ;
+    nfFixed, nfFixedTh, nfPercentage, nfExp,
+    nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed:
+      if ADecimals > 0 then ADecimals := 2;
+    nfSci:
+      begin
+        if ADecimals > 0 then ADecimals := 2;
+        ANumFormat := nfExp;
+      end;
+    nfFmtDateTime:
+      begin
+        fmt := lowercase(AFormatString);
+        if (fmt = 'd-mm') or (fmt = 'd/mm') or
+           (fmt = 'dd-mm') or (fmt = 'dd/mm') or
+           (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
+        then
+          AFormatString := 'D-MMM'
+        else
+        if (fmt = 'm-yy') or (fmt = 'm/yy') or
+           (fmt = 'mm-yy') or (fmt = 'mm/yy') or
+           (fmt = 'mmm-yy') or (fmt = 'mmm/yy') or
+           (fmt = 'm-yyyy') or (fmt = 'm/yyyy') or
+           (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
+           (fmt = 'mmm-yyyy') or (fmt = 'mmm-yyyy')
+        then
+          AFormatString := 'MMM-YY'
+        else
+        if (copy(fmt, 1, 5) = 'nn:ss') or (copy(fmt, 1, 5) = 'mm:ss') or
+           (copy(fmt, 1, 4) = 'n:ss') or (copy(fmt, 1, 4) = 'm:ss')
+        then
+          ANumFormat := nfLongTime
+        else
+          ANumFormat := nfShortDateTime;
+      end;
+    nfCustom, nfTimeInterval:
+      begin
+        ANumFormat := nfGeneral;
+        AFormatString := '';
+        ADecimals := 0;
+      end;
   end;
 end;
-  *)
+
+
+function TsBIFF2NumFormatList.FindFormatOf(AFormatCell: PCell): Integer;
+var
+  fmt: String;
+begin
+  case AFormatCell^.NumberFormat of
+    nfGeneral        : Result := 0;
+    nfFixed          : Result := IfThen(AFormatCell^.Decimals = 0, 1, 2);
+    nfFixedTh        : Result := IfThen(AFormatCell^.Decimals = 0, 3, 4);
+    nfCurrency,
+    nfCurrencyDash   : Result := IfThen(AFormatCell^.Decimals = 0, 5, 7);
+    nfCurrencyRed,
+    nfCurrencyDashRed: Result := IfThen(AFormatCell^.Decimals = 0, 6, 8);
+    nfPercentage     : Result := IfThen(AFormatCell^.Decimals = 0, 9, 10);
+    nfExp, nfSci     : Result := 11;
+    nfShortDate      : Result := 12;
+    nfLongDate       : Result := 13;
+    nfShortTimeAM    : Result := 16;
+    nfLongTimeAM     : Result := 17;
+    nfShortTime      : Result := 18;
+    nfLongTime       : Result := 19;
+    nfShortDateTime  : Result := 20;
+    nfFmtDateTime    : begin
+                         fmt := lowercase(AFormatCell^.NumberFormatStr);
+                         if (fmt = 'd-mmm') or (fmt = 'd/mmm') or
+                            (fmt = 'd-mm') or (fmt = 'd/mm') or
+                            (fmt = 'dd-mm') or (fmt = 'dd/mm') or
+                            (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
+                         then
+                           Result := 14
+                         else
+                         if (fmt = 'mmm-yy') or (fmt = 'mmm/yy') or
+                            (fmt = 'mm-yy') or (fmt = 'mm/yy') or
+                            (fmt = 'm-yy') or (fmt = 'm/y') or
+                            (fmt = 'mmm-yyyy') or (fmt = 'mmm/yyyy') or
+                            (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
+                            (fmt = 'm-yyyy') or (fmt = 'm/yyyy')
+                         then
+                           Result := 15
+                         else
+                         if (fmt = 'nn:ss') or (fmt = 'mm:ss') or
+                            (fmt = 'n:ss') or (fmt = 'm:ss')
+                         then
+                           Result := 19
+                         else
+                         if (fmt = 'nn:ss.z') or (fmt = 'mm:ss.z') or
+                            (fmt = 'n:ss.z') or (fmt = 'm:ss.z') or
+                            (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or
+                            (fmt = 'n:ss.zzz') or (fmt = 'm:ss.zzz')
+                         then
+                           Result := 19
+                         else
+                           Result := 20;
+                       end;
+    nfCustom,
+    nfTimeInterval   : Result := 0;
+  end;
+end;
+
+ { Creates formatting strings that are written into the file. These are the
+   strings in the format list. The only exception is the nfGeneral entry which
+   is written as "General". }
+ function TsBIFF2NumFormatList.FormatStringForWriting(AIndex: Integer): String;
+begin
+  Result := inherited FormatStringForWriting(AIndex);
+  if Result = '' then
+    Result := 'General';
+end;
+
 
 { TsSpreadBIFF2Reader }
 
@@ -707,57 +801,62 @@ end;
 
 function TsSpreadBIFF2Writer.FindXFIndex(ACell: PCell): Word;
 var
-  i: Integer;
+  lIndex: Integer;
+  lCell: TCell;
 begin
+  // First try the fast methods for default formats
   if ACell^.UsedFormattingFields = [] then
     Result := 15
   else begin
     // If not, then we need to search in the list of dynamic formats
-    i := FindFormattingInList(ACell);
+    // But we have to consider that the number formats of the cell is in fpc syntax,
+    // but the number format list of the writer is in Excel syntax.
+    // And for BIFF2, there is only a limited number of formats.
+    lCell := ACell^;
+    with lCell do begin
+      if IsDateTimeFormat(NumberFormat) then
+        NumberFormatStr := BuildDateTimeFormatString(NumberFormat,
+          Workbook.FormatSettings, NumberFormatStr)
+      else
+        NumberFormatStr := BuildNumberFormatString(NumberFormat,
+          Workbook.FormatSettings, Decimals, CurrencySymbol);
+      NumFormatList.ConvertBeforeWriting(NumberFormatStr, NumberFormat, Decimals, CurrencyString);
+    end;
+    lIndex := FindFormattingInList(@lCell);
+
     // Carefully check the index
-    if (i < 0) or (i > Length(FFormattingStyles)) then
+    if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
       raise Exception.Create('[TsSpreadBIFF2Writer.WriteXFIndex] Invalid Index, this should not happen!');
-    Result := FFormattingStyles[i].Row;
+    Result := FFormattingStyles[lIndex].Row;
   end;
 end;
 
-procedure TsSpreadBIFF2Writer.FixFormat(ACell: PCell);
+procedure TsSpreadBIFF2Writer.ListAllFormattingStyles;
 var
-  j: Integer;
+  i: Integer;
 begin
-  case ACell.NumberFormat of
-    nfExp:
-      if ACell.Decimals <> 2 then begin
-        ACell.Decimals := 2;
-        ACell.CurrencySymbol := '';
-        ACell.NumberFormatStr := '0.00E+00';
-      end;
-    nfSci:
-      begin
-        ACell.NumberFormat := nfExp;
-        ACell.NumberFormatStr := '0.00E+00';
-        ACell.Decimals := 2;
-        ACell.CurrencySymbol := '';
-      end;
-    nfFmtDateTime:
-      begin
-        j := NumFormatList.Find(ACell);
-        if j = -1 then ACell.NumberFormat := nfLongTime;
-      end;
-    nfCustom:
-      ACell.NumberFormat := nfGeneral;
-  end;
+  inherited ListAllFormattingStyles;
+
+  for i:=0 to High(FFormattingStyles) do
+    FNumFormatList.ConvertBeforeWriting(
+      FFormattingStyles[i].NumberFormatStr,
+      FFormattingStyles[i].NumberFormat,
+      FFormattingStyles[i].Decimals,
+      FFormattingStyles[i].CurrencySymbol
+    );
 end;
 
+{ Builds up the list of number formats to be written to the biff2 file.
+  Unlike biff5+ no formats are added here because biff2 supports only 21
+  standard formats; these formats have been added by the NumFormatList's
+  AddBuiltInFormats. }
 procedure TsSpreadBIFF2Writer.ListAllNumFormats;
 begin
-  // Nothing to do. All formats have already been added by the NumFormatList.
+  // Nothing to do here.
 end;
 
-{
-  Attaches cell formatting data for the given cell to the current record.
-  Is called from all writing methods of cell contents.
-}
+{ Attaches cell formatting data for the given cell to the current record.
+  Is called from all writing methods of cell contents. }
 procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell;
   XFIndex: Word);
 var
@@ -1002,17 +1101,9 @@ begin
 
     // Now apply the modifications.
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then begin
-      j := NumFormatList.Find(@FFormattingStyles[i]);
-      if j > -1 then begin
+      j := NumFormatList.FindFormatOf(@FFormattingStyles[i]);
+      if j > -1 then
         lFormatIndex := NumFormatList[j].Index;
-        {
-        // BIFF2 can only handle the 21 built-in formats. Here we find replacements
-        // for the others.
-        case NumFormatList[j].NumFormat of
-          nfSci         : lFormatIndex := 11;  // Exp
-          nfFmtDateTime : if lFormatIndex > 20 then lFormatIndex := 19;
-        end;}
-      end;
     end;
 
     if uffBorder in FFormattingStyles[i].UsedFormattingFields then
@@ -1162,26 +1253,6 @@ begin
   AStream.WriteByte(len);          // AnsiString, char count in 1 byte
   AStream.WriteBuffer(s[1], len);  // String data
 end;
-                                   (*
-procedure TsSpreadBIFF2Writer.WriteFormat(AStream: TStream; AFormatCode: String);
-var
-  len: Integer;
-  s: AnsiString;
-begin
-  if AFormatCode = '' then
-    exit;
-
-  s := AFormatCode;
-  len := Length(s);
-
-  { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
-  AStream.WriteWord(WordToLE(len + 1));
-
-  { Write format string }
-  AStream.WriteByte(len);
-  AStream.WriteBuffer(s[1], len);
-end;                                 *)
 
 procedure TsSpreadBIFF2Writer.WriteFormatCount(AStream: TStream);
 begin
@@ -1189,83 +1260,6 @@ begin
   AStream.WriteWord(WordToLE(2));
   AStream.WriteWord(WordToLE(21)); // there are 21 built-in formats
 end;
-  (*
-procedure TsSpreadBIFF2Writer.WriteFormats(AStream: TStream);
-var
-  i: Integer;
-begin
-  WriteFormatCount(AStream);
-  for i:=0 to High(NUMFORMAT_BIFF2) do
-    WriteFormat(AStream, NUMFORMAT_BIFF2[i]);
-end;*)
-(*
-var
-  ds, ts: Char;  //decimal separator, thousand separator
-begin
-  ds := DefaultFormatSettings.DecimalSeparator;
-  ts := DefaultFormatSettings.ThousandSeparator;
-  { 0} WriteFormat(AStream, 'General');  // 0
-  { 1} WriteFormat(AStream, '0');
-  { 2} WriteFormat(AStream, '0'+ds+'00');                           // 0.00
-  { 3} WriteFormat(AStream, '#'+ts+'##0');                          // #,##0
-  { 4} WriteFormat(AStream, '#'+ts+'##0'+ds+'00');                  // #,##0.00
-  { 5} WriteFormat(AStream, '"$"#'+ts+'##0_);("$"#'+ts+'##0)');
-  { 6} WriteFormat(AStream, '"$"#'+ts+'##0_);[Red]("$"#'+ts+'##0)');
-  { 7} WriteFormat(AStream, '"$"#'+ts+'##0'+ds+'00_);("$"#'+ts+'##0'+ds+'00)');
-  { 8} WriteFormat(AStream, '"$"#'+ts+'##0'+ds+'00_);[Red]("$"#'+ts+'##0'+ds+'00)');
-  { 9} WriteFormat(AStream, '0%');
-  {10} WriteFormat(AStream, '0'+ds+'00%');                          // 0.00%
-  {11} WriteFormat(AStream, '0'+ds+'00E+00');                       // 0.00E+00
-  {12} WriteFormat(AStream, 'm/d/yy');
-  {13} WriteFormat(AStream, 'd-mmm-yy');
-  {14} WriteFormat(AStream, 'd-mmm');
-  {15} WriteFormat(AStream, 'mmm-yy');
-  {16} WriteFormat(AStream, 'h:mm AM/PM');
-  {17} WriteFormat(AStream, 'h:mm:ss AM/PM');
-  {18} WriteFormat(AStream, 'h:mm');
-  {19} WriteFormat(AStream, 'h:mm:ss');
-  {20} WriteFormat(AStream, 'm/d/yy h:mm');
-
-  { # TODO: locale support
-     0 => 'GENERAL',
-     1 => '0',
-     2 => '0.00',
-     3 => '#,##0',
-     4 => '#,##0.00',
-     5 => '"$"#,##0_);("$"#,##0)',
-     6 => '"$"#,##0_);[Red]("$"#,##0)',
-     7 => '"$"#,##0.00_);("$"#,##0.00)',
-     8 => '"$"#,##0.00_);[Red]("$"#,##0.00)',
-     9 => '0%',
-    10 => '0.00%',
-    11 => '0.00E+00',
-    12 => '# ?/?',
-    13 => '# ??/??',
-    14 => 'M/D/YY',
-    15 => 'D-MMM-YY',
-    16 => 'D-MMM',
-    17 => 'MMM-YY',
-    18 => 'h:mm AM/PM',
-    19 => 'h:mm:ss AM/PM',
-    20 => 'h:mm',
-    21 => 'h:mm:ss',
-    22 => 'M/D/YY h:mm',
-    37 => '_(#,##0_);(#,##0)',
-    38 => '_(#,##0_);[Red](#,##0)',
-    39 => '_(#,##0.00_);(#,##0.00)',
-    40 => '_(#,##0.00_);[Red](#,##0.00)',
-    41 => '_("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)',
-    42 => '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)',
-    43 => '_("$"* #,##0.00_);_("$"* (#,##0.00);_("$"* "-"??_);_(@_)',
-    44 => '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)',
-    45 => 'mm:ss',
-    46 => '[h]:mm:ss',
-    47 => 'mm:ss.0',
-    48 => '##0.0E+0',
-    49 => '@',
-  }
-end;
-  *)
 
 {
   Writes an Excel 2 FORMULA record

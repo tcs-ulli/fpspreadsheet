@@ -348,14 +348,7 @@ type
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
-    {
-    procedure ConvertAfterReading(AFormatIndex: Integer; var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
-      var ACurrencySymbol: String); override;
-    procedure ConvertBeforeWriting(var AFormatString: String); override;
-    }
   public
-//    function FormatStringForWriting(AIndex: Integer): String; override;
   end;
 
   { TsSpreadBIFFReader }
@@ -589,138 +582,13 @@ begin
   FFirstFormatIndexInFile := 164;
   FNextFormatIndex := 164;
 end;
-                                     (*
-{ Considers some Excel specialities for format detection.
-  The output values will be passed to fpc. }
-procedure TsBIFFNumFormatList.Analyze(AFormatIndex: Integer;
-  var AFormatString: String; var ANumFormat: TsNumberFormat;
-  var ADecimals: Byte; var ACurrencySymbol: String);
-var
-  fmt: String;
-{
-  parser: TsNumFormatParser;
-  sections: TsNumFormatSections;
-}
-begin
 
-{
-  AFormatString := 'hh:mm:ss.0 AM/PM'; //"€" #,##.0;[red]"$" -#,##.000;-';
-
-  parser := TsNumFormatParser.Create(Workbook, AFormatString);
-  try
-    fmt := parser.FormatString;
-    ANumFormat := parser.ParsedSections[0].NumFormat;
-    ADecimals := parser.ParsedSections[0].Decimals;
-    ACurrencySymbol := parser.ParsedSections[0].CurrencySymbol;
-    parser.CopySectionsTo(sections);
-  finally
-    parser.Free;
-  end;
-
-  parser := TsNumFormatParser.Create(Workbook, sections);
-  try
-    fmt := parser.FormatString;
-  finally
-    parser.Free;
-  end;
-  }
-
-  fmt := Lowercase(AFormatString);
-  { Check the built-in formats first:
-    The prefix "[$-F400]" before the formatting string means that the system's
-    long time format string is used. }
-  if (pos('[$-F400]', AFormatString) = 1) then begin
-    ANumFormat := nfLongTime;
-    AFormatString := '';  // will be replaced by system's format setting
-    ADecimals := 0;
-    exit;
-  end;
-  { Excel often has the locale ID [$-409] (for Germany) in front of the format
-    string. We currently ignore this because it confuses fpc. }
-  if (pos('[$', fmt) = 1) then begin
-    if (pos('h:mm:ss\', fmt) > 0) then begin
-      // long time format
-      if (pos('am/pm', fmt) > 0) or (pos('a/p',fmt) > 0) then begin
-        ANumFormat := nfLongTimeAM;
-        AFormatString := '';
-      end else begin
-         ANumFormat := nfLongTime;
-         AFormatString := '';
-      end;
-      ADecimals := 0;
-      exit;
-    end;
-    if (pos('h:mm\', fmt) > 0) then begin
-      if (pos('am/pm', fmt) > 0) or (pos ('a/p', fmt) > 0) then begin
-        ANumFormat := nfShortTimeAM;
-        AFormatString := '';
-      end else begin
-        ANumFormat := nfShortTime;
-        AFormatString := '';
-      end;
-      ADecimals := 0;
-      exit;
-    end;
-
-    // TO DO: Analyze currency
-  end;
-
-  inherited Analyze(AFormatIndex, AFormatString, ANumFormat, ADecimals, ACurrencySymbol);
-end;
-       *)
-       (*
-{ Creates formatting strings that are written into the file. }
-function TsBIFFNumFormatList.FormatStringForWriting(AIndex: Integer): String;
-var
-  item: TsNumFormatData;
-  i: Integer;
-
-  procedure FixN(var s: String);
-  // The minutes in short time formats are coded by "n" in fpc, but Excel wants "m".
-  var
-    i: Integer;
-  begin
-    for i:=1 to Length(s) do
-      case s[i] of
-        'n', 'N': s[i] := 'm'; // no "M" which will be interpreted as "Month"
-      end;
-  end;
-
-begin
-  Result := inherited FormatStringForWriting(AIndex);
-  item := Items[AIndex];
-  case item.NumFormat of
-    nfFmtDateTime:
-      begin
-        Result := lowercase(item.FormatString);
-        for i:=1 to Length(Result) do begin
-          // The milliseccond format contains the symbol "z" in fpc, but Excel wants "0"
-          if Result[i] in ['z', 'Z'] then Result[i] := '0';
-        end;
-        FixN(Result);
-      end;
-    nfTimeInterval:
-      begin
-        // Time interval format string could still be without square brackets
-        // if added by user.
-        // We check here for safety and add the brackets if not there.
-        MakeTimeIntervalMask(item.FormatString, Result);
-        FixN(Result);
-      end;
-    nfShortTime, nfShortTimeAM, nfLongTime, nfLongTimeAM:
-      FixN(Result);
-    nfCurrencyRed, nfCurrencyDashRed:
-      begin
-        i := Pos(';', item.FormatString);
-        Result := Copy(item.FormatString, 1, i) + '[RED]'+ Copy(item.FormatString, i+1, Length(item.FormatString));
-      end;
-  end;
-end;
-         *)
 
 { TsSpreadBIFFReader }
 
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
+var
+  i: Integer;
 begin
   inherited Create(AWorkbook);
   FXFList := TFPList.Create;
@@ -793,9 +661,18 @@ end;
   formats.
   Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2. }
 procedure TsSpreadBIFFReader.CreateNumFormatList;
+var
+  i: Integer;
+  item: TsNumFormatData;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
+  // Convert builtin formats to fps syntax
+  for i:=0 to FNumFormatList.Count-1 do begin
+    item := FNumFormatList[i];
+    FNumFormatList.ConvertAfterReading(item.Index, item.FormatString,
+      item.NumFormat, item.Decimals, item.CurrencySymbol);
+  end;
 end;
 
 { Extracts a number out of an RK value.
@@ -1330,7 +1207,6 @@ begin
   else
     FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
 end;
-
 
 
 { TsSpreadBIFFWriter }

@@ -43,7 +43,7 @@ begin
   MyWorksheet.LeftPaneWidth := 1;
   MyWorksheet.TopPaneHeight := 3;
 }
-
+                            (*
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
@@ -82,7 +82,7 @@ begin
   MyWorksheet.WriteUTF8Text(1, 1, 'Second');
   MyWorksheet.WriteUTF8Text(1, 2, 'Third');
   MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
-
+                                         *)
   // Write current date/time
   MyWorksheet.WriteDateTime(2, 0, now);
 
@@ -267,7 +267,6 @@ begin
   MyWorksheet.WriteFontColor(r, 3, scGray);
   MyWorksheet.WriteNumber(r, 4, -1.0/number, nfExp, 3);
   MyWorksheet.WriteFontColor(r, 4, scGray);
-
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrency, 0 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfCurrency, 0, '$');
@@ -288,7 +287,6 @@ begin
   MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDashRed, 0, 'USD');
   MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDashRed, 0, 'USD');
   MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDashRed, 0, 'USD');
-
   inc(r, 2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0_);("$"#,##0)');
   MyWorksheet.WriteNumber(r, 1, number);
