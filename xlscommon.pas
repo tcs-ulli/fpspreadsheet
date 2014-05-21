@@ -835,25 +835,6 @@ end;
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
   out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
   out ACurrencySymbol: String; out ANumberFormatStr: String);
-
-  procedure FixMilliseconds;
-  var
-    isLong, isAMPM, isInterval: Boolean;
-    decs: Byte;
-    i: Integer;
-  begin
-    decs := CountDecs(ANumberFormatStr, ['0', 'z', 'Z']);
-{    if IsTimeFormat(ANumberFormatStr, isLong, isAMPM, isInterval, decs)
-      and (decs > 0)
-    then }
-    if decs > 0 then
-      for i:= Length(ANumberFormatStr) downto 1 do
-        case ANumberFormatStr[i] of
-          '0': ANumberFormatStr[i] := 'z';
-          '.': break;
-        end;
-  end;
-
 var
   lNumFormatData: TsNumFormatData;
 begin
@@ -863,7 +844,6 @@ begin
     ANumberFormatStr := lNumFormatData.FormatString;
     ADecimals := lNumFormatData.Decimals;
     ACurrencySymbol := lNumFormatData.CurrencySymbol;
-    FixMilliseconds;
   end else begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
@@ -1186,9 +1166,11 @@ begin
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nd, ncs, nfs);
   if IsDateTime(value, nf, dt) then
-    FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
+    FWorksheet.WriteDateTime(ARow, ACol, dt) //, nf, nfs)
   else
+  if nf <> nfCustom then
     FWorksheet.WriteNumber(ARow, ACol, value, nf, nd, ncs);
+  FWorksheet.WriteNumberFormat(ARow, ACol, nf, nfs);  // override built-in format string
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -2055,7 +2037,6 @@ begin
   // But we have to consider that the number formats of the cell is in fpc syntax,
   // but the number format list of the writer is in Excel syntax.
   lCell := ACell^;
-//  CopyCellFormat(ACell, @lCell);
   with lCell do begin
     if NumberFormat <> nfCustom then begin
       if IsDateTimeFormat(NumberFormat) then

@@ -79,6 +79,8 @@ type
     procedure ScanText;
 
   public
+    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
+      AConversionDirection: TsConversionDirection = cdToFPSpreadsheet); overload;
     constructor Create(AWorkbook: TsWorkbook;
       const AFormatString: String; ANumFormat: TsNumberFormat;
       AConversionDirection: TsConversionDirection = cdToFPSpreadsheet); overload;
@@ -110,6 +112,20 @@ const
 { Creates a number format parser for analyzing a formatstring that has been read
   from a spreadsheet file. The conversion, by default, will go FROM the file TO
   the fpspreadsheet procedures. }
+constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
+  const AFormatString: String;
+  AConversionDirection: TsConversionDirection = cdToFPSpreadsheet);
+begin
+  inherited Create;
+  FCreateMethod := 0;
+  FConversionDirection := AConversionDirection;
+  FWorkbook := AWorkbook;
+  FFormatSettings := DefaultFormatSettings;
+  FFormatSettings.DecimalSeparator := '.';
+  FFormatSettings.ThousandSeparator := ',';
+  Parse(AFormatString);
+end;
+
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
   const AFormatString: String; ANumFormat: TsNumberFormat;
   AConversionDirection: TsConversionDirection = cdToFPSpreadsheet);
@@ -294,7 +310,7 @@ begin
       nfShortDateTime, nfShortDate, nfShortTime, nfShortTimeAM,
       nfLongDate, nfLongTime, nfLongTimeAM, nfTimeInterval, nfFmtDateTime:
         try
-          s := FormatDateTimeEx(FSections[i].FormatString, now(), FWorkbook.FormatSettings);
+          s := FormatDateTime(FSections[i].FormatString, now(), FWorkbook.FormatSettings, [fdoInterval]);
         except
           FStatus := psErrNoValidDateTimeFormat;
           exit;
@@ -310,8 +326,9 @@ begin
   if (ns = 3) and
      (FSections[0].NumFormat = nfCurrency) and
      (FSections[1].NumFormat = nfCurrency) and
-     (FSections[2].NumFormat = nfCurrency)
+     ((FSections[2].NumFormat = nfCurrency) or (FSections[2].FormatString = '-'))
   then begin
+    FNumFormat := nfCurrency;
     if ((FSections[2].FormatString = '-') or (FSections[2].FormatString = '"-"')) then begin
       if (FSections[1].Color = scRed) then
         FNumFormat := nfCurrencyDashRed
@@ -323,8 +340,15 @@ begin
     end;
   end else
   // If there are other multi-section formatstrings they must be a custom format
-  if (ns > 1) then
-    FNumFormat := nfCustom
+  if (ns > 1) then begin
+    for i:=1 to ns-1 do
+      if FSections[i].FormatString <> '' then begin
+        FNumFormat := nfCustom;
+        break;
+      end;
+    if fNumFormat <> nfCustom then
+      FNumFormat := FSections[0].NumFormat;
+  end
   else
     FNumFormat := FSections[0].NumFormat;
 
@@ -721,15 +745,14 @@ begin
            end;
       'E', 'e':
            begin
-             if hasHash and countdecs then isSci := true else isExp := true;
+             if hasHash then isSci := true else isExp := true;
              countdecs := false;
              s := s + token;
            end;
       '+', '-':
            s := s + token;
       '#': begin
-             hasHash := true;
-             countdecs := false;
+             if not countdecs then hasHash := true;
              s := s + token;
            end;
       '%': begin
