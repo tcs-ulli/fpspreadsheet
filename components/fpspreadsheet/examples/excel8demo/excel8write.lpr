@@ -54,7 +54,7 @@ begin
   }
 
   // Write some cells
-  MyWorksheet.WriteDateTime(0, 20, now, nfShortTime); //1.0);// A1
+//  MyWorksheet.WriteDateTime(0, 20, now, nfShortTime); //1.0);// A1
   MyWorksheet.WriteNumber(0, 0, 1.0, nfFixed, 3);// A1
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
@@ -209,11 +209,9 @@ begin
   MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'mm:ss.zzz');
 
   // Write formatted numbers
-  number := 12345.67890123456789;
+//  number := 12345.67890123456789;
+  number := 31415.92;
   inc(r, 2);
-  MyWorksheet.WriteUTF8Text(r, 1, '12345.67890123456789');
-  MyWorksheet.WriteUTF8Text(r, 2, '-12345.67890123456789');
-  inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfGeneral');
   MyWorksheet.WriteNumber(r, 1, number, nfGeneral);
   MyWorksheet.WriteNumber(r, 2, -number, nfGeneral);
@@ -250,6 +248,12 @@ begin
   MyWorksheet.WriteNumber(r, 1, number, nfFixedTh, 3);
   MyWorksheet.WriteNumber(r, 2, -number, nfFixedTh, 3);
   inc(r,2);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 0 dec');
+  MyWorksheet.WriteNumber(r, 1, number, nfSci, 0);
+  MyWorksheet.WriteNumber(r, 2, -number, nfSci, 0);
+  MyWorksheet.WriteNumber(r, 3, 1.0/number, nfSci, 0);
+  MyWorksheet.WriteNumber(r, 4, -1.0/number, nfSci, 0);
+  inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 1 dec');
   MyWorksheet.WriteNumber(r, 1, number, nfSci, 1);
   MyWorksheet.WriteNumber(r, 2, -number, nfSci, 1);
@@ -268,6 +272,12 @@ begin
   MyWorksheet.WriteNumber(r, 3, 1.0/number, nfSci, 3);
   MyWorksheet.WriteNumber(r, 4, -1.0/number, nfSci, 3);
   inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfExp, 0 dec');
+  MyWorksheet.WriteNumber(r, 1, number, nfExp, 0);
+  MyWorksheet.WriteNumber(r, 2, -number, nfExp, 0);
+  MyWorksheet.WriteNumber(r, 3, 1.0/number, nfExp, 0);
+  MyWorksheet.WriteNumber(r, 4, -1.0/number, nfExp, 0);
+  inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfExp, 1 dec');
   MyWorksheet.WriteNumber(r, 1, number, nfExp, 1);
   MyWorksheet.WriteNumber(r, 2, -number, nfExp, 1);
@@ -285,7 +295,6 @@ begin
   MyWorksheet.WriteNumber(r, 2, -number, nfExp, 3);
   MyWorksheet.WriteNumber(r, 3, 1.0/number, nfExp, 3);
   MyWorksheet.WriteNumber(r, 4, -1.0/number, nfExp, 3);
-
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrency, 0 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfCurrency, 0, 'USD');
@@ -319,6 +328,7 @@ begin
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"$"#,##0.0_);[Red]("$"#,##0.0)');
   MyWorksheet.WriteDateTime(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '"$"#,##0.0_);[Red]("$"#,##0.0)');
+
   inc(r, 2);
   number := 1.333333333;
   MyWorksheet.WriteUTF8Text(r, 0, 'nfPercentage, 0 decs');
@@ -337,13 +347,22 @@ begin
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval);
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h:m:s');
-  MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'H:M:s');
+  MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h:m:s');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h:n:s');
+  MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h:n:s');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, hh:mm');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'hh:mm');
   inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, hh:nn');
+  MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'hh:nn');
+  inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h:m');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h:m');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h:n');
+  MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h:n');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h');
@@ -360,7 +379,7 @@ begin
 
   // Set height of rows 0
   MyWorksheet.WriteRowHeight(0, 30);  // 30 mm
-
+                                                                    (*
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);
 
@@ -371,7 +390,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
   MyWorksheet.WriteTextRotation(0, 0, rt90DegreeClockwiseRotation);
   MyWorksheet.WriteUsedFormatting(0, 1, [uffBold]);
-
+                                                            *)
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel8, true);
   MyWorkbook.Free;
