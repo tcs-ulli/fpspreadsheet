@@ -1277,9 +1277,9 @@ function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     Result := '';
     if not IsNaN(Value) then begin
       if ANumberFormatStr = '' then
-        Result := FormatDateTime('c', Value)
-      else
-        Result := FormatDateTimeEx(ANumberFormatStr, Value);
+        ANumberFormatStr := BuildDateTimeFormatString(ANumberFormat,
+          Workbook.FormatSettings, ANumberFormatStr);
+      Result := FormatDateTime(ANumberFormatStr, Value, [fdoInterval]);
     end;
   end;
 
@@ -1454,8 +1454,10 @@ begin
   if IsDateTimeFormat(AFormat) then
     raise Exception.Create(lpInvalidNumberFormat);
 
+  {
   if AFormat = nfCustom then
     raise Exception.Create(lpIllegalNumberformat);
+   }
 
   if AFormat <> nfGeneral then begin
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
@@ -2753,12 +2755,13 @@ begin
     if parser.Status = psOK then begin
       ANumFormat := parser.Builtin_NumFormat;
       AFormatString := parser.FormatString;  // This is the converted string.
-      {
-      if not (parser.Builtin_NumFormat in [nfCustom, nfFmtDateTime]) then begin
+      if ANumFormat <> nfCustom then begin
         ADecimals := parser.ParsedSections[0].Decimals;
         ACurrencySymbol := parser.ParsedSections[0].CurrencySymbol;
+      end else begin
+        ADecimals := 0;
+        ACurrencySymbol := '';
       end;
-      }
     end;
   finally
     parser.Free;
@@ -2953,6 +2956,7 @@ var
   fmt: String;
   itemfmt: String;
 begin
+  (*
   // These are pre-defined formats - no need to check format string & decimals
   if ANumFormat in [ nfGeneral, nfShortDateTime, nfShortDate, nfLongDate,
                      nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM ]
@@ -2962,10 +2966,10 @@ begin
       if (item <> nil) and (item.NumFormat = ANumFormat) then
         exit;
     end;
-
+    *)
   if (ANumFormat = nfFmtDateTime) then begin
     fmt := lowercase(AFormatString);
-    for Result := 0 to Count-1 do begin
+    for Result := Count-1 downto 0 do begin
       item := Items[Result];
       if (item <> nil) and (item.NumFormat = nfFmtDateTime) then begin
         itemfmt := lowercase(item.FormatString);
@@ -2996,7 +3000,7 @@ begin
 
   // Check only the format string for nfCustom.
   if (ANumFormat = nfCustom) then
-    for Result := 0 to Count-1 do begin
+    for Result := Count-1 downto 0 do begin
       item := Items[Result];
       if (item <> nil)
          and (item.NumFormat = ANumFormat)
@@ -3006,7 +3010,7 @@ begin
     end;
 
   // The other formats can carry additional information
-  for Result := 0 to Count-1 do begin
+  for Result := Count-1 downto 0 do begin
     item := Items[Result];
     if (item <> nil)
       and (item.NumFormat = ANumFormat)
@@ -3040,7 +3044,9 @@ function TsCustomNumFormatList.Find(AFormatString: String): integer;
 var
   item: TsNumFormatData;
 begin
-  for Result := 0 to Count-1 do begin
+  { We search backwards to find user-defined items first. They usually are
+    more appropriate than built-in items. }
+  for Result := Count-1 downto 0 do begin
     item := Items[Result];
     if item.FormatString = AFormatString then
       exit;
@@ -3192,7 +3198,7 @@ var
 begin
   Result := -1;
 
-  for i := 0 to Length(FFormattingStyles) - 1 do
+  for i := Length(FFormattingStyles) - 1 downto 0 do
   begin
     if (FFormattingStyles[i].UsedFormattingFields <> AFormat^.UsedFormattingFields) then Continue;
 

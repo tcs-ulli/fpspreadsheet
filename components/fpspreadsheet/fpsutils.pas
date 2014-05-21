@@ -19,6 +19,10 @@ type
   TsSelectionDirection = (fpsVerticalSelection, fpsHorizontalSelection);
   TsDecsChars = set of char;
 
+  // to be removed when fpc trunk is stable
+  TFormatDateTimeOption = (fdoInterval);
+  TFormatDateTimeOptions =  set of TFormatDateTimeOption;
+
 const
   // Date formatting string for unambiguous date/time display as strings
   // Can be used for text output when date/time cell support is not available
@@ -90,9 +94,11 @@ function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
-function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): String; overload;
-function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime;
-  AFormatSettings: TFormatSettings): string; overload;
+// These two functions are copies of fpc trunk until they are available in "stable"
+function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
+  Options : TFormatDateTimeOptions = []): string;
+function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
+  const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
 
 implementation
 
@@ -1048,21 +1054,20 @@ end;
 {******************************************************************************}
 
 // Copied from "fpc/rtl/objpas/sysutils/datei.inc"
-procedure DateTimeToString(out Result: string; const FormatStr: string; const DateTime: TDateTime; const FormatSettings: TFormatSettings);
+{   DateTimeToString formats DateTime to the given format in FormatStr   }
+
+procedure DateTimeToString(out Result: string; const FormatStr: string; const DateTime: TDateTime;
+  const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []);
 var
   ResultLen: integer;
   ResultBuffer: array[0..255] of char;
   ResultCurrent: pchar;
-
 {$IFDEF MSWindows}
   isEnable_E_Format : Boolean;
   isEnable_G_Format : Boolean;
   eastasiainited : boolean;
 {$ENDIF MSWindows}
-
-(* This part is in the original code. It is not needed here and avoids a
-   dependency on the unit Windows.
-
+             (*    ---- not needed here ---
 {$IFDEF MSWindows}
   procedure InitEastAsia;
   var     ALCID : LCID;
@@ -1095,7 +1100,7 @@ var
     eastasiainited :=true;
   end;
 {$ENDIF MSWindows}
-*)
+                     *)
   procedure StoreStr(Str: PChar; Len: Integer);
   begin
     if ResultLen + Len < SizeOf(ResultBuffer) then
@@ -1136,7 +1141,7 @@ var
 
 var
   Year, Month, Day, DayOfWeek, Hour, Minute, Second, MilliSecond: word;
-
+  DT : TDateTime;
 
   procedure StoreFormat(const FormatStr: string; Nesting: Integer; TimeFlag: Boolean);
   var
@@ -1226,9 +1231,9 @@ var
         end ;
         '/': StoreStr(@FormatSettings.DateSeparator, 1);
         ':': StoreStr(@FormatSettings.TimeSeparator, 1);
-        '[': isInterval := true;
-        ']': isInterval := false;
-        ' ', 'C', 'D', 'H', 'M', 'N', 'S', 'T', 'Y','Z' :
+	'[': if (fdoInterval in Options) then isInterval := true else StoreStr(FormatCurrent, 1);
+	']': if (fdoInterval in Options) then isInterval := false else StoreStr(FormatCurrent, 1);
+        ' ', 'C', 'D', 'H', 'M', 'N', 'S', 'T', 'Y', 'Z', 'F' :
         begin
           while (P < FormatEnd) and (UpCase(P^) = Token) do
             Inc(P);
@@ -1242,9 +1247,9 @@ var
                 StoreInt(Year mod 100, 2);
             end;
             'M': begin
-              if isInterval and ((prevlasttoken = 'H') or TimeFlag) then
-                StoreInt(Minute + Hour*60 + trunc(DateTime)*24*60, 0)
-              else
+	      if isInterval and ((prevlasttoken = 'H') or TimeFlag) then
+	        StoreInt(Minute + (Hour + trunc(abs(DateTime))*24)*60, 0)
+	      else
               if (lastformattoken = 'H') or TimeFlag then
               begin
                 if Count = 1 then
@@ -1275,10 +1280,10 @@ var
               end ;
             end ;
             'H':
-              if isInterval then
-                StoreInt(Hour + trunc(DateTime)*24, 0)
-              else
-              if Clock12 then
+	      if isInterval then
+	        StoreInt(Hour + trunc(abs(DateTime))*24, 0)
+	      else
+	      if Clock12 then
               begin
                 tmp := hour mod 12;
                 if tmp=0 then tmp:=12;
@@ -1294,16 +1299,16 @@ var
                   StoreInt(Hour, 2);
               end;
             'N': if isInterval then
-                   StoreInt(Minute + 60*Hour + 60*24*trunc(DateTime), 0)
-                 else
-                 if Count = 1 then
+	           StoreInt(Minute + (Hour + trunc(abs(DateTime))*24)*60, 0)
+		 else
+		 if Count = 1 then
                    StoreInt(Minute, 0)
                  else
                    StoreInt(Minute, 2);
             'S': if isInterval then
-                   StoreInt(Second + Minute*60 + Hour*60*60 + trunc(DateTime)*24*60*60, 0)
-                 else
-                 if Count = 1 then
+	           StoreInt(Second + (Minute + (Hour + trunc(abs(DateTime))*24)*60)*60, 0)
+	         else
+	         if Count = 1 then
                    StoreInt(Second, 0)
                  else
                    StoreInt(Second, 2);
@@ -1323,10 +1328,12 @@ var
                       StoreFormat(FormatSettings.LongTimeFormat, Nesting+1, True);
                      end;
                  end;
-
-(* This part is in the original code. It is not needed here and avoids a
-   dependency on the unit Windows.
-
+            'F': begin
+                   StoreFormat(FormatSettings.ShortDateFormat, Nesting+1, False);
+                   StoreString(' ');
+                   StoreFormat(FormatSettings.LongTimeFormat, Nesting+1, True);
+                 end;
+            (* ------------ not needed here...
 {$IFDEF MSWindows}
             'E':
                begin
@@ -1339,6 +1346,7 @@ var
                      Count := P - FormatCurrent;
                      StoreString(ConvertEraYearString(Count,Year,Month,Day));
                    end;
+		 prevlasttoken := lastformattoken;
                  lastformattoken:=token;
                end;
              'G':
@@ -1352,12 +1360,13 @@ var
                      Count := P - FormatCurrent;
                      StoreString(ConvertEraString(Count,Year,Month,Day));
                    end;
+		 prevlasttoken := lastformattoken;
                  lastformattoken:=token;
                end;
 {$ENDIF MSWindows}
 *)
           end;
-          prevlasttoken := lastformattoken;
+	  prevlasttoken := lastformattoken;
           lastformattoken := token;
         end;
         else
@@ -1383,15 +1392,25 @@ begin
   result := StrPas(@ResultBuffer[0]);
 end ;
 
-function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime): string;
+procedure DateTimeToString(out Result: string; const FormatStr: string;
+  const DateTime: TDateTime; Options : TFormatDateTimeOptions = []);
 begin
-  DateTimeToString(Result, FormatStr, DateTime, DefaultFormatSettings);
+  DateTimeToString(Result, FormatStr, DateTime, DefaultFormatSettings, Options);
 end;
 
-function FormatDateTimeEx(const FormatStr: string; DateTime: TDateTime;
-  AFormatSettings: TFormatSettings): string;
+
+{   FormatDateTime formats DateTime to the given format string FormatStr   }
+
+function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
+  Options : TFormatDateTimeOptions = []): string;
 begin
-  DateTimeToString(Result, FormatStr, DateTime, AFormatSettings);
+  DateTimeToString(Result, FormatStr, DateTime, DefaultFormatSettings,Options);
+end;
+
+function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
+  const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
+begin
+  DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
 end;
 
 end.

@@ -31,6 +31,7 @@ var
   lCol: TCol;
   i: Integer;
   r: Integer = 10;
+  s: String;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
 
@@ -132,7 +133,7 @@ begin
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 
-
+           (*
   // Uncomment this to test large XLS files
   for i := 50 to 1000 do
   begin
@@ -141,7 +142,7 @@ begin
 //    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
     MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
   end;
-
+             *)
 
   // Write the formula E1 = A1 + B1
   SetLength(MyRPNFormula, 3);
@@ -171,6 +172,8 @@ begin
     nil)))));
 
   r := 10;
+  MyWorksheet.WriteUTF8Text(r, 0, 'Writing current date/time:');
+  inc(r, 2);
   // Write current date/time to cells B11:B16
   MyWorksheet.WriteUTF8Text(r, 0, 'nfShortDate');
   MyWorksheet.WriteDateTime(r, 1, now, nfShortDate);
@@ -209,9 +212,11 @@ begin
   MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'mm:ss.zzz');
 
   // Write formatted numbers
-//  number := 12345.67890123456789;
-  number := 31415.92;
+  s := '31415.9265359';
+  val(s, number, i);
   inc(r, 2);
+  MyWorksheet.WriteUTF8Text(r, 0, 'The number '+s+' is displayed in various formats:');
+  inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfGeneral');
   MyWorksheet.WriteNumber(r, 1, number, nfGeneral);
   MyWorksheet.WriteNumber(r, 2, -number, nfGeneral);
@@ -318,15 +323,15 @@ begin
 
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "EUR "#,##0_);("EUR "#,##0)');
-  MyWorksheet.WriteDateTime(r, 1, number);
+  MyWorksheet.WriteNumber(r, 1, number);
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"EUR "#,##0_);("EUR "#,##0)');
-  MyWorksheet.WriteDateTime(r, 2, -number);
+  MyWorksheet.WriteNumber(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '"EUR "#,##0_);("EUR "#,##0)');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0.0_);[Red]("$"#,##0.0)');
-  MyWorksheet.WriteDateTime(r, 1, number);
+  MyWorksheet.WriteNumber(r, 1, number);
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"$"#,##0.0_);[Red]("$"#,##0.0)');
-  MyWorksheet.WriteDateTime(r, 2, -number);
+  MyWorksheet.WriteNumber(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '"$"#,##0.0_);[Red]("$"#,##0.0)');
 
   inc(r, 2);
@@ -368,10 +373,10 @@ begin
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h');
 
   // Set width of columns 0, 1 and 5
-  MyWorksheet.WriteColWidth(0, 25);
-  lCol.Width := 20;
+  MyWorksheet.WriteColWidth(0, 30);
+  lCol.Width := 25;
   MyWorksheet.WriteColInfo(1, lCol);
-  MyWorksheet.WriteColInfo(2, lCol);
+  MyWorksheet.WriteColWidth(2, 15);
   MyWorksheet.WriteColWidth(3, 15);
   MyWorksheet.WriteColWidth(4, 15);
   lCol.Width := 5;
@@ -379,7 +384,7 @@ begin
 
   // Set height of rows 0
   MyWorksheet.WriteRowHeight(0, 30);  // 30 mm
-                                                                    (*
+
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);
 
@@ -390,7 +395,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
   MyWorksheet.WriteTextRotation(0, 0, rt90DegreeClockwiseRotation);
   MyWorksheet.WriteUsedFormatting(0, 1, [uffBold]);
-                                                            *)
+
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel8, true);
   MyWorkbook.Free;

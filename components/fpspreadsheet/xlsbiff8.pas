@@ -84,6 +84,7 @@ type
     procedure ReadFormat(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadLabelSST(const AStream: TStream);
+    // procedure ReadNumber() --> xlscommon
     procedure ReadRichString(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     procedure ReadStringRecord(AStream: TStream); override;
