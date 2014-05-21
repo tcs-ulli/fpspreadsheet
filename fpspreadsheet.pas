@@ -379,7 +379,8 @@ type
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
-    procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
+    procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal); overload;
+    procedure CopyFormat(AFromCell, AToCell: PCell); overload;
     function  FindCell(ARow, ACol: Cardinal): PCell;
     function  GetCell(ARow, ACol: Cardinal): PCell;
     function  GetCellCount: Cardinal;
@@ -561,24 +562,30 @@ type
     FFirstFormatIndexInFile: Integer;
     FNextFormatIndex: Integer;
     procedure AddBuiltinFormats; virtual;
-    procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: byte;
-      var ACurrencySymbol: String); virtual;
     procedure RemoveFormat(AIndex: Integer);
   public
     constructor Create(AWorkbook: TsWorkbook);
     destructor Destroy; override;
     function AddFormat(AFormatCell: PCell): Integer; overload;
-    function AddFormat(AFormatIndex: Integer; ANumFormat: TsNumberFormat;
-      AFormatString: String = ''; ADecimals: Byte = 0;
+    function AddFormat(AFormatIndex: Integer; AFormatString: String;
+      ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
       ACurrencySymbol: String = ''): Integer; overload;
+    function AddFormat(AFormatString: String; ANumFormat: TsNumberFormat;
+      ADecimals: Byte = 0; ACurrencySymbol: String = ''): Integer; overload;
     procedure AnalyzeAndAdd(AFormatIndex: Integer; AFormatString: String);
     procedure Clear;
+    procedure ConvertAfterReading(AFormatIndex: Integer; var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
+      var ACurrencySymbol: String); virtual;
+    procedure ConvertBeforeWriting(var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
+      var ACurrencySymbol: String); virtual;
     procedure Delete(AIndex: Integer);
     function Find(AFormatCell: PCell): integer; overload;
     function Find(ANumFormat: TsNumberFormat; AFormatString: String;
       ADecimals: Byte; ACurrencySymbol: String): Integer; overload;
     function Find(AFormatIndex: Integer): Integer; overload;
+    function Find(AFormatString: String): Integer; overload;
     function FormatStringForWriting(AIndex: Integer): String; virtual;
     procedure Sort;
 
@@ -731,6 +738,7 @@ procedure RegisterSpreadFormat(
   AWriterClass: TsSpreadWriterClass;
   AFormat: TsSpreadsheetFormat);
 
+procedure CopyCellFormat(AFromCell, AToCell: PCell);
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 
@@ -749,6 +757,7 @@ resourcestring
   lpInvalidNumberFormat = 'Trying to use an incompatible number format.';
   lpNoValidNumberFormatString = 'No valid number format string.';
   lpNoValidDateTimeFormatString = 'No valid date/time format string.';
+  lpIllegalNumberFormat = 'Illegal number format.';
   lpTRUE = 'TRUE';
   lpFALSE = 'FALSE';
   lpErrEmptyIntersection = '#NULL!';
@@ -875,6 +884,28 @@ begin
    {$ENDIF}
 end;
 
+{@@
+  Copies the format of a cell to another one.
+}
+procedure CopyCellFormat(AFromCell, AToCell: PCell);
+begin
+  Assert(AFromCell <> nil);
+  Assert(AToCell <> nil);
+
+  AToCell^.UsedFormattingFields := AFromCell^.UsedFormattingFields;
+  AToCell^.BackgroundColor := AFromCell^.BackgroundColor;
+  AToCell^.Border := AFromCell^.Border;
+  AToCell^.BorderStyles := AFromCell^.BorderStyles;
+  AToCell^.FontIndex := AFromCell^.FontIndex;
+  AToCell^.HorAlignment := AFromCell^.HorAlignment;
+  AToCell^.VertAlignment := AFromCell^.VertAlignment;
+  AToCell^.TextRotation := AFromCell^.TextRotation;
+  AToCell^.NumberFormat := AFromCell^.NumberFormat;
+  AToCell^.NumberFormatStr := AFromCell^.NumberFormatStr;
+  AToCell^.Decimals := AFromCell^.Decimals;
+  AToCell^.CurrencySymbol := AFromCell^.CurrencySymbol;
+end;
+
 
 { TsWorksheet }
 
@@ -997,29 +1028,19 @@ end;
 {@@
   Copies all format parameters from the format cell to another cell.
 }
-procedure TsWorksheet.CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
-var
-  cell: PCell;
+procedure TsWorksheet.CopyFormat(AFromCell, AToCell: PCell);
 begin
-  if AFormat = nil then
+  if (AFromCell = nil) or (AToCell = nil) then
     exit;
 
-  cell := GetCell(AToRow, AToCol);
-  cell^.UsedFormattingFields := AFormat^.UsedFormattingFields;
-  cell^.BackgroundColor := AFormat^.BackgroundColor;
-  cell^.Border := AFormat^.Border;
-  cell^.BorderStyles := AFormat^.BorderStyles;
-  cell^.FontIndex := AFormat^.FontIndex;
-  cell^.HorAlignment := AFormat^.HorAlignment;
-  cell^.VertAlignment := AFormat^.VertAlignment;
-  cell^.TextRotation := AFormat^.TextRotation;
-  cell^.NumberFormat := AFormat^.NumberFormat;
-  cell^.NumberFormatStr := AFormat^.NumberFormatStr;
-  cell^.Decimals := AFormat^.Decimals;
-  cell^.CurrencySymbol := AFormat^.CurrencySymbol;
+  CopyCellFormat(AFromCell, AToCell);
+  ChangedCell(AToCell^.Row, AToCell^.Col);
+  ChangedFont(AToCell^.Row, AToCell^.Col);
+end;
 
-  ChangedCell(AToRow, AToCol);
-  ChangedFont(AToRow, AToCol);
+procedure TsWorksheet.CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
+begin
+  CopyFormat(AFormat, GetCell(AToRow, AToCol));
 end;
 
 {@@
@@ -1433,6 +1454,9 @@ begin
   if IsDateTimeFormat(AFormat) then
     raise Exception.Create(lpInvalidNumberFormat);
 
+  if AFormat = nfCustom then
+    raise Exception.Create(lpIllegalNumberformat);
+
   if AFormat <> nfGeneral then begin
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
     ACell^.NumberFormat := AFormat;
@@ -1457,7 +1481,7 @@ var
   parser: TsNumFormatParser;
   nf: TsNumberFormat;
 begin
-  parser := TsNumFormatParser.Create(Workbook, AFormatString, cdToFPSpreadsheet);
+  parser := TsNumFormatParser.Create(Workbook, AFormatString, nfCustom, cdToFPSpreadsheet);
   try
     // Format string ok?
     if parser.Status <> psOK then
@@ -1533,18 +1557,17 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) Number, and the cell is formatted
   as a date (either built-in or a custom format).
-
-  Note: custom formats are currently not supported by the writer.
 }
 procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
 var
   ACell: PCell;
-  fmt: String;
-  parser: TsNumFormatParser;
+  //fmt: String;
+  //parser: TsNumFormatParser;
 begin
-  if AFormat = nfFmtDateTime then begin
+  if (AFormat in [nfFmtDateTime, nfTimeInterval]) then
     AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
+    (*
     parser := TsNumFormatParser.Create(Workbook, AFormatStr, cdToFPSpreadsheet);
     try
       // Check that the format string can be reckognized.
@@ -1558,6 +1581,7 @@ begin
       parser.Free;
     end;
   end;
+    *)
 
   ACell := GetCell(ARow, ACol);
   ACell^.ContentType := cctDateTime;
@@ -1579,7 +1603,8 @@ end;
 
 procedure TsWorksheet.WriteDecimals(ACell: PCell; ADecimals: Byte);
 begin
-  if (ACell <> nil) and (ACell^.ContentType = cctNumber) then begin
+  if (ACell <> nil) and (ACell^.ContentType = cctNumber) and (ACell^.NumberFormat <> nfCustom)
+  then begin
     ACell^.Decimals := ADecimals;
     ACell^.NumberFormatStr := BuildNumberFormatString(ACell^.NumberFormat,
       FWorkbook.FormatSettings, ADecimals, ACell^.CurrencySymbol);
@@ -2629,25 +2654,41 @@ end;
 
 { Adds a new number format data to the list and returns the list index of the
   new (or present) item. }
-function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer; ANumFormat: TsNumberFormat;
-  AFormatString: String = ''; ADecimals: byte = 0; ACurrencySymbol: String = ''): integer;
+function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
+  AFormatString: String; ANumFormat: TsNumberFormat; ADecimals: byte = 0;
+  ACurrencySymbol: String = ''): integer;
 var
   item: TsNumFormatData;
 begin
   item := TsNumFormatData.Create;
   item.Index := AFormatIndex;
   item.NumFormat := ANumFormat;
-  if IsDateTimeFormat(ANumFormat) then
-    AFormatString := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings,
-      AFormatString)
-  else
-  if item.NumFormat <> nfCustom then
-    AFormatString := BuildNumberFormatString(ANumFormat, Workbook.FormatSettings,
-      ADecimals, ACurrencySymbol);
+  if AFormatString = '' then begin
+    if IsDateTimeFormat(ANumFormat) then
+      AFormatString := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings,
+        AFormatString)
+    else
+    if item.NumFormat <> nfCustom then
+      AFormatString := BuildNumberFormatString(ANumFormat, Workbook.FormatSettings,
+        ADecimals, ACurrencySymbol);
+  end;
   item.FormatString := AFormatString;
   item.Decimals := ADecimals;
   item.CurrencySymbol := ACurrencySymbol;
   Result := inherited Add(item);
+end;
+
+function TsCustomNumFormatList.AddFormat(AFormatString: String;
+  ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
+  ACurrencySymbol: String = ''): Integer;
+begin
+  if AFormatString = '' then begin
+    Result := 0;
+    exit;
+  end;
+  Result := AddFormat(FNextFormatIndex, AFormatString, ANumFormat, ADecimals,
+    ACurrencySymbol);
+  inc(FNextFormatIndex);
 end;
 
 function TsCustomNumFormatList.AddFormat(AFormatCell: PCell): Integer;
@@ -2661,8 +2702,8 @@ begin
     raise Exception.Create('TsCustomNumFormatList: Error in program logics: You must provide built-in formats first.');
 
   Result := AddFormat(FNextFormatIndex,
-    AFormatCell^.NumberFormat,
     AFormatCell^.NumberFormatStr,
+    AFormatCell^.NumberFormat,
     AFormatCell^.Decimals,
     AFormatCell^.CurrencySymbol
   );
@@ -2671,25 +2712,24 @@ begin
 end;
 
 { Adds the builtin format items to the list. The formats must be specified in
-  a way which can be understood by fpc.
-  If fpc and file speak different languages "translation" must be made in
-  "Analyze" for reading and "FormatStringForWriting" for writing.
-  Must be called before user items are added.
+  a way that is compatible with the destination file format. Conversion of the
+  formatstrings can be done by calling "ConvertAfterReadung" bzw. "ConvertBeforeWriting".
+  "AddBuiltInFormats" must be called before user items are added.
   Must specify FFirstFormatIndexInFile (BIFF5-8, e.g. doesn't save formats <164)
   and must initialize the index of the first user format (FNextFormatIndex)
   which is automatically incremented when adding user formats. }
 procedure TsCustomNumFormatList.AddBuiltinFormats;
 begin
-  // must be overridden
+  // must be overridden - see xlscommon as an example.
 end;
 
 { Takes the format string (AFormatString) as it is read from the file and
-  extracts the number format type (ANumFormat) and the number of decimals
-  (ADecimals) out of it for use by fpc.
-  If the format string cannot be directly handled by fpc it has to be transformed
-  to make it compatible. Can be done in overridden versions which know more
-  about the structure of the string in the actual file format. }
-procedure TsCustomNumFormatList.Analyze(AFormatIndex: Integer;
+  extracts the number format type and the number of decimals out of it for use by
+  fpc. The method also converts the format string to a form that can be used
+  by fpc's FormatDateTime and FormatFloat. This conversion should be done in an
+  overridden method which known more about the details of the spreadsheet file
+  format. }
+procedure TsCustomNumFormatList.ConvertAfterReading(AFormatIndex: Integer;
   var AFormatString: String; var ANumFormat: TsNumberFormat;
   var ADecimals: Byte; var ACurrencySymbol: String);
 var
@@ -2697,6 +2737,7 @@ var
   fmt: String;
   lFormatData: TsNumFormatData;
   i: Integer;
+  nf: TsNumberFormat;
 begin
   i := Find(AFormatIndex);
   if i > 0 then begin
@@ -2704,16 +2745,42 @@ begin
     fmt := lFormatData.FormatString;
   end else
     fmt := AFormatString;
+  nf := nfGeneral;  // not used here.
 
-  parser := TsNumFormatParser.Create(Workbook, fmt, cdToFPSpreadsheet);
+  // Analyzes the format string and tries to convert it to fpSpreadsheet format.
+  parser := TsNumFormatParser.Create(Workbook, fmt, nf, cdToFPSpreadsheet);
   try
     if parser.Status = psOK then begin
       ANumFormat := parser.Builtin_NumFormat;
-      AFormatString := parser.FormatString;
+      AFormatString := parser.FormatString;  // This is the converted string.
+      {
       if not (parser.Builtin_NumFormat in [nfCustom, nfFmtDateTime]) then begin
         ADecimals := parser.ParsedSections[0].Decimals;
         ACurrencySymbol := parser.ParsedSections[0].CurrencySymbol;
       end;
+      }
+    end;
+  finally
+    parser.Free;
+  end;
+end;
+
+{ Is called before collection all number formats of the spreadsheet and before
+  writing to file. Its purpose is to convert the format string as used by fpc
+  to a format compatible with the spreadsheet file format. }
+procedure TsCustomNumFormatList.ConvertBeforeWriting(var AFormatString: String;
+  var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String);
+var
+  parser: TsNumFormatParser;
+  fmt: String;
+begin
+  parser := TsNumFormatParser.Create(Workbook, AFormatString, ANumFormat, cdFromFPSpreadsheet);
+  try
+    if parser.Status = psOK then begin
+      AFormatString := parser.FormatString;
+      ANumFormat := parser.Builtin_NumFormat;
+      ADecimals := parser.ParsedSections[0].Decimals;
+      ACurrencySymbol := parser.ParsedSections[0].CurrencySymbol;
     end;
   finally
     parser.Free;
@@ -2842,11 +2909,11 @@ begin
   if Find(AFormatIndex) > -1 then
     exit;
 
-  // Analyze the format string and extract information for internal formatting
-  Analyze(AFormatIndex, AFormatString, nf, decs, currsym);
+  // Analyze & convert the format string, extract infos for internal formatting
+  ConvertAfterReading(AFormatIndex, AFormatString, nf, decs, currsym);
 
   // Add the new item
-  AddFormat(AFormatIndex, nf, AFormatString, decs, currSym);
+  AddFormat(AFormatIndex, AFormatString, nf, decs, currSym);
 end;
 
 { Clears the list and frees memory occupied by the format items. }
@@ -2962,6 +3029,20 @@ begin
   for Result := 0 to Count-1 do begin
     item := Items[Result];
     if item.Index = AFormatIndex then
+      exit;
+  end;
+  Result := -1;
+end;
+
+{ Finds the item with the given format string and returns its index in the
+  format list. }
+function TsCustomNumFormatList.Find(AFormatString: String): integer;
+var
+  item: TsNumFormatData;
+begin
+  for Result := 0 to Count-1 do begin
+    item := Items[Result];
+    if item.FormatString = AFormatString then
       exit;
   end;
   Result := -1;
@@ -3155,7 +3236,7 @@ begin
             if (FFormattingStyles[i].Decimals <> AFormat^.Decimals) then Continue;
             if (FFormattingStyles[i].CurrencySymbol <> AFormat^.CurrencySymbol) then Continue;
           end;
-        nfShortDate, nfLongDate, nfShortDateTime, nfShortTime, nfLongTime,
+        nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
         nfShortTimeAM, nfLongTimeAM, nfFmtDateTime, nfTimeInterval, nfCustom:
           if (FFormattingstyles[i].NumberFormatStr <> AFormat^.NumberFormatStr) then Continue;
       end;
@@ -3173,6 +3254,10 @@ end;
   format of the writer, here is the place to apply replacements.
   Must be overridden by descendants. See BIFF2 }
 procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
+begin
+  // to be overridden
+end;
+                     (*
 var
   isLong, isAMPM, isInterval: Boolean;
   decs: Byte;
@@ -3182,7 +3267,7 @@ begin
 //    if IsTimeFormat(ACell^.NumberFormatStr, isLong, isAMPM, isInterval, decs) then
       ACell^.Decimals := decs;
   end;
-end;
+end;                   *)
 
 { Each descendent should define its own default formats, if any.
   Always add the normal, unformatted style first to speed things up. }
@@ -3210,6 +3295,26 @@ begin
   Len := Length(FFormattingStyles);
   SetLength(FFormattingStyles, Len+1);
   FFormattingStyles[Len] := ACell^;
+
+  // Some built-in number formats do not write the format string to the cell
+  // But the FormattingStyles need it for comparison later. --> Add the format string.
+  if IsDateTimeFormat(FFormattingStyles[Len].NumberFormat) then
+    FFormattingStyles[Len].NumberFormatStr := BuildDateTimeFormatString(
+      FFormattingStyles[Len].NumberFormat,
+      Workbook.FormatSettings,
+      FFormattingStyles[Len].NumberFormatStr
+    )
+  else
+  if FFormattingStyles[Len].NumberFormat <> nfCustom then
+    FFormattingstyles[Len].NumberFormatStr := BuildNumberFormatString(
+      FFormattingStyles[Len].NumberFormat,
+      Workbook.FormatSettings,
+      FFormattingStyles[Len].Decimals,
+      FFormattingStyles[Len].CurrencySymbol
+    );
+
+  // We store the index of the XF record that will be assigned to this style in
+  // the "row" of the style. Will be needed when writing the XF record.
   FFormattingStyles[Len].Row := NextXFIndex;
   Inc(NextXFIndex);
 end;
@@ -3220,12 +3325,24 @@ var
 begin
   SetLength(FFormattingStyles, 0);
 
+  // Add default styles which are required to be there by the destination file
   AddDefaultFormats();
 
+  // Iterate through all cells and collect the individual styles
   for i := 0 to Workbook.GetWorksheetCount - 1 do
-  begin
     IterateThroughCells(nil, Workbook.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
-  end;
+
+  // Convert the numberformats of the collected styles to be compatible with the destination file
+  for i:=0 to High(FFormattingStyles) do
+    if (FFormattingStyles[i].NumberFormatStr <> '') and
+       (FFormattingStyles[i].NumberFormat <> nfCustom)   // don't touch custom formatstrings!
+    then
+      FNumFormatList.ConvertBeforeWriting(
+        FFormattingStyles[i].NumberFormatStr,
+        FFormattingStyles[i].NumberFormat,
+        FFormattingStyles[i].Decimals,
+        FFormattingStyles[i].CurrencySymbol
+      );
 end;
 
 {@@
@@ -3233,10 +3350,34 @@ end;
   it does not yet exist in the list.
 }
 procedure TsCustomSpreadWriter.ListAllNumFormatsCallback(ACell: PCell; AStream: TStream);
+var
+  fmt: string;
+  nf: TsNumberFormat;
+  decs: Byte;
+  cs: String;
 begin
-  FixFormat(ACell);
-  if FNumFormatList.Find(ACell) = -1 then
-    FNumFormatList.AddFormat(ACell);
+  if ACell^.NumberFormat = nfGeneral then
+    exit;
+
+  // The builtin format list is in "file syntax", but the format string of the
+  // cells are in "fpc syntax". Therefore, before seeking, we have to convert
+  // the format string of the cell to "file syntax".
+  fmt := ACell^.NumberFormatStr;
+  nf := ACell^.NumberFormat;
+  decs := ACell^.Decimals;
+  cs := ACell^.CurrencySymbol;
+  if (nf <> nfCustom) then begin
+    if IsDateTimeFormat(nf) then
+      fmt := BuildDateTimeFormatString(nf, Workbook.FormatSettings, fmt)
+    else
+      fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs, cs);
+    FNumFormatList.ConvertBeforeWriting(fmt, nf, decs, cs);
+  end;
+
+  // Seek the format string in the current number format list.
+  // If not found add the format to the list.
+  if FNumFormatList.Find(fmt) = -1 then
+    FNumFormatList.AddFormat(fmt, nf, decs, cs);
 end;
 
 {@@
@@ -3265,7 +3406,7 @@ begin
   ResPos := -1;
   SetLength(Result, 0);
 
-  // The formula needs to start with a =
+  // The formula needs to start with a "=" character.
   if AFormula.FormulaStr[1] <> '=' then raise Exception.Create('Formula doesn''t start with =');
 
   StrPos := 2;

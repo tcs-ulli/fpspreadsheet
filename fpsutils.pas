@@ -84,6 +84,7 @@ function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
 function StripAMPM(const ATimeFormatString: String): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
+function AddIntervalBrackets(AFormatString: String): String;
 
 function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
@@ -517,7 +518,7 @@ end;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
   Result := AFormat in [nfFmtDateTime, nfShortDateTime, nfShortDate, nfLongDate,
-    nfShortTime. nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
+    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
 end;
                                (*
 { This simple parsing procedure of the Excel format string checks for a fixed
@@ -685,7 +686,7 @@ begin
     if ph > 0 then IsSci := true;
   end;
 end;
-                                   *)
+
 { IsDateFormat checks if the format string s corresponds to a date format }
 function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
 begin
@@ -767,6 +768,7 @@ begin
     end;
   end;
 end;
+                                   *)
 
 { Builds a date/time format string from the numberformat code. If the format code
   is nfFmtDateTime the given AFormatString is used. AFormatString can use the
@@ -776,6 +778,7 @@ function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
 var
   fmt: String;
+  am, pm: String;
 begin
   case ANumberFormat of
     nfFmtDateTime:
@@ -789,31 +792,38 @@ begin
       end;
     nfShortDateTime:
       Result := AFormatSettings.ShortDateFormat + ' ' + FormatSettings.ShortTimeFormat;
+      // In the DefaultFormatSettings this is: d/m/y hh:nn
     nfShortDate:
-      Result := AFormatSettings.ShortDateFormat;
+      Result := AFormatSettings.ShortDateFormat;   // --> d/m/y
     nfLongDate:
-      Result := AFormatSettings.LongDateFormat;
+      Result := AFormatSettings.LongDateFormat;    // --> dd mm yyyy
     nfShortTime:
-      Result := StripAMPM(AFormatSettings.ShortTimeFormat);
+      Result := StripAMPM(AFormatSettings.ShortTimeFormat);    // --> hh:nn
     nfLongTime:
-      Result := StripAMPM(AFormatSettings.LongTimeFormat);
+      Result := StripAMPM(AFormatSettings.LongTimeFormat);     // --> hh:nn:ss
     nfShortTimeAM:
-      begin
+      begin                                       // --> hh:nn AM/PM
         Result := AFormatSettings.ShortTimeFormat;
-        if pos('a', lowercase(AFormatSettings.ShortTimeFormat)) = 0 then
-          Result := Format('%s %s/%s', [Result, AFormatSettings.TimeAMString, AFormatSettings.TimePMString]);
+        if (pos('a', lowercase(AFormatSettings.ShortTimeFormat)) = 0) then begin
+          am := IfThen(AFormatSettings.TimeAMString = '', 'AM', AFormatSettings.TimeAMString);
+          pm := IfThen(AFormatSettings.TimePMString = '', 'PM', AFormatSettings.TimePMString);
+          Result := Format('%s %s/%s', [Result, am, pm]);
+        end;
       end;
-    nfLongTimeAM:
+    nfLongTimeAM:                                 // --> hh:nn:ss AM/PM
       begin
         Result := AFormatSettings.LongTimeFormat;
-        if pos('a', lowercase(AFormatSettings.LongTimeFormat)) = 0 then
-          Result := Format('%s %s/%s', [Result, AFormatSettings.TimeAMString, AFormatSettings.TimePMString]);
+        if pos('a', lowercase(AFormatSettings.LongTimeFormat)) = 0 then begin
+          am := IfThen(AFormatSettings.TimeAMString = '', 'AM', AFormatSettings.TimeAMString);
+          pm := IfThen(AFormatSettings.TimePMString = '', 'PM', AFormatSettings.TimePMString);
+          Result := Format('%s %s/%s', [Result, am, pm]);
+        end;
       end;
-    nfTimeInterval:
+    nfTimeInterval:                               // --> [h]:nn:ss
       if AFormatString = '' then
         Result := '[h]:mm:ss'
       else
-        Result := AFormatString;
+        Result := AddIntervalBrackets(AFormatString);
   end;
 end;
 
@@ -886,13 +896,16 @@ begin
             else               Result := Result + ';#,##0' + decs + '-';
           end;
         end;
-        if ANumberFormat in [nfCurrency, nfCurrencyRed] then begin
+        if ANumberFormat in [nfCurrency, nfCurrencyRed] then
+          Result := Result +';' + Format(POS_FMT[cf], ['0' + decs, ACurrencySymbol])
+          {
           Result := Result + ';0' + decs;
           if cf in [2,3] then
             Result := Format('%s "%s"', [Result, ACurrencySymbol])
           else
             Result := Format('%s"%s"', [Result, ACurrencySymbol]);
-        end else
+            }
+        else
           Result := Result + ';-';
       end;
   end;
@@ -928,6 +941,26 @@ begin
   Result := 0;
 end;
 
+{ The given format string is assumed to be for time intervals, i.e. its first
+  time symbol must be enclosed by square brackets. Checks if this is true, and
+  adds the brackes if not. }
+function AddIntervalBrackets(AFormatString: String): String;
+var
+  p: Integer;
+  s1, s2: String;
+begin
+  if AFormatString[1] = '[' then
+    Result := AFormatString
+  else begin
+    p := pos(':', AFormatString);
+    if p <> 0 then begin
+      s1 := copy(AFormatString, 1, p-1);
+      s2 := copy(AFormatString, p, Length(AFormatString));
+      Result := Format('[%s]%s', [s1, s2]);
+    end else
+      Result := Format('[%s]', [AFormatString]);
+  end;
+end;
 
 { Formats the number AValue in "scientific" format with the given number of
   decimals. "Scientific" is the same as "exponential", but with exponents rounded

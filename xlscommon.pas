@@ -348,11 +348,14 @@ type
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
-    procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
+    {
+    procedure ConvertAfterReading(AFormatIndex: Integer; var AFormatString: String;
       var ANumFormat: TsNumberFormat; var ADecimals: Byte;
       var ACurrencySymbol: String); override;
+    procedure ConvertBeforeWriting(var AFormatString: String); override;
+    }
   public
-    function FormatStringForWriting(AIndex: Integer): String; override;
+//    function FormatStringForWriting(AIndex: Integer): String; override;
   end;
 
   { TsSpreadBIFFReader }
@@ -535,50 +538,50 @@ end;
 
 { TsBIFFNumFormatList }
 
-{ These are the built-in number formats as used by fpc. Before writing to file
-  some code will be modified to become compatible with Excel
-  (--> FormatStringForWriting) }
+{ These are the built-in number formats as expected in the biff spreadsheet file.
+  In BIFF5+ they are not written to file but they are used for lookup of the
+  number format that Excel used. They have to be converted to fpspreadsheet format. }
 procedure TsBIFFNumFormatList.AddBuiltinFormats;
 var
   cs: String;
 begin
-  cs := DefaultFormatSettings.CurrencyString;
+  cs := Workbook.FormatSettings.CurrencyString;
 
-  AddFormat( 0, nfGeneral);
-  AddFormat( 1, nfFixed, '0', 0);
-  AddFormat( 2, nfFixed, '0.00', 2);
-  AddFormat( 3, nfFixedTh, '#,##0', 0);
-  AddFormat( 4, nfFixedTh, '#,##0.00', 2);
-  AddFormat( 5, nfCurrency, '', 0);
-  AddFormat( 6, nfCurrencyRed, '', 0);  // negative numbers in red
-  AddFormat( 7, nfCurrency, '', 2);
-  AddFormat( 8, nfCurrencyRed, '', 2);
-  AddFormat( 9, nfPercentage, '0%', 0);
-  AddFormat(10, nfPercentage, '0.00%', 2);
-  AddFormat(11, nfExp, '0.00E+00', 2);
+  AddFormat( 0, '', nfGeneral);
+  AddFormat( 1, '0', nfFixed, 0);
+  AddFormat( 2, '0.00', nfFixed, 2);
+  AddFormat( 3, '#,##0', nfFixedTh, 0);
+  AddFormat( 4, '#,##0.00', nfFixedTh, 2);
+  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency, 0);
+  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed, 0);
+  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency,  2);
+  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrencyRed, 2);
+  AddFormat( 9, '0%', nfPercentage, 0);
+  AddFormat(10, '0.00%', nfPercentage, 2);
+  AddFormat(11, '0.00E+00', nfExp, 2);
   // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
-  AddFormat(14, nfShortDate);
-  AddFormat(15, nfLongDate);
-  AddFormat(16, nfFmtDateTime, 'd/mmm');
-  AddFormat(17, nfFmtDateTime, 'mmm/yy');
-  AddFormat(18, nfShortTimeAM);
-  AddFormat(19, nfLongTimeAM);
-  AddFormat(20, nfShortTime);
-  AddFormat(21, nfLongTime);
-  AddFormat(22, nfShortDateTime);
+  AddFormat(14, 'M/D/YY', nfShortDate);
+  AddFormat(15, 'D-MMM-YY', nfLongDate);
+  AddFormat(16, 'D-MMM', nfFmtDateTime);
+  AddFormat(17, 'MMM-YY', nfFmtDateTime);
+  AddFormat(18, 'h:mm AM/PM', nfShortTimeAM);
+  AddFormat(19, 'h:mm:ss AM/PM', nfLongTimeAM);
+  AddFormat(20, 'h:mm', nfShortTime);
+  AddFormat(21, 'h:mm:ss', nfLongTime);
+  AddFormat(22, 'M/D/YY h:mm', nfShortDateTime);
   // 23..36 not supported
-  AddFormat(37, nfCurrency, '', 0);
-  AddFormat(38, nfCurrencyRed, '', 0);
-  AddFormat(39, nfCurrency, '', 2);
-  AddFormat(40, nfCurrencyRed, '', 2);
-  AddFormat(41, nfCurrencyDash, '', 0);
-  AddFormat(42, nfCurrencyDashRed, '', 0);
-  AddFormat(43, nfCurrencyDash, '', 2);
-  AddFormat(44, nfCurrencyDashRed, '', 2);
-  AddFormat(45, nfFmtDateTime, 'nn:ss');
-  AddFormat(46, nfTimeInterval, '[h]:nn:ss');
-  AddFormat(47, nfFmtDateTime, 'nn:ss.z');   // z will be replaced by 0 later
-  AddFormat(48, nfSci, '##0.0E+00', 1);
+  AddFormat(37, '_(#,##0_);(#,##0)', nfCurrency, 0);
+  AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed, 0);
+  AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency, 2);
+  AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed, 2);
+  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfCurrencyDash, 0);
+  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfCurrencyDash, 0);
+  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfCurrencyDash, 2);
+  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfCurrencyDash, 2);
+  AddFormat(45, 'mm:ss', nfFmtDateTime);
+  AddFormat(46, '[h]:mm:ss', nfTimeInterval);
+  AddFormat(47, 'mm:ss.0', nfFmtDateTime);
+  AddFormat(48, '##0.0E+00', nfSci, 1);
   // 49 ("Text") not supported
 
   // All indexes from 0 to 163 are reserved for built-in formats.
@@ -586,7 +589,7 @@ begin
   FFirstFormatIndexInFile := 164;
   FNextFormatIndex := 164;
 end;
-
+                                     (*
 { Considers some Excel specialities for format detection.
   The output values will be passed to fpc. }
 procedure TsBIFFNumFormatList.Analyze(AFormatIndex: Integer;
@@ -600,7 +603,7 @@ var
 }
 begin
 
-(*
+{
   AFormatString := 'hh:mm:ss.0 AM/PM'; //"€" #,##.0;[red]"$" -#,##.000;-';
 
   parser := TsNumFormatParser.Create(Workbook, AFormatString);
@@ -620,7 +623,7 @@ begin
   finally
     parser.Free;
   end;
-  *)
+  }
 
   fmt := Lowercase(AFormatString);
   { Check the built-in formats first:
@@ -664,7 +667,8 @@ begin
 
   inherited Analyze(AFormatIndex, AFormatString, ANumFormat, ADecimals, ACurrencySymbol);
 end;
-
+       *)
+       (*
 { Creates formatting strings that are written into the file. }
 function TsBIFFNumFormatList.FormatStringForWriting(AIndex: Integer): String;
 var
@@ -712,7 +716,7 @@ begin
       end;
   end;
 end;
-
+         *)
 
 { TsSpreadBIFFReader }
 
@@ -2039,6 +2043,7 @@ procedure TsSpreadBIFFWriter.WriteXFIndex(AStream: TStream; ACell: PCell);
 var
   lIndex: Integer;
   lXFIndex: Word;
+  lCell: TCell;
 begin
   // First try the fast methods for default formats
   if ACell^.UsedFormattingFields = [] then begin
@@ -2047,7 +2052,22 @@ begin
   end;
 
   // If not, then we need to search in the list of dynamic formats
-  lIndex := FindFormattingInList(ACell);
+  // But we have to consider that the number formats of the cell is in fpc syntax,
+  // but the number format list of the writer is in Excel syntax.
+  lCell := ACell^;
+//  CopyCellFormat(ACell, @lCell);
+  with lCell do begin
+    if NumberFormat <> nfCustom then begin
+      if IsDateTimeFormat(NumberFormat) then
+        NumberFormatStr := BuildDateTimeFormatString(NumberFormat,
+          Workbook.FormatSettings, NumberFormatStr)
+      else
+        NumberFormatStr := BuildNumberFormatString(NumberFormat,
+          Workbook.FormatSettings, Decimals, CurrencySymbol);
+      NumFormatList.ConvertBeforeWriting(NumberFormatStr, NumberFormat, Decimals, CurrencyString);
+    end;
+  end;
+  lIndex := FindFormattingInList(@lCell);
 
   // Carefully check the index
   if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then

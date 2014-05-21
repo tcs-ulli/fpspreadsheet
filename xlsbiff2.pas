@@ -44,7 +44,7 @@ type
     procedure AddBuiltinFormats; override;
   public
     constructor Create(AWorkbook: TsWorkbook);
-    function FormatStringForWriting(AIndex: Integer): String; override;
+//    function FormatStringForWriting(AIndex: Integer): String; override;
   end;
 
   { TsSpreadBIFF2Reader }
@@ -173,33 +173,34 @@ end;
 
 procedure TsBIFF2NumFormatList.AddBuiltinFormats;
 begin
-  AddFormat( 0, nfGeneral);
-  AddFormat( 1, nfFixed, '0', 0);
-  AddFormat( 2, nfFixed, '0.00', 2);
-  AddFormat( 3, nfFixedTh, '#,##0', 0);
-  AddFormat( 4, nfFixedTh, '#,##0.00', 2);
-  AddFormat( 5, nfFixedTh, '"$"#,##0_);("$"#,##0)', 0);
-  AddFormat( 6, nfFixedTh, '"$"#,##0_);[Red]("$"#,##0)', 2);
-  AddFormat( 7, nfFixedTh, '"$"#,##0.00_);("$"#,##0.00)', 0);
-  AddFormat( 8, nfFixedTh, '"$"#,##0.00_);[Red]("$"#,##0.00)', 2);
-  AddFormat( 9, nfPercentage, '0%', 0);
-  AddFormat(10, nfPercentage, '0.00%', 2);
-  AddFormat(11, nfExp, '0.00E+00', 2);
-  AddFormat(12, nfShortDate);
-  AddFormat(13, nfLongDate);
-  AddFormat(14, nfFmtDateTime, 'd-mmm');
-  AddFormat(15, nfFmtDateTime, 'mmm-yy');
-  AddFormat(16, nfShortTimeAM);
-  AddFormat(17, nfLongTimeAM);
-  AddFormat(18, nfShortTime);
-  AddFormat(19, nfLongTime);
-  AddFormat(20, nfShortDateTime);
+  AddFormat( 0, '', nfGeneral);
+  AddFormat( 1, '0', nfFixed, 0);
+  AddFormat( 2, '0.00', nfFixed, 2);
+  AddFormat( 3, '#,##0', nfFixedTh, 0);
+  AddFormat( 4, '#,##0.00', nfFixedTh, 2);
+  AddFormat( 5, '"$"#,##0_);("$"#,##0)', nfCurrency, 0);
+  AddFormat( 6, '"$"#,##0_);[Red]("$"#,##0)', nfCurrencyRed, 2);
+  AddFormat( 7, '"$"#,##0.00_);("$"#,##0.00)', nfCurrency, 0);
+  AddFormat( 8, '"$"#,##0.00_);[Red]("$"#,##0.00)', nfCurrency, 2);
+  AddFormat( 9, '0%', nfPercentage, 0);
+  AddFormat(10, '0.00%', nfPercentage, 2);
+  AddFormat(11, '0.00E+00', nfExp, 2);
+  AddFormat(12, 'M/D/YY', nfShortDate);
+  AddFormat(13, 'D-MMM-YY', nfLongDate);
+  AddFormat(14, 'D-MMM', nfFmtDateTime);
+  AddFormat(15, 'MMM-YY', nfFmtDateTime);
+  AddFormat(16, 'h:mm AM/PM', nfShortTimeAM);
+  AddFormat(17, 'h:mm:ss AM/PM', nfLongTimeAM);
+  AddFormat(18, 'h:mm', nfShortTime);
+  AddFormat(19, 'h:mm:ss', nfLongTime);
+  AddFormat(20, 'M/D/YY h:mm', nfShortDateTime);
 
   FFirstFormatIndexInFile := 0;  // BIFF2 stores built-in formats to file.
   FNextFormatIndex := 21;    // not needed - there are not user-defined formats
 end;
 
 { Creates formatting strings that are written into the file. }
+(*
 function TsBIFF2NumFormatList.FormatStringForWriting(AIndex: Integer): String;
 var
   ds, ts, cs: string;
@@ -231,7 +232,7 @@ begin
    20: Result := 'm/d/yy h:mm';
   end;
 end;
-
+  *)
 
 { TsSpreadBIFF2Reader }
 

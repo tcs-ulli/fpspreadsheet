@@ -55,6 +55,7 @@ type
     FFormatString: String;
     FNumFormat: TsNumberFormat;
     FConversionDirection: TsConversionDirection;
+    FIsTime: Boolean;
     FStatus: Integer;
     function GetFormatString: String;
     function GetParsedSectionCount: Integer;
@@ -78,7 +79,8 @@ type
     procedure ScanText;
 
   public
-    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
+    constructor Create(AWorkbook: TsWorkbook;
+      const AFormatString: String; ANumFormat: TsNumberFormat;
       AConversionDirection: TsConversionDirection = cdToFPSpreadsheet); overload;
     constructor Create(AWorkbook: TsWorkbook; const AFormatSections: TsNumFormatSections;
       AConversionDirection: TsConversionDirection = cdFromFPSpreadsheet); overload;
@@ -96,7 +98,7 @@ type
 implementation
 
 uses
-  fpsutils;
+  StrUtils, fpsutils;
 
 const
   COMPARE_STR: array[TsCompareOperation] of string = (
@@ -109,12 +111,14 @@ const
   from a spreadsheet file. The conversion, by default, will go FROM the file TO
   the fpspreadsheet procedures. }
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String; AConversionDirection: TsConversionDirection = cdToFPSpreadsheet);
+  const AFormatString: String; ANumFormat: TsNumberFormat;
+  AConversionDirection: TsConversionDirection = cdToFPSpreadsheet);
 begin
   inherited Create;
   FCreateMethod := 0;
   FConversionDirection := AConversionDirection;
   FWorkbook := AWorkbook;
+  FNumFormat := ANumFormat;
   FFormatSettings := DefaultFormatSettings;
   FFormatSettings.DecimalSeparator := '.';
   FFormatSettings.ThousandSeparator := ',';
@@ -163,6 +167,7 @@ begin
     Decimals := 0;
     NumFormat := nfGeneral;
   end;
+  FIsTime := false;
 end;
 
 procedure TsNumFormatParser.AnalyzeBracket(const AValue: String);
@@ -171,6 +176,23 @@ var
   n: Integer;
 begin
   lValue := lowercase(AValue);
+  // date/time format for interval
+  if (lValue = 'h') or (lValue = 'hh') or (lValue = 'm') or (lValue = 'mm') or
+     (lValue = 's') or (lValue = 'ss') or (lValue = 'n') or (lValue = 'nn')
+  then begin
+    FSections[FCurrSection].FormatString := FSections[FCurrSection].FormatString +
+      '[' + AValue + ']';
+    FSections[FCurrSection].NumFormat := nfTimeInterval;
+    FIsTime := true;
+  end
+  else
+  if ((lValue = 'n') or (lValue = 'nn')) and (FConversionDirection = cdFromFPSpreadsheet)
+  then begin
+    FSections[FCurrSection].FormatString := FSections[FCurrSection].FormatString +
+      '[' + DupeString('m', Length(lValue)) + ']';
+    FIsTime := true;
+  end
+  else
   // Colors
   if lValue = 'red' then
     FSections[FCurrSection].Color := scRed
@@ -251,7 +273,7 @@ begin
     if FSections[i].FormatString = '' then
       FSections[i].NumFormat := nfGeneral;
 
-    if (FSections[i].CurrencySymbol <> '') and (FSections[i].NumFormat = nfFixedTh) then
+    if (FSections[i].CurrencySymbol <> '') {and (FSections[i].NumFormat in [nfFixed, nfFixedTh])} then
       FSections[i].NumFormat := nfCurrency;
 
     if FSections[i].CompareOperation <> coNotUsed then begin
@@ -270,7 +292,7 @@ begin
         end;
 
       nfShortDateTime, nfShortDate, nfShortTime, nfShortTimeAM,
-      nfLongDate, nfLongTime, nfLongTimeAM, nfFmtDateTime:
+      nfLongDate, nfLongTime, nfLongTimeAM, nfTimeInterval, nfFmtDateTime:
         try
           s := FormatDateTimeEx(FSections[i].FormatString, now(), FWorkbook.FormatSettings);
         except
@@ -279,6 +301,9 @@ begin
         end;
     end;
   end;
+
+  if (ns > 1) and (FNumFormat in [nfCurrencyRed, nfCurrencyDashRed]) then
+    FSections[1].Color := scRed;
 
   // Extract built-in NumFormat identifier for currency (needs several entries in
   // three sections).
@@ -303,6 +328,22 @@ begin
   else
     FNumFormat := FSections[0].NumFormat;
 
+  // Add colors to section format strings
+  if (FConversionDirection = cdFromFPSpreadsheet) then
+    for i := 0 to High(FSections) do
+      if FSections[i].Color < 8 then
+        FSections[i].FormatString := Format('[%s]%s', [
+          FWorkbook.GetColorName(FSections[i].Color),
+          FSections[i].FormatString
+        ])
+      else
+      if FSections[i].Color <> scNotDefined then
+        FSections[i].FormatString := Format('[Color%d]%s', [
+          FSections[i].Color,
+          FSections[i].FormatString
+        ]);
+
+  // Construct total format string
   if ns = 2 then
     FFormatString := Format('%s;%s;%s', [
       FSections[0].FormatString,
@@ -408,6 +449,9 @@ var
 begin
   FStatus := psOK;
   AddSection;
+  if AFormatString = '' then
+    exit;
+
   FStart := @AFormatString[1];
   FEnd := FStart + Length(AFormatString) - 1;
   FCurrent := FStart;
@@ -415,6 +459,7 @@ begin
     token := FCurrent^;
     case token of
       '[': ScanBrackets;
+      ':': if FIsTime then AddChar(':');
       ';': AddSection;
       else ScanFormat;
     end;
@@ -444,6 +489,8 @@ begin
   end;
 end;
 
+{ Scans a date/time format. Note: fpc and the Excel-standard have slightly
+  different formats which are converted here }
 procedure TsNumFormatParser.ScanDateTime;
 var
   token: Char;
@@ -452,55 +499,76 @@ var
   i: Integer;
   nf: TsNumberFormat;
   partStr: String;
-  isTime: Boolean;
   isAMPM: Boolean;
 begin
   done := false;
   s := '';
-  isTime := false;
   isAMPM := false;
 
   while (FCurrent <= FEnd) and (FStatus = psOK) and (not done) do begin
     token := FCurrent^;
     case token of
-      '\':
+      '\':  // means that the next character is taken literally
         begin
-          inc(FCurrent);
-          token := FCurrent^;
+          inc(FCurrent);             // skip the "\"...
+          token := FCurrent^;        // and take the next character
           s := s + token;
         end;
       'Y', 'y':
         begin
           ScanDateTimeParts(token, token, s);
-          isTime := false;
+          FIsTime := false;
         end;
-      'M', 'm':
-        ScanDateTimeParts(token, token, s);
-        {if isTime then    // help fpc to separate "month" and "minute"
-           ScanDateTimeParts(token, 'n', s)
-         else   // both "month" and "minute" work in fpc to some degree
-           ScanDateTimeParts(token, token, s);}
+      'M':
+        if FConversionDirection = cdToFPSpreadsheet then
+          ScanDateTimeParts(token, 'm', s)
+        else begin
+          if FIsTime then ScanDateTimeParts(token, 'm', s) else ScanDateTimeParts(token, 'M', s);
+        end;
+      'm':
+        if FConversionDirection = cdToFPSpreadsheet then begin
+          if FIsTime then ScanDateTimeParts(token, 'n', s) else ScanDateTimeParts(token, 'm', s)
+        end else begin
+          if FIsTime then ScanDateTimeParts(token, 'm', s) else ScanDateTimeParts(token, 'M', s);
+        end;
       'N', 'n':
-        ScanDateTimeParts(token, 'n', s);  // fpc dialect for "minutes"
+        if FConversionDirection = cdToFPSpreadsheet then begin
+          // "n" is not used by file format --> stop scanning date/time
+          done := true;
+          dec(FCurrent);
+        end else
+          // "n", in fpc, stands for "minute".
+          ScanDateTimeParts(token, 'm', s);
       'D', 'd':
         begin
           ScanDateTimeParts(token, token, s);
-          isTime := false;
+          FIsTime := false;
         end;
       'H', 'h':
         begin
           ScanDateTimeParts(token, token, s);
-          isTime := true;
+          FIsTime := true;
         end;
       'S', 's':
         begin
           ScanDateTimeParts(token, token, s);
-          isTime := true;
+          FIsTime := true;
         end;
       '/', ':', '.', ']', '[', ' ':
         s := s + token;
-      '0', 'z', 'Z':
-        ScanDateTimeParts(token, token, s);
+      '0':
+        if FConversionDirection = cdToFPSpreadsheet then
+          ScanDateTimeParts(token, 'z', s)
+        else begin
+          done := true;
+          dec(FCurrent);
+        end;
+      'z', 'Z':
+        if FConversionDirection = cdToFPSpreadsheet then begin
+          done := true;
+          dec(FCurrent);
+        end else
+          ScanDateTimeParts(token, '0', s);
       'A', 'a':
         begin
           ScanAMPM(s);
@@ -530,6 +598,9 @@ begin
     else
     if s = StripAMPM(FWorkbook.FormatSettings.ShortTimeFormat) then
       nf := IfThen(isAMPM, nfShortTimeAM, nfShortTime)
+    else
+    if s[1] = '[' then
+      nf := nfTimeInterval
     else
       nf := nfFmtDateTime;
 
@@ -589,6 +660,10 @@ begin
         begin
           inc(FCurrent);
           ScanText;
+        end;
+      '(', ')':
+        begin
+          AddChar(token);
         end;
       '0', '#', '.', ',', '-':
         ScanNumber;
