@@ -307,7 +307,7 @@ begin
 
     // Now apply the modifications.
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then begin
-      j := NumFormatList.Find(@FFormattingStyles[i]);
+      j := NumFormatList.FindFormatOf(@FFormattingStyles[i]);
       if j > -1 then
         lFormatIndex := NumFormatList[j].Index;
     end;

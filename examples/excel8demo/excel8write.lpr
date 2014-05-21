@@ -55,7 +55,6 @@ begin
   }
 
   // Write some cells
-//  MyWorksheet.WriteDateTime(0, 20, now, nfShortTime); //1.0);// A1
   MyWorksheet.WriteNumber(0, 0, 1.0, nfFixed, 3);// A1
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
@@ -133,7 +132,7 @@ begin
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 
-           (*
+    {
   // Uncomment this to test large XLS files
   for i := 50 to 1000 do
   begin
@@ -142,7 +141,7 @@ begin
 //    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
     MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
   end;
-             *)
+     }
 
   // Write the formula E1 = A1 + B1
   SetLength(MyRPNFormula, 3);

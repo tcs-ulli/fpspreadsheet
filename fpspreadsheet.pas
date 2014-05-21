@@ -581,11 +581,11 @@ type
       var ANumFormat: TsNumberFormat; var ADecimals: Byte;
       var ACurrencySymbol: String); virtual;
     procedure Delete(AIndex: Integer);
-    function Find(AFormatCell: PCell): integer; overload;
     function Find(ANumFormat: TsNumberFormat; AFormatString: String;
       ADecimals: Byte; ACurrencySymbol: String): Integer; overload;
     function Find(AFormatIndex: Integer): Integer; overload;
     function Find(AFormatString: String): Integer; overload;
+    function FindFormatOf(AFormatCell: PCell): integer; virtual;
     function FormatStringForWriting(AIndex: Integer): String; virtual;
     procedure Sort;
 
@@ -642,7 +642,7 @@ type
     function  FindFormattingInList(AFormat: PCell): Integer;
     procedure FixFormat(ACell: PCell); virtual;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
-    procedure ListAllFormattingStyles;
+    procedure ListAllFormattingStyles; virtual;
     procedure ListAllNumFormatsCallback(ACell: PCell; AStream: TStream);
     procedure ListAllNumFormats; virtual;
     { Helpers for writing }
@@ -999,11 +999,6 @@ procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
   AFromWorksheet: TsWorksheet);
 var
   lSrcCell, lDestCell: PCell;
-  {
-  lCurStr: String;
-  lCurUsedFormatting: TsUsedFormattingFields;
-  lCurColor: TsColor;
-  }
 begin
   lSrcCell := AFromWorksheet.FindCell(AFromRow, AFromCol);
   lDestCell := GetCell(AToRow, AToCol);
@@ -1564,26 +1559,9 @@ procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
 var
   ACell: PCell;
-  //fmt: String;
-  //parser: TsNumFormatParser;
 begin
   if (AFormat in [nfFmtDateTime, nfTimeInterval]) then
     AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
-    (*
-    parser := TsNumFormatParser.Create(Workbook, AFormatStr, cdToFPSpreadsheet);
-    try
-      // Check that the format string can be reckognized.
-      if parser.Status <> psOK then
-        raise Exception.Create(lpNoValidNumberFormatString);
-      // Check that the format string belongs to date/time values
-      if not (IsDateTimeFormat(parser.Builtin_NumFormat) or (parser.Builtin_NumFormat = nfFmtDateTime))
-        then raise Exception.Create(lpNoValidDateTimeFormatString);
-      AFormatStr := parser.FormatString;
-    finally
-      parser.Free;
-    end;
-  end;
-    *)
 
   ACell := GetCell(ARow, ACol);
   ACell^.ContentType := cctDateTime;
@@ -2268,9 +2246,7 @@ end;
   It is added to the end of the list of worksheets
 
   @param  AName     The name of the new worksheet
-
   @return The instace of the newly created worksheet
-
   @see    TsWorkbook
 }
 function TsWorkbook.AddWorksheet(AName: string): TsWorksheet;
@@ -2790,114 +2766,6 @@ begin
   end;
 end;
 
-(*
-procedure TsCustomNumFormatList.Analyze(AFormatIndex: Integer;
-  var AFormatString: String; var ANumFormat: TsNumberFormat;
-  var ADecimals: Byte; var ACurrencySymbol: String);
-const
-  SHORT_LONG_DATE: array[boolean] of TsNumberFormat = (
-    nfShortDate, nfLongDate
-  );
-  AMPM_SHORT_LONG_TIME: array[boolean, boolean] of TsNumberFormat = (
-    (nfShortTime, nfLongTime),
-    (nfShortTimeAM, nfLongTimeAM)
-  );
-  EXP_SCI: array[boolean] of TsNumberFormat = (
-    nfExp, nfSci
-  );
-  CURR_FMT: array[boolean, boolean] of TsNumberFormat = (
-    (nfCurrency, nfCurrencyDash),
-    (nfCurrencyRed, nfCurrencyDashRed)
-  );
-var
-  decs: Word;
-  isAMPM: Boolean;
-  isLongTime: Boolean;
-  isLongDate: Boolean;
-  isInterval: Boolean;
-  isSci: Boolean;
-  isTime, isDate: Boolean;
-  isCurrRed, isCurrDash: Boolean;
-  lFormatData: TsNumFormatData;
-  i: Integer;
-  fmt: String;
-begin
-  { Check the built-in formats first }
-  i := Find(AFormatIndex);
-  if i > 0 then begin
-    lFormatData := Items[i];
-    case lFormatData.NumFormat of
-      nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci:
-        begin
-          ANumFormat := lFormatData.NumFormat;
-          AFormatString := lFormatData.FormatString;
-          ADecimals := lFormatData.Decimals;
-          exit;
-        end;
-      nfShortDateTime, nfShortDate, nfLongDate,
-      nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval:
-        begin
-          ANumFormat := lFormatData.NumFormat;
-          AFormatString := lFormatData.FormatString;
-          ADecimals := 0;
-          exit;
-        end;
-      nfFmtDateTime:
-        begin
-          ANumFormat := lFormatData.NumFormat;
-          AFormatString := lFormatData.FormatString;
-          IsTimeFormat(AFormatString, isLongTime, isAMPM, isInterval, ADecimals);
-          exit;
-        end;
-      nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed:
-        begin
-          ANumFormat := lFormatData.NumFormat;
-          AFormatString := lFormatData.FormatString;
-          ADecimals := lFormatData.Decimals;
-          ACurrencySymbol := lFormatData.CurrencySymbol;
-        end;
-    end;
-  end;
-
-  { Then check the non-standard formats. There is a chance that they may not be
-    reckognized correctly... }
-  ANumFormat := nfGeneral;
-  if IsPercentNumberFormat(AFormatString, ADecimals) then
-    ANumFormat := nfPercentage
-  else
-  if IsExpNumberFormat(AFormatstring, ADecimals, isSci) then
-    ANumFormat := EXP_SCI[isSci]
-  else
-  if IsThousandSepNumberFormat(AFormatString, ADecimals) then
-    ANumFormat := nfFixedTh
-  else
-  if IsFixedNumberFormat(AFormatString, ADecimals) then
-    ANumFormat := nfFixed
-  else
-  if IsCurrencyFormat(AFormatString, ADecimals, ACurrencySymbol, isCurrRed, isCurrDash) then
-    ANumFormat := CURR_FMT[isCurrRed, isCurrDash]
-  else begin
-    isTime := IsTimeFormat(AFormatString, isLongTime, isAMPM, isInterval, ADecimals);
-    isDate := IsDateFormat(AFormatString, isLongDate);
-    if isInterval then
-      ANumFormat := nfTimeInterval
-    else
-    if isDate and isTime then
-      ANumFormat := nfShortDateTime
-    else if isDate then
-      ANumFormat := SHORT_LONG_DATE[isLongDate]
-    else if isTime then begin
-      if (ADecimals > 0) and (not isAMPM) then
-        ANumFormat := nfFmtDateTime
-      else
-        ANumFormat := AMPM_SHORT_LONG_TIME[isAMPM, isLongTime]
-    end
-    else if AFormatString <> '' then
-      ANumFormat := nfCustom;
-  end;
-end;
-             *)
-
 { Called from the reader when a format item has been read from the file.
   Determines the numFormat type, format string etc and stores the format in the
   list. If necessary, the format string has to be made compatible with fpc
@@ -2936,17 +2804,6 @@ begin
   Delete(AIndex);
 end;
 
-{ Determines whether the format attributed to the given cell is already
-  contained in the list and returns its list index. }
-function TsCustomNumFormatList.Find(AFormatCell: PCell): integer;
-begin
-  if AFormatCell = nil then
-    Result := -1
-  else
-    Result := Find(AFormatCell^.NumberFormat, AFormatCell^.NumberFormatStr,
-      AFormatCell^.Decimals, AFormatCell^.CurrencySymbol);
-end;
-
 { Seeks a format item with the given properties and returns its list index,
   or -1 if not found. }
 function TsCustomNumFormatList.Find(ANumFormat: TsNumberFormat;
@@ -2956,17 +2813,6 @@ var
   fmt: String;
   itemfmt: String;
 begin
-  (*
-  // These are pre-defined formats - no need to check format string & decimals
-  if ANumFormat in [ nfGeneral, nfShortDateTime, nfShortDate, nfLongDate,
-                     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM ]
-  then
-    for Result := 0 to Count-1 do begin
-      item := Items[Result];
-      if (item <> nil) and (item.NumFormat = ANumFormat) then
-        exit;
-    end;
-    *)
   if (ANumFormat = nfFmtDateTime) then begin
     fmt := lowercase(AFormatString);
     for Result := Count-1 downto 0 do begin
@@ -3052,6 +2898,17 @@ begin
       exit;
   end;
   Result := -1;
+end;
+
+{ Determines whether the format attributed to the given cell is already
+  contained in the list and returns its list index. }
+function TsCustomNumFormatList.FindFormatOf(AFormatCell: PCell): integer;
+begin
+  if AFormatCell = nil then
+    Result := -1
+  else
+    Result := Find(AFormatCell^.NumberFormat, AFormatCell^.NumberFormatStr,
+      AFormatCell^.Decimals, AFormatCell^.CurrencySymbol);
 end;
 
 { Determines the format string to be written into the spreadsheet file.
@@ -3263,17 +3120,6 @@ procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 begin
   // to be overridden
 end;
-                     (*
-var
-  isLong, isAMPM, isInterval: Boolean;
-  decs: Byte;
-begin
-  if ACell^.NumberFormat = nfFmtDateTime then begin
-    decs := CountDecs(ACell^.NumberFormatStr, ['0', 'z', 'Z']);
-//    if IsTimeFormat(ACell^.NumberFormatStr, isLong, isAMPM, isInterval, decs) then
-      ACell^.Decimals := decs;
-  end;
-end;                   *)
 
 { Each descendent should define its own default formats, if any.
   Always add the normal, unformatted style first to speed things up. }
@@ -3442,42 +3288,7 @@ begin
     Inc(StrPos);
   end;
 end;
-  (*
-function TsCustomSpreadWriter.FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): string;
-{ We use RGB bytes here, but please note that these are physically written
-  to XLS file as ABGR (where A is 0) }
-begin
 
-  case AColor of
-  scBlack:    Result := '000000';
-  scWhite:    Result := 'FFFFFF';
-  scRed:      Result := 'FF0000';
-  scGREEN:    Result := '00FF00';
-  scBLUE:     Result := '0000FF';
-  scYELLOW:   Result := 'FFFF00';
-  scMAGENTA:  Result := 'FF00FF';
-  scCYAN:     Result := '00FFFF';
-  scDarkRed:  Result := '800000';
-  scDarkGreen:Result := '008000';
-  scDarkBlue: Result := '000080';
-  scOLIVE:    Result := '808000';
-  scPURPLE:   Result := '800080';
-  scTEAL:     Result := '008080';
-  scSilver:   Result := 'C0C0C0';
-  scGrey:     Result := '808080';
-  //
-  scGrey10pct:Result := 'E6E6E6';
-  scGrey20pct:Result := 'CCCCCC';
-  scOrange:   Result := 'FFA500';
-  scDarkBrown:Result := 'A0522D';
-  scBrown:    Result := 'CD853F';
-  scBeige:    Result := 'F5F5DC';
-  scWheat:    Result := 'F5DEB3';
-  //
-  scRGBCOLOR: Result := Format('%x%x%x', [ARGBColor.Red div $100, ARGBColor.Green div $100, ARGBColor.Blue div $100]);
-  end;
-end;
-    *)
 {@@
   Helper function for the spreadsheet writers.
 
@@ -3811,4 +3622,33 @@ finalization
   SetLength(GsSpreadFormats, 0);
 
 end.
+
+{ Strategy for handling of number formats:
+
+Problem:
+For number formats, fpspreadsheet uses a syntax which is slightly different from
+the syntax that Excel uses in the xls files. Moreover, the file syntax can be
+different from file type to file type (biff2, for example, allows only a few
+predefined formats, while the number of allowed formats is unlimited (?) for
+biff8.
+
+Number format handling in fpspreadsheet is implemented with the following
+concept in mind:
+
+- Formats written into TsWorksheet cells always follow the fpspreadsheet syntax.
+  The exception is for the format nfCustom for which the format strings are
+  left untouched.
+
+- For writing, the writer creates a TsNumFormatList which stores all formats
+  in file syntax.
+  - The built-in formats of the file types are coded in the file syntax.
+  - The method "ConvertBeforeWriting" converts the cell formats from the
+    fpspreadsheet to the file syntax.
+
+- For reading, the reader creates another TsNumFormatList.
+  - The built-in formats of the file types are coded again in file syntax.
+  - The formats read from the file are added in file syntax.
+  - After reading, the formats are converted to fpspreadsheet syntax
+    ("ConvertAfterReading").
+}
 

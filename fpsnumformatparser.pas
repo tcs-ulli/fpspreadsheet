@@ -550,11 +550,17 @@ begin
           if FIsTime then ScanDateTimeParts(token, 'm', s) else ScanDateTimeParts(token, 'M', s);
         end;
       'm':
+        if FConversionDirection = cdToFPSpreadsheet then
+          ScanDateTimeParts(token, 'n', s)
+        else
+          ScanDateTimeParts(token, 'm', s);
+      {
         if FConversionDirection = cdToFPSpreadsheet then begin
           if FIsTime then ScanDateTimeParts(token, 'n', s) else ScanDateTimeParts(token, 'm', s)
         end else begin
           if FIsTime then ScanDateTimeParts(token, 'm', s) else ScanDateTimeParts(token, 'M', s);
         end;
+        }
       'N', 'n':
         if FConversionDirection = cdToFPSpreadsheet then begin
           // "n" is not used by file format --> stop scanning date/time
