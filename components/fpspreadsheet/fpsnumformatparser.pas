@@ -19,6 +19,7 @@ const
   psErrNoUsableFormat = 5;
   psErrNoValidNumberFormat = 6;
   psErrNoValidDateTimeFormat = 7;
+  psAmbiguousSymbol = 8;
 
 { TsNumFormatParser }
 
@@ -524,10 +525,13 @@ var
   nf: TsNumberFormat;
   partStr: String;
   isAMPM: Boolean;
+  isDate: Boolean; // to distinguish whether "m" means "month" or "minute" (along with FIsTime)
+  P: PChar;
 begin
   done := false;
   s := '';
   isAMPM := false;
+  isDate := false;
 
   while (FCurrent <= FEnd) and (FStatus = psOK) and (not done) do begin
     token := FCurrent^;
@@ -535,54 +539,87 @@ begin
       '\':  // means that the next character is taken literally
         begin
           inc(FCurrent);             // skip the "\"...
-          token := FCurrent^;        // and take the next character
-          s := s + token;
+          if FCurrent <= FEnd then begin
+            token := FCurrent^;        // and take the next character
+            s := s + token;
+          end;
         end;
       'Y', 'y':
         begin
           ScanDateTimeParts(token, token, s);
           FIsTime := false;
+          isDate := true;
         end;
-      'M':
-        if FConversionDirection = cdToFPSpreadsheet then
+      'm', 'M':
+        if (token = 'M') and (FConversionDirection = cdToFPSpreadsheet) then
+          // Uppercase "M" in Excel = "month" --> "m" in fpspreadsheet
           ScanDateTimeParts(token, 'm', s)
         else begin
-          if FIsTime then ScanDateTimeParts(token, 'm', s) else ScanDateTimeParts(token, 'M', s);
+          // not clear if "m" means "month" or "minute" -> look for next symbols
+          if (not isDate) and (not FIsTime) then begin
+            P := FCurrent;
+            inc(P);
+            while (P <= FEnd) and not done do begin
+              token := P^;
+              case token of
+                'd','D','y','Y':
+                  begin
+                    isDate := true;     // ok - it means "month"
+                    FIsTime := false;
+                    break;
+                  end;
+                'h','H','s','S':
+                  begin
+                    isDate := false;
+                    FIsTime := true;   // ok - it means "minute"
+                    break;
+                  end;
+                else
+                  inc(P);
+              end;
+            end;
+            if P > FEnd then begin
+              // Special case of isolated "m" --> Error
+              FStatus := psAmbiguousSymbol;
+              break;
+            end;
+          end;
+          if FIsTime then   // is "minute"
+            case FConversionDirection of
+              cdToFPSpreadsheet  : ScanDateTimeParts(token, 'n', s);
+              cdFromFPSpreadsheet: ScanDateTimeParts(token, 'm', s);
+            end
+          else if isDate then  // is "month"
+            case FConversionDirection of
+              cdToFPSpreadsheet  : ScanDateTimeParts(token, 'm', s);
+              cdFromFPSpreadsheet: ScanDateTimeParts(token, 'M', s);
+            end;
         end;
-      'm':
-        if FConversionDirection = cdToFPSpreadsheet then
-          ScanDateTimeParts(token, 'n', s)
-        else
-          ScanDateTimeParts(token, 'm', s);
-      {
-        if FConversionDirection = cdToFPSpreadsheet then begin
-          if FIsTime then ScanDateTimeParts(token, 'n', s) else ScanDateTimeParts(token, 'm', s)
-        end else begin
-          if FIsTime then ScanDateTimeParts(token, 'm', s) else ScanDateTimeParts(token, 'M', s);
-        end;
-        }
       'N', 'n':
         if FConversionDirection = cdToFPSpreadsheet then begin
           // "n" is not used by file format --> stop scanning date/time
           done := true;
           dec(FCurrent);
         end else
-          // "n", in fpc, stands for "minute".
+          // "n", in fpc, stands for "minute". Excel wants "m"
           ScanDateTimeParts(token, 'm', s);
       'D', 'd':
         begin
           ScanDateTimeParts(token, token, s);
           FIsTime := false;
+          isDate := true;
         end;
       'H', 'h':
         begin
           ScanDateTimeParts(token, token, s);
           FIsTime := true;
+          isDate := false;
         end;
       'S', 's':
         begin
           ScanDateTimeParts(token, token, s);
           FIsTime := true;
+          isDate := false;
         end;
       '/', ':', '.', ']', '[', ' ':
         s := s + token;
