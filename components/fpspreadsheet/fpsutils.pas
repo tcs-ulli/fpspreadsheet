@@ -68,24 +68,15 @@ function MillimetersToTwips(AValue: Single): Integer;
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
-         (*
-function IsCurrencyFormat(s: String; out Decimals: Byte; out CurrSymbol: String;
-  out IsCurrencyRedFmt, IsCurrencyDashFmt: Boolean): Boolean;
-function IsExpNumberFormat(s: String; out Decimals: Byte; out IsSci: Boolean): Boolean;
-function IsFixedNumberFormat(s: String; out Decimals: Byte): Boolean;
-function IsPercentNumberFormat(s: String; out Decimals: Byte): Boolean;
-function IsThousandSepNumberFormat(s: String; out Decimals: Byte): Boolean;
-
-function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
-{function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
-  out SecDecimals: Byte): Boolean;
-*)
 
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
   ACurrencySymbol: String = '?'): String;
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
+function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
+  ADecimals: Integer; ANegativeValuesRed: Boolean; AAccountingStyle: Boolean;
+  ACurrencySymbol: String = '?'): String;
 
 function AddAMPM(const ATimeFormatString: String;
   const AFormatSettings: TFormatSettings): String;
@@ -94,12 +85,14 @@ function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
+function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
+  var ALeft, ARight: String): Byte;
 
 function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
-// These two functions are copies of fpc trunk until they are available in "stable"
+// These two functions are copies of fpc trunk until they are available in stable fpc.
 function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   Options : TFormatDateTimeOptions = []): string;
 function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
@@ -516,7 +509,6 @@ begin
   Result := Round((AValue * 20 * 72) / 25.4);
 end;
 
-
 { Returns either AValue1 or AValue2, depending on the condition.
   For reduciton of typing... }
 function IfThen(ACondition: Boolean; AValue1, AValue2: TsNumberFormat): TsNumberFormat;
@@ -524,262 +516,12 @@ begin
   if ACondition then Result := AValue1 else Result := AValue2;
 end;
 
-{ Format checking procedures }
-
+{ Checks whether the given number format code is for date/times. }
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
   Result := AFormat in [nfFmtDateTime, nfShortDateTime, nfShortDate, nfLongDate,
     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
 end;
-                               (*
-{ This simple parsing procedure of the Excel format string checks for a fixed
-  float format s, i.e. s can be '0', '0.00', '000', '0,000', and returns the
-  number of decimals, i.e. number of zeros behind the decimal point }
-function IsFixedNumberFormat(s: String; out Decimals: Byte): Boolean;
-var
-  i: Integer;
-  p: Integer;
-  decs: String;
-begin
-  Decimals := 0;
-
-  // Excel time formats with milliseconds ("mm:ss.000") can be incorrectly
-  // detected as fixed number formats. Check this case at first.
-  if pos('s.0', s) > 0 then begin
-    Result := false;
-    exit;
-  end;
-
-  // Check if s is a valid format mask.
-  try
-    FormatFloat(s, 1.0);
-  except
-    on EConvertError do begin
-      Result := false;
-      exit;
-    end;
-  end;
-
-  // If it is count the zeros - each one is a decimal.
-  if s = '0' then
-    Result := true
-  else begin
-    p := pos('.', s);  // position of decimal point;
-    if p = 0 then begin
-      Result := false;
-    end else begin
-      Result := true;
-      for i:= p+1 to Length(s) do
-        if s[i] = '0' then begin
-          inc(Decimals)
-        end
-        else
-          exit;     // ignore characters after the last 0
-    end;
-  end;
-end;
-
-{ This function checks whether the format string corresponds to a thousand
-  separator format like "#,##0.000' and returns the number of fixed decimals
-  (i.e. zeros after the decimal point) }
-function IsThousandSepNumberFormat(s: String; out Decimals: Byte): Boolean;
-var
-  i, p: Integer;
-begin
-  Decimals := 0;
-
-  // Check if s is a valid format string
-  try
-    FormatFloat(s, 1.0);
-  except
-    on EConvertError do begin
-      Result := false;
-      exit;
-    end;
-  end;
-
-  // If it is look for the thousand separator. If found count decimals.
-  Result := (Pos(',', s) > 0);
-  if Result then begin
-    p := pos('.', s);
-    if p > 0 then
-      for i := p+1 to Length(s) do
-        if s[i] = '0' then
-          inc(Decimals)
-        else
-          exit;  // ignore format characters after the last 0
-  end;
-end;
-
-{ This function checks whether the format string corresponds to percent
-  formatting and determines the number of decimals }
-function IsPercentNumberFormat(s: String; out Decimals: Byte): Boolean;
-var
-  i, p: Integer;
-begin
-  Decimals := 0;
-  // The signature of the percent format is a percent sign at the end of the
-  // format string.
-  Result := (s <> '') and (s[Length(s)] = '%');
-  if Result then begin
-    // Check for a valid format string
-    try
-      FormatDateTime(s, 1.0);
-    except
-      on EConvertError do begin
-        Result := false;
-        exit;
-      end;
-    end;
-    // Count decimals
-    p := pos('.', s);
-    if p > 0 then
-      for i := p+1 to Length(s)-1 do
-        if s[i] = '0' then
-          inc(Decimals)
-        else
-          exit;  // ignore characters after last 0
-  end;
-end;
-
-{ This function checks whether the format string corresponds to a currency format. }
-function IsCurrencyFormat(s: String; out Decimals: Byte; out CurrSymbol: String;
-  out IsCurrencyRedFmt, IsCurrencyDashFmt: Boolean): Boolean;
-begin
-  Result := false;           // TO DO !!!!
-end;
-
-{ This function checks whether the format string corresponds to exponential
-  formatting and determines the number of decimals. If it contains a # character
-  the function assumes a "scientific" format rounding the exponent to multiples
-  of 2. }
-function IsExpNumberFormat(s: String; out Decimals: Byte;
-  out IsSci: Boolean): Boolean;
-var
-  i, pdp, pe, ph: Integer;
-begin
-  Result := false;
-  Decimals := 0;
-  IsSci := false;
-
-  if SameText(s, 'General') then
-    exit;
-
-  // Check for a valid format string
-  try
-    FormatDateTime(s, 1.0);
-  except
-    on EConvertError do begin
-      exit;
-    end;
-  end;
-
-  pe := pos('e', lowercase(s));
-  result := pe > 0;
-  if Result then begin
-    // The next character must be a "+", "-", or "0"
-    if (pe = Length(s)) or not (s[pe+1] in ['+', '-', '0']) then begin
-      Result := false;
-      exit;
-    end;
-    // Count decimals
-    pdp := pos('.', s);
-    if (pdp > 0) then begin
-      if pdp < pe then
-        for i:=pdp+1 to pe-1 do
-          if s[i] = '0' then
-            inc(Decimals)
-          else
-            break;   // ignore characters after last 0
-    end;
-    // Look for hash signs # as indicator of the "scientific" format
-    ph := pos('#', s);
-    if ph > 0 then IsSci := true;
-  end;
-end;
-
-{ IsDateFormat checks if the format string s corresponds to a date format }
-function IsDateFormat(s: String; out IsLong: Boolean): Boolean;
-begin
-  s := Lowercase(s);
-  // Day, month, year are separated by a slash
-  // We also check part of the year/month/day symbol because there may be
-  // other control code with a slash.
-  Result := (pos('y/', s) > 0) or (pos('m/', s) > 0) or (pos('/m', s) > 0) or (pos('/d', s) > 0);
-  if Result then
-    // Check validity of format string
-    try
-      FormatDateTime(s, now);
-      s := Lowercase(s);
-      isLong := (pos('mmm', s) <> 0) or (pos('mmmm', s) <> 0);
-    except on EConvertError do
-      Result := false;
-    end;
-end;
-
-{ IsTimeFormat checks if the format string s is a time format. isLong is
-  true if the string contains hours, minutes and seconds (two colons).
-  isAMPM is true if the string contains "AM/PM", "A/P" or "AMPM".
-  isInterval is true if the string contains square bracket codes for time intervals.
-  SecDecimals is the number of decimals for the seconds. }
-function IsTimeFormat(s: String; out isLong, isAMPM, isInterval: Boolean;
-  out SecDecimals: Byte): Boolean;
-var
-  p, pdp, i, count: Integer;
-begin
-  isLong := false;
-  isAMPM := false;
-  SecDecimals := 0;
-
-  // Time parts are separated by a colon
-  p := pos(':', s);
-  result := p > 0;
-
-  if Result then begin
-    count := 1;
-    s := Uppercase(s);
-
-    // Seek for "H:MM:SS" or "H:MM" to see if it is a long or short time format.
-    if pos('H:MM:SS', s) <> 0 then
-      isLong := true
-    else
-    if pos('H:MM', s) <> 0 then
-      isLong := false
-    else
-    // If there are is a second colon s is a "long" time format
-    for i:=p+1 to Length(s) do
-      if s[i] = ':' then begin
-        isLong := true;
-        break;
-      end;
-
-    // Seek for "AM/PM" etc to detect that specific format
-    isAMPM := (pos('AM/PM', s) > 0) or (pos('A/P', s) > 0) or (pos('AMPM', s) > 0);
-
-    // Look for special square bracket symbols indicating the interval format.
-    isInterval := (pos('[H]', s) <> 0) or (pos('[HH]', s) <> 0) or
-                  (pos('[M]', s) <> 0) or (pos('[MM]', s) <> 0) or
-                  (pos('[N]', s) <> 0) or (pos('[NN]', s) <> 0) or
-                  (pos('[S]', s) <> 0) or (pos('[SS]', s) <> 0);
-
-    // Count decimals
-    pdp := pos('.', s);
-    if (pdp > 0) then
-      for i:=pdp+1 to Length(s) do
-        if (s[i] in ['0', 'z', 'Z']) then
-          inc(SecDecimals)
-        else
-          break;   // ignore characters after last 0
-
-    // Check validity of format string
-    try
-      FormatDateTime(s, now);
-    except on EConvertError do
-      Result := false;
-    end;
-  end;
-end;
-                                   *)
 
 { Builds a date/time format string from the numberformat code. If the format code
   is nfFmtDateTime the given AFormatString is used. AFormatString can use the
@@ -824,36 +566,88 @@ begin
   end;
 end;
 
+{ Builds a currency format string. The presentation of negative values (brackets,
+  or minus signs) is taken from the provided format settings. The format string
+  consists of three sections, separated by semicolons.
+  Additional code is inserted for the destination file format:
+  - AAccountingStyle = true adds code to align the currency symbols below each
+    other.
+  - ANegativeValuesRed adds code to the second section of the format code (for
+    negative values) to apply a red font color.
+  This code has to be removed by StripAccountingSymbols before applying to
+  FormatFloat. }
+function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
+  ADecimals: Integer; ANegativeValuesRed: Boolean; AAccountingStyle: Boolean;
+  ACurrencySymbol: String = '?'): String;
+const
+  POS_FMT: array[0..3, boolean] of string = (  //0: value, 1: currency symbol
+    ('"%1:s"%0:s',  '"%1:s"* %0:s'),      // 0: $1
+    ('%0:s"%1:s"',  '%0:s* "%1:s"'),      // 1: 1$
+    ('"%1:s" %0:s', '"%1:s"* %0:s'),      // 2: $ 1
+    ('%0:s "%1:s"', '%0:s* "%1:s"')       // 3: 1 $
+  );
+  NEG_FMT: array[0..15, boolean] of string = (
+    ('("%1:s"%0:s)',  '"%1:s"* (%0:s)'),  //  0: ($1)
+    ('-"%1:s"%0:s',   '"%1:s"* -%0:s'),   //  1: -$1
+    ('"%1:s"-%0:s',   '"%1:s"* -%0:s'),   //  2: $-1
+    ('"%1:s"%0:s-',   '"%1:s"* %0:s-'),   //  3: $1-
+    ('(%0:s"%1:s")',  '(%0:s)"%1:s"'),    //  4: (1$)
+    ('-%0:s"%1:s"',   '-%0:s"%1:s"'),     //  5: -1$
+    ('%0:s-"%1:s"',   '%0:s-"%1:s"'),     //  6: 1-$
+    ('%0:s"%1:s"-',   '%0:s-"%1:s"'),     //  7: 1$-
+    ('-%0:s "%1:s"',  '-%0:s"%1:s"'),     //  8: -1 $
+    ('-"%1:s" %0:s',  '"%1:s"* -%0:s'),   //  9: -$ 1
+    ('%0:s "%1:s"-',  '%0:s- "%1:s"'),    // 10: 1 $-
+    ('"%1:s" %0:s-',  '"%1:s"* %0:s-'),   // 11: $ 1-
+    ('"%1:s" -%0:s',  '"%1:s"* -%0:s'),   // 12: $ -1
+    ('%0:s- "%1:s"',  '%0:s- "%1:s"'),    // 13: 1- $
+    ('("%1:s" %0:s)', '"%1:s"* (%0:s)'),  // 14: ($ 1)
+    ('(%0:s "%1:s")', '(%0:s) "%1:s"')    // 15: (1 $)
+  );
+var
+  decs: String;
+  cf, ncf: Byte;
+  p, n: String;
+begin
+  cf := AFormatSettings.CurrencyFormat;
+  ncf := AFormatSettings.NegCurrFormat;
+  if ADecimals < 0 then ADecimals := AFormatSettings.CurrencyDecimals;
+  if ACurrencySymbol = '?' then ACurrencySymbol := AFormatSettings.CurrencyString;
+  decs := DupeString('0', ADecimals);
+  if ADecimals > 0 then decs := '.' + decs;
+
+  p := POS_FMT[cf, AAccountingStyle];
+  n := NEG_FMT[ncf, AAccountingStyle];
+  // add extra space for the sign of the number for perfect alignment in Excel
+  if AAccountingStyle then
+    case ncf of
+      0, 14: p := p + '_)';
+      3, 11: p := p + '_-';
+      4, 15: p := '_(' + p;
+      5, 8 : p := '_-' + p;
+    end;
+
+  if ACurrencySymbol <> '' then begin
+    Result := Format(p, ['#,##0' + decs, ACurrencySymbol]) + ';'
+            + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
+            + Format(p, [IfThen(AAccountingStyle, '-', '0'+decs), ACurrencySymbol]);
+  end
+  else begin
+    Result := '#,##0' + decs;
+    case ncf of
+      0, 14, 15           : Result := Result + ';(#,##0' + decs + ')';
+      1, 2, 5, 6, 8, 9, 12: Result := Result + ';-#,##0' + decs;
+      else                  Result := Result + ';#,##0' + decs + '-';
+    end;
+    Result := Result + ';' + IfThen(AAccountingStyle, '-', '0'+decs);
+  end;
+end;
+
 { Builds a number format string from the numberformat code, the count of
   decimals, and the currencysymbol (if not empty). }
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
   ACurrencySymbol: String = '?'): String;
-const
-  POS_FMT: array[0..3] of string = (  //0: value, 1: currency symbol
-    '"%1:s"%0:s',
-    '%0:s"%1:s"',
-    '"%1:s" %0:s',
-    '%0:s "%1:s"'
-  );
-  NEG_FMT: array[0..15] of string = (
-    '("%1:s"%0:s)',  // 0
-    '-"%1:s"%0:s',   // 1
-    '"%1:s"-%0:s',   // 2
-    '"%1:s"%0:s-',   // 3
-    '(%0:s"%1:s")',  // 4
-    '-%0:s"%1:s"',   // 5
-    '-%0:s-"%1:s"',  // 6
-    '%0:s"%1:s"-',   // 7
-    '-%0:s "%1:s"',  // 8
-    '-"%1:s" %0:s',  // 9
-    '%0:s "%1:s"-',  // 10
-    '"%1:s" %0:s-',  // 11
-    '"%1:s" -%0:s',  // 12
-    '%0:s- "%1:s"',  // 13
-    '("%1:s" %0:s)', // 14
-    '(%0:s "%1:s")'  // 15
-  );
 var
   decs: String;
   cf, ncf: Byte;
@@ -876,28 +670,14 @@ begin
       Result := '##0' + decs + 'E+0';
     nfPercentage:
       Result := '0' + decs + '%';
-    nfCurrency,
-    nfCurrencyRed,
-    nfCurrencyDash,
-    nfCurrencyDashRed:
-      begin
-        Result := '';
-        if ACurrencySymbol <> '' then
-          Result := Format(POS_FMT[cf], ['#,##0' + decs, ACurrencySymbol]) + ';'
-                  + Format(NEG_FMT[ncf], ['#,##0' + decs, ACurrencySymbol])
-        else begin
-          Result := '#,##0' + decs;
-          case ncf of
-            0, 14, 15        : Result := Result + ';(#,##0' + decs + ')';
-            1, 5, 6, 8, 9, 12: Result := Result + ';-#,##0' + decs;
-            else               Result := Result + ';#,##0' + decs + '-';
-          end;
-        end;
-        if ANumberFormat in [nfCurrency, nfCurrencyRed] then
-          Result := Result +';' + Format(POS_FMT[cf], ['0' + decs, ACurrencySymbol])
-        else
-          Result := Result + ';-';
-      end;
+    nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed:
+      Result := BuildCurrencyFormatString(
+        AFormatSettings,
+        ADecimals,
+        ANumberFormat in [nfCurrencyRed, nfAccountingRed],
+        ANumberFormat in [nfAccounting, nfAccountingRed],
+        ACurrencySymbol
+      );
   end;
 end;
 
@@ -998,6 +778,84 @@ begin
     Result := ACode;
 end;
 
+{ Splits the sections +1 (positive) or -1 (negative values) or 0 (zero values)
+  of the accounting format string at the position of the '*' into a left
+  and right part and returns 1 if the format string is in the left, and 2 if
+  it is in the right part. Additionally removes Excel format codes '_' }
+function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
+  var ALeft, ARight: String): Byte;
+var
+  P: PChar;
+  PStart, PEnd: PChar;
+  token: Char;
+  done: Boolean;
+  i: Integer;
+begin
+  Result := 0;
+  PStart := PChar(@AFormatString[1]);
+  PEnd := PStart + Length(AFormatString);
+  P := PStart;
+
+  done := false;
+  case ASection of
+    -1 : while (P < PEnd) and not done do begin
+           token := P^;
+           if token = ';' then done := true;
+           inc(P);
+         end;
+     0 : for i := 1 to 2 do begin
+           done := false;
+           while (P < PEnd) and not done do begin
+             token := P^;
+             if token = ';' then done := true;
+             inc(P);
+           end;
+         end;
+    +1: ;
+  end;
+
+  ALeft := '';
+  done := false;
+
+  while (P < PEnd) and not done do begin
+    token := P^;
+    case token of
+      '_': inc(P);
+      ';': done := true;
+      '"': ;
+      '*': begin
+             inc(P);
+             done := true;
+           end;
+      '0',
+      '#': begin
+             ALeft := ALeft + token;
+             Result := 1;
+           end;
+      else ALeft := ALeft + token;
+    end;
+    inc(P);
+  end;
+
+  ARight := '';
+  done := false;
+  while (P < PEnd) and not done do begin
+    token := P^;
+    case token of
+      '_': inc(P);
+      ';': done := true;
+      '"': ;
+      '0',
+      '#': begin
+             ARight := ARight + token;
+             Result := 2;
+           end;
+      else ARight := ARight + token;
+    end;
+    inc(P);
+  end;
+end;
+
 { Formats the number AValue in "scientific" format with the given number of
   decimals. "Scientific" is the same as "exponential", but with exponents rounded
   to multiples of 3 (like for "kilo" - "Mega" - "Giga" etc.). }
@@ -1017,45 +875,7 @@ begin
     Result := Format('%.*fE%d', [ADecimals, m, ex]);
   end;
 end;
-               (*
-{ Formats the number AValue as a time string according to the format string.
-  If the hour part is between square brackets it can be greater than 24 hours.
-  Dto for the minutes or seconds part, with the higher-value part being added
-  and no longer being shown explicitly.
-  Example:
-    AValue = 1:30:02, FormatStr = "[mm]:ss]" --> "90:02" }
-function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
-var
-  hrs, mins, secs: Integer;
-  diff: Double;
-  h,m,s,z: Word;
-  ts: String;
-  fmt: String;
-  p: Integer;
-begin                         {
-  fmt := Lowercase(AFormatStr);
-  p := pos('h]', fmt);
-  if p > 0 then begin
-    System.Delete(fmt, 1, p+2);
-    Result := FormatDateTime(fmt, AValue);
-    DecodeTime(frac(abs(AValue)), h, m, s, z);
-    hrs := h + trunc(abs(AValue))*24;
-    Result := FormatDateTime(fmt, AValue);
-  end;
-  for i
-  p := pos('h
-  }
-  ts := DefaultFormatSettings.TimeSeparator;
-  DecodeTime(frac(abs(AValue)), h, m, s, z);
-  hrs := h + trunc(abs(AValue))*24;
-  if z > 499 then inc(s);
-  if hrs > 0 then
-    Result := Format('%d%s%.2d%s%.2d', [hrs, ts, m, ts, s])
-  else
-    Result := Format('%d%s%.2d', [m, ts, s]);
-  if AValue < 0.0 then Result := '-' + Result;
-end;
-          *)
+
 { Creates a "time interval" format string having the first code identifier
   in square brackets. }
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
@@ -1079,12 +899,11 @@ end;
 {******************************************************************************}
 {******************************************************************************}
 {                   Patch for SysUtils.FormatDateTime                          }
-{ Remove when the feature of square brackets in time format masks is in rtl    }
+{  Remove when the feature of square brackets in time format masks is in rtl   }
 {******************************************************************************}
 {******************************************************************************}
 
 // Copied from "fpc/rtl/objpas/sysutils/datei.inc"
-{   DateTimeToString formats DateTime to the given format in FormatStr   }
 
 procedure DateTimeToString(out Result: string; const FormatStr: string; const DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []);
@@ -1427,9 +1246,6 @@ procedure DateTimeToString(out Result: string; const FormatStr: string;
 begin
   DateTimeToString(Result, FormatStr, DateTime, DefaultFormatSettings, Options);
 end;
-
-
-{   FormatDateTime formats DateTime to the given format string FormatStr   }
 
 function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   Options : TFormatDateTimeOptions = []): string;

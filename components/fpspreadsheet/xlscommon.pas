@@ -567,10 +567,10 @@ begin
   AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed, 0);
   AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency, 2);
   AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed, 2);
-  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfCurrencyDash, 0);
-  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfCurrencyDash, 0);
-  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfCurrencyDash, 2);
-  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfCurrencyDash, 2);
+  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfAccounting, 0);
+  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfAccounting, 0);
+  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfAccounting, 2);
+  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfAccounting, 2);
   AddFormat(45, 'mm:ss', nfFmtDateTime);
   AddFormat(46, '[h]:mm:ss', nfTimeInterval);
   AddFormat(47, 'mm:ss.0', nfFmtDateTime);

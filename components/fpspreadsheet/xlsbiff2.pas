@@ -219,7 +219,7 @@ begin
     nfGeneral:
       ;
     nfFixed, nfFixedTh, nfPercentage, nfExp,
-    nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed:
+    nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed:
       if ADecimals > 0 then ADecimals := 2;
     nfSci:
       begin
@@ -266,56 +266,56 @@ var
   fmt: String;
 begin
   case AFormatCell^.NumberFormat of
-    nfGeneral        : Result := 0;
-    nfFixed          : Result := IfThen(AFormatCell^.Decimals = 0, 1, 2);
-    nfFixedTh        : Result := IfThen(AFormatCell^.Decimals = 0, 3, 4);
-    nfCurrency,
-    nfCurrencyDash   : Result := IfThen(AFormatCell^.Decimals = 0, 5, 7);
-    nfCurrencyRed,
-    nfCurrencyDashRed: Result := IfThen(AFormatCell^.Decimals = 0, 6, 8);
-    nfPercentage     : Result := IfThen(AFormatCell^.Decimals = 0, 9, 10);
-    nfExp, nfSci     : Result := 11;
-    nfShortDate      : Result := 12;
-    nfLongDate       : Result := 13;
-    nfShortTimeAM    : Result := 16;
-    nfLongTimeAM     : Result := 17;
-    nfShortTime      : Result := 18;
-    nfLongTime       : Result := 19;
-    nfShortDateTime  : Result := 20;
-    nfFmtDateTime    : begin
-                         fmt := lowercase(AFormatCell^.NumberFormatStr);
-                         if (fmt = 'd-mmm') or (fmt = 'd/mmm') or
-                            (fmt = 'd-mm') or (fmt = 'd/mm') or
-                            (fmt = 'dd-mm') or (fmt = 'dd/mm') or
-                            (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
-                         then
-                           Result := 14
-                         else
-                         if (fmt = 'mmm-yy') or (fmt = 'mmm/yy') or
-                            (fmt = 'mm-yy') or (fmt = 'mm/yy') or
-                            (fmt = 'm-yy') or (fmt = 'm/y') or
-                            (fmt = 'mmm-yyyy') or (fmt = 'mmm/yyyy') or
-                            (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
-                            (fmt = 'm-yyyy') or (fmt = 'm/yyyy')
-                         then
-                           Result := 15
-                         else
-                         if (fmt = 'nn:ss') or (fmt = 'mm:ss') or
-                            (fmt = 'n:ss') or (fmt = 'm:ss')
-                         then
-                           Result := 19
-                         else
-                         if (fmt = 'nn:ss.z') or (fmt = 'mm:ss.z') or
-                            (fmt = 'n:ss.z') or (fmt = 'm:ss.z') or
-                            (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or
-                            (fmt = 'n:ss.zzz') or (fmt = 'm:ss.zzz')
-                         then
-                           Result := 19
-                         else
-                           Result := 20;
-                       end;
+    nfGeneral,
     nfCustom,
-    nfTimeInterval   : Result := 0;
+    nfTimeInterval  : Result := 0;
+    nfFixed         : Result := IfThen(AFormatCell^.Decimals = 0, 1, 2);
+    nfFixedTh       : Result := IfThen(AFormatCell^.Decimals = 0, 3, 4);
+    nfCurrency,
+    nfAccounting    : Result := IfThen(AFormatCell^.Decimals = 0, 5, 7);
+    nfCurrencyRed,
+    nfAccountingRed : Result := IfThen(AFormatCell^.Decimals = 0, 6, 8);
+    nfPercentage    : Result := IfThen(AFormatCell^.Decimals = 0, 9, 10);
+    nfExp, nfSci    : Result := 11;
+    nfShortDate     : Result := 12;
+    nfLongDate      : Result := 13;
+    nfShortTimeAM   : Result := 16;
+    nfLongTimeAM    : Result := 17;
+    nfShortTime     : Result := 18;
+    nfLongTime      : Result := 19;
+    nfShortDateTime : Result := 20;
+    nfFmtDateTime   : begin
+                        fmt := lowercase(AFormatCell^.NumberFormatStr);
+                        if (fmt = 'd-mmm') or (fmt = 'd/mmm') or
+                           (fmt = 'd-mm') or (fmt = 'd/mm') or
+                           (fmt = 'dd-mm') or (fmt = 'dd/mm') or
+                           (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
+                        then
+                          Result := 14
+                        else
+                        if (fmt = 'mmm-yy') or (fmt = 'mmm/yy') or
+                           (fmt = 'mm-yy') or (fmt = 'mm/yy') or
+                           (fmt = 'm-yy') or (fmt = 'm/y') or
+                           (fmt = 'mmm-yyyy') or (fmt = 'mmm/yyyy') or
+                           (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
+                           (fmt = 'm-yyyy') or (fmt = 'm/yyyy')
+                        then
+                          Result := 15
+                        else
+                        if (fmt = 'nn:ss') or (fmt = 'mm:ss') or
+                           (fmt = 'n:ss') or (fmt = 'm:ss')
+                        then
+                          Result := 19
+                        else
+                        if (fmt = 'nn:ss.z') or (fmt = 'mm:ss.z') or
+                           (fmt = 'n:ss.z') or (fmt = 'm:ss.z') or
+                           (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or
+                           (fmt = 'n:ss.zzz') or (fmt = 'm:ss.zzz')
+                        then
+                          Result := 19
+                        else
+                          Result := 20;
+                      end;
   end;
 end;
 

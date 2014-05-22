@@ -149,8 +149,8 @@ var
 begin
   MyWorkbook := TsWorkbook.Create;  // needed to provide the FormatSettings for the parser
   try
-    for i:=0 to 6 do begin
-      parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString);
+    for i:=0 to 5 do begin
+      parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString, cdToFPSpreadsheet);
       try
         CheckEquals(ParserTestData[i].SollFormatString, parser.FormatString,
           'Test format string ' + ParserTestData[i].FormatString + ' construction mismatch');
