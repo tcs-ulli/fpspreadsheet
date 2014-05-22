@@ -176,11 +176,13 @@ end;
 
 procedure TsBIFF2NumFormatList.AddBuiltinFormats;
 var
+  fs: TFormatSettings;
   ds, ts, cs: string;
 begin
-  ds := DefaultFormatSettings.DecimalSeparator;
-  ts := DefaultFormatSettings.ThousandSeparator;
-  cs := DefaultFormatSettings.CurrencyString;
+  fs := Workbook.FormatSettings;
+  ds := fs.DecimalSeparator;
+  ts := fs.ThousandSeparator;
+  cs := fs.CurrencyString;
   AddFormat( 0, '', nfGeneral);
   AddFormat( 1, '0', nfFixed, 0);
   AddFormat( 2, '0'+ds+'00', nfFixed, 2);                  // 0.00
@@ -193,15 +195,15 @@ begin
   AddFormat( 9, '0%', nfPercentage, 0);
   AddFormat(10, '0'+ds+'00%', nfPercentage, 2);
   AddFormat(11, '0'+ds+'00E+00', nfExp, 2);
-  AddFormat(12, 'M/D/YY', nfShortDate);
-  AddFormat(13, 'D-MMM-YY', nfLongDate);
-  AddFormat(14, 'D-MMM', nfFmtDateTime);
-  AddFormat(15, 'MMM-YY', nfFmtDateTime);
-  AddFormat(16, 'h:mm AM/PM', nfShortTimeAM);
-  AddFormat(17, 'h:mm:ss AM/PM', nfLongTimeAM);
-  AddFormat(18, 'h:mm', nfShortTime);
-  AddFormat(19, 'h:mm:ss', nfLongTime);
-  AddFormat(20, 'M/D/YY h:mm', nfShortDateTime);
+  AddFormat(12, fs.ShortDateFormat, nfShortDate);
+  AddFormat(13, fs.LongDateFormat, nfLongDate);
+  AddFormat(14, SpecialDateTimeFormat('dm', fs, true), nfFmtDateTime);
+  AddFormat(15, SpecialDateTimeFormat('my', fs, true), nfFmtDateTime);
+  AddFormat(16, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);
+  AddFormat(17, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);
+  AddFormat(18, fs.ShortTimeFormat, nfShortTime);
+  AddFormat(19, fs.LongTimeFormat, nfLongTime);
+  AddFormat(20, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);
 
   FFirstFormatIndexInFile := 0;  // BIFF2 stores built-in formats to file.
   FNextFormatIndex := 21;    // not needed - there are not user-defined formats
@@ -231,7 +233,7 @@ begin
            (fmt = 'dd-mm') or (fmt = 'dd/mm') or
            (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
         then
-          AFormatString := 'D-MMM'
+          AFormatString := SpecialDateTimeFormat('dm', Workbook.FormatSettings, true)
         else
         if (fmt = 'm-yy') or (fmt = 'm/yy') or
            (fmt = 'mm-yy') or (fmt = 'mm/yy') or
@@ -240,7 +242,7 @@ begin
            (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
            (fmt = 'mmm-yyyy') or (fmt = 'mmm-yyyy')
         then
-          AFormatString := 'MMM-YY'
+          AFormatString := SpecialDateTimeFormat('my', Workbook.FormatSettings, true)
         else
         if (copy(fmt, 1, 5) = 'nn:ss') or (copy(fmt, 1, 5) = 'mm:ss') or
            (copy(fmt, 1, 4) = 'n:ss') or (copy(fmt, 1, 4) = 'm:ss')
