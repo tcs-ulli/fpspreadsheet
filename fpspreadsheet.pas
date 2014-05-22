@@ -159,7 +159,7 @@ type
     // numbers
     nfFixed, nfFixedTh, nfExp, nfSci, nfPercentage,
     // currency
-    nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed,
+    nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed,
     // dates and times
     nfShortDateTime, nfFmtDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
     nfShortTimeAM, nfLongTimeAM, nfTimeInterval,
@@ -1249,6 +1249,8 @@ function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     ANumberFormat: TsNumberFormat; ANumberFormatStr: string; ADecimals: byte): ansistring;
   var
     fs: TFormatSettings;
+    left, right: String;
+    i: Integer;
   begin
     fs := FWorkbook.FormatSettings;
     if IsNan(Value) then
@@ -1262,6 +1264,13 @@ function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     else
     if (ANumberFormat = nfPercentage) then
       Result := FormatFloat(ANumberFormatStr, Value*100, fs)
+    else
+    if (ANumberFormat in [nfAccounting, nfAccountingRed]) then
+      case SplitAccountingFormatString(ANumberFormatStr, Sign(Value), left, right) of
+        0: Result := FormatFloat(ANumberFormatStr, Value, fs);
+        1: Result := FormatFloat(left, abs(Value), fs) + ' '  + Right;
+        2: Result := Left + ' ' + FormatFloat(right, abs(Value), fs);
+      end
     else
       Result := FormatFloat(ANumberFormatStr, Value, fs)
   end;
@@ -2862,7 +2871,7 @@ begin
       and (item.NumFormat = ANumFormat)
       and (item.FormatString = AFormatString)
       and (item.Decimals = ADecimals)
-      and (not (item.NumFormat in [nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed])
+      and (not (item.NumFormat in [nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed])
             or (item.CurrencySymbol = ACurrencySymbol))
     then
       exit;
@@ -3094,7 +3103,7 @@ begin
       case AFormat^.NumberFormat of
         nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci:
           if (FFormattingStyles[i].Decimals <> AFormat^.Decimals) then Continue;
-        nfCurrency, nfCurrencyRed, nfCurrencyDash, nfCurrencyDashRed:
+        nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed:
           begin
             if (FFormattingStyles[i].Decimals <> AFormat^.Decimals) then Continue;
             if (FFormattingStyles[i].CurrencySymbol <> AFormat^.CurrencySymbol) then Continue;

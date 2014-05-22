@@ -57,6 +57,7 @@ type
     FNumFormat: TsNumberFormat;
     FConversionDirection: TsConversionDirection;
     FIsTime: Boolean;
+    FIsAccounting: Boolean;
     FStatus: Integer;
     function GetFormatString: String;
     function GetParsedSectionCount: Integer;
@@ -139,6 +140,7 @@ begin
   FFormatSettings := DefaultFormatSettings;
   FFormatSettings.DecimalSeparator := '.';
   FFormatSettings.ThousandSeparator := ',';
+  FIsAccounting := (ANumFormat in [nfAccounting, nfAccountingRed]);
   Parse(AFormatString);
 end;
 
@@ -283,14 +285,18 @@ var
   i: Integer;
   ns: Integer;
   s: String;
+  isCurr: Boolean;
 begin
   ns := Length(FSections);
+
+  if (ns > 1) and (FNumFormat in [nfCurrencyRed, nfAccountingRed]) then
+    FSections[1].Color := scRed;
 
   for i:=0 to ns-1 do begin
     if FSections[i].FormatString = '' then
       FSections[i].NumFormat := nfGeneral;
 
-    if (FSections[i].CurrencySymbol <> '') {and (FSections[i].NumFormat in [nfFixed, nfFixedTh])} then
+    if (FSections[i].CurrencySymbol <> '') or FIsAccounting then
       FSections[i].NumFormat := nfCurrency;
 
     if FSections[i].CompareOperation <> coNotUsed then begin
@@ -300,7 +306,7 @@ begin
 
     // Check format strings
     case FSections[i].NumFormat of
-      nfGeneral, nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci, nfCurrency:
+      nfGeneral, nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci, nfCurrency, nfAccounting:
         try
           s := FormatFloat(FSections[i].FormatString, 1.0, FWorkBook.FormatSettings);
         except
@@ -319,39 +325,33 @@ begin
     end;
   end;
 
-  if (ns > 1) and (FNumFormat in [nfCurrencyRed, nfCurrencyDashRed]) then
-    FSections[1].Color := scRed;
-
   // Extract built-in NumFormat identifier for currency (needs several entries in
   // three sections).
-  if (ns = 3) and
-     (FSections[0].NumFormat = nfCurrency) and
-     (FSections[1].NumFormat = nfCurrency) and
-     ((FSections[2].NumFormat = nfCurrency) or (FSections[2].FormatString = '-'))
-  then begin
-    FNumFormat := nfCurrency;
-    if ((FSections[2].FormatString = '-') or (FSections[2].FormatString = '"-"')) then begin
-      if (FSections[1].Color = scRed) then
-        FNumFormat := nfCurrencyDashRed
-      else
-        FNumFormat := nfCurrencyDash;
-    end else begin
-      if (FSections[1].Color = scRed) then
-        FNumFormat := nfCurrencyRed;
-    end;
-  end else
+  isCurr := ((ns = 2) and (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency))
+    or ((ns = 3) and (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency) and
+                     ((FSections[2].NumFormat = nfCurrency) or (FSections[2].FormatString = '-')) );
+
+  if isCurr then begin
+    if FIsAccounting then
+      FNumFormat := IfThen(FSections[1].Color = scRed, nfAccountingRed, nfAccounting)
+    else
+      FNumFormat := IfThen(FSections[1].Color = scRed, nfCurrency, nfCurrencyRed);
+  end;
+
   // If there are other multi-section formatstrings they must be a custom format
-  if (ns > 1) then begin
-    for i:=1 to ns-1 do
-      if FSections[i].FormatString <> '' then begin
-        FNumFormat := nfCustom;
-        break;
-      end;
-    if fNumFormat <> nfCustom then
+  if not isCurr then begin
+    if (ns > 1) then begin
+      for i:=1 to ns-1 do
+        if FSections[i].FormatString <> '' then begin
+          FNumFormat := nfCustom;
+          break;
+        end;
+      if fNumFormat <> nfCustom then
+        FNumFormat := FSections[0].NumFormat;
+    end
+    else
       FNumFormat := FSections[0].NumFormat;
-  end
-  else
-    FNumFormat := FSections[0].NumFormat;
+  end;
 
   // Add colors to section format strings
   if (FConversionDirection = cdFromFPSpreadsheet) then
@@ -660,11 +660,17 @@ begin
     if s = FWorkbook.FormatSettings.ShortDateFormat then
       nf := nfShortDate
     else
-    if s = StripAMPM(FWorkbook.FormatSettings.LongTimeFormat) then
-      nf := IfThen(isAMPM, nfLongTimeAM, nfLongTime)
+    if (s = StripAMPM(FWorkbook.FormatSettings.LongTimeFormat)) and (not isAMPM) then
+      nf := nfLongTime
     else
-    if s = StripAMPM(FWorkbook.FormatSettings.ShortTimeFormat) then
-      nf := IfThen(isAMPM, nfShortTimeAM, nfShortTime)
+    if (s = AddAMPM(FWorkbook.FormatSettings.LongTimeFormat, FWorkbook.FormatSettings)) and isAMPM then
+      nf := nfLongTimeAM
+    else
+    if (s = StripAMPM(FWorkbook.FormatSettings.ShortTimeFormat)) and (not isAMPM) then
+      nf := nfShortTime
+    else
+    if (s = AddAMPM(FWorkbook.FormatSettings.ShortTimeFormat, FWorkbook.FormatSettings)) and isAMPM then
+      nf := nfShortTimeAM
     else
     if s[1] = '[' then
       nf := nfTimeInterval
@@ -719,8 +725,17 @@ begin
     token := FCurrent^;
     case token of
       // Strip Excel's formatting symbols
-      '\', '*':
-        ;
+      '\': ;
+      '*':
+        begin
+          FIsAccounting := true;
+          AddChar('*');
+          inc(FCurrent);
+          if (FCurrent <= FEnd) then begin
+            token := FCurrent^;
+            AddChar(token);
+          end;
+        end;
       '_':
         inc(FCurrent);
       '"':
@@ -820,6 +835,8 @@ begin
       nf := nfPercentage
     else if hasThSep then
       nf := nfFixedTh
+    else if FIsAccounting then
+      nf := nfAccounting
     else
       nf := nfFixed;
   end else

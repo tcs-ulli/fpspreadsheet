@@ -105,6 +105,7 @@ type
     { Protected declarations }
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
+//    procedure DrawAccountingCell(ACell: PCell; ARect: TRect; AState: TGridDrawState);
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;
@@ -118,6 +119,10 @@ type
     function GetEditText(ACol, ARow: Integer): String; override;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSized(IsColumn: Boolean; index: Integer); override;
+    procedure InternalDrawTextInCell(AText, AMeasureText: String; ARect: TRect;
+      AJustification: Byte; ACellHorAlign: TsHorAlignment;
+      ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
+      ATextWrap, ReplaceTooLong: Boolean);
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
@@ -320,6 +325,14 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, Math, fpCanvas, GraphUtil, fpsUtils;
+
+const
+  HOR_ALIGNMENTS: array[haLeft..haRight] of TAlignment = (
+    taLeftJustify, taCenter, taRightJustify
+  );
+  VERT_ALIGNMENTS: array[TsVertAlignment] of TTextLayout = (
+    tlBottom, tlTop, tlCenter, tlBottom
+  );
 
 var
   FillPattern_BIFF2: TBitmap = nil;
@@ -665,7 +678,7 @@ begin
           Canvas.Font.Size := round(fnt.Size);
         end;
       end;
-      if (lCell^.NumberFormat in [nfCurrencyRed, nfCurrencyDashRed]) and
+      if (lCell^.NumberFormat in [nfCurrencyRed, nfAccountingRed]) and
          not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
       then
         Canvas.Font.Color := FWorkbook.GetPaletteColor(scRed);
@@ -859,17 +872,11 @@ end;
   text wrapping }
 procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect;
   AState: TGridDrawState);
-const
-  HOR_ALIGNMENTS: array[haLeft..haRight] of TAlignment = (
-    taLeftJustify, taCenter, taRightJustify
-  );
-  VERT_ALIGNMENTS: array[TsVertAlignment] of TTextLayout = (
-    tlBottom, tlTop, tlCenter, tlBottom
-  );
 var
   ts: TTextStyle;
   flags: Cardinal;
   txt: String;
+  txtL, txtR: String;
   txtRect: TRect;
   P: TPoint;
   w, h, h0, hline: Integer;
@@ -879,7 +886,10 @@ var
   wrapped: Boolean;
   horAlign: TsHorAlignment;
   vertAlign: TsVertAlignment;
+  txtRot: TsTextRotation;
   lCell: PCell;
+  txtLeft, txtRight: String;
+  justif: Byte;
 begin
   if FWorksheet = nil then
     exit;
@@ -887,6 +897,8 @@ begin
   c := ACol - FHeaderCount;
   r := ARow - FHeaderCount;
   lCell := FWorksheet.FindCell(r, c);
+
+  // Header
   if lCell = nil then begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then begin
       ts.Alignment := taCenter;
@@ -898,26 +910,70 @@ begin
     exit;
   end;
 
-  txt := GetCellText(ACol, ARow);
-  if txt = '' then
-    exit;
-
+  // Cells
+  wrapped := (uffWordWrap in lCell^.UsedFormattingFields) or (lCell^.TextRotation = rtStacked);
+  txtRot := lCell^.TextRotation;
+  vertAlign := lCell^.VertAlignment;
   if lCell^.HorAlignment <> haDefault then
     horAlign := lCell^.HorAlignment
   else begin
-    if lCell^.ContentType = cctNumber then
+    if (lCell^.ContentType in [cctNumber, cctDateTime]) then
       horAlign := haRight
     else
       horAlign := haLeft;
-    if lCell^.TextRotation = rt90DegreeCounterClockwiseRotation then begin
+    if txtRot = rt90DegreeCounterClockwiseRotation then begin
       if horAlign = haRight then horAlign := haLeft else horAlign := haRight;
     end;
   end;
-  vertAlign := lCell^.VertAlignment;
-  wrapped := (uffWordWrap in lCell^.UsedFormattingFields)
-    or (lCell^.TextRotation = rtStacked);
 
   InflateRect(ARect, -constCellPadding, -constCellPadding);
+
+  if (lCell^.NumberFormat in [nfAccounting, nfAccountingRed]) and not IsNaN(lCell^.Numbervalue)
+  then begin
+    case SplitAccountingFormatString(lCell^.NumberFormatStr, Sign(lCell^.NumberValue),
+                                     txtLeft, txtRight) of
+      1: begin
+           txtLeft := FormatFloat(txtLeft, lCell^.NumberValue);
+           if txtLeft = '' then exit;
+           txt := txtLeft + ' ' + txtRight;
+         end;
+      2: begin
+           txtRight := FormatFloat(txtRight, lCell^.NumberValue);
+           if txtRight = '' then exit;
+           txt := txtLeft + ' ' + txtRight;
+         end;
+    end;
+    InternalDrawTextInCell(txtLeft, txt, ARect, 0, horAlign, vertAlign,
+      txtRot, wrapped, true);
+    InternalDrawTextInCell(txtRight, txt, ARect, 2, horAlign, vertAlign,
+      txtRot, wrapped, true);
+  end else begin
+    txt := GetCellText(ACol, ARow);
+    if txt = '' then
+      exit;
+    case horAlign of
+      haLeft   : justif := 0;
+      haCenter : justif := 1;
+      haRight  : justif := 2;
+    end;
+    InternalDrawTextInCell(txt, txt, ARect, justif, horAlign, vertAlign,
+      txtRot, wrapped, false);
+  end;
+end;
+
+(*
+
+
+
+
+
+  procedure InternalDrawTextInCell(AText, AMeasureText: String; ARect: TRect;
+    AJustification: Byte; ACellHorAlign: TsHorAlignment;
+    ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
+    ATextWrap, ReplaceTooLong: Boolean);
+
+
+
 
   if (lCell^.TextRotation in [trHorizontal, rtStacked]) or
      (not (uffTextRotation in lCell^.UsedFormattingFields))
@@ -1023,6 +1079,7 @@ begin
     end;
   end;
 end;
+*)
 
 procedure TsCustomWorksheetGrid.EditingDone;
 var
@@ -1804,6 +1861,207 @@ begin
     FWorksheet.WriteRowHeight(GetWorksheetRow(Index), h);
   end;
 end;
+
+
+{ Internal generl text drawing method.
+  - AText: text to be drawn
+  - AMeasureText: text used for checking if the text fits into the text rectangle.
+    If too large and ReplaceTooLong = true, a series of # is drawn.
+  - ARect: Rectangle in which the text is drawn
+  - AJustification: determines whether the text is drawn at the "start" (0),
+    "center" (1) or "end" (2) of the drawing rectangle. Start/center/end are
+    seen along the text drawing direction.
+  - ACellHorAlign: Is the HorAlignment property stored in the cell
+  - ACellVertAlign: Is the VertAlignment property stored in the cell
+  - ATextRot: determines the rotation angle of the text.
+  - ATextWrap: determines if the text can wrap over multiple lines
+  - ReplaceTooLang: if true too-long texts are replaced by a series of # filling
+    the cell. }
+procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;
+  ARect: TRect; AJustification: Byte; ACellHorAlign: TsHorAlignment;
+  ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
+  ATextWrap, ReplaceTooLong: Boolean);
+var
+  ts: TTextStyle;
+  flags: Cardinal;
+  txt: String;
+  txtL, txtR: String;
+  txtRect: TRect;
+  P: TPoint;
+  w, h, h0, hline: Integer;
+  i: Integer;
+  L: TStrings;
+  c, r: Integer;
+  wrapped: Boolean;
+begin
+  wrapped := ATextWrap or (ATextRot = rtStacked);
+  if AMeasureText = '' then txt := AText else txt := AMeasureText;
+  flags := DT_WORDBREAK and not DT_SINGLELINE or DT_CALCRECT;
+  txtRect := ARect;
+
+  if (ATextRot in [trHorizontal, rtStacked]) then begin
+    // HORIZONAL TEXT DRAWING DIRECTION
+    Canvas.Font.Orientation := 0;
+    ts := Canvas.TextStyle;
+    ts.Opaque := false;
+    if wrapped then begin
+      ts.Wordbreak := true;
+      ts.SingleLine := false;
+      LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
+      w := txtRect.Right - txtRect.Left;
+      h := txtRect.Bottom - txtRect.Top;
+    end else begin
+      ts.WordBreak := false;
+      ts.SingleLine := false;
+      w := Canvas.TextWidth(AMeasureText);
+      h := Canvas.TextHeight('Tg');
+    end;
+
+    if ATextRot = rtStacked then begin
+      // Stacked
+      ts.Alignment := HOR_ALIGNMENTS[ACellHorAlign];
+      if h > ARect.Bottom - ARect.Top then begin
+        if ReplaceTooLong then begin
+          txt := '#';
+          repeat
+            txt := txt + '#';
+            LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
+          until txtRect.Bottom - txtRect.Top > ARect.Bottom - ARect.Top;
+          AText := copy(txt, 1, Length(txt)-1);
+        end;
+        ts.Layout := tlTop;
+      end else
+        case AJustification of
+          0: ts.Layout := tlTop;
+          1: ts.Layout := tlCenter;
+          2: ts.Layout := tlBottom;
+        end;
+      Canvas.TextStyle := ts;
+      Canvas.TextRect(ARect, ARect.Left, ARect.Top, AText);
+    end else begin
+      // Horizontal
+      if h > ARect.Bottom - ARect.Top then
+        ts.Layout := tlTop
+      else
+        ts.Layout := VERT_ALIGNMENTS[ACellVertAlign];
+      if w > ARect.Right - ARect.Left then begin
+        if ReplaceTooLong then begin
+          txt := '';
+          repeat
+            txt := txt + '#';
+            LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
+          until txtRect.Right - txtRect.Left > ARect.Right - ARect.Left;
+          AText := Copy(txt, 1, Length(txt)-1);
+        end;
+        ts.Alignment := taLeftJustify;
+      end else
+        case AJustification of
+          0: ts.Alignment := taLeftJustify;
+          1: ts.Alignment := taCenter;
+          2: ts.Alignment := taRightJustify;
+        end;
+      Canvas.TextStyle := ts;
+      Canvas.TextRect(ARect,ARect.Left, ARect.Top, AText);
+    end;
+  end
+  else
+  begin
+    // ROTATED TEXT DRAWING DIRECTION
+    // Since there is not good API for multiline rotated text, we draw the text
+    // line by line.
+    L := TStringList.Create;
+    try
+      txtRect := Bounds(ARect.Left, ARect.Top, ARect.Bottom - ARect.Top, ARect.Right - ARect.Left);
+      hline := Canvas.TextHeight('Tg');
+      if wrapped then begin
+        // Extract wrapped lines
+        L.Text := WrapText(Canvas, txt, txtRect.Right - txtRect.Left);
+        // Calculate size of wrapped text
+        flags := DT_WORDBREAK and not DT_SINGLELINE or DT_CALCRECT;
+        LCLIntf.DrawText(Canvas.Handle, PChar(L.Text), Length(L.Text), txtRect, flags);
+        w := txtRect.Right - txtRect.Left;
+        h := txtRect.Bottom - txtRect.Top;
+        h0 := hline;
+      end
+      else begin
+        L.Text := txt;
+        w := Canvas.TextWidth(txt);
+        h := hline;
+        h0 := 0;
+      end;
+
+      if w > ARect.Bottom - ARect.Top then begin
+        if ReplaceTooLong then begin
+          txt := '#';
+          repeat
+            txt := txt + '#';
+          until Canvas.TextWidth(txt) > ARect.Bottom - ARect.Top;
+          L.Text := Copy(txt, 1, Length(txt)-1);
+        end;
+      end;
+
+      ts := Canvas.TextStyle;
+      ts.SingleLine := true;      // Draw text line by line
+      ts.Clipping := false;
+      ts.Layout := tlTop;
+      ts.Alignment := taLeftJustify;
+      ts.Opaque := false;
+
+      if ATextRot = rt90DegreeClockwiseRotation then begin
+        // Clockwise
+        Canvas.Font.Orientation := -900;
+        case ACellHorAlign of
+          haLeft   : P.X := Min(ARect.Right-1, ARect.Left + h - h0);
+          haCenter : P.X := Min(ARect.Right-1, (ARect.Left + ARect.Right + h) div 2);
+          haRight  : P.X := ARect.Right - 1;
+        end;
+        for i:= 0 to L.Count-1 do begin
+          w := Canvas.TextWidth(L[i]);
+          case AJustification of
+            0: P.Y := ARect.Top;                             // corresponds to "top"
+            1: P.Y := Max(ARect.Top, (Arect.Top + ARect.Bottom - w) div 2);  // "center"
+            2: P.Y := Max(ARect.Top, ARect.Bottom -w);       // "bottom"
+          end;                                                                          {
+          case vertAlign of
+            vaTop    : P.Y := ARect.Top;
+            vaCenter : P.Y := Max(ARect.Top, (ARect.Top + ARect.Bottom - w) div 2);
+            vaBottom : P.Y := Max(ARect.Top, ARect.Bottom - w);
+          end;}
+          Canvas.TextRect(ARect, P.X, P.Y, L[i], ts);
+          dec(P.X, hline);
+        end
+      end
+      else begin
+        // Counter-clockwise
+        Canvas.Font.Orientation := +900;
+        case ACellHorAlign of
+          haLeft   : P.X := ARect.Left;
+          haCenter : P.X := Max(ARect.Left, (ARect.Left + ARect.Right - h + h0) div 2);
+          haRight  : P.X := MAx(ARect.Left, ARect.Right - h + h0);
+        end;
+        for i:= 0 to L.Count-1 do begin
+          w := Canvas.TextWidth(L[i]);
+          case AJustification of
+            0: P.Y := ARect.Bottom;  // like "Bottom"
+            1: P.Y := Min(ARect.Bottom, (ARect.Top + ARect.Bottom + w) div 2);  // "Center"
+            2: P.Y := Min(ARect.Bottom, ARect.Top + w); // like "top"
+          end;                                                                      {
+          case vertAlign of
+            vaTop    : P.Y := Min(ARect.Bottom, ARect.Top + w);
+            vaCenter : P.Y := Min(ARect.Bottom, (ARect.Top + ARect.Bottom + w) div 2);
+            vaBottom : P.Y := ARect.Bottom;
+          end;}
+          Canvas.TextRect(ARect, P.X, P.Y, L[i], ts);
+          inc(P.X, hline);
+        end;
+      end;
+    finally
+      L.Free;
+    end;
+  end;
+end;
+
+
 
 { Catches the ESC key during editing in order to restore the old cell text }
 procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
