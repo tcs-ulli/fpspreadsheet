@@ -86,9 +86,14 @@ function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   ACurrencySymbol: String = '?'): String;
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
+
+function AddAMPM(const ATimeFormatString: String;
+  const AFormatSettings: TFormatSettings): String;
 function StripAMPM(const ATimeFormatString: String): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
+function SpecialDateTimeFormat(ACode: String;
+  const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
 
 function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
@@ -784,20 +789,12 @@ function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
 var
   fmt: String;
-  am, pm: String;
 begin
   case ANumberFormat of
     nfFmtDateTime:
-      begin
-        fmt := lowercase(AFormatString);
-        if (fmt = 'dm') then Result := 'd/mmm'
-        else if (fmt = 'my') then Result := 'mmm/yy'
-        else if (fmt = 'ms') then Result := 'nn:ss'
-        else if (fmt = 'msz') then Result := 'nn:ss.z'
-        else Result := AFormatString;
-      end;
+      Result := SpecialDateTimeFormat(lowercase(AFormatString), AFormatSettings, false);
     nfShortDateTime:
-      Result := AFormatSettings.ShortDateFormat + ' ' + FormatSettings.ShortTimeFormat;
+      Result := AFormatSettings.ShortDateFormat + ' ' + AFormatSettings.ShortTimeFormat;
       // In the DefaultFormatSettings this is: d/m/y hh:nn
     nfShortDate:
       Result := AFormatSettings.ShortDateFormat;   // --> d/m/y
@@ -810,20 +807,14 @@ begin
     nfShortTimeAM:
       begin                                       // --> hh:nn AM/PM
         Result := AFormatSettings.ShortTimeFormat;
-        if (pos('a', lowercase(AFormatSettings.ShortTimeFormat)) = 0) then begin
-          am := IfThen(AFormatSettings.TimeAMString = '', 'AM', AFormatSettings.TimeAMString);
-          pm := IfThen(AFormatSettings.TimePMString = '', 'PM', AFormatSettings.TimePMString);
-          Result := Format('%s %s/%s', [Result, am, pm]);
-        end;
+        if (pos('a', lowercase(AFormatSettings.ShortTimeFormat)) = 0) then
+          Result := AddAMPM(Result, AFormatSettings);
       end;
     nfLongTimeAM:                                 // --> hh:nn:ss AM/PM
       begin
         Result := AFormatSettings.LongTimeFormat;
-        if pos('a', lowercase(AFormatSettings.LongTimeFormat)) = 0 then begin
-          am := IfThen(AFormatSettings.TimeAMString = '', 'AM', AFormatSettings.TimeAMString);
-          pm := IfThen(AFormatSettings.TimePMString = '', 'PM', AFormatSettings.TimePMString);
-          Result := Format('%s %s/%s', [Result, am, pm]);
-        end;
+        if pos('a', lowercase(AFormatSettings.LongTimeFormat)) = 0 then
+          Result := AddAMPM(Result, AFormatSettings);
       end;
     nfTimeInterval:                               // --> [h]:nn:ss
       if AFormatString = '' then
@@ -904,17 +895,20 @@ begin
         end;
         if ANumberFormat in [nfCurrency, nfCurrencyRed] then
           Result := Result +';' + Format(POS_FMT[cf], ['0' + decs, ACurrencySymbol])
-          {
-          Result := Result + ';0' + decs;
-          if cf in [2,3] then
-            Result := Format('%s "%s"', [Result, ACurrencySymbol])
-          else
-            Result := Format('%s"%s"', [Result, ACurrencySymbol]);
-            }
         else
           Result := Result + ';-';
       end;
   end;
+end;
+
+function AddAMPM(const ATimeFormatString: String;
+  const AFormatSettings: TFormatSettings): String;
+var
+  am, pm: String;
+begin
+  am := IfThen(AFormatSettings.TimeAMString <> '', AFormatSettings.TimeAMString, 'AM');
+  pm := IfThen(AFormatSettings.TimePMString <> '', AFormatSettings.TimePMString, 'PM');
+  Result := Format('%s %s/%s', [StripAMPM(ATimeFormatString), am, pm]);
 end;
 
 function StripAMPM(const ATimeFormatString: String): String;
@@ -966,6 +960,42 @@ begin
     end else
       Result := Format('[%s]', [AFormatString]);
   end;
+end;
+
+{ Creates the formatstrings for the date/time codes "dm", "my", "ms" and "msz"
+  out of the formatsettings. }
+function SpecialDateTimeFormat(ACode: String;
+  const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
+var
+  pd, pm, py: Integer;
+  sdf: String;
+  MonthChar, MinuteChar, MillisecChar: Char;
+begin
+  if ForWriting then begin
+    MonthChar := 'M'; MinuteChar := 'm'; MillisecChar := '0';
+  end else begin
+    MonthChar := 'm'; MinuteChar := 'n'; MillisecChar := 'z';
+  end;
+  ACode := lowercase(ACode);
+  sdf := lowercase(AFormatSettings.ShortDateFormat);
+  pd := pos('d', sdf);
+  pm := pos('m', sdf);
+  py := pos('y', sdf);
+  if ACode = 'dm' then begin
+    Result := DupeString(MonthChar, 3);
+    Result := IfThen(pd < py, 'd/'+Result, Result+'/d');            // d/mmm
+  end else
+  if ACode = 'my' then begin
+    Result := DupeString(MonthChar, 3);
+    Result := IfThen(pm < py, Result+'/yy', 'yy/'+Result);          // mmm/yy
+  end else
+  if ACode = 'ms' then begin
+    Result := DupeString(MinuteChar, 2) + ':ss';                    // mm:ss
+  end
+  else if ACode = 'msz' then
+    Result := DupeString(MinuteChar, 2) + ':ss.' + MillisecChar    // mm:ss.z
+  else
+    Result := ACode;
 end;
 
 { Formats the number AValue in "scientific" format with the given number of

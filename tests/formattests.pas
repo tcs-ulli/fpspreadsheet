@@ -127,8 +127,11 @@ const
 procedure InitSollFmtData;
 var
   i: Integer;
+  fs: TFormatSettings;
 begin
   // Set up norm - MUST match spreadsheet cells exactly
+
+  fs := DefaultFormatSettings;
 
   // Numbers
   SollNumbers[0] := 0.0;
@@ -182,13 +185,13 @@ begin
   for i:=Low(SollDateTimes) to High(SollDateTimes) do begin
     SollDateTimeStrings[i, 0] := DateToStr(SollDateTimes[i]) + ' ' + FormatDateTime('t', SollDateTimes[i]);
     SollDateTimeStrings[i, 1] := DateToStr(SollDateTimes[i]);
-    SollDateTimeStrings[i, 2] := FormatDateTime('hh:nn', SollDateTimes[i]);
-    SolLDateTimeStrings[i, 3] := FormatDateTime('hh:nn:ss', SollDateTimes[i]);
-    SollDateTimeStrings[i, 4] := FormatDateTime('hh:nn am/pm', SollDateTimes[i]);   // dont't use "t" - it does the hours wrong
-    SollDateTimeStrings[i, 5] := FormatDateTime('hh:nn:ss am/pm', SollDateTimes[i]);
-    SollDateTimeStrings[i, 6] := FormatDateTime('dd/mmm', SollDateTimes[i]);
-    SollDateTimeStrings[i, 7] := FormatDateTime('mmm/yy', SollDateTimes[i]);
-    SollDateTimeStrings[i, 8] := FormatDateTime('nn:ss', SollDateTimes[i]);
+    SollDateTimeStrings[i, 2] := FormatDateTime(fs.ShortTimeFormat, SollDateTimes[i]);
+    SolLDateTimeStrings[i, 3] := FormatDateTime(fs.LongTimeFormat, SollDateTimes[i]);
+    SollDateTimeStrings[i, 4] := FormatDateTime(fs.ShortTimeFormat + ' am/pm', SollDateTimes[i]);   // dont't use "t" - it does the hours wrong
+    SollDateTimeStrings[i, 5] := FormatDateTime(fs.LongTimeFormat + ' am/pm', SollDateTimes[i]);
+    SollDateTimeStrings[i, 6] := FormatDateTime(SpecialDateTimeFormat('dm', fs, false), SollDateTimes[i]);
+    SollDateTimeStrings[i, 7] := FormatDateTime(SpecialDateTimeFormat('my', fs, false), SollDateTimes[i]);
+    SollDateTimeStrings[i, 8] := FormatDateTime(SpecialDateTimeFormat('ms', fs, false), SollDateTimes[i]);
     SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i], [fdoInterval]);
   end;
 
