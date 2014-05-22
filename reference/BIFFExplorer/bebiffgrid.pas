@@ -57,6 +57,7 @@ type
     procedure ShowInterfaceEnd;
     procedure ShowInterfaceHdr;
     procedure ShowIteration;
+    procedure ShowIXFE;
     procedure ShowLabelCell;
     procedure ShowLabelSSTCell;
     procedure ShowLeftMargin;
@@ -307,6 +308,8 @@ begin
       ShowCodePage;
     $0043:
       ShowXF;
+    $0044:
+      ShowIXFE;
     $0045:
       ShowFontColor;
     $0055:
@@ -764,20 +767,21 @@ procedure TBIFFGrid.ShowColWidth;
 var
   numBytes: Integer;
   w: Word;
+  b: Byte;
 begin
   if FFormat <> sfExcel2 then
     exit;
 
   RowCount := FixedRows + 3;
 
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numbytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+  numBytes := 1;
+  b := FBuffer[FBufferIndex];
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
     'Index of first column');
 
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numbytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+  numBytes := 1;
+  b := FBuffer[FBufferIndex];
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
     'Index of last column');
 
   numBytes := 2;
@@ -1992,6 +1996,18 @@ begin
 end;
 
 
+procedure TBIFFGrid.ShowIXFE;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  RowCount := FixedRows + 1;
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Index to XF record');
+end;
+
 procedure TBIFFGrid.ShowLabelCell;
 var
   numBytes: Integer;
@@ -2771,6 +2787,23 @@ begin
   Move(FBuffer[FBufferIndex], dw, numBytes);
   dw := DWordLEToN(dw);
 
+  if dw and $00000002 = 0 then begin
+    encdbl := (QWord(dw) and QWord($FFFFFFFFFFFFFFFC)) shl 32;
+    if dw and $00000001 = 1 then
+      s := Format('%.2f', [dbl*0.01])
+    else
+      s := Format('%.0f', [dbl]);
+  end
+  else begin
+    s := Format('$%.16x', [-59000000]);
+    encint := ((dw and DWord($FFFFFFFC)) shr 2) or (dw and DWord($C0000000));
+      // "arithmetic shift" = replace left-most bits by original bits
+    if dw and $00000001 = 1 then
+      s := FloatToStr(encint*0.01)
+    else
+      s := IntToStr(encint);
+  end;
+
   if Row = FCurrRow then begin
     FDetails.Add('RK Value:'#13);
     if dw and $00000001 = 0
@@ -2779,26 +2812,10 @@ begin
     if dw and $00000002 = 0
       then FDetails.Add('Bit 1 = 0: Floating point value')
       else FDetails.Add('Bit 1 = 1: Signed integer value');
-    if dw and $00000002 = 0 then begin
-      encdbl := (QWord(dw) and QWord($FFFFFFFFFFFFFFFC)) shl 32;
-      if dw and $00000001 = 1 then
-        s := Format('%.2f', [dbl*0.01])
-      else
-        s := Format('%.0f', [dbl]);
-    end
-    else begin
-      s := Format('$%.16x', [-59000000]);
-      encint := ((dw and DWord($FFFFFFFC)) shr 2) or (dw and DWord($C0000000));
-        // "arithmetic shift" = replace left-most bits by original bits
-      if dw and $00000001 = 1 then
-        s := FloatToStr(encint*0.01)
-      else
-        s := IntToStr(encint);
-    end;
     FDetails.Add('Bits 31-2: Encoded value ' + s);
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes,
-    Format('$%.8x', [dw]), 'RK value');
+    Format('$%.8x', [QWord(dw)]), 'RK value ['+s+']');
 end;
 
 
