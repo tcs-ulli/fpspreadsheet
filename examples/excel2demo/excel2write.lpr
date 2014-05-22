@@ -43,7 +43,7 @@ begin
   MyWorksheet.LeftPaneWidth := 1;
   MyWorksheet.TopPaneHeight := 3;
 }
-                            (*
+
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
@@ -82,7 +82,7 @@ begin
   MyWorksheet.WriteUTF8Text(1, 1, 'Second');
   MyWorksheet.WriteUTF8Text(1, 2, 'Third');
   MyWorksheet.WriteUTF8Text(1, 3, 'Fourth');
-                                         *)
+
   // Write current date/time
   MyWorksheet.WriteDateTime(2, 0, now);
 

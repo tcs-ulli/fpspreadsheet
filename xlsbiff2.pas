@@ -876,7 +876,7 @@ begin
   //   Mask $3F: Index to XF record
   //   Mask $40: 1 = Cell is locked
   //   Mask $80: 1 = Formula is hidden
-  AStream.WriteByte(XFIndex and $3F);
+  AStream.WriteByte(Min(XFIndex, $3F) and $3F);
 
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record
