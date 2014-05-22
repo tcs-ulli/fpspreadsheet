@@ -1937,7 +1937,7 @@ begin
   // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
   fmtString := ReadWideString(AStream, False);
 
-  // Add to the list
+  // Analyze the format string and add format to the list
   NumFormatList.AnalyzeAndAdd(fmtIndex, fmtString);
 end;
 
