@@ -219,11 +219,6 @@ const
   { Excel record IDs }
   // see: in xlscommon
 
-  { Cell Addresses constants }
-  MASK_EXCEL_ROW          = $3FFF;
-  MASK_EXCEL_RELATIVE_COL = $4000;  // This is according to Microsoft documentation,
-  MASK_EXCEL_RELATIVE_ROW = $8000;  // but opposite to OpenOffice documentation!
-
   { BOF record constants }
   INT_BOF_BIFF5_VER       = $0500;
   INT_BOF_WORKBOOK_GLOBALS= $0005;

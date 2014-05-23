@@ -68,7 +68,8 @@ type
 
   TFEKind = (
     { Basic operands }
-    fekCell, fekCellRef, fekCellRange, fekNum, fekString, fekBool, fekMissingArg,
+    fekCell, fekCellRef, fekCellRange, fekNum, fekInteger, fekString, fekBool,
+    fekErr, fekMissingArg,
     { Basic operations }
     fekAdd, fekSub, fekDiv, fekMul, fekPercent, fekPower, fekUMinus, fekUPlus,
     fekConcat,  // string concatenation
@@ -138,7 +139,9 @@ type
     errIllegalRef,         // #REF!
     errWrongName,          // #NAME?
     errOverflow,           // #NUM!
-    errArgNotAvail         // #N/A
+    errArgNotAvail,        // #N/A
+    // --- no Excel errors --
+    errFormulaNotSupported
   );
 
   {@@ List of possible formatting fields }
@@ -402,7 +405,8 @@ type
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
-    procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue);
+    procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue); overload;
+    procedure WriteErrorValue(ACell: PCell; AValue: TErrorValue); overload;
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
@@ -487,6 +491,7 @@ type
     FFontList: TFPList;
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
+    FReadFormulas: Boolean;
     { Internal methods }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
   public
@@ -537,6 +542,7 @@ type
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
     property FileFormat: TsSpreadsheetFormat read FFormat;
+    property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
   end;
 
 
@@ -708,6 +714,7 @@ type
   }
 
   function CreateRPNFormula(AItem: PRPNItem): TsRPNFormula;
+  procedure DestroyRPNFormula(AItem: PRPNItem);
 
   function RPNBool(AValue: Boolean;
     ANext: PRPNItem): PRPNItem;
@@ -723,6 +730,8 @@ type
     ANext: PRPNItem): PRPNItem; overload;
   function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
     ANext: PRPNItem): PRPNItem; overload;
+  function RPNErr(AErrCode: Byte; ANext: PRPNItem): PRPNItem;
+  function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
   function RPNMissingArg(ANext: PRPNItem): PRPNItem;
   function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
   function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
@@ -767,6 +776,7 @@ resourcestring
   lpErrWrongName = '#NAME?';
   lpErrOverflow = '#NUM!';
   lpErrArgNotAvail = '#N/A';
+  lpErrFormulaNotSupported = '<FORMULA?>';
 
 var
   {@@
@@ -1310,13 +1320,14 @@ begin
         Result := IfThen(BoolValue, lpTRUE, lpFALSE);
       cctError:
         case TErrorValue(StatusValue and $0F) of
-          errEmptyIntersection: Result := lpErrEmptyIntersection;
-          errDivideByZero     : Result := lpErrDivideByZero;
-          errWrongType        : Result := lpErrWrongType;
-          errIllegalRef       : Result := lpErrIllegalRef;
-          errWrongName        : Result := lpErrWrongName;
-          errOverflow         : Result := lpErrOverflow;
-          errArgNotAvail      : Result := lpErrArgNotAvail;
+          errEmptyIntersection  : Result := lpErrEmptyIntersection;
+          errDivideByZero       : Result := lpErrDivideByZero;
+          errWrongType          : Result := lpErrWrongType;
+          errIllegalRef         : Result := lpErrIllegalRef;
+          errWrongName          : Result := lpErrWrongName;
+          errOverflow           : Result := lpErrOverflow;
+          errArgNotAvail        : Result := lpErrArgNotAvail;
+          errFormulaNotSupported: Result := lpErrFormulaNotSupported;
         end;
       else
         Result := '';
@@ -1609,13 +1620,17 @@ end;
   @param  AValue     The error code value
 }
 procedure TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue);
-var
-  ACell: PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  ACell^.ContentType := cctError;
-  ACell^.StatusValue := (ACell^.StatusValue and $F0) or ord(AValue);
-  ChangedCell(ARow, ACol);
+  WriteErrorValue(GetCell(ARow, ACol), AValue);
+end;
+
+procedure TsWorksheet.WriteErrorValue(ACell: PCell; AValue: TErrorValue);
+begin
+  if ACell <> nil then begin
+    ACell^.ContentType := cctError;
+    ACell^.StatusValue := (ACell^.StatusValue and $F0) or ord(AValue);
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -3534,6 +3549,28 @@ begin
 end;
 
 {@@
+  Creates an entry in the RPN array with an error value.
+}
+function RPNErr(AErrCode: Byte; ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekErr;
+  Result^.FE.IntValue := AErrCode;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a 2-byte unsigned integer
+}
+function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekInteger;
+  Result^.FE.IntValue := AValue;
+  Result^.Next := ANext;
+end;
+
+{@@
   Creates an entry in the RPN array for a missing argument in of function call.
 }
 function RPNMissingArg(ANext: PRPNItem): PRPNItem;
@@ -3620,6 +3657,17 @@ begin
     inc(n);
     DisposeRPNItem(item);
     item := nextitem;
+  end;
+end;
+
+procedure DestroyRPNFormula(AItem: PRPNItem);
+var
+  nextitem: PRPNItem;
+begin
+  while AItem <> nil do begin
+    nextitem := AItem^.Next;
+    DisposeRPNItem(AItem);
+    AItem := nextitem;
   end;
 end;
 

@@ -73,6 +73,8 @@ type
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
+    function ReadRPNFunc(AStream: TStream): Word; override;
+    function ReadRPNTokenArraySize(AStream: TStream): Word; override;
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadWindow2(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
@@ -155,11 +157,6 @@ const
   INT_EXCEL_ID_XF         = $0043;
   INT_EXCEL_ID_IXFE       = $0044;
   INT_EXCEL_ID_FONTCOLOR  = $0045;
-
-  { Cell Addresses constants }
-  MASK_EXCEL_ROW          = $3FFF;
-  MASK_EXCEL_RELATIVE_COL = $4000;  // This is according to Microsoft documentation,
-  MASK_EXCEL_RELATIVE_ROW = $8000;  // but opposite to OpenOffice documentation!
 
   { BOF record constants }
   INT_EXCEL_SHEET         = $0010;
@@ -645,6 +642,23 @@ begin
     // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
     lRow^.Height := TwipsToMillimeters(h and $7FFF);
   end;
+end;
+
+{ Reads the identifier for an RPN function with fixed argument count.
+  Valid for BIFF2-BIFF3. }
+function TsSpreadBIFF2Reader.ReadRPNFunc(AStream: TStream): Word;
+var
+  b: Byte;
+begin
+  b := AStream.ReadByte;
+  Result := b;
+end;
+
+{ Helper funtion for reading of the size of the token array of an RPN formula.
+  Is overridden because BIFF2 uses 1 byte only. }
+function TsSpreadBIFF2Reader.ReadRPNTokenArraySize(AStream: TStream): Word;
+begin
+  Result := AStream.ReadByte;
 end;
 
 { Reads a STRING record which contains the result of string formula. }
