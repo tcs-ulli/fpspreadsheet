@@ -38,6 +38,7 @@ type
     FLockCount: Integer;
     FEditing: Boolean;
     FCellFont: TFont;
+    FReadFormulas: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
@@ -132,6 +133,7 @@ type
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
+    property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
 
@@ -220,6 +222,7 @@ type
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
     property FrozenCols;
     property FrozenRows;
+    property ReadFormulas;
     property ShowGridLines;
     property ShowHeaders;
 
@@ -551,7 +554,7 @@ end;
 { Converts a spreadsheet font to a font used for painting (TCanvas.Font). }
 procedure TsCustomWorksheetGrid.Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
 begin
-  if Assigned(AFont) then begin
+  if Assigned(AFont) and Assigned(sFont) then begin
     AFont.Name := sFont.FontName;
     AFont.Size := round(sFont.Size);
     AFont.Style := [];
@@ -2522,6 +2525,7 @@ begin
   try
     FreeAndNil(FWorkbook);
     FWorkbook := TsWorkbook.Create;
+    FWorkbook.ReadFormulas := FReadFormulas;
     FWorkbook.ReadFromFile(AFileName, AFormat);
     LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
   finally
@@ -2536,6 +2540,7 @@ begin
   try
     FreeAndNil(FWorkbook);
     FWorkbook := TsWorkbook.Create;
+    FWorkbook.ReadFormulas := FReadFormulas;
     FWorkbook.ReadFromFile(AFilename);
     LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
   finally

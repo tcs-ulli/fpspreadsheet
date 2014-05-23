@@ -59,6 +59,8 @@ function ParseCellColString(const AStr: string;
   var AResult: Integer): Boolean;
 
 function GetColString(AColIndex: Integer): String;
+function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags): String;
+function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;
 
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
@@ -458,6 +460,29 @@ begin
   else
     Result := 'too big';
 end;
+
+const
+  RELCHAR: Array[boolean] of String = ('$', '');
+
+function GetCellString(ARow, ACol: Cardinal; AFlags: TsRelFlags): String;
+begin
+  Result := Format('%s%s%s%d', [
+    RELCHAR[rfRelCol in AFlags], GetColString(ACol),
+    RELCHAR[rfRelRow in AFlags], ARow+1
+  ]);
+end;
+
+function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;
+begin
+  Result := Format('%s%s%s%d:%s%s%s%d', [
+    RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
+    RELCHAR[rfRelRow in AFlags], ARow1 + 1,
+    RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
+    RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
+  ]);
+//  Result := GetCellString(ARow1, ACol1, AFlags) + ':' + GetCellString(ARow2, ACol2, [rfRelRow2, rfRelCol2]);
+end;
+
 
 {In XML files some chars must be translated}
 function UTF8TextToXMLText(AText: ansistring): ansistring;
