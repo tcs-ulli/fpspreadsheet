@@ -36,6 +36,7 @@ type
     procedure ShowColWidth;
     procedure ShowCountry;
     procedure ShowDateMode;
+    procedure ShowDBCell;
     procedure ShowDefColWidth;
     procedure ShowDefRowHeight;
     procedure ShowDelta;
@@ -342,6 +343,8 @@ begin
       ShowMulBlank;
     $00BD:
       ShowMulRK;
+    $00D7:
+      ShowDBCell;
     $00DA:
       ShowBookBool;
     $00E0:
@@ -819,6 +822,31 @@ begin
   w := WordLEToN(w);
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
     '0 = Base date is 1899-Dec-31, 1 = Base date is 1904-Jan-01');
+end;
+
+procedure TBIFFGrid.ShowDBCell;
+var
+  i, n: Integer;
+  dw: DWord;
+  w: Word;
+  numBytes: Integer;
+begin
+  if FFormat < sfExcel5 then exit;
+
+  n := (Length(FBuffer) - 4) div 2;
+  RowCount := FixedRows + 1 + n;
+
+  numBytes := 4;
+  Move(FBuffer[FBufferIndex], dw, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+    'Relative offset to first ROW record in the Row Block');
+
+  numBytes := 2;
+  for i:=1 to n do begin
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+      'Relative offsets to calculate stream position of the first cell record in row');
+  end;
 end;
 
 procedure TBIFFGrid.ShowDefColWidth;
