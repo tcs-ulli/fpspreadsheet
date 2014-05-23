@@ -55,23 +55,39 @@ type
     AcNFExp: TAction;
     AcNFSci: TAction;
     AcCopyFormat: TAction;
+    AcNFCurrency: TAction;
+    AcNFCurrencyRed: TAction;
+    AcNFAccounting: TAction;
+    AcNFAccountingRed: TAction;
+    AcNFShortDateTime: TAction;
+    AcNFShortDate: TAction;
+    AcNFLongDate: TAction;
+    AcNFShortTime: TAction;
+    AcNFLongTime: TAction;
+    AcNFShortTimeAM: TAction;
+    AcNFLongTimeAM: TAction;
+    AcNFTimeInterval: TAction;
+    AcNFFmtDateTimeDM: TAction;
+    AcNFFmtDateTimeMY: TAction;
+    AcNFFmtDateTimeMS: TAction;
+    AcNFFmtDateTimeMSZ: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
     AcVAlignCenter: TAction;
     AcVAlignBottom: TAction;
-    ActionList1: TActionList;
+    ActionList: TActionList;
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
     CbBackgroundColor: TColorBox;
     FontComboBox: TComboBox;
     EdFrozenRows: TSpinEdit;
-    FontDialog1: TFontDialog;
+    FontDialog: TFontDialog;
     FontSizeComboBox: TComboBox;
-    ImageList1: TImageList;
+    ImageList: TImageList;
     Label1: TLabel;
     Label2: TLabel;
-    MainMenu1: TMainMenu;
+    MainMenu: TMainMenu;
     MenuItem1: TMenuItem;
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
@@ -103,6 +119,28 @@ type
     MenuItem36: TMenuItem;
     MenuItem37: TMenuItem;
     MenuItem38: TMenuItem;
+    MenuItem39: TMenuItem;
+    MenuItem40: TMenuItem;
+    MenuItem41: TMenuItem;
+    MenuItem42: TMenuItem;
+    MenuItem43: TMenuItem;
+    MenuItem44: TMenuItem;
+    MenuItem45: TMenuItem;
+    MnuFmtDateTimeMSZ: TMenuItem;
+    MnuTimeInterval: TMenuItem;
+    MnuShortTimeAM: TMenuItem;
+    MnuLongTimeAM: TMenuItem;
+    MnuFmtDateTimeMY: TMenuItem;
+    MnuFmtDateTimeDM: TMenuItem;
+    MnuShortTime: TMenuItem;
+    MnuShortDate: TMenuItem;
+    MnuLongTime: TMenuItem;
+    MnuLongDate: TMenuItem;
+    MnuShortDateTime: TMenuItem;
+    MnuAccountingRed: TMenuItem;
+    MnuAccounting: TMenuItem;
+    MnuCurrencyRed: TMenuItem;
+    MnuCurrency: TMenuItem;
     MnuNumberFormat: TMenuItem;
     MnuNFFixed: TMenuItem;
     MnuNFFixedTh: TMenuItem;
@@ -133,14 +171,14 @@ type
     mnuOpen: TMenuItem;
     mnuQuit: TMenuItem;
     mnuSaveAs: TMenuItem;
-    OpenDialog1: TOpenDialog;
+    OpenDialog: TOpenDialog;
     PageControl1: TPageControl;
     Panel1: TPanel;
     BordersPopupMenu: TPopupMenu;
     NumFormatPopupMenu: TPopupMenu;
-    SaveDialog1: TSaveDialog;
+    SaveDialog: TSaveDialog;
     EdFrozenCols: TSpinEdit;
-    sWorksheetGrid1: TsWorksheetGrid;
+    WorksheetGrid: TsWorksheetGrid;
     TabSheet1: TTabSheet;
     ToolBar1: TToolBar;
     FormatToolBar: TToolBar;
@@ -195,7 +233,7 @@ type
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
-    procedure sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
+    procedure WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
   private
     { private declarations }
     FCopiedFormat: TCell;
@@ -220,13 +258,13 @@ var
 implementation
 
 uses
-  fpcanvas;
+  fpcanvas, fpsutils;
 
 const
   HORALIGN_TAG = 100;
   VERTALIGN_TAG = 110;
   TEXTROT_TAG = 130;
-  NUMFMT_TAG = 150;  // needs 20
+  NUMFMT_TAG = 1000;  // differnce 10 per format item
 
   LEFT_BORDER_THIN       = $0001;
   LEFT_BORDER_THICK      = $0002;
@@ -252,9 +290,9 @@ const
 procedure TForm1.AcEditExecute(Sender: TObject);
 begin
   if AcEdit.Checked then
-    sWorksheetGrid1.Options := sWorksheetGrid1.Options + [goEditing]
+    WorksheetGrid.Options := WorksheetGrid.Options + [goEditing]
   else
-    sWorksheetGrid1.Options := sWorksheetGrid1.Options - [goEditing];
+    WorksheetGrid.Options := WorksheetGrid.Options - [goEditing];
 end;
 
 procedure TForm1.AcBorderExecute(Sender: TObject);
@@ -267,7 +305,7 @@ var
 begin
   bs.Color := scBlack;
 
-  with sWorksheetGrid1 do begin
+  with WorksheetGrid do begin
     TbBorders.Action := TAction(Sender);
 
     BeginUpdate;
@@ -346,7 +384,7 @@ var
   cell: PCell;
   r, c: Cardinal;
 begin
-  with sWorksheetGrid1 do begin
+  with WorksheetGrid do begin
     if Workbook = nil then
       exit;
 
@@ -363,12 +401,12 @@ end;
 { Changes the font of the selected cell by calling a standard font dialog. }
 procedure TForm1.AcFontExecute(Sender: TObject);
 begin
-  with sWorksheetGrid1 do begin
+  with WorksheetGrid do begin
     if Workbook = nil then
       exit;
-    FontDialog1.Font := CellFonts[Selection];
-    if FontDialog1.Execute then
-      CellFonts[Selection] := FontDialog1.Font;
+    FontDialog.Font := CellFonts[Selection];
+    if FontDialog.Execute then
+      CellFonts[Selection] := FontDialog.Font;
   end;
 end;
 
@@ -376,7 +414,7 @@ procedure TForm1.AcFontStyleExecute(Sender: TObject);
 var
   style: TsFontstyles;
 begin
-  with sWorksheetGrid1 do begin
+  with WorksheetGrid do begin
     if Workbook = nil then
       exit;
     style := [];
@@ -396,7 +434,7 @@ begin
     hor_align := TsHorAlignment(TAction(Sender).Tag - HORALIGN_TAG)
   else
     hor_align := haDefault;
-  with sWorksheetGrid1 do HorAlignments[Selection] := hor_align;
+  with WorksheetGrid do HorAlignments[Selection] := hor_align;
   UpdateHorAlignmentActions;
 end;
 
@@ -405,7 +443,7 @@ var
   cell: PCell;
   decs: Byte;
 begin
-  with sWorksheetGrid1 do begin
+  with WorksheetGrid do begin
     if Workbook = nil then
       exit;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
@@ -420,22 +458,42 @@ begin
 end;
 
 procedure TForm1.AcNumFormatExecute(Sender: TObject);
+const
+  DATETIME_FMT: array[0..4] of string = ('', 'dm', 'my', 'ms', 'msz');
 var
   nf: TsNumberFormat;
   c, r: Cardinal;
+  cell: PCell;
+  fmt: String;
 begin
-  if sWorksheetGrid1.Worksheet = nil then
+  if WorksheetGrid.Worksheet = nil then
     exit;
 
   if TAction(Sender).Checked then
-    nf := TsNumberFormat(TAction(Sender).Tag - NUMFMT_TAG)
+    nf := TsNumberFormat((TAction(Sender).Tag - NUMFMT_TAG) div 10)
   else
     nf := nfGeneral;
 
-  with sWorksheetGrid1 do begin
+  if nf = nfFmtDateTime then
+    fmt := DATETIME_FMT[TAction(Sender).Tag mod 10]
+  else
+    fmt := '';
+
+  with WorksheetGrid do begin
     c := GetWorksheetCol(Col);
     r := GetWorksheetRow(Row);
-    Worksheet.WriteNumberFormat(r, c, nf);
+    cell := Worksheet.GetCell(r, c);
+    if IsDateTimeFormat(nf) then begin
+      if IsDateTimeFormat(cell^.NumberFormat) then
+        Worksheet.WriteDateTime(cell, cell^.DateTimeValue, nf, fmt)
+      else
+        Worksheet.WriteDateTime(cell, cell^.NumberValue, nf, fmt);
+    end else begin
+      if IsDateTimeFormat(cell^.NumberFormat) then
+        Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, cell^.Decimals, cell^.CurrencySymbol)
+      else
+        Worksheet.WriteNumber(cell, cell^.NumberValue, nf, cell^.Decimals, cell^.CurrencySymbol);
+    end;
   end;
 
   UpdateNumFormatActions;
@@ -449,7 +507,7 @@ begin
     text_rot := TsTextRotation(TAction(Sender).Tag - TEXTROT_TAG)
   else
     text_rot := trHorizontal;
-  with sWorksheetGrid1 do TextRotations[Selection] := text_rot;
+  with WorksheetGrid do TextRotations[Selection] := text_rot;
   UpdateTextRotationActions;
 end;
 
@@ -461,34 +519,34 @@ begin
     vert_align := TsVertAlignment(TAction(Sender).Tag - VERTALIGN_TAG)
   else
     vert_align := vaDefault;
-  with sWorksheetGrid1 do VertAlignments[Selection] := vert_align;
+  with WorksheetGrid do VertAlignments[Selection] := vert_align;
   UpdateVertAlignmentActions;
 end;
 
 procedure TForm1.AcWordwrapExecute(Sender: TObject);
 begin
-  with sWorksheetGrid1 do Wordwraps[Selection] := TAction(Sender).Checked;
+  with WorksheetGrid do Wordwraps[Selection] := TAction(Sender).Checked;
 end;
 
 procedure TForm1.CbBackgroundColorSelect(Sender: TObject);
 begin
-  with sWorksheetGrid1 do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
+  with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
 end;
 
 procedure TForm1.CbShowHeadersClick(Sender: TObject);
 begin
-  sWorksheetGrid1.ShowHeaders := CbShowHeaders.Checked;
+  WorksheetGrid.ShowHeaders := CbShowHeaders.Checked;
 end;
 
 procedure TForm1.CbShowGridLinesClick(Sender: TObject);
 begin
-  sWorksheetGrid1.ShowGridLines := CbShowGridLines.Checked;
+  WorksheetGrid.ShowGridLines := CbShowGridLines.Checked;
 end;
 
 procedure TForm1.acOpenExecute(Sender: TObject);
 begin
-  if OpenDialog1.Execute then
-    LoadFile(OpenDialog1.FileName);
+  if OpenDialog.Execute then
+    LoadFile(OpenDialog.FileName);
 end;
 
 procedure TForm1.acQuitExecute(Sender: TObject);
@@ -499,11 +557,11 @@ end;
 procedure TForm1.acSaveAsExecute(Sender: TObject);
 // Saves sheet in grid to file, overwriting existing file
 begin
-  if sWorksheetGrid1.Workbook = nil then
+  if WorksheetGrid.Workbook = nil then
     exit;
 
-  if SaveDialog1.Execute then
-    sWorksheetGrid1.SaveToSpreadsheetFile(SaveDialog1.FileName);
+  if SaveDialog.Execute then
+    WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
 end;
 
 procedure TForm1.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
@@ -514,10 +572,10 @@ var
   rgb: TRGB absolute clr;
   i: Integer;
 begin
-  if sWorksheetGrid1.Workbook <> nil then begin
+  if WorksheetGrid.Workbook <> nil then begin
     Items.Clear;
-    for i:=0 to sWorksheetGrid1.Workbook.GetPaletteSize-1 do begin
-      clr := sWorksheetGrid1.Workbook.GetPaletteColor(i);
+    for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
+      clr := WorksheetGrid.Workbook.GetPaletteColor(i);
       Items.AddObject(Format('Color %d: %.2x%.2x%.2x', [i, rgb.R, rgb.G, rgb.B]),
         TObject(PtrInt(clr)));
     end;
@@ -526,12 +584,12 @@ end;
 
 procedure TForm1.EdFrozenColsChange(Sender: TObject);
 begin
-  sWorksheetGrid1.FrozenCols := EdFrozenCols.Value;
+  WorksheetGrid.FrozenCols := EdFrozenCols.Value;
 end;
 
 procedure TForm1.EdFrozenRowsChange(Sender: TObject);
 begin
-  sWorksheetGrid1.FrozenRows := EdFrozenRows.Value;
+  WorksheetGrid.FrozenRows := EdFrozenRows.Value;
 end;
 
 procedure TForm1.FontComboBoxSelect(Sender: TObject);
@@ -540,7 +598,7 @@ var
 begin
   fname := FontCombobox.Items[FontCombobox.ItemIndex];
   if fname <> '' then
-    with sWorksheetGrid1 do CellFontNames[Selection] := fName;
+    with WorksheetGrid do CellFontNames[Selection] := fName;
 end;
 
 procedure TForm1.FontSizeComboBoxSelect(Sender: TObject);
@@ -549,7 +607,7 @@ var
 begin
   sz := StrToInt(FontSizeCombobox.Items[FontSizeCombobox.ItemIndex]);
   if sz > 0 then
-    with sWorksheetGrid1 do CellFontSizes[Selection] := sz;
+    with WorksheetGrid do CellFontSizes[Selection] := sz;
 end;
 
 procedure TForm1.FormActivate(Sender: TObject);
@@ -592,25 +650,25 @@ var
   i: Integer;
 begin
   // Load file
-  sWorksheetGrid1.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
+  WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
 
   // Update user interface
   Caption := Format('fpsGrid - %s (%s)', [
     AFilename,
-    GetFileFormatName(sWorksheetGrid1.Workbook.FileFormat)
+    GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
   ]);
-  CbShowGridLines.Checked := (soShowGridLines in sWorksheetGrid1.Worksheet.Options);
-  CbShowHeaders.Checked := (soShowHeaders in sWorksheetGrid1.Worksheet.Options);
-  EdFrozenCols.Value := sWorksheetGrid1.FrozenCols;
-  EdFrozenRows.Value := sWorksheetGrid1.FrozenRows;
+  CbShowGridLines.Checked := (soShowGridLines in WorksheetGrid.Worksheet.Options);
+  CbShowHeaders.Checked := (soShowHeaders in WorksheetGrid.Worksheet.Options);
+  EdFrozenCols.Value := WorksheetGrid.FrozenCols;
+  EdFrozenRows.Value := WorksheetGrid.FrozenRows;
   SetupBackgroundColorBox;
 
   // Create a tab in the pagecontrol for each worksheet contained in the workbook
   // This would be easer with a TTabControl. This has display issues, though.
   pages := TStringList.Create;
   try
-    sWorksheetGrid1.GetSheets(pages);
-    sWorksheetGrid1.Parent := PageControl1.Pages[0];
+    WorksheetGrid.GetSheets(pages);
+    WorksheetGrid.Parent := PageControl1.Pages[0];
     while PageControl1.PageCount > pages.Count do PageControl1.Pages[1].Free;
     while PageControl1.PageCount < pages.Count do PageControl1.AddTabSheet;
     for i:=0 to PageControl1.PageCount-1 do
@@ -619,13 +677,13 @@ begin
     pages.Free;
   end;
 
-  sWorksheetGrid1Selection(nil, sWorksheetGrid1.Col, sWorksheetGrid1.Row);
+  WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
 end;
 
 procedure TForm1.PageControl1Change(Sender: TObject);
 begin
-  sWorksheetGrid1.Parent := PageControl1.Pages[PageControl1.ActivePageIndex];
-  sWorksheetGrid1.SelectSheetByIndex(PageControl1.ActivePageIndex);
+  WorksheetGrid.Parent := PageControl1.Pages[PageControl1.ActivePageIndex];
+  WorksheetGrid.SelectSheetByIndex(PageControl1.ActivePageIndex);
 end;
 
 procedure TForm1.SetupBackgroundColorBox;
@@ -636,17 +694,17 @@ begin
   CbBackgroundColor.Style := CbBackgroundColor.Style + [cbCustomColors];
 end;
 
-procedure TForm1.sWorksheetGrid1Selection(Sender: TObject; aCol, aRow: Integer);
+procedure TForm1.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
 var
   r, c: Cardinal;
 begin
-  if sWorksheetGrid1.Workbook = nil then
+  if WorksheetGrid.Workbook = nil then
     exit;
 
   if AcCopyFormat.Checked then begin
-    r := sWorksheetGrid1.GetWorksheetRow(ARow);
-    c := sWorksheetGrid1.GetWorksheetCol(ACol);
-    sWorksheetGrid1.Worksheet.CopyFormat(@FCopiedFormat, r, c);
+    r := WorksheetGrid.GetWorksheetRow(ARow);
+    c := WorksheetGrid.GetWorksheetCol(ACol);
+    WorksheetGrid.Worksheet.CopyFormat(@FCopiedFormat, r, c);
     AcCopyFormat.Checked := false;
   end;
 
@@ -658,6 +716,7 @@ begin
   UpdateFontNameIndex;
   UpdateFontSizeIndex;
   UpdateFontStyleActions;
+  UpdateTextRotationActions;
   UpdateNumFormatActions;
 end;
 
@@ -665,7 +724,7 @@ procedure TForm1.UpdateBackgroundColorIndex;
 var
   sClr: TsColor;
 begin
-  with sWorksheetGrid1 do sClr := BackgroundColors[Selection];
+  with WorksheetGrid do sClr := BackgroundColors[Selection];
   if sClr = scNotDefined then
     CbBackgroundColor.ItemIndex := -1
   else
@@ -678,9 +737,9 @@ var
   ac: TAction;
   hor_align: TsHorAlignment;
 begin
-  with sWorksheetGrid1 do hor_align := HorAlignments[Selection];
-  for i:=0 to ActionList1.ActionCount-1 do begin
-    ac := TAction(ActionList1.Actions[i]);
+  with WorksheetGrid do hor_align := HorAlignments[Selection];
+  for i:=0 to ActionList.ActionCount-1 do begin
+    ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= HORALIGN_TAG) and (ac.Tag < HORALIGN_TAG+10) then
       ac.Checked := ((ac.Tag - HORALIGN_TAG) = ord(hor_align));
   end;
@@ -690,7 +749,7 @@ procedure TForm1.UpdateFontNameIndex;
 var
   fname: String;
 begin
-  with sWorksheetGrid1 do fname := CellFontNames[Selection];
+  with WorksheetGrid do fname := CellFontNames[Selection];
   if fname = '' then
     FontCombobox.ItemIndex := -1
   else
@@ -701,7 +760,7 @@ procedure TForm1.UpdateFontSizeIndex;
 var
   sz: Single;
 begin
-  with sWorksheetGrid1 do sz := CellFontSizes[Selection];
+  with WorksheetGrid do sz := CellFontSizes[Selection];
   if sz < 0 then
     FontSizeCombobox.ItemIndex := -1
   else
@@ -712,7 +771,7 @@ procedure TForm1.UpdateFontStyleActions;
 var
   style: TsFontStyles;
 begin
-  with sWorksheetGrid1 do style := CellFontStyles[Selection];
+  with WorksheetGrid do style := CellFontStyles[Selection];
   AcFontBold.Checked := fssBold in style;
   AcFontItalic.Checked := fssItalic in style;
   AcFontUnderline.Checked := fssUnderline in style;
@@ -726,19 +785,33 @@ var
   nf: TsNumberFormat;
   cell: PCell;
   r,c: Cardinal;
+  found: Boolean;
+  t: Integer;
 begin
-  with sWorksheetGrid1 do begin
+  with WorksheetGrid do begin
     r := GetWorksheetRow(Row);
     c := GetWorksheetCol(Col);
     cell := Worksheet.FindCell(r, c);
-    if (cell = nil) or (cell^.ContentType <> cctNumber) then
+    if (cell = nil) or not (cell^.ContentType in [cctNumber, cctDateTime]) then
       nf := nfGeneral
     else
       nf := cell^.NumberFormat;
-    for i:=0 to ActionList1.ActionCount-1 do begin
-      ac := TAction(ActionList1.Actions[i]);
-      if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 20) then
-        ac.Checked := ((ac.Tag - NUMFMT_TAG) = ord(nf));
+    for i:=0 to ActionList.ActionCount-1 do begin
+      ac := TAction(ActionList.Actions[i]);
+      t := ac.Tag;
+      if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 200) then begin
+        found := ((ac.Tag - NUMFMT_TAG) div 10 = ord(nf));
+        if (nf = nfFmtDateTime) then
+          case (ac.Tag - NUMFMT_TAG) mod 10 of
+            1: found := pos('d/m', cell^.NumberFormatStr) > 0;
+            2: found := pos('m/y', cell^.NumberFormatStr) > 0;
+            3: found := (pos('n:s', cell^.NumberFormatStr) > 0)
+                    and (pos ('.z', cell^.NumberFormatStr) = 0);
+            4: found := (pos('n:s', cell^.NumberFormatStr) > 0)
+                    and (pos ('.z', cell^.NumberFormatStr) > 0);
+          end;
+        ac.Checked := found;
+      end;
     end;
   end;
 end;
@@ -749,9 +822,9 @@ var
   ac: TAction;
   text_rot: TsTextRotation;
 begin
-  with sWorksheetGrid1 do text_rot := TextRotations[Selection];
-  for i:=0 to ActionList1.ActionCount-1 do begin
-    ac := TAction(ActionList1.Actions[i]);
+  with WorksheetGrid do text_rot := TextRotations[Selection];
+  for i:=0 to ActionList.ActionCount-1 do begin
+    ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= TEXTROT_TAG) and (ac.Tag < TEXTROT_TAG+10) then
       ac.Checked := ((ac.Tag - TEXTROT_TAG) = ord(text_rot));
   end;
@@ -764,9 +837,9 @@ var
   vert_align: TsVertAlignment;
   t: Integer;
 begin
-  with sWorksheetGrid1 do vert_align := VertAlignments[Selection];
-  for i:=0 to ActionList1.ActionCount-1 do begin
-    ac := TAction(ActionList1.Actions[i]);
+  with WorksheetGrid do vert_align := VertAlignments[Selection];
+  for i:=0 to ActionList.ActionCount-1 do begin
+    ac := TAction(ActionList.Actions[i]);
     t := ac.tag;
     if (ac.Tag >= VERTALIGN_TAG) and (ac.Tag < VERTALIGN_TAG+10) then
       ac.Checked := ((ac.Tag - VERTALIGN_TAG) = ord(vert_align));
@@ -777,7 +850,7 @@ procedure TForm1.UpdateWordwraps;
 var
   wrapped: Boolean;
 begin
-  with sWorksheetGrid1 do wrapped := Wordwraps[Selection];
+  with WorksheetGrid do wrapped := Wordwraps[Selection];
   AcWordwrap.Checked := wrapped;
 end;
 

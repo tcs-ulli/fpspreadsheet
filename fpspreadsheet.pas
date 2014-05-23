@@ -404,13 +404,17 @@ type
     procedure WriteBlank(ARow, ACol: Cardinal);
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
+    procedure WriteDateTime(ACell: PCell; AValue: TDateTime;
+      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
     procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue); overload;
     procedure WriteErrorValue(ACell: PCell; AValue: TErrorValue); overload;
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
       ACurrencySymbol: String = ''); overload;
+    procedure WriteNumber(ACell: PCell; ANumber: Double; AFormat: TsNumberFormat = nfGeneral;
+      ADecimals: Byte = 2; ACurrencySymbol: String = ''); overload;
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormatString: String); overload;
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
@@ -1456,34 +1460,41 @@ end;
 procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
   AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
   ACurrencySymbol: String = '');
+begin
+  WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, ADecimals, ACurrencySymbol);
+end;
+
+
+procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
+  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
+  ACurrencySymbol: String = '');
 var
-  ACell: PCell;
   fs: TFormatSettings;
 begin
-  ACell := GetCell(ARow, ACol);
-
-  ACell^.ContentType := cctNumber;
-  ACell^.NumberValue := ANumber;
-  ACell^.Decimals := ADecimals;
-
-  if IsDateTimeFormat(AFormat) then
-    raise Exception.Create(lpInvalidNumberFormat);
-
-  {
-  if AFormat = nfCustom then
-    raise Exception.Create(lpIllegalNumberformat);
-   }
-
-  if AFormat <> nfGeneral then begin
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormat := AFormat;
+  if ACell <> nil then begin
+    ACell^.ContentType := cctNumber;
+    ACell^.NumberValue := ANumber;
     ACell^.Decimals := ADecimals;
-    ACell^.CurrencySymbol := ACurrencySymbol;
-    ACell^.NumberFormatStr := BuildNumberFormatString(ACell^.NumberFormat,
-      Workbook.FormatSettings, ADecimals, ACurrencySymbol);
-  end;
 
-  ChangedCell(ARow, ACol);
+    if IsDateTimeFormat(AFormat) then
+      raise Exception.Create(lpInvalidNumberFormat);
+
+    {
+    if AFormat = nfCustom then
+      raise Exception.Create(lpIllegalNumberformat);
+     }
+
+    if AFormat <> nfGeneral then begin
+      Include(ACell^.UsedFormattingFields, uffNumberFormat);
+      ACell^.NumberFormat := AFormat;
+      ACell^.Decimals := ADecimals;
+      ACell^.CurrencySymbol := ACurrencySymbol;
+      ACell^.NumberFormatStr := BuildNumberFormatString(ACell^.NumberFormat,
+        Workbook.FormatSettings, ADecimals, ACurrencySymbol);
+    end;
+
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -1577,23 +1588,28 @@ end;
 }
 procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
-var
-  ACell: PCell;
 begin
-  if (AFormat in [nfFmtDateTime, nfTimeInterval]) then
-    AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
+  WriteDateTime(GetCell(ARow, ACol), AValue, AFormat, AFormatStr);
+end;
 
-  ACell := GetCell(ARow, ACol);
-  ACell^.ContentType := cctDateTime;
-  ACell^.DateTimeValue := AValue;
-  // Date/time is actually a number field in Excel.
-  // To make sure it gets saved correctly, set a date format (instead of General).
-  // The user can choose another date format if he wants to
-  Include(ACell^.UsedFormattingFields, uffNumberFormat);
-  ACell^.NumberFormat := AFormat;
-  ACell^.NumberFormatStr := AFormatStr;
+procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
+  AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+begin
+  if ACell <> nil then begin
+    if (AFormat in [nfFmtDateTime, nfTimeInterval]) then
+      AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
 
-  ChangedCell(ARow, ACol);
+    ACell^.ContentType := cctDateTime;
+    ACell^.DateTimeValue := AValue;
+    // Date/time is actually a number field in Excel.
+    // To make sure it gets saved correctly, set a date format (instead of General).
+    // The user can choose another date format if he wants to
+    Include(ACell^.UsedFormattingFields, uffNumberFormat);
+    ACell^.NumberFormat := AFormat;
+    ACell^.NumberFormatStr := AFormatStr;
+
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 procedure TsWorksheet.WriteDecimals(ARow, ACol: Cardinal; ADecimals: Byte);
@@ -1664,6 +1680,7 @@ procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumberFormat: TsNumberFormat; const AFormatString: String = '');
 var
   ACell: PCell;
+  oldNumFmt: TsNumberFormat;
 begin
   ACell := GetCell(ARow, ACol);
   Include(ACell^.UsedFormattingFields, uffNumberFormat);
