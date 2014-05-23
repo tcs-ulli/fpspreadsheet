@@ -31,6 +31,8 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFormulas := true;
+
   MyWorkbook.ReadFromFile(InputFilename, sfExcel8);
 
   MyWorksheet := MyWorkbook.GetFirstWorksheet;

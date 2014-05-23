@@ -86,7 +86,12 @@ type
     procedure ReadLabelSST(const AStream: TStream);
     // procedure ReadNumber() --> xlscommon
     procedure ReadRichString(const AStream: TStream);
+    procedure ReadRPNCellAddress(AStream: TStream; var ARow, ACol: Cardinal;
+      var AFlags: TsRelFlags); override;
+    procedure ReadRPNCellRangeAddress(AStream: TStream;
+      var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags); override;
     procedure ReadSST(const AStream: TStream);
+    function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadXF(const AStream: TStream);
   public
@@ -219,7 +224,6 @@ const
   INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
 
   { Cell Addresses constants }
-  MASK_EXCEL_ROW          = $3FFF;
   MASK_EXCEL_COL_BITS_BIFF8=$00FF;
   MASK_EXCEL_RELATIVE_COL = $4000;  // This is according to Microsoft documentation,
   MASK_EXCEL_RELATIVE_ROW = $8000;  // but opposite to OpenOffice documentation!
@@ -1658,6 +1662,53 @@ begin
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
+{ Reads the cell address used in an RPN formula element. Evaluates the corresponding
+  bits to distinguish between absolute and relative addresses.
+  Overriding the implementation in xlscommon. }
+procedure TsSpreadBIFF8Reader.ReadRPNCellAddress(AStream: TStream;
+  var ARow, ACol: Cardinal; var AFlags: TsRelFlags);
+var
+  c: word;
+begin
+  // Read row index (2 bytes)
+  ARow := WordLEToN(AStream.ReadWord);
+  // Read column index; it contains info on absolute/relative address
+  c := WordLEToN(AStream.ReadWord);
+  // Extract column index
+  ACol := c and MASK_EXCEL_COL_BITS_BIFF8;
+  // Extract info on absolute/relative addresses.
+  AFlags := [];
+  if (c and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
+  if (c and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
+end;
+
+{ Reads a cell range address used in an RPN formula element.
+  Evaluates the corresponding bits to distinguish between absolute and
+  relative addresses.
+  Overriding the implementation in xlscommon. }
+procedure TsSpreadBIFF8Reader.ReadRPNCellRangeAddress(AStream: TStream;
+  var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags);
+var
+  c1, c2: word;
+begin
+  // Read row index of first and last rows (2 bytes, each)
+  ARow1 := WordLEToN(AStream.ReadWord);
+  ARow2 := WordLEToN(AStream.ReadWord);
+  // Read column index of first and last columns; they contain info on
+  // absolute/relative address
+  c1 := WordLEToN(AStream.ReadWord);
+  c2 := WordLEToN(AStream.ReadWord);
+  // Extract column index of rist and last columns
+  ACol1 := c1 and MASK_EXCEL_COL_BITS_BIFF8;
+  ACol2 := c2 and MASK_EXCEL_COL_BITS_BIFF8;
+  // Extract info on absolute/relative addresses.
+  AFlags := [];
+  if (c1 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
+  if (c1 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
+  if (c2 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol2);
+  if (c2 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow2);
+end;
+
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
 var
   Items: DWORD;
@@ -1740,6 +1791,15 @@ begin
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);
+end;
+
+{ Helper function for reading a string with 8-bit length. }
+function TsSpreadBIFF8Reader.ReadString_8bitLen(AStream: TStream): String;
+var
+  s: widestring;
+begin
+  s := ReadWideString(AStream, true);
+  Result := s;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream);

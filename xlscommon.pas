@@ -83,8 +83,9 @@ const
   { Constant Operand Tokens, 3.8}
   INT_EXCEL_TOKEN_TMISSARG= $16; //missing operand
   INT_EXCEL_TOKEN_TSTR    = $17; //string
+  INT_EXCEL_TOKEN_TERR    = $1C; //error value
   INT_EXCEL_TOKEN_TBOOL   = $1D; //boolean
-  INT_EXCEL_TOKEN_TINT    = $1E; //integer
+  INT_EXCEL_TOKEN_TINT    = $1E; //(unsigned) integer
   INT_EXCEL_TOKEN_TNUM    = $1F; //floating-point
 
   { Operand Tokens }
@@ -99,9 +100,9 @@ const
   { Function Tokens }
   // _R: reference; _V: value; _A: array
   // Offset 0: token; offset 1: index to a built-in sheet function ( ➜ 3.111)
-  INT_EXCEL_TOKEN_FUNC_R = $21;
-  INT_EXCEL_TOKEN_FUNC_V = $41;
-  INT_EXCEL_TOKEN_FUNC_A = $61;
+  INT_EXCEL_TOKEN_FUNC_R  = $21;
+  INT_EXCEL_TOKEN_FUNC_V  = $41;
+  INT_EXCEL_TOKEN_FUNC_A  = $61;
 
   //VAR: variable number of arguments:
   INT_EXCEL_TOKEN_FUNCVAR_R = $22;
@@ -309,6 +310,13 @@ const
   MASK_XF_VERT_ALIGN_BOTTOM              = $20;
   MASK_XF_VERT_ALIGN_JUSTIFIED           = $30;
 
+  { Cell Addresses constants, valid for BIFF2-BIFF5 }
+  MASK_EXCEL_ROW                         = $3FFF;
+  MASK_EXCEL_RELATIVE_COL                = $4000;
+  MASK_EXCEL_RELATIVE_ROW                = $8000;
+  { Note: The assignment of the RELATIVE_COL and _ROW masks is according to
+    Microsoft's documentation, but opposite to the OpenOffice documentation. }
+
   { Error codes }
   ERR_INTERSECTION_EMPTY                 = $00;  // #NULL!
   ERR_DIVIDE_BY_ZERO                     = $07;  // #DIV/0!
@@ -399,6 +407,17 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
+    // Read the array of RPN tokens of a formula
+    procedure ReadRPNCellAddress(AStream: TStream; var ARow, ACol: Cardinal;
+      var AFlags: TsRelFlags); virtual;
+    procedure ReadRPNCellRangeAddress(AStream: TStream;
+      var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags); virtual;
+    function ReadRPNFunc(AStream: TStream): Word; virtual;
+    function ReadRPNTokenArray(AStream: TStream; var AFormula: TsRPNFormula): Boolean;
+    function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
+
+    // Helper function for reading a string with 8-bit length
+    function ReadString_8bitLen(AStream: TStream): String; virtual;
     // Read STRING record (result of string formula)
     procedure ReadStringRecord(AStream: TStream); virtual;
     // Read WINDOW2 record (gridlines, sheet headers)
@@ -477,6 +496,164 @@ implementation
 
 uses
   StrUtils, fpsNumFormatParser;
+
+{ Helper table for rpn formulas:
+  Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. The table
+  contains additional inforation in the first column:
+    0 --> primary token (basic operands and operations)
+    1 --> secondary token of a function with a fixed parameter count
+    2 --> secondary token of a function with a variable parameter count }
+const
+  TokenIDs: array[fekCell..fekOpSum, 0..1] of Word = (
+    // Basic operands
+    (0, INT_EXCEL_TOKEN_TREFV),          {fekCell}
+    (0, INT_EXCEL_TOKEN_TREFR),          {fekCellRef}
+    (0, INT_EXCEL_TOKEN_TAREA_R),        {fekCellRange}
+    (0, INT_EXCEL_TOKEN_TNUM),           {fekNum}
+    (0, INT_EXCEL_TOKEN_TINT),           {fekInteger}
+    (0, INT_EXCEL_TOKEN_TSTR),           {fekString}
+    (0, INT_EXCEL_TOKEN_TBOOL),          {fekBool}
+    (0, INT_EXCEL_TOKEN_TERR),           {fekErr}
+    (0, INT_EXCEL_TOKEN_TMISSARG),       {fekMissArg, missing argument}
+
+    // Basic operations
+    (0, INT_EXCEL_TOKEN_TADD),           {fekAdd, +}
+    (0, INT_EXCEL_TOKEN_TSUB),           {fekSub, -}
+    (0, INT_EXCEL_TOKEN_TDIV),           {fekDiv, /}
+    (0, INT_EXCEL_TOKEN_TMUL),           {fekMul, *}
+    (0, INT_EXCEL_TOKEN_TPERCENT),       {fekPercent, %}
+    (0, INT_EXCEL_TOKEN_TPOWER),         {fekPower, ^}
+    (0, INT_EXCEL_TOKEN_TUMINUS),        {fekUMinus, -}
+    (0, INT_EXCEL_TOKEN_TUPLUS),         {fekUPlus, +}
+    (0, INT_EXCEL_TOKEN_TCONCAT),        {fekConcat, &, for strings}
+    (0, INT_EXCEL_TOKEN_TEQ),            {fekEqual, =}
+    (0, INT_EXCEL_TOKEN_TGT),            {fekGreater, >}
+    (0, INT_EXCEL_TOKEN_TGE),            {fekGreaterEqual, >=}
+    (0, INT_EXCEL_TOKEN_TLT),            {fekLess <}
+    (0, INT_EXCEL_TOKEN_TLE),            {fekLessEqual, <=}
+    (0, INT_EXCEL_TOKEN_TNE),            {fekNotEqual, <>}
+
+    // Math functions
+    (1, INT_EXCEL_SHEET_FUNC_ABS),       {fekABS}
+    (1, INT_EXCEL_SHEET_FUNC_ACOS),      {fekACOS}
+    (1, INT_EXCEL_SHEET_FUNC_ACOSH),     {fekACOSH}
+    (1, INT_EXCEL_SHEET_FUNC_ASIN),      {fekASIN}
+    (1, INT_EXCEL_SHEET_FUNC_ASINH),     {fekASINH}
+    (1, INT_EXCEL_SHEET_FUNC_ATAN),      {fekATAN}
+    (1, INT_EXCEL_SHEET_FUNC_ATANH),     {fekATANH}
+    (1, INT_EXCEL_SHEET_FUNC_COS),       {fekCOS}
+    (1, INT_EXCEL_SHEET_FUNC_COSH),      {fekCOSH}
+    (1, INT_EXCEL_SHEET_FUNC_DEGREES),   {fekDEGREES}
+    (1, INT_EXCEL_SHEET_FUNC_EXP),       {fekEXP}
+    (1, INT_EXCEL_SHEET_FUNC_INT),       {fekINT}
+    (1, INT_EXCEL_SHEET_FUNC_LN),        {fekLN}
+    (1, INT_EXCEL_SHEET_FUNC_LOG),       {fekLOG}
+    (1, INT_EXCEL_SHEET_FUNC_LOG10),     {fekLOG10}
+    (1, INT_EXCEL_SHEET_FUNC_PI),        {fekPI}
+    (1, INT_EXCEL_SHEET_FUNC_RADIANS),   {fekRADIANS}
+    (1, INT_EXCEL_SHEET_FUNC_RAND),      {fekRAND}
+    (1, INT_EXCEL_SHEET_FUNC_ROUND),     {fekROUND}
+    (1, INT_EXCEL_SHEET_FUNC_SIGN),      {fekSIGN}
+    (1, INT_EXCEL_SHEET_FUNC_SIN),       {fekSIN}
+    (1, INT_EXCEL_SHEET_FUNC_SINH),      {fekSINH}
+    (1, INT_EXCEL_SHEET_FUNC_SQRT),      {fekSQRT}
+    (1, INT_EXCEL_SHEET_FUNC_TAN),       {fekTAN}
+    (1, INT_EXCEL_SHEET_FUNC_TANH),      {fekTANH}
+
+    // Date/time functions
+    (1, INT_EXCEL_SHEET_FUNC_DATE),      {fekDATE}
+    (1, INT_EXCEL_SHEET_FUNC_DATEDIF),   {fekDATEDIF}
+    (1, INT_EXCEL_SHEET_FUNC_DATEVALUE), {fekDATEVALUE}
+    (1, INT_EXCEL_SHEET_FUNC_DAY),       {fekDAY}
+    (1, INT_EXCEL_SHEET_FUNC_HOUR),      {fekHOUR}
+    (1, INT_EXCEL_SHEET_FUNC_MINUTE),    {fekMINUTE}
+    (1, INT_EXCEL_SHEET_FUNC_MONTH),     {fekMONTH}
+    (1, INT_EXCEL_SHEET_FUNC_NOW),       {fekNOW}
+    (1, INT_EXCEL_SHEET_FUNC_SECOND),    {fekSECOND}
+    (1, INT_EXCEL_SHEET_FUNC_TIME),      {fekTIME}
+    (1, INT_EXCEL_SHEET_FUNC_TIMEVALUE), {fekTIMEVALUE}
+    (1, INT_EXCEL_SHEET_FUNC_TODAY),     {fekTODAY}
+    (2, INT_EXCEL_SHEET_FUNC_WEEKDAY),   {fekWEEKDAY}
+    (1, INT_EXCEL_SHEET_FUNC_YEAR),      {fekYEAR}
+
+    // Statistical functions
+    (2, INT_EXCEL_SHEET_FUNC_AVEDEV),    {fekAVEDEV}
+    (2, INT_EXCEL_SHEET_FUNC_AVERAGE),   {fekAVERAGE}
+    (2, INT_EXCEL_SHEET_FUNC_BETADIST),  {fekBETADIST}
+    (2, INT_EXCEL_SHEET_FUNC_BETAINV),   {fekBETAINV}
+    (1, INT_EXCEL_SHEET_FUNC_BINOMDIST), {fekBINOMDIST}
+    (1, INT_EXCEL_SHEET_FUNC_CHIDIST),   {fekCHIDIST}
+    (1, INT_EXCEL_SHEET_FUNC_CHIINV),    {fekCHIINV}
+    (2, INT_EXCEL_SHEET_FUNC_COUNT),     {fekCOUNT}
+    (2, INT_EXCEL_SHEET_FUNC_COUNTA),    {fekCOUNTA}
+    (1, INT_EXCEL_SHEET_FUNC_COUNTBLANK),{fekCOUNTBLANK}
+    (2, INT_EXCEL_SHEET_FUNC_COUNTIF),   {fekCOUNTIF}
+    (2, INT_EXCEL_SHEET_FUNC_MAX),       {fekMAX}
+    (2, INT_EXCEL_SHEET_FUNC_MEDIAN),    {fekMEDIAN}
+    (2, INT_EXCEL_SHEET_FUNC_MIN),       {fekMIN}
+    (1, INT_EXCEL_SHEET_FUNC_PERMUT),    {fekPERMUT}
+    (1, INT_EXCEL_SHEET_FUNC_POISSON),   {fekPOISSON}
+    (2, INT_EXCEL_SHEET_FUNC_PRODUCT),   {fekPRODUCT}
+    (2, INT_EXCEL_SHEET_FUNC_STDEV),     {fekSTDEV}
+    (2, INT_EXCEL_SHEET_FUNC_STDEVP),    {fekSTDEVP}
+    (2, INT_EXCEL_SHEET_FUNC_SUM),       {fekSUM}
+    (2, INT_EXCEL_SHEET_FUNC_SUMIF),     {fekSUMIF}
+    (2, INT_EXCEL_SHEET_FUNC_SUMSQ),     {fekSUMSQ}
+    (2, INT_EXCEL_SHEET_FUNC_VAR),       {fekVAR}
+    (2, INT_EXCEL_SHEET_FUNC_VARP),      {fekVARP}
+
+    // Financial functions
+    (2, INT_EXCEL_SHEET_FUNC_FV),        {fekFV}
+    (2, INT_EXCEL_SHEET_FUNC_NPER),      {fekNPER}
+    (2, INT_EXCEL_SHEET_FUNC_PV),        {fekPV}
+    (2, INT_EXCEL_SHEET_FUNC_PMT),       {fekPMT}
+    (2, INT_EXCEL_SHEET_FUNC_RATE),      {fekRATE}
+
+    // Logical functions
+    (2, INT_EXCEL_SHEET_FUNC_AND),       {fekAND}
+    (1, INT_EXCEL_SHEET_FUNC_FALSE),     {fekFALSE}
+    (2, INT_EXCEL_SHEET_FUNC_IF),        {fekIF}
+    (1, INT_EXCEL_SHEET_FUNC_NOT),       {fekNOT}
+    (2, INT_EXCEL_SHEET_FUNC_OR),        {fekOR}
+    (1, INT_EXCEL_SHEET_FUNC_TRUE),      {fekTRUE}
+
+    // String functions
+    (1, INT_EXCEL_SHEET_FUNC_CHAR),      {fekCHAR}
+    (1, INT_EXCEL_SHEET_FUNC_CODE),      {fekCODE}
+    (2, INT_EXCEL_SHEET_FUNC_LEFT),      {fekLEFT}
+    (1, INT_EXCEL_SHEET_FUNC_LOWER),     {fekLOWER}
+    (1, INT_EXCEL_SHEET_FUNC_MID),       {fekMID}
+    (1, INT_EXCEL_SHEET_FUNC_PROPER),    {fekPROPER}
+    (1, INT_EXCEL_SHEET_FUNC_REPLACE),   {fekREPLACE}
+    (2, INT_EXCEL_SHEET_FUNC_RIGHT),     {fekRIGHT}
+    (2, INT_EXCEL_SHEET_FUNC_SUBSTITUTE),{fekSUBSTITUTE}
+    (1, INT_EXCEL_SHEET_FUNC_TRIM),      {fekTRIM}
+    (1, INT_EXCEL_SHEET_FUNC_UPPER),     {fekUPPER}
+
+    // lookup/reference functions
+    (2, INT_EXCEL_SHEET_FUNC_COLUMN),    {fekCOLUMN}
+    (1, INT_EXCEL_SHEET_FUNC_COLUMNS),   {fekCOLUMNS}
+    (2, INT_EXCEL_SHEET_FUNC_ROW),       {fekROW}
+    (1, INT_EXCEL_SHEET_FUNC_ROWS),      {fekROWS}
+
+    // Info functions
+    (2, INT_EXCEL_SHEET_FUNC_CELL),      {fekCELLINFO}
+    (1, INT_EXCEL_SHEET_FUNC_INFO),      {fekINFO}
+    (1, INT_EXCEL_SHEET_FUNC_ISBLANK),   {fekIsBLANK}
+    (1, INT_EXCEL_SHEET_FUNC_ISERR),     {fekIsERR}
+    (1, INT_EXCEL_SHEET_FUNC_ISERROR),   {fekIsERROR}
+    (1, INT_EXCEL_SHEET_FUNC_ISLOGICAL), {fekIsLOGICAL}
+    (1, INT_EXCEL_SHEET_FUNC_ISNA),      {fekIsNA}
+    (1, INT_EXCEL_SHEET_FUNC_ISNONTEXT), {fekIsNONTEXT}
+    (1, INT_EXCEL_SHEET_FUNC_ISNUMBER),  {fekIsNUMBER}
+    (1, INT_EXCEL_SHEET_FUNC_ISREF),     {fekIsREF}
+    (1, INT_EXCEL_SHEET_FUNC_ISTEXT),    {fekIsTEXT}
+    (1, INT_EXCEL_SHEET_FUNC_VALUE),     {fekValue}
+
+    // Other operations
+    (0, INT_EXCEL_TOKEN_TATTR)           {fekOpSum}
+  );
+
 
 function ConvertExcelDateTimeToDateTime(
   const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
@@ -876,9 +1053,10 @@ var
   ARow, ACol: Cardinal;
   XF: WORD;
   ResultFormula: Double;
+  RPNFormula: TsRPNFormula;
   Data: array [0..7] of BYTE;
   Flags: WORD;
-  FormulaSize: BYTE;
+//  FormulaSize: BYTE;
   i: Integer;
   dt: TDateTime;
   nf: TsNumberFormat;
@@ -887,6 +1065,8 @@ var
   nfs: String;
   resultStr: String;
   err: TErrorValue;
+  ok: Boolean;
+  cell: PCell;
 
 begin
   { BIFF Record header }
@@ -904,6 +1084,7 @@ begin
   AStream.ReadDWord;
 
   { Formula size }
+     (*
   FormulaSize := WordLEtoN(AStream.ReadWord);
 
   { Formula data, output as debug info }
@@ -914,6 +1095,7 @@ begin
 
   //RPN data not used by now
   AStream.Position := AStream.Position + FormulaSize;
+       *)
 
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
@@ -951,6 +1133,13 @@ begin
       FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
     else
       FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd, ncs);
+  end;
+
+  { Formula token array }
+  if FWorkbook.ReadFormulas then begin
+    cell := FWorksheet.FindCell(ARow, ACol);
+    ok := ReadRPNTokenArray(AStream, cell^.RPNFormulaValue);
+    if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
 
   {Add attributes}
@@ -1168,6 +1357,230 @@ begin
   // changed manually.
 end;
 
+{ Reads the cell address used in an RPN formula element. Evaluates the corresponding
+  bits to distinguish between absolute and relative addresses.
+  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
+procedure TsSpreadBIFFReader.ReadRPNCellAddress(AStream: TStream;
+  var ARow, ACol: Cardinal; var AFlags: TsRelFlags);
+var
+  r: word;
+begin
+  // 2 bytes for row (including absolute/relative info)
+  r := WordLEToN(AStream.ReadWord);
+  // 1 byte for column index
+  ACol := AStream.ReadByte;
+  // Extract row index
+  ARow := r and MASK_EXCEL_ROW;
+  // Extract absolute/relative flags
+  AFlags := [];
+  if (r and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
+  if (r and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
+end;
+
+{ Reads the cell address used in an RPN formula element. Evaluates the corresponding
+  bits to distinguish between absolute and relative addresses.
+  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
+procedure TsSpreadBIFFReader.ReadRPNCellRangeAddress(AStream: TStream;
+  var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags);
+var
+  r1, r2: word;
+begin
+  // 2 bytes, each, for first and last row (including absolute/relative info)
+  r1 := WordLEToN(AStream.ReadWord);
+  r2 := WordLEToN(AStream.ReadWord);
+  // 1 byte each for fist and last column index
+  ACol1 := AStream.ReadByte;
+  ACol2 := AStream.ReadByte;
+  // Extract row index of first and last row
+  ARow1 := r1 and MASK_EXCEL_ROW;
+  ARow2 := r2 and MASK_EXCEL_ROW;
+  // Extract absolute/relative flags
+  AFlags := [];
+  if (r1 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
+  if (r2 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol2);
+  if (r1 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
+  if (r2 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow2);
+end;
+
+{ Reads the identifier for an RPN function with fixed argument count.
+  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3 }
+function TsSpreadBIFFReader.ReadRPNFunc(AStream: TStream): Word;
+begin
+  Result := WordLEToN(AStream.ReadWord);
+end;
+
+function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
+  var AFormula: TsRPNFormula): Boolean;
+var
+  n: Word;
+  p0: Int64;
+  token: Byte;
+  rpnItem: PRPNItem;
+  supported: boolean;
+  wordVal: Word;    // 2 byte unsigned integer
+  dblVal: Double;   // IEEE 8 byte floating point number
+  flags: TsRelFlags;
+  r, c, r2, c2: Cardinal;
+  fek: TFEKind;
+  func: Word;
+  b: Byte;
+  found: Boolean;
+begin
+  rpnItem := nil;
+  n := ReadRPNTokenArraySize(AStream);
+  p0 := AStream.Position;
+  supported := true;
+  while (AStream.Position < p0 + n) and supported do begin
+    token := AStream.ReadByte;
+    case token of
+      INT_EXCEL_TOKEN_TREFV:
+        begin;
+          ReadRPNCellAddress(AStream, r, c, flags);
+          rpnItem := RPNCellValue(r, c, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFR:
+        begin
+          ReadRPNCellAddress(AStream, r, c, flags);
+          rpnItem := RPNCellRef(r, c, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFA:
+        begin
+          ReadRPNCellRangeAddress(AStream, r, c, r2, c2, flags);
+          rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TMISSARG:
+        rpnItem := RPNMissingArg(rpnItem);
+      INT_EXCEL_TOKEN_TSTR:
+        rpnItem := RPNString(ReadString_8BitLen(AStream), rpnItem);
+      INT_EXCEL_TOKEN_TERR:
+        rpnItem := RPNErr(AStream.ReadByte, rpnItem);
+      INT_EXCEL_TOKEN_TBOOL:
+        rpnItem := RPNBool(AStream.ReadByte=1, rpnItem);
+      INT_EXCEL_TOKEN_TINT:
+        rpnItem := RPNInteger(WordLEToN(AStream.ReadWord), rpnItem);
+      INT_EXCEL_TOKEN_TNUM:
+        begin
+          AStream.ReadBuffer(dblVal, 8);
+          rpnItem := RPNNumber(dblVal, rpnItem);
+        end;
+
+      INT_EXCEL_TOKEN_FUNC_R,
+      INT_EXCEL_TOKEN_FUNC_V,
+      INT_EXCEL_TOKEN_FUNC_A:
+        // functions with fixed argument count
+        begin
+          func := ReadRPNFunc(AStream);
+          found := false;
+          for fek in TFEKind do begin
+            if (TokenIDs[fek, 1] = func) and (TokenIDs[fek, 0] = 1) then begin
+              rpnItem := RPNFunc(fek, rpnItem);
+              found := true;
+              break;
+            end;
+          end;
+          if not found then
+            supported := false;
+        end;
+
+      INT_EXCEL_TOKEN_FUNCVAR_R,
+      INT_EXCEL_TOKEN_FUNCVAR_V,
+      INT_EXCEL_TOKEN_FUNCVAR_A:
+        // functions with variable argument count
+        begin
+          b := AStream.ReadByte;
+          func := ReadRPNFunc(AStream);
+          found := false;
+          for fek in TFEKind do
+            if (TokenIDs[fek, 1] = func) and (TokenIDs[fek, 0] = 2) then begin
+              rpnItem := RPNFunc(fek, b, rpnItem);
+              found := true;
+              break;
+            end;
+          if not found then
+            supported := false;
+        end
+
+      else
+        found := false;
+        for fek in TFEKind do
+          if (TokenIDs[fek, 1] = token) and (TokenIDs[fek, 0] = 0) then begin
+            rpnItem := RPNFunc(fek, rpnItem);
+            found := true;
+            break;
+          end;
+        if not found then
+          supported := false;
+(*
+      // binary tokens
+      INT_EXCEL_TOKEN_TADD:
+        rpnItem := RPNFunc(fekAdd, rpnItem);
+      INT_EXCEL_TOKEN_TSUB:
+        rpnItem := RPNFunc(fekSub, rpnItem);
+      INT_EXCEL_TOKEN_TMUL:
+        rpnItem := RPNFunc(fekMul, rpnItem);
+      INT_EXCEL_TOKEN_TDIV:
+        rpnItem := RPNFunc(fekDiv, rpnItem);
+      INT_EXCEL_TOKEN_TPOWER:
+        rpnItem := RPNFunc(fekPower, rpnItem);
+      INT_EXCEL_TOKEN_TCONCAT:
+        rpnItem := RPNFunc(fekConcat, rpnItem);
+      INT_EXCEL_TOKEN_TLT:
+        rpnItem := RPNFunc(fekLess, rpnItem);
+      INT_EXCEL_TOKEN_TLE:
+        rpnItem := RPNFunc(fekLessEqual, rpnItem);
+      INT_EXCEL_TOKEN_TEQ:
+        rpnItem := RPNFunc(fekEqual, rpnItem);
+      INT_EXCEL_TOKEN_TGE:
+        rpnItem := RPNFunc(fekGreaterEqual, rpnItem);
+      INT_EXCEL_TOKEN_TGT:
+        rpnItem := RPNFunc(fekGreater, rpnItem);
+      INT_EXCEL_TOKEN_TNE:
+        rpnItem := RPNFunc(fekNotEqual, rpnItem);
+      // Unary operations
+      INT_EXCEL_TOKEN_TUPLUS:
+        rpnItem := RPNFunc(fekUPlus, rpnItem);
+      INT_EXCEL_TOKEN_TUMINUS:
+        rpnItem := RPNFunc(fekUMinus, rpnItem);
+      INT_EXCEL_TOKEN_TPERCENT:
+        rpnItem := RPNFunc(fekPercent, rpnItem);
+      // Operands (--> 3.8)
+      else
+        supported := false;    *)
+    end;
+  end;
+  if not supported then begin
+    DestroyRPNFormula(rpnItem);
+    SetLength(AFormula, 0);
+    Result := false;
+  end
+  else begin
+    AFormula := CreateRPNFormula(rpnItem);
+    Result := true;
+  end;
+end;
+
+{ Helper funtion for reading of the size of the token array of an RPN formula.
+  Is implemented here for BIFF3-BIFF8 where the size is a 2-byte value.
+  Needs to be rewritten for BIFF2 using a 1-byte size. }
+function TsSpreadBIFFReader.ReadRPNTokenArraySize(AStream: TStream): Word;
+begin
+  Result := WordLEToN(AStream.ReadWord);
+end;
+
+{ Helper function for reading a string with 8-bit length. Here, we implement the
+  version for ansistrings since it is valid for all BIFF versions except BIFF8
+  where it has to overridden. }
+function TsSpreadBIFFReader.ReadString_8bitLen(AStream: TStream): String;
+var
+  len: Byte;
+  s: ansistring;
+begin
+  len := AStream.ReadByte;
+  SetLength(s, len);
+  AStream.ReadBuffer(s[1], len);
+  Result := s;
+end;
+
 { Reads a STRING record. It immediately precedes a FORMULA record which has a
   string result. The read value is applied to the FIncompleteCell.
   Must be overridden because the implementation depends on BIFF version. }
@@ -1256,159 +1669,6 @@ end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
   AElementKind: TFEKind; out ASecondaryID: Word): Word;
-const
-  { Explanation of first index:
-     0 --> primary token (basic operands and operations)
-     1 --> secondary token of a function with a fixed parameter count
-     2 --> secondary token of a function with a variable parameter count }
-  TokenIDs: array[fekCell..fekOpSum, 0..1] of Word = (
-    // Basic operands
-    (0, INT_EXCEL_TOKEN_TREFV),          {fekCell}
-    (0, INT_EXCEL_TOKEN_TREFR),          {fekCellRef}
-    (0, INT_EXCEL_TOKEN_TAREA_R),        {fekCellRange}
-    (0, INT_EXCEL_TOKEN_TNUM),           {fekNum}
-    (0, INT_EXCEL_TOKEN_TSTR),           {fekString}
-    (0, INT_EXCEL_TOKEN_TBOOL),          {fekBool}
-    (0, INT_EXCEL_TOKEN_TMISSARG),       {fekMissArg, missing argument}
-
-    // Basic operations
-    (0, INT_EXCEL_TOKEN_TADD),           {fekAdd, +}
-    (0, INT_EXCEL_TOKEN_TSUB),           {fekSub, -}
-    (0, INT_EXCEL_TOKEN_TDIV),           {fekDiv, /}
-    (0, INT_EXCEL_TOKEN_TMUL),           {fekMul, *}
-    (0, INT_EXCEL_TOKEN_TPERCENT),       {fekPercent, %}
-    (0, INT_EXCEL_TOKEN_TPOWER),         {fekPower, ^}
-    (0, INT_EXCEL_TOKEN_TUMINUS),        {fekUMinus, -}
-    (0, INT_EXCEL_TOKEN_TUPLUS),         {fekUPlus, +}
-    (0, INT_EXCEL_TOKEN_TCONCAT),        {fekConcat, &, for strings}
-    (0, INT_EXCEL_TOKEN_TEQ),            {fekEqual, =}
-    (0, INT_EXCEL_TOKEN_TGT),            {fekGreater, >}
-    (0, INT_EXCEL_TOKEN_TGE),            {fekGreaterEqual, >=}
-    (0, INT_EXCEL_TOKEN_TLT),            {fekLess <}
-    (0, INT_EXCEL_TOKEN_TLE),            {fekLessEqual, <=}
-    (0, INT_EXCEL_TOKEN_TNE),            {fekNotEqual, <>}
-
-    // Math functions
-    (1, INT_EXCEL_SHEET_FUNC_ABS),       {fekABS}
-    (1, INT_EXCEL_SHEET_FUNC_ACOS),      {fekACOS}
-    (1, INT_EXCEL_SHEET_FUNC_ACOSH),     {fekACOSH}
-    (1, INT_EXCEL_SHEET_FUNC_ASIN),      {fekASIN}
-    (1, INT_EXCEL_SHEET_FUNC_ASINH),     {fekASINH}
-    (1, INT_EXCEL_SHEET_FUNC_ATAN),      {fekATAN}
-    (1, INT_EXCEL_SHEET_FUNC_ATANH),     {fekATANH}
-    (1, INT_EXCEL_SHEET_FUNC_COS),       {fekCOS}
-    (1, INT_EXCEL_SHEET_FUNC_COSH),      {fekCOSH}
-    (1, INT_EXCEL_SHEET_FUNC_DEGREES),   {fekDEGREES}
-    (1, INT_EXCEL_SHEET_FUNC_EXP),       {fekEXP}
-    (1, INT_EXCEL_SHEET_FUNC_INT),       {fekINT}
-    (1, INT_EXCEL_SHEET_FUNC_LN),        {fekLN}
-    (1, INT_EXCEL_SHEET_FUNC_LOG),       {fekLOG}
-    (1, INT_EXCEL_SHEET_FUNC_LOG10),     {fekLOG10}
-    (1, INT_EXCEL_SHEET_FUNC_PI),        {fekPI}
-    (1, INT_EXCEL_SHEET_FUNC_RADIANS),   {fekRADIANS}
-    (1, INT_EXCEL_SHEET_FUNC_RAND),      {fekRAND}
-    (1, INT_EXCEL_SHEET_FUNC_ROUND),     {fekROUND}
-    (1, INT_EXCEL_SHEET_FUNC_SIGN),      {fekSIGN}
-    (1, INT_EXCEL_SHEET_FUNC_SIN),       {fekSIN}
-    (1, INT_EXCEL_SHEET_FUNC_SINH),      {fekSINH}
-    (1, INT_EXCEL_SHEET_FUNC_SQRT),      {fekSQRT}
-    (1, INT_EXCEL_SHEET_FUNC_TAN),       {fekTAN}
-    (1, INT_EXCEL_SHEET_FUNC_TANH),      {fekTANH}
-
-    // Date/time functions
-    (1, INT_EXCEL_SHEET_FUNC_DATE),      {fekDATE}
-    (1, INT_EXCEL_SHEET_FUNC_DATEDIF),   {fekDATEDIF}
-    (1, INT_EXCEL_SHEET_FUNC_DATEVALUE), {fekDATEVALUE}
-    (1, INT_EXCEL_SHEET_FUNC_DAY),       {fekDAY}
-    (1, INT_EXCEL_SHEET_FUNC_HOUR),      {fekHOUR}
-    (1, INT_EXCEL_SHEET_FUNC_MINUTE),    {fekMINUTE}
-    (1, INT_EXCEL_SHEET_FUNC_MONTH),     {fekMONTH}
-    (1, INT_EXCEL_SHEET_FUNC_NOW),       {fekNOW}
-    (1, INT_EXCEL_SHEET_FUNC_SECOND),    {fekSECOND}
-    (1, INT_EXCEL_SHEET_FUNC_TIME),      {fekTIME}
-    (1, INT_EXCEL_SHEET_FUNC_TIMEVALUE), {fekTIMEVALUE}
-    (1, INT_EXCEL_SHEET_FUNC_TODAY),     {fekTODAY}
-    (2, INT_EXCEL_SHEET_FUNC_WEEKDAY),   {fekWEEKDAY}
-    (1, INT_EXCEL_SHEET_FUNC_YEAR),      {fekYEAR}
-
-    // Statistical functions
-    (2, INT_EXCEL_SHEET_FUNC_AVEDEV),    {fekAVEDEV}
-    (2, INT_EXCEL_SHEET_FUNC_AVERAGE),   {fekAVERAGE}
-    (2, INT_EXCEL_SHEET_FUNC_BETADIST),  {fekBETADIST}
-    (2, INT_EXCEL_SHEET_FUNC_BETAINV),   {fekBETAINV}
-    (1, INT_EXCEL_SHEET_FUNC_BINOMDIST), {fekBINOMDIST}
-    (1, INT_EXCEL_SHEET_FUNC_CHIDIST),   {fekCHIDIST}
-    (1, INT_EXCEL_SHEET_FUNC_CHIINV),    {fekCHIINV}
-    (2, INT_EXCEL_SHEET_FUNC_COUNT),     {fekCOUNT}
-    (2, INT_EXCEL_SHEET_FUNC_COUNTA),    {fekCOUNTA}
-    (1, INT_EXCEL_SHEET_FUNC_COUNTBLANK),{fekCOUNTBLANK}
-    (2, INT_EXCEL_SHEET_FUNC_COUNTIF),   {fekCOUNTIF}
-    (2, INT_EXCEL_SHEET_FUNC_MAX),       {fekMAX}
-    (2, INT_EXCEL_SHEET_FUNC_MEDIAN),    {fekMEDIAN}
-    (2, INT_EXCEL_SHEET_FUNC_MIN),       {fekMIN}
-    (1, INT_EXCEL_SHEET_FUNC_PERMUT),    {fekPERMUT}
-    (1, INT_EXCEL_SHEET_FUNC_POISSON),   {fekPOISSON}
-    (2, INT_EXCEL_SHEET_FUNC_PRODUCT),   {fekPRODUCT}
-    (2, INT_EXCEL_SHEET_FUNC_STDEV),     {fekSTDEV}
-    (2, INT_EXCEL_SHEET_FUNC_STDEVP),    {fekSTDEVP}
-    (2, INT_EXCEL_SHEET_FUNC_SUM),       {fekSUM}
-    (2, INT_EXCEL_SHEET_FUNC_SUMIF),     {fekSUMIF}
-    (2, INT_EXCEL_SHEET_FUNC_SUMSQ),     {fekSUMSQ}
-    (2, INT_EXCEL_SHEET_FUNC_VAR),       {fekVAR}
-    (2, INT_EXCEL_SHEET_FUNC_VARP),      {fekVARP}
-
-    // Financial functions
-    (2, INT_EXCEL_SHEET_FUNC_FV),        {fekFV}
-    (2, INT_EXCEL_SHEET_FUNC_NPER),      {fekNPER}
-    (2, INT_EXCEL_SHEET_FUNC_PV),        {fekPV}
-    (2, INT_EXCEL_SHEET_FUNC_PMT),       {fekPMT}
-    (2, INT_EXCEL_SHEET_FUNC_RATE),      {fekRATE}
-
-    // Logical functions
-    (2, INT_EXCEL_SHEET_FUNC_AND),       {fekAND}
-    (1, INT_EXCEL_SHEET_FUNC_FALSE),     {fekFALSE}
-    (2, INT_EXCEL_SHEET_FUNC_IF),        {fekIF}
-    (1, INT_EXCEL_SHEET_FUNC_NOT),       {fekNOT}
-    (2, INT_EXCEL_SHEET_FUNC_OR),        {fekOR}
-    (1, INT_EXCEL_SHEET_FUNC_TRUE),      {fekTRUE}
-
-    // String functions
-    (1, INT_EXCEL_SHEET_FUNC_CHAR),      {fekCHAR}
-    (1, INT_EXCEL_SHEET_FUNC_CODE),      {fekCODE}
-    (2, INT_EXCEL_SHEET_FUNC_LEFT),      {fekLEFT}
-    (1, INT_EXCEL_SHEET_FUNC_LOWER),     {fekLOWER}
-    (1, INT_EXCEL_SHEET_FUNC_MID),       {fekMID}
-    (1, INT_EXCEL_SHEET_FUNC_PROPER),    {fekPROPER}
-    (1, INT_EXCEL_SHEET_FUNC_REPLACE),   {fekREPLACE}
-    (2, INT_EXCEL_SHEET_FUNC_RIGHT),     {fekRIGHT}
-    (2, INT_EXCEL_SHEET_FUNC_SUBSTITUTE),{fekSUBSTITUTE}
-    (1, INT_EXCEL_SHEET_FUNC_TRIM),      {fekTRIM}
-    (1, INT_EXCEL_SHEET_FUNC_UPPER),     {fekUPPER}
-
-    // lookup/reference functions
-    (2, INT_EXCEL_SHEET_FUNC_COLUMN),    {fekCOLUMN}
-    (1, INT_EXCEL_SHEET_FUNC_COLUMNS),   {fekCOLUMNS}
-    (2, INT_EXCEL_SHEET_FUNC_ROW),       {fekROW}
-    (1, INT_EXCEL_SHEET_FUNC_ROWS),      {fekROWS}
-
-    // Info functions
-    (2, INT_EXCEL_SHEET_FUNC_CELL),      {fekCELLINFO}
-    (1, INT_EXCEL_SHEET_FUNC_INFO),      {fekINFO}
-    (1, INT_EXCEL_SHEET_FUNC_ISBLANK),   {fekIsBLANK}
-    (1, INT_EXCEL_SHEET_FUNC_ISERR),     {fekIsERR}
-    (1, INT_EXCEL_SHEET_FUNC_ISERROR),   {fekIsERROR}
-    (1, INT_EXCEL_SHEET_FUNC_ISLOGICAL), {fekIsLOGICAL}
-    (1, INT_EXCEL_SHEET_FUNC_ISNA),      {fekIsNA}
-    (1, INT_EXCEL_SHEET_FUNC_ISNONTEXT), {fekIsNONTEXT}
-    (1, INT_EXCEL_SHEET_FUNC_ISNUMBER),  {fekIsNUMBER}
-    (1, INT_EXCEL_SHEET_FUNC_ISREF),     {fekIsREF}
-    (1, INT_EXCEL_SHEET_FUNC_ISTEXT),    {fekIsTEXT}
-    (1, INT_EXCEL_SHEET_FUNC_VALUE),     {fekValue}
-
-    // Other operations
-    (0, INT_EXCEL_TOKEN_TATTR)           {fekOpSum}
-  );
-
 begin
   case TokenIDs[AElementKind, 0] of
     0: begin
