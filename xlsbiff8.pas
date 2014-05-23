@@ -1678,8 +1678,8 @@ begin
   ACol := c and MASK_EXCEL_COL_BITS_BIFF8;
   // Extract info on absolute/relative addresses.
   AFlags := [];
-  if (c and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
-  if (c and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
+  if (c and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (c and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
 { Reads a cell range address used in an RPN formula element.
@@ -1703,10 +1703,10 @@ begin
   ACol2 := c2 and MASK_EXCEL_COL_BITS_BIFF8;
   // Extract info on absolute/relative addresses.
   AFlags := [];
-  if (c1 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
-  if (c1 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
-  if (c2 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol2);
-  if (c2 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow2);
+  if (c1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
+  if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);

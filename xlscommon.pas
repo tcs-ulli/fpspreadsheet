@@ -79,6 +79,7 @@ const
   INT_EXCEL_TOKEN_TUPLUS  = $12; // Unary plus  +
   INT_EXCEL_TOKEN_TUMINUS = $13; // Unary minus +
   INT_EXCEL_TOKEN_TPERCENT= $14; // Percent (%, divides operand by 100)
+  INT_EXCEL_TOKEN_TPAREN  = $15; // Operator in parenthesis
 
   { Constant Operand Tokens, 3.8}
   INT_EXCEL_TOKEN_TMISSARG= $16; //missing operand
@@ -515,6 +516,7 @@ const
     (0, INT_EXCEL_TOKEN_TBOOL),          {fekBool}
     (0, INT_EXCEL_TOKEN_TERR),           {fekErr}
     (0, INT_EXCEL_TOKEN_TMISSARG),       {fekMissArg, missing argument}
+    (0, INT_EXCEL_TOKEN_TPAREN),         {Operator in parenthesis}
 
     // Basic operations
     (0, INT_EXCEL_TOKEN_TADD),           {fekAdd, +}
@@ -1373,8 +1375,8 @@ begin
   ARow := r and MASK_EXCEL_ROW;
   // Extract absolute/relative flags
   AFlags := [];
-  if (r and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
-  if (r and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
+  if (r and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
@@ -1396,10 +1398,10 @@ begin
   ARow2 := r2 and MASK_EXCEL_ROW;
   // Extract absolute/relative flags
   AFlags := [];
-  if (r1 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol);
-  if (r2 and MASK_EXCEL_RELATIVE_COL = 1) then Include(AFlags, rfRelCol2);
-  if (r1 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow);
-  if (r2 and MASK_EXCEL_RELATIVE_ROW = 1) then Include(AFlags, rfRelRow2);
+  if (r1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (r2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
+  if (r1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
 { Reads the identifier for an RPN function with fixed argument count.
@@ -1463,6 +1465,8 @@ begin
           AStream.ReadBuffer(dblVal, 8);
           rpnItem := RPNNumber(dblVal, rpnItem);
         end;
+      INT_EXCEL_TOKEN_TPAREN:
+        rpnItem := RPNParenthesis(rpnItem);
 
       INT_EXCEL_TOKEN_FUNC_R,
       INT_EXCEL_TOKEN_FUNC_V,
@@ -1510,42 +1514,6 @@ begin
           end;
         if not found then
           supported := false;
-(*
-      // binary tokens
-      INT_EXCEL_TOKEN_TADD:
-        rpnItem := RPNFunc(fekAdd, rpnItem);
-      INT_EXCEL_TOKEN_TSUB:
-        rpnItem := RPNFunc(fekSub, rpnItem);
-      INT_EXCEL_TOKEN_TMUL:
-        rpnItem := RPNFunc(fekMul, rpnItem);
-      INT_EXCEL_TOKEN_TDIV:
-        rpnItem := RPNFunc(fekDiv, rpnItem);
-      INT_EXCEL_TOKEN_TPOWER:
-        rpnItem := RPNFunc(fekPower, rpnItem);
-      INT_EXCEL_TOKEN_TCONCAT:
-        rpnItem := RPNFunc(fekConcat, rpnItem);
-      INT_EXCEL_TOKEN_TLT:
-        rpnItem := RPNFunc(fekLess, rpnItem);
-      INT_EXCEL_TOKEN_TLE:
-        rpnItem := RPNFunc(fekLessEqual, rpnItem);
-      INT_EXCEL_TOKEN_TEQ:
-        rpnItem := RPNFunc(fekEqual, rpnItem);
-      INT_EXCEL_TOKEN_TGE:
-        rpnItem := RPNFunc(fekGreaterEqual, rpnItem);
-      INT_EXCEL_TOKEN_TGT:
-        rpnItem := RPNFunc(fekGreater, rpnItem);
-      INT_EXCEL_TOKEN_TNE:
-        rpnItem := RPNFunc(fekNotEqual, rpnItem);
-      // Unary operations
-      INT_EXCEL_TOKEN_TUPLUS:
-        rpnItem := RPNFunc(fekUPlus, rpnItem);
-      INT_EXCEL_TOKEN_TUMINUS:
-        rpnItem := RPNFunc(fekUMinus, rpnItem);
-      INT_EXCEL_TOKEN_TPERCENT:
-        rpnItem := RPNFunc(fekPercent, rpnItem);
-      // Operands (--> 3.8)
-      else
-        supported := false;    *)
     end;
   end;
   if not supported then begin

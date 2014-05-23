@@ -80,6 +80,8 @@ type
     CbShowHeaders: TCheckBox;
     CbShowGridLines: TCheckBox;
     CbBackgroundColor: TColorBox;
+    CbReadFormulas: TCheckBox;
+    EdFormula: TEdit;
     FontComboBox: TComboBox;
     EdFrozenRows: TSpinEdit;
     FontDialog: TFontDialog;
@@ -178,6 +180,7 @@ type
     NumFormatPopupMenu: TPopupMenu;
     SaveDialog: TSaveDialog;
     EdFrozenCols: TSpinEdit;
+    FormulaToolBar: TToolBar;
     WorksheetGrid: TsWorksheetGrid;
     TabSheet1: TTabSheet;
     ToolBar1: TToolBar;
@@ -223,6 +226,7 @@ type
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
     procedure CbBackgroundColorSelect(Sender: TObject);
+    procedure CbReadFormulasChange(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
@@ -533,6 +537,11 @@ begin
   with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
 end;
 
+procedure TForm1.CbReadFormulasChange(Sender: TObject);
+begin
+  WorksheetGrid.ReadFormulas := CbReadFormulas.Checked;
+end;
+
 procedure TForm1.CbShowHeadersClick(Sender: TObject);
 begin
   WorksheetGrid.ShowHeaders := CbShowHeaders.Checked;
@@ -697,15 +706,25 @@ end;
 procedure TForm1.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
 var
   r, c: Cardinal;
+  cell: PCell;
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
 
+  r := WorksheetGrid.GetWorksheetRow(ARow);
+  c := WorksheetGrid.GetWorksheetCol(ACol);
+
   if AcCopyFormat.Checked then begin
-    r := WorksheetGrid.GetWorksheetRow(ARow);
-    c := WorksheetGrid.GetWorksheetCol(ACol);
     WorksheetGrid.Worksheet.CopyFormat(@FCopiedFormat, r, c);
     AcCopyFormat.Checked := false;
+  end;
+
+  cell := WorksheetGrid.Worksheet.FindCell(r, c);
+  if cell <> nil then begin
+    if Length(cell^.RPNFormulaValue) > 0 then
+      EdFormula.Text := WorksheetGrid.Worksheet.ReadRPNFormulaAsString(cell)
+    else
+      EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
   end;
 
   UpdateHorAlignmentActions;
@@ -718,6 +737,7 @@ begin
   UpdateFontStyleActions;
   UpdateTextRotationActions;
   UpdateNumFormatActions;
+
 end;
 
 procedure TForm1.UpdateBackgroundColorIndex;

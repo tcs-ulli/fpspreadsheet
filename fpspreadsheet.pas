@@ -69,7 +69,7 @@ type
   TFEKind = (
     { Basic operands }
     fekCell, fekCellRef, fekCellRange, fekNum, fekInteger, fekString, fekBool,
-    fekErr, fekMissingArg,
+    fekErr, fekMissingArg, fekParen,
     { Basic operations }
     fekAdd, fekSub, fekDiv, fekMul, fekPercent, fekPower, fekUMinus, fekUPlus,
     fekConcat,  // string concatenation
@@ -393,11 +393,14 @@ type
     function  GetLastCellOfRow(ARow: Cardinal): PCell;
     function  GetLastColNumber: Cardinal;
     function  GetLastRowNumber: Cardinal;
-    function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
+    function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring; overload;
+    function  ReadAsUTF8Text(ACell: PCell): ansistring; overload;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
+    function  ReadRPNFormulaAsString(ACell: PCell): String;
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
+
     procedure RemoveAllCells;
 
     { Writing of values }
@@ -738,6 +741,7 @@ type
   function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
   function RPNMissingArg(ANext: PRPNItem): PRPNItem;
   function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
+  function RPNParenthesis(ANext: PRPNItem): PRPNItem;
   function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
   function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem; overload;
   function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem; overload;
@@ -758,7 +762,7 @@ procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 implementation
 
 uses
-  Math, StrUtils, fpsUtils, fpsNumFormatParser;
+  Math, StrUtils, TypInfo, fpsUtils, fpsNumFormatParser;
 
 { Translatable strings }
 resourcestring
@@ -1258,6 +1262,11 @@ end;
   @return The text representation of the cell
 }
 function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
+begin
+  Result := ReadAsUTF8Text(GetCell(ARow, ACol));
+end;
+
+function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
 
   function FloatToStrNoNaN(const Value: Double;
     ANumberFormat: TsNumberFormat; ANumberFormatStr: string; ADecimals: byte): ansistring;
@@ -1301,16 +1310,10 @@ function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
     end;
   end;
 
-var
-  ACell: PCell;
 begin
-  ACell := FindCell(ARow, ACol);
-
+  Result := '';
   if ACell = nil then
-  begin
-    Result := '';
     Exit;
-  end;
 
   with ACell^ do
     case ContentType of
@@ -1379,6 +1382,126 @@ begin
 
   AResult := ACell^.DateTimeValue;
   Result := True;
+end;
+
+function TsWorksheet.ReadRPNFormulaAsString(ACell: PCell): String;
+var
+  formula: TsRPNFormula;
+  elem: TsFormulaElement;
+  i, j: Integer;
+  L: TStringList;
+  s: String;
+  ptr: Pointer;
+  fek: TFEKind;
+
+  procedure Store(s: String);
+  begin
+    L.Clear;
+    L.Add(s);
+  end;
+
+begin
+  Result := '';
+  if ACell = nil then
+    exit;
+
+  L := TStringList.Create;
+  try
+    for i:=0 to Length(ACell^.RPNFormulaValue)-1 do begin
+      elem := ACell^.RPNFormulaValue[i];
+      ptr := Pointer(elem.ElementKind);
+      case elem.ElementKind of
+        fekNum:
+          L.AddObject(Format('%g', [elem.DoubleValue]), ptr);
+        fekInteger:
+          L.AddObject(IntToStr(elem.IntValue), ptr);
+        fekString:
+          L.AddObject('"' + elem.StringValue + '"', ptr);
+        fekBool:
+          L.AddObject(IfThen(elem.DoubleValue=0, 'TRUE', 'FALSE'), ptr);
+        fekCell,
+        fekCellRef:
+          L.AddObject(GetCellString(elem.Row, elem.Col, elem.RelFlags), ptr);
+        fekCellRange:
+          L.AddObject(GetCellRangeString(elem.Row, elem.Col, elem.Row2, elem.Col2, elem.RelFlags), ptr);
+        // Operations:
+        fekAdd         : L.AddObject('+', ptr);
+        fekSub         : L.AddObject('-', ptr);
+        fekMul         : L.AddObject('*', ptr);
+        fekDiv         : L.AddObject('/', ptr);
+        fekPower       : L.AddObject('^', ptr);
+        fekConcat      : L.AddObject('&', ptr);
+        fekParen       : L.AddObject('', ptr);
+        fekEqual       : L.AddObject('=', ptr);
+        fekNotEqual    : L.AddObject('<>', ptr);
+        fekLess        : L.AddObject('<', ptr);
+        fekLessEqual   : L.AddObject('<=', ptr);
+        fekGreater     : L.AddObject('>', ptr);
+        fekGreaterEqual: L.AddObject('>=', ptr);
+        fekPercent     : L.AddObject('%', ptr);
+        fekUPlus       : L.AddObject('+', ptr);
+        fekUMinus      : L.AddObject('-', ptr);
+        fekCellInfo    : L.AddObject('CELL', ptr);         // That's the function name!
+        else
+          begin
+            s := GetEnumName(TypeInfo(TFEKind), integer(elem.ElementKind));
+            Delete(s, 1, 3);
+            L.AddObject(s, ptr);
+          end;
+      end;
+    end;
+
+    i := L.Count-1;
+    while (L.Count > 0) and (i >= 0) do begin
+      fek := TFEKind(PtrInt(L.Objects[i]));
+      case fek of
+        fekAdd, fekSub, fekMul, fekDiv, fekPower, fekConcat,
+        fekEqual, fekNotEqual, fekLess, fekLessEqual, fekGreater, fekGreaterEqual:
+          begin
+            L.Strings[i] := Format('%s%s%s', [L[i+2], L[i], L[i+1]]);
+            L.Objects[i] := pointer(fekString);
+            L.Delete(i+2);
+            L.Delete(i+1);
+          end;
+        fekUPlus, fekUMinus:
+          begin
+            L.Strings[i] := L[i]+L[i+1];
+            L.Objects[i] := Pointer(fekString);
+            L.Delete(i+1);
+          end;
+        fekPercent:
+          begin
+            L.Strings[i] := L[i+1]+L[i];
+            L.Objects[i] := Pointer(fekString);
+            L.Delete(i+1);
+          end;
+        fekParen:
+          begin
+            L.Strings[i] := Format('(%s)', [L[i+1]]);
+            L.Objects[i] := pointer(fekString);
+            L.Delete(i+1);
+          end;
+        else
+          if fek >= fekAdd then begin
+            elem := ACell^.RPNFormulaValue[i];
+            s := '';
+            for j:= i+elem.ParamsNum downto i+1 do begin
+              s := s + ',' + L[j];
+              L.Delete(j);
+            end;
+            Delete(s, 1, 1);
+            L.Strings[i] := Format('%s(%s)', [L[i], s]);
+            L.Objects[i] := pointer(fekString);
+          end;
+      end;
+      dec(i);
+    end;
+
+    Result := '=' + L[0];
+
+  finally
+    L.Free;
+  end;
 end;
 
 function TsWorksheet.ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
@@ -3610,6 +3733,17 @@ begin
 end;
 
 {@@
+  Creates an entry in the RPN array which put the curren operator in parenthesis.
+  For display purposes only, does not affect calculation.
+}
+function RPNParenthesis(ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekParen;
+  Result^.Next := ANext;
+end;
+
+{@@
   Creates an entry in the RPN array for a string.
 }
 function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
@@ -3631,6 +3765,34 @@ begin
     raise Exception.Create('No basic tokens allowed here.');
   Result := NewRPNItem;
   Result^.FE.ElementKind := AToken;
+
+  case AToken of
+    fekFALSE, fekNOW, fekPI, fekRAND, fekTODAY, fekTRUE:
+      Result^.FE.ParamsNum := 0;
+
+    fekABS, fekACOS, fekACOSH, fekASIN, fekASINH, fekATAN, fekATANH,
+    fekCHAR, fekCODE, fekCOLUMNS, fekCOUNTBLANK, fekCOS, fekCOSH,
+    fekDATEVALUE, fekDAY, fekDEGREES, fekEXP, fekHOUR, fekINFO, fekINT,
+    fekIsBLANK, fekIsERR, fekIsERROR, fekIsLOGICAL, fekIsNA, fekIsNONTEXT,
+    fekIsTEXT, fekIsNUMBER, fekIsRef, fekLN, fekLOG10, fekLOWER, fekMINUTE,
+    fekMONTH, fekNOT, fekOpSUM, fekPercent, fekPROPER, fekRADIANS, fekROWS,
+    fekSECOND, fekSIGN, fekSIN, fekSINH, fekSQRT, fekTAN, fekTANH,
+    fekTIMEVALUE, fekTRIM, fekUMinus, fekUPlus, fekUPPER, fekValue,
+    fekWEEKDAY, fekYEAR:
+      Result^.FE.ParamsNum := 1;
+
+    fekAdd, fekCHIDIST, fekCHIINV, fekConcat, fekCOUNTIF, fekDiv,
+    fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual,
+    fekMul, fekNotEqual, fekPERMUT, fekPower, fekSub, fekROUND:
+      Result^.FE.ParamsNum := 2;
+
+    fekDATE, fekDATEDIF, fekMID, fekPOISSON, fekTIME:
+      Result^.FE.ParamsNum := 3;
+
+    fekBINOMDIST, fekREPLACE:
+      Result^.FE.ParamsNum := 4;
+  end;
+
   Result^.Next := ANext;
 end;
 
@@ -3687,7 +3849,6 @@ begin
     AItem := nextitem;
   end;
 end;
-
 
 initialization
   MakeLEPalette(@DEFAULT_PALETTE, Length(DEFAULT_PALETTE));

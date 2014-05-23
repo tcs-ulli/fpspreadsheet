@@ -45,11 +45,15 @@ begin
   CurCell := MyWorkSheet.GetFirstCell();
   for i := 0 to MyWorksheet.GetCellCount - 1 do
   begin
-    WriteLn('Row: ', CurCell^.Row,
+    Write('Row: ', CurCell^.Row,
      ' Col: ', CurCell^.Col, ' Value: ',
      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
        CurCell^.Col))
      );
+    if Length(CurCell^.RPNFormulaValue) > 0 then
+      WriteLn(' Formula: ', MyWorkSheet.ReadRPNFormulaAsString(CurCell))
+    else
+      WriteLn;
     CurCell := MyWorkSheet.GetNextCell();
   end;
 
