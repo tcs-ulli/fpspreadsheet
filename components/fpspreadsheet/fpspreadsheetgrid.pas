@@ -105,7 +105,6 @@ type
     { Protected declarations }
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
-//    procedure DrawAccountingCell(ACell: PCell; ARect: TRect; AState: TGridDrawState);
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;

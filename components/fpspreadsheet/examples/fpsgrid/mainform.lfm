@@ -4,9 +4,9 @@ object Form1: TForm1
   Top = 193
   Width = 884
   Caption = 'fpsGrid'
-  ClientHeight = 629
+  ClientHeight = 624
   ClientWidth = 884
-  Menu = MainMenu1
+  Menu = MainMenu
   OnActivate = FormActivate
   OnCreate = FormCreate
   ShowHint = True
@@ -14,7 +14,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 76
-    Top = 553
+    Top = 548
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,9 +23,9 @@ object Form1: TForm1
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 11
-      Width = 93
+      Width = 116
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 36
-      Width = 100
+      Width = 125
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -45,7 +45,7 @@ object Form1: TForm1
     end
     object EdFrozenCols: TSpinEdit
       Left = 238
-      Height = 23
+      Height = 28
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -53,7 +53,7 @@ object Form1: TForm1
     end
     object EdFrozenRows: TSpinEdit
       Left = 238
-      Height = 23
+      Height = 28
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -61,18 +61,18 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 152
-      Height = 15
+      Height = 20
       Top = 13
-      Width = 62
+      Width = 77
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 153
-      Height = 15
+      Height = 20
       Top = 40
-      Width = 66
+      Width = 82
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
@@ -80,7 +80,7 @@ object Form1: TForm1
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 500
+    Height = 495
     Top = 53
     Width = 884
     ActivePage = TabSheet1
@@ -90,11 +90,11 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 472
+      ClientHeight = 462
       ClientWidth = 876
-      object sWorksheetGrid1: TsWorksheetGrid
+      object WorksheetGrid: TsWorksheetGrid
         Left = 0
-        Height = 472
+        Height = 462
         Top = 0
         Width = 876
         FrozenCols = 0
@@ -107,9 +107,9 @@ object Form1: TForm1
         RowCount = 2
         TabOrder = 0
         TitleStyle = tsNative
-        OnSelection = sWorksheetGrid1Selection
+        OnSelection = WorksheetGridSelection
         ColWidths = (
-          42
+          56
           64
         )
       end
@@ -123,7 +123,7 @@ object Form1: TForm1
     ButtonHeight = 24
     Caption = 'ToolBar1'
     EdgeBorders = []
-    Images = ImageList1
+    Images = ImageList
     TabOrder = 2
     object ToolButton1: TToolButton
       Left = 1
@@ -167,7 +167,7 @@ object Form1: TForm1
     Width = 884
     ButtonHeight = 23
     Caption = 'FormatToolBar'
-    Images = ImageList1
+    Images = ImageList
     TabOrder = 3
     object ToolButton10: TToolButton
       Left = 324
@@ -187,19 +187,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 23
+      Height = 28
       Top = 2
       Width = 127
-      ItemHeight = 15
+      ItemHeight = 20
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 23
+      Height = 28
       Top = 2
       Width = 48
-      ItemHeight = 15
+      ItemHeight = 20
       Items.Strings = (
         '8'
         '9'
@@ -332,24 +332,24 @@ object Form1: TForm1
       Action = AcCopyFormat
     end
   end
-  object OpenDialog1: TOpenDialog
+  object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
     Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlxs|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (pipes) (.wikitable_pipes)|.wikitable_pipes|All files (*.*)|*.*'
     Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
-    left = 64
-    top = 176
+    left = 184
+    top = 200
   end
-  object SaveDialog1: TSaveDialog
+  object SaveDialog: TSaveDialog
     DefaultExt = '.xls'
     Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (wikimedia) (.wikitable_wikimedia)|*.wikitable_wikimedia'
     Options = [ofOverwritePrompt, ofExtensionDifferent, ofEnableSizing, ofViewDetail]
-    left = 176
-    top = 176
+    left = 184
+    top = 264
   end
-  object MainMenu1: TMainMenu
-    Images = ImageList1
-    left = 288
-    top = 64
+  object MainMenu: TMainMenu
+    Images = ImageList
+    left = 384
+    top = 200
     object mnuFile: TMenuItem
       Caption = '&File'
       object mnuOpen: TMenuItem
@@ -872,9 +872,9 @@ object Form1: TForm1
       end
     end
   end
-  object ImageList1: TImageList
-    left = 176
-    top = 120
+  object ImageList: TImageList
+    left = 272
+    top = 264
     Bitmap = {
       4C69220000001000000010000000FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00EAC39DFFE6BF96FFE4BB92FFE4BB92FFD1A06CF5D09E6DF6CC96
@@ -1967,10 +1967,10 @@ object Form1: TForm1
       FF00FFFFFF00FFFFFF00FFFFFF00
     }
   end
-  object ActionList1: TActionList
-    Images = ImageList1
-    left = 176
-    top = 64
+  object ActionList: TActionList
+    Images = ImageList
+    left = 272
+    top = 200
     object AcOpen: TAction
       Caption = 'Open...'
       ImageIndex = 0
@@ -2230,7 +2230,7 @@ object Form1: TForm1
       OnExecute = AcTextRotationExecute
     end
     object AcNFGeneral: TAction
-      Tag = 150
+      Tag = 1000
       Category = 'Format'
       AutoCheck = True
       Caption = 'General'
@@ -2238,7 +2238,7 @@ object Form1: TForm1
       OnExecute = AcNumFormatExecute
     end
     object AcNFFixed: TAction
-      Tag = 151
+      Tag = 1010
       Category = 'Format'
       AutoCheck = True
       Caption = 'Fixed'
@@ -2246,7 +2246,7 @@ object Form1: TForm1
       OnExecute = AcNumFormatExecute
     end
     object AcNFFixedTh: TAction
-      Tag = 152
+      Tag = 1020
       Category = 'Format'
       AutoCheck = True
       Caption = 'Fixed w/thousand separator'
@@ -2254,24 +2254,136 @@ object Form1: TForm1
       OnExecute = AcNumFormatExecute
     end
     object AcNFExp: TAction
-      Tag = 153
+      Tag = 1030
       Category = 'Format'
       AutoCheck = True
       Caption = 'Exponential'
       OnExecute = AcNumFormatExecute
     end
     object AcNFSci: TAction
-      Tag = 154
+      Tag = 1040
       Category = 'Format'
       AutoCheck = True
       Caption = 'Scientific'
       OnExecute = AcNumFormatExecute
     end
     object AcNFPercentage: TAction
-      Tag = 155
+      Tag = 1050
       Category = 'Format'
       AutoCheck = True
       Caption = 'Percentage'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFCurrency: TAction
+      Tag = 1060
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Currency'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFCurrencyRed: TAction
+      Tag = 1070
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Currency (negative values in red)'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFAccounting: TAction
+      Tag = 1080
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Accounting'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFAccountingRed: TAction
+      Tag = 1090
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Accounting (negative values in red)'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFShortDateTime: TAction
+      Tag = 1100
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Date + time'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFShortDate: TAction
+      Tag = 1120
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Short date'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFFmtDateTimeDM: TAction
+      Tag = 1111
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Day + month'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFFmtDateTimeMY: TAction
+      Tag = 1112
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Month + year'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFLongDate: TAction
+      Tag = 1130
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Long date'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFShortTime: TAction
+      Tag = 1140
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Short time'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFLongTime: TAction
+      Tag = 1150
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Long time'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFShortTimeAM: TAction
+      Tag = 1160
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Short time AM/PM'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFLongTimeAM: TAction
+      Tag = 1170
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Long time AM/PM'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFFmtDateTimeMS: TAction
+      Tag = 1113
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Minutes + seconds'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFFmtDateTimeMSZ: TAction
+      Tag = 1114
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Minutes + seconds + milliseconds'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFTimeInterval: TAction
+      Tag = 1180
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Time interval'
       OnExecute = AcNumFormatExecute
     end
     object AcIncDecimals: TAction
@@ -2296,16 +2408,16 @@ object Form1: TForm1
       OnExecute = AcCopyFormatExecute
     end
   end
-  object FontDialog1: TFontDialog
+  object FontDialog: TFontDialog
     MinFontSize = 0
     MaxFontSize = 0
-    left = 176
-    top = 234
+    left = 184
+    top = 328
   end
   object BordersPopupMenu: TPopupMenu
-    Images = ImageList1
-    left = 288
-    top = 120
+    Images = ImageList
+    left = 384
+    top = 264
     object MenuItem20: TMenuItem
       Action = AcBorderNone
       Bitmap.Data = {
@@ -2911,11 +3023,14 @@ object Form1: TForm1
     end
   end
   object NumFormatPopupMenu: TPopupMenu
-    left = 290
-    top = 179
+    left = 384
+    top = 328
     object MnuNFGeneral: TMenuItem
       Action = AcNFGeneral
       AutoCheck = True
+    end
+    object MenuItem41: TMenuItem
+      Caption = '-'
     end
     object MnuNFFixed: TMenuItem
       Action = AcNFFixed
@@ -2935,6 +3050,85 @@ object Form1: TForm1
     end
     object MnuNFSci: TMenuItem
       Action = AcNFSci
+      AutoCheck = True
+    end
+    object MenuItem39: TMenuItem
+      Caption = '-'
+    end
+    object MnuCurrency: TMenuItem
+      Action = AcNFCurrency
+      AutoCheck = True
+    end
+    object MnuCurrencyRed: TMenuItem
+      Action = AcNFCurrencyRed
+      AutoCheck = True
+    end
+    object MnuAccounting: TMenuItem
+      Action = AcNFAccounting
+      AutoCheck = True
+    end
+    object MnuAccountingRed: TMenuItem
+      Action = AcNFAccountingRed
+      AutoCheck = True
+    end
+    object MenuItem40: TMenuItem
+      Caption = '-'
+    end
+    object MnuShortDateTime: TMenuItem
+      Action = AcNFShortDateTime
+      AutoCheck = True
+    end
+    object MenuItem42: TMenuItem
+      Caption = '-'
+    end
+    object MnuLongDate: TMenuItem
+      Action = AcNFLongDate
+      AutoCheck = True
+    end
+    object MnuShortDate: TMenuItem
+      Action = AcNFShortDate
+      AutoCheck = True
+    end
+    object MnuFmtDateTimeDM: TMenuItem
+      Action = AcNFFmtDateTimeDM
+      AutoCheck = True
+    end
+    object MnuFmtDateTimeMY: TMenuItem
+      Action = AcNFFmtDateTimeMY
+      AutoCheck = True
+    end
+    object MenuItem43: TMenuItem
+      Caption = '-'
+    end
+    object MnuLongTime: TMenuItem
+      Action = AcNFLongTime
+      AutoCheck = True
+    end
+    object MnuLongTimeAM: TMenuItem
+      Action = AcNFLongTimeAM
+      AutoCheck = True
+    end
+    object MnuShortTime: TMenuItem
+      Action = AcNFShortTime
+      AutoCheck = True
+    end
+    object MnuShortTimeAM: TMenuItem
+      Action = AcNFShortTimeAM
+      AutoCheck = True
+    end
+    object MenuItem45: TMenuItem
+      Action = AcNFFmtDateTimeMS
+      AutoCheck = True
+    end
+    object MnuFmtDateTimeMSZ: TMenuItem
+      Action = AcNFFmtDateTimeMSZ
+      AutoCheck = True
+    end
+    object MenuItem44: TMenuItem
+      Caption = '-'
+    end
+    object MnuTimeInterval: TMenuItem
+      Action = AcNFTimeInterval
       AutoCheck = True
     end
   end
