@@ -499,161 +499,157 @@ uses
   StrUtils, fpsNumFormatParser;
 
 { Helper table for rpn formulas:
-  Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. The table
-  contains additional inforation in the first column:
-    0 --> primary token (basic operands and operations)
-    1 --> secondary token of a function with a fixed parameter count
-    2 --> secondary token of a function with a variable parameter count }
+  Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
 const
-  TokenIDs: array[fekCell..fekOpSum, 0..1] of Word = (
+  TokenIDs: array[TFEKind] of Word = (
     // Basic operands
-    (0, INT_EXCEL_TOKEN_TREFV),          {fekCell}
-    (0, INT_EXCEL_TOKEN_TREFR),          {fekCellRef}
-    (0, INT_EXCEL_TOKEN_TAREA_R),        {fekCellRange}
-    (0, INT_EXCEL_TOKEN_TNUM),           {fekNum}
-    (0, INT_EXCEL_TOKEN_TINT),           {fekInteger}
-    (0, INT_EXCEL_TOKEN_TSTR),           {fekString}
-    (0, INT_EXCEL_TOKEN_TBOOL),          {fekBool}
-    (0, INT_EXCEL_TOKEN_TERR),           {fekErr}
-    (0, INT_EXCEL_TOKEN_TMISSARG),       {fekMissArg, missing argument}
-    (0, INT_EXCEL_TOKEN_TPAREN),         {Operator in parenthesis}
+    INT_EXCEL_TOKEN_TREFV,          {fekCell}
+    INT_EXCEL_TOKEN_TREFR,          {fekCellRef}
+    INT_EXCEL_TOKEN_TAREA_R,        {fekCellRange}
+    INT_EXCEL_TOKEN_TNUM,           {fekNum}
+    INT_EXCEL_TOKEN_TINT,           {fekInteger}
+    INT_EXCEL_TOKEN_TSTR,           {fekString}
+    INT_EXCEL_TOKEN_TBOOL,          {fekBool}
+    INT_EXCEL_TOKEN_TERR,           {fekErr}
+    INT_EXCEL_TOKEN_TMISSARG,       {fekMissArg, missing argument}
 
     // Basic operations
-    (0, INT_EXCEL_TOKEN_TADD),           {fekAdd, +}
-    (0, INT_EXCEL_TOKEN_TSUB),           {fekSub, -}
-    (0, INT_EXCEL_TOKEN_TDIV),           {fekDiv, /}
-    (0, INT_EXCEL_TOKEN_TMUL),           {fekMul, *}
-    (0, INT_EXCEL_TOKEN_TPERCENT),       {fekPercent, %}
-    (0, INT_EXCEL_TOKEN_TPOWER),         {fekPower, ^}
-    (0, INT_EXCEL_TOKEN_TUMINUS),        {fekUMinus, -}
-    (0, INT_EXCEL_TOKEN_TUPLUS),         {fekUPlus, +}
-    (0, INT_EXCEL_TOKEN_TCONCAT),        {fekConcat, &, for strings}
-    (0, INT_EXCEL_TOKEN_TEQ),            {fekEqual, =}
-    (0, INT_EXCEL_TOKEN_TGT),            {fekGreater, >}
-    (0, INT_EXCEL_TOKEN_TGE),            {fekGreaterEqual, >=}
-    (0, INT_EXCEL_TOKEN_TLT),            {fekLess <}
-    (0, INT_EXCEL_TOKEN_TLE),            {fekLessEqual, <=}
-    (0, INT_EXCEL_TOKEN_TNE),            {fekNotEqual, <>}
+    INT_EXCEL_TOKEN_TADD,           {fekAdd, +}
+    INT_EXCEL_TOKEN_TSUB,           {fekSub, -}
+    INT_EXCEL_TOKEN_TDIV,           {fekDiv, /}
+    INT_EXCEL_TOKEN_TMUL,           {fekMul, *}
+    INT_EXCEL_TOKEN_TPERCENT,       {fekPercent, %}
+    INT_EXCEL_TOKEN_TPOWER,         {fekPower, ^}
+    INT_EXCEL_TOKEN_TUMINUS,        {fekUMinus, -}
+    INT_EXCEL_TOKEN_TUPLUS,         {fekUPlus, +}
+    INT_EXCEL_TOKEN_TCONCAT,        {fekConcat, &, for strings}
+    INT_EXCEL_TOKEN_TEQ,            {fekEqual, =}
+    INT_EXCEL_TOKEN_TGT,            {fekGreater, >}
+    INT_EXCEL_TOKEN_TGE,            {fekGreaterEqual, >=}
+    INT_EXCEL_TOKEN_TLT,            {fekLess <}
+    INT_EXCEL_TOKEN_TLE,            {fekLessEqual, <=}
+    INT_EXCEL_TOKEN_TNE,            {fekNotEqual, <>}
+    INT_EXCEL_TOKEN_TPAREN,         {Operator in parenthesis}
 
     // Math functions
-    (1, INT_EXCEL_SHEET_FUNC_ABS),       {fekABS}
-    (1, INT_EXCEL_SHEET_FUNC_ACOS),      {fekACOS}
-    (1, INT_EXCEL_SHEET_FUNC_ACOSH),     {fekACOSH}
-    (1, INT_EXCEL_SHEET_FUNC_ASIN),      {fekASIN}
-    (1, INT_EXCEL_SHEET_FUNC_ASINH),     {fekASINH}
-    (1, INT_EXCEL_SHEET_FUNC_ATAN),      {fekATAN}
-    (1, INT_EXCEL_SHEET_FUNC_ATANH),     {fekATANH}
-    (1, INT_EXCEL_SHEET_FUNC_COS),       {fekCOS}
-    (1, INT_EXCEL_SHEET_FUNC_COSH),      {fekCOSH}
-    (1, INT_EXCEL_SHEET_FUNC_DEGREES),   {fekDEGREES}
-    (1, INT_EXCEL_SHEET_FUNC_EXP),       {fekEXP}
-    (1, INT_EXCEL_SHEET_FUNC_INT),       {fekINT}
-    (1, INT_EXCEL_SHEET_FUNC_LN),        {fekLN}
-    (1, INT_EXCEL_SHEET_FUNC_LOG),       {fekLOG}
-    (1, INT_EXCEL_SHEET_FUNC_LOG10),     {fekLOG10}
-    (1, INT_EXCEL_SHEET_FUNC_PI),        {fekPI}
-    (1, INT_EXCEL_SHEET_FUNC_RADIANS),   {fekRADIANS}
-    (1, INT_EXCEL_SHEET_FUNC_RAND),      {fekRAND}
-    (1, INT_EXCEL_SHEET_FUNC_ROUND),     {fekROUND}
-    (1, INT_EXCEL_SHEET_FUNC_SIGN),      {fekSIGN}
-    (1, INT_EXCEL_SHEET_FUNC_SIN),       {fekSIN}
-    (1, INT_EXCEL_SHEET_FUNC_SINH),      {fekSINH}
-    (1, INT_EXCEL_SHEET_FUNC_SQRT),      {fekSQRT}
-    (1, INT_EXCEL_SHEET_FUNC_TAN),       {fekTAN}
-    (1, INT_EXCEL_SHEET_FUNC_TANH),      {fekTANH}
+    INT_EXCEL_SHEET_FUNC_ABS,       {fekABS}
+    INT_EXCEL_SHEET_FUNC_ACOS,      {fekACOS}
+    INT_EXCEL_SHEET_FUNC_ACOSH,     {fekACOSH}
+    INT_EXCEL_SHEET_FUNC_ASIN,      {fekASIN}
+    INT_EXCEL_SHEET_FUNC_ASINH,     {fekASINH}
+    INT_EXCEL_SHEET_FUNC_ATAN,      {fekATAN}
+    INT_EXCEL_SHEET_FUNC_ATANH,     {fekATANH}
+    INT_EXCEL_SHEET_FUNC_COS,       {fekCOS}
+    INT_EXCEL_SHEET_FUNC_COSH,      {fekCOSH}
+    INT_EXCEL_SHEET_FUNC_DEGREES,   {fekDEGREES}
+    INT_EXCEL_SHEET_FUNC_EXP,       {fekEXP}
+    INT_EXCEL_SHEET_FUNC_INT,       {fekINT}
+    INT_EXCEL_SHEET_FUNC_LN,        {fekLN}
+    INT_EXCEL_SHEET_FUNC_LOG,       {fekLOG}
+    INT_EXCEL_SHEET_FUNC_LOG10,     {fekLOG10}
+    INT_EXCEL_SHEET_FUNC_PI,        {fekPI}
+    INT_EXCEL_SHEET_FUNC_RADIANS,   {fekRADIANS}
+    INT_EXCEL_SHEET_FUNC_RAND,      {fekRAND}
+    INT_EXCEL_SHEET_FUNC_ROUND,     {fekROUND}
+    INT_EXCEL_SHEET_FUNC_SIGN,      {fekSIGN}
+    INT_EXCEL_SHEET_FUNC_SIN,       {fekSIN}
+    INT_EXCEL_SHEET_FUNC_SINH,      {fekSINH}
+    INT_EXCEL_SHEET_FUNC_SQRT,      {fekSQRT}
+    INT_EXCEL_SHEET_FUNC_TAN,       {fekTAN}
+    INT_EXCEL_SHEET_FUNC_TANH,      {fekTANH}
 
     // Date/time functions
-    (1, INT_EXCEL_SHEET_FUNC_DATE),      {fekDATE}
-    (1, INT_EXCEL_SHEET_FUNC_DATEDIF),   {fekDATEDIF}
-    (1, INT_EXCEL_SHEET_FUNC_DATEVALUE), {fekDATEVALUE}
-    (1, INT_EXCEL_SHEET_FUNC_DAY),       {fekDAY}
-    (1, INT_EXCEL_SHEET_FUNC_HOUR),      {fekHOUR}
-    (1, INT_EXCEL_SHEET_FUNC_MINUTE),    {fekMINUTE}
-    (1, INT_EXCEL_SHEET_FUNC_MONTH),     {fekMONTH}
-    (1, INT_EXCEL_SHEET_FUNC_NOW),       {fekNOW}
-    (1, INT_EXCEL_SHEET_FUNC_SECOND),    {fekSECOND}
-    (1, INT_EXCEL_SHEET_FUNC_TIME),      {fekTIME}
-    (1, INT_EXCEL_SHEET_FUNC_TIMEVALUE), {fekTIMEVALUE}
-    (1, INT_EXCEL_SHEET_FUNC_TODAY),     {fekTODAY}
-    (2, INT_EXCEL_SHEET_FUNC_WEEKDAY),   {fekWEEKDAY}
-    (1, INT_EXCEL_SHEET_FUNC_YEAR),      {fekYEAR}
+    INT_EXCEL_SHEET_FUNC_DATE,      {fekDATE}
+    INT_EXCEL_SHEET_FUNC_DATEDIF,   {fekDATEDIF}
+    INT_EXCEL_SHEET_FUNC_DATEVALUE, {fekDATEVALUE}
+    INT_EXCEL_SHEET_FUNC_DAY,       {fekDAY}
+    INT_EXCEL_SHEET_FUNC_HOUR,      {fekHOUR}
+    INT_EXCEL_SHEET_FUNC_MINUTE,    {fekMINUTE}
+    INT_EXCEL_SHEET_FUNC_MONTH,     {fekMONTH}
+    INT_EXCEL_SHEET_FUNC_NOW,       {fekNOW}
+    INT_EXCEL_SHEET_FUNC_SECOND,    {fekSECOND}
+    INT_EXCEL_SHEET_FUNC_TIME,      {fekTIME}
+    INT_EXCEL_SHEET_FUNC_TIMEVALUE, {fekTIMEVALUE}
+    INT_EXCEL_SHEET_FUNC_TODAY,     {fekTODAY}
+    INT_EXCEL_SHEET_FUNC_WEEKDAY,   {fekWEEKDAY}
+    INT_EXCEL_SHEET_FUNC_YEAR,      {fekYEAR}
 
     // Statistical functions
-    (2, INT_EXCEL_SHEET_FUNC_AVEDEV),    {fekAVEDEV}
-    (2, INT_EXCEL_SHEET_FUNC_AVERAGE),   {fekAVERAGE}
-    (2, INT_EXCEL_SHEET_FUNC_BETADIST),  {fekBETADIST}
-    (2, INT_EXCEL_SHEET_FUNC_BETAINV),   {fekBETAINV}
-    (1, INT_EXCEL_SHEET_FUNC_BINOMDIST), {fekBINOMDIST}
-    (1, INT_EXCEL_SHEET_FUNC_CHIDIST),   {fekCHIDIST}
-    (1, INT_EXCEL_SHEET_FUNC_CHIINV),    {fekCHIINV}
-    (2, INT_EXCEL_SHEET_FUNC_COUNT),     {fekCOUNT}
-    (2, INT_EXCEL_SHEET_FUNC_COUNTA),    {fekCOUNTA}
-    (1, INT_EXCEL_SHEET_FUNC_COUNTBLANK),{fekCOUNTBLANK}
-    (2, INT_EXCEL_SHEET_FUNC_COUNTIF),   {fekCOUNTIF}
-    (2, INT_EXCEL_SHEET_FUNC_MAX),       {fekMAX}
-    (2, INT_EXCEL_SHEET_FUNC_MEDIAN),    {fekMEDIAN}
-    (2, INT_EXCEL_SHEET_FUNC_MIN),       {fekMIN}
-    (1, INT_EXCEL_SHEET_FUNC_PERMUT),    {fekPERMUT}
-    (1, INT_EXCEL_SHEET_FUNC_POISSON),   {fekPOISSON}
-    (2, INT_EXCEL_SHEET_FUNC_PRODUCT),   {fekPRODUCT}
-    (2, INT_EXCEL_SHEET_FUNC_STDEV),     {fekSTDEV}
-    (2, INT_EXCEL_SHEET_FUNC_STDEVP),    {fekSTDEVP}
-    (2, INT_EXCEL_SHEET_FUNC_SUM),       {fekSUM}
-    (2, INT_EXCEL_SHEET_FUNC_SUMIF),     {fekSUMIF}
-    (2, INT_EXCEL_SHEET_FUNC_SUMSQ),     {fekSUMSQ}
-    (2, INT_EXCEL_SHEET_FUNC_VAR),       {fekVAR}
-    (2, INT_EXCEL_SHEET_FUNC_VARP),      {fekVARP}
+    INT_EXCEL_SHEET_FUNC_AVEDEV,    {fekAVEDEV}
+    INT_EXCEL_SHEET_FUNC_AVERAGE,   {fekAVERAGE}
+    INT_EXCEL_SHEET_FUNC_BETADIST,  {fekBETADIST}
+    INT_EXCEL_SHEET_FUNC_BETAINV,   {fekBETAINV}
+    INT_EXCEL_SHEET_FUNC_BINOMDIST, {fekBINOMDIST}
+    INT_EXCEL_SHEET_FUNC_CHIDIST,   {fekCHIDIST}
+    INT_EXCEL_SHEET_FUNC_CHIINV,    {fekCHIINV}
+    INT_EXCEL_SHEET_FUNC_COUNT,     {fekCOUNT}
+    INT_EXCEL_SHEET_FUNC_COUNTA,    {fekCOUNTA}
+    INT_EXCEL_SHEET_FUNC_COUNTBLANK,{fekCOUNTBLANK}
+    INT_EXCEL_SHEET_FUNC_COUNTIF,   {fekCOUNTIF}
+    INT_EXCEL_SHEET_FUNC_MAX,       {fekMAX}
+    INT_EXCEL_SHEET_FUNC_MEDIAN,    {fekMEDIAN}
+    INT_EXCEL_SHEET_FUNC_MIN,       {fekMIN}
+    INT_EXCEL_SHEET_FUNC_PERMUT,    {fekPERMUT}
+    INT_EXCEL_SHEET_FUNC_POISSON,   {fekPOISSON}
+    INT_EXCEL_SHEET_FUNC_PRODUCT,   {fekPRODUCT}
+    INT_EXCEL_SHEET_FUNC_STDEV,     {fekSTDEV}
+    INT_EXCEL_SHEET_FUNC_STDEVP,    {fekSTDEVP}
+    INT_EXCEL_SHEET_FUNC_SUM,       {fekSUM}
+    INT_EXCEL_SHEET_FUNC_SUMIF,     {fekSUMIF}
+    INT_EXCEL_SHEET_FUNC_SUMSQ,     {fekSUMSQ}
+    INT_EXCEL_SHEET_FUNC_VAR,       {fekVAR}
+    INT_EXCEL_SHEET_FUNC_VARP,      {fekVARP}
 
     // Financial functions
-    (2, INT_EXCEL_SHEET_FUNC_FV),        {fekFV}
-    (2, INT_EXCEL_SHEET_FUNC_NPER),      {fekNPER}
-    (2, INT_EXCEL_SHEET_FUNC_PV),        {fekPV}
-    (2, INT_EXCEL_SHEET_FUNC_PMT),       {fekPMT}
-    (2, INT_EXCEL_SHEET_FUNC_RATE),      {fekRATE}
+    INT_EXCEL_SHEET_FUNC_FV,        {fekFV}
+    INT_EXCEL_SHEET_FUNC_NPER,      {fekNPER}
+    INT_EXCEL_SHEET_FUNC_PMT,       {fekPMT}
+    INT_EXCEL_SHEET_FUNC_PV,        {fekPV}
+    INT_EXCEL_SHEET_FUNC_RATE,      {fekRATE}
 
     // Logical functions
-    (2, INT_EXCEL_SHEET_FUNC_AND),       {fekAND}
-    (1, INT_EXCEL_SHEET_FUNC_FALSE),     {fekFALSE}
-    (2, INT_EXCEL_SHEET_FUNC_IF),        {fekIF}
-    (1, INT_EXCEL_SHEET_FUNC_NOT),       {fekNOT}
-    (2, INT_EXCEL_SHEET_FUNC_OR),        {fekOR}
-    (1, INT_EXCEL_SHEET_FUNC_TRUE),      {fekTRUE}
+    INT_EXCEL_SHEET_FUNC_AND,       {fekAND}
+    INT_EXCEL_SHEET_FUNC_FALSE,     {fekFALSE}
+    INT_EXCEL_SHEET_FUNC_IF,        {fekIF}
+    INT_EXCEL_SHEET_FUNC_NOT,       {fekNOT}
+    INT_EXCEL_SHEET_FUNC_OR,        {fekOR}
+    INT_EXCEL_SHEET_FUNC_TRUE,      {fekTRUE}
 
     // String functions
-    (1, INT_EXCEL_SHEET_FUNC_CHAR),      {fekCHAR}
-    (1, INT_EXCEL_SHEET_FUNC_CODE),      {fekCODE}
-    (2, INT_EXCEL_SHEET_FUNC_LEFT),      {fekLEFT}
-    (1, INT_EXCEL_SHEET_FUNC_LOWER),     {fekLOWER}
-    (1, INT_EXCEL_SHEET_FUNC_MID),       {fekMID}
-    (1, INT_EXCEL_SHEET_FUNC_PROPER),    {fekPROPER}
-    (1, INT_EXCEL_SHEET_FUNC_REPLACE),   {fekREPLACE}
-    (2, INT_EXCEL_SHEET_FUNC_RIGHT),     {fekRIGHT}
-    (2, INT_EXCEL_SHEET_FUNC_SUBSTITUTE),{fekSUBSTITUTE}
-    (1, INT_EXCEL_SHEET_FUNC_TRIM),      {fekTRIM}
-    (1, INT_EXCEL_SHEET_FUNC_UPPER),     {fekUPPER}
+    INT_EXCEL_SHEET_FUNC_CHAR,      {fekCHAR}
+    INT_EXCEL_SHEET_FUNC_CODE,      {fekCODE}
+    INT_EXCEL_SHEET_FUNC_LEFT,      {fekLEFT}
+    INT_EXCEL_SHEET_FUNC_LOWER,     {fekLOWER}
+    INT_EXCEL_SHEET_FUNC_MID,       {fekMID}
+    INT_EXCEL_SHEET_FUNC_PROPER,    {fekPROPER}
+    INT_EXCEL_SHEET_FUNC_REPLACE,   {fekREPLACE}
+    INT_EXCEL_SHEET_FUNC_RIGHT,     {fekRIGHT}
+    INT_EXCEL_SHEET_FUNC_SUBSTITUTE,{fekSUBSTITUTE}
+    INT_EXCEL_SHEET_FUNC_TRIM,      {fekTRIM}
+    INT_EXCEL_SHEET_FUNC_UPPER,     {fekUPPER}
 
     // lookup/reference functions
-    (2, INT_EXCEL_SHEET_FUNC_COLUMN),    {fekCOLUMN}
-    (1, INT_EXCEL_SHEET_FUNC_COLUMNS),   {fekCOLUMNS}
-    (2, INT_EXCEL_SHEET_FUNC_ROW),       {fekROW}
-    (1, INT_EXCEL_SHEET_FUNC_ROWS),      {fekROWS}
+    INT_EXCEL_SHEET_FUNC_COLUMN,    {fekCOLUMN}
+    INT_EXCEL_SHEET_FUNC_COLUMNS,   {fekCOLUMNS}
+    INT_EXCEL_SHEET_FUNC_ROW,       {fekROW}
+    INT_EXCEL_SHEET_FUNC_ROWS,      {fekROWS}
 
     // Info functions
-    (2, INT_EXCEL_SHEET_FUNC_CELL),      {fekCELLINFO}
-    (1, INT_EXCEL_SHEET_FUNC_INFO),      {fekINFO}
-    (1, INT_EXCEL_SHEET_FUNC_ISBLANK),   {fekIsBLANK}
-    (1, INT_EXCEL_SHEET_FUNC_ISERR),     {fekIsERR}
-    (1, INT_EXCEL_SHEET_FUNC_ISERROR),   {fekIsERROR}
-    (1, INT_EXCEL_SHEET_FUNC_ISLOGICAL), {fekIsLOGICAL}
-    (1, INT_EXCEL_SHEET_FUNC_ISNA),      {fekIsNA}
-    (1, INT_EXCEL_SHEET_FUNC_ISNONTEXT), {fekIsNONTEXT}
-    (1, INT_EXCEL_SHEET_FUNC_ISNUMBER),  {fekIsNUMBER}
-    (1, INT_EXCEL_SHEET_FUNC_ISREF),     {fekIsREF}
-    (1, INT_EXCEL_SHEET_FUNC_ISTEXT),    {fekIsTEXT}
-    (1, INT_EXCEL_SHEET_FUNC_VALUE),     {fekValue}
+    INT_EXCEL_SHEET_FUNC_CELL,      {fekCELLINFO}
+    INT_EXCEL_SHEET_FUNC_INFO,      {fekINFO}
+    INT_EXCEL_SHEET_FUNC_ISBLANK,   {fekIsBLANK}
+    INT_EXCEL_SHEET_FUNC_ISERR,     {fekIsERR}
+    INT_EXCEL_SHEET_FUNC_ISERROR,   {fekIsERROR}
+    INT_EXCEL_SHEET_FUNC_ISLOGICAL, {fekIsLOGICAL}
+    INT_EXCEL_SHEET_FUNC_ISNA,      {fekIsNA}
+    INT_EXCEL_SHEET_FUNC_ISNONTEXT, {fekIsNONTEXT}
+    INT_EXCEL_SHEET_FUNC_ISNUMBER,  {fekIsNUMBER}
+    INT_EXCEL_SHEET_FUNC_ISREF,     {fekIsREF}
+    INT_EXCEL_SHEET_FUNC_ISTEXT,    {fekIsTEXT}
+    INT_EXCEL_SHEET_FUNC_VALUE,     {fekValue}
 
     // Other operations
-    (0, INT_EXCEL_TOKEN_TATTR)           {fekOpSum}
+    INT_EXCEL_TOKEN_TATTR           {fekOpSum}
   );
 
 
@@ -1475,8 +1471,8 @@ begin
         begin
           func := ReadRPNFunc(AStream);
           found := false;
-          for fek in TFEKind do begin
-            if (TokenIDs[fek, 1] = func) and (TokenIDs[fek, 0] = 1) then begin
+          for fek in TFuncTokens do begin
+            if (TokenIDs[fek] = func) and  FixedParamCount(fek) then begin
               rpnItem := RPNFunc(fek, rpnItem);
               found := true;
               break;
@@ -1494,8 +1490,8 @@ begin
           b := AStream.ReadByte;
           func := ReadRPNFunc(AStream);
           found := false;
-          for fek in TFEKind do
-            if (TokenIDs[fek, 1] = func) and (TokenIDs[fek, 0] = 2) then begin
+          for fek in TFuncTokens do
+            if (TokenIDs[fek] = func) and not FixedParamCount(fek) then begin
               rpnItem := RPNFunc(fek, b, rpnItem);
               found := true;
               break;
@@ -1506,8 +1502,8 @@ begin
 
       else
         found := false;
-        for fek in TFEKind do
-          if (TokenIDs[fek, 1] = token) and (TokenIDs[fek, 0] = 0) then begin
+        for fek in TBasicOperationTokens do
+          if (TokenIDs[fek] = token) then begin
             rpnItem := RPNFunc(fek, rpnItem);
             found := true;
             break;
@@ -1638,19 +1634,17 @@ end;
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
   AElementKind: TFEKind; out ASecondaryID: Word): Word;
 begin
-  case TokenIDs[AElementKind, 0] of
-    0: begin
-         Result := TokenIDs[AElementKind, 1];
-         ASecondaryID := 0;
-       end;
-    1: begin
-         Result := INT_EXCEL_TOKEN_FUNC_V;
-         ASecondaryID := TokenIDs[AElementKind, 1]
-       end;
-    2: begin
-         Result := INT_EXCEL_TOKEN_FUNCVAR_V;
-         ASecondaryID := TokenIDs[AElementKind, 1]
-       end;
+  if (AElementKind >= Low(TFuncTokens)) and (AElementKind <= High(TFuncTokens))
+  then begin
+    if FixedParamCount(AElementKind) then
+      Result := INT_EXCEL_TOKEN_FUNC_V
+    else
+      Result := INT_EXCEL_TOKEN_FUNCVAR_V;
+    ASecondaryID := TokenIDs[AElementKind];
+  end
+  else begin
+    Result := TokenIDs[AElementKind];
+    ASecondaryID := 0;
   end;
 end;
 
