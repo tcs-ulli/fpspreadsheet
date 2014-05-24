@@ -1709,7 +1709,6 @@ begin
                  FDetails.Add('RowIndex information:'#13);
                  FDetails.Add(Format('RowIndex = %d (%s)', [r, ABS_REL[c and $4000 <> 0]]));
                end;
-               //s := Format('$%.4x (%d, %s)', [r, r, ABS_REL[c and $4000 <> 0]]);
                s := Format('%d ($%.4x)', [r, r]);
                ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Row index');
                if FCurrRow = Row then begin
@@ -1722,7 +1721,6 @@ begin
                    then FDetails.Add('Bit 15=0: absolute column index')
                    else FDetails.Add('Bit 15=1: relative column index');
                end;
-//               s := Format('$%.4x (%d, %s)', [c, c AND $3FFF, ABS_REL[c and $8000 <> 0]]);
                s := Format('%d ($%.4x)', [c, c]);
                ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
              end else begin
@@ -1760,22 +1758,32 @@ begin
              end;
              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
                Format('Token tAREA (Cell range %s)', [s]));
-             numBytes := 2;
-             Move(FBuffer[FBufferIndex], w, numBytes);
-             r := WordLEToN(w);
-             Move(FBuffer[FBufferIndex+2], w, numBytes);
-             r2 := WordLEToN(w);
+
              if FFormat = sfExcel8 then begin
                numBytes := 2;
-               Move(FBuffer[FBufferIndex+2], w, numBytes);  // column --w1
-               c := WordLEToN(w);
+               Move(FBuffer[FBufferIndex], w, numBytes);
+               r := WordLEToN(w);
                if FCurrRow = Row then begin
                  FDetails.Add('RowIndex information:'#13);
                  FDetails.Add(Format('RowIndex = %d (%s)', [r, ABS_REL[c and $4000 <> 0]]));
                end;
-               //s := Format('$%.4x (%d, %s)', [r, r, ABS_REL[c and $4000 <> 0]]);
                s := Format('%d ($%.4x)', [r, r]);
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Row index');
+               ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'First row index');
+
+               Move(FBuffer[FBufferIndex], w, numBytes);
+               r2 := WordLEToN(w);
+               if FCurrRow = Row then begin
+                 FDetails.Add('RowIndex information:'#13);
+                 FDetails.Add(Format('RowIndex = %d (%s)', [r2, ABS_REL[c and $4000 <> 0]]));
+               end;
+               s := Format('%d ($%.4x)', [r2, r2]);
+               ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Last row index');
+
+               Move(FBuffer[FBufferIndex], w, numBytes);  // column
+               c := WordLEToN(w);
+               Move(FBuffer[FBufferIndex+2], w, numBytes);
+               c2 := WordLEToN(w);
+
                if FCurrRow = Row then begin
                  FDetails.Add('ColIndex information:'#13);
                  FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
@@ -1786,13 +1794,34 @@ begin
                    then FDetails.Add('Bit 15=0: absolute column index')
                    else FDetails.Add('Bit 15=1: relative column index');
                end;
-  //             s := Format('$%.4x (%d, %s)', [c, c AND $3FFF, ABS_REL[c and $8000 <> 0]]);
                s := Format('%d ($%.4x)', [c, c]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
+
+               if FCurrRow = Row then begin
+                 FDetails.Add('ColIndex information:'#13);
+                 FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c2 and $3FFF, ABS_REL[c2 and $8000 <> 0]]));
+                 if c2 and $4000 = 0
+                   then FDetails.Add('Bit 14=0: absolute row index')
+                   else FDetails.Add('Bit 14=1: relative row index');
+                 if c2 and $8000 = 0
+                   then FDetails.Add('Bit 15=0: absolute column index')
+                   else FDetails.Add('Bit 15=1: relative column index');
+               end;
+               s := Format('%d ($%.4x)', [c2, c2]);
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
+
              end else begin
+
+               numBytes := 2;
+               Move(FBuffer[FBufferIndex], w, numBytes);
+               r := WordLEToN(w);
+               Move(FBuffer[FBufferIndex+2], w, numBytes);
+               r2 := WordLEToN(w);
+
                numbytes := 1;
-               Move(FBuffer[FBufferIndex+2], b, numBytes);
-               c := b;
+               c := FBuffer[FBufferIndex+4];
+               c2 := FBuffer[FBufferIndex+5];
+
                if FCurrRow = Row then begin
                  FDetails.Add('RowIndex information:'#13);
                  FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
@@ -1803,16 +1832,35 @@ begin
                    then FDetails.Add('Bit 15=0: absolute column index')
                    else FDetails.Add('Bit 15=1: relative column index');
                end;
-               //s := Format('$%.4x (%d, %s)', [r, r and $3FFF, ABS_REL[r and $4000 <> 0]]);
                s := Format('%d ($%.4x)', [r, r]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Row index');
+               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'First row index');
+
+               if FCurrRow = Row then begin
+                 FDetails.Add('RowIndex information:'#13);
+                 FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r2 and $3FFF, ABS_REL[r2 and $4000 <> 0]]));
+                 if r2 and $4000 = 0
+                   then FDetails.Add('Bit 14=0: absolute row index')
+                   else FDetails.Add('Bit 14=1: relative row index');
+                 if r2 and $8000 = 0
+                   then FDetails.Add('Bit 15=0: absolute column index')
+                   else FDetails.Add('Bit 15=1: relative column index');
+               end;
+               s := Format('%d ($%.4x)', [r2, r2]);
+               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Last row index');
+
                if FCurrRow = Row then begin
                  FDetails.Add('ColIndex information:'#13);
                  FDetails.Add(Format('ColIndex = %d (%s)', [c, ABS_REL[r and $8000 <> 0]]));
                end;
-               //s := Format('$%.2x (%d, %s)', [c, c, ABS_REL[r and $8000 <> 0]]);
                s := Format('%d ($%.4x)', [c, c]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
+
+               if FCurrRow = Row then begin
+                 FDetails.Add('ColIndex information:'#13);
+                 FDetails.Add(Format('ColIndex = %d (%s)', [c2, ABS_REL[r2 and $8000 <> 0]]));
+               end;
+               s := Format('%d ($%.4x)', [c2, c2]);
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
              end;
              {
              if FFormat = sfExcel8 then begin
