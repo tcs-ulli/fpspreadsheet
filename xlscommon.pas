@@ -1431,17 +1431,12 @@ begin
   while (AStream.Position < p0 + n) and supported do begin
     token := AStream.ReadByte;
     case token of
-      INT_EXCEL_TOKEN_TREFV:
-        begin;
-          ReadRPNCellAddress(AStream, r, c, flags);
-          rpnItem := RPNCellValue(r, c, flags, rpnItem);
-        end;
-      INT_EXCEL_TOKEN_TREFR:
+      INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFR:
         begin
           ReadRPNCellAddress(AStream, r, c, flags);
           rpnItem := RPNCellRef(r, c, flags, rpnItem);
         end;
-      INT_EXCEL_TOKEN_TREFA:
+      INT_EXCEL_TOKEN_TAREA_R, INT_EXCEL_TOKEN_TAREA_V:
         begin
           ReadRPNCellRangeAddress(AStream, r, c, r2, c2, flags);
           rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
