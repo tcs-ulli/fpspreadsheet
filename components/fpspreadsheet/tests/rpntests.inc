@@ -875,7 +875,7 @@ begin
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
       RPNNumber(2,
-      RPNFunc(fekLOG,
+      RPNFunc(fekLOG, 2,
       nil)))));
     Worksheet.WriteNumber(Row, 2, logn(2.0, value));
   end;
