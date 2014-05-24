@@ -67,13 +67,12 @@ implementation
 
 uses
   Math, StrUtils,
-  fpsUtils;
+  fpsUtils, rpnFormulaUnit;
 
 const
   COLORSHEETNAME='colorsheet'; //for background color tests
   RPNSHEETNAME='formula_sheet'; //for rpn formula tests
   OUTPUT_FORMAT = sfExcel8; //change manually if you want to test different formats. To do: automatically output all formats
-  FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');
 
 var
   Workbook: TsWorkbook = nil;
@@ -206,7 +205,15 @@ end;
 {$IFDEF FPSPREAD_HAS_NEWRPNSUPPORT}
 // As described in bug 25718: Feature request & patch: Implementation of writing more functions
 procedure TSpreadManualTests.TestRPNFormula;
-{$I rpntests.inc}
+var
+  Worksheet: TsWorksheet;
+begin
+  if Workbook = nil then
+    Workbook := TsWorkbook.Create;
+
+  Worksheet := Workbook.AddWorksheet(RPNSHEETNAME);
+  WriteRPNFormulaSamples(Worksheet, OUTPUT_FORMAT);
+end;
 {$ENDIF}
 
 initialization

@@ -1,7 +1,21 @@
-{ include file for manualtests.pas in
-procedure TSpreadManualTests.TestRPNFormula;
-}
+unit rpnFormulaUnit;
 
+interface
+
+uses
+  SysUtils, fpspreadsheet,fpsutils;
+
+procedure WriteRPNFormulaSamples(Worksheet: TsWorksheet; AFormat: TsSpreadsheetFormat);
+
+implementation
+
+uses
+  Math, StrUtils;
+
+const
+  FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');
+
+procedure WriteRPNFormulaSamples(Worksheet: TsWorksheet; AFormat: TsSpreadSheetFormat);
 const
   cellB1 = 1.0;
   cellC1 = 2.0;
@@ -12,18 +26,15 @@ const
   SBaseCells = 'Data cells:';
   SHelloWorld = 'Hello world!';
 var
-  Worksheet: TsWorksheet;
   Cell: PCell;
-  RPNFormula: TsRPNFormula;
   Row: Integer;
   value: Double;
   r,c: integer;
   celladdr: String;
 begin
-  if Workbook = nil then
-    Workbook := TsWorkbook.Create;
+  if Worksheet = nil then
+    exit;
 
-  Worksheet := Workbook.AddWorksheet(RPNSHEETNAME);
   Worksheet.WriteUTF8Text(0, 0, SBaseCells);
   Worksheet.WriteUsedFormatting(0, 0, [uffBold]);
   Worksheet.WriteNumber(0,1, cellB1);
@@ -486,7 +497,7 @@ begin
 
   // Logical AND - case false/false
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=AND(1=0;1=2)');
+  Worksheet.WriteUTF8Text(Row, 0, '=AND(1=0,1=2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1,
     RPNNumber(0,
@@ -500,7 +511,7 @@ begin
 
   // Logical AND - case false/true
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=AND(1=0;2=2)');
+  Worksheet.WriteUTF8Text(Row, 0, '=AND(1=0,2=2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1,
     RPNNumber(0,
@@ -514,7 +525,7 @@ begin
 
   // Logical AND - case true/true
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=AND(1=1;2=2)');
+  Worksheet.WriteUTF8Text(Row, 0, '=AND(1=1,2=2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1,
     RPNNumber(1,
@@ -528,7 +539,7 @@ begin
 
   // Logical OR - case false/false
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=OR(1=0;1=2)');
+  Worksheet.WriteUTF8Text(Row, 0, '=OR(1=0,1=2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1,
     RPNNumber(0,
@@ -542,7 +553,7 @@ begin
 
   // Logical OR - case false/true
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=OR(1=0;2=2)');
+  Worksheet.WriteUTF8Text(Row, 0, '=OR(1=0,2=2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1,
     RPNNumber(0,
@@ -556,7 +567,7 @@ begin
 
   // Logical OR - case true/true
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=OR(1=1;2=2)');
+  Worksheet.WriteUTF8Text(Row, 0, '=OR(1=1,2=2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1,
     RPNNumber(1,
@@ -570,7 +581,7 @@ begin
 
   // IF - case true
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1=1; "correct"; "wrong")');
+  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1=1,"correct","wrong")');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('B1',
     RPNNumber(1,
@@ -583,7 +594,7 @@ begin
 
   // IF - case false
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1<>1; "correct"; "wrong")');
+  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1<>1,"correct","wrong")');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('B1',
     RPNNumber(1,
@@ -596,7 +607,7 @@ begin
 
   // IF - case true (2 params)
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1=1; "correct")');
+  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1=1,"correct")');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('B1',
     RPNNumber(1,
@@ -608,7 +619,7 @@ begin
 
   // IF - case false (2 params)
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1<>1; "correct")');
+  Worksheet.WriteUTF8Text(Row, 0, '=IF(B1<>1,"correct")');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('B1',
     RPNNumber(1,
@@ -686,7 +697,7 @@ begin
     nil)));
   Worksheet.WriteNumber(Row, 2, pi);
 
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     // Degrees
     inc(Row);
     value := pi/2;
@@ -771,7 +782,7 @@ begin
     nil))));
   Worksheet.WriteNumber(Row, 2, arctan(1.0));
 
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     // Next functions are not available in BIFF2
 
     // sinh
@@ -866,12 +877,12 @@ begin
   Worksheet.WriteNumber(Row, 2, ln(value));
 
   // log to any basis
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     // This test is not working in Excel 2.
     // Not clear if this is correct, need to debug later
     inc(Row);
     value := 256;
-    Worksheet.WriteUTF8Text(Row, 0, '=LOG(256;2)');
+    Worksheet.WriteUTF8Text(Row, 0, '=LOG(256,2)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
       RPNNumber(2,
@@ -909,7 +920,7 @@ begin
 
   // Round positive number to 1 decimal
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=ROUND($F$1;1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=ROUND($F$1,1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$F$1',
     RPNNumber(1,
@@ -919,7 +930,7 @@ begin
 
   // Round negative number to 1 decimal
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=ROUND(G1;1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=ROUND(G1,1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('G1',
     RPNNumber(1,
@@ -1151,7 +1162,7 @@ begin
 
   // Cell information
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=CELL("Address", B80)');
+  Worksheet.WriteUTF8Text(Row, 0, '=CELL("Address",B80)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('address',
     RPNCellRef('B80',            // note: CellRef instead of CellValue!
@@ -1159,7 +1170,7 @@ begin
     nil)))));
 
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=CELL("Filename", B80)');
+  Worksheet.WriteUTF8Text(Row, 0, '=CELL("Filename",B80)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('filename',
     RPNCellRef('B80',            // note: CellRef instead of CellValue!
@@ -1167,7 +1178,7 @@ begin
     nil)))));
 
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=CELL("Row", B80)');
+  Worksheet.WriteUTF8Text(Row, 0, '=CELL("Row",B80)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('row',
     RPNCellRef('B80',            // note: CellRef instead of CellValue!
@@ -1175,7 +1186,7 @@ begin
     nil)))));
 
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=CELL("format", B80)');
+  Worksheet.WriteUTF8Text(Row, 0, '=CELL("format",B80)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('format',
     RPNCellRef('B80',            // note: CellRef instead of CellValue!
@@ -1183,7 +1194,7 @@ begin
     nil)))));
 
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=CELL("color", B80)');
+  Worksheet.WriteUTF8Text(Row, 0, '=CELL("color",B80)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('color',
     RPNCellRef('B80',            // note: CellRef instead of CellValue!
@@ -1200,7 +1211,7 @@ begin
   Worksheet.WriteNumber(Row, 2, cellB1);
 
   // General info
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
     Worksheet.WriteUTF8Text(Row, 0, '=INFO("osversion")');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1246,7 +1257,7 @@ begin
   Worksheet.WriteNumber(Row, 2, now);
 
   // Today
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
     Worksheet.WriteUTF8Text(Row, 0, '=TODAY()');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1276,9 +1287,9 @@ begin
   Worksheet.WriteNumber(Row, 2, EncodeDate(2014,1,25));
 
   // DateDifference
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=DATEDIF("2010-01-01"; DATE(2014;1;25); "M")');
+    Worksheet.WriteUTF8Text(Row, 0, '=DATEDIF("2010-01-01",DATE(2014;1;25),"M")');
     // Note: Dates must be ordered: Date1 < Date2 !!!
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNString('2010-01-01',
@@ -1413,7 +1424,7 @@ begin
 
   // Count - non-empty cells
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=COUNT($B$1;$C$1;$D$1:F1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=COUNT($B$1,$C$1,$D$1:F1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1424,7 +1435,7 @@ begin
 
   // Count - with empty cells & alpha-numeric cells
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=COUNT($B$1;$C$1;$D$1:$F$2;"ABC")');
+  Worksheet.WriteUTF8Text(Row, 0, '=COUNT($B$1,$C$1,$D$1:$F$2,"ABC")');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1436,7 +1447,7 @@ begin
 
   // CountA - empty cells and constants
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=COUNTA($B$1;$C$1;$D$1:$F$2;"ABC";"DEF")');
+  Worksheet.WriteUTF8Text(Row, 0, '=COUNTA($B$1,$C$1,$D$1:$F$2,"ABC","DEF")');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1447,10 +1458,10 @@ begin
     nil))))))));
   Worksheet.WriteNumber(Row, 2, 7);  // 7 non-empty values
 
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     // CountIF
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=COUNTIF(A1:G1, "<=1")');
+    Worksheet.WriteUTF8Text(Row, 0, '=COUNTIF(A1:G1,"<=1")');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNCellRange('A1:G1',
       RPNString('<=1',
@@ -1474,7 +1485,7 @@ begin
 
   // Sum - non-empty cells
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=SUM($B$1;$C$1;D$1:F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=SUM($B$1,$C$1,D$1:F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1483,10 +1494,10 @@ begin
     nil))))));
   Worksheet.WriteNumber(Row, 2, cellB1+cellC1+cellD1+cellE1+cellF1);
 
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     // SumIF
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=SUMIF(A1:G1, "<=1")');
+    Worksheet.WriteUTF8Text(Row, 0, '=SUMIF(A1:G1,"<=1")');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNCellRange('A1:G1',
       RPNString('<=1',
@@ -1500,7 +1511,7 @@ begin
 
     // Sum of squares
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=SUMSQ($B$1;$C$1;$D$1:$F$1)');
+    Worksheet.WriteUTF8Text(Row, 0, '=SUMSQ($B$1,$C$1,$D$1:$F$1)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNCellValue('$B$1',
       RPNCellValue('$C$1',
@@ -1512,7 +1523,7 @@ begin
 
   // Product
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=PRODUCT($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=PRODUCT($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1523,7 +1534,7 @@ begin
 
   // Average - non-empty cells
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=AVERAGE($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=AVERAGE($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1534,7 +1545,7 @@ begin
 
   // StdDev
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=STDEV($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=STDEV($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1545,7 +1556,7 @@ begin
 
   // Population StdDev
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=STDEVP($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=STDEVP($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1555,9 +1566,9 @@ begin
   Worksheet.WriteNumber(Row, 2, popnstddev([cellB1,cellC1,cellD1,cellE1,cellF1]));
 
   // Average deviation
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=AVEDEV($B$1;$C$1;$D$1:$F$1)');
+    Worksheet.WriteUTF8Text(Row, 0, '=AVEDEV($B$1,$C$1,$D$1:$F$1)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNCellValue('$B$1',
       RPNCellValue('$C$1',
@@ -1571,7 +1582,7 @@ begin
 
   // Variance
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=VAR($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=VAR($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1582,7 +1593,7 @@ begin
 
   // Population variance
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=VARP($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=VARP($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1593,7 +1604,7 @@ begin
 
   // Max
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=MAX($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=MAX($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1604,7 +1615,7 @@ begin
 
   // Min
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=MIN($B$1;$C$1;$D$1:$F$1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=MIN($B$1,$C$1,$D$1:$F$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B$1',
     RPNCellValue('$C$1',
@@ -1614,9 +1625,9 @@ begin
   Worksheet.WriteNumber(Row, 2, MinValue([cellB1,cellC1,cellD1,cellE1,cellF1]));
 
   // Median
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=MEDIAN($B$1;$C$1;$D$1:$F$1)');
+    Worksheet.WriteUTF8Text(Row, 0, '=MEDIAN($B$1,$C$1,$D$1:$F$1)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNCellValue('$B$1',
       RPNCellValue('$C$1',
@@ -1627,9 +1638,9 @@ begin
   end;
 
   // Beta distribution
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=BETADIST(3, 7.5, 9, 1, 4)');
+    Worksheet.WriteUTF8Text(Row, 0, '=BETADIST(3,7.5,9,1,4)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(3,
       RPNNumber(7.5,
@@ -1642,9 +1653,9 @@ begin
   end;
 
   // Inverse beta function
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=BETAINV(0.3, 7.5, 9, 1, 4)');
+    Worksheet.WriteUTF8Text(Row, 0, '=BETAINV(0.3,7.5,9,1,4)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(0.3,
       RPNNumber(7.5,
@@ -1657,9 +1668,9 @@ begin
   end;
 
   // Binomial distribution
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=BINOMDIST(3, 8, 0.35, TRUE)');
+    Worksheet.WriteUTF8Text(Row, 0, '=BINOMDIST(3,8,0.35,TRUE)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(3,
       RPNNumber(8,
@@ -1671,9 +1682,9 @@ begin
   end;
 
   // Chi2 distribution
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=CHIDIST(3, 9)');
+    Worksheet.WriteUTF8Text(Row, 0, '=CHIDIST(3,9)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(3,
       RPNNumber(9,
@@ -1683,9 +1694,9 @@ begin
   end;
 
   // Inverse of Chi2 distribution
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=CHIINV(0.3, 7)');
+    Worksheet.WriteUTF8Text(Row, 0, '=CHIINV(0.3,7)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(0.3,
       RPNNumber(7,
@@ -1695,9 +1706,9 @@ begin
   end;
 
   // Permutations
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=PERMUT(21, 5)');
+    Worksheet.WriteUTF8Text(Row, 0, '=PERMUT(21,5)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(21,
       RPNNumber(5,
@@ -1707,9 +1718,9 @@ begin
   end;
 
   // Poisson distribution
-  if OUTPUT_FORMAT <> sfExcel2 then begin
+  if AFormat <> sfExcel2 then begin
     inc(Row);
-    Worksheet.WriteUTF8Text(Row, 0, '=POISSON(1400, 1500, TRUE)');
+    Worksheet.WriteUTF8Text(Row, 0, '=POISSON(1400,1500,TRUE)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(1400,
       RPNNumber(1500,
@@ -1731,7 +1742,7 @@ begin
   // the month, each month, for 2 years.
   // according to: www.techonthenet.com/excel/formulas/fv.php
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=FV(3.5%/12; 2*12; -250; -5000; 1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=FV(3.5%/12,2*12,-250,-5000,1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(3.5,
     RPNFunc(fekPERCENT,
@@ -1752,7 +1763,7 @@ begin
   // according to: www.techonthenet.com/excel/formulas/pv.php
   // Note the missing argument!
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=PV(3.5%/12, 2*12, 250, , 0)');
+  Worksheet.WriteUTF8Text(Row, 0, '=PV(3.5%/12,2*12,250,,0)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(3.5,
     RPNFunc(fekPercent,
@@ -1772,7 +1783,7 @@ begin
   // 2 years. All payments are made at the end of the period.
   // Adapted from //www.techonthenet.com/excel/formulas/rate.php
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=RATE(2*12; -250; 5000)');
+  Worksheet.WriteUTF8Text(Row, 0, '=RATE(2*12,-250,5000)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(2,
     RPNNumber(12,
@@ -1791,7 +1802,7 @@ begin
   // 3.5% annually. Payments are due at the end of the period.
   // Adapted from //www.techonthenet.com/excel/formulas/nper.php
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=NPER(3.5%/12; -150; 5000)');
+  Worksheet.WriteUTF8Text(Row, 0, '=NPER(3.5%/12,-150,5000)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(3.5,
     RPNFunc(fekPERCENT,
@@ -1808,7 +1819,7 @@ begin
   // of the period.
   // Adapted from //www.techonthenet.com/excel/formulas/pmt.php
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, '=PMT(3.5%/12, 2*12, 5000, 0, 1)');
+  Worksheet.WriteUTF8Text(Row, 0, '=PMT(3.5%/12,2*12,5000,0,1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(3.5,
     RPNFunc(fekPERCENT,
@@ -1852,7 +1863,7 @@ begin
 
   // Left part of string
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, Format('=LEFT("%s";3)', [SHelloWorld]));
+  Worksheet.WriteUTF8Text(Row, 0, Format('=LEFT("%s",3)', [SHelloWorld]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString(SHelloWorld,
     RPNNumber(3,
@@ -1862,7 +1873,7 @@ begin
 
   // Mid part of string
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, Format('=MID("%s";4;5)', [SHelloWorld]));
+  Worksheet.WriteUTF8Text(Row, 0, Format('=MID("%s",4,5)', [SHelloWorld]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString(SHelloWorld,
     RPNNumber(4,
@@ -1873,7 +1884,7 @@ begin
 
   // Right part of string
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, Format('=RIGHT("%s";3)', [SHelloWorld]));
+  Worksheet.WriteUTF8Text(Row, 0, Format('=RIGHT("%s",3)', [SHelloWorld]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString(SHelloWorld,
     RPNNumber(3,
@@ -1919,7 +1930,7 @@ begin
 
   // replace
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, Format('=REPLACE("%s", 7, 5, "Friend")', [SHelloWorld]));
+  Worksheet.WriteUTF8Text(Row, 0, Format('=REPLACE("%s",7,5,"Friend")', [SHelloWorld]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString(SHelloWorld,
     RPNNumber(7,
@@ -1933,7 +1944,7 @@ begin
   // Note: the function can have an optional parameter. Therefore, you have
   // to specify the actual parameter count.
   inc(Row);
-  Worksheet.WriteUTF8Text(Row, 0, Format('=SUBSTITUTE("%s", "l", ".")', [SHelloWorld]));
+  Worksheet.WriteUTF8Text(Row, 0, Format('=SUBSTITUTE("%s","l",".")', [SHelloWorld]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString(SHelloWorld,
     RPNString('l',
@@ -1994,3 +2005,5 @@ begin
   Worksheet.WriteUTF8Text(Row, 2, 'Error #N/A');
                        *)
 end;
+
+end.
