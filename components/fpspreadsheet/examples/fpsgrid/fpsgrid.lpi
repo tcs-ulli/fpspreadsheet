@@ -231,10 +231,11 @@
       <Unit13>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
-        <TopLine Value="62"/>
-        <CursorPos X="1" Y="63"/>
+        <TopLine Value="279"/>
+        <CursorPos X="52" Y="316"/>
         <UsageCount Value="69"/>
         <Loaded Value="True"/>
       </Unit13>
@@ -263,7 +264,6 @@
       <Unit17>
         <Filename Value="..\..\xlsbiff8.pas"/>
         <UnitName Value="xlsbiff8"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="3"/>
         <WindowIndex Value="0"/>
         <TopLine Value="847"/>

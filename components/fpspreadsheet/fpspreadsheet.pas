@@ -784,6 +784,8 @@ resourcestring
   lpInvalidNumberFormat = 'Trying to use an incompatible number format.';
   lpNoValidNumberFormatString = 'No valid number format string.';
   lpNoValidDateTimeFormatString = 'No valid date/time format string.';
+  lpNoValidCellAddress = '"%s" is not a valid cell address.';
+  lpNoValidCellRangeAddress = '"%s" is not a valid cell range address.';
   lpIllegalNumberFormat = 'Illegal number format.';
   lpSpecifyNumberOfParams = 'Specify number of parameters for function %s';
   lpIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
@@ -3793,7 +3795,7 @@ var
   flags: TsRelFlags;
 begin
   if not ParseCellString(ACellAddress, r, c, flags) then
-    raise Exception.CreateFmt('"%s" is not a valid cell address.', [ACellAddress]);
+    raise Exception.CreateFmt(lpNoValidCellAddress, [ACellAddress]);
   Result := RPNCellRef(r,c, flags, ANext);
 end;
 
@@ -3826,7 +3828,7 @@ var
   flags: TsRelFlags;
 begin
   if not ParseCellRangeString(ACellRangeAddress, r1,c1, r2,c2, flags) then
-    raise Exception.CreateFmt('"%s" is not a valid cell range address.', [ACellRangeAddress]);
+    raise Exception.CreateFmt(lpNoValidCellRangeAddress, [ACellRangeAddress]);
   Result := RPNCellRange(r1,c1, r2,c2, flags, ANext);
 end;
 

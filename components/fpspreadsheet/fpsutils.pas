@@ -275,7 +275,7 @@ end;
 
 {@@
   Parses strings like A5:C10 into a range selection information.
-  Return also information on relative/absolute cells.
+  Returns in AFlags also information on relative/absolute cells.
 }
 function ParseCellRangeString(const AStr: string;
   var AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
@@ -283,6 +283,7 @@ function ParseCellRangeString(const AStr: string;
 var
   p: Integer;
   s: String;
+  f: TsRelFlags;
 begin
   Result := True;
 
@@ -292,109 +293,93 @@ begin
 
   // Analyze part after the colon
   s := copy(AStr, p+1, Length(AStr));
-  Result := ParseCellString(s, ALastCellRow, ALastCellCol, AFlags);
+  Result := ParseCellString(s, ALastCellRow, ALastCellCol, f);
   if not Result then exit;
-  if (rfRelRow in AFlags) then begin
-    Include(AFlags, rfRelRow2);
-    Exclude(AFlags, rfRelRow);
-  end;
-  if (rfRelCol in AFlags) then begin
-    Include(AFlags, rfRelCol2);
-    Exclude(AFlags, rfRelCol);
-  end;
 
   // Analyze part before the colon
   s := copy(AStr, 1, p-1);
   Result := ParseCellString(s, AFirstCellRow, AFirstCellCol, AFlags);
+
+  // Add flags of 2nd part
+  if rfRelRow in f then Include(AFlags, rfRelRow2);
+  if rfRelCol in f then Include(AFlags, rfRelCol2);
 end;
 
 
 {@@
   Parses a cell string, like 'A1' into zero-based column and row numbers
-
-  The parser is a simple state machine, with the following states:
-
-  0 - Reading Column part 1 (necesserely needs a letter)
-  1 - Reading Column part 2, but could be the first number as well
-  2 - Reading Row
-
+  Note that there can be several letters to address for more than 26 columns.
   'AFlags' indicates relative addresses.
+
+  Example "AMP$200" --> (rel) column 1029 (= 26*26*1 + 26*16 + 26 - 1)
+                        (abs) row = 199 (abs)
 }
-function ParseCellString(const AStr: string; var ACellRow, ACellCol: Integer;
+function ParseCellString(const AStr: String; var ACellRow, ACellCol: Integer;
   var AFlags: TsRelFlags): Boolean;
-var
-  i: Integer;
-  state: Integer;
-  Col, Row: string;
-  lChar: Char;
-  isAbs: Boolean;
-const
-  cLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
-   'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'W', 'X', 'Y', 'Z'];
-  cDigits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-begin
-  // Starting state
-  Result := True;
-  state := 0;
-  Col := '';
-  Row := '';
-  AFlags := [rfRelCol, rfRelRow];
-  isAbs := false;
 
-  // Separates the string into a row and a col
-  for i := 1 to Length(AStr) do
+  function Scan(AStartPos: Integer): Boolean;
+  const
+    LETTERS = ['A'..'Z'];
+    DIGITS  = ['0'..'9'];
+  var
+    i: Integer;
+    isAbs: Boolean;
   begin
-    lChar := AStr[i];
+    Result := false;
 
-    if lChar = '$' then begin
-      if isAbs then
-        exit(false);
-      isAbs := true;
-      continue;
-    end;
-
-    case state of
-
-    0:
-    begin
-      if lChar in cLetters then
-      begin
-        Col := lChar;
-        if isAbs then
-          Exclude(AFlags, rfRelCol);
-        isAbs := false;
-        state := 1;
+    i := AStartPos;
+    // Scan letters
+    while (i <= Length(AStr)) do begin
+      if (UpCase(AStr[i]) in LETTERS) then begin
+        ACellCol := ord(UpCase(AStr[i])) - ord('A') + 1 + ACellCol * 26;
+        inc(i);
       end
-      else Exit(False);
+      else
+      if (AStr[i] in DIGITS) or (AStr[i] = '$') then
+        break
+      else begin
+        ACellCol := 0;
+        exit;      // Only letters or $ allowed
+      end;
     end;
+    if AStartPos = 1 then Include(AFlags, rfRelCol);
 
-    1:
-    begin
-      if lChar in cLetters then
-        Col := Col + lChar
-      else if lChar in cDigits then
-      begin
-        Row := lChar;
-        if isAbs then
-          Exclude(AFlags, rfRelRow);
-        isAbs := false;
-        state := 2;
+    isAbs := (AStr[i] = '$');
+    if isAbs then inc(i);
+
+    // Scan digits
+    while (i <= Length(AStr)) do begin
+      if (AStr[i] in DIGITS) then begin
+        ACellRow := (ord(AStr[i]) - ord('0')) + ACellRow * 10;
+        inc(i);
       end
-      else Exit(False);
+      else begin
+        ACellCol := 0;
+        ACellRow := 0;
+        AFlags := [];
+        exit;
+      end;
     end;
 
-    2:
-    begin
-      if lChar in cDigits then Row := Row + lChar
-      else Exit(False);
-    end;
+    dec(ACellCol);
+    dec(ACellRow);
+    if not isAbs then Include(AFlags, rfRelRow);
 
-    end;
+    Result := true;
   end;
 
-  // Now parses each separetely
-  ParseCellRowString(Row, ACellRow);
-  ParseCellColString(Col, ACellCol);
+begin
+  ACellCol := 0;
+  ACellRow := 0;
+  AFlags := [];
+
+  if AStr = '' then
+    Exit(false);
+
+  if (AStr[1] = '$') then
+    Result := Scan(2)
+  else
+    Result := Scan(1);
 end;
 
 { for compatibility with old version which does not return flags for relative
