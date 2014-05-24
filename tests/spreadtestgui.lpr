@@ -5,7 +5,7 @@ program spreadtestgui;
 uses
   Interfaces, Forms, GuiTestRunner, datetests, stringtests, numberstests,
   manualtests, testsutility, internaltests, formattests, colortests, fonttests,
-  optiontests, numformatparsertests;
+  optiontests, numformatparsertests, formulatests, rpnFormulaUnit;
 
 begin
   Application.Initialize;

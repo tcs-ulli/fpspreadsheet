@@ -78,7 +78,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="12">
+    <Units Count="14">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -139,6 +139,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="numformatparsertests"/>
       </Unit11>
+      <Unit12>
+        <Filename Value="rpnformulaunit.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="rpnFormulaUnit"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="formulatests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="formulatests"/>
+      </Unit13>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
