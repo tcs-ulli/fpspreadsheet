@@ -238,7 +238,7 @@ begin
     fail('Error in test code. Failed to get named worksheet');
 
   ActualNumber:=MyWorkSheet.ReadAsNumber(Row, 0);
-  CheckEquals(abs(SollNumbers[Row]-ActualNumber) < 1E-4, true,'Test value mismatch '
+  CheckEquals(SollNumbers[Row], ActualNumber,'Test value mismatch '
     +'cell '+CellNotation(MyWorkSheet,Row));
 
   // Finalization
