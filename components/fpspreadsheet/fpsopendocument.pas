@@ -58,6 +58,7 @@ type
 
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
   private
+    FDoc : TXMLDocument;
     FDateMode: TDateMode;
     FWorksheet: TsWorksheet;
     // Gets value for the specified attribute. Returns empty string if attribute
@@ -67,6 +68,7 @@ type
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
   protected
     procedure CreateNumFormatList; override;
+    procedure ReadAutomaticStyles;
     { Record writing methods }
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
@@ -122,6 +124,9 @@ type
 
 implementation
 
+uses
+  StrUtils;
+
 const
   { OpenDocument general XML constants }
   XML_HEADER           = '<?xml version="1.0" encoding="utf-8" ?>';
@@ -174,7 +179,7 @@ const
 
 procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
 begin
-  // to be filled later...
+  // there are no built-in number formats which are silently assumed to exist.
 end;
 
 { TsSpreadOpenDocReader }
@@ -234,7 +239,6 @@ var
   FilePath : string;
   UnZip : TUnZipper;
   FileList : TStringList;
-  Doc : TXMLDocument;
   BodyNode, SpreadSheetNode, TableNode, RowNode, CellNode : TDOMNode;
   ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
   RowsCount, ColsCount : integer;
@@ -252,13 +256,15 @@ begin
     FreeAndNil(UnZip);
   end; //try
 
-  Doc:=nil;
+  FDoc := nil;
   try
     //process the xml file
-    ReadXMLFile(Doc,FilePath+'content.xml');
+    ReadXMLFile(FDoc, FilePath+'content.xml');
     DeleteFile(FilePath+'content.xml');
 
-    BodyNode:= Doc.DocumentElement.FindNode('office:body');
+    ReadAutomaticStyles;
+
+    BodyNode := FDoc.DocumentElement.FindNode('office:body');
     if not Assigned(BodyNode) then Exit;
 
     SpreadSheetNode:=BodyNode.FindNode('office:spreadsheet');
@@ -323,7 +329,7 @@ begin
       TableNode:=TableNode.NextSibling;
     end; //while Assigned(TableNode)
   finally
-    Doc.Free;
+    FDoc.Free;
   end;
 end;
 
@@ -465,6 +471,56 @@ begin
     end;
   end;
 end;
+
+procedure TsSpreadOpenDocReader.ReadAutomaticStyles;
+var
+  StylesNode, NumFormatNode, node: TDOMNode;
+  decs: Integer;
+  fmtName: String;
+  grouping: boolean;
+  fmt: String;
+  nf: TsNumberFormat;
+  nex: Integer;
+begin
+  StylesNode := FDoc.DocumentElement.FindNode('office:automatic-styles');
+  if not Assigned(StylesNode) then Exit;
+
+  NumFormatNode := StylesNode.FirstChild;
+  while Assigned(NumFormatNode) do begin
+    if NumFormatNode.NodeName = 'number:number-style' then begin
+      fmtName := GetAttrValue(NumFormatNode, 'style:name');
+      node := NumFormatNode.FindNode('number:number');
+      if node <> nil then begin
+        decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
+        grouping := GetAttrValue(node, 'grouping') = 'true';
+        nf := IfThen(grouping, nfFixedTh, nfFixed);
+        fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+        NumFormatList.AddFormat(fmt, nf, decs);
+      end;
+      node := NumFormatNode.FindNode('number:scientific-number');
+      if node <> nil then begin
+        nf := nfExp;
+        decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
+        nex := StrToInt(GetAttrValue(node, 'number:min-exponent-digits'));
+        fmt := BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
+        fmt := fmt + 'E+' + DupeString('0', nex);
+        NumFormatList.AddFormat(fmt, nf, decs);
+      end;
+    end else
+    if NumFormatNode.NodeName = 'number:percentage-style' then begin
+      fmtName := GetAttrValue(NumFormatNode, 'style:name');
+      node := NumFormatNode.FindNode('number:number');
+      if node <> nil then begin
+        nf := nfPercentage;
+        decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
+        fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+        NumFormatList.AddFormat(fmt, nf, decs);
+      end;
+    end;
+    NumFormatNode := NumFormatNode.NextSibling;
+  end;
+end;
+
 
 { TsSpreadOpenDocWriter }
 
