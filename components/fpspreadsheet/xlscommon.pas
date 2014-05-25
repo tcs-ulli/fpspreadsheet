@@ -325,7 +325,7 @@ const
   ERR_ILLEGAL_REFERENCE                  = $17;  // #REF!
   ERR_WRONG_NAME                         = $1D;  // #NAME?
   ERR_OVERFLOW                           = $24;  // #NUM!
-  ERR_NOT_AVAILABLE                      = $2A;  // #N/A
+  ERR_ARG_ERROR                          = $2A;  // #N/A (not enough, or too many, arguments)
 
 type
   TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
@@ -516,8 +516,8 @@ const
     // Basic operations
     INT_EXCEL_TOKEN_TADD,           {fekAdd, +}
     INT_EXCEL_TOKEN_TSUB,           {fekSub, -}
-    INT_EXCEL_TOKEN_TDIV,           {fekDiv, /}
     INT_EXCEL_TOKEN_TMUL,           {fekMul, *}
+    INT_EXCEL_TOKEN_TDIV,           {fekDiv, /}
     INT_EXCEL_TOKEN_TPERCENT,       {fekPercent, %}
     INT_EXCEL_TOKEN_TPOWER,         {fekPower, ^}
     INT_EXCEL_TOKEN_TUMINUS,        {fekUMinus, -}
@@ -1051,10 +1051,8 @@ var
   ARow, ACol: Cardinal;
   XF: WORD;
   ResultFormula: Double;
-  RPNFormula: TsRPNFormula;
-  Data: array [0..7] of BYTE;
+  Data: array [0..7] of byte;
   Flags: WORD;
-//  FormulaSize: BYTE;
   i: Integer;
   dt: TDateTime;
   nf: TsNumberFormat;
@@ -1062,7 +1060,7 @@ var
   ncs: String;
   nfs: String;
   resultStr: String;
-  err: TErrorValue;
+  err: TsErrorValue;
   ok: Boolean;
   cell: PCell;
 
@@ -1072,7 +1070,7 @@ begin
   { Index to XF Record }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
-  { Result of the formula in IEE 754 floating-point value }
+  { Result of the formula result in IEEE 754 floating-point value }
   AStream.ReadBuffer(Data, Sizeof(Data));
 
   { Options flags }
@@ -1080,20 +1078,6 @@ begin
 
   { Not used }
   AStream.ReadDWord;
-
-  { Formula size }
-     (*
-  FormulaSize := WordLEtoN(AStream.ReadWord);
-
-  { Formula data, output as debug info }
-{  Write('Formula Element: ');
-  for i := 1 to FormulaSize do
-    Write(IntToHex(AStream.ReadByte, 2) + ' ');
-  WriteLn('');}
-
-  //RPN data not used by now
-  AStream.Position := AStream.Position + FormulaSize;
-       *)
 
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
@@ -1112,7 +1096,7 @@ begin
              ERR_ILLEGAL_REFERENCE    : err := errIllegalRef;
              ERR_WRONG_NAME           : err := errWrongName;
              ERR_OVERFLOW             : err := errOverflow;
-             ERR_NOT_AVAILABLE        : err := errArgNotAvail;
+             ERR_ARG_ERROR            : err := errArgError;
            end;
            FWorksheet.WriteErrorValue(ARow, ACol, err);
          end;

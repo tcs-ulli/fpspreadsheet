@@ -62,6 +62,8 @@ function GetColString(AColIndex: Integer): String;
 function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags): String;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;
 
+function GetErrorValueStr(AErrorValue: TsErrorValue): String;
+
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 function TwipsToMillimeters(AValue: Integer): Single;
@@ -431,19 +433,20 @@ begin
   Result := Char(AValue + ord('A'));
 end;
 
+{ Calculates an Excel column name ('A', 'B' etc) from the zero-based column index }
 function GetColString(AColIndex: Integer): String;
+{ Code adapted from: http://stackoverflow.com/questions/12796973/vba-function-to-convert-column-number-to-letter }
+var
+  n: Integer;
+  c: byte;
 begin
-  if AColIndex < 26 then
-    Result := Letter(AColIndex)
-  else
-  if AColIndex < 26*26 then
-    Result := Letter(AColIndex div 26) + Letter(AColIndex mod 26)
-  else
-  if AColIndex < 26*26*26 then
-    Result := Letter(AColIndex div (26*26)) + Letter((AColIndex mod (26*26)) div 26)
-      + Letter(AColIndex mod (26*26*26))
-  else
-    Result := 'too big';
+  Result := '';
+  n := AColIndex + 1;
+  while (n > 0) do begin
+    c := (n - 1) mod 26;
+    Result := char(c + ord('A')) + Result;
+    n := (n - c) div 26;
+  end;
 end;
 
 const
@@ -468,6 +471,24 @@ begin
 //  Result := GetCellString(ARow1, ACol1, AFlags) + ':' + GetCellString(ARow2, ACol2, [rfRelRow2, rfRelCol2]);
 end;
 
+
+{ Returns the message text assigned to an error value }
+function GetErrorValueStr(AErrorValue: TsErrorValue): String;
+begin
+  case AErrorValue of
+    errOK                   : Result := '';
+    errEmptyIntersection    : Result := '#NULL!';
+    errDivideByZero         : Result := '#DIV/0!';
+    errWrongType            : Result := '#VALUE!';
+    errIllegalRef           : Result := '#REF!';
+    errWrongName            : Result := '#NAME?';
+    errOverflow             : Result := '#NUM!';
+    errArgError             : Result := '#N/A';
+    // --- no Excel errors --
+    errFormulaNotSupported  : Result := '#FORMULA?';
+    else                      Result := '#UNKNOWN ERROR';
+  end;
+end;
 
 {In XML files some chars must be translated}
 function UTF8TextToXMLText(AText: ansistring): ansistring;

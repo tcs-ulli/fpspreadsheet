@@ -75,7 +75,7 @@ type
     fekCell, fekCellRef, fekCellRange, fekNum, fekInteger, fekString, fekBool,
     fekErr, fekMissingArg,
     { Basic operations }
-    fekAdd, fekSub, fekDiv, fekMul, fekPercent, fekPower, fekUMinus, fekUPlus,
+    fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
     fekConcat,  // string concatenation
     fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual, fekNotEqual,
     fekParen,
@@ -141,14 +141,15 @@ type
     cctUTF8String, cctDateTime, cctBool, cctError);
 
   {@@ Error code values }
-  TErrorValue = (
+  TsErrorValue = (
+    errOK,                 // no error
     errEmptyIntersection,  // #NULL!
     errDivideByZero,       // #DIV/0!
     errWrongType,          // #VALUE!
     errIllegalRef,         // #REF!
     errWrongName,          // #NAME?
     errOverflow,           // #NUM!
-    errArgNotAvail,        // #N/A
+    errArgError,           // #N/A
     // --- no Excel errors --
     errFormulaNotSupported
   );
@@ -314,7 +315,7 @@ type
     UTF8StringValue: ansistring;
     DateTimeValue: TDateTime;
     BoolValue: Boolean;
-    StatusValue: Byte;
+    ErrorValue: TsErrorValue;
     { Formatting fields }
     { When adding/deleting formatting fields don't forget to update CopyFormat! }
     UsedFormattingFields: TsUsedFormattingFields;
@@ -419,8 +420,8 @@ type
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
     procedure WriteDateTime(ACell: PCell; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
-    procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue); overload;
-    procedure WriteErrorValue(ACell: PCell; AValue: TErrorValue); overload;
+    procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue); overload;
+    procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
@@ -797,7 +798,7 @@ resourcestring
   lpErrIllegalRef = '#REF!';
   lpErrWrongName = '#NAME?';
   lpErrOverflow = '#NUM!';
-  lpErrArgNotAvail = '#N/A';
+  lpErrArgError = '#N/A';
   lpErrFormulaNotSupported = '<FORMULA?>';
 
 var
@@ -879,8 +880,8 @@ const
   { Basic operations }
     (Symbol:'+';         MinParams:2; MaxParams:2),   // fekAdd
     (Symbol:'-';         MinParams:2; MaxParams:2),   // fekSub
-    (Symbol:'*';         MinParams:2; MaxParams:2),   // fekDiv
-    (Symbol:'/';         MinParams:2; MaxParams:2),   // fekMul
+    (Symbol:'*';         MinParams:2; MaxParams:2),   // fekMul
+    (Symbol:'/';         MinParams:2; MaxParams:2),   // fekDiv
     (Symbol:'%';         MinParams:1; MaxParams:1),   // fekPercent
     (Symbol:'^';         MinParams:2; MaxParams:2),   // fekPower
     (Symbol:'-';         MinParams:1; MaxParams:1),   // fekUMinus
@@ -1488,14 +1489,14 @@ begin
       cctBool:
         Result := IfThen(BoolValue, lpTRUE, lpFALSE);
       cctError:
-        case TErrorValue(StatusValue and $0F) of
+        case TsErrorValue(ErrorValue) of
           errEmptyIntersection  : Result := lpErrEmptyIntersection;
           errDivideByZero       : Result := lpErrDivideByZero;
           errWrongType          : Result := lpErrWrongType;
           errIllegalRef         : Result := lpErrIllegalRef;
           errWrongName          : Result := lpErrWrongName;
           errOverflow           : Result := lpErrOverflow;
-          errArgNotAvail        : Result := lpErrArgNotAvail;
+          errArgError           : Result := lpErrArgError;
           errFormulaNotSupported: Result := lpErrFormulaNotSupported;
         end;
       else
@@ -1548,6 +1549,7 @@ end;
 
 function TsWorksheet.ReadRPNFormulaAsString(ACell: PCell): String;
 var
+  fs: TFormatSettings;
   formula: TsRPNFormula;
   elem: TsFormulaElement;
   i, j: Integer;
@@ -1555,18 +1557,12 @@ var
   s: String;
   ptr: Pointer;
   fek: TFEKind;
-
-  procedure Store(s: String);
-  begin
-    L.Clear;
-    L.Add(s);
-  end;
-
 begin
   Result := '';
   if ACell = nil then
     exit;
 
+  fs := Workbook.FormatSettings;
   L := TStringList.Create;
   try
     for i:=0 to Length(ACell^.RPNFormulaValue)-1 do begin
@@ -1574,42 +1570,21 @@ begin
       ptr := Pointer(elem.ElementKind);
       case elem.ElementKind of
         fekNum:
-          L.AddObject(Format('%g', [elem.DoubleValue]), ptr);
+          L.AddObject(Format('%g', [elem.DoubleValue], fs), ptr);
         fekInteger:
           L.AddObject(IntToStr(elem.IntValue), ptr);
         fekString:
           L.AddObject('"' + elem.StringValue + '"', ptr);
         fekBool:
-          L.AddObject(IfThen(elem.DoubleValue=0, 'TRUE', 'FALSE'), ptr);
+          L.AddObject(IfThen(boolean(elem.IntValue), 'FALSE', 'TRUE'), ptr);
         fekCell,
         fekCellRef:
           L.AddObject(GetCellString(elem.Row, elem.Col, elem.RelFlags), ptr);
         fekCellRange:
           L.AddObject(GetCellRangeString(elem.Row, elem.Col, elem.Row2, elem.Col2, elem.RelFlags), ptr);
         // Operations:
-        fekAdd         : L.AddObject('+', ptr);
-        fekSub         : L.AddObject('-', ptr);
-        fekMul         : L.AddObject('*', ptr);
-        fekDiv         : L.AddObject('/', ptr);
-        fekPower       : L.AddObject('^', ptr);
-        fekConcat      : L.AddObject('&', ptr);
-        fekParen       : L.AddObject('', ptr);
-        fekEqual       : L.AddObject('=', ptr);
-        fekNotEqual    : L.AddObject('<>', ptr);
-        fekLess        : L.AddObject('<', ptr);
-        fekLessEqual   : L.AddObject('<=', ptr);
-        fekGreater     : L.AddObject('>', ptr);
-        fekGreaterEqual: L.AddObject('>=', ptr);
-        fekPercent     : L.AddObject('%', ptr);
-        fekUPlus       : L.AddObject('+', ptr);
-        fekUMinus      : L.AddObject('-', ptr);
-        fekCellInfo    : L.AddObject('CELL', ptr);         // That's the function name!
         else
-          begin
-            s := GetEnumName(TypeInfo(TFEKind), integer(elem.ElementKind));
-            Delete(s, 1, 3);
-            L.AddObject(s, ptr);
-          end;
+          L.AddObject(FEProps[elem.ElementKind].Symbol, ptr);
       end;
     end;
 
@@ -1619,39 +1594,56 @@ begin
       case fek of
         fekAdd, fekSub, fekMul, fekDiv, fekPower, fekConcat,
         fekEqual, fekNotEqual, fekLess, fekLessEqual, fekGreater, fekGreaterEqual:
-          begin
+          if i+2 < L.Count then begin
             L.Strings[i] := Format('%s%s%s', [L[i+2], L[i], L[i+1]]);
-            L.Objects[i] := pointer(fekString);
             L.Delete(i+2);
             L.Delete(i+1);
+            L.Objects[i] := pointer(fekString);
+          end else begin
+            Result := '=' + lpErrArgError;
+            exit;
           end;
         fekUPlus, fekUMinus:
-          begin
+          if i+1 < L.Count then begin
             L.Strings[i] := L[i]+L[i+1];
-            L.Objects[i] := Pointer(fekString);
             L.Delete(i+1);
+            L.Objects[i] := Pointer(fekString);
+          end else begin
+            Result := '=' + lpErrArgError;
+            exit;
           end;
         fekPercent:
-          begin
+          if i+1 < L.Count then begin
             L.Strings[i] := L[i+1]+L[i];
-            L.Objects[i] := Pointer(fekString);
             L.Delete(i+1);
+            L.Objects[i] := Pointer(fekString);
+          end else begin
+            Result := '=' + lpErrArgError;
+            exit;
           end;
         fekParen:
-          begin
+          if i+1 < L.Count then begin
             L.Strings[i] := Format('(%s)', [L[i+1]]);
-            L.Objects[i] := pointer(fekString);
             L.Delete(i+1);
+            L.Objects[i] := pointer(fekString);
+          end else begin
+            Result := '=' + lpErrArgError;
+            exit;
           end;
         else
           if fek >= fekAdd then begin
             elem := ACell^.RPNFormulaValue[i];
             s := '';
             for j:= i+elem.ParamsNum downto i+1 do begin
-              s := s + ',' + L[j];
-              L.Delete(j);
+              if j < L.Count then begin
+                s := s + fs.ListSeparator + ' ' + L[j];
+                L.Delete(j);
+              end else begin
+                Result := '=' + lpErrArgError;
+                exit;
+              end;
             end;
-            Delete(s, 1, 1);
+            Delete(s, 1, 2);
             L.Strings[i] := Format('%s(%s)', [L[i], s]);
             L.Objects[i] := pointer(fekString);
           end;
@@ -1659,7 +1651,10 @@ begin
       dec(i);
     end;
 
-    Result := '=' + L[0];
+    if L.Count > 1 then
+      Result := '=' + lpErrArgError  // too many arguments
+    else
+      Result := '=' + L[0];
 
   finally
     L.Free;
@@ -1920,16 +1915,16 @@ end;
   @param  ACol       The column of the cell
   @param  AValue     The error code value
 }
-procedure TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TErrorValue);
+procedure TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue);
 begin
   WriteErrorValue(GetCell(ARow, ACol), AValue);
 end;
 
-procedure TsWorksheet.WriteErrorValue(ACell: PCell; AValue: TErrorValue);
+procedure TsWorksheet.WriteErrorValue(ACell: PCell; AValue: TsErrorValue);
 begin
   if ACell <> nil then begin
     ACell^.ContentType := cctError;
-    ACell^.StatusValue := (ACell^.StatusValue and $F0) or ord(AValue);
+    ACell^.ErrorValue := AValue;
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
@@ -3927,7 +3922,6 @@ begin
     raise Exception.CreateFmt(lpSpecifyNumberOfParams, [FEProps[AToken].Symbol]);
 
   Result := RPNFunc(AToken, FEProps[AToken].MinParams, ANext);
-  Result^.Next := ANext;
 end;
 
 {@@
