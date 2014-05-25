@@ -129,7 +129,7 @@
         <EditorIndex Value="1"/>
         <WindowIndex Value="0"/>
         <TopLine Value="511"/>
-        <CursorPos X="27" Y="526"/>
+        <CursorPos X="21" Y="524"/>
         <UsageCount Value="200"/>
         <Loaded Value="True"/>
         <LoadedDesigner Value="True"/>
@@ -137,10 +137,11 @@
       <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="5"/>
         <WindowIndex Value="0"/>
         <TopLine Value="523"/>
-        <CursorPos X="40" Y="533"/>
+        <CursorPos X="22" Y="533"/>
         <UsageCount Value="100"/>
         <Bookmarks Count="1">
           <Item0 X="68" Y="3716" ID="1"/>
@@ -231,11 +232,10 @@
       <Unit13>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
         <WindowIndex Value="0"/>
         <TopLine Value="279"/>
-        <CursorPos X="52" Y="316"/>
+        <CursorPos X="38" Y="292"/>
         <UsageCount Value="69"/>
         <Loaded Value="True"/>
       </Unit13>

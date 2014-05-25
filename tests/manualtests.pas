@@ -212,7 +212,7 @@ begin
     Workbook := TsWorkbook.Create;
 
   Worksheet := Workbook.AddWorksheet(RPNSHEETNAME);
-  WriteRPNFormulaSamples(Worksheet, OUTPUT_FORMAT);
+  WriteRPNFormulaSamples(Worksheet, OUTPUT_FORMAT, false);
 end;
 {$ENDIF}
 

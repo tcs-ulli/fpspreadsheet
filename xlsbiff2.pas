@@ -521,8 +521,76 @@ begin
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFormula(AStream: TStream);
+var
+  ARow, ACol: Cardinal;
+  XF: Word;
+  ok: Boolean;
+  formulaResult: Double;
+//  rpnFormula: TsRPNFormula;
+  Data: array [0..7] of byte;
+  dt: TDateTime;
+  nf: TsNumberFormat;
+  nd: Byte;
+  ncs: String;
+  nfs: String;
+  err: TsErrorValue;
+  cell: PCell;
 begin
+  { BIFF Record row/column/style }
+  ReadRowColXF(AStream, ARow, ACol, XF);
 
+  { Result of the formula result in IEEE 754 floating-point value }
+  AStream.ReadBuffer(Data, Sizeof(Data));
+
+  { Recalculation byte - currently not used }
+  AStream.ReadByte;
+
+  // Now determine the type of the formula result
+  if (Data[6] = $FF) and (Data[7] = $FF) then
+    case Data[0] of
+      0: // String -> Value is found in next record (STRING)
+         FIncompleteCell := FWorksheet.GetCell(ARow, ACol);
+      1: // Boolean value
+         FWorksheet.WriteBoolValue(ARow, ACol, Data[2] = 1);
+      2: begin  // Error value
+           case Data[2] of
+             ERR_INTERSECTION_EMPTY   : err := errEmptyIntersection;
+             ERR_DIVIDE_BY_ZERO       : err := errDivideByZero;
+             ERR_WRONG_TYPE_OF_OPERAND: err := errWrongType;
+             ERR_ILLEGAL_REFERENCE    : err := errIllegalRef;
+             ERR_WRONG_NAME           : err := errWrongName;
+             ERR_OVERFLOW             : err := errOverflow;
+             ERR_ARG_ERROR            : err := errArgError;
+           end;
+           FWorksheet.WriteErrorValue(ARow, ACol, err);
+         end;
+      3: // Empty cell
+         FWorksheet.WriteBlank(ARow, ACol);
+    end
+  else begin
+    if SizeOf(Double) <> 8 then
+      raise Exception.Create('Double is not 8 bytes');
+
+    // Result is a number or a date/time
+    Move(Data[0], formulaResult, SizeOf(Data));
+
+    {Find out what cell type, set content type and value}
+    ExtractNumberFormat(XF, nf, nd, ncs, nfs);
+    if IsDateTime(formulaResult, nf, dt) then
+      FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
+    else
+      FWorksheet.WriteNumber(ARow, ACol, formulaResult, nf, nd, ncs);
+  end;
+
+  { Formula token array }
+  if FWorkbook.ReadFormulas then begin
+    cell := FWorksheet.FindCell(ARow, ACol);
+    ok := ReadRPNTokenArray(AStream, cell^.RPNFormulaValue);
+    if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
+  end;
+
+  { Apply formatting to cell }
+  ApplyCellFormatting(ARow, ACol, XF);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);

@@ -26,6 +26,10 @@ type
   published
     // Writes out numbers & reads back.
     // If previous read tests are ok, this effectively tests writing.
+    { BIFF2 Tests }
+    procedure TestWriteReadBIFF2_FormulaStrings;
+    { BIFF5 Tests }
+    procedure TestWriteReadBIFF5_FormulaStrings;
     { BIFF8 Tests }
     procedure TestWriteReadBIFF8_FormulaStrings;
   end;
@@ -33,7 +37,7 @@ type
 implementation
 
 uses
-  rpnFormulaUnit;
+  fpsUtils, rpnFormulaUnit;
 
 { TSpreadWriteReadFormatTests }
 
@@ -59,21 +63,28 @@ var
   expected: String;
   actual: String;
   cell: PCell;
+  fs: TFormatSettings;
 begin
   TempFile := GetTempFileName;
 
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
+//  MyWorkbook.FormatSettings.DecimalSeparator := '.';
+//  MyWorkbook.FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
   MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
 
   // Write out all test formulas
   // All formulas are in column B
-  WriteRPNFormulaSamples(MyWorksheet, AFormat);
+  WriteRPNFormulaSamples(MyWorksheet, AFormat, true);
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.ReadFormulas := true;
+//  MyWorkbook.FormatSettings.DecimalSeparator := '.';
+//  MyWorkbook.FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
+
   MyWorkbook.ReadFromFile(TempFile, AFormat);
   if AFormat = sfExcel2 then
     MyWorksheet := MyWorkbook.GetFirstWorksheet
@@ -86,7 +97,7 @@ begin
     if (cell <> nil) and (Length(cell^.RPNFormulaValue) > 0) then begin
       actual := MyWorksheet.ReadRPNFormulaAsString(cell);
       expected := MyWorksheet.ReadAsUTF8Text(Row, 0);
-      CheckEquals(actual, expected, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,Col));
+      CheckEquals(expected, actual, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
     end;
   end;
 
@@ -95,11 +106,20 @@ begin
   DeleteFile(TempFile);
 end;
 
+procedure TSpreadWriteReadFormulaTests.TestWriteReadBIFF2_FormulaStrings;
+begin
+  TestWriteReadFormulaStrings(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.TestWriteReadBIFF5_FormulaStrings;
+begin
+  TestWriteReadFormulaStrings(sfExcel5);
+end;
+
 procedure TSpreadWriteReadFormulaTests.TestWriteReadBIFF8_FormulaStrings;
 begin
   TestWriteReadFormulaStrings(sfExcel8);
 end;
-
 
 initialization
   // Register so these tests are included in a full run
