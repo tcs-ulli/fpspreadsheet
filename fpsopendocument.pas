@@ -68,7 +68,7 @@ type
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
   protected
     procedure CreateNumFormatList; override;
-    procedure ReadAutomaticStyles;
+    procedure ReadNumFormats(AStylesNode: TDOMNode);
     { Record writing methods }
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
@@ -240,6 +240,7 @@ var
   UnZip : TUnZipper;
   FileList : TStringList;
   BodyNode, SpreadSheetNode, TableNode, RowNode, CellNode : TDOMNode;
+  StylesNode: TDOMNode;
   ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
   RowsCount, ColsCount : integer;
 begin
@@ -248,6 +249,7 @@ begin
   UnZip:=TUnZipper.Create;
   UnZip.OutputPath:=FilePath;
   FileList:=TStringList.Create;
+  FileList.Add('styles.xml');
   FileList.Add('content.xml');
   try
     Unzip.UnZipFiles(AFileName,FileList);
@@ -258,11 +260,21 @@ begin
 
   FDoc := nil;
   try
-    //process the xml file
+    // process the styles.xml file
+    ReadXMLFile(FDoc, FilePath+'styles.xml');
+    DeleteFile(FilePath+'styles.xml');
+
+    StylesNode := FDoc.DocumentElement.FindNode('office:styles');
+    ReadNumFormats(StylesNode);
+
+ //   FDoc.Free;
+
+    //process the content.xml file
     ReadXMLFile(FDoc, FilePath+'content.xml');
     DeleteFile(FilePath+'content.xml');
 
-    ReadAutomaticStyles;
+    StylesNode := FDoc.DocumentElement.FindNode('office:automatic-styles');
+    ReadNumFormats(StylesNode);
 
     BodyNode := FDoc.DocumentElement.FindNode('office:body');
     if not Assigned(BodyNode) then Exit;
@@ -472,30 +484,36 @@ begin
   end;
 end;
 
-procedure TsSpreadOpenDocReader.ReadAutomaticStyles;
+procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 var
-  StylesNode, NumFormatNode, node: TDOMNode;
+  NumFormatNode, node: TDOMNode;
   decs: Integer;
   fmtName: String;
   grouping: boolean;
   fmt: String;
   nf: TsNumberFormat;
   nex: Integer;
+  s: String;
 begin
-  StylesNode := FDoc.DocumentElement.FindNode('office:automatic-styles');
-  if not Assigned(StylesNode) then Exit;
+  if not Assigned(AStylesNode) then
+    exit;
 
-  NumFormatNode := StylesNode.FirstChild;
+  NumFormatNode := AStylesNode.FirstChild;
   while Assigned(NumFormatNode) do begin
     if NumFormatNode.NodeName = 'number:number-style' then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       node := NumFormatNode.FindNode('number:number');
       if node <> nil then begin
-        decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
-        grouping := GetAttrValue(node, 'grouping') = 'true';
-        nf := IfThen(grouping, nfFixedTh, nfFixed);
+        s := GetAttrValue(node, 'number:decimal-places');
+        if s = '' then
+          nf := nfGeneral
+        else begin
+          decs := StrToInt(s);
+          grouping := GetAttrValue(node, 'grouping') = 'true';
+          nf := IfThen(grouping, nfFixedTh, nfFixed);
+        end;
         fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
-        NumFormatList.AddFormat(fmt, nf, decs);
+        NumFormatList.AddFormat(fmtName, fmt, nf, decs);
       end;
       node := NumFormatNode.FindNode('number:scientific-number');
       if node <> nil then begin
@@ -504,7 +522,7 @@ begin
         nex := StrToInt(GetAttrValue(node, 'number:min-exponent-digits'));
         fmt := BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
         fmt := fmt + 'E+' + DupeString('0', nex);
-        NumFormatList.AddFormat(fmt, nf, decs);
+        NumFormatList.AddFormat(fmtName, fmt, nf, decs);
       end;
     end else
     if NumFormatNode.NodeName = 'number:percentage-style' then begin
@@ -514,7 +532,7 @@ begin
         nf := nfPercentage;
         decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
         fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
-        NumFormatList.AddFormat(fmt, nf, decs);
+        NumFormatList.AddFormat(fmtName, fmt, nf, decs);
       end;
     end;
     NumFormatNode := NumFormatNode.NextSibling;
