@@ -481,13 +481,14 @@ var
   fmt: String;
   nf: TsNumberFormat;
   nex: Integer;
-  s: String;
+  s, s1, s2: String;
 begin
   if not Assigned(AStylesNode) then
     exit;
 
   NumFormatNode := AStylesNode.FirstChild;
   while Assigned(NumFormatNode) do begin
+    // Numbers (nfFixed, nfFixedTh, nfExp)
     if NumFormatNode.NodeName = 'number:number-style' then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       node := NumFormatNode.FindNode('number:number');
@@ -513,6 +514,7 @@ begin
         NumFormatList.AddFormat(fmtName, fmt, nf, decs);
       end;
     end else
+    // Percentage
     if NumFormatNode.NodeName = 'number:percentage-style' then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       node := NumFormatNode.FindNode('number:number');
@@ -522,6 +524,73 @@ begin
         fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
         NumFormatList.AddFormat(fmtName, fmt, nf, decs);
       end;
+    end else
+    // Date/Time
+    if (NumFormatNode.NodeName = 'number:date-style') or
+       (NumFormatNode.NodeName = 'number:time-style')
+    then begin
+      fmtName := GetAttrValue(NumFormatNode, 'style:name');
+      fmt := '';
+      node := NumFormatNode.FirstChild;
+      while Assigned(node) do begin
+        if node.NodeName = 'number:year' then begin
+          s := GetAttrValue(node, 'number:style');
+          if s = 'long' then fmt := fmt + 'yyyy'
+          else if s = '' then fmt := fmt + 'yy';
+        end else
+        if node.NodeName = 'number:month' then begin
+          s := GetAttrValue(node, 'number:style');
+          s1 := GetAttrValue(node, 'number:textual');
+          if (s = 'long') and (s1 = 'text') then fmt := fmt + 'mmmm'
+          else if (s = '') and (s1 = 'text') then fmt := fmt + 'mmm'
+          else if (s = 'long') and (s1 = '') then fmt := fmt + 'mm'
+          else if (s = '') and (s1 = '') then fmt := fmt + 'm';
+        end else
+        if node.NodeName = 'number:day' then begin
+          s := GetAttrValue(node, 'number:style');
+          s1 := GetAttrValue(node, 'number:textual');
+          if (s='long') and (s1 = 'text') then fmt := fmt + 'dddd'
+          else if (s='') and (s1 = 'text') then fmt := fmt + 'ddd'
+          else if (s='long') and (s1 = '') then fmt := fmt + 'dd'
+          else if (s='') and (s1='') then fmt := Fmt + 'd';
+        end else
+        if node.NodeName = 'number:day-of-week' then
+          fmt := fmt + 'ddddd'
+        else
+        if node.NodeName = 'number:hours' then begin
+          s := GetAttrValue(node, 'number:style');
+          s1 := GetAttrValue(node, 'number:truncate-on-overflow');
+          if (s='long') and (s1='false') then fmt := fmt + '[hh]'
+          else if (s='long') and (s1='') then fmt := fmt + 'hh'
+          else if (s='') and (s1='false') then fmt := fmt + '[h]'
+          else if (s='') and (s1='') then fmt := fmt + 'h';
+        end else
+        if node.NodeName = 'number:minutes' then begin
+          s := GetAttrValue(node, 'number:style');
+          s1 := GetAttrValue(node, 'number:truncate-on-overflow');
+          if (s='long') and (s1='false') then fmt := fmt + '[nn]'
+          else if (s='long') and (s1='') then fmt := fmt + 'nn'
+          else if (s='') and (s1='false') then fmt := fmt + '[n]'
+          else if (s='') and (s1='') then fmt := fmt + 'n';
+        end else
+        if node.NodeName = 'number:seconds' then begin
+          s := GetAttrValue(node, 'number:style');
+          s1 := GetAttrValue(node, 'number:truncate-on-overflow');
+          s2 := GetAttrValue(node, 'number:decimal-places');
+          if (s='long') and (s1='false') then fmt := fmt + '[ss]'
+          else if (s='long') and (s1='') then fmt := fmt + 'ss'
+          else if (s='') and (s1='false') then fmt := fmt + '[s]'
+          else if (s='') and (s1='') then fmt := fmt + 's';
+          if (s2 <> '') and (s2 <> '0') then fmt := fmt + '.' + DupeString('0', StrToInt(s2));
+        end else
+        if node.NodeName = 'number:am-pm' then
+          fmt := fmt + 'AM/PM'
+        else
+        if node.NodeName = 'number:text' then
+          fmt := fmt + node.TextContent;
+        node := node.NextSibling;
+      end;
+      NumFormatList.AddFormat(fmtName, fmt, nfFmtDateTime);
     end;
     NumFormatNode := NumFormatNode.NextSibling;
   end;
