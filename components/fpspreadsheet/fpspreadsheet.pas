@@ -568,6 +568,7 @@ type
   TsNumFormatData = class
   public
     Index: Integer;
+    Name: String;
     NumFormat: TsNumberFormat;
     Decimals: Byte;
     CurrencySymbol: String;
@@ -590,7 +591,13 @@ type
     constructor Create(AWorkbook: TsWorkbook);
     destructor Destroy; override;
     function AddFormat(AFormatCell: PCell): Integer; overload;
+    function AddFormat(AFormatIndex: Integer; AFormatName, AFormatString: String;
+      ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
+      ACurrencySymbol: String = ''): Integer; overload;
     function AddFormat(AFormatIndex: Integer; AFormatString: String;
+      ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
+      ACurrencySymbol: String = ''): Integer; overload;
+    function AddFormat(AFormatName, AFormatString: String;
       ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
       ACurrencySymbol: String = ''): Integer; overload;
     function AddFormat(AFormatString: String; ANumFormat: TsNumberFormat;
@@ -2952,22 +2959,22 @@ begin
 end;
 
 { Adds a new number format data to the list and returns the list index of the
-  new (or present) item. }
+  new item. }
 function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
-  AFormatString: String; ANumFormat: TsNumberFormat; ADecimals: byte = 0;
-  ACurrencySymbol: String = ''): integer;
+  AFormatName, AFormatString: String; ANumFormat: TsNumberFormat;
+  ADecimals: Byte = 0; ACurrencySymbol: String = ''): Integer;
 var
   item: TsNumFormatData;
 begin
   item := TsNumFormatData.Create;
   item.Index := AFormatIndex;
+  item.Name := AFormatName;
   item.NumFormat := ANumFormat;
   if AFormatString = '' then begin
     if IsDateTimeFormat(ANumFormat) then
       AFormatString := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings,
         AFormatString)
     else
-    if item.NumFormat <> nfCustom then
       AFormatString := BuildNumberFormatString(ANumFormat, Workbook.FormatSettings,
         ADecimals, ACurrencySymbol);
   end;
@@ -2977,7 +2984,14 @@ begin
   Result := inherited Add(item);
 end;
 
-function TsCustomNumFormatList.AddFormat(AFormatString: String;
+function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
+  AFormatString: String; ANumFormat: TsNumberFormat; ADecimals: byte = 0;
+  ACurrencySymbol: String = ''): integer;
+begin
+  Result := AddFormat(AFormatIndex, '', AFormatString, ANumFormat, ADecimals, ACurrencySymbol);
+end;
+
+function TsCustomNumFormatList.AddFormat(AFormatName, AFormatString: String;
   ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
   ACurrencySymbol: String = ''): Integer;
 begin
@@ -2985,9 +2999,16 @@ begin
     Result := 0;
     exit;
   end;
-  Result := AddFormat(FNextFormatIndex, AFormatString, ANumFormat, ADecimals,
-    ACurrencySymbol);
+  Result := AddFormat(FNextFormatIndex, '', AFormatString, ANumFormat,
+    ADecimals, ACurrencySymbol);
   inc(FNextFormatIndex);
+end;
+
+function TsCustomNumFormatList.AddFormat(AFormatString: String;
+  ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
+  ACurrencySymbol: String = ''): Integer;
+begin
+  Result := AddFormat('', AFormatString, ANumFormat, ADecimals, ACurrencySymbol);
 end;
 
 function TsCustomNumFormatList.AddFormat(AFormatCell: PCell): Integer;
