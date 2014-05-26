@@ -2427,8 +2427,8 @@ begin
     end;
   end else
   if FWorksheet <> nil then begin
-    ColCount := FWorksheet.GetLastColNumber + 1 + FHeaderCount;
-    RowCount := FWorksheet.GetLastRowNumber + 1 + FHeaderCount;
+    ColCount := FWorksheet.GetLastColIndex + 1 + FHeaderCount;
+    RowCount := FWorksheet.GetLastRowIndex + 1 + FHeaderCount;
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin

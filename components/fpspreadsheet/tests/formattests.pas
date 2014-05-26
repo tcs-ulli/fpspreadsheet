@@ -445,7 +445,7 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, AlignmentSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowNumber do
+  for row := 0 to MyWorksheet.GetLastRowIndex do
     if AFormat = sfExcel2 then begin
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
@@ -454,7 +454,7 @@ begin
       CheckEquals(horAlign = MyCell^.HorAlignment, true,
         'Test saved horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
     end else
-      for col := 0 to MyWorksheet.GetLastColNumber do begin
+      for col := 0 to MyWorksheet.GetLastColIndex do begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
@@ -525,7 +525,7 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for col := 0 to MyWorksheet.GetLastColNumber do begin
+  for col := 0 to MyWorksheet.GetLastColIndex do begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell');
@@ -820,7 +820,7 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, TextRotationSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowNumber do begin
+  for row := 0 to MyWorksheet.GetLastRowIndex do begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell');

@@ -259,8 +259,8 @@ begin
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   counter := 0;
-  for row := 0 to MyWorksheet.GetLastRowNumber do
-    for col := 0 to MyWorksheet.GetLastColNumber do begin
+  for row := 0 to MyWorksheet.GetLastRowIndex do
+    for col := 0 to MyWorksheet.GetLastColIndex do begin
       if (AFormat = sfExcel2) and (counter = 4) then
         break;  // Excel 2 allows only 4 fonts
       MyCell := MyWorksheet.FindCell(row, col);
