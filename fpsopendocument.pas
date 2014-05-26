@@ -58,7 +58,6 @@ type
 
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
   private
-    FDoc : TXMLDocument;
     FDateMode: TDateMode;
     FWorksheet: TsWorksheet;
     // Gets value for the specified attribute. Returns empty string if attribute
@@ -235,6 +234,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
 var
+  Doc : TXMLDocument;
   Col, Row : integer;
   FilePath : string;
   UnZip : TUnZipper;
@@ -258,90 +258,77 @@ begin
     FreeAndNil(UnZip);
   end; //try
 
-  FDoc := nil;
+  Doc := nil;
   try
     // process the styles.xml file
-    ReadXMLFile(FDoc, FilePath+'styles.xml');
+    ReadXMLFile(Doc, FilePath+'styles.xml');
     DeleteFile(FilePath+'styles.xml');
 
-    StylesNode := FDoc.DocumentElement.FindNode('office:styles');
+    StylesNode := Doc.DocumentElement.FindNode('office:styles');
     ReadNumFormats(StylesNode);
-
- //   FDoc.Free;
 
     //process the content.xml file
-    ReadXMLFile(FDoc, FilePath+'content.xml');
+    ReadXMLFile(Doc, FilePath+'content.xml');
     DeleteFile(FilePath+'content.xml');
 
-    StylesNode := FDoc.DocumentElement.FindNode('office:automatic-styles');
+    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
     ReadNumFormats(StylesNode);
 
-    BodyNode := FDoc.DocumentElement.FindNode('office:body');
+    BodyNode := Doc.DocumentElement.FindNode('office:body');
     if not Assigned(BodyNode) then Exit;
 
-    SpreadSheetNode:=BodyNode.FindNode('office:spreadsheet');
+    SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
     if not Assigned(SpreadSheetNode) then Exit;
 
     ReadDateMode(SpreadSheetNode);
 
     //process each table (sheet)
-    TableNode:=SpreadSheetNode.FindNode('table:table');
+    TableNode := SpreadSheetNode.FindNode('table:table');
     while Assigned(TableNode) do begin
-      FWorkSheet:=aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
-      Row:=0;
+      FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
+      Row := 0;
 
       //process each row inside the sheet
-      RowNode:=TableNode.FindNode('table:table-row');
+      RowNode := TableNode.FindNode('table:table-row');
       while Assigned(RowNode) do begin
 
         Col:=0;
 
-        ParamRowsRepeated:=GetAttrValue(RowNode,'table:number-rows-repeated');
-        if ParamRowsRepeated='' then ParamRowsRepeated:='1';
-
         //process each cell of the row
         CellNode:=RowNode.FindNode('table:table-cell');
-        while Assigned(CellNode) do
-        begin
-          ParamColsRepeated:=GetAttrValue(CellNode,'table:number-columns-repeated');
-          if ParamColsRepeated='' then ParamColsRepeated:='1';
-
+        while Assigned(CellNode) do begin
           // select this cell value's type
-          ParamValueType:=GetAttrValue(CellNode,'office:value-type');
-          ParamFormula:=GetAttrValue(CellNode,'table:formula');
-          // Speed optimization: only read cells that may have contents;
-          // leave rest empty. Update if we support more cell types
-          if (ParamValueType='string') or
-            (ParamValueType='float') or
-            (ParamValueType='date') or
-            (ParamValueType='time') or
-            (ParamFormula<>'') then
-          begin
-            for RowsCount:=0 to StrToInt(ParamRowsRepeated)-1 do begin
-              for ColsCount:=0 to StrToInt(ParamColsRepeated)-1 do begin
-                if ParamValueType='string' then
-                  ReadLabel(Row+RowsCount,Col+ColsCount,CellNode)
-                else if ParamFormula<>'' then
-                  ReadFormula(Row+RowsCount,Col+ColsCount,CellNode)
-                else if ParamValueType='float' then
-                  ReadNumber(Row+RowsCount,Col+ColsCount,CellNode)
-                else if (ParamValueType='date') or (ParamValueType='time') then
-                  ReadDate(Row+RowsCount,Col+ColsCount,CellNode);
-              end; //for ColsCount
-            end; //for RowsCount
-          end;
-          Inc(Col,ColsCount+1);
-          CellNode:=CellNode.NextSibling;
+          ParamValueType := GetAttrValue(CellNode,'office:value-type');
+          ParamFormula := GetAttrValue(CellNode,'table:formula');
+
+          if ParamValueType = 'string' then
+            ReadLabel(Row, Col, CellNode)
+          else if (ParamValueType = 'float') or (ParamValueType = 'percentage') then
+            ReadNumber(Row, Col, CellNode)
+          else if (ParamValueType = 'date') or (ParamValueType = 'time') then
+            ReadDate(Row, Col, CellNode)
+          else if ParamFormula <> '' then
+            ReadLabel(Row, Col, CellNode);
+
+          ParamColsRepeated := GetAttrValue(CellNode,'table:number-columns-repeated');
+          if ParamColsRepeated='' then ParamColsRepeated := '1';
+          Col := Col + StrToInt(ParamColsRepeated);
+
+          CellNode := CellNode.NextSibling;
         end; //while Assigned(CellNode)
 
-        Inc(Row,RowsCount+1);
-        RowNode:=RowNode.NextSibling;
+        ParamRowsRepeated := GetAttrValue(RowNode,'table:number-rows-repeated');
+        if ParamRowsRepeated='' then ParamRowsRepeated := '1';
+        Row := Row + StrToInt(ParamRowsRepeated);
+
+        RowNode := RowNode.NextSibling;
       end; // while Assigned(RowNode)
 
-      TableNode:=TableNode.NextSibling;
+      TableNode := TableNode.NextSibling;
     end; //while Assigned(TableNode)
+
   finally
-    FDoc.Free;
+    Doc.Free;
   end;
 end;
 
@@ -398,6 +385,7 @@ begin
   if Value<>'' then
   begin
     {$IFDEF FPSPREADDEBUG}
+        end;
     writeln('Row (1based): ',ARow+1,'office:date-value: '+Value);
     {$ENDIF}
     // Date or date/time string
