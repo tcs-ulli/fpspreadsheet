@@ -82,8 +82,6 @@ begin
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.ReadFormulas := true;
-//  MyWorkbook.FormatSettings.DecimalSeparator := '.';
-//  MyWorkbook.FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
 
   MyWorkbook.ReadFromFile(TempFile, AFormat);
   if AFormat = sfExcel2 then
@@ -92,7 +90,7 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for Row := 0 to MyWorksheet.GetLastRowNumber do begin
+  for Row := 0 to MyWorksheet.GetLastRowIndex do begin
     cell := MyWorksheet.FindCell(Row, 1);
     if (cell <> nil) and (Length(cell^.RPNFormulaValue) > 0) then begin
       actual := MyWorksheet.ReadRPNFormulaAsString(cell);

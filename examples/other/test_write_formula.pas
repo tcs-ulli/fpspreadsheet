@@ -95,7 +95,7 @@ begin
   WriteSecondWorksheet();
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test_formula.xls', sfExcel8, False);
+  MyWorkbook.WriteToFile(MyDir + 'test_formula.xls', sfExcel8, True);
 //  MyWorkbook.WriteToFile(MyDir + 'test_formula.odt', sfOpenDocument, False);
   MyWorkbook.Free;
 end.

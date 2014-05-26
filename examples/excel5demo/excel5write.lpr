@@ -285,15 +285,15 @@ begin
   MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyRed, 0, 'USD');
   MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyDash, 0 decs');
-  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDash, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDash, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDash, 0, 'USD');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfAccounting, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfAccounting, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfAccounting, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfAccounting, 0, 'USD');
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyDashRed, 0 decs');
-  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyDashRed, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyDashRed, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyDashRed, 0, 'USD');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfAccountingRed, 0 decs');
+  MyWorksheet.WriteNumber(r, 1, number, nfAccountingRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 2, -number, nfAccountingRed, 0, 'USD');
+  MyWorksheet.WriteNumber(r, 3, 0.0, nfAccountingRed, 0, 'USD');
 
   inc(r, 2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0_);("$"#,##0)');

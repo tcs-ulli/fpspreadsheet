@@ -712,26 +712,26 @@ var
   j, k: Integer;
   CurCell: PCell;
   CurRow: array of PCell;
-  LastColNum: Cardinal;
+  LastColIndex: Cardinal;
   LCell: TCell;
   AVLNode: TAVLTreeNode;
 begin
-  LastColNum := CurSheet.GetLastColNumber;
+  LastColIndex := CurSheet.GetLastColIndex;
 
   // Header
   FContent := FContent +
   '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding +
   '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
-  IntToStr(LastColNum + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
+  IntToStr(LastColIndex + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
 
   // The cells need to be written in order, row by row, cell by cell
-  for j := 0 to CurSheet.GetLastRowNumber do
+  for j := 0 to CurSheet.GetLastRowIndex do
   begin
     FContent := FContent +
     '      <table:table-row table:style-name="ro1">' + LineEnding;
 
     // Write cells from this row.
-    for k := 0 to LastColNum do
+    for k := 0 to LastColIndex do
     begin
       LCell.Row := j;
       LCell.Col := k;

@@ -385,10 +385,10 @@ var
 begin
   AStrings.Add('{| border="1" cellpadding="2" class="wikitable sortable"');
   FWorksheet := Workbook.GetFirstWorksheet();
-  for i := 0 to FWorksheet.GetLastRowNumber() do
+  for i := 0 to FWorksheet.GetLastRowIndex() do
   begin
     AStrings.Add('|-');
-    for j := 0 to FWorksheet.GetLastColNumber() do
+    for j := 0 to FWorksheet.GetLastColIndex() do
     begin
       lCurStr := FWorksheet.ReadAsUTF8Text(i, j);
       lCurUsedFormatting := FWorksheet.ReadUsedFormatting(i, j);

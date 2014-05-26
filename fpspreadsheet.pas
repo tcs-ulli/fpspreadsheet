@@ -401,8 +401,10 @@ type
     function  GetNextCell(): PCell;
     function  GetFirstCellOfRow(ARow: Cardinal): PCell;
     function  GetLastCellOfRow(ARow: Cardinal): PCell;
-    function  GetLastColNumber: Cardinal;
-    function  GetLastRowNumber: Cardinal;
+    function  GetLastColIndex: Cardinal;
+    function  GetLastColNumber: Cardinal; deprecated 'Use GetLastColIndex';
+    function  GetLastRowIndex: Cardinal;
+    function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring; overload;
     function  ReadAsUTF8Text(ACell: PCell): ansistring; overload;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double;
@@ -1347,7 +1349,7 @@ begin
 end;
 
 {@@
-  Returns the 0-based number of the last column with a cell with contents.
+  Returns the 0-based index of the last column with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
 
@@ -1356,7 +1358,7 @@ end;
 
   @see GetCellCount
 }
-function TsWorksheet.GetLastColNumber: Cardinal;
+function TsWorksheet.GetLastColIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
 begin
@@ -1373,11 +1375,16 @@ begin
   end;
 end;
 
+function TsWorksheet.GetLastColNumber: Cardinal;
+begin
+  Result := GetLastColIndex;
+end;
+
 function TsWorksheet.GetFirstCellOfRow(ARow: Cardinal): PCell;
 var
   c, n: Cardinal;
 begin
-  n := GetLastColNumber;
+  n := GetLastColIndex;
   c := 0;
   Result := FindCell(ARow, c);
   while (result = nil) and (c < n) do begin
@@ -1390,7 +1397,7 @@ function TsWorksheet.GetLastCellOfRow(ARow: Cardinal): PCell;
 var
   c, n: Cardinal;
 begin
-  n := GetLastColNumber;
+  n := GetLastColIndex;
   c := n;
   Result := FindCell(ARow, c);
   while (Result = nil) and (c > 0) do begin
@@ -1400,7 +1407,7 @@ begin
 end;
 
 {@@
-  Returns the 0-based number of the last row with a cell with contents.
+  Returns the 0-based index of the last row with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
 
@@ -1409,7 +1416,7 @@ end;
 
   @see GetCellCount
 }
-function TsWorksheet.GetLastRowNumber: Cardinal;
+function TsWorksheet.GetLastRowIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
 begin
@@ -1418,6 +1425,11 @@ begin
   AVLNode := FCells.FindHighest;
   if Assigned(AVLNode) then
     Result := PCell(AVLNode.Data).Row;
+end;
+
+function TsWorksheet.GetLastRowNumber: Cardinal;
+begin
+  Result := GetLastRowIndex;
 end;
 
 {@@

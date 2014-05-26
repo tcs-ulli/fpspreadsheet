@@ -148,7 +148,7 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowNumber do begin
+  for row := 0 to MyWorksheet.GetLastRowIndex do begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell.');
@@ -238,7 +238,7 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowNumber do begin
+  for row := 0 to MyWorksheet.GetLastRowIndex do begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell.');

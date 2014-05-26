@@ -314,7 +314,7 @@ var
   j, k: Integer;
   CurCell: PCell;
   CurRow: array of PCell;
-  LastColNum: Cardinal;
+  LastColIndex: Cardinal;
   LCell: TCell;
   AVLNode: TAVLTreeNode;
   CellPosText: string;
@@ -322,7 +322,7 @@ begin
   FCurSheetNum := Length(FSheets);
   SetLength(FSheets, FCurSheetNum + 1);
 
-  LastColNum := CurSheet.GetLastColNumber;
+  LastColIndex := CurSheet.GetLastColIndex;
 
   // Header
   FSheets[FCurSheetNum] :=
@@ -334,13 +334,13 @@ begin
    '  <sheetData>' + LineEnding;
 
   // The cells need to be written in order, row by row, cell by cell
-  for j := 0 to CurSheet.GetLastRowNumber do
+  for j := 0 to CurSheet.GetLastRowIndex do
   begin
     FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-     Format('  <row r="%d" spans="1:%d">', [j+1,LastColNum+1]) + LineEnding;
+     Format('  <row r="%d" spans="1:%d">', [j+1,LastColIndex+1]) + LineEnding;
 
     // Write cells from this row.
-    for k := 0 to LastColNum do
+    for k := 0 to LastColIndex do
     begin
       LCell.Row := j;
       LCell.Col := k;
