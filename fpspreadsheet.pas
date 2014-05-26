@@ -615,8 +615,9 @@ type
     procedure Delete(AIndex: Integer);
     function Find(ANumFormat: TsNumberFormat; AFormatString: String;
       ADecimals: Byte; ACurrencySymbol: String): Integer; overload;
-    function Find(AFormatIndex: Integer): Integer; overload;
     function Find(AFormatString: String): Integer; overload;
+    function FindByIndex(AFormatIndex: Integer): Integer;
+    function FindByName(AFormatName: String): Integer;
     function FindFormatOf(AFormatCell: PCell): integer; virtual;
     function FormatStringForWriting(AIndex: Integer): String; virtual;
     procedure Sort;
@@ -3007,11 +3008,11 @@ function TsCustomNumFormatList.AddFormat(AFormatName, AFormatString: String;
   ANumFormat: TsNumberFormat; ADecimals: Byte = 0;
   ACurrencySymbol: String = ''): Integer;
 begin
-  if AFormatString = '' then begin
+  if (AFormatString = '') and (ANumFormat <> nfGeneral) then begin
     Result := 0;
     exit;
   end;
-  Result := AddFormat(FNextFormatIndex, '', AFormatString, ANumFormat,
+  Result := AddFormat(FNextFormatIndex, AFormatName, AFormatString, ANumFormat,
     ADecimals, ACurrencySymbol);
   inc(FNextFormatIndex);
 end;
@@ -3071,7 +3072,7 @@ var
   i: Integer;
   nf: TsNumberFormat;
 begin
-  i := Find(AFormatIndex);
+  i := FindByIndex(AFormatIndex);
   if i > 0 then begin
     lFormatData := Items[i];
     fmt := lFormatData.FormatString;
@@ -3131,7 +3132,7 @@ var
   decs: Byte;
   currsym: String;
 begin
-  if Find(AFormatIndex) > -1 then
+  if FindByIndex(AFormatIndex) > -1 then
     exit;
 
   // Analyze & convert the format string, extract infos for internal formatting
@@ -3224,20 +3225,6 @@ begin
   Result := -1;
 end;
 
-{ Finds the item with the given format index and returns its index in
-  the format list. }
-function TsCustomNumFormatList.Find(AFormatIndex: Integer): integer;
-var
-  item: TsNumFormatData;
-begin
-  for Result := 0 to Count-1 do begin
-    item := Items[Result];
-    if item.Index = AFormatIndex then
-      exit;
-  end;
-  Result := -1;
-end;
-
 { Finds the item with the given format string and returns its index in the
   format list. }
 function TsCustomNumFormatList.Find(AFormatString: String): integer;
@@ -3249,6 +3236,36 @@ begin
   for Result := Count-1 downto 0 do begin
     item := Items[Result];
     if item.FormatString = AFormatString then
+      exit;
+  end;
+  Result := -1;
+end;
+
+{ Finds the item with the given format index and returns its index in
+  the format list.
+  Is used by BIFF file formats. }
+function TsCustomNumFormatList.FindByIndex(AFormatIndex: Integer): integer;
+var
+  item: TsNumFormatData;
+begin
+  for Result := 0 to Count-1 do begin
+    item := Items[Result];
+    if item.Index = AFormatIndex then
+      exit;
+  end;
+  Result := -1;
+end;
+
+{ Finds the item with the given format name and returns its index in
+  the format list.
+  To be used by XML file formats. }
+function TsCustomNumFormatList.FindByName(AFormatName: String): integer;
+var
+  item: TsNumFormatData;
+begin
+  for Result := 0 to Count-1 do begin
+    item := Items[Result];
+    if item.Name = AFormatName then
       exit;
   end;
   Result := -1;

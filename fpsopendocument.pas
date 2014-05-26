@@ -58,8 +58,12 @@ type
 
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
   private
+    FStyleList: TFPList;
     FDateMode: TDateMode;
-    FWorksheet: TsWorksheet;
+    // Applies a style to a cell
+    procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String);
+    // Searches a style by its name in the StyleList
+    function FindStyleByName(AStyleName: String): integer;
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
@@ -68,6 +72,7 @@ type
   protected
     procedure CreateNumFormatList; override;
     procedure ReadNumFormats(AStylesNode: TDOMNode);
+    procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
@@ -75,6 +80,8 @@ type
     procedure ReadDate(ARow : Word; ACol : Word; ACellNode: TDOMNode);
   public
     { General reading methods }
+    constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
   end;
 
@@ -173,6 +180,22 @@ const
   DATEMODE_1900_BASE=2; //StarCalc compatibility, 1900-01-01 in FPC DateTime
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
+type
+  { Style items relevant to FPSpreadsheet. Stored in the StylesList of the reader. }
+  TStyleData = class
+  public
+    Name: String;
+    FontIndex: Integer;
+    NumFormatIndex: Integer;
+    HorAlignment: TsHorAlignment;
+    VertAlignment: TsVertAlignment;
+    WordWrap: Boolean;
+    TextRotation: TsTextRotation;
+    Borders: TsCellBorders;
+    BorderStyles: TsCellBorderStyles;
+    BackgroundColor: TsColor;
+  end;
+
 
 { TsSpreadOpenDocNumFormatList }
 
@@ -181,7 +204,99 @@ begin
   // there are no built-in number formats which are silently assumed to exist.
 end;
 
+
 { TsSpreadOpenDocReader }
+
+constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FStyleList := TFPList.Create;
+  // Initial base date in case it won't be read from file
+  FDateMode := dm1899;
+end;
+
+destructor TsSpreadOpenDocReader.Destroy;
+var
+  j: integer;
+begin
+  for j := FStyleList.Count-1 downto 0 do TObject(FStyleList[j]).Free;
+  FStyleList.Free;
+  inherited Destroy;
+end;
+
+{ Applies the style data referred to by the style name to the specified cell }
+procedure TsSpreadOpenDocReader.ApplyStyleToCell(ARow, ACol: Cardinal;
+  AStyleName: String);
+var
+  cell: PCell;
+  styleData: TStyleData;
+  styleIndex: Integer;
+  numFmtData: TsNumFormatData;
+begin
+  cell := FWorksheet.GetCell(ARow, ACol);
+  if Assigned(cell) then begin
+    styleIndex := FindStyleByName(AStyleName);
+    if styleIndex = -1 then
+      exit;
+
+    styleData := TStyleData(FStyleList[styleIndex]);
+
+    // Font
+    {
+    if style.FontIndex = 1 then
+      Include(cell^.UsedFormattingFields, uffBold)
+    else
+    if XFData.FontIndex > 1 then
+      Include(cell^.UsedFormattingFields, uffFont);
+    cell^.FontIndex := styleData.FontIndex;
+     }
+
+    // Alignment
+    cell^.HorAlignment := styleData.HorAlignment;
+    cell^.VertAlignment := styleData.VertAlignment;
+
+    // Word wrap
+    if styleData.WordWrap then
+      Include(cell^.UsedFormattingFields, uffWordWrap)
+    else
+      Exclude(cell^.UsedFormattingFields, uffWordWrap);
+
+    // Text rotation
+    if styleData.TextRotation > trHorizontal then
+      Include(cell^.UsedFormattingFields, uffTextRotation)
+    else
+      Exclude(cell^.UsedFormattingFields, uffTextRotation);
+    cell^.TextRotation := styledata.TextRotation;
+
+    // Borders
+    cell^.BorderStyles := styleData.BorderStyles;
+    if styleData.Borders <> [] then begin
+      Include(cell^.UsedFormattingFields, uffBorder);
+      cell^.Border := styleData.Borders;
+    end else
+      Exclude(cell^.UsedFormattingFields, uffBorder);
+
+    // Background color
+    if styleData.BackgroundColor <> 0 then begin
+      Include(cell^.UsedFormattingFields, uffBackgroundColor);
+      cell^.BackgroundColor := styleData.BackgroundColor;
+    end;
+
+    // Number format
+    if styleData.NumFormatIndex > -1 then
+      if cell^.ContentType = cctNumber then begin
+        numFmtData := NumFormatList[styleData.NumFormatIndex];
+        if numFmtData <> nil then begin
+          Include(cell^.UsedFormattingFields, uffNumberFormat);
+          cell^.NumberFormat := numFmtData.NumFormat;
+          cell^.NumberFormatStr := numFmtData.FormatString;
+          cell^.Decimals := numFmtData.Decimals;
+          cell^.CurrencySymbol := numFmtData.CurrencySymbol;
+        end;
+      end;
+
+  end;
+end;
 
 { Creates the correct version of the number format list
   suited for ODS file formats. }
@@ -189,6 +304,15 @@ procedure TsSpreadOpenDocReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
+end;
+
+function TsSpreadOpenDocReader.FindStyleByName(AStyleName: String): Integer;
+begin
+  for Result:=0 to FStyleList.Count-1 do begin
+    if TStyleData(FStyleList[Result]).Name = AStyleName then
+      exit;
+  end;
+  Result := -1;
 end;
 
 function TsSpreadOpenDocReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
@@ -245,10 +369,10 @@ var
   RowsCount, ColsCount : integer;
 begin
   //unzip content.xml into AFileName path
-  FilePath:=GetTempDir(false);
-  UnZip:=TUnZipper.Create;
-  UnZip.OutputPath:=FilePath;
-  FileList:=TStringList.Create;
+  FilePath := GetTempDir(false);
+  UnZip := TUnZipper.Create;
+  UnZip.OutputPath := FilePath;
+  FileList := TStringList.Create;
   FileList.Add('styles.xml');
   FileList.Add('content.xml');
   try
@@ -266,6 +390,7 @@ begin
 
     StylesNode := Doc.DocumentElement.FindNode('office:styles');
     ReadNumFormats(StylesNode);
+    ReadStyles(StylesNode);
 
     //process the content.xml file
     ReadXMLFile(Doc, FilePath+'content.xml');
@@ -273,6 +398,7 @@ begin
 
     StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
     ReadNumFormats(StylesNode);
+    ReadStyles(StylesNode);
 
     BodyNode := Doc.DocumentElement.FindNode('office:body');
     if not Assigned(BodyNode) then Exit;
@@ -348,10 +474,11 @@ var
   FSettings: TFormatSettings;
   Value, Str: String;
   lNumber: Double;
+  styleName: String;
 begin
   FSettings := DefaultFormatSettings;
   FSettings.DecimalSeparator:='.';
-  Value:=GetAttrValue(ACellNode,'office:value');
+  Value := GetAttrValue(ACellNode,'office:value');
   if UpperCase(Value)='1.#INF' then
   begin
     FWorkSheet.WriteNumber(Arow,ACol,1.0/0.0);
@@ -363,6 +490,9 @@ begin
     lNumber := StrToFloat(Str,FSettings);
     FWorkSheet.WriteNumber(ARow,ACol,lNumber);
   end;
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(ARow, ACol, stylename);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDate(ARow: Word; ACol : Word; ACellNode : TDOMNode);
@@ -593,6 +723,82 @@ begin
       NumFormatList.AddFormat(fmtName, fmt, nfFmtDateTime);
     end;
     NumFormatNode := NumFormatNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
+var
+  style: TStyleData;
+  styleNode: TDOMNode;
+  styleChildNode: TDOMNode;
+  family: String;
+  styleName: String;
+  styleIndex: Integer;
+  numFmtName: String;
+  numFmtIndex: Integer;
+  numFmtIndexDefault: Integer;
+  wrap: Boolean;
+  borders: TsCellBorders;
+  s: String;
+begin
+  if not Assigned(AStylesNode) then
+    exit;
+
+  numFmtIndexDefault := NumFormatList.FindByName('N0');
+
+  styleNode := AStylesNode.FirstChild;
+  while Assigned(styleNode) do begin
+    if styleNode.NodeName = 'style:style' then begin
+      family := GetAttrValue(styleNode, 'style:family');
+      if family = 'table-cell' then begin
+        styleName := GetAttrValue(styleNode, 'style:name');
+        numFmtName := GetAttrValue(styleNode, 'style:data-style-name');
+        numFmtIndex := -1;
+        if numFmtName <> '' then numFmtIndex := NumFormatList.FindByName(numFmtName);
+        if numFmtIndex = -1 then numFmtIndex := numFmtIndexDefault;
+
+        borders := [];
+        wrap := false;
+
+        styleChildNode := styleNode.FirstChild;
+        while Assigned(styleChildNode) do begin
+          if styleChildNode.NodeName = 'style:table-cell-properties' then begin
+            // Borders
+            s := GetAttrValue(styleChildNode, 'fo:border-top');
+            if (s <> '') and (s <> 'none') then Include(borders, cbNorth);
+            s := GetAttrValue(styleChildNode, 'fo:border-right');
+            if (s <> '') and (s <> 'none') then Include(borders, cbEast);
+            s := GetAttrValue(styleChildNode, 'fo:border-bottom');
+            if (s <> '') and (s <> 'none') then Include(borders, cbSouth);
+            s := GetAttrValue(styleChildNode, 'fo:border-left');
+            if (s <> '') and (s <> 'none') then Include(borders, cbWest);
+
+            // Text wrap
+            s := GetAttrValue(styleChildNode, 'fo:wrap-option');
+            wrap := (s='wrap');
+          end else
+          if styleChildNode.NodeName = 'style:paragraph-properties' then begin
+            //
+          end;
+          styleChildNode := styleChildNode.NextSibling;
+        end;
+
+        style := TStyleData.Create;
+        style.Name := stylename;
+        style.FontIndex := 0;
+        style.NumFormatIndex := numFmtIndex;
+        style.HorAlignment := haDefault;
+        style.VertAlignment := vaDefault;
+        style.WordWrap := wrap;
+        style.TextRotation := trHorizontal;
+        style.Borders := borders;
+        style.BorderStyles := DEFAULT_BORDERSTYLES;
+        style.BackgroundColor := scNotDefined;
+
+        styleIndex := FStyleList.Add(style);
+      end;
+    end;
+    styleNode := styleNode.NextSibling;
   end;
 end;
 

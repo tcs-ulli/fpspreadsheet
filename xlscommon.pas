@@ -762,8 +762,6 @@ end;
 { TsSpreadBIFFReader }
 
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
-var
-  i: Integer;
 begin
   inherited Create(AWorkbook);
   FXFList := TFPList.Create;
@@ -914,7 +912,7 @@ var
 begin
   Result := nil;
   lXFData := TXFListData(FXFList.Items[AXFIndex]);
-  i := NumFormatList.Find(lXFData.FormatIndex);
+  i := NumFormatList.FindByIndex(lXFData.FormatIndex);
   if i <> -1 then Result := NumFormatList[i];
 end;
 
@@ -1773,7 +1771,7 @@ var
   item: TsNumFormatData;
 begin
   ListAllNumFormats;
-  i := NumFormatList.Find(NumFormatList.FirstFormatIndexInFile);
+  i := NumFormatList.FindByIndex(NumFormatList.FirstFormatIndexInFile);
   if i > -1 then
     while i < NumFormatList.Count do begin
       item := NumFormatList[i];
