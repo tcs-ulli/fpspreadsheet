@@ -554,6 +554,7 @@ type
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
     function GetColorName(AColorIndex: TsColor): string;
     function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
+    function GetPaletteColorAsHTMLStr(AColorIndex: TsColor): String;
     procedure SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
     function GetPaletteSize: Integer;
     procedure UseDefaultPalette;
@@ -2919,6 +2920,15 @@ begin
       Result := FPalette[AColorIndex];
   end else
     Result := $000000;  // "black" as default
+end;
+
+{@@
+  Converts the palette color of the given index to a string that can be used
+  in HTML code. For ods.
+}
+function TsWorkbook.GetPaletteColorAsHTMLStr(AColorIndex: TsColor): String;
+begin
+  Result := ColorToHTMLColorStr(GetPaletteColor(AColorIndex));
 end;
 
 {@@
