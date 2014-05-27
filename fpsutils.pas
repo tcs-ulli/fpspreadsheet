@@ -102,6 +102,9 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
 function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
 
+function cmToPts(AValue: Double): Double;
+function mmToPts(AValue: Double): Double;
+
 implementation
 
 uses
@@ -1288,6 +1291,18 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
 begin
   DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
+end;
+
+{ Converts centimeters to points (72 pts = 1 inch) }
+function cmToPts(AValue: Double): Double;
+begin
+  Result := AValue/(2.54*72);
+end;
+
+{ Converts millimeters to points (72 pts = 1 inch) }
+function mmToPts(AValue: Double): Double;
+begin
+  Result := AValue/(25.4*72);
 end;
 
 end.

@@ -550,6 +550,7 @@ type
     procedure RemoveAllFonts;
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
     { Color handling }
+    function AddColorToPalette(AColorValue: TsColorValue): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
     function GetColorName(AColorIndex: TsColor): string;
     function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
@@ -2829,6 +2830,33 @@ end;
 function TsWorkbook.GetFontCount: Integer;
 begin
   Result := FFontList.Count;
+end;
+
+{@@
+  Adds a color to the palette and returns its palette index, but only if the
+  color does not already exist - in this case, it returns the index of the
+  existing color entry. }
+function TsWorkbook.AddColorToPalette(AColorValue: TsColorValue): TsColor;
+var
+  i: Integer;
+begin
+  // No palette yet? Add the 16 first entries of the default_palette. They are
+  // common to all palettes
+  if Length(FPalette) = 0 then begin
+    SetLength(FPalette, 16);
+    for i := 0 to 15 do
+      FPalette[i] := DEFAULT_PALETTE[i];
+  end;
+
+  // Now look for the color. Is already in the existing palette?
+  for Result := 0 to Length(FPalette)-1 do
+    if FPalette[Result] = AColorValue then
+      exit;
+
+  // No. Add it to the palette.
+  Result := Length(FPalette);
+  SetLength(FPalette, Result+1);
+  FPalette[Result] := AColorValue;
 end;
 
 {@@
