@@ -278,7 +278,7 @@ begin
       Exclude(cell^.UsedFormattingFields, uffBorder);
 
     // Background color
-    if styleData.BackgroundColor <> 0 then begin
+    if styleData.BackgroundColor <> scNotDefined then begin
       Include(cell^.UsedFormattingFields, uffBackgroundColor);
       cell^.BackgroundColor := styleData.BackgroundColor;
     end;
@@ -377,6 +377,7 @@ var
   BodyNode, SpreadSheetNode, TableNode, RowNode, CellNode : TDOMNode;
   StylesNode: TDOMNode;
   ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
+  TableStyleName: String;
   RowsCount, ColsCount : integer;
 begin
   //unzip content.xml into AFileName path
@@ -437,6 +438,7 @@ begin
           // select this cell value's type
           ParamValueType := GetAttrValue(CellNode,'office:value-type');
           ParamFormula := GetAttrValue(CellNode,'table:formula');
+          TableStyleName := GetAttrValue(CellNode, 'table:style-name');
 
           if ParamValueType = 'string' then
             ReadLabel(Row, Col, CellNode)
@@ -444,7 +446,7 @@ begin
             ReadNumber(Row, Col, CellNode)
           else if (ParamValueType = 'date') or (ParamValueType = 'time') then
             ReadDate(Row, Col, CellNode)
-          else if (ParamValueType = '') then
+          else if (ParamValueType = '') and (TableStyleName <> '') then
             ReadBlank(Row, Col, CellNode)
           else if ParamFormula <> '' then
             ReadLabel(Row, Col, CellNode);
@@ -479,9 +481,11 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
 var
+  cellText: String;
   styleName: String;
 begin
-  FWorkSheet.WriteUTF8Text(ARow, ACol, UTF8Encode(ACellNode.TextContent));
+  cellText := UTF8Encode(ACellNode.TextContent);
+  FWorkSheet.WriteUTF8Text(ARow, ACol, cellText);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(ARow, ACol, stylename);
@@ -759,6 +763,7 @@ var
   wrap: Boolean;
   borders: TsCellBorders;
   borderStyles: TsCellBorderStyles;
+  bkClr: DWord;
   s: String;
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
@@ -778,7 +783,7 @@ var
       L.StrictDelimiter := true;
       L.DelimitedText := AStyleValue;
       wid := 0;
-      rgb := 0;
+      rgb := DWord(-1);
       linestyle := '';
       for i:=0 to L.Count-1 do begin
         s := L[i];
@@ -817,7 +822,8 @@ var
       else
       if (linestyle = 'fine-dashed') then
         borderStyles[ABorder].LineStyle := lsDotted;
-      borderStyles[ABorder].Color := Workbook.AddColorToPalette(LongRGBToExcelPhysical(rgb));
+      borderStyles[ABorder].Color := IfThen(rgb = DWord(-1), scBlack,
+        Workbook.AddColorToPalette(LongRGBToExcelPhysical(rgb)));
     finally
       L.Free;
     end;
@@ -845,10 +851,17 @@ begin
 
         borders := [];
         wrap := false;
+        bkClr := DWord(-1);
 
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do begin
           if styleChildNode.NodeName = 'style:table-cell-properties' then begin
+            // Background color
+            s := GetAttrValue(styleChildNode, 'fo:background-color');
+            if s <> '' then begin
+              if s[1] = '#' then s[1] := '$';
+              bkClr := StrToInt(s);
+            end;
             // Borders
             s := GetAttrValue(styleChildNode, 'fo:border');
             if (s <>'') then begin
@@ -899,7 +912,8 @@ begin
         style.TextRotation := trHorizontal;
         style.Borders := borders;
         style.BorderStyles := borderStyles;
-        style.BackgroundColor := scNotDefined;
+        style.BackgroundColor := IfThen(bkClr = DWord(-1), scNotDefined,
+          Workbook.AddColorToPalette(LongRGBToExcelPhysical(bkClr)));
 
         styleIndex := FStyleList.Add(style);
       end;
