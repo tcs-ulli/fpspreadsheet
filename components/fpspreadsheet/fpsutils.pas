@@ -105,6 +105,9 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
 function cmToPts(AValue: Double): Double;
 function mmToPts(AValue: Double): Double;
 
+function HTMLColorStrToColor(AValue: String): TsColorValue;
+function ColorToHTMLColorStr(AValue: TsColorValue): String;
+
 implementation
 
 uses
@@ -1296,13 +1299,64 @@ end;
 { Converts centimeters to points (72 pts = 1 inch) }
 function cmToPts(AValue: Double): Double;
 begin
-  Result := AValue/(2.54*72);
+  Result := AValue/2.54*72;
 end;
 
 { Converts millimeters to points (72 pts = 1 inch) }
 function mmToPts(AValue: Double): Double;
 begin
-  Result := AValue/(25.4*72);
+  Result := AValue/25.4*72;
+end;
+
+{ converts a HTML color string to a TsColorValue. For ods }
+function HTMLColorStrToColor(AValue: String): TsColorValue;
+begin
+  if AValue = '' then
+    Result := scNotDefined
+  else
+  if AValue[1] = '#' then begin
+    AValue[1] := '$';
+    Result := LongRGBToExcelPhysical(StrToInt(AValue));
+  end else begin
+    AValue := lowercase(AValue);
+    if AValue = 'red' then
+      Result := $0000FF
+    else if AValue = 'cyan' then
+      Result := $FFFF00
+    else if AValue = 'blue' then
+      Result := $FF0000
+    else if AValue = 'purple' then
+      Result := $800080
+    else if AValue = 'yellow' then
+      Result := $00FFFF
+    else if AValue = 'lime' then
+      Result := $00FF00
+    else if AValue = 'white' then
+      Result := $FFFFFF
+    else if AValue = 'black' then
+      Result := $000000
+    else if (AValue = 'gray') or (AValue = 'grey') then
+      Result := $808080
+    else if AValue = 'silver' then
+      Result := $C0C0C0
+    else if AValue = 'maroon' then
+      Result := $000080
+    else if AValue = 'green' then
+      Result := $008000
+    else if AValue = 'olive' then
+      Result := $008080;
+  end;
+end;
+
+{ converts an rgb color value to a string as used in HTML code (for ods) }
+function ColorToHTMLColorStr(AValue: TsColorValue): String;
+type
+  TRGB = record r,g,b,a: Byte end;
+var
+  rgb: TRGB;
+begin
+  rgb := TRGB(AValue);
+  Result := Format('#%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
 end;
 
 end.

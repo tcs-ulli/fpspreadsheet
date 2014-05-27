@@ -70,38 +70,43 @@ type
     // If previous read tests are ok, this effectively tests writing.
 
     { BIFF2 Tests }
-    procedure TestWriteReadBIFF2_Alignment;
-    procedure TestWriteReadBIFF2_Border;
-    procedure TestWriteReadBIFF2_ColWidths;
-    procedure TestWriteReadBIFF2_RowHeights;
-    procedure TestWriteReadBIFF2_DateTimeFormats;
-    procedure TestWriteReadBIFF2_NumberFormats;
+    procedure TestWriteRead_BIFF2_Alignment;
+    procedure TestWriteRead_BIFF2_Border;
+    procedure TestWriteRead_BIFF2_ColWidths;
+    procedure TestWriteRead_BIFF2_RowHeights;
+    procedure TestWriteRead_BIFF2_DateTimeFormats;
+    procedure TestWriteRead_BIFF2_NumberFormats;
     // These features are not supported by Excel2 --> no test cases required!
     // - BorderStyle
     // - TextRotation
     // - Wordwrap
 
     { BIFF5 Tests }
-    procedure TestWriteReadBIFF5_Alignment;
-    procedure TestWriteReadBIFF5_Border;
-    procedure TestWriteReadBIFF5_BorderStyles;
-    procedure TestWriteReadBIFF5_ColWidths;
-    procedure TestWriteReadBIFF5_RowHeights;
-    procedure TestWriteReadBIFF5_DateTimeFormats;
-    procedure TestWriteReadBIFF5_NumberFormats;
-    procedure TestWriteReadBIFF5_TextRotation;
-    procedure TestWriteReadBIFF5_WordWrap;
+    procedure TestWriteRead_BIFF5_Alignment;
+    procedure TestWriteRead_BIFF5_Border;
+    procedure TestWriteRead_BIFF5_BorderStyles;
+    procedure TestWriteRead_BIFF5_ColWidths;
+    procedure TestWriteRead_BIFF5_RowHeights;
+    procedure TestWriteRead_BIFF5_DateTimeFormats;
+    procedure TestWriteRead_BIFF5_NumberFormats;
+    procedure TestWriteRead_BIFF5_TextRotation;
+    procedure TestWriteRead_BIFF5_WordWrap;
 
     { BIFF8 Tests }
-    procedure TestWriteReadBIFF8_Alignment;
-    procedure TestWriteReadBIFF8_Border;
-    procedure TestWriteReadBIFF8_BorderStyles;
-    procedure TestWriteReadBIFF8_ColWidths;
-    procedure TestWriteReadBIFF8_RowHeights;
-    procedure TestWriteReadBIFF8_DateTimeFormats;
-    procedure TestWriteReadBIFF8_NumberFormats;
-    procedure TestWriteReadBIFF8_TextRotation;
-    procedure TestWriteReadBIFF8_WordWrap;
+    procedure TestWriteRead_BIFF8_Alignment;
+    procedure TestWriteRead_BIFF8_Border;
+    procedure TestWriteRead_BIFF8_BorderStyles;
+    procedure TestWriteRead_BIFF8_ColWidths;
+    procedure TestWriteRead_BIFF8_RowHeights;
+    procedure TestWriteRead_BIFF8_DateTimeFormats;
+    procedure TestWriteRead_BIFF8_NumberFormats;
+    procedure TestWriteRead_BIFF8_TextRotation;
+    procedure TestWriteRead_BIFF8_WordWrap;
+
+    { ODS Tests }
+    procedure TestWriteRead_ODS_Border;
+    procedure TestWriteRead_ODS_BorderStyles;
+    procedure TestWriteRead_ODS_WordWrap;
   end;
 
 implementation
@@ -251,6 +256,9 @@ begin
   inherited TearDown;
 end;
 
+
+{ --- Number format tests --- }
+
 procedure TSpreadWriteReadFormatTests.TestWriteReadNumberFormats(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
@@ -301,20 +309,23 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_NumberFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_NumberFormats;
 begin
   TestWriteReadNumberFormats(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_NumberFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_NumberFormats;
 begin
   TestWriteReadNumberFormats(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_NumberFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_NumberFormats;
 begin
   TestWriteReadNumberFormats(sfExcel8);
 end;
+
+
+{ --- Date/time formats --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadDateTimeFormats(AFormat: TsSpreadsheetFormat);
 var
@@ -370,20 +381,23 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_DateTimeFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_DateTimeFormats;
 begin
   TestWriteReadDateTimeFormats(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_DateTimeFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_DateTimeFormats;
 begin
   TestWriteReadDateTimeFormats(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_DateTimeFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_DateTimeFormats;
 begin
   TestWriteReadDateTimeFormats(sfExcel8);
 end;
+
+
+{ --- Alignment tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadAlignment(AFormat: TsSpreadsheetFormat);
 const
@@ -425,9 +439,9 @@ begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
-        CheckEquals(vertAlign = MyCell^.VertAlignment, true,
+        CheckEquals(true, vertAlign = MyCell^.VertAlignment,
           'Test unsaved vertical alignment, cell ' + CellNotation(MyWorksheet,0,0));
-        CheckEquals(horAlign = MyCell^.HorAlignment, true,
+        CheckEquals(true, horAlign = MyCell^.HorAlignment,
           'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
         inc(col);
       end;
@@ -460,10 +474,10 @@ begin
           fail('Error in test code. Failed to get cell.');
         vertAlign := TsVertAlignment(col);
         if vertAlign = vaDefault then vertAlign := vaBottom;
-        CheckEquals(vertAlign = MyCell^.VertAlignment, true,
+        CheckEquals(true, vertAlign = MyCell^.VertAlignment,
           'Test saved vertical alignment mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
         horAlign := TsHorAlignment(row);
-        CheckEquals(horAlign = MyCell^.HorAlignment, true,
+        CheckEquals(true, horAlign = MyCell^.HorAlignment,
           'Test saved horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
       end;
   MyWorkbook.Free;
@@ -471,20 +485,23 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_Alignment;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_Alignment;
 begin
   TestWriteReadAlignment(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_Alignment;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Alignment;
 begin
   TestWriteReadAlignment(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Alignment;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Alignment;
 begin
   TestWriteReadAlignment(sfExcel8);
 end;
+
+
+{ --- Border on/off tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
 const
@@ -531,7 +548,7 @@ begin
       fail('Error in test code. Failed to get cell');
     current := GetEnumName(TypeInfo(TsCellBorders), byte(MyCell^.Border));
     expected := GetEnumName(TypeInfo(TsCellBorders), byte(SollBorders[col]));
-    CheckEquals(current, expected,
+    CheckEquals(expected, current,
       'Test saved border mismatch, cell ' + CellNotation(MyWorksheet, row, col));
   end;
   // Finalization
@@ -540,20 +557,28 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_Border;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_Border;
 begin
   TestWriteReadBorder(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_Border;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Border;
 begin
   TestWriteReadBorder(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Border;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Border;
 begin
   TestWriteReadBorder(sfExcel8);
 end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Border;
+begin
+  TestWriteReadBorder(sfOpenDocument);
+end;
+
+
+{ --- BorderStyle tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadBorderStyles(AFormat: TsSpreadsheetFormat);
 { This test paints 10x10 cells with all borders, each separated by an empty
@@ -623,11 +648,11 @@ begin
       for b in TsCellBorder do begin
         current := ord(MyCell^.BorderStyles[b].LineStyle);
         expected := ord(SollBorderLineStyles[ls]);
-        CheckEquals(current, expected,
+        CheckEquals(expected, current,
           'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
         current := MyCell^.BorderStyles[b].Color;
         expected := SollBorderColors[c];
-        CheckEquals(current, expected,
+        CheckEquals(expected, current,
           'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
         inc(ls);
         if ls > High(SollBorderLineStyles) then begin
@@ -646,15 +671,23 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_BorderStyles;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_BorderStyles;
 begin
   TestWriteReadBorderStyles(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_BorderStyles;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_BorderStyles;
 begin
   TestWriteReadBorderStyles(sfExcel8);
 end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_BorderStyles;
+begin
+  TestWriteReadBorderStyles(sfOpenDocument);
+end;
+
+
+{ --- Column widths tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
 var
@@ -704,20 +737,23 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_ColWidths;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_ColWidths;
 begin
   TestWriteReadColWidths(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_ColWidths;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_ColWidths;
 begin
   TestWriteReadColWidths(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_ColWidths;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_ColWidths;
 begin
   TestWriteReadColWidths(sfExcel8);
 end;
+
+
+{ --- Row height tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadRowHeights(AFormat: TsSpreadsheetFormat);
 var
@@ -766,20 +802,23 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF2_RowHeights;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_RowHeights;
 begin
   TestWriteReadRowHeights(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_RowHeights;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_RowHeights;
 begin
   TestWriteReadRowHeights(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_RowHeights;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_RowHeights;
 begin
   TestWriteReadRowHeights(sfExcel8);
 end;
+
+
+{ --- Text rotation tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadTextRotation(AFormat: TsSpreadsheetFormat);
 const
@@ -834,15 +873,18 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_TextRotation;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_TextRotation;
 begin
   TestWriteReadTextRotation(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_TextRotation;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_TextRotation;
 begin
   TestWriteReadTextRotation(sfExcel8);
 end;
+
+
+{ --- Wordwrap tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
 const
@@ -867,13 +909,13 @@ begin
   MyCell := MyWorksheet.FindCell(0, 0);
   if MyCell = nil then
     fail('Error in test code. Failed to get word-wrapped cell.');
-  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), true, 'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
+  CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
   MyWorksheet.WriteUTF8Text(1, 0, LONGTEXT);
   MyWorksheet.WriteUsedFormatting(1, 0, []);
   MyCell := MyWorksheet.FindCell(1, 0);
   if MyCell = nil then
     fail('Error in test code. Failed to get word-wrapped cell.');
-  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), false, 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+  CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -889,25 +931,31 @@ begin
   MyCell := MyWorksheet.FindCell(0, 0);
   if MyCell = nil then
     fail('Error in test code. Failed to get word-wrapped cell.');
-  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), true, 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
+  CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields), 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
   MyCell := MyWorksheet.FindCell(1, 0);
   if MyCell = nil then
     fail('Error in test code. Failed to get non-wrapped cell.');
-  CheckEquals((uffWordWrap in MyCell^.UsedFormattingFields), false, 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
+  CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF5_Wordwrap;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Wordwrap;
 begin
   TestWriteReadWordwrap(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBIFF8_Wordwrap;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Wordwrap;
 begin
   TestWriteReadWordwrap(sfExcel8);
 end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Wordwrap;
+begin
+  TestWriteReadWordwrap(sfOpenDocument);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadFormatTests);

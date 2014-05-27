@@ -181,6 +181,13 @@ const
   DATEMODE_1900_BASE=2; //StarCalc compatibility, 1900-01-01 in FPC DateTime
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
+const
+  // lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair)
+  BORDER_LINESTYLES: array[TsLineStyle] of string =
+    ('solid', 'solid', 'dashed', 'fine-dashed', 'solid', 'double', 'dotted');
+  BORDER_LINEWIDTHS: array[TsLinestyle] of string =
+    ('0.002cm', '2pt', '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm');
+
 type
   { Style items relevant to FPSpreadsheet. Stored in the StylesList of the reader. }
   TStyleData = class
@@ -765,10 +772,12 @@ var
   wrap: Boolean;
   borders: TsCellBorders;
   borderStyles: TsCellBorderStyles;
-  bkClr: DWord;
+  bkClr: TsColorValue;
   s: String;
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
+  const
+    EPS = 0.1;  // takes care of rounding errors for line widths
   var
     L: TStringList;
     i: Integer;
@@ -776,7 +785,7 @@ var
     s: String;
     wid: Double;
     linestyle: String;
-    rgb: DWord;
+    rgb: TsColorValue;
     p: Integer;
   begin
     L := TStringList.Create;
@@ -785,15 +794,14 @@ var
       L.StrictDelimiter := true;
       L.DelimitedText := AStyleValue;
       wid := 0;
-      rgb := DWord(-1);
+      rgb := TsColorValue(-1);
       linestyle := '';
       for i:=0 to L.Count-1 do begin
         s := L[i];
-        if (s = 'solid') or (s = 'dashed') or (s = 'fine-dashed') or (s = 'dotted')
-          then linestyle := s;
-        if s[1] = '#' then begin
-          s[1] := '$';
-          rgb := StrToInt(s);
+        if (s = 'solid') or (s = 'dashed') or (s = 'fine-dashed') or (s = 'dotted') or (s = 'double')
+        then begin
+          linestyle := s;
+          continue;
         end;
         p := pos('pt', s);
         if p = Length(s)-1 then begin
@@ -810,11 +818,12 @@ var
           wid := cmToPts(StrToFloat(copy(s, 1, p-1), fs));
           Continue;
         end;
+        rgb := HTMLColorStrToColor(s);
       end;
       borderStyles[ABorder].LineStyle := lsThin;
       if (linestyle = 'solid') then begin
-        if (wid >= 2) then borderStyles[ABorder].LineStyle := lsThick
-        else if (wid >= 1) then borderStyles[ABorder].LineStyle := lsMedium
+        if (wid >= 3 - EPS) then borderStyles[ABorder].LineStyle := lsThick
+        else if (wid >= 2 - EPS) then borderStyles[ABorder].LineStyle := lsMedium
       end else
       if (linestyle = 'dotted') then
         borderStyles[ABorder].LineStyle := lsHair
@@ -823,9 +832,12 @@ var
         borderStyles[ABorder].LineStyle := lsDashed
       else
       if (linestyle = 'fine-dashed') then
-        borderStyles[ABorder].LineStyle := lsDotted;
-      borderStyles[ABorder].Color := IfThen(rgb = DWord(-1), scBlack,
-        Workbook.AddColorToPalette(LongRGBToExcelPhysical(rgb)));
+        borderStyles[ABorder].LineStyle := lsDotted
+      else
+      if (linestyle = 'double') then
+        borderStyles[ABorder].LineStyle := lsDouble;
+      borderStyles[ABorder].Color := IfThen(rgb = TsColorValue(-1),
+        scBlack, Workbook.AddColorToPalette(rgb));
     finally
       L.Free;
     end;
@@ -853,17 +865,15 @@ begin
 
         borders := [];
         wrap := false;
-        bkClr := DWord(-1);
+        bkClr := TsColorValue(-1);
 
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do begin
           if styleChildNode.NodeName = 'style:table-cell-properties' then begin
             // Background color
             s := GetAttrValue(styleChildNode, 'fo:background-color');
-            if (s <> '') and (s <> 'transparent') then begin
-              if s[1] = '#' then s[1] := '$';
-              bkClr := StrToInt(s);
-            end;
+            if (s <> '') and (s <> 'transparent') then
+              bkClr := HTMLColorStrToColor(s);
             // Borders
             s := GetAttrValue(styleChildNode, 'fo:border');
             if (s <>'') then begin
@@ -914,8 +924,8 @@ begin
         style.TextRotation := trHorizontal;
         style.Borders := borders;
         style.BorderStyles := borderStyles;
-        style.BackgroundColor := IfThen(bkClr = DWord(-1), scNotDefined,
-          Workbook.AddColorToPalette(LongRGBToExcelPhysical(bkClr)));
+        style.BackgroundColor := IfThen(bkClr = TsColorValue(-1), scNotDefined,
+          Workbook.AddColorToPalette(bkClr));
 
         styleIndex := FStyleList.Add(style);
       end;
@@ -1151,6 +1161,7 @@ end;
 function TsSpreadOpenDocWriter.WriteStylesXMLAsString: string;
 var
   i: Integer;
+  clr: string;
 begin
   Result := '';
 
@@ -1176,24 +1187,59 @@ begin
 
       if (uffBorder in FFormattingStyles[i].UsedFormattingFields) then
       begin
-        if cbSouth in FFormattingStyles[i].Border then Result := Result + 'fo:border-bottom="0.002cm solid #000000" '
-        else Result := Result + 'fo:border-bottom="none" ';
+        if cbSouth in FFormattingStyles[i].Border then begin
+          Result := Result + Format('fo:border-bottom="%s %s %s" ', [
+            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbSouth].LineStyle],
+            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbSouth].LineStyle],
+            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbSouth].Color)
+          ]);
+          if FFormattingStyles[i].BorderStyles[cbSouth].LineStyle = lsDouble then
+            Result := Result + 'style:border-linewidth-bottom="0.002cm 0.035cm 0.002cm" ';
+        end
+        else
+          Result := Result + 'fo:border-bottom="none" ';
 
-        if cbWest in FFormattingStyles[i].Border then Result := Result + 'fo:border-left="0.002cm solid #000000" '
-        else Result := Result + 'fo:border-left="none" ';
+        if cbWest in FFormattingStyles[i].Border then begin
+          Result := Result + Format('fo:border-left="%s %s %s" ', [
+            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbWest].LineStyle],
+            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbWest].LineStyle],
+            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbWest].Color)
+          ]);
+          if FFormattingStyles[i].BorderStyles[cbWest].LineStyle = lsDouble then
+            Result := Result + 'style:border-linewidth-left="0.002cm 0.035cm 0.002cm" ';
+        end
+        else
+          Result := Result + 'fo:border-left="none" ';
 
-        if cbEast in FFormattingStyles[i].Border then Result := Result + 'fo:border-right="0.002cm solid #000000" '
-        else Result := Result + 'fo:border-right="none" ';
+        if cbEast in FFormattingStyles[i].Border then begin
+          Result := Result + Format('fo:border-right="%s %s %s" ', [
+            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbEast].LineStyle],
+            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbEast].LineStyle],
+            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbEast].Color)
+          ]);
+          if FFormattingStyles[i].BorderStyles[cbSouth].LineStyle = lsDouble then
+            Result := Result + 'style:border-linewidth-right="0.002cm 0.035cm 0.002cm" ';
+        end
+        else
+          Result := Result + 'fo:border-right="none" ';
 
-        if cbNorth in FFormattingStyles[i].Border then Result := Result + 'fo:border-top="0.002cm solid #000000" '
-        else Result := Result + 'fo:border-top="none" ';
+        if cbNorth in FFormattingStyles[i].Border then begin
+          Result := Result + Format('fo:border-top="%s %s %s" ', [
+            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbNorth].LineStyle],
+            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbNorth].LineStyle],
+            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbNorth].Color)
+          ]);
+          if FFormattingStyles[i].BorderStyles[cbSouth].LineStyle = lsDouble then
+            Result := Result + 'style:border-linewidth-top="0.002cm 0.035cm 0.002cm" ';
+        end else
+          Result := Result + 'fo:border-top="none" ';
       end;
 
       if (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
-      begin
-        Result := Result + 'fo:background-color="#'
-          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
-      end;
+        Result := Result + Format('fo:background-color="%s" ', [
+          Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BackgroundColor)
+        ]);
+//          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
 
       if (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
       begin
@@ -1309,8 +1355,18 @@ end;
 }
 procedure TsSpreadOpenDocWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
+var
+  lStyle: String = '';
+  lIndex: Integer;
 begin
-  // no action at the moment...
+  // Write empty cell only if it has formatting
+  if ACell^.UsedFormattingFields <> [] then begin
+    lIndex := FindFormattingInList(ACell);
+    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+    FContent := FContent +
+      '  <table:table-cell ' + lStyle + '>' + LineEnding +
+      '  </table:table-cell>' + LineEnding;
+  end;
 end;
 
 {
