@@ -570,7 +570,14 @@ begin
     exit;
 
   if SaveDialog.Execute then
-    WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
+  begin
+    Screen.Cursor := crHourglass;
+    try
+      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  end;
 end;
 
 procedure TForm1.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
@@ -659,34 +666,39 @@ var
   i: Integer;
 begin
   // Load file
-  WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
-
-  // Update user interface
-  Caption := Format('fpsGrid - %s (%s)', [
-    AFilename,
-    GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
-  ]);
-  CbShowGridLines.Checked := (soShowGridLines in WorksheetGrid.Worksheet.Options);
-  CbShowHeaders.Checked := (soShowHeaders in WorksheetGrid.Worksheet.Options);
-  EdFrozenCols.Value := WorksheetGrid.FrozenCols;
-  EdFrozenRows.Value := WorksheetGrid.FrozenRows;
-  SetupBackgroundColorBox;
-
-  // Create a tab in the pagecontrol for each worksheet contained in the workbook
-  // This would be easer with a TTabControl. This has display issues, though.
-  pages := TStringList.Create;
+  Screen.Cursor := crHourglass;
   try
-    WorksheetGrid.GetSheets(pages);
-    WorksheetGrid.Parent := PageControl1.Pages[0];
-    while PageControl1.PageCount > pages.Count do PageControl1.Pages[1].Free;
-    while PageControl1.PageCount < pages.Count do PageControl1.AddTabSheet;
-    for i:=0 to PageControl1.PageCount-1 do
-      PageControl1.Pages[i].Caption := pages[i];
-  finally
-    pages.Free;
-  end;
+    WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
 
-  WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
+    // Update user interface
+    Caption := Format('fpsGrid - %s (%s)', [
+      AFilename,
+      GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
+    ]);
+    CbShowGridLines.Checked := (soShowGridLines in WorksheetGrid.Worksheet.Options);
+    CbShowHeaders.Checked := (soShowHeaders in WorksheetGrid.Worksheet.Options);
+    EdFrozenCols.Value := WorksheetGrid.FrozenCols;
+    EdFrozenRows.Value := WorksheetGrid.FrozenRows;
+    SetupBackgroundColorBox;
+
+    // Create a tab in the pagecontrol for each worksheet contained in the workbook
+    // This would be easier with a TTabControl. This has display issues, though.
+    pages := TStringList.Create;
+    try
+      WorksheetGrid.GetSheets(pages);
+      WorksheetGrid.Parent := PageControl1.Pages[0];
+      while PageControl1.PageCount > pages.Count do PageControl1.Pages[1].Free;
+      while PageControl1.PageCount < pages.Count do PageControl1.AddTabSheet;
+      for i:=0 to PageControl1.PageCount-1 do
+        PageControl1.Pages[i].Caption := pages[i];
+    finally
+      pages.Free;
+    end;
+
+    WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
+  finally
+    Screen.Cursor := crDefault;
+  end;
 end;
 
 procedure TForm1.PageControl1Change(Sender: TObject);

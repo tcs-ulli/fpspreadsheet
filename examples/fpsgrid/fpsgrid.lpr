@@ -4,8 +4,7 @@ program fpsvisual;
 
 uses
   Interfaces, // this includes the LCL widgetset
-  Forms, mainform, LResources, laz_fpspreadsheet_visual
-  { you can add units after this };
+  Forms, mainform, LResources, laz_fpspreadsheet_visual;
 
 {$R *.res}
 
