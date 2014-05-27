@@ -54,6 +54,14 @@ type
     procedure TestWriteReadBIFF8_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
     procedure TestWriteReadBIFF8_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
     procedure TestWriteReadBIFF8_Font_RandomPal;          // palette 64, top 56 entries random
+
+    { OpenDocument file format tests }
+    // Background colors...
+    procedure TestWriteReadODS_Background_InternalPal;    // internal palette
+    procedure TestWriteReadODS_Background_Biff5Pal;       // official biff5 palette
+    procedure TestWriteReadODS_Background_Biff8Pal;       // official biff8 palette
+    procedure TestWriteReadODS_Background_RandomPal;      // palette 64, top 56 entries random
+
   end;
 
 implementation
@@ -110,16 +118,14 @@ begin
          for i:=8 to 63 do  // first 8 colors cannot be changed
            MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
        end;
-{
-  999: begin  // Random palette
-         SetLength(pal, 64);
-         for i:=0 to 67 do pal[i] := PALETTE_BIFF8[i];
-         for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
-         MyWorkbook.UsePalette(@pal[0], 64);
-       end;        }
-
     // else use default palette
   end;
+
+  // Remember all colors because ODS does not have a palette in the file; therefore
+  // we do not know which colors to expect.
+  SetLength(pal, MyWorkbook.GetPaletteSize);
+  for i:=0 to High(pal) do
+    pal[i] := MyWorkbook.GetPaletteColor(i);
 
   // Write out all colors
   row := 0;
@@ -132,7 +138,7 @@ begin
       fail('Error in test code. Failed to get cell.');
     currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
     expectedRGB := MyWorkbook.GetPaletteColor(color);
-    CheckEquals(currentRGB, expectedRGB,
+    CheckEquals(expectedRGB, currentRGB,
       'Test unsaved background color, cell ' + CellNotation(MyWorksheet,0,0));
     inc(row);
   end;
@@ -154,8 +160,8 @@ begin
       fail('Error in test code. Failed to get cell.');
     color := TsColor(row);
     currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
-    expectedRGB := MyWorkbook.GetPaletteColor(color);
-    CheckEquals(currentRGB, expectedRGB,
+    expectedRGB := pal[color];
+    CheckEquals(expectedRGB, currentRGB,
       'Test saved background color, cell '+CellNotation(MyWorksheet,Row,Col));
   end;
   MyWorkbook.Free;
@@ -343,6 +349,28 @@ procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_RandomPal;
 begin
   TestWriteReadFontColors(sfExcel8, 999);
 end;
+
+{ Tests for Open Document file format }
+procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_InternalPal;
+begin
+  TestWriteReadBackgroundColors(sfOpenDocument, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_Biff5Pal;
+begin
+  TestWriteReadBackgroundColors(sfOpenDocument, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_Biff8Pal;
+begin
+  TestWriteReadBackgroundColors(sfOpenDocument, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_RandomPal;
+begin
+  TestWriteReadBackgroundColors(sfOpenDocument, 999);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadColorTests);

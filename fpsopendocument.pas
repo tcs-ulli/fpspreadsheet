@@ -212,6 +212,8 @@ constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   FStyleList := TFPList.Create;
+  // Set up the default palette in order to have the default color names correct.
+  Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
   FDateMode := dm1899;
 end;
@@ -858,7 +860,7 @@ begin
           if styleChildNode.NodeName = 'style:table-cell-properties' then begin
             // Background color
             s := GetAttrValue(styleChildNode, 'fo:background-color');
-            if s <> '' then begin
+            if (s <> '') and (s <> 'transparent') then begin
               if s[1] = '#' then s[1] := '$';
               bkClr := StrToInt(s);
             end;
