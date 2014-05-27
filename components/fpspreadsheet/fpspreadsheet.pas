@@ -556,6 +556,7 @@ type
     function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
     procedure SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
     function GetPaletteSize: Integer;
+    procedure UseDefaultPalette;
     procedure UsePalette(APalette: PsPalette; APaletteCount: Word;
       ABigEndian: Boolean = false);
     {@@ This property is only used for formats which don't support unicode
@@ -2835,25 +2836,20 @@ end;
 {@@
   Adds a color to the palette and returns its palette index, but only if the
   color does not already exist - in this case, it returns the index of the
-  existing color entry. }
+  existing color entry.
+  The color must in little-endian notation (like TColor of the graphics units)
+}
 function TsWorkbook.AddColorToPalette(AColorValue: TsColorValue): TsColor;
 var
   i: Integer;
 begin
-  // No palette yet? Add the 16 first entries of the default_palette. They are
-  // common to all palettes
-  if Length(FPalette) = 0 then begin
-    SetLength(FPalette, 16);
-    for i := 0 to 15 do
-      FPalette[i] := DEFAULT_PALETTE[i];
-  end;
+  // Look look for the color. Is it already in the existing palette?
+  if Length(FPalette) > 0 then
+    for Result := 0 to Length(FPalette)-1 do
+      if FPalette[Result] = AColorValue then
+        exit;
 
-  // Now look for the color. Is already in the existing palette?
-  for Result := 0 to Length(FPalette)-1 do
-    if FPalette[Result] = AColorValue then
-      exit;
-
-  // No. Add it to the palette.
+  // No --> Add it to the palette.
   Result := Length(FPalette);
   SetLength(FPalette, Result+1);
   FPalette[Result] := AColorValue;
@@ -2883,7 +2879,7 @@ begin
     g := TRgba(colorvalue).Green;
     b := TRgba(colorvalue).Blue;
   end;
-  Result := Format('%x%x%x', [r, g, b]);
+  Result := Format('%.2x%.2x%.2x', [r, g, b]);
 end;
 
 {@@
@@ -2947,6 +2943,15 @@ begin
     Result := High(DEFAULT_PALETTE) + 1
   else
     Result := Length(FPalette);
+end;
+
+{@@
+  Instructs the workbook to take colors from the default palette. Is called
+  from ODS reader because ODS does not have a palette. Without a palette the
+  color constants (scRed etc.) would not be correct any more. }
+procedure TsWorkbook.UseDefaultPalette;
+begin
+  UsePalette(@DEFAULT_PALETTE, Length(DEFAULT_PALETTE), false);
 end;
 
 {@@
