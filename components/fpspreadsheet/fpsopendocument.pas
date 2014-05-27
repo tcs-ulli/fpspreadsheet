@@ -74,6 +74,7 @@ type
     procedure ReadNumFormats(AStylesNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
+    procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadNumber(ARow : Word; ACol : Word; ACellNode: TDOMNode);
@@ -332,6 +333,16 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
+var
+  styleName: String;
+begin
+  FWorkSheet.WriteBlank(ARow, ACol);
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(ARow, ACol, stylename);
+end;
+
 procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
 var
   CalcSettingsNode, NullDateNode: TDOMNode;
@@ -433,6 +444,8 @@ begin
             ReadNumber(Row, Col, CellNode)
           else if (ParamValueType = 'date') or (ParamValueType = 'time') then
             ReadDate(Row, Col, CellNode)
+          else if (ParamValueType = '') then
+            ReadBlank(Row, Col, CellNode)
           else if ParamFormula <> '' then
             ReadLabel(Row, Col, CellNode);
 
@@ -464,9 +477,14 @@ begin
   ReadNumber(ARow, ACol, ACellNode);
 end;
 
-procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
+var
+  styleName: String;
 begin
-  FWorkSheet.WriteUTF8Text(ARow,ACol,UTF8Encode(ACellNode.TextContent));
+  FWorkSheet.WriteUTF8Text(ARow, ACol, UTF8Encode(ACellNode.TextContent));
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(ARow, ACol, stylename);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
@@ -728,6 +746,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
+  fs: TFormatSettings;
   style: TStyleData;
   styleNode: TDOMNode;
   styleChildNode: TDOMNode;
@@ -739,10 +758,77 @@ var
   numFmtIndexDefault: Integer;
   wrap: Boolean;
   borders: TsCellBorders;
+  borderStyles: TsCellBorderStyles;
   s: String;
+
+  procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
+  var
+    L: TStringList;
+    i: Integer;
+    isSolid: boolean;
+    s: String;
+    wid: Double;
+    linestyle: String;
+    rgb: DWord;
+    p: Integer;
+  begin
+    L := TStringList.Create;
+    try
+      L.Delimiter := ' ';
+      L.StrictDelimiter := true;
+      L.DelimitedText := AStyleValue;
+      wid := 0;
+      rgb := 0;
+      linestyle := '';
+      for i:=0 to L.Count-1 do begin
+        s := L[i];
+        if (s = 'solid') or (s = 'dashed') or (s = 'fine-dashed') or (s = 'dotted')
+          then linestyle := s;
+        if s[1] = '#' then begin
+          s[1] := '$';
+          rgb := StrToInt(s);
+        end;
+        p := pos('pt', s);
+        if p = Length(s)-1 then begin
+          wid := StrToFloat(copy(s, 1, p-1), fs);
+          continue;
+        end;
+        p := pos('mm', s);
+        if p = Length(s)-1 then begin
+          wid := mmToPts(StrToFloat(copy(s, 1, p-1), fs));
+          Continue;
+        end;
+        p := pos('cm', s);
+        if p = Length(s)-1 then begin
+          wid := cmToPts(StrToFloat(copy(s, 1, p-1), fs));
+          Continue;
+        end;
+      end;
+      borderStyles[ABorder].LineStyle := lsThin;
+      if (linestyle = 'solid') then begin
+        if (wid >= 2) then borderStyles[ABorder].LineStyle := lsThick
+        else if (wid >= 1) then borderStyles[ABorder].LineStyle := lsMedium
+      end else
+      if (linestyle = 'dotted') then
+        borderStyles[ABorder].LineStyle := lsHair
+      else
+      if (linestyle = 'dashed') then
+        borderStyles[ABorder].LineStyle := lsDashed
+      else
+      if (linestyle = 'fine-dashed') then
+        borderStyles[ABorder].LineStyle := lsDotted;
+      borderStyles[ABorder].Color := Workbook.AddColorToPalette(LongRGBToExcelPhysical(rgb));
+    finally
+      L.Free;
+    end;
+  end;
+
 begin
   if not Assigned(AStylesNode) then
     exit;
+
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
 
   numFmtIndexDefault := NumFormatList.FindByName('N0');
 
@@ -764,14 +850,34 @@ begin
         while Assigned(styleChildNode) do begin
           if styleChildNode.NodeName = 'style:table-cell-properties' then begin
             // Borders
+            s := GetAttrValue(styleChildNode, 'fo:border');
+            if (s <>'') then begin
+              borders := borders + [cbNorth, cbSouth, cbEast, cbWest];
+              SetBorderStyle(cbNorth, s);
+              SetBorderStyle(cbSouth, s);
+              SetBorderStyle(cbEast, s);
+              SetBorderStyle(cbWest, s);
+            end;
             s := GetAttrValue(styleChildNode, 'fo:border-top');
-            if (s <> '') and (s <> 'none') then Include(borders, cbNorth);
+            if (s <> '') and (s <> 'none') then begin
+              Include(borders, cbNorth);
+              SetBorderStyle(cbNorth, s);
+            end;
             s := GetAttrValue(styleChildNode, 'fo:border-right');
-            if (s <> '') and (s <> 'none') then Include(borders, cbEast);
+            if (s <> '') and (s <> 'none') then begin
+              Include(borders, cbEast);
+              SetBorderStyle(cbEast, s);
+            end;
             s := GetAttrValue(styleChildNode, 'fo:border-bottom');
-            if (s <> '') and (s <> 'none') then Include(borders, cbSouth);
+            if (s <> '') and (s <> 'none') then begin
+              Include(borders, cbSouth);
+              SetBorderStyle(cbSouth, s);
+            end;
             s := GetAttrValue(styleChildNode, 'fo:border-left');
-            if (s <> '') and (s <> 'none') then Include(borders, cbWest);
+            if (s <> '') and (s <> 'none') then begin
+              Include(borders, cbWest);
+              SetBorderStyle(cbWest, s);
+            end;
 
             // Text wrap
             s := GetAttrValue(styleChildNode, 'fo:wrap-option');
@@ -792,7 +898,7 @@ begin
         style.WordWrap := wrap;
         style.TextRotation := trHorizontal;
         style.Borders := borders;
-        style.BorderStyles := DEFAULT_BORDERSTYLES;
+        style.BorderStyles := borderStyles;
         style.BackgroundColor := scNotDefined;
 
         styleIndex := FStyleList.Add(style);
