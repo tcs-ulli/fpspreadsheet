@@ -106,6 +106,7 @@ type
     { ODS Tests }
     procedure TestWriteRead_ODS_Border;
     procedure TestWriteRead_ODS_BorderStyles;
+    procedure TestWriteRead_ODS_TextRotation;
     procedure TestWriteRead_ODS_WordWrap;
   end;
 
@@ -881,6 +882,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_TextRotation;
 begin
   TestWriteReadTextRotation(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_TextRotation;
+begin
+  TestWriteReadTextRotation(sfOpenDocument);
 end;
 
 

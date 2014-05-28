@@ -1286,6 +1286,7 @@ begin
 
     Result^.Row := ARow;
     Result^.Col := ACol;
+    Result^.ContentType := cctEmpty;
     Result^.BorderStyles := DEFAULT_BORDERSTYLES;
 
     Cells.Add(Result);
