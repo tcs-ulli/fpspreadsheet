@@ -71,6 +71,7 @@ type
     AcNFFmtDateTimeMY: TAction;
     AcNFFmtDateTimeMS: TAction;
     AcNFFmtDateTimeMSZ: TAction;
+    AcNew: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
@@ -82,6 +83,7 @@ type
     CbBackgroundColor: TColorBox;
     CbReadFormulas: TCheckBox;
     EdFormula: TEdit;
+    EdCellAddress: TEdit;
     FontComboBox: TComboBox;
     EdFrozenRows: TSpinEdit;
     FontDialog: TFontDialog;
@@ -128,6 +130,7 @@ type
     MenuItem43: TMenuItem;
     MenuItem44: TMenuItem;
     MenuItem45: TMenuItem;
+    MenuItem46: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
     MnuTimeInterval: TMenuItem;
     MnuShortTimeAM: TMenuItem;
@@ -181,6 +184,8 @@ type
     SaveDialog: TSaveDialog;
     EdFrozenCols: TSpinEdit;
     FormulaToolBar: TToolBar;
+    FormulaToolbarSplitter: TSplitter;
+    ToolButton22: TToolButton;
     WorksheetGrid: TsWorksheetGrid;
     TabSheet1: TTabSheet;
     ToolBar1: TToolBar;
@@ -218,6 +223,7 @@ type
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
     procedure AcIncDecDecimalsExecute(Sender: TObject);
+    procedure AcNewExecute(Sender: TObject);
     procedure AcNumFormatExecute(Sender: TObject);
     procedure AcOpenExecute(Sender: TObject);
     procedure AcQuitExecute(Sender: TObject);
@@ -459,6 +465,11 @@ begin
         Worksheet.WriteDecimals(cell, decs-1);
     end;
   end;
+end;
+
+procedure TForm1.AcNewExecute(Sender: TObject);
+begin
+  WorksheetGrid.NewWorksheet(26, 100);
 end;
 
 procedure TForm1.AcNumFormatExecute(Sender: TObject);
@@ -738,6 +749,8 @@ begin
     else
       EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
   end;
+
+  EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
 
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;

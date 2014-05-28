@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 193
   Width = 884
   Caption = 'fpsGrid'
-  ClientHeight = 624
+  ClientHeight = 629
   ClientWidth = 884
   Menu = MainMenu
   OnActivate = FormActivate
@@ -14,7 +14,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 85
-    Top = 539
+    Top = 544
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,9 +23,9 @@ object Form1: TForm1
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 8
-      Width = 116
+      Width = 93
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 32
-      Width = 125
+      Width = 100
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -45,7 +45,7 @@ object Form1: TForm1
     end
     object EdFrozenCols: TSpinEdit
       Left = 238
-      Height = 28
+      Height = 23
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -53,7 +53,7 @@ object Form1: TForm1
     end
     object EdFrozenRows: TSpinEdit
       Left = 238
-      Height = 28
+      Height = 23
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -61,27 +61,27 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 152
-      Height = 20
+      Height = 15
       Top = 13
-      Width = 77
+      Width = 62
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 153
-      Height = 20
+      Height = 15
       Top = 40
-      Width = 82
+      Width = 66
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 56
-      Width = 120
+      Width = 96
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
       TabOrder = 4
@@ -89,7 +89,7 @@ object Form1: TForm1
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 460
+    Height = 465
     Top = 79
     Width = 884
     ActivePage = TabSheet1
@@ -99,15 +99,16 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 427
+      ClientHeight = 437
       ClientWidth = 876
       object WorksheetGrid: TsWorksheetGrid
         Left = 0
-        Height = 427
+        Height = 437
         Top = 0
         Width = 876
         FrozenCols = 0
         FrozenRows = 0
+        ReadFormulas = False
         Align = alClient
         ColCount = 2
         ExtendedSelect = False
@@ -118,7 +119,7 @@ object Form1: TForm1
         TitleStyle = tsNative
         OnSelection = WorksheetGridSelection
         ColWidths = (
-          56
+          42
           64
         )
       end
@@ -135,38 +136,43 @@ object Form1: TForm1
     Images = ImageList
     TabOrder = 2
     object ToolButton1: TToolButton
-      Left = 1
+      Left = 24
       Top = 0
       Action = AcOpen
     end
     object ToolButton2: TToolButton
-      Left = 24
+      Left = 47
       Top = 0
       Action = AcSaveAs
     end
     object ToolButton3: TToolButton
-      Left = 80
+      Left = 103
       Top = 0
       Action = AcQuit
     end
     object ToolButton5: TToolButton
-      Left = 47
+      Left = 70
       Top = 0
       Width = 5
       Caption = 'ToolButton5'
       Style = tbsDivider
     end
     object ToolButton4: TToolButton
-      Left = 52
+      Left = 75
       Top = 0
       Action = AcEdit
     end
     object ToolButton6: TToolButton
-      Left = 75
+      Left = 98
       Top = 0
       Width = 5
       Caption = 'ToolButton6'
       Style = tbsDivider
+    end
+    object ToolButton22: TToolButton
+      Left = 1
+      Top = 0
+      Action = AcNew
     end
   end
   object FormatToolBar: TToolBar
@@ -196,19 +202,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 28
+      Height = 23
       Top = 2
       Width = 127
-      ItemHeight = 20
+      ItemHeight = 15
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 28
+      Height = 23
       Top = 2
       Width = 48
-      ItemHeight = 20
+      ItemHeight = 15
       Items.Strings = (
         '8'
         '9'
@@ -296,7 +302,7 @@ object Form1: TForm1
       Left = 507
       Height = 22
       Top = 2
-      Width = 132
+      Width = 149
       Style = [cbPrettyNames, cbCustomColors]
       OnGetColors = CbBackgroundColorGetColors
       ItemHeight = 16
@@ -309,7 +315,7 @@ object Form1: TForm1
       Action = AcFont
     end
     object TbNumFormats: TToolButton
-      Left = 639
+      Left = 656
       Hint = 'Change number format'
       Top = 2
       Caption = 'Fixed'
@@ -318,12 +324,12 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton24: TToolButton
-      Left = 697
+      Left = 714
       Top = 2
       Action = AcDecDecimals
     end
     object ToolButton25: TToolButton
-      Left = 674
+      Left = 691
       Top = 2
       Action = AcIncDecimals
     end
@@ -349,12 +355,27 @@ object Form1: TForm1
     Caption = 'FormulaToolBar'
     TabOrder = 4
     object EdFormula: TEdit
+      Left = 129
+      Height = 24
+      Top = 2
+      Width = 755
+      Align = alClient
+      TabOrder = 0
+    end
+    object EdCellAddress: TEdit
       Left = 1
       Height = 24
       Top = 2
-      Width = 883
-      Align = alClient
-      TabOrder = 0
+      Width = 123
+      Align = alLeft
+      Alignment = taCenter
+      TabOrder = 1
+    end
+    object FormulaToolbarSplitter: TSplitter
+      Left = 124
+      Height = 24
+      Top = 2
+      Width = 5
     end
   end
   object OpenDialog: TOpenDialog
@@ -377,6 +398,9 @@ object Form1: TForm1
     top = 200
     object mnuFile: TMenuItem
       Caption = '&File'
+      object MenuItem46: TMenuItem
+        Action = AcNew
+      end
       object mnuOpen: TMenuItem
         Action = AcOpen
         Bitmap.Data = {
@@ -901,7 +925,7 @@ object Form1: TForm1
     left = 272
     top = 264
     Bitmap = {
-      4C69220000001000000010000000FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      4C69230000001000000010000000FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00EAC39DFFE6BF96FFE4BB92FFE4BB92FFD1A06CF5D09E6DF6CC96
       5FDAC479427EB2673C09FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00E5BE96FFFFFFFEFFFDF3E9FFFDF3EAFFFCF2E8FFFAEFE3FFFAF2
@@ -1989,35 +2013,45 @@ object Form1: TForm1
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
-      FF00FFFFFF00FFFFFF00FFFFFF00
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000001C00000033000000360000
+      0036000000360000003600000036000000360000003600000036000000200000
+      0002FFFFFF00FFFFFF00FFFFFF00FFFFFF0000000033F8F8F8F0FBFBFBFDFCFC
+      FCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFF8F8F8FF949494910000
+      002000000002FFFFFF00FFFFFF00FFFFFF0000000036FBFBFBFDF4F4F4FFF5F5
+      F5FFF5F5F5FFF5F5F5FFF1F1F1FFEFEFEFFFE9E9E9FFFCFCFCFFE7E7E7FF9595
+      95910000002000000002FFFFFF000000000100000036FCFCFCFFF7F7F7FFF9F9
+      F9FFF7F7F7FFF7F7F7FFF3F3F3FFF0F0F0FFEAEAEAFFFCFCFCFFF6F6F6FFF4F4
+      F4FF9999999100000020FFFFFF000000000100000036FCFCFCFFF9F9F9FFF9F9
+      F9FFF9F9F9FFF7F7F7FFF6F6F6FFF2F2F2FFEBEBEBFFFCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFF00000036000000010000000100000036FCFCFCFFFBFBFBFFFCFC
+      FCFFFCFCFCFFFBFBFBFFF8F8F8FFF5F5F5FFF1F1F1FFECECECFFEAEAEAFFE6E6
+      E6FFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFCFCFCFFFBFBFBFFF8F8F8FFF5F5F5FFF2F2F2FFEFEFEFFFEDED
+      EDFFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFF8F8F8FFF6F6F6FFF3F3F3FFF2F2
+      F2FFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFAFAFAFFF9F9F9FFF6F6F6FFF6F6
+      F6FFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFF9F9F9FFF9F9F9FFF8F8
+      F8FFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFBFBFBFFFBFBFBFFFBFBFBFFFAFAFAFFFAFAFAFFF8F8F8FFF8F8
+      F8FFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFBFBFBFFFBFBFBFFFAFAFAFFFAFAFAFFFAFAFAFFFAFAFAFFFAFA
+      FAFFFCFCFCFF00000036000000010000000100000036FCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFFFCFCFCFFFBFBFBFFFBFBFBFFFBFBFBFFFBFBFBFFFBFBFBFFFBFB
+      FBFFFCFCFCFF00000036000000010000000100000036FCFCFCFEFCFCFCFFFCFC
+      FCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFC
+      FCFFFCFCFCFD00000036FFFFFF00FFFFFF0000000034F9F9F9F5FCFCFCFDFCFC
+      FCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFC
+      FCFDF9F9F9F300000033FFFFFF00FFFFFF000000001D00000034000000360000
+      0036000000360000003600000036000000360000003600000036000000360000
+      0036000000330000001DFFFFFF00
     }
   end
   object ActionList: TActionList
     Images = ImageList
     left = 272
     top = 200
-    object AcOpen: TAction
-      Caption = 'Open...'
-      ImageIndex = 0
-      OnExecute = acOpenExecute
-    end
-    object AcSaveAs: TAction
-      Caption = 'Save as...'
-      ImageIndex = 1
-      OnExecute = acSaveAsExecute
-    end
-    object AcQuit: TAction
-      Caption = 'Quit'
-      ImageIndex = 2
-      OnExecute = acQuitExecute
-    end
-    object AcEdit: TAction
-      AutoCheck = True
-      Caption = 'Edit mode'
-      Hint = 'Enable/disable editing'
-      ImageIndex = 3
-      OnExecute = AcEditExecute
-    end
     object AcHorDefaultAlign: TAction
       Tag = 100
       Category = 'Format'
@@ -2431,6 +2465,38 @@ object Form1: TForm1
       Caption = 'AcCopyFormat'
       ImageIndex = 30
       OnExecute = AcCopyFormatExecute
+    end
+    object AcNew: TAction
+      Category = 'File'
+      Caption = 'New'
+      ImageIndex = 34
+      OnExecute = AcNewExecute
+    end
+    object AcOpen: TAction
+      Category = 'File'
+      Caption = 'Open...'
+      ImageIndex = 0
+      OnExecute = acOpenExecute
+    end
+    object AcSaveAs: TAction
+      Category = 'File'
+      Caption = 'Save as...'
+      ImageIndex = 1
+      OnExecute = acSaveAsExecute
+    end
+    object AcQuit: TAction
+      Category = 'File'
+      Caption = 'Quit'
+      ImageIndex = 2
+      OnExecute = acQuitExecute
+    end
+    object AcEdit: TAction
+      Category = 'Edit'
+      AutoCheck = True
+      Caption = 'Edit mode'
+      Hint = 'Enable/disable editing'
+      ImageIndex = 3
+      OnExecute = AcEditExecute
     end
   end
   object FontDialog: TFontDialog
