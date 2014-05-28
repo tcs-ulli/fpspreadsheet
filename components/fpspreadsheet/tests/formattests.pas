@@ -104,6 +104,7 @@ type
     procedure TestWriteRead_BIFF8_WordWrap;
 
     { ODS Tests }
+    procedure TestWriteRead_ODS_Alignment;
     procedure TestWriteRead_ODS_Border;
     procedure TestWriteRead_ODS_BorderStyles;
     procedure TestWriteRead_ODS_TextRotation;
@@ -425,12 +426,13 @@ begin
   for horAlign in TsHorAlignment do begin
     col := 0;
     if AFormat = sfExcel2 then begin
+      // BIFF2 can only do horizontal alignment --> no need for vertical alignment.
       MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
       MyWorksheet.WriteHorAlignment(row, col, horAlign);
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
-      CheckEquals(horAlign = MyCell^.HorAlignment, true,
+      CheckEquals(ord(horAlign),  ord(MyCell^.HorAlignment),
         'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
     end else
       for vertAlign in TsVertAlignment do begin
@@ -440,9 +442,9 @@ begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
-        CheckEquals(true, vertAlign = MyCell^.VertAlignment,
+        CheckEquals(ord(vertAlign),ord(MyCell^.VertAlignment),
           'Test unsaved vertical alignment, cell ' + CellNotation(MyWorksheet,0,0));
-        CheckEquals(true, horAlign = MyCell^.HorAlignment,
+        CheckEquals(ord(horAlign), ord(MyCell^.HorAlignment),
           'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
         inc(col);
       end;
@@ -454,33 +456,39 @@ begin
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, AlignmentSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowIndex do
-    if AFormat = sfExcel2 then begin
+  if AFormat = sfExcel2 then begin
+    MyWorksheet := MyWorkbook.GetFirstWorksheet;
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for row :=0 to MyWorksheet.GetLastRowIndex do begin
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
-        fail('Error in test code. Failded to get cell.');
+        fail('Error in test code. Failed to get cell.');
       horAlign := TsHorAlignment(row);
-      CheckEquals(horAlign = MyCell^.HorAlignment, true,
-        'Test saved horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
-    end else
-      for col := 0 to MyWorksheet.GetLastColIndex do begin
+      CheckEquals(ord(horAlign), ord(MyCell^.HorAlignment),
+        'Test save horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
+    end
+  end
+  else begin
+    MyWorksheet := GetWorksheetByName(MyWorkBook, AlignmentSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for row :=0 to MyWorksheet.GetLastRowIndex do
+      for col := 0 to MyWorksheet.GetlastColIndex do begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
         vertAlign := TsVertAlignment(col);
-        if vertAlign = vaDefault then vertAlign := vaBottom;
-        CheckEquals(true, vertAlign = MyCell^.VertAlignment,
-          'Test saved vertical alignment mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
+        if (vertAlign = vaDefault) and (AFormat <> sfOpenDocument) then
+          vertAlign := vaBottom;
+        CheckEquals(ord(vertAlign), ord(MyCell^.VertAlignment),
+          'Test saved vertical alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
         horAlign := TsHorAlignment(row);
-        CheckEquals(true, horAlign = MyCell^.HorAlignment,
-          'Test saved horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,Row,Col));
+        CheckEquals(ord(horAlign), ord(MyCell^.HorAlignment),
+          'Test saved horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
       end;
+  end;
+
   MyWorkbook.Free;
 
   DeleteFile(TempFile);
@@ -499,6 +507,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Alignment;
 begin
   TestWriteReadAlignment(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Alignment;
+begin
+  TestWriteReadAlignment(sfOpenDocument);
 end;
 
 
