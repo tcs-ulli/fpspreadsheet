@@ -58,12 +58,17 @@ type
 
   TsSpreadOpenDocReader = class(TsCustomSpreadReader)
   private
-    FStyleList: TFPList;
+    FCellStyleList: TFPList;
+    FColumnStyleList: TFPList;
+    FColumnList: TFPList;
     FDateMode: TDateMode;
     // Applies a style to a cell
     procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String);
     // Searches a style by its name in the StyleList
-    function FindStyleByName(AStyleName: String): integer;
+    function FindCellStyleByName(AStyleName: String): integer;
+    // Searches a column style by its column index or its name in the StyleList
+    function FindColumnByCol(AColIndex: Integer): Integer;
+    function FindColStyleByName(AStyleName: String): integer;
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
@@ -189,8 +194,8 @@ const
     ('0.002cm', '2pt', '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm');
 
 type
-  { Style items relevant to FPSpreadsheet. Stored in the StylesList of the reader. }
-  TStyleData = class
+  { Cell style items relevant to FPSpreadsheet. Stored in the CellStyleList of the reader. }
+  TCellStyleData = class
   public
     Name: String;
     FontIndex: Integer;
@@ -202,6 +207,21 @@ type
     Borders: TsCellBorders;
     BorderStyles: TsCellBorderStyles;
     BackgroundColor: TsColor;
+  end;
+
+  { Column style items stored in ColStyleList of the reader }
+  TColumnStyleData = class
+  public
+    Name: String;
+    ColWidth: Double;
+  end;
+
+  { Column data items stored in the ColList of the reader  }
+  TColumnData = class
+  public
+    Col: Integer;
+    ColStyleIndex: integer;   // index into FColumnStyleList of reader
+    DefaultCellStyleIndex: Integer;   // Index of default cell style in FCellStyleList of reader
   end;
 
 
@@ -218,7 +238,9 @@ end;
 constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FStyleList := TFPList.Create;
+  FCellStyleList := TFPList.Create;
+  FColumnStyleList := TFPList.Create;
+  FColumnList := TFPList.Create;
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
@@ -229,8 +251,15 @@ destructor TsSpreadOpenDocReader.Destroy;
 var
   j: integer;
 begin
-  for j := FStyleList.Count-1 downto 0 do TObject(FStyleList[j]).Free;
-  FStyleList.Free;
+  for j := FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
+  FColumnList.Free;
+
+  for j := FColumnStyleList.Count-1 downto 0 do TObject(FColumnStyleList[j]).Free;
+  FColumnStyleList.Free;
+
+  for j := FCellStyleList.Count-1 downto 0 do TObject(FCellStyleList[j]).Free;
+  FCellStyleList.Free;
+
   inherited Destroy;
 end;
 
@@ -239,73 +268,92 @@ procedure TsSpreadOpenDocReader.ApplyStyleToCell(ARow, ACol: Cardinal;
   AStyleName: String);
 var
   cell: PCell;
-  styleData: TStyleData;
+  styleData: TCellStyleData;
   styleIndex: Integer;
   numFmtData: TsNumFormatData;
+  i: Integer;
 begin
   cell := FWorksheet.GetCell(ARow, ACol);
-  if Assigned(cell) then begin
-    styleIndex := FindStyleByName(AStyleName);
-    if styleIndex = -1 then
+  if not Assigned(cell) then
+    exit;
+
+  // Is there a style attached to the cell?
+  styleIndex := -1;
+  if AStyleName <> '' then
+    styleIndex := FindCellStyleByName(AStyleName);
+  if (styleIndex = -1) then begin
+    // No - look for the style attached to the column of the cell and
+    // find the cell style by the DefaultCellStyleIndex stored in the column list.
+    i := FindColumnByCol(ACol);
+    if i = -1 then
       exit;
-
-    styleData := TStyleData(FStyleList[styleIndex]);
-
-    // Font
-    {
-    if style.FontIndex = 1 then
-      Include(cell^.UsedFormattingFields, uffBold)
-    else
-    if XFData.FontIndex > 1 then
-      Include(cell^.UsedFormattingFields, uffFont);
-    cell^.FontIndex := styleData.FontIndex;
-     }
-
-    // Alignment
-    cell^.HorAlignment := styleData.HorAlignment;
-    cell^.VertAlignment := styleData.VertAlignment;
-
-    // Word wrap
-    if styleData.WordWrap then
-      Include(cell^.UsedFormattingFields, uffWordWrap)
-    else
-      Exclude(cell^.UsedFormattingFields, uffWordWrap);
-
-    // Text rotation
-    if styleData.TextRotation > trHorizontal then
-      Include(cell^.UsedFormattingFields, uffTextRotation)
-    else
-      Exclude(cell^.UsedFormattingFields, uffTextRotation);
-    cell^.TextRotation := styledata.TextRotation;
-
-    // Borders
-    cell^.BorderStyles := styleData.BorderStyles;
-    if styleData.Borders <> [] then begin
-      Include(cell^.UsedFormattingFields, uffBorder);
-      cell^.Border := styleData.Borders;
-    end else
-      Exclude(cell^.UsedFormattingFields, uffBorder);
-
-    // Background color
-    if styleData.BackgroundColor <> scNotDefined then begin
-      Include(cell^.UsedFormattingFields, uffBackgroundColor);
-      cell^.BackgroundColor := styleData.BackgroundColor;
-    end;
-
-    // Number format
-    if styleData.NumFormatIndex > -1 then
-      if cell^.ContentType = cctNumber then begin
-        numFmtData := NumFormatList[styleData.NumFormatIndex];
-        if numFmtData <> nil then begin
-          Include(cell^.UsedFormattingFields, uffNumberFormat);
-          cell^.NumberFormat := numFmtData.NumFormat;
-          cell^.NumberFormatStr := numFmtData.FormatString;
-          cell^.Decimals := numFmtData.Decimals;
-          cell^.CurrencySymbol := numFmtData.CurrencySymbol;
-        end;
-      end;
-
+    styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
   end;
+
+  styleData := TCellStyleData(FCellStyleList[styleIndex]);
+
+  // Now copy all style parameters from the styleData to the cell.
+
+  // Font
+  {
+  if style.FontIndex = 1 then
+    Include(cell^.UsedFormattingFields, uffBold)
+  else
+  if XFData.FontIndex > 1 then
+    Include(cell^.UsedFormattingFields, uffFont);
+  cell^.FontIndex := styleData.FontIndex;
+   }
+
+  // Alignment
+  cell^.HorAlignment := styleData.HorAlignment;
+  cell^.VertAlignment := styleData.VertAlignment;
+   // Word wrap
+  if styleData.WordWrap then
+    Include(cell^.UsedFormattingFields, uffWordWrap)
+  else
+    Exclude(cell^.UsedFormattingFields, uffWordWrap);
+   // Text rotation
+  if styleData.TextRotation > trHorizontal then
+    Include(cell^.UsedFormattingFields, uffTextRotation)
+  else
+    Exclude(cell^.UsedFormattingFields, uffTextRotation);
+  cell^.TextRotation := styledata.TextRotation;
+  // Text alignment
+  if styleData.HorAlignment <> haDefault then begin
+    Include(cell^.UsedFormattingFields, uffHorAlign);
+    cell^.HorAlignment := styleData.HorAlignment;
+  end else
+    Exclude(cell^.UsedFormattingFields, uffHorAlign);
+  if styleData.VertAlignment <> vaDefault then begin
+    Include(cell^.UsedFormattingFields, uffVertAlign);
+    cell^.VertAlignment := styleData.VertAlignment;
+  end else
+    Exclude(cell^.UsedFormattingFields, uffVertAlign);
+  // Borders
+  cell^.BorderStyles := styleData.BorderStyles;
+  if styleData.Borders <> [] then begin
+    Include(cell^.UsedFormattingFields, uffBorder);
+    cell^.Border := styleData.Borders;
+  end else
+    Exclude(cell^.UsedFormattingFields, uffBorder);
+  // Background color
+  if styleData.BackgroundColor <> scNotDefined then begin
+    Include(cell^.UsedFormattingFields, uffBackgroundColor);
+    cell^.BackgroundColor := styleData.BackgroundColor;
+  end;
+
+  // Number format
+  if styleData.NumFormatIndex > -1 then
+    if cell^.ContentType = cctNumber then begin
+      numFmtData := NumFormatList[styleData.NumFormatIndex];
+      if numFmtData <> nil then begin
+        Include(cell^.UsedFormattingFields, uffNumberFormat);
+        cell^.NumberFormat := numFmtData.NumFormat;
+        cell^.NumberFormatStr := numFmtData.FormatString;
+        cell^.Decimals := numFmtData.Decimals;
+        cell^.CurrencySymbol := numFmtData.CurrencySymbol;
+      end;
+    end;
 end;
 
 { Creates the correct version of the number format list
@@ -316,12 +364,28 @@ begin
   FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
-function TsSpreadOpenDocReader.FindStyleByName(AStyleName: String): Integer;
+function TsSpreadOpenDocReader.FindCellStyleByName(AStyleName: String): Integer;
 begin
-  for Result:=0 to FStyleList.Count-1 do begin
-    if TStyleData(FStyleList[Result]).Name = AStyleName then
+  for Result:=0 to FCellStyleList.Count-1 do begin
+    if TCellStyleData(FCellStyleList[Result]).Name = AStyleName then
       exit;
   end;
+  Result := -1;
+end;
+
+function TsSpreadOpenDocReader.FindColumnByCol(AColIndex: Integer): Integer;
+begin
+  for Result := 0 to FColumnList.Count-1 do
+    if TColumnData(FColumnList[Result]).Col = AColIndex then
+      exit;
+  Result := -1;
+end;
+
+function TsSpreadOpenDocReader.FindColStyleByName(AStyleName: String): Integer;
+begin
+  for Result := 0 to FColumnStyleList.Count-1 do
+    if TColumnStyleData(FColumnStyleList[Result]).Name = AStyleName then
+      exit;
   Result := -1;
 end;
 
@@ -383,11 +447,16 @@ var
   FilePath : string;
   UnZip : TUnZipper;
   FileList : TStringList;
-  BodyNode, SpreadSheetNode, TableNode, RowNode, CellNode : TDOMNode;
+  BodyNode, SpreadSheetNode, TableNode, ColNode, RowNode, CellNode : TDOMNode;
   StylesNode: TDOMNode;
   ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
   TableStyleName: String;
   RowsCount, ColsCount : integer;
+  colData: TColumnData;
+  colStyleIndex: Integer;
+  colStyleData: TColumnStyleData;
+  i: Integer;
+  s: String;
 begin
   //unzip content.xml into AFileName path
   FilePath := GetTempDir(false);
@@ -433,9 +502,36 @@ begin
     TableNode := SpreadSheetNode.FindNode('table:table');
     while Assigned(TableNode) do begin
       FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
-      Row := 0;
 
-      //process each row inside the sheet
+      // Collect column styles used
+      Col := 0;
+      ColNode := TableNode.FindNode('table:table-column');
+      while Assigned(ColNode) do begin
+        if ColNode.NodeName = 'table:table-column' then begin;
+          s := GetAttrValue(ColNode, 'table:style-name');
+          colStyleIndex := FindColStyleByName(s);
+          if colStyleIndex <> -1 then begin
+            colStyleData := TColumnStyleData(FColumnStyleList[colStyleIndex]);
+            s := GetAttrValue(ColNode, 'table:default-cell-style-name');
+            if s <> '' then begin
+              colData := TColumnData.Create;
+              colData.Col := Col;
+              colData.ColStyleIndex := colStyleIndex;
+              colData.DefaultCellStyleIndex := FindCellStyleByName(s);
+              FColumnList.Add(colData);
+            end;
+          end;
+          s := GetAttrValue(ColNode, 'table:number-columns-repeated');
+          if s = '' then
+            inc(Col)
+          else
+            inc(col, StrToInt(s));
+        end;
+        ColNode := ColNode.NextSibling;
+      end;
+
+      // Process each row inside the sheet
+      Row := 0;
       RowNode := TableNode.FindNode('table:table-row');
       while Assigned(RowNode) do begin
 
@@ -760,9 +856,11 @@ end;
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
   fs: TFormatSettings;
-  style: TStyleData;
+  style: TCellStyleData;
   styleNode: TDOMNode;
   styleChildNode: TDOMNode;
+  colStyle: TColumnStyleData;
+  colWidth: Double;
   family: String;
   styleName: String;
   styleIndex: Integer;
@@ -771,6 +869,8 @@ var
   numFmtIndexDefault: Integer;
   wrap: Boolean;
   txtRot: TsTextRotation;
+  vertAlign: TsVertAlignment;
+  horAlign: TsHorAlignment;
   borders: TsCellBorders;
   borderStyles: TsCellBorderStyles;
   bkClr: TsColorValue;
@@ -857,6 +957,30 @@ begin
   while Assigned(styleNode) do begin
     if styleNode.NodeName = 'style:style' then begin
       family := GetAttrValue(styleNode, 'style:family');
+
+      // Column styles
+      if family = 'table-column' then begin
+        styleName := GetAttrValue(styleNode, 'style:name');
+        styleChildNode := styleNode.FirstChild;
+        colWidth := -1;
+        while Assigned(styleChildNode) do begin
+          if styleChildNode.NodeName = 'style:table-column-properties' then begin
+            s := GetAttrValue(styleChildNode, 'style:column-width');
+            if s <> '' then begin
+              s := Copy(s, 1, Length(s)-2);    // TO DO: use correct units!
+              colWidth := StrToFloat(s, fs);
+              break;
+            end;
+          end;
+          styleChildNode := styleChildNode.NextSibling;
+        end;
+        colStyle := TColumnStyleData.Create;
+        colStyle.Name := styleName;
+        colStyle.ColWidth := colWidth;
+        FColumnStyleList.Add(colStyle);
+      end;
+
+      // Cell styles
       if family = 'table-cell' then begin
         styleName := GetAttrValue(styleNode, 'style:name');
         numFmtName := GetAttrValue(styleNode, 'style:data-style-name');
@@ -868,6 +992,8 @@ begin
         wrap := false;
         bkClr := TsColorValue(-1);
         txtRot := trHorizontal;
+        horAlign := haDefault;
+        vertAlign := vaDefault;
 
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do begin
@@ -920,19 +1046,35 @@ begin
             if s = 'ttb' then
               txtRot := rtStacked;
 
+            // Vertical text alignment
+            s := GetAttrValue(styleChildNode, 'style:vertical-align');
+            if s = 'top' then
+              vertAlign := vaTop
+            else if s = 'middle' then
+              vertAlign := vaCenter
+            else if s = 'bottom' then
+              vertAlign := vaBottom;
+
           end else
           if styleChildNode.NodeName = 'style:paragraph-properties' then begin
-            //
+            // Horizontal text alignment
+            s := GetAttrValue(styleChildNode, 'fo:text-align');
+            if s = 'start' then
+              horAlign := haLeft
+            else if s = 'end' then
+              horAlign := haRight
+            else if s = 'center' then
+              horAlign := haCenter;
           end;
           styleChildNode := styleChildNode.NextSibling;
         end;
 
-        style := TStyleData.Create;
+        style := TCellStyleData.Create;
         style.Name := stylename;
         style.FontIndex := 0;
         style.NumFormatIndex := numFmtIndex;
-        style.HorAlignment := haDefault;
-        style.VertAlignment := vaDefault;
+        style.HorAlignment := horAlign;
+        style.VertAlignment := vertAlign;
         style.WordWrap := wrap;
         style.TextRotation := txtRot;
         style.Borders := borders;
@@ -940,7 +1082,7 @@ begin
         style.BackgroundColor := IfThen(bkClr = TsColorValue(-1), scNotDefined,
           Workbook.AddColorToPalette(bkClr));
 
-        styleIndex := FStyleList.Add(style);
+        styleIndex := FCellStyleList.Add(style);
       end;
     end;
     styleNode := styleNode.NextSibling;
