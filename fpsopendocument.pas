@@ -96,6 +96,11 @@ type
   { TsSpreadOpenDocWriter }
 
   TsSpreadOpenDocWriter = class(TsCustomSpreadWriter)
+  private
+    function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
+    function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
+    function WriteTextRotationStyleXMLAsString(const AFormat: TCell): String;
+    function WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
   protected
     FPointSeparatorSettings: TFormatSettings;
     // Strings with the contents of files
@@ -1333,7 +1338,6 @@ end;
 function TsSpreadOpenDocWriter.WriteStylesXMLAsString: string;
 var
   i: Integer;
-  clr: string;
 begin
   Result := '';
 
@@ -1352,82 +1356,13 @@ begin
 
     // style:table-cell-properties
     if (FFormattingStyles[i].UsedFormattingFields <> []) then begin
-      {
-    if (uffBorder in FFormattingStyles[i].UsedFormattingFields) or
-     (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) or
-     (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) or
-     (uffTextRotation in FFormattingStyles[i].UsedFormattingFields)
-    then begin
-    }
-      Result := Result + '      <style:table-cell-properties ';
-
-      if (uffBorder in FFormattingStyles[i].UsedFormattingFields) then
-      begin
-        if cbSouth in FFormattingStyles[i].Border then begin
-          Result := Result + Format('fo:border-bottom="%s %s %s" ', [
-            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbSouth].LineStyle],
-            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbSouth].LineStyle],
-            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbSouth].Color)
-          ]);
-          if FFormattingStyles[i].BorderStyles[cbSouth].LineStyle = lsDouble then
-            Result := Result + 'style:border-linewidth-bottom="0.002cm 0.035cm 0.002cm" ';
-        end
-        else
-          Result := Result + 'fo:border-bottom="none" ';
-
-        if cbWest in FFormattingStyles[i].Border then begin
-          Result := Result + Format('fo:border-left="%s %s %s" ', [
-            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbWest].LineStyle],
-            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbWest].LineStyle],
-            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbWest].Color)
-          ]);
-          if FFormattingStyles[i].BorderStyles[cbWest].LineStyle = lsDouble then
-            Result := Result + 'style:border-linewidth-left="0.002cm 0.035cm 0.002cm" ';
-        end
-        else
-          Result := Result + 'fo:border-left="none" ';
-
-        if cbEast in FFormattingStyles[i].Border then begin
-          Result := Result + Format('fo:border-right="%s %s %s" ', [
-            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbEast].LineStyle],
-            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbEast].LineStyle],
-            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbEast].Color)
-          ]);
-          if FFormattingStyles[i].BorderStyles[cbSouth].LineStyle = lsDouble then
-            Result := Result + 'style:border-linewidth-right="0.002cm 0.035cm 0.002cm" ';
-        end
-        else
-          Result := Result + 'fo:border-right="none" ';
-
-        if cbNorth in FFormattingStyles[i].Border then begin
-          Result := Result + Format('fo:border-top="%s %s %s" ', [
-            BORDER_LINEWIDTHS[FFormattingStyles[i].BorderStyles[cbNorth].LineStyle],
-            BORDER_LINESTYLES[FFormattingStyles[i].BorderStyles[cbNorth].LineStyle],
-            Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BorderStyles[cbNorth].Color)
-          ]);
-          if FFormattingStyles[i].BorderStyles[cbSouth].LineStyle = lsDouble then
-            Result := Result + 'style:border-linewidth-top="0.002cm 0.035cm 0.002cm" ';
-        end else
-          Result := Result + 'fo:border-top="none" ';
-      end;
-
-      if (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) then
-        Result := Result + Format('fo:background-color="%s" ', [
-          Workbook.GetPaletteColorAsHTMLStr(FFormattingStyles[i].BackgroundColor)
-        ]);
-//          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
-
-      if (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
-        Result := Result + 'fo:wrap-option="wrap" ';
-
-      if (uffTextRotation in FFormattingStyles[i].UsedFormattingFields) then
-        case FFormattingStyles[i].TextRotation of
-          rt90DegreeClockwiseRotation: Result := Result + 'style:rotation-angle="270" ';
-          rt90DegreeCounterClockwiseRotation: Result := Result + 'style:rotation-angle="90" ';
-          rtStacked: Result := Result + 'style:direction="ttb" ';
-        end;
-
-      Result := Result + '/>' + LineEnding;
+      Result := Result +
+    '      <style:table-cell-properties ' +
+                WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
+                WriteBackgroundColorStyleXMLAsString(FFormattingStyles[i]) +
+                WriteWordwrapStyleXMLAsString(FFormattingStyles[i]) +
+                WriteTextRotationStyleXMLAsString(FFormattingStyles[i]) +
+                '/>' + LineEnding;
     end;
 
     // End
@@ -1548,6 +1483,109 @@ begin
       '  <table:table-cell ' + lStyle + '>' + LineEnding +
       '  </table:table-cell>' + LineEnding;
   end;
+end;
+
+{ Creates an XML string for inclusion of the background color into the
+  written file from the backgroundcolor setting in the format cell.
+  Is called from WriteStyles (via WriteStylesXMLAsString). }
+function TsSpreadOpenDocWriter.WriteBackgroundColorStyleXMLAsString(
+  const AFormat: TCell): String;
+begin
+  Result := '';
+
+  if not (uffBackgroundColor in AFormat.UsedFormattingFields) then
+    exit;
+
+  Result := Format('fo:background-color="%s" ', [
+    Workbook.GetPaletteColorAsHTMLStr(AFormat.BackgroundColor)
+  ]);
+//          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
+end;
+
+{ Creates an XML string for inclusion of borders and border styles into the
+  written file from the border settings in the format cell.
+  Is called from WriteStyles (via WriteStylesXMLAsString). }
+function TsSpreadOpenDocWriter.WriteBorderStyleXMLAsString(const AFormat: TCell): String;
+begin
+  Result := '';
+
+  if not (uffBorder in AFormat.UsedFormattingFields) then
+    exit;
+
+  if cbSouth in AFormat.Border then begin
+    Result := Result + Format('fo:border-bottom="%s %s %s" ', [
+      BORDER_LINEWIDTHS[AFormat.BorderStyles[cbSouth].LineStyle],
+      BORDER_LINESTYLES[AFormat.BorderStyles[cbSouth].LineStyle],
+      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbSouth].Color)
+    ]);
+    if AFormat.BorderStyles[cbSouth].LineStyle = lsDouble then
+      Result := Result + 'style:border-linewidth-bottom="0.002cm 0.035cm 0.002cm" ';
+  end
+  else
+    Result := Result + 'fo:border-bottom="none" ';
+
+  if cbWest in AFormat.Border then begin
+    Result := Result + Format('fo:border-left="%s %s %s" ', [
+      BORDER_LINEWIDTHS[AFormat.BorderStyles[cbWest].LineStyle],
+      BORDER_LINESTYLES[AFormat.BorderStyles[cbWest].LineStyle],
+      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbWest].Color)
+    ]);
+    if AFormat.BorderStyles[cbWest].LineStyle = lsDouble then
+      Result := Result + 'style:border-linewidth-left="0.002cm 0.035cm 0.002cm" ';
+  end
+  else
+    Result := Result + 'fo:border-left="none" ';
+
+  if cbEast in AFormat.Border then begin
+    Result := Result + Format('fo:border-right="%s %s %s" ', [
+      BORDER_LINEWIDTHS[AFormat.BorderStyles[cbEast].LineStyle],
+      BORDER_LINESTYLES[AFormat.BorderStyles[cbEast].LineStyle],
+      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbEast].Color)
+    ]);
+    if AFormat.BorderStyles[cbSouth].LineStyle = lsDouble then
+      Result := Result + 'style:border-linewidth-right="0.002cm 0.035cm 0.002cm" ';
+  end
+  else
+    Result := Result + 'fo:border-right="none" ';
+
+  if cbNorth in AFormat.Border then begin
+    Result := Result + Format('fo:border-top="%s %s %s" ', [
+      BORDER_LINEWIDTHS[AFormat.BorderStyles[cbNorth].LineStyle],
+      BORDER_LINESTYLES[AFormat.BorderStyles[cbNorth].LineStyle],
+      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbNorth].Color)
+    ]);
+    if AFormat.BorderStyles[cbSouth].LineStyle = lsDouble then
+      Result := Result + 'style:border-linewidth-top="0.002cm 0.035cm 0.002cm" ';
+  end else
+    Result := Result + 'fo:border-top="none" ';
+end;
+
+{ Creates an XML string for inclusion of the textrotation style option into the
+  written file from the textrotation setting in the format cell.
+  Is called from WriteStyles (via WriteStylesXMLAsString). }
+function TsSpreadOpenDocWriter.WriteTextRotationStyleXMLAsString(
+  const AFormat: TCell): String;
+begin
+  Result := '';
+  if not (uffTextRotation in AFormat.UsedFormattingFields) then
+    exit;
+
+  case AFormat.TextRotation of
+    rt90DegreeClockwiseRotation        : Result := 'style:rotation-angle="270" ';
+    rt90DegreeCounterClockwiseRotation : Result := 'style:rotation-angle="90" ';
+    rtStacked                          : Result := 'style:direction="ttb" ';
+  end;
+end;
+
+{ Creates an XML string for inclusion of the wordwrap option into the
+  written file from the wordwrap setting in the format cell.
+  Is called from WriteStyles (via WriteStylesXMLAsString). }
+function TsSpreadOpenDocWriter.WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
+begin
+  if (uffWordWrap in AFormat.UsedFormattingFields) then
+    Result := 'fo:wrap-option="wrap" '
+  else
+    Result := '';
 end;
 
 {
