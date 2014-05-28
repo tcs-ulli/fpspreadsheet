@@ -99,7 +99,9 @@ type
   private
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
     function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
+    function WriteHorAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TCell): String;
+    function WriteVertAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
   protected
     FPointSeparatorSettings: TFormatSettings;
@@ -1355,15 +1357,29 @@ begin
     '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
 
     // style:table-cell-properties
-    if (FFormattingStyles[i].UsedFormattingFields <> []) then begin
+    if (FFormattingStyles[i].UsedFormattingFields *
+      [uffBorder, uffBackgroundColor, uffWordWrap, uffTextRotation, uffVertAlign] <> [])
+    then begin
       Result := Result +
     '      <style:table-cell-properties ' +
                 WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
                 WriteBackgroundColorStyleXMLAsString(FFormattingStyles[i]) +
                 WriteWordwrapStyleXMLAsString(FFormattingStyles[i]) +
                 WriteTextRotationStyleXMLAsString(FFormattingStyles[i]) +
+                WriteVertAlignmentStyleXMLAsString(FFormattingStyles[i]) +
                 '/>' + LineEnding;
     end;
+
+    // style:paragraph-properties
+    if (uffHorAlign in FFormattingStyles[i].UsedFormattingFields) and
+       (FFormattingStyles[i].HorAlignment <> haDefault)
+    then begin
+      Result := Result +
+    '      <style:paragraph-properties ' +
+              WriteHorAlignmentStyleXMLAsString(FFormattingStyles[i]) +
+              '/>' + LineEnding;
+    end;
+
 
     // End
     Result := Result +
@@ -1560,6 +1576,22 @@ begin
     Result := Result + 'fo:border-top="none" ';
 end;
 
+{ Creates an XML string for inclusion of the horizontal alignment into the
+  written file from the horizontal alignment setting in the format cell.
+  Is called from WriteStyles (via WriteStylesXMLAsString). }
+function TsSpreadOpenDocWriter.WriteHorAlignmentStyleXMLAsString(
+  const AFormat: TCell): String;
+begin
+  Result := '';
+  if not (uffHorAlign in AFormat.UsedFormattingFields) then
+    exit;
+  case AFormat.HorAlignment of
+    haLeft   : Result := 'fo:text-align="start" ';
+    haCenter : Result := 'fo:text-align="center" ';
+    haRight  : Result := 'fo:text-align="end" ';
+  end;
+end;
+
 { Creates an XML string for inclusion of the textrotation style option into the
   written file from the textrotation setting in the format cell.
   Is called from WriteStyles (via WriteStylesXMLAsString). }
@@ -1577,10 +1609,27 @@ begin
   end;
 end;
 
+{ Creates an XML string for inclusion of the vertical alignment into the
+  written file from the vertical alignment setting in the format cell.
+  Is called from WriteStyles (via WriteStylesXMLAsString). }
+function TsSpreadOpenDocWriter.WriteVertAlignmentStyleXMLAsString(
+  const AFormat: TCell): String;
+begin
+  Result := '';
+  if not (uffVertAlign in AFormat.UsedFormattingFields) then
+    exit;
+  case AFormat.VertAlignment of
+    vaTop    : Result := 'style:vertical-align="top" ';
+    vaCenter : Result := 'style:vertical-align="middle" ';
+    vaBottom : Result := 'style:vertical-align="bottom" ';
+  end;
+end;
+
 { Creates an XML string for inclusion of the wordwrap option into the
   written file from the wordwrap setting in the format cell.
   Is called from WriteStyles (via WriteStylesXMLAsString). }
-function TsSpreadOpenDocWriter.WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
+function TsSpreadOpenDocWriter.WriteWordwrapStyleXMLAsString(
+  const AFormat: TCell): String;
 begin
   if (uffWordWrap in AFormat.UsedFormattingFields) then
     Result := 'fo:wrap-option="wrap" '
