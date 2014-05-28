@@ -770,6 +770,7 @@ var
   numFmtIndex: Integer;
   numFmtIndexDefault: Integer;
   wrap: Boolean;
+  txtRot: TsTextRotation;
   borders: TsCellBorders;
   borderStyles: TsCellBorderStyles;
   bkClr: TsColorValue;
@@ -866,6 +867,7 @@ begin
         borders := [];
         wrap := false;
         bkClr := TsColorValue(-1);
+        txtRot := trHorizontal;
 
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do begin
@@ -907,6 +909,17 @@ begin
             // Text wrap
             s := GetAttrValue(styleChildNode, 'fo:wrap-option');
             wrap := (s='wrap');
+
+            // Test rotation
+            s := GetAttrValue(styleChildNode, 'style:rotation-angle');
+            if s = '90' then
+              txtRot := rt90DegreeCounterClockwiseRotation
+            else if s = '270' then
+              txtRot := rt90DegreeClockwiseRotation;
+            s := GetAttrValue(styleChildNode, 'style:direction');
+            if s = 'ttb' then
+              txtRot := rtStacked;
+
           end else
           if styleChildNode.NodeName = 'style:paragraph-properties' then begin
             //
@@ -921,7 +934,7 @@ begin
         style.HorAlignment := haDefault;
         style.VertAlignment := vaDefault;
         style.WordWrap := wrap;
-        style.TextRotation := trHorizontal;
+        style.TextRotation := txtRot;
         style.Borders := borders;
         style.BorderStyles := borderStyles;
         style.BackgroundColor := IfThen(bkClr = TsColorValue(-1), scNotDefined,
@@ -1179,10 +1192,14 @@ begin
     '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
 
     // style:table-cell-properties
+    if (FFormattingStyles[i].UsedFormattingFields <> []) then begin
+      {
     if (uffBorder in FFormattingStyles[i].UsedFormattingFields) or
      (uffBackgroundColor in FFormattingStyles[i].UsedFormattingFields) or
-     (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
-    begin
+     (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) or
+     (uffTextRotation in FFormattingStyles[i].UsedFormattingFields)
+    then begin
+    }
       Result := Result + '      <style:table-cell-properties ';
 
       if (uffBorder in FFormattingStyles[i].UsedFormattingFields) then
@@ -1242,9 +1259,14 @@ begin
 //          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
 
       if (uffWordWrap in FFormattingStyles[i].UsedFormattingFields) then
-      begin
         Result := Result + 'fo:wrap-option="wrap" ';
-      end;
+
+      if (uffTextRotation in FFormattingStyles[i].UsedFormattingFields) then
+        case FFormattingStyles[i].TextRotation of
+          rt90DegreeClockwiseRotation: Result := Result + 'style:rotation-angle="270" ';
+          rt90DegreeCounterClockwiseRotation: Result := Result + 'style:rotation-angle="90" ';
+          rtStacked: Result := Result + 'style:direction="ttb" ';
+        end;
 
       Result := Result + '/>' + LineEnding;
     end;
