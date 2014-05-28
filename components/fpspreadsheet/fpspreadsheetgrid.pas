@@ -924,9 +924,11 @@ begin
       horAlign := haRight
     else
       horAlign := haLeft;
+    {
     if txtRot = rt90DegreeCounterClockwiseRotation then begin
       if horAlign = haRight then horAlign := haLeft else horAlign := haRight;
     end;
+    }
   end;
 
   InflateRect(ARect, -constCellPadding, -constCellPadding);
