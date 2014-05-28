@@ -72,6 +72,8 @@ type
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+    procedure ReadCells(ATableNode: TDOMNode);
+    procedure ReadColumns(ATableNode: TDOMNode);
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
   protected
@@ -416,6 +418,93 @@ begin
   ApplyStyleToCell(ARow, ACol, stylename);
 end;
 
+{ Reads the cells in the given table. Loops through all rows, and then finds all
+  cells of each row. }
+procedure TsSpreadOpenDocReader.ReadCells(ATableNode: TDOMNode);
+var
+  row: Integer;
+  col: Integer;
+  cellNode, rowNode: TDOMNode;
+  paramValueType, paramFormula, tableStyleName: String;
+  paramColsRepeated, paramRowsRepeated: String;
+begin
+  row := 0;
+  rowNode := ATableNode.FindNode('table:table-row');
+  while Assigned(rowNode) do begin
+    col := 0;
+
+    //process each cell of the row
+    cellNode := rowNode.FindNode('table:table-cell');
+    while Assigned(cellNode) do begin
+      // select this cell value's type
+      paramValueType := GetAttrValue(CellNode, 'office:value-type');
+      paramFormula := GetAttrValue(CellNode, 'table:formula');
+      tableStyleName := GetAttrValue(CellNode, 'table:style-name');
+
+      if paramValueType = 'string' then
+        ReadLabel(row, col, cellNode)
+      else if (paramValueType = 'float') or (paramValueType = 'percentage') then
+        ReadNumber(row, col, cellNode)
+      else if (paramValueType = 'date') or (paramValueType = 'time') then
+        ReadDate(row, col, cellNode)
+      else if (paramValueType = '') and (tableStyleName <> '') then
+        ReadBlank(row, col, cellNode)
+      else if ParamFormula <> '' then
+        ReadLabel(row, col, cellNode);
+
+      paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
+      if paramColsRepeated = '' then paramColsRepeated := '1';
+      col := col + StrToInt(paramColsRepeated);
+
+      cellNode := cellNode.NextSibling;
+    end; //while Assigned(cellNode)
+
+    paramRowsRepeated := GetAttrValue(RowNode, 'table:number-rows-repeated');
+    if paramRowsRepeated = '' then paramRowsRepeated := '1';
+    row := row + StrToInt(paramRowsRepeated);
+
+    rowNode := rowNode.NextSibling;
+  end; // while Assigned(rowNode)
+end;
+
+{ Collection columns used in the given table. The columns contain links to
+  styles that must be used when cells in that columns are without styles. }
+procedure TsSpreadOpenDocReader.ReadColumns(ATableNode: TDOMNode);
+var
+  col: Integer;
+  colNode: TDOMNode;
+  s: String;
+  colStyleIndex: Integer;
+  colStyleData: TColumnStyleData;
+  colData: TColumnData;
+begin
+  col := 0;
+  colNode := ATableNode.FindNode('table:table-column');
+  while Assigned(colNode) do begin
+    if colNode.NodeName = 'table:table-column' then begin;
+      s := GetAttrValue(colNode, 'table:style-name');
+      colStyleIndex := FindColStyleByName(s);
+      if colStyleIndex <> -1 then begin
+        colStyleData := TColumnStyleData(FColumnStyleList[colStyleIndex]);
+        s := GetAttrValue(ColNode, 'table:default-cell-style-name');
+        if s <> '' then begin
+          colData := TColumnData.Create;
+          colData.Col := col;
+          colData.ColStyleIndex := colStyleIndex;
+          colData.DefaultCellStyleIndex := FindCellStyleByName(s);
+          FColumnList.Add(colData);
+        end;
+      end;
+      s := GetAttrValue(ColNode, 'table:number-columns-repeated');
+      if s = '' then
+        inc(col)
+      else
+        inc(col, StrToInt(s));
+    end;
+    colNode := colNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
 var
   CalcSettingsNode, NullDateNode: TDOMNode;
@@ -443,20 +532,11 @@ end;
 procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
 var
   Doc : TXMLDocument;
-  Col, Row : integer;
   FilePath : string;
   UnZip : TUnZipper;
   FileList : TStringList;
-  BodyNode, SpreadSheetNode, TableNode, ColNode, RowNode, CellNode : TDOMNode;
+  BodyNode, SpreadSheetNode, TableNode: TDOMNode;
   StylesNode: TDOMNode;
-  ParamRowsRepeated, ParamColsRepeated, ParamValueType, ParamFormula : string;
-  TableStyleName: String;
-  RowsCount, ColsCount : integer;
-  colData: TColumnData;
-  colStyleIndex: Integer;
-  colStyleData: TColumnStyleData;
-  i: Integer;
-  s: String;
 begin
   //unzip content.xml into AFileName path
   FilePath := GetTempDir(false);
@@ -502,74 +582,11 @@ begin
     TableNode := SpreadSheetNode.FindNode('table:table');
     while Assigned(TableNode) do begin
       FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
-
       // Collect column styles used
-      Col := 0;
-      ColNode := TableNode.FindNode('table:table-column');
-      while Assigned(ColNode) do begin
-        if ColNode.NodeName = 'table:table-column' then begin;
-          s := GetAttrValue(ColNode, 'table:style-name');
-          colStyleIndex := FindColStyleByName(s);
-          if colStyleIndex <> -1 then begin
-            colStyleData := TColumnStyleData(FColumnStyleList[colStyleIndex]);
-            s := GetAttrValue(ColNode, 'table:default-cell-style-name');
-            if s <> '' then begin
-              colData := TColumnData.Create;
-              colData.Col := Col;
-              colData.ColStyleIndex := colStyleIndex;
-              colData.DefaultCellStyleIndex := FindCellStyleByName(s);
-              FColumnList.Add(colData);
-            end;
-          end;
-          s := GetAttrValue(ColNode, 'table:number-columns-repeated');
-          if s = '' then
-            inc(Col)
-          else
-            inc(col, StrToInt(s));
-        end;
-        ColNode := ColNode.NextSibling;
-      end;
-
-      // Process each row inside the sheet
-      Row := 0;
-      RowNode := TableNode.FindNode('table:table-row');
-      while Assigned(RowNode) do begin
-
-        Col:=0;
-
-        //process each cell of the row
-        CellNode:=RowNode.FindNode('table:table-cell');
-        while Assigned(CellNode) do begin
-          // select this cell value's type
-          ParamValueType := GetAttrValue(CellNode,'office:value-type');
-          ParamFormula := GetAttrValue(CellNode,'table:formula');
-          TableStyleName := GetAttrValue(CellNode, 'table:style-name');
-
-          if ParamValueType = 'string' then
-            ReadLabel(Row, Col, CellNode)
-          else if (ParamValueType = 'float') or (ParamValueType = 'percentage') then
-            ReadNumber(Row, Col, CellNode)
-          else if (ParamValueType = 'date') or (ParamValueType = 'time') then
-            ReadDate(Row, Col, CellNode)
-          else if (ParamValueType = '') and (TableStyleName <> '') then
-            ReadBlank(Row, Col, CellNode)
-          else if ParamFormula <> '' then
-            ReadLabel(Row, Col, CellNode);
-
-          ParamColsRepeated := GetAttrValue(CellNode,'table:number-columns-repeated');
-          if ParamColsRepeated='' then ParamColsRepeated := '1';
-          Col := Col + StrToInt(ParamColsRepeated);
-
-          CellNode := CellNode.NextSibling;
-        end; //while Assigned(CellNode)
-
-        ParamRowsRepeated := GetAttrValue(RowNode,'table:number-rows-repeated');
-        if ParamRowsRepeated='' then ParamRowsRepeated := '1';
-        Row := Row + StrToInt(ParamRowsRepeated);
-
-        RowNode := RowNode.NextSibling;
-      end; // while Assigned(RowNode)
-
+      ReadColumns(TableNode);
+      // Process each row inside the sheet and process each cell of the row
+      ReadCells(TableNode);
+      // Continue with next table
       TableNode := TableNode.NextSibling;
     end; //while Assigned(TableNode)
 
