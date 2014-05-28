@@ -916,6 +916,7 @@ begin
   wrapped := (uffWordWrap in lCell^.UsedFormattingFields) or (lCell^.TextRotation = rtStacked);
   txtRot := lCell^.TextRotation;
   vertAlign := lCell^.VertAlignment;
+  if vertAlign = vaDefault then vertAlign := vaBottom;
   if lCell^.HorAlignment <> haDefault then
     horAlign := lCell^.HorAlignment
   else begin
@@ -953,10 +954,26 @@ begin
     txt := GetCellText(ACol, ARow);
     if txt = '' then
       exit;
-    case horAlign of
-      haLeft   : justif := 0;
-      haCenter : justif := 1;
-      haRight  : justif := 2;
+    case txtRot of
+      trHorizontal:
+        case horAlign of
+          haLeft   : justif := 0;
+          haCenter : justif := 1;
+          haRight  : justif := 2;
+        end;
+      rtStacked,
+      rt90DegreeClockwiseRotation:
+        case vertAlign of
+          vaTop   : justif := 0;
+          vaCenter: justif := 1;
+          vaBottom: justif := 2;
+        end;
+      rt90DegreeCounterClockwiseRotation:
+        case vertAlign of
+          vaTop   : justif := 2;
+          vaCenter: justif := 1;
+          vaBottom: justif := 0;
+        end;
     end;
     InternalDrawTextInCell(txt, txt, ARect, justif, horAlign, vertAlign,
       txtRot, wrapped, false);
@@ -1609,8 +1626,10 @@ begin
       if lCell^.TextRotation = rtStacked then begin
         s := Result;
         Result := '';
-        for i:=1 to Length(s) do
-          Result := Result + s[i] + LineEnding;
+        for i:=1 to Length(s) do begin
+          Result := Result + s[i];
+          if i < Length(s) then Result := Result + LineEnding;
+        end;
       end;
     end;
   end;
@@ -1865,7 +1884,7 @@ begin
 end;
 
 
-{ Internal generl text drawing method.
+{ Internal general text drawing method.
   - AText: text to be drawn
   - AMeasureText: text used for checking if the text fits into the text rectangle.
     If too large and ReplaceTooLong = true, a series of # is drawn.
@@ -1876,9 +1895,12 @@ end;
   - ACellHorAlign: Is the HorAlignment property stored in the cell
   - ACellVertAlign: Is the VertAlignment property stored in the cell
   - ATextRot: determines the rotation angle of the text.
-  - ATextWrap: determines if the text can wrap over multiple lines
-  - ReplaceTooLang: if true too-long texts are replaced by a series of # filling
-    the cell. }
+  - ATextWrap: determines if the text can wrap into multiple lines
+  - ReplaceTooLang: if true too-long texts are replaced by a series of # chars
+    filling the cell.
+  The reason to separate AJustification from ACellHorAlign and ACelVertAlign is
+  the output of nfAccounting formatted numbers where the numbers are always
+  right-aligned, and the currency symbol is left-aligned. }
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;
   ARect: TRect; AJustification: Byte; ACellHorAlign: TsHorAlignment;
   ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
@@ -1991,6 +2013,7 @@ begin
         h := hline;
         h0 := 0;
       end;
+      // w and h are seen along the text direction, not x/y!
 
       if w > ARect.Bottom - ARect.Top then begin
         if ReplaceTooLong then begin
@@ -2022,7 +2045,7 @@ begin
           case AJustification of
             0: P.Y := ARect.Top;                             // corresponds to "top"
             1: P.Y := Max(ARect.Top, (Arect.Top + ARect.Bottom - w) div 2);  // "center"
-            2: P.Y := Max(ARect.Top, ARect.Bottom -w);       // "bottom"
+            2: P.Y := Max(ARect.Top, ARect.Bottom - w);      // "bottom"
           end;                                                                          {
           case vertAlign of
             vaTop    : P.Y := ARect.Top;
