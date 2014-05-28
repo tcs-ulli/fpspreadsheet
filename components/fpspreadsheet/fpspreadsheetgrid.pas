@@ -31,6 +31,8 @@ type
     FWorkbook: TsWorkbook;
     FWorksheet: TsWorksheet;
     FHeaderCount: Integer;
+    FInitColCount: Integer;
+    FInitRowCount: Integer;
     FFrozenCols: Integer;
     FFrozenRows: Integer;
     FEditText: String;
@@ -151,6 +153,7 @@ type
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = 0); overload;
+    procedure NewWorksheet(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
@@ -475,6 +478,8 @@ constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FHeaderCount := 1;
+  FInitColCount := 26;
+  FInitRowCount := 100;
   FCellFont := TFont.Create;
 end;
 
@@ -2102,7 +2107,7 @@ end;
 procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
-  Setup;
+  NewWorksheet(FInitColCount, FInitRowCount);
 end;
 
 { Repaints after moving selection to avoid spurious rests of the old thick
@@ -2439,16 +2444,16 @@ var
 begin
   if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin
-      ColCount := 2;
-      RowCount := 2;
+      ColCount := FInitColCount + 1; //2;
+      RowCount := FInitRowCount + 1; //2;
       FixedCols := 1;
       FixedRows := 1;
       ColWidths[0] := Canvas.TextWidth(' 999999 ');
     end else begin
       FixedCols := 0;
       FixedRows := 0;
-      ColCount := 0;
-      RowCount := 0;
+      ColCount := FInitColCount; //0;
+      RowCount := FInitRowCount; //0;
     end;
   end else
   if FWorksheet <> nil then begin
@@ -2568,6 +2573,21 @@ begin
     FWorkbook.ReadFormulas := FReadFormulas;
     FWorkbook.ReadFromFile(AFilename);
     LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.NewWorksheet(AColCount, ARowCount: Integer);
+begin
+  BeginUpdate;
+  try
+    FreeAndNil(FWorkbook);
+    FWorkbook := TsWorkbook.Create;
+    FWorksheet := FWorkbook.AddWorksheet('Sheet1');
+    FInitColCount := AColCount;
+    FInitRowCount := ARowCount;
+    Setup;
   finally
     EndUpdate;
   end;
