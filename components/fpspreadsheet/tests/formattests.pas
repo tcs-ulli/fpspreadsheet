@@ -107,6 +107,8 @@ type
     procedure TestWriteRead_ODS_Alignment;
     procedure TestWriteRead_ODS_Border;
     procedure TestWriteRead_ODS_BorderStyles;
+    procedure TestWriteRead_ODS_ColWidths;
+    procedure TestWriteRead_ODS_RowHeights;
     procedure TestWriteRead_ODS_TextRotation;
     procedure TestWriteRead_ODS_WordWrap;
   end;
@@ -203,13 +205,13 @@ begin
   end;
 
   // Column width
-  SollColWidths[0] := 20;  // characters based on width of "0"
+  SollColWidths[0] := 20;  // characters based on width of "0" of default font
   SollColWidths[1] := 40;
 
   // Row heights
-  SollRowHeights[0] := 5;
-  SollRowHeights[1] := 10;
-  SollRowHeights[2] := 50;
+  SollRowHeights[0] := 1;  // Lines of default font
+  SollRowHeights[1] := 2;
+  SollRowHeights[2] := 4;
 
   // Cell borders
   SollBorders[0] := [];
@@ -723,6 +725,7 @@ begin
   MyWorkSheet:= MyWorkBook.AddWorksheet(ColWidthSheet);
   for Col := Low(SollColWidths) to High(SollColWidths) do begin
     lCol.Width := SollColWidths[Col];
+    //MyWorksheet.WriteNumber(0, Col, 1);
     MyWorksheet.WriteColInfo(Col, lCol);
   end;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -742,8 +745,9 @@ begin
     if lpCol = nil then
       fail('Error in test code. Failed to return saved column width');
     ActualColWidth := lpCol^.Width;
-    CheckEquals(SollColWidths[Col], ActualColWidth,
-      'Test saved colwidth mismatch, column '+ColNotation(MyWorkSheet,Col));
+    if abs(SollColWidths[Col] - ActualColWidth) > 1E-2 then   // take rounding errors into account
+      CheckEquals(SollColWidths[Col], ActualColWidth,
+        'Test saved colwidth mismatch, column '+ColNotation(MyWorkSheet,Col));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -766,6 +770,10 @@ begin
   TestWriteReadColWidths(sfExcel8);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_ColWidths;
+begin
+  TestWriteReadColWidths(sfOpenDocument);
+end;
 
 { --- Row height tests --- }
 
@@ -801,14 +809,11 @@ begin
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollRowHeights) to High(SollRowHeights) do begin
-    lpRow := MyWorksheet.GetRow(Row);
-    if lpRow = nil then
-      fail('Error in test code. Failed to return saved row height');
-    // Rounding to twips in Excel would cause severe rounding error if we'd compare millimeters
-    // --> go back to twips
-    ActualRowHeight := MillimetersToTwips(lpRow^.Height);
-    CheckEquals(MillimetersToTwips(SollRowHeights[Row]), ActualRowHeight,
-      'Test saved row height mismatch, row '+RowNotation(MyWorkSheet,Row));
+    ActualRowHeight := MyWorksheet.GetRowHeight(Row);
+    // Take care of rounding errors
+    if abs(ActualRowHeight - SollRowHeights[Row]) > 1e-2 then
+      CheckEquals(SollRowHeights[Row], ActualRowHeight,
+        'Test saved row height mismatch, row '+RowNotation(MyWorkSheet,Row));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -829,6 +834,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_RowHeights;
 begin
   TestWriteReadRowHeights(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_RowHeights;
+begin
+  TestWriteReadRowHeights(sfOpenDocument);
 end;
 
 

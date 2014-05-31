@@ -32,6 +32,7 @@ begin
   MyWorksheet.WriteUTF8Text(4, 2, 'Total:');// C5
   MyWorksheet.WriteNumber(4, 3, 10);        // D5
   MyWorksheet.WriteDateTime(5, 0, now);
+
   // Add some formatting
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
 

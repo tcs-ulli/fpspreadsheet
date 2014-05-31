@@ -45,7 +45,7 @@ begin
   MyWorkbook.AddFont('Calibri', 20, [], scRed);
 
   // Change row height
-  MyWorksheet.WriteRowHeight(0, 20);  // modify height of row 0 to 20 mm
+  MyWorksheet.WriteRowHeight(0, 1.1);  // modify height of row 0 to 3 lines
 
   // Change colum widths
   MyWorksheet.WriteColWidth(0, 40);
