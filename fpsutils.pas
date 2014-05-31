@@ -66,9 +66,6 @@ function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
-function TwipsToMillimeters(AValue: Integer): Single;
-function MillimetersToTwips(AValue: Single): Integer;
-
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
@@ -102,11 +99,23 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
 function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
 
+function TwipsToPts(AValue: Integer): Single;
+function PtsToTwips(AValue: Single): Integer;
 function cmToPts(AValue: Double): Double;
+function PtsToCm(AValue: Double): Double;
+function InToPts(AValue: Double): Double;
 function mmToPts(AValue: Double): Double;
+function PtsToMM(AValue: Double): Double;
+function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
+function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer;
+function HTMLLengthStrToPts(AValue: String): Double;
+//function HMTLLengthStrToPts(AValue: String): Double;
 
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue): String;
+
+var
+  ScreenPixelsPerInch: Integer = 96;
 
 implementation
 
@@ -531,19 +540,6 @@ begin
   end;
 
   Result:=WrkStr;
-end;
-
-{ Excel's unit of row heights is "twips", i.e. 1/20 point. 72 pts = 1 inch = 25.4 mm
-  The procedure TwipsToMillimeters performs the conversion to millimeters. }
-function TwipsToMillimeters(AValue: Integer): Single;
-begin
-  Result := 25.4 * AValue / (20 * 72);
-end;
-
-{ Converts Millimeters to Twips, i.e. 1/20 pt }
-function MillimetersToTwips(AValue: Single): Integer;
-begin
-  Result := Round((AValue * 20 * 72) / 25.4);
 end;
 
 { Returns either AValue1 or AValue2, depending on the condition.
@@ -1296,16 +1292,82 @@ begin
   DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
 end;
 
+{ Excel's unit of row heights is "twips", i.e. 1/20 point.
+  Converts Twips to points. }
+function TwipsToPts(AValue: Integer): Single;
+begin
+  Result := AValue / 20;
+end;
+
+{ Converts points to twips (1 twip = 1/20 point) }
+function PtsToTwips(AValue: Single): Integer;
+begin
+  Result := round(AValue * 20);
+end;
+
 { Converts centimeters to points (72 pts = 1 inch) }
 function cmToPts(AValue: Double): Double;
 begin
-  Result := AValue/2.54*72;
+  Result := AValue * 72 / 2.54;
+end;
+
+{ Converts points to centimeters }
+function PtsToCm(AValue: Double): Double;
+begin
+  Result := AValue / 72 * 2.54;
+end;
+
+{ Converts inches to points (72 pts = 1 inch) }
+function InToPts(AValue: Double): Double;
+begin
+  Result := AValue * 72;
 end;
 
 { Converts millimeters to points (72 pts = 1 inch) }
 function mmToPts(AValue: Double): Double;
 begin
-  Result := AValue/25.4*72;
+  Result := AValue * 72 / 25.4;
+end;
+
+{ Converts points to millimeters }
+function PtsToMM(AValue: Double): Double;
+begin
+  Result := AValue / 72 * 25.4;
+end;
+
+{ Converts pixels to points. }
+function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
+begin
+  Result := (AValue / AScreenPixelsPerInch) * 72;
+end;
+
+{ Converts points to pixels }
+function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer;
+begin
+  Result := Round(AValue / 72 * AScreenPixelsPerInch);
+end;
+
+{ converts a HTML length string to points. The units are assumed to be the last
+  two digits of the string }
+function HTMLLengthStrToPts(AValue: String): Double;
+var
+  units: String;
+  x: Double;
+  res: Word;
+begin
+  units := lowercase(Copy(AValue, Length(AValue)-1, 2));
+  val(copy(AValue, 1, Length(AValue)-2), x, res);
+  // No hasseling with the decimal point...
+  if units = 'in' then
+    Result := InToPts(x)
+  else if units = 'cm' then
+    Result := cmToPts(x)
+  else if units = 'mm' then
+    Result := mmToPts(x)
+  else if units = 'px' then
+    Result := pxToPts(Round(x), ScreenPixelsPerInch)
+  else
+    raise Exception.Create('Unknown length units');
 end;
 
 { converts a HTML color string to a TsColorValue. For ods }

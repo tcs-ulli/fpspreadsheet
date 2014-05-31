@@ -335,16 +335,22 @@ type
 
   PCell = ^TCell;
 
+const
+  // Takes account of effect of cell margins on row height by adding this
+  // value to the nominal row height. Note that this is an empirical value and may be wrong.
+  ROW_HEIGHT_CORRECTION = 0.2;
+
+type
   TRow = record
     Row: Cardinal;
-    Height: Single;       // in millimeters
+    Height: Single;  // in "lines"
   end;
 
   PRow = ^TRow;
 
   TCol = record
     Col: Cardinal;
-    Width: Single; // in "characters". Excel uses the with of char "0" in 1st font
+    Width: Single; // in "characters". Excel uses the width of char "0" in 1st font
   end;
 
   PCol = ^TCol;
@@ -368,7 +374,7 @@ type
     FWorkbook: TsWorkbook;
     FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
-    FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from the standard
+    FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
@@ -475,8 +481,12 @@ type
     { Data manipulation methods - For Rows and Cols }
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
+    function  GetCellCountInRow(ARow: Cardinal): Cardinal;
+    function  GetCellCountInCol(ACol: Cardinal): Cardinal;
     function  GetRow(ARow: Cardinal): PRow;
+    function  GetRowHeight(ARow: Cardinal): Single;
     function  GetCol(ACol: Cardinal): PCol;
+    function  GetColWidth(ACol: Cardinal): Single;
     procedure RemoveAllRows;
     procedure RemoveAllCols;
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
@@ -511,10 +521,15 @@ type
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
     FReadFormulas: Boolean;
+    FDefaultColWidth: Single; // in "characters". Excel uses the width of char "0" in 1st font
+    FDefaultRowHeight: Single;  // in "character heights", i.e. line count
+
     { Internal methods }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
+
   public
     FormatSettings: TFormatSettings;
+
     { Base methods }
     constructor Create;
     destructor Destroy; override;
@@ -530,6 +545,7 @@ type
       const AOverwriteExisting: Boolean = False); overload;
     procedure WriteToFile(const AFileName: String; const AOverwriteExisting: Boolean = False); overload;
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
@@ -537,6 +553,7 @@ type
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Cardinal;
     procedure RemoveAllWorksheets;
+
     { Font handling }
     function AddFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer; overload;
@@ -544,11 +561,13 @@ type
     procedure CopyFontList(ASource: TFPList);
     function FindFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer;
+    function GetDefaultFontSize: Single;
     function GetFont(AIndex: Integer): TsFont;
     function GetFontCount: Integer;
     procedure InitFonts;
     procedure RemoveAllFonts;
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
+
     { Color handling }
     function AddColorToPalette(AColorValue: TsColorValue): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
@@ -560,6 +579,13 @@ type
     procedure UseDefaultPalette;
     procedure UsePalette(APalette: PsPalette; APaletteCount: Word;
       ABigEndian: Boolean = false);
+
+    {@@ The default column width given in "character units" (width of the
+      character "0" in the default font) }
+    property DefaultColWidth: Single read FDefaultColWidth;
+    {@@ The default row height is given in "line count" (height of the
+      default font }
+    property DefaultRowHeight: Single read FDefaultRowHeight;
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
@@ -1366,6 +1392,7 @@ end;
 function TsWorksheet.GetLastColIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
+  i: Integer;
 begin
   Result := 0;
 
@@ -1378,6 +1405,12 @@ begin
     Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
     AVLNode := FCells.FindSuccessor(AVLNode);
   end;
+
+  // In addition, there may be column records defining the column width even
+  // without content
+  for i:=0 to FCols.Count-1 do
+    if FCols[i] <> nil then
+      Result := Math.Max(Result, PCol(FCols[i])^.Col);
 end;
 
 function TsWorksheet.GetLastColNumber: Cardinal;
@@ -1424,12 +1457,18 @@ end;
 function TsWorksheet.GetLastRowIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
+  i: Integer;
 begin
   Result := 0;
 
   AVLNode := FCells.FindHighest;
   if Assigned(AVLNode) then
     Result := PCell(AVLNode.Data).Row;
+
+  // In addition, there may be row records even for empty rows.
+  for i:=0 to FRows.Count-1 do
+    if FRows[i] <> nil then
+      Result := Math.Max(Result, PRow(FRows[i])^.Row);
 end;
 
 function TsWorksheet.GetLastRowNumber: Cardinal;
@@ -2243,7 +2282,6 @@ var
   AVLNode: TAVGLVLTreeNode;
 begin
   Result := nil;
-
   LElement.Row := ARow;
   AVLNode := FRows.Find(@LElement);
   if Assigned(AVLNode) then
@@ -2256,7 +2294,6 @@ var
   AVLNode: TAVGLVLTreeNode;
 begin
   Result := nil;
-
   LElement.Col := ACol;
   AVLNode := FCols.Find(@LElement);
   if Assigned(AVLNode) then
@@ -2283,6 +2320,72 @@ begin
     Result^.Col := ACol;
     FCols.Add(Result);
   end;
+end;
+
+{ Counts how many cells exist in the given column. Blank cells do contribute
+  to the sum, as well as rows with a non-default style. }
+function TsWorksheet.GetCellCountInCol(ACol: Cardinal): Cardinal;
+var
+  cell: PCell;
+  r: Cardinal;
+  row: PRow;
+begin
+  Result := 0;
+  for r := 0 to GetLastRowIndex do begin
+    cell := FindCell(r, ACol);
+    if cell <> nil then
+      inc(Result)
+    else begin
+      row := FindRow(r);
+      if row <> nil then inc(Result);
+    end;
+  end;
+end;
+
+{ Counts how many cells exist in the given row. Blank cells do contribute
+  to the sum, as well as columns with a non-default style. }
+function TsWorksheet.GetCellCountInRow(ARow: Cardinal): Cardinal;
+var
+  cell: PCell;
+  c: Cardinal;
+  col: PCol;
+begin
+  Result := 0;
+  for c := 0 to GetLastColIndex do begin
+    cell := FindCell(ARow, c);
+    if cell <> nil then
+      inc(Result)
+    else begin
+      col := FindCol(c);
+      if col <> nil then inc(Result);
+    end;
+  end;
+end;
+
+{ Returns the width of the given column. If there is no column record then
+  the default column width is returned. }
+function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
+var
+  col: PCol;
+begin
+  col := FindCol(ACol);
+  if col <> nil then
+    Result := col^.Width
+  else
+    Result := FWorkbook.DefaultColWidth;
+end;
+
+{ Returns the height of the given row. If there is no row record then the
+  default row height is returned }
+function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
+var
+  row: PRow;
+begin
+  row := FindRow(ARow);
+  if row <> nil then
+    Result := row^.Height
+  else
+    Result := FWorkbook.DefaultRowHeight;
 end;
 
 procedure TsWorksheet.RemoveAllRows;
@@ -2359,6 +2462,8 @@ constructor TsWorkbook.Create;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
+  FDefaultColWidth := 12;
+  FDefaultRowHeight := 1;
   FormatSettings := DefaultFormatSettings;
   FFontList := TFPList.Create;
   SetDefaultFont('Arial', 10.0);
@@ -2777,7 +2882,6 @@ begin
   // FONT4 which does not exist in BIFF is added automatically with nil as place-holder
   AddFont(fntName, fntSize, [fssBold, fssItalic], scBlack); // FONT5 for uffBoldItalic
 
-
   FBuiltinFontCount := FFontList.Count;
 end;
 
@@ -2814,6 +2918,14 @@ begin
         Size := ASize;
       end;
   end;
+end;
+
+{@@
+  Returns the point size of the default font
+}
+function TsWorkbook.GetDefaultFontSize: Single;
+begin
+  Result := GetFont(0).Size;
 end;
 
 {@@

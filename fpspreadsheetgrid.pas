@@ -525,10 +525,13 @@ begin
     Result := h;
 end;
 
-{ Converts the row height, given in mm, to pixels }
+{ Converts the row height (from a worksheet row), given in lines, to pixels }
 function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
+var
+  h_pts: Single;
 begin
-  Result := round(AHeight / 25.4 * Screen.PixelsPerInch) + 4;
+  h_pts := AHeight * (Workbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
+  Result := PtsToPX(h_pts, Screen.PixelsPerInch) + 4;
 end;
 
 procedure TsCustomWorksheetGrid.ChangedCellHandler(ASender: TObject; ARow, ACol:Cardinal);
@@ -1871,7 +1874,7 @@ end;
 procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; index: Integer);
 var
   w0: Integer;
-  h: Single;
+  h, h_pts: Single;
 begin
   if FWorksheet = nil then
     exit;
@@ -1884,8 +1887,9 @@ begin
     FWorksheet.WriteColWidth(GetWorksheetCol(Index), ColWidths[Index] div w0);
   end else begin
     // The grid's row heights are in "pixels", the worksheet's row heights are
-    // in millimeters.
-    h := (RowHeights[Index] - 4) / Screen.PixelsPerInch * 25.4;
+    // in "lines"
+    h_pts := PxToPts(RowHeights[Index] - 4, Screen.PixelsPerInch);  // in points
+    h := h_pts / (FWorkbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
     FWorksheet.WriteRowHeight(GetWorksheetRow(Index), h);
   end;
 end;
@@ -2616,6 +2620,7 @@ end;
 
 
 initialization
+  fpsutils.ScreenPixelsPerInch := Screen.PixelsPerInch;
 
 finalization
   FreeAndNil(FillPattern_BIFF2);

@@ -1329,12 +1329,13 @@ begin
   if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
     // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
-    lRow^.Height := TwipsToMillimeters(h and $7FFF);
-  end else
-    lRow^.Height := 0;
-  //lRow^.AutoHeight := rowrec.Flags and $00000040 = 0;
-  // If this bit is set row height does not change with font height, i.e. has been
-  // changed manually.
+    // We need it in "lines", i.e. we divide the points by the point size of the default font
+    lRow^.Height := TwipsToPts(h and $7FFF) / FWorkbook.GetFont(0).Size;
+    if lRow^.Height > ROW_HEIGHT_CORRECTION then
+      lRow^.Height := lRow^.Height - ROW_HEIGHT_CORRECTION
+    else
+      lRow^.Height := 0;
+  end;
 end;
 
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
@@ -1903,6 +1904,7 @@ var
   spaceabove, spacebelow: Boolean;
   colindex: Cardinal;
   rowheight: Word;
+  h: Single;
 begin
   // Check for additional space above/below row
   spaceabove := false;
@@ -1934,10 +1936,14 @@ begin
   AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
 
   { Row height (in twips, 1/20 point) and info on custom row height }
-  if (ARow = nil) or (ARow^.Height = 0) then
-    rowheight := round(Workbook.GetFont(0).Size*20)
+  h := Workbook.GetFont(0).Size;  // Point size of default font
+  if (ARow = nil) or (ARow^.Height = Workbook.DefaultRowHeight) then
+    rowheight := PtsToTwips((Workbook.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * h)
   else
-    rowheight := MillimetersToTwips(ARow^.Height);
+  if (ARow^.Height = 0) then
+    rowheight := 0
+  else
+    rowheight := PtsToTwips((ARow^.Height + ROW_HEIGHT_CORRECTION)*h);
   w := rowheight and $7FFF;
   AStream.WriteWord(WordToLE(w));
 

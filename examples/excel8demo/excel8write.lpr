@@ -383,7 +383,7 @@ begin
   MyWorksheet.WriteColInfo(5, lCol);
 
   // Set height of rows 0
-  MyWorksheet.WriteRowHeight(0, 30);  // 30 mm
+  MyWorksheet.WriteRowHeight(0, 5);  // 5 lines
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);

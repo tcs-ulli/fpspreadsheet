@@ -61,7 +61,11 @@ type
     FCellStyleList: TFPList;
     FColumnStyleList: TFPList;
     FColumnList: TFPList;
+    FRowStyleList: TFPList;
+    FRowList: TFPList;
     FDateMode: TDateMode;
+    // Applies internally stored column widths to current worksheet
+    procedure ApplyColWidths;
     // Applies a style to a cell
     procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String);
     // Searches a style by its name in the StyleList
@@ -69,13 +73,16 @@ type
     // Searches a column style by its column index or its name in the StyleList
     function FindColumnByCol(AColIndex: Integer): Integer;
     function FindColStyleByName(AStyleName: String): integer;
+    function FindRowStyleByName(AStyleName: String): Integer;
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
-    procedure ReadCells(ATableNode: TDOMNode);
     procedure ReadColumns(ATableNode: TDOMNode);
+    procedure ReadColumnStyle(AStyleNode: TDOMNode);
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
+    procedure ReadRowsAndCells(ATableNode: TDOMNode);
+    procedure ReadRowStyle(AStyleNode: TDOMNode);
   protected
     procedure CreateNumFormatList; override;
     procedure ReadNumFormats(AStylesNode: TDOMNode);
@@ -97,22 +104,36 @@ type
 
   TsSpreadOpenDocWriter = class(TsCustomSpreadWriter)
   private
+    FColumnStyleList: TFPList;
+    FRowStyleList: TFPList;
+
+    // Routines to write parts of files
+    function WriteCellStylesXMLAsString: string;
+    function WriteColStylesXMLAsString: String;
+    function WriteRowStylesXMLAsString: String;
+
+    function WriteColumnsXMLAsString(ASheet: TsWorksheet): String;
+    function WriteRowsAndCellsXMLAsString(ASheet: TsWorksheet): String;
+
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
     function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TCell): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
+
   protected
     FPointSeparatorSettings: TFormatSettings;
     // Strings with the contents of files
-    FMeta, FSettings, FStyles, FContent, FMimetype: string;
+    FMeta, FSettings, FStyles, FContent, FCellContent, FMimetype: string;
     FMetaInfManifest: string;
     // Streams with the contents of files
     FSMeta, FSSettings, FSStyles, FSContent, FSMimetype: TStringStream;
     FSMetaInfManifest: TStringStream;
     // Helpers
     procedure CreateNumFormatList; override;
+    procedure ListAllColumnStyles;
+    procedure ListAllRowStyles;
     // Routines to write those files
     procedure WriteMimetype;
     procedure WriteMetaInfManifest;
@@ -121,8 +142,6 @@ type
     procedure WriteStyles;
     procedure WriteContent;
     procedure WriteWorksheet(CurSheet: TsWorksheet);
-    // Routines to write parts of those files
-    function WriteStylesXMLAsString: string;
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -136,6 +155,7 @@ type
       const AValue: TDateTime; ACell: PCell); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
     procedure WriteToFile(const AFileName: string;
@@ -202,6 +222,9 @@ const
   BORDER_LINEWIDTHS: array[TsLinestyle] of string =
     ('0.002cm', '2pt', '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm');
 
+  COLWIDTH_EPS = 1e-2;   // for mm
+  ROWHEIGHT_EPS = 1e-2;    // for lines
+
 type
   { Cell style items relevant to FPSpreadsheet. Stored in the CellStyleList of the reader. }
   TCellStyleData = class
@@ -222,15 +245,30 @@ type
   TColumnStyleData = class
   public
     Name: String;
-    ColWidth: Double;
+    ColWidth: Double;             // in mm
   end;
 
-  { Column data items stored in the ColList of the reader  }
+  { Column data items stored in the ColumnList }
   TColumnData = class
   public
     Col: Integer;
     ColStyleIndex: integer;   // index into FColumnStyleList of reader
     DefaultCellStyleIndex: Integer;   // Index of default cell style in FCellStyleList of reader
+  end;
+
+  { Row style items stored in RowStyleList of the reader }
+  TRowStyleData = class
+  public
+    Name: String;
+    RowHeight: Double;          // in mm
+    AutoRowHeight: Boolean;
+  end;
+
+  { Row data items stored in the RowList of the reader }
+  TRowData = class
+    Row: Integer;
+    RowStyleIndex: Integer;   // index into FRowStyleList of reader
+    DefaultCellStyleIndex: Integer;  // Index of default row style in FCellStyleList of reader
   end;
 
 
@@ -250,6 +288,8 @@ begin
   FCellStyleList := TFPList.Create;
   FColumnStyleList := TFPList.Create;
   FColumnList := TFPList.Create;
+  FRowStyleList := TFPList.Create;
+  FRowList := TFPList.Create;
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
@@ -266,10 +306,47 @@ begin
   for j := FColumnStyleList.Count-1 downto 0 do TObject(FColumnStyleList[j]).Free;
   FColumnStyleList.Free;
 
+  for j := FRowList.Count-1 downto 0 do TObject(FRowList[j]).Free;
+  FRowList.Free;
+
+  for j := FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
+  FRowStyleList.Free;
+
   for j := FCellStyleList.Count-1 downto 0 do TObject(FCellStyleList[j]).Free;
   FCellStyleList.Free;
 
   inherited Destroy;
+end;
+
+{ Creates for each non-default column width stored internally in FColumnList
+  a TCol record in the current worksheet. }
+procedure TsSpreadOpenDocReader.ApplyColWidths;
+var
+  colIndex: Integer;
+  colWidth: Single;
+  colStyleIndex: Integer;
+  colStyle: TColumnStyleData;
+  factor: Double;
+  col: PCol;
+  i: Integer;
+begin
+  factor := FWorkbook.GetFont(0).Size/2;
+  for i:=0 to FColumnList.Count-1 do begin
+    colIndex := TColumnData(FColumnList[i]).Col;
+    colStyleIndex := TColumnData(FColumnList[i]).ColStyleIndex;
+    colStyle := TColumnStyleData(FColumnStyleList[colStyleIndex]);
+    { The column width stored in colStyle is in mm (see ReadColumnStyles).
+      We convert it to character count by converting it to points and then by
+      dividing the points by the approximate width of the '0' character which
+      is assumed to be 50% of the default font point size. }
+    colWidth := mmToPts(colStyle.ColWidth)/factor;
+    { Add only column records to the worksheet if their width is different from
+      the default column width. }
+    if not SameValue(colWidth, Workbook.DefaultColWidth, COLWIDTH_EPS) then begin
+      col := FWorksheet.GetCol(colIndex);
+      col^.Width := colWidth;
+    end;
+  end;
 end;
 
 { Applies the style data referred to by the style name to the specified cell }
@@ -313,20 +390,19 @@ begin
   cell^.FontIndex := styleData.FontIndex;
    }
 
-  // Alignment
-  cell^.HorAlignment := styleData.HorAlignment;
-  cell^.VertAlignment := styleData.VertAlignment;
-   // Word wrap
+  // Word wrap
   if styleData.WordWrap then
     Include(cell^.UsedFormattingFields, uffWordWrap)
   else
     Exclude(cell^.UsedFormattingFields, uffWordWrap);
-   // Text rotation
+
+  // Text rotation
   if styleData.TextRotation > trHorizontal then
     Include(cell^.UsedFormattingFields, uffTextRotation)
   else
     Exclude(cell^.UsedFormattingFields, uffTextRotation);
   cell^.TextRotation := styledata.TextRotation;
+
   // Text alignment
   if styleData.HorAlignment <> haDefault then begin
     Include(cell^.UsedFormattingFields, uffHorAlign);
@@ -338,6 +414,7 @@ begin
     cell^.VertAlignment := styleData.VertAlignment;
   end else
     Exclude(cell^.UsedFormattingFields, uffVertAlign);
+
   // Borders
   cell^.BorderStyles := styleData.BorderStyles;
   if styleData.Borders <> [] then begin
@@ -345,6 +422,7 @@ begin
     cell^.Border := styleData.Borders;
   end else
     Exclude(cell^.UsedFormattingFields, uffBorder);
+
   // Background color
   if styleData.BackgroundColor <> scNotDefined then begin
     Include(cell^.UsedFormattingFields, uffBackgroundColor);
@@ -398,6 +476,14 @@ begin
   Result := -1;
 end;
 
+function TsSpreadOpenDocReader.FindRowStyleByName(AStyleName: String): Integer;
+begin
+  for Result := 0 to FRowStyleList.Count-1 do
+    if TRowStyleData(FRowStyleList[Result]).Name = AStyleName then
+      exit;
+  Result := -1;
+end;
+
 function TsSpreadOpenDocReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 var
   i : integer;
@@ -425,55 +511,6 @@ begin
   ApplyStyleToCell(ARow, ACol, stylename);
 end;
 
-{ Reads the cells in the given table. Loops through all rows, and then finds all
-  cells of each row. }
-procedure TsSpreadOpenDocReader.ReadCells(ATableNode: TDOMNode);
-var
-  row: Integer;
-  col: Integer;
-  cellNode, rowNode: TDOMNode;
-  paramValueType, paramFormula, tableStyleName: String;
-  paramColsRepeated, paramRowsRepeated: String;
-begin
-  row := 0;
-  rowNode := ATableNode.FindNode('table:table-row');
-  while Assigned(rowNode) do begin
-    col := 0;
-
-    //process each cell of the row
-    cellNode := rowNode.FindNode('table:table-cell');
-    while Assigned(cellNode) do begin
-      // select this cell value's type
-      paramValueType := GetAttrValue(CellNode, 'office:value-type');
-      paramFormula := GetAttrValue(CellNode, 'table:formula');
-      tableStyleName := GetAttrValue(CellNode, 'table:style-name');
-
-      if paramValueType = 'string' then
-        ReadLabel(row, col, cellNode)
-      else if (paramValueType = 'float') or (paramValueType = 'percentage') then
-        ReadNumber(row, col, cellNode)
-      else if (paramValueType = 'date') or (paramValueType = 'time') then
-        ReadDate(row, col, cellNode)
-      else if (paramValueType = '') and (tableStyleName <> '') then
-        ReadBlank(row, col, cellNode)
-      else if ParamFormula <> '' then
-        ReadLabel(row, col, cellNode);
-
-      paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
-      if paramColsRepeated = '' then paramColsRepeated := '1';
-      col := col + StrToInt(paramColsRepeated);
-
-      cellNode := cellNode.NextSibling;
-    end; //while Assigned(cellNode)
-
-    paramRowsRepeated := GetAttrValue(RowNode, 'table:number-rows-repeated');
-    if paramRowsRepeated = '' then paramRowsRepeated := '1';
-    row := row + StrToInt(paramRowsRepeated);
-
-    rowNode := rowNode.NextSibling;
-  end; // while Assigned(rowNode)
-end;
-
 { Collection columns used in the given table. The columns contain links to
   styles that must be used when cells in that columns are without styles. }
 procedure TsSpreadOpenDocReader.ReadColumns(ATableNode: TDOMNode);
@@ -481,10 +518,17 @@ var
   col: Integer;
   colNode: TDOMNode;
   s: String;
+  defCellStyleIndex: Integer;
   colStyleIndex: Integer;
   colStyleData: TColumnStyleData;
   colData: TColumnData;
+  colsRepeated: Integer;
+  j: Integer;
 begin
+  // clear previous column list (from other sheets)
+  for j:=FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
+  FColumnList.Clear;
+
   col := 0;
   colNode := ATableNode.FindNode('table:table-column');
   while Assigned(colNode) do begin
@@ -492,24 +536,66 @@ begin
       s := GetAttrValue(colNode, 'table:style-name');
       colStyleIndex := FindColStyleByName(s);
       if colStyleIndex <> -1 then begin
+        defCellStyleIndex := -1;
         colStyleData := TColumnStyleData(FColumnStyleList[colStyleIndex]);
         s := GetAttrValue(ColNode, 'table:default-cell-style-name');
         if s <> '' then begin
+          defCellStyleIndex := FindCellStyleByName(s);
           colData := TColumnData.Create;
           colData.Col := col;
           colData.ColStyleIndex := colStyleIndex;
-          colData.DefaultCellStyleIndex := FindCellStyleByName(s);
+          colData.DefaultCellStyleIndex := defCellStyleIndex;
           FColumnList.Add(colData);
         end;
+        s := GetAttrValue(ColNode, 'table:number-columns-repeated');
+        if s = '' then
+          inc(col)
+        else begin
+          colsRepeated := StrToInt(s);
+          if defCellStyleIndex > -1 then
+            for j:=1 to colsRepeated-1 do begin
+              colData := TColumnData.Create;
+              colData.Col := col + j;
+              colData.ColStyleIndex := colStyleIndex;
+              colData.DefaultCellStyleIndex := defCellStyleIndex;
+              FColumnList.Add(colData);
+            end;
+          inc(col, colsRepeated);
+        end;
       end;
-      s := GetAttrValue(ColNode, 'table:number-columns-repeated');
-      if s = '' then
-        inc(col)
-      else
-        inc(col, StrToInt(s));
     end;
     colNode := colNode.NextSibling;
   end;
+end;
+
+{ Reads the column styles and stores them in the FColumnStyleList for later use }
+procedure TsSpreadOpenDocReader.ReadColumnStyle(AStyleNode: TDOMNode);
+var
+  colStyle: TColumnStyleData;
+  styleName: String;
+  styleChildNode: TDOMNode;
+  colWidth: double;
+  s: String;
+begin
+  styleName := GetAttrValue(AStyleNode, 'style:name');
+  styleChildNode := AStyleNode.FirstChild;
+  colWidth := -1;
+
+  while Assigned(styleChildNode) do begin
+    if styleChildNode.NodeName = 'style:table-column-properties' then begin
+      s := GetAttrValue(styleChildNode, 'style:column-width');
+      if s <> '' then begin
+        colWidth := PtsToMM(HTMLLengthStrToPts(s));   // convert to mm
+        break;
+      end;
+    end;
+    styleChildNode := styleChildNode.NextSibling;
+  end;
+
+  colStyle := TColumnStyleData.Create;
+  colStyle.Name := styleName;
+  colStyle.ColWidth := colWidth;
+  FColumnStyleList.Add(colStyle);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
@@ -592,7 +678,8 @@ begin
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
-      ReadCells(TableNode);
+      ReadRowsAndCells(TableNode);
+      ApplyColWidths;
       // Continue with next table
       TableNode := TableNode.NextSibling;
     end; //while Assigned(TableNode)
@@ -664,11 +751,12 @@ begin
   fmt.TimeSeparator:=':';
   Value:=GetAttrValue(ACellNode,'office:date-value');
   if Value<>'' then
-  begin
+  begin        (*             // confuses fpc!
     {$IFDEF FPSPREADDEBUG}
         end;
     writeln('Row (1based): ',ARow+1,'office:date-value: '+Value);
-    {$ENDIF}
+    {$ENDIF}     *)
+
     // Date or date/time string
     Value:=StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
     // Strip milliseconds?
@@ -877,6 +965,117 @@ begin
   end;
 end;
 
+{ Reads the cells in the given table. Loops through all rows, and then finds all
+  cells of each row. }
+procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
+var
+  row: Integer;
+  col: Integer;
+  cellNode, rowNode: TDOMNode;
+  paramValueType, paramFormula, tableStyleName: String;
+  paramColsRepeated, paramRowsRepeated: String;
+  colsRepeated, rowsRepeated: Integer;
+  rowStyleName: String;
+  rowStyleIndex: Integer;
+  rowStyle: TRowStyleData;
+  rowHeight: Single;
+  autoRowHeight: Boolean;
+  i: Integer;
+  lRow: PRow;
+begin
+  rowsRepeated := 0;
+  row := 0;
+  rowNode := ATableNode.FindNode('table:table-row');
+  while Assigned(rowNode) do begin
+    // Read rowstyle
+    rowStyleName := GetAttrValue(rowNode, 'table:style-name');
+    rowStyleIndex := FindRowStyleByName(rowStyleName);
+    rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
+    rowHeight := rowStyle.RowHeight;           // in mm (see ReadRowStyles)
+    rowHeight := mmToPts(rowHeight) / Workbook.GetDefaultFontSize;
+    if rowHeight > ROW_HEIGHT_CORRECTION
+      then rowHeight := rowHeight - ROW_HEIGHT_CORRECTION  // in "lines"
+      else rowHeight := 0;
+    autoRowHeight := rowStyle.AutoRowHeight;
+
+    col := 0;
+
+    //process each cell of the row
+    cellNode := rowNode.FindNode('table:table-cell');
+    while Assigned(cellNode) do begin
+      // select this cell value's type
+      paramValueType := GetAttrValue(CellNode, 'office:value-type');
+      paramFormula := GetAttrValue(CellNode, 'table:formula');
+      tableStyleName := GetAttrValue(CellNode, 'table:style-name');
+
+      if paramValueType = 'string' then
+        ReadLabel(row, col, cellNode)
+      else if (paramValueType = 'float') or (paramValueType = 'percentage') then
+        ReadNumber(row, col, cellNode)
+      else if (paramValueType = 'date') or (paramValueType = 'time') then
+        ReadDate(row, col, cellNode)
+      else if (paramValueType = '') and (tableStyleName <> '') then
+        ReadBlank(row, col, cellNode)
+      else if ParamFormula <> '' then
+        ReadLabel(row, col, cellNode);
+
+      paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
+      if paramColsRepeated = '' then paramColsRepeated := '1';
+      col := col + StrToInt(paramColsRepeated);
+
+      cellNode := cellNode.NextSibling;
+    end; //while Assigned(cellNode)
+
+    paramRowsRepeated := GetAttrValue(RowNode, 'table:number-rows-repeated');
+    if paramRowsRepeated = '' then
+      rowsRepeated := 1
+    else
+      rowsRepeated := StrToInt(paramRowsRepeated);
+
+    // Transfer non-default row heights to sheet's rows
+    if not autoRowHeight then
+      for i:=1 to rowsRepeated do
+        FWorksheet.WriteRowHeight(row + i - 1, rowHeight);
+
+    row := row + rowsRepeated;
+
+    rowNode := rowNode.NextSibling;
+  end; // while Assigned(rowNode)
+end;
+
+procedure TsSpreadOpenDocReader.ReadRowStyle(AStyleNode: TDOMNode);
+var
+  styleName: String;
+  styleChildNode: TDOMNode;
+  rowHeight: Double;
+  auto: Boolean;
+  s: String;
+  rowStyle: TRowStyleData;
+begin
+  styleName := GetAttrValue(AStyleNode, 'style:name');
+  styleChildNode := AStyleNode.FirstChild;
+  rowHeight := -1;
+  auto := false;
+
+  while Assigned(styleChildNode) do begin
+    if styleChildNode.NodeName = 'style:table-row-properties' then begin
+      s := GetAttrValue(styleChildNode, 'style:row-height');
+      if s <> '' then
+        rowHeight := PtsToMm(HTMLLengthStrToPts(s));  // convert to mm
+      s := GetAttrValue(styleChildNode, 'style:use-optimal-row-height');
+      if s = 'true' then
+        auto := true;
+    end;
+    styleChildNode := styleChildNode.NextSibling;
+  end;
+
+  rowStyle := TRowStyleData.Create;
+  rowStyle.Name := styleName;
+  rowStyle.RowHeight := rowHeight;
+  rowStyle.AutoRowHeight := auto;
+  FRowStyleList.Add(rowStyle);
+end;
+
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
   fs: TFormatSettings;
@@ -983,26 +1182,12 @@ begin
       family := GetAttrValue(styleNode, 'style:family');
 
       // Column styles
-      if family = 'table-column' then begin
-        styleName := GetAttrValue(styleNode, 'style:name');
-        styleChildNode := styleNode.FirstChild;
-        colWidth := -1;
-        while Assigned(styleChildNode) do begin
-          if styleChildNode.NodeName = 'style:table-column-properties' then begin
-            s := GetAttrValue(styleChildNode, 'style:column-width');
-            if s <> '' then begin
-              s := Copy(s, 1, Length(s)-2);    // TO DO: use correct units!
-              colWidth := StrToFloat(s, fs);
-              break;
-            end;
-          end;
-          styleChildNode := styleChildNode.NextSibling;
-        end;
-        colStyle := TColumnStyleData.Create;
-        colStyle.Name := styleName;
-        colStyle.ColWidth := colWidth;
-        FColumnStyleList.Add(colStyle);
-      end;
+      if family = 'table-column' then
+        ReadColumnStyle(styleNode);
+
+      // Row styles
+      if family = 'table-row' then
+        ReadRowStyle(styleNode);
 
       // Cell styles
       if family = 'table-cell' then begin
@@ -1122,6 +1307,108 @@ begin
   FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
+procedure TsSpreadOpenDocWriter.ListAllColumnStyles;
+var
+  i, j, c: Integer;
+  sheet: TsWorksheet;
+  found: Boolean;
+  colstyle: TColumnStyleData;
+  w: Double;
+  multiplier: Double;
+begin
+  { At first, add the default column width }
+  colStyle := TColumnStyleData.Create;
+  colStyle.Name := 'co1';
+  colStyle.ColWidth := Workbook.DefaultColWidth;
+  FColumnStyleList.Add(colStyle);
+
+  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+    for c:=0 to sheet.GetLastColIndex do begin
+      w := sheet.GetColWidth(c);
+      // Look for this width in the current ColumnStyleList
+      found := false;
+      for j := 0 to FColumnStyleList.Count-1 do
+        if SameValue(TColumnStyleData(FColumnStyleList[j]).ColWidth, w, COLWIDTH_EPS)
+        then begin
+          found := true;
+          break;
+        end;
+      // Not found? Then add the column as new column style
+      if not found then begin
+        colStyle := TColumnStyleData.Create;
+        colStyle.Name := Format('co%d', [FColumnStyleList.Count+1]);
+        colStyle.ColWidth := w;
+        FColumnStyleList.Add(colStyle);
+      end;
+    end;
+  end;
+
+  { fpspreadsheet's column width is the count of '0' characters of the
+    default font. On average, the width of the '0' is about half of the
+    point size of the font. --> we can convert the fps col width to pts and
+    then to millimeters. }
+  multiplier := Workbook.GetFont(0).Size / 2;
+  for i:=0 to FColumnStyleList.Count-1 do begin
+    w := TColumnStyleData(FColumnStyleList[i]).ColWidth * multiplier;
+    TColumnStyleData(FColumnStyleList[i]).ColWidth := PtsToMM(w);
+  end;
+end;
+
+procedure TsSpreadOpenDocWriter.ListAllRowStyles;
+var
+  i, j, r: Integer;
+  sheet: TsWorksheet;
+  row: PRow;
+  found: Boolean;
+  rowstyle: TRowStyleData;
+  h, multiplier: Double;
+begin
+  { At first, add the default row height }
+  { Initially, row height units will be the same as in the sheet, i.e. in "lines" }
+  rowStyle := TRowStyleData.Create;
+  rowStyle.Name := 'ro1';
+  rowStyle.RowHeight := Workbook.DefaultRowHeight;
+  rowStyle.AutoRowHeight := true;
+  FRowStyleList.Add(rowStyle);
+
+  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+    for r:=0 to sheet.GetLastRowIndex do begin
+      row := sheet.FindRow(r);
+      if row <> nil then begin
+        h := sheet.GetRowHeight(r);
+        // Look for this height in the current RowStyleList
+        found := false;
+        for j:=0 to FRowStyleList.Count-1 do
+          if SameValue(TRowStyleData(FRowStyleList[j]).RowHeight, h, ROWHEIGHT_EPS) and
+             (not TRowStyleData(FRowStyleList[j]).AutoRowHeight)
+          then begin
+            found := true;
+            break;
+          end;
+        // Not found? Then add the row as a new row style
+        if not found then begin
+          rowStyle := TRowStyleData.Create;
+          rowStyle.Name := Format('ro%d', [FRowStyleList.Count+1]);
+          rowStyle.RowHeight := h;
+          rowStyle.AutoRowHeight := false;
+          FRowStyleList.Add(rowStyle);
+        end;
+      end;
+    end;
+  end;
+
+  { fpspreadsheet's row heights are measured as line count of the default font.
+    Using the default font size (which is in points) we convert the line count
+    to points and then to millimeters as needed by ods. }
+  multiplier := Workbook.GetDefaultFontSize;;
+  for i:=0 to FRowStyleList.Count-1 do begin
+    h := (TRowStyleData(FRowStyleList[i]).RowHeight + ROW_HEIGHT_CORRECTION) * multiplier;
+    TRowStyleData(FRowStyleList[i]).RowHeight := PtsToMM(h);
+  end;
+end;
+
 procedure TsSpreadOpenDocWriter.WriteMimetype;
 begin
   FMimetype := 'application/vnd.oasis.opendocument.spreadsheet';
@@ -1229,11 +1516,27 @@ end;
 procedure TsSpreadOpenDocWriter.WriteContent;
 var
   i: Integer;
-  lStylesCode: string;
+  lCellStylesCode: string;
+  lColStylesCode: String;
+  lRowStylesCode: String;
 begin
+  ListAllColumnStyles;
+  ListAllRowStyles;
   ListAllFormattingStyles;
 
-  lStylesCode := WriteStylesXMLAsString;
+  lColStylesCode := WriteColStylesXMLAsString;
+  if lColStylesCode = '' then lColStylesCode :=
+  '    <style:style style:name="co1" style:family="table-column">' + LineEnding +
+  '      <style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>' + LineEnding +
+  '    </style:style>' + LineEnding;
+
+  lRowStylesCode := WriteRowStylesXMLAsString;
+  if lRowStylesCode = '' then lRowStylesCode :=
+  '    <style:style style:name="ro1" style:family="table-row">' + LineEnding +
+  '      <style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' + LineEnding +
+  '    </style:style>' + LineEnding;
+
+  lCellStylesCode := WriteCellStylesXMLAsString;
 
   FContent :=
    XML_HEADER + LineEnding +
@@ -1266,17 +1569,14 @@ begin
 
    // Automatic styles
   '  <office:automatic-styles>' + LineEnding +
-  '    <style:style style:name="co1" style:family="table-column">' + LineEnding +
-  '      <style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>' + LineEnding +
-  '    </style:style>' + LineEnding +
-  '    <style:style style:name="ro1" style:family="table-row">' + LineEnding +
-  '      <style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' + LineEnding +
-  '    </style:style>' + LineEnding +
+  lColStylesCode +
+  lRowStylesCode +
   '    <style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
   '      <style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
   '    </style:style>' + LineEnding +
+
   // Automatically Generated Styles
-  lStylesCode +
+  lCellStylesCode +
   '  </office:automatic-styles>' + LineEnding +
 
   // Body
@@ -1301,45 +1601,35 @@ var
   LastColIndex: Cardinal;
   LCell: TCell;
   AVLNode: TAVLTreeNode;
+  defFontSize: Single;
+  h, h_mm: Double;
+  styleName: String;
+  rowStyleData: TRowStyleData;
+  row: PRow;
 begin
   LastColIndex := CurSheet.GetLastColIndex;
+  defFontSize := Workbook.GetFont(0).Size;
 
   // Header
   FContent := FContent +
-  '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding +
-  '      <table:table-column table:style-name="co1" table:number-columns-repeated="' +
-  IntToStr(LastColIndex + 1) + '" table:default-cell-style-name="Default"/>' + LineEnding;
+  '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding;
 
+  // columns
+  FContent := FContent + WriteColumnsXMLAsString(CurSheet);
+
+  // rows and cells
   // The cells need to be written in order, row by row, cell by cell
-  for j := 0 to CurSheet.GetLastRowIndex do
-  begin
-    FContent := FContent +
-    '      <table:table-row table:style-name="ro1">' + LineEnding;
-
-    // Write cells from this row.
-    for k := 0 to LastColIndex do
-    begin
-      LCell.Row := j;
-      LCell.Col := k;
-      AVLNode := CurSheet.Cells.Find(@LCell);
-      if Assigned(AVLNode) then
-        WriteCellCallback(PCell(AVLNode.Data), nil)
-      else
-        FContent := FContent + '<table:table-cell/>' + LineEnding;
-    end;
-
-    FContent := FContent +
-    '      </table:table-row>' + LineEnding;
-  end;
+  FContent := FContent + WriteRowsAndCellsXMLAsString(CurSheet);
 
   // Footer
   FContent := FContent +
   '    </table:table>' + LineEnding;
 end;
 
-function TsSpreadOpenDocWriter.WriteStylesXMLAsString: string;
+function TsSpreadOpenDocWriter.WriteCellStylesXMLAsString: string;
 var
   i: Integer;
+  s: String;
 begin
   Result := '';
 
@@ -1357,29 +1647,20 @@ begin
     '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
 
     // style:table-cell-properties
-    if (FFormattingStyles[i].UsedFormattingFields *
-      [uffBorder, uffBackgroundColor, uffWordWrap, uffTextRotation, uffVertAlign] <> [])
-    then begin
+    s :=  WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
+          WriteBackgroundColorStyleXMLAsString(FFormattingStyles[i]) +
+          WriteWordwrapStyleXMLAsString(FFormattingStyles[i]) +
+          WriteTextRotationStyleXMLAsString(FFormattingStyles[i]) +
+          WriteVertAlignmentStyleXMLAsString(FFormattingStyles[i]);
+    if s <> '' then
       Result := Result +
-    '      <style:table-cell-properties ' +
-                WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
-                WriteBackgroundColorStyleXMLAsString(FFormattingStyles[i]) +
-                WriteWordwrapStyleXMLAsString(FFormattingStyles[i]) +
-                WriteTextRotationStyleXMLAsString(FFormattingStyles[i]) +
-                WriteVertAlignmentStyleXMLAsString(FFormattingStyles[i]) +
-                '/>' + LineEnding;
-    end;
+    '      <style:table-cell-properties ' + s + '/>' + LineEnding;
 
     // style:paragraph-properties
-    if (uffHorAlign in FFormattingStyles[i].UsedFormattingFields) and
-       (FFormattingStyles[i].HorAlignment <> haDefault)
-    then begin
+    s := WriteHorAlignmentStyleXMLAsString(FFormattingStyles[i]);
+    if s <> '' then
       Result := Result +
-    '      <style:paragraph-properties ' +
-              WriteHorAlignmentStyleXMLAsString(FFormattingStyles[i]) +
-              '/>' + LineEnding;
-    end;
-
+    '      <style:paragraph-properties ' + s + '/>' + LineEnding;
 
     // End
     Result := Result +
@@ -1387,12 +1668,258 @@ begin
   end;
 end;
 
+function TsSpreadOpenDocWriter.WriteColStylesXMLAsString: string;
+var
+  i: Integer;
+  s: String;
+  colstyle: TColumnStyleData;
+begin
+  Result := '';
+
+  for i := 0 to FColumnStyleList.Count-1 do begin
+    colStyle := TColumnStyleData(FColumnStyleList[i]);
+
+    // Start and Name
+    Result := Result +
+    '    <style:style style:name="%s" style:family="table-column">' + LineEnding;
+
+    // Column width
+    Result := Result +
+    '      <style:table-column-properties style:column-width="%.3fmm" fo:break-before="auto"/>' + LineEnding;
+
+    // End
+    Result := Result +
+    '    </style:style>' + LineEnding;
+
+    Result := Format(Result, [colStyle.Name, colStyle.ColWidth], FPointSeparatorSettings);
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteColumnsXMLAsString(ASheet: TsWorksheet): String;
+var
+  lastCol: Integer;
+  j, k: Integer;
+  w, w_mm: Double;
+  widthMultiplier: Double;
+  styleName: String;
+  colsRepeated: Integer;
+  colsRepeatedStr: String;
+begin
+  Result := '';
+
+  widthMultiplier := Workbook.GetFont(0).Size / 2;
+  lastCol := ASheet.GetLastColIndex;
+
+  j := 0;
+  while (j <= lastCol) do begin
+    w := ASheet.GetColWidth(j);
+    // Convert to mm
+    w_mm := PtsToMM(w * widthMultiplier);
+
+    // Find width in ColumnStyleList to retrieve corresponding style name
+    styleName := '';
+    for k := 0 to FColumnStyleList.Count-1 do
+      if SameValue(TColumnStyleData(FColumnStyleList[k]).ColWidth, w_mm, COLWIDTH_EPS) then begin
+        styleName := TColumnStyleData(FColumnStyleList[k]).Name;
+        break;
+      end;
+    if stylename = '' then
+      raise Exception.Create('Column style not found.');
+
+    // Determine value for "number-columns-repeated"
+    colsRepeated := 1;
+    k := j+1;
+    while (k <= lastCol) do begin
+      if ASheet.GetColWidth(k) = w then
+        inc(colsRepeated)
+      else
+        break;
+      inc(k);
+    end;
+    colsRepeatedStr := IfThen(colsRepeated = 1, '', Format(' table:number-columns-repeated="%d"', [colsRepeated]));
+
+    Result := Result + Format(
+    '      <table:table-column table:style-name="%s"%s table:default-cell-style-name="Default"/>',
+           [styleName, colsRepeatedStr]) + LineEnding;
+
+    j := j + colsRepeated;
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteRowsAndCellsXMLAsString(ASheet: TsWorksheet): String;
+var
+  r, rr: Cardinal;  // row index in sheet
+  c, cc: Cardinal;  // column index in sheet
+  row: PRow;        // sheet row record
+  cell: PCell;      // current cell
+  styleName: String;
+  k: Integer;
+  h, h_mm: Single;  // row height in "lines" and millimeters, respectively
+  h1: Single;
+  colsRepeated: Integer;
+  rowsRepeated: Integer;
+  colsRepeatedStr: String;
+  rowsRepeatedStr: String;
+  lastCol, lastRow: Cardinal;
+  rowStyleData: TRowStyleData;
+  colData: TColumnData;
+  colStyleData: TColumnStyleData;
+  defFontSize: Single;
+  sameRowStyle: Boolean;
+begin
+  Result := '';
+
+  // some abbreviations...
+  lastCol := ASheet.GetLastColIndex;
+  lastRow := ASheet.GetLastRowIndex;
+  defFontSize := Workbook.GetFont(0).Size;
+
+  // Now loop through all rows
+  r := 0;
+  while (r <= lastRow) do begin
+    // Look for the row style of the current row (r)
+    row := ASheet.FindRow(r);
+    if row = nil then
+      styleName := 'ro1'
+    else begin
+      styleName := '';
+
+      h := row^.Height;   // row height in "lines"
+      h_mm := PtsToMM((h + ROW_HEIGHT_CORRECTION) * defFontSize);  // in mm
+      for k := 0 to FRowStyleList.Count-1 do begin
+        rowStyleData := TRowStyleData(FRowStyleList[k]);
+        // Compare row heights, but be aware of rounding errors
+        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then begin
+          styleName := rowStyleData.Name;
+          break;
+        end;
+      end;
+      if styleName = '' then
+        raise Exception.Create('Row style not found.');
+    end;
+
+    // Look for empty rows with the same style, they need the "number-rows-repeated" element.
+    rowsRepeated := 1;
+    if ASheet.GetCellCountInRow(r) = 0 then begin
+      rr := r + 1;
+      while (rr <= lastRow) do begin
+        if ASheet.GetCellCountInRow(rr) > 0 then begin
+          break;
+        end;
+        h1 := ASheet.GetRowHeight(rr);
+        if not SameValue(h, h1, ROWHEIGHT_EPS) then
+          break;
+        inc(rr);
+      end;
+      rowsRepeated := rr - r;
+      rowsRepeatedStr := IfThen(rowsRepeated = 1, '',
+        Format('table:number-rows-repeated="%d"', [rowsRepeated]));
+      colsRepeated := lastCol+1;
+      colsRepeatedStr := IfThen(colsRepeated = 1, '',
+        Format('table:number-columns-repeated="%d"', [colsRepeated]));
+      Result := Result + Format(
+        '      <table:table-row table:style-name="%s" %s>' + LineEnding +
+        '        <table:table-cell %s/>'                   + LineEnding +
+        '      </table:table-row>'                         + LineEnding,
+              [styleName, rowsRepeatedStr, colsRepeatedStr]);
+      r := rr;
+      continue;
+    end;
+
+    // Now we know that there are cells.
+    // Write the row XML
+    Result := Result + Format(
+        '      <table:table-row table:style-name="%s">', [styleName]) + LineEnding;
+
+    // Loop along the row and find the cells.
+    c := 0;
+    while c <= lastCol do begin
+      // Get the cell from the sheet
+      cell := ASheet.FindCell(r, c);
+      // Empty cell? Need to count how many to add "table:number-columns-repeated"
+      colsRepeated := 1;
+      if cell = nil then begin
+        cc := c + 1;
+        while (cc <= lastCol) do begin
+          cell := ASheet.FindCell(r, cc);
+          if cell <> nil then
+            break;
+          inc(cc)
+        end;
+        colsRepeated := cc - c;
+        colsRepeatedStr := IfThen(colsRepeated = 1, '',
+          Format('table:number-columns-repeated="%d"', [colsRepeated]));
+        Result := Result + Format(
+        '        <table:table-cell %s/>', [colsRepeatedStr]) + LineEnding;
+      end
+      else begin
+        WriteCellCallback(cell, nil);
+        Result := Result + FCellContent;
+      end;
+      inc(c, colsRepeated);
+    end;
+
+    Result := Result +
+        '      </table:table-row>' + LineEnding;
+
+    // Next row
+    inc(r, rowsRepeated);
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteRowStylesXMLAsString: string;
+const
+  FALSE_TRUE: array[boolean] of string = ('false', 'true');
+var
+  i: Integer;
+  s: String;
+  rowstyle: TRowStyleData;
+begin
+  Result := '';
+
+  for i := 0 to FRowStyleList.Count-1 do begin
+    rowStyle := TRowStyleData(FRowStyleList[i]);
+
+    // Start and Name
+    Result := Result +
+    '    <style:style style:name="%s" style:family="table-row">' + LineEnding;
+
+    // Column width
+    Result := Result +
+    '      <style:table-row-properties style:row-height="%.3gmm" style:use-optimal-row-height="%s" fo:break-before="auto"/>' + LineEnding;
+
+    // End
+    Result := Result +
+    '    </style:style>' + LineEnding;
+
+    Result := Format(Result,
+      [rowStyle.Name, rowStyle.RowHeight, FALSE_TRUE[rowStyle.AutoRowHeight]],
+      FPointSeparatorSettings
+    );
+  end;
+end;
+
+
 constructor TsSpreadOpenDocWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
+  FColumnStyleList := TFPList.Create;
+  FRowStyleList := TFPList.Create;
+
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
+end;
+
+destructor TsSpreadOpenDocWriter.Destroy;
+var
+  j: Integer;
+begin
+  for j:=FColumnStyleList.Count-1 downto 0 do TObject(FColumnStyleList[j]).Free;
+  FColumnStyleList.Free;
+
+  for j:=FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
+  FRowStyleList.Free;
 end;
 
 {
@@ -1495,10 +2022,11 @@ begin
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-    FContent := FContent +
+    FCellContent :=
       '  <table:table-cell ' + lStyle + '>' + LineEnding +
       '  </table:table-cell>' + LineEnding;
-  end;
+  end else
+    FCellContent := '';
 end;
 
 { Creates an XML string for inclusion of the background color into the
@@ -1649,14 +2177,14 @@ var
   lStyle: string = '';
   lIndex: Integer;
 begin
-  if ACell^.UsedFormattingFields <> [] then
-  begin
+  if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end;
+  end else
+    lStyle := '';
 
   // The row should already be the correct one
-  FContent := FContent +
+  FCellContent :=
     '  <table:table-cell office:value-type="string"' + lStyle + '>' + LineEnding +
     '    <text:p>' + UTF8TextToXMLText(AValue) + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
@@ -1670,11 +2198,11 @@ var
   lStyle: string = '';
   lIndex: Integer;
 begin
-  if ACell^.UsedFormattingFields <> [] then
-  begin
+  if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end;
+  end else
+    lStyle := '';
 
   // The row should already be the correct one
   if IsInfinite(AValue) then begin
@@ -1684,7 +2212,7 @@ begin
     StrValue:=FloatToStr(AValue,FPointSeparatorSettings); //Uses '.' as decimal separator
     DisplayStr:=FloatToStr(AValue); // Uses locale decimal separator
   end;
-  FContent := FContent +
+  FCellContent :=
     '  <table:table-cell office:value-type="float" office:value="' + StrValue + '"' + lStyle + '>' + LineEnding +
     '    <text:p>' + DisplayStr + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
@@ -1703,14 +2231,14 @@ var
   lStyle: string = '';
   lIndex: Integer;
 begin
-  if ACell^.UsedFormattingFields <> [] then
-  begin
+  if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end;
+  end else
+    lStyle := '';
 
   // The row should already be the correct one
-  FContent := FContent +
+  FCellContent :=
     '  <table:table-cell office:value-type="date" office:date-value="' + FormatDateTime(ISO8601FormatExtended, AValue) + '"' + lStyle + '>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;

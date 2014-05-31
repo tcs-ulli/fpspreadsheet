@@ -33,7 +33,7 @@ begin
   //MyWorksheet.WriteColWidth(0, 5);
   //MyWorksheet.WriteColWidth(1, 30);
 
-  MyWorksheet.WriteRowHeight(0, 30);  // 30 mm
+  MyWorksheet.WriteRowHeight(0, 3);  // 3 lines
 
   // Turn off grid lines and hide headers
   //MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines, soShowHeaders];
@@ -367,16 +367,16 @@ begin
   inc(r);
 
   // Set width of columns 0 to 3
-  MyWorksheet.WriteColWidth(0, 50);
-  lCol.Width := 15;
+  MyWorksheet.WriteColWidth(0, 48);    // 48 characters, default is 12 --> 4x default width
+  lCol.Width := 24;                    // 24 characters, default is 12 --> 2x default width
   MyWorksheet.WriteColInfo(1, lCol);
   MyWorksheet.WriteColInfo(2, lCol);
   MyWorksheet.WriteColInfo(3, lCol);
 
   // Set height of rows 5 and 6
-  lRow.Height := 10;
+  lRow.Height := 4;                    // 4 lines
   MyWorksheet.WriteRowInfo(5, lRow);
-  lRow.Height := 5;
+  lRow.Height := 2;                    // 2 lines
   MyWorksheet.WriteRowInfo(6, lRow);
 
   // Save the spreadsheet to a file
