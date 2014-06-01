@@ -18,6 +18,11 @@ http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
 AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon
 }
+
+{ TODO: Remove the date/time separator workaround in ReadNumStyle once a patch
+  giving access to PreserveSpaces in xmlRead is available in fpc }
+
+
 unit fpsopendocument;
 
 {$ifdef fpc}
@@ -851,6 +856,7 @@ var
   nf: TsNumberFormat;
   nex: Integer;
   s, s1, s2: String;
+  sep: String;   // separator between date/time parts
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -900,6 +906,7 @@ begin
     then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       fmt := '';
+      sep := ' ';  // part of date/time separator workaround
       node := NumFormatNode.FirstChild;
       while Assigned(node) do begin
         if node.NodeName = 'number:year' then begin
@@ -955,8 +962,16 @@ begin
         if node.NodeName = 'number:am-pm' then
           fmt := fmt + 'AM/PM'
         else
-        if node.NodeName = 'number:text' then
-          fmt := fmt + node.TextContent;
+        if node.NodeName = 'number:text' then begin
+          { date/time separator workaround: sep is a space by default
+            and is replaced here by the TextContent separator. It has the
+            consequence that the equivalent of the format string "yymmdd" will
+            be decoded as "yy mm dd"!
+            Remove this once a patch giving access to PreserveSpaces in xmlRead
+            is included in fpc. }
+          sep := node.TextContent;
+          fmt := fmt + sep;
+        end;
         node := node.NextSibling;
       end;
       NumFormatList.AddFormat(fmtName, fmt, nfFmtDateTime);
