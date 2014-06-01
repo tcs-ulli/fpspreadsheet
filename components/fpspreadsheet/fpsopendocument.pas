@@ -906,7 +906,6 @@ begin
     then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       fmt := '';
-      sep := ' ';  // part of date/time separator workaround
       node := NumFormatNode.FirstChild;
       while Assigned(node) do begin
         if node.NodeName = 'number:year' then begin
@@ -970,6 +969,7 @@ begin
             Remove this once a patch giving access to PreserveSpaces in xmlRead
             is included in fpc. }
           sep := node.TextContent;
+          if sep = '' then sep := ' ';
           fmt := fmt + sep;
         end;
         node := node.NextSibling;
