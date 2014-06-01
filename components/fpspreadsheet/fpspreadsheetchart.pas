@@ -59,6 +59,7 @@ type
     destructor Destroy; override;
     procedure LoadPropertiesFromStrings(AXInterval, AYInterval, AXTitle, AYTitle, ATitle: string);
   public
+    procedure LoadFromWorksheetGrid(const AValue: TsWorksheetGrid);
   published
 //    property WorksheetGrid: TsWorksheetGrid read FWorksheetGrid write SetWorksheetGrid;
     property PointsNumber: Integer read FPointsNumber write SetPointsNumber default 0;
@@ -191,6 +192,17 @@ destructor TsWorksheetChartSource.Destroy;
 begin
   if FInternalWorksheet <> nil then FInternalWorksheet.Free;
   inherited Destroy;
+end;
+
+procedure TsWorksheetChartSource.LoadFromWorksheetGrid(const AValue: TsWorksheetGrid);
+begin
+  if AValue = nil then Exit;
+
+  FDataWorksheet := AValue.Worksheet;
+//  AValue.SaveToWorksheet(FDataWorksheet);
+
+  InvalidateCaches;
+  Notify;
 end;
 
 procedure TsWorksheetChartSource.LoadPropertiesFromStrings(AXInterval,
