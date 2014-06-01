@@ -216,6 +216,11 @@ type
 
 implementation
 
+var
+  TestWorksheet: TsWorksheet = nil;
+  TestWorkbook: TsWorkbook = nil;
+  TestFileName: String = '';
+
 const
   DatesSheet = 'Dates'; //worksheet name
 
@@ -270,6 +275,7 @@ begin
   SollDates[36]:=EncodeTime(3,45,12,0);     // formatted as nfTimeDuration
   SollDates[37]:=EncodeTime(3,45,12,0) + 1  // formatted as nfTimeDuration
 end;
+
 
 { TSpreadWriteReadDateTests }
 
@@ -349,38 +355,48 @@ begin
   TestWriteReadDates(sfExcel8);
 end;
 
+
+{ TSpreadReadDateTests }
+
 procedure TSpreadReadDateTests.TestReadDate(FileName: string; Row: integer);
 var
-  MyWorksheet: TsWorksheet;
-  MyWorkbook: TsWorkbook;
   ActualDateTime: TDateTime;
 begin
   if Row>High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
-  // Open the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
-  case UpperCase(ExtractFileExt(FileName)) of
-    '.XLSX': MyWorkbook.ReadFromFile(FileName, sfOOXML);
-    '.ODS': MyWorkbook.ReadFromFile(FileName, sfOpenDocument);
-    // Excel XLS/BIFF
-    else MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  // Load the file only if is the file name changes.
+  if TestFileName <> FileName then begin
+    if TestWorkbook <> nil then
+      TestWorkbook.Free;
+
+    // Open the spreadsheet
+    TestWorkbook := TsWorkbook.Create;
+    case UpperCase(ExtractFileExt(FileName)) of
+      '.XLSX': TestWorkbook.ReadFromFile(FileName, sfOOXML);
+      '.ODS': TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
+      // Excel XLS/BIFF
+      else TestWorkbook.ReadFromFile(FileName, sfExcel8);
+    end;
+    TestWorksheet := GetWorksheetByName(TestWorkBook, DatesSheet);
+    if TestWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    TestFileName := FileName;
   end;
-  MyWorksheet:=GetWorksheetByName(MyWorkBook,DatesSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
+
   // We know these are valid time/date/datetime values....
   // Just test for empty string; we'll probably end up in a maze of localized date/time stuff
   // if we don't.
-  CheckNotEquals(MyWorkSheet.ReadAsUTF8Text(Row, 0), '','Could not read date time as string for cell '+CellNotation(MyWorkSheet,Row));
+  CheckNotEquals(TestWorkSheet.ReadAsUTF8Text(Row, 0), '',
+    'Could not read date time as string for cell '+CellNotation(TestWorkSheet,Row));
 
-  if not(MyWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
-    Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row));
-  CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch '
-    +'cell '+CellNotation(MyWorksheet,Row));
+  if not(TestWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
+    Fail('Could not read date time value for cell '+CellNotation(TestWorkSheet,Row));
+  CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch, '
+    +'cell '+CellNotation(TestWorksheet,Row));
 
-  // Finalization
-  MyWorkbook.Free;
+  // Don't free the workbook here - it will be reused. It is destroyed at finalization.
 end;
 
 procedure TSpreadReadDateTests.SetUp;
@@ -1177,6 +1193,10 @@ initialization
   RegisterTest(TSpreadReadDateTests);
   RegisterTest(TSpreadWriteReadDateTests);
   InitSollDates; //useful to have norm data if other code want to use this unit
+
+finalization
+  FreeAndNil(TestWorkbook);
+
 end.
 
 

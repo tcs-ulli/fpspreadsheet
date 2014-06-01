@@ -96,6 +96,11 @@ type
 
 implementation
 
+var
+  TestWorksheet: TsWorksheet = nil;
+  TestWorkbook: TsWorkbook = nil;
+  TestFileName: String = '';
+
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
 //
@@ -283,33 +288,39 @@ begin
   DeleteFile(TempFile);
 end;
 
+
+{ TSpreadReadStringTests }
+
 procedure TSpreadReadStringTests.TestReadString(FileName: string; Row: integer);
 var
-  MyWorksheet: TsWorksheet;
-  MyWorkbook: TsWorkbook;
   ActualString: string;
 begin
   if Row>High(SollStrings) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
-  // Open the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
-  case UpperCase(ExtractFileExt(FileName)) of
-    '.XLSX': MyWorkbook.ReadFromFile(FileName, sfOOXML);
-    '.ODS': MyWorkbook.ReadFromFile(FileName, sfOpenDocument);
-    // Excel XLS/BIFF
-    else MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  // Load the file only if is the file name changes.
+  if (FileName <> TestFileName) then begin
+    if TestWorkbook <> nil then
+      TestWorkbook.Free;
+
+    // Open the spreadsheet
+    TestWorkbook := TsWorkbook.Create;
+    case UpperCase(ExtractFileExt(FileName)) of
+      '.XLSX': TestWorkbook.ReadFromFile(FileName, sfOOXML);
+      '.ODS': TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
+      // Excel XLS/BIFF
+      else TestWorkbook.ReadFromFile(FileName, sfExcel8);
+    end;
+    TestWorksheet := GetWorksheetByName(TestWorkBook, StringsSheet);
+    if TestWorksheet=nil then
+      fail('Error in test code: could not retrieve worksheet.');
   end;
-  MyWorksheet:=GetWorksheetByName(MyWorkBook,StringsSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code: could not retrieve worksheet.');
 
-  ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
-  CheckEquals(SollStrings[Row],ActualString,'Test value mismatch '
-    +'cell '+CellNotation(MyWorkSheet,Row));
+  ActualString := TestWorkSheet.ReadAsUTF8Text(Row,0);
+  CheckEquals(SollStrings[Row], ActualString, 'Test value mismatch, '
+    +'cell '+CellNotation(TestWorkSheet,Row));
 
-  // Finalization
-  MyWorkbook.Free;
+  // Don't free the workbook here - it will be reused. It is destroyed at finalization.
 end;
 
 procedure TSpreadReadStringTests.SetUp;
@@ -458,4 +469,8 @@ initialization
   RegisterTest(TSpreadWriteReadStringTests);
   // Initialize the norm variables in case other units want to use it:
   InitSollStrings;
+
+finalization
+  FreeAndNil(TestWorkbook);
+
 end.

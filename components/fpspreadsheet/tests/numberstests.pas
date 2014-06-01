@@ -103,6 +103,11 @@ type
 
 implementation
 
+var
+  TestWorksheet: TsWorksheet = nil;
+  TestWorkbook: TsWorkbook = nil;
+  TestFileName: String = '';
+
 const
   TestFileBIFF8='testbiff8.xls'; //with 1904 numbermode number system
   TestFileBIFF8_1899='testbiff8_1899.xls'; //with 1899/1900 numbermode number system
@@ -216,33 +221,41 @@ begin
   TestWriteReadNumbers(sfExcel8);
 end;
 
+
+{ TSpreadReadNumberTests }
+
 procedure TSpreadReadNumberTests.TestReadNumber(FileName: string; Row: integer);
 var
-  MyWorksheet: TsWorksheet;
-  MyWorkbook: TsWorkbook;
   ActualNumber: double;
 begin
   if Row>High(SollNumbers) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
-  // Open the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
-  case UpperCase(ExtractFileExt(FileName)) of
-    '.XLSX': MyWorkbook.ReadFromFile(FileName, sfOOXML);
-    '.ODS': MyWorkbook.ReadFromFile(FileName, sfOpenDocument);
-    // Excel XLS/BIFF
-    else MyWorkbook.ReadFromFile(FileName, sfExcel8);
+  // Load the file only if is the file name changes.
+  if (FileName <> TestFileName) then begin
+    if TestWorkbook <> nil then
+      TestWorkbook.Free;
+
+    // Open the spreadsheet
+    TestWorkbook := TsWorkbook.Create;
+    case UpperCase(ExtractFileExt(FileName)) of
+      '.XLSX': TestWorkbook.ReadFromFile(FileName, sfOOXML);
+      '.ODS': TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
+      // Excel XLS/BIFF
+      else TestWorkbook.ReadFromFile(FileName, sfExcel8);
+    end;
+    TestWorksheet:=GetWorksheetByName(TestWorkBook,NumbersSheet);
+    if TestWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    TestFileName := FileName;
   end;
-  MyWorksheet:=GetWorksheetByName(MyWorkBook,NumbersSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
 
-  ActualNumber:=MyWorkSheet.ReadAsNumber(Row, 0);
-  CheckEquals(SollNumbers[Row], ActualNumber,'Test value mismatch '
-    +'cell '+CellNotation(MyWorkSheet,Row));
+  ActualNumber := TestWorkSheet.ReadAsNumber(Row, 0);
+  CheckEquals(SollNumbers[Row], ActualNumber,'Test value mismatch, '
+    +'cell '+CellNotation(TestWorkSheet,Row));
 
-  // Finalization
-  MyWorkbook.Free;
+  // Don't free the workbook here - it will be reused. It is destroyed at finalization.
 end;
 
 procedure TSpreadReadNumberTests.SetUp;
@@ -462,6 +475,10 @@ initialization
   RegisterTest(TSpreadReadNumberTests);
   RegisterTest(TSpreadWriteReadNumberTests);
   InitSollNumbers; //useful to have norm data if other code want to use this unit
+
+finalization
+  FreeAndNil(TestWorkbook);
+
 end.
 
 
