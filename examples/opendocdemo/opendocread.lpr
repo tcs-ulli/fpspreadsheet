@@ -3,8 +3,9 @@ opendocread.dpr
 
 Demonstrates how to read an OpenDocument file using the fpspreadsheet library
 
-AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
+AUTHORS: Felipe Monteiro de Carvalho
 }
+
 program opendocread;
 
 {$mode delphi}{$H+}
@@ -26,7 +27,7 @@ begin
 
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
-  InputFileName := MyDir + 'testodf.ods';
+  InputFileName := MyDir + 'test.ods';
   WriteLn('Opening input file ', InputFilename);
 
   // Create the spreadsheet
