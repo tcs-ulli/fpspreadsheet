@@ -26,7 +26,7 @@ begin
 
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
-  InputFileName := MyDir + 'test.ods';
+  InputFileName := MyDir + 'testodf.ods';
   WriteLn('Opening input file ', InputFilename);
 
   // Create the spreadsheet
