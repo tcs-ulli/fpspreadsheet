@@ -19,9 +19,6 @@ http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon
 }
 
-{ TODO: Remove the date/time separator workaround in ReadNumStyle once a patch
-  giving access to PreserveSpaces in xmlRead is available in fpc }
-
 
 unit fpsopendocument;
 
@@ -183,7 +180,7 @@ const
   OPENDOC_PATH_SETTINGS  = 'settings.xml';
   OPENDOC_PATH_STYLES    = 'styles.xml';
   OPENDOC_PATH_MIMETYPE  = 'mimetype';
-  OPENDOC_PATH_METAINF = 'META-INF' + '/';
+  OPENDOC_PATH_METAINF   = 'META-INF' + '/';
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + '/' + 'manifest.xml';
 
   { OpenDocument schemas constants }
@@ -635,6 +632,35 @@ var
   FileList : TStringList;
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
   StylesNode: TDOMNode;
+
+  { We have to use our own ReadXMLFile procedure (there is one in xmlread)
+    because we have to preserve spaces in element text for date/time separator.
+    As a side-effect we have to skip leading spaces by ourselves. }
+  procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
+  var
+    parser: TDOMParser;
+    src: TXMLInputSource;
+    stream: TStream;
+  begin
+    stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyWrite);
+    try
+      parser := TDOMParser.Create;
+      try
+        parser.Options.PreserveWhiteSpace := true;    // This preserves spaces!
+        src := TXMLInputSource.Create(stream);
+        try
+          parser.Parse(src, ADoc);
+        finally
+          src.Free;
+        end;
+      finally
+        parser.Free;
+      end;
+    finally
+      stream.Free;
+    end;
+  end;
+
 begin
   //unzip content.xml into AFileName path
   FilePath := GetTempDir(false);
@@ -660,6 +686,8 @@ begin
     ReadNumFormats(StylesNode);
     ReadStyles(StylesNode);
 
+    Doc.Free;
+
     //process the content.xml file
     ReadXMLFile(Doc, FilePath+'content.xml');
     DeleteFile(FilePath+'content.xml');
@@ -679,6 +707,13 @@ begin
     //process each table (sheet)
     TableNode := SpreadSheetNode.FindNode('table:table');
     while Assigned(TableNode) do begin
+      // These nodes occur due to leading spaces which are not skipped
+      // automatically any more due to PreserveWhiteSpace option applied
+      // to ReadXMLFile
+      if TableNode.NodeName = '#text' then begin
+        TableNode := TableNode.NextSibling;
+        continue;
+      end;
       FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
       // Collect column styles used
       ReadColumns(TableNode);
@@ -690,7 +725,7 @@ begin
     end; //while Assigned(TableNode)
 
   finally
-    Doc.Free;
+    if Assigned(Doc) then Doc.Free;
   end;
 end;
 
@@ -848,23 +883,25 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 var
-  NumFormatNode, node: TDOMNode;
+  NumFormatNode, node, childnode: TDOMNode;
   decs: Integer;
   fmtName: String;
   grouping: boolean;
   fmt: String;
+  numfmt_nodename, nodename: String;
   nf: TsNumberFormat;
   nex: Integer;
   s, s1, s2: String;
-  sep: String;   // separator between date/time parts
 begin
   if not Assigned(AStylesNode) then
     exit;
 
   NumFormatNode := AStylesNode.FirstChild;
   while Assigned(NumFormatNode) do begin
+    numfmt_nodename := NumFormatNode.NodeName;
+
     // Numbers (nfFixed, nfFixedTh, nfExp)
-    if NumFormatNode.NodeName = 'number:number-style' then begin
+    if numfmt_nodename = 'number:number-style' then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       node := NumFormatNode.FindNode('number:number');
       if node <> nil then begin
@@ -890,7 +927,7 @@ begin
       end;
     end else
     // Percentage
-    if NumFormatNode.NodeName = 'number:percentage-style' then begin
+    if numfmt_nodename = 'number:percentage-style' then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       node := NumFormatNode.FindNode('number:number');
       if node <> nil then begin
@@ -901,8 +938,7 @@ begin
       end;
     end else
     // Date/Time
-    if (NumFormatNode.NodeName = 'number:date-style') or
-       (NumFormatNode.NodeName = 'number:time-style')
+    if (numfmt_nodename = 'number:date-style') or (numfmt_nodename = 'number:time-style')
     then begin
       fmtName := GetAttrValue(NumFormatNode, 'style:name');
       fmt := '';
@@ -962,15 +998,9 @@ begin
           fmt := fmt + 'AM/PM'
         else
         if node.NodeName = 'number:text' then begin
-          { date/time separator workaround: sep is a space by default
-            and is replaced here by the TextContent separator. It has the
-            consequence that the equivalent of the format string "yymmdd" will
-            be decoded as "yy mm dd"!
-            Remove this once a patch giving access to PreserveSpaces in xmlRead
-            is included in fpc. }
-          sep := node.TextContent;
-          if sep = '' then sep := ' ';
-          fmt := fmt + sep;
+          childnode := node.FirstChild;
+          if childnode <> nil then
+            fmt := fmt + childnode.NodeValue;
         end;
         node := node.NextSibling;
       end;
@@ -997,11 +1027,21 @@ var
   autoRowHeight: Boolean;
   i: Integer;
   lRow: PRow;
+  s: String;
 begin
   rowsRepeated := 0;
   row := 0;
+
   rowNode := ATableNode.FindNode('table:table-row');
   while Assigned(rowNode) do begin
+    // These nodes occur due to indentation spaces which are not skipped
+    // automatically any more due to PreserveWhiteSpace option applied
+    // to ReadXMLFile
+    if rowNode.NodeName = '#text' then begin
+      rowNode := rowNode.NextSibling;
+      Continue;
+    end;
+
     // Read rowstyle
     rowStyleName := GetAttrValue(rowNode, 'table:style-name');
     rowStyleIndex := FindRowStyleByName(rowStyleName);
@@ -1018,6 +1058,15 @@ begin
     //process each cell of the row
     cellNode := rowNode.FindNode('table:table-cell');
     while Assigned(cellNode) do begin
+
+      // These nodes occur due to indentation spaces which are not skipped
+      // automatically any more due to PreserveWhiteSpace option applied
+      // to ReadXMLFile
+      if cellNode.NodeName = '#text' then begin
+        cellNode := cellNode.NextSibling;
+        Continue;
+      end;
+
       // select this cell value's type
       paramValueType := GetAttrValue(CellNode, 'office:value-type');
       paramFormula := GetAttrValue(CellNode, 'table:formula');
