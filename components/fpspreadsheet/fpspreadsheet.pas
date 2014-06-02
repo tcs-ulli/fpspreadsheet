@@ -3234,7 +3234,8 @@ begin
     fmt := lFormatData.FormatString;
   end else
     fmt := AFormatString;
-  nf := nfGeneral;  // not used here.
+
+  nf := nfGeneral;
 
   // Analyzes the format string and tries to convert it to fpSpreadsheet format.
   parser := TsNumFormatParser.Create(Workbook, fmt, nf, cdToFPSpreadsheet);

@@ -474,7 +474,7 @@ var
 begin
   FStatus := psOK;
   AddSection;
-  if AFormatString = '' then
+  if (AFormatString = '') or (lowercase(AFormatString) = 'general') then
     exit;
 
   FStart := @AFormatString[1];
