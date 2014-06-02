@@ -609,7 +609,7 @@ begin
     end;
 
   if wasFixed then begin
-    wasFixed := true;
+    wasFixed := true;                   // ?????
     AState := AState - [gdFixed];
     Canvas.Brush.Color := clWindow;
   end;
@@ -649,6 +649,8 @@ begin
       ts.Alignment := taRightJustify;
       ts.Layout := tlCenter;
     end;
+    if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
+      Canvas.Brush.Color := FixedColor
   end;
   if FWorksheet <> nil then begin
     r := ARow - FHeaderCount;
@@ -718,7 +720,7 @@ begin
 
   Canvas.SaveHandleState;
   try
-    // Avoid painting into the fixed cells
+    // Avoid painting into the header cells
     cliprect := ClientRect;
     if FixedCols > 0 then
       ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);

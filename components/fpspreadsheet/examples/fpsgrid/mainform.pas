@@ -82,6 +82,7 @@ type
     CbShowGridLines: TCheckBox;
     CbBackgroundColor: TColorBox;
     CbReadFormulas: TCheckBox;
+    CbHeaderStyle: TComboBox;
     EdFormula: TEdit;
     EdCellAddress: TEdit;
     FontComboBox: TComboBox;
@@ -232,6 +233,7 @@ type
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
     procedure CbBackgroundColorSelect(Sender: TObject);
+    procedure CbHeaderStyleChange(Sender: TObject);
     procedure CbReadFormulasChange(Sender: TObject);
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
@@ -546,6 +548,11 @@ end;
 procedure TForm1.CbBackgroundColorSelect(Sender: TObject);
 begin
   with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
+end;
+
+procedure TForm1.CbHeaderStyleChange(Sender: TObject);
+begin
+  WorksheetGrid.TitleStyle := TTitleStyle(CbHeaderStyle.ItemIndex);
 end;
 
 procedure TForm1.CbReadFormulasChange(Sender: TObject);
