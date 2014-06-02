@@ -910,7 +910,7 @@ begin
           nf := nfGeneral
         else begin
           decs := StrToInt(s);
-          grouping := GetAttrValue(node, 'grouping') = 'true';
+          grouping := GetAttrValue(node, 'number:grouping') = 'true';
           nf := IfThen(grouping, nfFixedTh, nfFixed);
         end;
         fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
