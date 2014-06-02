@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 193
   Width = 884
   Caption = 'fpsGrid'
-  ClientHeight = 629
+  ClientHeight = 624
   ClientWidth = 884
   Menu = MainMenu
   OnActivate = FormActivate
@@ -14,7 +14,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 85
-    Top = 544
+    Top = 539
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,9 +23,9 @@ object Form1: TForm1
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 8
-      Width = 93
+      Width = 116
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 32
-      Width = 100
+      Width = 125
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -44,52 +44,69 @@ object Form1: TForm1
       TabOrder = 1
     end
     object EdFrozenCols: TSpinEdit
-      Left = 238
-      Height = 23
+      Left = 550
+      Height = 28
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
       TabOrder = 2
     end
     object EdFrozenRows: TSpinEdit
-      Left = 238
-      Height = 23
+      Left = 550
+      Height = 28
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
       TabOrder = 3
     end
     object Label1: TLabel
-      Left = 152
-      Height = 15
+      Left = 464
+      Height = 20
       Top = 13
-      Width = 62
+      Width = 77
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
-      Left = 153
-      Height = 15
+      Left = 465
+      Height = 20
       Top = 40
-      Width = 66
+      Width = 82
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 56
-      Width = 96
+      Width = 120
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
       TabOrder = 4
     end
+    object CbHeaderStyle: TComboBox
+      Left = 152
+      Height = 28
+      Top = 8
+      Width = 116
+      ItemHeight = 20
+      ItemIndex = 2
+      Items.Strings = (
+        'Lazarus'
+        'Standard'
+        'Native'
+      )
+      OnChange = CbHeaderStyleChange
+      Style = csDropDownList
+      TabOrder = 5
+      Text = 'Native'
+    end
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 465
+    Height = 460
     Top = 79
     Width = 884
     ActivePage = TabSheet1
@@ -99,27 +116,52 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 437
+      ClientHeight = 427
       ClientWidth = 876
       object WorksheetGrid: TsWorksheetGrid
         Left = 0
-        Height = 437
+        Height = 427
         Top = 0
         Width = 876
         FrozenCols = 0
         FrozenRows = 0
         ReadFormulas = False
         Align = alClient
-        ColCount = 2
+        ColCount = 27
         ExtendedSelect = False
         MouseWheelOption = mwGrid
         Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll, goFixedColSizing]
-        RowCount = 2
+        RowCount = 101
         TabOrder = 0
         TitleStyle = tsNative
         OnSelection = WorksheetGridSelection
         ColWidths = (
-          42
+          56
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
+          64
           64
         )
       end
@@ -202,19 +244,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 23
+      Height = 28
       Top = 2
       Width = 127
-      ItemHeight = 15
+      ItemHeight = 20
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 23
+      Height = 28
       Top = 2
       Width = 48
-      ItemHeight = 15
+      ItemHeight = 20
       Items.Strings = (
         '8'
         '9'
@@ -400,6 +442,42 @@ object Form1: TForm1
       Caption = '&File'
       object MenuItem46: TMenuItem
         Action = AcNew
+        Bitmap.Data = {
+          36040000424D3604000000000000360000002800000010000000100000000100
+          2000000000000004000064000000640000000000000000000000FFFFFF000000
+          001D000000340000003600000036000000360000003600000036000000360000
+          0036000000360000003600000036000000330000001DFFFFFF00FFFFFF000000
+          0034F9F9F9F5FCFCFCFDFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFC
+          FCFFFCFCFCFFFCFCFCFFFCFCFCFDF9F9F9F300000033FFFFFF00000000010000
+          0036FCFCFCFEFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFC
+          FCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFD00000036FFFFFF00000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFFBFBFBFFFBFB
+          FBFFFBFBFBFFFBFBFBFFFBFBFBFFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFFBFBFBFFFAFAFAFFFAFA
+          FAFFFAFAFAFFFAFAFAFFFAFAFAFFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFFBFBFBFFFBFBFBFFFAFA
+          FAFFFAFAFAFFF8F8F8FFF8F8F8FFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFB
+          FBFFF9F9F9FFF9F9F9FFF8F8F8FFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFAFA
+          FAFFF9F9F9FFF6F6F6FFF6F6F6FFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFF8F8
+          F8FFF6F6F6FFF3F3F3FFF2F2F2FFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFBFBFBFFF8F8F8FFF5F5
+          F5FFF2F2F2FFEFEFEFFFEDEDEDFFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFFBFBFBFFFCFCFCFFFCFCFCFFFBFBFBFFF8F8F8FFF5F5F5FFF1F1
+          F1FFECECECFFEAEAEAFFE6E6E6FFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFF9F9F9FFF9F9F9FFF9F9F9FFF7F7F7FFF6F6F6FFF2F2F2FFEBEB
+          EBFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFF0000003600000001000000010000
+          0036FCFCFCFFF7F7F7FFF9F9F9FFF7F7F7FFF7F7F7FFF3F3F3FFF0F0F0FFEAEA
+          EAFFFCFCFCFFF6F6F6FFF4F4F4FF9999999100000020FFFFFF00FFFFFF000000
+          0036FBFBFBFDF4F4F4FFF5F5F5FFF5F5F5FFF5F5F5FFF1F1F1FFEFEFEFFFE9E9
+          E9FFFCFCFCFFE7E7E7FF959595910000002000000002FFFFFF00FFFFFF000000
+          0033F8F8F8F0FBFBFBFDFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFCFCFFFCFC
+          FCFFF8F8F8FF949494910000002000000002FFFFFF00FFFFFF00FFFFFF000000
+          001C000000330000003600000036000000360000003600000036000000360000
+          0036000000360000002000000002FFFFFF00FFFFFF00FFFFFF00
+        }
       end
       object mnuOpen: TMenuItem
         Action = AcOpen
