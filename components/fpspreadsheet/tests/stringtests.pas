@@ -175,7 +175,7 @@ begin
   for Row := Low(SollStrings) to High(SollStrings) do
   begin
     ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
-    CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
+    CheckEquals(SollStrings[Row],ActualString,'Test value mismatch, cell '+CellNotation(MyWorkSheet,Row));
   end;
   // Finalization
   MyWorkbook.Free;
@@ -294,6 +294,7 @@ end;
 procedure TSpreadReadStringTests.TestReadString(FileName: string; Row: integer);
 var
   ActualString: string;
+  AFormat: TsSpreadsheetFormat;
 begin
   if Row>High(SollStrings) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
@@ -305,20 +306,25 @@ begin
 
     // Open the spreadsheet
     TestWorkbook := TsWorkbook.Create;
-    case UpperCase(ExtractFileExt(FileName)) of
-      '.XLSX': TestWorkbook.ReadFromFile(FileName, sfOOXML);
-      '.ODS': TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
-      // Excel XLS/BIFF
-      else TestWorkbook.ReadFromFile(FileName, sfExcel8);
+    case Uppercase(ExtractFileExt(FileName)) of
+      '.XLSX': AFormat := sfOOXML;
+      '.ODS' : AFormat := sfOpenDocument;
+      else     AFormat := sfExcel8;
     end;
+    TestWorkbook.ReadFromFile(FileName, AFormat);
     TestWorksheet := GetWorksheetByName(TestWorkBook, StringsSheet);
     if TestWorksheet=nil then
       fail('Error in test code: could not retrieve worksheet.');
   end;
 
   ActualString := TestWorkSheet.ReadAsUTF8Text(Row,0);
-  CheckEquals(SollStrings[Row], ActualString, 'Test value mismatch, '
-    +'cell '+CellNotation(TestWorkSheet,Row));
+  if (Row = 11) and (AFormat = sfOpenDocument) then
+    // SciFloat is not supported by Biff2 and ODS --> we just compare the value
+    CheckEquals(StrToFloat(SollStrings[Row]), StrToFloat(ActualString),
+      'Test value mismatch, cell ' + CellNotation(TestWorksheet, Row))
+  else
+    CheckEquals(SollStrings[Row], ActualString, 'Test value mismatch, '
+      +'cell '+CellNotation(TestWorkSheet, Row));
 
   // Don't free the workbook here - it will be reused. It is destroyed at finalization.
 end;
