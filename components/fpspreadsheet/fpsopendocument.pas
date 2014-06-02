@@ -70,6 +70,7 @@ type
     procedure ApplyColWidths;
     // Applies a style to a cell
     procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String);
+    function ExtractDateTimeFromNode(ANode: TDOMNode): TDateTime;
     // Searches a style by its name in the StyleList
     function FindCellStyleByName(AStyleName: String): integer;
     // Searches a column style by its column index or its name in the StyleList
@@ -91,10 +92,10 @@ type
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
     procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadDateTime(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
     procedure ReadNumber(ARow : Word; ACol : Word; ACellNode: TDOMNode);
-    procedure ReadDate(ARow : Word; ACol : Word; ACellNode: TDOMNode);
   public
     { General reading methods }
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -433,7 +434,7 @@ begin
 
   // Number format
   if styleData.NumFormatIndex > -1 then
-    if cell^.ContentType = cctNumber then begin
+    if (cell^.ContentType in [cctNumber, cctDateTime]) then begin
       numFmtData := NumFormatList[styleData.NumFormatIndex];
       if numFmtData <> nil then begin
         Include(cell^.UsedFormattingFields, uffNumberFormat);
@@ -451,6 +452,80 @@ procedure TsSpreadOpenDocReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
+end;
+
+{ Extracts a date/time value from a "date-value" or "time-value" cell node.
+  Is called from "ReadDateTime". }
+function TsSpreadOpenDocReader.ExtractDateTimeFromNode(ANode: TDOMNode): TDateTime;
+var
+  Value: String;
+  Fmt : TFormatSettings;
+  FoundPos : integer;
+  Hours, Minutes, Seconds: integer;
+  HoursPos, MinutesPos, SecondsPos: integer;
+begin
+  // Format expects ISO 8601 type date string or
+  // time string
+  fmt := DefaultFormatSettings;
+  fmt.ShortDateFormat := 'yyyy-mm-dd';
+  fmt.DateSeparator := '-';
+  fmt.LongTimeFormat := 'hh:nn:ss';
+  fmt.TimeSeparator := ':';
+
+  Value := GetAttrValue(ANode, 'office:date-value');
+
+  if Value <> '' then begin
+    // Date or date/time string
+    Value := StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
+    // Strip milliseconds?
+    FoundPos := Pos('.',Value);
+    if (FoundPos > 1) then
+       Value := Copy(Value, 1, FoundPos-1);
+    Result := StrToDateTime(Value, Fmt);
+  end else begin
+    // Try time only, e.g. PT23H59M59S
+    //                     12345678901
+    Value := GetAttrValue(ANode, 'office:time-value');
+    if (Value <> '') and (Pos('PT', Value) = 1) then begin
+      // Get hours
+      HoursPos := Pos('H', Value);
+      if (HoursPos > 0) then
+        Hours := StrToInt(Copy(Value, 3, HoursPos-3))
+      else
+        Hours := 0;
+
+      // Get minutes
+      MinutesPos := Pos('M', Value);
+      if (MinutesPos > 0) and (MinutesPos > HoursPos) then
+        Minutes := StrToInt(Copy(Value, HoursPos+1, MinutesPos-HoursPos-1))
+      else
+        Minutes := 0;
+
+      // Get seconds
+      SecondsPos := Pos('S', Value);
+      if (SecondsPos > 0) and (SecondsPos > MinutesPos) then
+        Seconds := StrToInt(Copy(Value, MinutesPos+1, SecondsPos-MinutesPos-1))
+      else
+        Seconds := 0;
+
+      // Times smaller than a day can be taken as is
+      // Times larger than a day depend on the file's date mode.
+      // Convert to date/time via Unix timestamp so avoiding limits for number of
+      // hours etc in EncodeDateTime. Perhaps there's a faster way of doing this?
+      Result := UnixToDateTime( Hours*(MinsPerHour*SecsPerMin) +
+                                Minutes*(SecsPerMin) +
+                                Seconds
+                              ) - UnixEpoch;
+      if (Hours <= -24) or (Hours >= 24) then begin                             // Can the "Hours" be negative? Not compatible with FormatDateTime?
+        // A day or longer
+        case FDateMode of
+          dm1899: Result := Result + DATEMODE_1899_BASE;
+          dm1900: Result := Result + DATEMODE_1900_BASE;
+          dm1904: Result := Result + DATEMODE_1904_BASE;
+        end;
+      end;
+    end;
+  end;
 end;
 
 function TsSpreadOpenDocReader.FindCellStyleByName(AStyleName: String): Integer;
@@ -773,112 +848,17 @@ begin
   ApplyStyleToCell(ARow, ACol, stylename);
 end;
 
-procedure TsSpreadOpenDocReader.ReadDate(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol : Word;
+  ACellNode : TDOMNode);
 var
   dt: TDateTime;
-  Value: String;
-  Fmt : TFormatSettings;
-  FoundPos : integer;
-  Hours, Minutes, Seconds: integer;
-  HoursPos, MinutesPos, SecondsPos: integer;
+  styleName: String;
 begin
-  // Format expects ISO 8601 type date string or
-  // time string
-  fmt := DefaultFormatSettings;
-  fmt.ShortDateFormat:='yyyy-mm-dd';
-  fmt.DateSeparator:='-';
-  fmt.LongTimeFormat:='hh:nn:ss';
-  fmt.TimeSeparator:=':';
-  Value:=GetAttrValue(ACellNode,'office:date-value');
-  if Value<>'' then
-  begin        (*             // confuses fpc!
-    {$IFDEF FPSPREADDEBUG}
-        end;
-    writeln('Row (1based): ',ARow+1,'office:date-value: '+Value);
-    {$ENDIF}     *)
+  dt := ExtractDateTimeFromNode(ACellNode);
+  FWorkSheet.WriteDateTime(ARow, ACol, dt);
 
-    // Date or date/time string
-    Value:=StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
-    // Strip milliseconds?
-    FoundPos:=Pos('.',Value);
-    if (FoundPos>1) then
-    begin
-       Value:=Copy(Value,1,FoundPos-1);
-    end;
-    dt:=StrToDateTime(Value,Fmt);
-    FWorkSheet.WriteDateTime(Arow,ACol,dt);
-  end
-  else
-  begin
-    // Try time only, e.g. PT23H59M59S
-    //                     12345678901
-    Value:=GetAttrValue(ACellNode,'office:time-value');
-    {$IFDEF FPSPREADDEBUG}
-    writeln('Row (1based): ',ARow+1,'office:time-value: '+Value);
-    {$ENDIF}
-    if (Value<>'') and (Pos('PT',Value)=1) then
-    begin
-      // Get hours
-      HoursPos:=Pos('H',Value);
-      if (HoursPos>0) then
-        Hours:=StrToInt(Copy(Value,3,HoursPos-3))
-      else
-        Hours:=0;
-
-      // Get minutes
-      MinutesPos:=Pos('M',Value);
-      if (MinutesPos>0) and (MinutesPos>HoursPos) then
-        Minutes:=StrToInt(Copy(Value,HoursPos+1,MinutesPos-HoursPos-1))
-      else
-        Minutes:=0;
-
-      // Get seconds
-      SecondsPos:=Pos('S',Value);
-      if (SecondsPos>0) and (SecondsPos>MinutesPos) then
-        Seconds:=StrToInt(Copy(Value,MinutesPos+1,SecondsPos-MinutesPos-1))
-      else
-        Seconds:=0;
-
-      // Times smaller than a day can be taken as is
-      // Times larger than a day depend on the file's date mode.
-      // Convert to date/time via Unix timestamp so avoiding limits for number of
-      // hours etc in EncodeDateTime. Perhaps there's a faster way of doing this?
-      if (Hours>-24) and (Hours<24) then
-      begin
-        dt:=UnixToDateTime(
-          Hours*(MinsPerHour*SecsPerMin)+
-          Minutes*(SecsPerMin)+
-          Seconds
-          )-UnixEpoch;
-      end
-      else
-      begin
-        // A day or longer
-        case FDateMode of
-        dm1899:
-        dt:=DATEMODE_1899_BASE+UnixToDateTime(
-          Hours*(MinsPerHour*SecsPerMin)+
-          Minutes*(SecsPerMin)+
-          Seconds
-          )-UnixEpoch;
-        dm1900:
-        dt:=DATEMODE_1900_BASE+UnixToDateTime(
-          Hours*(MinsPerHour*SecsPerMin)+
-          Minutes*(SecsPerMin)+
-          Seconds
-          )-UnixEpoch;
-        dm1904:
-        dt:=DATEMODE_1904_BASE+UnixToDateTime(
-          Hours*(MinsPerHour*SecsPerMin)+
-          Minutes*(SecsPerMin)+
-          Seconds
-          )-UnixEpoch;
-        end;
-
-      end;
-      FWorkSheet.WriteDateTime(Arow,ACol,dt);
-    end;
-  end;
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(ARow, ACol, stylename);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
@@ -1077,7 +1057,7 @@ begin
       else if (paramValueType = 'float') or (paramValueType = 'percentage') then
         ReadNumber(row, col, cellNode)
       else if (paramValueType = 'date') or (paramValueType = 'time') then
-        ReadDate(row, col, cellNode)
+        ReadDateTime(row, col, cellNode)
       else if (paramValueType = '') and (tableStyleName <> '') then
         ReadBlank(row, col, cellNode)
       else if ParamFormula <> '' then
