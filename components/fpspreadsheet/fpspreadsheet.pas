@@ -1526,13 +1526,25 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
 
   function DateTimeToStrNoNaN(const Value: Double;
     ANumberFormat: TsNumberFormat; ANumberFormatStr: String; ADecimals: Word): ansistring;
+  var
+    fmtp, fmtn, fmt0: String;
   begin
     Result := '';
     if not IsNaN(Value) then begin
       if ANumberFormatStr = '' then
         ANumberFormatStr := BuildDateTimeFormatString(ANumberFormat,
           Workbook.FormatSettings, ANumberFormatStr);
-      Result := FormatDateTime(ANumberFormatStr, Value, [fdoInterval]);
+      // Saw strange cases in ods where date/time formats contained pos/neg/zero parts.
+      // Split to be on the safe side.
+      SplitFormatString(ANumberFormatStr, fmtp, fmtn, fmt0);
+      if (Value > 0) or ((Value = 0) and (fmt0 = '')) or ((Value < 0) and (fmtn = '')) then
+        Result := FormatDateTime(fmtp, Value, [fdoInterval])
+      else
+      if (Value < 0) then
+        Result := FormatDateTime(fmtn, Value, [fdoInterval])
+      else
+      if (Value = 0) then
+        Result := FormatDateTime(fmt0, Value, [fdoInterval]);
     end;
   end;
 

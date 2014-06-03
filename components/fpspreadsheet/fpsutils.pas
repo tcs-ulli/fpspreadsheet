@@ -68,7 +68,8 @@ function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
-function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
+function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
+function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
@@ -88,6 +89,8 @@ function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
 function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
   var ALeft, ARight: String): Byte;
+procedure SplitFormatString(const AFormatString: String; out APositivePart,
+  ANegativePart, AZeroPart: String);
 
 function SciFloat(AValue: Double; ADecimals: Byte): String;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
@@ -556,6 +559,49 @@ begin
     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
 end;
 
+function IsDateTimeFormat(AFormatStr: string): Boolean;
+var
+  P, PStart, PEnd: PChar;
+  token: Char;
+begin
+  if AFormatStr = '' then
+    Result := false
+  else begin
+    PStart := PChar(@AFormatStr[1]);
+    PEnd := PStart + Length(AFormatStr);
+    P := PStart;
+    while P < PEnd do begin
+      token := P^;
+      case token of     // Skip quoted text
+        '"': begin
+               inc(P);
+               token := P^;
+               while (P < PEnd) and (token <> '"') do begin
+                 inc(P);
+                 token := P^;
+               end;
+             end;
+        {
+        '[': begin
+               inc(P);
+               token := P^;
+               while (P < PEnd) and (token <> ']') do begin
+                 inc(P);
+                 token := P^;
+               end;
+             end;
+             }
+        'y', 'Y', 'm', 'M', 'd', 'D', 'h', 'H', 'n', 'N', 's', 'S', ':':
+             begin
+               Result := true;
+               exit;
+             end;
+      end;
+      inc(P);
+    end;
+  end;
+end;
+
 { Builds a date/time format string from the numberformat code. If the format code
   is nfFmtDateTime the given AFormatString is used. AFormatString can use the
   abbreviations "dm" (for "d/mmm"), "my" (for "mmm/yy"), "ms" (for "mm:ss")
@@ -884,6 +930,49 @@ begin
              Result := 2;
            end;
       else ARight := ARight + token;
+    end;
+    inc(P);
+  end;
+end;
+
+procedure SplitFormatString(const AFormatString: String; out APositivePart,
+  ANegativePart, AZeroPart: String);
+var
+  P, PStart, PEnd: PChar;
+  token: Char;
+  where: Byte;  // 0 = positive part, 1 = negative part, 2 = zero part
+begin
+  APositivePart := '';
+  ANegativePart := '';
+  AZeroPart := '';
+  if AFormatString = '' then
+    exit;
+
+  PStart := PChar(@AFormatString[1]);
+  PEnd := PStart + Length(AFormatString);
+  P := PStart;
+  where := 0;
+  while P < PEnd do begin
+    token := P^;
+    case token of
+      '"': begin   // Skip quoted strings
+             inc(P);
+             token := P^;
+             while (P < PEnd) and (token <> '"') do begin
+               inc(P);
+               token := P^;
+             end;
+           end;
+      ';': begin  // Separator between parts
+             inc(where);
+             if where = 3 then
+               exit;
+           end
+      else case where of
+             0: APositivePart := APositivePart + token;
+             1: ANegativePart := ANegativePart + token;
+             2: AZeroPart := AZeroPart + token;
+           end;
     end;
     inc(P);
   end;
