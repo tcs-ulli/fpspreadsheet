@@ -2591,6 +2591,8 @@ begin
     FreeAndNil(FWorkbook);
     FWorkbook := TsWorkbook.Create;
     FWorksheet := FWorkbook.AddWorksheet('Sheet1');
+    FWorksheet.OnChangeCell := @ChangedCellHandler;
+    FWorksheet.OnChangeFont := @ChangedFontHandler;
     FInitColCount := AColCount;
     FInitRowCount := ARowCount;
     Setup;

@@ -856,8 +856,8 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate13;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate14;
@@ -1055,8 +1055,8 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_13;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,13);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,13);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_14;
@@ -1066,14 +1066,14 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_15;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,15);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,15);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_16;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,16);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,16);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_17;
@@ -1098,8 +1098,8 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_21;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,21);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,21);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_22;
@@ -1109,14 +1109,14 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_23;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,23);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,23);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_24;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,24);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,24);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_25;
@@ -1141,8 +1141,8 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_29;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,29);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,29);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_30;
@@ -1152,14 +1152,14 @@ end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_31;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,31);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,31);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_32;
 begin
-  Ignore('ODF code does not support custom date format');
-  //TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,32);
+  //Ignore('ODF code does not support custom date format');
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,32);
 end;
 
 procedure TSpreadReadDateTests.TestReadODFDate1899_33;

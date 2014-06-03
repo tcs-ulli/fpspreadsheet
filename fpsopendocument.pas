@@ -65,6 +65,7 @@ type
     FColumnList: TFPList;
     FRowStyleList: TFPList;
     FRowList: TFPList;
+    FVolatileNumFmtList: TsCustomNumFormatList;
     FDateMode: TDateMode;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
@@ -293,6 +294,7 @@ begin
   FColumnList := TFPList.Create;
   FRowStyleList := TFPList.Create;
   FRowList := TFPList.Create;
+  FVolatileNumFmtList := TsCustomNumFormatList.Create(Workbook);
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
@@ -317,6 +319,8 @@ begin
 
   for j := FCellStyleList.Count-1 downto 0 do TObject(FCellStyleList[j]).Free;
   FCellStyleList.Free;
+
+  FVolatileNumFmtList.Free;  // automatically destroys its items.
 
   inherited Destroy;
 end;
@@ -828,14 +832,14 @@ var
   Value, Str: String;
   lNumber: Double;
   styleName: String;
+  lCell: PCell;
 begin
   FSettings := DefaultFormatSettings;
   FSettings.DecimalSeparator:='.';
+
   Value := GetAttrValue(ACellNode,'office:value');
   if UpperCase(Value)='1.#INF' then
-  begin
-    FWorkSheet.WriteNumber(Arow,ACol,1.0/0.0);
-  end
+    FWorkSheet.WriteNumber(Arow,ACol,1.0/0.0)
   else
   begin
     // Don't merge, or else we can't debug
@@ -846,6 +850,13 @@ begin
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(ARow, ACol, stylename);
+
+  // Sometimes date/time cells are marked as "float"...
+  lCell := FWorksheet.FindCell(ARow, ACol);
+  if IsDateTimeFormat(lCell^.NumberFormat) then begin
+    lCell^.ContentType := cctDateTime;
+    lCell^.DateTimeValue := lCell^.NumberValue;
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol : Word;
@@ -862,16 +873,318 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
+
+  procedure ReadStyleMap(ANode: TDOMNode; var ANumFormat: TsNumberFormat;
+    var AFormatStr: String);
+  var
+    condition: String;
+    stylename: String;
+    styleindex: Integer;
+    fmt: String;
+    posfmt, negfmt, zerofmt: String;
+    isPos, isNeg, isZero: Boolean;
+  begin
+    posfmt := '';
+    negfmt := '';
+    zerofmt := '';
+
+    // These are indicators which part of the format is currently being read.
+    // Needed to assign text elements correctly.
+    isPos := false;
+    isNeg := false;
+    isZero := false;
+
+    while ANode <> nil do begin
+      condition := ANode.NodeName;
+
+      if (ANode.NodeName = '#text') or not ANode.HasAttributes then begin
+        ANode := ANode.NextSibling;
+        Continue;
+      end;
+
+      condition := GetAttrValue(ANode, 'style:condition');
+      stylename := GetAttrValue(ANode, 'style:apply-style-name');
+      if (condition = '') or (stylename = '') then begin
+        ANode := ANode.NextSibling;
+        continue;
+      end;
+
+      Delete(condition, 1, Length('value()'));
+      styleindex := -1;
+      styleindex := FNumFormatList.FindByName(stylename);
+      if (styleindex = -1) or (condition = '') then begin
+        ANode := ANode.NextSibling;
+        continue;
+      end;
+
+      fmt := FNumFormatList[styleindex].FormatString;
+      case condition[1] of
+        '<': begin
+               negfmt := fmt;
+               isneg := true;
+               ispos := false;
+               if (Length(condition) > 1) and (condition[2] = '=') then begin
+                 zerofmt := fmt;
+                 iszero := true;
+               end;
+             end;
+        '>': begin
+               posfmt := fmt;
+               ispos := true;
+               isneg := false;
+               if (Length(condition) > 1) and (condition[2] = '=') then begin
+                 zerofmt := fmt;
+                 iszero := true;
+               end;
+             end;
+        '=': begin
+               zerofmt := fmt;
+               ispos := false;
+               isneg := false;
+               iszero := true;
+             end;
+      end;
+      ANode := ANode.NextSibling;
+    end;
+    if posfmt = '' then posfmt := AFormatStr;
+    if negfmt = '' then negfmt := AFormatStr;
+
+    AFormatStr := posFmt;
+    if negfmt <> '' then AFormatStr := AFormatStr + ';' + negfmt;
+    if zerofmt <> '' then AFormatStr := AFormatStr + ';' + zerofmt;
+
+    if ANumFormat <> nfFmtDateTime then
+      ANumFormat := nfCustom;
+  end;
+
+  procedure ReadNumberStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
+  var
+    node, childNode: TDOMNode;
+    fmtName, nodeName: String;
+    fmt: String;
+    nf: TsNumberFormat;
+    decs: Byte;
+    s: String;
+    grouping: Boolean;
+    nex: Integer;
+  begin
+    fmt := '';
+    node := ANumFormatNode.FirstChild;
+    while Assigned(node) do begin
+      nodeName := node.NodeName;
+      if nodeName = '#text' then begin
+        node := node.NextSibling;
+        Continue;
+      end else
+      if nodeName = 'number:number' then begin
+        s := GetAttrValue(node, 'number:decimal-places');
+        if s <> '' then decs := StrToInt(s) else decs := 0;
+        grouping := GetAttrValue(node, 'number:grouping') = 'true';
+        nf := IfThen(grouping, nfFixedTh, nfFixed);
+        fmt := fmt + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+      end else
+      if nodeName = 'number:scientific-number' then begin
+        nf := nfExp;
+        s := GetAttrValue(node, 'number:decimal-places');
+        if s <> '' then decs := StrToInt(s) else decs := 0;
+        s := GetAttrValue(node, 'number:min-exponent-digits');
+        if s <> '' then nex := StrToInt(s) else nex := 1;
+        fmt := fmt + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
+        fmt := fmt + 'E+' + DupeString('0', nex);
+      end else
+      if nodeName = 'number:text' then begin
+        childNode := node.FirstChild;
+        while childNode <> nil do begin
+          fmt := fmt + childNode.NodeValue;
+          childNode := childNode.NextSibling;
+        end;
+      end;
+      node := node.NextSibling;
+    end;
+
+    node := ANumFormatNode.FindNode('style:map');
+    if node <> nil then
+      ReadStyleMap(node, nf, fmt);
+
+    NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs);
+  end;
+
+  procedure ReadPercentageStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
+  var
+    node, childNode: TDOMNode;
+    fmtName, nodeName: String;
+    nf: TsNumberFormat;
+    decs: Byte;
+    fmt: String;
+    s: String;
+  begin
+    fmt := '';
+    node := ANumFormatNode.FirstChild;
+    while Assigned(node) do begin
+      nodeName := node.NodeName;
+      if nodeName = '#text' then begin
+        node := node.NextSibling;
+        Continue;
+      end else
+      if nodeName = 'number:number' then begin
+        nf := nfPercentage;
+        s := GetAttrValue(node, 'number:decimal-places');
+        if s <> '' then decs := StrToInt(s) else decs := 0;
+        fmt := fmt + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
+        // The percent sign has already been added --> nFixed instead of nfPercentage
+      end else
+      if nodeName = 'number:text' then begin
+        childNode := node.FirstChild;
+        while childNode <> nil do begin
+          fmt := fmt + childNode.NodeValue;
+          childNode := childNode.NextSibling;
+        end;
+      end;
+      node := node.NextSibling;
+    end;
+
+    node := ANumFormatNode.FindNode('style:map');
+    if node <> nil then
+      ReadStyleMap(node, nf, fmt);
+
+    NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs);
+  end;
+
+  procedure ReadDateTimeStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
+  var
+    node, childNode: TDOMNode;
+    nf: TsNumberFormat;
+    fmt: String;
+    nodeName: String;
+    s, stxt, sovr: String;
+  begin
+    fmt := '';
+    sovr := GetAttrValue(ANumFormatNode, 'number:truncate-on-overflow');
+    node := ANumFormatNode.FirstChild;
+    while Assigned(node) do begin
+      nodeName := node.NodeName;
+      if nodeName = '#text' then begin
+        node := node.NextSibling;
+        Continue;
+      end else
+      if nodeName = 'number:year' then begin
+        s := GetAttrValue(node, 'number:style');
+        if s = 'long' then fmt := fmt + 'yyyy'
+        else if s = '' then fmt := fmt + 'yy';
+      end else
+      if nodeName = 'number:month' then begin
+        s := GetAttrValue(node, 'number:style');
+        stxt := GetAttrValue(node, 'number:textual');
+        if (stxt = 'true') then begin // Month as text
+          if (s = 'long') then fmt := fmt + 'mmmm' else fmt := fmt + 'mmm';
+        end else begin   // Month as number
+          if (s = 'long') then fmt := fmt + 'mm' else fmt := fmt + 'm';
+        end;
+      end else
+      if nodeName = 'number:day' then begin
+        s := GetAttrValue(node, 'number:style');
+        stxt := GetAttrValue(node, 'number:textual');
+        if (stxt = 'true') then begin   // day as text
+          if (s = 'long') then fmt := fmt + 'dddd' else fmt := fmt + 'ddd';
+        end else begin   // day as number
+          if (s = 'long') then fmt := fmt + 'dd' else fmt := fmt + 'd';
+        end;
+      end;
+      if nodeName = 'number:day-of-week' then begin
+        s := GetAttrValue(node, 'number:stye');
+        if (s = 'long') then fmt := fmt + 'dddddd' else fmt := fmt + 'ddddd';
+      end else
+      if nodeName = 'number:hours' then begin
+        s := GetAttrValue(node, 'number:style');
+        if (sovr = 'false') then begin
+          if (s = 'long') then fmt := fmt + '[hh]' else fmt := fmt + '[h]';
+        end else begin
+          if (s = 'long') then fmt := fmt + 'hh' else fmt := fmt + 'h';
+        end;
+        sovr := '';
+      end else
+      if nodeName = 'number:minutes' then begin
+        s := GetAttrValue(node, 'number:style');
+        if (sovr = 'false') then begin
+          if (s = 'long') then fmt := fmt + '[nn]' else fmt := fmt + '[n]';
+        end else begin
+          if (s = 'long') then fmt := fmt + 'nn' else fmt := fmt + 'n';
+        end;
+        sovr := '';
+      end else
+      if nodeName = 'number:seconds' then begin
+        s := GetAttrValue(node, 'number:style');
+        if (sovr = 'false') then begin
+          if (s = 'long') then fmt := fmt + '[ss]' else fmt := fmt + '[s]';
+        end else begin
+          if (s = 'long') then fmt := fmt + 'ss' else fmt := fmt + 's';
+          sovr := '';
+        end;
+        s := GetAttrValue(node, 'number:decimal-places');
+        if (s <> '') and (s <> '0') then
+          fmt := fmt + '.' + DupeString('0', StrToInt(s));
+      end else
+      if nodeName = 'number:am-pm' then
+        fmt := fmt + 'AM/PM'
+      else
+      if nodeName = 'number:text' then begin
+        childnode := node.FirstChild;
+        if childnode <> nil then
+          fmt := fmt + childnode.NodeValue;
+      end;
+      node := node.NextSibling;
+    end;
+
+    nf := nfFmtDateTime;
+    node := ANumFormatNode.FindNode('style:map');
+    if node <> nil then
+      ReadStyleMap(node, nf, fmt);
+
+    NumFormatList.AddFormat(ANumFormatName, fmt, nf);
+  end;
+
+  procedure ReadTextStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
+  var
+    node, childNode: TDOMNode;
+    nf: TsNumberFormat;
+    fmt: String;
+    nodeName: String;
+    s: String;
+  begin
+    fmt := '';
+    node := ANumFormatNode.FirstChild;
+    while Assigned(node) do begin
+      nodeName := node.NodeName;
+      if nodeName = '#text' then begin
+        node := node.NextSibling;
+        Continue;
+      end else
+      if nodeName = 'number:text-content' then begin
+        // ???
+      end else
+      if nodeName = 'number:text' then begin
+        childnode := node.FirstChild;
+        if childnode <> nil then
+          fmt := fmt + childnode.NodeValue;
+      end;
+      node := node.NextSibling;
+    end;
+
+    node := ANumFormatNode.FindNode('style:map');
+    if node <> nil then
+      ReadStyleMap(node, nf, fmt);
+    if IsDateTimeFormat(fmt) then
+      nf := nfFmtDateTime
+    else
+      nf := nfCustom;
+
+    NumFormatList.AddFormat(ANumFormatName, fmt, nf);
+  end;
+
 var
-  NumFormatNode, node, childnode: TDOMNode;
-  decs: Integer;
-  fmtName: String;
-  grouping: boolean;
-  fmt: String;
-  numfmt_nodename, nodename: String;
-  nf: TsNumberFormat;
-  nex: Integer;
-  s, s1, s2: String;
+  NumFormatNode: TDOMNode;
+  numfmt_nodename, numfmtname: String;
+
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -880,112 +1193,27 @@ begin
   while Assigned(NumFormatNode) do begin
     numfmt_nodename := NumFormatNode.NodeName;
 
+    if NumFormatNode.HasAttributes then
+      numfmtName := GetAttrValue(NumFormatNode, 'style:name') else
+      numfmtName := '';
+
     // Numbers (nfFixed, nfFixedTh, nfExp)
-    if numfmt_nodename = 'number:number-style' then begin
-      fmtName := GetAttrValue(NumFormatNode, 'style:name');
-      node := NumFormatNode.FindNode('number:number');
-      if node <> nil then begin
-        s := GetAttrValue(node, 'number:decimal-places');
-        if s = '' then
-          nf := nfGeneral
-        else begin
-          decs := StrToInt(s);
-          grouping := GetAttrValue(node, 'number:grouping') = 'true';
-          nf := IfThen(grouping, nfFixedTh, nfFixed);
-        end;
-        fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
-        NumFormatList.AddFormat(fmtName, fmt, nf, decs);
-      end;
-      node := NumFormatNode.FindNode('number:scientific-number');
-      if node <> nil then begin
-        nf := nfExp;
-        decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
-        nex := StrToInt(GetAttrValue(node, 'number:min-exponent-digits'));
-        fmt := BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
-        fmt := fmt + 'E+' + DupeString('0', nex);
-        NumFormatList.AddFormat(fmtName, fmt, nf, decs);
-      end;
-    end else
+    if numfmt_nodename = 'number:number-style' then
+      ReadNumberStyle(NumFormatNode, numfmtName);
+
     // Percentage
-    if numfmt_nodename = 'number:percentage-style' then begin
-      fmtName := GetAttrValue(NumFormatNode, 'style:name');
-      node := NumFormatNode.FindNode('number:number');
-      if node <> nil then begin
-        nf := nfPercentage;
-        decs := StrToInt(GetAttrValue(node, 'number:decimal-places'));
-        fmt := BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
-        NumFormatList.AddFormat(fmtName, fmt, nf, decs);
-      end;
-    end else
-    // Date/Time
-    if (numfmt_nodename = 'number:date-style') or (numfmt_nodename = 'number:time-style')
-    then begin
-      fmtName := GetAttrValue(NumFormatNode, 'style:name');
-      fmt := '';
-      node := NumFormatNode.FirstChild;
-      while Assigned(node) do begin
-        if node.NodeName = 'number:year' then begin
-          s := GetAttrValue(node, 'number:style');
-          if s = 'long' then fmt := fmt + 'yyyy'
-          else if s = '' then fmt := fmt + 'yy';
-        end else
-        if node.NodeName = 'number:month' then begin
-          s := GetAttrValue(node, 'number:style');
-          s1 := GetAttrValue(node, 'number:textual');
-          if (s = 'long') and (s1 = 'text') then fmt := fmt + 'mmmm'
-          else if (s = '') and (s1 = 'text') then fmt := fmt + 'mmm'
-          else if (s = 'long') and (s1 = '') then fmt := fmt + 'mm'
-          else if (s = '') and (s1 = '') then fmt := fmt + 'm';
-        end else
-        if node.NodeName = 'number:day' then begin
-          s := GetAttrValue(node, 'number:style');
-          s1 := GetAttrValue(node, 'number:textual');
-          if (s='long') and (s1 = 'text') then fmt := fmt + 'dddd'
-          else if (s='') and (s1 = 'text') then fmt := fmt + 'ddd'
-          else if (s='long') and (s1 = '') then fmt := fmt + 'dd'
-          else if (s='') and (s1='') then fmt := Fmt + 'd';
-        end else
-        if node.NodeName = 'number:day-of-week' then
-          fmt := fmt + 'ddddd'
-        else
-        if node.NodeName = 'number:hours' then begin
-          s := GetAttrValue(node, 'number:style');
-          s1 := GetAttrValue(node, 'number:truncate-on-overflow');
-          if (s='long') and (s1='false') then fmt := fmt + '[hh]'
-          else if (s='long') and (s1='') then fmt := fmt + 'hh'
-          else if (s='') and (s1='false') then fmt := fmt + '[h]'
-          else if (s='') and (s1='') then fmt := fmt + 'h';
-        end else
-        if node.NodeName = 'number:minutes' then begin
-          s := GetAttrValue(node, 'number:style');
-          s1 := GetAttrValue(node, 'number:truncate-on-overflow');
-          if (s='long') and (s1='false') then fmt := fmt + '[nn]'
-          else if (s='long') and (s1='') then fmt := fmt + 'nn'
-          else if (s='') and (s1='false') then fmt := fmt + '[n]'
-          else if (s='') and (s1='') then fmt := fmt + 'n';
-        end else
-        if node.NodeName = 'number:seconds' then begin
-          s := GetAttrValue(node, 'number:style');
-          s1 := GetAttrValue(node, 'number:truncate-on-overflow');
-          s2 := GetAttrValue(node, 'number:decimal-places');
-          if (s='long') and (s1='false') then fmt := fmt + '[ss]'
-          else if (s='long') and (s1='') then fmt := fmt + 'ss'
-          else if (s='') and (s1='false') then fmt := fmt + '[s]'
-          else if (s='') and (s1='') then fmt := fmt + 's';
-          if (s2 <> '') and (s2 <> '0') then fmt := fmt + '.' + DupeString('0', StrToInt(s2));
-        end else
-        if node.NodeName = 'number:am-pm' then
-          fmt := fmt + 'AM/PM'
-        else
-        if node.NodeName = 'number:text' then begin
-          childnode := node.FirstChild;
-          if childnode <> nil then
-            fmt := fmt + childnode.NodeValue;
-        end;
-        node := node.NextSibling;
-      end;
-      NumFormatList.AddFormat(fmtName, fmt, nfFmtDateTime);
-    end;
+    if numfmt_nodename = 'number:percentage-style' then
+      ReadPercentageStyle(NumFormatNode, numfmtName);
+
+    // Date/time values
+    if (numfmt_nodename = 'number:date-style') or (numfmt_nodename = 'number:time-style') then
+      ReadDateTimeStyle(NumFormatNode, numfmtName);
+
+    // Text values
+    if (numfmt_nodename = 'number:text-style') then
+      ReadTextStyle(NumFormatNode, numfmtName);
+
+    // Next node
     NumFormatNode := NumFormatNode.NextSibling;
   end;
 end;
