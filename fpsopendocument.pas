@@ -70,9 +70,12 @@ type
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
-    procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String);
-    function ExtractDateTimeFromNode(ANode: TDOMNode): TDateTime;
-    // Searches a style by its name in the StyleList
+    procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String); overload;
+    procedure ApplyStyleToCell(ACell: PCell; AStyleName: String); overload;
+    // Extracts the date/time value from the xml node
+    function ExtractDateTimeFromNode(ANode: TDOMNode;
+      ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
+    // Searches a style by its name in the CellStyleList
     function FindCellStyleByName(AStyleName: String): integer;
     // Searches a column style by its column index or its name in the StyleList
     function FindColumnByCol(AColIndex: Integer): Integer;
@@ -93,10 +96,10 @@ type
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
     procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadDateTime(ARow : Word; ACol : Word; ACellNode: TDOMNode);
-    procedure ReadFormula(ARow : Word; ACol : Word; ACellNode: TDOMNode);
-    procedure ReadLabel(ARow : Word; ACol : Word; ACellNode: TDOMNode);
-    procedure ReadNumber(ARow : Word; ACol : Word; ACellNode: TDOMNode);
+    procedure ReadDateTime(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadNumber(ARow, ACol: Word; ACellNode: TDOMNode);
   public
     { General reading methods }
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -361,15 +364,19 @@ procedure TsSpreadOpenDocReader.ApplyStyleToCell(ARow, ACol: Cardinal;
   AStyleName: String);
 var
   cell: PCell;
+begin
+  cell := FWorksheet.GetCell(ARow, ACol);
+  if Assigned(cell) then
+    ApplyStyleToCell(cell, AStyleName);
+end;
+
+procedure TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleName: String);
+var
   styleData: TCellStyleData;
   styleIndex: Integer;
   numFmtData: TsNumFormatData;
   i: Integer;
 begin
-  cell := FWorksheet.GetCell(ARow, ACol);
-  if not Assigned(cell) then
-    exit;
-
   // Is there a style attached to the cell?
   styleIndex := -1;
   if AStyleName <> '' then
@@ -377,7 +384,7 @@ begin
   if (styleIndex = -1) then begin
     // No - look for the style attached to the column of the cell and
     // find the cell style by the DefaultCellStyleIndex stored in the column list.
-    i := FindColumnByCol(ACol);
+    i := FindColumnByCol(ACell^.Col);
     if i = -1 then
       exit;
     styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
@@ -399,55 +406,54 @@ begin
 
   // Word wrap
   if styleData.WordWrap then
-    Include(cell^.UsedFormattingFields, uffWordWrap)
+    Include(ACell^.UsedFormattingFields, uffWordWrap)
   else
-    Exclude(cell^.UsedFormattingFields, uffWordWrap);
+    Exclude(ACell^.UsedFormattingFields, uffWordWrap);
 
   // Text rotation
   if styleData.TextRotation > trHorizontal then
-    Include(cell^.UsedFormattingFields, uffTextRotation)
+    Include(ACell^.UsedFormattingFields, uffTextRotation)
   else
-    Exclude(cell^.UsedFormattingFields, uffTextRotation);
-  cell^.TextRotation := styledata.TextRotation;
+    Exclude(ACell^.UsedFormattingFields, uffTextRotation);
+  ACell^.TextRotation := styledata.TextRotation;
 
   // Text alignment
   if styleData.HorAlignment <> haDefault then begin
-    Include(cell^.UsedFormattingFields, uffHorAlign);
-    cell^.HorAlignment := styleData.HorAlignment;
+    Include(ACell^.UsedFormattingFields, uffHorAlign);
+    ACell^.HorAlignment := styleData.HorAlignment;
   end else
-    Exclude(cell^.UsedFormattingFields, uffHorAlign);
+    Exclude(ACell^.UsedFormattingFields, uffHorAlign);
   if styleData.VertAlignment <> vaDefault then begin
-    Include(cell^.UsedFormattingFields, uffVertAlign);
-    cell^.VertAlignment := styleData.VertAlignment;
+    Include(ACell^.UsedFormattingFields, uffVertAlign);
+    ACell^.VertAlignment := styleData.VertAlignment;
   end else
-    Exclude(cell^.UsedFormattingFields, uffVertAlign);
+    Exclude(ACell^.UsedFormattingFields, uffVertAlign);
 
   // Borders
-  cell^.BorderStyles := styleData.BorderStyles;
+  ACell^.BorderStyles := styleData.BorderStyles;
   if styleData.Borders <> [] then begin
-    Include(cell^.UsedFormattingFields, uffBorder);
-    cell^.Border := styleData.Borders;
+    Include(ACell^.UsedFormattingFields, uffBorder);
+    ACell^.Border := styleData.Borders;
   end else
-    Exclude(cell^.UsedFormattingFields, uffBorder);
+    Exclude(ACell^.UsedFormattingFields, uffBorder);
 
   // Background color
   if styleData.BackgroundColor <> scNotDefined then begin
-    Include(cell^.UsedFormattingFields, uffBackgroundColor);
-    cell^.BackgroundColor := styleData.BackgroundColor;
+    Include(ACell^.UsedFormattingFields, uffBackgroundColor);
+    ACell^.BackgroundColor := styleData.BackgroundColor;
   end;
 
   // Number format
-  if styleData.NumFormatIndex > -1 then
-    if (cell^.ContentType in [cctNumber, cctDateTime]) then begin
-      numFmtData := NumFormatList[styleData.NumFormatIndex];
-      if numFmtData <> nil then begin
-        Include(cell^.UsedFormattingFields, uffNumberFormat);
-        cell^.NumberFormat := numFmtData.NumFormat;
-        cell^.NumberFormatStr := numFmtData.FormatString;
-        cell^.Decimals := numFmtData.Decimals;
-        cell^.CurrencySymbol := numFmtData.CurrencySymbol;
-      end;
+  if styleData.NumFormatIndex > -1 then begin
+    numFmtData := NumFormatList[styleData.NumFormatIndex];
+    if numFmtData <> nil then begin
+      Include(ACell^.UsedFormattingFields, uffNumberFormat);
+      ACell^.NumberFormat := numFmtData.NumFormat;
+      ACell^.NumberFormatStr := numFmtData.FormatString;
+      ACell^.Decimals := numFmtData.Decimals;
+      ACell^.CurrencySymbol := numFmtData.CurrencySymbol;
     end;
+  end;
 end;
 
 { Creates the correct version of the number format list
@@ -459,13 +465,16 @@ begin
 end;
 
 { Extracts a date/time value from a "date-value" or "time-value" cell node.
+  Requires the number format and format strings to optimize agreement with
+  fpc date/time values.
   Is called from "ReadDateTime". }
-function TsSpreadOpenDocReader.ExtractDateTimeFromNode(ANode: TDOMNode): TDateTime;
+function TsSpreadOpenDocReader.ExtractDateTimeFromNode(ANode: TDOMNode;
+  ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
 var
   Value: String;
   Fmt : TFormatSettings;
   FoundPos : integer;
-  Hours, Minutes, Seconds: integer;
+  Hours, Minutes, Seconds, Days: integer;
   HoursPos, MinutesPos, SecondsPos: integer;
 begin
   // Format expects ISO 8601 type date string or
@@ -512,16 +521,15 @@ begin
       else
         Seconds := 0;
 
-      // Times smaller than a day can be taken as is
-      // Times larger than a day depend on the file's date mode.
-      // Convert to date/time via Unix timestamp so avoiding limits for number of
-      // hours etc in EncodeDateTime. Perhaps there's a faster way of doing this?
-      Result := UnixToDateTime( Hours*(MinsPerHour*SecsPerMin) +
-                                Minutes*(SecsPerMin) +
-                                Seconds
-                              ) - UnixEpoch;
-      if (Hours <= -24) or (Hours >= 24) then begin                             // Can the "Hours" be negative? Not compatible with FormatDateTime?
-        // A day or longer
+      Days := Hours div 24;
+      Hours := Hours mod 24;
+      Result := Days + (Hours + (Minutes + Seconds/60)/60)/24;
+
+      { Values < 1 day are certainly time-only formats --> no datemode correction
+        nfTimeInterval formats are differences --> no date mode correction
+        In all other case, we have a date part that needs to be corrected for
+        the file's datemode. }
+      if (ANumFormat <> nfTimeInterval) and (abs(Days) > 0) then begin
         case FDateMode of
           dm1899: Result := Result + DATEMODE_1899_BASE;
           dm1900: Result := Result + DATEMODE_1900_BASE;
@@ -851,40 +859,38 @@ begin
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(ARow, ACol, stylename);
 
-  // Sometimes date/time cells are marked as "float"...
+  // Sometimes date/time cells are stored as "float".
+  // We convert them to date/time and also correct the date origin offset if
+  // needed.
   lCell := FWorksheet.FindCell(ARow, ACol);
   if IsDateTimeFormat(lCell^.NumberFormat) then begin
     lCell^.ContentType := cctDateTime;
-    lCell^.DateTimeValue := lCell^.NumberValue;
+    // No datemode correction for intervals and for time-only values
+    if (lCell^.NumberFormat = nfTimeInterval) or (lCell^.NumberValue < 1) then
+      lCell^.DateTimeValue := lCell^.NumberValue
+    else
+      case FDateMode of
+        dm1899: lCell^.DateTimeValue := lCell^.NumberValue + DATEMODE_1899_BASE;
+        dm1900: lCell^.DateTimeValue := lCell^.NumberValue + DATEMODE_1900_BASE;
+        dm1904: lCell^.DateTimeValue := lCell^.NumberValue + DATEMODE_1904_BASE;
+      end;
   end;
 end;
 
-procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol : Word;
+procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol: Word;
   ACellNode : TDOMNode);
 var
   dt: TDateTime;
   styleName: String;
   cell: PCell;
 begin
-  dt := ExtractDateTimeFromNode(ACellNode);
-  FWorkSheet.WriteDateTime(ARow, ACol, dt);
+  cell := FWorksheet.GetCell(ARow, ACol);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(ARow, ACol, stylename);
+  ApplyStyleToCell(cell, stylename);
 
-  if abs(dt) > 1 then begin
-    // Correct days for time intervals: "interval" is independent of origin.
-    // --> we have to undo the DateMode offset added by ExtractDateTimeFromNode
-    cell := FWorksheet.FindCell(ARow, ACol);
-    if (cell^.NumberFormat = nfTimeInterval) or
-       ((cell^.NumberFormat = nfFmtDateTime) and (cell^.NumberFormatStr[1] = '['))
-    then
-      case FDateMode of
-        dm1899: cell^.DateTimeValue := cell^.DateTimeValue - DATEMODE_1899_BASE;
-        dm1900: cell^.DateTimeValue := cell^.DateTimeValue - DATEMODE_1900_BASE;
-        dm1904: cell^.DateTimeValue := cell^.DateTimeValue - DATEMODE_1904_BASE;
-      end;
-  end;
+  dt := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
+  FWorkSheet.WriteDateTime(cell, dt);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
@@ -1054,9 +1060,13 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     fmt: String;
     nodeName: String;
     s, stxt, sovr: String;
+    isInterval: Boolean;
   begin
     fmt := '';
+    isInterval := false;
     sovr := GetAttrValue(ANumFormatNode, 'number:truncate-on-overflow');
+    if (sovr = 'false') then
+      isInterval := true;
     node := ANumFormatNode.FirstChild;
     while Assigned(node) do begin
       nodeName := node.NodeName;
@@ -1132,7 +1142,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       node := node.NextSibling;
     end;
 
-    nf := nfFmtDateTime;
+    nf := IfThen(isInterval, nfTimeInterval, nfFmtDateTime);
     node := ANumFormatNode.FindNode('style:map');
     if node <> nil then
       ReadStyleMap(node, nf, fmt);
