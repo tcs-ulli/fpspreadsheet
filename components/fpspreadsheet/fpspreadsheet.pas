@@ -425,9 +425,9 @@ type
     procedure WriteBlank(ARow, ACol: Cardinal);
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
     procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
+      AFormat: TsNumberFormat = nfGeneral; AFormatStr: String = ''); overload;
     procedure WriteDateTime(ACell: PCell; AValue: TDateTime;
-      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
+      AFormat: TsNumberFormat = nfGeneral; AFormatStr: String = ''); overload;
     procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue); overload;
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
@@ -1931,6 +1931,7 @@ end;
   @param  ACol       The column of the cell
   @param  AValue     The date/time/datetime to be written
   @param  AFormat    The format specifier, e.g. nfShortDate (optional)
+                     If not specified format is not changed.
   @param  AFormatStr Format string, used only for nfFmtDateTime.
                      Must follow the rules for "FormatDateTime", or use
                      "dm" as abbreviation for "d/mmm", "my" for "mmm/yy",
@@ -1942,27 +1943,28 @@ end;
   as a date (either built-in or a custom format).
 }
 procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-  AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+  AFormat: TsNumberFormat = nfGeneral; AFormatStr: String = '');
 begin
   WriteDateTime(GetCell(ARow, ACol), AValue, AFormat, AFormatStr);
 end;
 
 procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
-  AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+  AFormat: TsNumberFormat = nfGeneral; AFormatStr: String = '');
 begin
   if ACell <> nil then begin
-    if (AFormat in [nfFmtDateTime, nfTimeInterval]) then
-      AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
-
     ACell^.ContentType := cctDateTime;
     ACell^.DateTimeValue := AValue;
+
     // Date/time is actually a number field in Excel.
     // To make sure it gets saved correctly, set a date format (instead of General).
     // The user can choose another date format if he wants to
+    if IsDateTimeFormat(AFormat) then
+      if (AFormat in [nfFmtDateTime, nfTimeInterval]) then
+        AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
+
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
     ACell^.NumberFormat := AFormat;
     ACell^.NumberFormatStr := AFormatStr;
-
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
