@@ -864,12 +864,27 @@ procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol : Word;
 var
   dt: TDateTime;
   styleName: String;
+  cell: PCell;
 begin
   dt := ExtractDateTimeFromNode(ACellNode);
   FWorkSheet.WriteDateTime(ARow, ACol, dt);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(ARow, ACol, stylename);
+
+  if abs(dt) > 1 then begin
+    // Correct days for time intervals: "interval" is independent of origin.
+    // --> we have to undo the DateMode offset added by ExtractDateTimeFromNode
+    cell := FWorksheet.FindCell(ARow, ACol);
+    if (cell^.NumberFormat = nfTimeInterval) or
+       ((cell^.NumberFormat = nfFmtDateTime) and (cell^.NumberFormatStr[1] = '['))
+    then
+      case FDateMode of
+        dm1899: cell^.DateTimeValue := cell^.DateTimeValue - DATEMODE_1899_BASE;
+        dm1900: cell^.DateTimeValue := cell^.DateTimeValue - DATEMODE_1900_BASE;
+        dm1904: cell^.DateTimeValue := cell^.DateTimeValue - DATEMODE_1904_BASE;
+      end;
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
@@ -882,17 +897,10 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     styleindex: Integer;
     fmt: String;
     posfmt, negfmt, zerofmt: String;
-    isPos, isNeg, isZero: Boolean;
   begin
     posfmt := '';
     negfmt := '';
     zerofmt := '';
-
-    // These are indicators which part of the format is currently being read.
-    // Needed to assign text elements correctly.
-    isPos := false;
-    isNeg := false;
-    isZero := false;
 
     while ANode <> nil do begin
       condition := ANode.NodeName;
@@ -921,27 +929,16 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       case condition[1] of
         '<': begin
                negfmt := fmt;
-               isneg := true;
-               ispos := false;
-               if (Length(condition) > 1) and (condition[2] = '=') then begin
+               if (Length(condition) > 1) and (condition[2] = '=') then
                  zerofmt := fmt;
-                 iszero := true;
-               end;
              end;
         '>': begin
                posfmt := fmt;
-               ispos := true;
-               isneg := false;
-               if (Length(condition) > 1) and (condition[2] = '=') then begin
+               if (Length(condition) > 1) and (condition[2] = '=') then
                  zerofmt := fmt;
-                 iszero := true;
-               end;
              end;
         '=': begin
                zerofmt := fmt;
-               ispos := false;
-               isneg := false;
-               iszero := true;
              end;
       end;
       ANode := ANode.NextSibling;
