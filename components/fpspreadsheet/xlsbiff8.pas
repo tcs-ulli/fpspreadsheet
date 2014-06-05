@@ -65,7 +65,6 @@ uses
 type
 
   { TsSpreadBIFF8Reader }
-
   TsSpreadBIFF8Reader = class(TsSpreadBIFFReader)
   private
     PendingRecordSize: SizeInt;
@@ -1995,7 +1994,7 @@ begin
   fmtIndex := WordLEtoN(AStream.ReadWord);
 
   // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
-  fmtString := ReadWideString(AStream, False);
+  fmtString := UTF8Encode(ReadWideString(AStream, False));
 
   // Analyze the format string and add format to the list
   NumFormatList.AnalyzeAndAdd(fmtIndex, fmtString);
