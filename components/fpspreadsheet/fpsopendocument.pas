@@ -37,9 +37,8 @@ uses
   fpszipper,
   {$ENDIF}
   fpspreadsheet,
-  xmlread, DOM, AVL_Tree,
-  math,
-  dateutils,
+  laz2_xmlread, laz2_DOM,
+  AVL_Tree, math, dateutils,
   fpsutils;
   
 type
@@ -838,7 +837,7 @@ var
   cellText: String;
   styleName: String;
 begin
-  cellText := UTF8Encode(ACellNode.TextContent);
+  cellText := ACellNode.TextContent;
   FWorkSheet.WriteUTF8Text(ARow, ACol, cellText);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
@@ -981,6 +980,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     s: String;
     grouping: Boolean;
     nex: Integer;
+    cs: String;
   begin
     fmt := '';
     node := ANumFormatNode.FirstChild;
@@ -1006,6 +1006,14 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         fmt := fmt + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
         fmt := fmt + 'E+' + DupeString('0', nex);
       end else
+      if nodeName = 'number:currency-symbol' then begin
+        childnode := node.FirstChild;
+        while childnode <> nil do begin
+          cs := cs + childNode.NodeValue;
+          fmt := fmt + childNode.NodeValue;
+          childNode := childNode.NextSibling;
+        end;
+      end else
       if nodeName = 'number:text' then begin
         childNode := node.FirstChild;
         while childNode <> nil do begin
@@ -1021,50 +1029,11 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       ReadStyleMap(node, nf, fmt);
 
     if ANumFormatNode.NodeName = 'number:percentage-style' then
-      nf := nfPercentage;
+      nf := nfPercentage
+    else if ANumFormatNode.NodeName = 'number:currency-style' then
+      nf := nfCurrency;
 
-    NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs);
-  end;
-
-  procedure ReadPercentageStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
-  var
-    node, childNode: TDOMNode;
-    fmtName, nodeName: String;
-    nf: TsNumberFormat;
-    decs: Byte;
-    fmt: String;
-    s: String;
-  begin
-    fmt := '';
-    node := ANumFormatNode.FirstChild;
-    while Assigned(node) do begin
-      nodeName := node.NodeName;
-      if nodeName = '#text' then begin
-        node := node.NextSibling;
-        Continue;
-      end else
-      if nodeName = 'number:number' then begin
-        nf := nfPercentage;
-        s := GetAttrValue(node, 'number:decimal-places');
-        if s <> '' then decs := StrToInt(s) else decs := 0;
-        fmt := fmt + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
-        // The percent sign has already been added --> nFixed instead of nfPercentage
-      end else
-      if nodeName = 'number:text' then begin
-        childNode := node.FirstChild;
-        while childNode <> nil do begin
-          fmt := fmt + childNode.NodeValue;
-          childNode := childNode.NextSibling;
-        end;
-      end;
-      node := node.NextSibling;
-    end;
-
-    node := ANumFormatNode.FindNode('style:map');
-    if node <> nil then
-      ReadStyleMap(node, nf, fmt);
-
-    NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs);
+    NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs, cs);
   end;
 
   procedure ReadDateTimeStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -1220,7 +1189,8 @@ begin
 
     // Numbers (nfFixed, nfFixedTh, nfExp, nfPercentage)
     if (numfmt_nodename = 'number:number-style') or
-       (numfmt_nodename = 'number:percentage-style')
+       (numfmt_nodename = 'number:percentage-style') or
+       (numfmt_nodename = 'number:currency-style')
     then
       ReadNumberStyle(NumFormatNode, numfmtName);
 
