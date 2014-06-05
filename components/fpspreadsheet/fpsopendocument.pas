@@ -1020,6 +1020,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if node <> nil then
       ReadStyleMap(node, nf, fmt);
 
+    if ANumFormatNode.NodeName = 'number:percentage-style' then
+      nf := nfPercentage;
+
     NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs);
   end;
 
@@ -1215,13 +1218,11 @@ begin
       numfmtName := GetAttrValue(NumFormatNode, 'style:name') else
       numfmtName := '';
 
-    // Numbers (nfFixed, nfFixedTh, nfExp)
-    if numfmt_nodename = 'number:number-style' then
+    // Numbers (nfFixed, nfFixedTh, nfExp, nfPercentage)
+    if (numfmt_nodename = 'number:number-style') or
+       (numfmt_nodename = 'number:percentage-style')
+    then
       ReadNumberStyle(NumFormatNode, numfmtName);
-
-    // Percentage
-    if numfmt_nodename = 'number:percentage-style' then
-      ReadPercentageStyle(NumFormatNode, numfmtName);
 
     // Date/time values
     if (numfmt_nodename = 'number:date-style') or (numfmt_nodename = 'number:time-style') then
