@@ -495,6 +495,17 @@ begin
     if (FoundPos > 1) then
        Value := Copy(Value, 1, FoundPos-1);
     Result := StrToDateTime(Value, Fmt);
+
+    // If the date/time is within 1 day of the base date the value is most
+    // probably a time-only value (< 1).
+    // We need to subtract the datemode offset, otherwise the date/time value
+    // would not be < 1 for fpc.
+    case FDateMode of
+      dm1899: if Result - DATEMODE_1899_BASE < 1 then Result := Result - DATEMODE_1899_BASE;
+      dm1900: if Result - DATEMODE_1900_BASE < 1 then Result := Result - DATEMODE_1900_BASE;
+      dm1904: if Result - DATEMODE_1904_BASE < 1 then Result := Result - DATEMODE_1904_BASE;
+    end;
+
   end else begin
     // Try time only, e.g. PT23H59M59S
     //                     12345678901
