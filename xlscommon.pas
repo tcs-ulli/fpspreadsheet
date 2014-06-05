@@ -713,7 +713,7 @@ procedure TsBIFFNumFormatList.AddBuiltinFormats;
 var
   cs: String;
 begin
-  cs := Workbook.FormatSettings.CurrencyString;
+  cs := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
 
   AddFormat( 0, '', nfGeneral);
   AddFormat( 1, '0', nfFixed, 0);
@@ -1214,7 +1214,7 @@ begin
   if IsDateTime(value, nf, dt) then
     FWorksheet.WriteDateTime(ARow, ACol, dt) //, nf, nfs)
   else
-  if nf <> nfCustom then
+  //if nf <> nfCustom then  // why was this here?
     FWorksheet.WriteNumber(ARow, ACol, value, nf, nd, ncs);
   FWorksheet.WriteNumberFormat(ARow, ACol, nf, nfs);  // override built-in format string
 

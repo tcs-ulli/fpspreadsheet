@@ -192,7 +192,7 @@ end;
 procedure TsNumFormatParser.AnalyzeBracket(const AValue: String);
 var
   lValue: String;
-  n: Integer;
+  p, n: Integer;
 begin
   lValue := lowercase(AValue);
   // date/time format for interval
@@ -262,9 +262,16 @@ begin
     if not TryStrToFloat(trim(lValue), FSections[FCurrSection].CompareValue) then
       FStatus := psErrNoValidCompareNumber;
   end else
-  // Locale information
+  // Currency information
   if lValue[1] = '$' then begin
-    FSections[FCurrSection].CountryCode := Copy(AValue, 2, Length(AValue));
+    p := pos('-', AValue);
+    with FSections[FCurrSection] do begin
+      if p = 0 then
+        CurrencySymbol := Copy(AValue, 2, Length(AValue))
+      else
+        CurrencySymbol := Copy(AValue, 2, p-2);
+      FormatString := FormatString + CurrencySymbol;
+    end;
   end else
     FStatus := psErrUnknownInfoInBrackets;
 end;
@@ -749,8 +756,22 @@ begin
         end;
       '0', '#', '.', ',', '-':
         ScanNumber;
-      'y', 'Y', 'm', 'M',  'd', 'D', 'h', 'N', 'n', 's', '[':
+      'y', 'Y', 'm', 'M',  'd', 'D', 'h', 'N', 'n', 's':
         ScanDateTime;
+      '[':
+        begin
+          inc(FCurrent);
+          if (FCurrent <= FEnd) then begin
+            token := FCurrent^;
+            if token in ['h', 'H', 'n', 'N', 's', 'S'] then
+              ScanDateTime
+            else
+            if token = '$' then begin
+              dec(FCurrent, 2);
+              done := true;
+            end;
+          end;
+        end;
       ' ':
         AddChar(token);
       ';':
