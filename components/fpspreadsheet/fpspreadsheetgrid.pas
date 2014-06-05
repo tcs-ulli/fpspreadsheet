@@ -147,6 +147,8 @@ type
     procedure EditingDone; override;
     procedure EndUpdate;
     procedure GetSheets(const ASheets: TStrings);
+    function GetGridCol(ASheetCol: Cardinal): Integer;
+    function GetGridRow(ASheetRow: Cardinal): Integer;
     function GetWorksheetCol(AGridCol: Integer): Cardinal;
     function GetWorksheetRow(AGridRow: Integer): Cardinal;
     procedure LoadFromSpreadsheetFile(AFileName: string;
@@ -1708,6 +1710,16 @@ begin
       ABorderStyle := cell^.BorderStyles[border];
   end else
     Result := false;
+end;
+
+function TsCustomWorksheetGrid.GetGridCol(ASheetCol: Cardinal): Integer;
+begin
+  Result := ASheetCol + FHeaderCount
+end;
+
+function TsCustomWorksheetGrid.GetGridRow(ASheetRow: Cardinal): Integer;
+begin
+  Result := ASheetRow + FHeaderCount;
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;

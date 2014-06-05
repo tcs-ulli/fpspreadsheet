@@ -238,6 +238,7 @@ type
     procedure CbShowHeadersClick(Sender: TObject);
     procedure CbShowGridLinesClick(Sender: TObject);
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
+    procedure EdCellAddressEditingDone(Sender: TObject);
     procedure EdFrozenColsChange(Sender: TObject);
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
@@ -500,16 +501,21 @@ begin
     c := GetWorksheetCol(Col);
     r := GetWorksheetRow(Row);
     cell := Worksheet.GetCell(r, c);
-    if IsDateTimeFormat(nf) then begin
-      if IsDateTimeFormat(cell^.NumberFormat) then
-        Worksheet.WriteDateTime(cell, cell^.DateTimeValue, nf, fmt)
+    case cell^.ContentType of
+      cctNumber, cctDateTime:
+        if IsDateTimeFormat(nf) then begin
+          if IsDateTimeFormat(cell^.NumberFormat) then
+            Worksheet.WriteDateTime(cell, cell^.DateTimeValue, nf, fmt)
+          else
+            Worksheet.WriteDateTime(cell, cell^.NumberValue, nf, fmt);
+        end else begin
+          if IsDateTimeFormat(cell^.NumberFormat) then
+            Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, cell^.Decimals, cell^.CurrencySymbol)
+          else
+            Worksheet.WriteNumber(cell, cell^.NumberValue, nf, cell^.Decimals, cell^.CurrencySymbol);
+        end;
       else
-        Worksheet.WriteDateTime(cell, cell^.NumberValue, nf, fmt);
-    end else begin
-      if IsDateTimeFormat(cell^.NumberFormat) then
-        Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, cell^.Decimals, cell^.CurrencySymbol)
-      else
-        Worksheet.WriteNumber(cell, cell^.NumberValue, nf, cell^.Decimals, cell^.CurrencySymbol);
+        Worksheet.WriteNumberformat(cell, nf, fmt);
     end;
   end;
 
@@ -613,6 +619,16 @@ begin
       Items.AddObject(Format('Color %d: %.2x%.2x%.2x', [i, rgb.R, rgb.G, rgb.B]),
         TObject(PtrInt(clr)));
     end;
+  end;
+end;
+
+procedure TForm1.EdCellAddressEditingDone(Sender: TObject);
+var
+  c, r: integer;
+begin
+  if ParseCellString(EdCellAddress.Text, r, c) then begin
+    WorksheetGrid.Row := WorksheetGrid.GetGridRow(r);
+    WorksheetGrid.Col := WorksheetGrid.GetGridCol(c);
   end;
 end;
 
@@ -755,7 +771,8 @@ begin
       EdFormula.Text := WorksheetGrid.Worksheet.ReadRPNFormulaAsString(cell)
     else
       EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
-  end;
+  end else
+    EdFormula.Text := '';
 
   EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
 

@@ -68,6 +68,7 @@ function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
+function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 
@@ -552,6 +553,13 @@ begin
   if ACondition then Result := AValue1 else Result := AValue2;
 end;
 
+{ Checks whether the given number format code is for currency or accounting
+  i.e. requires currency symbol. }
+function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
+begin
+  Result := AFormat in [nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed];
+end;
+
 { Checks whether the given number format code is for date/times. }
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
@@ -691,7 +699,8 @@ begin
   cf := AFormatSettings.CurrencyFormat;
   ncf := AFormatSettings.NegCurrFormat;
   if ADecimals < 0 then ADecimals := AFormatSettings.CurrencyDecimals;
-  if ACurrencySymbol = '?' then ACurrencySymbol := AFormatSettings.CurrencyString;
+  if ACurrencySymbol = '?' then
+    ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
 
@@ -735,7 +744,8 @@ begin
   cf := AFormatSettings.CurrencyFormat;
   ncf := AFormatSettings.NegCurrFormat;
   if ADecimals = -1 then ADecimals := AFormatSettings.CurrencyDecimals;
-  if ACurrencySymbol = '?' then ACurrencySymbol := AFormatSettings.CurrencyString;
+  if ACurrencySymbol = '?' then
+    ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
   case ANumberFormat of

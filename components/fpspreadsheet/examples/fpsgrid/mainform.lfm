@@ -411,6 +411,7 @@ object Form1: TForm1
       Width = 123
       Align = alLeft
       Alignment = taCenter
+      OnEditingDone = EdCellAddressEditingDone
       TabOrder = 1
     end
     object FormulaToolbarSplitter: TSplitter
