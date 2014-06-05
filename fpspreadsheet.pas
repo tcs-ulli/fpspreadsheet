@@ -380,7 +380,8 @@ type
     FOptions: TsSheetOptions;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
-    procedure RemoveCallback(data, arg: pointer);
+    function GetFormatSettings: TFormatSettings;
+  procedure RemoveCallback(data, arg: pointer);
 
   protected
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -468,7 +469,9 @@ type
     procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
 
     procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
-      const AFormatString: String = '');
+      const AFormatString: String = ''); overload;
+    procedure WriteNumberFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
+      const AFormatString: String = ''); overload;
 
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
 
@@ -497,6 +500,7 @@ type
     { Properties }
     property  Cells: TAVLTree read FCells;
     property  Cols: TIndexedAVLTree read FCols;
+    property  FormatSettings: TFormatSettings read GetFormatSettings;
     property  Rows: TIndexedAVLTree read FRows;
     property  Workbook: TsWorkbook read FWorkbook;
 
@@ -1314,6 +1318,7 @@ begin
     Result^.Col := ACol;
     Result^.ContentType := cctEmpty;
     Result^.BorderStyles := DEFAULT_BORDERSTYLES;
+    Result^.CurrencySymbol := '?';
 
     Cells.Add(Result);
   end;
@@ -1846,6 +1851,10 @@ begin
       ACell^.CurrencySymbol := ACurrencySymbol;
       ACell^.NumberFormatStr := BuildNumberFormatString(ACell^.NumberFormat,
         Workbook.FormatSettings, ADecimals, ACurrencySymbol);
+    end else begin
+      Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
+      ACell^.NumberFormat := nfGeneral;
+      ACell^.NumberFormatStr := '';
     end;
 
     ChangedCell(ACell^.Row, ACell^.Col);
@@ -2037,9 +2046,16 @@ procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumberFormat: TsNumberFormat; const AFormatString: String = '');
 var
   ACell: PCell;
-  oldNumFmt: TsNumberFormat;
 begin
   ACell := GetCell(ARow, ACol);
+  WriteNumberFormat(ACell, ANumberFormat, AFormatString);
+end;
+
+procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
+  ANumberFormat: TsNumberFormat; const AFormatString: String = '');
+begin
+  if ACell = nil then
+    exit;
   Include(ACell^.UsedFormattingFields, uffNumberFormat);
   ACell^.NumberFormat := ANumberFormat;
   if (AFormatString = '') then
@@ -2047,7 +2063,7 @@ begin
       Workbook.FormatSettings, ACell^.Decimals, ACell^.CurrencySymbol)
   else
     ACell^.NumberFormatStr := AFormatString;
-  ChangedCell(ARow, ACol);
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 procedure TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
@@ -2288,6 +2304,11 @@ begin
   else
     Exclude(lCell^.UsedFormattingFields, uffWordwrap);
   ChangedCell(ARow, ACol);
+end;
+
+function TsWorksheet.GetFormatSettings: TFormatSettings;
+begin
+  Result := FWorkbook.FormatSettings;
 end;
 
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
