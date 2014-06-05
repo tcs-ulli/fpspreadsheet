@@ -42,10 +42,11 @@ uses
   fpsutils;
   
 type
-  TDateMode=(dm1899 {default for ODF; almost same as Excel 1900},
+  TDateMode=(
+    dm1899 {default for ODF; almost same as Excel 1900},
     dm1900 {StarCalc legacy only},
     dm1904 {e.g. Quattro Pro,Mac Excel compatibility}
-    );
+  );
 
   { TsSpreadOpenDocNumFormatList }
   TsSpreadOpenDocNumFormatList = class(TsCustomNumFormatList)
@@ -1271,7 +1272,10 @@ begin
 
       if paramValueType = 'string' then
         ReadLabel(row, col, cellNode)
-      else if (paramValueType = 'float') or (paramValueType = 'percentage') then
+      else
+      if (paramValueType = 'float') or (paramValueType = 'percentage') or
+         (paramValueType = 'currency')
+      then
         ReadNumber(row, col, cellNode)
       else if (paramValueType = 'date') or (paramValueType = 'time') then
         ReadDateTime(row, col, cellNode)

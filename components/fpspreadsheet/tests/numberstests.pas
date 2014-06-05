@@ -22,7 +22,7 @@ uses
 
 var
   // Norm to test against - list of numbers/times that should occur in spreadsheet
-  SollNumbers: array[0..20] of double; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
+  SollNumbers: array[0..23] of double; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollNumbers;
@@ -61,6 +61,10 @@ type
     procedure TestReadNumber17;
     procedure TestReadNumber18;
     procedure TestReadNumber19;
+    procedure TestReadNumber20;
+    procedure TestReadNumber21;
+    procedure TestReadNumber22;
+    procedure TestReadNumber23;
     procedure TestReadODFNumber0; //number tests using ODF/LibreOffice file format
     procedure TestReadODFNumber1; //number and time
     procedure TestReadODFNumber2;
@@ -81,6 +85,10 @@ type
     procedure TestReadODFNumber17;
     procedure TestReadODFNumber18;
     procedure TestReadODFNumber19;
+    procedure TestReadODFNumber20;
+    procedure TestReadODFNumber21;
+    procedure TestReadODFNumber22;
+    procedure TestReadODFNumber23;
   end;
 
   { TSpreadWriteReadNumberTests }
@@ -140,8 +148,11 @@ begin
   SollNumbers[16]:=59000000.1234;  // 59 million + 0.1234 formatted with thousand separator, 2 decimals
   SollNumbers[17]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "scientific" with 1 decimal
   SollNumbers[18]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
-  SollNumbers[19]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (EUROs), 2 decimals
-  SollNumbers[20]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (Dollars), 2 decimals
+  SollNumbers[19]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (EUROs, at end), 2 decimals
+  SollNumbers[20]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (Dollars, at end), 2 decimals
+  SollNumbers[21]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (EUROs, at end), 2 decimals
+  SollNumbers[22]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (Dollars, at end), 2 decimals
+  SollNumbers[23]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (Dollars, at end, neg red), 2 decimals
 end;
 
 { TSpreadWriteReadNumberTests }
@@ -360,12 +371,32 @@ end;
 
 procedure TSpreadReadNumberTests.TestReadNumber18;
 begin
-  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,16);
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,18);
 end;
 
 procedure TSpreadReadNumberTests.TestReadNumber19;
 begin
-  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,17);
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,19);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber20;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,20);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber21;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,21);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber22;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,22);
+end;
+
+procedure TSpreadReadNumberTests.TestReadNumber23;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,23);
 end;
 
 procedure TSpreadReadNumberTests.TestReadODFNumber0;
@@ -460,21 +491,40 @@ end;
 
 procedure TSpreadReadNumberTests.TestReadODFNumber18;
 begin
-  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,16);
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,18);
 end;
 
 procedure TSpreadReadNumberTests.TestReadODFNumber19;
 begin
-  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,17);
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,19);
 end;
 
+procedure TSpreadReadNumberTests.TestReadODFNumber20;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,20);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber21;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,21);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber22;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,22);
+end;
+
+procedure TSpreadReadNumberTests.TestReadODFNumber23;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,23);
+end;
 
 
 initialization
   // Register so these tests are included in a full run
   RegisterTest(TSpreadReadNumberTests);
   RegisterTest(TSpreadWriteReadNumberTests);
-  InitSollNumbers; //useful to have norm data if other code want to use this unit
+  InitSollNumbers; //useful to have norm data if other code wants to use this unit
 
 finalization
   FreeAndNil(TestWorkbook);

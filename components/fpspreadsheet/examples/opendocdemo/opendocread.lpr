@@ -42,15 +42,11 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  WriteLn('****', EncodeDate(1908,12,09) + EncodeTime(12,0,0,0));
-
   cell := MyWorkSheet.GetFirstCell();
   for i := 0 to MyWorksheet.GetCellCount - 1 do begin
     WriteLn('Row: ', cell^.Row,
       ' Col: ', cell^.Col, ' Value: ',
       UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(cell^.Row, cell^.Col))
-      , ' NumberValue:', FloatToStr(cell^.NumberValue)
-      , ' DateTimeValue: ', FloatToStr(cell^.DateTimeValue)
     );
     cell := MyWorkSheet.GetNextCell();
   end;
