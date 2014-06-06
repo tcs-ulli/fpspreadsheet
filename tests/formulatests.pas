@@ -27,11 +27,11 @@ type
     // Writes out numbers & reads back.
     // If previous read tests are ok, this effectively tests writing.
     { BIFF2 Tests }
-    procedure TestWriteReadBIFF2_FormulaStrings;
+    procedure TestWriteRead_BIFF2_FormulaStrings;
     { BIFF5 Tests }
-    procedure TestWriteReadBIFF5_FormulaStrings;
+    procedure TestWriteRead_BIFF5_FormulaStrings;
     { BIFF8 Tests }
-    procedure TestWriteReadBIFF8_FormulaStrings;
+    procedure TestWriteRead_BIFF8_FormulaStrings;
   end;
 
 implementation
@@ -104,17 +104,17 @@ begin
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteReadBIFF2_FormulaStrings;
+procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF2_FormulaStrings;
 begin
   TestWriteReadFormulaStrings(sfExcel2);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteReadBIFF5_FormulaStrings;
+procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF5_FormulaStrings;
 begin
   TestWriteReadFormulaStrings(sfExcel5);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteReadBIFF8_FormulaStrings;
+procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF8_FormulaStrings;
 begin
   TestWriteReadFormulaStrings(sfExcel8);
 end;

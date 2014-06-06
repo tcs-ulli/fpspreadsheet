@@ -29,38 +29,38 @@ type
     // Writes out colors & reads back.
 
     { BIFF2 file format tests }
-    procedure TestWriteReadBIFF2_Font_InternalPal;        // internal palette for BIFF2 file format
+    procedure TestWriteRead_BIFF2_Font_InternalPal;        // internal palette for BIFF2 file format
 
     { BIFF5 file format tests }
     // Background colors...
-    procedure TestWriteReadBIFF5_Background_InternalPal;  // internal palette
-    procedure TestWriteReadBIFF5_Background_Biff5Pal;     // official biff5 palette
-    procedure TestWriteReadBIFF5_Background_Biff8Pal;     // official biff8 palette
-    procedure TestWriteReadBIFF5_Background_RandomPal;    // palette 64, top 56 entries random
+    procedure TestWriteRead_BIFF5_Background_InternalPal;  // internal palette
+    procedure TestWriteRead_BIFF5_Background_Biff5Pal;     // official biff5 palette
+    procedure TestWriteRead_BIFF5_Background_Biff8Pal;     // official biff8 palette
+    procedure TestWriteRead_BIFF5_Background_RandomPal;    // palette 64, top 56 entries random
     // Font colors...
-    procedure TestWriteReadBIFF5_Font_InternalPal;        // internal palette for BIFF8 file format
-    procedure TestWriteReadBIFF5_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
-    procedure TestWriteReadBIFF5_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
-    procedure TestWriteReadBIFF5_Font_RandomPal;          // palette 64, top 56 entries random
+    procedure TestWriteRead_BIFF5_Font_InternalPal;        // internal palette for BIFF8 file format
+    procedure TestWriteRead_BIFF5_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
+    procedure TestWriteRead_BIFF5_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
+    procedure TestWriteRead_BIFF5_Font_RandomPal;          // palette 64, top 56 entries random
 
     { BIFF8 file format tests }
     // Background colors...
-    procedure TestWriteReadBIFF8_Background_InternalPal;  // internal palette
-    procedure TestWriteReadBIFF8_Background_Biff5Pal;     // official biff5 palette
-    procedure TestWriteReadBIFF8_Background_Biff8Pal;     // official biff8 palette
-    procedure TestWriteReadBIFF8_Background_RandomPal;    // palette 64, top 56 entries random
+    procedure TestWriteRead_BIFF8_Background_InternalPal;  // internal palette
+    procedure TestWriteRead_BIFF8_Background_Biff5Pal;     // official biff5 palette
+    procedure TestWriteRead_BIFF8_Background_Biff8Pal;     // official biff8 palette
+    procedure TestWriteRead_BIFF8_Background_RandomPal;    // palette 64, top 56 entries random
     // Font colors...
-    procedure TestWriteReadBIFF8_Font_InternalPal;        // internal palette for BIFF8 file format
-    procedure TestWriteReadBIFF8_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
-    procedure TestWriteReadBIFF8_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
-    procedure TestWriteReadBIFF8_Font_RandomPal;          // palette 64, top 56 entries random
+    procedure TestWriteRead_BIFF8_Font_InternalPal;        // internal palette for BIFF8 file format
+    procedure TestWriteRead_BIFF8_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
+    procedure TestWriteRead_BIFF8_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
+    procedure TestWriteRead_BIFF8_Font_RandomPal;          // palette 64, top 56 entries random
 
     { OpenDocument file format tests }
     // Background colors...
-    procedure TestWriteReadODS_Background_InternalPal;    // internal palette
-    procedure TestWriteReadODS_Background_Biff5Pal;       // official biff5 palette
-    procedure TestWriteReadODS_Background_Biff8Pal;       // official biff8 palette
-    procedure TestWriteReadODS_Background_RandomPal;      // palette 64, top 56 entries random
+    procedure TestWriteRead_ODS_Background_InternalPal;    // internal palette
+    procedure TestWriteRead_ODS_Background_Biff5Pal;       // official biff5 palette
+    procedure TestWriteRead_ODS_Background_Biff8Pal;       // official biff8 palette
+    procedure TestWriteRead_ODS_Background_RandomPal;      // palette 64, top 56 entries random
     // Font colors...
     procedure TestWriteRead_ODS_Font_InternalPal;        // internal palette for BIFF8 file format
     procedure TestWriteRead_ODS_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
@@ -107,10 +107,7 @@ var
   i: Integer;
 begin
   TempFile:=GetTempFileName;
-  {// Not needed: use workbook.writetofile with overwrite=true
-  if fileexists(TempFile) then
-    DeleteFile(TempFile);
-  }
+
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
 
@@ -194,10 +191,7 @@ var
   i: Integer;
 begin
   TempFile:=GetTempFileName;
-  {// Not needed: use workbook.writetofile with overwrite=true
-  if fileexists(TempFile) then
-    DeleteFile(TempFile);
-  }
+
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
 
@@ -266,110 +260,110 @@ end;
 { Tests for BIFF2 file format }
 { BIFF2 supports only a fixed palette, and no background color --> test only
   internal palette for font color }
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF2_Font_InternalPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF2_Font_InternalPal;
 begin
   TestWriteReadFontColors(sfExcel2, 0);
 end;
 
 { Tests for BIFF5 file format }
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_InternalPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Background_InternalPal;
 begin
   TestWriteReadBackgroundColors(sfExcel5, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_Biff5Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Background_Biff5Pal;
 begin
   TestWriteReadBackgroundColors(sfExcel5, 5);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_Biff8Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Background_Biff8Pal;
 begin
   TestWriteReadBackgroundColors(sfExcel5, 8);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Background_RandomPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Background_RandomPal;
 begin
   TestWriteReadBackgroundColors(sfExcel5, 999);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_InternalPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Font_InternalPal;
 begin
   TestWriteReadFontColors(sfExcel5, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_Biff5Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Font_Biff5Pal;
 begin
   TestWriteReadFontColors(sfExcel5, 5);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_Biff8Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Font_Biff8Pal;
 begin
   TestWriteReadFontColors(sfExcel5, 8);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF5_Font_RandomPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF5_Font_RandomPal;
 begin
   TestWriteReadFontColors(sfExcel5, 999);
 end;
 
 { Tests for BIFF8 file format }
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_InternalPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Background_InternalPal;
 begin
   TestWriteReadBackgroundColors(sfExcel8, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_Biff5Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Background_Biff5Pal;
 begin
   TestWriteReadBackgroundColors(sfExcel8, 5);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_Biff8Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Background_Biff8Pal;
 begin
   TestWriteReadBackgroundColors(sfExcel8, 8);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Background_RandomPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Background_RandomPal;
 begin
   TestWriteReadBackgroundColors(sfExcel8, 999);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_InternalPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Font_InternalPal;
 begin
   TestWriteReadFontColors(sfExcel8, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_Biff5Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Font_Biff5Pal;
 begin
   TestWriteReadFontColors(sfExcel8, 5);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_Biff8Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Font_Biff8Pal;
 begin
   TestWriteReadFontColors(sfExcel8, 8);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadBIFF8_Font_RandomPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_Font_RandomPal;
 begin
   TestWriteReadFontColors(sfExcel8, 999);
 end;
 
 { Tests for Open Document file format }
-procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_InternalPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Background_InternalPal;
 begin
   TestWriteReadBackgroundColors(sfOpenDocument, 0);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_Biff5Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Background_Biff5Pal;
 begin
   TestWriteReadBackgroundColors(sfOpenDocument, 5);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_Biff8Pal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Background_Biff8Pal;
 begin
   TestWriteReadBackgroundColors(sfOpenDocument, 8);
 end;
 
-procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_RandomPal;
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Background_RandomPal;
 begin
   TestWriteReadBackgroundColors(sfOpenDocument, 999);
 end;
