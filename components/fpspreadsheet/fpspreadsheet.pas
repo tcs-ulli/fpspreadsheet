@@ -416,6 +416,7 @@ type
     function  ReadAsUTF8Text(ACell: PCell): ansistring; overload;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
+    function  ReadFormulaAsString(ACell: PCell): String;
     function  ReadRPNFormulaAsString(ACell: PCell): String;
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
@@ -440,7 +441,8 @@ type
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormatString: String); overload;
     procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
-    procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
+    procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring); overload;
+    procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
     { Writing of cell attributes }
     procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
@@ -1628,6 +1630,17 @@ begin
   Result := True;
 end;
 
+function TsWorksheet.ReadFormulaAsString(ACell: PCell): String;
+begin
+  Result := '';
+  if ACell = nil then
+    exit;
+  if Length(ACell^.RPNFormulaValue) > 0 then
+    Result := ReadRPNFormulaAsString(ACell)
+  else
+    Result := ACell^.FormulaValue.FormulaStr;
+end;
+
 function TsWorksheet.ReadRPNFormulaAsString(ACell: PCell): String;
 var
   fs: TFormatSettings;
@@ -1803,9 +1816,16 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
+  WriteUTF8Text(ACell, AText);
+end;
+
+procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: ansistring);
+begin
+  if ACell = nil then
+    exit;
   ACell^.ContentType := cctUTF8String;
   ACell^.UTF8StringValue := AText;
-  ChangedCell(ARow, ACol);
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@

@@ -753,6 +753,7 @@ procedure TForm1.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
 var
   r, c: Cardinal;
   cell: PCell;
+  s: String;
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
@@ -767,8 +768,9 @@ begin
 
   cell := WorksheetGrid.Worksheet.FindCell(r, c);
   if cell <> nil then begin
-    if Length(cell^.RPNFormulaValue) > 0 then
-      EdFormula.Text := WorksheetGrid.Worksheet.ReadRPNFormulaAsString(cell)
+    s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell);
+    if s <> '' then
+      EdFormula.Text := s
     else
       EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
   end else
