@@ -35,6 +35,7 @@ begin
 
   // Add some formatting
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
+  MyWorksheet.WriteFontColor(0, 1, scRed);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');

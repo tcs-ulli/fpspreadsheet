@@ -125,6 +125,7 @@ type
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
     function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
+    function WriteFontStyleXMLAsString(const AFormat: TCell): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TCell): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TCell): String;
@@ -1972,6 +1973,11 @@ begin
       Result := Result +
     '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
 
+    s := WriteFontStyleXMLAsString(FFormattingStyles[i]);
+    if s <> '' then
+      Result := Result +
+    '      <style:text-properties '+ s + '/>' + LineEnding;
+
     // style:table-cell-properties
     s :=  WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
           WriteBackgroundColorStyleXMLAsString(FFormattingStyles[i]) +
@@ -2428,6 +2434,39 @@ begin
       Result := Result + 'style:border-linewidth-top="0.002cm 0.035cm 0.002cm" ';
   end else
     Result := Result + 'fo:border-top="none" ';
+end;
+
+function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(const AFormat: TCell): String;
+var
+  fnt: TsFont;
+  defFnt: TsFont;
+begin
+  Result := '';
+
+  fnt := Workbook.GetFont(AFormat.FontIndex);
+  defFnt := Workbook.GetFont(0);  // Defaultfont
+
+  if fnt.FontName <> defFnt.FontName then
+    Result := Result + Format('style:font-name="%s" ', [fnt.FontName]);
+
+  if fnt.Size <> defFnt.Size then
+    Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
+      [fnt.Size, fnt.Size, fnt.Size], FPointSeparatorSettings);
+
+  if fssBold in fnt.Style then
+    Result := Result + 'fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold" ';
+
+  if fssItalic in fnt.Style then
+    Result := Result + 'fo:font-style="italic" style:font-style-asian="italic" style:font-style-complex="italic" ';
+
+  if fssUnderline in fnt.Style then
+    Result := Result + 'style:text-underline-style="solid" style:text-underline-width="auto" style:text-underline-color="font-color" ';
+
+  if fssStrikeout in fnt.Style then
+    Result := Result + 'style:text-line-through-style="solid" ';
+
+  if fnt.Color <> defFnt.Color then
+    Result := Result + Format('fo:color="%s" ', [Workbook.GetPaletteColorAsHTMLStr(fnt.Color)]);
 end;
 
 { Creates an XML string for inclusion of the horizontal alignment into the
