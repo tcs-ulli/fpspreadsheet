@@ -61,6 +61,11 @@ type
     procedure TestWriteReadODS_Background_Biff5Pal;       // official biff5 palette
     procedure TestWriteReadODS_Background_Biff8Pal;       // official biff8 palette
     procedure TestWriteReadODS_Background_RandomPal;      // palette 64, top 56 entries random
+    // Font colors...
+    procedure TestWriteRead_ODS_Font_InternalPal;        // internal palette for BIFF8 file format
+    procedure TestWriteRead_ODS_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
+    procedure TestWriteRead_ODS_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
+    procedure TestWriteRead_ODS_Font_RandomPal;          // palette 64, top 56 entries random
 
   end;
 
@@ -198,23 +203,21 @@ begin
 
   // Define palette
   case whichPalette of
-     5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1, true);
-     8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1, true);
+     5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1);
+     8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1);
    999: begin  // Random palette: testing of color replacement
           MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
           for i:=8 to 63 do  // first 8 colors cannot be changed
             MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
         end;
-{
-  999: begin
-         SetLength(pal, 64);
-         for i:=0 to 7 do pal[i] := PALETTE_BIFF8[i];
-         for i:=8 to 63 do pal[i] := Random(256) + Random(256) shr 8 + random(256) shr 16;
-         MyWorkbook.UsePalette(@pal[0], 64);
-       end;
-        }
    // else use default palette
   end;
+
+  // Remember all colors because ODS does not have a palette in the file;
+  // therefore we do not know which colors to expect.
+  SetLength(pal, MyWorkbook.GetPaletteSize);
+  for color:=0 to High(pal) do
+    pal[color] := MyWorkbook.GetPaletteColor(color);
 
   // Write out all colors
   row := 0;
@@ -228,14 +231,14 @@ begin
     colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
     currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
     expectedRGB := MyWorkbook.GetPaletteColor(color);
-    CheckEquals(currentRGB, expectedRGB,
-      'Test unsaved font color, cell ' + CellNotation(MyWorksheet,0,0));
+    CheckEquals(expectedRGB, currentRGB,
+      'Test unsaved font color, cell ' + CellNotation(MyWorksheet,row, col));
     inc(row);
   end;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.ReadFromFile(TempFile, AFormat);
   if AFormat = sfExcel2 then
@@ -251,8 +254,8 @@ begin
     color := TsColor(row);
     colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
     currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
-    expectedRGB := MyWorkbook.GetPaletteColor(color);
-    CheckEquals(currentRGB, expectedRGB,
+    expectedRGB := pal[color]; //MyWorkbook.GetPaletteColor(color);
+    CheckEquals(expectedRGB, currentRGB,
       'Test saved font color, cell '+CellNotation(MyWorksheet,Row,Col));
   end;
   MyWorkbook.Free;
@@ -369,6 +372,26 @@ end;
 procedure TSpreadWriteReadColorTests.TestWriteReadODS_Background_RandomPal;
 begin
   TestWriteReadBackgroundColors(sfOpenDocument, 999);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Font_InternalPal;
+begin
+  TestWriteReadFontColors(sfOpenDocument, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Font_Biff5Pal;
+begin
+  TestWriteReadFontColors(sfOpenDocument, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Font_Biff8Pal;
+begin
+  TestWriteReadFontColors(sfOpenDocument, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Font_RandomPal;
+begin
+  TestWriteReadFontColors(sfOpenDocument, 999);
 end;
 
 
