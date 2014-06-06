@@ -565,6 +565,7 @@ type
     procedure CopyFontList(ASource: TFPList);
     function FindFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer;
+    function GetDefaultFont: TsFont;
     function GetDefaultFontSize: Single;
     function GetFont(AIndex: Integer): TsFont;
     function GetFontCount: Integer;
@@ -2953,6 +2954,14 @@ begin
         Size := ASize;
       end;
   end;
+end;
+
+{@@
+  Returns the default font. This is the first font (index 0) in the font list
+}
+function TsWorkbook.GetDefaultFont: TsFont;
+begin
+  Result := GetFont(0);
 end;
 
 {@@

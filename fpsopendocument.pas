@@ -125,6 +125,8 @@ type
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
     function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
+    function WriteDefaultFontXMLAsString: String;
+    function WriteFontNamesXMLAsString: String;
     function WriteFontStyleXMLAsString(const AFormat: TCell): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TCell): String;
@@ -1811,11 +1813,12 @@ begin
      '" xmlns:text="' + SCHEMAS_XMLNS_TEXT +
      '" xmlns:v="' + SCHEMAS_XMLNS_V + '">' + LineEnding +
    '<office:font-face-decls>' + LineEnding +
-   '  <style:font-face style:name="Arial" svg:font-family="Arial" />' + LineEnding +
+   '  '+WriteFontNamesXMLAsString + LineEnding +
+//   '  <style:font-face style:name="Arial" svg:font-family="Arial" />' + LineEnding +
    '</office:font-face-decls>' + LineEnding +
    '<office:styles>' + LineEnding +
    '  <style:style style:name="Default" style:family="table-cell">' + LineEnding +
-   '    <style:text-properties fo:font-size="10" style:font-name="Arial" />' + LineEnding +
+   '    ' + WriteDefaultFontXMLAsString + LineEnding +
    '  </style:style>' + LineEnding +
    '</office:styles>' + LineEnding +
    '<office:automatic-styles>' + LineEnding +
@@ -1891,7 +1894,8 @@ begin
 
    // Fonts
    '  <office:font-face-decls>' + LineEnding +
-   '    <style:font-face style:name="Arial" svg:font-family="Arial" xmlns:v="urn:schemas-microsoft-com:vml" />' + LineEnding +
+   '    ' + WriteFontNamesXMLAsString + LineEnding +
+//   '    <style:font-face style:name="Arial" svg:font-family="Arial" xmlns:v="urn:schemas-microsoft-com:vml" />' + LineEnding +
    '  </office:font-face-decls>' + LineEnding +
 
    // Automatic styles
@@ -2436,12 +2440,50 @@ begin
     Result := Result + 'fo:border-top="none" ';
 end;
 
+function TsSpreadOpenDocWriter.WriteDefaultFontXMLAsString: String;
+var
+  fnt: TsFont;
+begin
+  fnt := Workbook.GetFont(0);
+  Result := Format(
+    '<style:text-properties style:font-name="%s" fo:font-size="%.1f" />',
+    [fnt.FontName, fnt.Size], FPointSeparatorSettings
+  );
+end;
+
+function TsSpreadOpenDocWriter.WriteFontNamesXMLAsString: String;
+var
+  L: TStringList;
+  fnt: TsFont;
+  i: Integer;
+begin
+  Result := '';
+  L := TStringList.Create;
+  try
+    for i:=0 to Workbook.GetFontCount-1 do begin
+      fnt := Workbook.GetFont(i);
+      if (fnt <> nil) and (L.IndexOf(fnt.FontName) = -1) then
+        L.Add(fnt.FontName);
+    end;
+    for i:=0 to L.Count-1 do
+      Result := Format(
+        '<style:font-face style:name="%s" svg:font-family="%s" />',
+        [ L[i], L[i] ]
+      );
+  finally
+    L.Free;
+  end;
+end;
+
 function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(const AFormat: TCell): String;
 var
   fnt: TsFont;
   defFnt: TsFont;
 begin
   Result := '';
+
+  if not (uffFont in AFormat.UsedFormattingFields) then
+    exit;
 
   fnt := Workbook.GetFont(AFormat.FontIndex);
   defFnt := Workbook.GetFont(0);  // Defaultfont
