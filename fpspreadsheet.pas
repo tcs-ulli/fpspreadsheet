@@ -2912,10 +2912,10 @@ begin
   SetDefaultFont(fntName, fntSize);                      // Default font (FONT0)
   AddFont(fntName, fntSize, [fssBold], scBlack);         // FONT1 for uffBold
 
-  AddFont(fntName, fntSize, [fssItalic], scBlack);       // FONT2 for uffItalic
-  AddFont(fntName, fntSize, [fssUnderline], scBlack);    // FONT3 for uffUnderline
+  AddFont(fntName, fntSize, [fssItalic], scBlack);       // FONT2 (Italic)
+  AddFont(fntName, fntSize, [fssUnderline], scBlack);    // FONT3 (fUnderline)
   // FONT4 which does not exist in BIFF is added automatically with nil as place-holder
-  AddFont(fntName, fntSize, [fssBold, fssItalic], scBlack); // FONT5 for uffBoldItalic
+  AddFont(fntName, fntSize, [fssBold, fssItalic], scBlack); // FONT5 (bold & italic)
 
   FBuiltinFontCount := FFontList.Count;
 end;

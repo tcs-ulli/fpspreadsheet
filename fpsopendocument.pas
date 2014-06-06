@@ -395,14 +395,12 @@ begin
   // Now copy all style parameters from the styleData to the cell.
 
   // Font
-  {
-  if style.FontIndex = 1 then
-    Include(cell^.UsedFormattingFields, uffBold)
+  if styleData.FontIndex = 1 then
+    Include(ACell^.UsedFormattingFields, uffBold)
   else
-  if XFData.FontIndex > 1 then
-    Include(cell^.UsedFormattingFields, uffFont);
-  cell^.FontIndex := styleData.FontIndex;
-   }
+  if styleData.FontIndex > 1 then
+    Include(ACell^.UsedFormattingFields, uffFont);
+  ACell^.FontIndex := styleData.FontIndex;
 
   // Word wrap
   if styleData.WordWrap then
@@ -1362,6 +1360,7 @@ var
   borders: TsCellBorders;
   borderStyles: TsCellBorderStyles;
   bkClr: TsColorValue;
+  fntIndex: Integer;
   s: String;
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
@@ -1432,6 +1431,56 @@ var
     end;
   end;
 
+  function ReadFont(ANode: TDOMnode; IsDefaultFont: Boolean): Integer;
+  var
+    fntName: String;
+    fntSize: Single;
+    fntStyles: TsFontStyles;
+    fntColor: TsColor;
+    s: String;
+  begin
+    if ANode = nil then begin
+      Result := 0;
+      exit;
+    end;
+
+    fntName := GetAttrValue(ANode, 'style:font-name');
+    if fntName = '' then
+      fntName := FWorkbook.GetFont(0).FontName;
+
+    s := GetAttrValue(ANode, 'fo:font-size');
+    if s <> '' then
+      fntSize := HTMLLengthStrToPts(s)
+    else
+      fntSize := FWorkbook.GetDefaultFontSize;
+
+    fntStyles := [];
+    if GetAttrValue(ANode, 'fo:font-style') = 'italic' then
+      Include(fntStyles, fssItalic);
+    if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
+      Include(fntStyles, fssBold);
+    if GetAttrValue(ANode, 'style:text-underline-style') <> '' then
+      Include(fntStyles, fssUnderline);
+    if GetAttrValue(ANode, 'style:text-strike-through-style') <> '' then
+      Include(fntStyles, fssStrikeout);
+
+    s := GetAttrValue(ANode, 'fo:color');
+    if s <> '' then
+      fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(s))
+    else
+      fntColor := FWorkbook.GetFont(0).Color;
+
+    if IsDefaultFont then begin
+      FWorkbook.SetDefaultFont(fntName, fntSize);
+      Result := 0;
+    end
+    else begin
+      Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor);
+      if Result = -1 then
+        Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+    end;
+  end;
+
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -1443,6 +1492,9 @@ begin
 
   styleNode := AStylesNode.FirstChild;
   while Assigned(styleNode) do begin
+    if styleNode.NodeName = 'style:default-style' then begin
+      ReadFont(styleNode.FindNode('style:text-properties'), true);
+    end else
     if styleNode.NodeName = 'style:style' then begin
       family := GetAttrValue(styleNode, 'style:family');
 
@@ -1468,9 +1520,13 @@ begin
         txtRot := trHorizontal;
         horAlign := haDefault;
         vertAlign := vaDefault;
+        fntIndex := 0;
 
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do begin
+          if styleChildNode.NodeName = 'style:text-properties' then
+            fntIndex := ReadFont(styleChildNode, false)
+          else
           if styleChildNode.NodeName = 'style:table-cell-properties' then begin
             // Background color
             s := GetAttrValue(styleChildNode, 'fo:background-color');
@@ -1545,7 +1601,7 @@ begin
 
         style := TCellStyleData.Create;
         style.Name := stylename;
-        style.FontIndex := 0;
+        style.FontIndex := fntIndex;
         style.NumFormatIndex := numFmtIndex;
         style.HorAlignment := horAlign;
         style.VertAlignment := vertAlign;

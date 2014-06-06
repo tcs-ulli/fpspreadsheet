@@ -1457,6 +1457,9 @@ begin
   units := lowercase(Copy(AValue, Length(AValue)-1, 2));
   val(copy(AValue, 1, Length(AValue)-2), x, res);
   // No hasseling with the decimal point...
+  if units = 'pt' then
+    Result := x
+  else
   if units = 'in' then
     Result := InToPts(x)
   else if units = 'cm' then

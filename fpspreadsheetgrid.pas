@@ -9,6 +9,8 @@ AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
 { To do:
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
    FindNearestPaletteIndex.
+ - Arial bold is not shown as such if loaded from ods
+ - Background color of first cell is ignored.
 }
 
 unit fpspreadsheetgrid;
