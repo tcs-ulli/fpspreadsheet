@@ -884,9 +884,60 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+var
+  cell: PCell;
+  formula: String;
+  stylename: String;
+  txtValue: String;
+  floatValue: Double;
+  fs: TFormatSettings;
+  valueType: String;
+  valueStr: String;
 begin
-  // For now just read the number
-  ReadNumber(ARow, ACol, ACellNode);
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
+
+  // Create cell and apply format
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(ARow, ACol, stylename);
+  cell := FWorksheet.FindCell(ARow, ACol);
+
+  // Read formula, store in the cell's FormulaValue.FormulaStr
+  formula := GetAttrValue(ACellNode, 'table:formula');
+  if formula <> '' then Delete(formula, 1, 3);  // delete "of:"
+  cell^.FormulaValue.FormulaStr := formula;
+
+  // Read formula results
+  // ... number value
+  valueType := GetAttrValue(ACellNode, 'office:value-type');
+  valueStr := GetAttrValue(ACellNode, 'office:value');
+  if (valueType = 'float') then begin
+    if UpperCase(valueStr) = '1.#INF' then
+      FWorksheet.WriteNumber(cell, 1.0/0.0)
+    else begin
+      floatValue := StrToFloat(valueStr, fs);
+      FWorksheet.WriteNumber(cell, floatValue);
+    end;
+    if IsDateTimeFormat(cell^.NumberFormat) then begin
+      cell^.ContentType := cctDateTime;
+      // No datemode correction for intervals and for time-only values
+      if (cell^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
+        cell^.DateTimeValue := cell^.NumberValue
+      else
+        case FDateMode of
+          dm1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
+          dm1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
+          dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
+        end;
+    end;
+  end else
+  // Date/time value
+  if (valueType = 'date') or (valueType = 'time') then begin
+    floatValue := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
+    FWorkSheet.WriteDateTime(cell, floatValue);
+  end else
+  // Text
+    FWorksheet.WriteUTF8Text(cell, valueStr);
 end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
@@ -1336,9 +1387,11 @@ begin
       else if (paramValueType = 'date') or (paramValueType = 'time') then
         ReadDateTime(row, col, cellNode)
       else if (paramValueType = '') and (tableStyleName <> '') then
-        ReadBlank(row, col, cellNode)
-      else if ParamFormula <> '' then
-        ReadLabel(row, col, cellNode);
+        ReadBlank(row, col, cellNode);
+
+      if ParamFormula <> '' then
+        ReadFormula(row, col, cellNode);
+//        ReadLabel(row, col, cellNode);
 
       paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
       if paramColsRepeated = '' then paramColsRepeated := '1';

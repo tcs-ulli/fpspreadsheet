@@ -340,7 +340,6 @@ begin
   TestWriteReadFont(sfExcel8, 'Courier New');
 end;
 
-
 { ODS }
 procedure TSpreadWriteReadFontTests.TestWriteRead_ODS_Font_Arial;
 begin
