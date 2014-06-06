@@ -88,6 +88,7 @@ type
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
+    function ReadFont(ANode: TDOMnode; IsDefaultFont: Boolean): Integer;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
   protected
@@ -718,6 +719,60 @@ begin
     FDateMode := dm1904
   else
     raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
+end;
+
+{ Reads font data from an xml node, adds the font to the workbooks FontList
+  (if not yet contained), and returns the index in the font list.
+  If "IsDefaultFont" is true the first FontList entry (DefaultFont) is replaced. }
+function TsSpreadOpenDocReader.ReadFont(ANode: TDOMnode;
+  IsDefaultFont: Boolean): Integer;
+var
+  fntName: String;
+  fntSize: Single;
+  fntStyles: TsFontStyles;
+  fntColor: TsColor;
+  s: String;
+begin
+  if ANode = nil then begin
+    Result := 0;
+    exit;
+  end;
+
+  fntName := GetAttrValue(ANode, 'style:font-name');
+  if fntName = '' then
+    fntName := FWorkbook.GetFont(0).FontName;
+
+  s := GetAttrValue(ANode, 'fo:font-size');
+  if s <> '' then
+    fntSize := HTMLLengthStrToPts(s)
+  else
+    fntSize := FWorkbook.GetDefaultFontSize;
+
+  fntStyles := [];
+  if GetAttrValue(ANode, 'fo:font-style') = 'italic' then
+    Include(fntStyles, fssItalic);
+  if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
+    Include(fntStyles, fssBold);
+  if GetAttrValue(ANode, 'style:text-underline-style') <> '' then
+    Include(fntStyles, fssUnderline);
+  if GetAttrValue(ANode, 'style:text-strike-through-style') <> '' then
+    Include(fntStyles, fssStrikeout);
+
+  s := GetAttrValue(ANode, 'fo:color');
+  if s <> '' then
+    fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(s))
+  else
+    fntColor := FWorkbook.GetFont(0).Color;
+
+  if IsDefaultFont then begin
+    FWorkbook.SetDefaultFont(fntName, fntSize);
+    Result := 0;
+  end
+  else begin
+    Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor);
+    if Result = -1 then
+      Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1428,56 +1483,6 @@ var
         scBlack, Workbook.AddColorToPalette(rgb));
     finally
       L.Free;
-    end;
-  end;
-
-  function ReadFont(ANode: TDOMnode; IsDefaultFont: Boolean): Integer;
-  var
-    fntName: String;
-    fntSize: Single;
-    fntStyles: TsFontStyles;
-    fntColor: TsColor;
-    s: String;
-  begin
-    if ANode = nil then begin
-      Result := 0;
-      exit;
-    end;
-
-    fntName := GetAttrValue(ANode, 'style:font-name');
-    if fntName = '' then
-      fntName := FWorkbook.GetFont(0).FontName;
-
-    s := GetAttrValue(ANode, 'fo:font-size');
-    if s <> '' then
-      fntSize := HTMLLengthStrToPts(s)
-    else
-      fntSize := FWorkbook.GetDefaultFontSize;
-
-    fntStyles := [];
-    if GetAttrValue(ANode, 'fo:font-style') = 'italic' then
-      Include(fntStyles, fssItalic);
-    if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
-      Include(fntStyles, fssBold);
-    if GetAttrValue(ANode, 'style:text-underline-style') <> '' then
-      Include(fntStyles, fssUnderline);
-    if GetAttrValue(ANode, 'style:text-strike-through-style') <> '' then
-      Include(fntStyles, fssStrikeout);
-
-    s := GetAttrValue(ANode, 'fo:color');
-    if s <> '' then
-      fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor(s))
-    else
-      fntColor := FWorkbook.GetFont(0).Color;
-
-    if IsDefaultFont then begin
-      FWorkbook.SetDefaultFont(fntName, fntSize);
-      Result := 0;
-    end
-    else begin
-      Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor);
-      if Result = -1 then
-        Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
     end;
   end;
 
