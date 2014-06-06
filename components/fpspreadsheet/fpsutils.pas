@@ -1454,10 +1454,18 @@ var
   x: Double;
   res: Word;
 begin
-  units := lowercase(Copy(AValue, Length(AValue)-1, 2));
-  val(copy(AValue, 1, Length(AValue)-2), x, res);
-  // No hasseling with the decimal point...
-  if units = 'pt' then
+  if (Length(AValue) > 1) and (AValue[Length(AValue)] in ['a'..'z', 'A'..'Z']) then begin
+    units := lowercase(Copy(AValue, Length(AValue)-1, 2));
+    val(copy(AValue, 1, Length(AValue)-2), x, res);
+    // No hasseling with the decimal point...
+  end else begin
+    units := '';
+    val(AValue, x, res);
+  end;
+  if res <> 0 then
+    raise Exception.CreateFmt('No valid number or units (%s)', [AValue]);
+
+  if (units = 'pt') or (units = '') then
     Result := x
   else
   if units = 'in' then
