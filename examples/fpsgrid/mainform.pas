@@ -271,7 +271,7 @@ var
 implementation
 
 uses
-  fpcanvas, fpsutils;
+  fpcanvas, fpsutils, fpsnumformatparser;
 
 const
   HORALIGN_TAG = 100;
@@ -455,17 +455,25 @@ procedure TForm1.AcIncDecDecimalsExecute(Sender: TObject);
 var
   cell: PCell;
   decs: Byte;
+  parser: TsNumFormatParser;
 begin
   with WorksheetGrid do begin
     if Workbook = nil then
       exit;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if (cell <> nil) then begin
-      decs := cell^.Decimals;
-      if (Sender = AcIncDecimals) then
-        Worksheet.WriteDecimals(cell, decs+1);
-      if (Sender = AcDecDecimals) and (decs > 0) then
-        Worksheet.WriteDecimals(cell, decs-1);
+      parser := TsNumFormatParser.Create(Workbook, cell^.NumberFormatStr);
+      try
+        decs := parser.Decimals;
+        if (Sender = AcIncDecimals) then
+          Parser.Decimals := decs+1;
+        if (Sender = AcDecDecimals) and (decs > 0) then
+          Parser.Decimals := decs-1;
+        cell^.NumberFormatStr := parser.FormatString[nfdDefault];
+      finally
+        parser.Free;
+      end;
+      Invalidate;
     end;
   end;
 end;
@@ -477,23 +485,20 @@ end;
 
 procedure TForm1.AcNumFormatExecute(Sender: TObject);
 const
-  DATETIME_FMT: array[0..4] of string = ('', 'dm', 'my', 'ms', 'msz');
+  DATETIME_CUSTOM: array[0..4] of string = ('', 'dm', 'my', 'ms', 'msz');
 var
   nf: TsNumberFormat;
   c, r: Cardinal;
   cell: PCell;
   fmt: String;
 begin
-  if WorksheetGrid.Worksheet = nil then
-    exit;
-
   if TAction(Sender).Checked then
     nf := TsNumberFormat((TAction(Sender).Tag - NUMFMT_TAG) div 10)
   else
     nf := nfGeneral;
 
-  if nf = nfFmtDateTime then
-    fmt := DATETIME_FMT[TAction(Sender).Tag mod 10]
+  if nf = nfCustom then
+    fmt := DATETIME_CUSTOM[TAction(Sender).Tag mod 10]
   else
     fmt := '';
 
@@ -508,17 +513,22 @@ begin
             Worksheet.WriteDateTime(cell, cell^.DateTimeValue, nf, fmt)
           else
             Worksheet.WriteDateTime(cell, cell^.NumberValue, nf, fmt);
+        end else
+        if IsCurrencyFormat(nf) then begin
+          if IsDateTimeFormat(cell^.NumberFormat) then
+            Worksheet.WriteCurrency(cell, cell^.DateTimeValue, nf, fmt)
+          else
+            Worksheet.WriteCurrency(cell, cell^.Numbervalue, nf, fmt);
         end else begin
           if IsDateTimeFormat(cell^.NumberFormat) then
-            Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, cell^.Decimals, cell^.CurrencySymbol)
+            Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, fmt)
           else
-            Worksheet.WriteNumber(cell, cell^.NumberValue, nf, cell^.Decimals, cell^.CurrencySymbol);
+            Worksheet.WriteNumber(cell, cell^.NumberValue, nf, fmt)
         end;
       else
         Worksheet.WriteNumberformat(cell, nf, fmt);
     end;
   end;
-
   UpdateNumFormatActions;
 end;
 
@@ -872,14 +882,12 @@ begin
       t := ac.Tag;
       if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 200) then begin
         found := ((ac.Tag - NUMFMT_TAG) div 10 = ord(nf));
-        if (nf = nfFmtDateTime) then
+        if nf = nfCustom then
           case (ac.Tag - NUMFMT_TAG) mod 10 of
-            1: found := pos('d/m', cell^.NumberFormatStr) > 0;
-            2: found := pos('m/y', cell^.NumberFormatStr) > 0;
-            3: found := (pos('n:s', cell^.NumberFormatStr) > 0)
-                    and (pos ('.z', cell^.NumberFormatStr) = 0);
-            4: found := (pos('n:s', cell^.NumberFormatStr) > 0)
-                    and (pos ('.z', cell^.NumberFormatStr) > 0);
+            1: found := cell^.NumberFormatStr = 'dd/mmm';
+            2: found := cell^.NumberFormatStr = 'mmm/yy';
+            3: found := cell^.NumberFormatStr = 'nn:ss';
+            4: found := cell^.NumberFormatStr = 'nn:ss.z';
           end;
         ac.Checked := found;
       end;

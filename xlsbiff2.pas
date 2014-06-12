@@ -61,8 +61,7 @@ type
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
     procedure CreateNumFormatList; override;
     procedure ExtractNumberFormat(AXFIndex: WORD;
-      out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
-      out ACurrencySymbol: String; out ANumberFormatStr: String); override;
+      out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); override;
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
     procedure ReadFont(AStream: TStream);
@@ -139,7 +138,7 @@ var
 implementation
 
 uses
-  Math;
+  Math, fpsNumFormatParser;
 
 const
   { Excel record IDs }
@@ -181,21 +180,23 @@ begin
   ts := fs.ThousandSeparator;
   cs := fs.CurrencyString;
   AddFormat( 0, '', nfGeneral);
-  AddFormat( 1, '0', nfFixed, 0);
-  AddFormat( 2, '0'+ds+'00', nfFixed, 2);                  // 0.00
-  AddFormat( 3, '#'+ts+'##0', nfFixedTh, 0);               // #,##0
-  AddFormat( 4, '#'+ts+'##0'+ds+'00', nfFixedTh, 2);       // #,##0.00
-  AddFormat( 5, UTF8ToAnsi('"'+cs+'"#'+ts+'##0_);("'+cs+'"#'+ts+'##0)'), nfCurrency, 0);
-  AddFormat( 6, UTF8ToAnsi('"'+cs+'"#'+ts+'##0_);[Red]("'+cs+'"#'+ts+'##0)'), nfCurrencyRed, 2);
-  AddFormat( 7, UTF8ToAnsi('"'+cs+'"#'+ts+'##0'+ds+'00_);("'+cs+'"#'+ts+'##0'+ds+'00)'), nfCurrency, 0);
-  AddFormat( 8, UTF8ToAnsi('"'+cs+'"#'+ts+'##0'+ds+'00_);[Red]("'+cs+'"#'+ts+'##0'+ds+'00)'), nfCurrency, 2);
-  AddFormat( 9, '0%', nfPercentage, 0);
-  AddFormat(10, '0'+ds+'00%', nfPercentage, 2);
-  AddFormat(11, '0'+ds+'00E+00', nfExp, 2);
+  AddFormat( 1, '0', nfFixed);
+  AddFormat( 2, '0'+ds+'00', nfFixed);                     // 0.00
+  AddFormat( 3, '#'+ts+'##0', nfFixedTh);                  // #,##0
+  AddFormat( 4, '#'+ts+'##0'+ds+'00', nfFixedTh);          // #,##0.00
+  AddFormat( 5, UTF8ToAnsi('"'+cs+'"#'+ts+'##0_);("'+cs+'"#'+ts+'##0)'), nfCurrency);
+  AddFormat( 6, UTF8ToAnsi('"'+cs+'"#'+ts+'##0_);[Red]("'+cs+'"#'+ts+'##0)'), nfCurrencyRed);
+  AddFormat( 7, UTF8ToAnsi('"'+cs+'"#'+ts+'##0'+ds+'00_);("'+cs+'"#'+ts+'##0'+ds+'00)'), nfCurrency);
+  AddFormat( 8, UTF8ToAnsi('"'+cs+'"#'+ts+'##0'+ds+'00_);[Red]("'+cs+'"#'+ts+'##0'+ds+'00)'), nfCurrency);
+  AddFormat( 9, '0%', nfPercentage);
+  AddFormat(10, '0'+ds+'00%', nfPercentage);
+  AddFormat(11, '0'+ds+'00E+00', nfExp);
   AddFormat(12, fs.ShortDateFormat, nfShortDate);
   AddFormat(13, fs.LongDateFormat, nfLongDate);
-  AddFormat(14, SpecialDateTimeFormat('dm', fs, true), nfFmtDateTime);
-  AddFormat(15, SpecialDateTimeFormat('my', fs, true), nfFmtDateTime);
+  AddFormat(14, 'd/mmm', nfCustom);
+  AddFormat(15, 'mmm/yy', nfCustom);
+  //AddFormat(14, SpecialDateTimeFormat('dm', fs, true), nfFmtDateTime);
+  //AddFormat(15, SpecialDateTimeFormat('my', fs, true), nfFmtDateTime);
   AddFormat(16, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);
   AddFormat(17, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);
   AddFormat(18, fs.ShortTimeFormat, nfShortTime);
@@ -223,6 +224,7 @@ begin
         if ADecimals > 0 then ADecimals := 2;
         ANumFormat := nfExp;
       end;
+    {
     nfFmtDateTime:
       begin
         fmt := lowercase(AFormatString);
@@ -248,6 +250,7 @@ begin
         else
           ANumFormat := nfShortDateTime;
       end;
+      }
     nfCustom, nfTimeInterval:
       begin
         ANumFormat := nfGeneral;
@@ -261,18 +264,28 @@ end;
 function TsBIFF2NumFormatList.FindFormatOf(AFormatCell: PCell): Integer;
 var
   fmt: String;
+  parser: TsNumFormatParser;
+  decs: Integer;
+  dt: string;
 begin
+  parser := TsNumFormatParser.Create(Workbook, AFormatCell^.NumberFormatStr);
+  try
+    decs := parser.Decimals;
+    dt := parser.GetDateTimeCode(0);
+  finally
+    parser.Free;
+  end;
+
   case AFormatCell^.NumberFormat of
     nfGeneral,
-    nfCustom,
     nfTimeInterval  : Result := 0;
-    nfFixed         : Result := IfThen(AFormatCell^.Decimals = 0, 1, 2);
-    nfFixedTh       : Result := IfThen(AFormatCell^.Decimals = 0, 3, 4);
+    nfFixed         : Result := IfThen(decs = 0, 1, 2);
+    nfFixedTh       : Result := IfThen(decs = 0, 3, 4);
     nfCurrency,
-    nfAccounting    : Result := IfThen(AFormatCell^.Decimals = 0, 5, 7);
+    nfAccounting    : Result := IfThen(decs = 0, 5, 7);
     nfCurrencyRed,
-    nfAccountingRed : Result := IfThen(AFormatCell^.Decimals = 0, 6, 8);
-    nfPercentage    : Result := IfThen(AFormatCell^.Decimals = 0, 9, 10);
+    nfAccountingRed : Result := IfThen(decs = 0, 6, 8);
+    nfPercentage    : Result := IfThen(decs = 0, 9, 10);
     nfExp, nfSci    : Result := 11;
     nfShortDate     : Result := 12;
     nfLongDate      : Result := 13;
@@ -281,38 +294,8 @@ begin
     nfShortTime     : Result := 18;
     nfLongTime      : Result := 19;
     nfShortDateTime : Result := 20;
-    nfFmtDateTime   : begin
-                        fmt := lowercase(AFormatCell^.NumberFormatStr);
-                        if (fmt = 'd-mmm') or (fmt = 'd/mmm') or
-                           (fmt = 'd-mm') or (fmt = 'd/mm') or
-                           (fmt = 'dd-mm') or (fmt = 'dd/mm') or
-                           (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
-                        then
-                          Result := 14
-                        else
-                        if (fmt = 'mmm-yy') or (fmt = 'mmm/yy') or
-                           (fmt = 'mm-yy') or (fmt = 'mm/yy') or
-                           (fmt = 'm-yy') or (fmt = 'm/y') or
-                           (fmt = 'mmm-yyyy') or (fmt = 'mmm/yyyy') or
-                           (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
-                           (fmt = 'm-yyyy') or (fmt = 'm/yyyy')
-                        then
-                          Result := 15
-                        else
-                        if (fmt = 'nn:ss') or (fmt = 'mm:ss') or
-                           (fmt = 'n:ss') or (fmt = 'm:ss')
-                        then
-                          Result := 19
-                        else
-                        if (fmt = 'nn:ss.z') or (fmt = 'mm:ss.z') or
-                           (fmt = 'n:ss.z') or (fmt = 'm:ss.z') or
-                           (fmt = 'nn:ss.zzz') or (fmt = 'mm:ss.zzz') or
-                           (fmt = 'n:ss.zzz') or (fmt = 'm:ss.zzz')
-                        then
-                          Result := 19
-                        else
-                          Result := 20;
-                      end;
+    nfCustom        : if dt = 'dm' then Result := 14 else
+                      if dt = 'my' then Result := 15;
   end;
 end;
 
@@ -383,8 +366,7 @@ end;
 { Extracts the number format data from an XF record indexed by AXFIndex.
   Note that BIFF2 supports only 21 formats. }
 procedure TsSpreadBIFF2Reader.ExtractNumberFormat(AXFIndex: WORD;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
-  out ACurrencySymbol: String; out ANumberFormatStr: String);
+  out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String);
 var
   lNumFormatData: TsNumFormatData;
 begin
@@ -392,13 +374,9 @@ begin
   if lNumFormatData <> nil then begin
     ANumberFormat := lNumFormatData.NumFormat;
     ANumberFormatStr := lNumFormatData.FormatString;
-    ADecimals := lNumFormatData.Decimals;
-    ACurrencySymbol := lNumFormatData.CurrencySymbol;
   end else begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
-    ADecimals := 0;
-    ACurrencySymbol := '';
   end;
 end;
 
@@ -575,11 +553,11 @@ begin
     Move(Data[0], formulaResult, SizeOf(Data));
 
     {Find out what cell type, set content type and value}
-    ExtractNumberFormat(XF, nf, nd, ncs, nfs);
-    if IsDateTime(formulaResult, nf, dt) then
+    ExtractNumberFormat(XF, nf, nfs);
+    if IsDateTime(formulaResult, nf, nfs, dt) then
       FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow, ACol, formulaResult, nf, nd, ncs);
+      FWorksheet.WriteNumber(ARow, ACol, formulaResult, nf, nfs);
   end;
 
   { Formula token array }
@@ -645,11 +623,11 @@ begin
   AStream.ReadBuffer(value, 8);
 
   {Find out what cell type, set content type and value}
-  ExtractNumberFormat(XF, nf, nd, ncs, nfs);
-  if IsDateTime(value, nf, dt) then
+  ExtractNumberFormat(XF, nf, nfs);
+  if IsDateTime(value, nf, nfs, dt) then
     FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd, ncs);
+    FWorksheet.WriteNumber(ARow, ACol, value, nf, nfs);
 
   { Apply formatting to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -902,6 +880,7 @@ begin
     // but the number format list of the writer is in Excel syntax.
     // And for BIFF2, there is only a limited number of formats.
     lCell := ACell^;
+    {
     with lCell do begin
       if IsDateTimeFormat(NumberFormat) then
         NumberFormatStr := BuildDateTimeFormatString(NumberFormat,
@@ -911,6 +890,7 @@ begin
           Workbook.FormatSettings, Decimals, CurrencySymbol);
       NumFormatList.ConvertBeforeWriting(NumberFormatStr, NumberFormat, Decimals, CurrencyString);
     end;
+    }
     lIndex := FindFormattingInList(@lCell);
 
     // Carefully check the index
@@ -925,14 +905,13 @@ var
   i: Integer;
 begin
   inherited ListAllFormattingStyles;
-
+  {
   for i:=0 to High(FFormattingStyles) do
     FNumFormatList.ConvertBeforeWriting(
       FFormattingStyles[i].NumberFormatStr,
-      FFormattingStyles[i].NumberFormat,
-      FFormattingStyles[i].Decimals,
-      FFormattingStyles[i].CurrencySymbol
+      FFormattingStyles[i].NumberFormat
     );
+    }
 end;
 
 { Builds up the list of number formats to be written to the biff2 file.

@@ -310,6 +310,8 @@ begin
 
     // Now apply the modifications.
     if uffNumberFormat in FFormattingStyles[i].UsedFormattingFields then begin
+      // The number formats in the FormattingStyles are still in fpc dialect
+      // They will be converted to Excel syntax immediately before writing.
       j := NumFormatList.FindFormatOf(@FFormattingStyles[i]);
       if j > -1 then
         lFormatIndex := NumFormatList[j].Index;

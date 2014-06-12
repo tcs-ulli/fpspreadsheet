@@ -137,10 +137,15 @@ procedure InitSollFmtData;
 var
   i: Integer;
   fs: TFormatSettings;
+  myworkbook: TsWorkbook;
 begin
   // Set up norm - MUST match spreadsheet cells exactly
 
-  fs := DefaultFormatSettings;
+  // The workbook uses a slightly modified copy of the DefaultFormatSettings
+  // We create a copy here in order to better define the predicted strings.
+  myWorkbook := TsWorkbook.Create;
+  fs := MyWorkbook.FormatSettings;
+  myWorkbook.Free;
 
   // Numbers
   SollNumbers[0] := 0.0;
@@ -162,15 +167,15 @@ begin
   SollNumberFormats[8] := nfSci;          SollNumberDecimals[8] := 1;
 
   for i:=Low(SollNumbers) to High(SollNumbers) do begin
-    SollNumberStrings[i, 0] := FloatToStr(SollNumbers[i]);
-    SollNumberStrings[i, 1] := FormatFloat('0', SollNumbers[i]);
-    SollNumberStrings[i, 2] := FormatFloat('0.00', SollNumbers[i]);
-    SollNumberStrings[i, 3] := FormatFloat('#,##0', SollNumbers[i]);
-    SollNumberStrings[i, 4] := FormatFloat('#,##0.00', SollNumbers[i]);
-    SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i]);
-    SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100) + '%';
-    SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100) + '%';
-    SollNumberStrings[i, 8] := SciFloat(SollNumbers[i], 1);
+    SollNumberStrings[i, 0] := FloatToStr(SollNumbers[i], fs);
+    SollNumberStrings[i, 1] := FormatFloat('0', SollNumbers[i], fs);
+    SollNumberStrings[i, 2] := FormatFloat('0.00', SollNumbers[i], fs);
+    SollNumberStrings[i, 3] := FormatFloat('#,##0', SollNumbers[i], fs);
+    SollNumberStrings[i, 4] := FormatFloat('#,##0.00', SollNumbers[i], fs);
+    SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
+    SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
+    SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
+    SollNumberStrings[i, 8] := SciFloat(SollNumbers[i], 1, fs);
   end;
 
   // Date/time values
@@ -186,22 +191,22 @@ begin
   SollDateTimeFormats[3] := nfLongTime;        SollDateTimeFormatStrings[3] := '';
   SollDateTimeFormats[4] := nfShortTimeAM;     SollDateTimeFormatStrings[4] := '';
   SollDateTimeFormats[5] := nfLongTimeAM;      SollDateTimeFormatStrings[5] := '';
-  SollDateTimeFormats[6] := nfFmtDateTime;     SollDateTimeFormatStrings[6] := 'dm';
-  SolLDateTimeFormats[7] := nfFmtDateTime;     SollDateTimeFormatStrings[7] := 'my';
-  SollDateTimeFormats[8] := nfFmtDateTime;     SollDateTimeFormatStrings[8] := 'ms';
+  SollDateTimeFormats[6] := nfCustom;          SollDateTimeFormatStrings[6] := 'dd/mmm';
+  SolLDateTimeFormats[7] := nfCustom;          SollDateTimeFormatStrings[7] := 'mmm/yy';
+  SollDateTimeFormats[8] := nfCustom;          SollDateTimeFormatStrings[8] := 'nn:ss';
   SollDateTimeFormats[9] := nfTimeInterval;    SollDateTimeFormatStrings[9] := '';
 
   for i:=Low(SollDateTimes) to High(SollDateTimes) do begin
-    SollDateTimeStrings[i, 0] := DateToStr(SollDateTimes[i]) + ' ' + FormatDateTime('t', SollDateTimes[i]);
-    SollDateTimeStrings[i, 1] := DateToStr(SollDateTimes[i]);
-    SollDateTimeStrings[i, 2] := FormatDateTime(fs.ShortTimeFormat, SollDateTimes[i]);
-    SolLDateTimeStrings[i, 3] := FormatDateTime(fs.LongTimeFormat, SollDateTimes[i]);
-    SollDateTimeStrings[i, 4] := FormatDateTime(fs.ShortTimeFormat + ' am/pm', SollDateTimes[i]);   // dont't use "t" - it does the hours wrong
-    SollDateTimeStrings[i, 5] := FormatDateTime(fs.LongTimeFormat + ' am/pm', SollDateTimes[i]);
-    SollDateTimeStrings[i, 6] := FormatDateTime(SpecialDateTimeFormat('dm', fs, false), SollDateTimes[i]);
-    SollDateTimeStrings[i, 7] := FormatDateTime(SpecialDateTimeFormat('my', fs, false), SollDateTimes[i]);
-    SollDateTimeStrings[i, 8] := FormatDateTime(SpecialDateTimeFormat('ms', fs, false), SollDateTimes[i]);
-    SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i], [fdoInterval]);
+    SollDateTimeStrings[i, 0] := DateToStr(SollDateTimes[i], fs) + ' ' + FormatDateTime('t', SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 1] := DateToStr(SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 2] := FormatDateTime(fs.ShortTimeFormat, SollDateTimes[i], fs);
+    SolLDateTimeStrings[i, 3] := FormatDateTime(fs.LongTimeFormat, SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 4] := FormatDateTime(fs.ShortTimeFormat + ' am/pm', SollDateTimes[i], fs);   // dont't use "t" - it does the hours wrong
+    SollDateTimeStrings[i, 5] := FormatDateTime(fs.LongTimeFormat + ' am/pm', SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 6] := FormatDateTime(SpecialDateTimeFormat('dm', fs, false), SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 7] := FormatDateTime(SpecialDateTimeFormat('my', fs, false), SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 8] := FormatDateTime(SpecialDateTimeFormat('ms', fs, false), SollDateTimes[i], fs);
+    SollDateTimeStrings[i, 9] := FormatDateTime('[h]:mm:ss', SollDateTimes[i], fs, [fdoInterval]);
   end;
 
   // Column width
@@ -345,7 +350,7 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet(FmtDateTimesSheet);
   for Row := Low(SollDateTimes) to High(SollDateTimes) do
     for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do begin
-      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfFmtDateTime, nfTimeInterval]) then
+      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
         Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
@@ -369,7 +374,7 @@ begin
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollDateTimes) to High(SollDateTimes) do
     for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do begin
-      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfFmtDateTime, nfTimeInterval]) then
+      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
         Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
       CheckEquals(

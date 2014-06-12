@@ -357,6 +357,9 @@ type
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
+    procedure ConvertBeforeWriting(var AFormatString: String;
+      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
+      var ACurrencySymbol: String); override;
   public
   end;
 
@@ -375,13 +378,15 @@ type
     function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
-      out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
-      out ACurrencySymbol: String; out ANumberFormatStr: String); virtual;
+      out ANumberFormat: TsNumberFormat; //out ADecimals: Byte;
+      //out ACurrencySymbol: String;
+      out ANumberFormatStr: String); virtual;
     // Finds format record for XF record pointed to by cell
     // Will not return info for built-in formats
     function FindNumFormatDataForCell(const AXFIndex: Integer): TsNumFormatData;
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
-    function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): Boolean;
+    function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
+      ANumberFormatStr: String; var ADateTime: TDateTime): Boolean;
     // Here we can add reading of records which didn't change across BIFF5-8 versions
     procedure ReadCodePage(AStream: TStream);
     // Read column info
@@ -708,54 +713,76 @@ end;
 
 { These are the built-in number formats as expected in the biff spreadsheet file.
   In BIFF5+ they are not written to file but they are used for lookup of the
-  number format that Excel used. They have to be converted to fpspreadsheet format. }
+  number format that Excel used. They are specified here in fpc dialect. }
 procedure TsBIFFNumFormatList.AddBuiltinFormats;
 var
+  fs: TFormatSettings;
   cs: String;
 begin
+  fs := Workbook.FormatSettings;
   cs := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
 
   AddFormat( 0, '', nfGeneral);
-  AddFormat( 1, '0', nfFixed, 0);
-  AddFormat( 2, '0.00', nfFixed, 2);
-  AddFormat( 3, '#,##0', nfFixedTh, 0);
-  AddFormat( 4, '#,##0.00', nfFixedTh, 2);
-  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency, 0);
-  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed, 0);
-  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency,  2);
-  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrencyRed, 2);
-  AddFormat( 9, '0%', nfPercentage, 0);
-  AddFormat(10, '0.00%', nfPercentage, 2);
-  AddFormat(11, '0.00E+00', nfExp, 2);
+  AddFormat( 1, '0', nfFixed);
+  AddFormat( 2, '0.00', nfFixed);
+  AddFormat( 3, '#,##0', nfFixedTh);
+  AddFormat( 4, '#,##0.00', nfFixedTh);
+  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency);
+  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed);
+  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency);
+  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrencyRed);
+  AddFormat( 9, '0%', nfPercentage);
+  AddFormat(10, '0.00%', nfPercentage);
+  AddFormat(11, '0.00E+00', nfExp);
   // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
-  AddFormat(14, 'M/D/YY', nfShortDate);
-  AddFormat(15, 'D-MMM-YY', nfLongDate);
-  AddFormat(16, 'D-MMM', nfFmtDateTime);
-  AddFormat(17, 'MMM-YY', nfFmtDateTime);
-  AddFormat(18, 'h:mm AM/PM', nfShortTimeAM);
-  AddFormat(19, 'h:mm:ss AM/PM', nfLongTimeAM);
-  AddFormat(20, 'h:mm', nfShortTime);
-  AddFormat(21, 'h:mm:ss', nfLongTime);
-  AddFormat(22, 'M/D/YY h:mm', nfShortDateTime);
+  AddFormat(14, fs.ShortDateFormat, nfShortDate);                       // 'M/D/YY'
+  AddFormat(15, fs.LongDateFormat, nfLongDate);                         // 'D-MMM-YY'
+  AddFormat(16, 'd/mmm', nfCustom);                                     // 'D-MMM'
+  AddFormat(17, 'mmm/yy', nfCustom);                                    // 'MMM-YY'
+  AddFormat(18, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);        // 'h:mm AM/PM'
+  AddFormat(19, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);          // 'h:mm:ss AM/PM'
+  AddFormat(20, fs.ShortTimeFormat, nfShortTime);                       // 'h:mm'
+  AddFormat(21, fs.LongTimeFormat, nfLongTime);                         // 'h:mm:ss'
+  AddFormat(22, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);  // 'M/D/YY h:mm' (localized)
   // 23..36 not supported
-  AddFormat(37, '_(#,##0_);(#,##0)', nfCurrency, 0);
-  AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed, 0);
-  AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency, 2);
-  AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed, 2);
-  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfAccounting, 0);
-  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfAccounting, 0);
-  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfAccounting, 2);
-  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfAccounting, 2);
-  AddFormat(45, 'mm:ss', nfFmtDateTime);
-  AddFormat(46, '[h]:mm:ss', nfTimeInterval);
-  AddFormat(47, 'mm:ss.0', nfFmtDateTime);
-  AddFormat(48, '##0.0E+00', nfSci, 1);
+  AddFormat(37, '_(#,##0_);(#,##0)', nfCurrency);
+  AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed);
+  AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency);
+  AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed);
+  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfAccounting);
+  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfAccounting);
+  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfAccounting);
+  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfAccounting);
+  AddFormat(45, 'nn:ss', nfCustom);
+  AddFormat(46, '[h]:nn:ss', nfTimeInterval);
+  AddFormat(47, 'nn:ss.z', nfCustom);
+  AddFormat(48, '##0.0E+00', nfSci);
   // 49 ("Text") not supported
 
   // All indexes from 0 to 163 are reserved for built-in formats.
   // The first user-defined format starts at 164.
   FFirstFormatIndexInFile := 164;
   FNextFormatIndex := 164;
+end;
+
+procedure TsBIFFNumFormatList.ConvertBeforeWriting(var AFormatString: String;
+  var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String);
+var
+  parser: TsNumFormatParser;
+  fmt: String;
+begin
+  parser := TsNumFormatParser.Create(Workbook, AFormatString);
+  try
+    if parser.Status = psOK then begin
+      // We convert the fpc format string to Excel dialect
+      AFormatString := parser.FormatString[nfdExcel];
+      ANumFormat := parser.NumFormat;
+      ADecimals := parser.Decimals;
+      ACurrencySymbol := parser.CurrencySymbol;
+    end;
+  finally
+    parser.Free;
+  end;
 end;
 
 
@@ -840,12 +867,14 @@ var
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
+  (*
   // Convert builtin formats to fps syntax
   for i:=0 to FNumFormatList.Count-1 do begin
     item := FNumFormatList[i];
     FNumFormatList.ConvertAfterReading(item.Index, item.FormatString,
       item.NumFormat, item.Decimals, item.CurrencySymbol);
   end;
+  *)
 end;
 
 { Extracts a number out of an RK value.
@@ -883,8 +912,9 @@ end;
 { Extracts number format data from an XF record index by AXFIndex.
   Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
-  out ACurrencySymbol: String; out ANumberFormatStr: String);
+  out ANumberFormat: TsNumberFormat; //out ADecimals: Byte;
+  //out ACurrencySymbol: String;
+  out ANumberFormatStr: String);
 var
   lNumFormatData: TsNumFormatData;
 begin
@@ -892,13 +922,13 @@ begin
   if lNumFormatData <> nil then begin
     ANumberFormat := lNumFormatData.NumFormat;
     ANumberFormatStr := lNumFormatData.FormatString;
-    ADecimals := lNumFormatData.Decimals;
-    ACurrencySymbol := lNumFormatData.CurrencySymbol;
+//    ADecimals := lNumFormatData.Decimals;
+//    ACurrencySymbol := lNumFormatData.CurrencySymbol;
   end else begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
-    ADecimals := 0;
-    ACurrencySymbol := '';
+//    ADecimals := 0;
+//    ACurrencySymbol := '';
   end;
 end;
 
@@ -918,22 +948,30 @@ end;
 
 { Convert the number to a date/time and return that if it is }
 function TsSpreadBIFFReader.IsDateTime(Number: Double;
-  ANumberFormat: TsNumberFormat; var ADateTime: TDateTime): boolean;
+  ANumberFormat: TsNumberFormat; ANumberFormatStr: String;
+  var ADateTime: TDateTime): boolean;
+var
+  parser: TsNumFormatParser;
 begin
+  Result := true;
   if ANumberFormat in [
-    nfShortDateTime, nfFmtDateTime, nfShortDate, nfLongDate,
-    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM] then
-  begin
-    ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode);
-    Result := true;
-  end else
-  if ANumberFormat = nfTimeInterval then begin
-    ADateTime := Number;
-    Result := true;
-  end else
-  begin
-    ADateTime := 0;
-    Result := false;
+    nfShortDateTime, {nfFmtDateTime, }nfShortDate, nfLongDate,
+    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM]
+  then
+    ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode)
+  else
+  if ANumberFormat = nfTimeInterval then
+    ADateTime := Number
+  else begin
+    parser := TsNumFormatParser.Create(Workbook, ANumberFormatStr);
+    try
+      if (parser.Status = psOK) and parser.IsDateTimeFormat then
+        ADateTime := ConvertExcelDateTimeToDateTime(Number, FDateMode)
+      else
+        Result := false;
+    finally
+      parser.Free;
+    end;
   end;
 end;
 
@@ -1108,11 +1146,11 @@ begin
     Move(Data[0], ResultFormula, SizeOf(Data));
 
     {Find out what cell type, set content type and value}
-    ExtractNumberFormat(XF, nf, nd, ncs, nfs);
-    if IsDateTime(ResultFormula, nf, dt) then
+    ExtractNumberFormat(XF, nf, nfs);
+    if IsDateTime(ResultFormula, nf, nfs, dt) then
       FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nd, ncs);
+      FWorksheet.WriteNumber(ARow, ACol, ResultFormula, nf, nfs); //, nd, ncs);
   end;
 
   { Formula token array }
@@ -1174,11 +1212,11 @@ begin
     RK := DWordLEtoN(AStream.ReadDWord);
     lNumber := DecodeRKValue(RK);
     {Find out what cell type, set contenttype and value}
-    ExtractNumberFormat(XF, nf, nd, ncs, nfs);
-    if IsDateTime(lNumber, nf, lDateTime) then
+    ExtractNumberFormat(XF, nf, nfs);
+    if IsDateTime(lNumber, nf, nfs, lDateTime) then
       FWorksheet.WriteDateTime(ARow, fc, lDateTime, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow, fc, lNumber, nf, nd, ncs);
+      FWorksheet.WriteNumber(ARow, fc, lNumber, nf, nfs);
     inc(fc);
     dec(pending, SizeOf(XF) + SizeOf(RK));
   end;
@@ -1210,13 +1248,11 @@ begin
   AStream.ReadBuffer(value, 8);
 
   {Find out what cell type, set content type and value}
-  ExtractNumberFormat(XF, nf, nd, ncs, nfs);
-  if IsDateTime(value, nf, dt) then
-    FWorksheet.WriteDateTime(ARow, ACol, dt) //, nf, nfs)
+  ExtractNumberFormat(XF, nf, nfs);
+  if IsDateTime(value, nf, nfs, dt) then
+    FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
   else
-  //if nf <> nfCustom then  // why was this here?
-    FWorksheet.WriteNumber(ARow, ACol, value, nf, nd, ncs);
-  FWorksheet.WriteNumberFormat(ARow, ACol, nf, nfs);  // override built-in format string
+    FWorksheet.WriteNumber(ARow, ACol, value, nf, nfs);
 
   { Add attributes to cell }
   ApplyCellFormatting(ARow, ACol, XF);
@@ -1297,17 +1333,17 @@ begin
   Number := DecodeRKValue(RK);
 
   {Find out what cell type, set contenttype and value}
-  ExtractNumberFormat(XF, nf, nd, ncs, nfs);
-  if IsDateTime(Number, nf, lDateTime) then
+  ExtractNumberFormat(XF, nf, nfs);
+  if IsDateTime(Number, nf, nfs, lDateTime) then
     FWorksheet.WriteDateTime(ARow, ACol, lDateTime, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, Number, nf, nd, ncs);
+    FWorksheet.WriteNumber(ARow, ACol, Number, nf, nfs);
 
   {Add attributes}
   ApplyCellFormatting(ARow, ACol, XF);
 end;
 
-// Read the part of the ROW record that is common to all BIFF versions
+// Read the part of the ROW record that is common to BIFF3-8 versions
 procedure TsSpreadBIFFReader.ReadRowInfo(AStream: TStream);
 type
   TRowRecord = packed record
@@ -1325,6 +1361,21 @@ var
   h: word;
 begin
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
+
+  // if bit 6 is set in the flags row height does not match the font size.
+  // Only for this case we create a row record for fpspreadsheet
+  if rowrec.Flags and $00000040 <> 0 then begin
+    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
+    // row height is encoded into the 15 lower bits in units "twips" (1/20 pt)
+    // we need it in "lines", i.e. we divide the points by the point size of the default font
+    h := WordLEToN(rowrec.Height) and $7FFF;
+    lRow^.Height := TwipsToPts(h) / FWorkbook.GetDefaultFontSize;
+    if lRow^.Height > ROW_HEIGHT_CORRECTION then
+      lRow^.Height := lRow^.Height - ROW_HEIGHT_CORRECTION
+    else
+      lRow^.Height := 0;
+  end;
+{
   h := WordLEToN(rowrec.Height);
   if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
@@ -1336,6 +1387,7 @@ begin
     else
       lRow^.Height := 0;
   end;
+  }
 end;
 
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
@@ -2118,6 +2170,7 @@ begin
   // But we have to consider that the number formats of the cell is in fpc syntax,
   // but the number format list of the writer is in Excel syntax.
   lCell := ACell^;
+  (*
   with lCell do begin
     if NumberFormat <> nfCustom then begin
       if IsDateTimeFormat(NumberFormat) then
@@ -2126,9 +2179,10 @@ begin
       else
         NumberFormatStr := BuildNumberFormatString(NumberFormat,
           Workbook.FormatSettings, Decimals, CurrencySymbol);
-      NumFormatList.ConvertBeforeWriting(NumberFormatStr, NumberFormat, Decimals, CurrencyString);
+      //NumFormatList.ConvertBeforeWriting(NumberFormatStr, NumberFormat, Decimals, CurrencyString);
     end;
   end;
+  *)
   lIndex := FindFormattingInList(@lCell);
 
   // Carefully check the index

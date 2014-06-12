@@ -250,27 +250,27 @@ begin
   SollDates[14]:=SollDates[1];  // #1 formatted as nfLongTime
   SollDates[15]:=SollDates[1];  // #1 formatted as nfShortTimeAM
   SollDates[16]:=SollDates[1];  // #1 formatted as nfLongTimeAM
-  SollDates[17]:=SollDates[1];  // #1 formatted as nfFmtDateTime dm
-  SollDates[18]:=SollDates[1];  // #1 formatted as nfFmtDateTime my
-  SollDates[19]:=SollDates[1];  // #1 formatted as nfFmtDateTime ms
+  SollDates[17]:=SollDates[1];  // #1 formatted as nfCustom dd/mmm
+  SollDates[18]:=SollDates[1];  // #1 formatted as nfCustom mmm/yy
+  SollDates[19]:=SollDates[1];  // #1 formatted as nfCustom mm:ss
 
   SollDates[20]:=SollDates[5];  // #5 formatted as nfShortDateTime
   SollDates[21]:=SollDates[5];  // #5 formatted as nfShortTime
   SollDates[22]:=SollDates[5];  // #5 formatted as nfLongTime
   SollDates[23]:=SollDates[5];  // #5 formatted as nfShortTimeAM
   SollDates[24]:=SollDates[5];  // #5 formatted as nfLongTimeAM
-  SollDates[25]:=SollDates[5];  // #5 formatted as nfFmtDateTime dm
-  SollDates[26]:=SollDates[5];  // #5 formatted as nfFmtDateTime my
-  SollDates[27]:=SollDates[5];  // #5 formatted as nfFmtDateTime ms
+  SollDates[25]:=SollDates[5];  // #5 formatted as nfCustom dd:mmm
+  SollDates[26]:=SollDates[5];  // #5 formatted as nfCustom mmm:yy
+  SollDates[27]:=SollDates[5];  // #5 formatted as nfCustom mm:ss
 
   SollDates[28]:=SollDates[11];  // #11 formatted as nfShortDateTime
   SollDates[29]:=SollDates[11];  // #11 formatted as nfShortTime
   SollDates[30]:=SollDates[11];  // #11 formatted as nfLongTime
   SollDates[31]:=SollDates[11];  // #11 formatted as nfShortTimeAM
   SollDates[32]:=SollDates[11];  // #11 formatted as nfLongTimeAM
-  SollDates[33]:=SollDates[11];  // #11 formatted as nfFmtDateTime dm
-  SollDates[34]:=SollDates[11];  // #11 formatted as nfFmtDateTime my
-  SollDates[35]:=SollDates[11];  // #11 formatted as nfFmtDateTime ms
+  SollDates[33]:=SollDates[11];  // #11 formatted as nfCustom dd/mmm
+  SollDates[34]:=SollDates[11];  // #11 formatted as nfCustom mmm/yy
+  SollDates[35]:=SollDates[11];  // #11 formatted as nfCustom mmm:ss
 
   SollDates[36]:=EncodeTime(3,45,12,0);     // formatted as nfTimeDuration
   SollDates[37]:=EncodeTime(3,45,12,0) + 1  // formatted as nfTimeDuration
