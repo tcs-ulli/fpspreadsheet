@@ -70,22 +70,23 @@ function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberF
 
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
-function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
+//function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 
-function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
-  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
-  ACurrencySymbol: String = '?'): String;
+function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
+  ADecimals, APosCurrFormat, ANegCurrFormat: Integer;
+  ANegativeValuesRed, AAccountingStyle: Boolean; ACurrencySymbol: String = '?'): String;
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
-function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
-  ADecimals: Integer; ANegativeValuesRed: Boolean; AAccountingStyle: Boolean;
-  ACurrencySymbol: String = '?'): String;
+function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
+  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
 
 function AddAMPM(const ATimeFormatString: String;
   const AFormatSettings: TFormatSettings): String;
 function StripAMPM(const ATimeFormatString: String): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
+function MakeLongDateFormat(AShortDateFormat: String): String;
+function MakeShortDateFormat(AShortDateFormat: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
 function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
@@ -93,7 +94,8 @@ function SplitAccountingFormatString(const AFormatString: String; ASection: Shor
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
-function SciFloat(AValue: Double; ADecimals: Byte): String;
+function SciFloat(AValue: Double; ADecimals: Byte): String; overload;
+function SciFloat(AValue: Double; ADecimals: Byte; AFormatSettings: TFormatSettings): String; overload;
 //function TimeIntervalToString(AValue: TDateTime; AFormatStr: String): String;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
@@ -563,51 +565,8 @@ end;
 { Checks whether the given number format code is for date/times. }
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
-  Result := AFormat in [nfFmtDateTime, nfShortDateTime, nfShortDate, nfLongDate,
+  Result := AFormat in [{nfFmtDateTime, }nfShortDateTime, nfShortDate, nfLongDate,
     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
-end;
-
-function IsDateTimeFormat(AFormatStr: string): Boolean;
-var
-  P, PStart, PEnd: PChar;
-  token: Char;
-begin
-  if AFormatStr = '' then
-    Result := false
-  else begin
-    PStart := PChar(@AFormatStr[1]);
-    PEnd := PStart + Length(AFormatStr);
-    P := PStart;
-    while P < PEnd do begin
-      token := P^;
-      case token of     // Skip quoted text
-        '"': begin
-               inc(P);
-               token := P^;
-               while (P < PEnd) and (token <> '"') do begin
-                 inc(P);
-                 token := P^;
-               end;
-             end;
-        {
-        '[': begin
-               inc(P);
-               token := P^;
-               while (P < PEnd) and (token <> ']') do begin
-                 inc(P);
-                 token := P^;
-               end;
-             end;
-             }
-        'y', 'Y', 'm', 'M', 'd', 'D', 'h', 'H', 'n', 'N', 's', 'S', ':':
-             begin
-               Result := true;
-               exit;
-             end;
-      end;
-      inc(P);
-    end;
-  end;
 end;
 
 { Builds a date/time format string from the numberformat code. If the format code
@@ -620,8 +579,10 @@ var
   fmt: String;
 begin
   case ANumberFormat of
+    {
     nfFmtDateTime:
       Result := SpecialDateTimeFormat(lowercase(AFormatString), AFormatSettings, false);
+      }
     nfShortDateTime:
       Result := AFormatSettings.ShortDateFormat + ' ' + AFormatSettings.ShortTimeFormat;
       // In the DefaultFormatSettings this is: d/m/y hh:nn
@@ -664,41 +625,44 @@ end;
   This code has to be removed by StripAccountingSymbols before applying to
   FormatFloat. }
 function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
-  ADecimals: Integer; ANegativeValuesRed: Boolean; AAccountingStyle: Boolean;
-  ACurrencySymbol: String = '?'): String;
+  ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ANegativeValuesRed: Boolean;
+  AAccountingStyle: Boolean; ACurrencySymbol: String = '?'): String;
 const
-  POS_FMT: array[0..3, boolean] of string = (  //0: value, 1: currency symbol
+  POS_FMT: array[0..3, boolean] of string = (
+    // Parameter 0 is "value", parameter 1 is "currency symbol"
+    // AccountingStyle = false --> 1st column, true --> 2nd column
     ('"%1:s"%0:s',  '"%1:s"* %0:s'),      // 0: $1
-    ('%0:s"%1:s"',  '%0:s* "%1:s"'),      // 1: 1$
+    ('%0:s"%1:s"',  '%0:s "%1:s"'),       // 1: 1$
     ('"%1:s" %0:s', '"%1:s"* %0:s'),      // 2: $ 1
-    ('%0:s "%1:s"', '%0:s* "%1:s"')       // 3: 1 $
+    ('%0:s "%1:s"', '%0:s "%1:s"')        // 3: 1 $
   );
   NEG_FMT: array[0..15, boolean] of string = (
     ('("%1:s"%0:s)',  '"%1:s"* (%0:s)'),  //  0: ($1)
-    ('-"%1:s"%0:s',   '"%1:s"* -%0:s'),   //  1: -$1
+    ('-"%1:s"%0:s',   '-* "%1:s" %0:s'),  //  1: -$1
     ('"%1:s"-%0:s',   '"%1:s"* -%0:s'),   //  2: $-1
-    ('"%1:s"%0:s-',   '"%1:s"* %0:s-'),   //  3: $1-
-    ('(%0:s"%1:s")',  '(%0:s)"%1:s"'),    //  4: (1$)
-    ('-%0:s"%1:s"',   '-%0:s"%1:s"'),     //  5: -1$
+    ('"%1:s"%0:s-',   '"%1:s"%0:s-'),     //  3: $1-
+    ('(%0:s"%1:s")',  '(%0:s)%1:s"'),     //  4: (1$)
+    ('-%0:s"%1:s"',   '-* %0:s"%1:s"'),   //  5: -1$
     ('%0:s-"%1:s"',   '%0:s-"%1:s"'),     //  6: 1-$
     ('%0:s"%1:s"-',   '%0:s-"%1:s"'),     //  7: 1$-
-    ('-%0:s "%1:s"',  '-%0:s"%1:s"'),     //  8: -1 $
-    ('-"%1:s" %0:s',  '"%1:s"* -%0:s'),   //  9: -$ 1
+    ('-%0:s "%1:s"',  '-* %0:s"%1:s"'),   //  8: -1 $
+    ('-"%1:s" %0:s',  '-* "%1:s" -%0:s'), //  9: -$ 1
     ('%0:s "%1:s"-',  '%0:s- "%1:s"'),    // 10: 1 $-
     ('"%1:s" %0:s-',  '"%1:s"* %0:s-'),   // 11: $ 1-
     ('"%1:s" -%0:s',  '"%1:s"* -%0:s'),   // 12: $ -1
     ('%0:s- "%1:s"',  '%0:s- "%1:s"'),    // 13: 1- $
     ('("%1:s" %0:s)', '"%1:s"* (%0:s)'),  // 14: ($ 1)
-    ('(%0:s "%1:s")', '(%0:s) "%1:s"')    // 15: (1 $)
+    ('(%0:s "%1:s")', '(%0:s "%1:s")')    // 15: (1 $)
   );
 var
   decs: String;
   cf, ncf: Byte;
   p, n: String;
 begin
-  cf := AFormatSettings.CurrencyFormat;
-  ncf := AFormatSettings.NegCurrFormat;
-  if ADecimals < 0 then ADecimals := AFormatSettings.CurrencyDecimals;
+  cf := IfThen(APosCurrFormat < 0, AFormatSettings.CurrencyFormat, APosCurrFormat);
+  ncf := IfThen(ANegCurrFormat < 0, AFormatSettings.NegCurrFormat, ANegCurrFormat);
+  if ADecimals < 0 then
+    ADecimals := AFormatSettings.CurrencyDecimals;
   if ACurrencySymbol = '?' then
     ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);
   decs := DupeString('0', ADecimals);
@@ -717,7 +681,7 @@ begin
 
   if ACurrencySymbol <> '' then begin
     Result := Format(p, ['#,##0' + decs, ACurrencySymbol]) + ';'
-            + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
+            + IfThen(ANegativeValuesRed, '[red]', '') + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
             + Format(p, [IfThen(AAccountingStyle, '-', '0'+decs), ACurrencySymbol]);
   end
   else begin
@@ -731,21 +695,16 @@ begin
   end;
 end;
 
-{ Builds a number format string from the numberformat code, the count of
+{ Builds a number format string from the number format code, the count of
   decimals, and the currencysymbol (if not empty). }
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
-  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
-  ACurrencySymbol: String = '?'): String;
+  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
 var
   decs: String;
-  cf, ncf: Byte;
 begin
   Result := '';
-  cf := AFormatSettings.CurrencyFormat;
-  ncf := AFormatSettings.NegCurrFormat;
-  if ADecimals = -1 then ADecimals := AFormatSettings.CurrencyDecimals;
-  if ACurrencySymbol = '?' then
-    ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);
+  if ADecimals = -1 then
+    ADecimals := AFormatSettings.CurrencyDecimals;
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
   case ANumberFormat of
@@ -760,13 +719,12 @@ begin
     nfPercentage:
       Result := '0' + decs + '%';
     nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed:
-      Result := BuildCurrencyFormatString(
-        AFormatSettings,
-        ADecimals,
-        ANumberFormat in [nfCurrencyRed, nfAccountingRed],
-        ANumberFormat in [nfAccounting, nfAccountingRed],
-        ACurrencySymbol
-      );
+      raise Exception.Create('BuildNumberFormatString: Use BuildCurrencyFormatString '+
+        'to create a format string for currency values.');
+    nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
+    nfShortTimeAM, nfLongTimeAM, nfTimeInterval:
+      raise Exception.Create('BuildNumberFormatString: Use BuildDateTimeFormatSstring '+
+        'to create a format string for date/time values.');
   end;
 end;
 
@@ -802,12 +760,18 @@ var
   i: Integer;
 begin
   Result := 0;
-  for i:=Length(AFormatString) downto 1 do begin
-    if AFormatString[i] in ADecChars then inc(Result);
-    if AFormatString[i] = '.' then exit;
+  i := 1;
+  while (i <= Length(AFormatString)) do begin
+    if AFormatString[i] = '.' then begin
+      inc(i);
+      while (i <= Length(AFormatString)) and (AFormatString[i] in ADecChars) do begin
+        inc(i);
+        inc(Result);
+      end;
+      exit;
+    end else
+      inc(i);
   end;
-  // Comes to this point when there is no decimal separtor.
-  Result := 0;
 end;
 
 { The given format string is assumed to be for time intervals, i.e. its first
@@ -828,6 +792,64 @@ begin
       Result := Format('[%s]%s', [s1, s2]);
     end else
       Result := Format('[%s]', [AFormatString]);
+  end;
+end;
+
+{ Creates a long date format string out of a short one. Retains the order of
+  year-month-day and the separators, but uses 4 digits for year and 3 digits of m }
+function MakeLongDateFormat(AShortDateFormat: String): String;
+var
+  i: Integer;
+begin
+  Result := '';
+  i := 1;
+  while i < Length(AShortDateFormat) do begin
+    case AShortDateFormat[i] of
+      'y', 'Y':
+        begin
+          Result := Result + DupeString(AShortDateFormat[i], 4);
+          while (i < Length(AShortDateFormat)) and (AShortDateFormat[i] in ['y','Y']) do
+            inc(i);
+        end;
+      'm', 'M':
+        begin
+          result := Result + DupeString(AShortDateFormat[i], 3);
+          while (i < Length(AShortDateFormat)) and (AShortDateFormat[i] in ['m','M']) do
+            inc(i);
+        end;
+      else
+        Result := Result + AShortDateFormat[i];
+        inc(i);
+    end;
+  end;
+end;
+
+{ Modifies the short date format such that it has a two-digit year and a two-digit
+  month. Retains the order of year-month-day and the separators. }
+function MakeShortDateFormat(AShortDateFormat: String): String;
+var
+  i: Integer;
+begin
+  Result := '';
+  i := 1;
+  while i < Length(AShortDateFormat) do begin
+    case AShortDateFormat[i] of
+      'y', 'Y':
+        begin
+          Result := Result + DupeString(AShortDateFormat[i], 2);
+          while (i < Length(AShortDateFormat)) and (AShortDateFormat[i] in ['y','Y']) do
+            inc(i);
+        end;
+      'm', 'M':
+        begin
+          result := Result + DupeString(AShortDateFormat[i], 2);
+          while (i < Length(AShortDateFormat)) and (AShortDateFormat[i] in ['m','M']) do
+            inc(i);
+        end;
+      else
+        Result := Result + AShortDateFormat[i];
+        inc(i);
+    end;
   end;
 end;
 
@@ -862,7 +884,7 @@ begin
     Result := DupeString(MinuteChar, 2) + ':ss';                    // mm:ss
   end
   else if ACode = 'msz' then
-    Result := DupeString(MinuteChar, 2) + ':ss.' + MillisecChar    // mm:ss.z
+    Result := DupeString(MinuteChar, 2) + ':ss.' + MillisecChar     // mm:ss.z
   else
     Result := ACode;
 end;
@@ -991,21 +1013,28 @@ end;
 { Formats the number AValue in "scientific" format with the given number of
   decimals. "Scientific" is the same as "exponential", but with exponents rounded
   to multiples of 3 (like for "kilo" - "Mega" - "Giga" etc.). }
-function SciFloat(AValue: Double; ADecimals: Byte): String;
+function SciFloat(AValue: Double; ADecimals: Byte;
+  AFormatSettings: TFormatSettings): String;
 var
   m: Double;
   ex: Integer;
 begin
   if AValue = 0 then
-    Result := '0.0'
+    Result := Format('%0.*fE+0', [ADecimals, 0.0], AFormatSettings)
+    // Excel shows "000.0E+0", but I think the "0.0E+0" shown here is better.
   else begin
     ex := floor(log10(abs(AValue)));  // exponent
     // round exponent to multiples of 3
     ex := (ex div 3) * 3;
     if ex < 0 then dec(ex, 3);
     m := AValue * Power(10, -ex);     // mantisse
-    Result := Format('%.*fE%d', [ADecimals, m, ex]);
+    Result := Format('%.*fE+%d', [ADecimals, m, ex], AFormatSettings);
   end;
+end;
+
+function SciFloat(AValue: Double; ADecimals: Byte): String;
+begin
+  Result := SciFloat(AValue, ADecimals, DefaultFormatSettings);
 end;
 
 { Creates a "time interval" format string having the first code identifier

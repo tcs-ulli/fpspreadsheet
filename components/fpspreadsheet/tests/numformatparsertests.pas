@@ -46,6 +46,7 @@ implementation
 uses
   TypInfo;
 
+{ The test will use Excel strings and convert them to fpc dialect }
 procedure InitParserTestData;
 begin
   // Tests with 1 format section only
@@ -146,14 +147,16 @@ var
   i: Integer;
   parser: TsNumFormatParser;
   MyWorkbook: TsWorkbook;
+  actual: String;
 begin
   MyWorkbook := TsWorkbook.Create;  // needed to provide the FormatSettings for the parser
   try
     for i:=0 to 5 do begin
-      parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString, cdToFPSpreadsheet);
+      parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString);
       try
-        CheckEquals(ParserTestData[i].SollFormatString, parser.FormatString,
-          'Test format string ' + ParserTestData[i].FormatString + ' construction mismatch');
+        actual := parser.FormatString[nfdDefault];
+        CheckEquals(ParserTestData[i].SollFormatString, actual,
+          'Test format string ' + ParserTestData[i].SollFormatString + ' construction mismatch');
         CheckEquals(ord(ParserTestData[i].SollNumFormat), ord(parser.ParsedSections[0].NumFormat),
           'Test format (' + GetEnumName(TypeInfo(TsNumberFormat), integer(ParserTestData[i].SollNumFormat)) +
           ') detection mismatch');

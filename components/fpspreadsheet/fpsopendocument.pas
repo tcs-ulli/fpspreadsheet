@@ -452,8 +452,6 @@ begin
       Include(ACell^.UsedFormattingFields, uffNumberFormat);
       ACell^.NumberFormat := numFmtData.NumFormat;
       ACell^.NumberFormatStr := numFmtData.FormatString;
-      ACell^.Decimals := numFmtData.Decimals;
-      ACell^.CurrencySymbol := numFmtData.CurrencySymbol;
     end;
   end;
 end;
@@ -1074,7 +1072,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if negfmt <> '' then AFormatStr := AFormatStr + ';' + negfmt;
     if zerofmt <> '' then AFormatStr := AFormatStr + ';' + zerofmt;
 
-    if ANumFormat <> nfFmtDateTime then
+//    if ANumFormat <> nfFmtDateTime then
       ANumFormat := nfCustom;
   end;
 
@@ -1141,7 +1139,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     else if ANumFormatNode.NodeName = 'number:currency-style' then
       nf := nfCurrency;
 
-    NumFormatList.AddFormat(ANumFormatName, fmt, nf, decs, cs);
+    NumFormatList.AddFormat(ANumFormatName, fmt, nf);
   end;
 
   procedure ReadDateTimeStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -1233,7 +1231,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       node := node.NextSibling;
     end;
 
-    nf := IfThen(isInterval, nfTimeInterval, nfFmtDateTime);
+//    nf := IfThen(isInterval, nfTimeInterval, nfFmtDateTime);
+    nf := IfThen(isInterval, nfTimeInterval, nfCustom);
     node := ANumFormatNode.FindNode('style:map');
     if node <> nil then
       ReadStyleMap(node, nf, fmt);
@@ -1271,9 +1270,11 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     node := ANumFormatNode.FindNode('style:map');
     if node <> nil then
       ReadStyleMap(node, nf, fmt);
+    {
     if IsDateTimeFormat(fmt) then
       nf := nfFmtDateTime
     else
+    }
       nf := nfCustom;
 
     NumFormatList.AddFormat(ANumFormatName, fmt, nf);
