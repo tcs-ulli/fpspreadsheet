@@ -141,18 +141,7 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
-(*
-    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
-      ANumFormat: TsNumberFormat); overload;
-    constructor Create(AWorkbook: TsWorkbook; const AFormatSections: TsNumFormatSections;
-      AConversionDirection: TsConversionDirection = cdFromFPSpreadsheet); overload;
-      *)
     destructor Destroy; override;
-    (*
-    procedure CopySections(const FromSections: TsNumFormatSections;
-      var ToSections: TsNumFormatSections);
-    procedure CopySectionsTo(var ADestination: TsNumFormatSections);
-    *)
     function GetDateTimeCode(ASection: Integer): String;
     function IsDateTimeFormat: Boolean;
     procedure LimitDecimals;
@@ -190,38 +179,7 @@ begin
   FWorkbook := AWorkbook;
   Parse(AFormatString);
 end;
-                           (*
-constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String; ANumFormat: TsNumberFormat;
-  AConversionDirection: TsConversionDirection = cdToFPSpreadsheet);
-begin
-  inherited Create;
-  FCreateMethod := 0;
-  FConversionDirection := AConversionDirection;
-  FWorkbook := AWorkbook;
-  FNumFormat := ANumFormat;
-  FFormatSettings := DefaultFormatSettings;
-  FFormatSettings.DecimalSeparator := '.';
-  FFormatSettings.ThousandSeparator := ',';
-  FIsAccounting := (ANumFormat in [nfAccounting, nfAccountingRed]);
-  Parse(AFormatString);
-end;
 
-{ Creates a number format parser to create a format string from the individual
-  format sections given in "AFormatSections". It is assumed by default that the
-  format string will be written to file. Therefore, it can contain features of
-  the destination file format and, in general, will not work if called by
-  fpspreadsheet. }
-constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatSections: TsNumFormatSections);
-begin
-  inherited Create;
-  FCreateMethod := 1;
-  FConversionDirection := AConversionDirection;
-  FWorkbook := AWorkbook;
-  CopySections(AFormatSections, FSections);
-end;
-                             *)
 destructor TsNumFormatParser.Destroy;
 begin
   FSections := nil;
@@ -421,111 +379,9 @@ end;
 procedure TsNumFormatParser.CheckSections;
 var
   i: Integer;
-{
-  ns: Integer;
-  s: String;
-  isCurr: Boolean;
-  }
 begin
   for i:=0 to Length(FSections)-1 do
     CheckSection(i);
-  (*
-  ns := Length(FSections);
-
-  if (ns > 1) and (FNumFormat in [nfCurrencyRed, nfAccountingRed]) then
-    FSections[1].Color := scRed;
-
-  for i:=0 to ns-1 do begin
-    if FSections[i].FormatString = '' then
-      FSections[i].NumFormat := nfGeneral;
-
-    if (FSections[i].CurrencySymbol <> '') or FIsAccounting then
-      FSections[i].NumFormat := nfCurrency;
-
-    if FSections[i].CompareOperation <> coNotUsed then begin
-      FStatus := psErrConditionalFormattingNotSupported;
-      exit;
-    end;
-
-    // Check format strings
-    case FSections[i].NumFormat of
-      nfGeneral, nfFixed, nfFixedTh, nfPercentage, nfExp, nfSci, nfCurrency, nfAccounting:
-        try
-          s := FormatFloat(FSections[i].FormatString, 1.0, FWorkBook.FormatSettings);
-        except
-          FStatus := psErrNoValidNumberFormat;
-          exit;
-        end;
-
-      nfShortDateTime, nfShortDate, nfShortTime, nfShortTimeAM,
-      nfLongDate, nfLongTime, nfLongTimeAM, nfTimeInterval, nfFmtDateTime:
-        try
-          s := FormatDateTime(FSections[i].FormatString, now(), FWorkbook.FormatSettings, [fdoInterval]);
-        except
-          FStatus := psErrNoValidDateTimeFormat;
-          exit;
-        end;
-    end;
-  end;
-
-  // Extract built-in NumFormat identifier for currency (needs several entries in
-  // three sections).
-  isCurr := ((ns = 2) and (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency))
-    or ((ns = 3) and (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency) and
-                     ((FSections[2].NumFormat = nfCurrency) or (FSections[2].FormatString = '-')) );
-
-  if isCurr then begin
-    if FIsAccounting then
-      FNumFormat := IfThen(FSections[1].Color = scRed, nfAccountingRed, nfAccounting)
-    else
-      FNumFormat := IfThen(FSections[1].Color = scRed, nfCurrency, nfCurrencyRed);
-  end;
-
-  // If there are other multi-section formatstrings they must be a custom format
-  if not isCurr then begin
-    if (ns > 1) then begin
-      for i:=1 to ns-1 do
-        if FSections[i].FormatString <> '' then begin
-          FNumFormat := nfCustom;
-          break;
-        end;
-      if fNumFormat <> nfCustom then
-        FNumFormat := FSections[0].NumFormat;
-    end
-    else
-      FNumFormat := FSections[0].NumFormat;
-  end;
-
-  // Add colors to section format strings
-  if (FConversionDirection = cdFromFPSpreadsheet) then
-    for i := 0 to High(FSections) do
-      if FSections[i].Color < 8 then
-        FSections[i].FormatString := Format('[%s]%s', [
-          FWorkbook.GetColorName(FSections[i].Color),
-          FSections[i].FormatString
-        ])
-      else
-      if FSections[i].Color <> scNotDefined then
-        FSections[i].FormatString := Format('[Color%d]%s', [
-          FSections[i].Color,
-          FSections[i].FormatString
-        ]);
-
-  // Construct total format string
-  if ns = 2 then
-    FFormatString := Format('%s;%s;%s', [
-      FSections[0].FormatString,
-      FSections[1].FormatString,
-      FSections[0].FormatString  // make sure that fpc understands the "zero"
-    ])
-  else
-  if ns > 0 then begin
-    FFormatString := FSections[0].FormatString;
-    for i:=1 to ns-1 do
-      FFormatString := Format('%s;%s', [FFormatString, FSections[i].FormatString]);
-  end else
-    FStatus := psErrNoUsableFormat;
-    *)
 end;
 
 procedure TsNumFormatParser.CheckSection(ASection: Integer);
@@ -608,28 +464,6 @@ begin
     FSections[ASection].Color
   );
 end;
-  (*
-procedure TsNumFormatParser.CopySections(
-  const FromSections: TsNumFormatSections; var ToSections: TsNumformatSections);
-var
-  i, j: Integer;
-begin
-  SetLength(ToSections, Length(FromSections));
-  for i:= 0 to High(FromSections) do begin
-    ToSections[i].NumFormat := FromSections[i].NumFormat;
-    ToSections[i].Decimals := FromSections[i].Decimals;
-    ToSections[i].CurrencySymbol := FromSections[i].CurrencySymbol;
-    SetLength(ToSections[i].Elements, Length(FromSections[i].Elements));
-    for j:=0 to High(ToSections[i].Elements) do
-      ToSections[i].Elements[j] := FromSections[i].Elements[j];
-  end;
-end;
-
-procedure TsNumFormatParser.CopySectionsTo(var ADestination: TsNumFormatSections);
-begin
-  CopySections(FSections, ADestination);
-end;
-    *)
 
 procedure TsNumFormatParser.DeleteElement(ASection, AIndex: Integer);
 var
@@ -690,14 +524,7 @@ begin
     for i:=1 to High(FSections) do
       Result := Result + ';' + BuildFormatStringFromSection(i, ADialect);
   end;
-  {
-  case FCreateMethod of
-    0: Result := FFormatString;
-    1: Result := CreateFormatStringFromSections;
-  end;
-  }
 end;
-
 
 procedure TsNumFormatParser.EvalNumFormatOfSection(ASection: Integer;
   out ANumFormat: TsNumberFormat; out ADecimals: byte; out ACurrencySymbol: String;
@@ -869,14 +696,8 @@ begin
       Result := nfCustom;
       exit;
     end;
-    if Length(FSections) > 1 then begin
-      {
-      if IsDateTimeFormat then
-        Result := nfFmtDateTime
-      else
-      }
-        Result := nfCustom;
-    end;
+    if Length(FSections) > 1 then
+      Result := nfCustom;
   end;
 end;
 
@@ -1024,18 +845,6 @@ begin
   if CheckFormat(FWorkbook.FormatSettings.LongDateFormat, ANextIndex) then begin
     Result := true;
     ANumberFormat := nfLongDate;
-    {
-  end else begin
-    // If it is neither nfShortDate nor nfLongDate we look for any year, month
-    // or day tokens. If we find one it must be at least nfFmtDateTime.
-    for i:=0 to High(FSections[ASection].Elements) do
-      if FSections[ASection].Elements[i].Token in [nftYear, nftMonth, nftDay] then begin
-        Result := true;
-        ANumberFormat := nfFmtDateTime;
-        exit;
-      end;
-    Result := false;
-    }
   end else
     Result := false;
 end;
@@ -1386,7 +1195,6 @@ begin
   until (FToken <> ATestChar) or (FCurrent >= FEnd);
 end;
 
-
 { Extracts the text between square brackets. This can be
   - a time duration like [hh]
   - a condition, like [>= 2.0]
@@ -1526,7 +1334,6 @@ begin
     AddElement(nftCountry, s);
   end;
 end;
-
 
 { Scans a date/time format. Procedure is left with the cursor at the last char
   of the date/time format. }
