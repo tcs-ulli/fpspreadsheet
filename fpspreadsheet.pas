@@ -2684,6 +2684,7 @@ constructor TsWorkbook.Create;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
+  FFormat := sfExcel8;
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
   FormatSettings := DefaultFormatSettings;
