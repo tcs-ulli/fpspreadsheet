@@ -155,6 +155,8 @@ type
     *)
     function GetDateTimeCode(ASection: Integer): String;
     function IsDateTimeFormat: Boolean;
+    procedure LimitDecimals;
+    procedure Localize;
 
     property CurrencySymbol: String read GetCurrencySymbol;
     property Decimals: Byte read GetDecimals write SetDecimals;
@@ -358,10 +360,8 @@ begin
     case element.Token of
       nftText:
         if element.TextValue <> '' then result := Result + '"' + element.TextValue + '"';
-      nftThSep:
-        Result := Result + ',';
-      nftDecSep:
-        Result := Result + '.';
+      nftThSep, nftDecSep:
+        Result := Result + element.TextValue;
       nftDigit:
         Result := Result + '0';
       nftOptDigit, nftOptDec:
@@ -812,6 +812,7 @@ begin
           nftDay         : Result := Result + 'd';
           nftHour        : Result := Result + 'h';
           nftMinute      : Result := Result + 'n';
+          nftSecond      : Result := Result + 's';
           nftMilliSeconds: Result := Result + 'z';
         end;
         inc(i);
@@ -1272,6 +1273,40 @@ begin
   Result := (ASection < Length(FSections)) and
             (AIndex < Length(FSections[ASection].Elements)) and
             (FSections[ASection].Elements[AIndex].Token = AToken);
+end;
+
+{ Limits the decimals to 0 or 2, as required by Excel }
+procedure TsNumFormatParser.LimitDecimals;
+var
+  i, j: Integer;
+begin
+  for j:=0 to High(FSections) do
+    for i:=0 to High(FSections[j].Elements) do
+      if FSections[j].Elements[i].Token = nftDecs then
+        if FSections[j].Elements[i].IntValue > 0 then
+          FSections[j].Elements[i].IntValue := 2;
+end;
+
+{ Localizes the thousand- and decimal separator symbols by replacing them with
+  the FormatSettings value of the workbook. A recreated format string will be
+  localized as required by Excel2 }
+procedure TsNumFormatParser.Localize;
+var
+  i, j: Integer;
+  fs: TFormatSettings;
+  txt: String;
+begin
+  fs := FWorkbook.FormatSettings;
+  for j:=0 to High(FSections) do
+    for i:=0 to High(FSections[j].Elements) do begin
+      txt := FSections[j].Elements[i].TextValue;
+      case FSections[j].Elements[i].Token of
+        nftThSep     : txt := fs.ThousandSeparator;
+        nftDecSep    : txt := fs.DecimalSeparator;
+        nftCurrSymbol: txt := UTF8ToAnsi(txt);
+      end;
+      FSections[j].Elements[i].TextValue := txt;
+    end;
 end;
 
 function TsNumFormatParser.NextToken: Char;

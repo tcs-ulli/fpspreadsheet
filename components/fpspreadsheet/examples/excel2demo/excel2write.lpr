@@ -45,6 +45,8 @@ begin
 }
 
   // Write some number cells
+  MyWorksheet.WriteNumber(0, 0, 0.0, nfFixed, 2);
+  (*
   MyWorksheet.WriteNumber(0, 0, 1.0);
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
   MyWorksheet.WriteNumber(0, 1, 2.0);
@@ -138,11 +140,11 @@ begin
   MyWorksheet.WriteUTF8Text(r, 0, 'nfShortDateTime');
   MyWorksheet.WriteDateTime(r, 1, now, nfShortDateTime);
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, DM');
-  MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'DM');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, ''dd/mmm''');
+  MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'dd/mmm''');
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, MY');
-  MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'MY');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, ''mmm/yy''');
+  MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'mmm/yy');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfShortTimeAM');
   MyWorksheet.WriteDateTime(r, 1, now, nfShortTimeAM);
@@ -150,16 +152,16 @@ begin
   MyWorksheet.WriteUTF8Text(r, 0, 'nfLongTimeAM');
   MyWorksheet.WriteDateTime(r, 1, now, nfLongTimeAM);
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, MS');
-  MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'MS');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, nn:ss');
+  MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'nn:ss');
   MyWorksheet.WriteFontColor(r, 1, scGray);
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, MSZ');
-  MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'MSZ');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, nn:ss.z');
+  MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'nn:ss.z');
   MyWorksheet.WriteFontColor(r, 1, scGray);
   inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfFmtDateTime, mm:ss.zzz');
-  MyWorksheet.WriteDateTime(r, 1, now, nfFmtDateTime, 'mm:ss.zzz');
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, mm:ss.zzz');
+  MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'mm:ss.zzz');
   MyWorksheet.WriteFontColor(r, 1, scGray);
 
   // Write formatted numbers
@@ -269,24 +271,24 @@ begin
   MyWorksheet.WriteFontColor(r, 4, scGray);
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrency, 0 decs');
-  MyWorksheet.WriteNumber(r, 1, number, nfCurrency, 0, '$');
-  MyWorksheet.WriteNumber(r, 2, -number, nfCurrency, 0, '$');
-  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrency, 0, '$');
+  MyWorksheet.WriteCurrency(r, 1, number, nfCurrency, 0, '$');
+  MyWorksheet.WriteCurrency(r, 2, -number, nfCurrency, 0, '$');
+  MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrency, 0, '$');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyRed, 0 decs');
-  MyWorksheet.WriteNumber(r, 1, number, nfCurrencyRed, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 2, -number, nfCurrencyRed, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 1, number, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 2, -number, nfCurrencyRed, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfAccounting, 0 decs');
-  MyWorksheet.WriteNumber(r, 1, number, nfAccounting, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 2, -number, nfAccounting, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 3, 0.0, nfAccounting, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 1, number, nfAccounting, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 2, -number, nfAccounting, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 3, 0.0, nfAccounting, 0, 'USD');
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfAccountingRed, 0 decs');
-  MyWorksheet.WriteNumber(r, 1, number, nfAccountingRed, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 2, -number, nfAccountingRed, 0, 'USD');
-  MyWorksheet.WriteNumber(r, 3, 0.0, nfAccountingRed, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 1, number, nfAccountingRed, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 2, -number, nfAccountingRed, 0, 'USD');
+  MyWorksheet.WriteCurrency(r, 3, 0.0, nfAccountingRed, 0, 'USD');
   inc(r, 2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0_);("$"#,##0)');
   MyWorksheet.WriteNumber(r, 1, number);
@@ -378,7 +380,7 @@ begin
   MyWorksheet.WriteRowInfo(5, lRow);
   lRow.Height := 2;                    // 2 lines
   MyWorksheet.WriteRowInfo(6, lRow);
-
+                                    *)
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);
   MyWorkbook.Free;
