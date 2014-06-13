@@ -488,16 +488,19 @@ var
   fmt: String;
   decs: Byte;
   cs: String;
+  isDateTimeFmt: Boolean;
 begin
   if TAction(Sender).Checked then
     nf := TsNumberFormat((TAction(Sender).Tag - NUMFMT_TAG) div 10)
   else
     nf := nfGeneral;
 
-  if nf = nfCustom then
-    fmt := DATETIME_CUSTOM[TAction(Sender).Tag mod 10]
-  else
-    fmt := '';
+  fmt := '';
+  isDateTimeFmt := IsDateTimeFormat(nf);
+  if nf = nfCustom then begin
+    fmt := DATETIME_CUSTOM[TAction(Sender).Tag mod 10];
+    isDateTimeFmt := true;
+  end;
 
   with WorksheetGrid do begin
     c := GetWorksheetCol(Col);
@@ -506,7 +509,7 @@ begin
     Worksheet.GetNumberFormatAttributes(cell, decs, cs);
     case cell^.ContentType of
       cctNumber, cctDateTime:
-        if IsDateTimeFormat(nf) then begin
+        if isDateTimeFmt then begin
           if IsDateTimeFormat(cell^.NumberFormat) then
             Worksheet.WriteDateTime(cell, cell^.DateTimeValue, nf, fmt)
           else
@@ -890,6 +893,7 @@ begin
         ac.Checked := found;
       end;
     end;
+    Invalidate;
   end;
 end;
 
