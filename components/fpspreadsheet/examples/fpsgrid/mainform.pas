@@ -455,25 +455,20 @@ procedure TForm1.AcIncDecDecimalsExecute(Sender: TObject);
 var
   cell: PCell;
   decs: Byte;
-  parser: TsNumFormatParser;
+  currsym: String;
 begin
+  currsym := Sender.ClassName;
   with WorksheetGrid do begin
     if Workbook = nil then
       exit;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if (cell <> nil) then begin
-      parser := TsNumFormatParser.Create(Workbook, cell^.NumberFormatStr);
-      try
-        decs := parser.Decimals;
-        if (Sender = AcIncDecimals) then
-          Parser.Decimals := decs+1;
-        if (Sender = AcDecDecimals) and (decs > 0) then
-          Parser.Decimals := decs-1;
-        cell^.NumberFormatStr := parser.FormatString[nfdDefault];
-      finally
-        parser.Free;
-      end;
-      Invalidate;
+      Worksheet.GetNumberFormatAttributes(cell, decs, currSym);
+      if (Sender = AcIncDecimals) then
+        Worksheet.WriteDecimals(cell, decs+1)
+      else
+      if (Sender = AcDecDecimals) and (decs > 0) then
+        Worksheet.WriteDecimals(cell, decs-1);
     end;
   end;
 end;
@@ -485,12 +480,14 @@ end;
 
 procedure TForm1.AcNumFormatExecute(Sender: TObject);
 const
-  DATETIME_CUSTOM: array[0..4] of string = ('', 'dm', 'my', 'ms', 'msz');
+  DATETIME_CUSTOM: array[0..4] of string = ('', 'dd/mmm', 'mmm/yy', 'nn:ss', 'nn:ss.zzz');
 var
   nf: TsNumberFormat;
   c, r: Cardinal;
   cell: PCell;
   fmt: String;
+  decs: Byte;
+  cs: String;
 begin
   if TAction(Sender).Checked then
     nf := TsNumberFormat((TAction(Sender).Tag - NUMFMT_TAG) div 10)
@@ -506,6 +503,7 @@ begin
     c := GetWorksheetCol(Col);
     r := GetWorksheetRow(Row);
     cell := Worksheet.GetCell(r, c);
+    Worksheet.GetNumberFormatAttributes(cell, decs, cs);
     case cell^.ContentType of
       cctNumber, cctDateTime:
         if IsDateTimeFormat(nf) then begin
@@ -516,14 +514,14 @@ begin
         end else
         if IsCurrencyFormat(nf) then begin
           if IsDateTimeFormat(cell^.NumberFormat) then
-            Worksheet.WriteCurrency(cell, cell^.DateTimeValue, nf, fmt)
+            Worksheet.WriteCurrency(cell, cell^.DateTimeValue, nf, decs, cs)
           else
-            Worksheet.WriteCurrency(cell, cell^.Numbervalue, nf, fmt);
+            Worksheet.WriteCurrency(cell, cell^.Numbervalue, nf, decs, cs);
         end else begin
           if IsDateTimeFormat(cell^.NumberFormat) then
-            Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, fmt)
+            Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, decs)
           else
-            Worksheet.WriteNumber(cell, cell^.NumberValue, nf, fmt)
+            Worksheet.WriteNumber(cell, cell^.NumberValue, nf, decs)
         end;
       else
         Worksheet.WriteNumberformat(cell, nf, fmt);
