@@ -91,6 +91,10 @@ type
     procedure AddElement(AToken: TsNumFormatToken; AIntValue: Integer); overload;
     procedure AddElement(AToken: TsNumFormatToken; AFloatValue: Double); overload;
     procedure AddSection;
+    procedure DeleteElement(ASection, AIndex: Integer);
+    procedure InsertElement(ASection, AIndex: Integer; AToken: TsNumFormatToken; AText: String); overload;
+    procedure InsertElement(ASection, AIndex: Integer; AToken: TsNumFormatToken; AIntValue: Integer); overload;
+    procedure InsertElement(ASection, AIndex: Integer; AToken: TsNumFormatToken; AFloatValue: Double); overload;
     function NextToken: Char;
     function PrevToken: Char;
 
@@ -633,6 +637,55 @@ begin
   CopySections(FSections, ADestination);
 end;
     *)
+
+procedure TsNumFormatParser.DeleteElement(ASection, AIndex: Integer);
+var
+  i, n: Integer;
+begin
+  n := Length(FSections[ASection].Elements);
+  for i:= AIndex+1 to n-1 do
+    FSections[ASection].Elements[i-1] := FSections[ASection].Elements[i];
+  SetLength(FSections[ASection].Elements, n-1);
+end;
+
+procedure TsNumFormatParser.InsertElement(ASection, AIndex: Integer;
+  AToken: TsNumFormatToken; AText: String);
+var
+  i, n: Integer;
+begin
+  n := Length(FSections[ASection].Elements);
+  SetLength(FSections[ASection].Elements, n+1);
+  for i:= n-1 downto AIndex+1 do
+    FSections[ASection].Elements[i+1] := FSections[ASection].Elements[i];
+  FSections[ASection].Elements[AIndex+1].Token := AToken;
+  FSections[ASection].Elements[AIndex+1].TextValue := AText;
+end;
+
+procedure TsNumFormatParser.InsertElement(ASection, AIndex: Integer;
+  AToken: TsNumFormatToken; AIntValue: Integer);
+var
+  i, n: Integer;
+begin
+  n := Length(FSections[ASection].Elements);
+  SetLength(FSections[ASection].Elements, n+1);
+  for i:= n-1 downto AIndex+1 do
+    FSections[ASection].Elements[i+1] := FSections[ASection].Elements[i];
+  FSections[ASection].Elements[AIndex+1].Token := AToken;
+  FSections[ASection].Elements[AIndex+1].IntValue := AIntValue;
+end;
+
+procedure TsNumFormatParser.InsertElement(ASection, AIndex: Integer;
+  AToken: TsNumFormatToken; AFloatValue: Double);
+var
+  i, n: Integer;
+begin
+  n := Length(FSections[ASection].Elements);
+  SetLength(FSections[ASection].Elements, n+1);
+  for i:= n-1 downto AIndex+1 do
+    FSections[ASection].Elements[i+1] := FSections[ASection].Elements[i];
+  FSections[ASection].Elements[AIndex+1].Token := AToken;
+  FSections[ASection].Elements[AIndex+1].FloatValue := AFloatValue;
+end;
 
 function TsNumFormatParser.GetFormatString(ADialect: TsNumFormatDialect): String;
 var
@@ -1653,25 +1706,31 @@ var
   i, j, n: Integer;
 begin
   for j := 0 to High(FSections) do begin
-    i := 0;
     n := Length(FSections[j].Elements);
-    while (i < n) do begin
+    i := n-1;
+    while (i > -1) do begin
       case FSections[j].Elements[i].Token of
         nftDigit:
           // no decimals so far --> add decimal separator and decimals element
-          if i = n-1 then begin
-            AddElement(nftDecSep, '.');
-            AddElement(nftDecs, AValue);
-            exit;
+          if (AValue > 0) then begin
+            // Don't use "AddElements" because nfCurrency etc have elements after the number.
+            InsertElement(j, i, nftDecSep, '.');
+            InsertElement(j, i+1, nftDecs, AValue);
+            break;
           end;
         nftDecs:
-          begin
+          if AValue > 0 then begin
             // decimals are already used, just replace value of decimal places
             FSections[j].Elements[i].IntValue := AValue;
-            exit;
+            break;
+          end else begin
+            // No decimals any more: delete decs and decsep elements
+            DeleteElement(j, i);
+            DeleteElement(j, i-1);
+            break;
           end;
       end;
-      inc(i);
+      dec(i);
     end;
   end;
 end;
