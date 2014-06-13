@@ -441,6 +441,10 @@ type
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
 
+    { Reading of cell attributes }
+    function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
+      out ACurrencySymbol: String): Boolean;
+
     { Writing of values }
     procedure WriteBlank(ARow, ACol: Cardinal);
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
@@ -1390,6 +1394,27 @@ function TsWorksheet.GetCellCount: Cardinal;
 begin
   Result := FCells.Count;
 end;
+
+function TsWorksheet.GetNumberFormatAttributes(ACell: PCell; out ADecimals: byte;
+  out ACurrencySymbol: String): Boolean;
+var
+  parser: TsNumFormatParser;
+begin
+  Result := false;
+  if ACell <> nil then begin
+    parser := TsNumFormatParser.Create(FWorkbook, ACell^.NumberFormatStr);
+    try
+      if parser.Status = psOK then begin
+        ADecimals := parser.Decimals;
+        ACurrencySymbol := parser.CurrencySymbol;
+        Result := true;
+      end;
+    finally
+      parser.Free;
+    end;
+  end;
+end;
+
 
 {@@
   Returns the first Cell.

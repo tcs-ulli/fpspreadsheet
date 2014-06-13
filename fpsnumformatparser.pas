@@ -1650,12 +1650,30 @@ end;
 
 procedure TsNumFormatParser.SetDecimals(AValue: Byte);
 var
-  i,j: Integer;
+  i, j, n: Integer;
 begin
-  for j := 0 to High(FSections) do
-    for i := 0 to High(FSections[j].Elements) do
-      if FSections[j].Elements[i].Token = nftDecs then
-        FSections[j].Elements[i].IntValue := AValue;
+  for j := 0 to High(FSections) do begin
+    i := 0;
+    n := Length(FSections[j].Elements);
+    while (i < n) do begin
+      case FSections[j].Elements[i].Token of
+        nftDigit:
+          // no decimals so far --> add decimal separator and decimals element
+          if i = n-1 then begin
+            AddElement(nftDecSep, '.');
+            AddElement(nftDecs, AValue);
+            exit;
+          end;
+        nftDecs:
+          begin
+            // decimals are already used, just replace value of decimal places
+            FSections[j].Elements[i].IntValue := AValue;
+            exit;
+          end;
+      end;
+      inc(i);
+    end;
+  end;
 end;
 
 end.
