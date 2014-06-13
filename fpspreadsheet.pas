@@ -700,8 +700,7 @@ type
     procedure ConvertAfterReading(AFormatIndex: Integer; var AFormatString: String;
       var ANumFormat: TsNumberFormat); virtual;
     procedure ConvertBeforeWriting(var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
-      var ACurrencySymbol: String); virtual;
+      var ANumFormat: TsNumberFormat); virtual;
     procedure Delete(AIndex: Integer);
     function Find(ANumFormat: TsNumberFormat; AFormatString: String): Integer; overload;
     function Find(AFormatString: String): Integer; overload;
@@ -3479,7 +3478,7 @@ end;
   to a format compatible with the spreadsheet file format.
   Nothing is changed here. The method needs to be overridden. }
 procedure TsCustomNumFormatList.ConvertBeforeWriting(var AFormatString: String;
-  var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String);
+  var ANumFormat: TsNumberFormat);
 begin
   // nothing to do here. But see, e.g., xlscommon.TsBIFFNumFormatList
 end;
@@ -3600,13 +3599,12 @@ function TsCustomNumFormatList.FormatStringForWriting(AIndex: Integer): String;
 var
   item: TsNumFormatdata;
   nf: TsNumberFormat;
-  decs: Byte;
-  cs: String;
 begin
   item := Items[AIndex];
   if item <> nil then begin
     Result := item.FormatString;
-    ConvertBeforeWriting(Result, nf, decs, cs);
+    nf := item.NumFormat;
+    ConvertBeforeWriting(Result, nf);
   end else
     Result := '';
 end;
@@ -3652,7 +3650,7 @@ begin
   inherited Create;
   FWorkbook := AWorkbook;
   CreateNumFormatList;
-  FNumFormatList.FWorkbook := AWorkbook;
+//  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
 destructor TsCustomSpreadReader.Destroy;
@@ -3723,7 +3721,7 @@ begin
   inherited Create;
   FWorkbook := AWorkbook;
   CreateNumFormatList;
-  FNumFormatList.FWorkbook := AWorkbook;
+//  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
 destructor TsCustomSpreadWriter.Destroy;

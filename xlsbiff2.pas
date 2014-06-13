@@ -43,7 +43,7 @@ type
   protected
     procedure AddBuiltinFormats; override;
     procedure ConvertBeforeWriting(var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String); override;
+      var ANumFormat: TsNumberFormat); override;
     function FindFormatOf(AFormatCell: PCell): Integer; override;
   public
     constructor Create(AWorkbook: TsWorkbook);
@@ -57,6 +57,7 @@ type
     WorkBookEncoding: TsEncoding;
     FWorksheet: TsWorksheet;
     FFont: TsFont;
+    FFmtIndex: Integer;
   protected
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
     procedure CreateNumFormatList; override;
@@ -66,6 +67,7 @@ type
     procedure ReadColWidth(AStream: TStream);
     procedure ReadFont(AStream: TStream);
     procedure ReadFontColor(AStream: TStream);
+    procedure ReadFormat(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadInteger(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
@@ -170,11 +172,41 @@ begin
   inherited Create(AWorkbook);
 end;
 
+{ Prepares the list of built-in number formats. They are created in the default
+  dialect for FPC, they have to be converted to Excel syntax before writing.
+  Note that Excel2 expects them to be localized. This is something which has to
+  be taken account of in ConverBeforeWriting.}
 procedure TsBIFF2NumFormatList.AddBuiltinFormats;
 var
   fs: TFormatSettings;
   ds, ts, cs: string;
 begin
+  fs := FWorkbook.FormatSettings;
+  AddFormat( 0, '', nfGeneral);
+  AddFormat( 1, '0', nfFixed);
+  AddFormat( 2, '0.00', nfFixed);
+  AddFormat( 3, '#,##0', nfFixedTh);
+  AddFormat( 4, '#,##0.00', nfFixedTh);
+  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency);
+  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed);
+  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency);
+  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrency);
+  AddFormat( 9, '0%', nfPercentage);
+  AddFormat(10, '0.00%', nfPercentage);
+  AddFormat(11, '0.00E+00', nfExp);
+  AddFormat(12, fs.ShortDateFormat, nfShortDate);
+  AddFormat(13, fs.LongDateFormat, nfLongDate);
+  AddFormat(14, 'd/mmm', nfCustom);
+  AddFormat(15, 'mmm/yy', nfCustom);
+  //AddFormat(14, SpecialDateTimeFormat('dm', fs, true), nfFmtDateTime);
+  //AddFormat(15, SpecialDateTimeFormat('my', fs, true), nfFmtDateTime);
+  AddFormat(16, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);
+  AddFormat(17, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);
+  AddFormat(18, fs.ShortTimeFormat, nfShortTime);
+  AddFormat(19, fs.LongTimeFormat, nfLongTime);
+  AddFormat(20, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);
+
+                      (*
   fs := Workbook.FormatSettings;
   ds := fs.DecimalSeparator;
   ts := fs.ThousandSeparator;
@@ -202,61 +234,29 @@ begin
   AddFormat(18, fs.ShortTimeFormat, nfShortTime);
   AddFormat(19, fs.LongTimeFormat, nfLongTime);
   AddFormat(20, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);
-
+                                      *)
   FFirstFormatIndexInFile := 0;  // BIFF2 stores built-in formats to file.
   FNextFormatIndex := 21;    // not needed - there are not user-defined formats
 end;
 
 
 procedure TsBIFF2NumFormatList.ConvertBeforeWriting(var AFormatString: String;
-  var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String);
+  var ANumFormat: TsNumberFormat);
 var
   fmt: String;
+  parser: TsNumFormatParser;
 begin
-  case ANumFormat of
-    nfGeneral:
-      ;
-    nfFixed, nfFixedTh, nfPercentage, nfExp,
-    nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed:
-      if ADecimals > 0 then ADecimals := 2;
-    nfSci:
-      begin
-        if ADecimals > 0 then ADecimals := 2;
-        ANumFormat := nfExp;
-      end;
-    {
-    nfFmtDateTime:
-      begin
-        fmt := lowercase(AFormatString);
-        if (fmt = 'd-mm') or (fmt = 'd/mm') or
-           (fmt = 'dd-mm') or (fmt = 'dd/mm') or
-           (fmt = 'dd-mmm') or (fmt = 'dd/mmm')
-        then
-          AFormatString := SpecialDateTimeFormat('dm', Workbook.FormatSettings, true)
-        else
-        if (fmt = 'm-yy') or (fmt = 'm/yy') or
-           (fmt = 'mm-yy') or (fmt = 'mm/yy') or
-           (fmt = 'mmm-yy') or (fmt = 'mmm/yy') or
-           (fmt = 'm-yyyy') or (fmt = 'm/yyyy') or
-           (fmt = 'mm-yyyy') or (fmt = 'mm/yyyy') or
-           (fmt = 'mmm-yyyy') or (fmt = 'mmm-yyyy')
-        then
-          AFormatString := SpecialDateTimeFormat('my', Workbook.FormatSettings, true)
-        else
-        if (copy(fmt, 1, 5) = 'nn:ss') or (copy(fmt, 1, 5) = 'mm:ss') or
-           (copy(fmt, 1, 4) = 'n:ss') or (copy(fmt, 1, 4) = 'm:ss')
-        then
-          ANumFormat := nfLongTime
-        else
-          ANumFormat := nfShortDateTime;
-      end;
-      }
-    nfCustom, nfTimeInterval:
-      begin
-        ANumFormat := nfGeneral;
-        AFormatString := '';
-        ADecimals := 0;
-      end;
+  if AFormatString = '' then
+    AFormatString := 'General'
+  else begin
+    parser := TsNumFormatParser.Create(FWorkbook, AFormatString);
+    try
+      parser.Localize;
+      parser.LimitDecimals;
+      AFormatString := parser.FormatString[nfdExcel];
+    finally
+      parser.Free;
+    end;
   end;
 end;
 
@@ -276,9 +276,8 @@ begin
     parser.Free;
   end;
 
+  Result := 0;
   case AFormatCell^.NumberFormat of
-    nfGeneral,
-    nfTimeInterval  : Result := 0;
     nfFixed         : Result := IfThen(decs = 0, 1, 2);
     nfFixedTh       : Result := IfThen(decs = 0, 3, 4);
     nfCurrency,
@@ -302,11 +301,21 @@ end;
  { Creates formatting strings that are written into the file. These are the
    strings in the format list. The only exception is the nfGeneral entry which
    is written as "General". }
- function TsBIFF2NumFormatList.FormatStringForWriting(AIndex: Integer): String;
+function TsBIFF2NumFormatList.FormatStringForWriting(AIndex: Integer): String;
 begin
   Result := inherited FormatStringForWriting(AIndex);
+  {
   if Result = '' then
-    Result := 'General';
+    Result := 'General'
+  else begin
+    parser := TsNumFormatParser.Create(Workbook, Result);
+    try
+      parser.Localize;
+      Result := Parser.FormatString[nfdExcel];
+    finally
+    end;
+  end;
+  }
 end;
 
 
@@ -445,6 +454,13 @@ begin
   FFont.Color := WordLEToN(AStream.ReadWord);
 end;
 
+// Read the FORMAT record for formatting numerical data
+procedure TsSpreadBIFF2Reader.ReadFormat(AStream: TStream);
+begin
+  // We ignore the formats in the file, everything is known
+  // (Using the formats in the file would require de-localizing them).
+end;
+
 procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   BIFF2EOF: Boolean;
@@ -475,6 +491,7 @@ begin
       INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
       INT_EXCEL_ID_FONT      : ReadFont(AStream);
       INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
+      INT_EXCEL_ID_FORMAT    : ReadFormat(AStream);
       INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
       INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
       INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
@@ -917,7 +934,12 @@ end;
 { Builds up the list of number formats to be written to the biff2 file.
   Unlike biff5+ no formats are added here because biff2 supports only 21
   standard formats; these formats have been added by the NumFormatList's
-  AddBuiltInFormats. }
+  AddBuiltInFormats.
+
+  NOT CLEAR IF THIS IS TRUE ????
+
+  }
+  // ToDo: check if the BIFF2 format is really restricted to 21 formats.
 procedure TsSpreadBIFF2Writer.ListAllNumFormats;
 begin
   // Nothing to do here.

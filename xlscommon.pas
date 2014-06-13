@@ -358,8 +358,7 @@ type
   protected
     procedure AddBuiltinFormats; override;
     procedure ConvertBeforeWriting(var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Byte;
-      var ACurrencySymbol: String); override;
+      var ANumFormat: TsNumberFormat); override;
   public
   end;
 
@@ -766,7 +765,8 @@ begin
 end;
 
 procedure TsBIFFNumFormatList.ConvertBeforeWriting(var AFormatString: String;
-  var ANumFormat: TsNumberFormat; var ADecimals: Byte; var ACurrencySymbol: String);
+  var ANumFormat: TsNumberFormat);
+{var ADecimals: Byte; var ACurrencySymbol: String); }
 var
   parser: TsNumFormatParser;
   fmt: String;
@@ -777,8 +777,10 @@ begin
       // We convert the fpc format string to Excel dialect
       AFormatString := parser.FormatString[nfdExcel];
       ANumFormat := parser.NumFormat;
+      {
       ADecimals := parser.Decimals;
       ACurrencySymbol := parser.CurrencySymbol;
+      }
     end;
   finally
     parser.Free;
