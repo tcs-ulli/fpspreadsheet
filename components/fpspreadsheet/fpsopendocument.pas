@@ -891,6 +891,7 @@ var
   fs: TFormatSettings;
   valueType: String;
   valueStr: String;
+  node: TDOMNode;
 begin
   fs := DefaultFormatSettings;
   fs.DecimalSeparator := '.';
@@ -933,6 +934,14 @@ begin
   if (valueType = 'date') or (valueType = 'time') then begin
     floatValue := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
     FWorkSheet.WriteDateTime(cell, floatValue);
+  end else
+  // text
+  if (valueType = 'string') then begin
+    node := ACellNode.FindNode('text:p');
+    if (node <> nil) and (node.FirstChild <> nil) then begin
+      valueStr := node.FirstChild.Nodevalue;
+      FWorksheet.WriteUTF8Text(cell, valueStr);
+    end;
   end else
   // Text
     FWorksheet.WriteUTF8Text(cell, valueStr);
@@ -979,7 +988,8 @@ begin
   // We convert them to date/time and also correct the date origin offset if
   // needed.
   lCell := FWorksheet.FindCell(ARow, ACol);
-  if IsDateTimeFormat(lCell^.NumberFormat) then begin
+  if IsDateTimeFormat(lCell^.NumberFormat) or IsDateTimeFormat(lCell^.NumberFormatStr)
+  then begin
     lCell^.ContentType := cctDateTime;
     // No datemode correction for intervals and for time-only values
     if (lCell^.NumberFormat = nfTimeInterval) or (lCell^.NumberValue < 1) then
@@ -1006,7 +1016,7 @@ begin
   ApplyStyleToCell(cell, stylename);
 
   dt := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
-  FWorkSheet.WriteDateTime(cell, dt);
+  FWorkSheet.WriteDateTime(cell, dt, cell^.NumberFormat, cell^.NumberFormatStr);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
@@ -1272,7 +1282,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       ReadStyleMap(node, nf, fmt);
     {
     if IsDateTimeFormat(fmt) then
-      nf := nfFmtDateTime
+      nf := nfCustom
     else
     }
       nf := nfCustom;

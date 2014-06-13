@@ -177,8 +177,6 @@ const
     '', '=', '<>', '<', '>', '<=', '>'
   );
 
-var
-  globalfmt: String;
 
 { TsNumFormatParser }
 
@@ -187,11 +185,6 @@ var
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
   const AFormatString: String);
 begin
-
-
-  globalfmt := AFormatString;
-
-
   inherited Create;
   FCreateMethod := 0;
   FWorkbook := AWorkbook;
@@ -1015,6 +1008,11 @@ function TsNumFormatParser.IsDateAt(ASection,AIndex: Integer;
 var
   i: Integer;
 begin
+  if FWorkbook = nil then begin
+    Result := false;
+    exit;
+  end;
+
   // The default format nfShortDate is defined by the ShortDateFormat of the
   // Workbook's FormatSettings. Check whether the current format string matches.
   // But watch out for different date separators!
@@ -1234,6 +1232,11 @@ var
   i: Integer;
   fmt: String;
 begin
+  if FWorkbook = nil then begin
+    Result := false;
+    exit;
+  end;
+
   Result := true;
   fmt := AddAMPM(FWorkbook.FormatSettings.LongTimeFormat, FWorkbook.FormatSettings);
   if CheckFormat(fmt, ANextIndex, AMPM, isInterval) then begin

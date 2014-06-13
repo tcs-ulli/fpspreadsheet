@@ -70,7 +70,7 @@ function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberF
 
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
-//function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
+function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
@@ -567,6 +567,18 @@ function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
   Result := AFormat in [{nfFmtDateTime, }nfShortDateTime, nfShortDate, nfLongDate,
     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
+end;
+
+function IsDateTimeFormat(AFormatStr: string): Boolean;
+var
+  parser: TsNumFormatParser;
+begin
+  parser := TsNumFormatParser.Create(nil, AFormatStr);
+  try
+    Result := parser.IsDateTimeFormat;
+  finally
+    parser.Free;
+  end;
 end;
 
 { Builds a date/time format string from the numberformat code. If the format code
