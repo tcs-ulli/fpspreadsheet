@@ -1399,14 +1399,22 @@ function TsWorksheet.GetNumberFormatAttributes(ACell: PCell; out ADecimals: byte
   out ACurrencySymbol: String): Boolean;
 var
   parser: TsNumFormatParser;
+  nf: TsNumberFormat;
 begin
   Result := false;
   if ACell <> nil then begin
     parser := TsNumFormatParser.Create(FWorkbook, ACell^.NumberFormatStr);
     try
       if parser.Status = psOK then begin
-        ADecimals := parser.Decimals;
-        ACurrencySymbol := parser.CurrencySymbol;
+        nf := parser.NumFormat;
+        if (nf = nfGeneral) or IsDateTimeFormat(nf) then begin
+          ADecimals := 2;
+          ACurrencySymbol := '?';
+        end
+        else begin
+          ADecimals := parser.Decimals;
+          ACurrencySymbol := parser.CurrencySymbol;
+        end;
         Result := true;
       end;
     finally
@@ -2053,14 +2061,14 @@ begin
   if ANegCurrFormat = -1 then
     ANegCurrFormat := Workbook.FormatSettings.NegCurrFormat;
   if ACurrencySymbol = '?' then
-    ACurrencySymbol := Workbook.FormatSettings.CurrencyString;
+    ACurrencySymbol := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
 
   fmt := BuildCurrencyFormatString(
+    nfdDefault,
+    AFormat,
     Workbook.FormatSettings,
     ADecimals,
     APosCurrFormat, ANegCurrFormat,
-    AFormat in [nfCurrencyRed, nfAccountingRed],
-    AFormat in [nfAccounting, nfAccountingRed],
     ACurrencySymbol);
 
   WriteCurrency(ACell, AValue, AFormat, fmt);
@@ -3836,20 +3844,6 @@ begin
   // Iterate through all cells and collect the individual styles
   for i := 0 to Workbook.GetWorksheetCount - 1 do
     IterateThroughCells(nil, Workbook.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
-
-  (*
-  // Convert the numberformats of the collected styles to be compatible with the destination file
-  for i:=0 to High(FFormattingStyles) do
-    if (FFormattingStyles[i].NumberFormatStr <> '') and
-       (FFormattingStyles[i].NumberFormat <> nfCustom)   // don't touch custom formatstrings!
-    then
-      FNumFormatList.ConvertBeforeWriting(
-        FFormattingStyles[i].NumberFormatStr,
-        FFormattingStyles[i].NumberFormat,
-        FFormattingStyles[i].Decimals,
-        FFormattingStyles[i].CurrencySymbol
-      );
-      *)
 end;
 
 {@@

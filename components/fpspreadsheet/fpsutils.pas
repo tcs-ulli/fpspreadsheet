@@ -12,7 +12,7 @@ unit fpsutils;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, fpspreadsheet;
+  Classes, SysUtils, StrUtils, fpspreadsheet, fpsNumFormatParser;
 
 // Exported types
 type
@@ -72,9 +72,9 @@ function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 //function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 
-function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
-  ADecimals, APosCurrFormat, ANegCurrFormat: Integer;
-  ANegativeValuesRed, AAccountingStyle: Boolean; ACurrencySymbol: String = '?'): String;
+function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
+  ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
+  ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
@@ -624,9 +624,9 @@ end;
     negative values) to apply a red font color.
   This code has to be removed by StripAccountingSymbols before applying to
   FormatFloat. }
-function BuildCurrencyFormatString(const AFormatSettings: TFormatSettings;
-  ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ANegativeValuesRed: Boolean;
-  AAccountingStyle: Boolean; ACurrencySymbol: String = '?'): String;
+function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
+  ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
+  ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
 const
   POS_FMT: array[0..3, boolean] of string = (
     // Parameter 0 is "value", parameter 1 is "currency symbol"
@@ -658,6 +658,8 @@ var
   decs: String;
   cf, ncf: Byte;
   p, n: String;
+  accStyle: Boolean;
+  negRed: Boolean;
 begin
   cf := IfThen(APosCurrFormat < 0, AFormatSettings.CurrencyFormat, APosCurrFormat);
   ncf := IfThen(ANegCurrFormat < 0, AFormatSettings.NegCurrFormat, ANegCurrFormat);
@@ -668,10 +670,13 @@ begin
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
 
-  p := POS_FMT[cf, AAccountingStyle];
-  n := NEG_FMT[ncf, AAccountingStyle];
+  accStyle := ANumberFormat in [nfAccounting, nfAccountingRed];
+  negRed := ANumberFormat in [nfCurrencyRed, nfAccountingRed];
+
+  p := POS_FMT[cf, accStyle];
+  n := NEG_FMT[ncf, accStyle];
   // add extra space for the sign of the number for perfect alignment in Excel
-  if AAccountingStyle then
+  if accStyle then
     case ncf of
       0, 14: p := p + '_)';
       3, 11: p := p + '_-';
@@ -681,17 +686,22 @@ begin
 
   if ACurrencySymbol <> '' then begin
     Result := Format(p, ['#,##0' + decs, ACurrencySymbol]) + ';'
-            + IfThen(ANegativeValuesRed, '[red]', '') + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
-            + Format(p, [IfThen(AAccountingStyle, '-', '0'+decs), ACurrencySymbol]);
+            + IfThen(negRed and (ADialect = nfdExcel), '[red]', '')
+            + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
+            + Format(p, [IfThen(accStyle, '-', '0'+decs), ACurrencySymbol]);
   end
   else begin
     Result := '#,##0' + decs;
+    if negRed and (ADialect = nfdExcel) then
+      Result := Result +';[red]'
+    else
+      Result := Result +';';
     case ncf of
-      0, 14, 15           : Result := Result + ';(#,##0' + decs + ')';
-      1, 2, 5, 6, 8, 9, 12: Result := Result + ';-#,##0' + decs;
-      else                  Result := Result + ';#,##0' + decs + '-';
+      0, 14, 15           : Result := Result + '(#,##0' + decs + ')';
+      1, 2, 5, 6, 8, 9, 12: Result := Result + '-#,##0' + decs;
+      else                  Result := Result + '#,##0' + decs + '-';
     end;
-    Result := Result + ';' + IfThen(AAccountingStyle, '-', '0'+decs);
+    Result := Result + ';' + IfThen(accStyle, '-', '0'+decs);
   end;
 end;
 

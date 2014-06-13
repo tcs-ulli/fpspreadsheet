@@ -463,6 +463,10 @@ begin
       exit;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if (cell <> nil) then begin
+      if cell^.NumberFormat = nfGeneral then begin
+        Worksheet.WriteNumberFormat(cell, nfFixed, '0.00');
+        exit;
+      end;
       Worksheet.GetNumberFormatAttributes(cell, decs, currSym);
       if (Sender = AcIncDecimals) then
         Worksheet.WriteDecimals(cell, decs+1)
@@ -507,6 +511,7 @@ begin
     r := GetWorksheetRow(Row);
     cell := Worksheet.GetCell(r, c);
     Worksheet.GetNumberFormatAttributes(cell, decs, cs);
+    if cs = '' then cs := '?';
     case cell^.ContentType of
       cctNumber, cctDateTime:
         if isDateTimeFmt then begin
