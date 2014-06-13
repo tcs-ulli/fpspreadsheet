@@ -23,7 +23,7 @@ type
   end;
 
 var
-  ParserTestData: Array[0..5] of TParserTestData;
+  ParserTestData: Array[0..8] of TParserTestData;
 
 procedure InitParserTestData;
 
@@ -98,15 +98,31 @@ begin
     SollDecimals := 0;
     SollCurrencySymbol := '';
   end;
-                                 {
-  with ParserTestData[4] do begin
-    FormatString := '#,##0.00 "$";-#,##0.00 "$";0.00 "$"';
-    SollFormatString := '#,##0.00 "$";-#,##0.00 "$";0.00 "$"';
+  with ParserTestData[6] do begin
+    FormatString := '[$-409]hh:mm:ss\ AM/PM;@';
+    SollFormatString := 'hh:nn:ss AM/PM';
+    SollNumFormat := nfLongTimeAM;
+    SollSectionCount := 2;
+    SollDecimals := 0;
+    SollCurrencySymbol := '';
+  end;
+  with ParserTestData[7] do begin
+    FormatString := '[$-F400]dd.mm.yy\ hh:mm';
+    SollFormatString := 'dd.mm.yy hh:nn';
+    SollNumFormat := nfShortDateTime;
+    SollSectionCount := 1;
+    SollDecimals := 0;
+    SollCurrencySymbol := '';
+  end;
+  with ParserTestData[8] do begin
+    FormatString := '[$€] #,##0.00;-[$€] #,##0.00;{$€} 0.00';
+    SollFormatString := '"€" #,##0.00;-"€" #,##0.00;"€" 0.00';
     SollNumFormat := nfCurrency;
     SollSectionCount := 3;
     SollDecimals := 2;
-    SollCurrencySymbol := '$';
+    SollCurrencySymbol := '€';
   end;
+  {
   with ParserTestData[5] do begin
     FormatString := '#,##0.00 "$";-#,##0.00 "$";-';
     SollFormatString := '#,##0.00 "$";-#,##0.00 "$";-';
