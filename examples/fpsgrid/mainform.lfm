@@ -2448,7 +2448,7 @@ object Form1: TForm1
       OnExecute = AcNumFormatExecute
     end
     object AcNFShortDate: TAction
-      Tag = 1120
+      Tag = 1110
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short date'
