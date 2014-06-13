@@ -1221,14 +1221,6 @@ begin
     XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbNorth].LineStyle)+1) shl 8);
   if cbSouth in ABorders then
     XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbSouth].LineStyle)+1) shl 12);
-  (*
-  XFBorderDWord1 := 8 * $10000 {left line - black} + 8 * $800000 {right line - black};
-
-  if cbNorth in ABorders then XFBorderDWord1 := XFBorderDWord1 or $100;
-  if cbWest in ABorders  then XFBorderDWord1 := XFBorderDWord1 or $1;
-  if cbEast in ABorders  then XFBorderDWord1 := XFBorderDWord1 or $10;
-  if cbSouth in ABorders then XFBorderDWord1 := XFBorderDWord1 or $1000;
-   *)
   AStream.WriteDWord(DWordToLE(XFBorderDWord1));
 
   // Top and Bottom line colors

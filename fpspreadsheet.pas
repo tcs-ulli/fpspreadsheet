@@ -4333,19 +4333,18 @@ Number format handling in fpspreadsheet is implemented with the following
 concept in mind:
 
 - Formats written into TsWorksheet cells always follow the fpspreadsheet syntax.
-  The exception is for the format nfCustom for which the format strings are
-  left untouched.
 
 - For writing, the writer creates a TsNumFormatList which stores all formats
   in file syntax.
-  - The built-in formats of the file types are coded in the file syntax.
+  - The built-in formats of the file types are coded in the fpc syntax.
   - The method "ConvertBeforeWriting" converts the cell formats from the
     fpspreadsheet to the file syntax.
 
 - For reading, the reader creates another TsNumFormatList.
-  - The built-in formats of the file types are coded again in file syntax.
-  - The formats read from the file are added in file syntax.
-  - After reading, the formats are converted to fpspreadsheet syntax
-    ("ConvertAfterReading").
+  - The built-in formats of the file types are coded again in fpc syntax.
+  - After reading, the formats are converted to fpc syntax by means of
+    "ConvertAfterReading".
+
+- Format conversion is done internally by means of the TsNumFormatParser.
 }
 

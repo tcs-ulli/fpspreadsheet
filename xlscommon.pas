@@ -450,12 +450,6 @@ type
     // Write out BLANK cell record
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
-
-    {
-    procedure WriteCellBlock(AStream: TStream; ASheet: TsWorksheet;
-      AFirstRow, ALastRow: Cardinal);
-     }
-
     // Write out used codepage for character encoding
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
     // Writes out column info(s)
@@ -766,7 +760,6 @@ end;
 
 procedure TsBIFFNumFormatList.ConvertBeforeWriting(var AFormatString: String;
   var ANumFormat: TsNumberFormat);
-{var ADecimals: Byte; var ACurrencySymbol: String); }
 var
   parser: TsNumFormatParser;
   fmt: String;
@@ -774,13 +767,9 @@ begin
   parser := TsNumFormatParser.Create(Workbook, AFormatString);
   try
     if parser.Status = psOK then begin
-      // We convert the fpc format string to Excel dialect
+      // For writing, we have to convert the fpc format string to Excel dialect
       AFormatString := parser.FormatString[nfdExcel];
       ANumFormat := parser.NumFormat;
-      {
-      ADecimals := parser.Decimals;
-      ACurrencySymbol := parser.CurrencySymbol;
-      }
     end;
   finally
     parser.Free;
@@ -869,14 +858,6 @@ var
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
-  (*
-  // Convert builtin formats to fps syntax
-  for i:=0 to FNumFormatList.Count-1 do begin
-    item := FNumFormatList[i];
-    FNumFormatList.ConvertAfterReading(item.Index, item.FormatString,
-      item.NumFormat, item.Decimals, item.CurrencySymbol);
-  end;
-  *)
 end;
 
 { Extracts a number out of an RK value.
@@ -910,7 +891,6 @@ begin
   Result := Number;
 end;
 
-
 { Extracts number format data from an XF record index by AXFIndex.
   Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
@@ -924,13 +904,9 @@ begin
   if lNumFormatData <> nil then begin
     ANumberFormat := lNumFormatData.NumFormat;
     ANumberFormatStr := lNumFormatData.FormatString;
-//    ADecimals := lNumFormatData.Decimals;
-//    ACurrencySymbol := lNumFormatData.CurrencySymbol;
   end else begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
-//    ADecimals := 0;
-//    ACurrencySymbol := '';
   end;
 end;
 
@@ -1321,8 +1297,6 @@ var
   lDateTime: TDateTime;
   Number: Double;
   nf: TsNumberFormat;    // Number format
-  nd: Byte;              // decimals
-  ncs: String;           // Currency symbol
   nfs: String;           // Number format string
 begin
   {Retrieve XF record, row and column}
@@ -2084,7 +2058,6 @@ begin
   AStream.WriteWord(WordToLE(1));  // only 1 item
 
   { Index to first and last row - are the same here }
-
   AStream.WriteWord(WordTOLE(activeCellRow));
   AStream.WriteWord(WordTOLE(activeCellRow));
 
@@ -2172,19 +2145,6 @@ begin
   // But we have to consider that the number formats of the cell is in fpc syntax,
   // but the number format list of the writer is in Excel syntax.
   lCell := ACell^;
-  (*
-  with lCell do begin
-    if NumberFormat <> nfCustom then begin
-      if IsDateTimeFormat(NumberFormat) then
-        NumberFormatStr := BuildDateTimeFormatString(NumberFormat,
-          Workbook.FormatSettings, NumberFormatStr)
-      else
-        NumberFormatStr := BuildNumberFormatString(NumberFormat,
-          Workbook.FormatSettings, Decimals, CurrencySymbol);
-      //NumFormatList.ConvertBeforeWriting(NumberFormatStr, NumberFormat, Decimals, CurrencyString);
-    end;
-  end;
-  *)
   lIndex := FindFormattingInList(@lCell);
 
   // Carefully check the index
