@@ -25,10 +25,9 @@ const
 { TsNumFormatParser }
 
 type
-  TsNumFormatDialect = (nfdDefault, nfdExcel, nfdOther);
+  TsNumFormatDialect = (nfdDefault, nfdExcel);
   // nfdDefault is the dialect used by fpc,
   // nfdExcel is the dialect used by Excel
-  // nfdOther is used when writing xml for ods files. Separate implementation needed.
 
   TsCompareOperation = (coNotUsed,
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
@@ -69,13 +68,11 @@ type
   TsNumFormatParser = class
   private
     FCreateMethod: Byte;
-    FWorkbook: TsWorkbook;
     FToken: Char;
     FCurrent: PChar;
     FStart: PChar;
     FEnd: PChar;
     FCurrSection: Integer;
-    FSections: TsNumFormatSections;
     FStatus: Integer;
     function GetCurrencySymbol: String;
     function GetDecimals: byte;
@@ -86,6 +83,9 @@ type
     procedure SetDecimals(AValue: Byte);
 
   protected
+    FWorkbook: TsWorkbook;
+    FSections: TsNumFormatSections;
+
     { Administration while scanning }
     procedure AddElement(AToken: TsNumFormatToken; AText: String); overload;
     procedure AddElement(AToken: TsNumFormatToken; AIntValue: Integer); overload;
@@ -275,13 +275,11 @@ end;
 
 { Creates a formatstring for all sections.
   Note: this implementation is only valid for the fpc and Excel dialects of
-  format string. Needs to be overridden for xml. }
+  format string. }
 function TsNumFormatParser.BuildFormatString(ADialect: TsNumFormatDialect): String;
 var
   i: Integer;
 begin
-  if ADialect = nfdOther then
-    raise Exception.Create('nfdOther cannot be used in TsNumFormatParser.BuildFormatString');
   if Length(FSections) > 0 then begin
     Result := BuildFormatStringFromSection(0, ADialect);
     for i := 1 to High(FSections) do
@@ -291,8 +289,7 @@ begin
 end;
 
 { Creates a format string for the given section. This implementation covers
-  the formatstring dialects of fpc (nfdDefault) and Excel (nfdExcel).
-  Needs to be overridden for xml. }
+  the formatstring dialects of fpc (nfdDefault) and Excel (nfdExcel). }
 function TsNumFormatParser.BuildFormatStringFromSection(ASection: Integer;
   ADialect: TsNumFormatDialect): String;
 var
@@ -300,9 +297,6 @@ var
   i: Integer;
 begin
   Result := '';
-
-  if ADialect = nfdOther then
-    raise Exception.Create('nfdOther cannot be used in TsNumFormatParser.BuildFormatString');
 
   if (ASection < 0) and (ASection >= GetParsedSectionCount) then
     exit;
