@@ -39,7 +39,7 @@ uses
   fpspreadsheet,
   laz2_xmlread, laz2_DOM,
   AVL_Tree, math, dateutils,
-  fpsutils;
+  fpsutils, fpsNumFormatParser;
   
 type
   TDateMode=(
@@ -49,10 +49,20 @@ type
   );
 
   { TsSpreadOpenDocNumFormatList }
+
   TsSpreadOpenDocNumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
   public
+  end;
+
+  { TsSpreadOpenDocNumFormatParser }
+  TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
+  protected
+    function BuildXMLAsStringFromSection(ASection: Integer; AIndent: String;
+      AFormatNo: Integer): String;
+  public
+    function BuildXMLAsString(AIndent: String; AFormatNo: Integer): String;
   end;
 
   { TsSpreadOpenDocReader }
@@ -117,6 +127,7 @@ type
     // Routines to write parts of files
     function WriteCellStylesXMLAsString: string;
     function WriteColStylesXMLAsString: String;
+    function WriteNumFormatsXMLAsString: String;
     function WriteRowStylesXMLAsString: String;
 
     function WriteColumnsXMLAsString(ASheet: TsWorksheet): String;
@@ -289,6 +300,105 @@ begin
   // there are no built-in number formats which are silently assumed to exist.
 end;
 
+
+{ TsSpreadOpenDocNumFormatParser }
+
+function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AIndent: String;
+  AFormatNo: Integer): String;
+var
+  i, ns: Integer;
+begin
+  Result := '';
+  for i := Length(FSections)-1 downto 0 do
+    Result := Result + BuildXMLAsStringFromSection(i, AIndent, AFormatNo);
+end;
+
+function TsSpreadOpenDocNumFormatParser.BuildXMLAsStringFromSection(
+  ASection: Integer; AIndent: String; AFormatNo: Integer): String;
+var
+  nf : TsNumberFormat;
+  decs: Byte;
+  next: Integer;
+  sGrouping: String;
+  sColor: String;
+  sStyleMap: String;
+  ns: Integer;
+  fmtName: String;
+  clr: TsColorvalue;
+begin
+  Result := '';
+  sGrouping := '';
+  sColor := '';
+  sStyleMap := '';
+  fmtName := Format('N%d', [AFormatNo]);
+
+  ns := Length(FSections);
+  if (ns > 1) then begin
+    if (ASection = ns - 1) then
+      case ns of
+        2: sStyleMap := AIndent +
+             '  <style:map ' +
+                 'style:apply-style-name="' + fmtName + 'P0" ' +
+                 'style:condition="value()>=0" />' + LineEnding;      // >= 0
+        3: sStyleMap := AIndent +
+             '  <style:map '+
+                 'style:apply-style-name="' + fmtName + 'P0" ' +     // > 0
+                 'style:condition="value()>0" />' + LineEnding + AIndent +
+             '  <style:map '+
+                 'style:apply-style-name="' + fmtName + 'P1" ' +     // < 0
+                 'style:condition="value()<0" />' + LineEnding;
+        else
+          raise Exception.Create('At most 3 format sections allowed.');
+      end
+    else
+      fmtName := fmtName + 'P' + IntToStr(ASection);
+  end;
+
+  with FSections[ASection] do begin
+    next := 0;
+    if IsTokenAt(nftColor, ASection, 0) then begin
+      clr := FWorkbook.GetPaletteColor(Elements[0].IntValue);
+      sColor := AIndent + '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
+      next := 1;
+    end;
+    if IsNumberAt(ASection, next, nf, decs, next) then begin
+      if nf = nfFixedTh then
+        sGrouping := 'number:grouping="true" ';
+
+      // nfFixed, nfFixedTh
+      if (next = Length(Elements)) then begin
+        Result := AIndent +
+          '<number:number-style style:name="' + fmtName + '">' + LineEnding +
+          sColor + AIndent +
+          '  <number:number ' +
+              'number:min-integer-digits="1" ' + sGrouping +
+              'number:decimal-places="' + IntToStr(decs) +
+            '" />' + LineEnding +
+          sStylemap + AIndent +
+          '</number:number-style>' + LineEnding;
+        exit;
+      end;
+    end;
+
+    // nfPercentage
+    if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements))
+    then begin
+      Result := AIndent +
+        '<number:percentage-style style:name="' + fmtName + '">' + LineEnding +
+        sColor + AIndent +
+        '  <number:number ' +
+           'number:min-integer-digits="1" ' + sGrouping +
+           'number:decimal-places="' + IntToStr(decs) +
+          '" />' + LineEnding + AIndent +
+        '  <number:text>%</number:text>' + LineEnding +
+        sStyleMap + AIndent +
+        '</number:percentage-style>' + LineEnding;
+      exit;
+    end;
+  end;
+
+  // ... more to follow...
+end;
 
 { TsSpreadOpenDocReader }
 
@@ -1905,10 +2015,13 @@ var
   lCellStylesCode: string;
   lColStylesCode: String;
   lRowStylesCode: String;
+  lNumFmtCode: String;
 begin
   ListAllColumnStyles;
   ListAllRowStyles;
   ListAllFormattingStyles;
+
+  lNumFmtCode := WriteNumFormatsXMLAsString;
 
   lColStylesCode := WriteColStylesXMLAsString;
   if lColStylesCode = '' then lColStylesCode :=
@@ -1956,6 +2069,7 @@ begin
 
    // Automatic styles
   '  <office:automatic-styles>' + LineEnding +
+  lNumFmtCode +
   lColStylesCode +
   lRowStylesCode +
   '    <style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
@@ -2135,6 +2249,41 @@ begin
            [styleName, colsRepeatedStr]) + LineEnding;
 
     j := j + colsRepeated;
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteNumFormatsXMLAsString: String;
+var
+  i: Integer;
+  numFmtXML: String;
+  parser: TsSpreadOpenDocNumFormatParser;
+begin
+{
+<number:number-style style:name="N2">
+<number:number number:decimal-places="2" number:min-integer-digits="1" />
+</number:number-style>
+
+' <number:number-style style:name="N2">
+<number:number number:min-integer-digits="1" number:grouping="true" number:decimal-places="2"/>
+</number:number-style>
+
+' <number:number-style style:name="N2">
+<number:number number:decimal-places="2" number:min-integer-digits="1" />
+</number:number-style>
+}
+  Result := '';
+
+  ListAllNumFormats;
+
+  for i:=0 to FNumFormatList.Count-1 do begin
+    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, FNumFormatList.Items[i].FormatString);
+    try
+      numFmtXML := parser.BuildXMLAsString('  ', 1000+i); //120+i);  // Don't know where the user numbers start...
+      if numFmtXML <> '' then
+        Result := Result + numFmtXML;
+    finally
+      parser.Free;
+    end;
   end;
 end;
 
