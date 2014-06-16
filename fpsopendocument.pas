@@ -59,10 +59,10 @@ type
   { TsSpreadOpenDocNumFormatParser }
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
   protected
-    function BuildXMLAsStringFromSection(ASection: Integer; AIndent: String;
-      AFormatNo: Integer): String;
+    function BuildXMLAsStringFromSection(ASection: Integer;
+      AIndent,AFormatName: String): String;
   public
-    function BuildXMLAsString(AIndent: String; AFormatNo: Integer): String;
+    function BuildXMLAsString(AIndent,AFormatName: String): String;
   end;
 
   { TsSpreadOpenDocReader }
@@ -154,6 +154,7 @@ type
     // Helpers
     procedure CreateNumFormatList; override;
     procedure ListAllColumnStyles;
+    procedure ListAllNumFormats; override;
     procedure ListAllRowStyles;
     // Routines to write those files
     procedure WriteMimetype;
@@ -297,40 +298,45 @@ type
 
 procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
 begin
-  // there are no built-in number formats which are silently assumed to exist.
+  AddFormat('N0', '', nfGeneral);
+  AddFormat('N1', '0', nfFixed);
+  AddFormat('N2', '0.00', nfFixed);
+  AddFormat('N3', '#,##0', nfFixedTh);
+  AddFormat('N4', '#,##0.00', nfFixed);
+  AddFormat('N10', '0%', nfPercentage);
+  AddFormat('N11', '0.00%', nfPercentage);
 end;
 
 
 { TsSpreadOpenDocNumFormatParser }
 
-function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AIndent: String;
-  AFormatNo: Integer): String;
+function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AIndent,
+  AFormatName: String): String;
 var
   i, ns: Integer;
 begin
   Result := '';
   for i := Length(FSections)-1 downto 0 do
-    Result := Result + BuildXMLAsStringFromSection(i, AIndent, AFormatNo);
+    Result := Result + BuildXMLAsStringFromSection(i, AIndent, AFormatName);
 end;
 
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsStringFromSection(
-  ASection: Integer; AIndent: String; AFormatNo: Integer): String;
+  ASection: Integer; AIndent,AFormatName: String): String;
 var
   nf : TsNumberFormat;
   decs: Byte;
+  expdig: Integer;
   next: Integer;
   sGrouping: String;
   sColor: String;
   sStyleMap: String;
   ns: Integer;
-  fmtName: String;
   clr: TsColorvalue;
 begin
   Result := '';
   sGrouping := '';
   sColor := '';
   sStyleMap := '';
-  fmtName := Format('N%d', [AFormatNo]);
 
   ns := Length(FSections);
   if (ns > 1) then begin
@@ -338,20 +344,20 @@ begin
       case ns of
         2: sStyleMap := AIndent +
              '  <style:map ' +
-                 'style:apply-style-name="' + fmtName + 'P0" ' +
+                 'style:apply-style-name="' + AFormatName + 'P0" ' +
                  'style:condition="value()>=0" />' + LineEnding;      // >= 0
         3: sStyleMap := AIndent +
              '  <style:map '+
-                 'style:apply-style-name="' + fmtName + 'P0" ' +     // > 0
+                 'style:apply-style-name="' + AFormatName + 'P0" ' +     // > 0
                  'style:condition="value()>0" />' + LineEnding + AIndent +
              '  <style:map '+
-                 'style:apply-style-name="' + fmtName + 'P1" ' +     // < 0
+                 'style:apply-style-name="' + AFormatName + 'P1" ' +     // < 0
                  'style:condition="value()<0" />' + LineEnding;
         else
           raise Exception.Create('At most 3 format sections allowed.');
       end
     else
-      fmtName := fmtName + 'P' + IntToStr(ASection);
+      AFormatName := AFormatName + 'P' + IntToStr(ASection);
   end;
 
   with FSections[ASection] do begin
@@ -368,7 +374,7 @@ begin
       // nfFixed, nfFixedTh
       if (next = Length(Elements)) then begin
         Result := AIndent +
-          '<number:number-style style:name="' + fmtName + '">' + LineEnding +
+          '<number:number-style style:name="' + AFormatName + '">' + LineEnding +
           sColor + AIndent +
           '  <number:number ' +
               'number:min-integer-digits="1" ' + sGrouping +
@@ -378,22 +384,46 @@ begin
           '</number:number-style>' + LineEnding;
         exit;
       end;
-    end;
 
-    // nfPercentage
-    if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements))
-    then begin
-      Result := AIndent +
-        '<number:percentage-style style:name="' + fmtName + '">' + LineEnding +
-        sColor + AIndent +
-        '  <number:number ' +
-           'number:min-integer-digits="1" ' + sGrouping +
-           'number:decimal-places="' + IntToStr(decs) +
-          '" />' + LineEnding + AIndent +
-        '  <number:text>%</number:text>' + LineEnding +
-        sStyleMap + AIndent +
-        '</number:percentage-style>' + LineEnding;
-      exit;
+      // nfPercentage
+      if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements))
+      then begin
+        Result := AIndent +
+          '<number:percentage-style style:name="' + AFormatName + '">' + LineEnding +
+          sColor + AIndent +
+          '  <number:number ' +
+             'number:min-integer-digits="1" ' + sGrouping +
+             'number:decimal-places="' + IntToStr(decs) + '" />' + LineEnding + AIndent +
+          '  <number:text>%</number:text>' + LineEnding +
+          sStyleMap + AIndent +
+          '</number:percentage-style>' + LineEnding;
+        exit;
+      end;
+
+      // nfExp
+      if IsTokenAt(nftExpChar, ASection, next) then begin
+        if (next + 2 < Length(Elements)) and
+           IsTokenAt(nftExpSign, ASection, next+1) and
+           IsTokenAt(nftExpDigits, ASection, next+2)
+        then
+          expdig := Elements[next+2].IntValue
+        else
+        if (next + 1 < Length(Elements)) and
+           IsTokenAt(nftExpDigits, ASection, next+1)
+        then
+          expdig := Elements[next+1].IntValue
+        else
+          exit;
+        Result := AIndent +
+          '<number:number-style style:name="' + AFormatName + '">' + LineEnding +
+          sColor + AIndent +
+          '  <number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
+             'number:min-integer-digits="1" '+
+             'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
+          sStylemap + AIndent +
+          '</number:number-style>';
+        exit;
+      end;
     end;
   end;
 
@@ -1850,6 +1880,24 @@ begin
   end;
 end;
 
+{ Collects all number formats used in the workbook. Overrides the inherited
+  method to assign a unique name according to the OpenDocument syntax ("N<number>"
+  to the format items. }
+procedure TsSpreadOpenDocWriter.ListAllNumFormats;
+const
+  FMT_BASE = 1000;  // Format number to start with. Not clear if this is correct...
+var
+  n, i, j: Integer;
+begin
+  n := NumFormatList.Count;
+  inherited ListAllNumFormats;
+  j := 0;
+  for i:=n to NumFormatList.Count-1 do begin
+    NumFormatList.Items[i].Name := Format('N%d', [FMT_BASE + j]);
+    inc(j);
+  end;
+end;
+
 procedure TsSpreadOpenDocWriter.ListAllRowStyles;
 var
   i, j, r: Integer;
@@ -2131,14 +2179,22 @@ function TsSpreadOpenDocWriter.WriteCellStylesXMLAsString: string;
 var
   i: Integer;
   s: String;
+  fmtIndex: Integer;
+  fmt: String;
 begin
   Result := '';
 
   for i := 0 to Length(FFormattingStyles) - 1 do
   begin
+    fmtIndex := NumFormatList.Find(FFormattingStyles[i].NumberFormatStr);
+    if fmtIndex <> -1
+      then fmt := 'style:data-style-name="' + NumFormatList[fmtIndex].Name +'"'
+      else fmt := '';
+
     // Start and Name
     Result := Result +
-    '    <style:style style:name="ce' + IntToStr(i) + '" style:family="table-cell" style:parent-style-name="Default">' + LineEnding;
+    '    <style:style style:name="ce' + IntToStr(i) + '" style:family="table-cell" ' +
+                     'style:parent-style-name="Default" '+ fmt + '>' + LineEnding;
 
     // Fields
 
@@ -2256,29 +2312,16 @@ function TsSpreadOpenDocWriter.WriteNumFormatsXMLAsString: String;
 var
   i: Integer;
   numFmtXML: String;
+  fmtItem: TsNumFormatData;
   parser: TsSpreadOpenDocNumFormatParser;
 begin
-{
-<number:number-style style:name="N2">
-<number:number number:decimal-places="2" number:min-integer-digits="1" />
-</number:number-style>
-
-' <number:number-style style:name="N2">
-<number:number number:min-integer-digits="1" number:grouping="true" number:decimal-places="2"/>
-</number:number-style>
-
-' <number:number-style style:name="N2">
-<number:number number:decimal-places="2" number:min-integer-digits="1" />
-</number:number-style>
-}
   Result := '';
-
   ListAllNumFormats;
-
   for i:=0 to FNumFormatList.Count-1 do begin
-    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, FNumFormatList.Items[i].FormatString);
+    fmtItem := FNumFormatList.Items[i];
+    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString);
     try
-      numFmtXML := parser.BuildXMLAsString('  ', 1000+i); //120+i);  // Don't know where the user numbers start...
+      numFmtXML := parser.BuildXMLAsString('  ', fmtItem.Name);
       if numFmtXML <> '' then
         Result := Result + numFmtXML;
     finally
