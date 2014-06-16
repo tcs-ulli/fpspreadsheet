@@ -181,6 +181,16 @@ begin
   MyWorksheet.WriteNumber(row, 6, number6, nfExp, 3);
   MyWorksheet.WriteNumber(row, 7, number7, nfExp, 3);
   MyWorksheet.WriteNumber(row, 8, number8, nfExp, 3);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfSci, 2 decimals');
+  MyWorksheet.WriteNumber(row, 1, number1, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 2, number2, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 3, number3, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 4, number4, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 5, number5, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 6, number6, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 7, number7, nfSci, 2);
+  MyWorksheet.WriteNumber(row, 8, number8, nfSci, 2);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');

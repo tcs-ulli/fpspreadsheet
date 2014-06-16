@@ -332,6 +332,7 @@ var
   sStyleMap: String;
   ns: Integer;
   clr: TsColorvalue;
+  el: Integer;
 begin
   Result := '';
   sGrouping := '';
@@ -401,7 +402,7 @@ begin
       end;
 
       // nfExp
-      if IsTokenAt(nftExpChar, ASection, next) then begin
+      if (nf = nfFixed) and IsTokenAt(nftExpChar, ASection, next) then begin
         if (next + 2 < Length(Elements)) and
            IsTokenAt(nftExpSign, ASection, next+1) and
            IsTokenAt(nftExpDigits, ASection, next+2)
@@ -425,9 +426,39 @@ begin
         exit;
       end;
     end;
-  end;
+
+    // nfSci: not supported by ods, use nfExp instead.
+    el := 0;
+    decs := 0;
+    while el < Length(Elements) do begin
+      case Elements[el].Token of
+        nftDecs:
+          decs := Elements[el].IntValue;
+        nftExpChar:
+          begin
+            while el < Length(Elements) do begin
+              if Elements[el].Token = nftExpDigits then begin
+                expdig := Elements[el].IntValue;
+                Result := AIndent +
+                  '<number:number-style style:name="' + AFormatName + '">' + LineEnding +
+                  sColor + AIndent +
+                  '  <number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
+                     'number:min-integer-digits="1" '+
+                     'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
+                  sStylemap + AIndent +
+                  '</number:number-style>';
+                exit;
+              end;
+              inc(el);
+            end;
+            exit;
+          end;
+      end;
+      inc(el);
+    end;
 
   // ... more to follow...
+  end;
 end;
 
 { TsSpreadOpenDocReader }
