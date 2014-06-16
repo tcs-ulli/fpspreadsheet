@@ -2483,8 +2483,6 @@ begin
 end;
 
 function TsSpreadOpenDocWriter.WriteRowStylesXMLAsString: string;
-const
-  FALSE_TRUE: array[boolean] of string = ('false', 'true');
 var
   i: Integer;
   s: String;
@@ -2501,16 +2499,16 @@ begin
 
     // Column width
     Result := Result +
-    '      <style:table-row-properties style:row-height="%.3gmm" style:use-optimal-row-height="%s" fo:break-before="auto"/>' + LineEnding;
+    '      <style:table-row-properties ' +
+             'style:row-height="%.3gmm" ' +
+             IfThen(rowStyle.AutoRowHeight, 'style:use-optimal-row-height="true" ', '') +
+             'fo:break-before="auto"/>' + LineEnding;
 
     // End
     Result := Result +
     '    </style:style>' + LineEnding;
 
-    Result := Format(Result,
-      [rowStyle.Name, rowStyle.RowHeight, FALSE_TRUE[rowStyle.AutoRowHeight]],
-      FPointSeparatorSettings
-    );
+    Result := Format(Result, [rowStyle.Name, rowStyle.RowHeight], FPointSeparatorSettings);
   end;
 end;
 
@@ -2883,10 +2881,14 @@ var
   DisplayStr: string;
   lStyle: string = '';
   lIndex: Integer;
+  valType: String;
 begin
+  valType := 'float';
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+    if pos('%', ACell^.NumberFormatStr) <> 0 then
+      valType := 'percentage';
   end else
     lStyle := '';
 
@@ -2899,7 +2901,7 @@ begin
     DisplayStr:=FloatToStr(AValue); // Uses locale decimal separator
   end;
   FCellContent :=
-    '  <table:table-cell office:value-type="float" office:value="' + StrValue + '"' + lStyle + '>' + LineEnding +
+    '  <table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>' + LineEnding +
     '    <text:p>' + DisplayStr + '</text:p>' + LineEnding +
     '  </table:table-cell>' + LineEnding;
 end;
