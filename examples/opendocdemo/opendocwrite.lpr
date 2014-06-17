@@ -36,7 +36,7 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
 
   // Write some cells
-  MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  //MyWorksheet.WriteNumber(0, 0, 1.0);// A1
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
@@ -191,6 +191,26 @@ begin
   MyWorksheet.WriteNumber(row, 6, number6, nfSci, 2);
   MyWorksheet.WriteNumber(row, 7, number7, nfSci, 2);
   MyWorksheet.WriteNumber(row, 8, number8, nfSci, 2);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCurrency, 2 decimals');
+  MyWorksheet.WriteCurrency(row, 1, number1, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 2, number2, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 3, number3, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 4, number4, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 5, number5, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 6, number6, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 7, number7, nfCurrency, 2, '$');
+  MyWorksheet.WriteCurrency(row, 8, number8, nfCurrency, 2, '$');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCurrencyRed, 2 decimals, +:$ 1000, -:($ 1000)');
+  MyWorksheet.WriteCurrency(row, 1, number1, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 2, number2, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 3, number3, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 4, number4, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 5, number5, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 6, number6, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 7, number7, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  MyWorksheet.WriteCurrency(row, 8, number8, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');

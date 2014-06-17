@@ -44,6 +44,9 @@ begin
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];
+
+  number := 10000;
+  (*
   {
   MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
   myWorksheet.LeftPaneWidth := 1;
@@ -307,12 +310,12 @@ begin
   MyWorksheet.WriteCurrency(r, 1, number, nfCurrency, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 2, -number, nfCurrency, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrency, 0, 'USD');
-  inc(r);
+  inc(r);                           *)
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCurrencyRed, 0 decs');
   MyWorksheet.WriteCurrency(r, 1, number, nfCurrencyRed, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 2, -number, nfCurrencyRed, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
-  inc(r);
+  inc(r);                   (*
   MyWorksheet.WriteUTF8Text(r, 0, 'nfAccounting, 0 decs');
   MyWorksheet.WriteCurrency(r, 1, number, nfAccounting, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 2, -number, nfAccounting, 0, 'USD');
@@ -413,7 +416,7 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, Str_Fourth);
   MyWorksheet.WriteTextRotation(0, 0, rt90DegreeClockwiseRotation);
   MyWorksheet.WriteUsedFormatting(0, 1, [uffBold]);
-
+                                 *)
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xls', sfExcel8, true);
   MyWorkbook.Free;

@@ -764,7 +764,7 @@ var
   parser: TsNumFormatParser;
   fmt: String;
 begin
-  parser := TsNumFormatParser.Create(Workbook, AFormatString);
+  parser := TsNumFormatParser.Create(Workbook, AFormatString, ANumFormat);
   try
     if parser.Status = psOK then begin
       // For writing, we have to convert the fpc format string to Excel dialect

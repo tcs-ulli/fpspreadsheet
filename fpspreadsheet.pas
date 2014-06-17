@@ -545,6 +545,7 @@ type
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
 
     { Data manipulation methods - For Rows and Cols }
+    function  CalcAutoRowHeight(ARow: Cardinal): Single;
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
     function  GetCellCountInRow(ARow: Cardinal): Cardinal;
@@ -2505,6 +2506,22 @@ begin
   Result := FWorkbook.FormatSettings;
 end;
 
+function TsWorksheet.CalcAutoRowHeight(ARow: Cardinal): Single;
+var
+  cell: PCell;
+  fnt: TsFont;
+  col: Integer;
+  h0: Single;
+begin
+  Result := 0;
+  h0 := Workbook.GetDefaultFontSize;
+  for col := 0 to GetLastColIndex do begin
+    cell := FindCell(ARow, col);
+    if cell <> nil then
+      Result := Max(Result, Workbook.GetFont(cell^.FontIndex).Size / h0);
+  end;
+end;
+
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
 var
   LElement: TRow;
@@ -2614,7 +2631,7 @@ begin
   if row <> nil then
     Result := row^.Height
   else
-    Result := FWorkbook.DefaultRowHeight;
+    Result := CalcAutoRowHeight(ARow); //FWorkbook.DefaultRowHeight;
 end;
 
 procedure TsWorksheet.RemoveAllRows;
