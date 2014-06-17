@@ -652,7 +652,7 @@ const
     ('%0:s-"%1:s"',   '%0:s-"%1:s"'),     //  6: 1-$
     ('%0:s"%1:s"-',   '%0:s-"%1:s"'),     //  7: 1$-
     ('-%0:s "%1:s"',  '-* %0:s"%1:s"'),   //  8: -1 $
-    ('-"%1:s" %0:s',  '-* "%1:s" -%0:s'), //  9: -$ 1
+    ('-"%1:s" %0:s',  '-* "%1:s" %0:s'), //  9: -$ 1
     ('%0:s "%1:s"-',  '%0:s- "%1:s"'),    // 10: 1 $-
     ('"%1:s" %0:s-',  '"%1:s"* %0:s-'),   // 11: $ 1-
     ('"%1:s" -%0:s',  '"%1:s"* -%0:s'),   // 12: $ -1
@@ -662,12 +662,12 @@ const
   );
 var
   decs: String;
-  cf, ncf: Byte;
+  pcf, ncf: Byte;
   p, n: String;
   accStyle: Boolean;
   negRed: Boolean;
 begin
-  cf := IfThen(APosCurrFormat < 0, AFormatSettings.CurrencyFormat, APosCurrFormat);
+  pcf := IfThen(APosCurrFormat < 0, AFormatSettings.CurrencyFormat, APosCurrFormat);
   ncf := IfThen(ANegCurrFormat < 0, AFormatSettings.NegCurrFormat, ANegCurrFormat);
   if ADecimals < 0 then
     ADecimals := AFormatSettings.CurrencyDecimals;
@@ -679,7 +679,7 @@ begin
   accStyle := ANumberFormat in [nfAccounting, nfAccountingRed];
   negRed := ANumberFormat in [nfCurrencyRed, nfAccountingRed];
 
-  p := POS_FMT[cf, accStyle];
+  p := POS_FMT[pcf, accStyle];
   n := NEG_FMT[ncf, accStyle];
   // add extra space for the sign of the number for perfect alignment in Excel
   if accStyle then

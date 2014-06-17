@@ -39,7 +39,7 @@
       <Unit0>
         <Filename Value="opendocwrite.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="opendocwrite"/>
+        <UnitName Value=""/>
       </Unit0>
     </Units>
   </ProjectOptions>
@@ -55,11 +55,5 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Other>
-      <CompilerMessages>
-        <UseMsgFile Value="True"/>
-      </CompilerMessages>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
 </CONFIG>

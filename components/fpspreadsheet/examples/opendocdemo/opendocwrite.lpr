@@ -201,7 +201,7 @@ begin
   MyWorksheet.WriteCurrency(row, 7, number7, nfCurrency, 2, '$');
   MyWorksheet.WriteCurrency(row, 8, number8, nfCurrency, 2, '$');
   inc(row);
-  MyWorksheet.WriteUTF8Text(row, 0, 'nfCurrencyRed, 2 decimals, +:$ 1000, -:($ 1000)');
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCurrencyRed, 2 decimals, >0: $ 1000, <0: ($ 1000)');
   MyWorksheet.WriteCurrency(row, 1, number1, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 2, number2, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 3, number3, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
@@ -210,6 +210,27 @@ begin
   MyWorksheet.WriteCurrency(row, 6, number6, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 7, number7, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 8, number8, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  inc(row);
+  // Note: nfAccounting's not supported by ods, will be replaced by nfCurrency's
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfAccounting, 2 decimals');
+  MyWorksheet.WriteCurrency(row, 1, number1, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 2, number2, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 3, number3, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 4, number4, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 5, number5, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 6, number6, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 7, number7, nfAccounting, 2, '$');
+  MyWorksheet.WriteCurrency(row, 8, number8, nfAccounting, 2, '$');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfAccountingRed, 2 decimals, >0: EUR 1000, <0: -EUR 1000)');
+  MyWorksheet.WriteCurrency(row, 1, number1, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 2, number2, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 3, number3, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 4, number4, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 5, number5, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 6, number6, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 7, number7, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  MyWorksheet.WriteCurrency(row, 8, number8, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
