@@ -275,7 +275,8 @@ var
   uValue: String;
 begin
   uValue := Uppercase(AValue);
-  Result := (uValue = '$') or (uValue = 'USD') or
+  Result := (uValue = Uppercase(AnsiToUTF8(FWorkbook.FormatSettings.CurrencyString))) or
+            (uValue = '$') or (uValue = 'USD') or
             (uValue = '€') or (uValue = 'EUR') or
             (uValue = '£') or (uValue = 'GBP') or
             (uValue = '¥') or (uValue = 'JPY');

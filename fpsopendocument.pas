@@ -512,6 +512,16 @@ begin
                     Result := Result + AIndent +
                     '  <number:number decimal-places="' + IntToStr(decs) +
                        '" number:min-integer-digits="1" />' + LineEnding;
+                nftRepeat:
+                  begin
+                    if FSections[ASection].Elements[el].TextValue = ' ' then
+                      s := '<![CDATA[ ]]>' else
+                      s := FSections[ASection].Elements[el].TextValue;
+                    Result := Result + AIndent +
+                    '  <number:text>' + s + '</number:text>' + LineEnding;
+                    inc(el);
+                  end
+
                 else
                   inc(el);
               end; // case
@@ -1280,6 +1290,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     styleindex: Integer;
     fmt: String;
     posfmt, negfmt, zerofmt: String;
+    nf: TsNumberFormat;
   begin
     posfmt := '';
     negfmt := '';
@@ -1309,14 +1320,16 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end;
 
       fmt := FNumFormatList[styleindex].FormatString;
+      nf := FNumFormatList[styleindex].NumFormat;
+      if nf in [nfCurrency, nfCurrencyRed] then ANumFormat := nf;
       case condition[1] of
-        '<': begin
-               negfmt := fmt;
+        '>': begin
+               posfmt := fmt;
                if (Length(condition) > 1) and (condition[2] = '=') then
                  zerofmt := fmt;
              end;
-        '>': begin
-               posfmt := fmt;
+        '<': begin
+               negfmt := fmt;
                if (Length(condition) > 1) and (condition[2] = '=') then
                  zerofmt := fmt;
              end;
@@ -1333,7 +1346,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if negfmt <> '' then AFormatStr := AFormatStr + ';' + negfmt;
     if zerofmt <> '' then AFormatStr := AFormatStr + ';' + zerofmt;
 
-    ANumFormat := nfCustom;
+    if not (ANumFormat in [nfCurrency, nfCurrencyRed]) then
+      ANumFormat := nfCustom;
   end;
 
   procedure ReadNumberStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -1361,7 +1375,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         Continue;
       end else
       if nodeName = 'number:number' then begin
-        s := GetAttrValue(node, 'number:decimal-places');
+        s := GetAttrValue(node, 'decimal-places');
         if s <> '' then decs := StrToInt(s) else decs := 0;
         grouping := GetAttrValue(node, 'number:grouping') = 'true';
         nf := IfThen(grouping, nfFixedTh, nfFixed);
@@ -1393,15 +1407,17 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end else
       if nodeName = 'style:text-properties' then begin
         s := GetAttrValue(node, 'fo:color');
-        color := HTMLColorStrToColor(s);
-        idx := FWorkbook.AddColorToPalette(color);
-        {
-        if idx < 8 then
-          fmt := Format('[%s]%s', [FWorkbook.GetColorName(idx), fmt])
-        else
-          fmt := Format('[Color%d]%s', [idx, fmt]);
+        if s <> '' then begin
+          hasColor := true;
+          {                        // currently not needed
+          color := HTMLColorStrToColor(s);
+          idx := FWorkbook.AddColorToPalette(color);
+          if idx < 8 then
+            fmt := Format('[%s]%s', [FWorkbook.GetColorName(idx), fmt])
+          else
+            fmt := Format('[Color%d]%s', [idx, fmt]);
           }
-        hasColor := true;
+        end;
       end;
       node := node.NextSibling;
     end;
@@ -1412,8 +1428,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 
     if ANumFormatNode.NodeName = 'number:percentage-style' then
       nf := nfPercentage
-    else if ANumFormatNode.NodeName = 'number:currency-style' then begin
-      if hasColor then nf := nfCurrencyRed else nf := nfCurrency;
+    else if (ANumFormatNode.NodeName = 'number:currency-style') then begin
+      if not (nf in [nfCurrency, nfCurrencyRed]) then
+        nf := IfThen(hasColor, nfCurrencyred, nfCurrency);
     end;
 
     NumFormatList.AddFormat(ANumFormatName, fmt, nf);

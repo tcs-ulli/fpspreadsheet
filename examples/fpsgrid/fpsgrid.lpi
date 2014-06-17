@@ -48,9 +48,6 @@
               </Win32>
             </Options>
           </Linking>
-          <Other>
-            <CompilerPath Value="$(CompPath)"/>
-          </Other>
         </CompilerOptions>
       </Item2>
       <Item3 Name="Release">
@@ -82,9 +79,6 @@
               </Win32>
             </Options>
           </Linking>
-          <Other>
-            <CompilerPath Value="$(CompPath)"/>
-          </Other>
         </CompilerOptions>
       </Item3>
     </BuildModes>
@@ -111,7 +105,7 @@
       <Unit0>
         <Filename Value="fpsgrid.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fpsgrid"/>
+        <UnitName Value=""/>
       </Unit0>
       <Unit1>
         <Filename Value="mainform.pas"/>
@@ -119,7 +113,6 @@
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="mainform"/>
       </Unit1>
     </Units>
   </ProjectOptions>
@@ -144,9 +137,6 @@
         </Win32>
       </Options>
     </Linking>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="5">
