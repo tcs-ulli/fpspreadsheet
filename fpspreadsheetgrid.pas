@@ -2121,7 +2121,9 @@ begin
   if (Key = VK_ESCAPE) and FEditing then begin
     SetEditText(Col, Row, FOldEditText);
     EditorHide;
+    exit;
   end;
+  inherited;
 end;
 
 procedure TsCustomWorksheetGrid.Loaded;
