@@ -1186,8 +1186,24 @@ procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDO
 var
   cellText: String;
   styleName: String;
+  childnode: TDOMNode;
 begin
-  cellText := ACellNode.TextContent;
+  //  cellText := ACellNode.TextContent;
+  { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
+    catch the spaces inserted in formatting texts. However, this adds lots of
+    garbage into the cellText if is is read by means of above statement. Done
+    like below is much better: }
+  cellText := '';
+  childnode := ACellNode.FirstChild;
+  while Assigned(childnode) do begin
+    case childnode.NodeType of
+      TEXT_NODE, COMMENT_NODE, PROCESSING_INSTRUCTION_NODE: ; // ignored
+    else
+      cellText := cellText + childnode.TextContent;
+    end;
+    childnode := childnode.NextSibling;
+  end;
+
   FWorkSheet.WriteUTF8Text(ARow, ACol, cellText);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
@@ -1331,8 +1347,12 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     grouping: Boolean;
     nex: Integer;
     cs: String;
+    color: TsColorValue;
+    idx: Integer;
+    hasColor: Boolean;
   begin
     fmt := '';
+    hasColor := false;
     node := ANumFormatNode.FirstChild;
     while Assigned(node) do begin
       nodeName := node.NodeName;
@@ -1370,6 +1390,18 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
           fmt := fmt + childNode.NodeValue;
           childNode := childNode.NextSibling;
         end;
+      end else
+      if nodeName = 'style:text-properties' then begin
+        s := GetAttrValue(node, 'fo:color');
+        color := HTMLColorStrToColor(s);
+        idx := FWorkbook.AddColorToPalette(color);
+        {
+        if idx < 8 then
+          fmt := Format('[%s]%s', [FWorkbook.GetColorName(idx), fmt])
+        else
+          fmt := Format('[Color%d]%s', [idx, fmt]);
+          }
+        hasColor := true;
       end;
       node := node.NextSibling;
     end;
@@ -1380,8 +1412,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 
     if ANumFormatNode.NodeName = 'number:percentage-style' then
       nf := nfPercentage
-    else if ANumFormatNode.NodeName = 'number:currency-style' then
-      nf := nfCurrency;
+    else if ANumFormatNode.NodeName = 'number:currency-style' then begin
+      if hasColor then nf := nfCurrencyRed else nf := nfCurrency;
+    end;
 
     NumFormatList.AddFormat(ANumFormatName, fmt, nf);
   end;
@@ -1602,7 +1635,6 @@ begin
     //process each cell of the row
     cellNode := rowNode.FindNode('table:table-cell');
     while Assigned(cellNode) do begin
-
       // These nodes occur due to indentation spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
       // to ReadXMLFile

@@ -19,7 +19,7 @@ var
   MyDir: string;
   number1, number2, number3, number4,
   number5, number6, number7, number8: Double;
-  row: Integer;
+  row: Integer = 7;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
   number1 := 1.23456789;
@@ -36,7 +36,7 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
 
   // Write some cells
-  //MyWorksheet.WriteNumber(0, 0, 1.0);// A1
+  MyWorksheet.WriteNumber(0, 0, 1.0);// A1
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
@@ -49,7 +49,6 @@ begin
   MyWorksheet.WriteFont(0, 1, 'Times New Roman', 16, [], scRed);
 
   // Show number formats
-  row := 7;
   MyWorksheet.WriteUTF8Text(row, 0, 'Number formats:');
   inc(row);
   MyWorksheet.WriteUTF8Text(row, 0, 'nfGeneral');
