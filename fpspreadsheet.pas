@@ -2631,7 +2631,8 @@ begin
   if row <> nil then
     Result := row^.Height
   else
-    Result := CalcAutoRowHeight(ARow); //FWorkbook.DefaultRowHeight;
+    //Result := CalcAutoRowHeight(ARow);
+    Result := FWorkbook.DefaultRowHeight;
 end;
 
 procedure TsWorksheet.RemoveAllRows;
