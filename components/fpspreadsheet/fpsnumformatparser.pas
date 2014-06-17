@@ -73,6 +73,7 @@ type
     FStart: PChar;
     FEnd: PChar;
     FCurrSection: Integer;
+    FHasRedSection: Boolean;
     FStatus: Integer;
     function GetCurrencySymbol: String;
     function GetDecimals: byte;
@@ -126,13 +127,13 @@ type
     // NumberFormat
     procedure EvalNumFormatOfSection(ASection: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor);
-    function IsCurrencyAt(ASection, AIndex: Integer; out ANumFormat: TsNumberFormat;
+    function IsCurrencyAt(ASection: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor): Boolean;
     function IsDateAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
       var ANextIndex: Integer): Boolean;
     function IsNumberAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
       var ADecimals: Byte; var ANextIndex: Integer): Boolean;
-    function IsSciAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
+    function IsSciAt(ASection, AIndex: Integer; var ANumberFormat: TsNumberFormat;
       var ADecimals: Byte; var ANextIndex: Integer): Boolean;
     function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
     function IsTimeAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
@@ -140,8 +141,10 @@ type
     function IsTokenAt(AToken: TsNumFormatToken; ASection,AIndex: Integer): Boolean;
 
   public
-    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
+    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
+      const ANumFormat: TsNumberFormat = nfGeneral);
     destructor Destroy; override;
+    procedure ClearAll;
     function GetDateTimeCode(ASection: Integer): String;
     function IsDateTimeFormat: Boolean;
     procedure LimitDecimals;
@@ -170,19 +173,24 @@ const
 { TsNumFormatParser }
 
 { Creates a number format parser for analyzing a formatstring that has been read
-  from a spreadsheet file. }
+  from a spreadsheet file.
+  In case of "red" number formats we also have to specify the number format
+  because the format string might not contain the color information, and we
+  extract it from the NumFormat in this case. }
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String);
+  const AFormatString: String; const ANumFormat: TsNumberFormat = nfGeneral);
 begin
   inherited Create;
   FCreateMethod := 0;
   FWorkbook := AWorkbook;
+  FHasRedSection := (ANumFormat in [nfCurrencyRed, nfAccountingRed]);
   Parse(AFormatString);
 end;
 
 destructor TsNumFormatParser.Destroy;
 begin
   FSections := nil;
+//  ClearAll;
   inherited Destroy;
 end;
 
@@ -295,8 +303,10 @@ function TsNumFormatParser.BuildFormatStringFromSection(ASection: Integer;
 var
   element: TsNumFormatElement;
   i: Integer;
+  colorAdded: Boolean;
 begin
   Result := '';
+  colorAdded := false;
 
   if (ASection < 0) and (ASection >= GetParsedSectionCount) then
     exit;
@@ -354,7 +364,7 @@ begin
       nftRepeat:
         if element.TextValue <> '' then Result := Result + '*' + element.TextValue;
       nftColor:
-        if ADialect = nfdExcel then
+        if ADialect = nfdExcel then begin
           case element.IntValue of
             scBlack  : Result := '[black]';
             scWhite  : Result := '[white]';
@@ -366,8 +376,17 @@ begin
             scCyan   : Result := '[cyan]';
             else       Result := Format('[Color%d]', [element.IntValue]);
           end;
+          colorAdded := true;
+        end;
     end;
   end;
+  {
+  if (ADialect = nfdExcel)
+     and (not colorAdded) and
+     (FSections[ASection].NumFormat in [nfCurrencyRed, nfAccountingRed])
+  then
+    Result := '[red]'+Result;
+    }
 end;
 
 procedure TsNumFormatParser.CheckSections;
@@ -457,6 +476,20 @@ begin
     FSections[ASection].CurrencySymbol,
     FSections[ASection].Color
   );
+end;
+
+procedure TsNumFormatParser.ClearAll;
+var
+  i, j: Integer;
+begin
+  for i:=0 to Length(FSections)-1 do begin
+    for j:=0 to Length(FSections[i].Elements) do
+      if FSections[i].Elements <> nil then
+        FSections[i].Elements[j].TextValue := '';
+    FSections[i].Elements := nil;
+    FSections[i].CurrencySymbol := '';
+  end;
+  FSections := nil;
 end;
 
 procedure TsNumFormatParser.DeleteElement(ASection, AIndex: Integer);
@@ -562,14 +595,15 @@ begin
           exit;
         end;
       end;
-      // nfCurrency
-      if IsCurrencyAt(ASection, 0, ANumFormat, ADecimals, ACurrencySymbol, AColor)
-        then exit;
     end;
 
     // Look for scientific format
     if IsSciAt(ASection, 0, ANumFormat, ADecimals, next) then
       exit;
+
+    // Currency?
+    if IsCurrencyAt(ASection, ANumFormat, ADecimals, ACurrencySymbol, AColor)
+      then exit;
 
     // Look for date formats
     if IsDateAt(ASection, 0, ANumFormat, next) then begin
@@ -658,11 +692,14 @@ begin
     Result := FSections[0].NumFormat;
     if (Result in [nfCurrency, nfAccounting]) then begin
       if Length(FSections) = 2 then begin
+        Result := FSections[1].NumFormat;
         if FSections[1].CurrencySymbol <> FSections[0].CurrencySymbol then begin
           Result := nfCustom;
           exit;
         end;
-        if (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency) then
+        if (FSections[0].NumFormat in [nfCurrency, nfCurrencyRed]) and
+           (FSections[1].NumFormat in [nfCurrency, nfCurrencyRed])
+        then
           exit;
         if FSections[1].NumFormat = nfAccounting then begin
           Result := nfAccounting;
@@ -670,14 +707,16 @@ begin
         end;
       end else
       if Length(FSections) = 3 then begin
+        Result := FSections[1].NumFormat;
         if (FSections[0].CurrencySymbol <> FSections[1].CurrencySymbol) or
            (FSections[1].CurrencySymbol <> FSections[2].CurrencySymbol)
         then begin
           Result := nfCustom;
           exit;
         end;
-        if (FSections[0].NumFormat = nfCurrency) and (FSections[1].NumFormat = nfCurrency) and
-           (FSections[2].NumFormat = nfCurrency)
+        if (FSections[0].NumFormat in [nfCurrency, nfCurrencyRed]) and
+           (FSections[1].NumFormat in [nfCurrency, nfCurrencyRed]) and
+           (FSections[2].NumFormat in [nfCurrency, nfCurrencyRed])
         then
           exit;
         if (FSections[1].NumFormat = nfAccounting) and
@@ -709,13 +748,15 @@ end;
   the numberformat code, the count of decimals, the currency sambol, and the
   color.
   Note that the check is not very exact, but should cover most cases. }
-function TsNumFormatParser.IsCurrencyAt(ASection, AIndex: Integer;
+function TsNumFormatParser.IsCurrencyAt(ASection: Integer;
   out ANumFormat: TsNumberFormat; out ADecimals: byte;
   out ACurrencySymbol: String; out AColor: TsColor): Boolean;
 var
   isAccounting : Boolean;
   hasCurrSymbol: Boolean;
+  hasColor: Boolean;
   next: Integer;
+  el: Integer;
 begin
   Result := false;
 
@@ -723,7 +764,75 @@ begin
   ACurrencySymbol := '';
   ADecimals := 0;
   AColor := scNotDefined;
+  isAccounting := false;
+  hasColor := false;
 
+  // Looking for the currency symbol: it is the unique identifier of the
+  // currency format.
+  for el := 0 to High(FSections[ASection].Elements) do
+    if FSections[ASection].Elements[el].Token = nftCurrSymbol then begin
+      Result := true;
+      break;
+    end;
+
+  if not Result then
+    exit;
+
+  { When the format string comes from fpc it does not contain a color token.
+    Color would be lost when saving. Therefore, we take the color from the
+    knowledge of the NumFormat passed on creation: nfCurrencyRed has color red
+    in the second section! }
+  if (ASection = 1) and FHasRedSection then
+    AColor := scRed;
+
+  // Now that we know that it is a currency format analyze the elements again
+  // and determine color, decimals and currency symbol.
+  el := 0;
+  while (el < Length(FSections[ASection].Elements)) do begin
+    case FSections[ASection].Elements[el].Token of
+      nftColor:
+        begin
+          AColor := FSections[ASection].Elements[el].IntValue;
+          hasColor := true;
+        end;
+      nftRepeat:
+        isAccounting := true;
+      nftCurrSymbol:
+        ACurrencySymbol := FSections[ASection].Elements[el].TextValue;
+      nftOptDigit:
+        if IsNumberAt(ASection, el, ANumFormat, ADecimals, el) then
+          dec(el)
+        else begin
+          Result := false;
+          exit;
+        end;
+      nftDigit:
+        if IsNumberAt(ASection, el, ANumFormat, ADecimals, el) then
+          dec(el)
+        else begin
+          Result := false;
+          exit;
+        end;
+    end;
+    inc(el);
+  end;
+
+  if (ASection = 1) and FHasRedSection and not hasColor then
+    InsertElement(ASection, 0, nftColor, scRed);
+
+  Result := hasCurrSymbol and ((ANumFormat = nfFixedTh) or (ASection = 2));
+  if Result then begin
+    if isAccounting then begin
+      if AColor = scNotDefined then ANumFormat := nfAccounting else
+      if AColor = scRed then ANumFormat := nfAccountingRed;
+    end else begin
+      if AColor = scNotDefined then ANumFormat := nfCurrency else
+      if AColor = scRed then ANumFormat := nfCurrencyRed;
+    end;
+  end else
+    ANumFormat := nfCustom;
+
+  (*
   if IsTokenAt(nftColor, ASection, AIndex) then begin
     AIndex := AIndex + 1;
     AColor := FSections[ASection].Elements[AIndex].IntValue;
@@ -760,6 +869,7 @@ begin
     end;
   end else
     ANumFormat := nfCustom;
+    *)
 end;
 
 function TsNumFormatParser.IsDateAt(ASection,AIndex: Integer;

@@ -299,12 +299,14 @@ type
 procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
 begin
   AddFormat('N0', '', nfGeneral);
+  {
   AddFormat('N1', '0', nfFixed);
   AddFormat('N2', '0.00', nfFixed);
   AddFormat('N3', '#,##0', nfFixedTh);
-  AddFormat('N4', '#,##0.00', nfFixed);
+  AddFormat('N4', '#,##0.00', nfFixedTh);
   AddFormat('N10', '0%', nfPercentage);
   AddFormat('N11', '0.00%', nfPercentage);
+}
 end;
 
 
@@ -313,10 +315,14 @@ end;
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AIndent,
   AFormatName: String): String;
 var
-  i, ns: Integer;
+  i: Integer;
 begin
   Result := '';
-  for i := Length(FSections)-1 downto 0 do
+  { When there is only one section the next statement is the only one executed.
+    When there are several sections the file contains at first the
+    positive section (index 0), then the negative section (index 1), and
+    finally the zero section (index 2) which contains the style-map. }
+  for i:=0 to Length(FSections)-1 do
     Result := Result + BuildXMLAsStringFromSection(i, AIndent, AFormatName);
 end;
 
@@ -333,6 +339,8 @@ var
   ns: Integer;
   clr: TsColorvalue;
   el: Integer;
+  s: String;
+
 begin
   Result := '';
   sGrouping := '';
@@ -340,20 +348,23 @@ begin
   sStyleMap := '';
 
   ns := Length(FSections);
+  if (ns = 0) then
+    exit;
+
   if (ns > 1) then begin
     if (ASection = ns - 1) then
       case ns of
         2: sStyleMap := AIndent +
              '  <style:map ' +
                  'style:apply-style-name="' + AFormatName + 'P0" ' +
-                 'style:condition="value()>=0" />' + LineEnding;      // >= 0
+                 'style:condition="value()&gt;=0" />' + LineEnding;      // >= 0
         3: sStyleMap := AIndent +
              '  <style:map '+
                  'style:apply-style-name="' + AFormatName + 'P0" ' +     // > 0
-                 'style:condition="value()>0" />' + LineEnding + AIndent +
+                 'style:condition="value()&gt;0" />' + LineEnding + AIndent +
              '  <style:map '+
                  'style:apply-style-name="' + AFormatName + 'P1" ' +     // < 0
-                 'style:condition="value()<0" />' + LineEnding;
+                 'style:condition="value()&lt;0" />' + LineEnding;
         else
           raise Exception.Create('At most 3 format sections allowed.');
       end
@@ -427,14 +438,17 @@ begin
       end;
     end;
 
-    // nfSci: not supported by ods, use nfExp instead.
+    // If the program gets here the format can only be nfSci, nfCurrency/Accounting,
+    // or date/time.
     el := 0;
     decs := 0;
     while el < Length(Elements) do begin
       case Elements[el].Token of
         nftDecs:
           decs := Elements[el].IntValue;
+
         nftExpChar:
+          // nfSci: not supported by ods, use nfExp instead.
           begin
             while el < Length(Elements) do begin
               if Elements[el].Token = nftExpDigits then begin
@@ -452,6 +466,57 @@ begin
               inc(el);
             end;
             exit;
+          end;
+
+        nftCurrSymbol:
+          begin
+            Result := AIndent +
+              '<number:currency-style style:name="' + AFormatName + '">' + LineEnding;
+            el := 0;
+            while el < Length(Elements) do begin
+              case Elements[el].Token of
+                nftColor:
+                  begin
+                    clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
+                    Result := Result + AIndent +
+                      '  <style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
+                    inc(el);
+                  end;
+                nftSign, nftSignBracket:
+                  begin
+                    Result := Result + AIndent +
+                      '  <number:text>' + Elements[el].TextValue + '</number:text>' + LineEnding;
+                    inc(el);
+                  end;
+                nftSpace:
+                  begin
+                    Result := Result + AIndent +
+                      '  <number:text><![CDATA[ ]]></number:text>' + LineEnding;
+                    inc(el);
+                  end;
+                nftCurrSymbol:
+                  begin
+                    Result := Result + AIndent +
+                      '  <number:currency-symbol>' + Elements[el].TextValue +
+                        '</number:currency-symbol>' + LineEnding;
+                    inc(el);
+                  end;
+                nftOptDigit:
+                  if IsNumberAt(ASection, el, nf, decs, el) then
+                    Result := Result + AIndent +
+                      '  <number:number decimal-places="' + IntToStr(decs) +
+                         '" number:min-integer-digits="1" number:grouping="true" />'
+                      + LineEnding;
+                nftDigit:
+                  if IsNumberAt(ASection, el, nf, decs, el) then
+                    Result := Result + AIndent +
+                    '  <number:number decimal-places="' + IntToStr(decs) +
+                       '" number:min-integer-digits="1" />' + LineEnding;
+                else
+                  inc(el);
+              end; // case
+            end;  // while
+            Result := Result + sStyleMap + AIndent + '</number:currency-style>' + LineEnding;
           end;
       end;
       inc(el);
@@ -2096,9 +2161,10 @@ var
   lRowStylesCode: String;
   lNumFmtCode: String;
 begin
+  ListAllNumFormats;
+  ListAllFormattingStyles;
   ListAllColumnStyles;
   ListAllRowStyles;
-  ListAllFormattingStyles;
 
   lNumFmtCode := WriteNumFormatsXMLAsString;
 
@@ -2347,10 +2413,10 @@ var
   parser: TsSpreadOpenDocNumFormatParser;
 begin
   Result := '';
-  ListAllNumFormats;
   for i:=0 to FNumFormatList.Count-1 do begin
     fmtItem := FNumFormatList.Items[i];
-    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString);
+    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString,
+      fmtItem.NumFormat);
     try
       numFmtXML := parser.BuildXMLAsString('  ', fmtItem.Name);
       if numFmtXML <> '' then
@@ -2888,7 +2954,9 @@ begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
     if pos('%', ACell^.NumberFormatStr) <> 0 then
-      valType := 'percentage';
+      valType := 'percentage'
+    else if IsCurrencyFormat(ACell^.NumberFormat) then
+      valType := 'currency';
   end else
     lStyle := '';
 
