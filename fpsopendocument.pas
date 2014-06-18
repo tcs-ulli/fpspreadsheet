@@ -58,6 +58,9 @@ type
 
   { TsSpreadOpenDocNumFormatParser }
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
+  private
+    function BuildDateTimeXMLAsString(ASection: Integer; AIndent: String;
+      out AIsTimeOnly: Boolean): String;
   protected
     function BuildXMLAsStringFromSection(ASection: Integer;
       AIndent,AFormatName: String): String;
@@ -312,6 +315,104 @@ end;
 
 { TsSpreadOpenDocNumFormatParser }
 
+function TsSpreadOpenDocNumFormatParser.BuildDateTimeXMLAsString(ASection: Integer;
+  AIndent: String; out AIsTimeOnly: boolean): String;
+var
+  el: Integer;
+  s: String;
+  prevToken: TsNumFormatToken;
+begin
+  Result := '';
+  AIsTimeOnly := true;
+  with FSections[ASection] do begin
+    el := 0;
+    while el < Length(Elements) do begin
+      case Elements[el].Token of
+        nftYear:
+          begin
+            prevToken := Elements[el].Token;
+            AIsTimeOnly := false;
+            s := IfThen(Elements[el].IntValue > 2, 'number:style="long" ', '');
+            Result := Result + AIndent +
+              '  <number:year ' + s + '/>' + LineEnding;
+          end;
+
+        nftMonth:
+          begin
+            prevToken := Elements[el].Token;
+            AIsTimeOnly := false;
+            case Elements[el].IntValue of
+              1: s := '';
+              2: s := 'number:style="long"';
+              3: s := 'number:textual="true"';
+              4: s := 'number:style="long" number:textual="true"';
+            end;
+            Result := result + AIndent +
+              '  <number:month ' + s + '/>' + LineEnding;
+          end;
+
+        nftDay:
+          begin
+            prevToken := Elements[el].Token;
+            AIsTimeOnly := false;
+            case Elements[el].IntValue of
+              1: s := 'day ';
+              2: s := 'day number:style="long"';
+              3: s := 'day number:textual="true"';
+              4: s := 'day number:style="long" number:textual="true"';
+              5: s := 'day-of-week ';
+              6: s := 'day-of-week number:style="long"';
+            end;
+            Result := Result + AIndent +
+              '  <number:' + s + '/>' + LineEnding;
+          end;
+
+        nftHour, nftMinute, nftSecond:
+          begin
+            prevToken := Elements[el].Token;
+            case Elements[el].Token of
+              nftHour  : s := 'hours ';
+              nftMinute: s := 'minutes ';
+              nftSecond: s := 'seconds ';
+            end;
+            s := s + IfThen(abs(Elements[el].IntValue) = 1, '', 'number:style="long" ');
+            if Elements[el].IntValue < 0 then
+              s := s + 'number:truncate-on-overflow="false" ';
+            Result := Result + AIndent +
+              '  <number:' + s + '/>' + LineEnding;
+          end;
+
+        nftMilliseconds:
+          begin
+             // ???
+          end;
+
+        nftDateTimeSep, nftText, nftEscaped, nftSpace:
+          begin
+            if Elements[el].TextValue = ' ' then
+              s := '<![CDATA[ ]]>'
+            else begin
+              s := Elements[el].TextValue;
+              if (s = '/') then begin
+                if prevToken in [nftYear, nftMonth, nftDay] then
+                  s := FWorkbook.FormatSettings.DateSeparator
+                else
+                  s := FWorkbook.FormatSettings.TimeSeparator;
+              end;
+            end;
+            Result := Result + AIndent +
+              '  <number:text>' + s + '</number:text>' + LineEnding;
+          end;
+
+        nftAMPM:
+          Result := Result + AIndent +
+            '  <number:am-pm />' + LineEnding;
+      end;
+      inc(el);
+    end;
+  end;
+end;
+
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AIndent,
   AFormatName: String): String;
 var
@@ -340,6 +441,7 @@ var
   clr: TsColorvalue;
   el: Integer;
   s: String;
+  isTimeOnly: Boolean;
 
 begin
   Result := '';
@@ -527,6 +629,23 @@ begin
               end; // case
             end;  // while
             Result := Result + sStyleMap + AIndent + '</number:currency-style>' + LineEnding;
+          end;
+
+        // date/time
+        nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond:
+          begin
+            s := BuildDateTimeXMLAsString(ASection, AIndent, isTimeOnly);
+            if isTimeOnly then
+              Result := Result + AIndent +
+                '<number:time-style style:name="' + AFormatName + '">' + LineEnding +
+                s + AIndent +
+                '</number:time-style>' + LineEnding
+            else
+              Result := Result + AIndent +
+                '<number:date-style style:name="' + AFormatName + '">' + LineEnding +
+                s + AIndent +
+                '</number:date-style>' + LineEnding;
+            exit;
           end;
       end;
       inc(el);
@@ -3035,20 +3154,36 @@ end;
 *******************************************************************}
 procedure TsSpreadOpenDocWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+const
+  FMT: array[boolean] of string = (ISO8601FormatExtended, ISO8601FormatTimeOnly);
+  DT: array[boolean] of string = ('date', 'time');
+  // Index "boolean" is to be understood as "isTimeOnly"
 var
-  lStyle: string = '';
+  lStyle: string;
+  strValue: String;
+  displayStr: String;
   lIndex: Integer;
+  isTimeOnly: Boolean;
 begin
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
-    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+    lStyle := 'table:style-name="ce' + IntToStr(lIndex) + '" ';
   end else
     lStyle := '';
 
   // The row should already be the correct one
-  FCellContent :=
-    '  <table:table-cell office:value-type="date" office:date-value="' + FormatDateTime(ISO8601FormatExtended, AValue) + '"' + lStyle + '>' + LineEnding +
-    '  </table:table-cell>' + LineEnding;
+
+  // We have to distinguish between time-only values and values that contain date parts.
+  isTimeOnly := IsTimeFormat(ACell^.NumberFormat) or IsTimeFormat(ACell^.NumberFormatStr);
+  strValue := FormatDateTime(FMT[isTimeOnly], AValue);
+  displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue);
+
+  FCellContent := Format(
+    '  <table:table-cell office:value-type="%s" office:%s-value="%s" %s>' + LineEnding +
+    '    <text:p>%s</text:p> ' + LineEnding +
+    '  </table:table-cell>' + LineEnding, [
+    DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, displayStr
+  ]);
 end;
 
 {

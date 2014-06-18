@@ -147,6 +147,7 @@ type
     procedure ClearAll;
     function GetDateTimeCode(ASection: Integer): String;
     function IsDateTimeFormat: Boolean;
+    function IsTimeFormat: Boolean;
     procedure LimitDecimals;
     procedure Localize;
 
@@ -1182,6 +1183,26 @@ begin
     end;
 
   Result := false;
+end;
+
+{ Returns true if the format elements contain only time, no date tokens. }
+function TsNumFormatParser.IsTimeFormat: Boolean;
+var
+  section: Integer;
+  elem: Integer;
+begin
+  Result := false;
+  for section := 0 to High(FSections) do
+    for elem := 0 to High(FSections[section].Elements) do
+      if FSections[section].Elements[elem].Token in [nftHour, nftMinute, nftSecond]
+      then begin
+        Result := true;
+      end else
+      if FSections[section].Elements[elem].Token in [nftYear, nftMonth, nftDay, nftExpChar, nftCurrSymbol]
+      then begin
+        Result := false;
+        exit;
+      end;
 end;
 
 function TsNumFormatParser.IsTokenAt(AToken: TsNumFormatToken;
