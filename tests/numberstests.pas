@@ -117,11 +117,6 @@ var
   TestWorkbook: TsWorkbook = nil;
   TestFileName: String = '';
 
-const
-  TestFileBIFF8='testbiff8.xls'; //with 1904 numbermode number system
-  TestFileBIFF8_1899='testbiff8_1899.xls'; //with 1899/1900 numbermode number system
-  NumbersSheet = 'Numbers'; //worksheet name
-
 // Initialize array with variables that represent the values
 // we expect to be in the test spreadsheet files.
 //

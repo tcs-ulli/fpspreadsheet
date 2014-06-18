@@ -11,10 +11,12 @@ uses
   Classes, SysUtils, fpspreadsheet;
 
 const
-  TestFileBIFF8='testbiff8.xls'; //with 1904 datemode date system
+  TestFileBIFF8_1904='testbiff8_1904.xls'; //with 1904 datemode date system
   TestFileBIFF8_1899='testbiff8_1899.xls'; //with 1899/1900 datemode date system
-  TestFileODF='testodf.ods'; //OpenDocument/LibreOffice with 1904 datemode date system
+  TestFileBIFF8=TestFileBIFF8_1899;
+  TestFileODF_1904='testodf_1904.ods'; //OpenDocument/LibreOffice with 1904 datemode date system
   TestFileODF_1899='testodf_1899.ods'; //OpenDocument/LibreOffice with 1899/1900 datemode date system
+  TestFileODF=TestFileODF_1899;
   TestFileManual='testmanual.xls'; //file name for manual checking using external spreadsheet program (Excel/LibreOffice..)
   DatesSheet = 'Dates'; //worksheet name
   FormulasSheet = 'Formulas'; //worksheet name
