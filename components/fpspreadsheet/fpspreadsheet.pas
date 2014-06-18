@@ -2129,7 +2129,10 @@ begin
     // The user can choose another date format if he wants to
 
     if AFormatStr = '' then
-      AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr);
+      AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr)
+    else
+    if AFormat = nfTimeInterval then
+      AFormatStr := AddIntervalBrackets(AFormatStr);
 
     // Check whether the formatstring is for date/times.
     if AFormatStr <> '' then begin

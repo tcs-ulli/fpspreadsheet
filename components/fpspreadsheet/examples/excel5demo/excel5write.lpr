@@ -314,14 +314,14 @@ begin
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, UTF8ToAnsi(fmt));
   MyWorksheet.WriteNumber(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, UTF8ToAnsi(fmt));
-  inc(r);
+  inc(r);          {  --- not working correctly: Except reports an error
   fmt := '[Green]"¥"#,##0.0_);[Red]-"¥"#,##0.0';
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, '+fmt);
   MyWorksheet.WriteNumber(r, 1, number);
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, UTF8ToAnsi(fmt));
   MyWorksheet.WriteNumber(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, UTF8ToAnsi(fmt));
-  inc(r);
+  inc(r);            }
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, _("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)');
   MyWorksheet.WriteNumber(r, 1, number);
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '_("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)');
@@ -355,7 +355,6 @@ begin
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h');
-
 
   //MyFormula.FormulaStr := '';
 
