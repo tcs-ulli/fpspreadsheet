@@ -106,6 +106,7 @@ type
     procedure TestWriteReadNumbers_BIFF2;
     procedure TestWriteReadNumbers_BIFF5;
     procedure TestWriteReadNumbers_BIFF8;
+    procedure TestWriteReadNumbers_ODS;
   end;
 
 
@@ -230,6 +231,11 @@ end;
 procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_BIFF8;
 begin
   TestWriteReadNumbers(sfExcel8);
+end;
+
+procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_ODS;
+begin
+  TestWriteReadNumbers(sfOpenDocument);
 end;
 
 
