@@ -1375,7 +1375,10 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         Continue;
       end else
       if nodeName = 'number:number' then begin
-        s := GetAttrValue(node, 'decimal-places');
+        if ANumFormatName = 'number:currency-style' then
+          s := GetAttrValue(node, 'decimal-places')
+        else
+          s := GetAttrValue(node, 'number:decimal-places');
         if s <> '' then decs := StrToInt(s) else decs := 0;
         grouping := GetAttrValue(node, 'number:grouping') = 'true';
         nf := IfThen(grouping, nfFixedTh, nfFixed);
