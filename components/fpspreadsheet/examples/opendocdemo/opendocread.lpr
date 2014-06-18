@@ -28,6 +28,10 @@ begin
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
   InputFileName := MyDir + 'test.ods';
+  if not FileExists(InputFileName) then begin
+    WriteLn('Input file ', InputFileName, ' does not exist. Please run opendocwrite first.');
+    Halt;
+  end;
   WriteLn('Opening input file ', InputFilename);
 
   // Create the spreadsheet

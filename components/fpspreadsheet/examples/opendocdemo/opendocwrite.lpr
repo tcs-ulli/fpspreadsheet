@@ -36,8 +36,6 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet');
 
   // Write some cells
-  MyWorksheet.WriteNumber(0, 0, 1.0, nfPercentage, 2);// A1
-  (*
   MyWorksheet.WriteNumber(0, 1, 2.0);// B1
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
@@ -235,7 +233,7 @@ begin
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
-*)
+
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.ods',
     sfOpenDocument);
