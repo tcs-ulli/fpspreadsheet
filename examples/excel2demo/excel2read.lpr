@@ -23,6 +23,11 @@ begin
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
   InputFileName := MyDir + 'test' + STR_EXCEL_EXTENSION;
+  if not FileExists(InputFileName) then begin
+    WriteLn('Input file ', InputFileName, ' does not exist. Please run excel2write first.');
+    Halt;
+  end;
+
   WriteLn('Opening input file ', InputFilename);
 
   // Create the spreadsheet

@@ -45,8 +45,6 @@ begin
 }
 
   // Write some number cells
-  MyWorksheet.WriteNumber(0, 0, 0.0, nfFixed, 2);
-  (*
   MyWorksheet.WriteNumber(0, 0, 1.0);
   MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
   MyWorksheet.WriteNumber(0, 1, 2.0);
@@ -380,7 +378,7 @@ begin
   MyWorksheet.WriteRowInfo(5, lRow);
   lRow.Height := 2;                    // 2 lines
   MyWorksheet.WriteRowInfo(6, lRow);
-                                    *)
+
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);
   MyWorkbook.Free;
