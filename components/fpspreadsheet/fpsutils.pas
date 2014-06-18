@@ -29,6 +29,8 @@ const
   ISO8601Format='yyyymmdd"T"hhmmss';
   // Extended ISO 8601 date/time format, used in e.g. ODF/opendocument
   ISO8601FormatExtended='yyyy"-"mm"-"dd"T"hh":"mm":"ss';
+  // ISO 8601 time-only format, used in ODF/opendocument
+  ISO8601FormatTimeOnly='"PT"hh"H"nn"M"ss"S"';
 
 // Endianess helper functions
 function WordToLE(AValue: Word): Word;
@@ -71,6 +73,8 @@ function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberF
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
+function IsTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
+function IsTimeFormat(AFormatStr: String): Boolean; overload;
 
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
@@ -574,6 +578,24 @@ begin
   parser := TsNumFormatParser.Create(nil, AFormatStr);
   try
     Result := parser.IsDateTimeFormat;
+  finally
+    parser.Free;
+  end;
+end;
+
+function IsTimeFormat(AFormat: TsNumberFormat): boolean;
+begin
+  Result := AFormat in [nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM,
+    nfTimeInterval];
+end;
+
+function IsTimeFormat(AFormatStr: String): Boolean;
+var
+  parser: TsNumFormatParser;
+begin
+  parser := TsNumFormatParser.Create(nil, AFormatStr);
+  try
+    Result := parser.IsTimeFormat;
   finally
     parser.Free;
   end;
