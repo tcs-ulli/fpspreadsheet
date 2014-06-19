@@ -46,19 +46,19 @@ function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 
 // Other routines
 function ParseIntervalString(const AStr: string;
-  var AFirstCellRow, AFirstCellCol, ACount: Integer;
-  var ADirection: TsSelectionDirection): Boolean;
+  out AFirstCellRow, AFirstCellCol, ACount: Integer;
+  out ADirection: TsSelectionDirection): Boolean;
 function ParseCellRangeString(const AStr: string;
-  var AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
-  var AFlags: TsRelFlags): Boolean;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
+  out AFlags: TsRelFlags): Boolean;
 function ParseCellString(const AStr: string;
-  var ACellRow, ACellCol: Integer; var AFlags: TsRelFlags): Boolean; overload;
+  out ACellRow, ACellCol: Integer; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString(const AStr: string;
-  var ACellRow, ACellCol: Integer): Boolean; overload;
+  out ACellRow, ACellCol: Integer): Boolean; overload;
 function ParseCellRowString(const AStr: string;
-  var AResult: Integer): Boolean;
+  out AResult: Integer): Boolean;
 function ParseCellColString(const AStr: string;
-  var AResult: Integer): Boolean;
+  out AResult: Integer): Boolean;
 
 function GetColString(AColIndex: Integer): String;
 function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags): String;
@@ -94,7 +94,7 @@ function MakeShortDateFormat(AShortDateFormat: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
 function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
-  var ALeft, ARight: String): Byte;
+  out ALeft, ARight: String): Byte;
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
@@ -248,8 +248,8 @@ end;
   Parses strings like A5:A10 into an selection interval information
 }
 function ParseIntervalString(const AStr: string;
-  var AFirstCellRow, AFirstCellCol, ACount: Integer;
-  var ADirection: TsSelectionDirection): Boolean;
+  out AFirstCellRow, AFirstCellCol, ACount: Integer;
+  out ADirection: TsSelectionDirection): Boolean;
 var
   //Cells: TStringList;
   LastCellRow, LastCellCol: Integer;
@@ -303,8 +303,8 @@ end;
   Returns in AFlags also information on relative/absolute cells.
 }
 function ParseCellRangeString(const AStr: string;
-  var AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
-  var AFlags: TsRelFlags): Boolean;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
+  out AFlags: TsRelFlags): Boolean;
 var
   p: Integer;
   s: String;
@@ -339,8 +339,8 @@ end;
   Example "AMP$200" --> (rel) column 1029 (= 26*26*1 + 26*16 + 26 - 1)
                         (abs) row = 199 (abs)
 }
-function ParseCellString(const AStr: String; var ACellRow, ACellCol: Integer;
-  var AFlags: TsRelFlags): Boolean;
+function ParseCellString(const AStr: String; out ACellRow, ACellCol: Integer;
+  out AFlags: TsRelFlags): Boolean;
 
   function Scan(AStartPos: Integer): Boolean;
   const
@@ -410,14 +410,14 @@ end;
 { for compatibility with old version which does not return flags for relative
   cell addresses }
 function ParseCellString(const AStr: string;
-  var ACellRow, ACellCol: Integer): Boolean;
+  out ACellRow, ACellCol: Integer): Boolean;
 var
   flags: TsRelFlags;
 begin
-  ParseCellString(AStr, ACellRow, ACellCol, flags);
+  Result := ParseCellString(AStr, ACellRow, ACellCol, flags);
 end;
 
-function ParseCellRowString(const AStr: string; var AResult: Integer): Boolean;
+function ParseCellRowString(const AStr: string; out AResult: Integer): Boolean;
 begin
   try
     AResult := StrToInt(AStr) - 1;
@@ -427,7 +427,7 @@ begin
   Result := True;
 end;
 
-function ParseCellColString(const AStr: string; var AResult: Integer): Boolean;
+function ParseCellColString(const AStr: string; out AResult: Integer): Boolean;
 const
   INT_NUM_LETTERS = 26;
 begin
@@ -607,8 +607,6 @@ end;
   and "msz" (for "mm:ss.z"). }
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
-var
-  fmt: String;
 begin
   case ANumberFormat of
     nfShortDateTime:
@@ -932,7 +930,7 @@ end;
   and right part and returns 1 if the format string is in the left, and 2 if
   it is in the right part. Additionally removes Excel format codes '_' }
 function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
-  var ALeft, ARight: String): Byte;
+  out ALeft, ARight: String): Byte;
 var
   P: PChar;
   PStart, PEnd: PChar;

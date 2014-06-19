@@ -57,20 +57,16 @@ const
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  ActualString: String;
-  Row, Col: Integer;
+  Row: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
   expected: String;
   actual: String;
   cell: PCell;
-  fs: TFormatSettings;
 begin
   TempFile := GetTempFileName;
 
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
-//  MyWorkbook.FormatSettings.DecimalSeparator := '.';
-//  MyWorkbook.FormatSettings.ShortDateFormat := 'yyyy-mm-dd';
   MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
 
   // Write out all test formulas

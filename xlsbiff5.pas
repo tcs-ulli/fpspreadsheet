@@ -1022,9 +1022,6 @@ var
   optns: Word;
   b: Byte;
   dw1, dw2: DWord;
-  XFOptions: Word;
-  XFAlignment: byte;
-  XFBorderDWord1, XFBorderDWord2: DWord;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_XF));
@@ -1098,7 +1095,6 @@ var
   lHorAlign: TsHorAlignment;
   lVertAlign: TsVertAlignment;
   lWordWrap: Boolean;
-  fmt: String;
 begin
   // The first style was already added
   for i := 1 to Length(FFormattingStyles) - 1 do begin

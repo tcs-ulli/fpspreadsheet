@@ -117,7 +117,7 @@ type
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
-      var ABorderStyle: TsCellBorderStyle): Boolean;
+      out ABorderStyle: TsCellBorderStyle): Boolean;
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
@@ -333,7 +333,7 @@ procedure Register;
 implementation
 
 uses
-  Types, LCLType, LCLIntf, Math, fpCanvas, GraphUtil, fpsUtils;
+  Types, LCLType, LCLIntf, Math, fpCanvas, fpsUtils;
 
 const
   HOR_ALIGNMENTS: array[haLeft..haRight] of TAlignment = (
@@ -548,7 +548,6 @@ end;
   Row/Col coordinates are in worksheet units here! }
 procedure TsCustomWorksheetGrid.ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
 var
-  h: Integer;
   lRow: PRow;
 begin
   if (FWorksheet <> nil) then begin
@@ -860,7 +859,6 @@ end;
 procedure TsCustomWorksheetGrid.DrawSelection;
 var
   P1, P2: TPoint;
-  selrect: TRect;
 begin
   // Cosmetics at the edges of the grid to avoid spurious rests
   P1 := CellRect(Selection.Left, Selection.Top).TopLeft;
@@ -890,14 +888,7 @@ procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect
   AState: TGridDrawState);
 var
   ts: TTextStyle;
-  flags: Cardinal;
   txt: String;
-  txtL, txtR: String;
-  txtRect: TRect;
-  P: TPoint;
-  w, h, h0, hline: Integer;
-  i: Integer;
-  L: TStrings;
   c, r: Integer;
   wrapped: Boolean;
   horAlign: TsHorAlignment;
@@ -1204,7 +1195,7 @@ end;
   matching color in the palette. }
 function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
 
-  procedure ColorToHSL(RGB: TColor; var H, S, L : double);
+  procedure ColorToHSL(RGB: TColor; out H, S, L : double);
   // Taken from https://code.google.com/p/thtmlviewer/source/browse/trunk/source/HSLUtils.pas?r=277
   // The procedure in GraphUtils is crashing for some colors in Laz < 1.3
   var
@@ -1247,8 +1238,6 @@ function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
   end;
 
   function ColorDistance(color1, color2: TColor): Double;
-  type
-    TRGBA = packed record R,G,B,A: Byte end;
   var
     H1,S1,L1, H2,S2,L2: Double;
   begin
@@ -1662,7 +1651,7 @@ end;
   ADeltaCol and ADeltaRow (one of them must be 0, the other one can only be +/-1).
   ACol and ARow are in grid units. }
 function TsCustomWorksheetGrid.GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
-  var ABorderStyle: TsCellBorderStyle): Boolean;
+  out ABorderStyle: TsCellBorderStyle): Boolean;
 var
   cell, neighborcell: PCell;
   border, neighborborder: TsCellBorder;
@@ -1936,13 +1925,11 @@ var
   ts: TTextStyle;
   flags: Cardinal;
   txt: String;
-  txtL, txtR: String;
   txtRect: TRect;
   P: TPoint;
   w, h, h0, hline: Integer;
   i: Integer;
   L: TStrings;
-  c, r: Integer;
   wrapped: Boolean;
 begin
   wrapped := ATextWrap or (ATextRot = rtStacked);
@@ -2462,7 +2449,6 @@ var
   i: Integer;
   lCol: PCol;
   lRow: PRow;
-  fc, fr: Integer;
 begin
   if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids, graphutil,
+  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
   ColorBox, fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
@@ -873,7 +873,6 @@ var
   cell: PCell;
   r,c: Cardinal;
   found: Boolean;
-  t: Integer;
 begin
   with WorksheetGrid do begin
     r := GetWorksheetRow(Row);
@@ -885,7 +884,6 @@ begin
       nf := cell^.NumberFormat;
     for i:=0 to ActionList.ActionCount-1 do begin
       ac := TAction(ActionList.Actions[i]);
-      t := ac.Tag;
       if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 200) then begin
         found := ((ac.Tag - NUMFMT_TAG) div 10 = ord(nf));
         if nf = nfCustom then
@@ -921,12 +919,10 @@ var
   i: Integer;
   ac: TAction;
   vert_align: TsVertAlignment;
-  t: Integer;
 begin
   with WorksheetGrid do vert_align := VertAlignments[Selection];
   for i:=0 to ActionList.ActionCount-1 do begin
     ac := TAction(ActionList.Actions[i]);
-    t := ac.tag;
     if (ac.Tag >= VERTALIGN_TAG) and (ac.Tag < VERTALIGN_TAG+10) then
       ac.Checked := ((ac.Tag - VERTALIGN_TAG) = ord(vert_align));
   end;

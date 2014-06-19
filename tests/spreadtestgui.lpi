@@ -47,9 +47,6 @@
               <UseExternalDbgSyms Value="True"/>
             </Debugging>
           </Linking>
-          <Other>
-            <CompilerPath Value="$(CompPath)"/>
-          </Other>
         </CompilerOptions>
       </Item2>
     </BuildModes>
@@ -79,7 +76,6 @@
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="spreadtestgui"/>
       </Unit0>
       <Unit1>
         <Filename Value="datetests.pas"/>
@@ -104,7 +100,6 @@
       <Unit5>
         <Filename Value="testsutility.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="testsutility"/>
       </Unit5>
       <Unit6>
         <Filename Value="internaltests.pas"/>
@@ -129,7 +124,6 @@
       <Unit10>
         <Filename Value="optiontests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="optiontests"/>
       </Unit10>
       <Unit11>
         <Filename Value="numformatparsertests.pas"/>
@@ -169,9 +163,6 @@
         <OptimizationLevel Value="0"/>
       </Optimizations>
     </CodeGeneration>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">

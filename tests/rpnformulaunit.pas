@@ -28,7 +28,6 @@ const
   SBaseCells = 'Data cells:';
   SHelloWorld = 'Hello world!';
 var
-  Cell: PCell;
   Row: Integer;
   value: Double;
   r,c: integer;

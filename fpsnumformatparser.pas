@@ -129,15 +129,15 @@ type
       out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor);
     function IsCurrencyAt(ASection: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor): Boolean;
-    function IsDateAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
+    function IsDateAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
       var ANextIndex: Integer): Boolean;
-    function IsNumberAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
-      var ADecimals: Byte; var ANextIndex: Integer): Boolean;
-    function IsSciAt(ASection, AIndex: Integer; var ANumberFormat: TsNumberFormat;
-      var ADecimals: Byte; var ANextIndex: Integer): Boolean;
+    function IsNumberAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
+      out ADecimals: Byte; out ANextIndex: Integer): Boolean;
+    function IsSciAt(ASection, AIndex: Integer; out ANumberFormat: TsNumberFormat;
+      out ADecimals: Byte; out ANextIndex: Integer): Boolean;
     function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
-    function IsTimeAt(ASection,AIndex: Integer; var ANumberFormat: TsNumberFormat;
-      var ANextIndex: Integer): Boolean;
+    function IsTimeAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
+      out ANextIndex: Integer): Boolean;
     function IsTokenAt(AToken: TsNumFormatToken; ASection,AIndex: Integer): Boolean;
 
   public
@@ -309,10 +309,8 @@ function TsNumFormatParser.BuildFormatStringFromSection(ASection: Integer;
 var
   element: TsNumFormatElement;
   i: Integer;
-  colorAdded: Boolean;
 begin
   Result := '';
-  colorAdded := false;
 
   if (ASection < 0) and (ASection >= GetParsedSectionCount) then
     exit;
@@ -382,17 +380,9 @@ begin
             scCyan   : Result := '[cyan]';
             else       Result := Format('[Color%d]', [element.IntValue]);
           end;
-          colorAdded := true;
         end;
     end;
   end;
-  {
-  if (ADialect = nfdExcel)
-     and (not colorAdded) and
-     (FSections[ASection].NumFormat in [nfCurrencyRed, nfAccountingRed])
-  then
-    Result := '[red]'+Result;
-    }
 end;
 
 procedure TsNumFormatParser.CheckSections;
@@ -406,7 +396,6 @@ end;
 procedure TsNumFormatParser.CheckSection(ASection: Integer);
 var
   i, j: Integer;
-  ok: Boolean;
 
   // Finds the previous date/time element skipping spaces, date/time sep etc.
   function PrevDateTimeElement(j: Integer): Integer;
@@ -564,10 +553,7 @@ procedure TsNumFormatParser.EvalNumFormatOfSection(ASection: Integer;
   out AColor: TsColor);
 var
   nf: TsNumberFormat;
-  decs: Byte;
-  cs: String;
-  next: Integer;
-  ampm: Boolean;
+  next: Integer = 0;
 begin
   ANumFormat := nfCustom;
   ADecimals := 0;
@@ -761,7 +747,6 @@ var
   isAccounting : Boolean;
   hasCurrSymbol: Boolean;
   hasColor: Boolean;
-  next: Integer;
   el: Integer;
 begin
   Result := false;
@@ -772,6 +757,7 @@ begin
   AColor := scNotDefined;
   isAccounting := false;
   hasColor := false;
+  hasCurrSymbol := false;
 
   // Looking for the currency symbol: it is the unique identifier of the
   // currency format.
@@ -804,7 +790,10 @@ begin
       nftRepeat:
         isAccounting := true;
       nftCurrSymbol:
-        ACurrencySymbol := FSections[ASection].Elements[el].TextValue;
+        begin
+          ACurrencySymbol := FSections[ASection].Elements[el].TextValue;
+          hasCurrSymbol := true;
+        end;
       nftOptDigit:
         if IsNumberAt(ASection, el, ANumFormat, ADecimals, el) then
           dec(el)
@@ -837,49 +826,10 @@ begin
     end;
   end else
     ANumFormat := nfCustom;
-
-  (*
-  if IsTokenAt(nftColor, ASection, AIndex) then begin
-    AIndex := AIndex + 1;
-    AColor := FSections[ASection].Elements[AIndex].IntValue;
-  end;
-
-  isAccounting := false;
-  hasCurrSymbol := false;
-  while (AIndex < Length(FSections[ASection].Elements)) do begin
-    case FSections[ASection].Elements[AIndex].Token of
-      nftRepeat:
-        isAccounting := true;
-      nftCurrSymbol:
-        begin
-          hasCurrSymbol := true;
-          ACurrencySymbol := FSections[ASection].Elements[AIndex].TextValue;
-        end;
-      nftOptDigit:
-        if IsNumberAt(ASection, AIndex, ANumFormat, ADecimals, next) then
-          AIndex := next-1
-        else
-          exit;
-    end;
-    inc(AIndex);
-  end;
-
-  Result := hasCurrSymbol and (ANumFormat = nfFixedTh);
-  if Result then begin
-    if isAccounting then begin
-      if AColor = scNotDefined then ANumFormat := nfAccounting else
-      if AColor = scRed then ANumFormat := nfAccountingRed;
-    end else begin
-      if AColor = scNotDefined then ANumFormat := nfCurrency else
-      if AColor = scRed then ANumFormat := nfCurrencyRed;
-    end;
-  end else
-    ANumFormat := nfCustom;
-    *)
 end;
 
 function TsNumFormatParser.IsDateAt(ASection,AIndex: Integer;
-  var ANumberFormat: TsNumberFormat; var ANextIndex: Integer): Boolean;
+  out ANumberFormat: TsNumberFormat; var ANextIndex: Integer): Boolean;
 
   function CheckFormat(AFmtStr: String; var idx: Integer): Boolean;
   var
@@ -936,8 +886,6 @@ function TsNumFormatParser.IsDateAt(ASection,AIndex: Integer;
     ANextIndex := idx;
   end;
 
-var
-  i: Integer;
 begin
   if FWorkbook = nil then begin
     Result := false;
@@ -979,16 +927,13 @@ end;
   at standard number format, like nfFixed, nfPercentage etc.
   Returns TRUE if it does. }
 function TsNumFormatParser.IsNumberAt(ASection,AIndex: Integer;
-  var ANumberFormat: TsNumberFormat; var ADecimals: Byte;
-  var ANextIndex: Integer): Boolean;
-var
-  nElem: Integer;
+  out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
+  out ANextIndex: Integer): Boolean;
 begin
   Result := false;
   ANumberFormat := nfGeneral;
   ADecimals := 0;
   ANextIndex := MaxInt;
-  nElem := Length(FSections[ASection].Elements);
   // Let's look for digit tokens ('0') first
   if IsTokenAt(nftDigit, ASection, AIndex) then begin      // '0'
     if IsTokenAt(nftDecSep, ASection, AIndex+1) and        // '.'
@@ -1035,7 +980,7 @@ begin
 end;
 
 function TsNumFormatParser.IsSciAt(ASection, AIndex: Integer;
-  var ANumberFormat: TsNumberFormat; var ADecimals: Byte; var ANextIndex: Integer): Boolean;
+  out ANumberFormat: TsNumberFormat; out ADecimals: Byte; out ANextIndex: Integer): Boolean;
 begin
   if IsTokenAt(nftOptDigit, ASection, AIndex) and        // '#'
      IsTokenAt(nftOptDigit, ASection, Aindex+1) and      // '#'
@@ -1061,10 +1006,10 @@ begin
 end;
 
 function TsNumFormatParser.IsTimeAt(ASection,AIndex: Integer;
-  var ANumberFormat: TsNumberFormat; var ANextIndex: Integer): Boolean;
+  out ANumberFormat: TsNumberFormat; out ANextIndex: Integer): Boolean;
 
   function CheckFormat(AFmtStr: String; var idx: Integer;
-    var AMPM, IsInterval: boolean): Boolean;
+    out AMPM, IsInterval: boolean): Boolean;
   var
     i: Integer;
     s: String;
@@ -1143,7 +1088,6 @@ function TsNumFormatParser.IsTimeAt(ASection,AIndex: Integer;
       end;
     end;
     Result := true;
-    ANextIndex := idx;
   end;
 
 var
@@ -1252,12 +1196,9 @@ begin
 end;
 
 function TsNumFormatParser.NextToken: Char;
-var
-  delta: Integer;
 begin
   if FCurrent < FEnd then begin
     inc(FCurrent);
-    delta := integer(FCurrent - FStart);
     Result := FCurrent^;
   end else
     Result := #0;
@@ -1337,6 +1278,7 @@ var
   n: Integer;
   prevtoken: Char;
 begin
+  s := '';
   FToken := NextToken;   // Cursor was at '['
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
     case FToken of
@@ -1471,10 +1413,8 @@ procedure TsNumFormatParser.ScanDateTime;
 var
   n: Integer;
   token: Char;
-  delta: Integer;
 begin
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
-    delta := Integer(FCurrent - FStart);
     case FToken of
       '\':  // means that the next character is taken literally
         begin
@@ -1603,24 +1543,12 @@ end;
 procedure TsNumFormatParser.ScanNumber;
 var
   hasDecSep: Boolean;
-  hasThSep: Boolean;
-  hasExp: Boolean;
   n: Integer;
-
-  delta: Integer;
 begin
   hasDecSep := false;
-  hasThSep := false;
-  hasExp := false;
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
-
-    delta := integer(FCurrent - FStart);
-
     case FToken of
-      ',': begin
-             AddElement(nftThSep, ',');
-             hasThSep := true;
-           end;
+      ',': AddElement(nftThSep, ',');
       '.': begin
              AddElement(nftDecSep, '.');
              hasDecSep := true;

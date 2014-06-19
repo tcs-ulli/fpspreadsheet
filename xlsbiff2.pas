@@ -42,11 +42,11 @@ type
   TsBIFF2NumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
+  public
+    constructor Create(AWorkbook: TsWorkbook);
     procedure ConvertBeforeWriting(var AFormatString: String;
       var ANumFormat: TsNumberFormat); override;
     function FindFormatOf(AFormatCell: PCell): Integer; override;
-  public
-    constructor Create(AWorkbook: TsWorkbook);
   end;
 
   { TsSpreadBIFF2Reader }
@@ -56,7 +56,6 @@ type
     WorkBookEncoding: TsEncoding;
     FWorksheet: TsWorksheet;
     FFont: TsFont;
-    FFmtIndex: Integer;
   protected
     procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
     procedure CreateNumFormatList; override;
@@ -177,9 +176,10 @@ end;
 procedure TsBIFF2NumFormatList.AddBuiltinFormats;
 var
   fs: TFormatSettings;
-  ds, ts, cs: string;
+  cs: string;
 begin
   fs := FWorkbook.FormatSettings;
+  cs := fs.CurrencyString;
   AddFormat( 0, '', nfGeneral);
   AddFormat( 1, '0', nfFixed);
   AddFormat( 2, '0.00', nfFixed);
@@ -210,7 +210,6 @@ end;
 procedure TsBIFF2NumFormatList.ConvertBeforeWriting(var AFormatString: String;
   var ANumFormat: TsNumberFormat);
 var
-  fmt: String;
   parser: TsNumFormatParser;
 begin
   if AFormatString = '' then
@@ -230,7 +229,6 @@ end;
 
 function TsBIFF2NumFormatList.FindFormatOf(AFormatCell: PCell): Integer;
 var
-  fmt: String;
   parser: TsNumFormatParser;
   decs: Integer;
   dt: string;
@@ -273,7 +271,6 @@ procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ARow, ACol: Cardinal;
 var
   lCell: PCell;
   xfData: TXFListData;
-  style: Byte;
 begin
   lCell := FWorksheet.GetCell(ARow, ACol);
 
@@ -467,13 +464,11 @@ var
   ARow, ACol: Cardinal;
   XF: Word;
   ok: Boolean;
-  formulaResult: Double;
+  formulaResult: Double = 0.0;
 //  rpnFormula: TsRPNFormula;
   Data: array [0..7] of byte;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: Byte;
-  ncs: String;
   nfs: String;
   err: TsErrorValue;
   cell: PCell;
@@ -573,11 +568,9 @@ procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: Word;
-  value: Double;
+  value: Double = 0.0;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: Byte;
-  ncs: String;
   nfs: String;
 begin
   { BIFF Record row/column/style }
@@ -601,7 +594,7 @@ procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: Word;
-  AWord  : Word;
+  AWord  : Word = 0;
 begin
   { BIFF Record row/column/style }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -699,12 +692,10 @@ end;
   "show sheet headers", "panes are frozen", etc. }
 procedure TsSpreadBIFF2Reader.ReadWindow2(AStream: TStream);
 var
-  b: byte;
-  w: Word;
   rgb: DWord;
 begin
   // Show formulas, not results
-  b := AStream.ReadByte;
+  AStream.ReadByte;
 
   // Show grid lines
   if AStream.ReadByte <> 0 then
@@ -725,16 +716,16 @@ begin
     FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
 
   // Show zero values
-  b := AStream.ReadByte;
+  AStream.ReadByte;
 
   // Index to first visible row
-  w := WordLEToN(AStream.ReadWord);
+  WordLEToN(AStream.ReadWord);
 
   // Indoex to first visible column
-  w := WordLEToN(AStream.ReadWord);
+  WordLEToN(AStream.ReadWord);
 
   // Use automatic grid line color (0= manual)
-  b := AStream.ReadByte;
+  AStream.ReadByte;
 
   // Manual grid line line color (rgb)
   rgb := DWordToLE(AStream.ReadDWord);
@@ -869,8 +860,6 @@ procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell
   XFIndex: Word);
 var
   b: Byte;
-  xf: Word;
-  i: Integer;
 begin
   if ACell^.UsedFormattingFields = [] then
   begin
@@ -1096,7 +1085,6 @@ var
   lBorders: TsCellBorders;
   lAddBackground: Boolean;
   lHorAlign: TsHorAlignment;
-  fmt: String;
 begin
   // The loop starts with the first style added manually.
   // First style was already added  (see AddDefaultFormats)

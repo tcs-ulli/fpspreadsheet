@@ -531,7 +531,6 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   MyCell: PCell;
-  ActualColWidth: Single;
   col: Integer;
   expected: String;
   current: String;
@@ -611,7 +610,6 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   MyCell: PCell;
-  ActualColWidth: Single;
   row, col: Integer;
   b: TsCellBorder;
   expected: Integer;
@@ -788,7 +786,6 @@ var
   MyWorkbook: TsWorkbook;
   ActualRowHeight: Single;
   Row: Integer;
-  lpRow: PRow;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
   TempFile:=GetTempFileName;
@@ -856,7 +853,6 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   MyCell: PCell;
-  ActualColWidth: Single;
   tr: TsTextRotation;
   row: Integer;
   TempFile: string; //write xls/xml to this file and read back from it

@@ -357,9 +357,9 @@ type
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
     procedure AddBuiltinFormats; override;
+  public
     procedure ConvertBeforeWriting(var AFormatString: String;
       var ANumFormat: TsNumberFormat); override;
-  public
   end;
 
   { TsSpreadBIFFReader }
@@ -385,7 +385,7 @@ type
     function FindNumFormatDataForCell(const AXFIndex: Integer): TsNumFormatData;
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
-      ANumberFormatStr: String; var ADateTime: TDateTime): Boolean;
+      ANumberFormatStr: String; out ADateTime: TDateTime): Boolean;
     // Here we can add reading of records which didn't change across BIFF5-8 versions
     procedure ReadCodePage(AStream: TStream);
     // Read column info
@@ -413,10 +413,10 @@ type
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
     // Read the array of RPN tokens of a formula
-    procedure ReadRPNCellAddress(AStream: TStream; var ARow, ACol: Cardinal;
-      var AFlags: TsRelFlags); virtual;
+    procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
+      out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
-      var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags); virtual;
+      out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
     function ReadRPNTokenArray(AStream: TStream; var AFormula: TsRPNFormula): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
@@ -437,8 +437,8 @@ type
   TsSpreadBIFFWriter = class(TsCustomSpreadWriter)
   protected
     FDateMode: TDateMode;
-    FLastRow: Integer;
-    FLastCol: Word;
+    FLastRow: Cardinal;
+    FLastCol: Cardinal;
     procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
@@ -494,7 +494,7 @@ type
 implementation
 
 uses
-  StrUtils, fpsNumFormatParser;
+  fpsNumFormatParser;
 
 { Helper table for rpn formulas:
   Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
@@ -762,7 +762,6 @@ procedure TsBIFFNumFormatList.ConvertBeforeWriting(var AFormatString: String;
   var ANumFormat: TsNumberFormat);
 var
   parser: TsNumFormatParser;
-  fmt: String;
 begin
   parser := TsNumFormatParser.Create(Workbook, AFormatString, ANumFormat);
   try
@@ -852,9 +851,6 @@ end;
   formats.
   Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2. }
 procedure TsSpreadBIFFReader.CreateNumFormatList;
-var
-  i: Integer;
-  item: TsNumFormatData;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
@@ -927,7 +923,7 @@ end;
 { Convert the number to a date/time and return that if it is }
 function TsSpreadBIFFReader.IsDateTime(Number: Double;
   ANumberFormat: TsNumberFormat; ANumberFormatStr: String;
-  var ADateTime: TDateTime): boolean;
+  out ADateTime: TDateTime): boolean;
 var
   parser: TsNumFormatParser;
 begin
@@ -1064,16 +1060,12 @@ procedure TsSpreadBIFFReader.ReadFormula(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: WORD;
-  ResultFormula: Double;
+  ResultFormula: Double = 0.0;
   Data: array [0..7] of byte;
   Flags: WORD;
-  i: Integer;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: Byte;
-  ncs: String;
   nfs: String;
-  resultStr: String;
   err: TsErrorValue;
   ok: Boolean;
   cell: PCell;
@@ -1178,9 +1170,7 @@ var
   pending: integer;
   RK: DWORD;
   nf: TsNumberFormat;
-  nd: Byte;
   nfs: String;
-  ncs: String;
 begin
   ARow := WordLEtoN(AStream.ReadWord);
   fc := WordLEtoN(AStream.ReadWord);
@@ -1213,12 +1203,10 @@ procedure TsSpreadBIFFReader.ReadNumber(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: WORD;
-  value: Double;
+  value: Double = 0.0;
   dt: TDateTime;
   nf: TsNumberFormat;
-  nd: Byte;
   nfs: String;
-  ncs: String;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -1370,7 +1358,7 @@ end;
   bits to distinguish between absolute and relative addresses.
   Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
 procedure TsSpreadBIFFReader.ReadRPNCellAddress(AStream: TStream;
-  var ARow, ACol: Cardinal; var AFlags: TsRelFlags);
+  out ARow, ACol: Cardinal; out AFlags: TsRelFlags);
 var
   r: word;
 begin
@@ -1390,7 +1378,7 @@ end;
   bits to distinguish between absolute and relative addresses.
   Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
 procedure TsSpreadBIFFReader.ReadRPNCellRangeAddress(AStream: TStream;
-  var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags);
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags);
 var
   r1, r2: word;
 begin
@@ -1426,8 +1414,7 @@ var
   token: Byte;
   rpnItem: PRPNItem;
   supported: boolean;
-  wordVal: Word;    // 2 byte unsigned integer
-  dblVal: Double;   // IEEE 8 byte floating point number
+  dblVal: Double = 0.0;   // IEEE 8 byte floating point number
   flags: TsRelFlags;
   r, c, r2, c2: Cardinal;
   fek: TFEKind;

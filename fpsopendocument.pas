@@ -108,11 +108,11 @@ type
     procedure ReadNumFormats(AStylesNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
-    procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
     procedure ReadDateTime(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadNumber(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
+    procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
+    procedure ReadNumber(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
   public
     { General reading methods }
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -1248,7 +1248,6 @@ var
   cell: PCell;
   formula: String;
   stylename: String;
-  txtValue: String;
   floatValue: Double;
   fs: TFormatSettings;
   valueType: String;
@@ -1470,7 +1469,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
   procedure ReadNumberStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
   var
     node, childNode: TDOMNode;
-    fmtName, nodeName: String;
+    nodeName: String;
     fmt: String;
     nf: TsNumberFormat;
     decs: Byte;
@@ -1478,8 +1477,6 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     grouping: Boolean;
     nex: Integer;
     cs: String;
-    color: TsColorValue;
-    idx: Integer;
     hasColor: Boolean;
   begin
     fmt := '';
@@ -1655,7 +1652,6 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     nf: TsNumberFormat;
     fmt: String;
     nodeName: String;
-    s: String;
   begin
     fmt := '';
     node := ANumFormatNode.FirstChild;
@@ -1729,15 +1725,13 @@ var
   cellNode, rowNode: TDOMNode;
   paramValueType, paramFormula, tableStyleName: String;
   paramColsRepeated, paramRowsRepeated: String;
-  colsRepeated, rowsRepeated: Integer;
+  rowsRepeated: Integer;
   rowStyleName: String;
   rowStyleIndex: Integer;
   rowStyle: TRowStyleData;
   rowHeight: Single;
   autoRowHeight: Boolean;
   i: Integer;
-  lRow: PRow;
-  s: String;
 begin
   rowsRepeated := 0;
   row := 0;
@@ -1860,8 +1854,6 @@ var
   style: TCellStyleData;
   styleNode: TDOMNode;
   styleChildNode: TDOMNode;
-  colStyle: TColumnStyleData;
-  colWidth: Double;
   family: String;
   styleName: String;
   styleIndex: Integer;
@@ -1884,7 +1876,6 @@ var
   var
     L: TStringList;
     i: Integer;
-    isSolid: boolean;
     s: String;
     wid: Double;
     linestyle: String;
@@ -2405,22 +2396,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteWorksheet(CurSheet: TsWorksheet);
-var
-  j, k: Integer;
-  CurCell: PCell;
-  CurRow: array of PCell;
-  LastColIndex: Cardinal;
-  LCell: TCell;
-  AVLNode: TAVLTreeNode;
-  defFontSize: Single;
-  h, h_mm: Double;
-  styleName: String;
-  rowStyleData: TRowStyleData;
-  row: PRow;
 begin
-  LastColIndex := CurSheet.GetLastColIndex;
-  defFontSize := Workbook.GetFont(0).Size;
-
   // Header
   FContent := FContent +
   '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding;
@@ -2495,7 +2471,6 @@ end;
 function TsSpreadOpenDocWriter.WriteColStylesXMLAsString: string;
 var
   i: Integer;
-  s: String;
   colstyle: TColumnStyleData;
 begin
   Result := '';
@@ -2608,10 +2583,7 @@ var
   rowsRepeatedStr: String;
   lastCol, lastRow: Cardinal;
   rowStyleData: TRowStyleData;
-  colData: TColumnData;
-  colStyleData: TColumnStyleData;
   defFontSize: Single;
-  sameRowStyle: Boolean;
 begin
   Result := '';
 
@@ -2716,7 +2688,6 @@ end;
 function TsSpreadOpenDocWriter.WriteRowStylesXMLAsString: string;
 var
   i: Integer;
-  s: String;
   rowstyle: TRowStyleData;
 begin
   Result := '';

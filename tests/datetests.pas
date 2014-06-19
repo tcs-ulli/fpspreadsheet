@@ -214,6 +214,7 @@ type
     procedure TestWriteReadDates_BIFF2;
     procedure TestWriteReadDates_BIFF5;
     procedure TestWriteReadDates_BIFF8;
+    procedure TestWriteReadDates_ODS;
   end;
 
 
@@ -356,6 +357,11 @@ end;
 procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF8;
 begin
   TestWriteReadDates(sfExcel8);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadDates_ODS;
+begin
+  TestWriteReadDates(sfOpenDocument);
 end;
 
 

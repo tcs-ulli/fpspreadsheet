@@ -30,7 +30,7 @@ interface
 uses
   Classes, SysUtils,
   fpimage, fgl,
-  fpspreadsheet, xlscommon, fpsutils, lconvencoding;
+  fpspreadsheet, fpsutils, lconvencoding;
 
 type
 
@@ -378,7 +378,6 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
 var
   i, j: Integer;
   lCurStr: string = '';
-  lCurCell: PCell;
   lCurUsedFormatting: TsUsedFormattingFields;
   lCurColor: TsColor;
   lColorStr: String;
