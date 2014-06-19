@@ -105,7 +105,6 @@
       <Unit0>
         <Filename Value="fpsgrid.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value=""/>
       </Unit0>
       <Unit1>
         <Filename Value="mainform.pas"/>
@@ -113,6 +112,7 @@
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="mainform"/>
       </Unit1>
     </Units>
   </ProjectOptions>

@@ -66,7 +66,6 @@ type
 implementation
 
 uses
-  Math, StrUtils,
   fpsUtils, rpnFormulaUnit;
 
 const

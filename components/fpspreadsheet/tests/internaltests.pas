@@ -55,7 +55,6 @@ procedure TSpreadInternalTests.GetSheetByIndex;
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  Row: Cardinal;
 begin
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
@@ -71,7 +70,6 @@ const
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  Row: Cardinal;
 begin
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
@@ -128,7 +126,6 @@ procedure TSpreadInternalTests.ReadDateAsUTF8;
 var
   ActualDT: TDateTime;
   ActualDTString: string; //Result from ReadAsUTF8Text
-  Cell: PCell;
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   Row,Column: Cardinal;

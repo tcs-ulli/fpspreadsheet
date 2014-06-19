@@ -601,7 +601,7 @@ type
     { Base methods }
     constructor Create;
     destructor Destroy; override;
-    class function GetFormatFromFileName(const AFileName: TFileName; var SheetType: TsSpreadsheetFormat): Boolean;
+    class function GetFormatFromFileName(const AFileName: TFileName; out SheetType: TsSpreadsheetFormat): Boolean;
     function  CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
@@ -968,15 +968,15 @@ type
 const
   FEProps: array[TFEKind] of TFEProp = (
   { Operands }
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCell
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellRef
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellRange
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellNum
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellInteger
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellString
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellBool
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellErr
-    (Symbol:'';          MinParams:-1; MaxParams:-1), // fekCellMissingArg
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCell
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellRef
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellRange
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellNum
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellInteger
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellString
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellBool
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellErr
+    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellMissingArg
   { Basic operations }
     (Symbol:'+';         MinParams:2; MaxParams:2),   // fekAdd
     (Symbol:'-';         MinParams:2; MaxParams:2),   // fekSub
@@ -1587,7 +1587,6 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
   var
     fs: TFormatSettings;
     left, right: String;
-    i: Integer;
   begin
     fs := FWorkbook.FormatSettings;
     if IsNan(Value) then
@@ -1670,7 +1669,6 @@ end;
 function TsWorksheet.ReadAsNumber(ARow, ACol: Cardinal): Double;
 var
   ACell: PCell;
-  Str: string;
 begin
   Result := 0.0;
   ACell := FindCell(ARow, ACol);
@@ -1695,7 +1693,6 @@ end;
 function TsWorksheet.ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
 var
   ACell: PCell;
-  Str: string;
 begin
   ACell := FindCell(ARow, ACol);
 
@@ -1724,7 +1721,6 @@ end;
 function TsWorksheet.ReadRPNFormulaAsString(ACell: PCell): String;
 var
   fs: TFormatSettings;
-  formula: TsRPNFormula;
   elem: TsFormulaElement;
   i, j: Integer;
   L: TStringList;
@@ -1958,8 +1954,6 @@ end;
   the file. }
 procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double;
   AFormat: TsNumberFormat; AFormatString: String);
-var
-  ACell: PCell;
 begin
   WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, AFormatString);
 end;
@@ -2118,7 +2112,6 @@ procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
   AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
 var
   parser: TsNumFormatParser;
-  nf: TsNumberFormat;
 begin
   if ACell <> nil then begin
     ACell^.ContentType := cctDateTime;
@@ -2512,7 +2505,6 @@ end;
 function TsWorksheet.CalcAutoRowHeight(ARow: Cardinal): Single;
 var
   cell: PCell;
-  fnt: TsFont;
   col: Integer;
   h0: Single;
 begin
@@ -2743,7 +2735,8 @@ end;
 
   Returns: True if the file matches any of the known formats, false otherwise
 }
-class function TsWorkbook.GetFormatFromFileName(const AFileName: TFileName; var SheetType: TsSpreadsheetFormat): Boolean;
+class function TsWorkbook.GetFormatFromFileName(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean;
 var
   suffix: String;
 begin
@@ -2863,6 +2856,7 @@ var
   SheetType: TsSpreadsheetFormat;
   lException: Exception;
 begin
+  SheetType := sfExcel8;
   while (SheetType in [sfExcel2..sfExcel8]) and (lException <> nil) do
   begin
     try
@@ -3143,7 +3137,7 @@ end;
 }
 procedure TsWorkbook.RemoveAllFonts;
 var
-  i, n: Integer;
+  i: Integer;
   fnt: TsFont;
 begin
   for i:=FFontList.Count-1 downto 0 do begin
@@ -3215,8 +3209,6 @@ end;
   The color must in little-endian notation (like TColor of the graphics units)
 }
 function TsWorkbook.AddColorToPalette(AColorValue: TsColorValue): TsColor;
-var
-  i: Integer;
 begin
   // Look look for the color. Is it already in the existing palette?
   if Length(FPalette) > 0 then
@@ -3427,8 +3419,6 @@ begin
 end;
 
 function TsCustomNumFormatList.AddFormat(AFormatCell: PCell): Integer;
-var
-  item: TsNumFormatData;
 begin
   if AFormatCell = nil then
     raise Exception.Create('TsCustomNumFormat.Add: No nil pointers please');
@@ -3469,7 +3459,6 @@ var
   fmt: String;
   lFormatData: TsNumFormatData;
   i: Integer;
-  nf: TsNumberFormat;
 begin
   i := FindByIndex(AFormatIndex);
   if i > 0 then begin
@@ -3477,8 +3466,6 @@ begin
     fmt := lFormatData.FormatString;
   end else
     fmt := AFormatString;
-
-  nf := nfGeneral;
 
   // Analyzes the format string and tries to convert it to fpSpreadsheet format.
   parser := TsNumFormatParser.Create(Workbook, fmt); //, nf, cdToFPSpreadsheet);
@@ -3512,8 +3499,6 @@ procedure TsCustomNumFormatList.AnalyzeAndAdd(AFormatIndex: Integer;
   AFormatString: String);
 var
   nf: TsNumberFormat;
-  decs: Byte;
-  currsym: String;
 begin
   if FindByIndex(AFormatIndex) > -1 then
     exit;

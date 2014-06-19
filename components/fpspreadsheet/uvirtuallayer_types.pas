@@ -168,18 +168,21 @@ end;
 
 function TVirtualLayer_Item.GetAttributesHumanReadable: UTF8String;
 var
-  T: UTF8String;
+  T: UTF8String = '';
   A: TVirtualLayer_CustomAttributes;
+  fs: TFormatSettings;
 begin
-  A:=Attributes;
+  Result := '';
+  A := Attributes;
   if A=nil then Exit;
-  Result:=Result+'Regular attributes: ';
+  fs := DefaultFormatSettings;
+  Result := Result+'Regular attributes: ';
   if A.IsReadOnly then T:=T+'Read Only,';
   if A.IsHidden then T:=T+'Hidden,';
   if A.IsSystem then T:=T+'System file,';
   T:=LeftStr(T,Length(T)-1);
   Result:=Result+T+#13+#10;
-  Result:=Result+'Last modification: '+FormatDateTime(LongDateFormat+' '+LongTimeFormat,A.LastModification)+#13+#10;
+  Result:=Result+'Last modification: '+FormatDateTime(fs.LongDateFormat+' '+fs.LongTimeFormat,A.LastModification)+#13+#10;
 end;
 
 function TVirtualLayer_Item.GetAttributes: TVirtualLayer_CustomAttributes;

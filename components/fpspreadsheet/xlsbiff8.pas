@@ -85,10 +85,10 @@ type
     procedure ReadLabelSST(const AStream: TStream);
     // procedure ReadNumber() --> xlscommon
     procedure ReadRichString(const AStream: TStream);
-    procedure ReadRPNCellAddress(AStream: TStream; var ARow, ACol: Cardinal;
-      var AFlags: TsRelFlags); override;
+    procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
+      out AFlags: TsRelFlags); override;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
-      var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags); override;
+      out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); override;
     procedure ReadSST(const AStream: TStream);
     function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
@@ -294,7 +294,6 @@ var
   lHorAlign: TsHorAlignment;
   lVertAlign: TsVertAlignment;
   lWordWrap: Boolean;
-  fmt: String;
 begin
   // The first style was already added --> begin loop with 1
   for i := 1 to Length(FFormattingStyles) - 1 do begin
@@ -389,12 +388,10 @@ procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream);
 const
   isBIFF8 = true;
 var
-  MyData: TMemoryStream;
   CurrentPos: Int64;
   Boundsheets: array of Int64;
   sheet: TsWorksheet;
-  i, j, len: Integer;
-  col: PCol;
+  i, len: Integer;
 begin
   { Write workbook globals }
 
@@ -1382,7 +1379,6 @@ function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const AUse8BitLength: Boolean): WideString;
 var
   Len: Word;
-  WideName: WideString;
 begin
   if AUse8BitLength then
     Len := AStream.ReadByte()
@@ -1606,11 +1602,9 @@ end;
 procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
 var
   L: Word;
-  StringFlags: BYTE;
   ARow, ACol: Cardinal;
   XF: Word;
   WideStrValue: WideString;
-  AnsiStrValue: AnsiString;
 begin
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1659,7 +1653,7 @@ end;
   bits to distinguish between absolute and relative addresses.
   Overriding the implementation in xlscommon. }
 procedure TsSpreadBIFF8Reader.ReadRPNCellAddress(AStream: TStream;
-  var ARow, ACol: Cardinal; var AFlags: TsRelFlags);
+  out ARow, ACol: Cardinal; out AFlags: TsRelFlags);
 var
   c: word;
 begin
@@ -1680,7 +1674,7 @@ end;
   relative addresses.
   Overriding the implementation in xlscommon. }
 procedure TsSpreadBIFF8Reader.ReadRPNCellRangeAddress(AStream: TStream;
-  var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags);
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags);
 var
   c1, c2: word;
 begin
@@ -1922,7 +1916,6 @@ var
   lColor: Word;
   lWeight: Word;
   Len: Byte;
-  lFontName: UTF8String;
   font: TsFont;
 begin
   font := TsFont.Create;

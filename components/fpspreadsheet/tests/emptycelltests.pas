@@ -150,7 +150,6 @@ var
   row, col: Integer;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
-  i: Integer;
   L: TStringList;
   s: String;
 begin

@@ -131,8 +131,6 @@ var
   row, col: Integer;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
-  currValue: String;
-  expectedValue: String;
 begin
   TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true

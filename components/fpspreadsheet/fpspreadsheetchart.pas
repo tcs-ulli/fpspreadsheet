@@ -13,7 +13,7 @@ unit fpspreadsheetchart;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
+  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   // TChart
   {tasources,} TACustomSource,
   // FPSpreadsheet Visual
