@@ -19,6 +19,7 @@ var
   MyDir: string;
   number1, number2, number3, number4,
   number5, number6, number7, number8: Double;
+  dt1, dt2: TDateTime;
   row: Integer = 7;
 begin
   MyDir := ExtractFilePath(ParamStr(0));
@@ -30,6 +31,9 @@ begin
   number6 := -10000*number1;
   number7 := 1/number3;
   number8 := -1/number3;
+
+  dt1 := EncodeDate(2012, 1, 1) + EncodeTime(9, 1, 2, 12);
+  dt2 := EncodeDate(2012, 12, 1) + EncodeTime(21, 1, 2, 12);
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
@@ -230,6 +234,65 @@ begin
   MyWorksheet.WriteCurrency(row, 6, number6, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
   MyWorksheet.WriteCurrency(row, 7, number7, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
   MyWorksheet.WriteCurrency(row, 8, number8, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
+  inc(row,2);
+  MyWorksheet.WriteUTF8Text(row, 0, 'Some date/time values in various formats:');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfShortDateTime');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfShortDateTime);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfShortDateTime);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfShortDate');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfShortDate);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfShortDate);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfLongDate');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfLongDate);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfLongDate);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfShortTime');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfShortTime);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfShortTime);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfLongTime');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfLongTime);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfLongTime);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfShortTimeAM');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfShortTimeAM);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfShortTimeAM);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfLongTimeAM');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfLongTimeAM);
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfLongTimeAM);
+  inc(row);
+  // In order to use a semicolon as a date-time separator it must be escaped either by
+  // using the backslash or quotes (because the semicolon is the separator between sections)
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCustom, dddd, dd/mm/yyyy\; hh:nn');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfCustom, 'dddd, dd/mm/yyyy\; hh:nn');
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfCustom, 'dddd, dd/mm/yyyy\; hh:nn');
+  MyWorksheet.WriteUTF8Text(row, 3, 'The semicolon must be escaped otherwise it would be misunderstood as a section separator.');
+  MyWorksheet.WriteUTF8Text(row, 4, 'This format is not displayed correctly by Open/LibreOffice.');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCustom, dddd, dd/mm/yyyy"; "hh:nn');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfCustom, 'dddd, dd/mm/yyyy"; "hh:nn');
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfCustom, 'dddd, dd/mm/yyyy"; "hh:nn');
+  MyWorksheet.WriteUTF8Text(row, 3, 'The semicolon must be escaped otherwise it would be misunderstood as a section separator.');
+  MyWorksheet.WriteUTF8Text(row, 4, 'This format is not displayed correctly by Open/LibreOffice.');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCustom, dd/mmm');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfCustom, 'dd/mmm');
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfCustom, 'dd/mmm');
+  MyWorksheet.WriteUTF8Text(row, 3, 'The slash is replaced by the date or time separator of the FormatSettings');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCustom, mmm/yy');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfCustom, 'mmm/yy');
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfCustom, 'mmm/yy');
+  MyWorksheet.WriteUTF8Text(row, 3, 'The slash is replaced by the date or time separator of the FormatSettings');
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfCustom, mmm-yy');
+  MyWorksheet.WriteDateTime(row, 1, dt1, nfCustom, 'mmm-yy');
+  MyWorksheet.WriteDateTime(row, 2, dt2, nfCustom, 'mmm-yy');
+  MyWorksheet.WriteUTF8Text(row, 3, 'The dash is used literally');
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');

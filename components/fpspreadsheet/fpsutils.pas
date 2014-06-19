@@ -1007,6 +1007,16 @@ end;
 
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
+
+  procedure AddToken(AToken: Char; AWhere:Byte);
+  begin
+    case AWhere of
+      0: APositivePart := APositivePart + AToken;
+      1: ANegativePart := ANegativePart + AToken;
+      2: AZeroPart := AZeroPart + AToken;
+    end;
+  end;
+
 var
   P, PStart, PEnd: PChar;
   token: Char;
@@ -1025,24 +1035,28 @@ begin
   while P < PEnd do begin
     token := P^;
     case token of
-      '"': begin   // Skip quoted strings
+      '"': begin   // Let quoted text intact
+             AddToken(token, where);
              inc(P);
              token := P^;
              while (P < PEnd) and (token <> '"') do begin
+               AddToken(token, where);
                inc(P);
                token := P^;
              end;
+             AddToken(token, where);
            end;
       ';': begin  // Separator between parts
              inc(where);
              if where = 3 then
                exit;
-           end
-      else case where of
-             0: APositivePart := APositivePart + token;
-             1: ANegativePart := ANegativePart + token;
-             2: AZeroPart := AZeroPart + token;
            end;
+      '\': begin  // Skip "Escape" character and add next char immediately
+             inc(P);
+             token := P^;
+             AddToken(token, where);
+           end;
+      else AddToken(token, where);
     end;
     inc(P);
   end;

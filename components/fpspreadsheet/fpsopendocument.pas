@@ -343,9 +343,9 @@ begin
             AIsTimeOnly := false;
             case Elements[el].IntValue of
               1: s := '';
-              2: s := 'number:style="long"';
-              3: s := 'number:textual="true"';
-              4: s := 'number:style="long" number:textual="true"';
+              2: s := 'number:style="long" ';
+              3: s := 'number:textual="true" ';
+              4: s := 'number:style="long" number:textual="true" ';
             end;
             Result := result + AIndent +
               '  <number:month ' + s + '/>' + LineEnding;
@@ -357,11 +357,9 @@ begin
             AIsTimeOnly := false;
             case Elements[el].IntValue of
               1: s := 'day ';
-              2: s := 'day number:style="long"';
-              3: s := 'day number:textual="true"';
-              4: s := 'day number:style="long" number:textual="true"';
-              5: s := 'day-of-week ';
-              6: s := 'day-of-week number:style="long"';
+              2: s := 'day number:style="long" ';
+              3: s := 'day-of-week ';
+              4: s := 'day-of-week number:style="long" ';
             end;
             Result := Result + AIndent +
               '  <number:' + s + '/>' + LineEnding;
@@ -1581,57 +1579,47 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end else
       if nodeName = 'number:year' then begin
         s := GetAttrValue(node, 'number:style');
-        if s = 'long' then fmt := fmt + 'yyyy'
-        else if s = '' then fmt := fmt + 'yy';
+        fmt := fmt + IfThen(s = 'long', 'yyyy', 'yy');
       end else
       if nodeName = 'number:month' then begin
         s := GetAttrValue(node, 'number:style');
         stxt := GetAttrValue(node, 'number:textual');
-        if (stxt = 'true') then begin // Month as text
-          if (s = 'long') then fmt := fmt + 'mmmm' else fmt := fmt + 'mmm';
-        end else begin   // Month as number
-          if (s = 'long') then fmt := fmt + 'mm' else fmt := fmt + 'm';
-        end;
+        if (stxt = 'true') then  // Month as text
+          fmt := fmt + IfThen(s = 'long', 'mmmm', 'mmm')
+        else                     // Month as number
+          fmt := fmt + IfThen(s = 'long', 'mm', 'm');
       end else
       if nodeName = 'number:day' then begin
         s := GetAttrValue(node, 'number:style');
-        stxt := GetAttrValue(node, 'number:textual');
-        if (stxt = 'true') then begin   // day as text
-          if (s = 'long') then fmt := fmt + 'dddd' else fmt := fmt + 'ddd';
-        end else begin   // day as number
-          if (s = 'long') then fmt := fmt + 'dd' else fmt := fmt + 'd';
-        end;
-      end;
+        fmt := fmt + IfThen(s = 'long', 'dd', 'd');
+      end else
       if nodeName = 'number:day-of-week' then begin
-        s := GetAttrValue(node, 'number:stye');
-        if (s = 'long') then fmt := fmt + 'dddddd' else fmt := fmt + 'ddddd';
+        s := GetAttrValue(node, 'number:style');
+        fmt := fmt + IfThen(s = 'long', 'dddd', 'ddd');
       end else
       if nodeName = 'number:hours' then begin
         s := GetAttrValue(node, 'number:style');
-        if (sovr = 'false') then begin
-          if (s = 'long') then fmt := fmt + '[hh]' else fmt := fmt + '[h]';
-        end else begin
-          if (s = 'long') then fmt := fmt + 'hh' else fmt := fmt + 'h';
-        end;
+        if (sovr = 'false') then
+          fmt := fmt + IfThen(s = 'long', '[hh]', '[h]')
+        else
+          fmt := fmt + IfThen(s = 'long', 'hh', 'h');
         sovr := '';
       end else
       if nodeName = 'number:minutes' then begin
         s := GetAttrValue(node, 'number:style');
-        if (sovr = 'false') then begin
-          if (s = 'long') then fmt := fmt + '[nn]' else fmt := fmt + '[n]';
-        end else begin
-          if (s = 'long') then fmt := fmt + 'nn' else fmt := fmt + 'n';
-        end;
+        if (sovr = 'false') then
+          fmt := fmt + IfThen(s = 'long', '[nn]', '[n]')
+        else
+          fmt := fmt + IfThen(s = 'long', 'nn', 'n');
         sovr := '';
       end else
       if nodeName = 'number:seconds' then begin
         s := GetAttrValue(node, 'number:style');
-        if (sovr = 'false') then begin
-          if (s = 'long') then fmt := fmt + '[ss]' else fmt := fmt + '[s]';
-        end else begin
-          if (s = 'long') then fmt := fmt + 'ss' else fmt := fmt + 's';
-          sovr := '';
-        end;
+        if (sovr = 'false') then
+          fmt := fmt + IfThen(s = 'long', '[ss]', '[s]')
+        else
+          fmt := fmt + IfThen(s = 'long', 'ss', 's');
+        sovr := '';
         s := GetAttrValue(node, 'number:decimal-places');
         if (s <> '') and (s <> '0') then
           fmt := fmt + '.' + DupeString('0', StrToInt(s));
@@ -1641,8 +1629,14 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       else
       if nodeName = 'number:text' then begin
         childnode := node.FirstChild;
-        if childnode <> nil then
-          fmt := fmt + childnode.NodeValue;
+        if childnode <> nil then begin
+          s := childNode.NodeValue;
+          if pos(';', s) > 0 then
+            fmt := fmt + '"' + s + '"'
+            // avoid "misunderstanding" the semicolon as a section separator!
+          else
+            fmt := fmt + childnode.NodeValue;
+        end;
       end;
       node := node.NextSibling;
     end;
