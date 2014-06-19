@@ -275,12 +275,16 @@ function TsNumFormatParser.AnalyzeCurrency(const AValue: String): Boolean;
 var
   uValue: String;
 begin
-  uValue := Uppercase(AValue);
-  Result := (uValue = Uppercase(AnsiToUTF8(FWorkbook.FormatSettings.CurrencyString))) or
-            (uValue = '$') or (uValue = 'USD') or
-            (uValue = '€') or (uValue = 'EUR') or
-            (uValue = '£') or (uValue = 'GBP') or
-            (uValue = '¥') or (uValue = 'JPY');
+  if (FWorkbook = nil) or (FWorkbook.FormatSettings.CurrencyString = '') then
+    Result := false
+  else begin
+    uValue := Uppercase(AValue);
+    Result := (uValue = Uppercase(AnsiToUTF8(FWorkbook.FormatSettings.CurrencyString))) or
+              (uValue = '$') or (uValue = 'USD') or
+              (uValue = '€') or (uValue = 'EUR') or
+              (uValue = '£') or (uValue = 'GBP') or
+              (uValue = '¥') or (uValue = 'JPY');
+  end;
 end;
 
 { Creates a formatstring for all sections.
@@ -1528,6 +1532,11 @@ begin
         end;
       'A', 'a':
         ScanAMPM;
+      ',', '-':
+        begin
+          Addelement(nftText, FToken);
+          FToken := NextToken;
+        end
       else
         // char pointer must be at end of date/time mask.
         FToken := PrevToken;
