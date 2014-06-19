@@ -59,6 +59,7 @@ type
   { TsSpreadOpenDocNumFormatParser }
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
   private
+    function BuildCurrencyXMLAsString(ASection: Integer; AIndent: String): String;
     function BuildDateTimeXMLAsString(ASection: Integer; AIndent: String;
       out AIsTimeOnly: Boolean): String;
   protected
@@ -315,6 +316,72 @@ end;
 
 { TsSpreadOpenDocNumFormatParser }
 
+function TsSpreadOpenDocNumFormatParser.BuildCurrencyXMLAsString(ASection: Integer;
+  AIndent: String): String;
+var
+  el: Integer;
+  clr: TsColorValue;
+  nf: TsNumberFormat;
+  decs: byte;
+  s: String;
+begin
+  Result := '';
+  el := 0;
+  with FSections[ASection] do
+    while el < Length(Elements) do begin
+      case Elements[el].Token of
+        nftColor:
+          begin
+            clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
+            Result := Result + AIndent +
+              '  <style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
+            inc(el);
+          end;
+        nftSign, nftSignBracket:
+          begin
+            Result := Result + AIndent +
+              '  <number:text>' + Elements[el].TextValue + '</number:text>' + LineEnding;
+            inc(el);
+          end;
+        nftSpace:
+          begin
+            Result := Result + AIndent +
+              '  <number:text><![CDATA[ ]]></number:text>' + LineEnding;
+            inc(el);
+          end;
+        nftCurrSymbol:
+          begin
+            Result := Result + AIndent +
+              '  <number:currency-symbol>' + Elements[el].TextValue +
+                '</number:currency-symbol>' + LineEnding;
+            inc(el);
+          end;
+        nftOptDigit:
+          if IsNumberAt(ASection, el, nf, decs, el) then
+            Result := Result + AIndent +
+              '  <number:number decimal-places="' + IntToStr(decs) +
+                 '" number:min-integer-digits="1" number:grouping="true" />'
+              + LineEnding;
+        nftDigit:
+          if IsNumberAt(ASection, el, nf, decs, el) then
+            Result := Result + AIndent +
+            '  <number:number decimal-places="' + IntToStr(decs) +
+               '" number:min-integer-digits="1" />' + LineEnding;
+        nftRepeat:
+          begin
+            if FSections[ASection].Elements[el].TextValue = ' ' then
+              s := '<![CDATA[ ]]>' else
+              s := FSections[ASection].Elements[el].TextValue;
+            Result := Result + AIndent +
+            '  <number:text>' + s + '</number:text>' + LineEnding;
+            inc(el);
+          end
+        else
+          inc(el);
+      end; // case
+    end;  // while
+end;
+
 function TsSpreadOpenDocNumFormatParser.BuildDateTimeXMLAsString(ASection: Integer;
   AIndent: String; out AIsTimeOnly: boolean): String;
 var
@@ -452,6 +519,7 @@ begin
     exit;
 
   if (ns > 1) then begin
+    // The file corresponding to the last section contains the styleMap.
     if (ASection = ns - 1) then
       case ns of
         2: sStyleMap := AIndent +
@@ -545,7 +613,7 @@ begin
     while el < Length(Elements) do begin
       case Elements[el].Token of
         nftDecs:
-          decs := Elements[el].IntValue;
+          decs := Elements[el].IntValue;        // ???
 
         nftExpChar:
           // nfSci: not supported by ods, use nfExp instead.
@@ -568,65 +636,15 @@ begin
             exit;
           end;
 
+        // Currency
         nftCurrSymbol:
           begin
             Result := AIndent +
-              '<number:currency-style style:name="' + AFormatName + '">' + LineEnding;
-            el := 0;
-            while el < Length(Elements) do begin
-              case Elements[el].Token of
-                nftColor:
-                  begin
-                    clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
-                    Result := Result + AIndent +
-                      '  <style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
-                    inc(el);
-                  end;
-                nftSign, nftSignBracket:
-                  begin
-                    Result := Result + AIndent +
-                      '  <number:text>' + Elements[el].TextValue + '</number:text>' + LineEnding;
-                    inc(el);
-                  end;
-                nftSpace:
-                  begin
-                    Result := Result + AIndent +
-                      '  <number:text><![CDATA[ ]]></number:text>' + LineEnding;
-                    inc(el);
-                  end;
-                nftCurrSymbol:
-                  begin
-                    Result := Result + AIndent +
-                      '  <number:currency-symbol>' + Elements[el].TextValue +
-                        '</number:currency-symbol>' + LineEnding;
-                    inc(el);
-                  end;
-                nftOptDigit:
-                  if IsNumberAt(ASection, el, nf, decs, el) then
-                    Result := Result + AIndent +
-                      '  <number:number decimal-places="' + IntToStr(decs) +
-                         '" number:min-integer-digits="1" number:grouping="true" />'
-                      + LineEnding;
-                nftDigit:
-                  if IsNumberAt(ASection, el, nf, decs, el) then
-                    Result := Result + AIndent +
-                    '  <number:number decimal-places="' + IntToStr(decs) +
-                       '" number:min-integer-digits="1" />' + LineEnding;
-                nftRepeat:
-                  begin
-                    if FSections[ASection].Elements[el].TextValue = ' ' then
-                      s := '<![CDATA[ ]]>' else
-                      s := FSections[ASection].Elements[el].TextValue;
-                    Result := Result + AIndent +
-                    '  <number:text>' + s + '</number:text>' + LineEnding;
-                    inc(el);
-                  end
-
-                else
-                  inc(el);
-              end; // case
-            end;  // while
-            Result := Result + sStyleMap + AIndent + '</number:currency-style>' + LineEnding;
+              '<number:currency-style style:name="' + AFormatName + '">' + LineEnding +
+              BuildCurrencyXMLAsString(ASection, AIndent) +
+              sStyleMap + LineEnding +
+              '</number:currency-style>' + LineEnding;
+            exit;
           end;
 
         // date/time
@@ -649,7 +667,6 @@ begin
       inc(el);
     end;
 
-  // ... more to follow...
   end;
 end;
 
