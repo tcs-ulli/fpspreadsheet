@@ -377,6 +377,7 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
+  SetLength(Boundsheets, 0);
   for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     len := Length(Boundsheets);
@@ -1188,6 +1189,8 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  Unused(AData);
+
   // Clear existing fonts. They will be replaced by those from the file.
   FWorkbook.RemoveAllFonts;
 

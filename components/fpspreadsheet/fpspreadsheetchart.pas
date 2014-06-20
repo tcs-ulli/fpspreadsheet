@@ -210,6 +210,7 @@ procedure TsWorksheetChartSource.LoadPropertiesFromStrings(AXInterval,
 var
   lXCount, lYCount: Integer;
 begin
+  Unused(AXTitle, AYTitle, ATitle);
   ParseIntervalString(AXInterval, FXFirstCellRow, FXFirstCellCol, lXCount, FXSelectionDirection);
   ParseIntervalString(AYInterval, FYFirstCellRow, FYFirstCellCol, lYCount, FYSelectionDirection);
   if lXCount <> lYCount then raise Exception.Create(

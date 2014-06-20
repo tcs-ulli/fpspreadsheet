@@ -212,6 +212,8 @@ procedure TsBIFF2NumFormatList.ConvertBeforeWriting(var AFormatString: String;
 var
   parser: TsNumFormatParser;
 begin
+  Unused(ANumFormat);
+
   if AFormatString = '' then
     AFormatString := 'General'
   else begin
@@ -401,6 +403,7 @@ end;
 // Read the FORMAT record for formatting numerical data
 procedure TsSpreadBIFF2Reader.ReadFormat(AStream: TStream);
 begin
+  Unused(AStream);
   // We ignore the formats in the file, everything is known
   // (Using the formats in the file would require de-localizing them).
 end;
@@ -1238,6 +1241,8 @@ var
   len: Integer;
   s: ansistring;
 begin
+  Unused(AFormatData);
+
   s := NumFormatList.FormatStringForWriting(AListIndex);
   len := Length(s);
 
@@ -1546,6 +1551,8 @@ var
   w: Word;
   h: Single;
 begin
+  Unused(ASheet);
+
   containsXF := false;
 
   { BIFF record header }

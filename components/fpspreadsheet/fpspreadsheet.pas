@@ -476,10 +476,9 @@ type
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
 
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-      AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
-      ACurrencySymbol: String = ''); overload;
-    procedure WriteNumber(ACell: PCell; ANumber: Double; AFormat: TsNumberFormat = nfGeneral;
-      ADecimals: Byte = 2; ACurrencySymbol: String = ''); overload;
+      AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2); overload;
+    procedure WriteNumber(ACell: PCell; ANumber: Double;
+      AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2); overload;
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat; AFormatString: String); overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
@@ -1193,6 +1192,7 @@ end;
 }
 procedure TsWorksheet.RemoveCallback(data, arg: pointer);
 begin
+  Unused(arg);
   { The strings and dyn arrays must be reset to nil content manually, because
     FreeMem only frees the record mem, without checking its content }
   PCell(data).UTF8StringValue := '';
@@ -1649,7 +1649,7 @@ begin
       cctDateTime:
         Result := DateTimeToStrNoNaN(DateTimeValue, NumberFormat, NumberFormatStr);
       cctBool:
-        Result := IfThen(BoolValue, lpTRUE, lpFALSE);
+        Result := StrUtils.IfThen(BoolValue, lpTRUE, lpFALSE);
       cctError:
         case TsErrorValue(ErrorValue) of
           errEmptyIntersection  : Result := lpErrEmptyIntersection;
@@ -1912,18 +1912,15 @@ end;
   @param  ANumber   The number to be written
   @param  AFormat   The format identifier, e.g. nfFixed (optional)
   @param  ADecimals The number of decimals used for formatting (optional)
-  @param  ACurrencySymbol The currency symbol in case of currency format (nfCurrency)
 }
 procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
-  ACurrencySymbol: String = '');
+  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2);
 begin
-  WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, ADecimals, ACurrencySymbol);
+  WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, ADecimals);
 end;
 
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
-  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2;
-  ACurrencySymbol: String = '');
+  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2);
 begin
   if IsDateTimeFormat(AFormat) or IsCurrencyFormat(AFormat) then
     raise Exception.Create(lpInvalidNumberFormat);
@@ -2694,6 +2691,7 @@ end;
 }
 procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
 begin
+  Unused(arg);
   TsWorksheet(data).Free;
 end;
 
@@ -3488,6 +3486,7 @@ end;
 procedure TsCustomNumFormatList.ConvertBeforeWriting(var AFormatString: String;
   var ANumFormat: TsNumberFormat);
 begin
+  Unused(AFormatString, ANumFormat);
   // nothing to do here. But see, e.g., xlscommon.TsBIFFNumFormatList
 end;
 
@@ -3498,7 +3497,7 @@ end;
 procedure TsCustomNumFormatList.AnalyzeAndAdd(AFormatIndex: Integer;
   AFormatString: String);
 var
-  nf: TsNumberFormat;
+  nf: TsNumberFormat = nfGeneral;
 begin
   if FindByIndex(AFormatIndex) > -1 then
     exit;
@@ -3717,6 +3716,7 @@ end;
 procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
   AData: TsWorkbook);
 begin
+  Unused(AStrings, AData);
   raise Exception.Create(lpUnsupportedReadFormat);
 end;
 
@@ -3800,6 +3800,7 @@ end;
   Must be overridden by descendants. See BIFF2 }
 procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 begin
+  Unused(ACell);
   // to be overridden
 end;
 
@@ -3821,6 +3822,8 @@ procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell; ASt
 var
   Len: Integer;
 begin
+  Unused(AStream);
+
   FixFormat(ACell);
 
   if ACell^.UsedFormattingFields = [] then Exit;
@@ -3859,6 +3862,8 @@ var
   fmt: string;
   nf: TsNumberFormat;
 begin
+  Unused(AStream);
+
   if ACell^.NumberFormat = nfGeneral then
     exit;
 
@@ -4026,18 +4031,24 @@ end;
 
 procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings);
 begin
+  Unused(AStrings);
   raise Exception.Create(lpUnsupportedWriteFormat);
 end;
 
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
 begin
+  Unused(AStream, ARow, ACol);
+  Unused(AFormula, ACell);
+
   // Silently dump the formula; child classes should implement their own support
 end;
 
 procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 begin
+  Unused(AStream, ARow, ACol);
+  Unused(AFormula, ACell);
   // Silently dump the formula; child classes should implement their own support
 end;
 

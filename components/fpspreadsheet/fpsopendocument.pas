@@ -856,6 +856,8 @@ var
   Hours, Minutes, Seconds, Days: integer;
   HoursPos, MinutesPos, SecondsPos: integer;
 begin
+  Unused(AFormatStr);
+
   // Format expects ISO 8601 type date string or
   // time string
   fmt := DefaultFormatSettings;
@@ -1497,6 +1499,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     hasColor: Boolean;
   begin
     fmt := '';
+    cs := '';
     hasColor := false;
     node := ANumFormatNode.FirstChild;
     while Assigned(node) do begin
@@ -1666,7 +1669,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
   procedure ReadTextStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
   var
     node, childNode: TDOMNode;
-    nf: TsNumberFormat;
+    nf: TsNumberFormat = nfGeneral;
     fmt: String;
     nodeName: String;
   begin
@@ -2776,6 +2779,8 @@ procedure TsSpreadOpenDocWriter.WriteToFile(const AFileName: string;
 var
   FZip: TZipper;
 begin
+  Unused(AOverwriteExisting);
+
   { Fill the strings with the contents of the files }
 
   WriteMimetype();
@@ -2822,6 +2827,7 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
 begin
+  Unused(AStream);
   // Not supported at the moment
   raise Exception.Create('TsSpreadOpenDocWriter.WriteToStream not supported');
 end;
@@ -2829,6 +2835,8 @@ end;
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
 begin
+  Unused(AStream, ARow, ACol);
+  Unused(AFormula, ACell);
 {  // The row should already be the correct one
   FContent := FContent +
     '  <table:table-cell office:value-type="string">' + LineEnding +
@@ -2850,6 +2858,9 @@ var
   lStyle: String = '';
   lIndex: Integer;
 begin
+  Unused(AStream, ACell);
+  Unused(ARow, ACol);
+
   // Write empty cell only if it has formatting
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
@@ -3080,6 +3091,9 @@ var
   lStyle: string = '';
   lIndex: Integer;
 begin
+  Unused(AStream, ACell);
+  Unused(ARow, ACol);
+
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
@@ -3102,6 +3116,9 @@ var
   lIndex: Integer;
   valType: String;
 begin
+  Unused(AStream, ACell);
+  Unused(ARow, ACol);
+
   valType := 'float';
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
@@ -3147,6 +3164,9 @@ var
   lIndex: Integer;
   isTimeOnly: Boolean;
 begin
+  Unused(AStream, ACell);
+  Unused(ARow, ACol);
+
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := 'table:style-name="ce' + IntToStr(lIndex) + '" ';

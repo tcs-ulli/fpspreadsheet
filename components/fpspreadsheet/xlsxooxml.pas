@@ -312,8 +312,6 @@ FSheets[CurStr] :=
 procedure TsSpreadOOXMLWriter.WriteWorksheet(CurSheet: TsWorksheet);
 var
   j, k: Integer;
-  CurCell: PCell;
-  CurRow: array of PCell;
   LastColIndex: Cardinal;
   LCell: TCell;
   AVLNode: TAVLTreeNode;
@@ -417,8 +415,13 @@ procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
   lStream: TFileStream;
+  lMode: word;
 begin
-  lStream:=TFileStream.Create(AFileName, fmCreate);
+  if AOverwriteExisting
+    then lMode := fmCreate or fmOpenWrite
+    else lMode := fmCreate;
+
+  lStream:=TFileStream.Create(AFileName, lMode);
   try
     WriteToStream(lStream);
   finally
@@ -499,6 +502,9 @@ var
   TextTooLong: boolean=false;
   ResultingValue: string;
 begin
+  Unused(AStream);
+  Unused(ARow, ACol, ACell);
+
   // Office 2007-2010 (at least) support no more characters in a cell;
   if Length(AValue)>MaxBytes then
   begin
@@ -538,6 +544,7 @@ var
   CellPosText: String;
   CellValueText: String;
 begin
+  Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
   FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +

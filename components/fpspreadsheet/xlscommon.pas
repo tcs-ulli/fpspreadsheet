@@ -1050,6 +1050,7 @@ end;
 // Read the FORMAT record for formatting numerical data
 procedure TsSpreadBIFFReader.ReadFormat(AStream: TStream);
 begin
+  Unused(AStream);
   // to be overridden
 end;
 
@@ -1543,6 +1544,7 @@ end;
   Must be overridden because the implementation depends on BIFF version. }
 procedure TsSpreadBIFFReader.ReadStringRecord(AStream: TStream);
 begin
+  Unused(AStream);
   //
 end;
 
@@ -1643,6 +1645,7 @@ end;
 
 procedure TsSpreadBIFFWriter.GetLastRowCallback(ACell: PCell; AStream: TStream);
 begin
+  Unused(AStream);
   if ACell^.Row > FLastRow then FLastRow := ACell^.Row;
 end;
 
@@ -1655,6 +1658,7 @@ end;
 
 procedure TsSpreadBIFFWriter.GetLastColCallback(ACell: PCell; AStream: TStream);
 begin
+  Unused(AStream);
   if ACell^.Col > FLastCol then FLastCol := ACell^.Col;
 end;
 
@@ -1776,6 +1780,7 @@ end;
 procedure TsSpreadBIFFWriter.WriteFormat(AStream: TStream;
   AFormatData: TsNumFormatData; AListIndex: Integer);
 begin
+  Unused(AStream, AFormatData, AListIndex);
   // needs to be overridden
 end;
 

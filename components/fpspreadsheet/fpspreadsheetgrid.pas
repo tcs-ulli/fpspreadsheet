@@ -108,7 +108,6 @@ type
 
   protected
     { Protected declarations }
-    procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
@@ -146,6 +145,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure BeginUpdate;
+    procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure EditingDone; override;
     procedure EndUpdate;
     procedure GetSheets(const ASheets: TStrings);
@@ -540,6 +540,7 @@ end;
 
 procedure TsCustomWorksheetGrid.ChangedCellHandler(ASender: TObject; ARow, ACol:Cardinal);
 begin
+  Unused(ASender, ARow, ACol);
   if FLockCount = 0 then Invalidate;
 end;
 
@@ -550,6 +551,7 @@ procedure TsCustomWorksheetGrid.ChangedFontHandler(ASender: TObject; ARow, ACol:
 var
   lRow: PRow;
 begin
+  Unused(ASender, ACol);
   if (FWorksheet <> nil) then begin
     lRow := FWorksheet.FindRow(ARow);
     if lRow = nil then begin
@@ -717,7 +719,7 @@ procedure TsCustomWorksheetGrid.DrawAllRows;
 var
   cliprect: TRect;
   rgn: HRGN;
-  tmp: Integer;
+  tmp: Integer = 0;
 begin
   inherited;
 
@@ -852,6 +854,7 @@ end;
   dashed rectangle here, but the thick Excel-like rectangle. }
 procedure TsCustomWorksheetGrid.DrawFocusRect(aCol, aRow: Integer; ARect: TRect);
 begin
+  Unused(ACol, ARow, ARect);
   // Nothing do to
 end;
 
