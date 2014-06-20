@@ -58,6 +58,12 @@ type
     procedure TestWriteRead_BIFF8_Panes_Hor;
     procedure TestWriteRead_BIFF8_Panes_Vert;
     procedure TestWriteRead_BIFF8_Panes_None;
+
+    { ODS tests }
+    procedure TestWriteRead_ODS_ShowGridLines_ShowHeaders;
+    procedure TestWriteRead_ODS_ShowGridLines_HideHeaders;
+    procedure TestWriteRead_ODS_HideGridLines_ShowHeaders;
+    procedure TestWriteRead_ODS_HideGridLines_HideHeaders;
   end;
 
 implementation
@@ -186,6 +192,27 @@ end;
 procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF8_HideGridLines_HideHeaders;
 begin
   TestWriteReadGridHeaders(sfExcel8, false, false);
+end;
+
+{ Tests for ODS grid lines and/or headers }
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_ShowGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfOpenDocument, true, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_ShowGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfOpenDocument, true, false);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_HideGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfOpenDocument, false, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_HideGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfOpenDocument, false, false);
 end;
 
 { Test for frozen panes }

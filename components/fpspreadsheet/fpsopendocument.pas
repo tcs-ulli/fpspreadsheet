@@ -80,6 +80,8 @@ type
     FRowList: TFPList;
     FVolatileNumFmtList: TsCustomNumFormatList;
     FDateMode: TDateMode;
+    FShowGrid: Boolean;
+    FShowHeaders: Boolean;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
@@ -97,6 +99,7 @@ type
     // Gets value for the specified attribute. Returns empty string if attribute
     // not found.
     function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+    function GetNodeValue(ANode: TDOMNode): String;
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     // Figures out the base year for times in this file (dates are unambiguous)
@@ -107,6 +110,7 @@ type
   protected
     procedure CreateNumFormatList; override;
     procedure ReadNumFormats(AStylesNode: TDOMNode);
+    procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
     procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
@@ -982,6 +986,19 @@ begin
   end;
 end;
 
+{ Returns the text value of a node. Normally it would be sufficient to call
+  "ANode.NodeValue", but since the DOMParser needs to preserve white space
+  (for the spaces in date/time formats), we have to go more into detail. }
+function TsSpreadOpenDocReader.GetNodeValue(ANode: TDOMNode): String;
+var
+  child: TDOMNode;
+begin
+  Result := '';
+  child := ANode.FirstChild;
+  if Assigned(child) and (child.NodeName = '#text') then
+    Result := child.NodeValue;
+end;
+
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
 var
   styleName: String;
@@ -1165,6 +1182,7 @@ var
   FileList : TStringList;
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
   StylesNode: TDOMNode;
+  OfficeSettingsNode: TDOMNode;
 
   { We have to use our own ReadXMLFile procedure (there is one in xmlread)
     because we have to preserve spaces in element text for date/time separator.
@@ -1202,6 +1220,7 @@ begin
   FileList := TStringList.Create;
   FileList.Add('styles.xml');
   FileList.Add('content.xml');
+  FileList.Add('settings.xml');
   try
     Unzip.UnZipFiles(AFileName,FileList);
   finally
@@ -1211,6 +1230,17 @@ begin
 
   Doc := nil;
   try
+    // process the settings.xml file (Note: it does not always exist!)
+    if FileExists(FilePath + 'settings.xml') then begin
+      ReadXMLFile(Doc, FilePath+'settings.xml');
+      DeleteFile(FilePath+'settings.xml');
+
+      OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
+      ReadSettings(OfficeSettingsNode);
+
+      Doc.Free;
+    end;
+
     // process the styles.xml file
     ReadXMLFile(Doc, FilePath+'styles.xml');
     DeleteFile(FilePath+'styles.xml');
@@ -1248,6 +1278,9 @@ begin
         continue;
       end;
       FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
+      if not FShowGrid then FWorksheet.Options := FWorksheet.Options - [soShowGridLines];
+      if not FShowHeaders then FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
+
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
@@ -1868,6 +1901,51 @@ begin
   FRowStyleList.Add(rowStyle);
 end;
 
+procedure TsSpreadOpenDocReader.ReadSettings(AOfficeSettingsNode: TDOMNode);
+var
+  cfgItemSetNode, cfgItemNode, cfgItemMapEntryNode, cfgEntryItemNode, node: TDOMNode;
+  nodeName, cfgName, cfgValue: String;
+begin
+  cfgItemSetNode := AOfficeSettingsNode.FirstChild;
+  while Assigned(cfgItemSetNode) do begin
+    if (cfgItemSetNode.NodeName <> '#text') and
+       (GetAttrValue(cfgItemSetNode, 'config:name') = 'ooo:view-settings')
+    then begin
+      cfgItemNode := cfgItemSetNode.FirstChild;
+      while Assigned(cfgItemNode) do begin
+        if (cfgItemNode.NodeName <> '#text') and
+           (cfgItemNode.NodeName = 'config:config-item-map-indexed') and
+           (GetAttrValue(cfgItemNode, 'config:name') = 'Views')
+        then begin
+          cfgItemMapEntryNode := cfgItemNode.FirstChild;
+          while Assigned(cfgItemMapEntryNode) do begin
+            cfgEntryItemNode := cfgItemMapEntryNode.FirstChild;
+            while Assigned(cfgEntryItemNode) do begin
+              nodeName := cfgEntryItemNode.NodeName;
+              if (nodeName <> '#text') and (nodeName = 'config:config-item')
+              then begin
+                cfgName := lowercase(GetAttrValue(cfgEntryItemNode, 'config:name'));
+                if cfgName = 'showgrid' then begin
+                  cfgValue := GetNodeValue(cfgEntryItemNode);
+                  if cfgValue = 'false' then FShowGrid := false else FShowGrid := true;
+                end else
+                if cfgName = 'hascolumnrowheaders' then begin
+                  cfgValue := GetNodeValue(cfgEntryItemNode);
+                  if cfgValue = 'false' then FShowHeaders := false else FShowHeaders := true;
+                end;
+              end;
+              cfgEntryItemNode := cfgEntryItemNode.NextSibling;
+            end;
+            cfgItemMapEntryNode := cfgItemMapEntryNode.NextSibling;
+          end;
+        end;
+        cfgItemNode := cfgItemNode.NextSibling;
+      end;
+    end;
+    cfgItemSetNode := cfgItemSetNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
   fs: TFormatSettings;
@@ -2259,7 +2337,21 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteSettings;
+const
+  FALSE_TRUE: Array[boolean] of String = ('false', 'true');
+var
+  i: Integer;
+  showGrid, showHeaders: Boolean;
+  sheet: TsWorksheet;
 begin
+  showGrid := true;
+  showHeaders := true;
+  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+    if not (soShowGridLines in sheet.Options) then showGrid := false;
+    if not (soShowHeaders in sheet.Options) then showHeaders := false;
+  end;
+
   FSettings :=
    XML_HEADER + LineEnding +
    '<office:document-settings xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
@@ -2273,7 +2365,8 @@ begin
    '        <config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>' + LineEnding +
    '        <config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>' + LineEnding +
    '        <config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>' + LineEnding +
-   '        <config:config-item config:name="HasColumnRowHeaders" config:type="boolean">true</config:config-item>' + LineEnding +
+   '        <config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' + LineEnding +
+   '        <config:config-item config:name="HasColumnRowHeaders" config:type="boolean">'+FALSE_TRUE[showHeaders]+'</config:config-item>' + LineEnding +
    '          <config:config-item-map-named config:name="Tables">' + LineEnding +
    '            <config:config-item-map-entry config:name="Tabelle1">' + LineEnding +
    '              <config:config-item config:name="CursorPositionX" config:type="int">3</config:config-item>' + LineEnding +
