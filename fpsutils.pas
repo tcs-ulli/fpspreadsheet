@@ -122,6 +122,10 @@ function HTMLLengthStrToPts(AValue: String): Double;
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue): String;
 
+procedure Unused(const A1);
+procedure Unused(const A1, A2);
+procedure Unused(const A1, A2, A3);
+
 var
   ScreenPixelsPerInch: Integer = 96;
 
@@ -191,8 +195,10 @@ begin
 end;
 
 function WideStringToLE(const AValue: WideString): WideString;
+{$IFNDEF FPC}
 var
   j: integer;
+{$ENDIF}
 begin
   {$IFDEF FPC}
     {$IFDEF FPC_LITTLE_ENDIAN}
@@ -209,8 +215,10 @@ begin
 end;
 
 function WideStringLEToN(const AValue: WideString): WideString;
+{$IFNDEF FPC}
 var
   j: integer;
+{$ENDIF}
 begin
   {$IFDEF FPC}
     {$IFDEF FPC_LITTLE_ENDIAN}
@@ -1263,13 +1271,12 @@ var
   ResultLen: integer;
   ResultBuffer: array[0..255] of char;
   ResultCurrent: pchar;
+  (*                    ---- not needed here ---
 {$IFDEF MSWindows}
   isEnable_E_Format : Boolean;
   isEnable_G_Format : Boolean;
   eastasiainited : boolean;
-{$ENDIF MSWindows}
-             (*    ---- not needed here ---
-{$IFDEF MSWindows}
+
   procedure InitEastAsia;
   var     ALCID : LCID;
          PriLangID , SubLangID : Word;
@@ -1342,7 +1349,6 @@ var
 
 var
   Year, Month, Day, DayOfWeek, Hour, Minute, Second, MilliSecond: word;
-  DT : TDateTime;
 
   procedure StoreFormat(const FormatStr: string; Nesting: Integer; TimeFlag: Boolean);
   var
@@ -1577,10 +1583,11 @@ var
     end;
   end;
 
-begin
+begin          (*
 {$ifdef MSWindows}
   eastasiainited:=false;
 {$endif MSWindows}
+*)
   DecodeDateFully(DateTime, Year, Month, Day, DayOfWeek);
   DecodeTime(DateTime, Hour, Minute, Second, MilliSecond);
   ResultLen := 0;
@@ -1610,6 +1617,21 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
 begin
   DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
 end;
+
+{ "Borrowed" from TAChart: silence warnings of unused parameters }
+{$PUSH}{$HINTS OFF}
+procedure Unused(const A1);
+begin
+end;
+
+procedure Unused(const A1, A2);
+begin
+end;
+
+procedure Unused(const A1, A2, A3);
+begin
+end;
+{$POP}
 
 end.
 

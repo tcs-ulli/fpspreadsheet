@@ -165,11 +165,6 @@ implementation
 uses
   TypInfo, StrUtils, fpsutils;
 
-const
-  COMPARE_STR: array[TsCompareOperation] of string = (
-    '', '=', '<>', '<', '>', '<=', '>'
-  );
-
 
 { TsNumFormatParser }
 

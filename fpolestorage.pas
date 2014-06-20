@@ -290,7 +290,6 @@ procedure TOLEStorage.WriteDirectoryEntry(AStream: TStream; AName: widestring;
   EntryType, EntryColor: Byte; AIsStorage: Boolean;
   AFirstSecID, AStreamSize: Cardinal);
 var
-  i: Integer;
   EntryName: array[0..31] of WideChar;
 begin
   { Contents of the directory entry structure:
@@ -695,8 +694,6 @@ procedure TOLEStorage.WriteOLEFile(AFileName: string;
   const AStreamName: UTF8String);
 var
   cbWritten: Cardinal;
-  AFileStream: TFileStream;
-  i, x: Cardinal;
   lMode: Word;
 begin
   // The behavior of LCL classes is failling to write to existing file,
