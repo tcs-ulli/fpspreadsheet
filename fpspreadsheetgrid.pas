@@ -2361,12 +2361,26 @@ end;
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
 begin
   FFrozenCols := AValue;
+  if FWorksheet <> nil then begin
+    FWorksheet.LeftPaneWidth := FFrozenCols;
+    if (FFrozenCols > 0) or (FFrozenRows > 0) then
+      FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
+    else
+      FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+  end;
   Setup;
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenRows(AValue: Integer);
 begin
   FFrozenRows := AValue;
+  if FWorksheet <> nil then begin
+    FWorksheet.TopPaneHeight := FFrozenRows;
+    if (FFrozenCols > 0) or (FFrozenRows > 0) then
+      FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
+    else
+      FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+  end;
   Setup;
 end;
 
