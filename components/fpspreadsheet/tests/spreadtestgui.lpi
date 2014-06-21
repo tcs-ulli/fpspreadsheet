@@ -47,6 +47,9 @@
               <UseExternalDbgSyms Value="True"/>
             </Debugging>
           </Linking>
+          <Other>
+            <CompilerPath Value="$(CompPath)"/>
+          </Other>
         </CompilerOptions>
       </Item2>
     </BuildModes>
@@ -124,6 +127,7 @@
       <Unit10>
         <Filename Value="optiontests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="optiontests"/>
       </Unit10>
       <Unit11>
         <Filename Value="numformatparsertests.pas"/>
@@ -163,6 +167,9 @@
         <OptimizationLevel Value="0"/>
       </Optimizations>
     </CodeGeneration>
+    <Other>
+      <CompilerPath Value="$(CompPath)"/>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">

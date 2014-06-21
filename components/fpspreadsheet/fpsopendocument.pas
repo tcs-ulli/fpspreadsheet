@@ -80,8 +80,6 @@ type
     FRowList: TFPList;
     FVolatileNumFmtList: TsCustomNumFormatList;
     FDateMode: TDateMode;
-    FShowGrid: Boolean;
-    FShowHeaders: Boolean;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
@@ -1233,17 +1231,6 @@ begin
 
   Doc := nil;
   try
-    // process the settings.xml file (Note: it does not always exist!)
-    if FileExists(FilePath + 'settings.xml') then begin
-      ReadXMLFile(Doc, FilePath+'settings.xml');
-      DeleteFile(FilePath+'settings.xml');
-
-      OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
-      ReadSettings(OfficeSettingsNode);
-
-      Doc.Free;
-    end;
-
     // process the styles.xml file
     ReadXMLFile(Doc, FilePath+'styles.xml');
     DeleteFile(FilePath+'styles.xml');
@@ -1281,9 +1268,6 @@ begin
         continue;
       end;
       FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
-      if not FShowGrid then FWorksheet.Options := FWorksheet.Options - [soShowGridLines];
-      if not FShowHeaders then FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
-
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
@@ -1292,6 +1276,17 @@ begin
       // Continue with next table
       TableNode := TableNode.NextSibling;
     end; //while Assigned(TableNode)
+
+    Doc.Free;
+
+    // process the settings.xml file (Note: it does not always exist!)
+    if FileExists(FilePath + 'settings.xml') then begin
+      ReadXMLFile(Doc, FilePath+'settings.xml');
+      DeleteFile(FilePath+'settings.xml');
+
+      OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
+      ReadSettings(OfficeSettingsNode);
+    end;
 
   finally
     if Assigned(Doc) then Doc.Free;
@@ -1906,9 +1901,15 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadSettings(AOfficeSettingsNode: TDOMNode);
 var
-  cfgItemSetNode, cfgItemNode, cfgItemMapEntryNode, cfgEntryItemNode, node: TDOMNode;
-  nodeName, cfgName, cfgValue: String;
+  cfgItemSetNode, cfgItemNode, cfgItemMapEntryNode, cfgEntryItemNode, cfgTableItemNode, node: TDOMNode;
+  nodeName, cfgName, cfgValue, tblName: String;
+  sheet: TsWorksheet;
+  vsm, hsm, hsp, vsp: Integer;
+  showGrid, showHeaders: Boolean;
+  i: Integer;
 begin
+  showGrid := true;
+  showHeaders := true;
   cfgItemSetNode := AOfficeSettingsNode.FirstChild;
   while Assigned(cfgItemSetNode) do begin
     if (cfgItemSetNode.NodeName <> '#text') and
@@ -1930,11 +1931,52 @@ begin
                 cfgName := lowercase(GetAttrValue(cfgEntryItemNode, 'config:name'));
                 if cfgName = 'showgrid' then begin
                   cfgValue := GetNodeValue(cfgEntryItemNode);
-                  if cfgValue = 'false' then FShowGrid := false else FShowGrid := true;
+                  if cfgValue = 'false' then showGrid := false;
                 end else
                 if cfgName = 'hascolumnrowheaders' then begin
                   cfgValue := GetNodeValue(cfgEntryItemNode);
-                  if cfgValue = 'false' then FShowHeaders := false else FShowHeaders := true;
+                  if cfgValue = 'false' then showHeaders := false;
+                end;
+              end else
+              if (nodeName <> '#text') and (nodeName = 'config:config-item-map-named') and
+                 (GetAttrValue(cfgEntryItemNode, 'config:name') = 'Tables')
+              then begin
+                cfgTableItemNode := cfgEntryItemNode.FirstChild;
+                while Assigned(cfgTableItemNode) do begin
+                  nodeName := cfgTableItemNode.NodeName;
+                  if nodeName <> '#text' then begin
+                    tblName := GetAttrValue(cfgTableItemNode, 'config:name');
+                    if tblName <> '' then begin
+                      hsm := 0; vsm := 0;
+                      sheet := Workbook.GetWorksheetByName(tblName);
+                      if sheet <> nil then begin
+                        node := cfgTableItemNode.FirstChild;
+                        while Assigned(node) do begin
+                          nodeName := node.NodeName;
+                          if nodeName <> '#text' then begin
+                            cfgName := GetAttrValue(node, 'config:name');
+                            cfgValue := GetNodeValue(node);
+                            if cfgName = 'VerticalSplitMode' then
+                              vsm := StrToInt(cfgValue)
+                            else if cfgName = 'HorizontalSplitMode' then
+                              hsm := StrToInt(cfgValue)
+                            else if cfgName = 'VerticalSplitPosition' then
+                              vsp := StrToInt(cfgValue)
+                            else if cfgName = 'HorizontalSplitPosition' then
+                              hsp := StrToInt(cfgValue);
+                          end;
+                          node := node.NextSibling;
+                        end;
+                        if (hsm = 2) or (vsm = 2) then begin
+                          sheet.Options := sheet.Options + [soHasFrozenPanes];
+                          sheet.LeftPaneWidth := hsp;
+                          sheet.TopPaneHeight := vsp;
+                        end else
+                          sheet.Options := sheet.Options - [soHasFrozenPanes];
+                      end;
+                    end;
+                  end;
+                  cfgTableItemNode := cfgTableItemNode.NextSibling;
                 end;
               end;
               cfgEntryItemNode := cfgEntryItemNode.NextSibling;
@@ -1946,6 +1988,14 @@ begin
       end;
     end;
     cfgItemSetNode := cfgItemSetNode.NextSibling;
+  end;
+
+  { Now let's apply the showGrid and showHeader values to all sheets - they
+    are document-wide settings (although there is a ShowGrid in the Tables node) }
+  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+    if not showGrid then sheet.Options := sheet.Options - [soShowGridLines];
+    if not showHeaders then sheet.Options := sheet.Options - [soShowHeaders];
   end;
 end;
 
@@ -2345,6 +2395,9 @@ var
   showGrid, showHeaders: Boolean;
   sheet: TsWorksheet;
 begin
+  // Open/LibreOffice allow to change showGrid and showHeaders only globally.
+  // As a compromise, we check whether there is at least one page with these
+  // settings off. Then we assume it to be valid also for the other sheets.
   showGrid := true;
   showHeaders := true;
   for i:=0 to Workbook.GetWorksheetCount-1 do begin
@@ -3163,7 +3216,8 @@ begin
     '  <config:config-item config:name="PositionRight" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
     '  <config:config-item config:name="PositionTop" config:type="int">0</config:config-item>' + LineEnding + AIndent +
     '  <config:config-item config:name="PositionBottom" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="ShowGrid" config:type="boolean">true</config:config-item>' + LineEnding + AIndent +
+       // this "ShowGrid" overrides the global setting. But Open/LibreOffice do not allow to change ShowGrid per sheet.
     '</config:config-item-map-entry>' + LineEnding;
   end;
 end;

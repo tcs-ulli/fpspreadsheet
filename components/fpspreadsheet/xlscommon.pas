@@ -1255,6 +1255,9 @@ begin
     - Frozen pane: Number of visible rows in top pane(s) }
   FWorksheet.TopPaneHeight := WordLEToN(AStream.ReadWord);
 
+  if (FWorksheet.LeftPaneWidth = 0) and (FWorksheet.TopPaneHeight = 0) then
+    FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+
   { There's more information which is not supported here:
     Offset Size Description
       4     2   Index to first visible row in bottom pane(s)
@@ -1853,6 +1856,8 @@ var
   n: Word;
   active_pane: Byte;
 begin
+  if not (soHasFrozenPanes in ASheet.Options) then
+    exit;
   if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
     exit;
 

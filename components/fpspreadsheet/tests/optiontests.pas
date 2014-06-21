@@ -64,6 +64,11 @@ type
     procedure TestWriteRead_ODS_ShowGridLines_HideHeaders;
     procedure TestWriteRead_ODS_HideGridLines_ShowHeaders;
     procedure TestWriteRead_ODS_HideGridLines_HideHeaders;
+
+    procedure TestWriteRead_ODS_Panes_HorVert;
+    procedure TestWriteRead_ODS_Panes_Hor;
+    procedure TestWriteRead_ODS_Panes_Vert;
+    procedure TestWriteRead_ODS_Panes_None;
   end;
 
 implementation
@@ -248,11 +253,14 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, OptionsSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  CheckEquals(soHasFrozenPanes in MyWorksheet.Options, true,
+  CheckEquals(
+    (AleftPaneWidth > 0) or (ATopPaneHeight > 0),
+    (soHasFrozenPanes in MyWorksheet.Options)
+      and ((MyWorksheet.LeftPaneWidth > 0) or (MyWorksheet.TopPaneHeight > 0)),
     'Test saved frozen panes mismatch');
-  CheckEquals(MyWorksheet.LeftPaneWidth, ALeftPaneWidth,
+  CheckEquals(ALeftPaneWidth, MyWorksheet.LeftPaneWidth,
     'Test saved left pane width mismatch');
-  CheckEquals(MyWorksheet.TopPaneHeight, ATopPaneHeight,
+  CheckEquals(ATopPaneHeight, MyWorksheet.TopPaneHeight,
     'Test save top pane height mismatch');
   MyWorkbook.Free;
 
@@ -300,6 +308,28 @@ procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF8_Panes_None;
 begin
   TestWriteReadPanes(sfExcel8, 0, 0);
 end;
+
+{ Tests for ODS frozen panes }
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_Panes_HorVert;
+begin
+  TestWriteReadPanes(sfOpenDocument, 1, 2);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_Panes_Hor;
+begin
+  TestWriteReadPanes(sfOpenDocument, 1, 0);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_Panes_Vert;
+begin
+  TestWriteReadPanes(sfOpenDocument, 0, 2);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_Panes_None;
+begin
+  TestWriteReadPanes(sfOpenDocument, 0, 0);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadOptionsTests);
