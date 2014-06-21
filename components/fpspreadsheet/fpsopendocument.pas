@@ -151,6 +151,7 @@ type
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
 
+    function WriteTableSettingsXMLAsString(AIndent: String): String;
   protected
     FPointSeparatorSettings: TFormatSettings;
     // Strings with the contents of files
@@ -251,6 +252,8 @@ const
     ('solid', 'solid', 'dashed', 'fine-dashed', 'solid', 'double', 'dotted');
   BORDER_LINEWIDTHS: array[TsLinestyle] of string =
     ('0.002cm', '2pt', '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm');
+
+  FALSE_TRUE: Array[boolean] of String = ('false', 'true');
 
   COLWIDTH_EPS = 1e-2;   // for mm
   ROWHEIGHT_EPS = 1e-2;    // for lines
@@ -2337,8 +2340,6 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteSettings;
-const
-  FALSE_TRUE: Array[boolean] of String = ('false', 'true');
 var
   i: Integer;
   showGrid, showHeaders: Boolean;
@@ -2368,10 +2369,7 @@ begin
    '        <config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' + LineEnding +
    '        <config:config-item config:name="HasColumnRowHeaders" config:type="boolean">'+FALSE_TRUE[showHeaders]+'</config:config-item>' + LineEnding +
    '          <config:config-item-map-named config:name="Tables">' + LineEnding +
-   '            <config:config-item-map-entry config:name="Tabelle1">' + LineEnding +
-   '              <config:config-item config:name="CursorPositionX" config:type="int">3</config:config-item>' + LineEnding +
-   '              <config:config-item config:name="CursorPositionY" config:type="int">2</config:config-item>' + LineEnding +
-   '            </config:config-item-map-entry>' + LineEnding +
+   WriteTableSettingsXMLAsString('            ') +
    '          </config:config-item-map-named>' + LineEnding +
    '        </config:config-item-map-entry>' + LineEnding +
    '      </config:config-item-map-indexed>' + LineEnding +
@@ -3124,6 +3122,49 @@ begin
     haLeft   : Result := 'fo:text-align="start" ';
     haCenter : Result := 'fo:text-align="center" ';
     haRight  : Result := 'fo:text-align="end" ';
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteTableSettingsXMLAsString(AIndent: String): String;
+var
+  i: Integer;
+  sheet: TsWorkSheet;
+  hsm: Integer;  // HorizontalSplitMode
+  vsm: Integer;  // VerticalSplitMode
+  asr: Integer;  // ActiveSplitRange
+  showGrid: Boolean;
+begin
+  Result := '';
+  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+    Result := Result + AIndent +
+    '<config:config-item-map-entry config:name="' + sheet.Name + '">' + LineEnding;
+    hsm := 0; vsm := 0; asr := 2;
+    if (soHasFrozenPanes in sheet.Options) then begin
+      if (sheet.LeftPaneWidth > 0) and (sheet.TopPaneHeight > 0) then begin
+        hsm := 2; vsm := 2; asr := 3;
+      end else
+      if (sheet.LeftPaneWidth > 0) then begin
+        hsm := 2; vsm := 0; asr := 3;
+      end else if (sheet.TopPaneHeight > 0) then begin
+        hsm := 0; vsm := 2; asr := 2;
+      end;
+    end;
+    showGrid := (soShowGridLines in sheet.Options);
+    Result :=  Result + AIndent +
+    '  <config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="CursorPositionY" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="HorizontalSplitMode" config:type="short">'+IntToStr(hsm)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="VerticalSplitMode" config:type="short">'+IntToStr(vsm)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="HorizontalSplitPosition" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="VerticalSplitPosition" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="ActiveSplitRange" config:type="short">'+IntToStr(asr)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="PositionLeft" config:type="int">0</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="PositionRight" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="PositionTop" config:type="int">0</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="PositionBottom" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
+    '  <config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' + LineEnding + AIndent +
+    '</config:config-item-map-entry>' + LineEnding;
   end;
 end;
 
