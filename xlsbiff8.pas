@@ -1104,7 +1104,7 @@ begin
     Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
   if (soShowHeaders in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
-  if (soHasFrozenPanes in ASheet.Options) then
+  if (soHasFrozenPanes in ASheet.Options) and ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0)) then
     Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
   if (soSelected in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;

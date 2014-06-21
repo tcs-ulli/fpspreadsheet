@@ -1031,7 +1031,11 @@ begin
   AStream.WriteByte(b);
 
   { Panes are frozen? }
-  b := IfThen(soHasFrozenPanes in ASheet.Options, 1, 0);
+  b := 0;
+  if (soHasFrozenPanes in ASheet.Options) and
+     ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0))
+  then
+    b := 1;
   AStream.WriteByte(b);
 
   { Show zero values as zeros, not empty cells }
