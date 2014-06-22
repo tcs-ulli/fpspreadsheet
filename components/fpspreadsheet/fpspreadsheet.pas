@@ -511,6 +511,9 @@ type
     procedure WriteBlank(ARow, ACol: Cardinal);
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
 
+    procedure WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String); overload;
+    procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
+
     procedure WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
       AFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
       ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
@@ -2308,6 +2311,67 @@ begin
   ACell^.ContentType := cctBool;
   ACell^.BoolValue := AValue;
   ChangedCell(ARow, ACol);
+end;
+
+procedure TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
+  AValue: String);
+begin
+  WriteCellValueAsString(GetCell(ARow, ACol), AValue);
+end;
+
+procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
+var
+  isPercent: Boolean;
+  number: Double;
+begin
+  if ACell = nil then
+    exit;
+
+  if AValue = '' then begin
+    WriteBlank(ACell^.Row, ACell^.Col);
+    exit;
+  end;
+
+  isPercent := Pos('%', AValue) = Length(AValue);
+  if isPercent then Delete(AValue, Length(AValue), 1);
+
+  if TryStrToFloat(AValue, number) then begin
+    if isPercent then
+      WriteNumber(ACell, number/100, nfPercentage)
+    else begin
+      if IsDateTimeFormat(ACell^.NumberFormat) then begin
+        ACell^.NumberFormat := nfGeneral;
+        ACell^.NumberFormatStr := '';
+      end;
+      WriteNumber(ACell, number, ACell^.NumberFormat, ACell^.NumberFormatStr);
+    end;
+    exit;
+  end;
+
+  if TryStrToDateTime(AValue, number) then begin
+    if number < 1.0 then begin    // this is a time alone
+      if not IsTimeFormat(ACell^.NumberFormat) then begin
+        ACell^.NumberFormat := nfLongTime;
+        ACell^.NumberFormatStr := '';
+      end;
+    end else
+    if frac(number) = 0.0 then begin  // this is a date alone
+      if not (ACell^.NumberFormat in [nfShortDate, nfLongDate, nfShortDateTime])
+      then begin
+        ACell^.NumberFormat := nfShortDate;
+        ACell^.NumberFormatStr := '';
+      end;
+    end else begin
+      if not IsDateTimeFormat(ACell^.NumberFormat) then begin
+        ACell^.NumberFormat := nfShortDateTime;
+        ACell^.NumberFormatStr := '';
+      end;
+    end;
+    WriteDateTime(ACell, number, ACell^.NumberFormat, ACell^.NumberFormatStr);
+    exit;
+  end;
+
+  WriteUTF8Text(ACell, AValue);
 end;
 
 {@@

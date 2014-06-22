@@ -6,9 +6,8 @@
     <General>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <Title Value="fpsgrid"/>
+      <Title Value="spready"/>
       <UseXPManifest Value="True"/>
-      <Icon Value="0"/>
     </General>
     <VersionInfo>
       <Language Value=""/>
@@ -103,7 +102,7 @@
     </RequiredPackages>
     <Units Count="2">
       <Unit0>
-        <Filename Value="fpsgrid.lpr"/>
+        <Filename Value="spready.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
