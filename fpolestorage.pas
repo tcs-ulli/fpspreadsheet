@@ -695,6 +695,9 @@ procedure TOLEStorage.WriteOLEFile(AFileName: string;
 var
   cbWritten: Cardinal;
   lMode: Word;
+ {$IFNDEF FPOLESTORAGE_USE_COM}
+  AFileStream: TStream;
+ {$ENDIF}
 begin
   // The behavior of LCL classes is failling to write to existing file,
   // But here we make this settable
