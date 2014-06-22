@@ -1121,27 +1121,7 @@ begin
       if FWorksheet = nil then
         FWorksheet := TsWorksheet.Create;
       cell := FWorksheet.GetCell(Row-FHeaderCount, Col-FHeaderCount);
-      if FEditText = '' then
-        cell^.ContentType := cctEmpty
-      else
-      if TryStrToFloat(FEditText, cell^.NumberValue) then
-        cell^.ContentType := cctNumber
-      else
-      if TryStrToDateTime(FEditText, cell^.DateTimeValue) then begin
-        cell^.ContentType := cctDateTime;
-        if cell^.DateTimeValue < 1.0 then begin      // this is a TTime
-          if not (cell^.NumberFormat in [nfShortDateTime, nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM])
-            then cell^.NumberFormat := nfLongTime;
-        end else
-        if frac(cell^.DateTimeValue) = 0 then begin  // this is a TDate
-          if not (cell^.NumberFormat in [nfShortDateTime, nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM])
-            then cell^.NumberFormat := nfShortDate
-        end else
-          cell^.NumberFormat := nfShortDateTime;
-      end else begin
-        cell^.UTF8StringValue := FEditText;
-        cell^.ContentType := cctUTF8String;
-      end;
+      FWorksheet.WriteCellValueAsString(cell, FEditText);
       FEditText := '';
     end;
     inherited EditingDone;
