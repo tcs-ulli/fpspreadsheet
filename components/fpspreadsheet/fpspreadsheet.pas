@@ -674,6 +674,9 @@ type
     procedure RemoveWorksheetsCallback(data, arg: pointer);
 
   public
+    {@@ A copy of SysUtil's DefaultFormatSettings to provide some kind of
+      localization to some formatting strings. Can be modified before
+      loading/writing files }
     FormatSettings: TFormatSettings;
 
     { Base methods }
@@ -821,8 +824,11 @@ type
 
   TsCustomSpreadReader = class
   protected
+    {@@ A copy of the workbook's FormatSetting to extract some localized number format information }
     FWorkbook: TsWorkbook;
+    {@@ Instance of the worksheet which is currently being read. }
     FWorksheet: TsWorksheet;
+    {@@ List of number formats found in the file }
     FNumFormatList: TsCustomNumFormatList;
     procedure CreateNumFormatList; virtual;
     { Record reading methods }
@@ -4557,24 +4563,36 @@ end;
 
 { TsCustomSpreadReader }
 
+{@@
+  Constructor of the reader. Has the workbook to be read as a parameter to
+  apply the localization information found in its FormatSettings.
+  Creates an internal instance of the number format list according to the
+  file format being read.
+
+  @param AWorkbook  Workbook into which the file is being read. This parameter
+                    is passed from the workbook which creates the reader. }
 constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
   CreateNumFormatList;
-//  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
+{@@
+  Destructor of the reader. Destroys the internal number format list. }
 destructor TsCustomSpreadReader.Destroy;
 begin
   FNumFormatList.Free;
   inherited Destroy;
 end;
 
+{@@
+  This method creates an instance of the number format list according to the
+  file format being read. The method has to be overridden because the
+  descendants know the special requirements of the file format. }
 procedure TsCustomSpreadReader.CreateNumFormatList;
 begin
-  { The format list needs to be created by descendants who know about the
-    special requirements of the file format. }
+  // nothing to do here
 end;
 
 {@@
@@ -4584,7 +4602,6 @@ end;
 
   @param  AFileName The input file name.
   @param  AData     The Workbook to be filled with information from the file.
-
   @see    TsWorkbook
 }
 procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -4600,7 +4617,15 @@ begin
 end;
 
 {@@
-  This routine should be overriden in descendent classes.
+  This routine has the purpose to read the workbook data from the stream.
+  It should be overriden in descendent classes.
+
+  Its basic implementation here assumes that the stream is a TStringStream and
+  the data are provided by calling ReadFromStrings. This mechanism is valid
+  for wikitables.
+
+  @param  AStream   Stream containing the workbook data
+  @param  AData     Workbook which is filled by the data from the stream.
 }
 procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
@@ -4620,6 +4645,10 @@ begin
   end;
 end;
 
+{@@
+  Reads workbook data from a string list. This abstract implementation does
+  nothing and raises an exception. Must be overridden, like for wikitables.
+}
 procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
   AData: TsWorkbook);
 begin
@@ -4629,6 +4658,15 @@ end;
 
 { TsCustomSpreadWriter }
 
+{@@ Constructor of the writer. Has the workbook to be written as a parameter to
+  apply the localization information found in its FormatSettings.
+  Creates an internal number format list to collect unique samples of all the
+  number formats found in the workbook.
+
+  @param AWorkbook  Workbook which is to be written to file/stream.
+                    This parameter is passed from the workbook which creates the
+                    writer.
+}
 constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
@@ -4637,6 +4675,7 @@ begin
 //  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
+{@@ Destructor of the writer. Destroys the internal number format list. }
 destructor TsCustomSpreadWriter.Destroy;
 begin
   FNumFormatList.Free;
@@ -4644,8 +4683,11 @@ begin
 end;
 
 {@@
-  Checks if the style of a cell is in the list of manually added FFormattingStyles
-  and returns the index or -1 if it isn't
+  Checks if the formatting style of a cell is in the list of manually added
+  FFormattingStyles and returns its index, or -1 if it isn't
+
+  @param  AFormat  Cell containing the formatting styles which are seeked in the
+                   FFormattingStyles array.
 }
 function TsCustomSpreadWriter.FindFormattingInList(AFormat: PCell): Integer;
 var
@@ -4702,27 +4744,42 @@ begin
   end;
 end;
 
-{ If formatting features of a cell are not supported by the destination file
+{@@
+  If formatting features of a cell are not supported by the destination file
   format of the writer, here is the place to apply replacements.
-  Must be overridden by descendants. See BIFF2 }
+  Must be overridden by descendants, nothin happens here. See BIFF2.
+
+  @param  ACell  Pointer to the cell being investigated. Note that this cell
+                 does not belong to the workbook, but is a cell of the
+                 FFormattingStyles array.
+}
 procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 begin
   Unused(ACell);
   // to be overridden
 end;
 
-{ Each descendent should define its own default formats, if any.
-  Always add the normal, unformatted style first to speed things up. }
+{@@
+  Each descendent should define its own default formats, if any.
+  Always add the normal, unformatted style first to speed things up.
+
+  To be overridden by descendants.
+}
 procedure TsCustomSpreadWriter.AddDefaultFormats();
 begin
   SetLength(FFormattingStyles, 0);
   NextXFIndex := 0;
 end;
 
+{@@
+  Creates an instance of the number format list which collects prototypes of
+  all number formats found in the workbook.
+
+  Create here a descendant who knows about the details how to write the
+  formats correctly to the destination file. }
 procedure TsCustomSpreadWriter.CreateNumFormatList;
 begin
-  { The format list needs to be created by descendants who know about the
-    special requirements of the file format. }
+  // nothing to do here
 end;
 
 procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
@@ -4843,7 +4900,12 @@ begin
 end;
 
 {@@
-  Helper function for the spreadsheet writers.
+  Helper function for the spreadsheet writers. Writes the cell value to the
+  stream. Calls the WriteNumber method of the worksheet for writing a number,
+  the WriteDateTime method for writing a date/time etc.
+
+  @param  ACell   Pointer to the worksheet cell being written
+  @param  AStream Stream to which data are written
 
   @see    TsCustomSpreadWriter.WriteCellsToStream
 }
@@ -4876,9 +4938,10 @@ end;
   A generic method to iterate through all cells in a worksheet and call a callback
   routine for each cell.
 
-  @param  AStream   The output stream, passed to the callback routine.
-  @param  ACells    List of cells to be iterated
-  @param  ACallback The callback routine
+  @param  AStream    The output stream, passed to the callback routine.
+  @param  ACells     List of cells to be iterated
+  @param  ACallback  Callback routine; it requires as arguments a pointer to the
+                     cell as well as the destination stream.
 }
 procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
 var
@@ -4898,8 +4961,8 @@ end;
   Opens the file and calls WriteToStream
   The workbook written is the one specified in the constructor of the writer.
 
-  @param  AFileName The output file name.
-                    If the file already exists it will be replaced.
+  @param  AFileName           The output file name.
+  @param  AOverwriteExisting  If the file already exists it will be replaced.
 
   @see    TsWorkbook
 }
@@ -4921,7 +4984,12 @@ begin
 end;
 
 {@@
-  This routine should be overriden in descendent classes.
+  This routine has the purpose to write the workbook to a stream.
+  Present implementation writes to a stringlists by means of WriteToStrings;
+  this behavior is required for wikitables.
+  Must be overriden in descendent classes for all other cases.
+
+  @param  AStream   Stream to which the workbook is written
 }
 procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream);
 var
@@ -4936,21 +5004,48 @@ begin
   end;
 end;
 
+{@@
+  Writes the worksheet to a list of strings. Not implemented here, needs to
+  be overridden by descendants. See wikitables.
+}
 procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings);
 begin
   Unused(AStrings);
   raise Exception.Create(lpUnsupportedWriteFormat);
 end;
 
+{@@
+  Basic method which is called when writing a string formula to a stream.
+  Present implementation does nothing. Needs to be overridden by descendants.
+
+  @param   AStream   Stream to be written
+  @param   ARow      Row index of the cell containing the formula
+  @param   ACol      Column index of the cell containing the formula
+  @param   AFormula  String formula given as an Excel-like string, such as '=A1+B1'
+  @param   ACell     Pointer to the cell containing the formula and being written
+                     to the stream
+}
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
 begin
   Unused(AStream, ARow, ACol);
   Unused(AFormula, ACell);
-
   // Silently dump the formula; child classes should implement their own support
 end;
 
+{@@
+  Basic method which is called when writing an RPN formula to a stream.
+  Present implementation does nothing. Needs to be overridden by descendants.
+
+  RPN formula are used by the BIFF file format.
+
+  @param   AStream   Stream to be written
+  @param   ARow      Row index of the cell containing the formula
+  @param   ACol      Column index of the cell containing the formula
+  @param   AFormula  RPN formula given as an array of RPN tokens
+  @param   ACell     Pointer to the cell containing the formula and being written
+                     to the stream
+}
 procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 begin
@@ -4960,7 +5055,9 @@ begin
 end;
 
 
-{ Simplified creation of RPN formulas }
+{******************************************************************************}
+{                   Simplified creation of RPN formulas                        }
+{******************************************************************************}
 
 {@@
   Creates a pointer to a new RPN item. This represents an element in the array
