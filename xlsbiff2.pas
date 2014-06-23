@@ -803,9 +803,9 @@ begin
 
   // Background color not supported, only shaded background
   if xf.HorAlign_Border_Background and $80 <> 0 then
-    lData.BackgroundColor := 1    // shaded background = "true"
+    lData.BackgroundColor := 1    // encodes "shaded background = true"
   else
-    ldata.BackgroundColor := 0;   // shaded background = "false"
+    ldata.BackgroundColor := 0;   // encodes "shaded background = false"
 
   // Add the decoded data to the list
   FXFList.Add(lData);

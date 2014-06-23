@@ -56,9 +56,10 @@ begin
   MyWorksheet.LeftPaneWidth := 20*72*2; // 72 pt = inch  --> 2 inches = 5 cm
   }
   // Write some cells
-  MyWorksheet.WriteNumber(0, 1, 2.0);// B1
-  MyWorksheet.WriteNumber(0, 2, 3.0);// C1
-  MyWorksheet.WriteNumber(0, 3, 4.0);// D1
+  MyWorksheet.WriteNumber(0, 0, 1.0);        // A1
+  MyWorksheet.WriteNumber(0, 1, 2.0);        // B1
+  MyWorksheet.WriteNumber(0, 2, 3.0);        // C1
+  MyWorksheet.WriteNumber(0, 3, 4.0);        // D1
   MyWorksheet.WriteUTF8Text(4, 2, Str_Total);// C5
   MyWorksheet.WriteNumber(4, 3, 10);         // D5
 

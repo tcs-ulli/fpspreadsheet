@@ -33,7 +33,7 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
+  MyWorksheet := MyWorkbook.AddWorksheet(UTF8ToAnsi(Str_Worksheet1));
 
   MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
   MyWorksheet.LeftPaneWidth := 1;

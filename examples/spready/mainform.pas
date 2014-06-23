@@ -142,6 +142,10 @@ type
     MenuItem57: TMenuItem;
     MenuItem58: TMenuItem;
     MenuItem59: TMenuItem;
+    MenuItem60: TMenuItem;
+    MenuItem61: TMenuItem;
+    MenuItem62: TMenuItem;
+    MenuItem63: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
     MnuTimeInterval: TMenuItem;
     MnuShortTimeAM: TMenuItem;
@@ -281,6 +285,8 @@ uses
   fpcanvas, fpsutils, fpsnumformatparser;
 
 const
+  DROPDOWN_COUNT = 24;
+
   HORALIGN_TAG = 100;
   VERTALIGN_TAG = 110;
   TEXTROT_TAG = 130;
@@ -304,6 +310,7 @@ const
   LR_INNER_BORDER        = $0008;
   TB_INNER_BORDER        = $0800;
   // Use a combination of these bits for the "Tag" of the Border actions - see FormCreate.
+
 
 { TForm1 }
 
@@ -695,6 +702,8 @@ begin
   FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
   FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
+  CbBackgroundCOlor.Height := FontCombobox.Height;
+
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);
 
@@ -714,6 +723,10 @@ begin
   AcBorderOuter.Tag := LEFT_BORDER_THIN + RIGHT_BORDER_THIN + TOP_BORDER_THIN + BOTTOM_BORDER_THIN;
   AcBorderOuterMedium.Tag := LEFT_BORDER_THICK + RIGHT_BORDER_THICK + TOP_BORDER_THICK + BOTTOM_BORDER_THICK;
   AcBorderAll.Tag := AcBorderOuter.Tag + AcBorderInner.Tag;
+
+  FontCombobox.DropDownCount := DROPDOWN_COUNT;
+  FontSizeCombobox.DropDownCount := DROPDOWN_COUNT;
+  CbBackgroundColor.DropDownCount := DROPDOWN_COUNT;
 end;
 
 procedure TForm1.LoadFile(const AFileName: String);

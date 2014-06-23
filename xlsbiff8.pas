@@ -266,6 +266,9 @@ const
   MASK_XF_BORDER_TOP_COLOR            = $0000007F;
   MASK_XF_BORDER_BOTTOM_COLOR         = $00003F80;
 
+  { XF CELL BACKGROUND PATTERN }
+  MASK_XF_BACKGROUND_PATTERN          = $FC000000;
+
   TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
     XF_ROTATION_HORIZONTAL,
     XF_ROTATION_90DEG_CW,
@@ -1833,6 +1836,7 @@ var
   xf: TXFRecord;
   b: Byte;
   dw: DWord;
+  fill: Integer;
 begin
   AStream.ReadBuffer(xf, SizeOf(xf));
 
@@ -1902,9 +1906,15 @@ begin
   lData.BorderStyles[cbNorth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_TOP_COLOR);
   lData.BorderStyles[cbSouth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_BOTTOM_COLOR) shr 7;
 
-  // Background color;
+  // Background fill pattern
+  fill := (xf.Border_Background_2 and MASK_XF_BACKGROUND_PATTERN) shr 26;
+
+  // Background color
   xf.Border_Background_3 := DWordLEToN(xf.Border_Background_3);
-  lData.BackgroundColor := xf.Border_Background_3 AND $007F;
+  if fill <> 0 then
+    lData.BackgroundColor := xf.Border_Background_3 and $007F
+  else
+    lData.BackgroundColor := scTransparent;  // this means "no fill"
 
   // Add the XF to the list
   FXFList.Add(lData);
