@@ -685,6 +685,7 @@ begin
   if wasFixed then begin
     AState := AState - [gdFixed];
     Canvas.Brush.Color := clWindow;
+    DoPrepareCanvas(ACol, ARow, AState);
   end;
 
   inherited DefaultDrawCell(ACol, ARow, ARect, AState);
