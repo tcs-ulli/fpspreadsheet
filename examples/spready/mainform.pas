@@ -250,6 +250,7 @@ type
     procedure CbShowGridLinesClick(Sender: TObject);
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
     procedure EdCellAddressEditingDone(Sender: TObject);
+    procedure EdFormulaEditingDone(Sender: TObject);
     procedure EdFrozenColsChange(Sender: TObject);
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
@@ -662,6 +663,15 @@ begin
   end;
 end;
 
+procedure TForm1.EdFormulaEditingDone(Sender: TObject);
+var
+  r, c: Cardinal;
+begin
+  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
+  c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
+  WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, EdFormula.Text);
+end;
+
 procedure TForm1.EdFrozenColsChange(Sender: TObject);
 begin
   WorksheetGrid.FrozenCols := EdFrozenCols.Value;
@@ -808,7 +818,19 @@ begin
     if s <> '' then
       EdFormula.Text := s
     else
-      EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
+      case cell^.ContentType of
+        cctNumber:
+          EdFormula.Text := FloatToStr(cell^.NumberValue);
+        cctDateTime:
+          if cell^.DateTimeValue < 1.0 then
+            EdFormula.Text := FormatDateTime('tt', cell^.DateTimeValue)
+          else
+            EdFormula.Text := FormatDateTime('c', cell^.DateTimeValue);
+        cctUTF8String:
+          EdFormula.Text := cell^.UTF8StringValue;
+        else
+          EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
+      end;
   end else
     EdFormula.Text := '';
 
