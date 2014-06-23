@@ -30,7 +30,7 @@ uses
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
-  SollStrings: array[0..14] of string; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
+  SollStrings: array[0..13] of string; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollStrings;
@@ -63,7 +63,6 @@ type
     procedure TestReadString11;
     procedure TestReadString12;
     procedure TestReadString13;
-    procedure TestReadString14;
     procedure TestReadODFString0; //OpenDocument/LibreOffice format empty string
     procedure TestReadODFString1;
     procedure TestReadODFString2;
@@ -78,7 +77,6 @@ type
     procedure TestReadODFString11;
     procedure TestReadODFString12;
     procedure TestReadODFString13;
-    procedure TestReadODFString14;
   end;
 
   { TSpreadWriteReadStringTests }
@@ -124,10 +122,9 @@ begin
   SollStrings[8]:=FormatFloat('0.00', 35.36)+'%';  // 0.3536 formatted as percentage, 2 decimals
   SollStrings[9]:=FormatFloat('#,##0', 59000000.1234);  // 59 million + 0.1234 formatted with thousand separator, no decimals
   SollStrings[10]:=FormatFloat('#,##0.00', 59000000.1234);  // 59 million + 0.1234 formatted with thousand separator, 2 decimals
-  SollStrings[11]:=SciFloat(-59000000.1234, 1); // minus 59 million + 0.1234, formatted as "scientific" with 1 decimal
-  SollStrings[12]:=FormatFloat('0.00E+00', -59000000.1234); // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
-  SollStrings[13]:=FormatFloat('#,##0.00 "EUR";(#,##0.00 "EUR")', 59000000.1234); // 59 million + 0.1234, formatted as "currencyRed" with 2 decimals, brackets and EUR
-  SollStrings[14]:=FormatFloat('#,##0.00 "EUR";(#,##0.00 "EUR")', -59000000.1234); // minus 59 million + 0.1234, formatted as "currencyRed" with 2 decimals, brackets and EUR
+  SollStrings[11]:=FormatFloat('0.00E+00', -59000000.1234); // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
+  SollStrings[12]:=FormatFloat('#,##0.00 "EUR";(#,##0.00 "EUR")', 59000000.1234); // 59 million + 0.1234, formatted as "currencyRed" with 2 decimals, brackets and EUR
+  SollStrings[13]:=FormatFloat('#,##0.00 "EUR";(#,##0.00 "EUR")', -59000000.1234); // minus 59 million + 0.1234, formatted as "currencyRed" with 2 decimals, brackets and EUR
 end;
 
 { TSpreadWriteReadStringTests }
@@ -415,11 +412,6 @@ begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,13);
 end;
 
-procedure TSpreadReadStringTests.TestReadString14;
-begin
-  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,14);
-end;
-
 procedure TSpreadReadStringTests.TestReadODFString0;
 begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,0);
@@ -490,10 +482,6 @@ begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
 end;
 
-procedure TSpreadReadStringTests.TestReadODFString14;
-begin
-  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,14);
-end;
 
 initialization
   // Register so these tests are included in a full run

@@ -183,9 +183,9 @@ type
     // general-purpose for all numbers
     nfGeneral,
     // numbers
-    nfFixed, nfFixedTh, nfExp, nfSci, nfPercentage,
+    nfFixed, nfFixedTh, nfExp, nfPercentage,
     // currency
-    nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed,
+    nfCurrency, nfCurrencyRed,
     // dates and times
     nfShortDateTime, {nfFmtDateTime, }nfShortDate, nfLongDate, nfShortTime, nfLongTime,
     nfShortTimeAM, nfLongTimeAM, nfTimeInterval,
@@ -1779,18 +1779,8 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
     if (ANumberFormat = nfGeneral) or (ANumberFormatStr = '') then
       Result := FloatToStr(Value, fs)
     else
-    if ANumberFormat = nfSci then
-      Result := SciFloat(Value, CountDecs(ANumberFormatStr, ['0']), fs)
-    else
     if (ANumberFormat = nfPercentage) then
       Result := FormatFloat(ANumberFormatStr, Value*100, fs)
-    else
-    if (ANumberFormat in [nfAccounting, nfAccountingRed]) then
-      case SplitAccountingFormatString(ANumberFormatStr, Sign(Value), left, right) of
-        0: Result := FormatFloat(ANumberFormatStr, Value, fs);
-        1: Result := FormatFloat(left, abs(Value), fs) + ' '  + Right;
-        2: Result := Left + ' ' + FormatFloat(right, abs(Value), fs);
-      end
     else
       Result := FormatFloat(ANumberFormatStr, Value, fs)
   end;
@@ -2203,15 +2193,14 @@ begin
   if ACell <> nil then begin
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := ANumber;
+    ACell^.NumberFormat := AFormat;
 
     if AFormat <> nfGeneral then begin
       Include(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormat := AFormat;
       ACell^.NumberFormatStr := BuildNumberFormatString(ACell^.NumberFormat,
         Workbook.FormatSettings, ADecimals);
     end else begin
       Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormat := nfGeneral;
       ACell^.NumberFormatStr := '';
     end;
 
@@ -2268,11 +2257,16 @@ begin
       parser.Free;
     end;
 
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := ANumber;
-    ACell^.NumberFormat := AFormat; //nfCustom;
-    ACell^.NumberFormatStr := AFormatString;
+    ACell^.NumberFormat := AFormat;
+    if AFormat <> nfGeneral then begin
+      Include(ACell^.UsedFormattingFields, uffNumberFormat);
+      ACell^.NumberFormatStr := AFormatString;
+    end else begin
+      Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
+      ACell^.NumberFormatStr := '';
+    end;
 
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
@@ -2381,8 +2375,7 @@ end;
   @param ARow            Cell row index
   @param ACol            Cell column index
   @param AValue          Number value to be written
-  @param AFormat         Format identifier, must be nfCurrency, nfCurrencyRed,
-                         nfAccounting, or nfAccountingRed
+  @param AFormat         Format identifier, must be nfCurrency, or nfCurrencyRed.
   @param ADecimals       Number of decimal places
   @param APosCurrFormat  Code specifying the order of value, currency symbol
                          and spaces (see pcfXXXX constants)
@@ -2408,8 +2401,7 @@ end;
 
   @param ACell           Pointer to the cell considered
   @param AValue          Number value to be written
-  @param AFormat         Format identifier, must be nfCurrency, nfCurrencyRed,
-                         nfAccounting, or nfAccountingRed
+  @param AFormat         Format identifier, must be nfCurrency or nfCurrencyRed.
   @param ADecimals       Number of decimal places
   @param APosCurrFormat  Code specifying the order of value, currency symbol
                          and spaces (see pcfXXXX constants)
@@ -2454,8 +2446,7 @@ end;
   @param ARow            Cell row index
   @param ACol            Cell column index
   @param AValue          Number value to be written
-  @param AFormat         Format identifier, must be nfCurrency, nfCurrencyRed,
-                         nfAccounting, or nfAccountingRed
+  @param AFormat         Format identifier, must be nfCurrency or nfCurrencyRed.
   @param AFormatString   String of formatting codes, including currency symbol.
                          Can contain sections for different formatting of positive
                          and negative number. Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
@@ -2472,8 +2463,7 @@ end;
 
   @param ACell           Pointer to the cell considered
   @param AValue          Number value to be written
-  @param AFormat         Format identifier, must be nfCurrency, nfCurrencyRed,
-                         nfAccounting, or nfAccountingRed
+  @param AFormat         Format identifier, must be nfCurrency or nfCurrencyRed.
   @param AFormatString   String of formatting codes, including currency symbol.
                          Can contain sections for different formatting of positive
                          and negative number. Example: '"EUR" #,##0.00;("EUR" #,##0.00)'

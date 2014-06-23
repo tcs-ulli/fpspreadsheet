@@ -742,14 +742,14 @@ begin
   AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed);
   AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency);
   AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed);
-  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfAccounting);
-  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfAccounting);
-  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfAccounting);
-  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfAccounting);
+  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfCustom);
+  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfCustom);
+  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfCustom);
+  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfCustom);
   AddFormat(45, 'nn:ss', nfCustom);
   AddFormat(46, '[h]:nn:ss', nfTimeInterval);
   AddFormat(47, 'nn:ss.z', nfCustom);
-  AddFormat(48, '##0.0E+00', nfSci);
+  AddFormat(48, '##0.0E+00', nfCustom);
   // 49 ("Text") not supported
 
   // All indexes from 0 to 163 are reserved for built-in formats.

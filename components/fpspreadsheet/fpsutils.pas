@@ -93,13 +93,9 @@ function MakeLongDateFormat(AShortDateFormat: String): String;
 function MakeShortDateFormat(AShortDateFormat: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
-function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
-  out ALeft, ARight: String): Byte;
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
-function SciFloat(AValue: Double; ADecimals: Byte): String; overload;
-function SciFloat(AValue: Double; ADecimals: Byte; AFormatSettings: TFormatSettings): String; overload;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
 // These two functions are copies of fpc trunk until they are available in stable fpc.
@@ -565,11 +561,11 @@ begin
   if ACondition then Result := AValue1 else Result := AValue2;
 end;
 
-{ Checks whether the given number format code is for currency or accounting
+{ Checks whether the given number format code is for currency,
   i.e. requires currency symbol. }
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 begin
-  Result := AFormat in [nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed];
+  Result := AFormat in [nfCurrency, nfCurrencyRed];
 end;
 
 { Checks whether the given number format code is for date/times. }
@@ -648,69 +644,81 @@ begin
   end;
 end;
 
-{ Builds a currency format string. The presentation of negative values (brackets,
+{@@
+  Builds a currency format string. The presentation of negative values (brackets,
   or minus signs) is taken from the provided format settings. The format string
   consists of three sections, separated by semicolons.
-  Additional code is inserted for the destination file format:
-  - AAccountingStyle = true adds code to align the currency symbols below each
-    other.
-  - ANegativeValuesRed adds code to the second section of the format code (for
-    negative values) to apply a red font color.
-  This code has to be removed by StripAccountingSymbols before applying to
-  FormatFloat. }
+
+  @param  ADialect        Determines whether the format string is for use by
+                          fpspreadsheet (nfdDefault) or by Excel (nfdExcel)
+  @param  ANumberFormat   Identifier of the built-in number format for which the
+                          format string is to be generated.
+  @param  AFormatSettings FormatSettings to be applied (used to extract default
+                          values for the next parameters)
+  @param  ADecimals       number of decimal places. If < 0, the CurrencyDecimals
+                          of the FormatSettings is used.
+  @param  APosCurrFormat  Identifier for the order of currency symbol, value and
+                          spaces of positive values
+                          - see pcfXXXX constants in fpspreadsheet.pas.
+                          If < 0, the CurrencyFormat of the FormatSettings is used.
+  @param  ANegCurrFormat  Identifier for the order of currency symbol, value and
+                          spaces of negative values. Specifies also usage of ().
+                          - see ncfXXXX constants in fpspreadsheet.pas.
+                          If < 0, the NegCurrFormat of the FormatSettings is used.
+  @param  ACurrencySymbol Name of the currency, like $ or USD.
+                          If ? the CurrencyString of the FormatSettings is used.
+
+  @return String of formatting codes, such as '"$"#,##0.00;("$"#,##0.00);"EUR"0.00'
+}
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
   ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
 const
-  POS_FMT: array[0..3, boolean] of string = (
-    // Parameter 0 is "value", parameter 1 is "currency symbol"
-    // AccountingStyle = false --> 1st column, true --> 2nd column
-    ('"%1:s"%0:s',  '"%1:s"* %0:s'),      // 0: $1
-    ('%0:s"%1:s"',  '%0:s "%1:s"'),       // 1: 1$
-    ('"%1:s" %0:s', '"%1:s"* %0:s'),      // 2: $ 1
-    ('%0:s "%1:s"', '%0:s "%1:s"')        // 3: 1 $
+  POS_FMT: array[0..3] of string = (
+    // Format parameter 0 is "value", parameter 1 is "currency symbol"
+    ('"%1:s"%0:s'),        // 0: $1
+    ('%0:s"%1:s"'),        // 1: 1$
+    ('"%1:s" %0:s'),       // 2: $ 1
+    ('%0:s "%1:s"')        // 3: 1 $
   );
-  NEG_FMT: array[0..15, boolean] of string = (
-    ('("%1:s"%0:s)',  '"%1:s"* (%0:s)'),  //  0: ($1)
-    ('-"%1:s"%0:s',   '-* "%1:s" %0:s'),  //  1: -$1
-    ('"%1:s"-%0:s',   '"%1:s"* -%0:s'),   //  2: $-1
-    ('"%1:s"%0:s-',   '"%1:s"%0:s-'),     //  3: $1-
-    ('(%0:s"%1:s")',  '(%0:s)%1:s"'),     //  4: (1$)
-    ('-%0:s"%1:s"',   '-* %0:s"%1:s"'),   //  5: -1$
-    ('%0:s-"%1:s"',   '%0:s-"%1:s"'),     //  6: 1-$
-    ('%0:s"%1:s"-',   '%0:s-"%1:s"'),     //  7: 1$-
-    ('-%0:s "%1:s"',  '-* %0:s"%1:s"'),   //  8: -1 $
-    ('-"%1:s" %0:s',  '-* "%1:s" %0:s'), //  9: -$ 1
-    ('%0:s "%1:s"-',  '%0:s- "%1:s"'),    // 10: 1 $-
-    ('"%1:s" %0:s-',  '"%1:s"* %0:s-'),   // 11: $ 1-
-    ('"%1:s" -%0:s',  '"%1:s"* -%0:s'),   // 12: $ -1
-    ('%0:s- "%1:s"',  '%0:s- "%1:s"'),    // 13: 1- $
-    ('("%1:s" %0:s)', '"%1:s"* (%0:s)'),  // 14: ($ 1)
-    ('(%0:s "%1:s")', '(%0:s "%1:s")')    // 15: (1 $)
+  NEG_FMT: array[0..15] of string = (
+    ('("%1:s"%0:s)'),      //  0: ($1)
+    ('-"%1:s"%0:s'),       //  1: -$1
+    ('"%1:s"-%0:s'),       //  2: $-1
+    ('"%1:s"%0:s-'),       //  3: $1-
+    ('(%0:s"%1:s")'),      //  4: (1$)
+    ('-%0:s"%1:s"'),       //  5: -1$
+    ('%0:s-"%1:s"'),       //  6: 1-$
+    ('%0:s"%1:s"-'),       //  7: 1$-
+    ('-%0:s "%1:s"'),      //  8: -1 $
+    ('-"%1:s" %0:s'),      //  9: -$ 1
+    ('%0:s "%1:s"-'),      // 10: 1 $-
+    ('"%1:s" %0:s-'),      // 11: $ 1-
+    ('"%1:s" -%0:s'),      // 12: $ -1
+    ('%0:s- "%1:s"'),      // 13: 1- $
+    ('("%1:s" %0:s)'),     // 14: ($ 1)
+    ('(%0:s "%1:s")')      // 15: (1 $)
   );
 var
   decs: String;
   pcf, ncf: Byte;
   p, n: String;
-  accStyle: Boolean;
   negRed: Boolean;
 begin
   pcf := IfThen(APosCurrFormat < 0, AFormatSettings.CurrencyFormat, APosCurrFormat);
   ncf := IfThen(ANegCurrFormat < 0, AFormatSettings.NegCurrFormat, ANegCurrFormat);
-  if ADecimals < 0 then
+  if (ADecimals < 0) then
     ADecimals := AFormatSettings.CurrencyDecimals;
   if ACurrencySymbol = '?' then
     ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
 
-  accStyle := ANumberFormat in [nfAccounting, nfAccountingRed];
-  negRed := ANumberFormat in [nfCurrencyRed, nfAccountingRed];
-
-  p := POS_FMT[pcf, accStyle];
-  n := NEG_FMT[ncf, accStyle];
+  negRed := (ANumberFormat = nfCurrencyRed);
+  p := POS_FMT[pcf];   // Format mask for positive values
+  n := NEG_FMT[ncf];   // Format mask for negative values
   // add extra space for the sign of the number for perfect alignment in Excel
-  if accStyle then
+  if ADialect = nfdExcel then
     case ncf of
       0, 14: p := p + '_)';
       3, 11: p := p + '_-';
@@ -722,7 +730,7 @@ begin
     Result := Format(p, ['#,##0' + decs, ACurrencySymbol]) + ';'
             + IfThen(negRed and (ADialect = nfdExcel), '[red]', '')
             + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
-            + Format(p, [IfThen(accStyle, '-', '0'+decs), ACurrencySymbol]);
+            + Format(p, ['0'+decs, ACurrencySymbol]);
   end
   else begin
     Result := '#,##0' + decs;
@@ -735,12 +743,22 @@ begin
       1, 2, 5, 6, 8, 9, 12: Result := Result + '-#,##0' + decs;
       else                  Result := Result + '#,##0' + decs + '-';
     end;
-    Result := Result + ';' + IfThen(accStyle, '-', '0'+decs);
+    Result := Result + ';0' + decs;
   end;
 end;
 
-{ Builds a number format string from the number format code, the count of
-  decimals, and the currencysymbol (if not empty). }
+{@@
+  Builds a number format string from the number format code and the count of
+  decimal places.
+
+  @param  ANumberFormat   Identifier of the built-in numberformat for which a
+                          format string is to be generated
+  @param  AFormatSettings FormatSettings for default parameters
+  @param  ADecimals       Number of decimal places. If < 0 the CurrencyDecimals
+                          value of the FormatSettings is used.
+
+  @return String of formatting codes, such as '#,##0.00' for nfFixedTh and 2 decimals
+}
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
 var
@@ -758,11 +776,9 @@ begin
       Result := '#,##0' + decs;
     nfExp:
       Result := '0' + decs + 'E+00';
-    nfSci:
-      Result := '##0' + decs + 'E+0';
     nfPercentage:
       Result := '0' + decs + '%';
-    nfCurrency, nfCurrencyRed, nfAccounting, nfAccountingRed:
+    nfCurrency, nfCurrencyRed:
       raise Exception.Create('BuildNumberFormatString: Use BuildCurrencyFormatString '+
         'to create a format string for currency values.');
     nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
@@ -933,84 +949,6 @@ begin
     Result := ACode;
 end;
 
-{ Splits the sections +1 (positive) or -1 (negative values) or 0 (zero values)
-  of the accounting format string at the position of the '*' into a left
-  and right part and returns 1 if the format string is in the left, and 2 if
-  it is in the right part. Additionally removes Excel format codes '_' }
-function SplitAccountingFormatString(const AFormatString: String; ASection: ShortInt;
-  out ALeft, ARight: String): Byte;
-var
-  P: PChar;
-  PStart, PEnd: PChar;
-  token: Char;
-  done: Boolean;
-  i: Integer;
-begin
-  Result := 0;
-  PStart := PChar(@AFormatString[1]);
-  PEnd := PStart + Length(AFormatString);
-  P := PStart;
-
-  done := false;
-  case ASection of
-    -1 : while (P < PEnd) and not done do begin
-           token := P^;
-           if token = ';' then done := true;
-           inc(P);
-         end;
-     0 : for i := 1 to 2 do begin
-           done := false;
-           while (P < PEnd) and not done do begin
-             token := P^;
-             if token = ';' then done := true;
-             inc(P);
-           end;
-         end;
-    +1: ;
-  end;
-
-  ALeft := '';
-  done := false;
-
-  while (P < PEnd) and not done do begin
-    token := P^;
-    case token of
-      '_': inc(P);
-      ';': done := true;
-      '"': ;
-      '*': begin
-             inc(P);
-             done := true;
-           end;
-      '0',
-      '#': begin
-             ALeft := ALeft + token;
-             Result := 1;
-           end;
-      else ALeft := ALeft + token;
-    end;
-    inc(P);
-  end;
-
-  ARight := '';
-  done := false;
-  while (P < PEnd) and not done do begin
-    token := P^;
-    case token of
-      '_': inc(P);
-      ';': done := true;
-      '"': ;
-      '0',
-      '#': begin
-             ARight := ARight + token;
-             Result := 2;
-           end;
-      else ARight := ARight + token;
-    end;
-    inc(P);
-  end;
-end;
-
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
@@ -1068,35 +1006,14 @@ begin
   end;
 end;
 
-{ Formats the number AValue in "scientific" format with the given number of
-  decimals. "Scientific" is the same as "exponential", but with exponents rounded
-  to multiples of 3 (like for "kilo" - "Mega" - "Giga" etc.). }
-function SciFloat(AValue: Double; ADecimals: Byte;
-  AFormatSettings: TFormatSettings): String;
-var
-  m: Double;
-  ex: Integer;
-begin
-  if AValue = 0 then
-    Result := Format('%0.*fE+0', [ADecimals, 0.0], AFormatSettings)
-    // Excel shows "000.0E+0", but I think the "0.0E+0" shown here is better.
-  else begin
-    ex := floor(log10(abs(AValue)));  // exponent
-    // round exponent to multiples of 3
-    ex := (ex div 3) * 3;
-    if ex < 0 then dec(ex, 3);
-    m := AValue * Power(10, -ex);     // mantisse
-    Result := Format('%.*fE+%d', [ADecimals, m, ex], AFormatSettings);
-  end;
-end;
+{@@
+  Creates a "time interval" format string having the first time code identifier
+  in square brackets.
 
-function SciFloat(AValue: Double; ADecimals: Byte): String;
-begin
-  Result := SciFloat(AValue, ADecimals, DefaultFormatSettings);
-end;
-
-{ Creates a "time interval" format string having the first code identifier
-  in square brackets. }
+  @param  Src   Source format string, must be a time format string, like 'hh:nn'
+  @param  Dest  Destination format string, will have the first time code element
+                of the src format string in square brackets, like '[hh]:nn'.
+}
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 var
   L: TStrings;
