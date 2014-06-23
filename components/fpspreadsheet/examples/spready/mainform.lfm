@@ -402,6 +402,7 @@ object Form1: TForm1
       Top = 2
       Width = 755
       Align = alClient
+      OnEditingDone = EdFormulaEditingDone
       TabOrder = 0
     end
     object EdCellAddress: TEdit
