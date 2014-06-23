@@ -235,6 +235,8 @@ var
   decs: Integer;
   dt: string;
 begin
+  Result := 0;
+
   parser := TsNumFormatParser.Create(Workbook, AFormatCell^.NumberFormatStr);
   try
     decs := parser.Decimals;
@@ -243,25 +245,23 @@ begin
     parser.Free;
   end;
 
-  Result := 0;
   case AFormatCell^.NumberFormat of
-    nfFixed         : Result := IfThen(decs = 0, 1, 2);
-    nfFixedTh       : Result := IfThen(decs = 0, 3, 4);
-    nfCurrency,
-    nfAccounting    : Result := IfThen(decs = 0, 5, 7);
-    nfCurrencyRed,
-    nfAccountingRed : Result := IfThen(decs = 0, 6, 8);
-    nfPercentage    : Result := IfThen(decs = 0, 9, 10);
-    nfExp, nfSci    : Result := 11;
-    nfShortDate     : Result := 12;
-    nfLongDate      : Result := 13;
-    nfShortTimeAM   : Result := 16;
-    nfLongTimeAM    : Result := 17;
-    nfShortTime     : Result := 18;
-    nfLongTime      : Result := 19;
-    nfShortDateTime : Result := 20;
-    nfCustom        : if dt = 'dm' then Result := 14 else
-                      if dt = 'my' then Result := 15;
+    nfGeneral      : exit;
+    nfFixed        : Result := IfThen(decs = 0, 1, 2);
+    nfFixedTh      : Result := IfThen(decs = 0, 3, 4);
+    nfCurrency     : Result := IfThen(decs = 0, 5, 7);
+    nfCurrencyRed  : Result := IfThen(decs = 0, 6, 8);
+    nfPercentage   : Result := IfThen(decs = 0, 9, 10);
+    nfExp          : Result := 11;
+    nfShortDate    : Result := 12;
+    nfLongDate     : Result := 13;
+    nfShortTimeAM  : Result := 16;
+    nfLongTimeAM   : Result := 17;
+    nfShortTime    : Result := 18;
+    nfLongTime     : Result := 19;
+    nfShortDateTime: Result := 20;
+    nfCustom       : if dt = 'dm' then Result := 14 else
+                     if dt = 'my' then Result := 15;
   end;
 end;
 

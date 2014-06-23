@@ -133,8 +133,6 @@ type
       var ANextIndex: Integer): Boolean;
     function IsNumberAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
       out ADecimals: Byte; out ANextIndex: Integer): Boolean;
-    function IsSciAt(ASection, AIndex: Integer; out ANumberFormat: TsNumberFormat;
-      out ADecimals: Byte; out ANextIndex: Integer): Boolean;
     function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
     function IsTimeAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
       out ANextIndex: Integer): Boolean;
@@ -179,7 +177,7 @@ begin
   inherited Create;
   FCreateMethod := 0;
   FWorkbook := AWorkbook;
-  FHasRedSection := (ANumFormat in [nfCurrencyRed, nfAccountingRed]);
+  FHasRedSection := (ANumFormat = nfCurrencyRed);
   Parse(AFormatString);
 end;
 
@@ -584,10 +582,6 @@ begin
       end;
     end;
 
-    // Look for scientific format
-    if IsSciAt(ASection, 0, ANumFormat, ADecimals, next) then
-      exit;
-
     // Currency?
     if IsCurrencyAt(ASection, ANumFormat, ADecimals, ACurrencySymbol, AColor)
       then exit;
@@ -677,7 +671,7 @@ begin
     result := nfGeneral
   else begin
     Result := FSections[0].NumFormat;
-    if (Result in [nfCurrency, nfAccounting]) then begin
+    if (Result = nfCurrency) then begin
       if Length(FSections) = 2 then begin
         Result := FSections[1].NumFormat;
         if FSections[1].CurrencySymbol <> FSections[0].CurrencySymbol then begin
@@ -688,10 +682,6 @@ begin
            (FSections[1].NumFormat in [nfCurrency, nfCurrencyRed])
         then
           exit;
-        if FSections[1].NumFormat = nfAccounting then begin
-          Result := nfAccounting;
-          exit;
-        end;
       end else
       if Length(FSections) = 3 then begin
         Result := FSections[1].NumFormat;
@@ -706,12 +696,6 @@ begin
            (FSections[2].NumFormat in [nfCurrency, nfCurrencyRed])
         then
           exit;
-        if (FSections[1].NumFormat = nfAccounting) and
-           (FSections[2].NumFormat in [nfCurrency, nfAccounting])
-        then begin
-          Result := nfAccounting;
-          exit;
-        end;
       end;
       Result := nfCustom;
       exit;
@@ -739,7 +723,6 @@ function TsNumFormatParser.IsCurrencyAt(ASection: Integer;
   out ANumFormat: TsNumberFormat; out ADecimals: byte;
   out ACurrencySymbol: String; out AColor: TsColor): Boolean;
 var
-  isAccounting : Boolean;
   hasCurrSymbol: Boolean;
   hasColor: Boolean;
   el: Integer;
@@ -750,7 +733,6 @@ begin
   ACurrencySymbol := '';
   ADecimals := 0;
   AColor := scNotDefined;
-  isAccounting := false;
   hasColor := false;
   hasCurrSymbol := false;
 
@@ -783,7 +765,7 @@ begin
           hasColor := true;
         end;
       nftRepeat:
-        isAccounting := true;
+        ;
       nftCurrSymbol:
         begin
           ACurrencySymbol := FSections[ASection].Elements[el].TextValue;
@@ -812,13 +794,8 @@ begin
 
   Result := hasCurrSymbol and ((ANumFormat = nfFixedTh) or (ASection = 2));
   if Result then begin
-    if isAccounting then begin
-      if AColor = scNotDefined then ANumFormat := nfAccounting else
-      if AColor = scRed then ANumFormat := nfAccountingRed;
-    end else begin
-      if AColor = scNotDefined then ANumFormat := nfCurrency else
-      if AColor = scRed then ANumFormat := nfCurrencyRed;
-    end;
+    if AColor = scNotDefined then ANumFormat := nfCurrency else
+    if AColor = scRed then ANumFormat := nfCurrencyRed;
   end else
     ANumFormat := nfCustom;
 end;
@@ -972,26 +949,6 @@ begin
       ANextIndex := AIndex + 5;
     end;
   end;
-end;
-
-function TsNumFormatParser.IsSciAt(ASection, AIndex: Integer;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Byte; out ANextIndex: Integer): Boolean;
-begin
-  if IsTokenAt(nftOptDigit, ASection, AIndex) and        // '#'
-     IsTokenAt(nftOptDigit, ASection, Aindex+1) and      // '#'
-     IsTokenAt(nftDigit, ASection, AIndex+2) and         // '0'
-     IsTokenAt(nftDecSep, ASection, AIndex+3) and        // '.'
-     IsTokenAt(nftDecs, ASection, AIndex+4) and          // count of decimals
-     IsTokenAt(nftExpChar, ASection, AIndex+5) and       // E
-     IsTokenAt(nftExpSign, ASection, AIndex+6) and       // +/-
-     IsTokenAt(nftExpDigits, ASection, AIndex+7)
-  then begin
-    Result := true;
-    ANumberFormat := nfSci;
-    ADecimals := FSections[ASection].Elements[AIndex+4].IntValue;
-    ANextIndex := AIndex + 8;
-  end else
-    Result := false;
 end;
 
 function TsNumFormatParser.IsTextAt(AText: String; ASection, AIndex: Integer): Boolean;

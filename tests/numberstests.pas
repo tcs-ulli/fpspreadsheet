@@ -22,7 +22,7 @@ uses
 
 var
   // Norm to test against - list of numbers/times that should occur in spreadsheet
-  SollNumbers: array[0..23] of double; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
+  SollNumbers: array[0..22] of double; //"Soll" is a German word in Dutch accountancy jargon meaning "normative value to check against". There ;)
   // Initializes Soll*/normative variables.
   // Useful in test setup procedures to make sure the norm is correct.
   procedure InitSollNumbers;
@@ -64,7 +64,6 @@ type
     procedure TestReadNumber20;
     procedure TestReadNumber21;
     procedure TestReadNumber22;
-    procedure TestReadNumber23;
     procedure TestReadODFNumber0; //number tests using ODF/LibreOffice file format
     procedure TestReadODFNumber1; //number and time
     procedure TestReadODFNumber2;
@@ -88,7 +87,6 @@ type
     procedure TestReadODFNumber20;
     procedure TestReadODFNumber21;
     procedure TestReadODFNumber22;
-    procedure TestReadODFNumber23;
   end;
 
   { TSpreadWriteReadNumberTests }
@@ -142,13 +140,12 @@ begin
   SollNumbers[14]:=0.3536;  // 0.3536 formatted as percentage, 2 decimals
   SollNumbers[15]:=59000000.1234;  // 59 million + 0.1234 formatted with thousand separator, no decimals
   SollNumbers[16]:=59000000.1234;  // 59 million + 0.1234 formatted with thousand separator, 2 decimals
-  SollNumbers[17]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "scientific" with 1 decimal
-  SollNumbers[18]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
-  SollNumbers[19]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (EUROs, at end), 2 decimals
-  SollNumbers[20]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (Dollars, at end), 2 decimals
-  SollNumbers[21]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (EUROs, at end), 2 decimals
-  SollNumbers[22]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (Dollars, at end), 2 decimals
-  SollNumbers[23]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (Dollars, at end, neg red), 2 decimals
+  SollNumbers[17]:=-59000000.1234; // minus 59 million + 0.1234, formatted as "exp" with 2 decimals
+  SollNumbers[18]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (EUROs, at end), 2 decimals
+  SollNumbers[19]:=59000000.1234;  // 59 million + 0.1234 formatted as currrency (Dollars, at end), 2 decimals
+  SollNumbers[20]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (EUROs, at end), 2 decimals
+  SollNumbers[21]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (Dollars, at end), 2 decimals
+  SollNumbers[22]:=-59000000.1234; // minus 59 million + 0.1234 formatted as currrency (Dollars, at end, neg red), 2 decimals
 end;
 
 { TSpreadWriteReadNumberTests }
@@ -395,11 +392,6 @@ begin
   TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,22);
 end;
 
-procedure TSpreadReadNumberTests.TestReadNumber23;
-begin
-  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,23);
-end;
-
 procedure TSpreadReadNumberTests.TestReadODFNumber0;
 begin
   TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,0);
@@ -513,11 +505,6 @@ end;
 procedure TSpreadReadNumberTests.TestReadODFNumber22;
 begin
   TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,22);
-end;
-
-procedure TSpreadReadNumberTests.TestReadODFNumber23;
-begin
-  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,23);
 end;
 
 

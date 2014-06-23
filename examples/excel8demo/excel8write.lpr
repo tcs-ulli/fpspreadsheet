@@ -256,30 +256,7 @@ begin
   MyWorksheet.WriteNumber(r, 1, number, nfFixedTh, 3);
   MyWorksheet.WriteNumber(r, 2, -number, nfFixedTh, 3);
   inc(r,2);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 0 dec');
-  MyWorksheet.WriteNumber(r, 1, number, nfSci, 0);
-  MyWorksheet.WriteNumber(r, 2, -number, nfSci, 0);
-  MyWorksheet.WriteNumber(r, 3, 1.0/number, nfSci, 0);
-  MyWorksheet.WriteNumber(r, 4, -1.0/number, nfSci, 0);
-  inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 1 dec');
-  MyWorksheet.WriteNumber(r, 1, number, nfSci, 1);
-  MyWorksheet.WriteNumber(r, 2, -number, nfSci, 1);
-  MyWorksheet.WriteNumber(r, 3, 1.0/number, nfSci, 1);
-  MyWorksheet.WriteNumber(r, 4, -1.0/number, nfSci, 1);
-  inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 2 dec');
-  MyWorksheet.WriteNumber(r, 1, number, nfSci, 2);
-  MyWorksheet.WriteNumber(r, 2, -number, nfSci, 2);
-  MyWorksheet.WriteNumber(r, 3, 1.0/number, nfSci, 2);
-  MyWorksheet.WriteNumber(r, 4, -1.0/number, nfSci, 2);
-  inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfSci, 3 dec');
-  MyWorksheet.WriteNumber(r, 1, number, nfSci, 3);
-  MyWorksheet.WriteNumber(r, 2, -number, nfSci, 3);
-  MyWorksheet.WriteNumber(r, 3, 1.0/number, nfSci, 3);
-  MyWorksheet.WriteNumber(r, 4, -1.0/number, nfSci, 3);
-  inc(r);
+
   MyWorksheet.WriteUTF8Text(r, 0, 'nfExp, 0 dec');
   MyWorksheet.WriteNumber(r, 1, number, nfExp, 0);
   MyWorksheet.WriteNumber(r, 2, -number, nfExp, 0);
@@ -314,18 +291,8 @@ begin
   MyWorksheet.WriteCurrency(r, 1, number, nfCurrencyRed, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 2, -number, nfCurrencyRed, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
-  inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfAccounting, 0 decs');
-  MyWorksheet.WriteCurrency(r, 1, number, nfAccounting, 0, 'USD');
-  MyWorksheet.WriteCurrency(r, 2, -number, nfAccounting, 0, 'USD');
-  MyWorksheet.WriteCurrency(r, 3, 0.0, nfAccounting, 0, 'USD');
-  inc(r);
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfAccountingRed, 0 decs');
-  MyWorksheet.WriteCurrency(r, 1, -number, nfAccountingRed, 0, 'USD');
-  MyWorksheet.WriteCurrency(r, 2, number, nfAccountingRed, 0, 'USD');
-  MyWorksheet.WriteCurrency(r, 3, 0.0, nfAccountingRed, 0, 'USD');
 
- {
+  {
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "EUR "#,##0_);("EUR "#,##0)');
   MyWorksheet.WriteNumber(r, 1, number);

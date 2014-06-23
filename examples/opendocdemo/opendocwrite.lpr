@@ -184,16 +184,6 @@ begin
   MyWorksheet.WriteNumber(row, 7, number7, nfExp, 3);
   MyWorksheet.WriteNumber(row, 8, number8, nfExp, 3);
   inc(row);
-  MyWorksheet.WriteUTF8Text(row, 0, 'nfSci, 2 decimals');
-  MyWorksheet.WriteNumber(row, 1, number1, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 2, number2, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 3, number3, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 4, number4, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 5, number5, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 6, number6, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 7, number7, nfSci, 2);
-  MyWorksheet.WriteNumber(row, 8, number8, nfSci, 2);
-  inc(row);
   MyWorksheet.WriteUTF8Text(row, 0, 'nfCurrency, 2 decimals');
   MyWorksheet.WriteCurrency(row, 1, number1, nfCurrency, 2, '$');
   MyWorksheet.WriteCurrency(row, 2, number2, nfCurrency, 2, '$');
@@ -213,28 +203,8 @@ begin
   MyWorksheet.WriteCurrency(row, 6, number6, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 7, number7, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 8, number8, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
-  inc(row);
-  // Note: nfAccounting's not supported by ods, will be replaced by nfCurrency's
-  MyWorksheet.WriteUTF8Text(row, 0, 'nfAccounting, 2 decimals');
-  MyWorksheet.WriteCurrency(row, 1, number1, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 2, number2, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 3, number3, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 4, number4, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 5, number5, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 6, number6, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 7, number7, nfAccounting, 2, '$');
-  MyWorksheet.WriteCurrency(row, 8, number8, nfAccounting, 2, '$');
-  inc(row);
-  MyWorksheet.WriteUTF8Text(row, 0, 'nfAccountingRed, 2 decimals, >0: EUR 1000, <0: -EUR 1000)');
-  MyWorksheet.WriteCurrency(row, 1, number1, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 2, number2, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 3, number3, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 4, number4, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 5, number5, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 6, number6, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 7, number7, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
-  MyWorksheet.WriteCurrency(row, 8, number8, nfAccountingRed, 2, 'EUR', pcfCSV, ncfMCSV);
   inc(row,2);
+
   MyWorksheet.WriteUTF8Text(row, 0, 'Some date/time values in various formats:');
   inc(row);
   MyWorksheet.WriteUTF8Text(row, 0, 'nfShortDateTime');
@@ -264,6 +234,9 @@ begin
   MyWorksheet.WriteUTF8Text(row, 0, 'nfLongTimeAM');
   MyWorksheet.WriteDateTime(row, 1, dt1, nfLongTimeAM);
   MyWorksheet.WriteDateTime(row, 2, dt2, nfLongTimeAM);
+  inc(row,2);
+
+  MyWorksheet.WriteUTF8Text(row, 0, 'Some custom formats');
   inc(row);
   // In order to use a semicolon as a date-time separator it must be escaped either by
   // using the backslash or quotes (because the semicolon is the separator between sections)

@@ -18,10 +18,10 @@ uses
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
-  SollNumberStrings: array[0..6, 0..8] of string;
+  SollNumberStrings: array[0..6, 0..7] of string;
   SollNumbers: array[0..6] of Double;
-  SollNumberFormats: array[0..8] of TsNumberFormat;
-  SollNumberDecimals: array[0..8] of word;
+  SollNumberFormats: array[0..7] of TsNumberFormat;
+  SollNumberDecimals: array[0..7] of word;
 
   SollDateTimeStrings: array[0..4, 0..9] of string;
   SollDateTimes: array[0..4] of TDateTime;
@@ -164,7 +164,6 @@ begin
   SollNumberFormats[5] := nfExp;          SollNumberDecimals[5] := 2;
   SollNumberFormats[6] := nfPercentage;   SollNumberDecimals[6] := 0;
   SollNumberFormats[7] := nfPercentage;   SollNumberDecimals[7] := 2;
-  SollNumberFormats[8] := nfSci;          SollNumberDecimals[8] := 1;
 
   for i:=Low(SollNumbers) to High(SollNumbers) do begin
     SollNumberStrings[i, 0] := FloatToStr(SollNumbers[i], fs);
@@ -175,7 +174,6 @@ begin
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
     SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
     SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
-    SollNumberStrings[i, 8] := SciFloat(SollNumbers[i], 1, fs);
   end;
 
   // Date/time values
@@ -288,8 +286,6 @@ begin
     for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do begin
       MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
-      if (AFormat=sfExcel2) and (SollNumberFormats[Col] = nfSci) then
-        Continue;  // BIFF2 does not support nfSci -> ignore
       CheckEquals(SollNumberStrings[Row, Col], ActualString, 'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
     end;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -306,8 +302,6 @@ begin
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollNumbers) to High(SollNumbers) do
     for Col := Low(SollNumberFormats) to High(SollNumberFormats) do begin
-      if (AFormat=sfExcel2) and (SollNumberFormats[Col] = nfSci) then
-        Continue;  // BIFF2 does not support nfSci --> ignore
       ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
       CheckEquals(SollNumberStrings[Row,Col],ActualString,'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
     end;

@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 248
   Width = 884
   Caption = 'spready'
-  ClientHeight = 629
+  ClientHeight = 624
   ClientWidth = 884
   Menu = MainMenu
   OnActivate = FormActivate
@@ -14,7 +14,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 85
-    Top = 544
+    Top = 539
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,9 +23,9 @@ object Form1: TForm1
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 8
-      Width = 93
+      Width = 116
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 32
-      Width = 100
+      Width = 125
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -45,7 +45,7 @@ object Form1: TForm1
     end
     object EdFrozenCols: TSpinEdit
       Left = 389
-      Height = 23
+      Height = 28
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -53,7 +53,7 @@ object Form1: TForm1
     end
     object EdFrozenRows: TSpinEdit
       Left = 389
-      Height = 23
+      Height = 28
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -61,37 +61,37 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 304
-      Height = 15
+      Height = 20
       Top = 13
-      Width = 62
+      Width = 77
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 304
-      Height = 15
+      Height = 20
       Top = 40
-      Width = 66
+      Width = 82
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 56
-      Width = 96
+      Width = 120
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
       TabOrder = 4
     end
     object CbHeaderStyle: TComboBox
       Left = 152
-      Height = 23
+      Height = 28
       Top = 8
       Width = 116
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 2
       Items.Strings = (
         'Lazarus'
@@ -106,7 +106,7 @@ object Form1: TForm1
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 465
+    Height = 460
     Top = 79
     Width = 884
     ActivePage = TabSheet1
@@ -116,11 +116,11 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 437
+      ClientHeight = 427
       ClientWidth = 876
       object WorksheetGrid: TsWorksheetGrid
         Left = 0
-        Height = 437
+        Height = 427
         Top = 0
         Width = 876
         FrozenCols = 0
@@ -136,7 +136,7 @@ object Form1: TForm1
         TitleStyle = tsNative
         OnSelection = WorksheetGridSelection
         ColWidths = (
-          42
+          56
           64
           64
           64
@@ -244,19 +244,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 23
+      Height = 28
       Top = 2
       Width = 127
-      ItemHeight = 15
+      ItemHeight = 20
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 23
+      Height = 28
       Top = 2
       Width = 48
-      ItemHeight = 15
+      ItemHeight = 20
       Items.Strings = (
         '8'
         '9'
@@ -977,6 +977,9 @@ object Form1: TForm1
           Action = AcNFGeneral
           AutoCheck = True
         end
+        object MenuItem38: TMenuItem
+          Caption = '-'
+        end
         object MenuItem34: TMenuItem
           Action = AcNFFixed
           AutoCheck = True
@@ -993,8 +996,54 @@ object Form1: TForm1
           Action = AcNFExp
           AutoCheck = True
         end
-        object MenuItem38: TMenuItem
-          Action = AcNFSci
+        object MenuItem47: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem48: TMenuItem
+          Action = AcNFCurrency
+          AutoCheck = True
+        end
+        object MenuItem49: TMenuItem
+          Action = AcNFCurrencyRed
+          AutoCheck = True
+        end
+        object MenuItem50: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem51: TMenuItem
+          Action = AcNFShortDateTime
+          AutoCheck = True
+        end
+        object MenuItem52: TMenuItem
+          Action = AcNFShortDate
+          AutoCheck = True
+        end
+        object MenuItem53: TMenuItem
+          Action = AcNFLongDate
+          AutoCheck = True
+        end
+        object MenuItem54: TMenuItem
+          Action = AcNFCustomDM
+          AutoCheck = True
+        end
+        object MenuItem55: TMenuItem
+          Action = AcNFCustomMY
+          AutoCheck = True
+        end
+        object MenuItem56: TMenuItem
+          Action = AcNFShortTime
+          AutoCheck = True
+        end
+        object MenuItem57: TMenuItem
+          Action = AcNFLongTime
+          AutoCheck = True
+        end
+        object MenuItem58: TMenuItem
+          Action = AcNFShortTimeAM
+          AutoCheck = True
+        end
+        object MenuItem59: TMenuItem
+          Action = AcNFLongTimeAM
           AutoCheck = True
         end
       end
@@ -2398,127 +2447,106 @@ object Form1: TForm1
       Caption = 'Exponential'
       OnExecute = AcNumFormatExecute
     end
-    object AcNFSci: TAction
-      Tag = 1040
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Scientific'
-      OnExecute = AcNumFormatExecute
-    end
     object AcNFPercentage: TAction
-      Tag = 1050
+      Tag = 1040
       Category = 'Format'
       AutoCheck = True
       Caption = 'Percentage'
       OnExecute = AcNumFormatExecute
     end
     object AcNFCurrency: TAction
-      Tag = 1060
+      Tag = 1050
       Category = 'Format'
       AutoCheck = True
       Caption = 'Currency'
       OnExecute = AcNumFormatExecute
     end
     object AcNFCurrencyRed: TAction
-      Tag = 1070
+      Tag = 1060
       Category = 'Format'
       AutoCheck = True
       Caption = 'Currency (negative values in red)'
       OnExecute = AcNumFormatExecute
     end
-    object AcNFAccounting: TAction
-      Tag = 1080
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Accounting'
-      OnExecute = AcNumFormatExecute
-    end
-    object AcNFAccountingRed: TAction
-      Tag = 1090
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Accounting (negative values in red)'
-      OnExecute = AcNumFormatExecute
-    end
     object AcNFShortDateTime: TAction
-      Tag = 1100
+      Tag = 1070
       Category = 'Format'
       AutoCheck = True
       Caption = 'Date + time'
       OnExecute = AcNumFormatExecute
     end
     object AcNFShortDate: TAction
-      Tag = 1110
+      Tag = 1080
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short date'
       OnExecute = AcNumFormatExecute
     end
-    object AcNFFmtDateTimeDM: TAction
-      Tag = 1181
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Day + month'
-      OnExecute = AcNumFormatExecute
-    end
-    object AcNFFmtDateTimeMY: TAction
-      Tag = 1182
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Month + year'
-      OnExecute = AcNumFormatExecute
-    end
     object AcNFLongDate: TAction
-      Tag = 1120
+      Tag = 1090
       Category = 'Format'
       AutoCheck = True
       Caption = 'Long date'
       OnExecute = AcNumFormatExecute
     end
+    object AcNFCustomDM: TAction
+      Tag = 1151
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Day + month'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFCustomMY: TAction
+      Tag = 1152
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Month + year'
+      OnExecute = AcNumFormatExecute
+    end
     object AcNFShortTime: TAction
-      Tag = 1130
+      Tag = 1100
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short time'
       OnExecute = AcNumFormatExecute
     end
     object AcNFLongTime: TAction
-      Tag = 1140
+      Tag = 1110
       Category = 'Format'
       AutoCheck = True
       Caption = 'Long time'
       OnExecute = AcNumFormatExecute
     end
     object AcNFShortTimeAM: TAction
-      Tag = 1150
+      Tag = 1120
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short time AM/PM'
       OnExecute = AcNumFormatExecute
     end
     object AcNFLongTimeAM: TAction
-      Tag = 1160
+      Tag = 1130
       Category = 'Format'
       AutoCheck = True
       Caption = 'Long time AM/PM'
       OnExecute = AcNumFormatExecute
     end
-    object AcNFFmtDateTimeMS: TAction
-      Tag = 1183
+    object AcNFCusstomMS: TAction
+      Tag = 1153
       Category = 'Format'
       AutoCheck = True
       Caption = 'Minutes + seconds'
       OnExecute = AcNumFormatExecute
     end
-    object AcNFFmtDateTimeMSZ: TAction
-      Tag = 1184
+    object AcNFCustomMSZ: TAction
+      Tag = 1154
       Category = 'Format'
       AutoCheck = True
       Caption = 'Minutes + seconds + milliseconds'
       OnExecute = AcNumFormatExecute
     end
     object AcNFTimeInterval: TAction
-      Tag = 1170
+      Tag = 1140
       Category = 'Format'
       AutoCheck = True
       Caption = 'Time interval'
@@ -3218,10 +3246,6 @@ object Form1: TForm1
       Action = AcNFExp
       AutoCheck = True
     end
-    object MnuNFSci: TMenuItem
-      Action = AcNFSci
-      AutoCheck = True
-    end
     object MenuItem39: TMenuItem
       Caption = '-'
     end
@@ -3231,14 +3255,6 @@ object Form1: TForm1
     end
     object MnuCurrencyRed: TMenuItem
       Action = AcNFCurrencyRed
-      AutoCheck = True
-    end
-    object MnuAccounting: TMenuItem
-      Action = AcNFAccounting
-      AutoCheck = True
-    end
-    object MnuAccountingRed: TMenuItem
-      Action = AcNFAccountingRed
       AutoCheck = True
     end
     object MenuItem40: TMenuItem
@@ -3260,11 +3276,11 @@ object Form1: TForm1
       AutoCheck = True
     end
     object MnuFmtDateTimeDM: TMenuItem
-      Action = AcNFFmtDateTimeDM
+      Action = AcNFCustomDM
       AutoCheck = True
     end
     object MnuFmtDateTimeMY: TMenuItem
-      Action = AcNFFmtDateTimeMY
+      Action = AcNFCustomMY
       AutoCheck = True
     end
     object MenuItem43: TMenuItem
@@ -3287,11 +3303,11 @@ object Form1: TForm1
       AutoCheck = True
     end
     object MenuItem45: TMenuItem
-      Action = AcNFFmtDateTimeMS
+      Action = AcNFCusstomMS
       AutoCheck = True
     end
     object MnuFmtDateTimeMSZ: TMenuItem
-      Action = AcNFFmtDateTimeMSZ
+      Action = AcNFCustomMSZ
       AutoCheck = True
     end
     object MenuItem44: TMenuItem
