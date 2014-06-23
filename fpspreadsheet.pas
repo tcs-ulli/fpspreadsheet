@@ -51,7 +51,6 @@ type
     =SUM(A1:D1)      - SUM operation in a interval
     </pre>
   }
-
   TsFormula = record
     FormulaStr: string;
     DoubleValue: double;
@@ -142,7 +141,7 @@ type
   end;
 
   {@@ Expanded formula. Used by backend modules. Provides more information than the text only.
-      Consists of TsFormulaElements. }
+      Is an array of TsFormulaElement items. }
   TsExpandedFormula = array of TsFormulaElement;
 
   {@@ RPN formula. Similar to the expanded formula, but in RPN notation.
@@ -371,7 +370,7 @@ type
       only one of the ContentTypes is valid. For other fields
       use TWorksheet.ReadAsUTF8Text and similar methods
 
-      @see TWorksheet.ReadAsUTF8Text   }
+      @see ReadAsUTF8Text }
   TCell = record
     Col: Cardinal; // zero-based
     Row: Cardinal; // zero-based
@@ -655,8 +654,10 @@ type
   end;
 
 
-  { TsWorkbook }
-
+  {@@
+    The workbook collects the worksheets and provides methods for reading from
+    and writing to file.
+  }
   TsWorkbook = class
   private
     { Internal data }
@@ -817,11 +818,16 @@ type
   end;
 
 
-  {@@ TsSpreadReader class reference type }
-  TsSpreadReaderClass = class of TsCustomSpreadReader;
-  
   { TsCustomSpreadReader }
 
+  {@@ TsSpreadReader class reference type }
+  TsSpreadReaderClass = class of TsCustomSpreadReader;
+
+  {@@
+    Custom reader of spreadsheet files. "Custom" means that it provides only
+    the basic functionality. The main implementation is done in derived classes
+    for each individual file format.
+  }
   TsCustomSpreadReader = class
   protected
     {@@ A copy of the workbook's FormatSetting to extract some localized number format information }
@@ -832,9 +838,13 @@ type
     FNumFormatList: TsCustomNumFormatList;
     procedure CreateNumFormatList; virtual;
     { Record reading methods }
+    {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
     procedure ReadBlank(AStream: TStream); virtual; abstract;
+    {@@ Abstract method for reading a formula cell. Must be overridden by descendent classes. }
     procedure ReadFormula(AStream: TStream); virtual; abstract;
+    {@@ Abstract method for reading a text cell. Must be overridden by descendent classes. }
     procedure ReadLabel(AStream: TStream); virtual; abstract;
+    {@@ Abstract method for reading a number cell. Must be overridden by descendent classes. }
     procedure ReadNumber(AStream: TStream); virtual; abstract;
   public
     constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
@@ -843,22 +853,31 @@ type
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
+    {@@ Instance of the workbook which is currently being read. }
     property Workbook: TsWorkbook read FWorkbook;
+    {@@ List of number formats found in the file. }
     property NumFormatList: TsCustomNumFormatList read FNumFormatList;
   end;
 
-  {@@ TsSpreadWriter class reference type }
-
-  TsSpreadWriterClass = class of TsCustomSpreadWriter;
-
-  TCellsCallback = procedure (ACell: PCell; AStream: TStream) of object;
 
   { TsCustomSpreadWriter }
 
+  {@@ TsSpreadWriter class reference type }
+  TsSpreadWriterClass = class of TsCustomSpreadWriter;
+
+  {@@ Callback function when iterating cells while accessing a stream }
+  TCellsCallback = procedure (ACell: PCell; AStream: TStream) of object;
+
+  {@@
+    Custom writer of spreadsheet files. "Custom" means that it provides only
+    the basic functionality. The main implementation is done in derived classes
+    for each individual file format. }
   TsCustomSpreadWriter = class
   private
     FWorkbook: TsWorkbook;
+
   protected
+    {@@ List of number formats found in the workbook. }
     FNumFormatList: TsCustomNumFormatList;
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
@@ -874,19 +893,25 @@ type
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
     { Record writing methods }
+    {@@ abstract method for writing a blank cell. Must be overridden by descendent classes. }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual; abstract;
+    {@@ abstract method for a date/time value to a cell. Must be overridden by descendent classes. }
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
+    {@@ abstract method for a formula to a cell. Must be overridden by descendent classes. }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
+    {@@ abstract method for am RPN formula to a cell. Must be overridden by descendent classes. }
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); virtual;
+    {@@ abstract method for a string to a cell. Must be overridden by descendent classes. }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
+    {@@ abstract method for a number value to a cell. Must be overridden by descendent classes. }
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
+
   public
-    {@@
-    An array with cells which are models for the used styles
-    In this array the Row property holds the Index to the corresponding XF field
-    }
+    {@@ An array with cells which are models for the used styles
+    In this array the Row property holds the index to the corresponding XF field  }
     FFormattingStyles: array of TCell;
-    NextXFIndex: Integer; // Indicates which should be the next XF (Style) Index when filling the styles list
+    {@@ Indicates which should be the next XF (style) index when filling the FFormattingStyles array }
+    NextXFIndex: Integer;
     constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
     destructor Destroy; override;
     { General writing methods }
@@ -894,44 +919,27 @@ type
     procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream); virtual;
     procedure WriteToStrings(AStrings: TStrings); virtual;
+    {@@ Instance of the workbook which is currently being saved. }
     property Workbook: TsWorkbook read FWorkbook;
+    {@@ List of number formats found in the workbook. }
     property NumFormatList: TsCustomNumFormatList read FNumFormatList;
   end;
 
   {@@ List of registered formats }
-
   TsSpreadFormatData = record
     ReaderClass: TsSpreadReaderClass;
     WriterClass: TsSpreadWriterClass;
     Format: TsSpreadsheetFormat;
   end;
 
-  {@@ Helper for simplification of RPN formula creation }
+  { Simple creation an RPNFormula array to be used in fpspreadsheet. }
+
+  {@@ Helper record for simplification of RPN formula creation }
   PRPNItem = ^TRPNItem;
   TRPNItem = record
     FE: TsFormulaElement;
     Next: PRPNItem;
   end;
-
-  {@@
-    Simple creation an RPNFormula array to be used in fpspreadsheet.
-    For each formula element, use one of the RPNxxxx functions implemented here.
-    They are designed to be nested into each other. Terminate the chain by
-    using nil.
-
-    Example:
-    The RPN formula for the string expression "$A1+2" can be created as follows:
-    <pre>
-      var
-        f: TsRPNFormula;
-
-        f := CreateRPNFormula(
-          RPNCellValue('A1',
-          RPNNumber(2,
-          RPNFunc(fekAdd,
-          nil))));
-    </pre>
-  }
 
   function CreateRPNFormula(AItem: PRPNItem): TsRPNFormula;
   procedure DestroyRPNFormula(AItem: PRPNItem);
@@ -1215,7 +1223,7 @@ const
   );
 
 {@@
-  Registers a new reader/writer pair for a format
+  Registers a new reader/writer pair for a given spreadsheet file format
 }
 procedure RegisterSpreadFormat(
   AReaderClass: TsSpreadReaderClass;
@@ -1233,11 +1241,11 @@ begin
 end;
 
 {@@
-  Returns the name of the given file format.
+  Returns the name of the given spreadsheet file format.
 
-  @param  AFormat  Identifier of the file format
-  @return 'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
-          'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
+  @param   AFormat  Identifier of the file format
+  @return  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
+           'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
 }
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 begin
@@ -3521,8 +3529,15 @@ begin
 end;
 
 {@@
-  Convenience method which creates the correct
-  reader object for a given spreadsheet format.
+  Convenience method which creates the correct reader object for a given
+  spreadsheet format.
+
+  @param  AFormat  File format which is assumed when reading a document into
+                   to workbook. An exception is raised when the document has
+                   a different format.
+
+  @return An instance of a TsCustomSpreadReader descendent which is able to
+          read thi given file format.
 }
 function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
 var
@@ -3541,8 +3556,13 @@ begin
 end;
 
 {@@
-  Convenience method which creates the correct
-  writer object for a given spreadsheet format.
+  Convenience method which creates the correct writer object for a given
+  spreadsheet format.
+
+  @param  AFormat  File format to be used for writing the workbook
+
+  @return An instance of a TsCustomSpreadWriter descendent which is able to
+          write the given file format.
 }
 function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
 var
@@ -3561,7 +3581,10 @@ begin
 end;
 
 {@@
-  Reads the document from a file.
+  Reads the document from a file. It is assumed to have a given file format.
+
+  @param  AFileName  Name of the file to be read
+  @param  AFormat    File format assumed
 }
 procedure TsWorkbook.ReadFromFile(AFileName: string;
   AFormat: TsSpreadsheetFormat);
@@ -3620,13 +3643,16 @@ begin
     raise Exception.CreateFmt(lpNoValidSpreadsheetFile, [AFileName]);
 end;
 
+{@@
+  Reads the document from a file, but ignores the extension.
+}
 procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string);
 var
   SheetType: TsSpreadsheetFormat;
   lException: Exception;
 begin
   SheetType := sfExcel8;
-  while (SheetType in [sfExcel2..sfExcel8]) and (lException <> nil) do
+  while (SheetType in [sfExcel2..sfExcel8, sfOpenDocument, sfOOXML]) and (lException <> nil) do
   begin
     try
       Dec(SheetType);
@@ -3642,6 +3668,9 @@ end;
 
 {@@
   Reads the document from a seekable stream.
+
+  @param  AStream  Stream being read
+  @param  AFormat  File format assumed.
 }
 procedure TsWorkbook.ReadFromStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat);
@@ -3658,9 +3687,13 @@ begin
 end;
 
 {@@
-  Writes the document to a file.
+  Writes the document to a file. If the file doesn't exist, it will be created.
 
-  If the file doesn't exist, it will be created.
+  @param  AFileName  Name of the file to be written
+  @param  AFormat    The file will be written in this file format
+  @param  AOverwriteExisting  If the file is already existing it will be
+                     overwritten in case of AOverwriteExisting = true.
+                     If false an exception will be raised.
 }
 procedure TsWorkbook.WriteToFile(const AFileName: string;
  const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False);
@@ -3676,7 +3709,13 @@ begin
 end;
 
 {@@
-  Writes the document to file based on the extension. If this was an earlier sfExcel type file, it will be upgraded to sfExcel8, 
+  Writes the document to file based on the extension.
+  If this was an earlier sfExcel type file, it will be upgraded to sfExcel8.
+
+  @param  AFileName  Name of the destination file
+  @param  AOverwriteExisting  If the file already exists it will be overwritten
+                     of AOverwriteExisting is true. In case of false, an
+                     exception will be raised.
 }
 procedure TsWorkbook.WriteToFile(const AFileName: String;
   const AOverwriteExisting: Boolean);
@@ -3692,6 +3731,9 @@ end;
 
 {@@
   Writes the document to a stream
+
+  @param  AStream   Instance of the stream being written to
+  @param  AFormat   File format being written.
 }
 procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
 var
@@ -4782,6 +4824,13 @@ begin
   // nothing to do here
 end;
 
+{@@
+  Callback function for collecting all formatting styles found in the worksheet.
+
+  @param  ACell    Pointer to the worksheet cell being tested whether its format
+                   already has been found in the array FFormattingStyles.
+  @param  AStream  Stream to which the workbook is written
+}
 procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
 var
   Len: Integer;
@@ -4803,6 +4852,10 @@ begin
   Inc(NextXFIndex);
 end;
 
+{@@
+  This method collects all formatting styles found in the worksheet and
+  stores unique prototypes in the array FFormattingStyles.
+}
 procedure TsCustomSpreadWriter.ListAllFormattingStyles;
 var
   i: Integer;
@@ -5308,10 +5361,10 @@ end;
   needed parameters must have been created before.
 
   @param  AToken  Formula element indicating the function to be executed,
-                  see the TsFEKind enumeration for possible values.
+                  see the TFEKind enumeration for possible values.
   @param  ANext   Pointer to the next RPN item in the list
 
-  @see TsFEKind
+  @see TFEKind
 }
 function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem;
 begin
@@ -5327,11 +5380,11 @@ end;
   They must have been created before.
 
   @param  AToken     Formula element indicating the function to be executed,
-                     see the TsFEKind enumeration for possible values.
+                     see the TFEKind enumeration for possible values.
   @param  ANumParams Number of arguments used in the formula
   @param  ANext      Pointer to the next RPN item in the list
 
-  @see TsFEKind
+  @see TFEKind
 }
 function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem;
 begin
