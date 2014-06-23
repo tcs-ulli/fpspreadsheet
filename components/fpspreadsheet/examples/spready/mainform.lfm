@@ -967,10 +967,6 @@ object Form1: TForm1
           }
         end
       end
-      object MnuWordwrap: TMenuItem
-        Action = AcWordwrap
-        AutoCheck = True
-      end
       object MnuNumberFormat: TMenuItem
         Caption = 'Number format'
         object MenuItem33: TMenuItem
@@ -1014,6 +1010,9 @@ object Form1: TForm1
           Action = AcNFShortDateTime
           AutoCheck = True
         end
+        object MenuItem60: TMenuItem
+          Caption = '-'
+        end
         object MenuItem52: TMenuItem
           Action = AcNFShortDate
           AutoCheck = True
@@ -1029,6 +1028,9 @@ object Form1: TForm1
         object MenuItem55: TMenuItem
           Action = AcNFCustomMY
           AutoCheck = True
+        end
+        object MenuItem61: TMenuItem
+          Caption = '-'
         end
         object MenuItem56: TMenuItem
           Action = AcNFShortTime
@@ -1046,6 +1048,17 @@ object Form1: TForm1
           Action = AcNFLongTimeAM
           AutoCheck = True
         end
+        object MenuItem62: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem63: TMenuItem
+          Action = AcNFTimeInterval
+          AutoCheck = True
+        end
+      end
+      object MnuWordwrap: TMenuItem
+        Action = AcWordwrap
+        AutoCheck = True
       end
     end
   end

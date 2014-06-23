@@ -382,7 +382,8 @@ begin
   begin
     len := Length(Boundsheets);
     SetLength(Boundsheets, len + 1);
-    Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
+    Boundsheets[len] := WriteBoundsheet(AStream, UTF8ToAnsi(Workbook.GetWorksheetByIndex(i).Name));
+    // BIFF8 does not support unicode  --> Need UTF8ToAnsi !
   end;
   
   WriteEOF(AStream);
@@ -1419,6 +1420,7 @@ var
   xf: TXFRecord;
   b: Byte;
   dw: DWord;
+  fill: Word;
 begin
   AStream.ReadBuffer(xf, SizeOf(xf));
 
@@ -1489,8 +1491,14 @@ begin
   lData.BorderStyles[cbNorth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_TOP_COLOR) shr 9;
   lData.BorderStyles[cbSouth].Color := (xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM_COLOR) shr 25;
 
+  // Background fill style
+  fill := (xf.Border_Background_1 and MASK_XF_BKGR_FILLPATTERN) shr 16;
+
   // Background color
-  lData.BackgroundColor := xf.Border_Background_1 AND MASK_XF_BKGR_PATTERN_COLOR;
+  if fill = 0 then
+    lData.BackgroundColor := scTransparent
+  else
+    lData.BackgroundColor := xf.Border_Background_1 and MASK_XF_BKGR_PATTERN_COLOR;
 
   // Add the XF to the list
   FXFList.Add(lData);

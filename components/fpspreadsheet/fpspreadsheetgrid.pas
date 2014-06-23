@@ -113,6 +113,7 @@ type
     procedure DrawCellBorders; overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
+    procedure DrawFrozenPaneBorders(ARect: TRect);
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
@@ -478,6 +479,11 @@ end;
 
 { TsCustomWorksheetGrid }
 
+{@@
+  Constructor of the grid. Activates the display of column and row headers
+  and creates an internal "CellFont". Creates a given number of empty rows
+  and columns.
+}
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -487,6 +493,9 @@ begin
   FCellFont := TFont.Create;
 end;
 
+{@@
+  Destructor of the grid: Destroys the workbook and the internal CellFont
+}
 destructor TsCustomWorksheetGrid.Destroy;
 begin
   FreeAndNil(FWorkbook);
@@ -494,15 +503,24 @@ begin
   inherited Destroy;
 end;
 
-{ Suppresses unnecessary repaints. }
+{@@
+  The BeginUpdate/EndUpdate pair suppresses unnecessary painting of the grid.
+  Call BeginUpdate to stop refreshing the grid, and call EndUpdate to release
+  the lock and to repaint the grid again.
+}
 procedure TsCustomWorksheetGrid.BeginUpdate;
 begin
   inc(FLockCount);
 end;
 
-{ Converts the column width, given in "characters" of the default font, to pixels
-  All chars are assumed to have the same width defined by the "0".
-  Therefore, this calculation is only approximate. }
+{@@
+  Converts the column width, given in "characters" of the default font, to pixels
+  All chars are assumed to have the same width defined by the width of the
+  "0" character. Therefore, this calculation is only approximate.
+
+  @param   AWidth  Width of a column given as "character count".
+  @return  Column width in pixels.
+}
 function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
 var
   w0: Integer;
@@ -512,9 +530,14 @@ begin
   Result := Round(AWidth * w0);
 end;
 
-{ Finds the max cell height per row and uses this to define the RowHeights[].
-  Returns DefaultRowHeight if the row does not contain any cells.
-  ARow is a grid row index. }
+{@@
+  Finds the maximum cell height per row and uses this to define the RowHeights[].
+  Returns DefaultRowHeight if the row does not contain any cells, or if the
+  worksheet does not have a TRow record for this particular row.
+  ARow is a grid row index.
+
+  @param  ARow  Index of the row, in grid units
+}
 function TsCustomWorksheetGrid.CalcAutoRowHeight(ARow: Integer): Integer;
 var
   c: Integer;
@@ -529,7 +552,14 @@ begin
     Result := h;
 end;
 
-{ Converts the row height (from a worksheet row), given in lines, to pixels }
+{@@
+  Converts the row height (from a worksheet row record), given in lines, to
+  pixels as needed by the grid
+
+  @param  AHeight  Row height expressed as default font line count from the
+                   worksheet
+  @result Row height in pixels
+}
 function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
 var
   h_pts: Single;
@@ -538,15 +568,32 @@ begin
   Result := PtsToPX(h_pts, Screen.PixelsPerInch) + 4;
 end;
 
+{@@
+  Handler for the event OnChangeCell fired by the worksheet when the contents
+  of formatting of a cell has changed.
+  As a consequence, the grid may have to update the cell.
+  Row/Col coordinates are in worksheet units here!
+
+  @param  ASender  Sender of the event OnChangeFont (the worksheet)
+  @param  ARow     Row index of the changed cell, in worksheet units!
+  @param  ACol     Column index of the changed cell, in worksheet units!
+}
 procedure TsCustomWorksheetGrid.ChangedCellHandler(ASender: TObject; ARow, ACol:Cardinal);
 begin
   Unused(ASender, ARow, ACol);
   if FLockCount = 0 then Invalidate;
 end;
 
-{ Handler for the event that the font has changed in a given cell.
-  As a consequence, the row height may have to be adapted.
-  Row/Col coordinates are in worksheet units here! }
+{@@
+  Handler for the event OnChangeFont fired by the worksheet when the font has
+  changed in a cell.
+  As a consequence, the grid may have to update the row height.
+  Row/Col coordinates are in worksheet units here!
+
+  @param  ASender  Sender of the event OnChangeFont (the worksheet)
+  @param  ARow     Row index of the cell with the changed font, in worksheet units!
+  @param  ACol     Column index of the cell with the changed font, in worksheet units!
+}
 procedure TsCustomWorksheetGrid.ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
 var
   lRow: PRow;
@@ -564,7 +611,12 @@ begin
   end;
 end;
 
-{ Converts a spreadsheet font to a font used for painting (TCanvas.Font). }
+{@@
+  Converts a spreadsheet font to a font used for painting (TCanvas.Font).
+
+  @param  sFont  Font as used by fpspreadsheet (input)
+  @param  AFont  Font as used by TCanvas for painting (output)
+}
 procedure TsCustomWorksheetGrid.Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
 begin
   if Assigned(AFont) and Assigned(sFont) then begin
@@ -579,7 +631,12 @@ begin
   end;
 end;
 
-{ Converts a font used for painting (TCanvas.Font) to a spreadsheet font }
+{@@
+  Converts a font used for painting (TCanvas.Font) to a spreadsheet font
+
+  @param  AFont  Font as used by TCanvas for painting (input)
+  @param  sFont  Font as used by fpspreadsheet (output)
+}
 procedure TsCustomWorksheetGrid.Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
 begin
   if Assigned(AFont) and Assigned(sFont) then begin
@@ -594,8 +651,20 @@ begin
   end;
 end;
 
-{ Is overridden to show "frozen" cells in the same style as normal cells.
-  "Frozen" cells are internally "fixed" cells of the grid. }
+{@@
+  This is one of the main painting methods inherited from TsCustomGrid. It is
+  overridden here to achieve the feature of "frozen" cells which should be
+  painted in the same style as normal cells.
+
+  Internally, "frozen" cells are "fixed" cells of the grid. Therefore, it is
+  not possible to select any cell within the frozen panes - in contrast to the
+  standard spreadsheet applications.
+
+  @param  ACol   Column index of the cell being drawn
+  @param  ARow   Row index of the cell beging drawn
+  @param  ARect  Rectangle, in grid pixels, covered by the cell
+  @param  AState Grid drawing state, as defined by TsCustomGrid
+}
 procedure TsCustomWorksheetGrid.DefaultDrawCell(aCol, aRow: Integer; var aRect: TRect;
   AState: TGridDrawState);
 var
@@ -614,7 +683,6 @@ begin
     end;
 
   if wasFixed then begin
-    wasFixed := true;                   // ?????
     AState := AState - [gdFixed];
     Canvas.Brush.Color := clWindow;
   end;
@@ -627,8 +695,14 @@ begin
   end;
 end;
 
-{ Adjusts the grid's canvas before painting a given cell. Considers, e.g.
-  background color, horizontal alignment, vertical alignment, etc. }
+{@@
+  Adjusts the grid's canvas before painting a given cell. Considers, e.g.
+  background color, horizontal alignment, vertical alignment, etc.
+
+  @param  ACol    Column index of the cell being painted
+  @param  ARow    Row index of the cell being painted
+  @param  AState  Grid drawing state -- see TsCustomGrid.
+}
 procedure TsCustomWorksheetGrid.DoPrepareCanvas(ACol, ARow: Integer;
   AState: TGridDrawState);
 var
@@ -711,10 +785,13 @@ begin
   inherited DoPrepareCanvas(ACol, ARow, AState);
 end;
 
-{ Is overridden in order to paint the cell borders and the selection rectangle.
-  Both features can extend into the neighbor cells and thus are clipped at the
-  cell borders by the standard painting mechanism. In DrawAllRows, clipping at
-  cell borders is no longer active. }
+{@@
+  This method is inherited from TsCustomGrid, but is overridden here in order
+  to paint the cell borders and the selection rectangle.
+  Both features can extend into the neighbor cells and thus would be clipped
+  at the cell borders by the standard painting mechanism. At the time when
+  DrawAllRows is called, however, clipping at cell borders is no longer active.
+}
 procedure TsCustomWorksheetGrid.DrawAllRows;
 var
   cliprect: TRect;
@@ -731,6 +808,9 @@ begin
       ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
     if FixedRows > 0 then
       ColRowToOffset(False, True, FixedRows-1, tmp, cliprect.Top);
+
+    DrawFrozenPaneBorders(clipRect);
+
     rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
     SelectClipRgn(Canvas.Handle, Rgn);
 
@@ -743,7 +823,9 @@ begin
   end;
 end;
 
-{ Draws the borders of all cells. }
+{@@
+  Draws the borders of all cells. Calls DrawCellBorder for each individual cell.
+}
 procedure TsCustomWorksheetGrid.DrawCellBorders;
 var
   cell: PCell;
@@ -764,10 +846,16 @@ begin
   end;
 end;
 
-{ Draws the border lines around a given cell. Note that when this procedure is
+{@@
+  Draws the border lines around a given cell. Note that when this procedure is
   called the output is clipped by the cell rectangle, but thick and double
   border styles extend into the neighbor cell. Therefore, these border lines
-  are drawn in parts. }
+  are drawn in parts.
+
+  @param  ACol   Column Index
+  @param  ARow   Row index
+  @param  ARect  Rectangle in pixels occupied by the cell.
+}
 procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer; ARect: TRect);
 
   procedure DrawBorderLine(ACoord: Integer; ARect: TRect; IsHor: Boolean;
@@ -858,7 +946,29 @@ begin
   // Nothing do to
 end;
 
-{ Draws the selection rectangle, 3 pixels wide as in Excel. }
+{@@
+  Draws a solid line along the borders of frozen panes.
+
+  @param  ARect  This rectangle indicates the area with movable cells. If the
+                 grid has frozen panes a black line is drawn along the upper
+                 and/or left edge of this rectangle.
+}
+procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
+begin
+  if (soHasFrozenPanes in FWorksheet.Options) then begin
+    Canvas.Pen.Style := psSolid;
+    Canvas.Pen.Color := clBlack;
+    Canvas.Pen.Width := 1;
+    if FFrozenRows > 0 then
+      Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Top);
+    if FFrozenCols > 0 then
+      Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom);
+  end;
+end;
+
+{@@
+  Draws the selection rectangle, 3 pixels wide as in Excel.
+}
 procedure TsCustomWorksheetGrid.DrawSelection;
 var
   P1, P2: TPoint;
@@ -884,9 +994,16 @@ begin
   Canvas.Rectangle(P1.X, P1.Y, P2.X, P2.Y);
 end;
 
-{ Draws the cell text. Calls "GetCellText" to determine the text in the cell.
+{@@
+  Draws the cell text. Calls "GetCellText" to determine the text in the cell.
   Takes care of horizontal and vertical text alignment, text rotation and
-  text wrapping }
+  text wrapping
+
+  @param  ACol   Column index of the cell
+  @param  ARow   Row index of the cell
+  @param  ARect  Rectangle in pixels occupied by the cell.
+  @param  AState Drawing state of the grid -- see TCustomGrid
+}
 procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect;
   AState: TGridDrawState);
 var
@@ -970,6 +1087,12 @@ begin
     txtRot, wrapped, false);
 end;
 
+{@@
+  Is called when editing of a cell is completed. Determines the worksheet cell
+  and writes the text into the worksheet. Tries to keep the format of the cell,
+  but if it is a new cell, or the content type has changed, tries to figure out
+  the content type (number, date/time, text).
+}
 procedure TsCustomWorksheetGrid.EditingDone;
 var
   oldText: String;
@@ -989,14 +1112,24 @@ begin
   FEditing := false;
 end;
 
+{@@
+  The BeginUpdate/EndUpdate pair suppresses unnecessary painting of the grid.
+  Call BeginUpdate to stop refreshing the grid, and call EndUpdate to release
+  the lock and to repaint the grid again.
+}
 procedure TsCustomWorksheetGrid.EndUpdate;
 begin
   dec(FLockCount);
   if FLockCount = 0 then Invalidate;
 end;
 
-{ Copies the borders of a cell to its neighbors. This avoids the nightmare of
-  changing borders due to border conflicts of adjacent cells. }
+{@@
+  Copies the borders of a cell to its neighbors. This avoids the nightmare of
+  changing borders due to border conflicts of adjacent cells.
+
+  @param  ACol  Column index of the cell
+  @param  ARow  Row index of the cell
+}
 procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
 
   procedure SetNeighborBorder(NewRow, NewCol: Integer;
@@ -1032,10 +1165,14 @@ begin
     end;
 end;
 
-{ The "colors" used by the spreadsheet are indexes into the workbook's color
+{@@
+  The "colors" used by the spreadsheet are indexes into the workbook's color
   palette. If the user wants to set a color to a particular rgb value this is
   not possible in general. The method FindNearestPaletteIndex finds the bast
-  matching color in the palette. }
+  matching color in the palette.
+
+  @param  AColor  Color index into the workbook's palette
+}
 function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
 
   procedure ColorToHSL(RGB: TColor; out H, S, L : double);
@@ -1121,6 +1258,14 @@ begin
   end;
 end;
 
+{@@
+  Returns the background color of a cell. The color is given as an index into
+  the workbook's color palette.
+
+  @param  ACol  Column index of the cell
+  @param  ARow  Row index of the cell
+  @result Color index of the cell's background color.
+}
 function TsCustomWorksheetGrid.GetBackgroundColor(ACol, ARow: Integer): TsColor;
 var
   cell: PCell;
@@ -1133,6 +1278,17 @@ begin
   end;
 end;
 
+{@@
+  Returns the background color of a cell range defined by a rectangle. The color
+  is given as an index into the workbook's color palette. If the colors are
+  different from cell to cell the value scUndefined is returned.
+
+  @param  ARect  Cell range defined as a rectangle: Left/Top refers to the cell
+                 in the left/top corner of the selection, Right/Bottom to the
+                 right/bottom corner.
+  @return Color index common to all cells within the selection. If the cells'
+          background colors are different the value scUndefined is returned.
+}
 function TsCustomWorksheetGrid.GetBackgroundColors(ARect: TGridRect): TsColor;
 var
   c, r: Integer;
@@ -1150,6 +1306,13 @@ begin
     end;
 end;
 
+{@@
+  Returns the cell borders which are drawn around a given cell.
+
+  @param  ACol  Column index of the cell
+  @param  ARow  Row index of the cell
+  @return Set with flags indicating where borders are drawn (top/left/right/bottom)
+}
 function TsCustomWorksheetGrid.GetCellBorder(ACol, ARow: Integer): TsCellBorders;
 var
   cell: PCell;
@@ -1162,6 +1325,14 @@ begin
   end;
 end;
 
+{@@
+  Returns the cell borders which are drawn around a given rectangular cell range.
+
+  @param  ARect  Rectangle defining the range of cell.
+  @return Set with flags indicating where borders are drawn (top/left/right/bottom)
+          If the individual cells within the range have different borders an
+          empty set is returned.
+}
 function TsCustomWorksheetGrid.GetCellBorders(ARect: TGridRect): TsCellBorders;
 var
   c, r: Integer;

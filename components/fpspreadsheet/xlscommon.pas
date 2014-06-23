@@ -840,10 +840,11 @@ begin
       Exclude(lCell^.UsedFormattingFields, uffBorder);
 
     // Background color
-    if XFData.BackgroundColor <> 0 then begin
+    if XFData.BackgroundColor <> scTransparent then begin
       Include(lCell^.UsedFormattingFields, uffBackgroundColor);
       lCell^.BackgroundColor := XFData.BackgroundColor;
-    end;
+    end else
+      Exclude(lCell^.UsedFormattingFields, uffBackgroundColor);
   end;
 end;
 

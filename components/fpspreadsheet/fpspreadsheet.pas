@@ -301,6 +301,7 @@ const
   // Will be removed sooner or later...
   scRGBColor = $FFFF;
 
+  scTransparent = $FFFE;
   scNotDefined = $FFFF;
 
 type
@@ -472,7 +473,7 @@ type
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     function GetFormatSettings: TFormatSettings;
-  procedure RemoveCallback(data, arg: pointer);
+    procedure RemoveCallback(data, arg: pointer);
 
   protected
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -2307,12 +2308,33 @@ begin
   ChangedCell(ARow, ACol);
 end;
 
+{@@
+  Writes data defined as a string into a cell. Depending on the structure of the
+  string, the worksheet tries to guess whether it is a number, a date/time or
+  a text and calls the corresponding writing method.
+
+  @param  ARow    Row index of the cell
+  @param  ACol    Column index of the cell
+  @param  AValue  Value to be written into the cell given as a string. Depending
+                  on the structure of the string, however, the value is written
+                  as a number, a date/time or a text.
+}
 procedure TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
   AValue: String);
 begin
   WriteCellValueAsString(GetCell(ARow, ACol), AValue);
 end;
 
+{@@
+  Writes data defined as a string into a cell. Depending on the structure of the
+  string, the worksheet tries to guess whether it is a number, a date/time or
+  a text and calls the corresponding writing method.
+
+  @param  ACell   Poiner to the cell
+  @param  AValue  Value to be written into the cell given as a string. Depending
+                  on the structure of the string, however, the value is written
+                  as a number, a date/time or a text.
+}
 procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
 var
   isPercent: Boolean;
@@ -2716,12 +2738,18 @@ procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
 begin
   if ACell = nil then
     exit;
-  Include(ACell^.UsedFormattingFields, uffNumberFormat);
+
   ACell^.NumberFormat := ANumberFormat;
-  if (AFormatString = '') then
-    ACell^.NumberFormatStr := BuildNumberFormatString(ANumberFormat, Workbook.FormatSettings)
-  else
-    ACell^.NumberFormatStr := AFormatString;
+  if ANumberFormat <> nfGeneral then begin
+    Include(ACell^.UsedFormattingFields, uffNumberFormat);
+    if (AFormatString = '') then
+      ACell^.NumberFormatStr := BuildNumberFormatString(ANumberFormat, Workbook.FormatSettings)
+    else
+      ACell^.NumberFormatStr := AFormatString;
+  end else begin
+    Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
+    ACell^.NumberFormatStr := '';
+  end;
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -2932,7 +2960,8 @@ end;
   @param  ARow       Row index of the cell
   @param  ACol       Column index of the cell
   @param  AColor     Index of the new background color into the workbook's
-                     color palette.
+                     color palette. Use the color index scTransparent to
+                     erase an existing background color.
 }
 procedure TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
   AColor: TsColor);
@@ -2940,8 +2969,12 @@ var
   ACell: PCell;
 begin
   ACell := GetCell(ARow, ACol);
-  ACell^.UsedFormattingFields := ACell^.UsedFormattingFields + [uffBackgroundColor];
-  ACell^.BackgroundColor := AColor;
+  if AColor = scTransparent then
+    Exclude(ACell^.UsedFormattingFields, uffBackgroundColor)
+  else begin
+    Include(ACell^.UsedFormattingFields, uffBackgroundColor);
+    ACell^.BackgroundColor := AColor;
+  end;
   ChangedCell(ARow, ACol);
 end;
 
@@ -3086,7 +3119,7 @@ var
   lCell: PCell;
 begin
   lCell := GetCell(ARow, ACol);
-  lCell^.UsedFormattingFields := lCell^.UsedFormattingFields + [uffHorAlign];
+  Include(lCell^.UsedFormattingFields, uffHorAlign);
   lCell^.HorAlignment := AValue;
   ChangedCell(ARow, ACol);
 end;
@@ -3104,7 +3137,7 @@ var
   lCell: PCell;
 begin
   lCell := GetCell(ARow, ACol);
-  lCell^.UsedFormattingFields := lCell^.UsedFormattingFields + [uffVertAlign];
+  Include(lCell^.UsedFormattingFields, uffVertAlign);
   lCell^.VertAlignment := AValue;
   ChangedCell(ARow, ACol);
 end;
