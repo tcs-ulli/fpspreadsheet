@@ -48,7 +48,7 @@ unit xlsbiff8;
 
 // The new OLE code is much better, so always use it
 {$define USE_NEW_OLE}
-{.$define FPSPREADDEBUG} //used to be XLSDEBUG
+{.$define FPSPREADDEBUG} //define to print out debug info to console. Used to be XLSDEBUG;
 
 interface
 

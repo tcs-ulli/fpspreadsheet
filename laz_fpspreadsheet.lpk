@@ -16,6 +16,7 @@
         </SyntaxOptions>
       </Parsing>
       <Other>
+			  <CustomOptions Value="$(IDEBuildOptions)"/>
         <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>

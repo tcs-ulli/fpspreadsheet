@@ -14,7 +14,9 @@
 {
   Copy from the zipper unit from FPC 2.7.1
 
-  Remove it after a new FPC with the fixes from this unit is released!
+  Remove it after a new FPC with the fixes from this unit is released - 
+	definitely any version based on FPC 2.7.1, but probably works with FPC
+	2.6.4+ as well.
 }
 {$mode objfpc}
 {$h+}
