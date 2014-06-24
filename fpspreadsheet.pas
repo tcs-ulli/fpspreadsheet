@@ -437,9 +437,8 @@ type
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
     @param soHasFrozenPanes If set a number of rows and columns of the spreadsheet
                             is fixed and does not scroll. The number is defined by
-                            LeftPaneWidth and TopPaneHeight.
-    @param soSelected       (currently not used) }
-  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soSelected);
+                            LeftPaneWidth and TopPaneHeight. }
+  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes);
 
   {@@ Set of user interface options
     @ see TsSheetOption }
@@ -1083,15 +1082,15 @@ type
 const
   FEProps: array[TFEKind] of TFEProp = (
   { Operands }
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCell
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellRef
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellRange
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellNum
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellInteger
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellString
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellBool
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellErr
-    (Symbol:'';          MinParams:-1; MaxParams:Byte(-1)), // fekCellMissingArg
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCell
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellRef
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellRange
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellNum
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellInteger
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellString
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellBool
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellErr
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1)), // fekCellMissingArg
   { Basic operations }
     (Symbol:'+';         MinParams:2; MaxParams:2),   // fekAdd
     (Symbol:'-';         MinParams:2; MaxParams:2),   // fekSub
@@ -1278,14 +1277,10 @@ procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 var
   i: Integer;
 begin
+ {$PUSH}{$R-}
   for i := 0 to APaletteSize-1 do
-   {$IFDEF RNGCHECK}
-    {$R-}
-   {$ENDIF}
     APalette^[i] := LongRGBToExcelPhysical(APalette^[i])
-   {$IFDEF RNGCHECK}
-    {$R+}
-   {$ENDIF}
+ {$POP}
 end;
 
 {@@
@@ -3754,8 +3749,8 @@ end;
   It is added to the end of the list of worksheets
 
   @param  AName     The name of the new worksheet
-  @return The instace of the newly created worksheet
-  @see    TsWorkbook
+  @return The instance of the newly created worksheet
+  @see    TsWorksheet
 }
 function TsWorkbook.AddWorksheet(AName: string): TsWorksheet;
 begin
@@ -3849,7 +3844,29 @@ procedure TsWorkbook.RemoveAllWorksheets;
 begin
   FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
 end;
+                            (*
+{@@
+  Sets the selected flag for the sheet with the given index.
+  Excel requires one sheet to be selected, otherwise strange things happen when
+  the file is loaded into Excel (cannot print, hanging instance of Excel - see
+  bug 0026386).
 
+  @param  AIndex  Index of the worksheet to be selected
+}
+procedure TsWorkbook.SelectWorksheet(AIndex: Integer);
+var
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  for i:=0 to FWorksheets.Count-1 do begin
+    sheet := TsWorksheet(FWorksheets.Items[i]);
+    if i = AIndex then
+      sheet.Options := sheet.Options + [soSelected]
+    else
+      sheet.Options := sheet.Options - [soSelected];
+  end;
+end;
+                              *)
 
 { Font handling }
 

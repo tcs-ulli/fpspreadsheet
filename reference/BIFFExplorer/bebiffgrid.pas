@@ -86,6 +86,7 @@ type
     procedure ShowRow;
     procedure ShowSelection;
     procedure ShowSheet;
+    procedure ShowSheetPR;
     procedure ShowSST;
     procedure ShowString;
     procedure ShowStyle;
@@ -326,6 +327,8 @@ begin
       ShowRecalc;
     $007D:
       ShowColInfo;
+    $0081:
+      ShowSheetPR;
     $0085:
       ShowSheet;
     $0086:
@@ -3232,6 +3235,62 @@ begin
   );
 end;
 
+
+procedure TBIFFGrid.ShowSheetPR;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  RowCount := FixedRows + 1;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add('Option flags:'#13);
+    if w and $0001 = 0
+      then FDetails.Add('Bit $0001 = 0: Do not show automatic page breaks')
+      else FDetails.Add('Bit $0001 = 1: Show automatic page breaks');
+    if w and $0010 = 0
+      then FDetails.Add('Bit $0010 = 0: Standard sheet')
+      else FDetails.Add('Bit $0010 = 1: Dialog sheet (BIFF5-BIFF8)');
+    if w and $0020 = 0
+      then FDetails.Add('Bit $0020 = 0: No automatic styles in outlines')
+      else FDetails.Add('Bit $0020 = 1: Apply automatic styles to outlines');
+    if w and $0040 = 0
+      then FDetails.Add('Bit $0040 = 0: Outline buttons above outline group')
+      else FDetails.Add('Bit $0040 = 1: Outline buttons below outline group');
+    if w and $0080 = 0
+      then FDetails.Add('Bit $0080 = 0: Outline buttons left of outline group')
+      else FDetails.Add('Bit $0080 = 1: Outline buttons right of outline group');
+    if w and $0100 = 0
+      then FDetails.Add('Bit $0100 = 0: Scale printout in percent')
+      else FDetails.Add('Bit $0100 = 1: Fit printout to number of pages');
+    if w and $0200 = 0
+      then FDetails.Add('Bit $0200 = 0: Save external linked values (BIFF3-BIFF4 only)')
+      else FDetails.Add('Bit $0200 = 1: Do NOT save external linked values (BIFF3-BIFF4 only)');
+    if w and $0400 = 0
+      then FDetails.Add('Bit $0400 = 0: Do not show row outline symbols')
+      else FDetails.Add('Bit $0400 = 1: Show row outline symbols');
+    if w and $0800 = 0
+      then FDetails.Add('Bit $0800 = 0: Do not show column outline symbols')
+      else FDetails.Add('Bit $0800 = 1: Show column outline symbols');
+    case (w and $3000) shr 12 of
+      0: FDetails.Add('Bits $3000 = $0000: Arrange windows tiled');
+      1: FDetails.Add('Bits $3000 = $1000: Arrange windows horizontal');
+      2: FDetails.Add('Bits $3000 = $2000: Arrange windows vertical');
+      3: FDetails.Add('Bits $3000 = $3000: Arrange windows cascaded');
+    end;
+    if w and $4000 = 0
+      then FDetails.Add('Bits $4000 = 0: Excel like expression evaluation (BIFF4-BIFF8 only)')
+      else FDetails.Add('Bits $4000 = 1: Lotus like expression evaluation (BIFF4-BIFF8 only)');
+    if w and $8000 = 0
+      then FDetails.Add('Bits $8000 = 0: Excel like formula editing (BIFF4-BIFF8 only)')
+      else FDetails.Add('Bits $8000 = 1: Lotus like formula editing (BIFF4-BIFF8 only)');
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x (%d)', [w, w]),
+    'Option flags');
+end;
 
 procedure TBIFFGrid.ShowSST;
 var

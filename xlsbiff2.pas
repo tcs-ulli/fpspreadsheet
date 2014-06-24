@@ -961,6 +961,7 @@ end;
 procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream);
 var
   sheet: TsWorksheet;
+  pane: Byte;
 begin
   sheet := Workbook.GetFirstWorksheet;
 
@@ -976,7 +977,7 @@ begin
     WriteWindow1(AStream);
     //  { -- currently not working
     WriteWindow2(AStream, sheet);
-    WritePane(AStream, sheet, false);  // false for "is not BIFF5 or BIFF8"
+    WritePane(AStream, sheet, false, pane);  // false for "is not BIFF5 or BIFF8"
     WriteSelections(AStream, sheet);
       //}
   WriteEOF(AStream);

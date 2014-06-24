@@ -395,6 +395,7 @@ var
   Boundsheets: array of Int64;
   sheet: TsWorksheet;
   i, len: Integer;
+  pane: Byte;
 begin
   { Write workbook globals }
 
@@ -433,6 +434,8 @@ begin
 
     WriteBOF(AStream, INT_BOF_SHEET);
       WriteIndex(AStream);
+      //WriteSheetPR(AStream);
+//      WritePageSetup(AStream);
       WriteColInfos(AStream, sheet);
       WriteDimensions(AStream, sheet);
       //WriteRowAndCellBlock(AStream, sheet);
@@ -441,7 +444,8 @@ begin
       WriteCellsToStream(AStream, sheet.Cells);
 
       WriteWindow2(AStream, sheet);
-      WritePane(AStream, sheet, isBIFF8);
+      WritePane(AStream, sheet, isBIFF8, pane);
+      WriteSelection(AStream, sheet, pane);
     WriteEOF(AStream);
   end;
   
@@ -1101,7 +1105,9 @@ begin
     MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES or
     MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR or
     MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
+    MASK_WINDOW2_OPTION_SHEET_SELECTED or
     MASK_WINDOW2_OPTION_SHEET_ACTIVE;
+   { Bug 0026386 -> every sheet must be selected/active, otherwise Excel cannot print }
 
   if (soShowGridLines in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
@@ -1109,9 +1115,6 @@ begin
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
   if (soHasFrozenPanes in ASheet.Options) and ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0)) then
     Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
-  if (soSelected in ASheet.Options) then
-    Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;
-
   AStream.WriteWord(WordToLE(Options));
 
   { Index to first visible row }
