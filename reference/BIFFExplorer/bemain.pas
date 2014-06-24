@@ -38,6 +38,7 @@ type
     AcFindClose: TAction;
     AcNodeExpand: TAction;
     AcNodeCollapse: TAction;
+    AcDumpToFile: TAction;
     ActionList: TActionList;
     BIFFTree: TVirtualStringTree;
     CbFind: TComboBox;
@@ -50,6 +51,8 @@ type
     MenuItem5: TMenuItem;
     MenuItem6: TMenuItem;
     MenuItem7: TMenuItem;
+    MnuDumpToFile: TMenuItem;
+    MenuItem9: TMenuItem;
     MnuFind: TMenuItem;
     MnuRecord: TMenuItem;
     MnuFileReopen: TMenuItem;
@@ -64,6 +67,8 @@ type
     DetailPanel: TPanel;
     HexPanel: TPanel;
     FindPanel: TPanel;
+    SaveDialog: TSaveDialog;
+    SpeedButton3: TSpeedButton;
     TreePopupMenu: TPopupMenu;
     TreePanel: TPanel;
     BtnFindNext: TSpeedButton;
@@ -85,6 +90,7 @@ type
     ToolButton1: TToolButton;
     ToolButton2: TToolButton;
     procedure AcAboutExecute(Sender: TObject);
+    procedure AcDumpToFileExecute(Sender: TObject);
     procedure AcFileOpenExecute(Sender: TObject);
     procedure AcFileQuitExecute(Sender: TObject);
     procedure AcFindCloseExecute(Sender: TObject);
@@ -143,6 +149,7 @@ type
     procedure AnalysisGridDetails(Sender: TObject; ADetails: TStrings);
     procedure AnalysisGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
       aState: TGridDrawState);
+    procedure DumpToFile(const AFileName: String);
     procedure ExecFind(ANext, AKeep: Boolean);
     function  GetNodeData(ANode: PVirtualNode): TBiffNodeData;
     function  GetRecType: Word;
@@ -156,6 +163,7 @@ type
     procedure ReadFromIni;
     procedure ReadFromStream(AStream: TStream);
     procedure UpdateCaption;
+    procedure UpdateCmds;
     procedure WriteToIni;
 
   public
@@ -216,6 +224,19 @@ begin
     F.ShowModal;
   finally
     F.Free;
+  end;
+end;
+
+
+procedure TMainForm.AcDumpToFileExecute(Sender: TObject);
+begin
+  if FFileName = '' then
+    exit;
+
+  with SaveDialog do begin
+    FileName := ChangeFileExt(ExtractFileName(FFileName), '') + '_dumped.txt';
+    if Execute then
+      DumpToFile(FileName);
   end;
 end;
 
@@ -482,6 +503,38 @@ begin
 end;
 
 
+procedure TMainForm.DumpToFile(const AFileName: String);
+var
+  list: TStringList;
+  parentnode, node: PVirtualNode;
+  parentdata, data: TBiffNodeData;
+  ptr: PObjectNodeData;
+begin
+  list := TStringList.Create;
+  try
+    parentnode := BiffTree.GetFirst;
+    while parentnode <> nil do begin
+      ptr := BiffTree.GetNodeData(parentnode);
+      parentdata := TBiffNodeData(ptr^.Data);
+      list.Add(parentdata.RecordName);
+      node := BIffTree.GetFirstChild(parentnode);
+      while node <> nil do begin
+        ptr := BiffTree.GetNodeData(node);
+        data := TBiffNodeData(ptr^.Data);
+        List.Add(Format('  %.04x %s (%s)', [data.RecordID, data.RecordName, data.RecordDescription]));
+        node := BiffTree.GetNextSibling(node);
+      end;
+      List.Add('');
+      parentnode := BiffTree.GetNextSibling(parentnode);
+    end;
+
+    list.SaveToFile(AFileName);
+  finally
+    list.Free;
+  end;
+end;
+
+
 procedure TMainForm.ExecFind(ANext, AKeep: Boolean);
 var
   s: String;
@@ -628,6 +681,8 @@ begin
     Cells[0, VALUE_ROW_ANSISTRING] := 'AnsiString';
     Cells[0, VALUE_ROW_WIDESTRING] := 'WideString';
   end;
+
+  UpdateCmds;
 end;
 
 
@@ -1134,6 +1189,8 @@ begin
     BiffTree.FocusedNode := BiffTree.GetFirst;
     BiffTree.Selected[BiffTree.FocusedNode] := true;
 
+    UpdateCmds;
+
   finally
     Screen.Cursor := crs;
   end;
@@ -1159,6 +1216,13 @@ begin
       FFileName,
       GetFileFormatName(FFormat)
     ]);
+end;
+
+
+procedure TMainForm.UpdateCmds;
+begin
+  AcDumpToFile.Enabled := FFileName <> '';
+  AcFind.Enabled := FFileName <> '';
 end;
 
 
