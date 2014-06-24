@@ -1,7 +1,9 @@
 {
-wikitablewrite.dpr
+wikitablewrite.lpr
 
 Demonstrates how to write a wikitable file using the fpspreadsheet library
+Note: the output written by wikitablewrite cannot yet be read by the
+wikitableread demo.
 }
 program wikitablewrite;
 
