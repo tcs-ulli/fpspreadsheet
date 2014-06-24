@@ -1,8 +1,9 @@
 {
-wikitableread.dpr
+wikitableread.lpr
 
-Demonstrates how to read a wikitable file using the fpspreadsheet library
-
+Demonstrates how to read a wikitable (wikimedia format) file using the fpspreadsheet library
+Note: the output written by wikitablewrite cannot yet be read by the
+wikitableread demo.
 }
 program wikitableread;
 
@@ -28,7 +29,7 @@ begin
   InputFileName := MyDir + 'test.wikitable_wikimedia';
 
   if not FileExists(InputFileName) then begin
-    WriteLn('Input file ', InputFileName, ' does not exist. Please run wikitablewrite first.');
+    WriteLn('Input file ', InputFileName, ' does not exist. Please make sure a file exists with data in the correct format.');
     Halt;
   end;
   WriteLn('Opening input file ', InputFilename);
