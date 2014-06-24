@@ -2283,7 +2283,7 @@ begin
   end;
 end;
 
-{ Collects all number formats used in the workbook. Overrides the inherited
+{ Contains all number formats used in the workbook. Overrides the inherited
   method to assign a unique name according to the OpenDocument syntax ("N<number>"
   to the format items. }
 procedure TsSpreadOpenDocWriter.ListAllNumFormats;
