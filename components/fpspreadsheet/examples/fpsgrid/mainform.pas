@@ -102,7 +102,7 @@ begin
       ShowButtons := [pbCancel, pbOK];
     end;
     if dlg.ShowModal = mrOK then begin
-      WorksheetGrid.NewWorksheet(edCols.Value, edRows.Value);
+      WorksheetGrid.NewWorkbook(edCols.Value, edRows.Value);
       SheetsCombo.Items.Clear;
       SheetsCombo.Items.Add('Sheet 1');
       SheetsCombo.ItemIndex := 0;

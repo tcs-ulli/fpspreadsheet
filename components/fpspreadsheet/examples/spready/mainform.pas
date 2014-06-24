@@ -494,7 +494,7 @@ end;
 
 procedure TForm1.AcNewExecute(Sender: TObject);
 begin
-  WorksheetGrid.NewWorksheet(26, 100);
+  WorksheetGrid.NewWorkbook(26, 100);
 end;
 
 procedure TForm1.AcNumFormatExecute(Sender: TObject);

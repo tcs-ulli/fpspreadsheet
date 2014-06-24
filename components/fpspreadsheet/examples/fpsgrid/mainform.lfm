@@ -48,8 +48,8 @@ object Form1: TForm1
   end
   object WorksheetGrid: TsWorksheetGrid
     Left = 0
-    Height = 574
-    Top = 34
+    Height = 572
+    Top = 36
     Width = 884
     FrozenCols = 0
     FrozenRows = 0
@@ -63,7 +63,7 @@ object Form1: TForm1
     TabOrder = 1
     TitleStyle = tsNative
     ColWidths = (
-      42
+      56
       64
       64
       64
@@ -94,29 +94,29 @@ object Form1: TForm1
   end
   object Panel2: TPanel
     Left = 0
-    Height = 34
+    Height = 36
     Top = 0
     Width = 884
     Align = alTop
     BevelOuter = bvNone
-    ClientHeight = 34
+    ClientHeight = 36
     ClientWidth = 884
     TabOrder = 2
     object Label1: TLabel
       Left = 8
-      Height = 15
+      Height = 20
       Top = 9
-      Width = 37
+      Width = 46
       Caption = 'Sheets:'
       ParentColor = False
     end
     object SheetsCombo: TComboBox
       Left = 72
-      Height = 23
-      Top = 6
-      Width = 800
+      Height = 28
+      Top = 4
+      Width = 808
       Anchors = [akTop, akLeft, akRight]
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 0
       Items.Strings = (
         'Sheet 1'
