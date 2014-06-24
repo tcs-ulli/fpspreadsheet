@@ -27,6 +27,11 @@ type
 
   { TsCustomWorksheetGrid }
 
+  {@@
+    TsCustomWorksheetGrid is a grid which displays spreadsheet data along with
+    their formatting. Being linked to an instance of TsWorkbook it provides
+    methods for reading data from or writing to spreadsheet files.
+  }
   TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
     { Private declarations }
@@ -134,11 +139,21 @@ type
     procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
+    {@@ Displays column and row headers in the fixed col/row style of the grid.
+        Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
+    {@@ This number of columns at the left is "frozen", i.e. it is not possible to
+        scroll these columns }
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
+    {@@ This number of rows at the top is "frozen", i.e. it is not possible to
+        scroll these rows. }
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
+    {@@ Activates reading of rpn formulas. Should be turned off when reading of
+        not implemented formulas crashes reading of the spreadsheet file. }
     property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
+    {@@ Shows/hides vertical and horizontal grid lines }
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
+    {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
 
   public
@@ -158,7 +173,7 @@ type
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = 0); overload;
-    procedure NewWorksheet(AColCount, ARowCount: Integer);
+    procedure NewWorkbook(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
@@ -171,67 +186,129 @@ type
     function FindNearestPaletteIndex(AColor: TColor): TsColor;
 
     { public properties }
+    {@@ Currently selected worksheet of the workbook }
     property Worksheet: TsWorksheet read FWorksheet;
+    {@@ Workbook displayed in the grid }
     property Workbook: TsWorkbook read FWorkbook;
+    {@@ Count of header lines, for conversion between grid- and workbook-based
+     row and column indexes. Either 1 if row and column headers are shown or 0 if not}
     property HeaderCount: Integer read FHeaderCount;
 
     { maybe these should become published ... }
+    {@@ Background color of the cell at the given column and row. Expressed as
+        index into the workbook's color palette. }
     property BackgroundColor[ACol, ARow: Integer]: TsColor
         read GetBackgroundColor write SetBackgroundColor;
+    {@@ Common background color of the cells spanned by the given rectangle.
+        Expressed as index into the workbook's color palette. }
     property BackgroundColors[ARect: TGridRect]: TsColor
         read GetBackgroundColors write SetBackgroundColors;
+    {@@ Set of flags indicating at which cell border a border line is drawn. }
     property CellBorder[ACol, ARow: Integer]: TsCellBorders
         read GetCellBorder write SetCellBorder;
+    {@@ Set of flags indicating at which border of a range of cells a border
+        line is drawn }
     property CellBorders[ARect: TGridRect]: TsCellBorders
         read GetCellBorders write SetCellBorders;
+    {@@ Style of the border line at the given border of the cell at column ACol
+        and row ARow. Requires the cellborder flag of the border to be set
+        for the border line to be shown }
     property CellBorderStyle[ACol, ARow: Integer; ABorder: TsCellBorder]: TsCellBorderStyle
         read GetCellBorderStyle write SetCellBorderStyle;
+    {@@ Style of the border line at the given border of the cells within the
+        range of colum/row indexes defined by the retangle. Requires the cellborder
+        flag of the border to be set for the border line to be shown }
     property CellBorderStyles[ARect: TGridRect; ABorder: TsCellBorder]: TsCellBorderStyle
         read GetCellBorderStyles write SetCellBorderStyles;
+    {@@ Font to be used when painting text in the cell at column ACol and row ARow. }
     property CellFont[ACol, ARow: Integer]: TFont
         read GetCellFont write SetCellFont;
+    {@@ Font to be used when paintingthe cells in the column/row index range
+        given by the rectangle }
     property CellFonts[ARect: TGridRect]: TFont
         read GetCellFonts write SetCellFonts;
+    {@@ Name of the font used when painting text in the cell a column ACol and row ARow }
     property CellFontName[ACol, ARow: Integer]: String
         read GetCellFontName write SetCellFontName;
+    {@@ Name of the font used when painting text in the cells within the range
+        of column/row indexes defined by the rectangle. }
     property CellFontNames[ARect: TGridRect]: String
         read GetCellFontNames write SetCellFontNames;
+    {@@ Style of the font (bold, italic, ...) used when painting text in the
+        cell at column ACol and row ARow. }
     property CellFontStyle[ACol, ARow: Integer]: TsFontStyles
         read GetCellFontStyle write SetCellFontStyle;
+    {@@ Style of the font (bold, italic, ...) used when painting the cells within
+        the range of column/row indexes defined by the rectangle. }
     property CellFontStyles[ARect: TGridRect]: TsFontStyles
         read GetCellFontStyles write SetCellFontStyles;
+    {@@ Size of the font (in points) used when painting the cell at column ACol
+        and row ARow }
     property CellFontSize[ACol, ARow: Integer]: Single
         read GetCellFontSize write SetCellFontSize;
+    {@@ Size of the font (in points) used when painting the cells within the
+        range of column/row indexes defined by the rectangle. }
     property CellFontSizes[ARect: TGridRect]: Single
         read GetCellFontSizes write SetCellFontSizes;
+    {@@ Parameter for horizontal text alignment within the cell at column ACol
+        and row ARow }
     property HorAlignment[ACol, ARow: Integer]: TsHorAlignment
         read GetHorAlignment write SetHorAlignment;
+    {@@ Parameter for the horizontal text alignments in all cells within the
+        range cf column/row indexes defined by the rectangle. }
     property HorAlignments[ARect: TGridRect]: TsHorAlignment
         read GetHorAlignments write SetHorAlignments;
+    {@@ Rotation of the text in the cell at column ACol and row ARow. }
     property TextRotation[ACol, ARow: Integer]: TsTextRotation
         read GetTextRotation write SetTextRotation;
+    {@@ Rotation of the text in the cells within the range of column/row indexes
+        defined by the rectangle }
     property TextRotations[ARect: TGridRect]: TsTextRotation
         read GetTextRotations write SetTextRotations;
+    {@@ Parameter for vertical text alignment in the cell at column ACol and
+        row ARow. }
     property VertAlignment[ACol, ARow: Integer]: TsVertAlignment
         read GetVertAlignment write SetVertAlignment;
+    {@@ Parameter for vertical text alignment in the cells having column/row
+        indexes defined by the rectangle. }
     property VertAlignments[ARect: TGridRect]: TsVertAlignment
         read GetVertAlignments write SetVertAlignments;
+    {@@ If true word-wrapping of text within the cell at column ACol and row ARow
+        is activated. }
     property Wordwrap[ACol, ARow: Integer]: Boolean
         read GetWordwrap write SetWordwrap;
+    {@@ If true word-wrapping of text within all cell having column/row indexes
+        in the range defined by the rectangle is activate. }
     property Wordwraps[ARect: TGridRect]: Boolean
         read GetWordwraps write SetWordwraps;
   end;
 
   { TsWorksheetGrid }
 
+  {@@
+    TsWorksheetGrid is a grid which displays spreadsheet data along with
+    their formatting. Being linked to an instance of TsWorkbook it provides
+    methods for reading data from or writing to spreadsheet files. In contrast
+    to TsCustomWorksheetGrid it has all properties published.
+  }
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
+    {@@ Displays column and row headers in the fixed col/row style of the grid.
+        Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
+    {@@ This number of columns at the left is "frozen", i.e. it is not possible to
+        scroll these columns }
     property FrozenCols;
+    {@@ This number of rows at the top is "frozen", i.e. it is not possible to
+        scroll these rows. }
     property FrozenRows;
+    {@@ Activates reading of rpn formulas. Should be turned off when reading of
+        not implemented formulas crashes reading of the spreadsheet file. }
     property ReadFormulas;
+    {@@ Shows/hides vertical and horizontal grid lines }
     property ShowGridLines;
+    {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders;
 
     // inherited from other ancestors
@@ -337,16 +414,22 @@ uses
   Types, LCLType, LCLIntf, Math, fpCanvas, fpsUtils;
 
 const
+  {@@ Translation of the fpspreadsheet type of horizontal text alignment to that
+      used in the graphics unit. }
   HOR_ALIGNMENTS: array[haLeft..haRight] of TAlignment = (
     taLeftJustify, taCenter, taRightJustify
   );
+  {@@ Translation of the fpspreadsheet type of vertical text alignment to that
+      used in the graphics unit. }
   VERT_ALIGNMENTS: array[TsVertAlignment] of TTextLayout = (
     tlBottom, tlTop, tlCenter, tlBottom
   );
 
 var
+  {@@ Auxiliary bitmap containing the fill pattern used by biff2 cell backgrounds }
   FillPattern_BIFF2: TBitmap = nil;
 
+{@@ Helper procedure which creates the fill pattern used by biff2 cell backgrounds }
 procedure Create_FillPattern_BIFF2(ABkColor: TColor);
 begin
   FreeAndNil(FillPattern_BIFF2);
@@ -360,6 +443,13 @@ begin
   end;
 end;
 
+{@@
+  Helper procedure which draws a densely dotted horizontal line. In Excel
+  this is called a "hair line".
+
+  @param x1, x2   x coordinates of the end points of the line
+  @param y        y coordinate of the horizontal line
+}
 procedure DrawHairLineHor(ACanvas: TCanvas; x1, x2, y: Integer);
 var
   clr: TColor;
@@ -374,6 +464,13 @@ begin
   end;
 end;
 
+{@@
+  Helper procedure which draws a densely dotted vertical line. In Excel
+  this is called a "hair line".
+
+  @param x        x coordinate of the vertical line
+  @param y1, y2   y coordinates of the end points of the line
+}
 procedure DrawHairLineVert(ACanvas: TCanvas; x, y1, y2: Integer);
 var
   clr: TColor;
@@ -388,9 +485,20 @@ begin
   end;
 end;
 
+{@@
+  Wraps text by inserting line ending characters such that the lines are not
+  longer than AMaxWidth.
+
+  @param   ACanvas       Canvas on which the text will be drawn
+  @param   AText         Text to be drawn
+  @param   AMaxWidth     Maximimum line width (in pixels)
+  @return  Text with inserted line endings such that the lines are shorter than
+           AMaxWidth.
+
+  @note    Based on ocde posted by user "taazz" in the Lazarus forum
+           http://forum.lazarus.freepascal.org/index.php/topic,21305.msg124743.html#msg124743
+}
 function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): string;
-// code posted by taazz in the Lazarus Forum:
-// http://forum.lazarus.freepascal.org/index.php/topic,21305.msg124743.html#msg124743
 var
   DC: HDC;
   textExtent: TSize;
@@ -454,6 +562,15 @@ begin
   end;
 end;
 
+{@@
+  Calculates a background color for selected cells. The procedures takes the
+  original background color and dims or brightens it by adding the value ADelta
+  to the rgb components.
+
+  @param  c       Color to be modified
+  @param  ADelta  Value to be added to the rgb components of the inpur color
+  @result Modified color.
+}
 function CalcSelectionColor(c: TColor; ADelta: Byte) : TColor;
 type
   TRGBA = record R,G,B,A: Byte end;
@@ -471,6 +588,7 @@ begin
     else TRGBA(Result).B := TRGBA(c).B - ADelta;
 end;
 
+{@@ Registers the worksheet grid in the Lazarus component palette, page "Additional". }
 procedure Register;
 begin
   RegisterComponents('Additional',[TsWorksheetGrid]);
@@ -481,8 +599,10 @@ end;
 
 {@@
   Constructor of the grid. Activates the display of column and row headers
-  and creates an internal "CellFont". Creates a given number of empty rows
+  and creates an internal "CellFont". Creates a pre-defined number of empty rows
   and columns.
+
+  @param  AOwner   Owner of the grid
 }
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
@@ -536,7 +656,8 @@ end;
   worksheet does not have a TRow record for this particular row.
   ARow is a grid row index.
 
-  @param  ARow  Index of the row, in grid units
+  @param   ARow  Index of the row, in grid units
+  @return  Row height
 }
 function TsCustomWorksheetGrid.CalcAutoRowHeight(ARow: Integer): Integer;
 var
@@ -939,8 +1060,16 @@ begin
   end;
 end;
 
-{ Is responsible for painting of the focus rectangle. We don't want the red
-  dashed rectangle here, but the thick Excel-like rectangle. }
+{@@
+  Is responsible for painting the focus rectangle. We don't want the red
+  dashed rectangle here, but prefer the thick Excel-like black border line.
+  This new focus rectangle is drawn by the method DrawSelection. To turn off
+  the red dashed rectangle DrawFocusRect is just empty.
+
+  @param   ACol   Grid column index of the focused cell
+  @param   ARow   Grid row index of the focused cell
+  @param   ARect  Rectangle in pixels covered by the focused cell
+}
 procedure TsCustomWorksheetGrid.DrawFocusRect(aCol, aRow: Integer; ARect: TRect);
 begin
   Unused(ACol, ARow, ARect);
@@ -950,9 +1079,10 @@ end;
 {@@
   Draws a solid line along the borders of frozen panes.
 
-  @param  ARect  This rectangle indicates the area with movable cells. If the
-                 grid has frozen panes a black line is drawn along the upper
-                 and/or left edge of this rectangle.
+  @param  ARect  This rectangle indicates the area containing movable cells.
+                 If the grid has frozen panes a black line is drawn along the
+                 upper and/or left edge of this rectangle (depending on the
+                 value of FrozenRows and FrozenCols).
 }
 procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
 begin
@@ -968,7 +1098,7 @@ begin
 end;
 
 {@@
-  Draws the selection rectangle, 3 pixels wide as in Excel.
+  Draws the selection rectangle around selected cells, 3 pixels wide as in Excel.
 }
 procedure TsCustomWorksheetGrid.DrawSelection;
 var
@@ -996,12 +1126,12 @@ begin
 end;
 
 {@@
-  Draws the cell text. Calls "GetCellText" to determine the text in the cell.
+  Draws the cell text. Calls "GetCellText" to determine the text for the cell.
   Takes care of horizontal and vertical text alignment, text rotation and
   text wrapping
 
-  @param  ACol   Column index of the cell
-  @param  ARow   Row index of the cell
+  @param  ACol   Grid column index of the cell
+  @param  ARow   Grid row index of the cell
   @param  ARect  Rectangle in pixels occupied by the cell.
   @param  AState Drawing state of the grid -- see TCustomGrid
 }
@@ -1050,11 +1180,6 @@ begin
       horAlign := haRight
     else
       horAlign := haLeft;
-    {
-    if txtRot = rt90DegreeCounterClockwiseRotation then begin
-      if horAlign = haRight then horAlign := haLeft else horAlign := haRight;
-    end;
-    }
   end;
 
   InflateRect(ARect, -constCellPadding, -constCellPadding);
@@ -1128,8 +1253,8 @@ end;
   Copies the borders of a cell to its neighbors. This avoids the nightmare of
   changing borders due to border conflicts of adjacent cells.
 
-  @param  ACol  Column index of the cell
-  @param  ARow  Row index of the cell
+  @param  ACol  Grid column index of the cell
+  @param  ARow  Grid row index of the cell
 }
 procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
 
@@ -1228,7 +1353,7 @@ function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
   end;
 
   {
-  // will be activated when Lazarus 1.4 is available. (RgbToHLS bug in Laz < 1.3)
+  // To be activated when Lazarus 1.4 is available. (RgbToHLS bug in Laz < 1.3)
 
   function ColorDistance(color1, color2: TColor): Integer;
   type
@@ -1263,8 +1388,8 @@ end;
   Returns the background color of a cell. The color is given as an index into
   the workbook's color palette.
 
-  @param  ACol  Column index of the cell
-  @param  ARow  Row index of the cell
+  @param  ACol  Grid column index of the cell
+  @param  ARow  Grid row index of the cell
   @result Color index of the cell's background color.
 }
 function TsCustomWorksheetGrid.GetBackgroundColor(ACol, ARow: Integer): TsColor;
@@ -1310,8 +1435,8 @@ end;
 {@@
   Returns the cell borders which are drawn around a given cell.
 
-  @param  ACol  Column index of the cell
-  @param  ARow  Row index of the cell
+  @param  ACol  Grid column index of the cell
+  @param  ARow  Grid row index of the cell
   @return Set with flags indicating where borders are drawn (top/left/right/bottom)
 }
 function TsCustomWorksheetGrid.GetCellBorder(ACol, ARow: Integer): TsCellBorders;
@@ -1351,6 +1476,18 @@ begin
     end;
 end;
 
+{@@
+  Returns the style of the cell border line drawn along the edge specified
+  by the parameter ABorder of a cell. The style is defined by line style and
+  line color.
+
+  @param   ACol     Grid column index of the cell
+  @param   ARow     Grid row index of the cell
+  @param   ABorder  Identifier of the border at which the line will be drawn
+                    (see TsCellBorder)
+  @return  CellBorderStyle record containing information on line style and
+           line color
+}
 function TsCustomWorksheetGrid.GetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder): TsCellBorderStyle;
 var
@@ -1364,6 +1501,18 @@ begin
   end;
 end;
 
+{@@
+  Returns the style of the cell border line drawn along the edge specified
+  by the parameter ABorder of a range of cells defined by the rectangle of
+  column and row indexes. The style is defined by linestyle and line color.
+
+  @param   ARect    Rectangle whose edges define the limits of the grid row and
+                    column indexes of the cells considered.
+  @param   ABorder  Identifier of the border where the line will be drawn
+                    (see TsCellBorder)
+  @return  CellBorderStyle record containing information on line style and
+           line color
+}
 function TsCustomWorksheetGrid.GetCellBorderStyles(ARect: TGridRect;
   ABorder: TsCellBorder): TsCellBorderStyle;
 var
@@ -1382,6 +1531,13 @@ begin
     end;
 end;
 
+{@@
+  Returns the font to be used when painting text in a cell.
+
+  @param   ACol     Grid column index of the cell
+  @param   ARow     Grid row index of the cell
+  @return  Font usable when painting on a canvas.
+}
 function TsCustomWorksheetGrid.GetCellFont(ACol, ARow: Integer): TFont;
 var
   cell: PCell;
@@ -1398,6 +1554,14 @@ begin
   end;
 end;
 
+{@@
+  Returns the font to be used when painting text in the cells defined by the
+  rectangle of row/column indexes.
+
+  @param   ARect    Rectangle whose edges define the limits of the grid row and
+                    column indexes of the cells considered.
+  @return  Font usable when painting on a canvas.
+}
 function TsCustomWorksheetGrid.GetCellFonts(ARect: TGridRect): TFont;
 var
   c, r: Integer;
@@ -1554,7 +1718,13 @@ begin
     end;
 end;
 
-{ Returns the height (in pixels) of the cell at ACol/ARow (of the grid). }
+{@@
+  Returns the height (in pixels) of the cell at ACol/ARow (of the grid).
+
+  @param   ACol  Grid column index of the cell
+  @param   ARow  Grid row index of the cell
+  @result  Height of the cell in pixels. Wrapped text is handled correctly.
+}
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
   lCell: PCell;
@@ -1613,7 +1783,16 @@ begin
   end;
 end;
 
-{ GetCellText function returns the text to be written in the cell }
+{@@
+  This function returns the text to be shown in a grid cell. The text is looked
+  up in the corresponding cell of the worksheet by calling its ReadAsUTF8Text
+  method. In case of "stacked" text rotation, line endings are inserted after
+  each character.
+
+  @param   ACol   Grid column index of the cell
+  @param   ARow   Grid row index of the cell
+  @return  Text to be displayed in the cell.
+  }
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
   lCell: PCell;
@@ -1655,7 +1834,15 @@ begin
   end;
 end;
 
-{ Determines the text to be passed to the cell editor. }
+{@@
+  Determines the text to be passed to the cell editor. The text is determined
+  from the underlying worksheet cell, but it is possible to interfere by
+  adding a handler for the OnGetEditText event.
+
+  @param   ACol   Grid column index of the cell being edited
+  @param   ARow   Grid row index of the grid cell being edited
+  @return  Text to be passed to the cell editor.
+  }
 function TsCustomWorksheetGrid.GetEditText(aCol, aRow: Integer): string;
 begin
   Result := GetCellText(aCol, aRow);
@@ -2132,7 +2319,7 @@ end;
 procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
-  NewWorksheet(FInitColCount, FInitRowCount);
+  NewWorkbook(FInitColCount, FInitRowCount);
 end;
 
 { Repaints after moving selection to avoid spurious rests of the old thick
@@ -2543,6 +2730,13 @@ begin
   end;
 end;
 
+{@@
+  Enables/disables word wrapping of the content of a cell
+
+  @param   ACol    Grid column index
+  @param   ARow    Grid row index
+  @param   AValue  Enables word wrapping if true, disables it if false
+}
 procedure TsCustomWorksheetGrid.SetWordwrap(ACol, ARow: Integer;
   AValue: Boolean);
 begin
@@ -2550,6 +2744,13 @@ begin
     FWorksheet.WriteWordwrap(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
+{@@
+  Enables/disabled word wrapping for a range of cells having column/row indexes
+  as given by the rectangle.
+
+  @param   ARect   Rectangle with the grid column/row indexes of the cells considered
+  @param   AValue  Enables word wrapping if true, disables it if false
+}
 procedure TsCustomWorksheetGrid.SetWordwraps(ARect: TGridRect;
   AValue: Boolean);
 var
@@ -2565,6 +2766,11 @@ begin
   end;
 end;
 
+{@@
+  Loads the worksheet into the grid and displays its contents.
+
+  @param   AWorksheet   Worksheet to be displayed in the grid
+}
 procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
 begin
   FWorksheet := AWorksheet;
@@ -2586,6 +2792,14 @@ begin
   Setup;
 end;
 
+{@@
+  Creates a new workbook and loads the given file into it. The file is assumed
+  to have the given file format. Shows the sheet having the given sheet index.
+
+  @param   AFileName        Name of the file to be loaded
+  @param   AFormat          Spreadsheet file format assumed for the file
+  @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
+}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
@@ -2601,6 +2815,13 @@ begin
   end;
 end;
 
+{@@
+  Creates a new workbook and loads the given file into it. The file format
+  is determined automatically. Shows the sheet having the given sheet index.
+
+  @param   AFileName        Name of the file to be loaded
+  @param   AWorksheetIndex  Index of the worksheet to be shown in the grid
+}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
@@ -2616,7 +2837,13 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.NewWorksheet(AColCount, ARowCount: Integer);
+{@@
+  Creates a new empty workbook having a specified number of columns and rows.
+
+  @param   AColCount   Number of columns
+  @param   ARowCount   Number of rows
+}
+procedure TsCustomWorksheetGrid.NewWorkbook(AColCount, ARowCount: Integer);
 begin
   BeginUpdate;
   try
@@ -2633,7 +2860,17 @@ begin
   end;
 end;
 
-{ Writes the workbook behind the grid to a spreadsheet file. }
+{@@
+  Writes the workbook behind the grid to a spreadsheet file.
+
+  @param   AFileName          Name of the file to which the workbook is to be
+                              saved.
+  @param   AFormat            Spreadsheet file format in which the file is to be
+                              saved.
+  @param   AOverwriteExisting If the file already exists, it is overwritten in
+                              the case of AOverwriteExisting = true, or an
+                              exception is raised for AOverwriteExisting = false
+}
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
 begin
@@ -2641,6 +2878,16 @@ begin
     FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
 end;
 
+{@@
+  Saves the workbook into a file with the specified file name. If this file
+  name already exists the file is overridden if AOverwriteExisting is true.
+
+  @param   AFileName          Name of the file to which the workbook is to be saved
+                              If the file format is not known is is written as BIFF8.
+  @param   AOverwriteExisting If this file already exists it is overwritten for
+                              AOverwriteExisting = true, or an exception is raised
+                              for AOverwriteExisting = false:
+}
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
 begin
@@ -2648,6 +2895,11 @@ begin
     FWorkbook.WriteToFile(AFileName, AOverwriteExisting);
 end;
 
+{@@
+  Loads the workbook into the grid and selects the sheet with the given index
+
+  @param   AIndex   Index of the worksheet to be shown in the grid
+}
 procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
   if FWorkbook <> nil then
