@@ -57,6 +57,7 @@ unit xlsbiff5;
 {$endif}
 
 {$define USE_NEW_OLE}
+{.$define FPSPREADDEBUG} //define to print out debug info to console. Used to be XLSDEBUG;
 
 interface
 
@@ -1256,10 +1257,10 @@ begin
     INT_EXCEL_ID_PANE    : ReadPane(AStream);
     INT_EXCEL_ID_BOF     : ;
     INT_EXCEL_ID_EOF     : SectionEOF := True;
-      // Show unsupported record types to console.
-{.$DEFINE SHOWUNSUPPORTED}
-{$IFDEF SHOWUNSUPPORTED}
+
+{$IFDEF FPSPREADDEBUG} // Only write out if debugging
     else
+      // Show unsupported record types to console.    
       case RecordType of
         $000C: ; //(CALCCOUNT) This record is part of the Calculation Settings Block. It specifies the maximum number of times the formulas should be iteratively calculated. This is a fail-safe against mutually recursive formulas locking up a spreadsheet application.
         $000D: ; //(CALCMODE) This record is part of the Calculation Settings Block. It specifies whether to calculate formulas manually, automatically or automatically except for multiple table operations.
