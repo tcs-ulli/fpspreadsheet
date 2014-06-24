@@ -361,6 +361,7 @@ var
   Boundsheets: array of Int64;
   i, len: Integer;
   sheet : TsWorksheet;
+  pane: Byte;
 begin
   { Store some data about the workbook that other routines need }
   WorkBookEncoding := Workbook.Encoding;
@@ -383,7 +384,7 @@ begin
   begin
     len := Length(Boundsheets);
     SetLength(Boundsheets, len + 1);
-    Boundsheets[len] := WriteBoundsheet(AStream, UTF8ToAnsi(Workbook.GetWorksheetByIndex(i).Name));
+    Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
     // BIFF8 does not support unicode  --> Need UTF8ToAnsi !
   end;
   
@@ -404,10 +405,12 @@ begin
 
     WriteBOF(AStream, INT_BOF_SHEET);
       WriteIndex(AStream);
+//      WritePageSetup(AStream);
       WriteColInfos(AStream, sheet);
       WriteDimensions(AStream, sheet);
       WriteWindow2(AStream, sheet);
-      WritePane(AStream, sheet, true);  // true for "is BIFF5 or BIFF8"
+      WritePane(AStream, sheet, true, pane);  // true for "is BIFF5 or BIFF8"
+      WriteSelection(AStream, sheet, pane);
       WriteRows(AStream, sheet);
       WriteCellsToStream(AStream, sheet.Cells);
     WriteEOF(AStream);
@@ -985,7 +988,9 @@ begin
     MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES or
     MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR or
     MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
+    MASK_WINDOW2_OPTION_SHEET_SELECTED or
     MASK_WINDOW2_OPTION_SHEET_ACTIVE;
+  { Bug 0026386 -> every sheet must be selected/active, otherwise Excel cannot print }
 
   if (soShowGridLines in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
@@ -993,8 +998,6 @@ begin
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
   if (soHasFrozenPanes in ASheet.Options) and ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0)) then
     Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
-  if (soSelected in ASheet.Options) then
-    Options := Options or MASK_WINDOW2_OPTION_SHEET_SELECTED;
 
   AStream.WriteWord(WordToLE(Options));
 

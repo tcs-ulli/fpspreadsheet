@@ -30,6 +30,7 @@ const
 
   { RECORD IDs which did not change across version 3-8}
   INT_EXCEL_ID_COLINFO    = $007D;    // does not exist in BIFF2
+  INT_EXCEL_ID_SHEETPR    = $0081;    // does not exist in BIFF2
   INT_EXCEL_ID_COUNTRY    = $008C;    // does not exist in BIFF2
   INT_EXCEL_ID_PALETTE    = $0092;    // does not exist in BIFF2
   INT_EXCEL_ID_DIMENSIONS = $0200;    // BIFF2: $0000
@@ -44,6 +45,7 @@ const
   INT_EXCEL_ID_STYLE      = $0293;    // does not exist in BIFF2
 
   { RECORD IDs which did not change across version 4-8 }
+  INT_EXCEL_ID_PAGESETUP  = $00A1;    // does not exist before BIFF4
   INT_EXCEL_ID_FORMAT     = $041E;    // BIFF2-3: $001E
 
   { RECORD IDs which did not change across versions 5-8 }
@@ -468,10 +470,12 @@ type
     // Writes out a floating point NUMBER record
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Double; ACell: PCell); override;
+    procedure WritePageSetup(AStream: TStream);
     // Writes out a PALETTE record containing all colors defined in the workbook
     procedure WritePalette(AStream: TStream);
     // Writes out a PANE record
-    procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean);
+    procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean;
+      out ActivePane: Byte);
     // Writes out a ROW record
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); virtual;
@@ -480,6 +484,7 @@ type
     // Writes out a SELECTION record
     procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteSheetPR(AStream: TStream);
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
     // Writes the index of the XF record used in the given cell
@@ -1573,11 +1578,6 @@ begin
   else
     FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
 
-  if (flags and MASK_WINDOW2_OPTION_SHEET_SELECTED <> 0) then
-    FWorksheet.Options := FWorksheet.Options + [soSelected]
-  else
-    FWorksheet.Options := FWorksheet.Options - [soSelected];
-
   if (flags and MASK_WINDOW2_OPTION_PANES_ARE_FROZEN <> 0) then
     FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
   else
@@ -1848,15 +1848,62 @@ begin
       AStream.WriteDWord(DWordToLE($FFFFFF));
 end;
 
+{@@
+  Writes a PAGESETUP record containing information on printing
+}
+procedure TsSpreadBIFFWriter.WritePageSetup(AStream: TStream);
+var
+  flags: Word;
+  dbl: Double;
+begin
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PAGESETUP));
+  AStream.WriteWord(WordToLE(9*2 + 2*8));
+
+  { Paper size }
+  AStream.WriteWord(WordToLE(0));  // 1 = Letter, 9 = A4
+
+  { Scaling factor in percent }
+  AStream.WriteWord(WordToLE(100));  // 100 %
+
+  { Start page number }
+  AStream.WriteWord(WordToLE(1));   // starting at  page 1
+
+  { Fit worksheet width to this number of pages, 0 = use as many as needed }
+  AStream.WriteWord(WordToLE(0));
+
+  { Fit worksheet height to this number of pages, 0 = use as many as needed }
+  AStream.WriteWord(WordToLE(0));
+
+  flags := 0;
+  AStream.WriteWord(WordToLE(0));
+
+  { Print resolution in dpi }
+  AStream.WriteWord(WordToLE(600));
+
+  { Vertical print resolution in dpi }
+  AStream.WriteWord(WordToLE(600));
+
+  { Header margin }
+  dbl := 0.5;
+  AStream.WriteBuffer(dbl, SizeOf(dbl));
+  { Footer margin }
+  AStream.WriteBuffer(dbl, SizeOf(dbl));
+
+  { Number of copies to print }
+  AStream.WriteWord(WordToLE(1));  // 1 copy
+end;
+
 { Writes a PANE record to the stream.
   Valid for all BIFF versions. The difference for BIFF5-BIFF8 is a non-used
   byte at the end. Activate IsBiff58 in these cases. }
 procedure TsSpreadBIFFWriter.WritePane(AStream: TStream; ASheet: TsWorksheet;
-  IsBiff58: Boolean);
+  IsBiff58: Boolean; out ActivePane: Byte);
 var
   n: Word;
-  active_pane: Byte;
 begin
+  ActivePane := 3;
+
   if not (soHasFrozenPanes in ASheet.Options) then
     exit;
   if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
@@ -1901,18 +1948,18 @@ begin
       3 = left-top }
   if (soHasFrozenPanes in ASheet.Options) then begin
     if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
-      active_pane := 3
+      ActivePane := 3
     else
     if (ASheet.LeftPaneWidth = 0) then
-      active_pane := 2
+      ActivePane := 2
     else
     if (ASheet.TopPaneHeight =0) then
-      active_pane := 1
+      ActivePane := 1
     else
-      active_pane := 0;
+      ActivePane := 0;
   end else
-    active_pane := 0;
-  AStream.WriteByte(active_pane);
+    ActivePane := 0;
+  AStream.WriteByte(ActivePane);
 
   if IsBIFF58 then
     AStream.WriteByte(0);
@@ -2078,6 +2125,20 @@ begin
       WriteSelection(AStream, ASheet, 0);
     end;
   end;
+end;
+
+{ Writes a SHEETPR Record.
+  Valid for BIFF3-BIFF8. }
+procedure TsSpreadBIFFWriter.WriteSheetPR(AStream: TStream);
+var
+  flags: Word;
+begin
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SHEETPR));
+  AStream.WriteWord(WordToLE(2));
+
+  flags := $04C1;
+  AStream.WriteWord(WordToLE(flags));
 end;
 
 { Writes an Excel 5/8 WINDOW1 record

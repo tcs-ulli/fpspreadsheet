@@ -28,9 +28,8 @@ type
   { TsCustomWorksheetGrid }
 
   {@@
-    TsCustomWorksheetGrid is a grid which displays spreadsheet data along with
-    their formatting. Being linked to an instance of TsWorkbook it provides
-    methods for reading data from or writing to spreadsheet files.
+    TsCustomWorksheetGrid is the ancestor of TsWorkseetGrid and is able to
+    display spreadsheet data along with their formatting.
   }
   TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
@@ -288,8 +287,8 @@ type
   {@@
     TsWorksheetGrid is a grid which displays spreadsheet data along with
     formatting. As it is linked to an instance of TsWorkbook, it provides
-    methods for reading data from or writing to spreadsheet files. In contrast
-    to TsCustomWorksheetGrid it has all properties published.
+    methods for reading data from or writing to spreadsheet files. It has the
+    same funtionality as TsCustomWorksheetGrid, but publishes has all properties.
   }
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
@@ -853,7 +852,8 @@ begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
       Canvas.Brush.Color := FixedColor
   end;
-  if FWorksheet <> nil then begin
+  if (FWorksheet <> nil) and (ARow >= FHeaderCount) and (ACol >= FHeaderCount)
+  then begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
     lCell := FWorksheet.FindCell(r, c);
@@ -1150,12 +1150,15 @@ var
   txtLeft, txtRight: String;
   justif: Byte;
 begin
-  if FWorksheet = nil then
+  if (FWorksheet = nil) then
     exit;
 
   c := ACol - FHeaderCount;
   r := ARow - FHeaderCount;
-  lCell := FWorksheet.FindCell(r, c);
+  if (r >= 0) and (c >= 0) then
+    lCell := FWorksheet.FindCell(r, c)
+  else
+    lCell := nil;
 
   // Header
   if lCell = nil then begin
@@ -2887,7 +2890,7 @@ end;
                               If the file format is not known is is written as BIFF8/XLS.
   @param   AOverwriteExisting If this file already exists it is overwritten if
                               AOverwriteExisting = true, or an exception is raised
-                              if AOverwriteExisting = false:
+                              if AOverwriteExisting = false.
 }
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
