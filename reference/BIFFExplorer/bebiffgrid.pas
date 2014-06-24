@@ -68,6 +68,7 @@ type
     procedure ShowNote;
     procedure ShowNumberCell;
     procedure ShowObj;
+    procedure ShowPageSetup;
     procedure ShowPalette;
     procedure ShowPane;
     procedure ShowPassword;
@@ -335,6 +336,8 @@ begin
       ShowHideObj;
     $0092:
       ShowPalette;
+    $00A1:
+      ShowPageSetup;
     $00C1:
       ShowMMS;
     $009C:
@@ -2548,6 +2551,133 @@ begin
     'Flags');
 end;
 
+
+procedure TBIFFGrid.ShowPageSetup;
+var
+  numBytes: Integer;
+  w: Word;
+  s: String;
+  dbl: Double;
+begin
+  if FFormat in [sfExcel5, sfExcel8] then RowCount := FixedRows + 11
+    else RowCount := FixedRows + 6;
+
+  numbytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add('Paper size:'#13);
+    FDetails.Add(Format('%d - %s', [w, PaperSizeName(w)]));
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Paper size');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Scaling factor in percent');
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordLETON(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Start page number');
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordLETON(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+    'Fit worksheet width to this number of pages (0 = use as many as needed)');
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordLETON(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+    'Fit worksheet height to this number of pages (0 = use as many as needed)');
+
+  if FFormat = sfExcel4 then begin
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    w := WordLETON(w);
+    if Row = FCurrRow then begin
+      FDetails.Add('Option flags:'#13);
+      if w and $0001 = 0
+        then FDetails.Add('Bit $0001 = 0: Print pages in columns')
+        else FDetails.Add('Bit $0001 = 1: Print pages in rows');
+      if w and $0002 = 0
+        then FDetails.add('Bit $0002 = 0: Landscape')
+        else FDetails.Add('Bit $0002 = 1: Portrait');
+      if w and $0004 = 0
+        then FDetails.Add('Bit $0004 = 0: Paper size, scaling factor, and paper orientation ' +
+                                          '(portrait/landscape) ARE initialised')
+        else FDetails.Add('Bit $0004 = 1: Paper size, scaling factor, and paper orientation ' +
+                                          '(portrait/landscape) are NOT initialised');
+      if w and $0008 = 0
+        then FDetails.Add('Bit $0008 = 0: Print colored')
+        else FDetails.add('Bit $0008 = 1: Print black and white');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x (%d)', [w, w]),
+      'Option flags');
+  end else
+  if (FFormat in [sfExcel5, sfExcel8]) then begin
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    if Row = FCurrRow then begin
+      FDetails.Add('Option flags:'#13);
+      if w and $0001 = 0
+        then FDetails.Add('Bit $0001 = 0: Print pages in columns')
+        else FDetails.Add('Bit $0001 = 1: Print pages in rows');
+      if w and $0002 = 0
+        then FDetails.add('Bit $0002 = 0: Landscape')
+        else FDetails.Add('Bit $0002 = 1: Portrait');
+      if w and $0004 = 0
+        then FDetails.Add('Bit $0004 = 0: Paper size, scaling factor, and paper orientation ' +
+                                          '(portrait/landscape) ARE initialised')
+        else FDetails.Add('Bit $0004 = 1: Paper size, scaling factor, and paper orientation ' +
+                                          '(portrait/landscape) are NOT initialised');
+      if w and $0008 = 0
+        then FDetails.Add('Bit $0008 = 0: Print colored')
+        else FDetails.add('Bit $0008 = 1: Print black and white');
+      if w and $0010 = 0
+        then FDetails.Add('Bit $0010 = 0: Default print quality')
+        else FDetails.Add('Bit $0010 = 1: Draft quality');
+      if w and $0020 = 0
+        then FDetails.Add('Bit $0020 = 0: Do NOT print cell notes')
+        else FDetails.Add('Bit $0020 = 0: Print cell notes');
+      if w and $0040 = 0
+        then FDetails.Add('Bit $0040 = 0: Use paper orientation (portrait/landscape) flag abov')
+        else FDetails.Add('Bit $0040 = 1: Use default paper orientation (landscape for chart sheets, portrait otherwise)');
+      if w and $0080 = 0
+        then FDetails.Add('Bit $0080 = 0: Automatic page numbers')
+        else FDetails.Add('Bit $0080 = 1: Use start page number above');
+      if w and $0200 = 0
+        then FDetails.Add('Bit $0200 = 0: Print notes as displayed')
+        else FDetails.Add('Bit $0200 = 1: Print notes at end of sheet');
+      case (w and $0C00) shr 10 of
+        0: FDetails.Add('Bit $0C00 = 0: Print errors as displayed');
+        1: FDetails.add('Bit $0C00 = 1: Do not print errors');
+        2: FDetails.Add('Bit $0C00 = 2: Print errors as "--"');
+        3: FDetails.Add('Bit $0C00 = 4: Print errors as "#N/A"');
+      end;
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x (%d)', [w, w]),
+      'Option flags');
+
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Print resolution in dpi');
+
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Vertical print resolution in dpi');
+
+    numBytes := 8;
+    Move(FBuffer[FBufferIndex], dbl, numBytes);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl), 'Header margin');
+
+    Move(FBuffer[FBufferIndex], dbl, numBytes);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl), 'Footer margin');
+
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Number of copies to print');
+  end;
+
+end;
 
 procedure TBIFFGrid.ShowPalette;
 var
