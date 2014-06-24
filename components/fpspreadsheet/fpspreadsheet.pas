@@ -407,7 +407,7 @@ const
   ROW_HEIGHT_CORRECTION = 0.2;
 
 type
-  {@@ The record TRow collects information of a spreadsheet row:
+  {@@ The record TRow contains information about a spreadsheet row:
     @param Row   The index of the row (beginning with 0)
     @param Height  The height of the row (expressed as lines count of the default font)
    Only rows with heights that cannot be derived from the font height have a
@@ -420,7 +420,7 @@ type
   {@@ Pointer to a TRow record }
   PRow = ^TRow;
 
-  {@@ The record TCol collects information on a spreadsheet column:
+  {@@ The record TCol contains information about a spreadsheet column:
    @param Col    The index of the column (beginning with 0)
    @param Width  The width of the column (expressed in character count of the "0" character of the default font.
    Only columns with non-default widths have a column record. }
@@ -655,7 +655,7 @@ type
 
 
   {@@
-    The workbook collects the worksheets and provides methods for reading from
+    The workbook contains the worksheets and provides methods for reading from
     and writing to file.
   }
   TsWorkbook = class
@@ -4814,10 +4814,10 @@ begin
 end;
 
 {@@
-  Creates an instance of the number format list which collects prototypes of
+  Creates an instance of the number format list which contains prototypes of
   all number formats found in the workbook.
 
-  Create here a descendant who knows about the details how to write the
+  Create a descendant that knows about the details how to write the
   formats correctly to the destination file. }
 procedure TsCustomSpreadWriter.CreateNumFormatList;
 begin

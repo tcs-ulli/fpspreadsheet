@@ -24,13 +24,13 @@ type
 
   {@@ Options for the FormatDateTime function to activate time interval strings
       with more than 24 hours.
-      Will be removed when this feature is in fpc/stable
+      Will be removed when this feature is in the stable release of FPC
   }
   TFormatDateTimeOption = (fdoInterval);
 
   {@@ Options for the FormatDateTime function to activate time interval strings
       with more than 24 hours.
-      Will be removed when this feature is in fpc/stable
+      Will be removed when this feature is in the stable release of FPC
   }
   TFormatDateTimeOptions =  set of TFormatDateTimeOption;
 

@@ -1953,7 +1953,7 @@ begin
   lWeight := WordLEToN(AStream.ReadWord);
   if lWeight = 700 then Include(font.Style, fssBold);
 
-  { Escapement type }
+  { Escape type }
   AStream.ReadWord();
 
   { Underline type }
