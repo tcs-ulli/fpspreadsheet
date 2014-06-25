@@ -53,6 +53,8 @@ type
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure FixNeighborCellBorders(ACol, ARow: Integer);
+    function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
+      out ABorderStyle: TsCellBorderStyle): Boolean;
 
     // Setter/Getter
     function GetBackgroundColor(ACol, ARow: Integer): TsColor;
@@ -120,8 +122,6 @@ type
     procedure DrawFrozenPaneBorders(ARect: TRect);
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
-    function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
-      out ABorderStyle: TsCellBorderStyle): Boolean;
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
@@ -194,6 +194,7 @@ type
     property HeaderCount: Integer read FHeaderCount;
 
     { maybe these should become published ... }
+
     {@@ Background color of the cell at the given column and row. Expressed as
         index into the workbook's color palette. }
     property BackgroundColor[ACol, ARow: Integer]: TsColor
@@ -310,98 +311,185 @@ type
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders;
 
-    // inherited from other ancestors
+    {@@ inherited from ancestors}
     property Align;
+    {@@ inherited from ancestors}
     property AlternateColor;
+    {@@ inherited from ancestors}
     property Anchors;
+    {@@ inherited from ancestors}
     property AutoAdvance;
+    {@@ inherited from ancestors}
     property AutoEdit;
+    {@@ inherited from ancestors}
     property AutoFillColumns;
     //property BiDiMode;
+    {@@ inherited from ancestors}
     property BorderSpacing;
+    {@@ inherited from ancestors}
     property BorderStyle;
+    {@@ inherited from ancestors}
     property Color;
+    {@@ inherited from ancestors}
     property ColCount;
     //property Columns;
+    {@@ inherited from ancestors}
     property Constraints;
+    {@@ inherited from ancestors}
     property DefaultColWidth;
+    {@@ inherited from ancestors}
     property DefaultDrawing;
+    {@@ inherited from ancestors}
     property DefaultRowHeight;
+    {@@ inherited from ancestors}
     property DragCursor;
+    {@@ inherited from ancestors}
     property DragKind;
+    {@@ inherited from ancestors}
     property DragMode;
+    {@@ inherited from ancestors}
     property Enabled;
+    {@@ inherited from ancestors}
     property ExtendedSelect;
+    {@@ inherited from ancestors}
     property FixedColor;
+    {@@ inherited from ancestors}
     property Flat;
+    {@@ inherited from ancestors}
     property Font;
+    {@@ inherited from ancestors}
     property GridLineWidth;
+    {@@ inherited from ancestors}
     property HeaderHotZones;
+    {@@ inherited from ancestors}
     property HeaderPushZones;
+    {@@ inherited from ancestors}
     property MouseWheelOption;
+    {@@ inherited from TCustomGrid. Select the option goEditing to make the grid editable! }
     property Options;
     //property ParentBiDiMode;
+    {@@ inherited from ancestors}
     property ParentColor default false;
+    {@@ inherited from ancestors}
     property ParentFont;
+    {@@ inherited from ancestors}
     property ParentShowHint;
+    {@@ inherited from ancestors}
     property PopupMenu;
+    {@@ inherited from ancestors}
     property RowCount;
+    {@@ inherited from ancestors}
     property ScrollBars;
+    {@@ inherited from ancestors}
     property ShowHint;
+    {@@ inherited from ancestors}
     property TabOrder;
+    {@@ inherited from ancestors}
     property TabStop;
+    {@@ inherited from ancestors}
     property TitleFont;
+    {@@ inherited from ancestors}
     property TitleImageList;
+    {@@ inherited from ancestors}
     property TitleStyle;
+    {@@ inherited from ancestors}
     property UseXORFeatures;
+    {@@ inherited from ancestors}
     property Visible;
+    {@@ inherited from ancestors}
     property VisibleColCount;
+    {@@ inherited from ancestors}
     property VisibleRowCount;
 
+    {@@ inherited from ancestors}
     property OnBeforeSelection;
+    {@@ inherited from ancestors}
     property OnChangeBounds;
+    {@@ inherited from ancestors}
     property OnClick;
+    {@@ inherited from ancestors}
     property OnColRowDeleted;
+    {@@ inherited from ancestors}
     property OnColRowExchanged;
+    {@@ inherited from ancestors}
     property OnColRowInserted;
+    {@@ inherited from ancestors}
     property OnColRowMoved;
+    {@@ inherited from ancestors}
     property OnCompareCells;
+    {@@ inherited from ancestors}
     property OnDragDrop;
+    {@@ inherited from ancestors}
     property OnDragOver;
+    {@@ inherited from ancestors}
     property OnDblClick;
+    {@@ inherited from ancestors}
     property OnDrawCell;
+    {@@ inherited from ancestors}
     property OnEditButtonClick;
+    {@@ inherited from ancestors}
     property OnEditingDone;
+    {@@ inherited from ancestors}
     property OnEndDock;
+    {@@ inherited from ancestors}
     property OnEndDrag;
+    {@@ inherited from ancestors}
     property OnEnter;
+    {@@ inherited from ancestors}
     property OnExit;
+    {@@ inherited from ancestors}
     property OnGetEditMask;
+    {@@ inherited from ancestors}
     property OnGetEditText;
+    {@@ inherited from ancestors}
     property OnHeaderClick;
+    {@@ inherited from ancestors}
     property OnHeaderSized;
+    {@@ inherited from ancestors}
     property OnKeyDown;
+    {@@ inherited from ancestors}
     property OnKeyPress;
+    {@@ inherited from ancestors}
     property OnKeyUp;
+    {@@ inherited from ancestors}
     property OnMouseDown;
+    {@@ inherited from ancestors}
     property OnMouseMove;
+    {@@ inherited from ancestors}
     property OnMouseUp;
+    {@@ inherited from ancestors}
     property OnMouseWheel;
+    {@@ inherited from ancestors}
     property OnMouseWheelDown;
+    {@@ inherited from ancestors}
     property OnMouseWheelUp;
+    {@@ inherited from ancestors}
     property OnPickListSelect;
+    {@@ inherited from ancestors}
     property OnPrepareCanvas;
+    {@@ inherited from ancestors}
     property OnResize;
+    {@@ inherited from ancestors}
     property OnSelectEditor;
+    {@@ inherited from ancestors}
     property OnSelection;
+    {@@ inherited from ancestors}
     property OnSelectCell;
+    {@@ inherited from ancestors}
     property OnSetEditText;
+    {@@ inherited from ancestors}
     property OnShowHint;
+    {@@ inherited from ancestors}
     property OnStartDock;
+    {@@ inherited from ancestors}
     property OnStartDrag;
+    {@@ inherited from ancestors}
     property OnTopLeftChanged;
+    {@@ inherited from ancestors}
     property OnUTF8KeyPress;
+    {@@ inherited from ancestors}
     property OnValidateEntry;
+    {@@ inherited from ancestors}
     property OnContextPopup;
   end;
 
@@ -1909,11 +1997,27 @@ begin
     Result := false;
 end;
 
+{@@
+  Converts a column index of the worksheet to a column index usable in the grid.
+  This is required because worksheet indexes always start at zero while
+  grid indexes also have to account for the column/row headers.
+
+  @param  ASheetCol   Worksheet column index
+  @return Grid column index
+}
 function TsCustomWorksheetGrid.GetGridCol(ASheetCol: Cardinal): Integer;
 begin
   Result := ASheetCol + FHeaderCount
 end;
 
+{@@
+  Converts a row index of the worksheet to a row index usable in the grid.
+  This is required because worksheet indexes always start at zero while
+  grid indexes also have to account for the column/row headers.
+
+  @param  ASheetRow   Worksheet row index
+  @return Grid row index
+}
 function TsCustomWorksheetGrid.GetGridRow(ASheetRow: Cardinal): Integer;
 begin
   Result := ASheetRow + FHeaderCount;
@@ -1948,8 +2052,13 @@ begin
     end;
 end;
 
-{ Returns a list of worksheets contained in the file. Useful for assigning to
-  user controls like TabControl, Combobox etc. in order to select a sheet. }
+{@@
+  Returns a list of worksheets contained in the file. Useful for assigning to
+  user controls like TabControl, Combobox etc. in order to select a sheet.
+
+  @param  ASheets  List of strings containing the names of the worksheets of
+                   the workbook
+}
 procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
 var
   i: Integer;
@@ -2057,31 +2166,51 @@ begin
     end;
 end;
 
-{ Calculates the index of the worksheet column that is displayed in the
+{@@
+  Calculates the index of the worksheet column that is displayed in the
   given column of the grid. If the sheet headers are turned on, both numbers
-  differ by 1, otherwise they are equal. Saves an "if" in cases. }
+  differ by 1, otherwise they are equal. Saves an "if" in cases.
+
+  @param   AGridCol   Index of a grid column
+  @return  Index of a the corresponding worksheet column
+}
 function TsCustomWorksheetGrid.GetWorksheetCol(AGridCol: Integer): cardinal;
 begin
   Result := AGridCol - FHeaderCount;
 end;
 
-{ Calculates the index of the worksheet row that is displayed in the
+{@@
+  Calculates the index of the worksheet row that is displayed in the
   given row of the grid. If the sheet headers are turned on, both numbers
-  differ by 1, otherwise they are equal. Saves an "if" in some cases. }
+  differ by 1, otherwise they are equal. Saves an "if" in some cases.
+
+  @param    AGridRow  Index of a grid row
+  @resturn  Index of the corresponding worksheet row.
+}
 function TsCustomWorksheetGrid.GetWorksheetRow(AGridRow: Integer): Cardinal;
 begin
   Result := AGridRow - FHeaderCount;
 end;
 
-{ Returns if the cell has the given border. }
+{@@ Returns true if the cell has the given border.
+
+  @param  ACell    Pointer to cell considered
+  @param  ABorder  Indicator for border to be checked for visibility
+}
 function TsCustomWorksheetGrid.HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
 begin
   Result := (ACell <> nil) and (uffBorder in ACell^.UsedFormattingfields) and
     (ABorder in ACell^.Border);
 end;
 
-{ Column width or row heights have changed. Stores the new number in the
-  worksheet. }
+{@@
+  Inherited from TCustomGrid. Is called when column widths or row heights
+  have changed. Stores the new column width or row height in the worksheet.
+
+  @param   IsColumn   Specifies whether the changed parameter is a column width
+                      (true) or a row height (false)
+  @param   Index      Index of the changed column or row
+}
 procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; index: Integer);
 var
   w0: Integer;
@@ -2106,24 +2235,30 @@ begin
 end;
 
 
-{ Internal general text drawing method.
-  - AText: text to be drawn
-  - AMeasureText: text used for checking if the text fits into the text rectangle.
-    If too large and ReplaceTooLong = true, a series of # is drawn.
-  - ARect: Rectangle in which the text is drawn
-  - AJustification: determines whether the text is drawn at the "start" (0),
-    "center" (1) or "end" (2) of the drawing rectangle. Start/center/end are
-    seen along the text drawing direction.
-  - ACellHorAlign: Is the HorAlignment property stored in the cell
-  - ACellVertAlign: Is the VertAlignment property stored in the cell
-  - ATextRot: determines the rotation angle of the text.
-  - ATextWrap: determines if the text can wrap into multiple lines
-  - ReplaceTooLang: if true too-long texts are replaced by a series of # chars
-    filling the cell.
-  The reason to separate AJustification from ACellHorAlign and ACelVertAlign is
+{@@
+  Internal general text drawing method.
+
+  @param  AText           Text to be drawn
+  @param  AMeasureText    Text used for checking if the text fits into the
+                          text rectangle. If too large and ReplaceTooLong = true,
+                          a series of # is drawn.
+  @param  ARect           Rectangle in which the text is drawn
+  @param  AJustification  Determines whether the text is drawn at the "start" (0),
+                          "center" (1) or "end" (2) of the drawing rectangle.
+                          Start/center/end are seen along the text drawing
+                          direction.
+  @param ACellHorAlign    Is the HorAlignment property stored in the cell
+  @param ACellVertAlign   Is the VertAlignment property stored in the cell
+  @param ATextRot         Determines the rotation angle of the text.
+  @param ATextWrap        Determines if the text can wrap into multiple lines
+  @param ReplaceTooLang   If true too-long texts are replaced by a series of
+                          # chars filling the cell.
+
+  @Note The reason to separate AJustification from ACellHorAlign and ACelVertAlign is
   the output of nfAccounting formatted numbers where the numbers are always
   right-aligned, and the currency symbol is left-aligned.
-  NOTE: THIS FEATURE IS NO LONGER SUPPORTED. }
+  THIS FEATURE IS CURRENTLY NO LONGER SUPPORTED.
+}
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;
   ARect: TRect; AJustification: Byte; ACellHorAlign: TsHorAlignment;
   ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
@@ -2307,9 +2442,13 @@ begin
   end;
 end;
 
+{@@
+  Standard key handling method inherited from TCustomGrid. Is overridden to
+  catch the ESC key during editing in order to restore the old cell text
 
-
-{ Catches the ESC key during editing in order to restore the old cell text }
+  @param  Key    Key which has been pressed
+  @param  Shift  Additional shift keys which are pressed
+}
 procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
 begin
   if (Key = VK_ESCAPE) and FEditing then begin
@@ -2320,14 +2459,20 @@ begin
   inherited;
 end;
 
+{@@
+  Standard method inherited from TCustomGrid. Is overridden to create an
+  empty workbook
+}
 procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
   NewWorkbook(FInitColCount, FInitRowCount);
 end;
 
-{ Repaints after moving selection to avoid spurious rests of the old thick
-  selection border. }
+{@@
+  Standard method inherited from TCustomGrid.
+  Repaints the grid after moving selection to avoid spurious rests of the
+  old thick selection border. }
 procedure TsCustomWorksheetGrid.MoveSelection;
 begin
   //Refresh;
@@ -2335,8 +2480,11 @@ begin
   Refresh;
 end;
 
-{ Is called when editing starts. Stores the old text just in case the
-  the user presses ESC to cancel editing. }
+{@@
+  Standard method inherited from TCustomGrid: Is called when editing starts.
+  Is overridden here to store the old text just in case that the user presses
+  ESC to cancel editing.
+}
 procedure TsCustomWorksheetGrid.SelectEditor;
 begin
   FOldEditText := GetCellText(Col, Row);
@@ -2553,8 +2701,15 @@ begin
   end;
 end;
 
-{ Fetches the text that is currently in the editor. It is not yet transferred
-  to the Worksheet because input is checked only at the end of editing. }
+{@@
+  Standaard method inherited from TCustomGrid. Fetches the text that is
+  currently in the editor. It is not yet transferred to the worksheet because
+  input will be checked only at the end of editing.
+
+  @param  ACol    Grid column index of the cell being edited
+  @param  ARow    Grid row index of the cell being edited
+  @param  AValue  String which is currently in the cell editor
+}
 procedure TsCustomWorksheetGrid.SetEditText(ACol, ARow: Longint; const AValue: string);
 begin
   FEditText := AValue;
@@ -2665,6 +2820,11 @@ begin
   end;
 end;
 
+{@@
+  Helper method for setting up the rows and columns after a new workbook is
+  loaded or created. Sets up the grid's column and row count, as well as the
+  initial column widths and row heights.
+}
 procedure TsCustomWorksheetGrid.Setup;
 var
   i: Integer;
@@ -2734,13 +2894,6 @@ begin
   end;
 end;
 
-{@@
-  Enables/disables word wrapping of the text in a cell.
-
-  @param   ACol    Grid column index
-  @param   ARow    Grid row index
-  @param   AValue  Enables word wrapping if true, disables it if false
-}
 procedure TsCustomWorksheetGrid.SetWordwrap(ACol, ARow: Integer;
   AValue: Boolean);
 begin
@@ -2748,13 +2901,6 @@ begin
     FWorksheet.WriteWordwrap(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
-{@@
-  Enables/disabled word wrapping for a range of cells with column/row indexes
-  within the rectangle.
-
-  @param   ARect   Rectangle with the grid column/row indexes of the cells
-  @param   AValue  Enables word wrapping if true, disables it if false
-}
 procedure TsCustomWorksheetGrid.SetWordwraps(ARect: TGridRect;
   AValue: Boolean);
 var
@@ -2901,6 +3047,7 @@ end;
 
 {@@
   Loads the workbook into the grid and selects the sheet with the given index.
+  "Selected" means here that the sheet is loaded into the grid.
 
   @param   AIndex   Index of the worksheet to be shown in the grid
 }
