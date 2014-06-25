@@ -56,11 +56,7 @@
             </Options>
           </Linking>
           <Other>
-            <CompilerMessages>
-              <MsgFileName Value=""/>
-            </CompilerMessages>
             <CustomOptions Value="-duse_new_ole"/>
-            <CompilerPath Value="$(CompPath)"/>
           </Other>
         </CompilerOptions>
       </Item2>
@@ -98,11 +94,7 @@
             </Options>
           </Linking>
           <Other>
-            <CompilerMessages>
-              <MsgFileName Value=""/>
-            </CompilerMessages>
             <CustomOptions Value="-duse_new_ole"/>
-            <CompilerPath Value="$(CompPath)"/>
           </Other>
         </CompilerOptions>
       </Item3>
@@ -136,7 +128,6 @@
       <Unit0>
         <Filename Value="BIFFExplorer.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="BIFFExplorer"/>
       </Unit0>
       <Unit1>
         <Filename Value="beabout.pas"/>
@@ -144,7 +135,6 @@
         <ComponentName Value="AboutForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="beAbout"/>
       </Unit1>
       <Unit2>
         <Filename Value="bebiffgrid.pas"/>
@@ -154,12 +144,10 @@
       <Unit3>
         <Filename Value="bebiffutils.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="beBIFFUtils"/>
       </Unit3>
       <Unit4>
         <Filename Value="behtml.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="behtml"/>
       </Unit4>
       <Unit5>
         <Filename Value="bemain.pas"/>
@@ -177,7 +165,6 @@
       <Unit7>
         <Filename Value="mrumanager.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="mrumanager"/>
       </Unit7>
       <Unit8>
         <Filename Value="bemain.lfm"/>
@@ -215,11 +202,7 @@
       </Options>
     </Linking>
     <Other>
-      <CompilerMessages>
-        <MsgFileName Value=""/>
-      </CompilerMessages>
       <CustomOptions Value="-duse_new_ole"/>
-      <CompilerPath Value="$(CompPath)"/>
     </Other>
   </CompilerOptions>
   <Debugging>

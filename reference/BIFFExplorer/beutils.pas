@@ -68,8 +68,10 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 begin
   case AFormat of
     sfExcel2              : Result := 'BIFF2';
+    { Excel3/4 not supported fpspreadsheet
     sfExcel3              : Result := 'BIFF3';
     sfExcel4              : Result := 'BIFF4';
+    }
     sfExcel5              : Result := 'BIFF5';
     sfExcel8              : Result := 'BIFF8';
     sfooxml               : Result := 'OOXML';
