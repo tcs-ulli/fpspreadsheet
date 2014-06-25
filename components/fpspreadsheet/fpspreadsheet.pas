@@ -18,7 +18,7 @@ uses
 
 type
   {@@ File formats suppored by fpspreadsheet }
-  TsSpreadsheetFormat = (sfExcel2, sfExcel3, sfExcel4, sfExcel5, sfExcel8,
+  TsSpreadsheetFormat = (sfExcel2, {sfExcel3, sfExcel4,} sfExcel5, sfExcel8,
    sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
 const
@@ -1250,8 +1250,10 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 begin
   case AFormat of
     sfExcel2              : Result := 'BIFF2';
+    {
     sfExcel3              : Result := 'BIFF3';
     sfExcel4              : Result := 'BIFF4';
+    }
     sfExcel5              : Result := 'BIFF5';
     sfExcel8              : Result := 'BIFF8';
     sfooxml               : Result := 'OOXML';
