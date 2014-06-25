@@ -515,7 +515,9 @@ var
 begin
   case FFormat of
     sfExcel2: RowCount := FixedRows + 2;
+    { //Excel3 & 4 not supported by fpspreadsheet
     sfExcel3, sfExcel4: RowCount := FixedRows + 3;
+    }
     sfExcel5: RowCount := FixedRows + 4;
     sfExcel8: RowCount := FixedRows + 6;
   end;
@@ -562,10 +564,12 @@ begin
   if FFormat > sfExcel2 then begin
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
+    { Excel3/4 not supported in fpSpreadsheet
     if FFormat in [sfExcel3, sfExcel4] then
       ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(WordLEToN(w)),
         'not used')
-    else begin
+    else}
+    begin
       ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
         'Build identifier (must not be zero)');
 
@@ -2592,6 +2596,8 @@ begin
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
     'Fit worksheet height to this number of pages (0 = use as many as needed)');
 
+  { Excel4 not supported in fpspreadsheet }
+  {
   if FFormat = sfExcel4 then begin
     Move(FBuffer[FBufferIndex], w, numbytes);
     w := WordLETON(w);
@@ -2614,7 +2620,7 @@ begin
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x (%d)', [w, w]),
       'Option flags');
-  end else
+  end else }
   if (FFormat in [sfExcel5, sfExcel8]) then begin
     Move(FBuffer[FBufferIndex], w, numBytes);
     w := WordLEToN(w);
