@@ -712,7 +712,7 @@ begin
   FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
   FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
-  CbBackgroundCOlor.Height := FontCombobox.Height;
+  CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
 
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);
