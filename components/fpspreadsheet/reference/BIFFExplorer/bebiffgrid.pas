@@ -1340,6 +1340,8 @@ var
   w: Word;
   q: QWord;
   dbl: double absolute q;
+  bytearr: array[0..7] of byte absolute q;
+  wordarr: array[0..3] of word absolute q;
   s: String;
   tokenBytes: Integer;
   firstTokenBufIdx: Integer;
@@ -1421,47 +1423,74 @@ begin
   // Offset 6: Result of formula
   numBytes := 8;
   Move(FBuffer[FBufferIndex], q, numBytes);
-  if (FFormat > sfExcel2) then
-    case FBuffer[FBufferIndex] of
-      0: begin
-           if FCurrRow = Row then begin
-             FDetails.Add('Formula result:'#13);
-             FDetails.Add('Byte 0 = 0 --> Result is string, follows in STRING record');
-             FDetails.Add('Bytes 1-5: Not used');
-             FDetails.Add('Bytes 6&7: Must be $FFFF');
+  if (FFormat > sfExcel2) then begin
+    if wordarr[3] <> $FFFF then begin
+      if FCurrRow = Row then begin
+        FDetails.Add('Formula result:'#13);
+        FDetails.Add(Format('Bytes 0-7: $%.15x --> IEEE 764 floating-point value, 64-bit double precision'#13+
+                            '           = %g', [q, dbl]));
+      end;
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
+        'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
+    end else begin
+      case bytearr[0] of
+        0: begin
+             if FCurrRow = Row then begin
+               FDetails.Add('Formula result:'#13);
+               FDetails.Add('Byte 0 = 0  --> Result is string, follows in STRING record');
+               FDetails.Add('Byte 1-5: Not used');
+               FDetails.Add('Byte 6&7: $FFFF --> no floating point number');
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+               'Result is a string, follows in STRING record');
            end;
-           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-             'Result is STRING, follows in STRING record');
-         end;
-      1: if FBuffer[FBufferIndex + 2] = 0 then
-           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-             'Result is BOOL (FALSE)')
-         else
-           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-             'Result is BOOL (TRUE)');
-      2: begin
-           if FCurrRow = Row then begin
-             FDetails.Add('Formula result:'#13);
-             FDetails.Add('Byte 0 = 2 --> Token contains an ERROR code');
-             FDetails.Add('Byte 1: not used');
-             FDetails.Add(Format('Byte 2 = %d ($%.2x): "%s"', [
-               FBuffer[FBufferIndex + 2],
-               FBuffer[FBufferIndex + 2],
-               ErrorCodeName(FBufferIndex + 2)
-             ]));
-             FDetails.Add('Bytes 2-5: not used');
-             FDetails.Add('Bytes 6&7: Must be $FFFF');
+        1: begin
+             if FCurrRow = Row then begin
+               FDetails.Add('Formula result:'#13);
+               FDetails.Add('Byte 0 = 1 --> Result is BOOLEAN');
+               FDetails.Add('Byte 1: Not used');
+               if bytearr[2] = 0
+                 then FDetails.Add('Byte 2 = 0 --> FALSE')
+                 else FDetails.Add('Byte 2 = 1 --> TRUE');
+               FDetails.Add('Bytes 3-5: Not used');
+               FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+               'Result is BOOLEAN');
            end;
-           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-             Format('Result is ERROR code $%.2x', [FBuffer[FBufferIndex+2]]));
-         end;
-      3: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$.16x', [q]),
-           'Result is EMPTY cell');
-      else
-        ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
-          'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
-    end
-  else begin
+        2: begin
+             if FCurrRow = Row then begin
+               FDetails.Add('Formula result:'#13);
+               FDetails.Add('Byte 0 = 2 --> Result is an ERROR value');
+               FDetails.Add('Byte 1: Not used');
+               case bytearr[2] of
+                 $00: FDetails.Add('Byte 2 = $00 --> #NULL! Intersection of two cell ranges is empty');
+                 $07: FDetails.Add('Byte 2 = $07 --> #DIV/0! Division by zero');
+                 $0F: FDetails.Add('Byte 2 = $0F --> #VALUE! Wrong type of operand');
+                 $17: FDetails.Add('Byte 2 = $17 --> #REF! Illegal or deleted cell reference');
+                 $1D: FDetails.Add('Byte 2 = $1D --> #NAME? Wrong function or range name');
+                 $24: FDetails.Add('Byte 2 = $24 --> #NUM! Value range overflow');
+                 $2A: FDetails.Add('Byte 2 = $2A --> #N/A Argument or function not available');
+               end;
+               FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+               'Result is an ERROR value');
+           end;
+        3: begin
+             if FCurrRow = Row then begin
+               FDetails.Add('Formula result:'#13);
+               FDetails.Add('Byte 0 = 3 --> Result is an empty cell, for example an empty string');
+               FDetails.Add('Byte 1-5: Not used');
+               FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+               'Result is an EMPTY cell (empty string)');
+           end;
+      end;
+    end;
+  end
+  else begin    // Excel 2
     ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
       'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
   end;

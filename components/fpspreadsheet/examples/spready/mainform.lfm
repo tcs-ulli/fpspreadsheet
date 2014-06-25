@@ -342,12 +342,12 @@ object Form1: TForm1
     end
     object CbBackgroundColor: TColorBox
       Left = 507
-      Height = 22
+      Height = 26
       Top = 2
       Width = 149
       Style = [cbPrettyNames, cbCustomColors]
       OnGetColors = CbBackgroundColorGetColors
-      ItemHeight = 16
+      ItemHeight = 20
       OnSelect = CbBackgroundColorSelect
       TabOrder = 2
     end
