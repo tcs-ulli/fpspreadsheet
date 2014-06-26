@@ -108,7 +108,6 @@ This package is all you need if you don't want graphical components (like grids 
         <UnitName Value="fpsNumFormatParser"/>
       </Item20>
     </Files>
-    <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="LazUtils"/>

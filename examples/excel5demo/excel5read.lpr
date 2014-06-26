@@ -1,5 +1,5 @@
 {
-excel5read.dpr
+excel5read.lpr
 
 Demonstrates how to read an Excel 5.x file using the fpspreadsheet library
 

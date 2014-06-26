@@ -1,5 +1,5 @@
 {
-excel8read.dpr
+excel8read.lpr
 
 Demonstrates how to read an Excel 8.x file using the fpspreadsheet library
 

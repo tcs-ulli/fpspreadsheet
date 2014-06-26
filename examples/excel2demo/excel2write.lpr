@@ -1,5 +1,5 @@
 {
-excel2write.dpr
+excel2write.lpr
 
 Demonstrates how to write an Excel 2.x file using the fpspreadsheet library
 

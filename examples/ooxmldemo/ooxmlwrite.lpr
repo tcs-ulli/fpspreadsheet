@@ -1,5 +1,5 @@
 {
-ooxmlwrite.dpr
+ooxmlwrite.lpr
 
 Demonstrates how to write an OOXML file using the fpspreadsheet library
 

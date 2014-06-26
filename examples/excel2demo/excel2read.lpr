@@ -1,5 +1,5 @@
 {
-excel2read.dpr
+excel2read.lpr
 
 Demonstrates how to read an Excel 2.x file using the fpspreadsheet library
 
