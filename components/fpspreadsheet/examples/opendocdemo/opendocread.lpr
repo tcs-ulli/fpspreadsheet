@@ -1,5 +1,5 @@
 {
-opendocread.dpr
+opendocread.lpr
 
 Demonstrates how to read an OpenDocument file using the fpspreadsheet library
 

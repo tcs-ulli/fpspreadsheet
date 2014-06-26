@@ -1,5 +1,5 @@
 {
-excel5write.dpr
+excel5write.lpr
 
 Demonstrates how to write an Excel 5.x file using the fpspreadsheet library
 

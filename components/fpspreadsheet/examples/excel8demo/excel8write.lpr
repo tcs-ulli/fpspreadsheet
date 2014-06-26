@@ -1,5 +1,5 @@
 {
-excel8write.dpr
+excel8write.lpr
 
 Demonstrates how to write an Excel 8+ file using the fpspreadsheet library
 

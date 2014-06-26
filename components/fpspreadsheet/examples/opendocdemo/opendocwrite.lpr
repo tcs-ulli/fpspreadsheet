@@ -1,5 +1,5 @@
 {
-opendocwrite.dpr
+opendocwrite.lpr
 
 Demonstrates how to write an OpenDocument file using the fpspreadsheet library
 
