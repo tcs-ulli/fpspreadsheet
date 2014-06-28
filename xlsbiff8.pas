@@ -125,6 +125,7 @@ type
       const AValue: string; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
+    procedure WriteStringRecord(AStream: TStream; AString: string);
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
@@ -798,6 +799,7 @@ procedure TsSpreadBIFF8Writer.WriteRPNFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
+  FormulaResultWords: array[0..3] of word absolute FormulaResult;
   i: Integer;
   len: Integer;
   RPNLength: Word;
@@ -809,6 +811,38 @@ var
 begin
   RPNLength := 0;
   FormulaResult := 0.0;
+  case ACell^.ContentType of
+    cctNumber:
+      FormulaResult := ACell^.NumberValue;
+    cctDateTime:
+      FormulaResult := ACell^.DateTimeValue;
+    cctUTF8String:
+      begin
+        if ACell^.UTF8StringValue = '' then
+          FormulaResultWords[0] := 3;
+        FormulaResultWords[3] := $FFFF;
+      end;
+    cctBool:
+      begin
+        FormulaResultWords[0] := 1;
+        FormulaResultWords[1] := word(ACell^.NumberValue <> 0);
+        FormulaResultWords[3] := $FFFF;
+      end;
+    cctError:
+      begin
+        FormulaResultWords[0] := 2;
+        case ACell^.ErrorValue of
+          errEmptyIntersection: FormulaResultWords[1] := ERR_INTERSECTION_EMPTY;// #NULL!
+          errDivideByZero     : FormulaResultWords[1] := ERR_DIVIDE_BY_ZERO;    // #DIV/0!
+          errWrongType        : FormulaResultWords[1] := ERR_WRONG_TYPE_OF_OPERAND; // #VALUE!
+          errIllegalRef       : FormulaResultWords[1] := ERR_ILLEGAL_REFERENCE; // #REF!
+          errWrongName        : FormulaResultWords[1] := ERR_WRONG_NAME;        // #NAME?
+          errOverflow         : FormulaResultWords[1] := ERR_OVERFLOW;          // #NUM!
+          errArgError         : FormulaResultWords[1] := ERR_ARG_ERROR;         // #N/A;
+        end;
+        FormulaResultWords[3] := $FFFF;
+      end;
+  end;
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
@@ -950,6 +984,31 @@ begin
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(22 + RPNLength));
   AStream.position := FinalPos;
+
+  { Write following STRING record if formula result is a non-empty string }
+  if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
+    WriteStringRecord(AStream, ACell^.UTF8StringValue);
+end;
+
+procedure TsSpreadBIFF8Writer.WriteStringRecord(AStream: TStream;
+  AString: String);
+var
+  wideStr: widestring;
+  len: Integer;
+begin
+  wideStr := AString;
+  len := Length(wideStr);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STRING));
+  AStream.WriteWord(WordToLE(3 + len*SizeOf(widechar)));
+
+  { Write widestring length }
+  AStream.WriteWord(WordToLE(len));
+  { Widestring flags, 1=regular unicode LE string }
+  AStream.WriteByte(1);
+  { Write characters }
+  AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
 end;
 
 {*******************************************************************
