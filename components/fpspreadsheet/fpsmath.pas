@@ -9,7 +9,6 @@ uses
 
 type
   TsArgumentType = (atNumber, atString, atBool, atError);
-  TsArgumentError = (aeOK, aeWrongType, aeDivideByZero, aeFuncNotDefined);
 
   TsArgument = record
     IsMissing: Boolean;
@@ -17,7 +16,7 @@ type
       atNumber  : (NumberValue: Double);
       atString  : (StringValue: String);
       atBool    : (BoolValue: Boolean);
-      atError   : (ErrorValue: TsArgumentError);
+      atError   : (ErrorValue: TsErrorValue);
   end;
   PsArgument = ^TsArgument;
 
@@ -34,19 +33,36 @@ type
     procedure Delete(AIndex: Integer);
   end;
 
-procedure CheckMissingBool  (var Arg: TsArgument; ABool: Boolean);
-procedure CheckMissingNumber(var Arg: TsArgument; ANumber: Double);
-procedure CheckMissingString(var Arg: TsArgument; AString: String);
+procedure FixMissingBool  (var Arg: TsArgument; ABool: Boolean);
+procedure FixMissingNumber(var Arg: TsArgument; ANumber: Double);
+procedure FixMissingString(var Arg: TsArgument; AString: String);
 
+function CreateBool(AValue: Boolean): TsArgument;
+function CreateNumber(AValue: Double): TsArgument;
+function CreateString(AValue: String): TsArgument;
+function CreateError(AError: TsErrorValue): TsArgument;
+
+{
+These are the functions called when calculating an RPN formula.
+}
 type
   TsFormulaFunc = function(Args: TsArgumentStack): TsArgument;
 
-function fpsAdd(Args: TsArgumentStack): TsArgument;
-function fpsSub(Args: TsArgumentStack): TsArgument;
-function fpsMul(Args: TsArgumentStack): TsArgument;
-function fpsDiv(Args: TsArgumentStack): TsArgument;
+function fpsAdd    (Args: TsArgumentStack): TsArgument;
+function fpsSub    (Args: TsArgumentStack): TsArgument;
+function fpsMul    (Args: TsArgumentStack): TsArgument;
+function fpsDiv    (Args: TsArgumentStack): TsArgument;
+function fpsPercent(Args: TsArgumentStack): TsArgument;
+function fpsPower  (Args: TsArgumentStack): TsArgument;
+function fpsUMinus (Args: TsArgumentStack): TsArgument;
+function fpsUPlus  (Args: TsArgumentStack): TsArgument;
+function fpsConcat (Args: TsArgumentStack): TsArgument;
+function fpsEqual  (Args: TsArgumentStack): TsArgument;
 
 implementation
+
+uses
+  Math;
 
 
 { TsArgumentStack }
@@ -142,7 +158,7 @@ end;
   @param  Arg    Argument to be considered
   @param  ABool  Replacement for the missing value
 }
-procedure CheckMissingBool(var Arg: TsArgument; ABool: Boolean);
+procedure FixMissingBool(var Arg: TsArgument; ABool: Boolean);
 begin
   if Arg.IsMissing then Arg.BoolValue := ABool;
 end;
@@ -152,7 +168,7 @@ end;
   @param  Arg      Argument to be considered
   @param  ANumber  Replacement for the missing value
 }
-procedure CheckMissingNumber(var Arg: TsArgument; ANumber: Double);
+procedure FixMissingNumber(var Arg: TsArgument; ANumber: Double);
 begin
   if Arg.IsMissing then Arg.NumberValue := ANumber;
 end;
@@ -162,7 +178,7 @@ end;
   @param  Arg      Argument to be considered
   @param  AString  Replacement for the missing value
 }
-procedure CheckMissingString(var Arg: TsArgument; AString: String);
+procedure FixMissingString(var Arg: TsArgument; AString: String);
 begin
   if Arg.IsMissing then Arg.StringValue := AString;
 end;
@@ -170,14 +186,42 @@ end;
 
 { Preparing arguments }
 
-function GetNumberFromArgument(Arg: TsArgument; var ANumber: Double): TsArgumentError;
+function GetBoolFromArgument(Arg: TsArgument; var AValue: Boolean): TsErrorValue;
 begin
-  Result := aeOK;
+  case Arg.ArgumentType of
+    atBool : begin
+               AValue := Arg.BoolValue;
+               Result := errOK;
+             end;
+    else     Result := errWrongType;
+  end;
+end;
+
+function GetNumberFromArgument(Arg: TsArgument; var ANumber: Double): TsErrorValue;
+begin
+  Result := errOK;
   case Arg.ArgumentType of
     atNumber : ANumber := Arg.NumberValue;
-    atString : if not TryStrToFloat(arg.StringValue, ANumber) then Result := aeWrongType;
+    atString : if not TryStrToFloat(arg.StringValue, ANumber) then Result := errWrongType;
     atBool   : if Arg.BoolValue then ANumber := 1.0 else ANumber := 0.0;
   end;
+end;
+
+function GetStringFromArgument(Arg: TsArgument; var AString: String): TsErrorValue;
+begin
+  case Arg.ArgumentType of
+    atString : begin
+                 AString := Arg.StringValue;
+                 Result := errOK;
+               end;
+    else       Result := errWrongType;
+  end;
+end;
+
+function CreateBool(AValue: Boolean): TsArgument;
+begin
+  Result.ArgumentType := atBool;
+  Result.Boolvalue := AValue;
 end;
 
 function CreateNumber(AValue: Double): TsArgument;
@@ -186,11 +230,80 @@ begin
   Result.NumberValue := AValue;
 end;
 
+function CreateString(AValue: String): TsArgument;
+begin
+  Result.ArgumentType := atString;
+  Result.StringValue := AValue;
+end;
 
-function CreateError(AError: TsArgumentError): TsArgument;
+function CreateError(AError: TsErrorValue): TsArgument;
 begin
   Result.ArgumentType := atError;
   Result.ErrorValue := AError;
+end;
+
+
+function Pop_1Bool(Args: TsArgumentStack; out a: Boolean): TsErrorValue;
+begin
+  Result := GetBoolFromArgument(Args.Pop, a);
+end;
+
+function Pop_1Float(Args: TsArgumentStack; out a: Double): TsErrorValue;
+begin
+  Result := GetNumberFromArgument(Args.Pop, a);
+end;
+
+function Pop_1String(Args: TsArgumentStack; out a: String): TsErrorvalue;
+begin
+  Result := GetStringFromArgument(Args.Pop, a);
+end;
+
+function Pop_2Bools(Args: TsArgumentStack; out a, b: Boolean): TsErrorValue;
+var
+  erra, errb: TsErrorValue;
+begin
+  // Pop the data in reverse order they were pushed! Otherwise they will be
+  // applied to the function in the wrong order.
+  errb := GetBoolFromArgument(Args.Pop, b);
+  erra := GetBoolFromArgument(Args.Pop, a);
+  if erra <> errOK then
+    Result := erra
+  else if errb <> errOK then
+    Result := errb
+  else
+    Result := errOK;
+end;
+
+function Pop_2Floats(Args: TsArgumentStack; out a, b: Double): TsErrorValue;
+var
+  erra, errb: TsErrorValue;
+begin
+  // Pop the data in reverse order they were pushed! Otherwise they will be
+  // applied to the function in the wrong order.
+  errb := GetNumberFromArgument(Args.Pop, b);
+  erra := GetNumberFromArgument(Args.Pop, a);
+  if erra <> errOK then
+    Result := erra
+  else if errb <> errOK then
+    Result := errb
+  else
+    Result := errOK;
+end;
+
+function Pop_2Strings(Args: TsArgumentStack; out a, b: String): TsErrorValue;
+var
+  erra, errb: TsErrorValue;
+begin
+  // Pop the data in reverse order they were pushed! Otherwise they will be
+  // applied to the function in the wrong order.
+  errb := GetStringFromArgument(Args.Pop, b);
+  erra := GetStringFromArgument(Args.Pop, a);
+  if erra <> errOK then
+    Result := erra
+  else if errb <> errOK then
+    Result := errb
+  else
+    Result := errOK;
 end;
 
 
@@ -199,66 +312,128 @@ end;
 function fpsAdd(Args: TsArgumentStack): TsArgument;
 var
   a, b: Double;
-  erra, errb: TsArgumentError;
+  err: TsErrorValue;
 begin
-  errb := GetNumberFromArgument(Args.Pop, b);
-  erra := GetNumberFromArgument(Args.Pop, a);
-  if erra <> aeOK then
-    Result := CreateError(erra)
-  else if errb <> aeOK then
-    Result := CreateError(errb)
+  err := Pop_2Floats(Args, a, b);
+  if err = errOK then
+    Result := CreateNumber(a + b)
   else
-    Result := CreateNumber(a + b);
+    Result := CreateError(err);
 end;
 
 function fpsSub(Args: TsArgumentStack): TsArgument;
 var
   a, b: Double;
-  erra, errb: TsArgumentError;
+  err: TsErrorValue;
 begin
-  // Pop the data in reverse order they were pushed!
-  errb := GetNumberFromArgument(Args.Pop, b);
-  erra := GetNumberFromArgument(Args.Pop, a);
-  if erra <> aeOK then
-    Result := CreateError(erra)
-  else if errb <> aeOK then
-    Result := CreateError(errb)
+  err := Pop_2Floats(Args, a, b);
+  if err = errOK then
+    Result := CreateNumber(a - b)
   else
-    Result := CreateNumber(a - b);
+    Result := CreateError(err);
 end;
 
 function fpsMul(Args: TsArgumentStack): TsArgument;
 var
   a, b: Double;
-  erra, errb: TsArgumentError;
+  err: TsErrorValue;
 begin
-  errb := GetNumberFromArgument(Args.Pop, b);
-  erra := GetNumberFromArgument(Args.Pop, a);
-  if erra <> aeOK then
-    Result := CreateError(erra)
-  else if errb <> aeOK then
-    Result := CreateError(errb)
+  err := Pop_2Floats(Args, a, b);
+  if err = errOK then
+    Result := CreateNumber(a * b)
   else
-    Result := CreateNumber(a * b);
+    Result := CreateError(err);
 end;
 
 function fpsDiv(Args: TsArgumentStack): TsArgument;
 var
   a, b: Double;
-  erra, errb: TsArgumentError;
+  err: TsErrorValue;
 begin
-  // Pop the data in reverse order they were pushed!
-  errb := GetNumberFromArgument(Args.Pop, b);
-  erra := GetNumberFromArgument(Args.Pop, a);
-  if erra <> aeOK then
-    Result := CreateError(erra)
-  else if errb <> aeOK then
-    Result := CreateError(errb)
+  err := Pop_2Floats(Args, a, b);
+  if err <> errOK then
+    Result := CreateError(err)
   else if b = 0 then
-    Result := CreateError(aeDivideByZero)
+    Result := CreateError(errDivideByZero)
   else
     Result := CreateNumber(a / b);
 end;
 
+function fpsPercent(Args: TsArgumentStack): TsArgument;
+var
+  a: Double;
+  err: TsErrorValue;
+begin
+  err := Pop_1Float(Args, a);
+  if err = errOK then
+    Result := CreateNumber(a * 0.01)
+  else
+    Result := CreateError(err);
+end;
+
+function fpsPower(Args: TsArgumentStack): TsArgument;
+var
+  a, b: Double;
+  err: TsErrorValue;
+begin
+  err := Pop_2Floats(Args, a, b);
+  if err = errOK then begin
+    try
+      Result := CreateNumber(power(a, b));
+    except on E: EInvalidArgument do
+      Result := CreateError(errOverflow);
+      // this could happen, e.g., for "power( (neg value), (non-integer) )"
+    end;
+  end else
+    Result := CreateError(err);
+end;
+
+function fpsUMinus(Args: TsArgumentStack): TsArgument;
+var
+  a: Double;
+  err: TsErrorValue;
+begin
+  err := Pop_1Float(Args, a);
+  if err = errOK then
+    Result := CreateNumber(-a)
+  else
+    Result := CreateError(err);
+end;
+
+function fpsUPlus(Args: TsArgumentStack): TsArgument;
+var
+  a: Double;
+  err: TsErrorValue;
+begin
+  err := Pop_1Float(Args, a);
+  if err = errOK then
+    Result := CreateNumber(a)
+  else
+    Result := CreateError(err);
+end;
+
+function fpsConcat(Args: TsArgumentStack): TsArgument;
+var
+  a, b: String;
+  err: TsErrorValue;
+begin
+  err := Pop_2Strings(Args, a, b);
+  if err = errOK then
+    Result := CreateString(a + b)
+  else
+    Result := CreateError(err);
+end;
+
+function fpsEqual(Args: TsArgumentStack): TsArgument;
+var
+  a, b: Boolean;
+  err: TsErrorValue;
+begin
+  err := Pop_2Bools(Args, a, b);
+  if err = errOK then
+    Result := CreateBool(a = b)
+  else
+    Result := CreateError(err);
+end;
 
 end.

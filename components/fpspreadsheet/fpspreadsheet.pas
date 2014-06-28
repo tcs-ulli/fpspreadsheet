@@ -1093,32 +1093,32 @@ type
 const
   FEProps: array[TFEKind] of TFEProp = (
   { Operands }
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCell
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellRef
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellRange
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellNum
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellInteger
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellString
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellBool
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellErr
-    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil), // fekCellMissingArg
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCell
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRef
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRange
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellNum
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellInteger
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellString
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellBool
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellErr
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellMissingArg
   { Basic operations }
-    (Symbol:'+';         MinParams:2; MaxParams:2; Func:fpsAdd),           // fekAdd
-    (Symbol:'-';         MinParams:2; MaxParams:2; Func:fpsSub),           // fekSub
-    (Symbol:'*';         MinParams:2; MaxParams:2; Func:fpsMul),           // fekMul
-    (Symbol:'/';         MinParams:2; MaxParams:2; Func:fpsDiv),           // fekDiv
-    (Symbol:'%';         MinParams:1; MaxParams:1; Func:nil),   // fekPercent
-    (Symbol:'^';         MinParams:2; MaxParams:2; Func:nil),   // fekPower
-    (Symbol:'-';         MinParams:1; MaxParams:1; Func:nil),   // fekUMinus
-    (Symbol:'+';         MinParams:1; MaxParams:1; Func:nil),   // fekUPlus
-    (Symbol:'&';         MinParams:2; MaxParams:2; Func:nil),   // fekConcat (string concatenation)
-    (Symbol:'=';         MinParams:2; MaxParams:2; Func:nil),   // fekEqual
-    (Symbol:'>';         MinParams:2; MaxParams:2; Func:nil),   // fekGreater
-    (Symbol:'>=';        MinParams:2; MaxParams:2; Func:nil),   // fekGreaterEqual
-    (Symbol:'<';         MinParams:2; MaxParams:2; Func:nil),   // fekLess
-    (Symbol:'<=';        MinParams:2; MaxParams:2; Func:nil),   // fekLessEqual
-    (Symbol:'<>';        MinParams:2; MaxParams:2; Func:nil),   // fekNotEqual
-    (Symbol:'';          MinParams:1; MaxParams:1; Func:nil),   // fekParen
+    (Symbol:'+';         MinParams:2; MaxParams:2;  Func:fpsAdd),               // fekAdd
+    (Symbol:'-';         MinParams:2; MaxParams:2;  Func:fpsSub),               // fekSub
+    (Symbol:'*';         MinParams:2; MaxParams:2;  Func:fpsMul),               // fekMul
+    (Symbol:'/';         MinParams:2; MaxParams:2;  Func:fpsDiv),               // fekDiv
+    (Symbol:'%';         MinParams:1; MaxParams:1;  Func:fpsPercent),           // fekPercent
+    (Symbol:'^';         MinParams:2; MaxParams:2;  Func:fpsPower),             // fekPower
+    (Symbol:'-';         MinParams:1; MaxParams:1;  Func:fpsUMinus),            // fekUMinus
+    (Symbol:'+';         MinParams:1; MaxParams:1;  Func:fpsUPlus),             // fekUPlus
+    (Symbol:'&';         MinParams:2; MaxParams:2;  Func:fpsConcat),            // fekConcat (string concatenation)
+    (Symbol:'=';         MinParams:2; MaxParams:2;  Func:nil),   // fekEqual
+    (Symbol:'>';         MinParams:2; MaxParams:2;  Func:nil),   // fekGreater
+    (Symbol:'>=';        MinParams:2; MaxParams:2;  Func:nil),   // fekGreaterEqual
+    (Symbol:'<';         MinParams:2; MaxParams:2;  Func:nil),   // fekLess
+    (Symbol:'<=';        MinParams:2; MaxParams:2;  Func:nil),   // fekLessEqual
+    (Symbol:'<>';        MinParams:2; MaxParams:2;  Func:nil),   // fekNotEqual
+    (Symbol:'';          MinParams:1; MaxParams:1;  Func:nil),   // fekParen
   { math }
     (Symbol:'ABS';       MinParams:1; MaxParams:1; Func:nil),   // fekABS
     (Symbol:'ACOS';      MinParams:1; MaxParams:1; Func:nil),   // fekACOS
@@ -1458,15 +1458,11 @@ begin
           if not Assigned(func) then begin
             // calculation of function not implemented
             exit;
-          end;             {
-          if args.Count < FEProps[fe.ElementKind].MinParams then begin
+          end;
+          if args.Count < fe.ParamsNum then begin
             // not enough parameters
             exit;
           end;
-          if args.Count > FEProps[fe.ElementKind].MaxParams then begin
-            // too many parameters
-            exit;
-          end;              }
           // Result of function
           val := func(args);
           // Push valid result on stack, exit in case of error
@@ -1474,7 +1470,10 @@ begin
             atNumber, atString, atBool:
               args.Push(val);
             atError:
-              exit;
+              begin
+                WriteErrorValue(ACell, val.ErrorValue);
+                exit;
+              end;
           end;
       end;  // case
     end;  // for
@@ -1485,8 +1484,18 @@ begin
         atBool  : WriteNumber(ACell, 1.0*ord(val.BoolValue));
         atString: WriteUTF8Text(ACell, val.StringValue);
       end;
+      {
+      case val.ArgumentType of
+        atNumber: ACell^.NumberValue := val.NumberValue; //WriteNumber(ACell, val.NumberValue);
+        atBool  : ACell^.NumberValue := 1.0 * ord(val.BoolValue); //WriteNumber(ACell, 1.0*ord(val.BoolValue));
+        atString: ACell^.UTF8StringValue := val.StringValue; //(ACell, val.StringValue);
+      end;
+      }
     end else
-      WriteErrorValue(ACell, errArgError);
+      // This case is a program error --> raise an exception
+      raise Exception.CreateFmt('Incorrect argument count of the formula in cell %s', [
+        GetCellString(ACell^.Row, ACell^.Col, [])
+      ]);
   finally
     args.Free;
   end;
@@ -5118,13 +5127,16 @@ end;
 }
 procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
+  if Length(ACell^.RPNFormulaValue) > 0 then
+    WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell)
+  else
   case ACell.ContentType of
-    cctEmpty:      WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
-    cctDateTime:   WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
-    cctNumber:     WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
-    cctUTF8String: WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
-    cctFormula:    WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
-    cctRPNFormula: WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell);
+    cctEmpty      : WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
+    cctDateTime   : WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
+    cctNumber     : WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
+    cctUTF8String : WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
+    cctFormula    : WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
+//    cctRPNFormula: WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell);
   end;
 end;
 
