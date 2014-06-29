@@ -512,7 +512,9 @@ type
 
     { Writing of values }
     procedure WriteBlank(ARow, ACol: Cardinal);
-    procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
+
+    procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean); overload;
+    procedure WriteBoolValue(ACell: PCell; AValue: Boolean); overload;
 
     procedure WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String); overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
@@ -1112,12 +1114,12 @@ const
     (Symbol:'-';         MinParams:1; MaxParams:1;  Func:fpsUMinus),            // fekUMinus
     (Symbol:'+';         MinParams:1; MaxParams:1;  Func:fpsUPlus),             // fekUPlus
     (Symbol:'&';         MinParams:2; MaxParams:2;  Func:fpsConcat),            // fekConcat (string concatenation)
-    (Symbol:'=';         MinParams:2; MaxParams:2;  Func:nil),   // fekEqual
-    (Symbol:'>';         MinParams:2; MaxParams:2;  Func:nil),   // fekGreater
-    (Symbol:'>=';        MinParams:2; MaxParams:2;  Func:nil),   // fekGreaterEqual
-    (Symbol:'<';         MinParams:2; MaxParams:2;  Func:nil),   // fekLess
-    (Symbol:'<=';        MinParams:2; MaxParams:2;  Func:nil),   // fekLessEqual
-    (Symbol:'<>';        MinParams:2; MaxParams:2;  Func:nil),   // fekNotEqual
+    (Symbol:'=';         MinParams:2; MaxParams:2;  Func:fpsEqual),             // fekEqual
+    (Symbol:'>';         MinParams:2; MaxParams:2;  Func:fpsGreater),           // fekGreater
+    (Symbol:'>=';        MinParams:2; MaxParams:2;  Func:fpsGreaterEqual),      // fekGreaterEqual
+    (Symbol:'<';         MinParams:2; MaxParams:2;  Func:fpsLess),              // fekLess
+    (Symbol:'<=';        MinParams:2; MaxParams:2;  Func:fpsLessEqual),         // fekLessEqual
+    (Symbol:'<>';        MinParams:2; MaxParams:2;  Func:fpsNotEqual),          // fekNotEqual
     (Symbol:'';          MinParams:1; MaxParams:1;  Func:nil),   // fekParen
   { math }
     (Symbol:'ABS';       MinParams:1; MaxParams:1; Func:nil),   // fekABS
@@ -1192,7 +1194,7 @@ const
     (Symbol:'PV';        MinParams:3; MaxParams:5; Func:nil),   // fekPV
     (Symbol:'RATE';      MinParams:3; MaxParams:6; Func:nil),   // fekRATE
   { logical }
-    (Symbol:'AND';       MinParams:0; MaxParams:30; Func:nil),  // fekAND
+    (Symbol:'AND';       MinParams:0; MaxParams:30; Func:fpsAND),               // fekAND
     (Symbol:'FALSE';     MinParams:0; MaxParams:0; Func:nil),   // fekFALSE
     (Symbol:'IF';        MinParams:2; MaxParams:3; Func:nil),   // fekIF
     (Symbol:'NOT';       MinParams:1; MaxParams:1; Func:nil),   // fekNOT
@@ -1481,16 +1483,9 @@ begin
       val := args.Pop;
       case val.ArgumentType of
         atNumber: WriteNumber(ACell, val.NumberValue);
-        atBool  : WriteNumber(ACell, 1.0*ord(val.BoolValue));
+        atBool  : WriteBoolValue(ACell, val.BoolValue);
         atString: WriteUTF8Text(ACell, val.StringValue);
       end;
-      {
-      case val.ArgumentType of
-        atNumber: ACell^.NumberValue := val.NumberValue; //WriteNumber(ACell, val.NumberValue);
-        atBool  : ACell^.NumberValue := 1.0 * ord(val.BoolValue); //WriteNumber(ACell, 1.0*ord(val.BoolValue));
-        atString: ACell^.UTF8StringValue := val.StringValue; //(ACell, val.StringValue);
-      end;
-      }
     end else
       // This case is a program error --> raise an exception
       raise Exception.CreateFmt('Incorrect argument count of the formula in cell %s', [
@@ -2440,13 +2435,23 @@ end;
   @param  AValue     The boolean value
 }
 procedure TsWorksheet.WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
-var
-  ACell: PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  ACell^.ContentType := cctBool;
-  ACell^.BoolValue := AValue;
-  ChangedCell(ARow, ACol);
+  WriteBoolValue(GetCell(ARow, ACol), AValue);
+end;
+
+{@@
+  Writes as boolean cell
+
+  @param  ACell      Pointer to the cell
+  @param  AValue     The boolean value
+}
+procedure TsWorksheet.WriteBoolValue(ACell: PCell; AValue: Boolean);
+begin
+  if ACell <> nil then begin
+    ACell^.ContentType := cctBool;
+    ACell^.BoolValue := AValue;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@

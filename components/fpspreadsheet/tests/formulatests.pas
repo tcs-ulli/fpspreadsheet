@@ -178,7 +178,7 @@ begin
     if (cell = nil) then
       fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
     case cell^.ContentType of
-      cctBool       : actual := CreateBool(cell^.NumberValue <> 0);
+      cctBool       : actual := CreateBool(cell^.BoolValue);
       cctNumber     : actual := CreateNumber(cell^.NumberValue);
       cctError      : actual := CreateError(cell^.ErrorValue);
       cctUTF8String : actual := CreateString(cell^.UTF8StringValue);

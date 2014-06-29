@@ -48,16 +48,23 @@ These are the functions called when calculating an RPN formula.
 type
   TsFormulaFunc = function(Args: TsArgumentStack): TsArgument;
 
-function fpsAdd    (Args: TsArgumentStack): TsArgument;
-function fpsSub    (Args: TsArgumentStack): TsArgument;
-function fpsMul    (Args: TsArgumentStack): TsArgument;
-function fpsDiv    (Args: TsArgumentStack): TsArgument;
-function fpsPercent(Args: TsArgumentStack): TsArgument;
-function fpsPower  (Args: TsArgumentStack): TsArgument;
-function fpsUMinus (Args: TsArgumentStack): TsArgument;
-function fpsUPlus  (Args: TsArgumentStack): TsArgument;
-function fpsConcat (Args: TsArgumentStack): TsArgument;
-function fpsEqual  (Args: TsArgumentStack): TsArgument;
+function fpsAdd      (Args: TsArgumentStack): TsArgument;
+function fpsSub      (Args: TsArgumentStack): TsArgument;
+function fpsMul      (Args: TsArgumentStack): TsArgument;
+function fpsDiv      (Args: TsArgumentStack): TsArgument;
+function fpsPercent  (Args: TsArgumentStack): TsArgument;
+function fpsPower    (Args: TsArgumentStack): TsArgument;
+function fpsUMinus   (Args: TsArgumentStack): TsArgument;
+function fpsUPlus    (Args: TsArgumentStack): TsArgument;
+function fpsConcat   (Args: TsArgumentStack): TsArgument;
+function fpsEqual    (Args: TsArgumentStack): TsArgument;
+function fpsGreater  (Args: TsArgumentStack): TsArgument;
+function fpsGreaterEqual(Args: TsArgumentStack): TsArgument;
+function fpsLess     (Args: TsArgumentStack): TsArgument;
+function fpsLessEqual(Args: TsArgumentStack): TsArgument;
+function fpsNotEqual (Args: TsArgumentStack): TsArgument;
+
+function fpsAnd      (Args: TsArgumentStack): TsArgument;
 
 implementation
 
@@ -426,12 +433,114 @@ end;
 
 function fpsEqual(Args: TsArgumentStack): TsArgument;
 var
+  arg1, arg2: TsArgument;
+begin
+  arg2 := Args.Pop;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType = arg2.ArgumentType then
+    case arg1.ArgumentType of
+      atNumber  : Result := CreateBool(arg1.NumberValue = arg2.NumberValue);
+      atString  : Result := CreateBool(arg1.StringValue = arg2.StringValue);
+      atBool    : Result := CreateBool(arg1.Boolvalue = arg2.BoolValue);
+    end
+  else
+    Result := CreateBool(false);
+end;
+
+function fpsGreater(Args: TsArgumentStack): TsArgument;
+var
+  arg1, arg2: TsArgument;
+begin
+  arg2 := Args.Pop;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType = arg2.ArgumentType then
+    case arg1.ArgumentType of
+      atNumber  : Result := CreateBool(arg1.NumberValue > arg2.NumberValue);
+      atString  : Result := CreateBool(arg1.StringValue > arg2.StringValue);
+      atBool    : Result := CreateBool(arg1.Boolvalue > arg2.BoolValue);
+    end
+  else
+    Result := CreateBool(false);
+end;
+
+function fpsGreaterEqual(Args: TsArgumentStack): TsArgument;
+var
+  arg1, arg2: TsArgument;
+begin
+  arg2 := Args.Pop;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType = arg2.ArgumentType then
+    case arg1.ArgumentType of
+      atNumber  : Result := CreateBool(arg1.NumberValue >= arg2.NumberValue);
+      atString  : Result := CreateBool(arg1.StringValue >= arg2.StringValue);
+      atBool    : Result := CreateBool(arg1.Boolvalue >= arg2.BoolValue);
+    end
+  else
+    Result := CreateBool(false);
+end;
+
+function fpsLess(Args: TsArgumentStack): TsArgument;
+var
+  arg1, arg2: TsArgument;
+begin
+  arg2 := Args.Pop;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType = arg2.ArgumentType then
+    case arg1.ArgumentType of
+      atNumber  : Result := CreateBool(arg1.NumberValue < arg2.NumberValue);
+      atString  : Result := CreateBool(arg1.StringValue < arg2.StringValue);
+      atBool    : Result := CreateBool(arg1.Boolvalue < arg2.BoolValue);
+    end
+  else
+    Result := CreateBool(false);
+end;
+
+function fpsLessEqual(Args: TsArgumentStack): TsArgument;
+var
+  arg1, arg2: TsArgument;
+begin
+  arg2 := Args.Pop;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType = arg2.ArgumentType then
+    case arg1.ArgumentType of
+      atNumber  : Result := CreateBool(arg1.NumberValue <= arg2.NumberValue);
+      atString  : Result := CreateBool(arg1.StringValue <= arg2.StringValue);
+      atBool    : Result := CreateBool(arg1.Boolvalue <= arg2.BoolValue);
+    end
+  else
+    Result := CreateBool(false);
+end;
+
+
+function fpsNotEqual(Args: TsArgumentStack): TsArgument;
+var
+  arg1, arg2: TsArgument;
+begin
+  arg2 := Args.Pop;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType = arg2.ArgumentType then
+    case arg1.ArgumentType of
+      atNumber  : Result := CreateBool(arg1.NumberValue <> arg2.NumberValue);
+      atString  : Result := CreateBool(arg1.StringValue <> arg2.StringValue);
+      atBool    : Result := CreateBool(arg1.Boolvalue <> arg2.BoolValue);
+    end
+  else
+    Result := CreateBool(false);
+end;
+
+
+
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//   Variable parameter count !!!!!!!!!!!!
+function fpsAnd(Args: TsArgumentStack): TsArgument;
+var
   a, b: Boolean;
   err: TsErrorValue;
 begin
   err := Pop_2Bools(Args, a, b);
   if err = errOK then
-    Result := CreateBool(a = b)
+    Result := CreateBool(a and b)
   else
     Result := CreateError(err);
 end;
