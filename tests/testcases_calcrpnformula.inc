@@ -122,7 +122,18 @@
     RPNFunc(fekConcat, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString('Hallo' + ' world');
-(*
+
+  // Equal (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(true=false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNParenthesis(
+    RPNFunc(fekEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true = false);
+
   // Equal (strings)
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=("Hallo"="world")');
@@ -130,7 +141,7 @@
     RPNString('Hallo',
     RPNString('world',
     RPNParenthesis(
-    RPNFunc(fekConcat, nil))))));
+    RPNFunc(fekEqual, nil))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool('Hallo' = 'world');
 
@@ -144,4 +155,184 @@
     RPNFunc(fekEqual, nil))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(1=1);
-  *)
+
+  // Greater (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(true>false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNParenthesis(
+    RPNFunc(fekGreater, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true > false);
+
+  // Greater (strings)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=("Hallo">"world")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo',
+    RPNString('world',
+    RPNParenthesis(
+    RPNFunc(fekGreater, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool('Hallo' > 'world');
+
+  // Greater (numbers)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(1>1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.0,
+    RPNParenthesis(
+    RPNFunc(fekGreater, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(1>1);
+
+  // Greater equal (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(true>=false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNParenthesis(
+    RPNFunc(fekGreaterEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true >= false);
+
+  // Greater equal (strings)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=("Hallo">="world")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo',
+    RPNString('world',
+    RPNParenthesis(
+    RPNFunc(fekGreaterEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool('Hallo' >= 'world');
+
+  // Greater equal (numbers)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(1>=1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.0,
+    RPNParenthesis(
+    RPNFunc(fekGreaterEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(1>=1);
+
+  // Less (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(true<false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNParenthesis(
+    RPNFunc(fekLess, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true < false);
+
+  // Less (strings)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=("Hallo"<"world")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo',
+    RPNString('world',
+    RPNParenthesis(
+    RPNFunc(fekLess, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool('Hallo' < 'world');
+
+  // Less (numbers)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(1<1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.0,
+    RPNParenthesis(
+    RPNFunc(fekLess, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(1<1);
+
+  // Less equal (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(true<=false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNParenthesis(
+    RPNFunc(fekLessEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true <= false);
+
+  // Less equal (strings)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=("Hallo"<="world")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo',
+    RPNString('world',
+    RPNParenthesis(
+    RPNFunc(fekLessEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool('Hallo' <= 'world');
+
+  // Less equal (numbers)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(1<=1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.0,
+    RPNParenthesis(
+    RPNFunc(fekLessEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(1<=1);
+
+  // Not equal (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(true<>false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNParenthesis(
+    RPNFunc(fekNotEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true <> false);
+
+  // Not equal (strings)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=("Hallo"<>"world")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo',
+    RPNString('world',
+    RPNParenthesis(
+    RPNFunc(fekNotEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool('Hallo' <> 'world');
+
+  // Not equal (numbers)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(1<>1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.0,
+    RPNParenthesis(
+    RPNFunc(fekNotEqual, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(1<>1);
+
+
+
+                (*  variable param count !!!!!!!!!!!!!!!!
+  // AND (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=AND(true,false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNFunc(fekAND, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true and false);
+                  *)
+
+

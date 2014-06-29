@@ -825,7 +825,7 @@ begin
     cctBool:
       begin
         FormulaResultWords[0] := 1;
-        FormulaResultWords[1] := word(ACell^.NumberValue <> 0);
+        FormulaResultWords[1] := ord(ACell^.BoolValue);
         FormulaResultWords[3] := $FFFF;
       end;
     cctError:
