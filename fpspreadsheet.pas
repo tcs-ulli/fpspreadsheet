@@ -1123,31 +1123,31 @@ const
     (Symbol:'<>';        MinParams:2; MaxParams:2;  Func:fpsNotEqual),          // fekNotEqual
     (Symbol:'';          MinParams:1; MaxParams:1;  Func:nil),   // fekParen
   { math }
-    (Symbol:'ABS';       MinParams:1; MaxParams:1; Func:nil),   // fekABS
-    (Symbol:'ACOS';      MinParams:1; MaxParams:1; Func:nil),   // fekACOS
-    (Symbol:'ACOSH';     MinParams:1; MaxParams:1; Func:nil),   // fekACOSH
-    (Symbol:'ASIN';      MinParams:1; MaxParams:1; Func:nil),   // fekASIN
-    (Symbol:'ASINH';     MinParams:1; MaxParams:1; Func:nil),   // fekASINH
-    (Symbol:'ATAN';      MinParams:1; MaxParams:1; Func:nil),   // fekATAN
-    (Symbol:'ATANH';     MinParams:1; MaxParams:1; Func:nil),   // fekATANH,
-    (Symbol:'COS';       MinParams:1; MaxParams:1; Func:nil),   // fekCOS
-    (Symbol:'COSH';      MinParams:1; MaxParams:1; Func:nil),   // fekCOSH
-    (Symbol:'DEGREES';   MinParams:1; MaxParams:1; Func:nil),   // fekDEGREES
-    (Symbol:'EXP';       MinParams:1; MaxParams:1; Func:nil),   // fekEXP
-    (Symbol:'INT';       MinParams:1; MaxParams:1; Func:nil),   // fekINT
-    (Symbol:'LN';        MinParams:1; MaxParams:1; Func:nil),   // fekLN
-    (Symbol:'LOG';       MinParams:1; MaxParams:2; Func:nil),   // fekLOG,
-    (Symbol:'LOG10';     MinParams:1; MaxParams:1; Func:nil),   // fekLOG10
-    (Symbol:'PI';        MinParams:0; MaxParams:0; Func:nil),   // fekPI
-    (Symbol:'RADIANS';   MinParams:1; MaxParams:1; Func:nil),   // fekRADIANS
-    (Symbol:'RAND';      MinParams:0; MaxParams:0; Func:nil),   // fekRAND
-    (Symbol:'ROUND';     MinParams:2; MaxParams:2; Func:nil),   // fekROUND,
-    (Symbol:'SIGN';      MinParams:1; MaxParams:1; Func:nil),   // fekSIGN
-    (Symbol:'SIN';       MinParams:1; MaxParams:1; Func:nil),   // fekSIN
-    (Symbol:'SINH';      MinParams:1; MaxParams:1; Func:nil),   // fekSINH
-    (Symbol:'SQRT';      MinParams:1; MaxParams:1; Func:nil),   // fekSQRT,
-    (Symbol:'TAN';       MinParams:1; MaxParams:1; Func:nil),   // fekTAN
-    (Symbol:'TANH';      MinParams:1; MaxParams:1; Func:nil),   // fekTANH,
+    (Symbol:'ABS';       MinParams:1; MaxParams:1;  Func:fpsABS),               // fekABS
+    (Symbol:'ACOS';      MinParams:1; MaxParams:1;  Func:fpsACOS),              // fekACOS
+    (Symbol:'ACOSH';     MinParams:1; MaxParams:1;  Func:fpsACOSH),             // fekACOSH
+    (Symbol:'ASIN';      MinParams:1; MaxParams:1;  Func:fpsASIN),              // fekASIN
+    (Symbol:'ASINH';     MinParams:1; MaxParams:1;  Func:fpsASINH),             // fekASINH
+    (Symbol:'ATAN';      MinParams:1; MaxParams:1;  Func:fpsATAN),              // fekATAN
+    (Symbol:'ATANH';     MinParams:1; MaxParams:1;  Func:fpsATANH),             // fekATANH,
+    (Symbol:'COS';       MinParams:1; MaxParams:1;  Func:fpsCOS),               // fekCOS
+    (Symbol:'COSH';      MinParams:1; MaxParams:1;  Func:fpsCOSH),              // fekCOSH
+    (Symbol:'DEGREES';   MinParams:1; MaxParams:1;  Func:fpsDEGREES),           // fekDEGREES
+    (Symbol:'EXP';       MinParams:1; MaxParams:1;  Func:fpsEXP),               // fekEXP
+    (Symbol:'INT';       MinParams:1; MaxParams:1;  Func:fpsINT),               // fekINT
+    (Symbol:'LN';        MinParams:1; MaxParams:1;  Func:fpsLN),                // fekLN
+    (Symbol:'LOG';       MinParams:1; MaxParams:2;  Func:fpsLOG),               // fekLOG,
+    (Symbol:'LOG10';     MinParams:1; MaxParams:1;  Func:fpsLOG10),             // fekLOG10
+    (Symbol:'PI';        MinParams:0; MaxParams:0;  Func:fpsPI),                // fekPI
+    (Symbol:'RADIANS';   MinParams:1; MaxParams:1;  Func:fpsRADIANS),           // fekRADIANS
+    (Symbol:'RAND';      MinParams:0; MaxParams:0;  Func:fpsRAND),              // fekRAND
+    (Symbol:'ROUND';     MinParams:2; MaxParams:2;  Func:fpsROUND),             // fekROUND,
+    (Symbol:'SIGN';      MinParams:1; MaxParams:1;  Func:fpsSIGN),              // fekSIGN
+    (Symbol:'SIN';       MinParams:1; MaxParams:1;  Func:fpsSIN),               // fekSIN
+    (Symbol:'SINH';      MinParams:1; MaxParams:1;  Func:fpsSINH),              // fekSINH
+    (Symbol:'SQRT';      MinParams:1; MaxParams:1;  Func:fpsSQRT),              // fekSQRT,
+    (Symbol:'TAN';       MinParams:1; MaxParams:1;  Func:fpsTAN),               // fekTAN
+    (Symbol:'TANH';      MinParams:1; MaxParams:1;  Func:fpsTANH),              // fekTANH,
   { date/time }
     (Symbol:'DATE';      MinParams:3; MaxParams:3; Func:nil),   // fekDATE
     (Symbol:'DATEDIF';   MinParams:3; MaxParams:3; Func:nil),   // fekDATEDIF

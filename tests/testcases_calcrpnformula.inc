@@ -321,6 +321,369 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(1<>1);
 
+
+
+{------------------------------------------------------------------------------}
+{                                     Math                                     }
+{------------------------------------------------------------------------------}
+
+  // ABS
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=abs(-1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-1,
+    RPNFunc(fekABS, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(abs(-1));
+
+  // ARCCOS - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=acos(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekACOS, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(arccos(0.1));
+
+  // ACOS - error result (arccos is not defined outside the interval [-1..1]
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=acos(-2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-2,
+    RPNFunc(fekACOS, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverFlow);
+
+   // ARCCOSH - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=acosh(1.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.1,
+    RPNFunc(fekACOSH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(arccosh(1.1));
+
+  // ACOSH - error result (arccos is not defined below 1
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=acosh(0.9)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.9,
+    RPNFunc(fekACOSH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverFlow);
+
+  // ASIN
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=asin(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekASIN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(arcsin(0.1));
+
+  // ASIN - error result (arcsin is not defined outside the interval [-1..1]
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=asin(-2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-2,
+    RPNFunc(fekASIN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverFlow);
+
+   // ARCSINH
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=asinh(1.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.1,
+    RPNFunc(fekASINH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(arcsinh(1.1));
+
+  // ATAN
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=atan(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekATAN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(arctan(0.1));
+
+  // ATANH - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=atanh(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekATANH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(arctanh(0.1));
+
+  // ATANH - error result (arctan is only defined within ]-1,1[
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=atanh(1.0)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNFunc(fekATANH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverFlow);
+
+  // COS
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=cos(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekCOS, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(cos(0.1));
+
+  // COSH
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=cosh(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekCOSH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(cosh(0.1));
+
+  // DEGREES
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=degrees(1.0)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNFunc(fekDEGREES, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(radToDeg(1.0));
+
+  // EXP
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=exp(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekEXP, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(exp(0.1));
+
+  // INT (positive argument)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=int(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekINT, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(floor(0.1));
+
+  // INT (negative argument)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=int(-0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-0.1,
+    RPNFunc(fekINT, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(floor(-0.1));
+
+  // LN - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ln(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekLN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(ln(0.1));
+
+  // LN - error due to argument = 0
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ln(0.0)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.0,
+    RPNFunc(fekLN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // LN - error due to argument < 0
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ln(-0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-0.1,
+    RPNFunc(fekLN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // LOG10 - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log10(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekLOG10, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(log10(0.1));
+
+  // LOG10 - error due to argument = 0
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log10(0.0)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.0,
+    RPNFunc(fekLOG10, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // LOG10 - error due to argument < 0
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log10(-0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-0.1,
+    RPNFunc(fekLOG10, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // LOG - valid result (2 arguments)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log(0.1, 2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNNumber(2,
+    RPNFunc(fekLOG, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(logn(2, 0.1));
+
+  // LOG - valid result (2 arguments, base missing)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log(0.1, )');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNMissingArg(
+    RPNFunc(fekLOG, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(logn(10, 0.1));
+
+  // LOG - valid result (1 argument)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekLOG, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(logn(10, 0.1));
+
+  // LOG - negative base
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log(0.1, -2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNNumber(-2,
+    RPNFunc(fekLOG, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // LOG - negative value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log(-0.1, 2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-0.1,
+    RPNNumber(2.0,
+    RPNFunc(fekLOG, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // PI
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=pi()');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNFunc(fekPI, nil)));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(pi);
+
+  // RADIANS
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=radians(60)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(60,
+    RPNFunc(fekRADIANS, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(degtorad(60));
+
+  // RAND
+  // Test omitted because we cannot enforce getting the same random number back
+  // when we are reading the file.
+
+  // ROUND
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ROUND(pi(), 2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNFunc(fekPI,
+    RPNNumber(2,
+    RPNFunc(fekROUND, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(RoundTo(pi, 2));
+
+  // SIGN
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sign(-0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-0.1,
+    RPNFunc(fekSIGN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sign(-0.1));
+
+  // SIN
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sin(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekSIN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sin(0.1));
+
+  // SINH
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sinh(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekSINH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sinh(0.1));
+
+  // SQRT - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sqrt(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekSQRT, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sqrt(0.1));
+
+  // SQRT - error (negative argument)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sqrt(-0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(-0.1,
+    RPNFunc(fekSQRT, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errOverflow);
+
+  // TAN - valid result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=tan(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekTAN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(tan(0.1));
+
+  // TAN - error (argument = pi/2)
+  // This test is omitted because it is difficult to exactly hit pi/2.
+
+  // TANH
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=tanh(0.1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0.1,
+    RPNFunc(fekTANH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(tanh(0.1));
+
+{------------------------------------------------------------------------------}
+{                            Logical functions                                 }
+{------------------------------------------------------------------------------}
+
   // AND of one values (bool)
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=AND(true)');
@@ -489,4 +852,5 @@
     RPNFunc(fekIF, 3, nil))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString('A');
+
 

@@ -142,7 +142,7 @@ var
   expected: TsArgument;
   cell: PCell;
   sollValues: array of TsArgument;
-  a, b: Double;
+  formula: String;
 begin
   TempFile := GetTempFileName;
 
@@ -174,6 +174,7 @@ begin
     fail('Error in test code. Failed to get named worksheet');
 
   for Row := 0 to MyWorksheet.GetLastRowIndex do begin
+    formula := MyWorksheet.ReadAsUTF8Text(Row, 0);
     cell := MyWorksheet.FindCell(Row, 1);
     if (cell = nil) then
       fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
@@ -186,22 +187,27 @@ begin
     end;
     expected := SollValues[row];
     CheckEquals(ord(expected.ArgumentType), ord(actual.ArgumentType),
-      'Test read calculated formula data type mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+      'Test read calculated formula data type mismatch, formula "' + formula +
+      '", cell '+CellNotation(MyWorkSheet,Row,1));
     case actual.ArgumentType of
       atBool:
         CheckEquals(BoolToStr(expected.BoolValue), BoolToStr(actual.BoolValue),
-          'Test read calculated formula result mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+          'Test read calculated formula result mismatch, formula "' + formula +
+          '", cell '+CellNotation(MyWorkSheet,Row,1));
       atNumber:
         CheckEquals(expected.NumberValue, actual.NumberValue,
-          'Test read calculated formula result mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+          'Test read calculated formula result mismatch, formula "' + formula +
+          '", cell '+CellNotation(MyWorkSheet,Row,1));
       atString:
         CheckEquals(expected.StringValue, actual.StringValue,
-          'Test read calculated formula result mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+          'Test read calculated formula result mismatch, formula "' + formula +
+          '", cell '+CellNotation(MyWorkSheet,Row,1));
       atError:
         CheckEquals(
           GetEnumName(TypeInfo(TsErrorValue), ord(expected.ErrorValue)),
           GetEnumname(TypeInfo(TsErrorValue), ord(actual.ErrorValue)),
-          'Test read calculated formula error value mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+          'Test read calculated formula error value mismatch, formula ' + formula +
+          ', cell '+CellNotation(MyWorkSheet,Row,1));
     end;
   end;
 
