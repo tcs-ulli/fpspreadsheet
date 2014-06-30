@@ -33,10 +33,6 @@ type
     procedure Delete(AIndex: Integer);
   end;
 
-procedure FixMissingBool  (var Arg: TsArgument; ABool: Boolean);
-procedure FixMissingNumber(var Arg: TsArgument; ANumber: Double);
-procedure FixMissingString(var Arg: TsArgument; AString: String);
-
 function CreateBool(AValue: Boolean): TsArgument;
 function CreateNumber(AValue: Double): TsArgument;
 function CreateString(AValue: String): TsArgument;
@@ -90,13 +86,30 @@ function fpsSINH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSQRT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTAN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTANH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Logic }
+{ Statistical functions }
+function fpsAVEDEV      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsAVERAGE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOUNT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsMAX         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsMIN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsPRODUCT     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSTDEV       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSTDEVP      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSUM         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSUMSQ       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsVAR         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsVARP        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ Logical functions }
 function fpsAND         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsFALSE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsIF          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsNOT         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsOR          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRUE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ String functions }
+function fpsLOWER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
 implementation
 
@@ -104,9 +117,9 @@ uses
   Math;
 
 type
-  TBoolArray = array of boolean;
+  TBoolArray  = array of boolean;
   TFloatArray = array of double;
-  TStrArray = array of string;
+  TStrArray   = array of string;
 
 { TsArgumentStack }
 
@@ -194,39 +207,6 @@ begin
 end;
 
 
-{ Missing arguments }
-
-{@@
-  Replaces a missing boolean argument by the passed boolean value
-  @param  Arg    Argument to be considered
-  @param  ABool  Replacement for the missing value
-}
-procedure FixMissingBool(var Arg: TsArgument; ABool: Boolean);
-begin
-  if Arg.IsMissing then Arg.BoolValue := ABool;
-end;
-
-{@@
-  Replaces a missing number argument by the passed number value
-  @param  Arg      Argument to be considered
-  @param  ANumber  Replacement for the missing value
-}
-procedure FixMissingNumber(var Arg: TsArgument; ANumber: Double);
-begin
-  if Arg.IsMissing then Arg.NumberValue := ANumber;
-end;
-
-{@@
-  Replaces a missing string argument by the passed string value
-  @param  Arg      Argument to be considered
-  @param  AString  Replacement for the missing value
-}
-procedure FixMissingString(var Arg: TsArgument; AString: String);
-begin
-  if Arg.IsMissing then Arg.StringValue := AString;
-end;
-
-
 { Preparing arguments }
 
 function GetBoolFromArgument(Arg: TsArgument; var AValue: Boolean): TsErrorValue;
@@ -265,29 +245,34 @@ function CreateBool(AValue: Boolean): TsArgument;
 begin
   Result.ArgumentType := atBool;
   Result.Boolvalue := AValue;
+  Result.IsMissing := false;
 end;
 
 function CreateNumber(AValue: Double): TsArgument;
 begin
   Result.ArgumentType := atNumber;
   Result.NumberValue := AValue;
+  Result.IsMissing := false;
 end;
 
 function CreateString(AValue: String): TsArgument;
 begin
   Result.ArgumentType := atString;
   Result.StringValue := AValue;
+  Result.IsMissing := false;
 end;
 
 function CreateError(AError: TsErrorValue): TsArgument;
 begin
   Result.ArgumentType := atError;
   Result.ErrorValue := AError;
+  Result.IsMissing := false;
 end;
 
 function CreateEmpty: TsArgument;
 begin
   Result.ArgumentType := atEmpty;
+  Result.IsMissing := false;
 end;
 
 {@@
@@ -298,29 +283,47 @@ end;
   @param  AValues   (output) Array containing the retrieved boolean values.
                     The array length is given by NumArgs. The data in the array
                     are in the same order in which they were pushed onto the stack.
+                    Missing arguments are not included in the array, the case
+                    of missing arguments must be handled separately if the are
+                    important.
   @param  AErrArg   (output) Argument containing an error code, e.g. errWrongType
                     if non-boolean data were met on the stack.
   @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
 function PopBoolValues(Args: TsArgumentStack; NumArgs: Integer;
   out AValues: TBoolArray; out AErrArg: TsArgument): Boolean;
 var
+  arg: TsArgument;
   err: TsErrorValue;
-  i: Integer;
+  counter, j: Integer;
+  b: Boolean;
 begin
   SetLength(AValues, NumArgs);
-  // Pop the data in reverse order they were pushed! Otherwise they will be
-  // applied to the function in the wrong order.
-  for i := NumArgs-1 downto 0 do begin
-    err := GetBoolFromArgument(Args.Pop, AValues[i]);
-    if err <> errOK then begin
-      Result := false;
-      AErrArg := CreateError(err);
-      SetLength(AValues, 0);
-      exit;
+  j := 0;
+  for counter := 1 to NumArgs do begin
+    arg := Args.Pop;
+    if not arg.IsMissing then begin
+      err := GetBoolFromArgument(arg, b);
+      if err = errOK then begin
+        AValues[j] := b;
+        inc(j);
+      end else begin
+        Result := false;
+        AErrArg := CreateError(err);
+        SetLength(AValues, 0);
+        exit;
+      end;
     end;
   end;
   Result := true;
   AErrArg := CreateError(errOK);
+  SetLength(AValues, j);
+  // Flip array - we want to have the arguments in the array in the same order
+  // they were pushed.
+  for j:=0 to Length(AValues) div 2 - 1 do begin
+    b := AValues[j];
+    AValues[j] := AValues[High(AValues)-j];
+    AValues[High(AValues)-j] := b;
+  end;
 end;
 
 {@@
@@ -331,28 +334,46 @@ end;
   @param  AValues   (output) Array containing the retrieved float values.
                     The array length is given by NumArgs. The data in the array
                     are in the same order in which they were pushed onto the stack.
+                    Missing arguments are not included in the array, the case
+                    of missing arguments must be handled separately if the are
+                    important.
   @param  AErrArg   (output) Argument containing an error code, e.g. errWrongType
                     if non-float data were met on the stack.
   @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
 function PopFloatValues(Args: TsArgumentStack; NumArgs: Integer;
   out AValues: TFloatArray; out AErrArg: TsArgument): Boolean;
 var
+  arg: TsArgument;
   err: TsErrorValue;
-  i: Integer;
+  counter, j: Integer;
+  val: double;
 begin
   SetLength(AValues, NumArgs);
-  // Pop the data in reverse order they were pushed! Otherwise they will be
-  // applied to the function in the wrong order.
-  for i := NumArgs-1 downto 0 do begin
-    err := GetNumberFromArgument(Args.Pop, AValues[i]);
-    if err <> errOK then begin
-      Result := false;
-      SetLength(AValues, 0);
-      AErrArg := CreateError(errWrongType);
-      exit;
+  j := 0;
+  for counter := 1 to NumArgs do begin
+    arg := Args.Pop;
+    if not arg.IsMissing then begin
+      err := GetNumberFromArgument(arg, val);
+      if err = errOK then begin
+        AValues[j] := val;
+        inc(j);
+      end else begin
+        Result := false;
+        SetLength(AValues, 0);
+        AErrArg := CreateError(errWrongType);
+        exit;
+      end;
     end;
   end;
   Result := true;
+  SetLength(AValues, j);
+  // Flip array - we want to have the arguments in the array in the same order
+  // they were pushed.
+  for j:=0 to Length(AValues) div 2 - 1 do begin
+    val := AValues[j];
+    AValues[j] := AValues[High(AValues)-j];
+    AValues[High(AValues)-j] := val;
+  end;
   AErrArg := CreateError(errOK);
 end;
 
@@ -364,29 +385,47 @@ end;
   @param  AValues   (output) Array containing the retrieved strings. The array
                     length is given by NumArgs. The data in the array are in the
                     same order in which they were pushed onto the stack.
+                    Missing arguments are not included in the array, the case
+                    of missing arguments must be handled separately if the are
+                    important.
   @param  AErrArg   (output) Argument containing an error code , e.g. errWrongType
                     if non-string data were met on the stack.
   @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
 function PopStringValues(Args: TsArgumentStack; NumArgs: Integer;
   out AValues: TStrArray; out AErrArg: TsArgument): Boolean;
 var
+  arg: TsArgument;
   err: TsErrorValue;
-  i: Integer;
+  counter, j: Integer;
+  s: String;
 begin
   SetLength(AValues, NumArgs);
-  // Pop the data in reverse order they were pushed! Otherwise they will be
-  // applied to the function in the wrong order.
-  for i := NumArgs-1 downto 0 do begin
-    err := GetStringFromArgument(Args.Pop, AValues[i]);
-    if err <> errOK then begin
-      Result := false;
-      AErrArg := CreateError(errWrongType);
-      SetLength(AValues, 0);
-      exit;
+  j := 0;
+  for counter := 1 to NumArgs do begin
+    arg := Args.Pop;
+    if not arg.IsMissing then begin
+      err := GetStringFromArgument(arg, s);
+      if err = errOK then begin
+        AValues[j] := s;
+        inc(j);
+      end else begin
+        Result := false;
+        AErrArg := CreateError(errWrongType);
+        SetLength(AValues, 0);
+        exit;
+      end;
     end;
   end;
-  Result :=true;
+  Result := true;
   AErrArg := CreateError(errOK);
+  SetLength(AValues, j);
+  // Flip array - we want to have the arguments in the array in the same order
+  // they were pushed.
+  for j:=0 to Length(AValues) div 2 - 1 do begin
+    s := AValues[j];
+    AValues[j] := AValues[High(AValues)-j];
+    AValues[High(AValues)-j] := s;
+  end;
 end;
 
 
@@ -826,6 +865,122 @@ begin
 end;
 
 
+{ Statistical functions }
+
+function fpsAVEDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// Average value of absolute deviations of data from their mean.
+var
+  data: TFloatArray;
+  m: Double;
+  i: Integer;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then begin
+    m := Mean(data);
+    for i:=0 to High(data) do
+      data[i] := abs(data[i] - m);
+    m := Mean(data);
+    Result := CreateNumber(m)
+  end;
+end;
+
+function fpsAVERAGE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(Mean(data))
+end;
+
+function fpsCOUNT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ Count non-missing arguments }
+var
+  n, i: Integer;
+begin
+  n := 0;
+  for i:=1 to NumArgs do
+    if not Args.Pop.IsMissing then inc(n);
+  Result := CreateNumber(n);
+end;
+
+function fpsMAX(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(MaxValue(data))
+end;
+
+function fpsMIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(MinValue(data))
+end;
+
+function fpsPRODUCT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+  i: Integer;
+  p: Double;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then begin
+    p := 1.0;
+    for i:=0 to High(data) do
+      p := p * data[i];
+    Result := CreateNumber(p);
+  end;
+end;
+
+function fpsSTDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(StdDev(data))
+end;
+
+function fpsSTDEVP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(PopnStdDev(data))
+end;
+
+function fpsSUM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(Sum(data))
+end;
+
+function fpsSUMSQ(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(SumOfSquares(data))
+end;
+
+function fpsVAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(Variance(data))
+end;
+
+function fpsVARP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, NumArgs, data, Result) then
+    Result := CreateNumber(PopnVariance(data))
+end;
+
+
 { Logical functions }
 
 function fpsAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -899,6 +1054,33 @@ end;
 function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
   Result := CreateBool(true);
+end;
+
+
+{ String functions }
+
+function fpsLOWER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TStrArray;
+begin
+  if PopStringValues(Args, NumArgs, data, Result) then
+    Result := CreateString(lowercase(data[0]));
+end;
+
+function fpsTRIM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TStrArray;
+begin
+  if PopStringValues(Args, NumArgs, data, Result) then
+    Result := CreateString(trim(data[0]));
+end;
+
+function fpsUPPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TStrArray;
+begin
+  if PopStringValues(Args, NumArgs, data, Result) then
+    Result := CreateString(uppercase(data[0]));
 end;
 
 end.

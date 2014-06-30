@@ -1164,30 +1164,30 @@ const
     (Symbol:'WEEKDAY';   MinParams:1; MaxParams:2; Func:nil),   // fekWEEKDAY
     (Symbol:'YEAR';      MinParams:1; MaxParams:1; Func:nil),   // fekYEAR
   { statistical }
-    (Symbol:'AVEDEV';    MinParams:1; MaxParams:30; Func:nil),  // fekAVEDEV
-    (Symbol:'AVERAGE';   MinParams:1; MaxParams:30; Func:nil),  // fekAVERAGE
+    (Symbol:'AVEDEV';    MinParams:1; MaxParams:30; Func:fpsAVEDEV),            // fekAVEDEV
+    (Symbol:'AVERAGE';   MinParams:1; MaxParams:30; Func:fpsAVERAGE),           // fekAVERAGE
     (Symbol:'BETADIST';  MinParams:3; MaxParams:5; Func:nil),   // fekBETADIST
     (Symbol:'BETAINV';   MinParams:3; MaxParams:5; Func:nil),   // fekBETAINV
     (Symbol:'BINOMDIST'; MinParams:4; MaxParams:4; Func:nil),   // fekBINOMDIST
     (Symbol:'CHIDIST';   MinParams:2; MaxParams:2; Func:nil),   // fekCHIDIST
     (Symbol:'CHIINV';    MinParams:2; MaxParams:2; Func:nil),   // fekCHIINV
-    (Symbol:'COUNT';     MinParams:0; MaxParams:30; Func:nil),  // fekCOUNT
+    (Symbol:'COUNT';     MinParams:0; MaxParams:30; Func:fpsCOUNT),             // fekCOUNT
     (Symbol:'COUNTA';    MinParams:0; MaxParams:30; Func:nil),  // fekCOUNTA
     (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1; Func:nil),   // fekCOUNTBLANK
     (Symbol:'COUNTIF';   MinParams:2; MaxParams:2; Func:nil),   // fekCOUNTIF
-    (Symbol:'MAX';       MinParams:1; MaxParams:30; Func:nil),  // fekMAX
+    (Symbol:'MAX';       MinParams:1; MaxParams:30; Func:fpsMAX),               // fekMAX
     (Symbol:'MEDIAN';    MinParams:1; MaxParams:30; Func:nil),  // fekMEDIAN
-    (Symbol:'MIN';       MinParams:1; MaxParams:30; Func:nil),  // fekMIN
+    (Symbol:'MIN';       MinParams:1; MaxParams:30; Func:fpsMIN),               // fekMIN
     (Symbol:'PERMUT';    MinParams:2; MaxParams:2; Func:nil),   // fekPERMUT
     (Symbol:'POISSON';   MinParams:3; MaxParams:3; Func:nil),   // fekPOISSON
-    (Symbol:'PRODUCT';   MinParams:0; MaxParams:30; Func:nil),  // fekPRODUCT
-    (Symbol:'STDEV';     MinParams:1; MaxParams:30; Func:nil),  // fekSTDEV
-    (Symbol:'STDEVP';    MinParams:1; MaxParams:30; Func:nil),  // fekSTDEVP
-    (Symbol:'SUM';       MinParams:0; MaxParams:30; Func:nil),  // fekSUM
-    (Symbol:'SUMIF';     MinParams:2; MaxParams:3; Func:nil),   // fekSUMIF
-    (Symbol:'SUMSQ';     MinParams:0; MaxParams:30; Func:nil),  // fekSUMSQ
-    (Symbol:'VAR';       MinParams:1; MaxParams:30; Func:nil),  // fekVAR
-    (Symbol:'VARP';      MinParams:1; MaxParams:30; Func:nil),  // fekVARP
+    (Symbol:'PRODUCT';   MinParams:0; MaxParams:30; Func:fpsPRODUCT),           // fekPRODUCT
+    (Symbol:'STDEV';     MinParams:1; MaxParams:30; Func:fpsSTDEV),             // fekSTDEV
+    (Symbol:'STDEVP';    MinParams:1; MaxParams:30; Func:fpsSTDEVP),            // fekSTDEVP
+    (Symbol:'SUM';       MinParams:0; MaxParams:30; Func:fpsSUM),               // fekSUM
+    (Symbol:'SUMIF';     MinParams:2; MaxParams:3;  Func:nil),  // fekSUMIF
+    (Symbol:'SUMSQ';     MinParams:0; MaxParams:30; Func:fpsSUMSQ),             // fekSUMSQ
+    (Symbol:'VAR';       MinParams:1; MaxParams:30; Func:fpsVAR),               // fekVAR
+    (Symbol:'VARP';      MinParams:1; MaxParams:30; Func:fpsVARP),              // fekVARP
   { financial }
     (Symbol:'FV';        MinParams:3; MaxParams:5; Func:nil),   // fekFV
     (Symbol:'NPER';      MinParams:3; MaxParams:5; Func:nil),   // fekNPER
@@ -1205,14 +1205,14 @@ const
     (Symbol:'CHAR';      MinParams:1; MaxParams:1; Func:nil),   // fekCHAR
     (Symbol:'CODE';      MinParams:1; MaxParams:1; Func:nil),   // fekCODE
     (Symbol:'LEFT';      MinParams:1; MaxParams:2; Func:nil),   // fekLEFT
-    (Symbol:'LOWER';     MinParams:1; MaxParams:1; Func:nil),   // fekLOWER
+    (Symbol:'LOWER';     MinParams:1; MaxParams:1; Func:fpsLOWER),              // fekLOWER
     (Symbol:'MID';       MinParams:3; MaxParams:3; Func:nil),   // fekMID
     (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:nil),   // fekPROPER
     (Symbol:'REPLACE';   MinParams:4; MaxParams:4; Func:nil),   // fekREPLACE
     (Symbol:'RIGHT';     MinParams:1; MaxParams:2; Func:nil),   // fekRIGHT
     (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:nil),   // fekSUBSTITUTE
-    (Symbol:'TRIM';      MinParams:1; MaxParams:1; Func:nil),   // fekTRIM
-    (Symbol:'UPPER';     MinParams:1; MaxParams:1; Func:nil),   // fekUPPER
+    (Symbol:'TRIM';      MinParams:1; MaxParams:1; Func:fpsTRIM),               // fekTRIM
+    (Symbol:'UPPER';     MinParams:1; MaxParams:1; Func:fpsUPPER),              // fekUPPER
   {  lookup/reference }
     (Symbol:'COLUMN';    MinParams:0; MaxParams:1; Func:nil),   // fekCOLUMN
     (Symbol:'COLUMNS';   MinParams:1; MaxParams:1; Func:nil),   // fekCOLUMNS
