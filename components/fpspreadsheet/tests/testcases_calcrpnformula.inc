@@ -381,3 +381,112 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(true or false or true);
 
+  // function =FALSE()
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=FALSE()');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNFunc(fekFALSE, nil)));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(false);
+
+  // function =TRUE()
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=TRUE()');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNFunc(fekTRUE, nil)));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);
+
+  // NOT
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=NOT(false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(false,
+    RPNFunc(fekNOT, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(not false);
+
+  // IF (2 parameters)/strings/case true
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,"A")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNString('A',
+    RPNFunc(fekIF, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('A');
+
+  // IF (2 parameters) /floats/case true
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNNumber(1.0,
+    RPNFunc(fekIF, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  // IF (2 parameters)/strings/case falsee
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(false,"A")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(false,
+    RPNString('A',
+    RPNFunc(fekIF, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(false);
+
+  // IF (2 parameters) /floats/case tfalse
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(false,1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(false,
+    RPNNumber(1.0,
+    RPNFunc(fekIF, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(false);
+
+  // IF (3 parameters)/strings
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,"A","B")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNString('A',
+    RPNString('B',
+    RPNFunc(fekIF, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('A');
+
+  // IF (3 parameters) /floats
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,1,2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNNumber(1.0,
+    RPNNumber(2.0,
+    RPNFunc(fekIF,3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  // IF (3 parameters) /floats / mixed types, case true
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,1,"A")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNNumber(1.0,
+    RPNString('A',
+    RPNFunc(fekIF,3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  // IF (3 parameters) /floats / mixed types, case false
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(false,1,"A")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(false,
+    RPNNumber(1.0,
+    RPNString('A',
+    RPNFunc(fekIF, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('A');
+

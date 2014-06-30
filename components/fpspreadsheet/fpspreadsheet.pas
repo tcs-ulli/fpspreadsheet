@@ -511,7 +511,8 @@ type
       out ACurrencySymbol: String): Boolean;
 
     { Writing of values }
-    procedure WriteBlank(ARow, ACol: Cardinal);
+    procedure WriteBlank(ARow, ACol: Cardinal); overload;
+    procedure WriteBlank(ACell: PCell); overload;
 
     procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean); overload;
     procedure WriteBoolValue(ACell: PCell; AValue: Boolean); overload;
@@ -1195,11 +1196,11 @@ const
     (Symbol:'RATE';      MinParams:3; MaxParams:6; Func:nil),   // fekRATE
   { logical }
     (Symbol:'AND';       MinParams:0; MaxParams:30; Func:fpsAND),               // fekAND
-    (Symbol:'FALSE';     MinParams:0; MaxParams:0; Func:nil),   // fekFALSE
-    (Symbol:'IF';        MinParams:2; MaxParams:3; Func:nil),   // fekIF
-    (Symbol:'NOT';       MinParams:1; MaxParams:1; Func:nil),   // fekNOT
+    (Symbol:'FALSE';     MinParams:0; MaxParams:0;  Func:fpsFALSE),             // fekFALSE
+    (Symbol:'IF';        MinParams:2; MaxParams:3;  Func:fpsIF),                // fekIF
+    (Symbol:'NOT';       MinParams:1; MaxParams:1;  Func:fpsNOT),               // fekNOT
     (Symbol:'OR';        MinParams:1; MaxParams:30; Func:fpsOR),                // fekOR
-    (Symbol:'TRUE';      MinParams:0; MaxParams:0; Func:nil),   // fekTRUE
+    (Symbol:'TRUE';      MinParams:0; MaxParams:0;  Func:fpsTRUE),              // fekTRUE
   {  string }
     (Symbol:'CHAR';      MinParams:1; MaxParams:1; Func:nil),   // fekCHAR
     (Symbol:'CODE';      MinParams:1; MaxParams:1; Func:nil),   // fekCODE
@@ -1469,7 +1470,7 @@ begin
           val := func(args, fe.ParamsNum);
           // Push valid result on stack, exit in case of error
           case val.ArgumentType of
-            atNumber, atString, atBool:
+            atNumber, atString, atBool, atEmpty:
               args.Push(val);
             atError:
               begin
@@ -1485,6 +1486,7 @@ begin
         atNumber: WriteNumber(ACell, val.NumberValue);
         atBool  : WriteBoolValue(ACell, val.BoolValue);
         atString: WriteUTF8Text(ACell, val.StringValue);
+        atEmpty : WriteBlank(ACell);
       end;
     end else
       // This case is a program error --> raise an exception
@@ -2414,17 +2416,27 @@ end;
 
   @param  ARow       The row of the cell
   @param  ACol       The column of the cell
-
-  Note: Empty cells are useful when, for example, a border line extends
-        along a range of cells including empty cells.
+  Note:   Empty cells are useful when, for example, a border line extends
+          along a range of cells including empty cells.
 }
 procedure TsWorksheet.WriteBlank(ARow, ACol: Cardinal);
-var
-  ACell: PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  ACell^.ContentType := cctEmpty;
-  ChangedCell(ARow, ACol);
+  WriteBlank(GetCell(ARow, ACol));
+end;
+
+{@@
+  Writes as empty cell
+
+  @param  ACel      Pointer to the cell
+  Note:   Empty cells are useful when, for example, a border line extends
+          along a range of cells including empty cells.
+}
+procedure TsWorksheet.WriteBlank(ACell: PCell);
+begin
+  if ACell <> nil then begin
+    ACell^.ContentType := cctEmpty;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
