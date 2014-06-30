@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, fpspreadsheet;
 
 type
-  TsArgumentType = (atNumber, atString, atBool, atError);
+  TsArgumentType = (atNumber, atString, atBool, atError, atEmpty);
 
   TsArgument = record
     IsMissing: Boolean;
@@ -41,6 +41,7 @@ function CreateBool(AValue: Boolean): TsArgument;
 function CreateNumber(AValue: Double): TsArgument;
 function CreateString(AValue: String): TsArgument;
 function CreateError(AError: TsErrorValue): TsArgument;
+function CreateEmpty: TsArgument;
 
 {
 These are the functions called when calculating an RPN formula.
@@ -63,8 +64,13 @@ function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLess        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLessEqual   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsNotEqual    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsAnd         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsOr          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+
+function fpsAND         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsFALSE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsIF          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsNOT         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsOR          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTRUE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
 implementation
 
@@ -253,68 +259,9 @@ begin
   Result.ErrorValue := AError;
 end;
 
-
-function Pop_1Bool(Args: TsArgumentStack; out a: Boolean): TsErrorValue;
+function CreateEmpty: TsArgument;
 begin
-  Result := GetBoolFromArgument(Args.Pop, a);
-end;
-
-function Pop_1Float(Args: TsArgumentStack; out a: Double): TsErrorValue;
-begin
-  Result := GetNumberFromArgument(Args.Pop, a);
-end;
-
-function Pop_1String(Args: TsArgumentStack; out a: String): TsErrorvalue;
-begin
-  Result := GetStringFromArgument(Args.Pop, a);
-end;
-
-function Pop_2Bools(Args: TsArgumentStack; out a, b: Boolean): TsErrorValue;
-var
-  erra, errb: TsErrorValue;
-begin
-  // Pop the data in reverse order they were pushed! Otherwise they will be
-  // applied to the function in the wrong order.
-  errb := GetBoolFromArgument(Args.Pop, b);
-  erra := GetBoolFromArgument(Args.Pop, a);
-  if erra <> errOK then
-    Result := erra
-  else if errb <> errOK then
-    Result := errb
-  else
-    Result := errOK;
-end;
-
-function Pop_2Floats(Args: TsArgumentStack; out a, b: Double): TsErrorValue;
-var
-  erra, errb: TsErrorValue;
-begin
-  // Pop the data in reverse order they were pushed! Otherwise they will be
-  // applied to the function in the wrong order.
-  errb := GetNumberFromArgument(Args.Pop, b);
-  erra := GetNumberFromArgument(Args.Pop, a);
-  if erra <> errOK then
-    Result := erra
-  else if errb <> errOK then
-    Result := errb
-  else
-    Result := errOK;
-end;
-
-function Pop_2Strings(Args: TsArgumentStack; out a, b: String): TsErrorValue;
-var
-  erra, errb: TsErrorValue;
-begin
-  // Pop the data in reverse order they were pushed! Otherwise they will be
-  // applied to the function in the wrong order.
-  errb := GetStringFromArgument(Args.Pop, b);
-  erra := GetStringFromArgument(Args.Pop, a);
-  if erra <> errOK then
-    Result := erra
-  else if errb <> errOK then
-    Result := errb
-  else
-    Result := errOK;
+  Result.ArgumentType := atEmpty;
 end;
 
 {@@
@@ -597,7 +544,7 @@ begin
     Result := CreateBool(false);
 end;
 
-function fpsAnd(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TBoolArray;
   i: Integer;
@@ -615,7 +562,39 @@ begin
   end;
 end;
 
-function fpsOr(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsFALSE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+begin
+  Result := CreateBool(false);
+end;
+
+function fpsIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  condition: TsArgument;
+  case1, case2: TsArgument;
+  err: TsErrorValue;
+begin
+  if NumArgs = 3 then
+    case2 := Args.Pop;
+  case1 := Args.Pop;
+  condition := Args.Pop;
+  if condition.ArgumentType <> atBool then
+    Result := CreateError(errWrongType)
+  else
+    case NumArgs of
+      2: if condition.BoolValue then Result := case1 else Result := Condition;
+      3: if condition.BoolValue then Result := case1 else Result := case2;
+    end;
+end;
+
+function fpsNOT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TBoolArray;
+begin
+  if PopBoolValues(Args, NumArgs, data, Result) then
+    Result := CreateBool(not data[0]);
+end;
+
+function fpsOR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TBoolArray;
   i: Integer;
@@ -631,6 +610,11 @@ begin
       end;
     Result := CreateBool(b);
   end;
+end;
+
+function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+begin
+  Result := CreateBool(true);
 end;
 
 end.
