@@ -1198,7 +1198,7 @@ const
     (Symbol:'FALSE';     MinParams:0; MaxParams:0; Func:nil),   // fekFALSE
     (Symbol:'IF';        MinParams:2; MaxParams:3; Func:nil),   // fekIF
     (Symbol:'NOT';       MinParams:1; MaxParams:1; Func:nil),   // fekNOT
-    (Symbol:'OR';        MinParams:1; MaxParams:30; Func:nil),  // fekOR
+    (Symbol:'OR';        MinParams:1; MaxParams:30; Func:fpsOR),                // fekOR
     (Symbol:'TRUE';      MinParams:0; MaxParams:0; Func:nil),   // fekTRUE
   {  string }
     (Symbol:'CHAR';      MinParams:1; MaxParams:1; Func:nil),   // fekCHAR
@@ -1466,7 +1466,7 @@ begin
             exit;
           end;
           // Result of function
-          val := func(args);
+          val := func(args, fe.ParamsNum);
           // Push valid result on stack, exit in case of error
           case val.ArgumentType of
             atNumber, atString, atBool:

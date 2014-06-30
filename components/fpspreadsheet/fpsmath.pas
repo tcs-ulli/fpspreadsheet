@@ -46,31 +46,35 @@ function CreateError(AError: TsErrorValue): TsArgument;
 These are the functions called when calculating an RPN formula.
 }
 type
-  TsFormulaFunc = function(Args: TsArgumentStack): TsArgument;
+  TsFormulaFunc = function(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
-function fpsAdd      (Args: TsArgumentStack): TsArgument;
-function fpsSub      (Args: TsArgumentStack): TsArgument;
-function fpsMul      (Args: TsArgumentStack): TsArgument;
-function fpsDiv      (Args: TsArgumentStack): TsArgument;
-function fpsPercent  (Args: TsArgumentStack): TsArgument;
-function fpsPower    (Args: TsArgumentStack): TsArgument;
-function fpsUMinus   (Args: TsArgumentStack): TsArgument;
-function fpsUPlus    (Args: TsArgumentStack): TsArgument;
-function fpsConcat   (Args: TsArgumentStack): TsArgument;
-function fpsEqual    (Args: TsArgumentStack): TsArgument;
-function fpsGreater  (Args: TsArgumentStack): TsArgument;
-function fpsGreaterEqual(Args: TsArgumentStack): TsArgument;
-function fpsLess     (Args: TsArgumentStack): TsArgument;
-function fpsLessEqual(Args: TsArgumentStack): TsArgument;
-function fpsNotEqual (Args: TsArgumentStack): TsArgument;
-
-function fpsAnd      (Args: TsArgumentStack): TsArgument;
+function fpsAdd         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSub         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsMul         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsDiv         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsPercent     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsPower       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsUMinus      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsUPlus       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsConcat      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsEqual       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsGreater     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsLess        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsLessEqual   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsNotEqual    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsAnd         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsOr          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
 implementation
 
 uses
   Math;
 
+type
+  TBoolArray = array of boolean;
+  TFloatArray = array of double;
+  TStrArray = array of string;
 
 { TsArgumentStack }
 
@@ -313,125 +317,190 @@ begin
     Result := errOK;
 end;
 
+{@@
+  Pops boolean values from the argument stack. Is called when calculating rpn
+  formulas.
+  @param  Args      Argument stack to be used.
+  @param  NumArgs   Count of arguments to be popped from the stack
+  @param  AValues   (output) Array containing the retrieved boolean values.
+                    The array length is given by NumArgs. The data in the array
+                    are in the same order in which they were pushed onto the stack.
+  @param  AErrArg   (output) Argument containing an error code, e.g. errWrongType
+                    if non-boolean data were met on the stack.
+  @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
+function PopBoolValues(Args: TsArgumentStack; NumArgs: Integer;
+  out AValues: TBoolArray; out AErrArg: TsArgument): Boolean;
+var
+  err: TsErrorValue;
+  i: Integer;
+begin
+  SetLength(AValues, NumArgs);
+  // Pop the data in reverse order they were pushed! Otherwise they will be
+  // applied to the function in the wrong order.
+  for i := NumArgs-1 downto 0 do begin
+    err := GetBoolFromArgument(Args.Pop, AValues[i]);
+    if err <> errOK then begin
+      Result := false;
+      AErrArg := CreateError(err);
+      SetLength(AValues, 0);
+      exit;
+    end;
+  end;
+  Result := true;
+  AErrArg := CreateError(errOK);
+end;
+
+{@@
+  Pops floating point values from the argument stack. Is called when
+  calculating rpn formulas.
+  @param  Args      Argument stack to be used.
+  @param  NumArgs   Count of arguments to be popped from the stack
+  @param  AValues   (output) Array containing the retrieved float values.
+                    The array length is given by NumArgs. The data in the array
+                    are in the same order in which they were pushed onto the stack.
+  @param  AErrArg   (output) Argument containing an error code, e.g. errWrongType
+                    if non-float data were met on the stack.
+  @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
+function PopFloatValues(Args: TsArgumentStack; NumArgs: Integer;
+  out AValues: TFloatArray; out AErrArg: TsArgument): Boolean;
+var
+  err: TsErrorValue;
+  i: Integer;
+begin
+  SetLength(AValues, NumArgs);
+  // Pop the data in reverse order they were pushed! Otherwise they will be
+  // applied to the function in the wrong order.
+  for i := NumArgs-1 downto 0 do begin
+    err := GetNumberFromArgument(Args.Pop, AValues[i]);
+    if err <> errOK then begin
+      Result := false;
+      SetLength(AValues, 0);
+      AErrArg := CreateError(errWrongType);
+      exit;
+    end;
+  end;
+  Result := true;
+  AErrArg := CreateError(errOK);
+end;
+
+{@@
+  Pops string arguments from the argument stack. Is called when calculating
+  rpn formulas.
+  @param  Args      Argument stack to be used.
+  @param  NumArgs   Count of arguments to be popped from the stack
+  @param  AValues   (output) Array containing the retrieved strings. The array
+                    length is given by NumArgs. The data in the array are in the
+                    same order in which they were pushed onto the stack.
+  @param  AErrArg   (output) Argument containing an error code , e.g. errWrongType
+                    if non-string data were met on the stack.
+  @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
+function PopStringValues(Args: TsArgumentStack; NumArgs: Integer;
+  out AValues: TStrArray; out AErrArg: TsArgument): Boolean;
+var
+  err: TsErrorValue;
+  i: Integer;
+begin
+  SetLength(AValues, NumArgs);
+  // Pop the data in reverse order they were pushed! Otherwise they will be
+  // applied to the function in the wrong order.
+  for i := NumArgs-1 downto 0 do begin
+    err := GetStringFromArgument(Args.Pop, AValues[i]);
+    if err <> errOK then begin
+      Result := false;
+      AErrArg := CreateError(errWrongType);
+      SetLength(AValues, 0);
+      exit;
+    end;
+  end;
+  Result :=true;
+  AErrArg := CreateError(errOK);
+end;
+
 
 { Operations }
 
-function fpsAdd(Args: TsArgumentStack): TsArgument;
+function fpsAdd(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_2Floats(Args, a, b);
-  if err = errOK then
-    Result := CreateNumber(a + b)
-  else
-    Result := CreateError(err);
+  if PopFloatValues(Args, 2, data, Result) then
+    Result := CreateNumber(data[0] + data[1]);
 end;
 
-function fpsSub(Args: TsArgumentStack): TsArgument;
+function fpsSub(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_2Floats(Args, a, b);
-  if err = errOK then
-    Result := CreateNumber(a - b)
-  else
-    Result := CreateError(err);
+  if PopFloatValues(Args, 2, data, Result) then
+    Result := CreateNumber(data[0] - data[1]);
 end;
 
-function fpsMul(Args: TsArgumentStack): TsArgument;
+function fpsMul(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_2Floats(Args, a, b);
-  if err = errOK then
-    Result := CreateNumber(a * b)
-  else
-    Result := CreateError(err);
+  if PopFloatValues(Args, 2, data, Result) then
+    Result := CreateNumber(data[0] * data[1]);
 end;
 
-function fpsDiv(Args: TsArgumentStack): TsArgument;
+function fpsDiv(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_2Floats(Args, a, b);
-  if err <> errOK then
-    Result := CreateError(err)
-  else if b = 0 then
-    Result := CreateError(errDivideByZero)
-  else
-    Result := CreateNumber(a / b);
+  if PopFloatValues(Args, 2, data, Result) then begin
+    if data[1] = 0 then
+      Result := CreateError(errDivideByZero)
+    else
+      Result := CreateNumber(data[0] / data[1]);
+  end;
 end;
 
-function fpsPercent(Args: TsArgumentStack): TsArgument;
+function fpsPercent(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_1Float(Args, a);
-  if err = errOK then
-    Result := CreateNumber(a * 0.01)
-  else
-    Result := CreateError(err);
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(data[0] * 0.01);
 end;
 
-function fpsPower(Args: TsArgumentStack): TsArgument;
+function fpsPower(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_2Floats(Args, a, b);
-  if err = errOK then begin
+  if PopFloatValues(Args, 2, data, Result) then
     try
-      Result := CreateNumber(power(a, b));
+      Result := CreateNumber(power(data[0], data[1]));
     except on E: EInvalidArgument do
       Result := CreateError(errOverflow);
       // this could happen, e.g., for "power( (neg value), (non-integer) )"
     end;
-  end else
-    Result := CreateError(err);
 end;
 
-function fpsUMinus(Args: TsArgumentStack): TsArgument;
+function fpsUMinus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_1Float(Args, a);
-  if err = errOK then
-    Result := CreateNumber(-a)
-  else
-    Result := CreateError(err);
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(-data[0]);
 end;
 
-function fpsUPlus(Args: TsArgumentStack): TsArgument;
+function fpsUPlus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a: Double;
-  err: TsErrorValue;
+  data: TFloatArray;
 begin
-  err := Pop_1Float(Args, a);
-  if err = errOK then
-    Result := CreateNumber(a)
-  else
-    Result := CreateError(err);
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(data[0]);
 end;
 
-function fpsConcat(Args: TsArgumentStack): TsArgument;
+function fpsConcat(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: String;
-  err: TsErrorValue;
+  data: TStrArray;
 begin
-  err := Pop_2Strings(Args, a, b);
-  if err = errOK then
-    Result := CreateString(a + b)
-  else
-    Result := CreateError(err);
+  if PopStringValues(Args, 2, data, Result) then
+    Result := CreateString(data[0] + data[1]);
 end;
 
-function fpsEqual(Args: TsArgumentStack): TsArgument;
+function fpsEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
 begin
@@ -447,7 +516,7 @@ begin
     Result := CreateBool(false);
 end;
 
-function fpsGreater(Args: TsArgumentStack): TsArgument;
+function fpsGreater(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
 begin
@@ -463,7 +532,7 @@ begin
     Result := CreateBool(false);
 end;
 
-function fpsGreaterEqual(Args: TsArgumentStack): TsArgument;
+function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
 begin
@@ -479,7 +548,7 @@ begin
     Result := CreateBool(false);
 end;
 
-function fpsLess(Args: TsArgumentStack): TsArgument;
+function fpsLess(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
 begin
@@ -495,7 +564,7 @@ begin
     Result := CreateBool(false);
 end;
 
-function fpsLessEqual(Args: TsArgumentStack): TsArgument;
+function fpsLessEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
 begin
@@ -512,7 +581,7 @@ begin
 end;
 
 
-function fpsNotEqual(Args: TsArgumentStack): TsArgument;
+function fpsNotEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
 begin
@@ -528,21 +597,40 @@ begin
     Result := CreateBool(false);
 end;
 
-
-
-
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//   Variable parameter count !!!!!!!!!!!!
-function fpsAnd(Args: TsArgumentStack): TsArgument;
+function fpsAnd(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  a, b: Boolean;
-  err: TsErrorValue;
+  data: TBoolArray;
+  i: Integer;
+  b: Boolean;
 begin
-  err := Pop_2Bools(Args, a, b);
-  if err = errOK then
-    Result := CreateBool(a and b)
-  else
-    Result := CreateError(err);
+  if PopBoolValues(Args, NumArgs, data, Result) then begin
+    // If at least one case is false the entire AND condition is false
+    b := true;
+    for i:=0 to High(data) do
+      if not data[i] then begin
+        b := false;
+        break;
+      end;
+    Result := CreateBool(b);
+  end;
+end;
+
+function fpsOr(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TBoolArray;
+  i: Integer;
+  b: Boolean;
+begin
+  if PopBoolValues(Args, NumArgs, data, Result) then begin
+    // If at least one case is true, the entire OR condition is true
+    b := false;
+    for i:=0 to High(data) do
+      if data[i] then begin
+        b := true;
+        break;
+      end;
+    Result := CreateBool(b);
+  end;
 end;
 
 end.

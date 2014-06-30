@@ -321,18 +321,63 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(1<>1);
 
+  // AND of one values (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=AND(true)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNFunc(fekAND, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);
 
-
-                (*  variable param count !!!!!!!!!!!!!!!!
-  // AND (bool)
+  // AND of two values (bool)
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=AND(true,false)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNBool(true,
     RPNBool(false,
-    RPNFunc(fekAND, nil)))));
+    RPNFunc(fekAND, 2, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(true and false);
-                  *)
 
+  // AND of three values (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=AND(true,false,true)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNBool(true,
+    RPNFunc(fekAND, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true and false and true);
+
+  // OR of one values (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=OR(true)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNFunc(fekOR, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);
+
+  // OR of two values (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=OR(true,false)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNFunc(fekOR, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true or false);
+
+  // OR of three values (bool)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=OR(true,false,true)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNBool(false,
+    RPNBool(true,
+    RPNFunc(fekOR, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true or false or true);
 
