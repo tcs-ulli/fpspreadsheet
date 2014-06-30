@@ -681,6 +681,193 @@
   sollValues[Row] := CreateNumber(tanh(0.1));
 
 {------------------------------------------------------------------------------}
+{                          Statistical functions                               }
+{------------------------------------------------------------------------------}
+
+  // AVEDEV
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=AVEDEV(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekAVEDEV, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(mean([0.0, 0.1, 0.2, 0.1, 0.2]));
+                            // these values are the absolute deviations from mean (1.0)
+  // AVERAGE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=AVERAGE(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekAVERAGE, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(mean([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // COUNT (no missing values)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+   RPNNumber(1.0,
+   RPNNumber(1.1,
+   RPNNumber(1.2,
+   RPNNumber(0.9,
+   RPNNumber(0.8,
+   RPNFunc(fekCOUNT, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(5);
+
+  // COUNT (with missing values)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(1, , 1.2, , 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+   RPNNumber(1.0,
+   RPNMissingArg(
+   RPNNumber(1.2,
+   RPNMissingArg(
+   RPNNumber(0.8,
+   RPNFunc(fekCOUNT, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(3);
+
+   // MAX
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MAX(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekMAX, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(MaxValue([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // MAX (with missing values)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MAX(1, , , 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+   RPNNumber(1.0,
+   RPNMissingArg(
+   RPNMissingArg(
+   RPNNumber(0.9,
+   RPNNumber(0.8,
+   RPNFunc(fekMAX, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(MaxValue([1.0, {1.1, 1.2,} 0.9, 0.8]));
+
+   // MIN
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MIN(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekMIN, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(MinValue([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // PRODUCT
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=PRODUCT(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekPRODUCT, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1.0*1.1*1.2*0.9*0.8);
+
+  // STDEV
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=STDEV(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekSTDEV, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(StdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // STDEVP
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=STDEVP(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekSTDEVP, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(PopnStdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // SUM
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SUM(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekSUM, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(Sum([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // SUMSQ
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SUMSQ(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekSUMSQ, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(SumOfSquares([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // VAR
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=VAR(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekVAR, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(Variance([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+  // VARP
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=VARP(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekVARP, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(PopnVariance([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+
+{------------------------------------------------------------------------------}
 {                            Logical functions                                 }
 {------------------------------------------------------------------------------}
 
@@ -853,4 +1040,35 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString('A');
 
+
+{------------------------------------------------------------------------------}
+{                             String functions                                 }
+{------------------------------------------------------------------------------}
+
+  // Lower case
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=LOWER("Hallo word")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNFunc(fekLOWER, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(LowerCase('Hallo world'));
+
+  // Trim
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=TRIM("   Hallo word   ")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('   Hallo world   ',
+    RPNFunc(fekTRIM, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(Trim('   Hallo world   '));
+
+  // Upper case
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=UPPER("Hallo word")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNFunc(fekUPPER, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(UpperCase('Hallo world'));
 
