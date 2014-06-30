@@ -1045,6 +1045,63 @@
 {                             String functions                                 }
 {------------------------------------------------------------------------------}
 
+  // CHAR
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CHAR(72)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(72,
+    RPNFunc(fekCHAR, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(char(72));
+
+   // CODE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CODE("Hallo word")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNFunc(fekCODE, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(ord('H'));
+
+  // LEFT (2 parameters)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=LEFT("Hallo word", 2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNNumber(2,
+    RPNFunc(fekLEFT, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('Ha');
+
+  // LEFT (2 parameters, utf8)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=LEFT("Ändern", 3)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Ändern',
+    RPNNumber(3,
+    RPNFunc(fekLEFT, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('Änd');
+
+  // LEFT (2 parameters, 1 of them missing)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=LEFT("Hallo word", )');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNMissingArg(
+    RPNFunc(fekLEFT, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('H');
+
+  // LEFT (1 parameter)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=LEFT("Hallo word")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNFunc(fekLEFT, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('H');
+
   // Lower case
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=LOWER("Hallo word")');
@@ -1054,6 +1111,115 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString(LowerCase('Hallo world'));
 
+  // Lower case / utf8
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=LOWER("Viele Grüße")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Viele Grüße',
+    RPNFunc(fekLOWER, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(UTF8LowerCase('Viele Grüße'));
+
+  // MID
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MID("Hallo word", 3, 2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNNumber(3,
+    RPNNumber(2,
+    RPNFunc(fekMID, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('ll');
+
+  // REPLACE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=REPLACE("weather", 2, 2, "he")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('weather',
+    RPNNumber(2,
+    RPNNumber(2,
+    RPNString('he',
+    RPNFunc(fekREPLACE, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('whether');
+
+  // REPLACE / utf8
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=REPLACE("würde", 2, 1, "u")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('würde',
+    RPNNumber(2,
+    RPNNumber(1,
+    RPNString('u',
+    RPNFunc(fekREPLACE, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('wurde');
+
+// RIGHT (2 parameters)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=RIGHT("Hallo word", 2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNNumber(2,
+    RPNFunc(fekRIGHT, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('ld');
+
+  // RIGHT (2 parameters, one of them missing)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=RIGHT("Hallo word", )');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNMissingArg(
+    RPNFunc(fekRIGHT, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('d');
+
+  // RIGHT (1 parameter)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=RIGHT("Hallo word")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo world',
+    RPNFunc(fekRIGHT, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('d');
+
+  // SUBSTITUTE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lazarus", "s", "s.exe")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('lazarus',
+    RPNString('s',
+    RPNString('s.exe',
+    RPNFunc(fekSUBSTITUTE, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('lazarus.exe');
+
+  // SUBSTITUTE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lAzArus", "A", "a")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('lAzArus',
+    RPNString('A',
+    RPNString('a',
+    RPNFunc(fekSUBSTITUTE, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('lazarus');
+
+  // SUBSTITUTE / utf8
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lÄzÄrus", "Ä", "a")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('lÄzÄrus',
+    RPNString('Ä',
+    RPNString('a',
+    RPNFunc(fekSUBSTITUTE, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('lazarus');
+
+  // SUBSTITUTE / 4 parameters
+  // to do...
+
   // Trim
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=TRIM("   Hallo word   ")');
@@ -1061,7 +1227,7 @@
     RPNString('   Hallo world   ',
     RPNFunc(fekTRIM, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(Trim('   Hallo world   '));
+  sollValues[Row] := CreateString(UTF8Trim('   Hallo world   '));
 
   // Upper case
   inc(Row);
@@ -1071,4 +1237,13 @@
     RPNFunc(fekUPPER, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString(UpperCase('Hallo world'));
+
+  // Upper case / utf8
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=UPPER("Viele Grüße")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Viele Grüße',
+    RPNFunc(fekUPPER, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(UTF8UpperCase('Viele Grüße'));
 

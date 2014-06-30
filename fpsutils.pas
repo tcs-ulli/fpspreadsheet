@@ -77,6 +77,7 @@ function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelF
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
+function UTF8ProperCase(AText: String): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
@@ -139,7 +140,7 @@ var
 implementation
 
 uses
-  Math;
+  Math, lazutf8;
 
 {******************************************************************************}
 {                       Endianess helper functions                             }
@@ -661,6 +662,42 @@ begin
     else                      Result := '#UNKNOWN ERROR';
   end;
 end;
+
+{@@
+  Converts a string to "proper case", i.e. 1st character of each word is
+  upper-case, other characters are lowercase.
+  @param   S           String to be converted
+  @return  String in proper case }
+function UTF8ProperCase(AText: String): String;
+begin
+  result := '';
+end;
+               (*
+const
+  Delims: TSysCharSet = ['0'..'9', ' ', '.', ',', ';', ':', '-', '_',
+    '<', '>', '|', '''', '#', '*', '+', '~', '!', '"', '§', '$', '%', '&', '/', '(', ')', '=',
+    '?', '\', '}', ']', '[', '{', '@'];
+var
+  ch: String;
+  len, i, j: Integer;
+  res: string;
+  w: String;
+  p: Integer;
+  words: Array of String;
+begin
+  AText := UTF8Lowercase(AText);
+
+  i := 0;
+  w := 'dummy';
+  Result := '';
+  while w <> '' do begin
+    w := ExtractWordPos(i, AText, Delims, p);
+    Result := UTF8Copy(AText, 1, p-1) + UTF8Uppercase(UTF8Copy(w, 1, 1)) +
+      UTF8Copy(w, 2, Length(w)-1);
+    inc(i);
+  end;
+end;
+                 *)
 
 {@@
   Converts a string encoded in UTF8 to a string usable in XML. For this purpose,

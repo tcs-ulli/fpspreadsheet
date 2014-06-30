@@ -107,14 +107,22 @@ function fpsNOT         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsOR          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRUE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { String functions }
+function fpsCHAR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCODE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsLEFT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLOWER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsMID         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsPROPER      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsREPLACE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsRIGHT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSUBSTITUTE  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
 implementation
 
 uses
-  Math;
+  Math, lazutf8, StrUtils, fpsUtils;
 
 type
   TBoolArray  = array of boolean;
@@ -736,6 +744,7 @@ begin
 end;
 
 function fpsLOG(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// LOG( number, [base] )
 var
   arg_base, arg_number: TsArgument;
   data: TFloatArray;
@@ -869,6 +878,7 @@ end;
 
 function fpsAVEDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // Average value of absolute deviations of data from their mean.
+// AVEDEV( argument1, [argument2, ... argument_n] )
 var
   data: TFloatArray;
   m: Double;
@@ -884,6 +894,7 @@ begin
 end;
 
 function fpsAVERAGE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// AVERAGE( argument1, [argument2, ... argument_n] )
 var
   data: TFloatArray;
 begin
@@ -892,7 +903,9 @@ begin
 end;
 
 function fpsCOUNT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Count non-missing arguments }
+{ Count non-missing arguments
+  COUNT( argument1, [argument2, ... argument_n] )
+}
 var
   n, i: Integer;
 begin
@@ -903,6 +916,7 @@ begin
 end;
 
 function fpsMAX(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// MAX( number1, number2, ... number_n )
 var
   data: TFloatArray;
 begin
@@ -911,6 +925,7 @@ begin
 end;
 
 function fpsMIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// MIN( number1, number2, ... number_n )
 var
   data: TFloatArray;
 begin
@@ -919,6 +934,7 @@ begin
 end;
 
 function fpsPRODUCT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// PRODUCT( number1, number2, ... number_n )
 var
   data: TFloatArray;
   i: Integer;
@@ -933,6 +949,7 @@ begin
 end;
 
 function fpsSTDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// STDEV( number1, [number2, ... number_n] )
 var
   data: TFloatArray;
 begin
@@ -941,6 +958,7 @@ begin
 end;
 
 function fpsSTDEVP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// STDEVP( number1, [number2, ... number_n] )
 var
   data: TFloatArray;
 begin
@@ -949,6 +967,7 @@ begin
 end;
 
 function fpsSUM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// SUM( value1, [value2, ... value_n] )
 var
   data: TFloatArray;
 begin
@@ -957,6 +976,7 @@ begin
 end;
 
 function fpsSUMSQ(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// SUMSQ( value1, [value2, ... value_n] )
 var
   data: TFloatArray;
 begin
@@ -965,6 +985,7 @@ begin
 end;
 
 function fpsVAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// VAR( number1, number2, ... number_n )
 var
   data: TFloatArray;
 begin
@@ -973,6 +994,7 @@ begin
 end;
 
 function fpsVARP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// VARP( number1, number2, ... number_n )
 var
   data: TFloatArray;
 begin
@@ -984,6 +1006,7 @@ end;
 { Logical functions }
 
 function fpsAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// AND( condition1, [condition2], ... )
 var
   data: TBoolArray;
   i: Integer;
@@ -1002,11 +1025,13 @@ begin
 end;
 
 function fpsFALSE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// FALSE( )
 begin
   Result := CreateBool(false);
 end;
 
 function fpsIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// IF( condition, [value_if_true], [value_if_false] )
 var
   condition: TsArgument;
   case1, case2: TsArgument;
@@ -1026,6 +1051,7 @@ begin
 end;
 
 function fpsNOT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// NOT( logical_value )
 var
   data: TBoolArray;
 begin
@@ -1034,6 +1060,7 @@ begin
 end;
 
 function fpsOR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// OR( condition1, [condition2], ... )
 var
   data: TBoolArray;
   i: Integer;
@@ -1052,6 +1079,7 @@ begin
 end;
 
 function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// TRUE ( )
 begin
   Result := CreateBool(true);
 end;
@@ -1059,28 +1087,191 @@ end;
 
 { String functions }
 
+function fpsCHAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// CHAR( ascii_value )
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if (data[0] >= 0) and (data[0] <= 255) then
+      Result := CreateString(AnsiToUTF8(Char(Round(data[0]))));
+  end;
+end;
+
+function fpsCODE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// CODE( text )
+var
+  data: TStrArray;
+begin
+  if PopStringValues(Args, 1, data, Result) then begin
+    if Length(data) > 0 then
+      Result := CreateNumber(Ord(UTF8ToAnsi(data[0])[1]))
+    else
+      Result := CreateEmpty;
+  end;
+end;
+
+function fpsLEFT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// LEFT( text, [number_of_characters] )
+var
+  arg1, arg2: TsArgument;
+  count: Integer;
+  s: String;
+begin
+  count := 1;
+  if NumArgs = 2 then begin
+    arg2 := Args.Pop;
+    if not arg2.IsMissing then begin
+      if arg2.ArgumentType <> atNumber then begin
+        Result := createError(errWrongType);
+        exit;
+      end;
+      count := Round(arg2.NumberValue);
+    end;
+  end;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType <> atString then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+  s := arg1.StringValue;
+  Result := CreateString(UTF8LeftStr(s, count));
+end;
+
 function fpsLOWER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// LOWER( text )
 var
   data: TStrArray;
 begin
   if PopStringValues(Args, NumArgs, data, Result) then
-    Result := CreateString(lowercase(data[0]));
+    Result := CreateString(UTF8LowerCase(data[0]));
+end;
+
+function fpsMID(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// MID( text, start_position, number_of_characters )
+var
+  fdata: TFloatArray;
+  sdata: TStrArray;
+begin
+  if PopFloatValues(Args, 2, fdata, Result) then
+    if PopStringValues(Args, 1, sdata, Result) then
+      Result := CreateString(UTF8Copy(sdata[0], Round(fData[0]), Round(fdata[1])));
+end;
+
+function fpsPROPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// PROPER( text )
+var
+  data: TStrArray;
+begin
+  if PopStringValues(Args, 1, data, Result) then
+    Result := CreateString(UTF8ProperCase(data[0]));
+end;
+
+function fpsREPLACE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// REPLACE( old_text, start, number_of_chars, new_text )
+var
+  arg_new, arg_old, arg_start, arg_count: TsArgument;
+  s, s1, s2, snew: String;
+  p, count: Integer;
+begin
+  arg_new := Args.Pop;
+  if arg_new.ArgumentType <> atString then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+  arg_count := Args.Pop;
+  if arg_count.ArgumentType <> atNumber then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+  arg_start := Args.Pop;
+  if arg_start.ArgumentType <> atNumber then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+  arg_old := Args.Pop;
+  if arg_old.ArgumentType <> atString then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+
+  s := arg_old.StringValue;
+  snew := arg_new.StringValue;
+  p := round(arg_start.NumberValue);
+  count := round(arg_count.NumberValue);
+
+  s1 := UTF8Copy(s, 1, p-1);
+  s2 := UTF8Copy(s, p+count, UTF8Length(s));
+  Result := CreateString(s1 + snew + s2);
+end;
+
+function fpsRIGHT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// RIGHT( text, [number_of_characters] )
+var
+  arg1, arg2: TsArgument;
+  count: Integer;
+  s: String;
+begin
+  count := 1;
+  if NumArgs = 2 then begin
+    arg2 := Args.Pop;
+    if not arg2.IsMissing then begin
+      if arg2.ArgumentType <> atNumber then begin
+        Result := createError(errWrongType);
+        exit;
+      end;
+      count := round(arg2.NumberValue);
+    end;
+  end;
+  arg1 := Args.Pop;
+  if arg1.ArgumentType <> atString then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+  s := arg1.StringValue;
+  Result := CreateString(UTF8RightStr(s, count));
+end;
+
+function fpsSUBSTITUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// SUBSTITUTE( text, old_text, new_text, [nth_appearance] )
+var
+  data: TStrArray;
+  arg_n: TsArgument;
+  n: Integer;
+begin
+  n := -1;
+  if NumArgs = 4 then begin
+    arg_n := Args.Pop;
+    if arg_n.ArgumentType <> atNumber then begin
+      Result := CreateError(errWrongType);
+      exit;
+    end;
+    n := round(arg_n.Numbervalue);
+  end;
+  if PopStringValues(Args, 3, data, Result) then begin
+    if n = -1 then
+      Result := CreateString(UTF8StringReplace(data[0], data[1], data[2], [rfReplaceall]))
+    else
+      raise Exception.Create('not implemented');
+  end;
 end;
 
 function fpsTRIM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// TRIM( text )
 var
   data: TStrArray;
 begin
   if PopStringValues(Args, NumArgs, data, Result) then
-    Result := CreateString(trim(data[0]));
+    Result := CreateString(UTF8Trim(data[0]));
 end;
 
 function fpsUPPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// UPPER( text )
 var
   data: TStrArray;
 begin
   if PopStringValues(Args, NumArgs, data, Result) then
-    Result := CreateString(uppercase(data[0]));
+    Result := CreateString(UTF8UpperCase(data[0]));
 end;
 
 end.

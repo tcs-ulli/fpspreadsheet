@@ -49,7 +49,7 @@ type
 implementation
 
 uses
-  math, typinfo, fpsUtils, rpnFormulaUnit;
+  math, typinfo, lazUTF8, fpsUtils, rpnFormulaUnit;
 
 { TSpreadWriteReadFormatTests }
 

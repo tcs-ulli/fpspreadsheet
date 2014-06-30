@@ -1202,15 +1202,15 @@ const
     (Symbol:'OR';        MinParams:1; MaxParams:30; Func:fpsOR),                // fekOR
     (Symbol:'TRUE';      MinParams:0; MaxParams:0;  Func:fpsTRUE),              // fekTRUE
   {  string }
-    (Symbol:'CHAR';      MinParams:1; MaxParams:1; Func:nil),   // fekCHAR
-    (Symbol:'CODE';      MinParams:1; MaxParams:1; Func:nil),   // fekCODE
-    (Symbol:'LEFT';      MinParams:1; MaxParams:2; Func:nil),   // fekLEFT
+    (Symbol:'CHAR';      MinParams:1; MaxParams:1; Func:fpsCHAR),               // fekCHAR
+    (Symbol:'CODE';      MinParams:1; MaxParams:1; Func:fpsCODE),               // fekCODE
+    (Symbol:'LEFT';      MinParams:1; MaxParams:2; Func:fpsLEFT),               // fekLEFT
     (Symbol:'LOWER';     MinParams:1; MaxParams:1; Func:fpsLOWER),              // fekLOWER
-    (Symbol:'MID';       MinParams:3; MaxParams:3; Func:nil),   // fekMID
-    (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:nil),   // fekPROPER
-    (Symbol:'REPLACE';   MinParams:4; MaxParams:4; Func:nil),   // fekREPLACE
-    (Symbol:'RIGHT';     MinParams:1; MaxParams:2; Func:nil),   // fekRIGHT
-    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:nil),   // fekSUBSTITUTE
+    (Symbol:'MID';       MinParams:3; MaxParams:3; Func:fpsMID),                // fekMID
+    (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:fpsPROPER),             // fekPROPER
+    (Symbol:'REPLACE';   MinParams:4; MaxParams:4; Func:fpsREPLACE),            // fekREPLACE
+    (Symbol:'RIGHT';     MinParams:1; MaxParams:2; Func:fpsRIGHT),              // fekRIGHT
+    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:fpsSUBSTITUTE),         // fekSUBSTITUTE
     (Symbol:'TRIM';      MinParams:1; MaxParams:1; Func:fpsTRIM),               // fekTRIM
     (Symbol:'UPPER';     MinParams:1; MaxParams:1; Func:fpsUPPER),              // fekUPPER
   {  lookup/reference }
