@@ -64,7 +64,33 @@ function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLess        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLessEqual   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsNotEqual    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-
+{ Math }
+function fpsABS         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsACOS        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsACOSH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsASIN        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsASINH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsATAN        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsATANH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOS         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOSH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsDEGREES     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsEXP         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsINT         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsLN          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsLOG         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsLOG10       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsPI          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsRADIANS     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsRAND        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsROUND       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSIGN        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSIN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSINH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSQRT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTAN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTANH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ Logic }
 function fpsAND         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsFALSE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsIF          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -527,7 +553,6 @@ begin
     Result := CreateBool(false);
 end;
 
-
 function fpsNotEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
@@ -543,6 +568,265 @@ begin
   else
     Result := CreateBool(false);
 end;
+
+
+{ Math functions }
+
+function fpsABS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(abs(data[0]));
+end;
+
+function fpsACOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if InRange(data[0], -1, +1) then
+      Result := CreateNumber(arccos(data[0]))
+    else
+      Result := CreateError(errOverflow);  // #NUM!
+  end;
+end;
+
+function fpsACOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if data[0] >= 1 then
+      Result := CreateNumber(arccosh(data[0]))
+    else
+      Result := CreateError(errOverflow);  // #NUM!
+  end;
+end;
+
+function fpsASIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if InRange(data[0], -1, +1) then
+      Result := CreateNumber(arcsin(data[0]))
+    else
+      Result := CreateError(errOverflow);  // #NUM!
+  end;
+end;
+
+function fpsASINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(arcsinh(data[0]));
+end;
+
+function fpsATAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(arctan(data[0]));
+end;
+
+function fpsATANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if (data[0] > -1) and (data[0] < +1) then
+      Result := CreateNumber(arctanh(data[0]))
+    else
+      Result := CreateError(errOverflow);  // #NUM!
+  end;
+end;
+
+function fpsCOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(cos(data[0]));
+end;
+
+function fpsCOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(cosh(data[0]));
+end;
+
+function fpsDEGREES(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(RadToDeg(data[0]));
+end;
+
+function fpsEXP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(exp(data[0]));
+end;
+
+function fpsINT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(floor(data[0]));
+end;
+
+function fpsLN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if (data[0] > 0) then
+      Result := CreateNumber(ln(data[0]))
+    else
+      Result := CreateError(errOverflow);  // #NUM!
+  end;
+end;
+
+function fpsLOG(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  arg_base, arg_number: TsArgument;
+  data: TFloatArray;
+  base: Double;
+begin
+  base := 10;
+  if NumArgs = 2 then begin
+    arg_base := Args.Pop;
+    if not arg_base.IsMissing then begin
+      if arg_base.ArgumentType <> atNumber then begin
+        Result := CreateError(errWrongType);
+        exit;
+      end;
+      base := arg_base.NumberValue;
+    end;
+  end;
+
+  if base < 0 then begin
+    Result := CreateError(errOverflow);
+    exit;
+  end;
+
+  arg_number := Args.Pop;
+  if arg_number.ArgumentType <> atNumber then begin
+    Result := CreateError(errWrongType);
+    exit;
+  end;
+
+  if arg_number.NumberValue > 0 then
+    Result := CreateNumber(logn(base, arg_number.NumberValue))
+  else
+    Result := CreateError(errOverflow);
+end;
+
+function fpsLOG10(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if (data[0] > 0) then
+      Result := CreateNumber(log10(data[0]))
+    else
+      Result := CreateError(errOverflow);  // #NUM!
+  end;
+end;
+
+function fpsPI(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+begin
+  Result := CreateNumber(pi);
+end;
+
+function fpsRADIANS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(degtorad(data[0]))
+end;
+
+function fpsRAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+begin
+  Result := CreateNumber(random);
+end;
+
+function fpsROUND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 2, data, Result) then
+    Result := CreateNumber(RoundTo(data[0], round(data[1])))
+end;
+
+function fpsSIGN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(sign(data[0]))
+end;
+
+function fpsSIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(sin(data[0]))
+end;
+
+function fpsSINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(sinh(data[0]))
+end;
+
+function fpsSQRT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if data[0] >= 0.0 then
+      Result := CreateNumber(sqrt(data[0]))
+    else
+      Result := CreateError(errOverflow);
+  end;
+end;
+
+function fpsTAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then begin
+    if frac(data[0] / (pi*0.5)) = 0 then
+      Result := CreateError(errOverflow)
+    else
+      Result := CreateNumber(tan(data[0]))
+  end;
+end;
+
+function fpsTANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TFloatArray;
+begin
+  if PopFloatValues(Args, 1, data, Result) then
+    Result := CreateNumber(tanh(data[0]))
+end;
+
+
+{ Logical functions }
 
 function fpsAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
