@@ -992,7 +992,7 @@ procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 implementation
 
 uses
-  Math, StrUtils, TypInfo, fpsUtils, fpsNumFormatParser, fpsMath;
+  Math, StrUtils, TypInfo, fpsUtils, fpsNumFormatParser, fpsFunc;
 
 { Translatable strings }
 resourcestring
