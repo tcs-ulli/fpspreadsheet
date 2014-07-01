@@ -112,10 +112,8 @@ function fpsCODE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLEFT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsLOWER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMID         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsPROPER      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsREPLACE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsRIGHT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSUBSTITUTE  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
@@ -1158,15 +1156,6 @@ begin
       Result := CreateString(UTF8Copy(sdata[0], Round(fData[0]), Round(fdata[1])));
 end;
 
-function fpsPROPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// PROPER( text )
-var
-  data: TStrArray;
-begin
-  if PopStringValues(Args, 1, data, Result) then
-    Result := CreateString(UTF8ProperCase(data[0]));
-end;
-
 function fpsREPLACE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // REPLACE( old_text, start, number_of_chars, new_text )
 var
@@ -1230,30 +1219,6 @@ begin
   end;
   s := arg1.StringValue;
   Result := CreateString(UTF8RightStr(s, count));
-end;
-
-function fpsSUBSTITUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// SUBSTITUTE( text, old_text, new_text, [nth_appearance] )
-var
-  data: TStrArray;
-  arg_n: TsArgument;
-  n: Integer;
-begin
-  n := -1;
-  if NumArgs = 4 then begin
-    arg_n := Args.Pop;
-    if arg_n.ArgumentType <> atNumber then begin
-      Result := CreateError(errWrongType);
-      exit;
-    end;
-    n := round(arg_n.Numbervalue);
-  end;
-  if PopStringValues(Args, 3, data, Result) then begin
-    if n = -1 then
-      Result := CreateString(UTF8StringReplace(data[0], data[1], data[2], [rfReplaceall]))
-    else
-      raise Exception.Create('not implemented');
-  end;
 end;
 
 function fpsTRIM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;

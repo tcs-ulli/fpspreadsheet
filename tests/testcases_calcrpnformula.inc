@@ -1184,42 +1184,6 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString('d');
 
-  // SUBSTITUTE
-  inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lazarus", "s", "s.exe")');
-  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNString('lazarus',
-    RPNString('s',
-    RPNString('s.exe',
-    RPNFunc(fekSUBSTITUTE, 3, nil))))));
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('lazarus.exe');
-
-  // SUBSTITUTE
-  inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lAzArus", "A", "a")');
-  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNString('lAzArus',
-    RPNString('A',
-    RPNString('a',
-    RPNFunc(fekSUBSTITUTE, 3, nil))))));
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('lazarus');
-
-  // SUBSTITUTE / utf8
-  inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lÄzÄrus", "Ä", "a")');
-  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNString('lÄzÄrus',
-    RPNString('Ä',
-    RPNString('a',
-    RPNFunc(fekSUBSTITUTE, 3, nil))))));
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('lazarus');
-
-  // SUBSTITUTE / 4 parameters
-  // to do...
-
   // Trim
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=TRIM("   Hallo word   ")');
