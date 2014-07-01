@@ -927,7 +927,7 @@ begin
     INT_EXCEL_TOKEN_TSTR: { fekString }
     begin
       // string constant is stored as widestring in BIFF8
-      wideStr := AFormula[i].StringValue;
+      wideStr := UTF8Decode(AFormula[i].StringValue);
       len := Length(wideStr);
       AStream.WriteByte(len); // char count in 1 byte
       AStream.WriteByte(1);   // Widestring flags, 1=regular unicode LE string
