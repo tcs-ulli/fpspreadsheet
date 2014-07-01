@@ -112,7 +112,11 @@ type
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); override;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsRPNFormula; ACell: PCell); override;
+    function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; override;
+    procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); override;
+    procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteWindow1(AStream: TStream); override;
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
   public
@@ -1283,8 +1287,8 @@ end;
   MyFormula[1].Row := 0;
   MyFormula[2].TokenID := INT_EXCEL_TOKEN_TADD;  +
 }
-procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
+procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
   i: Integer;
@@ -1315,14 +1319,18 @@ begin
   { BIFF2 Attributes }
   WriteCellFormatting(AStream, ACell, xf);
 
-  { Result of the formula in IEEE 754 floating-point value }
-  AStream.WriteBuffer(FormulaResult, 8);
+  { Encoded result of RPN formula }
+  WriteRPNResult(AStream, ACell);
 
   { 0 = Do not recalculate
     1 = Always recalculate }
-  AStream.WriteByte($1);
+  AStream.WriteByte(1);
 
-  { Formula }
+  { Formula data (RPN token array) }
+  WriteRPNTokenArray(AStream, AFormula, RPNLength);
+
+(*
+{ Formula }
 
   { The size of the token array is written later,
     because it's necessary to calculate if first,
@@ -1420,7 +1428,57 @@ begin
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(17 + RPNLength));
   AStream.position := FinalPos;
+  *)
+
+  { Write sizes in the end, after we known them }
+  FinalPos := AStream.Position;
+  AStream.Position := RecordSizePos;
+  AStream.WriteWord(WordToLE(17 + RPNLength));
+  AStream.Position := FinalPos;
+
+  { Write following STRING record if formula result is a non-empty string }
+  if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
+    WriteStringRecord(AStream, ACell^.UTF8StringValue);
+
 end;
+
+{ Writes the identifier for an RPN function with fixed argument count and
+  returns the number of bytes written. }
+function TsSpreadBIFF2Writer.WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word;
+begin
+  AStream.WriteByte(Lo(AIdentifier));
+  Result := 1;
+end;
+
+{ Writes the size of the RPN token array. Called from WriteRPNFormula.
+  Overrides xlscommon. }
+procedure TsSpreadBIFF2Writer.WriteRPNTokenArraySize(AStream: TStream;
+  ASize: Word);
+begin
+  AStream.WriteByte(Lo(ASize));
+end;
+
+{ Writes an Excel 2 STRING record which immediately follows a FORMULA record
+  when the formula result is a string. }
+procedure TsSpreadBIFF2Writer.WriteStringRecord(AStream: TStream;
+  AString: String);
+var
+  s: ansistring;
+  len: Integer;
+begin
+  s := AString;
+  len := Length(s);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STRING));
+  AStream.WriteWord(WordToLE(1 + len*SizeOf(Char)));
+
+  { Write string length }
+  AStream.WriteByte(len);
+  { Write characters }
+  AStream.WriteBuffer(s[1], len * SizeOf(Char));
+end;
+
 
 {*******************************************************************
 *  TsSpreadBIFF2Writer.WriteBlank ()

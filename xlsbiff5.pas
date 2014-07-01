@@ -120,8 +120,11 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
+{
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
+      }
+    procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
@@ -677,7 +680,7 @@ begin
   AStream.WriteByte(len);        // AnsiString, char count in 1 byte
   AStream.WriteBuffer(s[1], len * SizeOf(AnsiChar));  // String data
 end;
-
+  (*
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteRPNFormula ()
 *
@@ -688,8 +691,8 @@ end;
 *                  AFormula array
 *
 *******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
+procedure TsSpreadBIFF5Writer.WriteRPNFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
   i: Integer;
@@ -835,6 +838,7 @@ begin
   AStream.WriteWord(WordToLE(22 + RPNLength));
   AStream.position := FinalPos;
 end;
+    *)
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteIndex ()
@@ -941,6 +945,28 @@ begin
     Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
     because the file wouldn't be written.
   }
+end;
+
+{ Writes an Excel 5 STRING record which immediately follows a FORMULA record
+  when the formula result is a string.
+  BIFF5 writes a byte-string, but uses a 16-bit length here! }
+procedure TsSpreadBIFF5Writer.WriteStringRecord(AStream: TStream;
+  AString: String);
+var
+  s: ansistring;
+  len: Integer;
+begin
+  s := AString;
+  len := Length(s);
+
+  { BIFF Record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STRING));
+  AStream.WriteWord(WordToLE(2 + len*SizeOf(Char)));
+
+  { Write string length }
+  AStream.WriteWord(WordToLE(len));
+  { Write characters }
+  AStream.WriteBuffer(s[1], len * SizeOf(Char));
 end;
 
 {*******************************************************************

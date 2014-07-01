@@ -123,10 +123,16 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
+    function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
+      AFlags: TsRelFlags): word; override;
+    function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
+      AFlags: TsRelFlags): Word; override;
+{
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
+}
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
-    procedure WriteStringRecord(AStream: TStream; AString: string);
+    procedure WriteStringRecord(AStream: TStream; AString: string); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
@@ -225,9 +231,9 @@ const
   INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
 
   { Cell Addresses constants }
-  MASK_EXCEL_COL_BITS_BIFF8=$00FF;
-  MASK_EXCEL_RELATIVE_COL = $4000;  // This is according to Microsoft documentation,
-  MASK_EXCEL_RELATIVE_ROW = $8000;  // but opposite to OpenOffice documentation!
+  MASK_EXCEL_COL_BITS_BIFF8     = $00FF;
+  MASK_EXCEL_RELATIVE_COL_BIFF8 = $4000;  // This is according to Microsoft documentation,
+  MASK_EXCEL_RELATIVE_ROW_BIFF8 = $8000;  // but opposite to OpenOffice documentation!
 
   { BOF record constants }
   INT_BOF_BIFF8_VER       = $0600;
@@ -239,11 +245,6 @@ const
   INT_BOF_WORKSPACE       = $0100;
   INT_BOF_BUILD_ID        = $1FD2;
   INT_BOF_BUILD_YEAR      = $07CD;
-
-  { FORMULA record constants }
-  MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
-  MASK_FORMULA_RECALCULATE_ON_OPEN = $0002;
-  MASK_FORMULA_SHARED_FORMULA      = $0008;
 
   { STYLE record constants }
   MASK_STYLE_BUILT_IN     = $8000;
@@ -796,6 +797,54 @@ begin
   AStream.position := FinalPos;*)
 end;
 
+{ Writes the address of a cell as used in an RPN formula and returns the
+  number of bytes written.
+  Valid for BIFF8. }
+function TsSpreadBIFF8Writer.WriteRPNCellAddress(AStream: TStream;
+  ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
+var
+  c: Cardinal;       // column index with encoded relative/absolute address info
+begin
+  AStream.WriteWord(WordToLE(ARow));
+  c := ACol and MASK_EXCEL_COL_BITS_BIFF8;
+  if (rfRelRow in AFlags) then c := c or MASK_EXCEL_RELATIVE_ROW_BIFF8;
+  if (rfRelCol in AFlags) then c := c or MASK_EXCEL_RELATIVE_COL_BIFF8;
+  AStream.WriteWord(WordToLE(c));
+  Result := 4;
+end;
+
+{ Writes the address of a cell range as used in an RPN formula and returns the
+  count of bytes written.
+  Valid for BIFF2-BIFF5. }
+function TsSpreadBIFF8Writer.WriteRPNCellRangeAddress(AStream: TStream;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): Word;
+{ Cell range address, BIFF8:
+  Offset Size Contents
+     0    2   Index to first row (0…65535) or offset of first row (method [B], -32768…32767)
+     2    2   Index to last row (0…65535) or offset of last row (method [B], -32768…32767)
+     4    2   Index to first column or offset of first column, with relative flags (see table above)
+     6    2   Index to last column or offset of last column, with relative flags (see table above)
+}
+var
+  c: Cardinal;       // column index with encoded relative/absolute address info
+begin
+  AStream.WriteWord(WordToLE(ARow1));
+  AStream.WriteWord(WordToLE(ARow2));
+
+  c := ACol1;
+  if (rfRelCol in AFlags) then c := c or MASK_EXCEL_RELATIVE_COL;
+  if (rfRelRow in AFlags) then c := c or MASK_EXCEL_RELATIVE_ROW;
+  AStream.WriteWord(WordToLE(c));
+
+  c := ACol2;
+  if (rfRelCol2 in AFlags) then c := c or MASK_EXCEL_RELATIVE_COL;
+  if (rfRelRow2 in AFlags) then c := c or MASK_EXCEL_RELATIVE_ROW;
+  AStream.WriteWord(WordToLE(c));
+
+  Result := 8;
+end;
+
+                                       (*
 procedure TsSpreadBIFF8Writer.WriteRPNFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
@@ -869,11 +918,12 @@ begin
 
   { Formula }
 
-  { The size of the token array is written later,
-    because it's necessary to calculate if first,
-    and this is done at the same time it is written }
+  { The size of the token array is written later, because it's necessary to
+    calculate if first, and this is done at the same time it is written }
   TokenArraySizePos := AStream.Position;
-  AStream.WriteWord(RPNLength);
+  WriteRPNTokenArraySize(AStream, RPNLength);
+
+  WriteRPNTokenArray(AStream, AFormula, RPNLength);
 
   { Formula data (RPN token array) }
   for i := 0 to Length(AFormula) - 1 do
@@ -988,12 +1038,13 @@ begin
   AStream.WriteByte(RPNLength);
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(22 + RPNLength));
-  AStream.position := FinalPos;
+  AStream.Position := FinalPos;
 
   { Write following STRING record if formula result is a non-empty string }
   if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
     WriteStringRecord(AStream, ACell^.UTF8StringValue);
 end;
+*)
 
 { Helper function for writing a string with 8-bit length. Overridden version
   for BIFF8. Called for writing rpn formula string tokens.
