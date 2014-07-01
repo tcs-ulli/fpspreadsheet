@@ -1207,10 +1207,10 @@ const
     (Symbol:'LEFT';      MinParams:1; MaxParams:2; Func:fpsLEFT),               // fekLEFT
     (Symbol:'LOWER';     MinParams:1; MaxParams:1; Func:fpsLOWER),              // fekLOWER
     (Symbol:'MID';       MinParams:3; MaxParams:3; Func:fpsMID),                // fekMID
-    (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:fpsPROPER),             // fekPROPER
+    (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:nil),   // fekPROPER
     (Symbol:'REPLACE';   MinParams:4; MaxParams:4; Func:fpsREPLACE),            // fekREPLACE
     (Symbol:'RIGHT';     MinParams:1; MaxParams:2; Func:fpsRIGHT),              // fekRIGHT
-    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:fpsSUBSTITUTE),         // fekSUBSTITUTE
+    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:nil),   // fekSUBSTITUTE
     (Symbol:'TRIM';      MinParams:1; MaxParams:1; Func:fpsTRIM),               // fekTRIM
     (Symbol:'UPPER';     MinParams:1; MaxParams:1; Func:fpsUPPER),              // fekUPPER
   {  lookup/reference }
