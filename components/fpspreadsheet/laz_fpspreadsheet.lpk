@@ -108,8 +108,8 @@ This package is all you need if you don't want graphical components (like grids 
         <UnitName Value="fpsNumFormatParser"/>
       </Item20>
       <Item21>
-        <Filename Value="fpsmath.pas"/>
-        <UnitName Value="fpsmath"/>
+        <Filename Value="fpsfunc.pas"/>
+        <UnitName Value="fpsfunc"/>
       </Item21>
     </Files>
     <RequiredPkgs Count="2">

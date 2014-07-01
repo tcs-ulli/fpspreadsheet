@@ -1,4 +1,4 @@
-unit fpsmath;
+unit fpsfunc;
 
 {$mode objfpc}
 
