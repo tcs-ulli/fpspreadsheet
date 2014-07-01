@@ -448,6 +448,8 @@ type
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
+    // Helper function for writing a string with 8-bit length }
+    function WriteString_8BitLen(AStream: TStream; AString: String): Integer; virtual;
 
     // Write out BLANK cell record
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -2139,6 +2141,23 @@ begin
 
   flags := $04C1;
   AStream.WriteWord(WordToLE(flags));
+end;
+
+{ Helper function for writing a string with 8-bit length. Here, we implement the
+  version for ansistrings since it is valid for all BIFF versions except BIFF8
+  where it has to overridden. Is called for writing a string rpn token.
+  Returns the count of bytes written. }
+function TsSpreadBIFFWriter.WriteString_8bitLen(AStream: TStream;
+  AString: String): Integer;
+var
+  len: Byte;
+  s: ansistring;
+begin
+  s := AString;
+  len := Length(s);
+  AStream.WriteByte(len);
+  AStream.WriteBuffer(s[1], len);
+  Result := 1 + len;
 end;
 
 { Writes an Excel 5/8 WINDOW1 record
