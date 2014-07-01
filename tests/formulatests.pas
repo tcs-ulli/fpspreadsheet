@@ -6,6 +6,10 @@ unit formulatests;
   when the corresponding rpn formula is calculated. }
 {.$DEFINE ENABLE_CALC_RPN_EXCEPTIONS}
 
+{ Deactivate this define to include errors in the structure of the rpn formulas.
+  Note that Excel report a corrupted file when trying to read this file }
+{.DEFINE ENABLE_DEFECTIVE_FORMULAS }
+
 
 interface
 
@@ -143,6 +147,9 @@ var
   cell: PCell;
   sollValues: array of TsArgument;
   formula: String;
+  s: String;
+  t: TTime;
+  hr,min,sec,msec: Word;
 begin
   TempFile := GetTempFileName;
 

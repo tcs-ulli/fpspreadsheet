@@ -1094,8 +1094,8 @@ type
   end;
 
 const
-  FEProps: array[TFEKind] of TFEProp = (
-  { Operands }
+  FEProps: array[TFEKind] of TFEProp = (                                        // functions marked by (*)
+  { Operands }                                                                  // are only partially supported
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCell
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRef
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRange
@@ -1149,37 +1149,37 @@ const
     (Symbol:'TAN';       MinParams:1; MaxParams:1;  Func:fpsTAN),               // fekTAN
     (Symbol:'TANH';      MinParams:1; MaxParams:1;  Func:fpsTANH),              // fekTANH,
   { date/time }
-    (Symbol:'DATE';      MinParams:3; MaxParams:3; Func:nil),   // fekDATE
-    (Symbol:'DATEDIF';   MinParams:3; MaxParams:3; Func:nil),   // fekDATEDIF
-    (Symbol:'DATEVALUE'; MinParams:1; MaxParams:1; Func:nil),   // fekDATEVALUE
-    (Symbol:'DAY';       MinParams:1; MaxParams:1; Func:nil),   // fekDAY
-    (Symbol:'HOUR';      MinParams:1; MaxParams:1; Func:nil),   // fekHOUR
-    (Symbol:'MINUTE';    MinParams:1; MaxParams:1; Func:nil),   // fekMINUTE
-    (Symbol:'MONTH';     MinParams:1; MaxParams:1; Func:nil),   // fekMONTH
-    (Symbol:'NOW';       MinParams:0; MaxParams:0; Func:nil),   // fekNOW
-    (Symbol:'SECOND';    MinParams:1; MaxParams:1; Func:nil),   // fekSECOND
-    (Symbol:'TIME';      MinParams:3; MaxParams:3; Func:nil),   // fekTIME
-    (Symbol:'TIMEVALUE'; MinParams:1; MaxParams:1; Func:nil),   // fekTIMEVALUE
-    (Symbol:'TODAY';     MinParams:0; MaxParams:0; Func:nil),   // fekTODAY
-    (Symbol:'WEEKDAY';   MinParams:1; MaxParams:2; Func:nil),   // fekWEEKDAY
-    (Symbol:'YEAR';      MinParams:1; MaxParams:1; Func:nil),   // fekYEAR
+    (Symbol:'DATE';      MinParams:3; MaxParams:3;  Func:fpsDATE),              // fekDATE
+    (Symbol:'DATEDIF';   MinParams:3; MaxParams:3;  Func:fpsDATEDIF),           // fekDATEDIF    (*)
+    (Symbol:'DATEVALUE'; MinParams:1; MaxParams:1;  Func:fpsDATEVALUE),         // fekDATEVALUE
+    (Symbol:'DAY';       MinParams:1; MaxParams:1;  Func:fpsDAY),               // fekDAY
+    (Symbol:'HOUR';      MinParams:1; MaxParams:1;  Func:fpsHOUR),              // fekHOUR
+    (Symbol:'MINUTE';    MinParams:1; MaxParams:1;  Func:fpsMINUTE),            // fekMINUTE
+    (Symbol:'MONTH';     MinParams:1; MaxParams:1;  Func:fpsMONTH),             // fekMONTH
+    (Symbol:'NOW';       MinParams:0; MaxParams:0;  Func:fpsNOW),               // fekNOW
+    (Symbol:'SECOND';    MinParams:1; MaxParams:1;  Func:fpsSECOND),            // fekSECOND
+    (Symbol:'TIME';      MinParams:3; MaxParams:3;  Func:fpsTIME),              // fekTIME
+    (Symbol:'TIMEVALUE'; MinParams:1; MaxParams:1;  Func:fpsTIMEVALUE),         // fekTIMEVALUE
+    (Symbol:'TODAY';     MinParams:0; MaxParams:0;  Func:fpsTODAY),             // fekTODAY
+    (Symbol:'WEEKDAY';   MinParams:1; MaxParams:2;  Func:fpsWEEKDAY),           // fekWEEKDAY
+    (Symbol:'YEAR';      MinParams:1; MaxParams:1;  Func:fpsYEAR),              // fekYEAR
   { statistical }
     (Symbol:'AVEDEV';    MinParams:1; MaxParams:30; Func:fpsAVEDEV),            // fekAVEDEV
     (Symbol:'AVERAGE';   MinParams:1; MaxParams:30; Func:fpsAVERAGE),           // fekAVERAGE
-    (Symbol:'BETADIST';  MinParams:3; MaxParams:5; Func:nil),   // fekBETADIST
-    (Symbol:'BETAINV';   MinParams:3; MaxParams:5; Func:nil),   // fekBETAINV
-    (Symbol:'BINOMDIST'; MinParams:4; MaxParams:4; Func:nil),   // fekBINOMDIST
-    (Symbol:'CHIDIST';   MinParams:2; MaxParams:2; Func:nil),   // fekCHIDIST
-    (Symbol:'CHIINV';    MinParams:2; MaxParams:2; Func:nil),   // fekCHIINV
+    (Symbol:'BETADIST';  MinParams:3; MaxParams:5;  Func:nil),   // fekBETADIST
+    (Symbol:'BETAINV';   MinParams:3; MaxParams:5;  Func:nil),   // fekBETAINV
+    (Symbol:'BINOMDIST'; MinParams:4; MaxParams:4;  Func:nil),   // fekBINOMDIST
+    (Symbol:'CHIDIST';   MinParams:2; MaxParams:2;  Func:nil),   // fekCHIDIST
+    (Symbol:'CHIINV';    MinParams:2; MaxParams:2;  Func:nil),   // fekCHIINV
     (Symbol:'COUNT';     MinParams:0; MaxParams:30; Func:fpsCOUNT),             // fekCOUNT
     (Symbol:'COUNTA';    MinParams:0; MaxParams:30; Func:nil),  // fekCOUNTA
-    (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1; Func:nil),   // fekCOUNTBLANK
-    (Symbol:'COUNTIF';   MinParams:2; MaxParams:2; Func:nil),   // fekCOUNTIF
+    (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1;  Func:nil),   // fekCOUNTBLANK
+    (Symbol:'COUNTIF';   MinParams:2; MaxParams:2;  Func:nil),   // fekCOUNTIF
     (Symbol:'MAX';       MinParams:1; MaxParams:30; Func:fpsMAX),               // fekMAX
     (Symbol:'MEDIAN';    MinParams:1; MaxParams:30; Func:nil),  // fekMEDIAN
     (Symbol:'MIN';       MinParams:1; MaxParams:30; Func:fpsMIN),               // fekMIN
-    (Symbol:'PERMUT';    MinParams:2; MaxParams:2; Func:nil),   // fekPERMUT
-    (Symbol:'POISSON';   MinParams:3; MaxParams:3; Func:nil),   // fekPOISSON
+    (Symbol:'PERMUT';    MinParams:2; MaxParams:2;  Func:nil),   // fekPERMUT
+    (Symbol:'POISSON';   MinParams:3; MaxParams:3;  Func:nil),   // fekPOISSON
     (Symbol:'PRODUCT';   MinParams:0; MaxParams:30; Func:fpsPRODUCT),           // fekPRODUCT
     (Symbol:'STDEV';     MinParams:1; MaxParams:30; Func:fpsSTDEV),             // fekSTDEV
     (Symbol:'STDEVP';    MinParams:1; MaxParams:30; Func:fpsSTDEVP),            // fekSTDEVP
@@ -1210,7 +1210,7 @@ const
     (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:nil),   // fekPROPER
     (Symbol:'REPLACE';   MinParams:4; MaxParams:4; Func:fpsREPLACE),            // fekREPLACE
     (Symbol:'RIGHT';     MinParams:1; MaxParams:2; Func:fpsRIGHT),              // fekRIGHT
-    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:nil),   // fekSUBSTITUTE
+    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:fpsSUBSTITUTE),         // fekSUBSTITUTE (*)
     (Symbol:'TRIM';      MinParams:1; MaxParams:1; Func:fpsTRIM),               // fekTRIM
     (Symbol:'UPPER';     MinParams:1; MaxParams:1; Func:fpsUPPER),              // fekUPPER
   {  lookup/reference }
@@ -1222,15 +1222,15 @@ const
     (Symbol:'CELL';      MinParams:1; MaxParams:2; Func:nil),   // fekCELLINFO
     (Symbol:'INFO';      MinParams:1; MaxParams:1; Func:nil),   // fekINFO
     (Symbol:'ISBLANK';   MinParams:1; MaxParams:1; Func:nil),   // fekIsBLANK
-    (Symbol:'ISERR';     MinParams:1; MaxParams:1; Func:nil),   // fekIsERR
-    (Symbol:'ISERROR';   MinParams:1; MaxParams:1; Func:nil),   // fekIsERROR
-    (Symbol:'ISLOGICAL'; MinParams:1; MaxParams:1; Func:nil),   // fekIsLOGICAL
-    (Symbol:'ISNA';      MinParams:1; MaxParams:1; Func:nil),   // fekIsNA
-    (Symbol:'ISNONTEXT'; MinParams:1; MaxParams:1; Func:nil),   // fekIsNONTEXT
-    (Symbol:'ISNUMBER';  MinParams:1; MaxParams:1; Func:nil),   // fekIsNUMBER
+    (Symbol:'ISERR';     MinParams:1; MaxParams:1; Func:fpsISERR),              // fekIsERR
+    (Symbol:'ISERROR';   MinParams:1; MaxParams:1; Func:fpsISERROR),            // fekIsERROR
+    (Symbol:'ISLOGICAL'; MinParams:1; MaxParams:1; Func:fpsISLOGICAL),          // fekIsLOGICAL
+    (Symbol:'ISNA';      MinParams:1; MaxParams:1; Func:fpsISNA),               // fekIsNA
+    (Symbol:'ISNONTEXT'; MinParams:1; MaxParams:1; Func:fpsISNONTEXT),          // fekIsNONTEXT
+    (Symbol:'ISNUMBER';  MinParams:1; MaxParams:1; Func:fpsISNUMBER),           // fekIsNUMBER
     (Symbol:'ISREF';     MinParams:1; MaxParams:1; Func:nil),   // fekIsRef
-    (Symbol:'ISTEXT';    MinParams:1; MaxParams:1; Func:nil),   // fekIsTEXT
-    (Symbol:'VALUE';     MinParams:1; MaxParams:1; Func:nil),   // fekValue
+    (Symbol:'ISTEXT';    MinParams:1; MaxParams:1; Func:fpsISTEXT),             // fekIsTEXT
+    (Symbol:'VALUE';     MinParams:1; MaxParams:1; Func:fpsVALUE),              // fekValue
   { Other operations }
     (Symbol:'SUM';       MinParams:1; MaxParams:1; Func:nil)    // fekOpSUM (Unary sum operation). Note: CANNOT be used for summing sell contents; use fekSUM}
   );
@@ -1460,14 +1460,18 @@ begin
           func := FEProps[fe.ElementKind].Func;
           if not Assigned(func) then begin
             // calculation of function not implemented
+            WriteErrorValue(ACell, errFormulaNotSupported);
             exit;
           end;
           if args.Count < fe.ParamsNum then begin
             // not enough parameters
+            WriteErrorValue(ACell, errArgError);
             exit;
           end;
           // Result of function
           val := func(args, fe.ParamsNum);
+          args.Push(val);
+          {
           // Push valid result on stack, exit in case of error
           case val.ArgumentType of
             atNumber, atString, atBool, atEmpty:
@@ -1478,6 +1482,7 @@ begin
                 exit;
               end;
           end;
+          }
       end;  // case
     end;  // for
     if args.Count = 1 then begin
@@ -1486,18 +1491,21 @@ begin
         atNumber: WriteNumber(ACell, val.NumberValue);
         atBool  : WriteBoolValue(ACell, val.BoolValue);
         atString: WriteUTF8Text(ACell, val.StringValue);
+        atError : WriteErrorValue(ACell, val.ErrorValue);
         atEmpty : WriteBlank(ACell);
       end;
     end else
+      WriteErrorValue(ACell, errArgError);
+    {
       // This case is a program error --> raise an exception
       raise Exception.CreateFmt('Incorrect argument count of the formula in cell %s', [
         GetCellString(ACell^.Row, ACell^.Col, [])
       ]);
+      }
   finally
     args.Free;
   end;
 end;
-
 
 {@@
   Converts a FPSpreadsheet cell position, which is Row, Col in numbers
