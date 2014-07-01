@@ -86,6 +86,21 @@ function fpsSINH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSQRT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTAN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTANH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ Date/time functions }
+function fpsDATE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsDATEDIF     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsDATEVALUE   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsDAY         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsHOUR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsMINUTE      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsMONTH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsNOW         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSECOND      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTIME        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTIMEVALUE   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsTODAY       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsWEEKDAY     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsYEAR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { Statistical functions }
 function fpsAVEDEV      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsAVERAGE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -114,13 +129,23 @@ function fpsLOWER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMID         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsREPLACE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsRIGHT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSUBSTITUTE  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ info functions }
+function fpsISERR       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISERROR     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISLOGICAL   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISNA        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISNONTEXT   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISNUMBER    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISTEXT      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsVALUE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
 implementation
 
 uses
-  Math, lazutf8, StrUtils, fpsUtils;
+  Math, lazutf8, StrUtils, DateUtils, fpsUtils;
 
 type
   TBoolArray  = array of boolean;
@@ -222,6 +247,7 @@ begin
                AValue := Arg.BoolValue;
                Result := errOK;
              end;
+    atError: Result := Arg.ErrorValue;
     else     Result := errWrongType;
   end;
 end;
@@ -233,6 +259,7 @@ begin
     atNumber : ANumber := Arg.NumberValue;
     atString : if not TryStrToFloat(arg.StringValue, ANumber) then Result := errWrongType;
     atBool   : if Arg.BoolValue then ANumber := 1.0 else ANumber := 0.0;
+    atError  : Result := Arg.ErrorValue;
   end;
 end;
 
@@ -243,6 +270,7 @@ begin
                  AString := Arg.StringValue;
                  Result := errOK;
                end;
+    atError  : Result := Arg.ErrorValue;
     else       Result := errWrongType;
   end;
 end;
@@ -329,6 +357,31 @@ begin
     b := AValues[j];
     AValues[j] := AValues[High(AValues)-j];
     AValues[High(AValues)-j] := b;
+  end;
+end;
+
+function PopDateValue(Args: TsArgumentStack; out ADate: TDate;
+  out AErrArg: TsArgument): Boolean;
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atError, atBool, atEmpty:
+      begin
+        Result := false;
+        AErrArg := CreateError(errWrongType);
+      end;
+    atNumber:
+      begin
+        Result := true;
+        ADate := arg.NumberValue;
+      end;
+    atString:
+      begin
+        Result := TryStrToDate(arg.StringValue, ADate);
+        if not Result then AErrArg := CreateError(errWrongType);
+      end
   end;
 end;
 
@@ -431,6 +484,32 @@ begin
     s := AValues[j];
     AValues[j] := AValues[High(AValues)-j];
     AValues[High(AValues)-j] := s;
+  end;
+end;
+
+
+function PopTimeValue(Args: TsArgumentStack; out ATime: TTime;
+  out AErrArg: TsArgument): Boolean;
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atError, atBool, atEmpty:
+      begin
+        Result := false;
+        AErrArg := CreateError(errWrongType);
+      end;
+    atNumber:
+      begin
+        Result := true;
+        ATime := frac(arg.NumberValue);
+      end;
+    atString:
+      begin
+        Result := TryStrToTime(arg.StringValue, ATime);
+        if not Result then AErrArg := CreateError(errWrongType);
+      end
   end;
 end;
 
@@ -759,13 +838,13 @@ begin
       base := arg_base.NumberValue;
     end;
   end;
+  arg_number := Args.Pop;
 
   if base < 0 then begin
     Result := CreateError(errOverflow);
     exit;
   end;
 
-  arg_number := Args.Pop;
   if arg_number.ArgumentType <> atNumber then begin
     Result := CreateError(errWrongType);
     exit;
@@ -872,6 +951,159 @@ begin
 end;
 
 
+{ Date/time functions }
+
+function fpsDATE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// DATE( year, month, day )
+var
+  data: TFloatArray;
+  d: TDate;
+begin
+  if PopFloatValues(Args, 3, data, Result) then begin
+    d := EncodeDate(round(data[0]), round(data[1]), round(data[2]));
+    Result := CreateNumber(d);
+  end;
+end;
+
+function fpsDATEDIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ DATEDIF( start_date, end_date, interval )
+    start_date <= end_date !
+    interval = Y  - The number of complete years.
+             = M  - The number of complete months.
+             = D  - The number of days.
+             = MD - The difference between the days (months and years are ignored).
+             = YM - The difference between the months (days and years are ignored).
+             = YD - The difference between the days (years and dates are ignored). }
+var
+  data: TStrArray;
+  start_date, end_date: TDate;
+begin
+  if not PopStringValues(Args, 1, data, Result) then exit;
+  if not PopDateValue(Args, end_date, Result) then exit;
+  if not PopDateValue(Args, start_date, Result) then exit;
+
+  if end_date > start_date then
+    Result := CreateError(errOverflow)
+  else if data[0] = 'Y' then
+    Result := CreateNumber(YearsBetween(end_date, start_date))
+  else if data[0] = 'M' then
+    Result := CreateNumber(MonthsBetween(end_date, start_date))
+  else if data[0] = 'D' then
+    Result := CreateNumber(DaysBetween(end_date, start_date))
+  else
+    Result := CreateError(errFormulaNotSupported);
+end;
+
+function fpsDATEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// DATEVALUE( date )   -- date can be a string or a date/time
+var
+  d: TDate;
+begin
+  if PopDateValue(Args, d, Result) then
+    Result := CreateNumber(d);
+end;
+
+function fpsDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  d: TDate;
+begin
+  if PopDateValue(Args, d, Result) then
+    Result := CreateNumber(DayOf(d));
+end;
+
+function fpsHOUR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  t: TTime;
+begin
+  if PopTimeValue(Args, t, Result) then
+    Result := CreateNumber(HourOf(t));
+end;
+
+function fpsMINUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  t: TTime;
+begin
+  if PopTimeValue(Args, t, Result) then
+    Result := CreateNumber(MinuteOf(t));
+end;
+
+function fpsMONTH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  d: TDate;
+begin
+  if PopDateValue(Args, d, Result) then
+    Result := CreateNumber(MonthOf(d));
+end;
+
+function fpsNOW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// NOW()
+begin
+  Result := CreateNumber(now);
+end;
+
+function fpsSECOND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  t: TTime;
+begin
+  if PopTimeValue(Args, t, Result) then
+    Result := CreateNumber(SecondOf(t));
+end;
+
+function fpsTIME(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// TIME( hour, minute, second )
+var
+  data: TFloatArray;
+  t: TTime;
+begin
+  if PopFloatValues(Args, 3, data, Result) then begin
+    t := EncodeTime(round(data[0]), round(data[1]), round(data[2]), 0);
+    Result := CreateNumber(t);
+  end;
+end;
+
+function fpsTIMEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// TIMEVALUE( time_value )
+var
+  t: TTime;
+begin
+  if PopTimeValue(Args, t, Result) then
+    Result := CreateNumber(t);
+end;
+
+function fpsToday(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// TODAY()
+begin
+  Result := CreateNumber(Date());
+end;
+
+function fpsWEEKDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ WEEKDAY( serial_number, [return_value]
+   return_value = 1 - Returns a number from 1 (Sunday) to 7 (Saturday).
+                      This is the default if parameter is omitted.
+                = 2 - Returns a number from 1 (Monday) to 7 (Sunday).
+                = 3 - Returns a number from 0 (Monday) to 6 (Sunday). }
+var
+  d: TDate;
+  data: TFloatArray;
+  n: Integer;
+begin
+  n := 1;
+  if NumArgs = 2 then
+    if PopFloatValues(Args, 1, data, Result) then n := round(data[0])
+      else exit;
+  if PopDateValue(Args, d, Result) then
+    Result := CreateNumber(DayOfWeek(d));
+end;
+
+function fpsYEAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  d: TDate;
+begin
+  if PopDateValue(Args, d, Result) then
+    Result := CreateNumber(YearOf(d));
+end;
+
+
 { Statistical functions }
 
 function fpsAVEDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -901,15 +1133,19 @@ begin
 end;
 
 function fpsCOUNT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Count non-missing arguments
+{ counts the number of cells that contain numbers as well as the number of
+  arguments that contain numbers.
   COUNT( argument1, [argument2, ... argument_n] )
 }
 var
   n, i: Integer;
+  arg: TsArgument;
 begin
   n := 0;
-  for i:=1 to NumArgs do
-    if not Args.Pop.IsMissing then inc(n);
+  for i:=1 to NumArgs do begin
+    arg := Args.Pop;
+    if (not arg.IsMissing) and (arg.ArgumentType = atNumber) then inc(n);
+  end;
   Result := CreateNumber(n);
 end;
 
@@ -1221,6 +1457,34 @@ begin
   Result := CreateString(UTF8RightStr(s, count));
 end;
 
+function fpsSUBSTITUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// SUBSTITUTE( text, old_text, new_text, [nth_appearance] )
+var
+  n: Integer;
+  arg: TsArgument;
+  data: TStrArray;
+  s, s_old, s_new: String;
+begin
+  Result := CreateError(errWrongType);
+  n := -1;
+  if (NumArgs = 4) then begin
+    arg := Args.Pop;
+    if not arg.IsMissing and (arg.ArgumentType <> atNumber) then
+      exit;
+    n := round(arg.NumberValue);
+  end;
+
+  if PopStringValues(Args, 3, data, Result) then begin
+    s := data[0];
+    s_old := data[1];
+    s_new := data[2];
+    if n = -1 then
+      Result := CreateString(UTF8StringReplace(s, s_old, s_new, [rfReplaceAll]))
+    else
+      Result := CreateError(errFormulaNotSupported);
+  end;
+end;
+
 function fpsTRIM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TRIM( text )
 var
@@ -1238,5 +1502,93 @@ begin
   if PopStringValues(Args, NumArgs, data, Result) then
     Result := CreateString(UTF8UpperCase(data[0]));
 end;
+
+
+{ Info functions }
+
+function fpsISERR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISERR( value )
+// If value is an error value (except #N/A), this function will return TRUE.
+// Otherwise, it will return FALSE.
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool((arg.ArgumentType = atError) and (arg.ErrorValue <> errArgError));
+end;
+
+function fpsISERROR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISERROR( value )
+// If value is an error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?
+// or #NULL), this function will return TRUE. Otherwise, it will return FALSE.
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool((arg.ArgumentType = atError));
+end;
+
+function fpsISLOGICAL(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISLOGICAL( value )
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool(arg.ArgumentType = atBool);
+end;
+
+function fpsISNA(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISNA( value )
+//  If value is a #N/A error value , this function will return TRUE.
+// Otherwise, it will return FALSE.
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool((arg.ArgumentType = atError) and (arg.ErrorValue = errArgError));
+end;
+
+function fpsISNONTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISNONTEXT( value )
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool(arg.ArgumentType <> atString);
+end;
+
+function fpsISNUMBER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISNUMBER( value )
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool(arg.ArgumentType = atNumber);
+end;
+
+function fpsISTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISTEXT( value )
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool(arg.ArgumentType = atString);
+end;
+
+function fpsVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// VALUE( text )
+// text is the text value to convert to a number. If text is not a number, the
+// VALUE function will return #VALUE!.
+var
+  data: TStrArray;
+  x: Double;
+begin
+  if PopStringValues(Args, 1, data, Result) then
+    if TryStrToFloat(data[0], x) then
+      Result := CreateNumber(x)
+    else
+      Result := CreateError(errWrongType);
+end;
+
 
 end.

@@ -680,6 +680,230 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(tanh(0.1));
 
+
+{------------------------------------------------------------------------------}
+{                             Date/time functions                              }
+{------------------------------------------------------------------------------}
+
+  // DATE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=DATE(2014, 7, 1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(2014,
+    RPNNumber(7,
+    RPNNumber(1,
+    RPNFunc(fekDATE, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(EncodeDate(2014,7,1));
+
+  // DATEVALUE
+  inc(Row);
+  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=DATEVALUE("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekDATEVALUE, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(EncodeDate(2014,7,1));
+
+  // DAY  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=DAY(DATE(2014,7,1))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(2014,
+    RPNNumber(7,
+    RPNNumber(1,
+    RPNFunc(fekDATE,
+    RPNFunc(fekDAY, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  // DAY  / argument string
+  inc(Row);
+  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=DAY("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekDAY, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  // HOUR  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=HOUR(TIME(9, 59, 20))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(9,
+    RPNNumber(59,
+    RPNNumber(20,
+    RPNFunc(fekTIME,
+    RPNFunc(fekHOUR, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(9);
+
+  // HOUR  / argument string
+  inc(Row);
+  s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=HOUR("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekHOUR, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(9);
+
+  // MINUTE  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MINUTE(TIME(9, 59, 20))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(9,
+    RPNNumber(59,
+    RPNNumber(20,
+    RPNFunc(fekTIME,
+    RPNFunc(fekMINUTE, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(59);
+
+  // MINUTE  / argument string
+  inc(Row);
+  s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MINUTE("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekMINUTE, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(59);
+
+  // MONTH  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MONTH(DATE(2014,7,1))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(2014,
+    RPNNumber(7,
+    RPNNumber(1,
+    RPNFunc(fekDATE,
+    RPNFunc(fekMONTH, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(7);
+
+  // MONTH  / argument string
+  inc(Row);
+  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MONTH("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekMONTH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(7);
+
+  // NOW
+  inc(Row);
+  // Make sure that, when the file is read we still have the same second
+  // Otherwise there would be a mismatch.
+  repeat
+    t := now();
+    DecodeTime(t, hr, min, sec, msec);
+  until msec < 500;
+  MyWorksheet.WriteUTF8Text(Row, 0, '=NOW()');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNFunc(fekNOW, nil)));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(t);
+
+  // SECOND  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SECOND(TIME(9, 59, 20))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(9,
+    RPNNumber(59,
+    RPNNumber(20,
+    RPNFunc(fekTIME,
+    RPNFunc(fekSECOND, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(20);
+
+  // SECOND  / argument string
+  inc(Row);
+  s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SECOND("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekSECOND, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(20);
+
+  // TIME
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=TIME(9, 59, 20)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(9,
+    RPNNumber(59,
+    RPNNumber(20,
+    RPNFunc(fekTIME, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(EncodeTime(9, 59, 20, 0));
+
+  // TIMEVALUE
+  inc(Row);
+  s := TimeToStr(EncodeTime(9, 59, 20, 0));  // Localization!
+  MyWorksheet.WriteUTF8Text(Row, 0, '=TIMEVALUE("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekTIMEVALUE, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(EncodeTime(9, 59, 20, 0));
+
+  // TODAY
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=TODAY()');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNFunc(fekTODAY, nil)));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(Date());
+
+  // WEEKDAY  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=WEEKDAY(DATE(2014,7,1))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(2014,
+    RPNNumber(7,
+    RPNNumber(1,
+    RPNFunc(fekDATE,
+    RPNFunc(fekWEEKDAY, 1, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(DayOfWeek(EncodeDate(2014,7,1)));
+
+  // WEEKDAY  / argument string
+  inc(Row);
+  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=WEEKDAY("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekWEEKDAY, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(DayOfWeek(EncodeDate(2014,7,1)));
+
+  // YEAR  / argument number
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=YEAR(DATE(2014,7,1))');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(2014,
+    RPNNumber(7,
+    RPNNumber(1,
+    RPNFunc(fekDATE,
+    RPNFunc(fekYEAR, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2014);
+
+  // YEAR  / argument string
+  inc(Row);
+  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  MyWorksheet.WriteUTF8Text(Row, 0, '=YEAR("'+s+'")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString(s,
+    RPNFunc(fekYEAR, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2014);
+
+
 {------------------------------------------------------------------------------}
 {                          Statistical functions                               }
 {------------------------------------------------------------------------------}
@@ -1184,6 +1408,17 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString('d');
 
+  // SUBSTITUTE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=SUBSTITUTE("lAzArus", "A", "a")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('lAzArus',
+    RPNString('A',
+    RPNString('a',
+    RPNFunc(fekSUBSTITUTE, 3, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('lazarus');
+
   // Trim
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=TRIM("   Hallo word   ")');
@@ -1211,3 +1446,67 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString(UTF8UpperCase('Viele Grüße'));
 
+
+{------------------------------------------------------------------------------}
+{                           Information functions                              }
+{------------------------------------------------------------------------------}
+
+  // IsError
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISERROR(1/0)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1,
+    RPNNumber(0,
+    RPNFunc(fekDiv,
+    RPNFunc(fekISERROR, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);
+
+  // IsError
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISERROR(0/1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(0,
+    RPNNumber(1,
+    RPNFunc(fekDiv,
+    RPNFunc(fekISERROR, nil))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(false);
+
+  // VALUE
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=VALUE("100")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('100',
+    RPNFunc(fekVALUE, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(100);
+
+{------------------------------------------------------------------------------}
+{                                Error cases                                   }
+{------------------------------------------------------------------------------}
+{$IFDEF ENABLE_DEFECTIVE_FORMULAS }
+  // Using less parameters than specified
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNNumber(1.0,
+    RPNFunc(fekIF,3, nil)))));            // <-- we have only 2 parameters!
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errArgError);
+
+  // Using more parameters than specified
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=IF(true,1,"A")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNBool(true,
+    RPNNumber(1.0,
+    RPNString('A',
+    RPNFunc(fekIF,2, nil))))));            // <-- we have 3 parameters, not 2
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateError(errWrongType);
+  { The first idea was that this should report an ArgError, but in fact it is
+    a WrongType error because popping two values from the stack finds a number,
+    but a bool is expected }
+{$ENDIF}
