@@ -908,7 +908,8 @@ type
     {@@ abstract method for a formula to a cell. Must be overridden by descendent classes. }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
     {@@ abstract method for am RPN formula to a cell. Must be overridden by descendent classes. }
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell); virtual;
+    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsRPNFormula; ACell: PCell); virtual;
     {@@ abstract method for a string to a cell. Must be overridden by descendent classes. }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
     {@@ abstract method for a number value to a cell. Must be overridden by descendent classes. }
@@ -5290,8 +5291,8 @@ end;
   @param   ACell     Pointer to the cell containing the formula and being written
                      to the stream
 }
-procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream; const ARow,
-  ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
+procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 begin
   Unused(AStream, ARow, ACol);
   Unused(AFormula, ACell);

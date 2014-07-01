@@ -46,6 +46,10 @@ type
     procedure TestWriteRead_BIFF8_FormulaStrings;
 
     // Writes out and calculates formulas, read back
+    { BIFF2 Tests }
+    procedure TestWriteRead_BIFF2_CalcRPNFormula;
+    { BIFF5 Tests }
+    procedure TestWriteRead_BIFF5_CalcRPNFormula;
     { BIFF8 Tests }
     procedure TestWriteRead_BIFF8_CalcRPNFormula;
   end;
@@ -223,6 +227,15 @@ begin
   DeleteFile(TempFile);
 end;
 
+procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF2_CalcRPNFormula;
+begin
+  TestCalcRPNFormulas(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF5_CalcRPNFormula;
+begin
+  TestCalcRPNFormulas(sfExcel5);
+end;
 
 procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF8_CalcRPNFormula;
 begin

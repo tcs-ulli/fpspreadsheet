@@ -1,6 +1,9 @@
 { include file for "formulatests.pas", containing the test cases for the
   calcrpnformula test. }
 
+{------------------------------------------------------------------------------}
+{                            Basic operations                                  }
+{------------------------------------------------------------------------------}
   // Addition
   Row := 0;
   MyWorksheet.WriteUTF8Text(Row, 0, '=1+1');
@@ -327,7 +330,7 @@
 {                                     Math                                     }
 {------------------------------------------------------------------------------}
 
-  // ABS
+// ABS
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=abs(-1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
