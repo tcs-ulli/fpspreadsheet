@@ -125,6 +125,7 @@ type
       const AValue: string; ACell: PCell); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
+    function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteStringRecord(AStream: TStream; AString: string);
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -927,12 +928,16 @@ begin
     INT_EXCEL_TOKEN_TSTR: { fekString }
     begin
       // string constant is stored as widestring in BIFF8
+      // Writing is done by the virtual method WriteString_8bitLen.
+      Inc(RPNLength, WriteString_8bitLen(AStream, AFormula[i].StringValue));
+      {
       wideStr := UTF8Decode(AFormula[i].StringValue);
       len := Length(wideStr);
       AStream.WriteByte(len); // char count in 1 byte
       AStream.WriteByte(1);   // Widestring flags, 1=regular unicode LE string
       AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * Sizeof(WideChar));
       Inc(RPNLength, 1 + 1 + len*SizeOf(WideChar));
+      }
     end;
 
     INT_EXCEL_TOKEN_TBOOL:  { fekBool }
@@ -988,6 +993,24 @@ begin
   { Write following STRING record if formula result is a non-empty string }
   if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
     WriteStringRecord(AStream, ACell^.UTF8StringValue);
+end;
+
+{ Helper function for writing a string with 8-bit length. Overridden version
+  for BIFF8. Called for writing rpn formula string tokens.
+  Returns the count of bytes written}
+function TsSpreadBIFF8Writer.WriteString_8BitLen(AStream: TStream;
+  AString: String): Integer;
+var
+  len: Integer;
+  wideStr: WideString;
+begin
+  // string constant is stored as widestring in BIFF8
+  wideStr := UTF8Decode(AString);
+  len := Length(wideStr);
+  AStream.WriteByte(len); // char count in 1 byte
+  AStream.WriteByte(1);   // Widestring flags, 1=regular unicode LE string
+  AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * Sizeof(WideChar));
+  Result := 1 + 1 + len * SizeOf(WideChar);
 end;
 
 procedure TsSpreadBIFF8Writer.WriteStringRecord(AStream: TStream;
