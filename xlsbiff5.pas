@@ -956,7 +956,7 @@ var
   s: ansistring;
   len: Integer;
 begin
-  s := AString;
+  s := UTF8ToAnsi(AString);
   len := Length(s);
 
   { BIFF Record header }
@@ -1399,7 +1399,7 @@ begin
     SetLength(s, Len);
     AStream.ReadBuffer(s[1], len);
     if (FIncompleteCell <> nil) and (s <> '') then begin
-      FIncompleteCell^.UTF8StringValue := s;
+      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
       FIncompleteCell^.ContentType := cctUTF8String;
     end;
   end;

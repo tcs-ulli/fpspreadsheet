@@ -161,7 +161,7 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
   MyWorkSheet.Options := MyWorkSheet.Options + [soCalcBeforeSaving];
-  // Calculation of rpn formulas must be activated expicitely!
+  // Calculation of rpn formulas must be activated explicitly!
 
   { Write out test formulas.
     This include file creates various rpn formulas and stores the expected

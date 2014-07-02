@@ -1564,7 +1564,7 @@ begin
   len := AStream.ReadByte;
   SetLength(s, len);
   AStream.ReadBuffer(s[1], len);
-  Result := s;
+  Result := ansiToUTF8(s);
 end;
 
 { Reads a STRING record. It immediately precedes a FORMULA record which has a
@@ -1573,7 +1573,6 @@ end;
 procedure TsSpreadBIFFReader.ReadStringRecord(AStream: TStream);
 begin
   Unused(AStream);
-  //
 end;
 
 { Reads the WINDOW2 record containing information like "show grid lines",
@@ -1991,7 +1990,7 @@ end;
 function TsSpreadBIFFWriter.WriteRPNCellAddress(AStream: TStream;
   ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
 var
-  r: Cardinal;  // row index containing the relativ/absolute address info
+  r: Cardinal;  // row index containing encoded relativ/absolute address info
 begin
   r := ARow and MASK_EXCEL_ROW;
   if (rfRelRow in AFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
@@ -2091,46 +2090,52 @@ end;
 { Writes the result of an RPN formula. }
 procedure TsSpreadBIFFWriter.WriteRPNResult(AStream: TStream; ACell: PCell);
 var
+  Data: array[0..3] of word;
   FormulaResult: double;
-  FormulaResultWords: array[0..3] of word absolute FormulaResult;
 begin
   { Determine encoded result bytes }
-  FormulaResult := 0.0;
+  FillChar(Data, SizeOf(Data), 0);
   case ACell^.ContentType of
     cctNumber:
-      FormulaResult := ACell^.NumberValue;
+      begin
+        FormulaResult := ACell^.NumberValue;
+        Move(FormulaResult, Data, 8);
+      end;
     cctDateTime:
-      FormulaResult := ACell^.DateTimeValue;
+      begin
+        FormulaResult := ACell^.DateTimeValue;
+        Move(FormulaResult, Data, 8);
+      end;
     cctUTF8String:
       begin
         if ACell^.UTF8StringValue = '' then
-          FormulaResultWords[0] := 3;
-        FormulaResultWords[3] := $FFFF;
+          Data[0] := 3;
+        Data[3] := $FFFF;
       end;
     cctBool:
       begin
-        FormulaResultWords[0] := 1;
-        FormulaResultWords[1] := ord(ACell^.BoolValue);
-        FormulaResultWords[3] := $FFFF;
+        Data[0] := 1;
+        Data[1] := ord(ACell^.BoolValue);
+        Data[3] := $FFFF;
       end;
     cctError:
       begin
-        FormulaResultWords[0] := 2;
+        Data[0] := 2;
         case ACell^.ErrorValue of
-          errEmptyIntersection: FormulaResultWords[1] := ERR_INTERSECTION_EMPTY;// #NULL!
-          errDivideByZero     : FormulaResultWords[1] := ERR_DIVIDE_BY_ZERO;    // #DIV/0!
-          errWrongType        : FormulaResultWords[1] := ERR_WRONG_TYPE_OF_OPERAND; // #VALUE!
-          errIllegalRef       : FormulaResultWords[1] := ERR_ILLEGAL_REFERENCE; // #REF!
-          errWrongName        : FormulaResultWords[1] := ERR_WRONG_NAME;        // #NAME?
-          errOverflow         : FormulaResultWords[1] := ERR_OVERFLOW;          // #NUM!
-          errArgError         : FormulaResultWords[1] := ERR_ARG_ERROR;         // #N/A;
+          errEmptyIntersection: Data[1] := ERR_INTERSECTION_EMPTY;// #NULL!
+          errDivideByZero     : Data[1] := ERR_DIVIDE_BY_ZERO;    // #DIV/0!
+          errWrongType        : Data[1] := ERR_WRONG_TYPE_OF_OPERAND; // #VALUE!
+          errIllegalRef       : Data[1] := ERR_ILLEGAL_REFERENCE; // #REF!
+          errWrongName        : Data[1] := ERR_WRONG_NAME;        // #NAME?
+          errOverflow         : Data[1] := ERR_OVERFLOW;          // #NUM!
+          errArgError         : Data[1] := ERR_ARG_ERROR;         // #N/A;
         end;
-        FormulaResultWords[3] := $FFFF;
+        Data[3] := $FFFF;
       end;
   end;
 
   { Write result of the formula, encoded above }
-  AStream.WriteBuffer(FormulaResult, 8);
+  AStream.WriteBuffer(Data, 8);
 end;
 
 { Writes the token array of the given RPN formula and returns its size }
@@ -2203,23 +2208,6 @@ begin
           inc(RPNLength, 1);
         end;
 
-      { binary operation tokens }
-      INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
-      INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER:
-        begin
-        end;
-
-      { Other operations }
-      INT_EXCEL_TOKEN_TATTR: { fekOpSUM }
-      { 3.10, page 71: e.g. =SUM(1) is represented by token array tInt(1),tAttrRum }
-        begin
-          // Unary SUM Operation
-          AStream.WriteByte($10); //tAttrSum token (SUM with one parameter)
-          AStream.WriteByte(0); // not used
-          AStream.WriteByte(0); // not used
-          inc(RPNLength, 3);
-        end;
-
       // Functions with fixed parameter count
       INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
         begin
@@ -2234,13 +2222,25 @@ begin
           n := WriteRPNFunc(AStream, secondaryID);
           inc(RPNLength, 1 + n);
         end;
+
+      // Other operations
+      INT_EXCEL_TOKEN_TATTR: { fekOpSUM }
+      { 3.10, page 71: e.g. =SUM(1) is represented by token array tInt(1),tAttrRum }
+        begin
+          // Unary SUM Operation
+          AStream.WriteByte($10); //tAttrSum token (SUM with one parameter)
+          AStream.WriteByte(0); // not used
+          AStream.WriteByte(0); // not used
+          inc(RPNLength, 3);
+        end;
+
     end;  // case
   end; // for
 
   // Now update the size of the token array.
   finalPos := AStream.Position;
   AStream.Position := TokenArraySizePos;
-  AStream.WriteByte(RPNLength);
+  WriteRPNTokenArraySize(AStream, RPNLength);
   AStream.Position := finalPos;
 end;
 
@@ -2428,7 +2428,7 @@ end;
 
 { Helper function for writing a string with 8-bit length. Here, we implement the
   version for ansistrings since it is valid for all BIFF versions except BIFF8
-  where it has to overridden. Is called for writing a string rpn token.
+  where it has to be overridden. Is called for writing a string rpn token.
   Returns the count of bytes written. }
 function TsSpreadBIFFWriter.WriteString_8bitLen(AStream: TStream;
   AString: String): Integer;

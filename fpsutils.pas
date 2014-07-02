@@ -77,9 +77,6 @@ function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelF
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
-function UTF8ProperCase(AText: String): String;
-function UTF8TextToXMLText(AText: ansistring): ansistring;
-
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
@@ -129,6 +126,7 @@ function HTMLLengthStrToPts(AValue: String): Double;
 
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue): String;
+function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
@@ -661,85 +659,6 @@ begin
     errFormulaNotSupported  : Result := '#FORMULA?';
     else                      Result := '#UNKNOWN ERROR';
   end;
-end;
-
-{@@
-  Converts a string to "proper case", i.e. 1st character of each word is
-  upper-case, other characters are lowercase.
-  @param   S           String to be converted
-  @return  String in proper case }
-function UTF8ProperCase(AText: String): String;
-begin
-  result := '';
-end;
-               (*
-const
-  Delims: TSysCharSet = ['0'..'9', ' ', '.', ',', ';', ':', '-', '_',
-    '<', '>', '|', '''', '#', '*', '+', '~', '!', '"', '§', '$', '%', '&', '/', '(', ')', '=',
-    '?', '\', '}', ']', '[', '{', '@'];
-var
-  ch: String;
-  len, i, j: Integer;
-  res: string;
-  w: String;
-  p: Integer;
-  words: Array of String;
-begin
-  AText := UTF8Lowercase(AText);
-
-  i := 0;
-  w := 'dummy';
-  Result := '';
-  while w <> '' do begin
-    w := ExtractWordPos(i, AText, Delims, p);
-    Result := UTF8Copy(AText, 1, p-1) + UTF8Uppercase(UTF8Copy(w, 1, 1)) +
-      UTF8Copy(w, 2, Length(w)-1);
-    inc(i);
-  end;
-end;
-                 *)
-
-{@@
-  Converts a string encoded in UTF8 to a string usable in XML. For this purpose,
-  some characters must be translated.
-
-  @param   AText  input string encoded as UTF8
-  @return  String usable in XML with some characters replaced by the HTML codes.
-}
-function UTF8TextToXMLText(AText: ansistring): ansistring;
-var
-  Idx:Integer;
-  WrkStr, AppoSt:ansistring;
-begin
-  WrkStr:='';
-
-  for Idx:=1 to Length(AText) do
-  begin
-    case AText[Idx] of
-      '&': begin
-        AppoSt:=Copy(AText, Idx, 6);
-
-        if (Pos('&amp;',  AppoSt) = 1) or
-           (Pos('&lt;',   AppoSt) = 1) or
-           (Pos('&gt;',   AppoSt) = 1) or
-           (Pos('&quot;', AppoSt) = 1) or
-           (Pos('&apos;', AppoSt) = 1) then begin
-          //'&' is the first char of a special chat, it must not be converted
-          WrkStr:=WrkStr + AText[Idx];
-        end else begin
-          WrkStr:=WrkStr + '&amp;';
-        end;
-      end;
-      '<': WrkStr:=WrkStr + '&lt;';
-      '>': WrkStr:=WrkStr + '&gt;';
-      '"': WrkStr:=WrkStr + '&quot;';
-      '''':WrkStr:=WrkStr + '&apos;';
-    else
-      WrkStr:=WrkStr + AText[Idx];
-    end;
-  end;
-
-  Result:=WrkStr;
 end;
 
 {@@
@@ -1539,6 +1458,48 @@ begin
   Result := Format('#%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
 end;
 
+{@@
+  Converts a string encoded in UTF8 to a string usable in XML. For this purpose,
+  some characters must be translated.
+
+  @param   AText  input string encoded as UTF8
+  @return  String usable in XML with some characters replaced by the HTML codes.
+}
+function UTF8TextToXMLText(AText: ansistring): ansistring;
+var
+  Idx:Integer;
+  WrkStr, AppoSt:ansistring;
+begin
+  WrkStr:='';
+
+  for Idx:=1 to Length(AText) do
+  begin
+    case AText[Idx] of
+      '&': begin
+        AppoSt:=Copy(AText, Idx, 6);
+
+        if (Pos('&amp;',  AppoSt) = 1) or
+           (Pos('&lt;',   AppoSt) = 1) or
+           (Pos('&gt;',   AppoSt) = 1) or
+           (Pos('&quot;', AppoSt) = 1) or
+           (Pos('&apos;', AppoSt) = 1) then begin
+          //'&' is the first char of a special chat, it must not be converted
+          WrkStr:=WrkStr + AText[Idx];
+        end else begin
+          WrkStr:=WrkStr + '&amp;';
+        end;
+      end;
+      '<': WrkStr:=WrkStr + '&lt;';
+      '>': WrkStr:=WrkStr + '&gt;';
+      '"': WrkStr:=WrkStr + '&quot;';
+      '''':WrkStr:=WrkStr + '&apos;';
+    else
+      WrkStr:=WrkStr + AText[Idx];
+    end;
+  end;
+
+  Result:=WrkStr;
+end;
 
 
 {******************************************************************************}

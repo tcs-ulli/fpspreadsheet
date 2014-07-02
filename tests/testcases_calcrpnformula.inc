@@ -116,6 +116,14 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(-1);
 
+  // String result
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '="Hallo"');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('Hallo', nil)));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('Hallo');
+
   // String concatenation
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '="Hallo"&" world"');
@@ -324,12 +332,9 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(1<>1);
 
-
-
 {------------------------------------------------------------------------------}
 {                                     Math                                     }
 {------------------------------------------------------------------------------}
-
 // ABS
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=abs(-1)');
@@ -1506,10 +1511,11 @@
     RPNBool(true,
     RPNNumber(1.0,
     RPNString('A',
-    RPNFunc(fekIF,2, nil))))));            // <-- we have 3 parameters, not 2
+    RPNFunc(fekIF,2, nil))))));         // <-- but we pushed 3 parameters, not 2
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateError(errWrongType);
   { The first idea was that this should report an ArgError, but in fact it is
     a WrongType error because popping two values from the stack finds a number,
     but a bool is expected }
 {$ENDIF}
+
