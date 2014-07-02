@@ -57,19 +57,19 @@ function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 
 // Other routines
 function ParseIntervalString(const AStr: string;
-  out AFirstCellRow, AFirstCellCol, ACount: Integer;
+  out AFirstCellRow, AFirstCellCol, ACount: Cardinal;
   out ADirection: TsSelectionDirection): Boolean;
 function ParseCellRangeString(const AStr: string;
-  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
 function ParseCellString(const AStr: string;
-  out ACellRow, ACellCol: Integer; out AFlags: TsRelFlags): Boolean; overload;
+  out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString(const AStr: string;
-  out ACellRow, ACellCol: Integer): Boolean; overload;
+  out ACellRow, ACellCol: Cardinal): Boolean; overload;
 function ParseCellRowString(const AStr: string;
-  out AResult: Integer): Boolean;
+  out AResult: Cardinal): Boolean;
 function ParseCellColString(const AStr: string;
-  out AResult: Integer): Boolean;
+  out AResult: Cardinal): Boolean;
 
 function GetColString(AColIndex: Integer): String;
 function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags): String;
@@ -316,11 +316,11 @@ end;
   @return                false if the string is not a valid cell range
 }
 function ParseIntervalString(const AStr: string;
-  out AFirstCellRow, AFirstCellCol, ACount: Integer;
+  out AFirstCellRow, AFirstCellCol, ACount: Cardinal;
   out ADirection: TsSelectionDirection): Boolean;
 var
   //Cells: TStringList;
-  LastCellRow, LastCellCol: Integer;
+  LastCellRow, LastCellCol: Cardinal;
   p: Integer;
   s1, s2: String;
 begin
@@ -381,7 +381,7 @@ end;
   @return                false if the string is not a valid cell range
 }
 function ParseCellRangeString(const AStr: string;
-  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Integer;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
 var
   p: Integer;
@@ -424,7 +424,7 @@ end;
   @example "AMP$200" --> (rel) column 1029 (= 26*26*1 + 26*16 + 26 - 1)
                          (abs) row = 199 (abs)
 }
-function ParseCellString(const AStr: String; out ACellRow, ACellCol: Integer;
+function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
 
   function Scan(AStartPos: Integer): Boolean;
@@ -505,7 +505,7 @@ end;
   @return           False if the string is not a valid cell range
 }
 function ParseCellString(const AStr: string;
-  out ACellRow, ACellCol: Integer): Boolean;
+  out ACellRow, ACellCol: Cardinal): Boolean;
 var
   flags: TsRelFlags;
 begin
@@ -519,7 +519,7 @@ end;
   @param  AResult   Index of the row (zero-based!) (putput)
   @return           False if the string is not a valid cell row string
 }
-function ParseCellRowString(const AStr: string; out AResult: Integer): Boolean;
+function ParseCellRowString(const AStr: string; out AResult: Cardinal): Boolean;
 begin
   try
     AResult := StrToInt(AStr) - 1;
@@ -537,7 +537,7 @@ end;
   @param  AResult   Zero-based index of the column (output)
   @return           False if the string is not a valid cell column string
 }
-function ParseCellColString(const AStr: string; out AResult: Integer): Boolean;
+function ParseCellColString(const AStr: string; out AResult: Cardinal): Boolean;
 const
   INT_NUM_LETTERS = 26;
 begin

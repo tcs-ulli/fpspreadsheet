@@ -12,7 +12,7 @@
     RPNNumber(1.0,
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1.0+1.0);
+  sollValues[Row] := CreateNumber(1.0+1.0);                     // B1 = 2
 
   // Subtraction
   inc(Row);
@@ -22,7 +22,40 @@
     RPNNumber(10,
     RPNFunc(fekSub, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1-10);
+  sollValues[Row] := CreateNumber(1-10);                      // B2 = -9
+
+  // Add cell values - relative addresses
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=B1+B2');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNCellValue('B2',
+    RPNFunc(fekAdd, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(-7);
+// don't refer to the cell contents here because they have not yet been calculated!
+
+  // Add cell values - absolute addresses
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=$B$1+$B$2');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('$B$1',
+    RPNCellValue('$B$2',
+    RPNFunc(fekAdd, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(-7);
+// don't refer to the cell contents here because they have not yet been calculated!
+
+  // Add cell values - mixed absolute and relative addresses
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=B$1+$B2');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B$1',
+    RPNCellValue('$B2',
+    RPNFunc(fekAdd, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(-7);
+  // don't refer to the cell contents here because they have not yet been calculated!
 
   // Multiplication
   inc(Row);
@@ -1458,6 +1491,63 @@
 {------------------------------------------------------------------------------}
 {                           Information functions                              }
 {------------------------------------------------------------------------------}
+
+  // INFO
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("address", A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('address',
+    RPNCellRef('A1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('$A$1');
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("col", B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('col',
+    RPNCellRef('B1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2);      // Excel starts counting at 1
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("format", B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('format',
+    RPNCellRef('B1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('G');
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("prefix", A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('prefix',
+    RPNCellRef('A1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('''');
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("row", B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('row',
+    RPNCellRef('B1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);      // Excel starts counting at 1
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("type", A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('type',
+    RPNCellRef('A1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('l');
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("type", B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('type',
+    RPNCellRef('B1',
+    RPNFunc(fekCELLINFO, 2, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString('v');
 
   // IsError
   inc(Row);

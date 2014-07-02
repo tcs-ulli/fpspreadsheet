@@ -8,11 +8,12 @@ uses
   Classes, SysUtils, fpspreadsheet;
 
 type
-  TsArgumentType = (atNumber, atString, atBool, atError, atEmpty);
+  TsArgumentType = (atCell, atNumber, atString, atBool, atError, atEmpty);
 
   TsArgument = record
     IsMissing: Boolean;
     case ArgumentType: TsArgumentType of
+      atCell    : (Cell: PCell);
       atNumber  : (NumberValue: Double);
       atString  : (StringValue: String);
       atBool    : (BoolValue: Boolean);
@@ -26,6 +27,7 @@ type
     function Pop: TsArgument;
     procedure Push(AValue: TsArgument);
     procedure PushBool(AValue: Boolean);
+    procedure PushCell(AValue: PCell);
     procedure PushMissing;
     procedure PushNumber(AValue: Double);
     procedure PushString(AValue: String);
@@ -133,6 +135,7 @@ function fpsSUBSTITUTE  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { info functions }
+function fpsCELLINFO    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISERR       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISERROR     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISLOGICAL   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -151,6 +154,55 @@ type
   TBoolArray  = array of boolean;
   TFloatArray = array of double;
   TStrArray   = array of string;
+
+{ Helpers }
+
+function CreateArgument: TsArgument;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+end;
+
+function CreateBool(AValue: Boolean): TsArgument;
+begin
+  Result := CreateArgument;
+  Result.ArgumentType := atBool;
+  Result.Boolvalue := AValue;
+end;
+
+function CreateCell(AValue: PCell): TsArgument;
+begin
+  Result := CreateArgument;
+  Result.ArgumentType := atCell;
+  Result.Cell := AValue;
+end;
+
+function CreateNumber(AValue: Double): TsArgument;
+begin
+  Result := CreateArgument;
+  Result.ArgumentType := atNumber;
+  Result.NumberValue := AValue;
+end;
+
+function CreateString(AValue: String): TsArgument;
+begin
+  Result := CreateArgument;
+  Result.ArgumentType := atString;
+  Result.StringValue := AValue;
+end;
+
+function CreateError(AError: TsErrorValue): TsArgument;
+begin
+  Result := CreateArgument;
+  Result.ArgumentType := atError;
+  Result.ErrorValue := AError;
+end;
+
+function CreateEmpty: TsArgument;
+begin
+  Result := CreateArgument;
+  Result.ArgumentType := atEmpty;
+end;
+
 
 { TsArgumentStack }
 
@@ -181,60 +233,53 @@ end;
 
 function TsArgumentStack.Pop: TsArgument;
 var
-  P: PsArgument;
+  arg: PsArgument;
 begin
-  P := PsArgument(Items[Count-1]);
-  Result := P^;
-  Result.StringValue := P^.StringValue;  // necessary?
+  arg := PsArgument(Items[Count-1]);
+  Result := arg^;
+  Result.StringValue := arg^.StringValue;  // necessary?
+  Result.Cell := arg^.Cell;
   Delete(Count-1);
 end;
 
 procedure TsArgumentStack.Push(AValue: TsArgument);
 var
-  P: PsArgument;
+  arg: PsArgument;
 begin
-  GetMem(P, SizeOf(TsArgument));
-  P^ := AValue;
-  P^.StringValue := AValue.StringValue;
-  Add(P);
+  GetMem(arg, SizeOf(TsArgument));
+  arg^ := AValue;
+  arg^.StringValue := AValue.StringValue;
+  arg^.Cell := AValue.Cell;
+  Add(arg);
 end;
 
 procedure TsArgumentStack.PushBool(AValue: Boolean);
-var
-  arg: TsArgument;
 begin
-  arg.ArgumentType := atBool;
-  arg.BoolValue := AValue;
-  arg.IsMissing := false;
-  Push(arg);
+  Push(CreateBool(AValue));
+end;
+
+procedure TsArgumentStack.PushCell(AValue: PCell);
+begin
+  Push(CreateCell(AValue));
 end;
 
 procedure TsArgumentStack.PushMissing;
 var
   arg: TsArgument;
 begin
+  arg := CreateArgument;
   arg.IsMissing := true;
   Push(arg);
 end;
 
 procedure TsArgumentStack.PushNumber(AValue: Double);
-var
-  arg: TsArgument;
 begin
-  arg.ArgumentType := atNumber;
-  arg.NumberValue := AValue;
-  arg.IsMissing := false;
-  Push(arg);
+  Push(CreateNumber(AValue));
 end;
 
 procedure TsArgumentStack.PushString(AValue: String);
-var
-  arg: TsArgument;
 begin
-  arg.ArgumentType := atString;
-  arg.StringValue := AValue;
-  arg.IsMissing := false;
-  Push(arg);
+  Push(CreateString(AValue));
 end;
 
 
@@ -242,11 +287,12 @@ end;
 
 function GetBoolFromArgument(Arg: TsArgument; var AValue: Boolean): TsErrorValue;
 begin
+  Result := errOK;
   case Arg.ArgumentType of
-    atBool : begin
-               AValue := Arg.BoolValue;
-               Result := errOK;
-             end;
+    atBool : AValue := Arg.BoolValue;
+    atCell : if (Arg.Cell <> nil) and (Arg.Cell^.ContentType = cctBool)
+               then AValue := Arg.Cell^.BoolValue
+               else Result := errWrongType;
     atError: Result := Arg.ErrorValue;
     else     Result := errWrongType;
   end;
@@ -259,54 +305,29 @@ begin
     atNumber : ANumber := Arg.NumberValue;
     atString : if not TryStrToFloat(arg.StringValue, ANumber) then Result := errWrongType;
     atBool   : if Arg.BoolValue then ANumber := 1.0 else ANumber := 0.0;
+    atCell   : if (Arg.Cell <> nil) then
+                 case Arg.Cell^.ContentType of
+                   cctNumber  : ANumber := Arg.Cell^.NumberValue;
+                   cctDateTime: ANumber := Arg.Cell^.DateTimeValue;
+                   cctBool    : if Arg.Cell^.BoolValue then ANumber := 1.0 else ANumber := 0.0;
+                   else         Result := errWrongType;
+                 end;
     atError  : Result := Arg.ErrorValue;
   end;
 end;
 
 function GetStringFromArgument(Arg: TsArgument; var AString: String): TsErrorValue;
 begin
+  Result := errOK;
   case Arg.ArgumentType of
-    atString : begin
-                 AString := Arg.StringValue;
-                 Result := errOK;
-               end;
+    atString : AString := Arg.StringValue;
+    atCell   : if (Arg.Cell <> nil) and (Arg.Cell^.ContentType = cctUTF8String) then
+                 AString := Arg.Cell^.UTF8StringValue
+               else
+                 Result := errWrongType;
     atError  : Result := Arg.ErrorValue;
     else       Result := errWrongType;
   end;
-end;
-
-function CreateBool(AValue: Boolean): TsArgument;
-begin
-  Result.ArgumentType := atBool;
-  Result.Boolvalue := AValue;
-  Result.IsMissing := false;
-end;
-
-function CreateNumber(AValue: Double): TsArgument;
-begin
-  Result.ArgumentType := atNumber;
-  Result.NumberValue := AValue;
-  Result.IsMissing := false;
-end;
-
-function CreateString(AValue: String): TsArgument;
-begin
-  Result.ArgumentType := atString;
-  Result.StringValue := AValue;
-  Result.IsMissing := false;
-end;
-
-function CreateError(AError: TsErrorValue): TsArgument;
-begin
-  Result.ArgumentType := atError;
-  Result.ErrorValue := AError;
-  Result.IsMissing := false;
-end;
-
-function CreateEmpty: TsArgument;
-begin
-  Result.ArgumentType := atEmpty;
-  Result.IsMissing := false;
 end;
 
 {@@
@@ -381,7 +402,17 @@ begin
       begin
         Result := TryStrToDate(arg.StringValue, ADate);
         if not Result then AErrArg := CreateError(errWrongType);
-      end
+      end;
+    atCell:
+      if (arg.Cell <> nil) then begin
+        Result := true;
+        case arg.Cell^.ContentType of
+          cctDateTime: ADate := arg.Cell^.DateTimeValue;
+          cctNumber  : ADate := arg.Cell^.NumberValue;
+          else         Result := false;
+                       AErrArg := CreateError(errWrongType);
+        end;
+      end;
   end;
 end;
 
@@ -509,7 +540,17 @@ begin
       begin
         Result := TryStrToTime(arg.StringValue, ATime);
         if not Result then AErrArg := CreateError(errWrongType);
-      end
+      end;
+    atCell:
+      if (arg.Cell <> nil) then begin
+        Result := true;
+        case arg.Cell^.ContentType of
+          cctDateTime: ATime := frac(arg.Cell^.DateTimeValue);
+          cctNumber  : ATime := frac(arg.Cell^.NumberValue);
+          else         Result := false;
+                       AErrArg := CreateError(errWrongType);
+        end;
+      end;
   end;
 end;
 
@@ -1505,6 +1546,155 @@ end;
 
 
 { Info functions }
+
+function fpsCELLINFO(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// CELL( type, [range] )
+
+{ from http://www.techonthenet.com/excel/formulas/cell.php:
+
+  "type" is the type of information that we retrieve for the cell and can have
+  one of the following values:
+    Value         Explanation
+    ------------- --------------------------------------------------------------
+    "address"     Address of the cell. If the cell refers to a range, it is the
+                  first cell in the range.
+    "col"         Column number of the cell.
+    "color"       Returns 1 if the color is a negative value; Otherwise it returns 0.
+    "contents"    Contents of the upper-left cell.
+    "filename"    Filename of the file that contains reference.
+    "format"      Number format of the cell according to next table:
+                     "G"    General
+                     "F0"   0
+                     ",0"   #,##0
+                     "F2"   0.00
+                     ",2"   #,##0.00
+                     "C0"   $#,##0_);($#,##0)
+                     "C0-"  $#,##0_);[Red]($#,##0)
+                     "C2"   $#,##0.00_);($#,##0.00)
+                     "C2-"  $#,##0.00_);[Red]($#,##0.00)
+                     "P0"   0%
+                     "P2"   0.00%
+                     "S2"   0.00E+00
+                     "G"    # ?/? or # ??/??
+                     "D4"   m/d/yy or m/d/yy h:mm or mm/dd/yy
+                     "D1"   d-mmm-yy or dd-mmm-yy
+                     "D2"   d-mmm or dd-mmm
+                     "D3"   mmm-yy
+                     "D5"   mm/dd
+                     "D6"   h:mm:ss AM/PM
+                     "D7"   h:mm AM/PM
+                     "D8"   h:mm:ss
+                     "D9"   h:mm
+    "parentheses" Returns 1 if the cell is formatted with parentheses;
+                  Otherwise, it returns 0.
+    "prefix"      Label prefix for the cell.
+                  - Returns a single quote (') if the cell is left-aligned.
+                  - Returns a double quote (") if the cell is right-aligned.
+                  - Returns a caret (^) if the cell is center-aligned.
+                  - Returns a back slash (\) if the cell is fill-aligned.
+                  - Returns an empty text value for all others.
+    "protect"     Returns 1 if the cell is locked. Returns 0 if the cell is not locked.
+    "row"         Row number of the cell.
+    "type"        Returns "b" if the cell is empty.
+                  Returns "l" if the cell contains a text constant.
+                  Returns "v" for all others.
+    "width"       Column width of the cell, rounded to the nearest integer.
+
+  !!!! NOT ALL OF THEM ARE SUPPORTED HERE !!!
+
+  "range" is optional in Excel. It is the cell (or range) that you wish to retrieve
+  information for. If the range parameter is omitted, the CELL function will
+  assume that you are retrieving information for the last cell that was changed.
+
+  "range" is NOT OPTIONAL here because we don't know the last cell changed !!!
+}
+var
+  arg: TsArgument;
+  cell: PCell;
+  sname: String;
+  data: TStrArray;
+begin
+  if NumArgs < 2 then begin
+    Result := CreateError(errArgError);
+    exit;
+  end;
+
+  arg := Args.Pop;
+  if (arg.ArgumentType <> atCell) or (arg.Cell = nil) then begin
+    Result := CreateError(errArgError);
+    exit;
+  end;
+
+  cell := arg.Cell;
+  if PopStringValues(Args, 1, data, Result) then begin
+    sname := Lowercase(data[0]);
+    if sname = 'address' then
+      Result := CreateString(GetCellString(cell^.Row, cell^.Col, []))
+    else if sname = 'col' then
+      Result := CreateNumber(cell^.Col + 1)
+    else if sname = 'color' then begin
+      if (cell^.NumberFormat = nfCurrencyRed)
+        then Result := CreateNumber(1)
+        else Result := CreateNumber(0);
+    end else if sname = 'contents' then
+      case cell^.ContentType of
+        cctNumber     : Result := CreateNumber(cell^.NumberValue);
+        cctDateTime   : Result := CreateNumber(cell^.DateTimeValue);
+        cctUTF8String : Result := CreateString(cell^.UTF8StringValue);
+        cctBool       : Result := CreateString(BoolToStr(cell^.BoolValue));
+        cctError      : Result := CreateString('Error');
+      end
+    else if sname = 'format' then begin
+      Result := CreateString('');
+      case cell^.NumberFormat of
+        nfGeneral:
+          Result := CreateString('G');
+        nfFixed:
+          if cell^.NumberFormatStr= '0' then Result := CreateString('0') else
+          if cell^.NumberFormatStr = '0.00' then  Result := CreateString('F0');
+        nfFixedTh:
+          if cell^.NumberFormatStr = '#,##0' then Result := CreateString(',0') else
+          if cell^.NumberFormatStr = '#,##0.00' then Result := CreateString(',2');
+        nfPercentage:
+          if cell^.NumberFormatStr = '0%' then Result := CreateString('P0') else
+          if cell^.NumberFormatStr = '0.00%' then Result := CreateString('P2');
+        nfExp:
+          if cell^.NumberFormatStr = '0.00E+00' then Result := CreateString('S2');
+        nfShortDate, nfLongDate, nfShortDateTime:
+          Result := CreateString('D4');
+        nfLongTimeAM:
+          Result := CreateString('D6');
+        nfShortTimeAM:
+          Result := CreateString('D7');
+        nfLongTime:
+          Result := CreateString('D8');
+        nfShortTime:
+          Result := CreateString('D9');
+      end;
+    end else
+    if (sname = 'prefix') then begin
+      Result := CreateString('');
+      if (cell^.ContentType = cctUTF8String) then
+        case cell^.HorAlignment of
+          haLeft  : Result := CreateString('''');
+          haCenter: Result := CreateString('^');
+          haRight : Result := CreateString('"');
+        end;
+    end else
+    if sname = 'row' then
+      Result := CreateNumber(cell^.Row + 1)
+    else if sname = 'type' then begin
+      if (cell^.ContentType = cctEmpty) then
+        Result := CreateString('b')
+      else if cell^.ContentType = cctUTF8String then begin
+        if (cell^.UTF8StringValue = '')
+          then Result := CreateString('b')
+          else Result := CreateString('l');
+      end else
+        Result := CreateString('v');
+    end;
+  end;
+end;
 
 function fpsISERR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // ISERR( value )
