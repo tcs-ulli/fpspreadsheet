@@ -2034,13 +2034,8 @@ procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   i: Integer;
-  len: Integer;
   RPNLength: Word;
   RecordSizePos, FinalPos: Int64;
-//  TokenID: Word;
-//  lSecondaryID: Word;
-//  c: Cardinal;
-  wideStr: WideString;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));

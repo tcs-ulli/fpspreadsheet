@@ -603,8 +603,10 @@ type
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
     procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal); overload;
     procedure CopyFormat(AFromCell, AToCell: PCell); overload;
-    function  FindCell(ARow, ACol: Cardinal): PCell;
-    function  GetCell(ARow, ACol: Cardinal): PCell;
+    function  FindCell(ARow, ACol: Cardinal): PCell; overload;
+    function  FindCell(AddressStr: String): PCell; overload;
+    function  GetCell(ARow, ACol: Cardinal): PCell; overload;
+    function  GetCell(AddressStr: String): PCell; overload;
     function  GetCellCount: Cardinal;
     function  GetFirstCell(): PCell;
     function  GetNextCell(): PCell;
@@ -1615,8 +1617,7 @@ begin
 end;
 
 {@@
-  Tries to locate a Cell in the list of already
-  written Cells
+  Tries to locate a Cell in the list of already written Cells
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
@@ -1638,19 +1639,34 @@ begin
 end;
 
 {@@
+  Tries to locate a Cell in the list of already written Cells
+
+  @param  AddressStr  Address of the cell in Excel A1 notation
+  @return Pointer to the cell if found, or nil if not found
+  @see    TCell
+}
+function TsWorksheet.FindCell(AddressStr: String): PCell;
+var
+  r, c: Cardinal;
+begin
+  if ParseCellString(AddressStr, r, c) then
+    Result := FindCell(r, c)
+  else
+    Result := nil;
+end;
+
+{@@
   Obtains an allocated cell at the desired location.
 
-  If the Cell already exists, a pointer to it will
-  be returned.
+  If the Cell already exists, a pointer to it will be returned.
 
-  If not, then new memory for the cell will be allocated,
-  a pointer to it will be returned and it will be added
-  to the list of cells.
+  If not, then new memory for the cell will be allocated, a pointer to it
+  will be returned and it will be added to the list of cells.
 
   @param  ARow      Row index of the cell
   @param  ACol      Column index of the cell
 
-  @return A pointer to the Cell on the desired location.
+  @return A pointer to the cell at the desired location.
 
   @see    TCell
 }
@@ -1670,6 +1686,30 @@ begin
 
     Cells.Add(Result);
   end;
+end;
+
+{@@
+  Obtains an allocated cell at the desired location.
+
+  If the Cell already exists, a pointer to it will be returned.
+
+  If not, then new memory for the cell will be allocated, a pointer to it
+  will be returned and it will be added to the list of cells.
+
+  @param  AddressStr  Address of the cell in Excel A1 notation (an exception is
+                      raised in case on an invalid cell address).
+  @return A pointer to the cell at the desired location.
+
+  @see    TCell
+}
+function TsWorksheet.GetCell(AddressStr: String): PCell;
+var
+  r, c: Cardinal;
+begin
+  if ParseCellString(AddressStr, r, c) then
+    Result := GetCell(r, c)
+  else
+    raise Exception.CreateFmt(lpNoValidCellAddress, [AddressStr]);
 end;
 
 {@@
