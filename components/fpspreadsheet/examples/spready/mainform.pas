@@ -655,7 +655,7 @@ end;
 
 procedure TForm1.EdCellAddressEditingDone(Sender: TObject);
 var
-  c, r: integer;
+  c, r: cardinal;
 begin
   if ParseCellString(EdCellAddress.Text, r, c) then begin
     WorksheetGrid.Row := WorksheetGrid.GetGridRow(r);

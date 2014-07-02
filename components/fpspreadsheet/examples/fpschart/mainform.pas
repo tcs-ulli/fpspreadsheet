@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Grids, EditBtn, ExtCtrls, fpspreadsheetchart, fpspreadsheetgrid,
+  StdCtrls, EditBtn, ExtCtrls, fpspreadsheetchart, fpspreadsheetgrid,
   TAGraph, TASeries;
 
 type

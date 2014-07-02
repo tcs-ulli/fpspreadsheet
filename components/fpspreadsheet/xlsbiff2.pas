@@ -869,6 +869,7 @@ procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell
   XFIndex: Word);
 var
   b: Byte;
+  w: Word;
 begin
   if ACell^.UsedFormattingFields = [] then
   begin
@@ -887,7 +888,9 @@ begin
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record
   //   Mask $C0: Index to FONT record
-  b := ACell.FontIndex shl 6;
+  w := ACell.FontIndex shl 6;
+  b := Lo(w);
+  //b := ACell.FontIndex shl 6;
   AStream.WriteByte(b);
 
   // 3rd byte

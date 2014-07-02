@@ -38,17 +38,17 @@ type
     FXSelectionDirection: TsSelectionDirection;
     FYSelectionDirection: TsSelectionDirection;
 //    FWorksheetGrid: TsWorksheetGrid;
-    FXFirstCellCol: Integer;
-    FXFirstCellRow: Integer;
-    FYFirstCellCol: Integer;
-    FYFirstCellRow: Integer;
+    FXFirstCellCol: Cardinal;
+    FXFirstCellRow: Cardinal;
+    FYFirstCellCol: Cardinal;
+    FYFirstCellRow: Cardinal;
     procedure SetPointsNumber(const AValue: Integer);
     procedure SetXSelectionDirection(const AValue: TsSelectionDirection);
     procedure SetYSelectionDirection(const AValue: TsSelectionDirection);
-    procedure SetXFirstCellCol(const AValue: Integer);
-    procedure SetXFirstCellRow(const AValue: Integer);
-    procedure SetYFirstCellCol(const AValue: Integer);
-    procedure SetYFirstCellRow(const AValue: Integer);
+    procedure SetXFirstCellCol(const AValue: Cardinal);
+    procedure SetXFirstCellRow(const AValue: Cardinal);
+    procedure SetYFirstCellCol(const AValue: Cardinal);
+    procedure SetYFirstCellRow(const AValue: Cardinal);
   protected
     FDataWorksheet: TsWorksheet;
     FCurItem: TChartDataItem;
@@ -63,10 +63,10 @@ type
   published
 //    property WorksheetGrid: TsWorksheetGrid read FWorksheetGrid write SetWorksheetGrid;
     property PointsNumber: Integer read FPointsNumber write SetPointsNumber default 0;
-    property XFirstCellCol: Integer read FXFirstCellCol write SetXFirstCellCol default 0;
-    property XFirstCellRow: Integer read FXFirstCellRow write SetXFirstCellRow default 0;
-    property YFirstCellCol: Integer read FYFirstCellCol write SetYFirstCellCol default 0;
-    property YFirstCellRow: Integer read FYFirstCellRow write SetYFirstCellRow default 0;
+    property XFirstCellCol: Cardinal read FXFirstCellCol write SetXFirstCellCol default 0;
+    property XFirstCellRow: Cardinal read FXFirstCellRow write SetXFirstCellRow default 0;
+    property YFirstCellCol: Cardinal read FYFirstCellCol write SetYFirstCellCol default 0;
+    property YFirstCellRow: Cardinal read FYFirstCellRow write SetYFirstCellRow default 0;
     property XSelectionDirection: TsSelectionDirection read FXSelectionDirection write SetXSelectionDirection;
     property YSelectionDirection: TsSelectionDirection read FYSelectionDirection write SetYSelectionDirection;
   end;
@@ -108,7 +108,7 @@ begin
   Notify;
 end;
 
-procedure TsWorksheetChartSource.SetXFirstCellCol(const AValue: Integer);
+procedure TsWorksheetChartSource.SetXFirstCellCol(const AValue: Cardinal);
 begin
   if FXFirstCellCol=AValue then exit;
   FXFirstCellCol:=AValue;
@@ -116,7 +116,7 @@ begin
   Notify;
 end;
 
-procedure TsWorksheetChartSource.SetXFirstCellRow(const AValue: Integer);
+procedure TsWorksheetChartSource.SetXFirstCellRow(const AValue: Cardinal);
 begin
   if FXFirstCellRow=AValue then exit;
   FXFirstCellRow:=AValue;
@@ -124,7 +124,7 @@ begin
   Notify;
 end;
 
-procedure TsWorksheetChartSource.SetYFirstCellCol(const AValue: Integer);
+procedure TsWorksheetChartSource.SetYFirstCellCol(const AValue: Cardinal);
 begin
   if FYFirstCellCol=AValue then exit;
   FYFirstCellCol:=AValue;
@@ -132,7 +132,7 @@ begin
   Notify;
 end;
 
-procedure TsWorksheetChartSource.SetYFirstCellRow(const AValue: Integer);
+procedure TsWorksheetChartSource.SetYFirstCellRow(const AValue: Cardinal);
 begin
   if FYFirstCellRow=AValue then exit;
   FYFirstCellRow:=AValue;
@@ -208,7 +208,7 @@ end;
 procedure TsWorksheetChartSource.LoadPropertiesFromStrings(AXInterval,
   AYInterval, AXTitle, AYTitle, ATitle: string);
 var
-  lXCount, lYCount: Integer;
+  lXCount, lYCount: Cardinal;
 begin
   Unused(AXTitle, AYTitle, ATitle);
   ParseIntervalString(AXInterval, FXFirstCellRow, FXFirstCellCol, lXCount, FXSelectionDirection);
