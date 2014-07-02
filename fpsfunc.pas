@@ -145,6 +145,7 @@ function fpsISNUMBER    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISTEXT      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsVALUE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
+
 implementation
 
 uses

@@ -589,6 +589,12 @@ type
       const AFormatString: String = ''); overload;
     procedure WriteNumberFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
       const AFormatString: String = ''); overload;
+    procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
+      ADecimals: Integer; ACurrencySymbol: String = ''; APosCurrFormat: Integer = -1;
+      ANegCurrFormat: Integer = -1); overload;
+    procedure WriteNumberFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
+      ADecimals: Integer; ACurrencySymbol: String = '';
+      APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1); overload;
 
     procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
 
@@ -983,10 +989,10 @@ type
 var
   GsSpreadFormats: array of TsSpreadFormatData;
 
-procedure RegisterSpreadFormat(
-  AReaderClass: TsSpreadReaderClass;
-  AWriterClass: TsSpreadWriterClass;
-  AFormat: TsSpreadsheetFormat);
+procedure RegisterFormulaFunc(AFormulaKind: TFEKind; AFunc: pointer);
+
+procedure RegisterSpreadFormat( AReaderClass: TsSpreadReaderClass;
+  AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat);
 
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
@@ -1096,7 +1102,7 @@ type
     Func: TsFormulaFunc;
   end;
 
-const
+var
   FEProps: array[TFEKind] of TFEProp = (                                        // functions marked by (*)
   { Operands }                                                                  // are only partially supported
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCell
@@ -1237,6 +1243,22 @@ const
   { Other operations }
     (Symbol:'SUM';       MinParams:1; MaxParams:1; Func:nil)    // fekOpSUM (Unary sum operation). Note: CANNOT be used for summing sell contents; use fekSUM}
   );
+
+{@@
+  Registers a function used when calculating a formula.
+  This feature allows to extend the built-in functions directly available in
+  fpspreadsheet.
+
+  @param  AFormulaKind   Identifier of the formula element
+  @param  AFunc          Function to be executed when the identifier is met
+                         in an rpn formula. The function declaration MUST
+                         follow the structure given by TsFormulaFunc.
+}
+procedure RegisterFormulaFunc(AFormulaKind: TFEKind; AFunc: Pointer);
+begin
+  FEProps[AFormulaKind].Func := TsFormulaFunc(AFunc);
+end;
+
 
 {@@
   Registers a new reader/writer pair for a given spreadsheet file format
@@ -2912,6 +2934,67 @@ begin
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
   ChangedCell(ARow, ACol);
+end;
+
+{@@
+  Adds a number format to the formatting of a cell
+
+  @param  ARow            The row of the cell
+  @param  ACol            The column of the cell
+  @param  ANumberFormat   Identifier of the format to be applied
+  @param  ADecimals       Number of decimal places
+  @param  ACurrencySymbol optional currency symbol in case of nfCurrency
+  @param  APosCurrFormat  optional identifier for positive currencies
+  @param  ANegCurrFormat  optional identifier for negative currencies
+
+  @see    TsNumberFormat
+}
+procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
+  ANumberFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
+  APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1);
+var
+  ACell: PCell;
+begin
+  ACell := GetCell(ARow, ACol);
+  WriteNumberFormat(ACell, ANumberFormat, ADecimals, ACurrencySymbol,
+    APosCurrFormat, ANegCurrFormat);
+end;
+
+{@@
+  Adds a number format to the formatting of a cell
+
+  @param  ARow            The row of the cell
+  @param  ACol            The column of the cell
+  @param  ANumberFormat   Identifier of the format to be applied
+  @param  ADecimals       Number of decimal places
+  @param  ACurrencySymbol optional currency symbol in case of nfCurrency
+  @param  APosCurrFormat  optional identifier for positive currencies
+  @param  ANegCurrFormat  optional identifier for negative currencies
+
+  @see    TsNumberFormat
+}
+procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
+  ANumberFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
+  APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1);
+begin
+  if ACell = nil then
+    exit;
+
+  ACell^.NumberFormat := ANumberFormat;
+  if ANumberFormat <> nfGeneral then begin
+    Include(ACell^.UsedFormattingFields, uffNumberFormat);
+    if ANumberFormat in [nfCurrency, nfCurrencyRed] then
+      ACell^.NumberFormatStr := BuildCurrencyFormatString(nfdDefault, ANumberFormat,
+        Workbook.FormatSettings, ADecimals,
+        APosCurrFormat, ANegCurrFormat, ACurrencySymbol)
+    else
+      ACell^.NumberFormatStr := BuildNumberFormatString(ANumberFormat,
+        Workbook.FormatSettings, ADecimals);
+  end else begin
+    Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
+    ACell^.NumberFormatStr := '';
+  end;
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@
