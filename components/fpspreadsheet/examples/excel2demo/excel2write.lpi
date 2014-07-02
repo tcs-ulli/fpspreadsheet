@@ -39,7 +39,6 @@
       <Unit0>
         <Filename Value="excel2write.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="excel2write"/>
       </Unit0>
     </Units>
   </ProjectOptions>
@@ -55,8 +54,5 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
 </CONFIG>

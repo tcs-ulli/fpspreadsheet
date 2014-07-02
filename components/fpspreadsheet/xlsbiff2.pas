@@ -682,13 +682,15 @@ var
   len: Byte;
   s: ansistring;
 begin
-  // The string is a byte-string with 16 bit length
+  // The string is a byte-string with 8 bit length
   len := AStream.ReadByte;
   if len > 0 then begin
     SetLength(s, Len);
     AStream.ReadBuffer(s[1], len);
     if (FIncompleteCell <> nil) and (s <> '') then begin
-      FIncompleteCell^.UTF8StringValue := s;
+      // The "IncompleteCell" has been identified in the sheet when reading
+      // the FORMULA record which precedes the String record.
+      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
       FIncompleteCell^.ContentType := cctUTF8String;
     end;
   end;
@@ -1329,108 +1331,7 @@ begin
   { Formula data (RPN token array) }
   WriteRPNTokenArray(AStream, AFormula, RPNLength);
 
-(*
-{ Formula }
-
-  { The size of the token array is written later,
-    because it's necessary to calculate if first,
-    and this is done at the same time it is written }
-  TokenArraySizePos := AStream.Position;
-  AStream.WriteByte(RPNLength);
-
-  { Formula data (RPN token array) }
-  for i := 0 to Length(AFormula) - 1 do
-  begin
-
-    { Token identifier }
-    FormulaKind := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind, ExtraInfo);
-    AStream.WriteByte(FormulaKind);
-    Inc(RPNLength);
-
-    { Additional data }
-    case FormulaKind of
-
-    { binary operation tokens }
-
-    INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
-     INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER: begin end;
-
-    INT_EXCEL_TOKEN_TNUM:
-    begin
-      AStream.WriteBuffer(AFormula[i].DoubleValue, 8);
-      Inc(RPNLength, 8);
-    end;
-
-    INT_EXCEL_TOKEN_TSTR:
-    begin
-      s := ansistring(AFormula[i].StringValue);
-      len := Length(s);
-      AStream.WriteByte(len);
-      AStream.WriteBuffer(s[1], len);
-      Inc(RPNLength, len + 1);
-    end;
-
-    INT_EXCEL_TOKEN_TBOOL:
-    begin
-      AStream.WriteByte(ord(AFormula[i].DoubleValue <> 0.0));
-      inc(RPNLength, 1);
-    end;
-
-    INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
-    begin
-      r := AFormula[i].Row and MASK_EXCEL_ROW;
-      if (rfRelRow in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
-      if (rfRelCol in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
-      AStream.WriteWord(r);
-      AStream.WriteByte(AFormula[i].Col);
-      Inc(RPNLength, 3);
-    end;
-
-    INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
-    begin
-      r := AFormula[i].Row and MASK_EXCEL_ROW;
-      if (rfRelRow in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
-      if (rfRelCol in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
-      AStream.WriteWord(WordToLE(r));
-
-      r := AFormula[i].Row2 and MASK_EXCEL_ROW;
-      if (rfRelRow2 in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
-      if (rfRelCol2 in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
-      AStream.WriteWord(WordToLE(r));
-
-      AStream.WriteByte(AFormula[i].Col);
-      AStream.WriteByte(AFormula[i].Col2);
-      Inc(RPNLength, 6);
-    end;
-
-    INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
-    begin
-      AStream.WriteByte(Lo(ExtraInfo));
-      Inc(RPNLength, 1);
-    end;
-
-    INT_EXCEL_TOKEN_FUNCVAR_V:
-    begin
-      AStream.WriteByte(AFormula[i].ParamsNum);
-      AStream.WriteByte(Lo(ExtraInfo));
-      // taking only the low-bytes, the high-bytes are needed for compatibility
-      // with other BIFF formats...
-      Inc(RPNLength, 2);
-    end;
-
-    end;
-  end;
-
-  { Write sizes in the end, after we known them }
-  FinalPos := AStream.Position;
-  AStream.position := TokenArraySizePos;
-  AStream.WriteByte(RPNLength);
-  AStream.Position := RecordSizePos;
-  AStream.WriteWord(WordToLE(17 + RPNLength));
-  AStream.position := FinalPos;
-  *)
-
-  { Write sizes in the end, after we known them }
+  { Finally write sizes after we know them }
   FinalPos := AStream.Position;
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(17 + RPNLength));
@@ -1466,7 +1367,8 @@ var
   s: ansistring;
   len: Integer;
 begin
-  s := AString;
+//  s := AString;           // Why not call UTF8ToAnsi?
+  s := UTF8ToAnsi(AString);
   len := Length(s);
 
   { BIFF Record header }

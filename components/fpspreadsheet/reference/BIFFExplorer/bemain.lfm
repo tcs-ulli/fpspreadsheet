@@ -12,7 +12,7 @@ object MainForm: TMainForm
   OnDestroy = FormDestroy
   OnShow = FormShow
   ShowHint = True
-  LCLVersion = '1.2.4.0'
+  LCLVersion = '1.3'
   object Splitter1: TSplitter
     Left = 419
     Height = 497

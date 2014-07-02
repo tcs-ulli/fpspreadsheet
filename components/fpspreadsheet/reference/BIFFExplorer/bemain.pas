@@ -178,7 +178,7 @@ implementation
 {$R *.lfm}
 
 uses
-  IniFiles, StrUtils, Math, lazutf8,
+  IniFiles, lazutf8,
   fpsUtils,
   beUtils, beBIFFUtils, beAbout;
 

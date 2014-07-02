@@ -208,7 +208,7 @@ begin
     SetLength(sa, ls);
     ANumBytes := ls*SizeOf(AnsiChar) + ALenBytes;
     Move(FBuffer[ABufIndex + ALenBytes], sa[1], ls*SizeOf(AnsiChar));
-    AString := sa;
+    AString := AnsiToUTF8(sa);
   end;
 end;
 
@@ -1420,9 +1420,76 @@ begin
     ShowInRow(FCurrROw, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
       'Index of XF record');
   end;
+
   // Offset 6: Result of formula
   numBytes := 8;
   Move(FBuffer[FBufferIndex], q, numBytes);
+  if wordarr[3] <> $FFFF then begin
+    if FCurrRow = Row then begin
+      FDetails.Add('Formula result:'#13);
+      FDetails.Add(Format('Bytes 0-7: $%.15x --> IEEE 764 floating-point value, 64-bit double precision'#13+
+                          '           = %g', [q, dbl]));
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
+      'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
+  end else begin
+    case bytearr[0] of
+      0: begin     // String result
+           if FCurrRow = Row then begin
+             FDetails.Add('Formula result:'#13);
+             FDetails.Add('Byte 0 = 0  --> Result is string, follows in STRING record');
+             FDetails.Add('Byte 1-5: Not used');
+             FDetails.Add('Byte 6&7: $FFFF --> no floating point number');
+           end;
+           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+             'Result is a string, follows in STRING record');
+         end;
+      1: begin     // BOOL result
+           if FCurrRow = Row then begin
+             FDetails.Add('Formula result:'#13);
+             FDetails.Add('Byte 0 = 1 --> Result is BOOLEAN');
+             FDetails.Add('Byte 1: Not used');
+             if bytearr[2] = 0
+               then FDetails.Add('Byte 2 = 0 --> FALSE')
+               else FDetails.Add('Byte 2 = 1 --> TRUE');
+             FDetails.Add('Bytes 3-5: Not used');
+             FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
+           end;
+           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+             'Result is BOOLEAN');
+         end;
+      2: begin        // ERROR result
+           if FCurrRow = Row then begin
+             FDetails.Add('Formula result:'#13);
+             FDetails.Add('Byte 0 = 2 --> Result is an ERROR value');
+             FDetails.Add('Byte 1: Not used');
+             case bytearr[2] of
+               $00: FDetails.Add('Byte 2 = $00 --> #NULL! Intersection of two cell ranges is empty');
+               $07: FDetails.Add('Byte 2 = $07 --> #DIV/0! Division by zero');
+               $0F: FDetails.Add('Byte 2 = $0F --> #VALUE! Wrong type of operand');
+               $17: FDetails.Add('Byte 2 = $17 --> #REF! Illegal or deleted cell reference');
+               $1D: FDetails.Add('Byte 2 = $1D --> #NAME? Wrong function or range name');
+               $24: FDetails.Add('Byte 2 = $24 --> #NUM! Value range overflow');
+               $2A: FDetails.Add('Byte 2 = $2A --> #N/A Argument or function not available');
+             end;
+             FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
+           end;
+           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+             'Result is an ERROR value');
+         end;
+      3: begin       // EMPTY cell
+           if FCurrRow = Row then begin
+             FDetails.Add('Formula result:'#13);
+             FDetails.Add('Byte 0 = 3 --> Result is an empty cell, for example an empty string');
+             FDetails.Add('Byte 1-5: Not used');
+             FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
+           end;
+           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
+             'Result is an EMPTY cell (empty string)');
+         end;
+    end;
+  end;
+         (*
   if (FFormat > sfExcel2) then begin
     if wordarr[3] <> $FFFF then begin
       if FCurrRow = Row then begin
@@ -1494,31 +1561,44 @@ begin
     ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
       'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
   end;
-
+              *)
   // Option flags
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numBytes);
-  w := WordLEToN(w);
-  if Row = FCurrRow then begin
-    FDetails.Add('Option flags:'#13);
-    if w and $0001 = 0
-      then FDetails.Add('Bit $0001 = 0: Don''t recalculate')
-      else FDetails.Add('Bit $0001 = 1: Recalculate always');
-    FDetails.Add('Bit $0002: Reserved - MUST be zero, MUST be ignored');
-    if w and $0004 = 0
-      then FDetails.Add('Bit $0004 = 0: Cell does NOT have a fill alignment or a center-across-selection alignment.')
-      else FDetails.Add('Bit $0004 = 1: Cell has either a fill alignment or a center-across-selection alignment.');
-    if w and $0008 = 0
-      then FDetails.Add('Bit $0008 = 0: Formula is NOT part of a shared formula')
-      else FDetails.Add('Bit $0008 = 1: Formula is part of a shared formula');
-    FDetails.Add('Bit $0010: Reserved - MUST be zero, MUST be ignored');
-    if w and $0020 = 0
-      then FDetails.Add('Bit $0020 = 0: Formula is NOT excluded from formula error checking')
-      else FDetails.Add('Bit $0020 = 1: Formula is excluded from formula error checking');
-    FDetails.Add('Bits $FC00: Reserved - MUST be zero, MUST be ignored');
+  if FFormat = sfExcel2 then begin
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    if Row = FCurrRow then begin
+      FDetails.Add('Option flags:'#13);
+      case b of
+        0: FDetails.Add('0 = Do not recalculate');
+        1: FDetails.Add('1 = Recalculate always');
+      end;
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b), 'Option flags');
+  end else begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    if Row = FCurrRow then begin
+      FDetails.Add('Option flags:'#13);
+      if w and $0001 = 0
+        then FDetails.Add('Bit $0001 = 0: Do not recalculate')
+        else FDetails.Add('Bit $0001 = 1: Recalculate always');
+      FDetails.Add('Bit $0002: Reserved - MUST be zero, MUST be ignored');
+      if w and $0004 = 0
+        then FDetails.Add('Bit $0004 = 0: Cell does NOT have a fill alignment or a center-across-selection alignment.')
+        else FDetails.Add('Bit $0004 = 1: Cell has either a fill alignment or a center-across-selection alignment.');
+      if w and $0008 = 0
+        then FDetails.Add('Bit $0008 = 0: Formula is NOT part of a shared formula')
+        else FDetails.Add('Bit $0008 = 1: Formula is part of a shared formula');
+      FDetails.Add('Bit $0010: Reserved - MUST be zero, MUST be ignored');
+      if w and $0020 = 0
+        then FDetails.Add('Bit $0020 = 0: Formula is NOT excluded from formula error checking')
+        else FDetails.Add('Bit $0020 = 1: Formula is excluded from formula error checking');
+      FDetails.Add('Bits $FC00: Reserved - MUST be zero, MUST be ignored');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]),
+      'Option flags');
   end;
-  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]),
-    'Option flags');
 
   // Not used
   if (FFormat >= sfExcel5) then begin

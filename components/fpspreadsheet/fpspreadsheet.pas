@@ -5154,6 +5154,10 @@ end;
 procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
   if Length(ACell^.RPNFormulaValue) > 0 then
+    // A non-calculated RPN formula has ContentType cctUTF8Formula, but after
+    // calculation it has the content type of the result. Both cases have in
+    // common that there is a non-vanishing array of rpn tokens which has to
+    // be written to file.
     WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell)
   else
   case ACell.ContentType of
@@ -5162,7 +5166,6 @@ begin
     cctNumber     : WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String : WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     cctFormula    : WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
-//    cctRPNFormula: WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell);
   end;
 end;
 
