@@ -45,7 +45,6 @@
       <Unit0>
         <Filename Value="fpschart.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fpschart"/>
       </Unit0>
       <Unit1>
         <Filename Value="mainform.pas"/>
@@ -76,12 +75,6 @@
         </Win32>
       </Options>
     </Linking>
-    <Other>
-      <CompilerMessages>
-        <UseMsgFile Value="True"/>
-      </CompilerMessages>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">
