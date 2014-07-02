@@ -30,7 +30,7 @@ const
 var
   Row: Integer;
   value: Double;
-  r,c: integer;
+  r,c: Cardinal;
   celladdr: String;
   fs: TFormatSettings;
   ls: char;

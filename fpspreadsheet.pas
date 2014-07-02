@@ -1220,7 +1220,7 @@ const
     (Symbol:'ROW';       MinParams:0; MaxParams:1; Func:nil),   // fekROW
     (Symbol:'ROWS';      MinParams:1; MaxParams:1; Func:nil),   // fekROWS
   { info }
-    (Symbol:'CELL';      MinParams:1; MaxParams:2; Func:nil),   // fekCELLINFO
+    (Symbol:'CELL';      MinParams:1; MaxParams:2; Func:fpsCELLINFO),           // fekCELLINFO
     (Symbol:'INFO';      MinParams:1; MaxParams:1; Func:nil),   // fekINFO
     (Symbol:'ISBLANK';   MinParams:1; MaxParams:1; Func:nil),   // fekIsBLANK
     (Symbol:'ISERR';     MinParams:1; MaxParams:1; Func:fpsISERR),              // fekIsERR
@@ -1430,6 +1430,7 @@ var
   func: TsFormulaFunc;
   val: TsArgument;
   fe: TsFormulaElement;
+  cell: PCell;
 begin
   if (Length(ACell^.RPNFormulaValue) = 0) or
      (ACell^.ContentType = cctError)
@@ -1441,8 +1442,11 @@ begin
     for i := 0 to Length(ACell^.RPNFormulaValue) - 1 do begin
       fe := ACell^.RPNFormulaValue[i];   // "formula element"
       case fe.ElementKind of
-        fekCell: ;
-        fekCellRef: ;
+        fekCell, fekCellRef:
+          begin
+            cell := FindCell(fe.Row, fe.Col);
+            args.PushCell(cell);
+          end;
         fekCellRange: ;
         fekNum:
           args.PushNumber(fe.DoubleValue);
@@ -5352,7 +5356,7 @@ end;
 }
 function RPNCellValue(ACellAddress: String; ANext: PRPNItem): PRPNItem;
 var
-  r,c: Integer;
+  r,c: Cardinal;
   flags: TsRelFlags;
 begin
   if not ParseCellString(ACellAddress, r, c, flags) then
@@ -5392,7 +5396,7 @@ end;
 }
 function RPNCellRef(ACellAddress: String; ANext: PRPNItem): PRPNItem;
 var
-  r,c: Integer;
+  r,c: Cardinal;
   flags: TsRelFlags;
 begin
   if not ParseCellString(ACellAddress, r, c, flags) then
@@ -5433,7 +5437,7 @@ end;
 }
 function RPNCellRange(ACellRangeAddress: String; ANext: PRPNItem): PRPNItem;
 var
-  r1,c1, r2,c2: Integer;
+  r1,c1, r2,c2: Cardinal;
   flags: TsRelFlags;
 begin
   if not ParseCellRangeString(ACellRangeAddress, r1,c1, r2,c2, flags) then
