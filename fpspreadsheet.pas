@@ -556,10 +556,12 @@ type
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
 
+    procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double); overload;
+    procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-      AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2); overload;
+      AFormat: TsNumberFormat; ADecimals: Byte = 2); overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
-      AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2); overload;
+      AFormat: TsNumberFormat; ADecimals: Byte = 2); overload;
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       AFormat: TsNumberFormat; AFormatString: String); overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
@@ -2416,6 +2418,34 @@ begin
 end;
 
 {@@
+  Writes a floating-point number to a cell. Does not change number format.
+
+  @param  ARow      Cell row index
+  @param  ACol      Cell column index
+  @param  ANumber   Number to be written
+}
+procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double);
+begin
+  WriteNumber(GetCell(ARow, ACol), ANumber);
+end;
+
+{@@
+  Writes a floating-point number to a cell. Does not change number format.
+
+  @param  ARow      Cell row index
+  @param  ACol      Cell column index
+  @param  ANumber   Number to be written
+}
+procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: double);
+begin
+  if ACell <> nil then begin
+    ACell^.ContentType := cctNumber;
+    ACell^.NumberValue := ANumber;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
+end;
+
+{@@
   Writes a floating-point number to a cell
 
   @param  ARow      Cell row index
@@ -2426,7 +2456,7 @@ end;
   @see    TsNumberFormat
 }
 procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2);
+  AFormat: TsNumberFormat; ADecimals: Byte = 2);
 begin
   WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, ADecimals);
 end;
@@ -2441,7 +2471,7 @@ end;
   @see TsNumberFormat
 }
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
-  AFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2);
+  AFormat: TsNumberFormat; ADecimals: Byte = 2);
 begin
   if IsDateTimeFormat(AFormat) or IsCurrencyFormat(AFormat) then
     raise Exception.Create(lpInvalidNumberFormat);
