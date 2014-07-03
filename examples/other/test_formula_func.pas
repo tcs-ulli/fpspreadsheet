@@ -44,24 +44,20 @@ end;
 
 function fpsFV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
-  arg_interestRate, arg_numberPayments, arg_Payment, arg_PV, arg_paymentType: TsArgument;
+  data: TsArgNumberArray;
 begin
-  // Pop the argument off the stack.
-  // Note: they come off in the reverse order they were pushed!
-  arg_paymentType := Args.Pop;
-  arg_PV := Args.Pop;
-  arg_Payment := Args.Pop;
-  arg_numberPayments := Args.Pop;
-  arg_interestRate := Args.Pop;
-
-  // Call our FV function with the NumberValues of the arguments.
-  Result := CreateNumber(FV(
-    arg_interestRate.NumberValue,
-    arg_numberPayments.NumberValue,
-    arg_Payment.NumberValue,
-    arg_PV.NumberValue,
-    round(arg_paymentType.NumberValue)
-  ));
+  // Pop the argument off the stack. This can be done by means of PopNumberValues
+  // which brings the values back into the right order and reports an error
+  // in case of non-numerical values.
+  if Args.PopNumberValues(NumArgs, false, data, Result) then
+    // Call our FV function with the NumberValues of the arguments.
+    Result := CreateNumber(FV(
+      data[0],   // interest rate
+      data[1],   // number of payments
+      data[2],   // payment
+      data[3],   // present value
+      round(data[4]) // payment type
+    ));
 end;
 
 const
@@ -119,6 +115,7 @@ begin
       nil))))))));
 
     workbook.WriteToFile('test_fv.xls', sfExcel8, true);
+
   finally
     workbook.Free;
   end;

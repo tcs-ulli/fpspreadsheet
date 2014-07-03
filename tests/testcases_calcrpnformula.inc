@@ -6,6 +6,7 @@
 {------------------------------------------------------------------------------}
   // Addition
   Row := 0;
+
   MyWorksheet.WriteUTF8Text(Row, 0, '=1+1');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1.0,
@@ -13,6 +14,9 @@
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(1.0+1.0);                     // B1 = 2
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// DO NOT CHANGE THIS FORMULA - ITS RESULT (2) IS HARD-CODED IN OTHER TESTS !
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   // Subtraction
   inc(Row);
@@ -22,7 +26,10 @@
     RPNNumber(10,
     RPNFunc(fekSub, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1-10);                      // B2 = -9
+  sollValues[Row] := CreateNumber(1-10);                        // B2 = -9
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   // Add cell values - relative addresses
   inc(Row);
@@ -78,6 +85,16 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(10*(-3));
 
+  // Multiplication of cell values
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=B1*B2');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNCellValue('B2',
+    RPNFunc(fekMul, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2*(-9));
+
   // Division
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=10/200');
@@ -98,6 +115,16 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateError(errDivideByZero);
 
+  // Division of cell values
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=B1/B2');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNcellValue('B2',
+    RPNFunc(fekDiv, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2/(-9));
+
   // Percentage
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=10%');
@@ -107,15 +134,34 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(10*0.01);
 
+  // Percentage of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=B1%');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekPercent, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2*0.01);
+
   // Power
   inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=power(2.0, 0.5)');
+  MyWorksheet.WriteUTF8Text(Row, 0, '=power(2.0,0.5)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(2.0,
     RPNNumber(0.5,
     RPNFunc(fekPower, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(power(2, 0.5));
+
+  // Power of cell values
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=power(B1,B2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNCellValue('B2',
+    RPNFunc(fekPower, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(power(2, -9));
 
 {$IFDEF ENABLE_CALC_RPN_EXCEPTIONS}
   // Power: Error case  "power( (negative number), (fractional number) )"
@@ -139,6 +185,15 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(1);
 
+   // Unary minus of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=-B1');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekUMinus, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(-(2));
+
   // Unary plus
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=+(-1)');
@@ -148,6 +203,15 @@
     RPNFunc(fekUPlus, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(-1);
+
+  // Unary plus  of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=+(B2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellvalue('B2',
+    RPNFunc(fekUPlus, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(+(-9));
 
   // String result
   inc(Row);
@@ -593,7 +657,7 @@
     RPNMissingArg(
     RPNFunc(fekLOG, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(logn(10, 0.1));
+  sollValues[Row] := CreateError(errOverflow);
 
   // LOG - valid result (1 argument)
   inc(Row);
@@ -624,6 +688,15 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateError(errOverflow);
 
+  // LOG of cell
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=log(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekLOG, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(logn(10, 2));
+
   // PI
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=pi()');
@@ -640,6 +713,15 @@
     RPNFunc(fekRADIANS, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(degtorad(60));
+
+  // RADIANS of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=radians(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekRADIANS, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(degtorad(2));
 
   // RAND
   // Test omitted because we cannot enforce getting the same random number back
@@ -664,6 +746,15 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(sign(-0.1));
 
+  // SIGN of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sign(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekSIGN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sign(2));
+
   // SIN
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=sin(0.1)');
@@ -673,6 +764,15 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(sin(0.1));
 
+  // SIN   of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sin(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekSIN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sin(2));
+
   // SINH
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=sinh(0.1)');
@@ -681,6 +781,15 @@
     RPNFunc(fekSINH, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(sinh(0.1));
+
+  // SINH of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sinh(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekSINH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sinh(2));
 
   // SQRT - valid result
   inc(Row);
@@ -700,6 +809,15 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateError(errOverflow);
 
+  // SQRT of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=sqrt(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellvalue('B1',
+    RPNFunc(fekSQRT, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(sqrt(2));
+
   // TAN - valid result
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=tan(0.1)');
@@ -712,6 +830,15 @@
   // TAN - error (argument = pi/2)
   // This test is omitted because it is difficult to exactly hit pi/2.
 
+  // TAN of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=tan(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekTAN, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(tan(2));
+
   // TANH
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=tanh(0.1)');
@@ -720,6 +847,15 @@
     RPNFunc(fekTANH, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(tanh(0.1));
+
+  // TANH of cell value
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=tanh(B1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('B1',
+    RPNFunc(fekTANH, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(tanh(2));
 
 
 {------------------------------------------------------------------------------}
@@ -975,7 +1111,16 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(mean([1.0, 1.1, 1.2, 0.9, 0.8]));
 
-  // COUNT (no missing values)
+  // AVERAGE of cell block
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=AVERAGE(B1:B2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('B1:B2',
+    RPNFunc(fekAVERAGE, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(mean([2.0, -9.0]));
+
+  // COUNT
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(1, 1.1, 1.2, 0.9, 0.8)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -988,20 +1133,34 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(5);
 
-  // COUNT (with missing values)
+  // COUNT  of cell range (no empty cells)
   inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(1, , 1.2, , 0.8)');
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(B1:B2)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-   RPNNumber(1.0,
-   RPNMissingArg(
-   RPNNumber(1.2,
-   RPNMissingArg(
-   RPNNumber(0.8,
-   RPNFunc(fekCOUNT, 5, nil))))))));
+   RPNCellrange('B1:B2',
+   RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(3);
+  sollValues[Row] := CreateNumber(2);
 
-   // MAX
+  // COUNT of cell range (no empty cells, but with non-numeric cells)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(A1:B2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+   RPNCellrange('A1:B2',
+   RPNFunc(fekCOUNT, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2);
+
+  // COUNT  of cell range (with empty cells)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(B1:C2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+   RPNCellrange('B1:C2',
+   RPNFunc(fekCOUNT, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2);
+
+  // MAX
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=MAX(1, 1.1, 1.2, 0.9, 0.8)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1014,20 +1173,25 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(MaxValue([1.0, 1.1, 1.2, 0.9, 0.8]));
 
-  // MAX (with missing values)
+  // MAX of cell range (no empty cells)
   inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=MAX(1, , , 0.9, 0.8)');
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MAX(B1:B2)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-   RPNNumber(1.0,
-   RPNMissingArg(
-   RPNMissingArg(
-   RPNNumber(0.9,
-   RPNNumber(0.8,
-   RPNFunc(fekMAX, 5, nil))))))));
+    RPNCellRange('B1:B2',
+    RPNFunc(fekMAX, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(MaxValue([1.0, {1.1, 1.2,} 0.9, 0.8]));
+  sollValues[Row] := CreateNumber(MaxValue([2.0, -9.0]));
 
-   // MIN
+  // MAX of cell range  (incl empty cells)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=MAX(B1:C2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('B1:C2',
+    RPNFunc(fekMAX, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(MaxValue([2.0, -9.0]));
+
+  // MIN
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=MIN(1, 1.1, 1.2, 0.9, 0.8)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
