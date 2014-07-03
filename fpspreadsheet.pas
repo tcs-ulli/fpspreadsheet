@@ -1195,7 +1195,7 @@ var
     (Symbol:'CHIINV';    MinParams:2; MaxParams:2;  Func:nil),   // fekCHIINV
     (Symbol:'COUNT';     MinParams:0; MaxParams:30; Func:fpsCOUNT),             // fekCOUNT
     (Symbol:'COUNTA';    MinParams:0; MaxParams:30; Func:nil),  // fekCOUNTA
-    (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1;  Func:nil),   // fekCOUNTBLANK
+    (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1;  Func:fpsCOUNTBLANK),        // fekCOUNTBLANK
     (Symbol:'COUNTIF';   MinParams:2; MaxParams:2;  Func:nil),   // fekCOUNTIF
     (Symbol:'MAX';       MinParams:1; MaxParams:30; Func:fpsMAX),               // fekMAX
     (Symbol:'MEDIAN';    MinParams:1; MaxParams:30; Func:nil),  // fekMEDIAN

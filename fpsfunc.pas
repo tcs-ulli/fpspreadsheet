@@ -128,6 +128,7 @@ function fpsYEAR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsAVEDEV      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsAVERAGE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsCOUNT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOUNTBLANK  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMAX         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMIN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsPRODUCT     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1412,6 +1413,31 @@ var
 begin
   if Args.PopNumberValues(NumArgs, true, data, result, false) then
     Result := CreateNumber(Length(data));
+end;
+
+function fpsCOUNTBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// COUNTBLANK( range )
+// counts the number of empty cells in a range.
+var
+  arg: TsArgument;
+  r, c, n: Cardinal;
+  cell: PCell;
+begin
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atCell:
+      if arg.Cell = nil then Result := CreateNumber(1) else Result := CreateNumber(0);
+    atCellRange:
+      begin
+        n := 0;
+        for r := arg.FirstRow to arg.LastRow do
+          for c := arg.FirstCol to arg.LastCol do
+            if arg.Worksheet.FindCell(r, c) = nil then inc(n);
+        Result := CreateNumber(n);
+      end;
+    else
+      Result := CreateError(errWrongType);
+  end;
 end;
 
 function fpsMAX(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
