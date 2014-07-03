@@ -14,9 +14,10 @@
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(1.0+1.0);                     // B1 = 2
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// DO NOT CHANGE THIS FORMULA - ITS RESULT (2) IS HARD-CODED IN OTHER TESTS !
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // don't refer to the cell contents here because they have not yet been calculated!
+{!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!  DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!}
 
   // Subtraction
   inc(Row);
@@ -27,9 +28,10 @@
     RPNFunc(fekSub, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(1-10);                        // B2 = -9
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // don't refer to the cell contents here because they have not yet been calculated!
+{!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!  DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!}
 
   // Add cell values - relative addresses
   inc(Row);
@@ -40,7 +42,6 @@
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(-7);
-// don't refer to the cell contents here because they have not yet been calculated!
 
   // Add cell values - absolute addresses
   inc(Row);
@@ -1124,11 +1125,11 @@
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(1, 1.1, 1.2, 0.9, 0.8)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-   RPNNumber(1.0,
-   RPNNumber(1.1,
-   RPNNumber(1.2,
-   RPNNumber(0.9,
-   RPNNumber(0.8,
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
    RPNFunc(fekCOUNT, 5, nil))))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(5);
@@ -1137,8 +1138,8 @@
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(B1:B2)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-   RPNCellrange('B1:B2',
-   RPNFunc(fekCOUNT, 1, nil))));
+    RPNCellrange('B1:B2',
+    RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(2);
 
@@ -1146,8 +1147,8 @@
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(A1:B2)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-   RPNCellrange('A1:B2',
-   RPNFunc(fekCOUNT, 1, nil))));
+    RPNCellrange('A1:B2',
+    RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(2);
 
@@ -1155,10 +1156,19 @@
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=COUNT(B1:C2)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-   RPNCellrange('B1:C2',
-   RPNFunc(fekCOUNT, 1, nil))));
+    RPNCellrange('B1:C2',
+    RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(2);
+
+  // COUNT
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTBLANK(A1:D2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('A1:D2',
+    RPNFunc(fekCOUNTBLANK, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(4);
 
   // MAX
   inc(Row);
