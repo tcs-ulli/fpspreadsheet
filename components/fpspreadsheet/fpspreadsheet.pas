@@ -361,6 +361,9 @@ const
   );
 
 type
+  {@@ State flags while calculating formulas }
+  TsCalcState = (csNotCalculated, csCalculating, csCalculated);
+
   {@@ Cell structure for TsWorksheet
       The cell record contains information on the location of the cell (row and
       column index), on the value contained (number, date, text, ...), and on
@@ -396,6 +399,8 @@ type
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
     RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
+    { Status flags }
+    CalcState: TsCalcState;
   end;
 
   {@@ Pointer to a TCell record }
@@ -471,8 +476,13 @@ type
     FOptions: TsSheetOptions;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
-    procedure CalcFormulaCallback(data, arg: Pointer);
+
+    { Setter/Getter }
     function GetFormatSettings: TFormatSettings;
+
+    { Callback procedures called when iterating through all cells }
+    procedure CalcFormulaCallback(data, arg: Pointer);
+    procedure CalcStateCallback(data, arg: Pointer);
     procedure RemoveCallback(data, arg: pointer);
 
   protected
@@ -1019,6 +1029,7 @@ resourcestring
   lpIllegalNumberFormat = 'Illegal number format.';
   lpSpecifyNumberOfParams = 'Specify number of parameters for function %s';
   lpIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
+  lpCircularReference = 'Circular reference found when calculating worksheet formulas';
   lpTRUE = 'TRUE';
   lpFALSE = 'FALSE';
   lpErrEmptyIntersection = '#NULL!';
@@ -1431,20 +1442,50 @@ begin
 end;
 
 {@@
+  Helper method marking all cells with formulas as "not calculated". This flag
+  is needed for recursive calculation of the entire worksheet.
+}
+procedure TsWorksheet.CalcStateCallback(data, arg: Pointer);
+var
+  cell: PCell;
+begin
+  Unused(arg);
+  cell := PCell(data);
+
+  if Length(cell^.RPNFormulaValue) > 0 then
+    cell^.CalcState := csNotCalculated;
+end;
+
+{@@
+  Calculates all rpn formulas of the worksheet.
 }
 procedure TsWorksheet.CalcFormulas;
 var
   node: TAVLTreeNode;
 begin
-  Node := FCells.FindLowest;
+  // Step 1 - mark all formula cells as "not calculated"
+  node := FCells.FindLowest;
+  while Assigned(node) do begin
+    CalcStateCallback(node.Data, nil);
+    node := FCells.FindSuccessor(node);
+  end;
+
+  // Step 2 - calculate cells. If a not-calculated cell is found it is
+  // calculated and then marked as such.
+  node := FCells.FindLowest;
   while Assigned(Node) do begin
     CalcFormulaCallback(Node.Data, nil);
     node := FCells.FindSuccessor(node);
   end;
 end;
 
-
 {@@
+  Calculates the rpn formula assigned to a cell.
+  Should not be called by itself because the result may depend on other cells
+  which may have not yet been calculated. It is better to call CalcFormulas
+  instead.
+
+  @param  ACell  Cell containing the rpn formula.
 }
 procedure TsWorksheet.CalcRPNFormula(ACell: PCell);
 var
@@ -1461,14 +1502,20 @@ begin
   then
     exit;
 
+  ACell^.CalcState := csCalculating;
+
   args := TsArgumentStack.Create;
   try
     for i := 0 to Length(ACell^.RPNFormulaValue) - 1 do begin
-      fe := ACell^.RPNFormulaValue[i];   // "formula element"
+      fe := ACell^.RPNFormulaValue[i];   // fe = "formula element"
       case fe.ElementKind of
         fekCell, fekCellRef:
           begin
             cell := FindCell(fe.Row, fe.Col);
+            case cell^.CalcState of
+              csNotCalculated: CalcRPNFormula(cell);
+              csCalculating  : raise Exception.Create(lpCircularReference);
+            end;
             args.PushCell(cell);
           end;
         fekCellRange: ;
@@ -1499,21 +1546,13 @@ begin
           end;
           // Result of function
           val := func(args, fe.ParamsNum);
+          // Push result on stack for usage by next function or as final result
           args.Push(val);
-          {
-          // Push valid result on stack, exit in case of error
-          case val.ArgumentType of
-            atNumber, atString, atBool, atEmpty:
-              args.Push(val);
-            atError:
-              begin
-                WriteErrorValue(ACell, val.ErrorValue);
-                exit;
-              end;
-          end;
-          }
       end;  // case
     end;  // for
+
+    { When all formula elements have been processed the stack contains the
+      final result. }
     if args.Count = 1 then begin
       val := args.Pop;
       case val.ArgumentType of
@@ -1525,13 +1564,8 @@ begin
       end;
     end else
       WriteErrorValue(ACell, errArgError);
-    {
-      // This case is a program error --> raise an exception
-      raise Exception.CreateFmt('Incorrect argument count of the formula in cell %s', [
-        GetCellString(ACell^.Row, ACell^.Col, [])
-      ]);
-      }
   finally
+    ACell^.CalcState := csCalculated;
     args.Free;
   end;
 end;
