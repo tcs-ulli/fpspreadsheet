@@ -1496,6 +1496,7 @@ var
   val: TsArgument;
   fe: TsFormulaElement;
   cell: PCell;
+  r,c: Cardinal;
 begin
   if (Length(ACell^.RPNFormulaValue) = 0) or
      (ACell^.ContentType = cctError)
@@ -1516,9 +1517,21 @@ begin
               csNotCalculated: CalcRPNFormula(cell);
               csCalculating  : raise Exception.Create(lpCircularReference);
             end;
-            args.PushCell(cell);
+            args.PushCell(cell, self);
           end;
-        fekCellRange: ;
+        fekCellRange:
+          begin
+            for r := fe.Row to fe.Row2 do
+              for c := fe.Col to fe.Col2 do begin
+                cell := FindCell(r, c);
+                if cell <> nil then
+                  case cell^.CalcState of
+                    csNotCalculated: CalcRPNFormula(cell);
+                    csCalculating  : raise Exception.Create(lpCircularReference);
+                  end;
+              end;
+            args.PushCellRange(fe.Row, fe.Col, fe.Row2, fe.Col2, self);
+          end;
         fekNum:
           args.PushNumber(fe.DoubleValue);
         fekInteger:
