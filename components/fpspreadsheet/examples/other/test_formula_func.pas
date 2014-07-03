@@ -52,10 +52,10 @@ begin
   if Args.PopNumberValues(NumArgs, false, data, Result) then
     // Call our FV function with the NumberValues of the arguments.
     Result := CreateNumber(FV(
-      data[0],   // interest rate
-      data[1],   // number of payments
-      data[2],   // payment
-      data[3],   // present value
+      data[0],       // interest rate
+      data[1],       // number of payments
+      data[2],       // payment
+      data[3],       // present value
       round(data[4]) // payment type
     ));
 end;
