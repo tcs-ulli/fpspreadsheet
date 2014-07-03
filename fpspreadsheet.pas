@@ -1588,13 +1588,8 @@ end;
   and zero based, to a textual representation which is [Col][Row],
   being that the Col is in letters and the row is in 1-based numbers }
 class function TsWorksheet.CellPosToText(ARow, ACol: Cardinal): string;
-var
-  lStr: string;
 begin
-  lStr := '';
-  if ACol < 26 then lStr := Char(ACol+65);
-
-  Result := Format('%s%d', [lStr, ARow+1]);
+  Result := GetCellString(ARow, ACol, [rfRelCol, rfRelRow]);
 end;
 
 {@@
