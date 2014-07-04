@@ -135,6 +135,7 @@ function fpsPRODUCT     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSTDEV       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSTDEVP      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSUM         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsSUMIF       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSUMSQ       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsVAR         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsVARP        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1599,44 +1600,18 @@ var
   arg: TsArgument;
   cellarg: TsArgument;
   criteria: TsArgument;
-  compare: TFEKind;
+  compare: TsCompareOperation;
   res: Integer;
   cell: PCell;
 begin
   criteria := Args.Pop;
   arg := Args.Pop;
-  compare := fekEqual;
+  compare := coEqual;
   case criteria.ArgumentType of
     atCellRange:
       criteria := CreateCell(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
     atString:
-      if Length(criteria.StringValue) > 1 then
-        case criteria.StringValue[1] of
-          '<' : case criteria.StringValue[2] of
-                  '>' : begin
-                          compare := fekNotEqual;
-                          Delete(criteria.StringValue, 1, 2);
-                        end;
-                  '=' : begin
-                          compare := fekLessEqual;
-                          Delete(criteria.StringValue, 1, 2);
-                        end;
-                  else  compare := fekLess;
-                        Delete(criteria.StringValue, 1, 1);
-                end;
-          '>' : case criteria.StringValue[2] of
-                  '=' : begin
-                          compare := fekGreaterEqual;
-                          Delete(criteria.StringValue, 1, 2);
-                        end;
-                  else  compare := fekGreater;
-                        Delete(criteria.StringValue, 1, 1);
-                end;
-          '=' : begin
-                  compare := fekEqual;
-                  Delete(criteria.StringValue, 1, 1);
-                end;
-        end;
+      criteria.Stringvalue := AnalyzeCompareStr(criteria.StringValue, compare);
   end;
   n := 0;
   for r := arg.FirstRow to arg.LastRow do
@@ -1646,18 +1621,18 @@ begin
         cellarg := CreateCell(cell);
         res := CompareArgs(cellarg, criteria, false);
         if res <> MaxInt then begin
-          if (res < 0) and (compare in [fekLess, fekLessEqual, fekNotEqual])
+          if (res < 0) and (compare in [coLess, coLessEqual, coNotEqual])
             then inc(n)
           else
-          if (res = 0) and (compare in [fekEqual, fekLessEqual, fekGreaterEqual])
+          if (res = 0) and (compare in [coEqual, coLessEqual, coGreaterEqual])
             then inc(n)
           else
-          if (res > 0) and (compare in [fekGreater, fekGreaterEqual, fekNotEqual])
+          if (res > 0) and (compare in [coGreater, coGreaterEqual, coNotEqual])
             then inc(n);
         end else
-          if (compare = fekNotEqual) then inc(n);
+          if (compare = coNotEqual) then inc(n);
       end else
-       if compare = fekNotEqual then inc(n);
+       if compare = coNotEqual then inc(n);
     end;
   Result := CreateNumber(n);
 end;
@@ -1720,6 +1695,75 @@ var
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
     Result := CreateNumber(Sum(data))
+end;
+
+function fpsSUMIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// SUMIF( range, criteria [, sum_range] )
+// - "range" is to the cell range to be analyzed
+// - "citeria" can be a cell, a value or a string starting with a symbol like ">" etc.
+//   (in the former two cases a value is counted if equal to the criteria value)
+// - "sum_range" identifies the cells to sum. If omitted, the function uses
+//   "range" as the "sum_range"
+var
+  cellval, sum: Double;
+  r, c, rs, cs: Cardinal;
+  range: TsArgument;
+  sum_range: TsArgument;
+  cellarg: TsArgument;
+  criteria: TsArgument;
+  compare: TsCompareOperation;
+  res: Integer;
+  cell: PCell;
+  accept: Boolean;
+begin
+  if NumArgs = 3 then begin
+    sum_range := Args.Pop;
+    criteria := Args.Pop;
+    range := Args.Pop;
+  end else begin
+    criteria := Args.Pop;
+    range := Args.Pop;
+    sum_range := range;
+  end;
+
+  if (range.LastCol - range.FirstCol <> sum_range.LastCol - sum_range.FirstCol) or
+     (range.LastRow - range.FirstRow <> sum_range.LastRow - sum_range.FirstRow)
+  then begin
+    Result := CreateError(errArgError);
+    exit;
+  end;
+
+  compare := coEqual;
+  case criteria.ArgumentType of
+    atCellRange:
+      criteria := CreateCell(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
+    atString:
+      criteria.Stringvalue := AnalyzeCompareStr(criteria.StringValue, compare);
+  end;
+
+  sum := 0.0;
+  for r := range.FirstRow to range.LastRow do begin
+    rs := r - range.FirstRow + sum_range.FirstRow;
+    for c := range.FirstCol to range.LastCol do begin
+      cs := c - range.FirstCol + sum_range.FirstCol;
+      cell := range.Worksheet.FindCell(r, c);
+      accept := (compare = coNotEqual);
+      if cell <> nil then begin
+        cellarg := CreateCell(cell);
+        res := CompareArgs(cellarg, criteria, false);
+        if res <> MaxInt then
+          accept := ( (res < 0) and (compare in [coLess, coLessEqual, coNotEqual]) )
+                 or ( (res = 0) and (compare in [coEqual, coLessEqual, coGreaterEqual]) )
+                 or ( (res > 0) and (compare in [coGreater, coGreaterEqual, coNotEqual]) )
+      end;
+      if accept then begin
+        cell := sum_range.Worksheet.FindCell(rs, cs);
+        if sum_range.Worksheet.ReadNumericValue(cell, cellval) then
+          sum := sum + cellval;
+      end;
+    end;
+  end;
+  Result := CreateNumber(sum);
 end;
 
 function fpsSUMSQ(Args: TsArgumentStack; NumArgs: Integer): TsArgument;

@@ -29,10 +29,6 @@ type
   // nfdDefault is the dialect used by fpc,
   // nfdExcel is the dialect used by Excel
 
-  TsCompareOperation = (coNotUsed,
-    coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
-  );
-
   TsNumFormatToken = (nftText, nftThSep, nftDecSep,
     nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond, nftMilliseconds,
     nftAMPM, nftMonthMinute, nftDateTimeSep,

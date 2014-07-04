@@ -128,6 +128,8 @@ function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
+function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
+
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
 procedure Unused(const A1, A2, A3);
@@ -1889,6 +1891,45 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
 begin
   DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
+end;
+
+{@@
+  Extracts compare information from an input string such as "<2.4".
+  Is needed for some Excel-strings.
+
+  @param  AString     Input string starting with "<", "<=", ">", ">=", "<>" or "="
+                      If this start is missing a "=" is assumed.
+  @param  ACompareOp  Identifier for the comparins operation extracted - see TsCompareOperation
+  @return Input string with the comparing characters stripped.
+}
+function AnalyzeComparestr(AString: String; out ACompareOp: TsCompareOperation): String;
+
+  procedure RemoveChars(ACount: Integer; ACompare: TsCompareOperation);
+  begin
+    ACompareOp := ACompare;
+    if ACount = 0 then
+      Result := AString
+    else
+      Result := Copy(AString, 1+ACount, Length(AString));
+  end;
+
+begin
+  if Length(AString) > 1 then
+    case AString[1] of
+      '<' : case AString[2] of
+              '>' : RemoveChars(2, coNotEqual);
+              '=' : RemoveChars(2, coLessEqual);
+              else  RemoveChars(1, coLess);
+            end;
+      '>' : case AString[2] of
+              '=' : RemoveChars(2, coGreaterEqual);
+              else  Removechars(1, coGreater);
+            end;
+      '=' : RemoveChars(1, coEqual);
+      else  RemoveChars(0, coEqual);
+    end
+  else
+    RemoveChars(0, coEqual);
 end;
 
 {$PUSH}{$HINTS OFF}
