@@ -697,6 +697,7 @@ type
     FReadFormulas: Boolean;
     FDefaultColWidth: Single; // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
+    FFileName: String;
 
     { Internal methods }
     procedure PrepareBeforeSaving;
@@ -768,6 +769,8 @@ type
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
+    {@@ Filename of the saved workbook }
+    property FileName: String read FFileName;
     {@@ Identifies the file format which was detected when reading the file }
     property FileFormat: TsSpreadsheetFormat read FFormat;
     {@@ This property allows to turn off reading of rpn formulas; this is a
@@ -1211,11 +1214,11 @@ var
     (Symbol:'VAR';       MinParams:1; MaxParams:30; Func:fpsVAR),               // fekVAR
     (Symbol:'VARP';      MinParams:1; MaxParams:30; Func:fpsVARP),              // fekVARP
   { financial }
-    (Symbol:'FV';        MinParams:3; MaxParams:5; Func:nil),   // fekFV
-    (Symbol:'NPER';      MinParams:3; MaxParams:5; Func:nil),   // fekNPER
-    (Symbol:'PMT';       MinParams:3; MaxParams:5; Func:nil),   // fekPMT
-    (Symbol:'PV';        MinParams:3; MaxParams:5; Func:nil),   // fekPV
-    (Symbol:'RATE';      MinParams:3; MaxParams:6; Func:nil),   // fekRATE
+    (Symbol:'FV';        MinParams:3; MaxParams:5;  Func:nil),   // fekFV
+    (Symbol:'NPER';      MinParams:3; MaxParams:5;  Func:nil),   // fekNPER
+    (Symbol:'PMT';       MinParams:3; MaxParams:5;  Func:nil),   // fekPMT
+    (Symbol:'PV';        MinParams:3; MaxParams:5;  Func:nil),   // fekPV
+    (Symbol:'RATE';      MinParams:3; MaxParams:6;  Func:nil),   // fekRATE
   { logical }
     (Symbol:'AND';       MinParams:0; MaxParams:30; Func:fpsAND),               // fekAND
     (Symbol:'FALSE';     MinParams:0; MaxParams:0;  Func:fpsFALSE),             // fekFALSE
@@ -1224,37 +1227,37 @@ var
     (Symbol:'OR';        MinParams:1; MaxParams:30; Func:fpsOR),                // fekOR
     (Symbol:'TRUE';      MinParams:0; MaxParams:0;  Func:fpsTRUE),              // fekTRUE
   {  string }
-    (Symbol:'CHAR';      MinParams:1; MaxParams:1; Func:fpsCHAR),               // fekCHAR
-    (Symbol:'CODE';      MinParams:1; MaxParams:1; Func:fpsCODE),               // fekCODE
-    (Symbol:'LEFT';      MinParams:1; MaxParams:2; Func:fpsLEFT),               // fekLEFT
-    (Symbol:'LOWER';     MinParams:1; MaxParams:1; Func:fpsLOWER),              // fekLOWER
-    (Symbol:'MID';       MinParams:3; MaxParams:3; Func:fpsMID),                // fekMID
-    (Symbol:'PROPER';    MinParams:1; MaxParams:1; Func:nil),   // fekPROPER
-    (Symbol:'REPLACE';   MinParams:4; MaxParams:4; Func:fpsREPLACE),            // fekREPLACE
-    (Symbol:'RIGHT';     MinParams:1; MaxParams:2; Func:fpsRIGHT),              // fekRIGHT
-    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4; Func:fpsSUBSTITUTE),         // fekSUBSTITUTE (*)
-    (Symbol:'TRIM';      MinParams:1; MaxParams:1; Func:fpsTRIM),               // fekTRIM
-    (Symbol:'UPPER';     MinParams:1; MaxParams:1; Func:fpsUPPER),              // fekUPPER
+    (Symbol:'CHAR';      MinParams:1; MaxParams:1;  Func:fpsCHAR),              // fekCHAR
+    (Symbol:'CODE';      MinParams:1; MaxParams:1;  Func:fpsCODE),              // fekCODE
+    (Symbol:'LEFT';      MinParams:1; MaxParams:2;  Func:fpsLEFT),              // fekLEFT
+    (Symbol:'LOWER';     MinParams:1; MaxParams:1;  Func:fpsLOWER),             // fekLOWER
+    (Symbol:'MID';       MinParams:3; MaxParams:3;  Func:fpsMID),               // fekMID
+    (Symbol:'PROPER';    MinParams:1; MaxParams:1;  Func:nil),   // fekPROPER
+    (Symbol:'REPLACE';   MinParams:4; MaxParams:4;  Func:fpsREPLACE),           // fekREPLACE
+    (Symbol:'RIGHT';     MinParams:1; MaxParams:2;  Func:fpsRIGHT),             // fekRIGHT
+    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4;  Func:fpsSUBSTITUTE),        // fekSUBSTITUTE (*)
+    (Symbol:'TRIM';      MinParams:1; MaxParams:1;  Func:fpsTRIM),              // fekTRIM
+    (Symbol:'UPPER';     MinParams:1; MaxParams:1;  Func:fpsUPPER),             // fekUPPER
   {  lookup/reference }
-    (Symbol:'COLUMN';    MinParams:0; MaxParams:1; Func:nil),   // fekCOLUMN
-    (Symbol:'COLUMNS';   MinParams:1; MaxParams:1; Func:nil),   // fekCOLUMNS
-    (Symbol:'ROW';       MinParams:0; MaxParams:1; Func:nil),   // fekROW
-    (Symbol:'ROWS';      MinParams:1; MaxParams:1; Func:nil),   // fekROWS
+    (Symbol:'COLUMN';    MinParams:0; MaxParams:1;  Func:fpsCOLUMN),            // fekCOLUMN
+    (Symbol:'COLUMNS';   MinParams:1; MaxParams:1;  Func:fpsCOLUMNS),           // fekCOLUMNS
+    (Symbol:'ROW';       MinParams:0; MaxParams:1;  Func:fpsROW),               // fekROW
+    (Symbol:'ROWS';      MinParams:1; MaxParams:1;  Func:fpsROWS),              // fekROWS
   { info }
-    (Symbol:'CELL';      MinParams:1; MaxParams:2; Func:fpsCELLINFO),           // fekCELLINFO
-    (Symbol:'INFO';      MinParams:1; MaxParams:1; Func:nil),   // fekINFO
-    (Symbol:'ISBLANK';   MinParams:1; MaxParams:1; Func:nil),   // fekIsBLANK
-    (Symbol:'ISERR';     MinParams:1; MaxParams:1; Func:fpsISERR),              // fekIsERR
-    (Symbol:'ISERROR';   MinParams:1; MaxParams:1; Func:fpsISERROR),            // fekIsERROR
-    (Symbol:'ISLOGICAL'; MinParams:1; MaxParams:1; Func:fpsISLOGICAL),          // fekIsLOGICAL
-    (Symbol:'ISNA';      MinParams:1; MaxParams:1; Func:fpsISNA),               // fekIsNA
-    (Symbol:'ISNONTEXT'; MinParams:1; MaxParams:1; Func:fpsISNONTEXT),          // fekIsNONTEXT
-    (Symbol:'ISNUMBER';  MinParams:1; MaxParams:1; Func:fpsISNUMBER),           // fekIsNUMBER
-    (Symbol:'ISREF';     MinParams:1; MaxParams:1; Func:nil),   // fekIsRef
-    (Symbol:'ISTEXT';    MinParams:1; MaxParams:1; Func:fpsISTEXT),             // fekIsTEXT
-    (Symbol:'VALUE';     MinParams:1; MaxParams:1; Func:fpsVALUE),              // fekValue
+    (Symbol:'CELL';      MinParams:1; MaxParams:2;  Func:fpsCELLINFO),          // fekCELLINFO  (*)
+    (Symbol:'INFO';      MinParams:1; MaxParams:1;  Func:fpsINFO),              // fekINFO      (*)
+    (Symbol:'ISBLANK';   MinParams:1; MaxParams:1;  Func:fpsISBLANK),           // fekIsBLANK
+    (Symbol:'ISERR';     MinParams:1; MaxParams:1;  Func:fpsISERR),             // fekIsERR
+    (Symbol:'ISERROR';   MinParams:1; MaxParams:1;  Func:fpsISERROR),           // fekIsERROR
+    (Symbol:'ISLOGICAL'; MinParams:1; MaxParams:1;  Func:fpsISLOGICAL),         // fekIsLOGICAL
+    (Symbol:'ISNA';      MinParams:1; MaxParams:1;  Func:fpsISNA),              // fekIsNA
+    (Symbol:'ISNONTEXT'; MinParams:1; MaxParams:1;  Func:fpsISNONTEXT),         // fekIsNONTEXT
+    (Symbol:'ISNUMBER';  MinParams:1; MaxParams:1;  Func:fpsISNUMBER),          // fekIsNUMBER
+    (Symbol:'ISREF';     MinParams:1; MaxParams:1;  Func:fpsISREF),             // fekIsRef
+    (Symbol:'ISTEXT';    MinParams:1; MaxParams:1;  Func:fpsISTEXT),            // fekIsTEXT
+    (Symbol:'VALUE';     MinParams:1; MaxParams:1;  Func:fpsVALUE),             // fekValue
   { Other operations }
-    (Symbol:'SUM';       MinParams:1; MaxParams:1; Func:nil)    // fekOpSUM (Unary sum operation). Note: CANNOT be used for summing sell contents; use fekSUM}
+    (Symbol:'SUM';       MinParams:1; MaxParams:1;  Func:nil)    // fekOpSUM (Unary sum operation). Note: CANNOT be used for summing sell contents; use fekSUM}
   );
 
 {@@
@@ -1510,15 +1513,16 @@ begin
   args := TsArgumentStack.Create;
   try
     for i := 0 to Length(ACell^.RPNFormulaValue) - 1 do begin
-      fe := ACell^.RPNFormulaValue[i];   // fe = "formula element"
+      fe := ACell^.RPNFormulaValue[i];   // "fe" means "formula element"
       case fe.ElementKind of
         fekCell, fekCellRef:
           begin
             cell := FindCell(fe.Row, fe.Col);
-            case cell^.CalcState of
-              csNotCalculated: CalcRPNFormula(cell);
-              csCalculating  : raise Exception.Create(lpCircularReference);
-            end;
+            if cell <> nil then
+              case cell^.CalcState of
+                csNotCalculated: CalcRPNFormula(cell);
+                csCalculating  : raise Exception.Create(lpCircularReference);
+              end;
             args.PushCell(cell, self);
           end;
         fekCellRange:
@@ -1535,15 +1539,15 @@ begin
             args.PushCellRange(fe.Row, fe.Col, fe.Row2, fe.Col2, self);
           end;
         fekNum:
-          args.PushNumber(fe.DoubleValue);
+          args.PushNumber(fe.DoubleValue, self);
         fekInteger:
-          args.PushNumber(1.0*fe.IntValue);
+          args.PushNumber(1.0*fe.IntValue, self);
         fekString:
-          args.PushString(fe.StringValue);
+          args.PushString(fe.StringValue, self);
         fekBool:
-          args.PushBool(fe.DoubleValue <> 0.0);
+          args.PushBool(fe.DoubleValue <> 0.0, self);
         fekMissingArg:
-          args.PushMissing;
+          args.PushMissing(self);
         fekParen: ;  // visual effect only
         fekErr:
           exit;
@@ -1562,7 +1566,7 @@ begin
           // Result of function
           val := func(args, fe.ParamsNum);
           // Push result on stack for usage by next function or as final result
-          args.Push(val);
+          args.Push(val, self);
       end;  // case
     end;  // for
 
@@ -3958,6 +3962,7 @@ var
 begin
   AReader := CreateSpreadReader(AFormat);
   try
+    FFileName := AFileName;
     AReader.ReadFromFile(AFileName, Self);
     FFormat := AFormat;
   finally
@@ -4067,6 +4072,7 @@ var
 begin
   AWriter := CreateSpreadWriter(AFormat);
   try
+    FFileName := AFileName;
     PrepareBeforeSaving;
     AWriter.WriteToFile(AFileName, AOverwriteExisting);
   finally

@@ -41,22 +41,21 @@ type
     function PopString(out AValue: String; out AErrArg: TsArgument): Boolean;
     function PopStringValues(ANumArgs: Integer; ARangeAllowed:Boolean;
       out AValues: TsArgStringArray; out AErrArg: TsArgument): Boolean;
-    procedure Push(AValue: TsArgument);
-    procedure PushBool(AValue: Boolean);
+    procedure Push(AValue: TsArgument; AWorksheet: TsWorksheet);
+    procedure PushBool(AValue: Boolean; AWorksheet: TsWorksheet);
     procedure PushCell(AValue: PCell; AWorksheet: TsWorksheet);
     procedure PushCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
       AWorksheet: TsWorksheet);
-    procedure PushMissing;
-    procedure PushNumber(AValue: Double);
-    procedure PushString(AValue: String);
+    procedure PushMissing(AWorksheet: TsWorksheet);
+    procedure PushNumber(AValue: Double; AWorksheet: TsWorksheet);
+    procedure PushString(AValue: String; AWorksheet: TsWorksheet);
     procedure Clear;
     procedure Delete(AIndex: Integer);
   end;
 
 function CreateBool(AValue: Boolean): TsArgument;
-function CreateCell(AValue: PCell; AWorksheet: TsWorksheet): TsArgument;
-function CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
-  AWorksheet: TsWorksheet): TsArgument;
+function CreateCell(AValue: PCell): TsArgument;
+function CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
 function CreateNumber(AValue: Double): TsArgument;
 function CreateString(AValue: String): TsArgument;
 function CreateError(AError: TsErrorValue): TsArgument;
@@ -156,14 +155,22 @@ function fpsRIGHT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsSUBSTITUTE  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ lookup / reference }
+function fpsCOLUMN      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOLUMNS     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsROW         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsROWS        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { info functions }
 function fpsCELLINFO    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsINFO        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISBLANK     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISERR       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISERROR     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISLOGICAL   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISNA        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISNONTEXT   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISNUMBER    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsISREF       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsISTEXT      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsVALUE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 
@@ -188,16 +195,14 @@ begin
   Result.Boolvalue := AValue;
 end;
 
-function CreateCell(AValue: PCell; AWorksheet: TsWorksheet): TsArgument;
+function CreateCell(AValue: PCell): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atCell;
   Result.Cell := AValue;
-  Result.Worksheet := AWorksheet;
 end;
 
-function CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
-  AWorksheet: TsWorksheet): TsArgument;
+function CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atCellRange;
@@ -205,7 +210,6 @@ begin
   Result.FirstCol := AFirstCol;
   Result.LastRow := ALastRow;
   Result.LastCol := ALastCol;
-  Result.Worksheet := AWorksheet;
 end;
 
 function CreateNumber(AValue: Double): TsArgument;
@@ -289,7 +293,7 @@ begin
   Result := TsArgumentStack.Create;
   for counter := 1 to ACount do begin
     arg := Pop;
-    Result.Push(arg);
+    Result.Push(arg, arg.Worksheet);
   end;
 end;
 
@@ -588,7 +592,7 @@ begin
   end;
 end;
 
-procedure TsArgumentStack.Push(AValue: TsArgument);
+procedure TsArgumentStack.Push(AValue: TsArgument; AWorksheet: TsWorksheet);
 var
   arg: PsArgument;
 begin
@@ -596,42 +600,43 @@ begin
   arg^ := AValue;
   arg^.StringValue := AValue.StringValue;
   arg^.Cell := AValue.Cell;
+  arg^.Worksheet := AWorksheet;
   Add(arg);
 end;
 
-procedure TsArgumentStack.PushBool(AValue: Boolean);
+procedure TsArgumentStack.PushBool(AValue: Boolean; AWorksheet: TsWorksheet);
 begin
-  Push(CreateBool(AValue));
+  Push(CreateBool(AValue), AWorksheet);
 end;
 
 procedure TsArgumentStack.PushCell(AValue: PCell; AWorksheet: TsWorksheet);
 begin
-  Push(CreateCell(AValue, AWorksheet));
+  Push(CreateCell(AValue), AWorksheet);
 end;
 
 procedure TsArgumentStack.PushCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
   AWorksheet: TsWorksheet);
 begin
-  Push(CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol, AWorksheet));
+  Push(CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol), AWorksheet);
 end;
 
-procedure TsArgumentStack.PushMissing;
+procedure TsArgumentStack.PushMissing(AWorksheet: TsWorksheet);
 var
   arg: TsArgument;
 begin
   arg := CreateArgument;
   arg.IsMissing := true;
-  Push(arg);
+  Push(arg, AWorksheet);
 end;
 
-procedure TsArgumentStack.PushNumber(AValue: Double);
+procedure TsArgumentStack.PushNumber(AValue: Double; AWorksheet: TsWorksheet);
 begin
-  Push(CreateNumber(AValue));
+  Push(CreateNumber(AValue), AWorksheet);
 end;
 
-procedure TsArgumentStack.PushString(AValue: String);
+procedure TsArgumentStack.PushString(AValue: String; AWorksheet: TsWorksheet);
 begin
-  Push(CreateString(AValue));
+  Push(CreateString(AValue), AWorksheet);
 end;
 
 
@@ -1811,6 +1816,80 @@ begin
 end;
 
 
+{ Lookup / refernence functions }
+
+function fpsCOLUMN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ COLUMN( [reference] )
+  Returns the column number of a cell reference (starting at 1).
+  "reference" is a reference to a cell or range of cells.
+  If omitted, it is assumed that the reference is the cell address in which the
+  COLUMN function has been entered in. }
+var
+  arg: TsArgument;
+begin
+  if NumArgs = 0 then
+    Result := CreateError(errArgError);
+    // We don't know here which cell contains the formula.
+
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atCell     : Result := CreateNumber(arg.Cell^.Col + 1);
+    atCellRange: Result := CreateNumber(arg.FirstCol + 1);
+    else         Result := CreateError(errWrongType);
+  end;
+end;
+
+function fpsCOLUMNS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ COLUMNS( [reference] )
+  returns the number of column in a cell reference. }
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atCell     : Result := CreateNumber(1);
+    atCellRange: Result := CreateNumber(arg.LastCol - arg.FirstCol + 1);
+    else         Result := CreateError(errWrongType);
+  end;
+end;
+
+function fpsROW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ ROW( [reference] )
+  Returns the row number of a cell reference (starting at 1!)
+  "reference" is a reference to a cell or range of cells.
+  If omitted, it is assumed that the reference is the cell address in which the
+  ROW function has been entered in. }
+var
+  arg: TsArgument;
+begin
+  if NumArgs = 0 then
+    Result := CreateError(errArgError);
+    // We don't know here which cell contains the formula.
+
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atCell     : Result := CreateNumber(arg.Cell^.Row + 1);
+    atCellRange: Result := CreateNumber(arg.FirstRow + 1);
+    else         Result := CreateError(errWrongType);
+  end;
+end;
+
+
+function fpsROWS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{ ROWS( [reference] )
+  returns the number of rows in a cell reference. }
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  case arg.ArgumentType of
+    atCell     : Result := CreateNumber(1);
+    atCellRange: Result := CreateNumber(arg.LastRow - arg.FirstRow + 1);
+    else         Result := CreateError(errWrongType);
+  end;
+end;
+
+
 { Info functions }
 
 function fpsCELLINFO(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1978,6 +2057,51 @@ begin
   end;
 end;
 
+function fpsINFO(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+{  INFO( type )
+   returns information about the operating environment.
+   type can be one of the following values:
+     + "directory"    Path of the current directory.
+     + "numfile"      Number of active worksheets.
+     - "origin"       The cell that is in the top, left-most cell visible in the current Excel spreadsheet.
+     - "osversion"    Operating system version.
+     - "recalc"       Returns the recalculation mode - either Automatic or Manual.
+     - "release"      Version of Excel that you are running.
+     - "system"       Name of the operating environment.
+   ONLY THOSE MARKED BY "+" ARE SUPPORTED! }
+var
+  arg: TsArgument;
+  workbook: TsWorkbook;
+  s: String;
+begin
+  arg := Args.Pop;
+  if arg.ArgumentType <> atString then
+    Result := CreateError(errWrongType)
+  else begin
+    s := Lowercase(arg.StringValue);
+    workbook := arg.Worksheet.Workbook;
+    if s = 'directory' then
+      Result := CreateString(ExtractFilePath(workbook.FileName))
+    else
+    if s = 'numfile' then
+      Result := CreateNumber(workbook.GetWorksheetCount)
+    else
+      Result := CreateError(errFormulaNotSupported);
+  end;
+end;
+
+function fpsISBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISBLANK( value )
+// Checks for blank cell
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool((arg.ArgumentType = atCell) and
+    ((arg.Cell = nil) or (arg.Cell^.ContentType = cctEmpty))
+  );
+end;
+
 function fpsISERR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // ISERR( value )
 // If value is an error value (except #N/A), this function will return TRUE.
@@ -2036,6 +2160,15 @@ var
 begin
   arg := Args.Pop;
   Result := CreateBool(arg.ArgumentType = atNumber);
+end;
+
+function fpsISREF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// ISREF( value )
+var
+  arg: TsArgument;
+begin
+  arg := Args.Pop;
+  Result := CreateBool(arg.ArgumentType in [atCell, atCellRange]);
 end;
 
 function fpsISTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
