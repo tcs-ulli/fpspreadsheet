@@ -361,6 +361,11 @@ const
   );
 
 type
+  {@@ Identifier for a compare operation }
+  TsCompareOperation = (coNotUsed,
+    coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
+  );
+
   {@@ State flags while calculating formulas }
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
@@ -1210,7 +1215,7 @@ var
     (Symbol:'STDEV';     MinParams:1; MaxParams:30; Func:fpsSTDEV),             // fekSTDEV
     (Symbol:'STDEVP';    MinParams:1; MaxParams:30; Func:fpsSTDEVP),            // fekSTDEVP
     (Symbol:'SUM';       MinParams:0; MaxParams:30; Func:fpsSUM),               // fekSUM
-    (Symbol:'SUMIF';     MinParams:2; MaxParams:3;  Func:nil),  // fekSUMIF
+    (Symbol:'SUMIF';     MinParams:2; MaxParams:3;  Func:fpsSUMIF),             // fekSUMIF
     (Symbol:'SUMSQ';     MinParams:0; MaxParams:30; Func:fpsSUMSQ),             // fekSUMSQ
     (Symbol:'VAR';       MinParams:1; MaxParams:30; Func:fpsVAR),               // fekVAR
     (Symbol:'VARP';      MinParams:1; MaxParams:30; Func:fpsVARP),              // fekVARP
@@ -2211,26 +2216,28 @@ end;
 
   @param   ACell   Cell to be considered
   @param   AValue  (output) extracted numeric value
-  @return  True if conversion to number is successfull, otherwise false }
+  @return  True if conversion to number is successful, otherwise false }
 function TsWorksheet.ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
 begin
-  Result := True;
-  case ACell^.ContentType of
-    cctNumber:
-      AValue := ACell^.NumberValue;
-    cctDateTime:
-      AValue := ACell^.DateTimeValue;
-    cctBool:
-      AValue := ord(ACell^.BoolValue);
-    else
-      if (ACell^.ContentType <> cctUTF8String) or
-         not TryStrToFloat(ACell^.UTF8StringValue, AValue) or
-         not TryStrToDateTime(ACell^.UTF8StringValue, AValue)
-      then begin
-        Result := False;
-        AValue := NaN;
+  AValue := NaN;
+  if ACell <> nil then begin
+    Result := True;
+    case ACell^.ContentType of
+      cctNumber:
+        AValue := ACell^.NumberValue;
+      cctDateTime:
+        AValue := ACell^.DateTimeValue;
+      cctBool:
+        AValue := ord(ACell^.BoolValue);
+      else
+        if (ACell^.ContentType <> cctUTF8String) or
+           not TryStrToFloat(ACell^.UTF8StringValue, AValue) or
+           not TryStrToDateTime(ACell^.UTF8StringValue, AValue)
+        then
+          Result := False;
       end;
-  end;
+  end else
+    Result := False;
 end;
 
 

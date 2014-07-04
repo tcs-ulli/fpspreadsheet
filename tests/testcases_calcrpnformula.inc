@@ -1324,18 +1324,75 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(Sum([1.0, 1.1, 1.2, 0.9, 0.8]));
 
-  // SUMSQ
-  inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=SUMSQ(1, 1.1, 1.2, 0.9, 0.8)');
-  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNNumber(1.0,
-    RPNNumber(1.1,
-    RPNNumber(1.2,
-    RPNNumber(0.9,
-    RPNNumber(0.8,
-    RPNFunc(fekSUMSQ, 5, nil))))))));
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(SumOfSquares([1.0, 1.1, 1.2, 0.9, 0.8]));
+  if AFormat <> sfExcel2 then begin
+    // SUMSQ
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMSQ(1, 1.1, 1.2, 0.9, 0.8)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNNumber(1.0,
+      RPNNumber(1.1,
+      RPNNumber(1.2,
+      RPNNumber(0.9,
+      RPNNumber(0.8,
+      RPNFunc(fekSUMSQ, 5, nil))))))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(SumOfSquares([1.0, 1.1, 1.2, 0.9, 0.8]));
+
+    // SUMIF
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,1)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNNumber(1,                    // "1" is in M2
+      RPNFunc(fekSUMIF, 2, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,">=1")');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNString('>=1',                    // M2=1, N2=2 --> 2
+      RPNFunc(fekSUMIF, 2, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1+2);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,"<2")');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNString('<2',                    // M2=1, N2=2 --> 1
+      RPNFunc(fekSUMIF, 2, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,"<>2")');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNString('<>2',                    // N2=2, 6 other cells --> 5
+      RPNFunc(fekSUMIF, 2, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,M1)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNCellValue('M1',                    // M1="A", N1="A" -> 2
+      RPNFunc(fekSUMIF, 2, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(0);  // no numbers!
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,M2)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNCellValue('M2',                    // M2=1
+      RPNFunc(fekSUMIF, 2, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1);
+  end;
 
   // VAR
   inc(Row);
