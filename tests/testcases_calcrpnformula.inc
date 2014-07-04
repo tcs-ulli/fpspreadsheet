@@ -1663,10 +1663,75 @@
 
 
 {------------------------------------------------------------------------------}
+{                        Lookup / referece functions                           }
+{------------------------------------------------------------------------------}
+
+  // COLUMN
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMN(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('A1',
+    RPNFunc(fekCOLUMN, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMN(C1:D3)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('C1:D3',
+    RPNFunc(fekCOLUMN, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(3);
+
+  // COLUMNS
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMNS(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('A1',
+    RPNFunc(fekCOLUMNS, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMNS(C1:D3)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('C1:D3',
+    RPNFunc(fekCOLUMNS, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2);
+
+  // ROW
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ROW(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('A1',
+    RPNFunc(fekROW, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ROW(C2:D3)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('C2:D3',
+    RPNFunc(fekROW, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2);
+
+  // ROWS
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ROWS(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('A1',
+    RPNFunc(fekROWS, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(1);
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ROWS(C2:D3)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('C2:D3',
+    RPNFunc(fekROWS, 1, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(2);
+
+
+{------------------------------------------------------------------------------}
 {                           Information functions                              }
 {------------------------------------------------------------------------------}
 
-  // INFO
+  // CELL
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("address", A1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('address',
@@ -1723,6 +1788,47 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateString('v');
 
+  // INFO
+  MyWorksheet.WriteUTF8Text(Row, 0, '=INFO("directory", A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('directory',
+    RPNFunc(fekINFO, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateString(ExtractFilePath(TempFile));
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=INFO("numfile")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNString('numfile',
+    RPNFunc(fekINFO, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumber(MyWorkbook.GetWorksheetCount);
+
+  // IsBlank
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISBLANK(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('A1',
+    RPNFunc(fekISBLANK, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(false);  // cell contains text --> not blank
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISBLANK(G1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('G1',
+    RPNFunc(fekISBLANK, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);  // the cell does not exist --> blank
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISBLANK(H1)');
+  MyWorksheet.WriteBlank(0, 7);          // A11 is an empty cell
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('H1',
+    RPNFunc(fekISBLANK, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);  // the cell exists, but it is empty
+
   // IsError
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=ISERROR(1/0)');
@@ -1744,6 +1850,34 @@
     RPNFunc(fekISERROR, nil))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBool(false);
+
+  // IsRef
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISREF(1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1,
+    RPNFunc(fekISREF, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(false);
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISREF(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRef('A1',
+    RPNFunc(fekISREF, nil))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBool(true);
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=ISREF(A1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('A1',                 // we use a cell value here !
+    RPNFunc(fekISREF, nil))));
+  SetLength(sollValues, Row+1);
+  // The correct result would be "false" because a cell value is not the same as
+  // a cell reference. But Excel seems to ignore this difference here and
+  // accepts only a "true".
+  sollValues[Row] := CreateBool(true);
 
   // VALUE
   inc(Row);
