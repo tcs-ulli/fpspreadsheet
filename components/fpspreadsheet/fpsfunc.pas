@@ -60,6 +60,7 @@ function CreateNumberArg(AValue: Double): TsArgument;
 function CreateStringArg(AValue: String): TsArgument;
 function CreateErrorArg(AError: TsErrorValue): TsArgument;
 function CreateEmptyArg: TsArgument;
+function NoCellRangeArg(Arg: TsArgument): TsArgument;
 
 {
 These are the functions called when calculating an RPN formula.
@@ -239,6 +240,14 @@ function CreateEmptyArg: TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atEmpty;
+end;
+
+function NoCellRangeArg(Arg: TsArgument): TsArgument;
+begin
+  if Arg.ArgumentType = atCellRange then
+    Result := CreateCellArg(Arg.Worksheet.FindCell(Arg.FirstRow, Arg.FirstCol))
+  else
+    Result := Arg;
 end;
 
 { Compares two arguments and returns -1 if "Arg2 > Arg1", +1 if "Arg1 < Arg2",
@@ -1007,97 +1016,67 @@ end;
 function fpsEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
+  res: Integer;
 begin
-  arg2 := Args.Pop;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType = arg2.ArgumentType then
-    case arg1.ArgumentType of
-      atNumber  : Result := CreateBoolArg(arg1.NumberValue = arg2.NumberValue);
-      atString  : Result := CreateBoolArg(arg1.StringValue = arg2.StringValue);
-      atBool    : Result := CreateBoolArg(arg1.Boolvalue = arg2.BoolValue);
-    end
-  else
-    Result := CreateBoolArg(false);
+  arg2 := NoCellRangeArg(Args.Pop);
+  arg1 := NoCellRangeArg(Args.Pop);
+  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
+  Result := CreateBoolArg(res = 0);
 end;
 
 function fpsGreater(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
+  res: Integer;
 begin
-  arg2 := Args.Pop;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType = arg2.ArgumentType then
-    case arg1.ArgumentType of
-      atNumber  : Result := CreateBoolArg(arg1.NumberValue > arg2.NumberValue);
-      atString  : Result := CreateBoolArg(arg1.StringValue > arg2.StringValue);
-      atBool    : Result := CreateBoolArg(arg1.Boolvalue > arg2.BoolValue);
-    end
-  else
-    Result := CreateBoolArg(false);
+  arg2 := NoCellRangeArg(Args.Pop);
+  arg1 := NoCellRangeArg(Args.Pop);
+  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
+  Result := CreateBoolArg(res > 0);
 end;
 
 function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
+  res: Integer;
 begin
-  arg2 := Args.Pop;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType = arg2.ArgumentType then
-    case arg1.ArgumentType of
-      atNumber  : Result := CreateBoolArg(arg1.NumberValue >= arg2.NumberValue);
-      atString  : Result := CreateBoolArg(arg1.StringValue >= arg2.StringValue);
-      atBool    : Result := CreateBoolArg(arg1.Boolvalue >= arg2.BoolValue);
-    end
-  else
-    Result := CreateBoolArg(false);
+  arg2 := NoCellRangeArg(Args.Pop);
+  arg1 := NoCellRangeArg(Args.Pop);
+  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
+  Result := CreateBoolArg(res >= 0);
 end;
 
 function fpsLess(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
+  res: Integer;
 begin
-  arg2 := Args.Pop;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType = arg2.ArgumentType then
-    case arg1.ArgumentType of
-      atNumber  : Result := CreateBoolArg(arg1.NumberValue < arg2.NumberValue);
-      atString  : Result := CreateBoolArg(arg1.StringValue < arg2.StringValue);
-      atBool    : Result := CreateBoolArg(arg1.Boolvalue < arg2.BoolValue);
-    end
-  else
-    Result := CreateBoolArg(false);
+  arg2 := NoCellRangeArg(Args.Pop);
+  arg1 := NoCellRangeArg(Args.Pop);
+  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
+  Result := CreateBoolArg(res < 0);
 end;
 
 function fpsLessEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
+  res: Integer;
 begin
-  arg2 := Args.Pop;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType = arg2.ArgumentType then
-    case arg1.ArgumentType of
-      atNumber  : Result := CreateBoolArg(arg1.NumberValue <= arg2.NumberValue);
-      atString  : Result := CreateBoolArg(arg1.StringValue <= arg2.StringValue);
-      atBool    : Result := CreateBoolArg(arg1.Boolvalue <= arg2.BoolValue);
-    end
-  else
-    Result := CreateBoolArg(false);
+  arg2 := NoCellRangeArg(Args.Pop);
+  arg1 := NoCellRangeArg(Args.Pop);
+  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
+  Result := CreateBoolArg(res <= 0);
 end;
 
 function fpsNotEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg1, arg2: TsArgument;
+  res: Integer;
 begin
-  arg2 := Args.Pop;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType = arg2.ArgumentType then
-    case arg1.ArgumentType of
-      atNumber  : Result := CreateBoolArg(arg1.NumberValue <> arg2.NumberValue);
-      atString  : Result := CreateBoolArg(arg1.StringValue <> arg2.StringValue);
-      atBool    : Result := CreateBoolArg(arg1.Boolvalue <> arg2.BoolValue);
-    end
-  else
-    Result := CreateBoolArg(false);
+  arg2 := NoCellRangeArg(Args.Pop);
+  arg1 := NoCellRangeArg(Args.Pop);
+  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
+  Result := CreateBoolArg(res <> 0);
 end;
 
 
