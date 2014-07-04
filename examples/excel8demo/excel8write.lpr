@@ -293,7 +293,6 @@ begin
   MyWorksheet.WriteCurrency(r, 2, -number, nfCurrencyRed, 0, 'USD');
   MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
 
-  {
   inc(r,2);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "EUR "#,##0_);("EUR "#,##0)');
   MyWorksheet.WriteNumber(r, 1, number);
@@ -306,7 +305,7 @@ begin
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"$"#,##0.0_);[Red]("$"#,##0.0)');
   MyWorksheet.WriteNumber(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '"$"#,##0.0_);[Red]("$"#,##0.0)');
-}
+
   inc(r, 2);
   number := 1.333333333;
   MyWorksheet.WriteUTF8Text(r, 0, 'nfPercentage, 0 decs');

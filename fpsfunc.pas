@@ -53,13 +53,13 @@ type
     procedure Delete(AIndex: Integer);
   end;
 
-function CreateBool(AValue: Boolean): TsArgument;
-function CreateCell(AValue: PCell): TsArgument;
-function CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
-function CreateNumber(AValue: Double): TsArgument;
-function CreateString(AValue: String): TsArgument;
-function CreateError(AError: TsErrorValue): TsArgument;
-function CreateEmpty: TsArgument;
+function CreateBoolArg(AValue: Boolean): TsArgument;
+function CreateCellArg(AValue: PCell): TsArgument;
+function CreateCellRangeArg(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
+function CreateNumberArg(AValue: Double): TsArgument;
+function CreateStringArg(AValue: String): TsArgument;
+function CreateErrorArg(AError: TsErrorValue): TsArgument;
+function CreateEmptyArg: TsArgument;
 
 {
 These are the functions called when calculating an RPN formula.
@@ -190,21 +190,21 @@ begin
   FillChar(Result, SizeOf(Result), 0);
 end;
 
-function CreateBool(AValue: Boolean): TsArgument;
+function CreateBoolArg(AValue: Boolean): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atBool;
   Result.Boolvalue := AValue;
 end;
 
-function CreateCell(AValue: PCell): TsArgument;
+function CreateCellArg(AValue: PCell): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atCell;
   Result.Cell := AValue;
 end;
 
-function CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
+function CreateCellRangeArg(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atCellRange;
@@ -214,28 +214,28 @@ begin
   Result.LastCol := ALastCol;
 end;
 
-function CreateNumber(AValue: Double): TsArgument;
+function CreateNumberArg(AValue: Double): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atNumber;
   Result.NumberValue := AValue;
 end;
 
-function CreateString(AValue: String): TsArgument;
+function CreateStringArg(AValue: String): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atString;
   Result.StringValue := AValue;
 end;
 
-function CreateError(AError: TsErrorValue): TsArgument;
+function CreateErrorArg(AError: TsErrorValue): TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atError;
   Result.ErrorValue := AError;
 end;
 
-function CreateEmpty: TsArgument;
+function CreateEmptyArg: TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atEmpty;
@@ -416,7 +416,7 @@ var
   arg: PsArgument;
 begin
   if Count = 0 then
-    Result := CreateError(errArgError)
+    Result := CreateErrorArg(errArgError)
   else begin
     arg := PsArgument(Items[Count-1]);
     Result := arg^;
@@ -468,7 +468,7 @@ begin
             cell := arg.Worksheet.FindCell(arg.FirstRow, arg.FirstCol);
           if cell = nil then begin
             Result := false;
-            AErrArg := CreateError(errWrongType);
+            AErrArg := CreateErrorArg(errWrongType);
           end else
             case cell^.ContentType of
               cctNumber  : AValue := cell^.NumberValue;
@@ -476,9 +476,9 @@ begin
               else         begin
                              Result := false;
                              if cell^.ContentType = cctError then
-                               AErrArg := CreateError(cell^.ErrorValue)
+                               AErrArg := CreateErrorArg(cell^.ErrorValue)
                              else
-                               AErrArg := CreateError(errWrongType);
+                               AErrArg := CreateErrorArg(errWrongType);
                            end;
             end;
         end;
@@ -486,13 +486,13 @@ begin
         begin
           Result := false;
           if arg.ArgumentType = atError then
-            AErrArg := CreateError(arg.ErrorValue)
+            AErrArg := CreateErrorArg(arg.ErrorValue)
           else
-            AErrArg := CreateError(errWrongType);
+            AErrArg := CreateErrorArg(errWrongType);
         end;
     end;  // case
   if Result then
-    AErrArg := CreateError(errOK);
+    AErrArg := CreateErrorArg(errOK);
 end;
 
 {@@
@@ -525,7 +525,7 @@ function TsArgumentStack.PopNumberValues(ANumArgs: Integer; ARangeAllowed:Boolea
       cctError:
         if AErrorOnNoNumber then begin
           result := false;
-          AErrArg := CreateError(ACell^.ErrorValue);
+          AErrArg := CreateErrorArg(ACell^.ErrorValue);
         end;
     end;
   end;
@@ -569,22 +569,22 @@ begin
                  end;
             end else begin
               result := false;
-              AErrArg := CreateError(errWrongType);
+              AErrArg := CreateErrorArg(errWrongType);
             end;
           atString:
             if AErrorOnNoNumber then begin
               result := false;
-              AErrArg := CreateError(errWrongType);
+              AErrArg := CreateErrorArg(errWrongType);
             end;
           atError:
             begin
               result := false;
-              AErrArg := CreateError(arg.ErrorValue);
+              AErrArg := CreateErrorArg(arg.ErrorValue);
             end;
         end;  // case
     end;  // while
     if Result then
-      AErrArg := CreateError(errOK)
+      AErrArg := CreateErrorArg(errOK)
     else
       SetLength(AValues, 0);
   finally
@@ -620,20 +620,20 @@ begin
             AValue := cell^.UTF8StringValue
           else begin
             Result := false;
-            AErrArg := CreateError(errWrongType);
+            AErrArg := CreateErrorArg(errWrongType);
           end;
         end;
       else
         begin
           if arg.ArgumentType = atError then
-            AErrArg := CreateError(arg.ErrorValue)
+            AErrArg := CreateErrorArg(arg.ErrorValue)
           else
-            AErrArg := CreateError(errWrongType);
+            AErrArg := CreateErrorArg(errWrongType);
           Result := false;
         end;
     end;  // case
   if Result then
-    AErrArg := CreateError(errOK);
+    AErrArg := CreateErrorArg(errOK);
 end;
 
 {@@
@@ -661,11 +661,11 @@ function TsArgumentStack.PopStringValues(ANumArgs: Integer; ARangeAllowed:Boolea
       cctError:
         begin
           result := false;
-          AErrArg := CreateError(ACell^.ErrorValue);
+          AErrArg := CreateErrorArg(ACell^.ErrorValue);
         end;
       else
         Result := false;
-        AErrArg := CreateError(errWrongType);
+        AErrArg := CreateErrorArg(errWrongType);
     end;
   end;
 
@@ -702,7 +702,7 @@ begin
                  end;
               end else begin
                 result := false;
-                AErrArg := CreateError(errWrongType);
+                AErrArg := CreateErrorArg(errWrongType);
               end;
             end else begin
               cell := nil;
@@ -720,15 +720,15 @@ begin
             begin
               Result := false;
               if arg.ArgumentTYpe = atError then
-                AErrArg := CreateError(arg.ErrorValue)
+                AErrArg := CreateErrorArg(arg.ErrorValue)
               else
-                AErrArg := CreateError(errWrongType);
+                AErrArg := CreateErrorArg(errWrongType);
             end;
         end;  // case
     end;  // while
 
     if Result then
-      AErrArg := CreateError(errOK)
+      AErrArg := CreateErrorArg(errOK)
     else
       SetLength(AValues, 0);
   finally
@@ -750,18 +750,18 @@ end;
 
 procedure TsArgumentStack.PushBool(AValue: Boolean; AWorksheet: TsWorksheet);
 begin
-  Push(CreateBool(AValue), AWorksheet);
+  Push(CreateBoolArg(AValue), AWorksheet);
 end;
 
 procedure TsArgumentStack.PushCell(AValue: PCell; AWorksheet: TsWorksheet);
 begin
-  Push(CreateCell(AValue), AWorksheet);
+  Push(CreateCellArg(AValue), AWorksheet);
 end;
 
 procedure TsArgumentStack.PushCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
   AWorksheet: TsWorksheet);
 begin
-  Push(CreateCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol), AWorksheet);
+  Push(CreateCellRangeArg(AFirstRow, AFirstCol, ALastRow, ALastCol), AWorksheet);
 end;
 
 procedure TsArgumentStack.PushMissing(AWorksheet: TsWorksheet);
@@ -775,12 +775,12 @@ end;
 
 procedure TsArgumentStack.PushNumber(AValue: Double; AWorksheet: TsWorksheet);
 begin
-  Push(CreateNumber(AValue), AWorksheet);
+  Push(CreateNumberArg(AValue), AWorksheet);
 end;
 
 procedure TsArgumentStack.PushString(AValue: String; AWorksheet: TsWorksheet);
 begin
-  Push(CreateString(AValue), AWorksheet);
+  Push(CreateStringArg(AValue), AWorksheet);
 end;
 
 
@@ -832,14 +832,14 @@ begin
         inc(j);
       end else begin
         Result := false;
-        AErrArg := CreateError(err);
+        AErrArg := CreateErrorArg(err);
         SetLength(AValues, 0);
         exit;
       end;
     end;
   end;
   Result := true;
-  AErrArg := CreateError(errOK);
+  AErrArg := CreateErrorArg(errOK);
   SetLength(AValues, j);
   // Flip array - we want to have the arguments in the array in the same order
   // they were pushed.
@@ -860,7 +860,7 @@ begin
     atError, atBool, atEmpty:
       begin
         Result := false;
-        AErrArg := CreateError(errWrongType);
+        AErrArg := CreateErrorArg(errWrongType);
       end;
     atNumber:
       begin
@@ -870,7 +870,7 @@ begin
     atString:
       begin
         Result := TryStrToDate(arg.StringValue, ADate);
-        if not Result then AErrArg := CreateError(errWrongType);
+        if not Result then AErrArg := CreateErrorArg(errWrongType);
       end;
     atCell:
       if (arg.Cell <> nil) then begin
@@ -879,7 +879,7 @@ begin
           cctDateTime: ADate := arg.Cell^.DateTimeValue;
           cctNumber  : ADate := arg.Cell^.NumberValue;
           else         Result := false;
-                       AErrArg := CreateError(errWrongType);
+                       AErrArg := CreateErrorArg(errWrongType);
         end;
       end;
   end;
@@ -895,7 +895,7 @@ begin
     atError, atBool, atEmpty:
       begin
         Result := false;
-        AErrArg := CreateError(errWrongType);
+        AErrArg := CreateErrorArg(errWrongType);
       end;
     atNumber:
       begin
@@ -905,7 +905,7 @@ begin
     atString:
       begin
         Result := TryStrToTime(arg.StringValue, ATime);
-        if not Result then AErrArg := CreateError(errWrongType);
+        if not Result then AErrArg := CreateErrorArg(errWrongType);
       end;
     atCell:
       if (arg.Cell <> nil) then begin
@@ -914,7 +914,7 @@ begin
           cctDateTime: ATime := frac(arg.Cell^.DateTimeValue);
           cctNumber  : ATime := frac(arg.Cell^.NumberValue);
           else         Result := false;
-                       AErrArg := CreateError(errWrongType);
+                       AErrArg := CreateErrorArg(errWrongType);
         end;
       end;
   end;
@@ -928,7 +928,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumber(data[0] + data[1]);
+    Result := CreateNumberArg(data[0] + data[1]);
 end;
 
 function fpsSub(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -936,7 +936,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumber(data[0] - data[1]);
+    Result := CreateNumberArg(data[0] - data[1]);
 end;
 
 function fpsMul(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -944,7 +944,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumber(data[0] * data[1]);
+    Result := CreateNumberArg(data[0] * data[1]);
 end;
 
 function fpsDiv(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -953,9 +953,9 @@ var
 begin
   if Args.PopNumberValues(2, false, data, Result) then begin
     if data[1] = 0 then
-      Result := CreateError(errDivideByZero)
+      Result := CreateErrorArg(errDivideByZero)
     else
-      Result := CreateNumber(data[0] / data[1]);
+      Result := CreateNumberArg(data[0] / data[1]);
   end;
 end;
 
@@ -964,7 +964,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(data[0] * 0.01);
+    Result := CreateNumberArg(data[0] * 0.01);
 end;
 
 function fpsPower(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -973,9 +973,9 @@ var
 begin
   if Args.PopNumberValues(2, false, data, Result) then
     try
-      Result := CreateNumber(power(data[0], data[1]));
+      Result := CreateNumberArg(power(data[0], data[1]));
     except on E: EInvalidArgument do
-      Result := CreateError(errOverflow);
+      Result := CreateErrorArg(errOverflow);
       // this could happen, e.g., for "power( (neg value), (non-integer) )"
     end;
 end;
@@ -985,7 +985,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(-data[0]);
+    Result := CreateNumberArg(-data[0]);
 end;
 
 function fpsUPlus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -993,7 +993,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(data[0]);
+    Result := CreateNumberArg(data[0]);
 end;
 
 function fpsConcat(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1001,7 +1001,7 @@ var
   data: TsArgStringArray;
 begin
   if Args.PopStringValues(2, false, data, Result) then
-    Result := CreateString(data[0] + data[1]);
+    Result := CreateStringArg(data[0] + data[1]);
 end;
 
 function fpsEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1012,12 +1012,12 @@ begin
   arg1 := Args.Pop;
   if arg1.ArgumentType = arg2.ArgumentType then
     case arg1.ArgumentType of
-      atNumber  : Result := CreateBool(arg1.NumberValue = arg2.NumberValue);
-      atString  : Result := CreateBool(arg1.StringValue = arg2.StringValue);
-      atBool    : Result := CreateBool(arg1.Boolvalue = arg2.BoolValue);
+      atNumber  : Result := CreateBoolArg(arg1.NumberValue = arg2.NumberValue);
+      atString  : Result := CreateBoolArg(arg1.StringValue = arg2.StringValue);
+      atBool    : Result := CreateBoolArg(arg1.Boolvalue = arg2.BoolValue);
     end
   else
-    Result := CreateBool(false);
+    Result := CreateBoolArg(false);
 end;
 
 function fpsGreater(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1028,12 +1028,12 @@ begin
   arg1 := Args.Pop;
   if arg1.ArgumentType = arg2.ArgumentType then
     case arg1.ArgumentType of
-      atNumber  : Result := CreateBool(arg1.NumberValue > arg2.NumberValue);
-      atString  : Result := CreateBool(arg1.StringValue > arg2.StringValue);
-      atBool    : Result := CreateBool(arg1.Boolvalue > arg2.BoolValue);
+      atNumber  : Result := CreateBoolArg(arg1.NumberValue > arg2.NumberValue);
+      atString  : Result := CreateBoolArg(arg1.StringValue > arg2.StringValue);
+      atBool    : Result := CreateBoolArg(arg1.Boolvalue > arg2.BoolValue);
     end
   else
-    Result := CreateBool(false);
+    Result := CreateBoolArg(false);
 end;
 
 function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1044,12 +1044,12 @@ begin
   arg1 := Args.Pop;
   if arg1.ArgumentType = arg2.ArgumentType then
     case arg1.ArgumentType of
-      atNumber  : Result := CreateBool(arg1.NumberValue >= arg2.NumberValue);
-      atString  : Result := CreateBool(arg1.StringValue >= arg2.StringValue);
-      atBool    : Result := CreateBool(arg1.Boolvalue >= arg2.BoolValue);
+      atNumber  : Result := CreateBoolArg(arg1.NumberValue >= arg2.NumberValue);
+      atString  : Result := CreateBoolArg(arg1.StringValue >= arg2.StringValue);
+      atBool    : Result := CreateBoolArg(arg1.Boolvalue >= arg2.BoolValue);
     end
   else
-    Result := CreateBool(false);
+    Result := CreateBoolArg(false);
 end;
 
 function fpsLess(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1060,12 +1060,12 @@ begin
   arg1 := Args.Pop;
   if arg1.ArgumentType = arg2.ArgumentType then
     case arg1.ArgumentType of
-      atNumber  : Result := CreateBool(arg1.NumberValue < arg2.NumberValue);
-      atString  : Result := CreateBool(arg1.StringValue < arg2.StringValue);
-      atBool    : Result := CreateBool(arg1.Boolvalue < arg2.BoolValue);
+      atNumber  : Result := CreateBoolArg(arg1.NumberValue < arg2.NumberValue);
+      atString  : Result := CreateBoolArg(arg1.StringValue < arg2.StringValue);
+      atBool    : Result := CreateBoolArg(arg1.Boolvalue < arg2.BoolValue);
     end
   else
-    Result := CreateBool(false);
+    Result := CreateBoolArg(false);
 end;
 
 function fpsLessEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1076,12 +1076,12 @@ begin
   arg1 := Args.Pop;
   if arg1.ArgumentType = arg2.ArgumentType then
     case arg1.ArgumentType of
-      atNumber  : Result := CreateBool(arg1.NumberValue <= arg2.NumberValue);
-      atString  : Result := CreateBool(arg1.StringValue <= arg2.StringValue);
-      atBool    : Result := CreateBool(arg1.Boolvalue <= arg2.BoolValue);
+      atNumber  : Result := CreateBoolArg(arg1.NumberValue <= arg2.NumberValue);
+      atString  : Result := CreateBoolArg(arg1.StringValue <= arg2.StringValue);
+      atBool    : Result := CreateBoolArg(arg1.Boolvalue <= arg2.BoolValue);
     end
   else
-    Result := CreateBool(false);
+    Result := CreateBoolArg(false);
 end;
 
 function fpsNotEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1092,12 +1092,12 @@ begin
   arg1 := Args.Pop;
   if arg1.ArgumentType = arg2.ArgumentType then
     case arg1.ArgumentType of
-      atNumber  : Result := CreateBool(arg1.NumberValue <> arg2.NumberValue);
-      atString  : Result := CreateBool(arg1.StringValue <> arg2.StringValue);
-      atBool    : Result := CreateBool(arg1.Boolvalue <> arg2.BoolValue);
+      atNumber  : Result := CreateBoolArg(arg1.NumberValue <> arg2.NumberValue);
+      atString  : Result := CreateBoolArg(arg1.StringValue <> arg2.StringValue);
+      atBool    : Result := CreateBoolArg(arg1.Boolvalue <> arg2.BoolValue);
     end
   else
-    Result := CreateBool(false);
+    Result := CreateBoolArg(false);
 end;
 
 
@@ -1108,7 +1108,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(abs(data[0]));
+    Result := CreateNumberArg(abs(data[0]));
 end;
 
 function fpsACOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1117,9 +1117,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if InRange(data[0], -1, +1) then
-      Result := CreateNumber(arccos(data[0]))
+      Result := CreateNumberArg(arccos(data[0]))
     else
-      Result := CreateError(errOverflow);  // #NUM!
+      Result := CreateErrorArg(errOverflow);  // #NUM!
   end;
 end;
 
@@ -1129,9 +1129,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if data[0] >= 1 then
-      Result := CreateNumber(arccosh(data[0]))
+      Result := CreateNumberArg(arccosh(data[0]))
     else
-      Result := CreateError(errOverflow);  // #NUM!
+      Result := CreateErrorArg(errOverflow);  // #NUM!
   end;
 end;
 
@@ -1141,9 +1141,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if InRange(data[0], -1, +1) then
-      Result := CreateNumber(arcsin(data[0]))
+      Result := CreateNumberArg(arcsin(data[0]))
     else
-      Result := CreateError(errOverflow);  // #NUM!
+      Result := CreateErrorArg(errOverflow);  // #NUM!
   end;
 end;
 
@@ -1152,7 +1152,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(arcsinh(data[0]));
+    Result := CreateNumberArg(arcsinh(data[0]));
 end;
 
 function fpsATAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1160,7 +1160,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(arctan(data[0]));
+    Result := CreateNumberArg(arctan(data[0]));
 end;
 
 function fpsATANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1169,9 +1169,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] > -1) and (data[0] < +1) then
-      Result := CreateNumber(arctanh(data[0]))
+      Result := CreateNumberArg(arctanh(data[0]))
     else
-      Result := CreateError(errOverflow);  // #NUM!
+      Result := CreateErrorArg(errOverflow);  // #NUM!
   end;
 end;
 
@@ -1180,7 +1180,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(cos(data[0]));
+    Result := CreateNumberArg(cos(data[0]));
 end;
 
 function fpsCOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1188,7 +1188,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(cosh(data[0]));
+    Result := CreateNumberArg(cosh(data[0]));
 end;
 
 function fpsDEGREES(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1196,7 +1196,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(RadToDeg(data[0]));
+    Result := CreateNumberArg(RadToDeg(data[0]));
 end;
 
 function fpsEXP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1204,7 +1204,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(exp(data[0]));
+    Result := CreateNumberArg(exp(data[0]));
 end;
 
 function fpsINT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1212,7 +1212,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(floor(data[0]));
+    Result := CreateNumberArg(floor(data[0]));
 end;
 
 function fpsLN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1221,9 +1221,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] > 0) then
-      Result := CreateNumber(ln(data[0]))
+      Result := CreateNumberArg(ln(data[0]))
     else
-      Result := CreateError(errOverflow);  // #NUM!
+      Result := CreateErrorArg(errOverflow);  // #NUM!
   end;
 end;
 
@@ -1237,21 +1237,21 @@ begin
   if Args.PopNumberValues(NumArgs, false, data, Result) then begin
     if NumArgs = 2 then begin
       if IsNaN(data[1]) then begin
-        Result := CreateError(errOverflow);
+        Result := CreateErrorArg(errOverflow);
         exit;
       end;
       base := data[1];
     end;
 
     if base < 0 then begin
-      Result := CreateError(errOverflow);
+      Result := CreateErrorArg(errOverflow);
       exit;
     end;
 
     if data[0] > 0 then
-      Result := CreateNumber(logn(base, data[0]))
+      Result := CreateNumberArg(logn(base, data[0]))
     else
-      Result := CreateError(errOverflow);
+      Result := CreateErrorArg(errOverflow);
   end;
 end;
 
@@ -1261,15 +1261,15 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] > 0) then
-      Result := CreateNumber(log10(data[0]))
+      Result := CreateNumberArg(log10(data[0]))
     else
-      Result := CreateError(errOverflow);  // #NUM!
+      Result := CreateErrorArg(errOverflow);  // #NUM!
   end;
 end;
 
 function fpsPI(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
-  Result := CreateNumber(pi);
+  Result := CreateNumberArg(pi);
 end;
 
 function fpsRADIANS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1277,12 +1277,12 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(degtorad(data[0]))
+    Result := CreateNumberArg(degtorad(data[0]))
 end;
 
 function fpsRAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
-  Result := CreateNumber(random);
+  Result := CreateNumberArg(random);
 end;
 
 function fpsROUND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1290,7 +1290,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumber(RoundTo(data[0], round(data[1])))
+    Result := CreateNumberArg(RoundTo(data[0], round(data[1])))
 end;
 
 function fpsSIGN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1298,7 +1298,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(sign(data[0]))
+    Result := CreateNumberArg(sign(data[0]))
 end;
 
 function fpsSIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1306,7 +1306,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(sin(data[0]))
+    Result := CreateNumberArg(sin(data[0]))
 end;
 
 function fpsSINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1314,7 +1314,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(sinh(data[0]))
+    Result := CreateNumberArg(sinh(data[0]))
 end;
 
 function fpsSQRT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1323,9 +1323,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if data[0] >= 0.0 then
-      Result := CreateNumber(sqrt(data[0]))
+      Result := CreateNumberArg(sqrt(data[0]))
     else
-      Result := CreateError(errOverflow);
+      Result := CreateErrorArg(errOverflow);
   end;
 end;
 
@@ -1335,9 +1335,9 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if frac(data[0] / (pi*0.5)) = 0 then
-      Result := CreateError(errOverflow)
+      Result := CreateErrorArg(errOverflow)
     else
-      Result := CreateNumber(tan(data[0]))
+      Result := CreateNumberArg(tan(data[0]))
   end;
 end;
 
@@ -1346,7 +1346,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumber(tanh(data[0]))
+    Result := CreateNumberArg(tanh(data[0]))
 end;
 
 
@@ -1360,7 +1360,7 @@ var
 begin
   if Args.PopNumberValues(3, false, data, Result) then begin
     d := EncodeDate(round(data[0]), round(data[1]), round(data[2]));
-    Result := CreateNumber(d);
+    Result := CreateNumberArg(d);
   end;
 end;
 
@@ -1383,30 +1383,30 @@ begin
   PopDateValue(Args, end_date, res2);;
   PopDateValue(Args, start_date, res3);
   if res1.ErrorValue <> errOK then begin
-    Result := CreateError(res1.ErrorValue);
+    Result := CreateErrorArg(res1.ErrorValue);
     exit;
   end;
   if res2.ErrorValue <> errOK then begin
-    Result := CreateError(res2.ErrorValue);
+    Result := CreateErrorArg(res2.ErrorValue);
     exit;
   end;
   if res3.ErrorValue <> errOK then begin
-    Result := CreateError(res3.ErrorValue);
+    Result := CreateErrorArg(res3.ErrorValue);
     exit;
   end;
 
   interval := Uppercase(interval);
 
   if end_date > start_date then
-    Result := CreateError(errOverflow)
+    Result := CreateErrorArg(errOverflow)
   else if interval = 'Y' then
-    Result := CreateNumber(YearsBetween(end_date, start_date))
+    Result := CreateNumberArg(YearsBetween(end_date, start_date))
   else if interval = 'M' then
-    Result := CreateNumber(MonthsBetween(end_date, start_date))
+    Result := CreateNumberArg(MonthsBetween(end_date, start_date))
   else if interval = 'D' then
-    Result := CreateNumber(DaysBetween(end_date, start_date))
+    Result := CreateNumberArg(DaysBetween(end_date, start_date))
   else
-    Result := CreateError(errFormulaNotSupported);
+    Result := CreateErrorArg(errFormulaNotSupported);
 end;
 
 function fpsDATEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1415,7 +1415,7 @@ var
   d: TDate;
 begin
   if PopDateValue(Args, d, Result) then
-    Result := CreateNumber(d);
+    Result := CreateNumberArg(d);
 end;
 
 function fpsDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1423,7 +1423,7 @@ var
   d: TDate;
 begin
   if PopDateValue(Args, d, Result) then
-    Result := CreateNumber(DayOf(d));
+    Result := CreateNumberArg(DayOf(d));
 end;
 
 function fpsHOUR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1431,7 +1431,7 @@ var
   t: TTime;
 begin
   if PopTimeValue(Args, t, Result) then
-    Result := CreateNumber(HourOf(t));
+    Result := CreateNumberArg(HourOf(t));
 end;
 
 function fpsMINUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1439,7 +1439,7 @@ var
   t: TTime;
 begin
   if PopTimeValue(Args, t, Result) then
-    Result := CreateNumber(MinuteOf(t));
+    Result := CreateNumberArg(MinuteOf(t));
 end;
 
 function fpsMONTH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1447,13 +1447,13 @@ var
   d: TDate;
 begin
   if PopDateValue(Args, d, Result) then
-    Result := CreateNumber(MonthOf(d));
+    Result := CreateNumberArg(MonthOf(d));
 end;
 
 function fpsNOW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // NOW()
 begin
-  Result := CreateNumber(now);
+  Result := CreateNumberArg(now);
 end;
 
 function fpsSECOND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1461,7 +1461,7 @@ var
   t: TTime;
 begin
   if PopTimeValue(Args, t, Result) then
-    Result := CreateNumber(SecondOf(t));
+    Result := CreateNumberArg(SecondOf(t));
 end;
 
 function fpsTIME(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1472,7 +1472,7 @@ var
 begin
   if Args.PopNumberValues(3, false, data, Result) then begin
     t := EncodeTime(round(data[0]), round(data[1]), round(data[2]), 0);
-    Result := CreateNumber(t);
+    Result := CreateNumberArg(t);
   end;
 end;
 
@@ -1482,13 +1482,13 @@ var
   t: TTime;
 begin
   if PopTimeValue(Args, t, Result) then
-    Result := CreateNumber(t);
+    Result := CreateNumberArg(t);
 end;
 
 function fpsToday(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TODAY()
 begin
-  Result := CreateNumber(Date());
+  Result := CreateNumberArg(Date());
 end;
 
 function fpsWEEKDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1512,7 +1512,7 @@ begin
     end;
   end;
   if PopDateValue(Args, d, Result) then
-    Result := CreateNumber(DayOfWeek(d));
+    Result := CreateNumberArg(DayOfWeek(d));
 end;
 
 function fpsYEAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1520,7 +1520,7 @@ var
   d: TDate;
 begin
   if PopDateValue(Args, d, Result) then
-    Result := CreateNumber(YearOf(d));
+    Result := CreateNumberArg(YearOf(d));
 end;
 
 
@@ -1539,7 +1539,7 @@ begin
     for i:=0 to High(data) do
       data[i] := abs(data[i] - m);
     m := Mean(data);
-    Result := CreateNumber(m)
+    Result := CreateNumberArg(m)
   end;
 end;
 
@@ -1549,7 +1549,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(Mean(data))
+    Result := CreateNumberArg(Mean(data))
 end;
 
 function fpsCOUNT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1561,7 +1561,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, result, false) then
-    Result := CreateNumber(Length(data));
+    Result := CreateNumberArg(Length(data));
 end;
 
 function fpsCOUNTBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1575,17 +1575,19 @@ begin
   arg := Args.Pop;
   case arg.ArgumentType of
     atCell:
-      if arg.Cell = nil then Result := CreateNumber(1) else Result := CreateNumber(0);
+      if arg.Cell = nil
+        then Result := CreateNumberArg(1)
+        else Result := CreateNumberArg(0);
     atCellRange:
       begin
         n := 0;
         for r := arg.FirstRow to arg.LastRow do
           for c := arg.FirstCol to arg.LastCol do
             if arg.Worksheet.FindCell(r, c) = nil then inc(n);
-        Result := CreateNumber(n);
+        Result := CreateNumberArg(n);
       end;
     else
-      Result := CreateError(errWrongType);
+      Result := CreateErrorArg(errWrongType);
   end;
 end;
 
@@ -1609,7 +1611,7 @@ begin
   compare := coEqual;
   case criteria.ArgumentType of
     atCellRange:
-      criteria := CreateCell(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
+      criteria := CreateCellArg(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
     atString:
       criteria.Stringvalue := AnalyzeCompareStr(criteria.StringValue, compare);
   end;
@@ -1618,7 +1620,7 @@ begin
     for c := arg.FirstCol to arg.LastCol do begin
       cell := arg.Worksheet.FindCell(r, c);
       if cell <> nil then begin
-        cellarg := CreateCell(cell);
+        cellarg := CreateCellArg(cell);
         res := CompareArgs(cellarg, criteria, false);
         if res <> MaxInt then begin
           if (res < 0) and (compare in [coLess, coLessEqual, coNotEqual])
@@ -1634,7 +1636,7 @@ begin
       end else
        if compare = coNotEqual then inc(n);
     end;
-  Result := CreateNumber(n);
+  Result := CreateNumberArg(n);
 end;
 
 function fpsMAX(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1643,7 +1645,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(MaxValue(data))
+    Result := CreateNumberArg(MaxValue(data))
 end;
 
 function fpsMIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1652,7 +1654,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(MinValue(data))
+    Result := CreateNumberArg(MinValue(data))
 end;
 
 function fpsPRODUCT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1666,7 +1668,7 @@ begin
     p := 1.0;
     for i:=0 to High(data) do
       p := p * data[i];
-    Result := CreateNumber(p);
+    Result := CreateNumberArg(p);
   end;
 end;
 
@@ -1676,7 +1678,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(StdDev(data))
+    Result := CreateNumberArg(StdDev(data))
 end;
 
 function fpsSTDEVP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1685,7 +1687,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(PopnStdDev(data))
+    Result := CreateNumberArg(PopnStdDev(data))
 end;
 
 function fpsSUM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1694,7 +1696,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(Sum(data))
+    Result := CreateNumberArg(Sum(data))
 end;
 
 function fpsSUMIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1729,14 +1731,14 @@ begin
   if (range.LastCol - range.FirstCol <> sum_range.LastCol - sum_range.FirstCol) or
      (range.LastRow - range.FirstRow <> sum_range.LastRow - sum_range.FirstRow)
   then begin
-    Result := CreateError(errArgError);
+    Result := CreateErrorArg(errArgError);
     exit;
   end;
 
   compare := coEqual;
   case criteria.ArgumentType of
     atCellRange:
-      criteria := CreateCell(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
+      criteria := CreateCellArg(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
     atString:
       criteria.Stringvalue := AnalyzeCompareStr(criteria.StringValue, compare);
   end;
@@ -1749,7 +1751,7 @@ begin
       cell := range.Worksheet.FindCell(r, c);
       accept := (compare = coNotEqual);
       if cell <> nil then begin
-        cellarg := CreateCell(cell);
+        cellarg := CreateCellArg(cell);
         res := CompareArgs(cellarg, criteria, false);
         if res <> MaxInt then
           accept := ( (res < 0) and (compare in [coLess, coLessEqual, coNotEqual]) )
@@ -1763,7 +1765,7 @@ begin
       end;
     end;
   end;
-  Result := CreateNumber(sum);
+  Result := CreateNumberArg(sum);
 end;
 
 function fpsSUMSQ(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1772,7 +1774,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(SumOfSquares(data))
+    Result := CreateNumberArg(SumOfSquares(data))
 end;
 
 function fpsVAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1781,7 +1783,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(Variance(data))
+    Result := CreateNumberArg(Variance(data))
 end;
 
 function fpsVARP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1790,7 +1792,7 @@ var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumber(PopnVariance(data))
+    Result := CreateNumberArg(PopnVariance(data))
 end;
 
 
@@ -1811,14 +1813,14 @@ begin
         b := false;
         break;
       end;
-    Result := CreateBool(b);
+    Result := CreateBoolArg(b);
   end;
 end;
 
 function fpsFALSE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // FALSE( )
 begin
-  Result := CreateBool(false);
+  Result := CreateBoolArg(false);
 end;
 
 function fpsIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1833,7 +1835,7 @@ begin
   case1 := Args.Pop;
   condition := Args.Pop;
   if condition.ArgumentType <> atBool then
-    Result := CreateError(errWrongType)
+    Result := CreateErrorArg(errWrongType)
   else
     case NumArgs of
       2: if condition.BoolValue then Result := case1 else Result := Condition;
@@ -1847,7 +1849,7 @@ var
   data: TsArgBoolArray;
 begin
   if PopBoolValues(Args, NumArgs, data, Result) then
-    Result := CreateBool(not data[0]);
+    Result := CreateBoolArg(not data[0]);
 end;
 
 function fpsOR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1865,14 +1867,14 @@ begin
         b := true;
         break;
       end;
-    Result := CreateBool(b);
+    Result := CreateBoolArg(b);
   end;
 end;
 
 function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TRUE ( )
 begin
-  Result := CreateBool(true);
+  Result := CreateBoolArg(true);
 end;
 
 
@@ -1885,7 +1887,7 @@ var
 begin
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] >= 0) and (data[0] <= 255) then
-      Result := CreateString(AnsiToUTF8(Char(Round(data[0]))));
+      Result := CreateStringArg(AnsiToUTF8(Char(Round(data[0]))));
   end;
 end;
 
@@ -1898,9 +1900,9 @@ begin
   if Args.PopString(s, Result) then begin
     if s <> '' then begin
       ch := UTF8ToAnsi(s)[1];
-      Result := CreateNumber(Ord(ch));
+      Result := CreateNumberArg(Ord(ch));
     end else
-      Result := CreateEmpty;
+      Result := CreateEmptyArg;
   end;
 end;
 
@@ -1916,7 +1918,7 @@ begin
     arg2 := Args.Pop;
     if not arg2.IsMissing then begin
       if arg2.ArgumentType <> atNumber then begin
-        Result := createError(errWrongType);
+        Result := CreateErrorArg(errWrongType);
         exit;
       end;
       count := Round(arg2.NumberValue);
@@ -1924,11 +1926,11 @@ begin
   end;
   arg1 := Args.Pop;
   if arg1.ArgumentType <> atString then begin
-    Result := CreateError(errWrongType);
+    Result := CreateErrorArg(errWrongType);
     exit;
   end;
   s := arg1.StringValue;
-  Result := CreateString(UTF8LeftStr(s, count));
+  Result := CreateStringArg(UTF8LeftStr(s, count));
 end;
 
 function fpsLOWER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1937,7 +1939,7 @@ var
   s: String;
 begin
   if Args.PopString(s, Result) then
-    Result := CreateString(UTF8LowerCase(s));
+    Result := CreateStringArg(UTF8LowerCase(s));
 end;
 
 function fpsMID(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1950,14 +1952,14 @@ begin
   Args.PopNumberValues(2, false, data, res1);
   Args.PopString(s, res2);
   if res1.ErrorValue <> errOK then begin
-    Result := CreateError(res1.ErrorValue);
+    Result := CreateErrorArg(res1.ErrorValue);
     exit;
   end;
   if res2.ErrorValue <> errOK then begin
-    Result := CreateError(res2.ErrorValue);
+    Result := CreateErrorArg(res2.ErrorValue);
     exit;
   end;
-  Result := CreateString(UTF8Copy(s, Round(data[0]), Round(data[1])));
+  Result := CreateStringArg(UTF8Copy(s, Round(data[0]), Round(data[1])));
 end;
 
 function fpsREPLACE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1969,22 +1971,22 @@ var
 begin
   arg_new := Args.Pop;
   if arg_new.ArgumentType <> atString then begin
-    Result := CreateError(errWrongType);
+    Result := CreateErrorArg(errWrongType);
     exit;
   end;
   arg_count := Args.Pop;
   if arg_count.ArgumentType <> atNumber then begin
-    Result := CreateError(errWrongType);
+    Result := CreateErrorArg(errWrongType);
     exit;
   end;
   arg_start := Args.Pop;
   if arg_start.ArgumentType <> atNumber then begin
-    Result := CreateError(errWrongType);
+    Result := CreateErrorArg(errWrongType);
     exit;
   end;
   arg_old := Args.Pop;
   if arg_old.ArgumentType <> atString then begin
-    Result := CreateError(errWrongType);
+    Result := CreateErrorArg(errWrongType);
     exit;
   end;
 
@@ -1995,7 +1997,7 @@ begin
 
   s1 := UTF8Copy(s, 1, p-1);
   s2 := UTF8Copy(s, p+count, UTF8Length(s));
-  Result := CreateString(s1 + snew + s2);
+  Result := CreateStringArg(s1 + snew + s2);
 end;
 
 function fpsRIGHT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2010,7 +2012,7 @@ begin
     arg2 := Args.Pop;
     if not arg2.IsMissing then begin
       if arg2.ArgumentType <> atNumber then begin
-        Result := createError(errWrongType);
+        Result := CreateErrorArg(errWrongType);
         exit;
       end;
       count := round(arg2.NumberValue);
@@ -2018,11 +2020,11 @@ begin
   end;
   arg1 := Args.Pop;
   if arg1.ArgumentType <> atString then begin
-    Result := CreateError(errWrongType);
+    Result := CreateErrorArg(errWrongType);
     exit;
   end;
   s := arg1.StringValue;
-  Result := CreateString(UTF8RightStr(s, count));
+  Result := CreateStringArg(UTF8RightStr(s, count));
 end;
 
 function fpsSUBSTITUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2034,7 +2036,7 @@ var
   data: TsArgStringArray;
   s, s_old, s_new: String;
 begin
-  Result := CreateError(errWrongType);
+  Result := CreateErrorArg(errWrongType);
   n := -1;
   if (NumArgs = 4) then begin
     if Args.PopNumber(number, Result) then
@@ -2052,9 +2054,9 @@ begin
     s_old := data[1];
     s_new := data[2];
     if n = -1 then
-      Result := CreateString(UTF8StringReplace(s, s_old, s_new, [rfReplaceAll]))
+      Result := CreateStringArg(UTF8StringReplace(s, s_old, s_new, [rfReplaceAll]))
     else
-      Result := CreateError(errFormulaNotSupported);
+      Result := CreateErrorArg(errFormulaNotSupported);
   end;
 end;
 
@@ -2064,7 +2066,7 @@ var
   s: String;
 begin
   if Args.PopString(s, Result) then
-    Result := CreateString(UTF8Trim(s));
+    Result := CreateStringArg(UTF8Trim(s));
 end;
 
 function fpsUPPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2073,7 +2075,7 @@ var
   s: String;
 begin
   if Args.PopString(s, Result) then
-    Result := CreateString(UTF8UpperCase(s));
+    Result := CreateStringArg(UTF8UpperCase(s));
 end;
 
 
@@ -2089,14 +2091,14 @@ var
   arg: TsArgument;
 begin
   if NumArgs = 0 then
-    Result := CreateError(errArgError);
+    Result := CreateErrorArg(errArgError);
     // We don't know here which cell contains the formula.
 
   arg := Args.Pop;
   case arg.ArgumentType of
-    atCell     : Result := CreateNumber(arg.Cell^.Col + 1);
-    atCellRange: Result := CreateNumber(arg.FirstCol + 1);
-    else         Result := CreateError(errWrongType);
+    atCell     : Result := CreateNumberArg(arg.Cell^.Col + 1);
+    atCellRange: Result := CreateNumberArg(arg.FirstCol + 1);
+    else         Result := CreateErrorArg(errWrongType);
   end;
 end;
 
@@ -2108,9 +2110,9 @@ var
 begin
   arg := Args.Pop;
   case arg.ArgumentType of
-    atCell     : Result := CreateNumber(1);
-    atCellRange: Result := CreateNumber(arg.LastCol - arg.FirstCol + 1);
-    else         Result := CreateError(errWrongType);
+    atCell     : Result := CreateNumberArg(1);
+    atCellRange: Result := CreateNumberArg(arg.LastCol - arg.FirstCol + 1);
+    else         Result := CreateErrorArg(errWrongType);
   end;
 end;
 
@@ -2124,14 +2126,14 @@ var
   arg: TsArgument;
 begin
   if NumArgs = 0 then
-    Result := CreateError(errArgError);
+    Result := CreateErrorArg(errArgError);
     // We don't know here which cell contains the formula.
 
   arg := Args.Pop;
   case arg.ArgumentType of
-    atCell     : Result := CreateNumber(arg.Cell^.Row + 1);
-    atCellRange: Result := CreateNumber(arg.FirstRow + 1);
-    else         Result := CreateError(errWrongType);
+    atCell     : Result := CreateNumberArg(arg.Cell^.Row + 1);
+    atCellRange: Result := CreateNumberArg(arg.FirstRow + 1);
+    else         Result := CreateErrorArg(errWrongType);
   end;
 end;
 
@@ -2144,9 +2146,9 @@ var
 begin
   arg := Args.Pop;
   case arg.ArgumentType of
-    atCell     : Result := CreateNumber(1);
-    atCellRange: Result := CreateNumber(arg.LastRow - arg.FirstRow + 1);
-    else         Result := CreateError(errWrongType);
+    atCell     : Result := CreateNumberArg(1);
+    atCellRange: Result := CreateNumberArg(arg.LastRow - arg.FirstRow + 1);
+    else         Result := CreateErrorArg(errWrongType);
   end;
 end;
 
@@ -2222,7 +2224,7 @@ var
   res: TsArgument;
 begin
   if NumArgs < 2 then begin
-    Result := CreateError(errArgError);
+    Result := CreateErrorArg(errArgError);
     exit;
   end;
 
@@ -2235,86 +2237,86 @@ begin
   if (arg.ArgumentType = atCell) then
     cell := arg.Cell
   else begin
-    Result := CreateError(errArgError);
+    Result := CreateErrorArg(errArgError);
     exit;
   end;
 
   if (cell = nil) then begin
-    Result := CreateError(errArgError);
+    Result := CreateErrorArg(errArgError);
     exit;
   end;
 
   if (res.ErrorValue <> errOK) then begin
-    Result := CreateError(res.ErrorValue);
+    Result := CreateErrorArg(res.ErrorValue);
     exit;
   end;
 
   sname := Lowercase(sname);
 
   if sname = 'address' then
-    Result := CreateString(GetCellString(cell^.Row, cell^.Col, []))
+    Result := CreateStringArg(GetCellString(cell^.Row, cell^.Col, []))
   else if sname = 'col' then
-    Result := CreateNumber(cell^.Col + 1)
+    Result := CreateNumberArg(cell^.Col + 1)
   else if sname = 'color' then begin
     if (cell^.NumberFormat = nfCurrencyRed)
-      then Result := CreateNumber(1)
-      else Result := CreateNumber(0);
+      then Result := CreateNumberArg(1)
+      else Result := CreateNumberArg(0);
   end else if sname = 'contents' then
     case cell^.ContentType of
-      cctNumber     : Result := CreateNumber(cell^.NumberValue);
-      cctDateTime   : Result := CreateNumber(cell^.DateTimeValue);
-      cctUTF8String : Result := CreateString(cell^.UTF8StringValue);
-      cctBool       : Result := CreateString(BoolToStr(cell^.BoolValue));
-      cctError      : Result := CreateString('Error');
+      cctNumber     : Result := CreateNumberArg(cell^.NumberValue);
+      cctDateTime   : Result := CreateNumberArg(cell^.DateTimeValue);
+      cctUTF8String : Result := CreateStringArg(cell^.UTF8StringValue);
+      cctBool       : Result := CreateStringArg(BoolToStr(cell^.BoolValue));
+      cctError      : Result := CreateStringArg('Error');
     end
   else if sname = 'format' then begin
-    Result := CreateString('');
+    Result := CreateStringArg('');
     case cell^.NumberFormat of
       nfGeneral:
-        Result := CreateString('G');
+        Result := CreateStringArg('G');
       nfFixed:
-        if cell^.NumberFormatStr= '0' then Result := CreateString('0') else
-        if cell^.NumberFormatStr = '0.00' then  Result := CreateString('F0');
+        if cell^.NumberFormatStr= '0' then Result := CreateStringArg('0') else
+        if cell^.NumberFormatStr = '0.00' then  Result := CreateStringArg('F0');
       nfFixedTh:
-        if cell^.NumberFormatStr = '#,##0' then Result := CreateString(',0') else
-        if cell^.NumberFormatStr = '#,##0.00' then Result := CreateString(',2');
+        if cell^.NumberFormatStr = '#,##0' then Result := CreateStringArg(',0') else
+        if cell^.NumberFormatStr = '#,##0.00' then Result := CreateStringArg(',2');
       nfPercentage:
-        if cell^.NumberFormatStr = '0%' then Result := CreateString('P0') else
-        if cell^.NumberFormatStr = '0.00%' then Result := CreateString('P2');
+        if cell^.NumberFormatStr = '0%' then Result := CreateStringArg('P0') else
+        if cell^.NumberFormatStr = '0.00%' then Result := CreateStringArg('P2');
       nfExp:
-        if cell^.NumberFormatStr = '0.00E+00' then Result := CreateString('S2');
+        if cell^.NumberFormatStr = '0.00E+00' then Result := CreateStringArg('S2');
       nfShortDate, nfLongDate, nfShortDateTime:
-        Result := CreateString('D4');
+        Result := CreateStringArg('D4');
       nfLongTimeAM:
-        Result := CreateString('D6');
+        Result := CreateStringArg('D6');
       nfShortTimeAM:
-        Result := CreateString('D7');
+        Result := CreateStringArg('D7');
       nfLongTime:
-        Result := CreateString('D8');
+        Result := CreateStringArg('D8');
       nfShortTime:
-        Result := CreateString('D9');
+        Result := CreateStringArg('D9');
     end;
   end else
   if (sname = 'prefix') then begin
-    Result := CreateString('');
+    Result := CreateStringArg('');
     if (cell^.ContentType = cctUTF8String) then
       case cell^.HorAlignment of
-        haLeft  : Result := CreateString('''');
-        haCenter: Result := CreateString('^');
-        haRight : Result := CreateString('"');
+        haLeft  : Result := CreateStringArg('''');
+        haCenter: Result := CreateStringArg('^');
+        haRight : Result := CreateStringArg('"');
       end;
   end else
   if sname = 'row' then
-    Result := CreateNumber(cell^.Row + 1)
+    Result := CreateNumberArg(cell^.Row + 1)
   else if sname = 'type' then begin
     if (cell^.ContentType = cctEmpty) then
-      Result := CreateString('b')
+      Result := CreateStringArg('b')
     else if cell^.ContentType = cctUTF8String then begin
       if (cell^.UTF8StringValue = '')
-        then Result := CreateString('b')
-        else Result := CreateString('l');
+        then Result := CreateStringArg('b')
+        else Result := CreateStringArg('l');
     end else
-      Result := CreateString('v');
+      Result := CreateStringArg('v');
   end;
 end;
 
@@ -2337,17 +2339,17 @@ var
 begin
   arg := Args.Pop;
   if arg.ArgumentType <> atString then
-    Result := CreateError(errWrongType)
+    Result := CreateErrorArg(errWrongType)
   else begin
     s := Lowercase(arg.StringValue);
     workbook := arg.Worksheet.Workbook;
     if s = 'directory' then
-      Result := CreateString(ExtractFilePath(workbook.FileName))
+      Result := CreateStringArg(ExtractFilePath(workbook.FileName))
     else
     if s = 'numfile' then
-      Result := CreateNumber(workbook.GetWorksheetCount)
+      Result := CreateNumberArg(workbook.GetWorksheetCount)
     else
-      Result := CreateError(errFormulaNotSupported);
+      Result := CreateErrorArg(errFormulaNotSupported);
   end;
 end;
 
@@ -2358,7 +2360,8 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool((arg.ArgumentType = atCell) and
+  Result := CreateBoolArg(
+    (arg.ArgumentType = atCell) and
     ((arg.Cell = nil) or (arg.Cell^.ContentType = cctEmpty))
   );
 end;
@@ -2371,7 +2374,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool((arg.ArgumentType = atError) and (arg.ErrorValue <> errArgError));
+  Result := CreateBoolArg((arg.ArgumentType = atError) and (arg.ErrorValue <> errArgError));
 end;
 
 function fpsISERROR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2382,7 +2385,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool((arg.ArgumentType = atError));
+  Result := CreateBoolArg((arg.ArgumentType = atError));
 end;
 
 function fpsISLOGICAL(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2391,7 +2394,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool(arg.ArgumentType = atBool);
+  Result := CreateBoolArg(arg.ArgumentType = atBool);
 end;
 
 function fpsISNA(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2402,7 +2405,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool((arg.ArgumentType = atError) and (arg.ErrorValue = errArgError));
+  Result := CreateBoolArg((arg.ArgumentType = atError) and (arg.ErrorValue = errArgError));
 end;
 
 function fpsISNONTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2411,7 +2414,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool(arg.ArgumentType <> atString);
+  Result := CreateBoolArg(arg.ArgumentType <> atString);
 end;
 
 function fpsISNUMBER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2420,7 +2423,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool(arg.ArgumentType = atNumber);
+  Result := CreateBoolArg(arg.ArgumentType = atNumber);
 end;
 
 function fpsISREF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2429,7 +2432,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool(arg.ArgumentType in [atCell, atCellRange]);
+  Result := CreateBoolArg(arg.ArgumentType in [atCell, atCellRange]);
 end;
 
 function fpsISTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2438,7 +2441,7 @@ var
   arg: TsArgument;
 begin
   arg := Args.Pop;
-  Result := CreateBool(arg.ArgumentType = atString);
+  Result := CreateBoolArg(arg.ArgumentType = atString);
 end;
 
 function fpsVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -2451,9 +2454,9 @@ var
 begin
   if Args.PopString(s, Result) then
     if TryStrToFloat(s, x) then
-      Result := CreateNumber(x)
+      Result := CreateNumberArg(x)
     else
-      Result := CreateError(errWrongType);
+      Result := CreateErrorArg(errWrongType);
 end;
 
 

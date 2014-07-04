@@ -21,7 +21,7 @@
     RPNNumber(1.0,
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1.0+1.0);                     // B1 = 2
+  sollValues[Row] := CreateNumberArg(1.0 + 1.0);                   // B1 = 2
   // don't refer to the cell contents here because they have not yet been calculated!
 {!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!  DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !!
@@ -35,7 +35,7 @@
     RPNNumber(10,
     RPNFunc(fekSub, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1-10);                        // B2 = -9
+  sollValues[Row] := CreateNumberArg(1-10);                        // B2 = -9
   // don't refer to the cell contents here because they have not yet been calculated!
 {!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!  DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !!
@@ -49,7 +49,7 @@
     RPNCellValue('B2',
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(-7);
+  sollValues[Row] := CreateNumberArg(-7);
 
   // Add cell values - absolute addresses
   inc(Row);
@@ -59,7 +59,7 @@
     RPNCellValue('$B$2',
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(-7);
+  sollValues[Row] := CreateNumberArg(-7);
 // don't refer to the cell contents here because they have not yet been calculated!
 
   // Add cell values - mixed absolute and relative addresses
@@ -70,7 +70,7 @@
     RPNCellValue('$B2',
     RPNFunc(fekAdd, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(-7);
+  sollValues[Row] := CreateNumberArg(-7);
   // don't refer to the cell contents here because they have not yet been calculated!
 
   // Multiplication
@@ -81,7 +81,7 @@
     RPNNumber(-3,
     RPNFunc(fekMul, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(10*(-3));
+  sollValues[Row] := CreateNumberArg(10*(-3));
 
   // Multiplication  w/Parenthesis
   inc(Row);
@@ -92,7 +92,7 @@
     RPNParenthesis(
     RPNFunc(fekMul, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(10*(-3));
+  sollValues[Row] := CreateNumberArg(10*(-3));
 
   // Multiplication of cell values
   inc(Row);
@@ -102,7 +102,7 @@
     RPNCellValue('B2',
     RPNFunc(fekMul, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2*(-9));
+  sollValues[Row] := CreateNumberArg(2*(-9));
 
   // Division
   inc(Row);
@@ -112,7 +112,7 @@
     RPNNumber(200,
     RPNFunc(fekDiv, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(10/200);
+  sollValues[Row] := CreateNumberArg(10/200);
 
   // Division: Error case - divide by zero
   inc(Row);
@@ -122,7 +122,7 @@
     RPNNumber(0,
     RPNFunc(fekDiv, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errDivideByZero);
+  sollValues[Row] := CreateErrorArg(errDivideByZero);
 
   // Division of cell values
   inc(Row);
@@ -132,7 +132,7 @@
     RPNcellValue('B2',
     RPNFunc(fekDiv, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2/(-9));
+  sollValues[Row] := CreateNumberArg(2/(-9));
 
   // Percentage
   inc(Row);
@@ -141,7 +141,7 @@
     RPNNumber(10,
     RPNFunc(fekPercent, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(10*0.01);
+  sollValues[Row] := CreateNumberArg(10*0.01);
 
   // Percentage of cell value
   inc(Row);
@@ -150,7 +150,7 @@
     RPNCellValue('B1',
     RPNFunc(fekPercent, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2*0.01);
+  sollValues[Row] := CreateNumberArg(2*0.01);
 
   // Power
   inc(Row);
@@ -160,7 +160,7 @@
     RPNNumber(0.5,
     RPNFunc(fekPower, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(power(2, 0.5));
+  sollValues[Row] := CreateNumberArg(power(2, 0.5));
 
   // Power of cell values
   inc(Row);
@@ -170,7 +170,7 @@
     RPNCellValue('B2',
     RPNFunc(fekPower, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(power(2, -9));
+  sollValues[Row] := CreateNumberArg(power(2, -9));
 
 {$IFDEF ENABLE_CALC_RPN_EXCEPTIONS}
   // Power: Error case  "power( (negative number), (fractional number) )"
@@ -181,7 +181,7 @@
     RPNNumber(0.5,
     RPNFunc(fekPower, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 {$ENDIF}
 
   // Unary minus
@@ -192,7 +192,7 @@
     RPNParenthesis(
     RPNFunc(fekUMinus, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
    // Unary minus of cell value
   inc(Row);
@@ -201,7 +201,7 @@
     RPNCellValue('B1',
     RPNFunc(fekUMinus, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(-(2));
+  sollValues[Row] := CreateNumberArg(-(2));
 
   // Unary plus
   inc(Row);
@@ -211,7 +211,7 @@
     RPNParenthesis(
     RPNFunc(fekUPlus, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(-1);
+  sollValues[Row] := CreateNumberArg(-1);
 
   // Unary plus  of cell value
   inc(Row);
@@ -220,7 +220,7 @@
     RPNCellvalue('B2',
     RPNFunc(fekUPlus, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(+(-9));
+  sollValues[Row] := CreateNumberArg(+(-9));
 
   // String result
   inc(Row);
@@ -228,7 +228,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('Hallo', nil)));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('Hallo');
+  sollValues[Row] := CreateStringArg('Hallo');
 
   // String concatenation
   inc(Row);
@@ -238,7 +238,7 @@
     RPNString(' world',
     RPNFunc(fekConcat, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('Hallo' + ' world');
+  sollValues[Row] := CreateStringArg('Hallo' + ' world');
 
   // Equal (bool)
   inc(Row);
@@ -249,7 +249,7 @@
     RPNParenthesis(
     RPNFunc(fekEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true = false);
+  sollValues[Row] := CreateBoolArg(true = false);
 
   // Equal (strings)
   inc(Row);
@@ -260,7 +260,7 @@
     RPNParenthesis(
     RPNFunc(fekEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool('Hallo' = 'world');
+  sollValues[Row] := CreateBoolArg('Hallo' = 'world');
 
   // Equal (numbers)
   inc(Row);
@@ -271,7 +271,7 @@
     RPNParenthesis(
     RPNFunc(fekEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(1=1);
+  sollValues[Row] := CreateBoolArg(1=1);
 
   // Greater (bool)
   inc(Row);
@@ -282,7 +282,7 @@
     RPNParenthesis(
     RPNFunc(fekGreater, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true > false);
+  sollValues[Row] := CreateBoolArg(true > false);
 
   // Greater (strings)
   inc(Row);
@@ -293,7 +293,7 @@
     RPNParenthesis(
     RPNFunc(fekGreater, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool('Hallo' > 'world');
+  sollValues[Row] := CreateBoolArg('Hallo' > 'world');
 
   // Greater (numbers)
   inc(Row);
@@ -304,7 +304,7 @@
     RPNParenthesis(
     RPNFunc(fekGreater, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(1>1);
+  sollValues[Row] := CreateBoolArg(1>1);
 
   // Greater equal (bool)
   inc(Row);
@@ -315,7 +315,7 @@
     RPNParenthesis(
     RPNFunc(fekGreaterEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true >= false);
+  sollValues[Row] := CreateBoolArg(true >= false);
 
   // Greater equal (strings)
   inc(Row);
@@ -326,7 +326,7 @@
     RPNParenthesis(
     RPNFunc(fekGreaterEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool('Hallo' >= 'world');
+  sollValues[Row] := CreateBoolArg('Hallo' >= 'world');
 
   // Greater equal (numbers)
   inc(Row);
@@ -337,7 +337,7 @@
     RPNParenthesis(
     RPNFunc(fekGreaterEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(1>=1);
+  sollValues[Row] := CreateBoolArg(1>=1);
 
   // Less (bool)
   inc(Row);
@@ -348,7 +348,7 @@
     RPNParenthesis(
     RPNFunc(fekLess, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true < false);
+  sollValues[Row] := CreateBoolArg(true < false);
 
   // Less (strings)
   inc(Row);
@@ -359,7 +359,7 @@
     RPNParenthesis(
     RPNFunc(fekLess, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool('Hallo' < 'world');
+  sollValues[Row] := CreateBoolArg('Hallo' < 'world');
 
   // Less (numbers)
   inc(Row);
@@ -370,7 +370,7 @@
     RPNParenthesis(
     RPNFunc(fekLess, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(1<1);
+  sollValues[Row] := CreateBoolArg(1<1);
 
   // Less equal (bool)
   inc(Row);
@@ -381,7 +381,7 @@
     RPNParenthesis(
     RPNFunc(fekLessEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true <= false);
+  sollValues[Row] := CreateBoolArg(true <= false);
 
   // Less equal (strings)
   inc(Row);
@@ -392,7 +392,7 @@
     RPNParenthesis(
     RPNFunc(fekLessEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool('Hallo' <= 'world');
+  sollValues[Row] := CreateBoolArg('Hallo' <= 'world');
 
   // Less equal (numbers)
   inc(Row);
@@ -403,7 +403,7 @@
     RPNParenthesis(
     RPNFunc(fekLessEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(1<=1);
+  sollValues[Row] := CreateBoolArg(1<=1);
 
   // Not equal (bool)
   inc(Row);
@@ -414,7 +414,7 @@
     RPNParenthesis(
     RPNFunc(fekNotEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true <> false);
+  sollValues[Row] := CreateBoolArg(true <> false);
 
   // Not equal (strings)
   inc(Row);
@@ -425,7 +425,7 @@
     RPNParenthesis(
     RPNFunc(fekNotEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool('Hallo' <> 'world');
+  sollValues[Row] := CreateBoolArg('Hallo' <> 'world');
 
   // Not equal (numbers)
   inc(Row);
@@ -436,7 +436,7 @@
     RPNParenthesis(
     RPNFunc(fekNotEqual, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(1<>1);
+  sollValues[Row] := CreateBoolArg(1<>1);
 
 {------------------------------------------------------------------------------}
 {                                     Math                                     }
@@ -448,7 +448,7 @@
     RPNNumber(-1,
     RPNFunc(fekABS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(abs(-1));
+  sollValues[Row] := CreateNumberArg(abs(-1));
 
   // ARCCOS - valid result
   inc(Row);
@@ -457,7 +457,7 @@
     RPNNumber(0.1,
     RPNFunc(fekACOS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(arccos(0.1));
+  sollValues[Row] := CreateNumberArg(arccos(0.1));
 
   // ACOS - error result (arccos is not defined outside the interval [-1..1]
   inc(Row);
@@ -466,7 +466,7 @@
     RPNNumber(-2,
     RPNFunc(fekACOS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverFlow);
+  sollValues[Row] := CreateErrorArg(errOverFlow);
 
    // ARCCOSH - valid result
   inc(Row);
@@ -475,7 +475,7 @@
     RPNNumber(1.1,
     RPNFunc(fekACOSH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(arccosh(1.1));
+  sollValues[Row] := CreateNumberArg(arccosh(1.1));
 
   // ACOSH - error result (arccos is not defined below 1
   inc(Row);
@@ -484,7 +484,7 @@
     RPNNumber(0.9,
     RPNFunc(fekACOSH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverFlow);
+  sollValues[Row] := CreateErrorArg(errOverFlow);
 
   // ASIN
   inc(Row);
@@ -493,7 +493,7 @@
     RPNNumber(0.1,
     RPNFunc(fekASIN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(arcsin(0.1));
+  sollValues[Row] := CreateNumberArg(arcsin(0.1));
 
   // ASIN - error result (arcsin is not defined outside the interval [-1..1]
   inc(Row);
@@ -502,7 +502,7 @@
     RPNNumber(-2,
     RPNFunc(fekASIN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverFlow);
+  sollValues[Row] := CreateErrorArg(errOverFlow);
 
    // ARCSINH
   inc(Row);
@@ -511,7 +511,7 @@
     RPNNumber(1.1,
     RPNFunc(fekASINH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(arcsinh(1.1));
+  sollValues[Row] := CreateNumberArg(arcsinh(1.1));
 
   // ATAN
   inc(Row);
@@ -520,7 +520,7 @@
     RPNNumber(0.1,
     RPNFunc(fekATAN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(arctan(0.1));
+  sollValues[Row] := CreateNumberArg(arctan(0.1));
 
   // ATANH - valid result
   inc(Row);
@@ -529,7 +529,7 @@
     RPNNumber(0.1,
     RPNFunc(fekATANH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(arctanh(0.1));
+  sollValues[Row] := CreateNumberArg(arctanh(0.1));
 
   // ATANH - error result (arctan is only defined within ]-1,1[
   inc(Row);
@@ -538,7 +538,7 @@
     RPNNumber(1.0,
     RPNFunc(fekATANH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverFlow);
+  sollValues[Row] := CreateErrorArg(errOverFlow);
 
   // COS
   inc(Row);
@@ -547,7 +547,7 @@
     RPNNumber(0.1,
     RPNFunc(fekCOS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(cos(0.1));
+  sollValues[Row] := CreateNumberArg(cos(0.1));
 
   // COSH
   inc(Row);
@@ -556,7 +556,7 @@
     RPNNumber(0.1,
     RPNFunc(fekCOSH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(cosh(0.1));
+  sollValues[Row] := CreateNumberArg(cosh(0.1));
 
   // DEGREES
   inc(Row);
@@ -565,7 +565,7 @@
     RPNNumber(1.0,
     RPNFunc(fekDEGREES, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(radToDeg(1.0));
+  sollValues[Row] := CreateNumberArg(radToDeg(1.0));
 
   // EXP
   inc(Row);
@@ -574,7 +574,7 @@
     RPNNumber(0.1,
     RPNFunc(fekEXP, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(exp(0.1));
+  sollValues[Row] := CreateNumberArg(exp(0.1));
 
   // INT (positive argument)
   inc(Row);
@@ -583,7 +583,7 @@
     RPNNumber(0.1,
     RPNFunc(fekINT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(floor(0.1));
+  sollValues[Row] := CreateNumberArg(floor(0.1));
 
   // INT (negative argument)
   inc(Row);
@@ -592,7 +592,7 @@
     RPNNumber(-0.1,
     RPNFunc(fekINT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(floor(-0.1));
+  sollValues[Row] := CreateNumberArg(floor(-0.1));
 
   // LN - valid result
   inc(Row);
@@ -601,7 +601,7 @@
     RPNNumber(0.1,
     RPNFunc(fekLN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(ln(0.1));
+  sollValues[Row] := CreateNumberArg(ln(0.1));
 
   // LN - error due to argument = 0
   inc(Row);
@@ -610,7 +610,7 @@
     RPNNumber(0.0,
     RPNFunc(fekLN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LN - error due to argument < 0
   inc(Row);
@@ -619,7 +619,7 @@
     RPNNumber(-0.1,
     RPNFunc(fekLN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LOG10 - valid result
   inc(Row);
@@ -628,7 +628,7 @@
     RPNNumber(0.1,
     RPNFunc(fekLOG10, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(log10(0.1));
+  sollValues[Row] := CreateNumberArg(log10(0.1));
 
   // LOG10 - error due to argument = 0
   inc(Row);
@@ -637,7 +637,7 @@
     RPNNumber(0.0,
     RPNFunc(fekLOG10, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LOG10 - error due to argument < 0
   inc(Row);
@@ -646,7 +646,7 @@
     RPNNumber(-0.1,
     RPNFunc(fekLOG10, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LOG - valid result (2 arguments)
   inc(Row);
@@ -656,7 +656,7 @@
     RPNNumber(2,
     RPNFunc(fekLOG, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(logn(2, 0.1));
+  sollValues[Row] := CreateNumberArg(logn(2, 0.1));
 
   // LOG - valid result (2 arguments, base missing)
   inc(Row);
@@ -666,7 +666,7 @@
     RPNMissingArg(
     RPNFunc(fekLOG, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LOG - valid result (1 argument)
   inc(Row);
@@ -675,7 +675,7 @@
     RPNNumber(0.1,
     RPNFunc(fekLOG, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(logn(10, 0.1));
+  sollValues[Row] := CreateNumberArg(logn(10, 0.1));
 
   // LOG - negative base
   inc(Row);
@@ -685,7 +685,7 @@
     RPNNumber(-2,
     RPNFunc(fekLOG, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LOG - negative value
   inc(Row);
@@ -695,7 +695,7 @@
     RPNNumber(2.0,
     RPNFunc(fekLOG, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // LOG of cell
   inc(Row);
@@ -704,7 +704,7 @@
     RPNCellValue('B1',
     RPNFunc(fekLOG, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(logn(10, 2));
+  sollValues[Row] := CreateNumberArg(logn(10, 2));
 
   // PI
   inc(Row);
@@ -712,7 +712,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNFunc(fekPI, nil)));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(pi);
+  sollValues[Row] := CreateNumberArg(pi);
 
   // RADIANS
   inc(Row);
@@ -721,7 +721,7 @@
     RPNNumber(60,
     RPNFunc(fekRADIANS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(degtorad(60));
+  sollValues[Row] := CreateNumberArg(degtorad(60));
 
   // RADIANS of cell value
   inc(Row);
@@ -730,7 +730,7 @@
     RPNCellValue('B1',
     RPNFunc(fekRADIANS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(degtorad(2));
+  sollValues[Row] := CreateNumberArg(degtorad(2));
 
   // RAND
   // Test omitted because we cannot enforce getting the same random number back
@@ -744,7 +744,7 @@
     RPNNumber(2,
     RPNFunc(fekROUND, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(RoundTo(pi, 2));
+  sollValues[Row] := CreateNumberArg(RoundTo(pi, 2));
 
   // SIGN
   inc(Row);
@@ -753,7 +753,7 @@
     RPNNumber(-0.1,
     RPNFunc(fekSIGN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sign(-0.1));
+  sollValues[Row] := CreateNumberArg(sign(-0.1));
 
   // SIGN of cell value
   inc(Row);
@@ -762,7 +762,7 @@
     RPNCellValue('B1',
     RPNFunc(fekSIGN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sign(2));
+  sollValues[Row] := CreateNumberArg(sign(2));
 
   // SIN
   inc(Row);
@@ -771,7 +771,7 @@
     RPNNumber(0.1,
     RPNFunc(fekSIN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sin(0.1));
+  sollValues[Row] := CreateNumberArg(sin(0.1));
 
   // SIN   of cell value
   inc(Row);
@@ -780,7 +780,7 @@
     RPNCellValue('B1',
     RPNFunc(fekSIN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sin(2));
+  sollValues[Row] := CreateNumberArg(sin(2));
 
   // SINH
   inc(Row);
@@ -789,7 +789,7 @@
     RPNNumber(0.1,
     RPNFunc(fekSINH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sinh(0.1));
+  sollValues[Row] := CreateNumberArg(sinh(0.1));
 
   // SINH of cell value
   inc(Row);
@@ -798,7 +798,7 @@
     RPNCellValue('B1',
     RPNFunc(fekSINH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sinh(2));
+  sollValues[Row] := CreateNumberArg(sinh(2));
 
   // SQRT - valid result
   inc(Row);
@@ -807,7 +807,7 @@
     RPNNumber(0.1,
     RPNFunc(fekSQRT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sqrt(0.1));
+  sollValues[Row] := CreateNumberArg(sqrt(0.1));
 
   // SQRT - error (negative argument)
   inc(Row);
@@ -816,7 +816,7 @@
     RPNNumber(-0.1,
     RPNFunc(fekSQRT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errOverflow);
+  sollValues[Row] := CreateErrorArg(errOverflow);
 
   // SQRT of cell value
   inc(Row);
@@ -825,7 +825,7 @@
     RPNCellvalue('B1',
     RPNFunc(fekSQRT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(sqrt(2));
+  sollValues[Row] := CreateNumberArg(sqrt(2));
 
   // TAN - valid result
   inc(Row);
@@ -834,7 +834,7 @@
     RPNNumber(0.1,
     RPNFunc(fekTAN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(tan(0.1));
+  sollValues[Row] := CreateNumberArg(tan(0.1));
 
   // TAN - error (argument = pi/2)
   // This test is omitted because it is difficult to exactly hit pi/2.
@@ -846,7 +846,7 @@
     RPNCellValue('B1',
     RPNFunc(fekTAN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(tan(2));
+  sollValues[Row] := CreateNumberArg(tan(2));
 
   // TANH
   inc(Row);
@@ -855,7 +855,7 @@
     RPNNumber(0.1,
     RPNFunc(fekTANH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(tanh(0.1));
+  sollValues[Row] := CreateNumberArg(tanh(0.1));
 
   // TANH of cell value
   inc(Row);
@@ -864,7 +864,7 @@
     RPNCellValue('B1',
     RPNFunc(fekTANH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(tanh(2));
+  sollValues[Row] := CreateNumberArg(tanh(2));
 
 
 {------------------------------------------------------------------------------}
@@ -880,7 +880,7 @@
     RPNNumber(1,
     RPNFunc(fekDATE, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(EncodeDate(2014,7,1));
+  sollValues[Row] := CreateNumberArg(EncodeDate(2014,7,1));
 
   // DATEVALUE
   inc(Row);
@@ -890,7 +890,7 @@
     RPNString(s,
     RPNFunc(fekDATEVALUE, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(EncodeDate(2014,7,1));
+  sollValues[Row] := CreateNumberArg(EncodeDate(2014,7,1));
 
   // DAY  / argument number
   inc(Row);
@@ -902,7 +902,7 @@
     RPNFunc(fekDATE,
     RPNFunc(fekDAY, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   // DAY  / argument string
   inc(Row);
@@ -912,7 +912,7 @@
     RPNString(s,
     RPNFunc(fekDAY, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   // HOUR  / argument number
   inc(Row);
@@ -924,7 +924,7 @@
     RPNFunc(fekTIME,
     RPNFunc(fekHOUR, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(9);
+  sollValues[Row] := CreateNumberArg(9);
 
   // HOUR  / argument string
   inc(Row);
@@ -934,7 +934,7 @@
     RPNString(s,
     RPNFunc(fekHOUR, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(9);
+  sollValues[Row] := CreateNumberArg(9);
 
   // MINUTE  / argument number
   inc(Row);
@@ -946,7 +946,7 @@
     RPNFunc(fekTIME,
     RPNFunc(fekMINUTE, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(59);
+  sollValues[Row] := CreateNumberArg(59);
 
   // MINUTE  / argument string
   inc(Row);
@@ -956,7 +956,7 @@
     RPNString(s,
     RPNFunc(fekMINUTE, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(59);
+  sollValues[Row] := CreateNumberArg(59);
 
   // MONTH  / argument number
   inc(Row);
@@ -968,7 +968,7 @@
     RPNFunc(fekDATE,
     RPNFunc(fekMONTH, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(7);
+  sollValues[Row] := CreateNumberArg(7);
 
   // MONTH  / argument string
   inc(Row);
@@ -978,7 +978,7 @@
     RPNString(s,
     RPNFunc(fekMONTH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(7);
+  sollValues[Row] := CreateNumberArg(7);
 
   // NOW
   inc(Row);
@@ -992,7 +992,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNFunc(fekNOW, nil)));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(t);
+  sollValues[Row] := CreateNumberArg(t);
 
   // SECOND  / argument number
   inc(Row);
@@ -1004,7 +1004,7 @@
     RPNFunc(fekTIME,
     RPNFunc(fekSECOND, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(20);
+  sollValues[Row] := CreateNumberArg(20);
 
   // SECOND  / argument string
   inc(Row);
@@ -1014,7 +1014,7 @@
     RPNString(s,
     RPNFunc(fekSECOND, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(20);
+  sollValues[Row] := CreateNumberArg(20);
 
   // TIME
   inc(Row);
@@ -1025,7 +1025,7 @@
     RPNNumber(20,
     RPNFunc(fekTIME, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(EncodeTime(9, 59, 20, 0));
+  sollValues[Row] := CreateNumberArg(EncodeTime(9, 59, 20, 0));
 
   // TIMEVALUE
   inc(Row);
@@ -1035,7 +1035,7 @@
     RPNString(s,
     RPNFunc(fekTIMEVALUE, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(EncodeTime(9, 59, 20, 0));
+  sollValues[Row] := CreateNumberArg(EncodeTime(9, 59, 20, 0));
 
   // TODAY
   inc(Row);
@@ -1043,7 +1043,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNFunc(fekTODAY, nil)));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(Date());
+  sollValues[Row] := CreateNumberArg(Date());
 
   // WEEKDAY  / argument number
   inc(Row);
@@ -1055,7 +1055,7 @@
     RPNFunc(fekDATE,
     RPNFunc(fekWEEKDAY, 1, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(DayOfWeek(EncodeDate(2014,7,1)));
+  sollValues[Row] := CreateNumberArg(DayOfWeek(EncodeDate(2014,7,1)));
 
   // WEEKDAY  / argument string
   inc(Row);
@@ -1065,7 +1065,7 @@
     RPNString(s,
     RPNFunc(fekWEEKDAY, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(DayOfWeek(EncodeDate(2014,7,1)));
+  sollValues[Row] := CreateNumberArg(DayOfWeek(EncodeDate(2014,7,1)));
 
   // YEAR  / argument number
   inc(Row);
@@ -1077,7 +1077,7 @@
     RPNFunc(fekDATE,
     RPNFunc(fekYEAR, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2014);
+  sollValues[Row] := CreateNumberArg(2014);
 
   // YEAR  / argument string
   inc(Row);
@@ -1087,7 +1087,7 @@
     RPNString(s,
     RPNFunc(fekYEAR, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2014);
+  sollValues[Row] := CreateNumberArg(2014);
 
 
 {------------------------------------------------------------------------------}
@@ -1105,7 +1105,7 @@
     RPNNumber(0.8,
     RPNFunc(fekAVEDEV, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(mean([0.0, 0.1, 0.2, 0.1, 0.2]));
+  sollValues[Row] := CreateNumberArg(mean([0.0, 0.1, 0.2, 0.1, 0.2]));
                             // these values are the absolute deviations from mean (1.0)
   // AVERAGE
   inc(Row);
@@ -1118,7 +1118,7 @@
     RPNNumber(0.8,
     RPNFunc(fekAVERAGE, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(mean([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(mean([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   // AVERAGE of cell block
   inc(Row);
@@ -1127,7 +1127,7 @@
     RPNCellRange('B1:B2',
     RPNFunc(fekAVERAGE, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(mean([2.0, -9.0]));
+  sollValues[Row] := CreateNumberArg(mean([2.0, -9.0]));
 
   // COUNT
   inc(Row);
@@ -1140,7 +1140,7 @@
     RPNNumber(0.8,
    RPNFunc(fekCOUNT, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(5);
+  sollValues[Row] := CreateNumberArg(5);
 
   // COUNT  of cell range (no empty cells)
   inc(Row);
@@ -1149,7 +1149,7 @@
     RPNCellrange('B1:B2',
     RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);
+  sollValues[Row] := CreateNumberArg(2);
 
   // COUNT of cell range (no empty cells, but with non-numeric cells)
   inc(Row);
@@ -1158,7 +1158,7 @@
     RPNCellrange('A1:B2',
     RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);
+  sollValues[Row] := CreateNumberArg(2);
 
   // COUNT  of cell range (with empty cells)
   inc(Row);
@@ -1167,7 +1167,7 @@
     RPNCellrange('B1:C2',
     RPNFunc(fekCOUNT, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);
+  sollValues[Row] := CreateNumberArg(2);
 
   if AFormat <> sfExcel2 then begin
     // COUNTBLANK
@@ -1177,7 +1177,7 @@
       RPNCellRange('A1:D2',
       RPNFunc(fekCOUNTBLANK, nil))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(4);
+    sollValues[Row] := CreateNumberArg(4);
   end;
 
   if AFormat <> sfExcel2 then begin
@@ -1189,7 +1189,7 @@
       RPNNumber(1,                    // "1" is in M2
       RPNFunc(fekCOUNTIF, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1);
+    sollValues[Row] := CreateNumberArg(1);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,">=1")');
@@ -1198,7 +1198,7 @@
       RPNString('>=1',                    // M2=1, N2=2 --> 2
       RPNFunc(fekCOUNTIF, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(2);
+    sollValues[Row] := CreateNumberArg(2);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,"<2")');
@@ -1207,7 +1207,7 @@
       RPNString('<2',                    // M2=1, N2=2 --> 1
       RPNFunc(fekCOUNTIF, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1);
+    sollValues[Row] := CreateNumberArg(1);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,"<>2")');
@@ -1216,7 +1216,7 @@
       RPNString('<>2',                    // N2=2, 6 other cells --> 5
       RPNFunc(fekCOUNTIF, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(5);
+    sollValues[Row] := CreateNumberArg(5);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,M1)');
@@ -1225,7 +1225,7 @@
       RPNCellValue('M1',                    // M1="A", N1="A" -> 2
       RPNFunc(fekCOUNTIF, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(2);
+    sollValues[Row] := CreateNumberArg(2);
   end;
 
   // MAX
@@ -1239,7 +1239,7 @@
     RPNNumber(0.8,
     RPNFunc(fekMAX, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(MaxValue([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(MaxValue([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   // MAX of cell range (no empty cells)
   inc(Row);
@@ -1248,7 +1248,7 @@
     RPNCellRange('B1:B2',
     RPNFunc(fekMAX, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(MaxValue([2.0, -9.0]));
+  sollValues[Row] := CreateNumberArg(MaxValue([2.0, -9.0]));
 
   // MAX of cell range  (incl empty cells)
   inc(Row);
@@ -1257,7 +1257,7 @@
     RPNCellRange('B1:C2',
     RPNFunc(fekMAX, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(MaxValue([2.0, -9.0]));
+  sollValues[Row] := CreateNumberArg(MaxValue([2.0, -9.0]));
 
   // MIN
   inc(Row);
@@ -1270,7 +1270,7 @@
     RPNNumber(0.8,
     RPNFunc(fekMIN, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(MinValue([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(MinValue([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   // PRODUCT
   inc(Row);
@@ -1283,7 +1283,7 @@
     RPNNumber(0.8,
     RPNFunc(fekPRODUCT, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1.0*1.1*1.2*0.9*0.8);
+  sollValues[Row] := CreateNumberArg(1.0*1.1*1.2*0.9*0.8);
 
   // STDEV
   inc(Row);
@@ -1296,7 +1296,7 @@
     RPNNumber(0.8,
     RPNFunc(fekSTDEV, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(StdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(StdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   // STDEVP
   inc(Row);
@@ -1309,7 +1309,7 @@
     RPNNumber(0.8,
     RPNFunc(fekSTDEVP, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(PopnStdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(PopnStdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   // SUM
   inc(Row);
@@ -1322,7 +1322,7 @@
     RPNNumber(0.8,
     RPNFunc(fekSUM, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(Sum([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(Sum([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   if AFormat <> sfExcel2 then begin
     // SUMSQ
@@ -1336,7 +1336,7 @@
       RPNNumber(0.8,
       RPNFunc(fekSUMSQ, 5, nil))))))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(SumOfSquares([1.0, 1.1, 1.2, 0.9, 0.8]));
+    sollValues[Row] := CreateNumberArg(SumOfSquares([1.0, 1.1, 1.2, 0.9, 0.8]));
 
     // SUMIF
     inc(Row);
@@ -1346,7 +1346,7 @@
       RPNNumber(1,                    // "1" is in M2
       RPNFunc(fekSUMIF, 2, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1);
+    sollValues[Row] := CreateNumberArg(1);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,">=1")');
@@ -1355,7 +1355,7 @@
       RPNString('>=1',                    // M2=1, N2=2 --> 2
       RPNFunc(fekSUMIF, 2, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1+2);
+    sollValues[Row] := CreateNumberArg(1+2);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,"<2")');
@@ -1364,7 +1364,7 @@
       RPNString('<2',                    // M2=1, N2=2 --> 1
       RPNFunc(fekSUMIF, 2, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1);
+    sollValues[Row] := CreateNumberArg(1);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,"<>2")');
@@ -1373,7 +1373,7 @@
       RPNString('<>2',                    // N2=2, 6 other cells --> 5
       RPNFunc(fekSUMIF, 2, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1);
+    sollValues[Row] := CreateNumberArg(1);
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,M1)');
@@ -1382,7 +1382,7 @@
       RPNCellValue('M1',                    // M1="A", N1="A" -> 2
       RPNFunc(fekSUMIF, 2, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(0);  // no numbers!
+    sollValues[Row] := CreateNumberArg(0);  // no numbers!
 
     inc(Row);
     MyWorksheet.WriteUTF8Text(Row, 0, '=SUMIF(M1:N3,M2)');
@@ -1391,7 +1391,7 @@
       RPNCellValue('M2',                    // M2=1
       RPNFunc(fekSUMIF, 2, nil)))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumber(1);
+    sollValues[Row] := CreateNumberArg(1);
   end;
 
   // VAR
@@ -1405,7 +1405,7 @@
     RPNNumber(0.8,
     RPNFunc(fekVAR, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(Variance([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(Variance([1.0, 1.1, 1.2, 0.9, 0.8]));
 
   // VARP
   inc(Row);
@@ -1418,7 +1418,7 @@
     RPNNumber(0.8,
     RPNFunc(fekVARP, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(PopnVariance([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(PopnVariance([1.0, 1.1, 1.2, 0.9, 0.8]));
 
 
 {------------------------------------------------------------------------------}
@@ -1432,7 +1432,7 @@
     RPNBool(true,
     RPNFunc(fekAND, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);
+  sollValues[Row] := CreateBoolArg(true);
 
   // AND of two values (bool)
   inc(Row);
@@ -1442,7 +1442,7 @@
     RPNBool(false,
     RPNFunc(fekAND, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true and false);
+  sollValues[Row] := CreateBoolArg(true and false);
 
   // AND of three values (bool)
   inc(Row);
@@ -1453,7 +1453,7 @@
     RPNBool(true,
     RPNFunc(fekAND, 3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true and false and true);
+  sollValues[Row] := CreateBoolArg(true and false and true);
 
   // OR of one values (bool)
   inc(Row);
@@ -1462,7 +1462,7 @@
     RPNBool(true,
     RPNFunc(fekOR, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);
+  sollValues[Row] := CreateBoolArg(true);
 
   // OR of two values (bool)
   inc(Row);
@@ -1472,7 +1472,7 @@
     RPNBool(false,
     RPNFunc(fekOR, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true or false);
+  sollValues[Row] := CreateBoolArg(true or false);
 
   // OR of three values (bool)
   inc(Row);
@@ -1483,7 +1483,7 @@
     RPNBool(true,
     RPNFunc(fekOR, 3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true or false or true);
+  sollValues[Row] := CreateBoolArg(true or false or true);
 
   // function =FALSE()
   inc(Row);
@@ -1491,7 +1491,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNFunc(fekFALSE, nil)));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(false);
+  sollValues[Row] := CreateBoolArg(false);
 
   // function =TRUE()
   inc(Row);
@@ -1499,7 +1499,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNFunc(fekTRUE, nil)));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);
+  sollValues[Row] := CreateBoolArg(true);
 
   // NOT
   inc(Row);
@@ -1508,7 +1508,7 @@
     RPNBool(false,
     RPNFunc(fekNOT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(not false);
+  sollValues[Row] := CreateBoolArg(not false);
 
   // IF (2 parameters)/strings/case true
   inc(Row);
@@ -1518,7 +1518,7 @@
     RPNString('A',
     RPNFunc(fekIF, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('A');
+  sollValues[Row] := CreateStringArg('A');
 
   // IF (2 parameters) /floats/case true
   inc(Row);
@@ -1528,7 +1528,7 @@
     RPNNumber(1.0,
     RPNFunc(fekIF, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   // IF (2 parameters)/strings/case falsee
   inc(Row);
@@ -1538,7 +1538,7 @@
     RPNString('A',
     RPNFunc(fekIF, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(false);
+  sollValues[Row] := CreateBoolArg(false);
 
   // IF (2 parameters) /floats/case tfalse
   inc(Row);
@@ -1548,7 +1548,7 @@
     RPNNumber(1.0,
     RPNFunc(fekIF, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(false);
+  sollValues[Row] := CreateBoolArg(false);
 
   // IF (3 parameters)/strings
   inc(Row);
@@ -1559,7 +1559,7 @@
     RPNString('B',
     RPNFunc(fekIF, 3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('A');
+  sollValues[Row] := CreateStringArg('A');
 
   // IF (3 parameters) /floats
   inc(Row);
@@ -1570,7 +1570,7 @@
     RPNNumber(2.0,
     RPNFunc(fekIF,3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   // IF (3 parameters) /floats / mixed types, case true
   inc(Row);
@@ -1581,7 +1581,7 @@
     RPNString('A',
     RPNFunc(fekIF,3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   // IF (3 parameters) /floats / mixed types, case false
   inc(Row);
@@ -1592,7 +1592,7 @@
     RPNString('A',
     RPNFunc(fekIF, 3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('A');
+  sollValues[Row] := CreateStringArg('A');
 
 
 {------------------------------------------------------------------------------}
@@ -1606,7 +1606,7 @@
     RPNNumber(72,
     RPNFunc(fekCHAR, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(char(72));
+  sollValues[Row] := CreateStringArg(char(72));
 
    // CODE
   inc(Row);
@@ -1615,7 +1615,7 @@
     RPNString('Hallo world',
     RPNFunc(fekCODE, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(ord('H'));
+  sollValues[Row] := CreateNumberArg(ord('H'));
 
   // LEFT (2 parameters)
   inc(Row);
@@ -1625,7 +1625,7 @@
     RPNNumber(2,
     RPNFunc(fekLEFT, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('Ha');
+  sollValues[Row] := CreateStringArg('Ha');
 
   // LEFT (2 parameters, utf8)
   inc(Row);
@@ -1635,7 +1635,7 @@
     RPNNumber(3,
     RPNFunc(fekLEFT, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('Änd');
+  sollValues[Row] := CreateStringArg('Änd');
 
   // LEFT (2 parameters, 1 of them missing)
   inc(Row);
@@ -1645,7 +1645,7 @@
     RPNMissingArg(
     RPNFunc(fekLEFT, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('H');
+  sollValues[Row] := CreateStringArg('H');
 
   // LEFT (1 parameter)
   inc(Row);
@@ -1654,7 +1654,7 @@
     RPNString('Hallo world',
     RPNFunc(fekLEFT, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('H');
+  sollValues[Row] := CreateStringArg('H');
 
   // Lower case
   inc(Row);
@@ -1663,7 +1663,7 @@
     RPNString('Hallo world',
     RPNFunc(fekLOWER, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(LowerCase('Hallo world'));
+  sollValues[Row] := CreateStringArg(LowerCase('Hallo world'));
 
   // Lower case / utf8
   inc(Row);
@@ -1672,7 +1672,7 @@
     RPNString('Viele Grüße',
     RPNFunc(fekLOWER, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(UTF8LowerCase('Viele Grüße'));
+  sollValues[Row] := CreateStringArg(UTF8LowerCase('Viele Grüße'));
 
   // MID
   inc(Row);
@@ -1683,7 +1683,7 @@
     RPNNumber(2,
     RPNFunc(fekMID, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('ll');
+  sollValues[Row] := CreateStringArg('ll');
 
   // REPLACE
   inc(Row);
@@ -1695,7 +1695,7 @@
     RPNString('he',
     RPNFunc(fekREPLACE, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('whether');
+  sollValues[Row] := CreateStringArg('whether');
 
   // REPLACE / utf8
   inc(Row);
@@ -1707,7 +1707,7 @@
     RPNString('u',
     RPNFunc(fekREPLACE, nil)))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('wurde');
+  sollValues[Row] := CreateStringArg('wurde');
 
 // RIGHT (2 parameters)
   inc(Row);
@@ -1717,7 +1717,7 @@
     RPNNumber(2,
     RPNFunc(fekRIGHT, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('ld');
+  sollValues[Row] := CreateStringArg('ld');
 
   // RIGHT (2 parameters, one of them missing)
   inc(Row);
@@ -1727,7 +1727,7 @@
     RPNMissingArg(
     RPNFunc(fekRIGHT, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('d');
+  sollValues[Row] := CreateStringArg('d');
 
   // RIGHT (1 parameter)
   inc(Row);
@@ -1736,7 +1736,7 @@
     RPNString('Hallo world',
     RPNFunc(fekRIGHT, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('d');
+  sollValues[Row] := CreateStringArg('d');
 
   // SUBSTITUTE
   inc(Row);
@@ -1747,7 +1747,7 @@
     RPNString('a',
     RPNFunc(fekSUBSTITUTE, 3, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('lazarus');
+  sollValues[Row] := CreateStringArg('lazarus');
 
   // Trim
   inc(Row);
@@ -1756,7 +1756,7 @@
     RPNString('   Hallo world   ',
     RPNFunc(fekTRIM, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(UTF8Trim('   Hallo world   '));
+  sollValues[Row] := CreateStringArg(UTF8Trim('   Hallo world   '));
 
   // Upper case
   inc(Row);
@@ -1765,7 +1765,7 @@
     RPNString('Hallo world',
     RPNFunc(fekUPPER, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(UpperCase('Hallo world'));
+  sollValues[Row] := CreateStringArg(UpperCase('Hallo world'));
 
   // Upper case / utf8
   inc(Row);
@@ -1774,7 +1774,7 @@
     RPNString('Viele Grüße',
     RPNFunc(fekUPPER, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(UTF8UpperCase('Viele Grüße'));
+  sollValues[Row] := CreateStringArg(UTF8UpperCase('Viele Grüße'));
 
 
 {------------------------------------------------------------------------------}
@@ -1787,14 +1787,14 @@
     RPNCellRef('A1',
     RPNFunc(fekCOLUMN, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMN(C1:D3)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange('C1:D3',
     RPNFunc(fekCOLUMN, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(3);
+  sollValues[Row] := CreateNumberArg(3);
 
   // COLUMNS
   MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMNS(A1)');
@@ -1802,14 +1802,14 @@
     RPNCellRef('A1',
     RPNFunc(fekCOLUMNS, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=COLUMNS(C1:D3)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange('C1:D3',
     RPNFunc(fekCOLUMNS, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);
+  sollValues[Row] := CreateNumberArg(2);
 
   // ROW
   MyWorksheet.WriteUTF8Text(Row, 0, '=ROW(A1)');
@@ -1817,14 +1817,14 @@
     RPNCellRef('A1',
     RPNFunc(fekROW, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=ROW(C2:D3)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange('C2:D3',
     RPNFunc(fekROW, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);
+  sollValues[Row] := CreateNumberArg(2);
 
   // ROWS
   MyWorksheet.WriteUTF8Text(Row, 0, '=ROWS(A1)');
@@ -1832,14 +1832,14 @@
     RPNCellRef('A1',
     RPNFunc(fekROWS, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);
+  sollValues[Row] := CreateNumberArg(1);
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=ROWS(C2:D3)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange('C2:D3',
     RPNFunc(fekROWS, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);
+  sollValues[Row] := CreateNumberArg(2);
 
 
 {------------------------------------------------------------------------------}
@@ -1853,7 +1853,7 @@
     RPNCellRef('A1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('$A$1');
+  sollValues[Row] := CreateStringArg('$A$1');
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("col", B1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1861,7 +1861,7 @@
     RPNCellRef('B1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(2);      // Excel starts counting at 1
+  sollValues[Row] := CreateNumberArg(2);      // Excel starts counting at 1
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("format", B1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1869,7 +1869,7 @@
     RPNCellRef('B1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('G');
+  sollValues[Row] := CreateStringArg('G');
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("prefix", A1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1877,7 +1877,7 @@
     RPNCellRef('A1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('''');
+  sollValues[Row] := CreateStringArg('''');
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("row", B1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1885,7 +1885,7 @@
     RPNCellRef('B1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(1);      // Excel starts counting at 1
+  sollValues[Row] := CreateNumberArg(1);      // Excel starts counting at 1
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("type", A1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1893,7 +1893,7 @@
     RPNCellRef('A1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('l');
+  sollValues[Row] := CreateStringArg('l');
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=CELL("type", B1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1901,7 +1901,7 @@
     RPNCellRef('B1',
     RPNFunc(fekCELLINFO, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString('v');
+  sollValues[Row] := CreateStringArg('v');
 
   // INFO
   MyWorksheet.WriteUTF8Text(Row, 0, '=INFO("directory", A1)');
@@ -1909,14 +1909,14 @@
     RPNString('directory',
     RPNFunc(fekINFO, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateString(ExtractFilePath(TempFile));
+  sollValues[Row] := CreateStringArg(ExtractFilePath(TempFile));
 
   MyWorksheet.WriteUTF8Text(Row, 0, '=INFO("numfile")');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('numfile',
     RPNFunc(fekINFO, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(MyWorkbook.GetWorksheetCount);
+  sollValues[Row] := CreateNumberArg(MyWorkbook.GetWorksheetCount);
 
   // IsBlank
   inc(Row);
@@ -1925,7 +1925,7 @@
     RPNCellRef('A1',
     RPNFunc(fekISBLANK, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(false);  // cell contains text --> not blank
+  sollValues[Row] := CreateBoolArg(false);  // cell contains text --> not blank
 
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=ISBLANK(G1)');
@@ -1933,7 +1933,7 @@
     RPNCellRef('G1',
     RPNFunc(fekISBLANK, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);  // the cell does not exist --> blank
+  sollValues[Row] := CreateBoolArg(true);  // the cell does not exist --> blank
 
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=ISBLANK(H1)');
@@ -1942,7 +1942,7 @@
     RPNCellRef('H1',
     RPNFunc(fekISBLANK, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);  // the cell exists, but it is empty
+  sollValues[Row] := CreateBoolArg(true);  // the cell exists, but it is empty
 
   // IsError
   inc(Row);
@@ -1953,7 +1953,7 @@
     RPNFunc(fekDiv,
     RPNFunc(fekISERROR, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);
+  sollValues[Row] := CreateBoolArg(true);
 
   // IsError
   inc(Row);
@@ -1964,7 +1964,7 @@
     RPNFunc(fekDiv,
     RPNFunc(fekISERROR, nil))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(false);
+  sollValues[Row] := CreateBoolArg(false);
 
   // IsRef
   inc(Row);
@@ -1973,7 +1973,7 @@
     RPNNumber(1,
     RPNFunc(fekISREF, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(false);
+  sollValues[Row] := CreateBoolArg(false);
 
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=ISREF(A1)');
@@ -1981,7 +1981,7 @@
     RPNCellRef('A1',
     RPNFunc(fekISREF, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateBool(true);
+  sollValues[Row] := CreateBoolArg(true);
 
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=ISREF(A1)');
@@ -1992,7 +1992,7 @@
   // The correct result would be "false" because a cell value is not the same as
   // a cell reference. But Excel seems to ignore this difference here and
   // accepts only a "true".
-  sollValues[Row] := CreateBool(true);
+  sollValues[Row] := CreateBoolArg(true);
 
   // VALUE
   inc(Row);
@@ -2001,7 +2001,7 @@
     RPNString('100',
     RPNFunc(fekVALUE, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(100);
+  sollValues[Row] := CreateNumberArg(100);
 
 {------------------------------------------------------------------------------}
 {                                Error cases                                   }
@@ -2015,7 +2015,7 @@
     RPNNumber(1.0,
     RPNFunc(fekIF,3, nil)))));            // <-- we have only 2 parameters!
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errArgError);
+  sollValues[Row] := CreateErrorArg(errArgError);
 
   // Using more parameters than specified
   inc(Row);
@@ -2026,7 +2026,7 @@
     RPNString('A',
     RPNFunc(fekIF,2, nil))))));         // <-- but we pushed 3 parameters, not 2
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateError(errWrongType);
+  sollValues[Row] := CreateErrorArg(errWrongType);
   { The first idea was that this should report an ArgError, but in fact it is
     a WrongType error because popping two values from the stack finds a number,
     but a bool is expected }

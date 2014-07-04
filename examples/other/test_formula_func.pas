@@ -51,7 +51,7 @@ begin
   // in case of non-numerical values.
   if Args.PopNumberValues(NumArgs, false, data, Result) then
     // Call our FV function with the NumberValues of the arguments.
-    Result := CreateNumber(FV(
+    Result := CreateNumberArg(FV(
       data[0],       // interest rate
       data[1],       // number of payments
       data[2],       // payment
