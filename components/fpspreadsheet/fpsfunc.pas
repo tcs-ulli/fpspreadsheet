@@ -128,6 +128,7 @@ function fpsAVEDEV      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsAVERAGE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsCOUNT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsCOUNTBLANK  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOUNTIF     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMAX         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMIN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsPRODUCT     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -237,6 +238,148 @@ function CreateEmpty: TsArgument;
 begin
   Result := CreateArgument;
   Result.ArgumentType := atEmpty;
+end;
+
+{ Compares two arguments and returns -1 if "Arg2 > Arg1", +1 if "Arg1 < Arg2",
+  0 if "Arg1 = Arg2", MaxInt if result meaningless
+  If AExact is true only matching types are compared, otherwise types are converted before comparing. }
+function CompareArgs(Arg1, Arg2: TsArgument; AExact: Boolean): integer;
+var
+  val1, val2: Double;
+  b1, b2: Boolean;
+  cell1, cell2: PCell;
+  s: String;
+begin
+  Result := MaxInt;
+
+  // Number - Number
+  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType = atNumber) then begin
+    Result := CompareValue(Arg1.NumberValue, Arg2.NumberValue);
+    exit;
+  end;
+
+  // String - String
+  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType = atString) then begin
+    if TryStrToFloat(Arg1.StringValue, val1) and TryStrToFloat(Arg2.StringValue, val2) then
+      Result := CompareValue(val1, val2)
+    else
+      Result := UTF8CompareText(Arg1.StringValue, Arg2.StringValue);
+    exit;
+  end;
+
+  // Bool - Bool
+  if (Arg1.ArgumentType = atBool) and (Arg2.ArgumentType = atBool) then begin
+    Result := CompareValue(ord(Arg1.BoolValue), ord(Arg2.BoolValue));
+    exit;
+  end;
+
+  // Cell - Cell
+  if (Arg1.ArgumentType in [atCell, atCellRange]) and (Arg2.ArgumentType in [atCell, atCellRange])
+  then begin
+    if Arg1.ArgumentType = atCell
+      then cell1 := Arg1.Cell
+      else cell1 := Arg1.Worksheet.FindCell(Arg1.FirstRow, Arg1.FirstCol);
+    if Arg2.ArgumentType = atCell
+      then cell2 := Arg2.Cell
+      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
+    if Arg1.Worksheet.ReadNumericValue(cell1, val1) and Arg2.Worksheet.ReadNumericValue(cell2, val2) then begin
+      Result := CompareValue(val1, val2);
+      exit;
+    end;
+    Result := UTF8CompareText(cell1^.UTF8StringValue, cell2^.UTF8StringValue);
+    exit;
+  end;
+
+  // Mixed type comparison only if AExact = true
+  if AExact then
+    exit;
+
+  // Number - string
+  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType = atString) then begin
+    if TryStrToFloat(Arg2.StringValue, val2) then
+      Result := CompareValue(Arg1.NumberValue, val2);
+    exit;
+  end;
+  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType = atNumber) then begin
+    if TryStrToFloat(Arg1.StringValue, val1) then
+      Result := CompareValue(val1, Arg2.NumberValue);
+    exit;
+  end;
+
+  // Number - bool
+  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType = atBool) then begin
+    Result := CompareValue(Arg1.NumberValue, ord(Arg2.BoolValue));
+    exit;
+  end;
+  if (Arg1.ArgumentType = atBool) and (Arg2.ArgumentType = atNumber) then begin
+    Result := CompareValue(ord(Arg1.BoolValue), Arg2.NumberValue);
+    exit;
+  end;
+
+  // Number - cell
+  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType in [atCell, atCellRange]) then begin
+    if Arg2.ArgumentType = atCell
+      then cell2 := Arg2.Cell
+      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
+    if (cell2 <> nil) and Arg2.Worksheet.ReadNumericValue(cell2, val2) then
+      Result := CompareValue(Arg1.NumberValue, val2);
+    exit;
+  end;
+  if (Arg2.ArgumentType = atNumber) and (Arg1.ArgumentType in [atCell, atCellRange]) then begin
+    Result := CompareArgs(Arg2, Arg1, AExact);
+    if Result <> MaxInt then Result := -Result;
+    exit;
+  end;
+
+  // String - bool
+  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType = atBool) then begin
+    if not TryStrToFloat(Arg1.StringValue, val1) then
+      exit;
+    val2 := ord(Arg2.BoolValue);
+    Result := CompareValue(val1, val2);
+    exit;
+  end;
+  if (Arg2.ArgumentType = atString) and (Arg1.ArgumentType = atBool) then begin
+    Result := CompareArgs(Arg2, Arg1, AExact);
+    if Result <> MaxInt then Result := -Result;
+  end;
+
+  // String - cell
+  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType in [atCell, atCellRange]) then begin
+    if Arg2.ArgumentType = atCell
+      then cell2 := Arg2.Cell
+      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
+    if cell2 = nil then
+      exit;
+    if TryStrToFloat(Arg1.stringValue, val1) then begin
+      if Arg2.Worksheet.ReadNumericValue(cell2, val2) then
+        Result := CompareValue(val1, val2);
+      exit;
+    end;
+    Result := UTF8CompareText(Arg1.StringValue, cell2^.UTF8StringValue);
+    exit;
+  end;
+  if (Arg2.ArgumentType = atString) and (Arg1.ArgumentType in [atCell, atCellRange]) then begin
+    Result := CompareArgs(Arg2, Arg1, AExact);
+    if Result <> MaxInt then Result := -Result;
+    exit;
+  end;
+
+  // Bool - cell
+  if (Arg1.ArgumentType = atBool) and (Arg2.ArgumentType in [atCell, atCellRange]) then begin
+    val1 := ord(Arg1.BoolValue);
+    if Arg2.ArgumentType = atCell
+      then cell2 := Arg2.Cell
+      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
+    if (cell2 <> nil) and Arg2.Worksheet.ReadNumericValue(cell2, val2) then
+      Result := CompareValue(val1, val2);
+    exit;
+  end;
+  if (Arg2.ArgumentType = atBool) and (Arg1.ArgumentType in [atCell, atCellRange]) then begin
+    Result := CompareArgs(Arg2, Arg1, AExact);
+    if Result <> MaxInt then Result := -Result;
+    exit;
+  end;
 end;
 
 
@@ -1443,6 +1586,80 @@ begin
     else
       Result := CreateError(errWrongType);
   end;
+end;
+
+function fpsCOUNTIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// COUNTIF( range, criteria )
+// - "range" is to the cell range to be analyzed
+// - "citeria" can be a cell, a value or a string starting with a symbol like ">" etc.
+//   (in the former two cases a value is counted if equal to the criteria value)
+var
+  n: Integer;
+  r, c: Cardinal;
+  arg: TsArgument;
+  cellarg: TsArgument;
+  criteria: TsArgument;
+  compare: TFEKind;
+  res: Integer;
+  cell: PCell;
+begin
+  criteria := Args.Pop;
+  arg := Args.Pop;
+  compare := fekEqual;
+  case criteria.ArgumentType of
+    atCellRange:
+      criteria := CreateCell(criteria.Worksheet.FindCell(criteria.FirstRow, criteria.FirstCol));
+    atString:
+      if Length(criteria.StringValue) > 1 then
+        case criteria.StringValue[1] of
+          '<' : case criteria.StringValue[2] of
+                  '>' : begin
+                          compare := fekNotEqual;
+                          Delete(criteria.StringValue, 1, 2);
+                        end;
+                  '=' : begin
+                          compare := fekLessEqual;
+                          Delete(criteria.StringValue, 1, 2);
+                        end;
+                  else  compare := fekLess;
+                        Delete(criteria.StringValue, 1, 1);
+                end;
+          '>' : case criteria.StringValue[2] of
+                  '=' : begin
+                          compare := fekGreaterEqual;
+                          Delete(criteria.StringValue, 1, 2);
+                        end;
+                  else  compare := fekGreater;
+                        Delete(criteria.StringValue, 1, 1);
+                end;
+          '=' : begin
+                  compare := fekEqual;
+                  Delete(criteria.StringValue, 1, 1);
+                end;
+        end;
+  end;
+  n := 0;
+  for r := arg.FirstRow to arg.LastRow do
+    for c := arg.FirstCol to arg.LastCol do begin
+      cell := arg.Worksheet.FindCell(r, c);
+      if cell <> nil then begin
+        cellarg := CreateCell(cell);
+        res := CompareArgs(cellarg, criteria, false);
+        if res <> MaxInt then begin
+          if (res < 0) and (compare in [fekLess, fekLessEqual, fekNotEqual])
+            then inc(n)
+          else
+          if (res = 0) and (compare in [fekEqual, fekLessEqual, fekGreaterEqual])
+            then inc(n)
+          else
+          if (res > 0) and (compare in [fekGreater, fekGreaterEqual, fekNotEqual])
+            then inc(n);
+        end else
+          if (compare = fekNotEqual) then inc(n);
+      end else
+       if compare = fekNotEqual then inc(n);
+    end;
+  Result := CreateNumber(n);
 end;
 
 function fpsMAX(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
