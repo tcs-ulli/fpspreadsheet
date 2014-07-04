@@ -246,8 +246,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNBool(true,
     RPNBool(false,
-    RPNParenthesis(
-    RPNFunc(fekEqual, nil))))));
+    RPNFunc(fekEqual, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(true = false);
 
@@ -257,8 +256,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('Hallo',
     RPNString('world',
-    RPNParenthesis(
-    RPNFunc(fekEqual, nil))))));
+    RPNFunc(fekEqual, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg('Hallo' = 'world');
 
@@ -268,10 +266,37 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1.0,
     RPNNumber(1.0,
-    RPNParenthesis(
-    RPNFunc(fekEqual, nil))))));
+    RPNFunc(fekEqual, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(1=1);
+
+  // Equal (cell)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M1=1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M1',
+    RPNNumber(1.0,
+    RPNFunc(fekEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M1 is "A"
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2=1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNNumber(1.0,
+    RPNFunc(fekEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(true);  // M2 is 1
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2=N2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNCellValue('N2',
+    RPNFunc(fekEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M2 is 1, N2 is 2
 
   // Greater (bool)
   inc(Row);
@@ -279,8 +304,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNBool(true,
     RPNBool(false,
-    RPNParenthesis(
-    RPNFunc(fekGreater, nil))))));
+    RPNFunc(fekGreater, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(true > false);
 
@@ -290,8 +314,7 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNString('Hallo',
     RPNString('world',
-    RPNParenthesis(
-    RPNFunc(fekGreater, nil))))));
+    RPNFunc(fekGreater, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg('Hallo' > 'world');
 
@@ -301,10 +324,28 @@
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1.0,
     RPNNumber(1.0,
-    RPNParenthesis(
-    RPNFunc(fekGreater, nil))))));
+    RPNFunc(fekGreater, nil)))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(1>1);
+
+  // Greater (cell)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2>1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNNumber(1.0,
+    RPNFunc(fekGreater, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M2 is 1
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2>N2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNCellValue('N2',
+    RPNFunc(fekGreater, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M2 is 1, N2 is 2
 
   // Greater equal (bool)
   inc(Row);
@@ -339,6 +380,25 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(1>=1);
 
+  // Greater equal(cell)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2>=1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNNumber(1.0,
+    RPNFunc(fekGreaterEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(true);  // M2 is 1
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2>=N2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNCellValue('N2',
+    RPNFunc(fekGreaterEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M2 is 1, N2 is 2
+
   // Less (bool)
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=(true<false)');
@@ -371,6 +431,25 @@
     RPNFunc(fekLess, nil))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(1<1);
+
+  // Less (cell)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2<1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNNumber(1.0,
+    RPNFunc(fekLess, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M2 is 1
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2<N2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNCellValue('N2',
+    RPNFunc(fekLess, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(true);  // M2 is 1, N2 is 2
 
   // Less equal (bool)
   inc(Row);
@@ -405,6 +484,25 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(1<=1);
 
+  // Less equal (cell)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2<=1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNNumber(1.0,
+    RPNFunc(fekLessEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(true);  // M2 is 1
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2<=N2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNCellValue('N2',
+    RPNFunc(fekLessEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(true);  // M2 is 1, N2 is 2
+
   // Not equal (bool)
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=(true<>false)');
@@ -437,6 +535,25 @@
     RPNFunc(fekNotEqual, nil))))));
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateBoolArg(1<>1);
+
+  // Not equal (cell)
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2<>1)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNNumber(1.0,
+    RPNFunc(fekNotEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(false);  // M2 is 1
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=(M2<>N2)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellValue('M2',
+    RPNCellValue('N2',
+    RPNFunc(fekNotEqual, nil)))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateBoolArg(true);  // M2 is 1, N2 is 2
 
 {------------------------------------------------------------------------------}
 {                                     Math                                     }
