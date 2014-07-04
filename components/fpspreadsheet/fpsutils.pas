@@ -599,9 +599,9 @@ const
   @param   AColIndex   Zero-based column index
   @param   AFlags      A set containing an entry for column and row if these
                        addresses are relative.
-  @return  Excel-type of cell address containing $ characters for absolute
+  @return  Excel type of cell address containing $ characters for absolute
            address parts.
-  @example ARowIndex = 0, AColIndex = 0, AFlags = [rfRow] --> $A1
+  @example ARowIndex = 0, AColIndex = 0, AFlags = [rfRelRow] --> $A1
 }
 function GetCellString(ARow, ACol: Cardinal; AFlags: TsRelFlags): String;
 begin
@@ -621,10 +621,10 @@ end;
   @param   ACol2       Zero-based index of the last column in the range
   @param   AFlags      A set containing an entry for first and last column and
                        row if their addresses are relative.
-  @return  Excel-type of cell address range containing '$' characters for absolute
+  @return  Excel type of cell address range containing '$' characters for absolute
            address parts and a ':' to separate the first and last cells of the
            range
-  @example ARow1 = 0, ACol1 = 0, ARow = 2, ACol = 1, AFlags = [rfRow, rfRow2]
+  @example ARow1 = 0, ACol1 = 0, ARow = 2, ACol = 1, AFlags = [rfRelRow, rfRelRow2]
            --> $A1:$B3
 }
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;

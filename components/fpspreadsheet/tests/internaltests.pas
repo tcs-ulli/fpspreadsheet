@@ -17,7 +17,7 @@ uses
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
   fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  testsutility, md5;
+  fpsutils, testsutility, md5;
 
 type
   { TSpreadReadInternalTests }
@@ -33,6 +33,9 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
+    // Tests getting Excel style A1 cell locations from row/column based locations.
+    // Bug 26447
+    procedure TestCellString;
     //todo: add more calls, rename sheets, try to get sheets with invalid indexes etc
     //(see strings tests for how to deal with expected exceptions)
     procedure GetSheetByIndex;
@@ -152,16 +155,25 @@ begin
   MyWorkbook.Free;
 end;
 
+procedure TSpreadInternalTests.TestCellString;
+begin
+  CheckEquals('$A$1',GetCellString(0,0,[]));
+  CheckEquals('$Z$1',GetCellString(0,25,[])); //bug 26447
+  CheckEquals('$AA$2',GetCellString(1,26,[])); //just past the last letter
+  CheckEquals('$GW$5',GetCellString(4,204,[])); //some big value
+end;
+
 
 procedure TSpreadInternalTests.SetUp;
 begin
-
 end;
 
 procedure TSpreadInternalTests.TearDown;
 begin
 
 end;
+
+
 
 
 
