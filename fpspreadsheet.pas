@@ -287,7 +287,7 @@ const
   scPurple = $0C;
   scTeal = $0D;
   scSilver = $0E;
-  scGrey = $0F;        scGray = $0F;       // redefine to allow different kinds of writing
+  scGrey = $0F;        scGray = $0F;       // redefine to allow different spelling
   scGrey10pct = $10;   scGray10pct = $10;
   scGrey20pct = $11;   scGray20pct = $11;
   scOrange = $12;
@@ -1587,8 +1587,8 @@ end;
 
 {@@
   Converts a FPSpreadsheet cell position, which is Row, Col in numbers
-  and zero based, to a textual representation which is [Col][Row],
-  being that the Col is in letters and the row is in 1-based numbers }
+  and zero based - e.g. 0,0 - to a textual representation which is [Col][Row],
+  where the Col is in letters and the row is in 1-based numbers - e.g. A1 }
 class function TsWorksheet.CellPosToText(ARow, ACol: Cardinal): string;
 begin
   Result := GetCellString(ARow, ACol, [rfRelCol, rfRelRow]);
