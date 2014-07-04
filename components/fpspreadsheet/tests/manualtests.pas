@@ -153,6 +153,7 @@ begin
   if Workbook <> nil then begin
     Workbook.WriteToFile(TestFileManual, OUTPUT_FORMAT, TRUE);
     Workbook.Free;
+    Workbook := nil;
   end;
 end;
 
