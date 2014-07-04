@@ -1,6 +1,14 @@
 { include file for "formulatests.pas", containing the test cases for the
   calcrpnformula test. }
 
+  // Setting up some test numbers
+
+  // Test range  M1:N3
+  MyWorksheet.WriteUTF8Text(0, 12, 'A');         // M1
+  MyWorksheet.WriteUTF8Text(0, 13, 'A');         // N1
+  MyWorksheet.WriteNumber  (1, 12,  1);          // M2
+  MyWorksheet.WriteNumber  (1, 13,  2);          // N2
+
 {------------------------------------------------------------------------------}
 {                            Basic operations                                  }
 {------------------------------------------------------------------------------}
@@ -1161,14 +1169,64 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumber(2);
 
-  // COUNT
-  inc(Row);
-  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTBLANK(A1:D2)');
-  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNCellRange('A1:D2',
-    RPNFunc(fekCOUNTBLANK, nil))));
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumber(4);
+  if AFormat <> sfExcel2 then begin
+    // COUNTBLANK
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTBLANK(A1:D2)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('A1:D2',
+      RPNFunc(fekCOUNTBLANK, nil))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(4);
+  end;
+
+  if AFormat <> sfExcel2 then begin
+    // COUNTIF
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,1)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNNumber(1,                    // "1" is in M2
+      RPNFunc(fekCOUNTIF, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,">=1")');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNString('>=1',                    // M2=1, N2=2 --> 2
+      RPNFunc(fekCOUNTIF, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(2);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,"<2")');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNString('<2',                    // M2=1, N2=2 --> 1
+      RPNFunc(fekCOUNTIF, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(1);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,"<>2")');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNString('<>2',                    // N2=2, 6 other cells --> 5
+      RPNFunc(fekCOUNTIF, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(5);
+
+    inc(Row);
+    MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTIF(M1:N3,M1)');
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNCellRange('M1:N3',
+      RPNCellValue('M1',                    // M1="A", N1="A" -> 2
+      RPNFunc(fekCOUNTIF, nil)))));
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := CreateNumber(2);
+  end;
 
   // MAX
   inc(Row);

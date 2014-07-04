@@ -512,13 +512,14 @@ type
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean; overload;
     function  ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean; overload;
     function  ReadFormulaAsString(ACell: PCell): String;
+    function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
     function  ReadRPNFormulaAsString(ACell: PCell): String;
-    function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
-    function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
 
     { Reading of cell attributes }
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
       out ACurrencySymbol: String): Boolean;
+    function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
+    function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
 
     { Writing of values }
     procedure WriteBlank(ARow, ACol: Cardinal); overload;
@@ -1199,7 +1200,7 @@ var
     (Symbol:'COUNT';     MinParams:0; MaxParams:30; Func:fpsCOUNT),             // fekCOUNT
     (Symbol:'COUNTA';    MinParams:0; MaxParams:30; Func:nil),  // fekCOUNTA
     (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1;  Func:fpsCOUNTBLANK),        // fekCOUNTBLANK
-    (Symbol:'COUNTIF';   MinParams:2; MaxParams:2;  Func:nil),   // fekCOUNTIF
+    (Symbol:'COUNTIF';   MinParams:2; MaxParams:2;  Func:fpsCOUNTIF),           // fekCOUNTIF
     (Symbol:'MAX';       MinParams:1; MaxParams:30; Func:fpsMAX),               // fekMAX
     (Symbol:'MEDIAN';    MinParams:1; MaxParams:30; Func:nil),  // fekMEDIAN
     (Symbol:'MIN';       MinParams:1; MaxParams:30; Func:fpsMIN),               // fekMIN
@@ -2201,6 +2202,37 @@ begin
   else
     Result := ACell^.FormulaValue.FormulaStr;
 end;
+
+{@@
+  Returns to numeric equivalent of the cell contents. This is the NumberValue
+  of a number cell, the DateTimeValue of a date/time cell, the ordinal BoolValue
+  of a boolean cell, or the string converted to a number of a string cell.
+  All other cases return NaN.
+
+  @param   ACell   Cell to be considered
+  @param   AValue  (output) extracted numeric value
+  @return  True if conversion to number is successfull, otherwise false }
+function TsWorksheet.ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
+begin
+  Result := True;
+  case ACell^.ContentType of
+    cctNumber:
+      AValue := ACell^.NumberValue;
+    cctDateTime:
+      AValue := ACell^.DateTimeValue;
+    cctBool:
+      AValue := ord(ACell^.BoolValue);
+    else
+      if (ACell^.ContentType <> cctUTF8String) or
+         not TryStrToFloat(ACell^.UTF8StringValue, AValue) or
+         not TryStrToDateTime(ACell^.UTF8StringValue, AValue)
+      then begin
+        Result := False;
+        AValue := NaN;
+      end;
+  end;
+end;
+
 
 {@@
   If a cell contains an RPN formula an Excel-like formula string is constructed
