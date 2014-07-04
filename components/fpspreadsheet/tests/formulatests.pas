@@ -190,10 +190,10 @@ begin
     if (cell = nil) then
       fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
     case cell^.ContentType of
-      cctBool       : actual := CreateBool(cell^.BoolValue);
-      cctNumber     : actual := CreateNumber(cell^.NumberValue);
-      cctError      : actual := CreateError(cell^.ErrorValue);
-      cctUTF8String : actual := CreateString(cell^.UTF8StringValue);
+      cctBool       : actual := CreateBoolArg(cell^.BoolValue);
+      cctNumber     : actual := CreateNumberArg(cell^.NumberValue);
+      cctError      : actual := CreateErrorArg(cell^.ErrorValue);
+      cctUTF8String : actual := CreateStringArg(cell^.UTF8StringValue);
       else            fail('ContentType not supported');
     end;
     expected := SollValues[row];
