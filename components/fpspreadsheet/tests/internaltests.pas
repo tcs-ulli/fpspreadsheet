@@ -156,11 +156,22 @@ begin
 end;
 
 procedure TSpreadInternalTests.TestCellString;
+var
+  r,c: Cardinal;
+  s: String;
+  flags: TsRelFlags;
 begin
   CheckEquals('$A$1',GetCellString(0,0,[]));
   CheckEquals('$Z$1',GetCellString(0,25,[])); //bug 26447
   CheckEquals('$AA$2',GetCellString(1,26,[])); //just past the last letter
   CheckEquals('$GW$5',GetCellString(4,204,[])); //some big value
+  CheckEquals('$IV$1',GetCellString(0,255,[])); //the last column of xls
+  CheckEquals('$XFD$1',GetCellString(0,16383,[])); // the last column of xlsx
+
+  // Something VERY big, beyond xlsx
+  s := 'ZZZZ1';
+  ParseCellString(s, r, c, flags);
+  CheckEquals(s, GetCellString(r, c, flags));
 end;
 
 
