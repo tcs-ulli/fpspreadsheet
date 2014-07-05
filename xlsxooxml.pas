@@ -31,7 +31,7 @@ interface
 
 uses
   Classes, SysUtils,
-  {$IFDEF FPC_FULLVERSION >= 20701}
+  {$IF FPC_FULLVERSION >= 20701}
   zipper,
   {$ELSE}
   fpszipper,
