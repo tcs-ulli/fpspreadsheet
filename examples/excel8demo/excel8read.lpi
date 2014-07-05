@@ -34,17 +34,11 @@
         <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="1">
       <Unit0>
         <Filename Value="excel8read.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="excel8read"/>
       </Unit0>
-      <Unit1>
-        <Filename Value="mysysutils.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="mysysutils"/>
-      </Unit1>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -63,8 +57,5 @@
         <DebugInfoType Value="dsStabs"/>
       </Debugging>
     </Linking>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
 </CONFIG>
