@@ -3,9 +3,10 @@
   calculation procedure.
 
   The example will show implementation of the some financial formulas:
-  - FV(...)  (future value)
-  - PV(...)  (present value)
-  - PMT(...) (payment)
+  - FV()    (future value)
+  - PV()    (present value)
+  - PMT()   (payment)
+  - NPER()  (number of payment periods)
 
   The demo writes an xls file which uses these formulas and then displays
   the result in a console window. (Open the generated file in Excel or
@@ -27,25 +28,31 @@ uses
 
 
 {------------------------------------------------------------------------------}
-{           Basic implmentation of the three financial funtions                }
+{            Basic implmentation of the four financial funtions                }
 {------------------------------------------------------------------------------}
 
 const
   paymentAtEnd = 0;
   paymentAtBegin = 1;
 
-{ Calculates the future value of an investment based on an interest rate and
+{ Calculates the future value (FV) of an investment based on an interest rate and
   a constant payment schedule:
-  - "interest_rate" is the interest rate for the investment (as decimal, not percent)
-  - "number_periods" is the number of payment periods, i.e. number of payments
+  - "interest_rate" (r) is the interest rate for the investment (as decimal, not percent)
+  - "number_periods" (n) is the number of payment periods, i.e. number of payments
     for the annuity.
-  - "payment" is the amount of the payment made each period
+  - "payment" (PMT) is the amount of the payment made each period
   - "pv" is the present value of the payments.
   - "payment_type" indicates when the payments are due (see paymentAtXXX constants)
-  see: http://en.wikipedia.org/wiki/Time_value_of_money
 
-  In Excel's implementation the payments and the FV add up to 0:
-      FV + PV q^n + PMT (q^n - 1) / (q - 1) = 0
+  see: http://en.wikipedia.org/wiki/Time_value_of_money
+  or  https://wiki.openoffice.org/wiki/Documentation/How_Tos/Calc:_Derivation_of_Financial_Formulas#PV.2C_FV.2C_PMT.2C_NPER.2C_RATE
+
+  As in Excel's implementation the cash flow is a signed number:
+  - Positive cash flow means: "I get money"
+  - Negative cash flow means: "I pay money"
+
+  With these conventions, the contributions (FV, PV, Payments) add up to 0:
+      FV + PV q^n + PMT (q^n - 1) / (q - 1) = 0   ( q = 1 + r )
 }
 function FV(interest_rate: Double; number_periods: Integer; payment, pv: Double;
   payment_type: integer): Double;
@@ -59,6 +66,30 @@ begin
     factor := factor * q;
 
   Result := -(pv * qn + payment*factor);
+end;
+
+{ Calculates the number of periods for an investment based on an interest rate
+  and a constant payment schedule.
+  Solve above formula for qn and then take the log to get n.
+  }
+function NPER(interest_rate, payment, pv, fv: Double;
+  payment_type:Integer): double;
+var
+  q, x1, x2, T: Double;
+begin
+  if interest_rate = 0 then
+    Result := (pv + fv) / payment
+  else
+    q := 1.0 + interest_rate;
+    if payment_type = paymentAtBegin then
+      payment := payment * q;
+    x2 := pv * interest_rate + payment;
+    if x2 = 0 then
+      Result := Infinity
+    else begin
+      x1 := -fv * interest_rate + payment;
+      Result := ln(x1/x2) / ln(q);
+    end;
 end;
 
 { Calculates the regular payments for a loan based on an interest rate and a
@@ -152,6 +183,19 @@ begin
     ));
 end;
 
+function fpsNPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+var
+  data: TsArgNumberArray;
+begin
+  if Args.PopNumberValues(NumArgs, false, data, Result) then
+    Result := CreateNumberArg(NPER(
+      data[0],         // interest rate
+      data[1],         // payment
+      data[2],         // present value
+      data[3],         // future value
+      round(data[4])   // payment type
+    ));
+end;
 
 {------------------------------------------------------------------------------}
 {        Write xls file comparing our own calculations with Excel result       }
@@ -167,7 +211,7 @@ const
 var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
-  fval, pval, pmtval: Double;
+  fval, pval, pmtval, nperval: Double;
 
 begin
   { We have to register our financial function in fpspreadsheet. Otherwise an
@@ -176,6 +220,7 @@ begin
   RegisterFormulaFunc(fekFV, @fpsFV);
   RegisterFormulaFunc(fekPMT, @fpsPMT);
   RegisterFormulaFunc(fekPV, @fpsPV);
+  RegisterFormulaFunc(fekNPER, @fpsNPER);
 
   workbook := TsWorkbook.Create;
   try
@@ -200,7 +245,7 @@ begin
 
     // future value calculation
     fval := FV(INTEREST_RATE, NUMBER_PAYMENTS, PAYMENT, PRESENT_VALUE, PAYMENT_WHEN);
-    worksheet.WriteUTF8Text(6, 0, 'Future value');
+    worksheet.WriteUTF8Text(6, 0, 'Calculation of the future value');
     worksheet.WriteFontStyle(6, 0, [fssBold]);
     worksheet.WriteUTF8Text(7, 0, 'Our calculation');
     worksheet.WriteCurrency(7, 1, fval, nfCurrency, 2, '$');
@@ -228,7 +273,7 @@ begin
 
     // present value calculation
     pval := PV(INTEREST_RATE, NUMBER_PAYMENTS, PAYMENT, fval, PAYMENT_WHEN);
-    worksheet.WriteUTF8Text(11, 0, 'Present value');
+    worksheet.WriteUTF8Text(11, 0, 'Calculation of the present value');
     worksheet.WriteFontStyle(11, 0, [fssBold]);
     worksheet.WriteUTF8Text(12, 0, 'Our calculation');
     worksheet.WriteCurrency(12, 1, pval, nfCurrency, 2, '$');
@@ -256,7 +301,7 @@ begin
 
     // payments calculation
     pmtval := PMT(INTEREST_RATE, NUMBER_PAYMENTS, PRESENT_VALUE, fval, PAYMENT_WHEN);
-    worksheet.WriteUTF8Text(16, 0, 'Payment');
+    worksheet.WriteUTF8Text(16, 0, 'Calculation of the payment');
     worksheet.WriteFontStyle(16, 0, [fssBold]);
     worksheet.WriteUTF8Text(17, 0, 'Our calculation');
     worksheet.WriteCurrency(17, 1, pmtval, nfCurrency, 2, '$');
@@ -280,6 +325,34 @@ begin
       RPNCellValue('B10',  // future value
       RPNCellValue('B5',   // payment at end or at start
       RPNFunc(fekPMT, 5,   // Call Excel's PMT formula
+      nil))))))));
+
+    // number of periods calculation
+    nperval := NPER(INTEREST_RATE, PAYMENT, PRESENT_VALUE, fval, PAYMENT_WHEN);
+    worksheet.WriteUTF8Text(21, 0, 'Calculation of the number of payment periods');
+    worksheet.WriteFontStyle(21, 0, [fssBold]);
+    worksheet.WriteUTF8Text(22, 0, 'Our calculation');
+    worksheet.WriteNumber(22, 1, nperval, nfFixed, 2);
+
+    worksheet.WriteUTF8Text(23, 0, 'Excel''s calculation using constants');
+    worksheet.WriteNumberFormat(23, 1, nfFixed, 2);
+    worksheet.WriteRPNFormula(23, 1, CreateRPNFormula(
+      RPNNumber(INTEREST_RATE,
+      RPNNumber(PAYMENT,
+      RPNNumber(PRESENT_VALUE,
+      RPNNumber(fval,
+      RPNNumber(PAYMENT_WHEN,
+      RPNFunc(fekNPER, 5,
+      nil))))))));
+    Worksheet.WriteUTF8Text(24, 0, 'Excel''s calculation using cell values');
+    worksheet.WriteNumberFormat(24, 1, nfFixed, 2);
+    worksheet.WriteRPNFormula(24, 1, CreateRPNFormula(
+      RPNCellValue('B1',   // interest rate
+      RPNCellValue('B3',   // payment
+      RPNCellValue('B4',   // present value
+      RPNCellValue('B10',  // future value
+      RPNCellValue('B5',   // payment at end or at start
+      RPNFunc(fekNPER, 5,  // Call Excel's PMT formula
       nil))))))));
 
     workbook.WriteToFile(AFileName, sfExcel8, true);
@@ -308,7 +381,7 @@ begin
 
     // Write all cells with contents to the console
     WriteLn('');
-    WriteLn('Contents of the first worksheet of the file:');
+    WriteLn('Contents of file "', AFileName, '"');
     WriteLn('');
 
     for r := 0 to worksheet.GetLastRowIndex do begin
