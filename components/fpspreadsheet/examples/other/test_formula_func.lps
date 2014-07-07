@@ -4,204 +4,211 @@
     <PathDelim Value="\"/>
     <Version Value="9"/>
     <BuildModes Active="Debug"/>
-    <Units Count="8">
+    <Units Count="9">
       <Unit0>
         <Filename Value="test_formula_func.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="test_formula_func"/>
         <IsVisibleTab Value="True"/>
-        <TopLine Value="373"/>
-        <CursorPos X="30" Y="209"/>
-        <UsageCount Value="37"/>
+        <TopLine Value="134"/>
+        <CursorPos X="57" Y="142"/>
+        <UsageCount Value="39"/>
         <Bookmarks Count="1">
-          <Item0 X="21" Y="325" ID="1"/>
+          <Item0 X="21" Y="239" ID="1"/>
         </Bookmarks>
         <Loaded Value="True"/>
       </Unit0>
       <Unit1>
+        <Filename Value="financemath.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="financemath"/>
+        <EditorIndex Value="1"/>
+        <TopLine Value="34"/>
+        <UsageCount Value="22"/>
+        <Loaded Value="True"/>
+      </Unit1>
+      <Unit2>
         <Filename Value="..\..\fpspreadsheet.pas"/>
         <UnitName Value="fpspreadsheet"/>
         <EditorIndex Value="5"/>
         <TopLine Value="1216"/>
         <CursorPos X="9" Y="1128"/>
-        <UsageCount Value="18"/>
+        <UsageCount Value="20"/>
         <Loaded Value="True"/>
-      </Unit1>
-      <Unit2>
+      </Unit2>
+      <Unit3>
         <Filename Value="..\..\fpsfunc.pas"/>
         <UnitName Value="fpsfunc"/>
         <EditorIndex Value="4"/>
         <TopLine Value="113"/>
         <CursorPos X="10" Y="132"/>
-        <UsageCount Value="18"/>
+        <UsageCount Value="20"/>
         <Loaded Value="True"/>
-      </Unit2>
-      <Unit3>
+      </Unit3>
+      <Unit4>
         <Filename Value="..\..\fpsutils.pas"/>
         <UnitName Value="fpsutils"/>
         <EditorIndex Value="3"/>
         <TopLine Value="876"/>
         <CursorPos Y="894"/>
-        <UsageCount Value="18"/>
+        <UsageCount Value="20"/>
         <Loaded Value="True"/>
-      </Unit3>
-      <Unit4>
+      </Unit4>
+      <Unit5>
         <Filename Value="..\..\fpolebasic.pas"/>
         <UnitName Value="fpolebasic"/>
         <EditorIndex Value="2"/>
         <TopLine Value="43"/>
         <CursorPos X="29" Y="53"/>
-        <UsageCount Value="18"/>
+        <UsageCount Value="20"/>
         <Loaded Value="True"/>
-      </Unit4>
-      <Unit5>
+      </Unit5>
+      <Unit6>
         <Filename Value="..\..\xlsbiff8.pas"/>
         <UnitName Value="xlsbiff8"/>
         <EditorIndex Value="6"/>
         <TopLine Value="63"/>
         <CursorPos X="20" Y="83"/>
-        <UsageCount Value="17"/>
+        <UsageCount Value="19"/>
         <Loaded Value="True"/>
-      </Unit5>
-      <Unit6>
+      </Unit6>
+      <Unit7>
         <Filename Value="..\..\xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
         <EditorIndex Value="7"/>
         <TopLine Value="1084"/>
         <CursorPos Y="1103"/>
-        <UsageCount Value="17"/>
+        <UsageCount Value="19"/>
         <Loaded Value="True"/>
-      </Unit6>
-      <Unit7>
+      </Unit7>
+      <Unit8>
         <Filename Value="d:\lazarus-svn\fpc\2.6.4\source\rtl\objpas\math.pp"/>
-        <UnitName Value="math"/>
-        <EditorIndex Value="1"/>
+        <EditorIndex Value="-1"/>
         <TopLine Value="294"/>
         <CursorPos X="10" Y="313"/>
         <UsageCount Value="13"/>
-        <Loaded Value="True"/>
-      </Unit7>
+      </Unit8>
     </Units>
     <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="66" Column="12" TopLine="53"/>
+        <Caret Line="74" TopLine="51"/>
       </Position1>
       <Position2>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="78" Column="28" TopLine="59"/>
+        <Caret Line="77" TopLine="51"/>
       </Position2>
       <Position3>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="70" TopLine="59"/>
+        <Caret Line="78" TopLine="51"/>
       </Position3>
       <Position4>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="71" TopLine="59"/>
+        <Caret Line="69" Column="42" TopLine="51"/>
       </Position4>
       <Position5>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="73" TopLine="59"/>
+        <Caret Line="82" TopLine="63"/>
       </Position5>
       <Position6>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="74" TopLine="59"/>
+        <Caret Line="83" Column="29" TopLine="63"/>
       </Position6>
       <Position7>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="77" TopLine="59"/>
+        <Caret Line="86" Column="22" TopLine="63"/>
       </Position7>
       <Position8>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="78" TopLine="59"/>
+        <Caret Line="96" Column="103" TopLine="78"/>
       </Position8>
       <Position9>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="96" Column="46" TopLine="59"/>
+        <Caret Line="99" TopLine="68"/>
       </Position9>
       <Position10>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="362" TopLine="262"/>
+        <Caret Line="97" Column="68" TopLine="69"/>
       </Position10>
       <Position11>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="70" TopLine="51"/>
+        <Caret Line="98" Column="13" TopLine="64"/>
       </Position11>
       <Position12>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="71" TopLine="51"/>
+        <Caret Line="97" Column="3" TopLine="68"/>
       </Position12>
       <Position13>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="73" TopLine="51"/>
+        <Caret Line="96" Column="3" TopLine="68"/>
       </Position13>
       <Position14>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="74" TopLine="51"/>
+        <Caret Line="98" Column="13" TopLine="71"/>
       </Position14>
       <Position15>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="77" TopLine="51"/>
+        <Caret Line="97" Column="9" TopLine="71"/>
       </Position15>
       <Position16>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="78" TopLine="51"/>
+        <Caret Line="92" Column="11" TopLine="71"/>
       </Position16>
       <Position17>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="69" Column="42" TopLine="51"/>
+        <Caret Line="367" Column="28" TopLine="346"/>
       </Position17>
       <Position18>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="82" TopLine="63"/>
+        <Caret Line="379" Column="26" TopLine="339"/>
       </Position18>
       <Position19>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="83" Column="29" TopLine="63"/>
+        <Caret Line="105" Column="8" TopLine="103"/>
       </Position19>
       <Position20>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="86" Column="22" TopLine="63"/>
+        <Caret Line="293" TopLine="288"/>
       </Position20>
       <Position21>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="96" Column="103" TopLine="78"/>
+        <Caret Line="49" Column="36" TopLine="35"/>
       </Position21>
       <Position22>
-        <Filename Value="test_formula_func.pas"/>
-        <Caret Line="99" TopLine="68"/>
+        <Filename Value="financemath.pas"/>
+        <Caret Line="55" Column="21" TopLine="51"/>
       </Position22>
       <Position23>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="97" Column="68" TopLine="69"/>
+        <Caret Line="113" Column="31" TopLine="109"/>
       </Position23>
       <Position24>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="98" Column="13" TopLine="64"/>
+        <Caret Line="170" Column="34" TopLine="163"/>
       </Position24>
       <Position25>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="97" Column="3" TopLine="68"/>
+        <Caret Line="198" Column="34" TopLine="183"/>
       </Position25>
       <Position26>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="96" Column="3" TopLine="68"/>
+        <Caret Line="213" Column="76" TopLine="198"/>
       </Position26>
       <Position27>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="98" Column="13" TopLine="71"/>
+        <Caret Line="118" Column="29" TopLine="105"/>
       </Position27>
       <Position28>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="97" Column="9" TopLine="71"/>
+        <Caret Line="209" Column="44" TopLine="189"/>
       </Position28>
       <Position29>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="92" Column="11" TopLine="71"/>
+        <Caret Line="114" Column="36" TopLine="100"/>
       </Position29>
       <Position30>
         <Filename Value="test_formula_func.pas"/>
-        <Caret Line="367" Column="28" TopLine="346"/>
+        <Caret Line="123" Column="39" TopLine="108"/>
       </Position30>
     </JumpHistory>
   </ProjectSession>
