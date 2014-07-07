@@ -60,12 +60,17 @@
         <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="1">
+    <Units Count="2">
       <Unit0>
         <Filename Value="test_formula_func.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="test_formula_func"/>
       </Unit0>
+      <Unit1>
+        <Filename Value="financemath.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="financemath"/>
+      </Unit1>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
