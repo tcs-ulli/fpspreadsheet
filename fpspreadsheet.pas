@@ -1152,7 +1152,7 @@ var
     (Symbol:'<';         MinParams:2; MaxParams:2;  Func:fpsLess),              // fekLess
     (Symbol:'<=';        MinParams:2; MaxParams:2;  Func:fpsLessEqual),         // fekLessEqual
     (Symbol:'<>';        MinParams:2; MaxParams:2;  Func:fpsNotEqual),          // fekNotEqual
-    (Symbol:'';          MinParams:1; MaxParams:1;  Func:nil),   // fekParen
+    (Symbol:'';          MinParams:1; MaxParams:1;  Func:nil),                  // fekParen   -- no need to calculate!
   { math }
     (Symbol:'ABS';       MinParams:1; MaxParams:1;  Func:fpsABS),               // fekABS
     (Symbol:'ACOS';      MinParams:1; MaxParams:1;  Func:fpsACOS),              // fekACOS
@@ -1203,7 +1203,7 @@ var
     (Symbol:'CHIDIST';   MinParams:2; MaxParams:2;  Func:nil),   // fekCHIDIST
     (Symbol:'CHIINV';    MinParams:2; MaxParams:2;  Func:nil),   // fekCHIINV
     (Symbol:'COUNT';     MinParams:0; MaxParams:30; Func:fpsCOUNT),             // fekCOUNT
-    (Symbol:'COUNTA';    MinParams:0; MaxParams:30; Func:nil),  // fekCOUNTA
+    (Symbol:'COUNTA';    MinParams:0; MaxParams:30; Func:fpsCOUNTA),            // fekCOUNTA
     (Symbol:'COUNTBLANK';MinParams:1; MaxParams:1;  Func:fpsCOUNTBLANK),        // fekCOUNTBLANK
     (Symbol:'COUNTIF';   MinParams:2; MaxParams:2;  Func:fpsCOUNTIF),           // fekCOUNTIF
     (Symbol:'MAX';       MinParams:1; MaxParams:30; Func:fpsMAX),               // fekMAX
