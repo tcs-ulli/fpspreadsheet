@@ -11,6 +11,8 @@ type
   TsArgumentType = (atCell, atCellRange, atNumber, atString,
     atBool, atError, atEmpty);
 
+  TsArgumentTypes = set of TsArgumentType;
+
   TsArgBoolArray  = array of boolean;
   TsArgNumberArray = array of double;
   TsArgStringArray   = array of string;
@@ -128,6 +130,7 @@ function fpsYEAR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsAVEDEV      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsAVERAGE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsCOUNT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+function fpsCOUNTA      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsCOUNTBLANK  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsCOUNTIF     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 function fpsMAX         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
@@ -1534,13 +1537,45 @@ end;
 function fpsCOUNT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { counts the number of cells that contain numbers as well as the number of
   arguments that contain numbers.
-  COUNT( argument1, [argument2, ... argument_n] )
+  COUNT( argument1 [, argument2, ... argument_n] )
 }
 var
   data: TsArgNumberArray;
 begin
   if Args.PopNumberValues(NumArgs, true, data, result, false) then
     Result := CreateNumberArg(Length(data));
+end;
+
+function fpsCOUNTA(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// COUNTA (argument1 [, argument2, ... argument_n] )
+// Counts the number of non-empty cells specified by arguments of misc type.
+var
+  arg: TsArgument;
+  counter: Integer;
+  r, c: Integer;
+  cell: PCell;
+  n: Integer;
+begin
+  n := 0;
+  // The order of arguments is not important for counting --> we just pop them from the stack.
+  for counter := 1 to NumArgs do begin
+    arg := Args.Pop;
+    case arg.ArgumentType of
+      atCell:
+        if arg.Cell^.ContentType <> cctEmpty then inc(n);
+      atCellRange:
+        for r := arg.FirstRow to arg.LastRow do
+          for c := arg.FirstCol to arg.LastCol do begin
+            cell := arg.Worksheet.FindCell(r, c);
+            if (cell <> nil) and (cell^.ContentType <> cctEmpty) then inc(n);
+          end;
+      atString:
+        if arg.StringValue <> '' then inc(n);
+      atNumber, atBool, atError:
+        inc(n);
+    end;
+  end;
+  Result := CreateNumberArg(n);
 end;
 
 function fpsCOUNTBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;

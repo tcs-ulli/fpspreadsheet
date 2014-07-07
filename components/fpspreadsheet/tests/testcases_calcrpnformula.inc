@@ -1286,6 +1286,42 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := CreateNumberArg(2);
 
+  // COUNTA
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTA(1, 1.1, 1.2, 0.9, 0.8)');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNFunc(fekCOUNTA, 5, nil))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumberArg(5);
+
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTA(1, 1.1, 1.2, 0.9, 0.8, "A", "B")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNNumber(1.0,
+    RPNNumber(1.1,
+    RPNNumber(1.2,
+    RPNNumber(0.9,
+    RPNNumber(0.8,
+    RPNString('A',
+    RPNString('B',
+    RPNFunc(fekCOUNTA, 7, nil))))))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumberArg(7);
+
+  inc(Row);
+  MyWorksheet.WriteUTF8Text(Row, 0, '=COUNTA(A1:C2,1,2,"A")');
+  MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+    RPNCellRange('A1:C2',
+    RPNNumber(1,
+    RPNNumber(2,
+    RPNString('A',
+    RPNFunc(fekCOUNTA, 4, nil)))))));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := CreateNumberArg(7);
+
   if AFormat <> sfExcel2 then begin
     // COUNTBLANK
     inc(Row);
