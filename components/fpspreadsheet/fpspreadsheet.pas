@@ -979,7 +979,7 @@ type
     Next: PRPNItem;
   end;
 
-  function CreateRPNFormula(AItem: PRPNItem): TsRPNFormula;
+  function CreateRPNFormula(AItem: PRPNItem; AReverse: Boolean = false): TsRPNFormula;
   procedure DestroyRPNFormula(AItem: PRPNItem);
 
   function RPNBool(AValue: Boolean;
@@ -5858,9 +5858,12 @@ end;
   For each formula element, use one of the RPNxxxx functions implemented here.
   They are designed to be nested into each other. Terminate the chain by using nil.
 
-  @param  AItem  Pointer to the first RPN item representing the formula.
-                 Each item contains a pointer to the next item in the list.
-                 The list is terminated by nil.
+  @param  AItem     Pointer to the first RPN item representing the formula.
+                    Each item contains a pointer to the next item in the list.
+                    The list is terminated by nil.
+  @param  AReverse  If true the first rpn item in the chained list becomes the
+                    last item in the token array. This feature is needed for
+                    reading an xls file.
 
   @example
     The RPN formula for the string expression "$A1+2" can be created as follows:
@@ -5875,7 +5878,7 @@ end;
           nil))));
     </pre>
 }
-function CreateRPNFormula(AItem: PRPNItem): TsRPNFormula;
+function CreateRPNFormula(AItem: PRPNItem; AReverse: Boolean = false): TsRPNFormula;
 var
   item: PRPNItem;
   nextitem: PRPNItem;
@@ -5894,11 +5897,11 @@ begin
 
   // Copy FormulaElements to result and free temporary RPNItems
   item := AItem;
-  n := 0;
+  if AReverse then n := Length(Result)-1 else n := 0;
   while item <> nil do begin
     nextitem := item^.Next;
     Result[n] := item^.FE;
-    inc(n);
+    if AReverse then dec(n) else inc(n);
     DisposeRPNItem(item);
     item := nextitem;
   end;
