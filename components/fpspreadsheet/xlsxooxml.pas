@@ -107,15 +107,15 @@ const
 
   { OOXML Directory structure constants }
   OOXML_PATH_TYPES     = '[Content_Types].xml';
-  OOXML_PATH_RELS      = '_rels' + PathDelim;
-  OOXML_PATH_RELS_RELS = '_rels' + PathDelim + '.rels';
-  OOXML_PATH_XL        = 'xl' + PathDelim;
-  OOXML_PATH_XL_RELS   = 'xl' + PathDelim + '_rels' + PathDelim;
-  OOXML_PATH_XL_RELS_RELS = 'xl' + PathDelim + '_rels' + PathDelim + 'workbook.xml.rels';
-  OOXML_PATH_XL_WORKBOOK = 'xl' + PathDelim + 'workbook.xml';
-  OOXML_PATH_XL_STYLES   = 'xl' + PathDelim + 'styles.xml';
-  OOXML_PATH_XL_STRINGS  = 'xl' + PathDelim + 'sharedStrings.xml';
-  OOXML_PATH_XL_WORKSHEETS = 'xl' + PathDelim + 'worksheets' + PathDelim;
+  OOXML_PATH_RELS      = '_rels/';
+  OOXML_PATH_RELS_RELS = '_rels/.rels';
+  OOXML_PATH_XL        = 'xl/';
+  OOXML_PATH_XL_RELS   = 'xl/_rels/';
+  OOXML_PATH_XL_RELS_RELS = 'xl/_rels/workbook.xml.rels';
+  OOXML_PATH_XL_WORKBOOK = 'xl/workbook.xml';
+  OOXML_PATH_XL_STYLES   = 'xl/styles.xml';
+  OOXML_PATH_XL_STRINGS  = 'xl/sharedStrings.xml';
+  OOXML_PATH_XL_WORKSHEETS = 'xl/worksheets/';
 
   { OOXML schemas constants }
   SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
