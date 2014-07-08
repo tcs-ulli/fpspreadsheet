@@ -6,14 +6,14 @@ Writes an OOXML (Office Open XML) document
 An OOXML document is a compressed ZIP file with the following files inside:
 
 [Content_Types].xml         -
-_rels\.rels                 -
-xl\_rels\workbook.xml.rels  -
-xl\workbook.xml             - Global workbook data and list of worksheets
-xl\styles.xml               -
-xl\sharedStrings.xml        -
-xl\worksheets\sheet1.xml    - Contents of each worksheet
+_rels/.rels                 -
+xl/_rels\workbook.xml.rels  -
+xl/workbook.xml             - Global workbook data and list of worksheets
+xl/styles.xml               -
+xl/sharedStrings.xml        -
+xl/worksheets\sheet1.xml    - Contents of each worksheet
 ...
-xl\worksheets\sheetN.xml
+xl/worksheets\sheetN.xml
 
 Specifications obtained from:
 
@@ -106,6 +106,10 @@ const
   XML_HEADER           = '<?xml version="1.0" encoding="utf-8" ?>';
 
   { OOXML Directory structure constants }
+  // Note: directory separators are always / because the .xlsx is a zip file which
+  // requires / instead of \, even on Windows; see 
+  // http://www.pkware.com/documents/casestudies/APPNOTE.TXT
+  // 4.4.17.1 All slashes MUST be forward slashes '/' as opposed to backwards slashes '\'
   OOXML_PATH_TYPES     = '[Content_Types].xml';
   OOXML_PATH_RELS      = '_rels/';
   OOXML_PATH_RELS_RELS = '_rels/.rels';
