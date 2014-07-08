@@ -32,6 +32,7 @@ begin
   MyWorksheet.WriteNumber(0, 1, 2.0);
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);
+  MyWorksheet.WriteUTF8Text(0, 4, '& " '' < >');
 
   MyWorksheet.WriteUTF8Text(0, 26, 'AA'); // Test for column name
 

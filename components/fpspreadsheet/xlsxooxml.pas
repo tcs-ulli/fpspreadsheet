@@ -516,7 +516,7 @@ begin
 
   FSharedStrings := FSharedStrings +
           '  <si>' + LineEnding +
-   Format('    <t>%s</t>', [ResultingValue]) + LineEnding +
+   Format('    <t>%s</t>', [UTF8TextToXMLText(ResultingValue)]) + LineEnding +
           '  </si>' + LineEnding;
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
