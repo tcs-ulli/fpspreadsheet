@@ -1458,7 +1458,12 @@ begin
   while (AStream.Position < p0 + n) and supported do begin
     token := AStream.ReadByte;
     case token of
-      INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFR:
+      INT_EXCEL_TOKEN_TREFV:
+        begin
+          ReadRPNCellAddress(AStream, r, c, flags);
+          rpnItem := RPNCellValue(r, c, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFR:
         begin
           ReadRPNCellAddress(AStream, r, c, flags);
           rpnItem := RPNCellRef(r, c, flags, rpnItem);
@@ -1540,7 +1545,7 @@ begin
     Result := false;
   end
   else begin
-    AFormula := CreateRPNFormula(rpnItem);
+    AFormula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
     Result := true;
   end;
 end;

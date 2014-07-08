@@ -2265,7 +2265,12 @@ begin
   fs := Workbook.FormatSettings;
   L := TStringList.Create;
   try
-    for i:=0 to Length(ACell^.RPNFormulaValue)-1 do begin
+    // We store the cell values and operation codes in a stringlist which serves
+    // as kind of stack. Therefore, we do not destroy the original formula array.
+    // We reverse the order of the items because in the next step stringlist
+    // items will subsequently be deleted, and this is much easier when going
+    // in reverse direction.
+    for i := Length(ACell^.RPNFormulaValue)-1 downto 0 do begin
       elem := ACell^.RPNFormulaValue[i];
       ptr := Pointer(elem.ElementKind);
       case elem.ElementKind of
@@ -2288,6 +2293,10 @@ begin
       end;
     end;
 
+    // Now we construct the string from the parts stored in the stringlist.
+    // Every item processed is deleted from the list for error detection.
+    // In order not to confuse mix up we start at the end of the list and
+    // work forward.
     i := L.Count-1;
     while (L.Count > 0) and (i >= 0) do begin
       fek := TFEKind(PtrInt(L.Objects[i]));
@@ -2332,7 +2341,7 @@ begin
           end;
         else
           if fek >= fekAdd then begin
-            elem := ACell^.RPNFormulaValue[i];
+            elem := ACell^.RPNFormulaValue[Length(ACell^.RPNFormulaValue) - 1 - i];
             s := '';
             for j:= i+elem.ParamsNum downto i+1 do begin
               if j < L.Count then begin
