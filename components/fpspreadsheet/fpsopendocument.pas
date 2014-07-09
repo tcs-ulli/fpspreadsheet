@@ -2783,11 +2783,9 @@ begin
     // Look for empty rows with the same style, they need the "number-rows-repeated" element.
     rowsRepeated := 1;
     if (ASheet.GetFirstCellOfRow(r) = nil) then begin
-//    if ASheet.GetCellCountInRow(r) = 0 then begin
       rr := r + 1;
       while (rr <= lastRow) do begin
-        if ASheet.GetFirstCellOfRow(rr) = nil then begin
-//        if ASheet.GetCellCountInRow(rr) > 0 then begin
+        if ASheet.GetFirstCellOfRow(rr) <> nil then begin
           break;
         end;
         h1 := ASheet.GetRowHeight(rr);
