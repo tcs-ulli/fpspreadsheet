@@ -479,6 +479,8 @@ type
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
+    FLastRowIndex: Cardinal;
+    FLastColIndex: Cardinal;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
 
@@ -508,6 +510,7 @@ type
     { Utils }
     class function CellPosToText(ARow, ACol: Cardinal): string;
     procedure RemoveAllCells;
+    procedure UpdateCaches;
 
     { Reading of values }
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring; overload;
@@ -636,9 +639,9 @@ type
     function  GetNextCell(): PCell;
     function  GetFirstCellOfRow(ARow: Cardinal): PCell;
     function  GetLastCellOfRow(ARow: Cardinal): PCell;
-    function  GetLastColIndex: Cardinal;
+    function  GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColNumber: Cardinal; deprecated 'Use GetLastColIndex';
-    function  GetLastRowIndex: Cardinal;
+    function  GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
 
     { Data manipulation methods - For Rows and Cols }
@@ -708,6 +711,7 @@ type
     { Internal methods }
     procedure PrepareBeforeSaving;
     procedure RemoveWorksheetsCallback(data, arg: pointer);
+    procedure UpdateCaches;
 
   public
     {@@ A copy of SysUtil's DefaultFormatSettings to provide some kind of
@@ -1414,6 +1418,9 @@ begin
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
 
+  FLastRowIndex := 0;
+  FLastColIndex := 0;
+
   FOptions := [soShowGridLines, soShowHeaders];
 end;
 
@@ -1761,6 +1768,10 @@ begin
     Result^.BorderStyles := DEFAULT_BORDERSTYLES;
 
     Cells.Add(Result);
+    if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
+      else FLastColIndex := Max(FLastColIndex, ACol);
+    if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
+      else FLastRowIndex := Max(FLastRowIndex, ARow);
   end;
 end;
 
@@ -1897,30 +1908,38 @@ end;
   Use GetCellCount to verify if there is at least one cell with contents in the
   worksheet.
 
+  @param  AForceCalculation  The index of the last column is continuously updated
+                             whenever a new cell is created. If AForceCalculation
+                             is true all cells are scanned to determine the index
+                             of the last column.
   @see GetCellCount
 }
-function TsWorksheet.GetLastColIndex: Cardinal;
+function TsWorksheet.GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
 var
   AVLNode: TAVLTreeNode;
   i: Integer;
 begin
-  Result := 0;
-
-  // Traverse the tree from lowest to highest.
-  // Since tree primary sort order is on Row
-  // highest Col could exist anywhere.
-  AVLNode := FCells.FindLowest;
-  While Assigned(AVLNode) do
-  begin
-    Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
-    AVLNode := FCells.FindSuccessor(AVLNode);
-  end;
-
-  // In addition, there may be column records defining the column width even
-  // without content
-  for i:=0 to FCols.Count-1 do
-    if FCols[i] <> nil then
-      Result := Math.Max(Result, PCol(FCols[i])^.Col);
+  if AForceCalculation then begin
+    Result := 0;
+    // Traverse the tree from lowest to highest.
+    // Since tree primary sort order is on Row
+    // highest Col could exist anywhere.
+    AVLNode := FCells.FindLowest;
+    While Assigned(AVLNode) do
+    begin
+      Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
+      AVLNode := FCells.FindSuccessor(AVLNode);
+    end;
+   // In addition, there may be column records defining the column width even
+    // without content
+    for i:=0 to FCols.Count-1 do
+      if FCols[i] <> nil then
+        Result := Math.Max(Result, PCol(FCols[i])^.Col);
+    // Store the result
+    FLastColIndex := Result;
+  end
+  else
+    Result := FLastColIndex;
 end;
 
 {@@
@@ -1979,23 +1998,31 @@ end;
   Use GetCellCount to verify if there is at least one cell with contents in the
   worksheet.
 
+  @param  AForceCalculation  The index of the last row is continuously updated
+                             whenever a new cell is created. If AForceCalculation
+                             is true all cells are scanned to determine the index
+                             of the last row.
   @see GetCellCount
 }
-function TsWorksheet.GetLastRowIndex: Cardinal;
+function TsWorksheet.GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
 var
   AVLNode: TAVLTreeNode;
   i: Integer;
 begin
-  Result := 0;
-
-  AVLNode := FCells.FindHighest;
-  if Assigned(AVLNode) then
-    Result := PCell(AVLNode.Data).Row;
-
-  // In addition, there may be row records even for empty rows.
-  for i:=0 to FRows.Count-1 do
-    if FRows[i] <> nil then
-      Result := Math.Max(Result, PRow(FRows[i])^.Row);
+  if AForceCalculation then begin
+    Result := 0;
+    AVLNode := FCells.FindHighest;
+    if Assigned(AVLNode) then
+      Result := PCell(AVLNode.Data).Row;
+    // In addition, there may be row records even for empty rows.
+    for i:=0 to FRows.Count-1 do
+      if FRows[i] <> nil then
+        Result := Math.Max(Result, PRow(FRows[i])^.Row);
+    // Store result
+    FLastRowIndex := Result;
+  end
+  else
+    Result := FLastRowIndex
 end;
 
 {@@
@@ -2295,7 +2322,7 @@ begin
 
     // Now we construct the string from the parts stored in the stringlist.
     // Every item processed is deleted from the list for error detection.
-    // In order not to confuse mix up we start at the end of the list and
+    // In order not to confuse indexes we start at the end of the list and
     // work forward.
     i := L.Count-1;
     while (L.Count > 0) and (i >= 0) do begin
@@ -2431,6 +2458,15 @@ begin
     Node:=FCells.FindSuccessor(Node);
   end;
   FCells.Clear;
+end;
+
+{@@
+  Helper method to update internal caching variables
+}
+procedure TsWorksheet.UpdateCaches;
+begin
+  FLastColIndex := GetLastColIndex(true);
+  FLastRowIndex := GetLastRowIndex(true);
 end;
 
 {@@
@@ -3656,6 +3692,8 @@ begin
     FillChar(Result^, SizeOf(TRow), #0);
     Result^.Row := ARow;
     FRows.Add(Result);
+    if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
+      else FLastRowIndex := Max(FLastRowIndex, ARow);
   end;
 end;
 
@@ -3674,6 +3712,8 @@ begin
     FillChar(Result^, SizeOf(TCol), #0);
     Result^.Col := ACol;
     FCols.Add(Result);
+    if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
+      else FLastColIndex := Max(FLastColIndex, ACol);
   end;
 end;
 
@@ -3888,6 +3928,17 @@ begin
 end;
 
 {@@
+  Helper method to update internal caching variables
+}
+procedure TsWorkbook.UpdateCaches;
+var
+  sheet: TsWorksheet;
+begin
+  for sheet in FWorksheets do
+    sheet.UpdateCaches;
+end;
+
+{@@
   Constructor of the workbook class. Among others, it initializes the built-in
   fonts, defines the default font, and sets up the FormatSettings for localization
   of some number formats.
@@ -4012,6 +4063,7 @@ begin
   try
     FFileName := AFileName;
     AReader.ReadFromFile(AFileName, Self);
+    UpdateCaches;
     FFormat := AFormat;
   finally
     AReader.Free;
@@ -4096,9 +4148,9 @@ var
   AReader: TsCustomSpreadReader;
 begin
   AReader := CreateSpreadReader(AFormat);
-
   try
     AReader.ReadFromStream(AStream, Self);
+    UpdateCaches;
   finally
     AReader.Free;
   end;
