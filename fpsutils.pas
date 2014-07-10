@@ -34,6 +34,8 @@ type
   }
   TFormatDateTimeOptions =  set of TFormatDateTimeOption;
 
+  TsStreamClass = class of TStream;
+
 const
   {@@ Date formatting string for unambiguous date/time display as strings
       Can be used for text output when date/time cell support is not available }
@@ -129,6 +131,12 @@ function ColorToHTMLColorStr(AValue: TsColorValue): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
+
+procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
+procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
+procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
+
+function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
 
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
@@ -1930,6 +1938,48 @@ begin
     end
   else
     RemoveChars(0, coEqual);
+end;
+
+procedure AppendToStream(AStream: TStream; const AString: string);
+begin
+  if Length(AString) > 0 then
+    AStream.WriteBuffer(AString[1], Length(AString));
+end;
+
+procedure AppendToStream(AStream: TStream; const AString1, AString2: String);
+begin
+  AppendToStream(AStream, AString1);
+  AppendToStream(AStream, AString2);
+end;
+
+procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String);
+begin
+  AppendToStream(AStream, AString1);
+  AppendToStream(AStream, AString2);
+  AppendToStream(AStream, AString3);
+end;
+
+function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
+var
+  i, j: Integer;
+  MagicBytes: Array[0..7] of byte absolute AMagic;
+  found: Boolean;
+begin
+  Result := -1;
+  for i:=0 to ABufSize - SizeOf(QWord) do begin
+    if (ABuffer^[i] = MagicBytes[0]) then begin
+      found := true;
+      for j:=1 to 7 do
+        if ABuffer^[i+j] <> MagicBytes[j] then begin
+          found := false;
+          break;
+        end;
+      if found then begin
+        Result := i;
+        exit;
+      end;
+    end;
+  end;
 end;
 
 {$PUSH}{$HINTS OFF}
