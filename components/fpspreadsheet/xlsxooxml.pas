@@ -60,29 +60,30 @@ type
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   protected
     FPointSeparatorSettings: TFormatSettings;
-    { Strings with the contents of files }
-    FContentTypes: string;
-    FRelsRels: string;
-    FWorkbookString, FWorkbookRelsString, FStylesString, FSharedStrings: string;
-    FSheets: array of string;
     FSharedStringsCount: Integer;
-
   protected
     { Helper routines }
     procedure CreateNumFormatList; override;
+    procedure CreateStreams;
+    procedure DestroyStreams;
+    function GetStyleIndex(ACell: PCell): Cardinal;
   protected
     { Streams with the contents of files }
-    FSContentTypes: TStringStream;
-    FSRelsRels: TStringStream;
-    FSWorkbook, FSWorkbookRels, FSStyles, FSSharedStrings: TStringStream;
-    FSSheets: array of TStringStream;
+    FStreamClass: TsStreamClass;
+    FSContentTypes: TStream;
+    FSRelsRels: TStream;
+    FSWorkbook: TStream;
+    FSWorkbookRels: TStream;
+    FSStyles: TStream;
+    FSSharedStrings: TStream;
+    FSSharedStrings_complete: TStream;
+    FSSheets: array of TStream;
     FCurSheetNum: Integer;
   protected
-    { Routines to write those files }
+    { Routines to write the files }
     procedure WriteGlobalFiles;
     procedure WriteContent;
     procedure WriteWorksheet(CurSheet: TsWorksheet);
-    function GetStyleIndex(ACell: PCell): Cardinal;
   protected
     { Record writing methods }
     //todo: add WriteDate
@@ -92,7 +93,6 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
     procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); override;
@@ -147,131 +147,164 @@ procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
 var
   i: Integer;
 begin
-//  WriteCellsToStream(AStream, AData.GetFirstWorksheet.FCells);
+  { --- Content Types --- }
+  AppendToStream(FSContentTypes,
+    XML_HEADER);
+  AppendToStream(FSContentTypes,
+    '<Types xmlns="' + SCHEMAS_TYPES + '">');
+  AppendToStream(FSContentTypes,
+      '<Override PartName="/_rels/.rels" ContentType="' + MIME_RELS + '" />');
+  AppendToStream(FSContentTypes,
+      '<Override PartName="/xl/_rels/workbook.xml.rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />');
+  AppendToStream(FSContentTypes,
+      '<Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />');
 
-  FContentTypes :=
-   XML_HEADER + LineEnding +
-   '<Types xmlns="' + SCHEMAS_TYPES + '">' + LineEnding +
-//   '  <Default Extension="xml" ContentType="' + MIME_XML + '" />' + LineEnding +
-//   '  <Default Extension="rels" ContentType="' + MIME_RELS + '" />' + LineEnding +
-   '  <Override PartName="/_rels/.rels" ContentType="' + MIME_RELS + '" />' + LineEnding +
-//   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-//   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-   '  <Override PartName="/xl/_rels/workbook.xml.rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />' + LineEnding +
-   '  <Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding;
-  for i := 1 to Workbook.GetWorksheetCount do
-  begin
-    FContentTypes := FContentTypes +
-    Format('  <Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />', [i, MIME_WORKSHEET]) + LineEnding;
-  end;
-  FContentTypes := FContentTypes +
-   '  <Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding +
-   '  <Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding +
-   '</Types>';
+  for i:=1 to Workbook.GetWorksheetCount do
+    AppendToStream(FSContentTypes, Format(
+      '<Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />',
+        [i, MIME_WORKSHEET]));
 
-  FRelsRels :=
-   XML_HEADER + LineEnding +
-   '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
-   '<Relationship Type="' + SCHEMAS_DOCUMENT + '" Target="xl/workbook.xml" Id="rId1" />' + LineEnding +
-   '</Relationships>';
+  AppendToStream(FSContentTypes,
+      '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />');
+  AppendToStream(FSContentTypes,
+      '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />');
+  AppendToStream(FSContentTypes,
+    '</Types>');
 
-  FStylesString :=
-   XML_HEADER + LineEnding +
-   '<styleSheet xmlns="' + SCHEMAS_SPREADML + '">' + LineEnding +
-   '  <fonts count="2">' + LineEnding +
-   '    <font><sz val="10" /><name val="Arial" /></font>' + LineEnding +
-   '    <font><sz val="10" /><name val="Arial" /><b val="true"/></font>' + LineEnding +
-   '  </fonts>' + LineEnding +
-   '  <fills count="2">' + LineEnding +
-   '    <fill>' + LineEnding +
-   '      <patternFill patternType="none" />' + LineEnding +
-   '    </fill>' + LineEnding +
-   '    <fill>' + LineEnding +
-   '      <patternFill patternType="gray125" />' + LineEnding +
-   '    </fill>' + LineEnding +
-   '  </fills>' + LineEnding +
-   '  <borders count="1">' + LineEnding +
-   '    <border>' + LineEnding +
-   '      <left />' + LineEnding +
-   '      <right />' + LineEnding +
-   '      <top />' + LineEnding +
-   '      <bottom />' + LineEnding +
-   '      <diagonal />' + LineEnding +
-   '    </border>' + LineEnding +
-   '  </borders>' + LineEnding +
-   '  <cellStyleXfs count="2">' + LineEnding +
-   '    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" />' + LineEnding +
-   '    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" />' + LineEnding +
-   '  </cellStyleXfs>' + LineEnding +
-   '  <cellXfs count="2">' + LineEnding +
-   '    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" />' + LineEnding +
-   '    <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" />' + LineEnding +
-   '  </cellXfs>' + LineEnding +
-   '  <cellStyles count="1">' + LineEnding +
-   '    <cellStyle name="Normal" xfId="0" builtinId="0" />' + LineEnding +
-   '  </cellStyles>' + LineEnding +
-   '  <dxfs count="0" />' + LineEnding +
-   '  <tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16" />' + LineEnding +
-   '</styleSheet>';
+  { --- RelsRels --- }
+  AppendToStream(FSRelsRels,
+    XML_HEADER);
+  AppendToStream(FSRelsRels, Format(
+    '<Relationships xmlns="%s">', [SCHEMAS_RELS]));
+  AppendToStream(FSRelsRels, Format(
+    '<Relationship Type="%s" Target="xl/workbook.xml" Id="rId1" />', [SCHEMAS_DOCUMENT]));
+  AppendToStream(FSRelsRels,
+    '</Relationships>');
+
+  { --- Styles --- }
+  AppendToStream(FSStyles,
+    XML_Header);
+  AppendToStream(FSStyles, Format(
+    '<styleSheet xmlns="%s">', [SCHEMAS_SPREADML]));
+  AppendToStream(FSStyles,
+      '<fonts count="2">');
+  AppendToStream(FSStyles,
+        '<font><sz val="10" /><name val="Arial" /></font>',
+        '<font><sz val="10" /><name val="Arial" /><b val="true"/></font>');
+  AppendToStream(FSStyles,
+      '</fonts>');
+  AppendToStream(FSStyles,
+      '<fills count="2">');
+  AppendToStream(FSStyles,
+        '<fill>',
+          '<patternFill patternType="none" />',
+        '</fill>');
+  AppendToStream(FSStyles,
+        '<fill>',
+          '<patternFill patternType="gray125" />',
+        '</fill>');
+  AppendToStream(FSStyles,
+      '</fills>');
+  AppendToStream(FSStyles,
+      '<borders count="1">');
+  AppendToStream(FSStyles,
+        '<border>',
+          '<left /><right /><top /><bottom /><diagonal />',
+        '</border>');
+  AppendToStream(FSStyles,
+      '</borders>');
+  AppendToStream(FSStyles,
+      '<cellStyleXfs count="2">');
+  AppendToStream(FSStyles,
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" />',
+        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" />');
+  AppendToStream(FSStyles,
+      '</cellStyleXfs>');
+  AppendToStream(FSStyles,
+      '<cellXfs count="2">');
+  AppendToStream(FSStyles,
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" />',
+        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" />');
+  AppendToStream(FSStyles,
+      '</cellXfs>');
+  AppendToStream(FSStyles,
+      '<cellStyles count="1">',
+        '<cellStyle name="Normal" xfId="0" builtinId="0" />',
+      '</cellStyles>');
+  AppendToStream(FSStyles,
+      '<dxfs count="0" />');
+  AppendToStream(FSStyles,
+      '<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16" />');
+  AppendToStream(FSStyles,
+    '</styleSheet>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteContent;
 var
   i: Integer;
 begin
+  { --- WorkbookRels ---
   { Workbook relations - Mark relation to all sheets }
-  FWorkbookRelsString :=
-   XML_HEADER + LineEnding +
-   '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding +
-   '<Relationship Id="rId1" Type="' + SCHEMAS_STYLES + '" Target="styles.xml" />' + LineEnding +
-   '<Relationship Id="rId2" Type="' + SCHEMAS_STRINGS + '" Target="sharedStrings.xml" />' + LineEnding;
+  AppendToStream(FSWorkbookRels,
+    XML_HEADER);
+  AppendToStream(FSWorkbookRels,
+    '<Relationships xmlns="' + SCHEMAS_RELS + '">');
+  AppendToStream(FSWorkbookRels,
+      '<Relationship Id="rId1" Type="' + SCHEMAS_STYLES + '" Target="styles.xml" />');
+  AppendToStream(FSWorkbookRels,
+      '<Relationship Id="rId2" Type="' + SCHEMAS_STRINGS + '" Target="sharedStrings.xml" />');
 
-  for i := 1 to Workbook.GetWorksheetCount do
-  begin
-    FWorkbookRelsString := FWorkbookRelsString +
-      Format('<Relationship Type="%s" Target="worksheets/sheet%d.xml" Id="rId%d" />', [SCHEMAS_WORKSHEET, i, i+2]) + LineEnding;
-  end;
+  for i:=1 to Workbook.GetWorksheetCount do
+    AppendToStream(FSWorkbookRels, Format(
+      '<Relationship Type="%s" Target="worksheets/sheet%d.xml" Id="rId%d" />',
+        [SCHEMAS_WORKSHEET, i, i+2]));
 
-  FWorkbookRelsString := FWorkbookRelsString +
-   '</Relationships>';
+  AppendToStream(FSWOrkbookRels,
+    '</Relationships>');
 
-  // Global workbook data - Mark all sheets
-  FWorkbookString :=
-   XML_HEADER + LineEnding +
-   '<workbook xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
-   '  <fileVersion appName="fpspreadsheet" />' + LineEnding + // lastEdited="4" lowestEdited="4" rupBuild="4505"
-   '  <workbookPr defaultThemeVersion="124226" />' + LineEnding +
-   '  <bookViews>' + LineEnding +
-   '    <workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' + LineEnding +
-   '  </bookViews>' + LineEnding;
+  { --- Workbook --- }
+  { Global workbook data - Mark all sheets }
+  AppendToStream(FSWorkbook,
+    XML_HEADER);
+  AppendToStream(FSWorkbook, Format(
+    '<workbook xmlns="%s" xmlns:r="%s">', [SCHEMAS_SPREADML, SCHEMAS_DOC_RELS]));
+  AppendToStream(FSWorkbook,
+      '<fileVersion appName="fpspreadsheet" />');
+  AppendToStream(FSWorkbook,
+      '<workbookPr defaultThemeVersion="124226" />');
+  AppendToStream(FSWorkbook,
+      '<bookViews>',
+        '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />',
+      '</bookViews>');
+  AppendToStream(FSWorkbook,
+      '<sheets>');
+  for i:=1 to Workbook.GetWorksheetCount do
+    AppendToStream(FSWorkbook, Format(
+        '<sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]));
+  AppendToStream(FSWorkbook,
+      '</sheets>');
+  AppendToStream(FSWorkbook,
+      '<calcPr calcId="114210" />');
+  AppendToStream(FSWorkbook,
+    '</workbook>');
 
-  FWorkbookString := FWorkbookString + '  <sheets>' + LineEnding;
-  for i := 1 to Workbook.GetWorksheetCount do
-    FWorkbookString := FWorkbookString +
-      Format('    <sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]) + LineEnding;
-  FWorkbookString := FWorkbookString + '  </sheets>' + LineEnding;
-
-  FWorkbookString := FWorkbookString +
-   '  <calcPr calcId="114210" />' + LineEnding +
-   '</workbook>';
-
-  // Preparation for Shared strings
+  // Preparation for shared strings
   FSharedStringsCount := 0;
-  FSharedStrings := '';
 
-  // Write all worksheets, which fills also FSharedStrings
-  SetLength(FSheets, 0);
-
+  // Write all worksheets which fills also the shared strings
   for i := 0 to Workbook.GetWorksheetCount - 1 do
     WriteWorksheet(Workbook.GetWorksheetByIndex(i));
 
   // Finalization of the shared strings document
-  FSharedStrings :=
-   XML_HEADER + LineEnding +
-   '<sst xmlns="' + SCHEMAS_SPREADML + '" count="' + IntToStr(FSharedStringsCount) +
-     '" uniqueCount="' + IntToStr(FSharedStringsCount) + '">' + LineEnding +
-   FSharedStrings +
-   '</sst>';
+  AppendToStream(FSSharedStrings_complete,
+    XML_HEADER, Format(
+    '<sst xmlns="%s" count="%d" uniqueCount="%d">', [SCHEMAS_SPREADML, FSharedStringsCount, FSharedStringsCount]
+  ));
+  FSSharedStrings.Position := 0;
+  FSSharedStrings_complete.CopyFrom(FSSharedStrings, FSSharedStrings.Size);
+  AppendToStream(FSSharedStrings_complete,
+    '</sst>');
+  FSSharedStrings_complete.Position := 0;
 end;
 
 {
@@ -315,58 +348,63 @@ FSheets[CurStr] :=
 }
 procedure TsSpreadOOXMLWriter.WriteWorksheet(CurSheet: TsWorksheet);
 var
-  j, k: Integer;
+  r, c: Cardinal;
   LastColIndex: Cardinal;
   LCell: TCell;
   AVLNode: TAVLTreeNode;
   CellPosText: string;
+//  S: String;
 begin
-  FCurSheetNum := Length(FSheets);
-  SetLength(FSheets, FCurSheetNum + 1);
+  FCurSheetNum := Length(FSSheets);
+  SetLength(FSSheets, FCurSheetNum + 1);
 
-  LastColIndex := CurSheet.GetLastColIndex;
+  FSSheets[FCurSheetNum] := FStreamClass.Create; // create the stream
 
   // Header
-  FSheets[FCurSheetNum] :=
-   XML_HEADER + LineEnding +
-   '<worksheet xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
-   '  <sheetViews>' + LineEnding +
-   '    <sheetView workbookViewId="0" />' + LineEnding +
-   '  </sheetViews>' + LineEnding +
-   '  <sheetData>' + LineEnding;
+  AppendToStream(FSSheets[FCurSheetNum],
+    XML_HEADER);
+  AppendToStream(FSSheets[FCurSheetNum], Format(
+    '<worksheet xmlns="%s" xmlns:r="%s">', [SCHEMAS_SPREADML, SCHEMAS_DOC_RELS]));
+  AppendToStream(FSSheets[FCurSheetNum],
+      '<sheetViews>');
+  AppendToStream(FSSheets[FCurSheetNum],
+        '<sheetView workbookViewId="0" />');
+  AppendToStream(FSSheets[FCurSheetNum],
+      '</sheetViews>');
+  AppendToStream(FSSheets[FCurSheetNum],
+      '<sheetData>');
 
   // The cells need to be written in order, row by row, cell by cell
-  for j := 0 to CurSheet.GetLastRowIndex do
-  begin
-    FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-     Format('  <row r="%d" spans="1:%d">', [j+1,LastColIndex+1]) + LineEnding;
-
-    // Write cells from this row.
-    for k := 0 to LastColIndex do
+  LastColIndex := CurSheet.GetLastColIndex;
+  for r := 0 to CurSheet.GetLastRowIndex do begin
+    AppendToStream(FSSheets[FCurSheetNum], Format(
+      '<row r="%d" spans="1:%d">', [r+1, LastColIndex+1]));
+    // Write cells belonging to this row.
+    for c := 0 to LastColIndex do
     begin
-      LCell.Row := j;
-      LCell.Col := k;
+      LCell.Row := r;
+      LCell.Col := c;
       AVLNode := CurSheet.Cells.Find(@LCell);
       if Assigned(AVLNode) then
         WriteCellCallback(PCell(AVLNode.Data), nil)
       else
       begin
-        CellPosText := CurSheet.CellPosToText(j, k);
-        FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-         Format('    <c r="%s">', [CellPosText]) + LineEnding +
-         '      <v></v>' + LineEnding +
-         '    </c>' + LineEnding;
+        CellPosText := CurSheet.CellPosToText(r, c);
+        AppendToStream(FSSheets[FCurSheetNum], Format(
+          '<c r="%s">', [CellPosText]),
+            '<v></v>',
+          '</c>');
       end;
     end;
 
-    FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-     '  </row>' + LineEnding;
+    AppendToStream(FSSheets[FCurSheetNum],
+      '</row>');
   end;
 
   // Footer
-  FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   '  </sheetData>' + LineEnding +
-   '</worksheet>';
+  AppendToStream(FSSheets[FCurSheetNum],
+      '</sheetData>',
+    '</worksheet>');
 end;
 
 // This is an index to the section cellXfs from the styles.xml file
@@ -379,23 +417,50 @@ end;
 constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FStreamClass := TMemoryStream;
 
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
-end;
-
-destructor TsSpreadOOXMLWriter.Destroy;
-begin
-  SetLength(FSheets, 0);
-  SetLength(FSSheets, 0);
-
-  inherited Destroy;
 end;
 
 procedure TsSpreadOOXMLWriter.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
+end;
+
+{ Creates the streams for the individual data files. Will be zipped into a
+  single xlsx file.
+  We use the variable FStreamClass here to be able to easily switch from a
+  memory stream to a file stream for very big files. }
+procedure TsSpreadOOXMLWriter.CreateStreams;
+begin
+  FSContentTypes := FStreamClass.Create;
+  FSRelsRels := FStreamClass.Create;
+  FSWorkbookRels := FStreamClass.Create;
+  FSWorkbook := FStreamClass.Create;
+  FSStyles := FStreamClass.Create;
+  FSSharedStrings := FStreamClass.Create;
+  FSSharedStrings_complete := FStreamClass.Create;
+  // FSSheets will be created when needed.
+end;
+
+{ Destroys the streams that were created by the writer }
+procedure TsSpreadOOXMLWriter.DestroyStreams;
+var
+  i: Integer;
+begin
+  FSContentTypes.Free;
+  FSRelsRels.Free;
+  FSWorkbookRels.Free;
+  FSWorkbook.Free;
+  FSStyles.Free;
+  FSSharedStrings.Free;
+  FSSharedStrings_complete.Free;
+
+  for i := 0 to Length(FSSheets) - 1 do
+    FSSheets[i].Free;
+  SetLength(FSSheets, 0);
 end;
 
 {
@@ -438,27 +503,14 @@ var
   FZip: TZipper;
   i: Integer;
 begin
-  { Fill the strings with the contents of the files }
+  { Create the streams that will hold the file contents }
+  CreateStreams;
 
+  { Fill the streams with the contents of the files }
   WriteGlobalFiles;
   WriteContent;
 
-  { Write the data to streams }
-
-  FSContentTypes := TStringStream.Create(FContentTypes);
-  FSRelsRels := TStringStream.Create(FRelsRels);
-  FSWorkbookRels := TStringStream.Create(FWorkbookRelsString);
-  FSWorkbook := TStringStream.Create(FWorkbookString);
-  FSStyles := TStringStream.Create(FStylesString);
-  FSSharedStrings := TStringStream.Create(FSharedStrings);
-
-  SetLength(FSSheets, Length(FSheets));
-
-  for i := 0 to Length(FSheets) - 1 do
-    FSSheets[i] := TStringStream.Create(FSheets[i]);
-
   { Now compress the files }
-
   FZip := TZipper.Create;
   try
     FZip.Entries.AddFileEntry(FSContentTypes, OOXML_PATH_TYPES);
@@ -466,23 +518,25 @@ begin
     FZip.Entries.AddFileEntry(FSWorkbookRels, OOXML_PATH_XL_RELS_RELS);
     FZip.Entries.AddFileEntry(FSWorkbook, OOXML_PATH_XL_WORKBOOK);
     FZip.Entries.AddFileEntry(FSStyles, OOXML_PATH_XL_STYLES);
-    FZip.Entries.AddFileEntry(FSSharedStrings, OOXML_PATH_XL_STRINGS);
+    FZip.Entries.AddFileEntry(FSSharedStrings_complete, OOXML_PATH_XL_STRINGS);
 
-    for i := 0 to Length(FSheets) - 1 do
+    for i := 0 to Length(FSSheets) - 1 do begin
+      FSSheets[i].Position:= 0;
       FZip.Entries.AddFileEntry(FSSheets[i], OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i + 1) + '.xml');
+    end;
+
+    // Stream position must be at beginning, it was moved to end during adding of xml strings.
+    FSContentTypes.Position := 0;
+    FSRelsRels.Position := 0;
+    FSWorkbookRels.Position := 0;
+    FSWorkbook.Position := 0;
+    FSStyles.Position := 0;
+    FSSharedStrings_complete.Position := 0;
 
     FZip.SaveToStream(AStream);
+
   finally
-    FSContentTypes.Free;
-    FSRelsRels.Free;
-    FSWorkbookRels.Free;
-    FSWorkbook.Free;
-    FSStyles.Free;
-    FSSharedStrings.Free;
-
-    for i := 0 to Length(FSSheets) - 1 do
-      FSSheets[i].Free;
-
+    DestroyStreams;
     FZip.Free;
   end;
 end;
@@ -505,6 +559,7 @@ var
   lStyleIndex: Cardinal;
   TextTooLong: boolean=false;
   ResultingValue: string;
+  //S: string;
 begin
   Unused(AStream);
   Unused(ARow, ACol, ACell);
@@ -518,17 +573,17 @@ begin
   else
     ResultingValue:=AValue;
 
-  FSharedStrings := FSharedStrings +
-          '  <si>' + LineEnding +
-   Format('    <t>%s</t>', [UTF8TextToXMLText(ResultingValue)]) + LineEnding +
-          '  </si>' + LineEnding;
+  AppendToStream(FSSharedStrings,
+    '<si>',  Format(
+      '<t>%s</t>', [UTF8TextToXMLText(ResultingValue)]),
+    '</si>' );
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
-  FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   Format('    <c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]) + LineEnding;
-
+  AppendToStream(FSSheets[FCurSheetNum], Format(
+    '<c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]));
   Inc(FSharedStringsCount);
+
   {
   //todo: keep a log of errors and show with an exception after writing file or something.
   We can't just do the following
@@ -547,12 +602,13 @@ procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
 var
   CellPosText: String;
   CellValueText: String;
+  //S: String;
 begin
   Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
-  FSheets[FCurSheetNum] := FSheets[FCurSheetNum] +
-   Format('    <c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]) + LineEnding;
+  AppendToStream(FSSheets[FCurSheetNum], Format(
+    '<c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]));
 end;
 
 {*******************************************************************
