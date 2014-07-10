@@ -442,12 +442,15 @@ type
   {@@ Pointer to a TCol record }
   PCol = ^TCol;
 
-  {@@ User interface options:
+  {@@ WSorksheet user interface options:
     @param soShowGridLines  Show or hide the grid lines in the spreadsheet
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
     @param soHasFrozenPanes If set a number of rows and columns of the spreadsheet
                             is fixed and does not scroll. The number is defined by
-                            LeftPaneWidth and TopPaneHeight. }
+                            LeftPaneWidth and TopPaneHeight.
+    @param soCalcBeforeSaving Calculates formulas before saving the file. Otherwise
+                            there are no results when the file is loaded back by
+                            fpspreadsheet. }
   TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes,
     soCalcBeforeSaving);
 
@@ -689,6 +692,23 @@ type
     property  OnChangeFont: TsCellEvent read FOnChangeFont write FOnChangeFont;
   end;
 
+  {@@
+    Options considered when writing a workbook
+
+    @param  woVirtualMode   If in virtual mode date are not taken from cells
+                            when a spreadsheet is written to file, but are
+                            provided by means of the event OnNeedCellData.
+    @param  woSaveMemory    When this option is set temporary files are not
+                            written to memory streams but to file streams using
+                            temporary files. }
+  TsWorkbookWritingOption = (woVirtualMode, woSaveMemory);
+
+  {@@
+    Options considered when writing a workbook }
+  TsWorkbookWritingOptions = set of TsWorkbookWritingOption;
+
+  TsWorkbookNeedCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
+    var AValue: variant) of object;
 
   {@@
     The workbook contains the worksheets and provides methods for reading from
@@ -706,7 +726,16 @@ type
     FReadFormulas: Boolean;
     FDefaultColWidth: Single; // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
+    FVirtualColCount: Cardinal;
+    FVirtualRowCount: Cardinal;
+    FWriting: Boolean;
+    FWritingOptions: TsWorkbookWritingOptions;
+    FOnNeedCellData: TsWorkbookNeedCellDataEvent;
     FFileName: String;
+
+    { Setter/Getter }
+    procedure SetVirtualColCount(AValue: Cardinal);
+    procedure SetVirtualRowCount(AValue: Cardinal);
 
     { Internal methods }
     procedure PrepareBeforeSaving;
@@ -787,6 +816,13 @@ type
       precaution since formulas not correctly implemented by fpspreadsheet
       could crash the reading operation. }
     property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
+    property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
+    property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
+    property WritingOptions: TsWorkbookWritingOptions read FWritingOptions write FWritingOptions;
+    {@@ This event allows to provide external cell data for writing to file,
+      standard cells are ignored. Intended for converting large database files
+      to s spreadsheet format. Requires WritingOption woVirtualMode to be set. }
+    property OnNeedCellData: TsWorkbookNeedCellDataEvent read FOnNeedCellData write FOnNeedCellData;
   end;
 
   {@@ Contents of a number format record }
@@ -934,18 +970,18 @@ type
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
     { Record writing methods }
-    {@@ abstract method for writing a blank cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a blank cell. Must be overridden by descendent classes. }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual; abstract;
-    {@@ abstract method for a date/time value to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a date/time value to a cell. Must be overridden by descendent classes. }
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
-    {@@ abstract method for a formula to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a formula to a cell. Must be overridden by descendent classes. }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
-    {@@ abstract method for am RPN formula to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing an RPN formula to a cell. Must be overridden by descendent classes. }
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); virtual;
-    {@@ abstract method for a string to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a string to a cell. Must be overridden by descendent classes. }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
-    {@@ abstract method for a number value to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
 
   public
@@ -4156,6 +4192,18 @@ begin
   end;
 end;
 
+procedure TsWorkbook.SetVirtualColCount(AValue: Cardinal);
+begin
+  if FWriting then exit;
+  FVirtualColCount := AValue;
+end;
+
+procedure TsWorkbook.SetVirtualRowCount(AValue: Cardinal);
+begin
+  if FWriting then exit;
+  FVirtualRowCount := AValue;
+end;
+
 {@@
   Writes the document to a file. If the file doesn't exist, it will be created.
 
@@ -4173,9 +4221,11 @@ begin
   AWriter := CreateSpreadWriter(AFormat);
   try
     FFileName := AFileName;
+    FWriting := true;
     PrepareBeforeSaving;
     AWriter.WriteToFile(AFileName, AOverwriteExisting);
   finally
+    FWriting := false;
     AWriter.Free;
   end;
 end;
@@ -4213,9 +4263,11 @@ var
 begin
   AWriter := CreateSpreadWriter(AFormat);
   try
+    FWriting := true;
     PrepareBeforeSaving;
     AWriter.WriteToStream(AStream);
   finally
+    FWriting := false;
     AWriter.Free;
   end;
 end;

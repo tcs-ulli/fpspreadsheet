@@ -34,8 +34,6 @@ type
   }
   TFormatDateTimeOptions =  set of TFormatDateTimeOption;
 
-  TsStreamClass = class of TStream;
-
 const
   {@@ Date formatting string for unambiguous date/time display as strings
       Can be used for text output when date/time cell support is not available }
