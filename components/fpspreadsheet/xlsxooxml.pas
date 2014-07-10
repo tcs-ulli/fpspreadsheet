@@ -66,10 +66,10 @@ type
     procedure CreateNumFormatList; override;
     procedure CreateStreams;
     procedure DestroyStreams;
+    procedure ResetStreams;
     function GetStyleIndex(ACell: PCell): Cardinal;
   protected
     { Streams with the contents of files }
-    FStreamClass: TsStreamClass;
     FSContentTypes: TStream;
     FSRelsRels: TStream;
     FSWorkbook: TStream;
@@ -100,6 +100,9 @@ type
   end;
 
 implementation
+
+uses
+  variants;
 
 const
   { OOXML general XML constants }
@@ -353,12 +356,19 @@ var
   LCell: TCell;
   AVLNode: TAVLTreeNode;
   CellPosText: string;
-//  S: String;
+  value: Variant;
+  fn: String;
 begin
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
 
-  FSSheets[FCurSheetNum] := FStreamClass.Create; // create the stream
+  // Create the stream
+  if (woSaveMemory in Workbook.WritingOptions) then begin
+    fn := IncludeTrailingPathDelimiter(GetTempDir);
+    fn := GetTempFileName(fn, Format('fpsSH%d-', [FCurSheetNum+1]));
+    FSSheets[FCurSheetNum] := TFileStream.Create(fn, fmCreate);
+  end else
+    FSSheets[FCurSheetNum] := TMemoryStream.Create;
 
   // Header
   AppendToStream(FSSheets[FCurSheetNum],
@@ -374,31 +384,72 @@ begin
   AppendToStream(FSSheets[FCurSheetNum],
       '<sheetData>');
 
-  // The cells need to be written in order, row by row, cell by cell
-  LastColIndex := CurSheet.GetLastColIndex;
-  for r := 0 to CurSheet.GetLastRowIndex do begin
-    AppendToStream(FSSheets[FCurSheetNum], Format(
-      '<row r="%d" spans="1:%d">', [r+1, LastColIndex+1]));
-    // Write cells belonging to this row.
-    for c := 0 to LastColIndex do
-    begin
-      LCell.Row := r;
-      LCell.Col := c;
-      AVLNode := CurSheet.Cells.Find(@LCell);
-      if Assigned(AVLNode) then
-        WriteCellCallback(PCell(AVLNode.Data), nil)
-      else
-      begin
+  if (woVirtualMode in Workbook.WritingOptions) and Assigned(Workbook.OnNeedCellData)
+  then begin
+    for r := 0 to Workbook.VirtualRowCount-1 do begin
+      AppendToStream(FSSheets[FCurSheetNum], Format(
+        '<row r="%d" spans="1:%d">', [r+1, Workbook.VirtualRowCount]));
+      for c := 0 to Workbook.VirtualColCount-1 do begin
         CellPosText := CurSheet.CellPosToText(r, c);
-        AppendToStream(FSSheets[FCurSheetNum], Format(
-          '<c r="%s">', [CellPosText]),
-            '<v></v>',
-          '</c>');
+        value := varNull;
+        Workbook.OnNeedCellData(Workbook, r, c, value);
+        if VarIsNull(value) then
+          AppendToStream(FSSheets[FCurSheetNum], Format(
+            '<c r="%s"', [CellPosText]),
+              '<v></v>',
+            '</c>')
+        else begin
+          lCell.Row := r;
+          lCell.Col := c;
+          if VarIsNumeric(value) then begin
+            lCell.ContentType := cctNumber;
+            lCell.NumberValue := value;
+          end
+          {
+          else if VarIsDateTime(value) then begin
+            lCell.ContentType := cctNumber;
+            lCell.DateTimeValue := value;
+          end
+          }
+          else if VarIsStr(value) then begin
+            lCell.ContentType := cctUTF8String;
+            lCell.UTF8StringValue := VarToStrDef(value, '');
+          end else
+          if VarIsBool(value) then begin
+            lCell.ContentType := cctBool;
+            lCell.BoolValue := value <> 0;
+          end;
+          WriteCellCallback(@lCell, nil);
+        end;
       end;
+      AppendToStream(FSSheets[FCurSheetNum],
+        '</row>');
     end;
-
-    AppendToStream(FSSheets[FCurSheetNum],
-      '</row>');
+  end else
+  begin
+    // The cells need to be written in order, row by row, cell by cell
+    LastColIndex := CurSheet.GetLastColIndex;
+    for r := 0 to CurSheet.GetLastRowIndex do begin
+      AppendToStream(FSSheets[FCurSheetNum], Format(
+        '<row r="%d" spans="1:%d">', [r+1, LastColIndex+1]));
+      // Write cells belonging to this row.
+      for c := 0 to LastColIndex do begin
+        LCell.Row := r;
+        LCell.Col := c;
+        AVLNode := CurSheet.Cells.Find(@LCell);
+        if Assigned(AVLNode) then
+          WriteCellCallback(PCell(AVLNode.Data), nil)
+        else begin
+          CellPosText := CurSheet.CellPosToText(r, c);
+          AppendToStream(FSSheets[FCurSheetNum], Format(
+            '<c r="%s">', [CellPosText]),
+              '<v></v>',
+            '</c>');
+        end;
+      end;
+      AppendToStream(FSSheets[FCurSheetNum],
+        '</row>');
+    end;
   end;
 
   // Footer
@@ -417,8 +468,6 @@ end;
 constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FStreamClass := TMemoryStream;
-
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
 end;
@@ -430,18 +479,29 @@ begin
 end;
 
 { Creates the streams for the individual data files. Will be zipped into a
-  single xlsx file.
-  We use the variable FStreamClass here to be able to easily switch from a
-  memory stream to a file stream for very big files. }
+  single xlsx file. }
 procedure TsSpreadOOXMLWriter.CreateStreams;
+var
+  dir: String;
 begin
-  FSContentTypes := FStreamClass.Create;
-  FSRelsRels := FStreamClass.Create;
-  FSWorkbookRels := FStreamClass.Create;
-  FSWorkbook := FStreamClass.Create;
-  FSStyles := FStreamClass.Create;
-  FSSharedStrings := FStreamClass.Create;
-  FSSharedStrings_complete := FStreamClass.Create;
+  if (woSaveMemory in Workbook.WritingOptions) then begin
+    dir := IncludeTrailingPathDelimiter(GetTempDir);
+    FSContentTypes := TFileStream.Create(GetTempFileName(dir, 'fpsCT'), fmCreate);
+    FSRelsRels := TFileStream.Create(GetTempFileName(dir, 'fpsRR'), fmCreate);
+    FSWorkbookRels := TFileStream.Create(GetTempFileName(dir, 'fpsWBR'), fmCreate);
+    FSWorkbook := TFileStream.Create(GetTempFileName(dir, 'fpsWB'), fmCreate);
+    FSStyles := TFileStream.Create(GetTempFileName(dir, 'fpsSTY'), fmCreate);
+    FSSharedStrings := TFileStream.Create(GetTempFileName(dir, 'fpsSST'), fmCreate);
+    FSSharedStrings_complete := TFileStream.Create(GetTempFileName(dir, 'fpsSSTc'), fmCreate);
+  end else begin;
+    FSContentTypes := TMemoryStream.Create;
+    FSRelsRels := TMemoryStream.Create;
+    FSWorkbookRels := TMemoryStream.Create;
+    FSWorkbook := TMemoryStream.Create;
+    FSStyles := TMemoryStream.Create;
+    FSSharedStrings := TMemoryStream.Create;
+    FSSharedStrings_complete := TMemoryStream.Create;
+  end;
   // FSSheets will be created when needed.
 end;
 
@@ -449,18 +509,60 @@ end;
 procedure TsSpreadOOXMLWriter.DestroyStreams;
 var
   i: Integer;
+
+  procedure DestroyStream(AStream: TStream);
+  var
+    fn: String;
+  begin
+    if AStream is TFileStream then begin
+      fn := TFileStream(AStream).Filename;
+      DeleteFile(fn);
+    end;
+    AStream.Free;
+  end;
+
 begin
-  FSContentTypes.Free;
-  FSRelsRels.Free;
-  FSWorkbookRels.Free;
-  FSWorkbook.Free;
-  FSStyles.Free;
-  FSSharedStrings.Free;
-  FSSharedStrings_complete.Free;
+  DestroyStream(FSContentTypes);
+  DestroyStream(FSRelsRels);
+  DestroyStream(FSWorkbookRels);
+  DestroyStream(FSWorkbook);
+  DestroyStream(FSStyles);
+  DestroyStream(FSSharedStrings);
+  DestroyStream(FSSharedStrings_complete);
 
   for i := 0 to Length(FSSheets) - 1 do
-    FSSheets[i].Free;
+    DestroyStream(FSSheets[i]);
   SetLength(FSSheets, 0);
+end;
+
+{ Is called before zipping the individual file parts. Rewinds the memory streams,
+  or, if the stream are file streams, the streams are closed and re-opened for
+  reading. }
+procedure TsSpreadOOXMLWriter.ResetStreams;
+var
+  i: Integer;
+
+  procedure ResetStream(AStream: TStream);
+  var
+    fn: String;
+  begin
+    if AStream is TFileStream then begin
+      fn := TFileStream(AStream).FileName;
+      AStream.Free;
+      AStream := TFileStream.Create(fn, fmOpenRead);
+    end else
+      AStream.Position := 0;
+  end;
+
+begin
+  ResetStream(FSContentTypes);
+  ResetStream(FSRelsRels);
+  ResetStream(FSWorkbookRels);
+  ResetStream(FSWorkbook);
+  ResetStream(FSStyles);
+  ResetStream(FSSharedStrings_complete);
+  for i:=0 to Length(FSSheets) - 1 do
+    ResetStream(FSSheets[i]);
 end;
 
 {
@@ -526,12 +628,7 @@ begin
     end;
 
     // Stream position must be at beginning, it was moved to end during adding of xml strings.
-    FSContentTypes.Position := 0;
-    FSRelsRels.Position := 0;
-    FSWorkbookRels.Position := 0;
-    FSWorkbook.Position := 0;
-    FSStyles.Position := 0;
-    FSSharedStrings_complete.Position := 0;
+    ResetStreams;
 
     FZip.SaveToStream(AStream);
 
