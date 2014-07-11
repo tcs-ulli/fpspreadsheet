@@ -389,7 +389,7 @@ begin
   then begin
     for r := 0 to Workbook.VirtualRowCount-1 do begin
       AppendToStream(FSSheets[FCurSheetNum], Format(
-        '<row r="%d" spans="1:%d">', [r+1, Workbook.VirtualRowCount]));
+        '<row r="%d" spans="1:%d">', [r+1, Workbook.VirtualColCount]));
       for c := 0 to Workbook.VirtualColCount-1 do begin
         CellPosText := CurSheet.CellPosToText(r, c);
         value := varNull;
