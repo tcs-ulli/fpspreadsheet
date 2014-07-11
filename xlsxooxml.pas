@@ -88,6 +88,7 @@ type
   protected
     { Record writing methods }
     //todo: add WriteDate
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
@@ -354,7 +355,7 @@ procedure TsSpreadOOXMLWriter.WriteWorksheet(CurSheet: TsWorksheet);
 var
   r, c: Cardinal;
   LastColIndex: Cardinal;
-  LCell: TCell;
+  lCell: TCell;
   AVLNode: TAVLTreeNode;
   CellPosText: string;
   value: Variant;
@@ -391,37 +392,34 @@ begin
       AppendToStream(FSSheets[FCurSheetNum], Format(
         '<row r="%d" spans="1:%d">', [r+1, Workbook.VirtualColCount]));
       for c := 0 to Workbook.VirtualColCount-1 do begin
+        FillChar(lCell, SizeOf(lCell), 0);
         CellPosText := CurSheet.CellPosToText(r, c);
         value := varNull;
         Workbook.OnNeedCellData(Workbook, r, c, value);
+        lCell.Row := r;
+        lCell.Col := c;
         if VarIsNull(value) then
-          AppendToStream(FSSheets[FCurSheetNum], Format(
-            '<c r="%s"', [CellPosText]),
-              '<v></v>',
-            '</c>')
-        else begin
-          lCell.Row := r;
-          lCell.Col := c;
-          if VarIsNumeric(value) then begin
-            lCell.ContentType := cctNumber;
-            lCell.NumberValue := value;
-          end
-          {
-          else if VarIsDateTime(value) then begin
-            lCell.ContentType := cctNumber;
-            lCell.DateTimeValue := value;
-          end
-          }
-          else if VarIsStr(value) then begin
-            lCell.ContentType := cctUTF8String;
-            lCell.UTF8StringValue := VarToStrDef(value, '');
-          end else
-          if VarIsBool(value) then begin
-            lCell.ContentType := cctBool;
-            lCell.BoolValue := value <> 0;
-          end;
-          WriteCellCallback(@lCell, nil);
+          lCell.ContentType := cctEmpty
+        else
+        if VarIsNumeric(value) then begin
+          lCell.ContentType := cctNumber;
+          lCell.NumberValue := value;
+        end
+        {
+        else if VarIsDateTime(value) then begin
+          lCell.ContentType := cctNumber;
+          lCell.DateTimeValue := value;
+        end
+        }
+        else if VarIsStr(value) then begin
+          lCell.ContentType := cctUTF8String;
+          lCell.UTF8StringValue := VarToStrDef(value, '');
+        end else
+        if VarIsBool(value) then begin
+          lCell.ContentType := cctBool;
+          lCell.BoolValue := value <> 0;
         end;
+        WriteCellCallback(@lCell, FSSheets[FCurSheetNum]);
       end;
       AppendToStream(FSSheets[FCurSheetNum],
         '</row>');
@@ -625,6 +623,22 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLWriter.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+var
+  cellPosText: String;
+  lStyleIndex: Integer;
+begin
+  cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  lStyleIndex := GetStyleIndex(ACell);
+
+  AppendToStream(AStream, Format(
+    '<c r="%s" s="%d">', [CellPosText, lStyleIndex]),
+      '<v></v>',
+    '</c>');
+end;
+
+
 {*******************************************************************
 *  TsSpreadOOXMLWriter.WriteLabel ()
 *
@@ -664,7 +678,7 @@ begin
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
-  AppendToStream(FSSheets[FCurSheetNum], Format(
+  AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]));
   Inc(FSharedStringsCount);
 
@@ -691,7 +705,7 @@ begin
   Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
-  AppendToStream(FSSheets[FCurSheetNum], Format(
+  AppendToStream(AStream, Format(
     '<c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]));
 end;
 
