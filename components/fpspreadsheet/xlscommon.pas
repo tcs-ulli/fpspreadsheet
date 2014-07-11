@@ -2534,9 +2534,9 @@ var
   lCell: TCell;
   value: variant;
 begin
-  FillChar(lCell, SizeOf(lCell), 0);
   for r := 0 to Workbook.VirtualRowCount-1 do begin
     for c := 0 to Workbook.VirtualColCount-1 do begin
+      FillChar(lCell, SizeOf(lCell), 0);
       value := varNull;
       Workbook.OnNeedCellData(Workbook, r, c, value);
       lCell.Row := r;

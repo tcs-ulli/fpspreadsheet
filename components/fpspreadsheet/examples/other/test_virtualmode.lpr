@@ -63,7 +63,7 @@ begin
         // writing temporaray data to a file stream instead of a memory stream.
         // woSaveMemory, however, considerably slows down writing of biff files.
 
-      workbook.VirtualRowCount := 1000;
+      workbook.VirtualRowCount := 10000;
       workbook.VirtualColCount := 100;
         // These two numbers define the size of virtual spreadsheet.
         // In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
@@ -74,8 +74,8 @@ begin
         // data to write.
 
       // In case of a database, you would open the dataset before calling this:
-//      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-      workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
+      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+//      workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
 
     finally
       workbook.Free;
