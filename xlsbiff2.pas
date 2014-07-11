@@ -981,7 +981,13 @@ begin
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
     WriteRows(AStream, sheet);
-    WriteCellsToStream(AStream, sheet.Cells);
+
+    if (woVirtualMode in Workbook.WritingOptions) then
+      WriteVirtualCells(AStream)
+    else begin
+      WriteRows(AStream, sheet);
+      WriteCellsToStream(AStream, sheet.Cells);
+    end;
 
     WriteWindow1(AStream);
     //  { -- currently not working

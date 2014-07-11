@@ -21,6 +21,12 @@ type
   TsSpreadsheetFormat = (sfExcel2, {sfExcel3, sfExcel4,} sfExcel5, sfExcel8,
    sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
+  {@@ Record collection limitations of a particular file format }
+  TsSpreadsheetFormatLimitations = record
+    MaxRows: Cardinal;
+    MaxCols: Cardinal;
+  end;
+
 const
   { Default extensions }
   STR_EXCEL_EXTENSION = '.xls';
@@ -738,6 +744,7 @@ type
     procedure SetVirtualRowCount(AValue: Cardinal);
 
     { Internal methods }
+    procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
     procedure PrepareBeforeSaving;
     procedure RemoveWorksheetsCallback(data, arg: pointer);
     procedure UpdateCaches;
@@ -954,14 +961,19 @@ type
     FWorkbook: TsWorkbook;
 
   protected
+    {@@ Limitations for the specific data file format }
+    FLimitations: TsSpreadsheetFormatLimitations;
     {@@ List of number formats found in the workbook. }
     FNumFormatList: TsCustomNumFormatList;
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
+    procedure CheckLimitations;
     procedure CreateNumFormatList; virtual;
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     function  FindFormattingInList(AFormat: PCell): Integer;
     procedure FixFormat(ACell: PCell); virtual;
+    procedure GetSheetDimensions(AWorksheet: TsWorksheet;
+      out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
     procedure ListAllFormattingStyles; virtual;
     procedure ListAllNumFormatsCallback(ACell: PCell; AStream: TStream);
@@ -992,6 +1004,7 @@ type
     NextXFIndex: Integer;
     constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
     destructor Destroy; override;
+    function Limitations: TsSpreadsheetFormatLimitations;
     { General writing methods }
     procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
     procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); virtual;
@@ -1070,6 +1083,8 @@ resourcestring
   lpUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
   lpUnknownSpreadsheetFormat = 'unknown format';
+  lpMaxRowsExceeded = 'This workbook contains %d rows, but the selected file format does not support more than %d rows.';
+  lpMaxColsExceeded = 'This workbook contains %d columns, but the selected file format does not support more than %d columns.';
   lpInvalidFontIndex = 'Invalid font index';
   lpInvalidNumberFormat = 'Trying to use an incompatible number format.';
   lpInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
@@ -4085,6 +4100,30 @@ begin
 end;
 
 {@@
+  Determines the maximum index of used columns and rows in all sheets of this
+  workbook. Respects VirtualMode.
+  Is needed to disable saving when limitations of the format is exceeded. }
+procedure TsWorkbook.GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
+var
+  i: Integer;
+  sheet: TsWorksheet;
+  r1,r2, c1,c2: Cardinal;
+begin
+  if (woVirtualMode in WritingOptions) then begin
+    ALastRow := FVirtualRowCount - 1;
+    ALastCol := FVirtualColCount - 1;
+  end else begin
+    ALastRow := 0;
+    ALastCol := 0;
+    for i:=0 to GetWorksheetCount-1 do begin
+      sheet := GetWorksheetByIndex(i);
+      ALastRow := Max(ALastRow, sheet.GetLastRowIndex);
+      ALastCol := Max(ALastCol, sheet.GetLastColIndex);
+    end;
+  end;
+end;
+
+{@@
   Reads the document from a file. It is assumed to have a given file format.
 
   @param  AFileName  Name of the file to be read
@@ -4221,6 +4260,7 @@ begin
   AWriter := CreateSpreadWriter(AFormat);
   try
     FFileName := AFileName;
+    AWriter.CheckLimitations;
     FWriting := true;
     PrepareBeforeSaving;
     AWriter.WriteToFile(AFileName, AOverwriteExisting);
@@ -4263,6 +4303,7 @@ var
 begin
   AWriter := CreateSpreadWriter(AFormat);
   try
+    AWriter.CheckLimitations;
     FWriting := true;
     PrepareBeforeSaving;
     AWriter.WriteToStream(AStream);
@@ -5260,6 +5301,10 @@ begin
   inherited Create;
   FWorkbook := AWorkbook;
   CreateNumFormatList;
+  { A good starting point valid for many formats... }
+  FLimitations.MaxCols := 256;
+  FLimitations.MaxRows :=  65536;
+
 //  FNumFormatList.FWorkbook := AWorkbook;
 end;
 
@@ -5348,6 +5393,39 @@ begin
 end;
 
 {@@
+  Returns a record containing limitations of the specific file format of the
+  writer.
+}
+function TsCustomSpreadWriter.Limitations: TsSpreadsheetFormatLimitations;
+begin
+  Result := FLimitations;
+end;
+
+{@@
+  Determines the size of the worksheet to be written. VirtualMode is respected.
+  Is called when the writer needs the size for output.
+
+  @param   AWorksheet  Worksheet to be written
+  @param   AFirsRow    Index of first row to be written
+  @param   ALastRow    Index of last row
+  @param   AFirstCol   Index of first column to be written
+  @param   ALastCol    Index of last column to be written
+}
+procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
+  out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal);
+begin
+  AFirstRow := 0;
+  AFirstCol := 0;
+  if (woVirtualMode in AWorksheet.Workbook.WritingOptions) then begin
+    ALastRow := AWorksheet.Workbook.VirtualRowCount-1;
+    ALastCol := AWorksheet.Workbook.VirtualColCount-1;
+  end else begin
+    ALastRow := AWorksheet.GetLastRowIndex;
+    ALastCol := AWorksheet.GetLastColIndex;
+  end;
+end;
+
+{@@
   Each descendent should define its own default formats, if any.
   Always add the normal, unformatted style first to speed things up.
 
@@ -5357,6 +5435,20 @@ procedure TsCustomSpreadWriter.AddDefaultFormats();
 begin
   SetLength(FFormattingStyles, 0);
   NextXFIndex := 0;
+end;
+
+{@@
+  Checks limitations of the writer, e.g max row/column count
+}
+procedure TsCustomSpreadWriter.CheckLimitations;
+var
+  lastCol, lastRow: Cardinal;
+begin
+  Workbook.GetLastRowColIndex(lastRow, lastCol);
+  if lastRow >= FLimitations.MaxRows then
+    raise Exception.CreateFmt(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRows]);
+  if lastCol >= FLimitations.MaxCols then
+    raise Exception.CreateFmt(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxCols]);
 end;
 
 {@@

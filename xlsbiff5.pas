@@ -407,6 +407,7 @@ begin
     AStream.Position := CurrentPos;
 
     WriteBOF(AStream, INT_BOF_SHEET);
+
       WriteIndex(AStream);
 //      WritePageSetup(AStream);
       WriteColInfos(AStream, sheet);
@@ -415,7 +416,14 @@ begin
       WritePane(AStream, sheet, true, pane);  // true for "is BIFF5 or BIFF8"
       WriteSelection(AStream, sheet, pane);
       WriteRows(AStream, sheet);
-      WriteCellsToStream(AStream, sheet.Cells);
+
+      if (woVirtualMode in Workbook.WritingOptions) then
+        WriteVirtualCells(AStream)
+      else begin
+        WriteRows(AStream, sheet);
+        WriteCellsToStream(AStream, sheet.Cells);
+      end;
+
     WriteEOF(AStream);
   end;
   

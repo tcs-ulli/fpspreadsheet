@@ -2888,6 +2888,10 @@ begin
 
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
+
+  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
+  FLimitations.MaxCols := 1024;
+  FLimitations.MaxRows := 1048576;
 end;
 
 destructor TsSpreadOpenDocWriter.Destroy;
