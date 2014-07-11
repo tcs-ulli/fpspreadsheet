@@ -69,6 +69,7 @@ type
     procedure DestroyStreams;
     procedure ResetStreams;
     function GetStyleIndex(ACell: PCell): Cardinal;
+    procedure WriteFonts(AStream: TStream);
   protected
     { Streams with the contents of files }
     FSContentTypes: TStream;
@@ -148,6 +149,36 @@ const
 
 { TsSpreadOOXMLWriter }
 
+procedure TsSpreadOOXMLWriter.WriteFonts(AStream: TStream);
+var
+  i: Integer;
+  font: TsFont;
+  bold, italic, underline, strikeout, color: String;
+  rgb: TsColorValue;
+begin
+  AppendToStream(FSStyles, Format(
+      '<fonts count="%d">', [Workbook.GetFontCount]));
+  for i:=0 to Workbook.GetFontCount-1 do begin
+    font := Workbook.GetFont(i);
+    if font <> nil then begin
+      if (fssBold in font.Style) then bold := '<b />' else bold := '';
+      if (fssItalic in font.Style) then italic := '<i />' else italic := '';
+      if (fssUnderline in font.Style) then underline := '<u />' else underline := '';
+      if (fssStrikeout in font.Style) then strikeout := '<strike />' else strikeout := '';
+      if font.Color <> scBlack then begin
+        rgb := Workbook.GetPaletteColor(font.Color);
+        color := Format('<color rgb="%s" />', [ColorToHTMLColorStr(rgb)])
+      end else
+        color := '';
+      AppendToStream(AStream, Format(
+        '<font><sz val="%g" />%s<name val="%s" />%s%s%s%s</font>', [
+          font.Size, color, font.FontName, bold, italic, underline, strikeout]));
+    end;
+  end;
+  AppendToStream(AStream,
+      '</fonts>');
+end;
+
 procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
 var
   i: Integer;
@@ -191,13 +222,9 @@ begin
     XML_Header);
   AppendToStream(FSStyles, Format(
     '<styleSheet xmlns="%s">', [SCHEMAS_SPREADML]));
-  AppendToStream(FSStyles,
-      '<fonts count="2">');
-  AppendToStream(FSStyles,
-        '<font><sz val="10" /><name val="Arial" /></font>',
-        '<font><sz val="10" /><name val="Arial" /><b val="true"/></font>');
-  AppendToStream(FSStyles,
-      '</fonts>');
+
+  WriteFonts(FSStyles);
+
   AppendToStream(FSStyles,
       '<fills count="2">');
   AppendToStream(FSStyles,
@@ -437,7 +464,7 @@ begin
         LCell.Col := c;
         AVLNode := CurSheet.Cells.Find(@LCell);
         if Assigned(AVLNode) then
-          WriteCellCallback(PCell(AVLNode.Data), nil)
+          WriteCellCallback(PCell(AVLNode.Data), FSSheets[FCurSheetNum])
         else begin
           CellPosText := CurSheet.CellPosToText(r, c);
           AppendToStream(FSSheets[FCurSheetNum], Format(
