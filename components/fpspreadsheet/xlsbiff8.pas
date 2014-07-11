@@ -673,7 +673,7 @@ end;
 {*******************************************************************
 *  TsSpreadBIFF8Writer.WriteFonts ()
 *
-*  DESCRIPTION:    Writes the Excel 8 FONT records neede for the
+*  DESCRIPTION:    Writes the Excel 8 FONT records needed for the
 *                  used fonts in the workbook.
 *
 *******************************************************************}
