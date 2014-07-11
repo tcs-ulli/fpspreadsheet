@@ -23,7 +23,8 @@ type
 
   TOLEDocument = record
     // Information about the document
-    Stream: TMemoryStream;
+    Stream: TStream;
+//    Stream: TMemoryStream;
   end;
 
 
@@ -57,7 +58,7 @@ var
 begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
   if not AOverwriteExisting and FileExists(AFileName) then begin
-      Raise EStreamError.Createfmt('File already exists "%s"',[AFileName]);
+      Raise EStreamError.Createfmt('File "%s" already exists.',[AFileName]);
   end;
   RealFile:=TFileStream.Create(AFileName,fmCreate);
   fsOLE:=TVirtualLayer_OLE.Create(RealFile);
@@ -101,7 +102,7 @@ begin
           if not Assigned(AOLEDocument.Stream) then begin
             AOLEDocument.Stream:=TMemoryStream.Create;
           end else begin
-            AOLEDocument.Stream.Clear;
+            (AOLEDocument.Stream as TMemoryStream).Clear;
           end;
           AOLEDocument.Stream.CopyFrom(OLEStream,OLEStream.Size);
         end;

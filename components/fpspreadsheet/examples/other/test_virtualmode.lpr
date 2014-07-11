@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Classes, laz_fpspreadsheet,
   { you can add units after this }
-  SysUtils, variants, fpspreadsheet, xlsxooxml;
+  SysUtils, variants, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
 
 type
   TDataProvider = class
@@ -35,7 +35,7 @@ type
       AData := 10000*ARow + ACol;
 
     // you can use the OnNeedData also to provide feedback on how the process
-    // progresses.
+    // progresses:
     if (ACol = 0) and (ARow mod 1000 = 0) then
       WriteLn('Writing row ', ARow, '...');
   end;
@@ -52,22 +52,30 @@ begin
     workbook := TsWorkbook.Create;
     try
       worksheet := workbook.AddWorksheet('Sheet1');
+      worksheet.WriteFontStyle(0, 1, [fssBold]);
 
       { These are the essential commands to activate virtual mode: }
-      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
+
+//      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
+      workbook.WritingOptions := [woVirtualMode];
+
         // woSaveMemory can be omitted, but is essential for large files: it causes
-        // writing temporaray data to a file stream instead of to a memory stream.
-      workbook.VirtualRowCount := 10000;
+        // writing temporaray data to a file stream instead of a memory stream.
+        // woSaveMemory, however, considerably slows down writing of biff files.
+
+      workbook.VirtualRowCount := 1000;
       workbook.VirtualColCount := 100;
         // These two numbers define the size of virtual spreadsheet.
         // In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
         // the number of fields to be written to the spreadsheet file
+
       workbook.OnNeedCellData := @dataprovider.NeedCellData;
         // This links the worksheet to the method from which it gets the
         // data to write.
 
       // In case of a database, you would open the dataset before calling this:
-      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+//      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+      workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
 
     finally
       workbook.Free;

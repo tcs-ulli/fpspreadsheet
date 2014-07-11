@@ -508,6 +508,8 @@ type
     procedure WriteWindow1(AStream: TStream); virtual;
     // Writes the index of the XF record used in the given cell
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
+    // Writes cell content received by workbook in OnNeedCellData event
+    procedure WriteVirtualCells(AStream: TStream);
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -518,7 +520,7 @@ type
 implementation
 
 uses
-  fpsNumFormatParser;
+  Variants, fpsNumFormatParser;
 
 { Helper table for rpn formulas:
   Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
@@ -2524,6 +2526,46 @@ begin
   lXFIndex := FFormattingStyles[lIndex].Row;
 
   AStream.WriteWord(WordToLE(lXFIndex));
+end;
+
+procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);
+var
+  r,c: Cardinal;
+  lCell: TCell;
+  value: variant;
+begin
+  FillChar(lCell, SizeOf(lCell), 0);
+  for r := 0 to Workbook.VirtualRowCount-1 do begin
+    for c := 0 to Workbook.VirtualColCount-1 do begin
+      value := varNull;
+      Workbook.OnNeedCellData(Workbook, r, c, value);
+      lCell.Row := r;
+      lCell.Col := c;
+      if VarIsNull(value) then
+        lCell.ContentType := cctEmpty
+      else
+      if VarIsNumeric(value) then begin
+        lCell.ContentType := cctNumber;
+        lCell.NumberValue := value;
+      end else
+      {
+      if VarIsDateTime(value) then begin
+        lCell.ContentType := cctNumber;
+        lCell.DateTimeValue := value;
+      end else
+      }
+      if VarIsStr(value) then begin
+        lCell.ContentType := cctUTF8String;
+        lCell.UTF8StringValue := VarToStrDef(value, '');
+      end else
+      if VarIsBool(value) then begin
+        lCell.ContentType := cctBool;
+        lCell.BoolValue := value <> 0;
+      end else
+        lCell.ContentType := cctEmpty;
+      WriteCellCallback(@lCell, AStream);
+    end;
+  end;
 end;
 
 end.

@@ -58,6 +58,7 @@ type
   { TsSpreadOOXMLWriter }
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
+  private
   protected
     FPointSeparatorSettings: TFormatSettings;
     FSharedStringsCount: Integer;
@@ -470,6 +471,10 @@ begin
   inherited Create(AWorkbook);
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
+
+  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
+  FLimitations.MaxCols := 16384;
+  FLimitations.MaxRows := 1048576;
 end;
 
 procedure TsSpreadOOXMLWriter.CreateNumFormatList;
@@ -486,13 +491,13 @@ var
 begin
   if (woSaveMemory in Workbook.WritingOptions) then begin
     dir := IncludeTrailingPathDelimiter(GetTempDir);
-    FSContentTypes := TFileStream.Create(GetTempFileName(dir, 'fpsCT'), fmCreate);
-    FSRelsRels := TFileStream.Create(GetTempFileName(dir, 'fpsRR'), fmCreate);
-    FSWorkbookRels := TFileStream.Create(GetTempFileName(dir, 'fpsWBR'), fmCreate);
-    FSWorkbook := TFileStream.Create(GetTempFileName(dir, 'fpsWB'), fmCreate);
-    FSStyles := TFileStream.Create(GetTempFileName(dir, 'fpsSTY'), fmCreate);
-    FSSharedStrings := TFileStream.Create(GetTempFileName(dir, 'fpsSST'), fmCreate);
-    FSSharedStrings_complete := TFileStream.Create(GetTempFileName(dir, 'fpsSSTc'), fmCreate);
+    FSContentTypes := TFileStream.Create(GetTempFileName(dir, 'fpsCT'), fmCreate+fmOpenRead);
+    FSRelsRels := TFileStream.Create(GetTempFileName(dir, 'fpsRR'), fmCreate+fmOpenRead);
+    FSWorkbookRels := TFileStream.Create(GetTempFileName(dir, 'fpsWBR'), fmCreate+fmOpenRead);
+    FSWorkbook := TFileStream.Create(GetTempFileName(dir, 'fpsWB'), fmCreate+fmOpenRead);
+    FSStyles := TFileStream.Create(GetTempFileName(dir, 'fpsSTY'), fmCreate+fmOpenRead);
+    FSSharedStrings := TFileStream.Create(GetTempFileName(dir, 'fpsSST'), fmCreate+fmOpenRead);
+    FSSharedStrings_complete := TFileStream.Create(GetTempFileName(dir, 'fpsSSTc'), fmCreate+fmOpenRead);
   end else begin;
     FSContentTypes := TMemoryStream.Create;
     FSRelsRels := TMemoryStream.Create;
@@ -507,8 +512,6 @@ end;
 
 { Destroys the streams that were created by the writer }
 procedure TsSpreadOOXMLWriter.DestroyStreams;
-var
-  i: Integer;
 
   procedure DestroyStream(AStream: TStream);
   var
@@ -521,6 +524,8 @@ var
     AStream.Free;
   end;
 
+var
+  stream: TStream;
 begin
   DestroyStream(FSContentTypes);
   DestroyStream(FSRelsRels);
@@ -529,40 +534,22 @@ begin
   DestroyStream(FSStyles);
   DestroyStream(FSSharedStrings);
   DestroyStream(FSSharedStrings_complete);
-
-  for i := 0 to Length(FSSheets) - 1 do
-    DestroyStream(FSSheets[i]);
+  for stream in FSSheets do DestroyStream(stream);
   SetLength(FSSheets, 0);
 end;
 
-{ Is called before zipping the individual file parts. Rewinds the memory streams,
-  or, if the stream are file streams, the streams are closed and re-opened for
-  reading. }
+{ Is called before zipping the individual file parts. Rewinds the streams. }
 procedure TsSpreadOOXMLWriter.ResetStreams;
 var
-  i: Integer;
-
-  procedure ResetStream(AStream: TStream);
-  var
-    fn: String;
-  begin
-    if AStream is TFileStream then begin
-      fn := TFileStream(AStream).FileName;
-      AStream.Free;
-      AStream := TFileStream.Create(fn, fmOpenRead);
-    end else
-      AStream.Position := 0;
-  end;
-
+  stream: TStream;
 begin
-  ResetStream(FSContentTypes);
-  ResetStream(FSRelsRels);
-  ResetStream(FSWorkbookRels);
-  ResetStream(FSWorkbook);
-  ResetStream(FSStyles);
-  ResetStream(FSSharedStrings_complete);
-  for i:=0 to Length(FSSheets) - 1 do
-    ResetStream(FSSheets[i]);
+  FSContentTypes.Position := 0;
+  FSRelsRels.Position := 0;
+  FSWorkbookRels.Position := 0;
+  FSWorkbook.Position := 0;
+  FSStyles.Position := 0;
+  FSSharedStrings_complete.Position := 0;
+  for stream in FSSheets do stream.Position := 0;
 end;
 
 {

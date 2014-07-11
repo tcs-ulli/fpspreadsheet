@@ -358,21 +358,27 @@ end;
 procedure TsSpreadBIFF8Writer.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
-  MemStream: TMemoryStream;
+  Stream: TStream;
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
+  fn: String;
 begin
-  MemStream := TMemoryStream.Create;
+  if (woSaveMemory in Workbook.WritingOptions) then begin
+    fn := GetTempFileName;
+    Stream := TFileStream.Create(fn, fmCreate + fmOpenRead)
+  end else
+    Stream := TMemoryStream.Create;
+
   OutputStorage := TOLEStorage.Create;
   try
-    WriteToStream(MemStream);
+    WriteToStream(Stream);
 
     // Only one stream is necessary for any number of worksheets
-    OLEDocument.Stream := MemStream;
+    OLEDocument.Stream := Stream;
 
     OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting, 'Workbook');
   finally
-    MemStream.Free;
+    Stream.Free;
     OutputStorage.Free;
   end;
 end;
@@ -439,8 +445,12 @@ begin
       WriteDimensions(AStream, sheet);
       //WriteRowAndCellBlock(AStream, sheet);
 
-      WriteRows(AStream, sheet);
-      WriteCellsToStream(AStream, sheet.Cells);
+      if (woVirtualMode in Workbook.WritingOptions) then
+        WriteVirtualCells(AStream)
+      else begin
+        WriteRows(AStream, sheet);
+        WriteCellsToStream(AStream, sheet.Cells);
+      end;
 
       WriteWindow2(AStream, sheet);
       WritePane(AStream, sheet, isBIFF8, pane);
@@ -545,26 +555,26 @@ end;
 }
 procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
-  lLastCol: Word;
-  lLastRow: Integer;
+  firstRow, lastRow, firstCol, lastCol: Cardinal;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
   AStream.WriteWord(WordToLE(14));
 
+  { Determine sheet size }
+  GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
+
   { Index to first used row }
-  AStream.WriteDWord(DWordToLE(0));
+  AStream.WriteDWord(DWordToLE(firstRow));
 
   { Index to last used row, increased by 1 }
-  lLastRow := GetLastRowIndex(AWorksheet)+1;
-  AStream.WriteDWord(DWordToLE(lLastRow)); // Old dummy value: 33
+  AStream.WriteDWord(DWordToLE(lastRow+1));
 
   { Index to first used column }
-  AStream.WriteWord(WordToLE(0));
+  AStream.WriteWord(WordToLE(firstCol));
 
   { Index to last used column, increased by 1 }
-  lLastCol := GetLastColIndex(AWorksheet)+1;
-  AStream.WriteWord(WordToLE(lLastCol)); // Old dummy value: 10
+  AStream.WriteWord(WordToLE(lastCol+1));
 
   { Not used }
   AStream.WriteWord(WordToLE(0));
