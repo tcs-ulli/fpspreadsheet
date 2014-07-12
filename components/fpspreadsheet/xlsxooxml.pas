@@ -64,12 +64,14 @@ type
     FSharedStringsCount: Integer;
   protected
     { Helper routines }
+    procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     procedure CreateStreams;
     procedure DestroyStreams;
-    procedure ResetStreams;
     function GetStyleIndex(ACell: PCell): Cardinal;
-    procedure WriteFonts(AStream: TStream);
+    procedure ResetStreams;
+    procedure WriteFontList(AStream: TStream);
+    procedure WriteStyleList(AStream: TStream; ANodeName: String);
   protected
     { Streams with the contents of files }
     FSContentTypes: TStream;
@@ -149,34 +151,130 @@ const
 
 { TsSpreadOOXMLWriter }
 
-procedure TsSpreadOOXMLWriter.WriteFonts(AStream: TStream);
+{ Adds built-in styles:
+  - Default style for cells having no specific formatting
+  - Bold styles for cells having UsedFormattingFileds = [uffBold]
+  All other styles will be added by "ListAllFormattingStyles".
+}
+procedure TsSpreadOOXMLWriter.AddDefaultFormats();
+// We store the index of the XF record that will be assigned to this style in
+// the "row" of the style. Will be needed when writing the XF record.
+// --- This is needed for BIFF. Not clear if it is important here as well...
+var
+  len: Integer;
+begin
+  SetLength(FFormattingStyles, 2);
+
+  // Default style
+  FillChar(FFormattingStyles[0], SizeOf(TCell), 0);
+  FFormattingStyles[0].BorderStyles := DEFAULT_BORDERSTYLES;
+  FFormattingStyles[0].Row := 0;
+
+  // Bold style
+  FillChar(FFormattingStyles[1], SizeOf(TCell), 0);
+  FFormattingStyles[1].UsedFormattingFields := [uffBold];
+  FFormattingStyles[1].FontIndex := 1;  // this is the "bold" font
+  FFormattingStyles[1].Row := 1;
+
+  NextXFIndex := 2;
+end;
+
+{ Determines the formatting index which a given cell has in list of
+  "FormattingStyles" which correspond to the section cellXfs of the styles.xml
+  file. }
+function TsSpreadOOXMLWriter.GetStyleIndex(ACell: PCell): Cardinal;
+begin
+  Result := FindFormattingInList(ACell);
+  if Result = -1 then
+    Result := 0;
+end;
+
+{ Writes the fontlist of the workbook to the stream. The font id used in xf
+  records is given by the index of a font in the list. Therefore, we have
+  to write an empty record for font #4 which is nil due to compatibility with BIFF }
+procedure TsSpreadOOXMLWriter.WriteFontList(AStream: TStream);
 var
   i: Integer;
   font: TsFont;
-  bold, italic, underline, strikeout, color: String;
+  s: String;
   rgb: TsColorValue;
 begin
   AppendToStream(FSStyles, Format(
       '<fonts count="%d">', [Workbook.GetFontCount]));
   for i:=0 to Workbook.GetFontCount-1 do begin
     font := Workbook.GetFont(i);
-    if font <> nil then begin
-      if (fssBold in font.Style) then bold := '<b />' else bold := '';
-      if (fssItalic in font.Style) then italic := '<i />' else italic := '';
-      if (fssUnderline in font.Style) then underline := '<u />' else underline := '';
-      if (fssStrikeout in font.Style) then strikeout := '<strike />' else strikeout := '';
+    if font = nil then
+      AppendToStream(AStream, '<font />')
+      // Font #4 is missing in fpspreadsheet due to BIFF compatibility. We write
+      // an empty node to keep the numbers in sync with the stored font index.
+    else begin
+      s := Format('<sz val="%g" /><name val="%s" />', [font.Size, font.FontName]);
+      if (fssBold in font.Style) then
+        s := s + '<b />';
+      if (fssItalic in font.Style) then
+        s := s + '<i />';
+      if (fssUnderline in font.Style) then
+        s := s + '<u />';
+      if (fssStrikeout in font.Style) then
+        s := s + '<strike />';
       if font.Color <> scBlack then begin
         rgb := Workbook.GetPaletteColor(font.Color);
-        color := Format('<color rgb="%s" />', [ColorToHTMLColorStr(rgb)])
-      end else
-        color := '';
-      AppendToStream(AStream, Format(
-        '<font><sz val="%g" />%s<name val="%s" />%s%s%s%s</font>', [
-          font.Size, color, font.FontName, bold, italic, underline, strikeout]));
+        s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]);
+      end;
+      AppendToStream(AStream,
+        '<font>', s, '</font>');
     end;
   end;
   AppendToStream(AStream,
       '</fonts>');
+end;
+
+{ Writes the style list which the writer has collected in FFormattingStyles. }
+procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
+var
+  styleCell: TCell;
+  s: String;
+  fontID: Integer;
+  numFmtId: Integer;
+  fillId: Integer;
+  borderId: Integer;
+begin
+  AppendToStream(AStream, Format(
+    '<%s count="%d">', [ANodeName, Length(FFormattingStyles)]));
+
+  for styleCell in FFormattingStyles do begin
+    s := '';
+
+    { Number format }
+    numFmtId := 0;
+    s := s + Format('numFmtId="%d" ', [numFmtId]);
+
+    { Font }
+    fontId := 0;
+    if (uffBold in styleCell.UsedFormattingFields) then
+      fontId := 1;
+    if (uffFont in styleCell.UsedFormattingFields) then
+      fontId := styleCell.FontIndex;
+    s := s + Format('fontId="%d" ', [fontId]);
+    if fontID > 0 then s := s + 'applyFont="1" ';
+
+    if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
+
+    { Fill }
+    fillID := 0;
+    s := s + Format('fillId="%d" ', [fillID]);
+
+    { Border }
+    borderID := 0;
+    s := s + Format('borderId="%d" ', [borderID]);
+
+    { Write everything to stream }
+    AppendToStream(AStream,
+      '<xf ' + s + '/>'
+    );
+  end;
+  AppendToStream(FSStyles, Format(
+    '</%s>', [ANodeName]));
 end;
 
 procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
@@ -223,8 +321,10 @@ begin
   AppendToStream(FSStyles, Format(
     '<styleSheet xmlns="%s">', [SCHEMAS_SPREADML]));
 
-  WriteFonts(FSStyles);
+  // Fonts
+  WriteFontList(FSStyles);
 
+  // Fill patterns
   AppendToStream(FSStyles,
       '<fills count="2">');
   AppendToStream(FSStyles,
@@ -237,6 +337,8 @@ begin
         '</fill>');
   AppendToStream(FSStyles,
       '</fills>');
+
+  // Borders
   AppendToStream(FSStyles,
       '<borders count="1">');
   AppendToStream(FSStyles,
@@ -245,28 +347,27 @@ begin
         '</border>');
   AppendToStream(FSStyles,
       '</borders>');
+
+  // Style records
   AppendToStream(FSStyles,
-      '<cellStyleXfs count="2">');
-  AppendToStream(FSStyles,
+      '<cellStyleXfs count="1">',
         '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" />',
-        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" />');
-  AppendToStream(FSStyles,
-      '</cellStyleXfs>');
-  AppendToStream(FSStyles,
-      '<cellXfs count="2">');
-  AppendToStream(FSStyles,
-        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" />',
-        '<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" />');
-  AppendToStream(FSStyles,
-      '</cellXfs>');
+      '</cellStyleXfs>'
+  );
+  WriteStyleList(FSStyles, 'cellXfs');
+
+  // Cell style records
   AppendToStream(FSStyles,
       '<cellStyles count="1">',
         '<cellStyle name="Normal" xfId="0" builtinId="0" />',
       '</cellStyles>');
+
+  // Misc
   AppendToStream(FSStyles,
       '<dxfs count="0" />');
   AppendToStream(FSStyles,
       '<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16" />');
+
   AppendToStream(FSStyles,
     '</styleSheet>');
 end;
@@ -484,13 +585,6 @@ begin
     '</worksheet>');
 end;
 
-// This is an index to the section cellXfs from the styles.xml file
-function TsSpreadOOXMLWriter.GetStyleIndex(ACell: PCell): Cardinal;
-begin
-  if uffBold in ACell^.UsedFormattingFields then Result := 1
-  else Result := 0;
-end;
-
 constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
@@ -617,6 +711,10 @@ var
   FZip: TZipper;
   i: Integer;
 begin
+  { Analyze the workbook and collect all information needed }
+  ListAllNumFormats;
+  ListAllFormattingStyles;
+
   { Create the streams that will hold the file contents }
   CreateStreams;
 
@@ -707,7 +805,8 @@ begin
   lStyleIndex := GetStyleIndex(ACell);
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]));
-  Inc(FSharedStringsCount);
+
+  inc(FSharedStringsCount);
 
   {
   //todo: keep a log of errors and show with an exception after writing file or something.
