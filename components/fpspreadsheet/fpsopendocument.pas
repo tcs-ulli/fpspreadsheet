@@ -131,38 +131,36 @@ type
     FRowStyleList: TFPList;
 
     // Routines to write parts of files
-    function WriteCellStylesXMLAsString: string;
-    function WriteColStylesXMLAsString: String;
-    function WriteNumFormatsXMLAsString: String;
-    function WriteRowStylesXMLAsString: String;
-
-    function WriteColumnsXMLAsString(ASheet: TsWorksheet): String;
-    function WriteRowsAndCellsXMLAsString(ASheet: TsWorksheet): String;
+    procedure WriteCellStyles(AStream: TStream);
+    procedure WriteColStyles(AStream: TStream);
+    procedure WriteColumns(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteFontNames(AStream: TStream);
+    procedure WriteNumFormats(AStream: TStream);
+    procedure WriteRowStyles(AStream: TStream);
+    procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteTableSettings(AStream: TStream);
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
     function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
     function WriteDefaultFontXMLAsString: String;
-    function WriteFontNamesXMLAsString: String;
     function WriteFontStyleXMLAsString(const AFormat: TCell): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TCell): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TCell): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TCell): String;
 
-    function WriteTableSettingsXMLAsString(AIndent: String): String;
   protected
     FPointSeparatorSettings: TFormatSettings;
-    // Strings with the contents of files
-    FMeta, FSettings, FStyles, FContent, FCellContent, FMimetype: string;
-    FMetaInfManifest: string;
     // Streams with the contents of files
-    FSMeta, FSSettings, FSStyles, FSContent, FSMimetype: TStringStream;
-    FSMetaInfManifest: TStringStream;
+    FSMeta, FSSettings, FSStyles, FSContent, FSMimeType, FSMetaInfManifest: TStream;
     // Helpers
     procedure CreateNumFormatList; override;
+    procedure CreateStreams;
+    procedure DestroyStreams;
     procedure ListAllColumnStyles;
     procedure ListAllNumFormats; override;
     procedure ListAllRowStyles;
+    procedure ResetStreams;
     // Routines to write those files
     procedure WriteMimetype;
     procedure WriteMetaInfManifest;
@@ -170,7 +168,7 @@ type
     procedure WriteSettings;
     procedure WriteStyles;
     procedure WriteContent;
-    procedure WriteWorksheet(CurSheet: TsWorksheet);
+    procedure WriteWorksheet(AStream: TStream; CurSheet: TsWorksheet);
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -2235,6 +2233,54 @@ begin
   FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
+{ Creates the streams for the individual data files. Will be zipped into a
+  single xlsx file. }
+procedure TsSpreadOpenDocWriter.CreateStreams;
+var
+  dir: String;
+begin
+  if (woSaveMemory in Workbook.WritingOptions) then begin
+    dir := IncludeTrailingPathDelimiter(GetTempDir);
+    FSMeta := TFileStream.Create(GetTempFileName(dir, 'fpsM'), fmCreate+fmOpenRead);
+    FSSettings := TFileStream.Create(GetTempFileName(dir, 'fpsS'), fmCreate+fmOpenRead);
+    FSStyles := TFileStream.Create(GetTempFileName(dir, 'fpsSTY'), fmCreate+fmOpenRead);
+    FSContent := TFileStream.Create(GetTempFileName(dir, 'fpsC'), fmCreate+fmOpenRead);
+    FSMimeType := TFileStream.Create(GetTempFileName(dir, 'fpsMT'), fmCreate+fmOpenRead);
+    FSMetaInfManifest := TFileStream.Create(GetTempFileName(dir, 'fpsMIM'), fmCreate+fmOpenRead);
+  end else begin;
+    FSMeta := TMemoryStream.Create;
+    FSSettings := TMemoryStream.Create;
+    FSStyles := TMemoryStream.Create;
+    FSContent := TMemoryStream.Create;
+    FSMimeType := TMemoryStream.Create;
+    FSMetaInfManifest := TMemoryStream.Create;
+  end;
+  // FSSheets will be created when needed.
+end;
+
+{ Destroys the streams that were created by the writer }
+procedure TsSpreadOpenDocWriter.DestroyStreams;
+
+  procedure DestroyStream(AStream: TStream);
+  var
+    fn: String;
+  begin
+    if AStream is TFileStream then begin
+      fn := TFileStream(AStream).Filename;
+      DeleteFile(fn);
+    end;
+    AStream.Free;
+  end;
+
+begin
+  DestroyStream(FSMeta);
+  DestroyStream(FSSettings);
+  DestroyStream(FSStyles);
+  DestroyStream(FSContent);
+  DestroyStream(FSMimeType);
+  DestroyStream(FSMetaInfManifest);
+end;
+
 procedure TsSpreadOpenDocWriter.ListAllColumnStyles;
 var
   i, j, c: Integer;
@@ -2355,38 +2401,59 @@ begin
   end;
 end;
 
+{ Is called before zipping the individual file parts. Rewinds the streams. }
+procedure TsSpreadOpenDocWriter.ResetStreams;
+begin
+  FSMeta.Position := 0;
+  FSSettings.Position := 0;
+  FSStyles.Position := 0;
+  FSContent.Position := 0;
+  FSMimeType.Position := 0;
+  FSMetaInfManifest.Position := 0;
+end;
+
 procedure TsSpreadOpenDocWriter.WriteMimetype;
 begin
-  FMimetype := 'application/vnd.oasis.opendocument.spreadsheet';
+  AppendToStream(FSMimeType,
+    'application/vnd.oasis.opendocument.spreadsheet'
+  );
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMetaInfManifest;
 begin
-  FMetaInfManifest :=
-   XML_HEADER + LineEnding +
-   '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">' + LineEnding +
-   '  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.spreadsheet" manifest:full-path="/" />' + LineEnding +
-   '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml" />' + LineEnding +
-   '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml" />' + LineEnding +
-   '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />' + LineEnding +
-   '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />' + LineEnding +
-   '</manifest:manifest>';
+  AppendToStream(FSMetaInfManifest,
+    '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">');
+  AppendToStream(FSMetaInfManifest,
+      '<manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.spreadsheet" manifest:full-path="/" />');
+  AppendToStream(FSMetaInfManifest,
+      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml" />');
+  AppendToStream(FSMetaInfManifest,
+      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml" />');
+  AppendToStream(FSMetaInfManifest,
+      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />');
+  AppendToStream(FSMetaInfManifest,
+      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />');
+  AppendToStream(FSMetaInfManifest,
+    '</manifest:manifest>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMeta;
 begin
-  FMeta :=
-   XML_HEADER + LineEnding +
-   '<office:document-meta xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
-     '" xmlns:dcterms="' + SCHEMAS_XMLNS_DCTERMS +
-     '" xmlns:meta="' + SCHEMAS_XMLNS_META +
-     '" xmlns="' + SCHEMAS_XMLNS +
-     '" xmlns:ex="' + SCHEMAS_XMLNS + '">' + LineEnding +
-   '  <office:meta>' + LineEnding +
-   '    <meta:generator>FPSpreadsheet Library</meta:generator>' + LineEnding +
-   '    <meta:document-statistic />' + LineEnding +
-   '  </office:meta>' + LineEnding +
-   '</office:document-meta>';
+  AppendToStream(FSMeta,
+    XML_HEADER);
+  AppendToStream(FSMeta,
+    '<office:document-meta xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
+      '" xmlns:dcterms="' + SCHEMAS_XMLNS_DCTERMS +
+      '" xmlns:meta="' + SCHEMAS_XMLNS_META +
+      '" xmlns="' + SCHEMAS_XMLNS +
+      '" xmlns:ex="' + SCHEMAS_XMLNS + '">');
+  AppendToStream(FSMeta,
+      '<office:meta>',
+        '<meta:generator>FPSpreadsheet Library</meta:generator>' +
+        '<meta:document-statistic />',
+      '</office:meta>');
+  AppendToStream(FSMeta,
+    '</office:document-meta>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteSettings;
@@ -2406,71 +2473,115 @@ begin
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
   end;
 
-  FSettings :=
-   XML_HEADER + LineEnding +
-   '<office:document-settings xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
+  AppendToStream(FSSettings,
+    XML_HEADER);
+  AppendToStream(FSSettings,
+    '<office:document-settings xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
      '" xmlns:config="' + SCHEMAS_XMLNS_CONFIG +
-     '" xmlns:ooo="' + SCHEMAS_XMLNS_OOO + '">' + LineEnding +
-   '<office:settings>' + LineEnding +
-   '  <config:config-item-set config:name="ooo:view-settings">' + LineEnding +
-   '    <config:config-item-map-indexed config:name="Views">' + LineEnding +
-   '      <config:config-item-map-entry>' + LineEnding +
-   '        <config:config-item config:name="ActiveTable" config:type="string">Tabelle1</config:config-item>' + LineEnding +
-   '        <config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>' + LineEnding +
-   '        <config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>' + LineEnding +
-   '        <config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>' + LineEnding +
-   '        <config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' + LineEnding +
-   '        <config:config-item config:name="HasColumnRowHeaders" config:type="boolean">'+FALSE_TRUE[showHeaders]+'</config:config-item>' + LineEnding +
-   '          <config:config-item-map-named config:name="Tables">' + LineEnding +
-   WriteTableSettingsXMLAsString('            ') +
-   '          </config:config-item-map-named>' + LineEnding +
-   '        </config:config-item-map-entry>' + LineEnding +
-   '      </config:config-item-map-indexed>' + LineEnding +
-   '    </config:config-item-set>' + LineEnding +
-   '  </office:settings>' + LineEnding +
-   '</office:document-settings>';
+     '" xmlns:ooo="' + SCHEMAS_XMLNS_OOO + '">');
+  AppendToStream(FSSettings,
+    '<office:settings>');
+  AppendToStream(FSSettings,
+      '<config:config-item-set config:name="ooo:view-settings">');
+  AppendToStream(FSSettings,
+       '<config:config-item-map-indexed config:name="Views">');
+  AppendToStream(FSSettings,
+          '<config:config-item-map-entry>');
+  AppendToStream(FSSettings,
+           '<config:config-item config:name="ActiveTable" config:type="string">Tabelle1</config:config-item>');
+  AppendToStream(FSSettings,
+            '<config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>');
+  AppendToStream(FSSettings,
+            '<config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>');
+  AppendToStream(FSSettings,
+          '<config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>');
+  AppendToStream(FSSettings,
+            '<config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>');
+  AppendToStream(FSSettings,
+          '<config:config-item config:name="HasColumnRowHeaders" config:type="boolean">'+FALSE_TRUE[showHeaders]+'</config:config-item>');
+  AppendToStream(FSSettings,
+            '<config:config-item-map-named config:name="Tables">');
+
+              WriteTableSettings(FSSettings);
+
+  AppendToStream(FSSettings,
+            '</config:config-item-map-named>');
+  AppendToStream(FSSettings,
+   '        </config:config-item-map-entry>');
+  AppendToStream(FSSettings,
+   '      </config:config-item-map-indexed>');
+  AppendToStream(FSSettings,
+   '    </config:config-item-set>');
+  AppendToStream(FSSettings,
+   '  </office:settings>');
+  AppendToStream(FSSettings,
+   '</office:document-settings>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteStyles;
 begin
-  FStyles :=
-   XML_HEADER + LineEnding +
-   '<office:document-styles xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
-     '" xmlns:fo="' + SCHEMAS_XMLNS_FO +
-     '" xmlns:style="' + SCHEMAS_XMLNS_STYLE +
-     '" xmlns:svg="' + SCHEMAS_XMLNS_SVG +
-     '" xmlns:table="' + SCHEMAS_XMLNS_TABLE +
-     '" xmlns:text="' + SCHEMAS_XMLNS_TEXT +
-     '" xmlns:v="' + SCHEMAS_XMLNS_V + '">' + LineEnding +
-   '<office:font-face-decls>' + LineEnding +
-   '  '+WriteFontNamesXMLAsString + LineEnding +
-//   '  <style:font-face style:name="Arial" svg:font-family="Arial" />' + LineEnding +
-   '</office:font-face-decls>' + LineEnding +
-   '<office:styles>' + LineEnding +
-   '  <style:style style:name="Default" style:family="table-cell">' + LineEnding +
-   '    ' + WriteDefaultFontXMLAsString + LineEnding +
-   '  </style:style>' + LineEnding +
-   '</office:styles>' + LineEnding +
-   '<office:automatic-styles>' + LineEnding +
-   '  <style:page-layout style:name="pm1">' + LineEnding +
-   '    <style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />' + LineEnding +
-   '    <style:header-style>' + LineEnding +
-   '    <style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />' + LineEnding +
-   '    </style:header-style>' + LineEnding +
-   '    <style:footer-style>' + LineEnding +
-   '    <style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />' + LineEnding +
-   '    </style:footer-style>' + LineEnding +
-   '  </style:page-layout>' + LineEnding +
-   '</office:automatic-styles>' + LineEnding +
-   '<office:master-styles>' + LineEnding +
-   '  <style:master-page style:name="Default" style:page-layout-name="pm1">' + LineEnding +
-   '    <style:header />' + LineEnding +
-   '    <style:header-left style:display="false" />' + LineEnding +
-   '    <style:footer />' + LineEnding +
-   '    <style:footer-left style:display="false" />' + LineEnding +
-   '  </style:master-page>' + LineEnding +
-   '</office:master-styles>' + LineEnding +
-   '</office:document-styles>';
+  AppendToStream(FSStyles,
+     XML_HEADER);
+
+  AppendToStream(FSStyles,
+    '<office:document-styles xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
+      '" xmlns:fo="' + SCHEMAS_XMLNS_FO +
+      '" xmlns:style="' + SCHEMAS_XMLNS_STYLE +
+      '" xmlns:svg="' + SCHEMAS_XMLNS_SVG +
+      '" xmlns:table="' + SCHEMAS_XMLNS_TABLE +
+      '" xmlns:text="' + SCHEMAS_XMLNS_TEXT +
+      '" xmlns:v="' + SCHEMAS_XMLNS_V + '">');
+
+  AppendToStream(FSStyles,
+      '<office:font-face-decls>');
+  WriteFontNames(FSStyles);
+  AppendToStream(FSStyles,
+      '</office:font-face-decls>');
+
+  AppendToStream(FSStyles,
+      '<office:styles>');
+  AppendToStream(FSStyles,
+        '<style:style style:name="Default" style:family="table-cell">',
+           WriteDefaultFontXMLAsString,
+        '</style:style>');
+  AppendToStream(FSStyles,
+      '</office:styles>');
+
+  AppendToStream(FSStyles,
+      '<office:automatic-styles>');
+  AppendToStream(FSStyles,
+        '<style:page-layout style:name="pm1">');
+  AppendToStream(FSStyles,
+          '<style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />');
+  AppendToStream(FSStyles,
+          '<style:header-style>',
+            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />',
+          '</style:header-style>');
+  AppendToStream(FSStyles,
+          '<style:footer-style>',
+            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />',
+          '</style:footer-style>');
+  AppendToStream(FSStyles,
+        '</style:page-layout>');
+  AppendToStream(FSStyles,
+      '</office:automatic-styles>');
+
+  AppendToStream(FSStyles,
+      '<office:master-styles>');
+  AppendToStream(FSStyles,
+        '<style:master-page style:name="Default" style:page-layout-name="pm1">');
+  AppendToStream(FSStyles,
+          '<style:header />',
+          '<style:header-left style:display="false" />');
+  AppendToStream(FSStyles,
+          '<style:footer />',
+          '<style:footer-left style:display="false" />');
+  AppendToStream(FSStyles,
+        '</style:master-page>');
+  AppendToStream(FSStyles,
+      '</office:master-styles>');
+  AppendToStream(FSStyles,
+    '</office:document-styles>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteContent;
@@ -2481,11 +2592,69 @@ var
   lRowStylesCode: String;
   lNumFmtCode: String;
 begin
-  ListAllNumFormats;
-  ListAllFormattingStyles;
-  ListAllColumnStyles;
-  ListAllRowStyles;
+  AppendToStream(FSContent,
+    XML_HEADER);
+  AppendToStream(FSContent,
+    '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
+        '" xmlns:fo="'     + SCHEMAS_XMLNS_FO +
+        '" xmlns:style="'  + SCHEMAS_XMLNS_STYLE +
+        '" xmlns:text="'   + SCHEMAS_XMLNS_TEXT +
+        '" xmlns:table="'  + SCHEMAS_XMLNS_TABLE +
+        '" xmlns:svg="'    + SCHEMAS_XMLNS_SVG +
+        '" xmlns:number="' + SCHEMAS_XMLNS_NUMBER +
+        '" xmlns:meta="'   + SCHEMAS_XMLNS_META +
+        '" xmlns:chart="'  + SCHEMAS_XMLNS_CHART +
+        '" xmlns:dr3d="'   + SCHEMAS_XMLNS_DR3D +
+        '" xmlns:math="'   + SCHEMAS_XMLNS_MATH +
+        '" xmlns:form="'   + SCHEMAS_XMLNS_FORM +
+        '" xmlns:script="' + SCHEMAS_XMLNS_SCRIPT +
+        '" xmlns:ooo="'    + SCHEMAS_XMLNS_OOO +
+        '" xmlns:ooow="'   + SCHEMAS_XMLNS_OOOW +
+        '" xmlns:oooc="'   + SCHEMAS_XMLNS_OOOC +
+        '" xmlns:dom="'    + SCHEMAS_XMLNS_DOM +
+        '" xmlns:xforms="' + SCHEMAS_XMLNS_XFORMS +
+        '" xmlns:xsd="'    + SCHEMAS_XMLNS_XSD +
+        '" xmlns:xsi="'    + SCHEMAS_XMLNS_XSI + '">' +
+      '<office:scripts />');
 
+  // Fonts
+  WriteFontNames(FSContent);
+
+  // Automatic styles
+  AppendToStream(FSContent,
+      '<office:automatic-styles>');
+
+  WriteNumFormats(FSContent);
+  WriteColStyles(FSContent);
+  WriteRowStyles(FSContent);
+
+  AppendToStream(FSContent,
+        '<style:style style:name="ta1" style:family="table" style:master-page-name="Default">',
+          '<style:table-properties table:display="true" style:writing-mode="lr-tb"/>',
+        '</style:style>');
+  // Automatically generated styles
+  WriteCellStyles(FSContent);
+  AppendToStream(FSContent,
+      '</office:automatic-styles>');
+
+  // Body
+  AppendToStream(FSContent,
+      '<office:body>',
+        '<office:spreadsheet>');
+
+  // Write all worksheets
+  for i := 0 to Workbook.GetWorksheetCount - 1 do
+    WriteWorksheet(FSContent, Workbook.GetWorksheetByIndex(i));
+
+  AppendToStream(FSContent,
+        '</office:spreadsheet>',
+      '</office:body>',
+    '</office:document-content>'
+  );
+
+
+
+                           (*
   lNumFmtCode := WriteNumFormatsXMLAsString;
 
   lColStylesCode := WriteColStylesXMLAsString;
@@ -2557,58 +2726,55 @@ begin
    '    </office:spreadsheet>' + LineEnding +
    '  </office:body>' + LineEnding +
    '</office:document-content>';
+   *)
 end;
 
-procedure TsSpreadOpenDocWriter.WriteWorksheet(CurSheet: TsWorksheet);
+procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
+  CurSheet: TsWorksheet);
 begin
   // Header
-  FContent := FContent +
-  '    <table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">' + LineEnding;
+  AppendToStream(AStream,
+    '<table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">');
 
   // columns
-  FContent := FContent + WriteColumnsXMLAsString(CurSheet);
+  WriteColumns(AStream, CurSheet);
 
   // rows and cells
   // The cells need to be written in order, row by row, cell by cell
-  FContent := FContent + WriteRowsAndCellsXMLAsString(CurSheet);
+  WriteRowsAndCells(AStream, CurSheet);
 
   // Footer
-  FContent := FContent +
-  '    </table:table>' + LineEnding;
+  AppendToStream(AStream,
+    '</table:table>');
 end;
 
-function TsSpreadOpenDocWriter.WriteCellStylesXMLAsString: string;
+procedure TsSpreadOpenDocWriter.WriteCellStyles(AStream: TStream);
 var
   i: Integer;
   s: String;
   fmtIndex: Integer;
   fmt: String;
 begin
-  Result := '';
-
-  for i := 0 to Length(FFormattingStyles) - 1 do
-  begin
+  for i := 0 to Length(FFormattingStyles) - 1 do begin
     fmtIndex := NumFormatList.Find(FFormattingStyles[i].NumberFormatStr);
     if fmtIndex <> -1
       then fmt := 'style:data-style-name="' + NumFormatList[fmtIndex].Name +'"'
       else fmt := '';
 
-    // Start and Name
-    Result := Result +
-    '    <style:style style:name="ce' + IntToStr(i) + '" style:family="table-cell" ' +
-                     'style:parent-style-name="Default" '+ fmt + '>' + LineEnding;
-
-    // Fields
+    // Start and name
+    AppendToStream(AStream,
+      '<style:style style:name="ce' + IntToStr(i) + '" style:family="table-cell" ' +
+                   'style:parent-style-name="Default" '+ fmt + '>');
 
     // style:text-properties
     if uffBold in FFormattingStyles[i].UsedFormattingFields then
-      Result := Result +
-    '      <style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>' + LineEnding;
+      AppendToStream(AStream,
+        '<style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>');
 
     s := WriteFontStyleXMLAsString(FFormattingStyles[i]);
     if s <> '' then
-      Result := Result +
-    '      <style:text-properties '+ s + '/>' + LineEnding;
+      AppendToStream(AStream,
+        '<style:text-properties '+ s + '/>');
 
     // style:table-cell-properties
     s :=  WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
@@ -2617,48 +2783,54 @@ begin
           WriteTextRotationStyleXMLAsString(FFormattingStyles[i]) +
           WriteVertAlignmentStyleXMLAsString(FFormattingStyles[i]);
     if s <> '' then
-      Result := Result +
-    '      <style:table-cell-properties ' + s + '/>' + LineEnding;
+      AppendToStream(AStream,
+        '<style:table-cell-properties ' + s + '/>');
 
     // style:paragraph-properties
     s := WriteHorAlignmentStyleXMLAsString(FFormattingStyles[i]);
     if s <> '' then
-      Result := Result +
-    '      <style:paragraph-properties ' + s + '/>' + LineEnding;
+      AppendToStream(AStream,
+        '<style:paragraph-properties ' + s + '/>');
 
     // End
-    Result := Result +
-    '    </style:style>' + LineEnding;
+    AppendToStream(AStream,
+      '</style:style>');
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteColStylesXMLAsString: string;
+procedure TsSpreadOpenDocWriter.WriteColStyles(AStream: TStream);
 var
   i: Integer;
   colstyle: TColumnStyleData;
 begin
-  Result := '';
+  if FColumnStyleList.Count = 0 then begin
+    AppendToStream(AStream,
+      '<style:style style:name="co1" style:family="table-column">',
+        '<style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>',
+      '</style:style>');
+    exit;
+  end;
 
   for i := 0 to FColumnStyleList.Count-1 do begin
     colStyle := TColumnStyleData(FColumnStyleList[i]);
 
     // Start and Name
-    Result := Result +
-    '    <style:style style:name="%s" style:family="table-column">' + LineEnding;
+    AppendToStream(AStream, Format(
+      '<style:style style:name="%s" style:family="table-column">', [colStyle.Name]));
 
     // Column width
-    Result := Result +
-    '      <style:table-column-properties style:column-width="%.3fmm" fo:break-before="auto"/>' + LineEnding;
+    AppendToStream(AStream, Format(
+        '<style:table-column-properties style:column-width="%.3fmm" fo:break-before="auto"/>',
+          [colStyle.ColWidth], FPointSeparatorSettings));
 
     // End
-    Result := Result +
-    '    </style:style>' + LineEnding;
-
-    Result := Format(Result, [colStyle.Name, colStyle.ColWidth], FPointSeparatorSettings);
+    AppendToStream(AStream,
+      '</style:style>');
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteColumnsXMLAsString(ASheet: TsWorksheet): String;
+procedure TsSpreadOpenDocWriter.WriteColumns(AStream: TStream;
+  ASheet: TsWorksheet);
 var
   lastCol: Integer;
   j, k: Integer;
@@ -2668,8 +2840,6 @@ var
   colsRepeated: Integer;
   colsRepeatedStr: String;
 begin
-  Result := '';
-
   widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := ASheet.GetLastColIndex;
 
@@ -2701,22 +2871,48 @@ begin
     end;
     colsRepeatedStr := IfThen(colsRepeated = 1, '', Format(' table:number-columns-repeated="%d"', [colsRepeated]));
 
-    Result := Result + Format(
-    '      <table:table-column table:style-name="%s"%s table:default-cell-style-name="Default"/>',
-           [styleName, colsRepeatedStr]) + LineEnding;
+    AppendToStream(AStream, Format(
+      '<table:table-column table:style-name="%s"%s table:default-cell-style-name="Default" />',
+        [styleName, colsRepeatedStr]));
 
     j := j + colsRepeated;
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteNumFormatsXMLAsString: String;
+procedure TsSpreadOpenDocWriter.WriteFontNames(AStream: TStream);
+var
+  L: TStringList;
+  fnt: TsFont;
+  i: Integer;
+begin
+  AppendToStream(AStream,
+    '<office:font-face-decls>');
+
+  L := TStringList.Create;
+  try
+    for i:=0 to Workbook.GetFontCount-1 do begin
+      fnt := Workbook.GetFont(i);
+      if (fnt <> nil) and (L.IndexOf(fnt.FontName) = -1) then
+        L.Add(fnt.FontName);
+    end;
+    for i:=0 to L.Count-1 do
+      AppendToStream(AStream, Format(
+        '<style:font-face style:name="%s" svg:font-family="%s" />', [L[i], L[i]]));
+  finally
+    L.Free;
+  end;
+
+  AppendToStream(AStream,
+    '</office:font-face-decls>');
+end;
+
+procedure TsSpreadOpenDocWriter.WriteNumFormats(AStream: TStream);
 var
   i: Integer;
   numFmtXML: String;
   fmtItem: TsNumFormatData;
   parser: TsSpreadOpenDocNumFormatParser;
 begin
-  Result := '';
   for i:=0 to FNumFormatList.Count-1 do begin
     fmtItem := FNumFormatList.Items[i];
     parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString,
@@ -2724,14 +2920,14 @@ begin
     try
       numFmtXML := parser.BuildXMLAsString('  ', fmtItem.Name);
       if numFmtXML <> '' then
-        Result := Result + numFmtXML;
+        AppendToStream(AStream, numFmtXML);
     finally
       parser.Free;
     end;
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteRowsAndCellsXMLAsString(ASheet: TsWorksheet): String;
+procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
 var
   r, rr: Cardinal;  // row index in sheet
   c, cc: Cardinal;  // column index in sheet
@@ -2749,8 +2945,6 @@ var
   rowStyleData: TRowStyleData;
   defFontSize: Single;
 begin
-  Result := '';
-
   // some abbreviations...
   lastCol := ASheet.GetLastColIndex;
   lastRow := ASheet.GetLastRowIndex;
@@ -2799,19 +2993,22 @@ begin
       colsRepeated := lastCol+1;
       colsRepeatedStr := IfThen(colsRepeated = 1, '',
         Format('table:number-columns-repeated="%d"', [colsRepeated]));
-      Result := Result + Format(
-        '      <table:table-row table:style-name="%s" %s>' + LineEnding +
-        '        <table:table-cell %s/>'                   + LineEnding +
-        '      </table:table-row>'                         + LineEnding,
-              [styleName, rowsRepeatedStr, colsRepeatedStr]);
+
+      AppendToStream(AStream, Format(
+        '<table:table-row table:style-name="%s" %s>', [styleName, rowsRepeatedStr]));
+      AppendToStream(AStream, Format(
+          '<table:table-cell %s/>', [colsRepeatedStr]));
+      AppendToStream(AStream,
+        '</table:table-row>');
+
       r := rr;
       continue;
     end;
 
     // Now we know that there are cells.
     // Write the row XML
-    Result := Result + Format(
-        '      <table:table-row table:style-name="%s">', [styleName]) + LineEnding;
+    AppendToStream(AStream, Format(
+        '<table:table-row table:style-name="%s">', [styleName]));
 
     // Loop along the row and find the cells.
     c := 0;
@@ -2831,50 +3028,53 @@ begin
         colsRepeated := cc - c;
         colsRepeatedStr := IfThen(colsRepeated = 1, '',
           Format('table:number-columns-repeated="%d"', [colsRepeated]));
-        Result := Result + Format(
-        '        <table:table-cell %s/>', [colsRepeatedStr]) + LineEnding;
-      end
-      else begin
-        WriteCellCallback(cell, nil);
-        Result := Result + FCellContent;
-      end;
+        AppendToStream(AStream, Format(
+          '<table:table-cell %s/>', [colsRepeatedStr]));
+      end else
+        WriteCellCallback(cell, AStream);
       inc(c, colsRepeated);
     end;
 
-    Result := Result +
-        '      </table:table-row>' + LineEnding;
+    AppendToStream(AStream,
+        '</table:table-row>');
 
     // Next row
     inc(r, rowsRepeated);
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteRowStylesXMLAsString: string;
+procedure TsSpreadOpenDocWriter.WriteRowStyles(AStream: TStream);
 var
   i: Integer;
   rowstyle: TRowStyleData;
+  s: String;
+  useOptRowH: String;
 begin
-  Result := '';
+  if FRowStyleList.Count = 0 then begin
+    AppendToStream(AStream,
+      '<style:style style:name="ro1" style:family="table-row">',
+        '<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>',
+      '</style:style>');
+    exit;
+  end;
 
   for i := 0 to FRowStyleList.Count-1 do begin
     rowStyle := TRowStyleData(FRowStyleList[i]);
 
     // Start and Name
-    Result := Result +
-    '    <style:style style:name="%s" style:family="table-row">' + LineEnding;
+    AppendToStream(AStream, Format(
+      '<style:style style:name="%s" style:family="table-row">', [rowStyle.Name]));
 
     // Column width
-    Result := Result +
-    '      <style:table-row-properties ' +
-             'style:row-height="%.3gmm" ' +
-             IfThen(rowStyle.AutoRowHeight, 'style:use-optimal-row-height="true" ', '') +
-             'fo:break-before="auto"/>' + LineEnding;
+    AppendToStream(AStream, Format(
+      '<style:table-row-properties style:row-height="%.3gmm" ', [rowStyle.RowHeight], FPointSeparatorSettings));
+    if rowStyle.AutoRowHeight then
+      AppendToStream(AStream, 'style:use-optimal-row-height="true" ');
+    AppendToStream(AStream, 'fo:break-before="auto"/>');
 
     // End
-    Result := Result +
-    '    </style:style>' + LineEnding;
-
-    Result := Format(Result, [rowStyle.Name, rowStyle.RowHeight], FPointSeparatorSettings);
+    AppendToStream(AStream,
+      '</style:style>');
   end;
 end;
 
@@ -2929,8 +3129,16 @@ var
 begin
   Unused(AOverwriteExisting);
 
-  { Fill the strings with the contents of the files }
+  { Analyze the workbook and collect all information needed }
+  ListAllNumFormats;
+  ListAllFormattingStyles;
+  ListAllColumnStyles;
+  ListAllRowStyles;
 
+  { Create the streams that will hold the file contents }
+  CreateStreams;
+
+  { Fill the strings with the contents of the files }
   WriteMimetype();
   WriteMetaInfManifest();
   WriteMeta();
@@ -2938,17 +3146,7 @@ begin
   WriteStyles();
   WriteContent;
 
-  { Write the data to streams }
-
-  FSMeta := TStringStream.Create(FMeta);
-  FSSettings := TStringStream.Create(FSettings);
-  FSStyles := TStringStream.Create(FStyles);
-  FSContent := TStringStream.Create(FContent);
-  FSMimetype := TStringStream.Create(FMimetype);
-  FSMetaInfManifest := TStringStream.Create(FMetaInfManifest);
-
   { Now compress the files }
-
   FZip := TZipper.Create;
   try
     FZip.FileName := AFileName;
@@ -2960,15 +3158,12 @@ begin
     FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
     FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
 
+    ResetStreams;
+
     FZip.ZipAllFiles;
   finally
+    DestroyStreams;
     FZip.Free;
-    FSMeta.Free;
-    FSSettings.Free;
-    FSStyles.Free;
-    FSContent.Free;
-    FSMimetype.Free;
-    FSMetaInfManifest.Free;
   end;
 end;
 
@@ -3012,12 +3207,10 @@ begin
   // Write empty cell only if it has formatting
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
-    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-    FCellContent :=
-      '  <table:table-cell ' + lStyle + '>' + LineEnding +
-      '  </table:table-cell>' + LineEnding;
-  end else
-    FCellContent := '';
+    AppendToStream(AStream, Format(
+      '<table:table-cell table:style-name="ce%d">', [lIndex]),
+      '</table:table-cell>');
+  end;
 end;
 
 { Creates an XML string for inclusion of the background color into the
@@ -3034,7 +3227,6 @@ begin
   Result := Format('fo:background-color="%s" ', [
     Workbook.GetPaletteColorAsHTMLStr(AFormat.BackgroundColor)
   ]);
-//          + Workbook.FPSColorToHexString(FFormattingStyles[i].BackgroundColor, FFormattingStyles[i].RGBBackgroundColor) +'" ';
 end;
 
 { Creates an XML string for inclusion of borders and border styles into the
@@ -3106,30 +3298,6 @@ begin
   );
 end;
 
-function TsSpreadOpenDocWriter.WriteFontNamesXMLAsString: String;
-var
-  L: TStringList;
-  fnt: TsFont;
-  i: Integer;
-begin
-  Result := '';
-  L := TStringList.Create;
-  try
-    for i:=0 to Workbook.GetFontCount-1 do begin
-      fnt := Workbook.GetFont(i);
-      if (fnt <> nil) and (L.IndexOf(fnt.FontName) = -1) then
-        L.Add(fnt.FontName);
-    end;
-    for i:=0 to L.Count-1 do
-      Result := Format(
-        '<style:font-face style:name="%s" svg:font-family="%s" />',
-        [ L[i], L[i] ]
-      );
-  finally
-    L.Free;
-  end;
-end;
-
 function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(const AFormat: TCell): String;
 var
   fnt: TsFont;
@@ -3182,7 +3350,7 @@ begin
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteTableSettingsXMLAsString(AIndent: String): String;
+procedure TsSpreadOpenDocWriter.WriteTableSettings(AStream: TStream);
 var
   i: Integer;
   sheet: TsWorkSheet;
@@ -3191,11 +3359,12 @@ var
   asr: Integer;  // ActiveSplitRange
   showGrid: Boolean;
 begin
-  Result := '';
   for i:=0 to Workbook.GetWorksheetCount-1 do begin
     sheet := Workbook.GetWorksheetByIndex(i);
-    Result := Result + AIndent +
-    '<config:config-item-map-entry config:name="' + sheet.Name + '">' + LineEnding;
+
+    AppendToStream(AStream,
+      '<config:config-item-map-entry config:name="' + sheet.Name + '">');
+
     hsm := 0; vsm := 0; asr := 2;
     if (soHasFrozenPanes in sheet.Options) then begin
       if (sheet.LeftPaneWidth > 0) and (sheet.TopPaneHeight > 0) then begin
@@ -3208,21 +3377,34 @@ begin
       end;
     end;
     showGrid := (soShowGridLines in sheet.Options);
-    Result :=  Result + AIndent +
-    '  <config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="CursorPositionY" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="HorizontalSplitMode" config:type="short">'+IntToStr(hsm)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="VerticalSplitMode" config:type="short">'+IntToStr(vsm)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="HorizontalSplitPosition" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="VerticalSplitPosition" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="ActiveSplitRange" config:type="short">'+IntToStr(asr)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="PositionLeft" config:type="int">0</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="PositionRight" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="PositionTop" config:type="int">0</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="PositionBottom" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>' + LineEnding + AIndent +
-    '  <config:config-item config:name="ShowGrid" config:type="boolean">true</config:config-item>' + LineEnding + AIndent +
+
+    AppendToStream(AStream,
+        '<config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="CursorPositionY" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="HorizontalSplitMode" config:type="short">'+IntToStr(hsm)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="VerticalSplitMode" config:type="short">'+IntToStr(vsm)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="HorizontalSplitPosition" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="VerticalSplitPosition" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="ActiveSplitRange" config:type="short">'+IntToStr(asr)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="PositionLeft" config:type="int">0</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="PositionRight" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="PositionTop" config:type="int">0</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="PositionBottom" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="ShowGrid" config:type="boolean">true</config:config-item>');
        // this "ShowGrid" overrides the global setting. But Open/LibreOffice do not allow to change ShowGrid per sheet.
-    '</config:config-item-map-entry>' + LineEnding;
+    AppendToStream(AStream,
+      '</config:config-item-map-entry>');
   end;
 end;
 
@@ -3293,10 +3475,10 @@ begin
     lStyle := '';
 
   // The row should already be the correct one
-  FCellContent :=
-    '  <table:table-cell office:value-type="string"' + lStyle + '>' + LineEnding +
-    '    <text:p>' + UTF8TextToXMLText(AValue) + '</text:p>' + LineEnding +
-    '  </table:table-cell>' + LineEnding;
+  AppendToStream(AStream,
+    '<table:table-cell office:value-type="string"' + lStyle + '>',
+      '<text:p>' + UTF8TextToXMLText(AValue) + '</text:p>',
+    '</table:table-cell>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
@@ -3324,16 +3506,17 @@ begin
 
   // The row should already be the correct one
   if IsInfinite(AValue) then begin
-    StrValue:='1.#INF';
-    DisplayStr:='1.#INF';
+    StrValue := '1.#INF';
+    DisplayStr := '1.#INF';
   end else begin
-    StrValue:=FloatToStr(AValue,FPointSeparatorSettings); //Uses '.' as decimal separator
-    DisplayStr:=FloatToStr(AValue); // Uses locale decimal separator
+    StrValue := FloatToStr(AValue, FPointSeparatorSettings); // Uses '.' as decimal separator
+    DisplayStr := FloatToStr(AValue); // Uses locale decimal separator
   end;
-  FCellContent :=
-    '  <table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>' + LineEnding +
-    '    <text:p>' + DisplayStr + '</text:p>' + LineEnding +
-    '  </table:table-cell>' + LineEnding;
+
+  AppendToStream(AStream,
+    '<table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>',
+      '<text:p>' + DisplayStr + '</text:p>',
+    '</table:table-cell>');
 end;
 
 {*******************************************************************
@@ -3372,12 +3555,10 @@ begin
   strValue := FormatDateTime(FMT[isTimeOnly], AValue);
   displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue);
 
-  FCellContent := Format(
-    '  <table:table-cell office:value-type="%s" office:%s-value="%s" %s>' + LineEnding +
-    '    <text:p>%s</text:p> ' + LineEnding +
-    '  </table:table-cell>' + LineEnding, [
-    DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, displayStr
-  ]);
+  AppendToStream(AStream, Format(
+    '<table:table-cell office:value-type="%s" office:%s-value="%s" %s>' +
+      '<text:p>%s</text:p> ' +
+    '</table:table-cell>', [DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, displayStr]));
 end;
 
 {
