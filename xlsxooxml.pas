@@ -62,14 +62,22 @@ type
   protected
     FPointSeparatorSettings: TFormatSettings;
     FSharedStringsCount: Integer;
+    FFillList: array of PCell;
+    FBorderList: array of PCell;
   protected
     { Helper routines }
     procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     procedure CreateStreams;
     procedure DestroyStreams;
+    function  FindBorderInList(ACell: PCell): Integer;
+    function  FindFillInList(ACell: PCell): Integer;
     function GetStyleIndex(ACell: PCell): Cardinal;
+    procedure ListAllBorders;
+    procedure ListAllFills;
     procedure ResetStreams;
+    procedure WriteBorderList(AStream: TStream);
+    procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
   protected
@@ -179,6 +187,58 @@ begin
   NextXFIndex := 2;
 end;
 
+{ Looks for the combination of border attributes of the given cell in the
+  FBorderList and returns its index. }
+function TsSpreadOOXMLWriter.FindBorderInList(ACell: PCell): Integer;
+var
+  i: Integer;
+  styleCell: PCell;
+begin
+  // No cell, or border-less --> index 0
+  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then begin
+    Result := 0;
+    exit;
+  end;
+
+  for i:=0 to High(FBorderList) do begin
+    styleCell := FBorderList[i];
+    if SameCellBorders(styleCell, ACell) then begin
+      Result := i;
+      exit;
+    end;
+  end;
+
+  // Not found --> return -1
+  Result := -1;
+end;
+
+{ Looks for the combination of fill attributes of the given cell in the
+  FFillList and returns its index. }
+function TsSpreadOOXMLWriter.FindFillInList(ACell: PCell): Integer;
+var
+  i: Integer;
+  styleCell: PCell;
+begin
+  if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedFormattingFields)
+  then begin
+    Result := 0;
+    exit;
+  end;
+
+  // Index 0 is "no fill" which already has been handled.
+  for i:=2 to High(FFillList) do begin
+    styleCell := FFillList[i];
+    if (uffBackgroundColor in styleCell^.UsedFormattingFields) then
+      if (styleCell^.BackgroundColor = ACell^.BackgroundColor) then begin
+        Result := i;
+        exit;
+      end;
+  end;
+
+  // Not found --> return -1
+  Result := -1;
+end;
+
 { Determines the formatting index which a given cell has in list of
   "FormattingStyles" which correspond to the section cellXfs of the styles.xml
   file. }
@@ -187,6 +247,169 @@ begin
   Result := FindFormattingInList(ACell);
   if Result = -1 then
     Result := 0;
+end;
+
+{ Creates a list of all border styles found in the workbook.
+  The list contains indexes into the array FFormattingStyles for each unique
+  combination of border attributes.
+  To be used for the styles.xml. }
+procedure TsSpreadOOXMLWriter.ListAllBorders;
+var
+  styleCell: PCell;
+  i, n : Integer;
+begin
+  // first list entry is a no-border cell
+  SetLength(FBorderList, 1);
+  FBorderList[0] := nil;
+
+  n := 1;
+  for i := 0 to High(FFormattingStyles) do begin
+    styleCell := @FFormattingStyles[i];
+    if FindBorderInList(styleCell) = -1 then begin
+      SetLength(FBorderList, n+1);
+      FBorderList[n] := styleCell;
+      inc(n);
+    end;
+  end;
+end;
+
+{ Creates a list of all fill styles found in the workbook.
+  The list contains indexes into the array FFormattingStyles for each unique
+  combination of fill attributes.
+  Currently considers only backgroundcolor, fill style is always "solid".
+  To be used for styles.xml. }
+procedure TsSpreadOOXMLWriter.ListAllFills;
+var
+  styleCell: PCell;
+  i, n: Integer;
+begin
+  // Add built-in fills first.
+  SetLength(FFillList, 2);
+  FFillList[0] := nil;  // built-in "no fill"
+  FFillList[1] := nil;  // built-in "gray125"
+
+  n := 2;
+  for i := 0 to High(FFormattingStyles) do begin
+    styleCell := @FFormattingStyles[i];
+    if FindFillInList(styleCell) = -1 then begin
+      SetLength(FFillList, n+1);
+      FFillList[n] := styleCell;
+      inc(n);
+    end;
+  end;
+end;
+
+procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
+
+  procedure WriteBorderStyle(AStream: TStream; ACell: PCell; ABorder: TsCellBorder);
+  { border names found in xlsx files for Excel selections:
+    "thin", "hair", "dotted", "dashed", "dashDotDot", "dashDot", "mediumDashDotDot",
+    "slantDashDot", "mediumDashDot", "mediumDashed", "medium", "thick", "double" }
+  var
+    borderName: String;
+    styleName: String;
+    colorName: String;
+    rgb: TsColorValue;
+  begin
+    // Border line location
+    case ABorder of
+      cbWest  : borderName := 'left';
+      cbEast  : borderName := 'right';
+      cbNorth : borderName := 'top';
+      cbSouth : borderName := 'bottom';
+    end;
+    if (ABorder in ACell^.Border) then begin
+      // Line style
+      case ACell.BorderStyles[ABorder].LineStyle of
+        lsThin   : styleName := 'thin';
+        lsMedium : styleName := 'medium';
+        lsDashed : styleName := 'dashed';
+        lsDotted : styleName := 'dotted';
+        lsThick  : styleName := 'thick';
+        lsDouble : styleName := 'double';
+        lsHair   : styleName := 'hair';
+        else       raise Exception.Create('TsOOXMLWriter.WriteBorderList: LineStyle not supported.');
+      end;
+      // Border color
+      rgb := Workbook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
+      colorName := Copy(ColorToHTMLColorStr(rgb), 2, 255);
+      AppendToStream(AStream, Format(
+        '<%s style="%s"><color rgb="%s" /></%s>',
+          [borderName, styleName, colorName, borderName]
+        ));
+    end else
+      AppendToStream(AStream, Format(
+        '<%s />', [borderName]));
+  end;
+
+var
+  i: Integer;
+  styleCell: PCell;
+begin
+  AppendToStream(AStream, Format(
+    '<borders count="%d">', [Length(FBorderList)]));
+
+  // index 0 -- build-in "no borders"
+  AppendToStream(AStream,
+      '<border>',
+        '<left /><right /><top /><bottom /><diagonal />',
+      '</border>');
+
+  for i:=1 to High(FBorderList) do begin
+    styleCell := FBorderList[i];
+    AppendToStream(AStream,
+      '<border>');
+    WriteBorderStyle(AStream, styleCell, cbWest);
+    WriteBorderStyle(AStream, styleCell, cbEast);
+    WriteBorderStyle(AStream, styleCell, cbNorth);
+    WriteBorderStyle(AStream, styleCell, cbSouth);
+    AppendToStream(AStream,
+        '<diagonal />',
+      '</border>');
+  end;
+
+  AppendToStream(AStream,
+    '</borders>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteFillList(AStream: TStream);
+var
+  i: Integer;
+  styleCell: PCell;
+  rgb: TsColorValue;
+begin
+  AppendToStream(AStream, Format(
+    '<fills count="%d">', [Length(FFillList)]));
+
+  // index 0 -- built-in empty fill
+  AppendToStream(AStream,
+      '<fill>',
+        '<patternFill patternType="none" />',
+      '</fill>');
+
+  // index 1 -- built-in gray125 pattern
+  AppendToStream(AStream,
+      '<fill>',
+        '<patternFill patternType="gray125" />',
+      '</fill>');
+
+  // user-defined fills
+  for i:=2 to High(FFillList) do begin
+    styleCell := FFillList[i];
+    rgb := Workbook.GetPaletteColor(styleCell^.BackgroundColor);
+    AppendToStream(AStream,
+      '<fill>',
+        '<patternFill patternType="solid">');
+    AppendToStream(AStream, Format(
+          '<fgColor rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]),
+          '<bgColor indexed="64" />');
+    AppendToStream(AStream,
+        '</patternFill>',
+      '</fill>');
+  end;
+
+  AppendToStream(FSStyles,
+    '</fills>');
 end;
 
 { Writes the fontlist of the workbook to the stream. The font id used in xf
@@ -288,11 +511,13 @@ begin
       end;
 
     { Fill }
-    fillID := 0;
+    fillID := FindFillInList(@styleCell);
+    if fillID = -1 then fillID := 0;
     s := s + Format('fillId="%d" ', [fillID]);
 
     { Border }
-    borderID := 0;
+    borderID := FindBorderInList(@styleCell);
+    if borderID = -1 then borderID := 0;
     s := s + Format('borderId="%d" ', [borderID]);
 
     { Write everything to stream }
@@ -358,20 +583,11 @@ begin
   WriteFontList(FSStyles);
 
   // Fill patterns
-  AppendToStream(FSStyles,
-      '<fills count="2">');
-  AppendToStream(FSStyles,
-        '<fill>',
-          '<patternFill patternType="none" />',
-        '</fill>');
-  AppendToStream(FSStyles,
-        '<fill>',
-          '<patternFill patternType="gray125" />',
-        '</fill>');
-  AppendToStream(FSStyles,
-      '</fills>');
+  WriteFillList(FSStyles);
 
   // Borders
+  WriteBorderList(FSStyles);
+  {
   AppendToStream(FSStyles,
       '<borders count="1">');
   AppendToStream(FSStyles,
@@ -380,7 +596,7 @@ begin
         '</border>');
   AppendToStream(FSStyles,
       '</borders>');
-
+}
   // Style records
   AppendToStream(FSStyles,
       '<cellStyleXfs count="1">',
@@ -747,6 +963,8 @@ begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
   ListAllFormattingStyles;
+  ListAllFills;
+  ListAllBorders;
 
   { Create the streams that will hold the file contents }
   CreateStreams;

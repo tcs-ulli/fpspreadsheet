@@ -55,6 +55,21 @@ begin
   MyCell := MyWorksheet.GetCell(2, 3);
   MyCell^.UsedFormattingFields := [uffBold];
 
+  // Background and text color
+  MyWorksheet.WriteUTF8Text(4, 0, 'white on red');
+  Myworksheet.WriteBackgroundColor(4, 0, scRed);
+  MyWorksheet.WriteFontColor(4, 0, scWhite);
+
+  // Border
+  MyWorksheet.WriteUTF8Text(4, 2, 'left/right');
+  Myworksheet.WriteBorders(4, 2, [cbWest, cbEast]);
+  MyWorksheet.WriteHorAlignment(4, 2, haCenter);
+
+  Myworksheet.WriteUTF8Text(4, 4, 'top/bottom');
+  Myworksheet.WriteBorders(4, 4, [cbNorth, cbSouth]);
+  MyWorksheet.WriteBorderStyle(4, 4, cbSouth, lsThick, scBlue);
+  Myworksheet.WriteHorAlignment(4, 4, haRight);
+
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
