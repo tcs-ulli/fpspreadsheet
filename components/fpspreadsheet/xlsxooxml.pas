@@ -233,7 +233,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
   styleCell: TCell;
-  s, schild: String;
+  s, sAlign: String;
   fontID: Integer;
   numFmtId: Integer;
   fillId: Integer;
@@ -244,7 +244,7 @@ begin
 
   for styleCell in FFormattingStyles do begin
     s := '';
-    schild := '';
+    sAlign := '';
 
     { Number format }
     numFmtId := 0;
@@ -263,15 +263,29 @@ begin
 
     { Text rotation }
     if (uffTextRotation in styleCell.UsedFormattingFields) or (styleCell.TextRotation <> trHorizontal)
-    then begin
-      s := s + 'applyAlignment="1" ';
-      schild := '<alignment textRotation="%d" />';
+    then
       case styleCell.TextRotation of
-        rt90DegreeClockwiseRotation       : sChild := Format(sChild, [180]);
-        rt90DegreeCounterClockwiseRotation: sChild := Format(sChild,  [90]);
-        rtStacked                         : sChild := Format(sChild, [255]);
+        rt90DegreeClockwiseRotation       : sAlign := sAlign + Format('textRotation="%d" ', [180]);
+        rt90DegreeCounterClockwiseRotation: sAlign := sAlign + Format('textRotation="%d" ',  [90]);
+        rtStacked                         : sAlign := sAlign + Format('textRotation="%d" ', [255]);
       end;
-    end;
+
+    { Text alignment }
+    if (uffHorAlign in styleCell.UsedFormattingFields) or (styleCell.HorAlignment <> haDefault)
+    then
+      case styleCell.HorAlignment of
+        haLeft  : sAlign := sAlign + 'horizontal="left" ';
+        haCenter: sAlign := sAlign + 'horizontal="center" ';
+        haRight : sAlign := sAlign + 'horizontal="right" ';
+      end;
+
+    if (uffVertAlign in styleCell.UsedformattingFields) or (styleCell.VertAlignment <> vaDefault)
+    then
+      case styleCell.VertAlignment of
+        vaTop   : sAlign := sAlign + 'vertical="top" ';
+        vaCenter: sAlign := sAlign + 'vertical="center" ';
+        vaBottom: sAlign := sAlign + 'vertical="bottom" ';
+      end;
 
     { Fill }
     fillID := 0;
@@ -282,13 +296,13 @@ begin
     s := s + Format('borderId="%d" ', [borderID]);
 
     { Write everything to stream }
-    if schild = '' then
+    if sAlign = '' then
       AppendToStream(AStream,
         '<xf ' + s + '/>')
     else
       AppendToStream(AStream,
-       '<xf ' + s + '>',
-         sChild,
+       '<xf ' + s + 'applyAlignment="1">',
+         '<alignment ' + sAlign + ' />',
        '</xf>');
   end;
 
