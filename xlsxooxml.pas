@@ -233,7 +233,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
   styleCell: TCell;
-  s: String;
+  s, schild: String;
   fontID: Integer;
   numFmtId: Integer;
   fillId: Integer;
@@ -244,6 +244,7 @@ begin
 
   for styleCell in FFormattingStyles do begin
     s := '';
+    schild := '';
 
     { Number format }
     numFmtId := 0;
@@ -260,6 +261,18 @@ begin
 
     if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
 
+    { Text rotation }
+    if (uffTextRotation in styleCell.UsedFormattingFields) or (styleCell.TextRotation <> trHorizontal)
+    then begin
+      s := s + 'applyAlignment="1" ';
+      schild := '<alignment textRotation="%d" />';
+      case styleCell.TextRotation of
+        rt90DegreeClockwiseRotation       : sChild := Format(sChild, [180]);
+        rt90DegreeCounterClockwiseRotation: sChild := Format(sChild,  [90]);
+        rtStacked                         : sChild := Format(sChild, [255]);
+      end;
+    end;
+
     { Fill }
     fillID := 0;
     s := s + Format('fillId="%d" ', [fillID]);
@@ -269,10 +282,16 @@ begin
     s := s + Format('borderId="%d" ', [borderID]);
 
     { Write everything to stream }
-    AppendToStream(AStream,
-      '<xf ' + s + '/>'
-    );
+    if schild = '' then
+      AppendToStream(AStream,
+        '<xf ' + s + '/>')
+    else
+      AppendToStream(AStream,
+       '<xf ' + s + '>',
+         sChild,
+       '</xf>');
   end;
+
   AppendToStream(FSStyles, Format(
     '</%s>', [ANodeName]));
 end;
