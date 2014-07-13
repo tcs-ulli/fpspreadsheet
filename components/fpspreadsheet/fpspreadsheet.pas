@@ -1071,6 +1071,7 @@ procedure RegisterSpreadFormat( AReaderClass: TsSpreadReaderClass;
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
+function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
 implementation
 
@@ -1424,6 +1425,41 @@ begin
   AToCell^.NumberFormatStr := AFromCell^.NumberFormatStr;
 end;
 
+{@@
+  Checks whether two cells have same border attributes }
+function SameCellBorders(ACell1, ACell2: PCell): Boolean;
+
+  function NoBorder(ACell: PCell): Boolean;
+  begin
+    Result := (ACell = nil) or
+      not (uffBorder in ACell^.UsedFormattingFields) or
+      (ACell^.Border = []);
+  end;
+
+var
+  nobrdr1, nobrdr2: Boolean;
+  cb: TsCellBorder;
+begin
+  nobrdr1 := NoBorder(ACell1);
+  nobrdr2 := NoBorder(ACell2);
+  if (nobrdr1 and nobrdr2) then
+    Result := true
+  else
+  if (nobrdr1 and (not nobrdr2) ) or ( (not nobrdr1) and nobrdr2) then
+    Result := false
+  else begin
+    Result := false;
+    if ACell1^.Border <> ACell2^.Border then
+      exit;
+    for cb in TsCellBorder do begin
+      if ACell1^.BorderStyles[cb].LineStyle <> ACell2^.BorderStyles[cb].LineStyle then
+        exit;
+      if ACell1^.BorderStyles[cb].Color <> ACell2^.BorderStyles[cb].Color then
+        exit;
+    end;
+    Result := true;
+  end;
+end;
 
 { TsWorksheet }
 
