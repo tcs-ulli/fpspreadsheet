@@ -44,15 +44,10 @@ type
   { TsOOXMLFormatList }
   TsOOXMLNumFormatList = class(TsCustomNumFormatList)
   protected
-    {
     procedure AddBuiltinFormats; override;
-    procedure Analyze(AFormatIndex: Integer; var AFormatString: String;
-      var ANumFormat: TsNumberFormat; var ADecimals: Word); override;
-      }
   public
-    {
-    function FormatStringForWriting(AIndex: Integer): String; override;
-    }
+    procedure ConvertBeforeWriting(var AFormatString: String;
+      var ANumFormat: TsNumberFormat); override;
   end;
 
   { TsSpreadOOXMLWriter }
@@ -79,6 +74,7 @@ type
     procedure WriteBorderList(AStream: TStream);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
+    procedure WriteNumFormatList(AStream: TStream);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
   protected
     { Streams with the contents of files }
@@ -115,7 +111,7 @@ type
 implementation
 
 uses
-  variants;
+  variants, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -155,6 +151,81 @@ const
   MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
   MIME_STYLES          = MIME_SPREADML + '.styles+xml';
   MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
+
+
+{ TsOOXMLNumFormatList }
+
+{ These are the built-in number formats as expected in the biff spreadsheet file.
+  Identical to BIFF8. These formats are not written to file but they are used
+  for lookup of the number format that Excel used. They are specified here in
+  fpc dialect. }
+procedure TsOOXMLNumFormatList.AddBuiltinFormats;
+var
+  fs: TFormatSettings;
+  cs: String;
+begin
+  fs := Workbook.FormatSettings;
+  cs := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
+
+  AddFormat( 0, '', nfGeneral);
+  AddFormat( 1, '0', nfFixed);
+  AddFormat( 2, '0.00', nfFixed);
+  AddFormat( 3, '#,##0', nfFixedTh);
+  AddFormat( 4, '#,##0.00', nfFixedTh);
+  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency);
+  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed);
+  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency);
+  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrencyRed);
+  AddFormat( 9, '0%', nfPercentage);
+  AddFormat(10, '0.00%', nfPercentage);
+  AddFormat(11, '0.00E+00', nfExp);
+  // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
+  AddFormat(14, fs.ShortDateFormat, nfShortDate);                       // 'M/D/YY'
+  AddFormat(15, fs.LongDateFormat, nfLongDate);                         // 'D-MMM-YY'
+  AddFormat(16, 'd/mmm', nfCustom);                                     // 'D-MMM'
+  AddFormat(17, 'mmm/yy', nfCustom);                                    // 'MMM-YY'
+  AddFormat(18, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);        // 'h:mm AM/PM'
+  AddFormat(19, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);          // 'h:mm:ss AM/PM'
+  AddFormat(20, fs.ShortTimeFormat, nfShortTime);                       // 'h:mm'
+  AddFormat(21, fs.LongTimeFormat, nfLongTime);                         // 'h:mm:ss'
+  AddFormat(22, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);  // 'M/D/YY h:mm' (localized)
+  // 23..36 not supported
+  AddFormat(37, '_(#,##0_);(#,##0)', nfCurrency);
+  AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed);
+  AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency);
+  AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed);
+  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfCustom);
+  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfCustom);
+  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfCustom);
+  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfCustom);
+  AddFormat(45, 'nn:ss', nfCustom);
+  AddFormat(46, '[h]:nn:ss', nfTimeInterval);
+  AddFormat(47, 'nn:ss.z', nfCustom);
+  AddFormat(48, '##0.0E+00', nfCustom);
+  // 49 ("Text") not supported
+
+  // All indexes from 0 to 163 are reserved for built-in formats.
+  // The first user-defined format starts at 164.
+  FFirstFormatIndexInFile := 164;
+  FNextFormatIndex := 164;
+end;
+
+procedure TsOOXMLNumFormatList.ConvertBeforeWriting(var AFormatString: String;
+  var ANumFormat: TsNumberFormat);
+var
+  parser: TsNumFormatParser;
+begin
+  parser := TsNumFormatParser.Create(Workbook, AFormatString, ANumFormat);
+  try
+    if parser.Status = psOK then begin
+      // For writing, we have to convert the fpc format string to Excel dialect
+      AFormatString := parser.FormatString[nfdExcel];
+      ANumFormat := parser.NumFormat;
+    end;
+  finally
+    parser.Free;
+  end;
+end;
 
 
 { TsSpreadOOXMLWriter }
@@ -452,6 +523,38 @@ begin
       '</fonts>');
 end;
 
+{ Writes all number formats to the stream. Saving starts at the item with the
+  FirstFormatIndexInFile. }
+procedure TsSpreadOOXMLWriter.WriteNumFormatList(AStream: TStream);
+var
+  i: Integer;
+  item: TsNumFormatData;
+  s: String;
+  n: Integer;
+  fmt: String;
+begin
+  s := '';
+  n := 0;
+  i := NumFormatList.FindByIndex(NumFormatList.FirstFormatIndexInFile);
+  if i > -1 then begin
+    while i < NumFormatList.Count do begin
+      item := NumFormatList[i];
+      if item <> nil then begin
+        s := s + Format('<numFmt numFmtId="%d" formatCode="%s" />',
+          [item.Index, UTF8TextToXMLText(NumFormatList.FormatStringForWriting(i))]);
+        inc(n);
+      end;
+      inc(i);
+    end;
+    if n > 0 then
+      AppendToStream(AStream, Format(
+        '<numFmts count="%d">', [n]),
+          s,
+        '</numFmts>'
+      );
+  end;
+end;
+
 { Writes the style list which the writer has collected in FFormattingStyles. }
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
@@ -461,6 +564,7 @@ var
   numFmtId: Integer;
   fillId: Integer;
   borderId: Integer;
+  idx: Integer;
 begin
   AppendToStream(AStream, Format(
     '<%s count="%d">', [ANodeName, Length(FFormattingStyles)]));
@@ -470,8 +574,13 @@ begin
     sAlign := '';
 
     { Number format }
-    numFmtId := 0;
-    s := s + Format('numFmtId="%d" ', [numFmtId]);
+    if (uffNumberFormat in styleCell.UsedFormattingFields) then begin
+      idx := NumFormatList.FindFormatOf(@styleCell);
+      if idx > -1 then begin
+        numFmtID := NumFormatList[idx].Index;
+        s := s + Format('numFmtId="%d" applyNumberFormat="1" ', [numFmtId]);
+      end;
+    end;
 
     { Font }
     fontId := 0;
@@ -586,6 +695,9 @@ begin
   AppendToStream(FSStyles, Format(
     '<styleSheet xmlns="%s">', [SCHEMAS_SPREADML]));
 
+  // Number formats
+  WriteNumFormatList(FSStyles);
+
   // Fonts
   WriteFontList(FSStyles);
 
@@ -594,16 +706,7 @@ begin
 
   // Borders
   WriteBorderList(FSStyles);
-  {
-  AppendToStream(FSStyles,
-      '<borders count="1">');
-  AppendToStream(FSStyles,
-        '<border>',
-          '<left /><right /><top /><bottom /><diagonal />',
-        '</border>');
-  AppendToStream(FSStyles,
-      '</borders>');
-}
+
   // Style records
   AppendToStream(FSStyles,
       '<cellStyleXfs count="1">',
@@ -1088,13 +1191,14 @@ procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
 var
   CellPosText: String;
   CellValueText: String;
-  //S: String;
+  lStyleIndex: Integer;
 begin
   Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
+  lStyleIndex := GetStyleIndex(ACell);
   AppendToStream(AStream, Format(
-    '<c r="%s" s="0" t="n"><v>%s</v></c>', [CellPosText, CellValueText]));
+    '<c r="%s" s="%d" t="n"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
 
 {*******************************************************************

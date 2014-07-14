@@ -5172,7 +5172,7 @@ end;
   ConvertBeforeWriting in order to convert the fpc format strings to the dialect
   used in the file.
 
-  @param AIndex  The number format at this item is considered.
+  @param AIndex  Index of the format item under consideration.
   @return        String of formatting codes that will be written to the file. }
 function TsCustomNumFormatList.FormatStringForWriting(AIndex: Integer): String;
 var
