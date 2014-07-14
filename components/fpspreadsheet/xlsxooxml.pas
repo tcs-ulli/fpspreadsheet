@@ -743,6 +743,7 @@ var
   AVLNode: TAVLTreeNode;
   CellPosText: string;
   value: Variant;
+  styleCell: PCell;
   fn: String;
 begin
   FCurSheetNum := Length(FSSheets);
@@ -779,7 +780,10 @@ begin
         FillChar(lCell, SizeOf(lCell), 0);
         CellPosText := CurSheet.CellPosToText(r, c);
         value := varNull;
-        Workbook.OnNeedCellData(Workbook, r, c, value);
+        styleCell := nil;
+        Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
+        if styleCell <> nil then
+          lCell := styleCell^;
         lCell.Row := r;
         lCell.Col := c;
         if VarIsNull(value) then

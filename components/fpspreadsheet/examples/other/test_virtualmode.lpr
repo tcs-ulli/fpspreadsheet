@@ -12,11 +12,18 @@ uses
 
 type
   TDataProvider = class
-    procedure NeedCellData(Sender: TObject; ARow,ACol: Cardinal; var AData: variant);
+    procedure NeedCellData(Sender: TObject; ARow,ACol: Cardinal;
+      var AData: variant; var AStyleCell: PCell);
   end;
 
+var
+  workbook: TsWorkbook;
+  worksheet: TsWorksheet;
+  dataprovider: TDataProvider;
+  headerTemplate: PCell;
+
   procedure TDataProvider.NeedCellData(Sender: TObject; ARow, ACol: Cardinal;
-    var AData: variant);
+    var AData: variant; var AStyleCell: PCell);
   { This is just a sample using random data. Normally, in case of a database,
     you would read a record and return its field values, such as:
 
@@ -28,6 +35,13 @@ type
     s: String;
     n: Double;
   begin
+    if ARow = 0 then begin
+      AData := Format('Column %d', [ACol + 1]);
+      AStyleCell := headerTemplate;
+      // This makes the style of the "headerTemplate" cell available to
+      // formatting of all virtual cells in row 0.
+      // Important: The template cell must be an existing cell in the worksheet.
+    end else
     if odd(random(10)) then begin
       s := Format('R=%d-C=%d', [ARow, ACol]);
       AData := s;
@@ -39,11 +53,6 @@ type
     if (ACol = 0) and (ARow mod 1000 = 0) then
       WriteLn('Writing row ', ARow, '...');
   end;
-
-var
-  workbook: TsWorkbook;
-  worksheet: TsWorksheet;
-  dataprovider: TDataProvider;
 
 begin
 
@@ -58,24 +67,32 @@ begin
 
 //      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
       workbook.WritingOptions := [woVirtualMode];
+      { woSaveMemory can be omitted, but is essential for large files: it causes
+        writing temporaray data to a file stream instead of a memory stream.
+        woSaveMemory, however, considerably slows down writing of biff files. }
 
-        // woSaveMemory can be omitted, but is essential for large files: it causes
-        // writing temporaray data to a file stream instead of a memory stream.
-        // woSaveMemory, however, considerably slows down writing of biff files.
-
+      { Next two numbers define the size of virtual spreadsheet.
+        In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
+        the number of fields to be written to the spreadsheet file }
       workbook.VirtualRowCount := 10000;
       workbook.VirtualColCount := 100;
-        // These two numbers define the size of virtual spreadsheet.
-        // In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
-        // the number of fields to be written to the spreadsheet file
 
+      { The event handler for OnNeedCellData links the workbook to the method
+        from which it gets the data to be written. }
       workbook.OnNeedCellData := @dataprovider.NeedCellData;
-        // This links the worksheet to the method from which it gets the
-        // data to write.
 
-      // In case of a database, you would open the dataset before calling this:
+      { If we want to change the format of some cells we have to provide this
+        format in template cells of the worksheet. In the example, the first
+        row whould be in bold letters and have a gray background.
+        Therefore, we define a "header template cell" and pass this in the
+        NeedCellData event handler.}
+      worksheet.WriteFontStyle(0, 0, [fssBold]);
+      worksheet.WriteBackgroundColor(0, 0, scSilver);
+      headerTemplate := worksheet.FindCell(0, 0);
+
+      { In case of a database, you would open the dataset before calling this: }
       workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-//      workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
+//      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
 
     finally
       workbook.Free;
