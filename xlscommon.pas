@@ -2533,12 +2533,15 @@ var
   r,c: Cardinal;
   lCell: TCell;
   value: variant;
+  styleCell: PCell;
 begin
   for r := 0 to Workbook.VirtualRowCount-1 do begin
     for c := 0 to Workbook.VirtualColCount-1 do begin
       FillChar(lCell, SizeOf(lCell), 0);
       value := varNull;
-      Workbook.OnNeedCellData(Workbook, r, c, value);
+      styleCell := nil;
+      Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
+      if styleCell <> nil then lCell := styleCell^;
       lCell.Row := r;
       lCell.Col := c;
       if VarIsNull(value) then

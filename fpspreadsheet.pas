@@ -714,7 +714,7 @@ type
   TsWorkbookWritingOptions = set of TsWorkbookWritingOption;
 
   TsWorkbookNeedCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
-    var AValue: variant) of object;
+    var AValue: variant; var AStyleCell: PCell) of object;
 
   {@@
     The workbook contains the worksheets and provides methods for reading from
