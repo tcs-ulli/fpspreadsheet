@@ -70,6 +70,10 @@ begin
   MyWorksheet.WriteBorderStyle(4, 4, cbSouth, lsThick, scBlue);
   Myworksheet.WriteHorAlignment(4, 4, haRight);
 
+  // Wordwrap
+  MyWorksheet.WriteUTF8Text(4, 6, 'This is a long, long, long, wrapped text.');
+  MyWorksheet.WriteWordwrap(4, 6, true);
+
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
