@@ -510,15 +510,22 @@ begin
         vaBottom: sAlign := sAlign + 'vertical="bottom" ';
       end;
 
+    if (uffWordWrap in styleCell.UsedFormattingFields) then
+      sAlign := sAlign + 'wrapText="1" ';
+
     { Fill }
-    fillID := FindFillInList(@styleCell);
-    if fillID = -1 then fillID := 0;
-    s := s + Format('fillId="%d" ', [fillID]);
+    if (uffBackgroundColor in styleCell.UsedFormattingFields) then begin
+      fillID := FindFillInList(@styleCell);
+      if fillID = -1 then fillID := 0;
+      s := s + Format('fillId="%d" applyFill="1" ', [fillID]);
+    end;
 
     { Border }
-    borderID := FindBorderInList(@styleCell);
-    if borderID = -1 then borderID := 0;
-    s := s + Format('borderId="%d" ', [borderID]);
+    if (uffBorder in styleCell.UsedFormattingFields) then begin
+      borderID := FindBorderInList(@styleCell);
+      if borderID = -1 then borderID := 0;
+      s := s + Format('borderId="%d" applyBorder="1" ', [borderID]);
+    end;
 
     { Write everything to stream }
     if sAlign = '' then
