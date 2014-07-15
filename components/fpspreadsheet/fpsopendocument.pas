@@ -2995,11 +2995,10 @@ begin
         Format('table:number-columns-repeated="%d"', [colsRepeated]));
 
       AppendToStream(AStream, Format(
-        '<table:table-row table:style-name="%s" %s>', [styleName, rowsRepeatedStr]));
-      AppendToStream(AStream, Format(
-          '<table:table-cell %s/>', [colsRepeatedStr]));
-      AppendToStream(AStream,
-        '</table:table-row>');
+        '<table:table-row table:style-name="%s" %s>' +
+          '<table:table-cell %s/>' +
+        '</table:table-row>',
+        [styleName, rowsRepeatedStr, colsRepeatedStr]));
 
       r := rr;
       continue;
@@ -3476,8 +3475,8 @@ begin
 
   // The row should already be the correct one
   AppendToStream(AStream,
-    '<table:table-cell office:value-type="string"' + lStyle + '>',
-      '<text:p>' + UTF8TextToXMLText(AValue) + '</text:p>',
+    '<table:table-cell office:value-type="string"' + lStyle + '>' +
+      '<text:p>' + UTF8TextToXMLText(AValue) + '</text:p>' +
     '</table:table-cell>');
 end;
 
@@ -3514,8 +3513,8 @@ begin
   end;
 
   AppendToStream(AStream,
-    '<table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>',
-      '<text:p>' + DisplayStr + '</text:p>',
+    '<table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>' +
+      '<text:p>' + DisplayStr + '</text:p>' +
     '</table:table-cell>');
 end;
 

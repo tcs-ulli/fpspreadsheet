@@ -1189,7 +1189,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
 const
-  MaxBytes=32767; //limit for this format
+  MAXBYTES = 32767; //limit for this format
 var
   CellPosText: string;
   lStyleIndex: Cardinal;
@@ -1201,18 +1201,17 @@ begin
   Unused(ARow, ACol, ACell);
 
   // Office 2007-2010 (at least) support no more characters in a cell;
-  if Length(AValue)>MaxBytes then
-  begin
-    TextTooLong:=true;
-    ResultingValue:=Copy(AValue,1,MaxBytes); //may chop off multicodepoint UTF8 characters but well...
+  if Length(AValue) > MAXBYTES then begin
+    TextTooLong := true;
+    ResultingValue := Copy(AValue, 1, MAXBYTES); //may chop off multicodepoint UTF8 characters but well...
   end
   else
     ResultingValue:=AValue;
 
   AppendToStream(FSSharedStrings,
-    '<si>',  Format(
-      '<t>%s</t>', [UTF8TextToXMLText(ResultingValue)]),
-    '</si>' );
+    '<si>' +
+      '<t>' + UTF8TextToXMLText(ResultingValue) + '</t>' +
+    '</si>');
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);

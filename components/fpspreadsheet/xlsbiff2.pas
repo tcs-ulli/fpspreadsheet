@@ -87,6 +87,8 @@ type
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
     function FindXFIndex(ACell: PCell): Word;
+    procedure GetCellAttributes(ACell: PCell; XFIndex: Word;
+      out Attrib1, Attrib2, Attrib3: Byte);
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
@@ -850,6 +852,50 @@ begin
   end;
 end;
 
+{ Determines the cell attributes needed for writing a cell content record, such
+  as WriteLabel, WriteNumber, etc.
+  The cell attributes contain, in bit masks, xf record index, font index, borders, etc.}
+procedure TsSpreadBIFF2Writer.GetCellAttributes(ACell: PCell; XFIndex: Word;
+  out Attrib1, Attrib2, Attrib3: Byte);
+begin
+  if ACell^.UsedFormattingFields = [] then begin
+    Attrib1 := 15;
+    Attrib2 := 0;
+    Attrib3 := 0;
+    exit;
+  end;
+
+  // 1st byte:
+  //   Mask $3F: Index to XF record
+  //   Mask $40: 1 = Cell is locked
+  //   Mask $80: 1 = Formula is hidden
+  Attrib1 := Min(XFIndex, $3F) and $3F;
+
+  // 2nd byte:
+  //   Mask $3F: Index to FORMAT record
+  //   Mask $C0: Index to FONT record
+  Attrib2 := ACell^.FontIndex shr 6;
+
+  // 3rd byte
+  //   Mask $07: horizontal alignment
+  //   Mask $08: Cell has left border
+  //   Mask $10: Cell has right border
+  //   Mask $20: Cell has top border
+  //   Mask $40: Cell has bottom border
+  //   Mask $80: Cell has shaded background
+  Attrib3 := 0;
+  if uffHorAlign in ACell^.UsedFormattingFields then
+    Attrib3 := ord (ACell^.HorAlignment);
+  if uffBorder in ACell^.UsedFormattingFields then begin
+    if cbNorth in ACell^.Border then Attrib3 := Attrib3 or $20;
+    if cbWest in ACell^.Border then Attrib3 := Attrib3 or $08;
+    if cbEast in ACell^.Border then Attrib3 := Attrib3 or $10;
+    if cbSouth in ACell^.Border then Attrib3 := Attrib3 or $40;
+  end;
+  if uffBackgroundColor in ACell^.UsedFormattingFields then
+    Attrib3 := Attrib3 or $80;
+end;
+
 { Builds up the list of number formats to be written to the biff2 file.
   Unlike biff5+ no formats are added here because biff2 supports only 21
   standard formats; these formats have been added by the NumFormatList's
@@ -888,7 +934,7 @@ begin
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record
   //   Mask $C0: Index to FONT record
-  w := ACell.FontIndex shl 6;
+  w := ACell.FontIndex shr 6;   // was shl --> MUST BE shr!
   b := Lo(w);
   //b := ACell.FontIndex shl 6;
   AStream.WriteByte(b);
@@ -918,10 +964,36 @@ end;
   Writes an Excel 2 COLWIDTH record
 }
 procedure TsSpreadBIFF2Writer.WriteColWidth(AStream: TStream; ACol: PCol);
+type
+  TColRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    StartCol: Byte;
+    EndCol: Byte;
+    ColWidth: Word;
+  end;
 var
+  rec: TColRecord;
   w: Integer;
 begin
   if Assigned(ACol) then begin
+    { BIFF record header }
+    rec.RecordID := WordToLE(INT_EXCEL_ID_COLWIDTH);
+    rec.RecordSize := WordToLE(4);
+
+    { Start and end column }
+    rec.StartCol := ACol^.Col;
+    rec.EndCol := ACol^.Col;
+
+    { Column width }
+    { calculate width to be in units of 1/256 of pixel width of character "0" }
+    w := round(ACol^.Width * 256);
+    rec.ColWidth := WordToLE(w);
+
+    { Write out }
+    AStream.WriteBuffer(rec, SizeOf(rec));
+
+    (*
     { BIFF Record header }
     AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLWIDTH));  // BIFF record header
     AStream.WriteWord(WordToLE(4));                      // Record size
@@ -930,6 +1002,7 @@ begin
     { calculate width to be in units of 1/256 of pixel width of character "0" }
     w := round(ACol^.Width * 256);
     AStream.WriteWord(WordToLE(w));                     // write width
+    *)
   end;
 end;
 
@@ -1257,15 +1330,42 @@ end;
 
 procedure TsSpreadBiff2Writer.WriteFormat(AStream: TStream;
   AFormatData: TsNumFormatData; AListIndex: Integer);
+type
+  TNumFormatRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FormatLen: Byte;
+  end;
 var
   len: Integer;
   s: ansistring;
+  rec: TNumFormatRecord;
+  buf: array of byte;
 begin
   Unused(AFormatData);
 
   s := NumFormatList.FormatStringForWriting(AListIndex);
   len := Length(s);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
+  rec.RecordSize := WordToLE(1 + len);
+
+  { Length byte of format string }
+  rec.FormatLen := len;
+
+  { Copy the format string characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + SizeOf(ansiChar)*len);
+  Move(rec, buf[0], SizeOf(rec));
+  Move(s[1], buf[SizeOf(rec)], len*SizeOf(ansiChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*len);
+
+  { Clean up }
+  SetLength(buf, 0);
+
+                                  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
   AStream.WriteWord(WordToLE(1 + len));
@@ -1273,6 +1373,7 @@ begin
   { Format string }
   AStream.WriteByte(len);          // AnsiString, char count in 1 byte
   AStream.WriteBuffer(s[1], len);  // String data
+  *)
 end;
 
 procedure TsSpreadBIFF2Writer.WriteFormatCount(AStream: TStream);
@@ -1401,13 +1502,38 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
+type
+  TBlankRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1, Attrib2, Attrib3: Byte;
+  end;
+
 var
   xf: Word;
+  rec: TBlankRecord;
 begin
   xf := FindXFIndex(ACell);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_BLANK);
+  rec.RecordSize := WordToLE(7);
+
+  { BIFF record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { BIFF2 attributes }
+  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+
+  { Write out }
+  AStream.WriteBuffer(rec, Sizeof(rec));
+
+  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
   AStream.WriteWord(WordToLE(7));
@@ -1418,6 +1544,7 @@ begin
 
   { BIFF2 Attributes }
   WriteCellFormatting(AStream, ACell, xf);
+  *)
 end;
 
 {*******************************************************************
@@ -1433,12 +1560,25 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
+type
+  TLabelRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1: Byte;
+    Attrib2: Byte;
+    Attrib3: Byte;
+    TextLen: Byte;
+  end;
 const
-  MaxBytes=255; //limit for this format
+  MAXBYTES = 255; //limit for this format
 var
   L: Byte;
   AnsiText: ansistring;
   TextTooLong: boolean=false;
+  rec: TLabelRecord;
+  buf: array of byte;
 var
   xf: Word;
 begin
@@ -1446,14 +1586,13 @@ begin
 
   AnsiText := UTF8ToISO_8859_1(AValue);
 
-  if Length(AnsiText)>MaxBytes then
-  begin
+  if Length(AnsiText) > MAXBYTES then begin
     // BIFF 5 does not support labels/text bigger than 255 chars,
     // so BIFF2 won't either
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     TextTooLong:=true;
-    AnsiText := Copy(AnsiText,1,MaxBytes);
+    AnsiText := Copy(AnsiText, 1, MAXBYTES);
   end;
   L := Length(AnsiText);
 
@@ -1461,6 +1600,30 @@ begin
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_LABEL);
+  rec.RecordSize := WordToLE(8 + L);
+
+  { BIFF record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { BIFF2 attributes }
+  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+
+  { Text length: 8 bit }
+  rec.TextLen := L;
+
+  { Copy the text characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + SizeOf(ansiChar)*L);
+  Move(rec, buf[0], SizeOf(rec));
+  Move(AnsiText[1], buf[SizeOf(rec)], L*SizeOf(ansiChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*L);
+
+
+                  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
   AStream.WriteWord(WordToLE(8 + L));
@@ -1475,6 +1638,7 @@ begin
   { String with 8-bit size }
   AStream.WriteByte(L);
   AStream.WriteBuffer(AnsiText[1], L);
+                   *)
 
   {
   //todo: keep a log of errors and show with an exception after writing file or something.
@@ -1495,13 +1659,25 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
+type
+  TNumberRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1: Byte;
+    Attrib2: Byte;
+    Attrib3: Byte;
+    Value: Double;
+  end;
 var
   xf: Word;
+  rec: TNumberRecord;
 begin
   xf := FindXFIndex(ACell);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
-
+                  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
   AStream.WriteWord(WordToLE(15));
@@ -1515,6 +1691,24 @@ begin
 
   { IEE 754 floating-point value }
   AStream.WriteBuffer(AValue, 8);
+  *)
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_NUMBER);
+  rec.RecordSize := WordToLE(15);
+
+  { BIFF record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { BIFF2 attributes }
+  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+
+  { Number value }
+  rec.Value := AValue;
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(Rec));
 end;
 
 procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsWorksheet;
