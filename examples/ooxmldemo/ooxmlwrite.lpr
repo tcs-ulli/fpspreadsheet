@@ -87,7 +87,9 @@ begin
   MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');
 
   // Write current date/time
-  MyWorksheet.WriteDateTime(0, 5, now);
+  MyWorksheet.WriteDateTime(0, 5, now, nfShortDate);
+  MyWorksheet.WriteDateTime(1, 5, now, nfShortTime);
+  MyWorksheet.WriteDateTime(2, 5, now, 'nn:ss.zzz');
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML);
