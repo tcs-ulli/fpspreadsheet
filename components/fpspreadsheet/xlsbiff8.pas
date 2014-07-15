@@ -364,7 +364,8 @@ var
   fn: String;
 begin
   if (woSaveMemory in Workbook.WritingOptions) then begin
-    fn := GetTempFileName;
+    fn := GetTempFileName('', 'fpsB8');
+    if FileExists(fn) then DeleteFile(fn);
     Stream := TFileStream.Create(fn, fmCreate + fmOpenRead)
   end else
     Stream := TMemoryStream.Create;
@@ -378,6 +379,8 @@ begin
 
     OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting, 'Workbook');
   finally
+    if (woSaveMemory in Workbook.WritingOptions) then
+      DeleteFile(fn);
     Stream.Free;
     OutputStorage.Free;
   end;
