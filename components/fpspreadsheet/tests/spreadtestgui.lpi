@@ -88,6 +88,7 @@
       <Unit3>
         <Filename Value="numberstests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="numberstests"/>
       </Unit3>
       <Unit4>
         <Filename Value="manualtests.pas"/>

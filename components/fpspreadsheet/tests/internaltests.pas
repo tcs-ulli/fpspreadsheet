@@ -28,10 +28,13 @@ type
 
   TSpreadInternalTests= class(TTestCase)
   private
+    procedure NeedVirtualCellData(Sender: TObject; ARow, ACol: Cardinal;
+      var AValue:Variant; var AStyleCell: PCell);
   protected
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
+    procedure TestVirtualMode(AFormat: TsSpreadsheetFormat);
   published
     // Tests getting Excel style A1 cell locations from row/column based locations.
     // Bug 26447
@@ -46,9 +49,18 @@ type
     procedure OverwriteExistingFile;
     // Write out date cell and try to read as UTF8; verify if contents the same
     procedure ReadDateAsUTF8;
+
+    // Virtual mode tests for all file formats
+    procedure TestVirtualMode_BIFF2;
+    procedure TestVirtualMode_BIFF5;
+    procedure TestVirtualMode_BIFF8;
+    procedure TestVirtualMode_OOXML;
   end;
 
 implementation
+
+uses
+  numberstests;
 
 const
   InternalSheet = 'Internal'; //worksheet name
@@ -184,9 +196,76 @@ begin
 
 end;
 
+procedure TSpreadInternalTests.NeedVirtualCellData(Sender: TObject;
+  ARow, ACol: Cardinal; var AValue:Variant; var AStyleCell: PCell);
+begin
+  AValue := SollNumbers[ARow];
+end;
 
+procedure TSpreadInternalTests.TestVirtualMode(AFormat: TsSpreadsheetFormat);
+var
+  tempFile: String;
+  workbook: TsWorkbook;
+  worksheet: TsWorksheet;
+  row, col: Integer;
+  value: Double;
+begin
+  TempFile:=GetTempFileName;
+  if FileExists(TempFile) then
+    DeleteFile(TempFile);
 
+  workbook := TsWorkbook.Create;
+  try
+    worksheet := workbook.AddWorksheet('VirtualMode');
+    workbook.WritingOptions := workbook.WritingOptions + [woVirtualMode];
+    workbook.VirtualRowCount := Length(SollNumbers);
+    workbook.VirtualColCount := 1;
+    workbook.OnNeedCellData := @NeedVirtualCellData;
+    workbook.WriteToFile(tempfile, AFormat);
+  finally
+    workbook.Free;
+  end;
 
+  if AFormat <> sfOOXML then begin     // No reader support for OOXML
+    workbook := TsWorkbook.Create;
+    try
+      workbook.ReadFromFile(tempFile, AFormat);
+      worksheet := workbook.GetWorksheetByIndex(0);
+      col := 0;
+      CheckEquals(Length(SollNumbers), worksheet.GetLastRowIndex+1,
+        'Row count mismatch');
+      for row := 0 to worksheet.GetLastRowIndex do begin
+        value := worksheet.ReadAsNumber(row, col);
+        CheckEquals(SollNumbers[row], value,
+          'Test number value mismatch, cell '+CellNotation(workSheet, row, col))
+      end;
+    finally
+      workbook.Free;
+    end;
+  end;
+
+  DeleteFile(tempFile);
+end;
+
+procedure TSpreadInternalTests.TestVirtualMode_BIFF2;
+begin
+  TestVirtualMode(sfExcel2);
+end;
+
+procedure TSpreadInternalTests.TestVirtualMode_BIFF5;
+begin
+  TestVirtualMode(sfExcel5);
+end;
+
+procedure TSpreadInternalTests.TestVirtualMode_BIFF8;
+begin
+  TestVirtualMode(sfExcel8);
+end;
+
+procedure TSpreadInternalTests.TestVirtualMode_OOXML;
+begin
+  TestVirtualMode(sfOOXML);
+end;
 
 initialization
   // Register so these tests are included in a full run
