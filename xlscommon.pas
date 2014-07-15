@@ -448,6 +448,7 @@ type
     FLastCol: Cardinal;
     procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
+    function FindXFIndex(ACell: PCell): Integer;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -1655,6 +1656,32 @@ begin
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
 end;
 
+{ Determines the index of the XF record, according to formatting of the given cell }
+function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
+var
+  idx: Integer;
+  xfIndex: Word;
+  cell: TCell;
+begin
+  // First try the fast methods for default formats
+  if ACell^.UsedFormattingFields = [] then begin
+    Result := 15;   //XF15; see TsSpreadBIFF8Writer.AddDefaultFormats
+    Exit;
+  end;
+
+  // If not, then we need to search in the list of dynamic formats
+  // But we have to consider that the number formats of the cell is in fpc syntax,
+  // but the number format list of the writer is in Excel syntax.
+  cell := ACell^;
+  idx := FindFormattingInList(@cell);
+
+  // Carefully check the index
+  if (idx < 0) or (idx > Length(FFormattingStyles)) then
+    Result := -1
+  else
+    Result := FFormattingStyles[idx].Row;
+end;
+
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
   AElementKind: TFEKind; out ASecondaryID: Word): Word;
 begin
@@ -1836,7 +1863,36 @@ end;
   Valid for BIFF5 and BIFF8 (BIFF2 has a different record structure.). }
 procedure TsSpreadBIFFWriter.WriteNumber(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: double; ACell: PCell);
+type
+  TNumberRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    Value: Double;
+  end;
+var
+  rec: TNumberRecord;
 begin
+  { BIFF Record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_NUMBER);
+  rec.RecordSize := WordToLE(14);
+
+  { BIFF Record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record }
+  rec.XFIndex := FindXFIndex(ACell);
+
+  { IEE 754 floating-point value }
+  rec.Value := AValue;
+
+  AStream.WriteBuffer(rec, sizeof(Rec));
+end;
+      (*
+
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
   AStream.WriteWord(WordToLE(14));
@@ -1850,7 +1906,7 @@ begin
 
   { IEE 754 floating-point value }
   AStream.WriteBuffer(AValue, 8);
-end;
+end;         *)
 
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 var

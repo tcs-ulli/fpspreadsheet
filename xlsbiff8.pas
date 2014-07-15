@@ -924,18 +924,29 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
+type
+  TLabelRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    TextLen: Word;
+    TextFlags: Byte;
+  end;
 const
   //limit for this format: 32767 bytes - header (see reclen below):
   //37267-8-1=32758
-  MaxBytes=32758;
+  MAXBYTES = 32758;
 var
   L, RecLen: Word;
   TextTooLong: boolean=false;
   WideValue: WideString;
+  rec: TLabelRecord;
+  buf: array of byte;
 begin
   WideValue := UTF8Decode(AValue); //to UTF16
-  if WideValue = '' then
-  begin
+  if WideValue = '' then begin
     // Badly formatted UTF8String (maybe ANSI?)
     if Length(AValue)<>0 then begin
       //Quite sure it was an ANSI string written as UTF8, so raise exception.
@@ -944,15 +955,43 @@ begin
     Exit;
   end;
 
-  if Length(WideValue)>MaxBytes then
-  begin
+  if Length(WideValue) > MAXBYTES then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     TextTooLong := true;
-    SetLength(WideValue,MaxBytes); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    SetLength(WideValue, MaxBytes); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
   end;
   L := Length(WideValue);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_LABEL);
+  rec.RecordSize := 8 + 1 + L * SizeOf(WideChar);
+
+  { BIFF record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record, according to formatting }
+  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+
+  { Byte String with 16-bit length }
+  rec.TextLen := WordToLE(L);
+
+  { Byte flags, 1 means regular unicode LE encoding }
+  rec.TextFlags := 1;
+
+  { Copy the text characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + L*SizeOf(WideChar));
+  Move(rec, buf[0], SizeOf(Rec));
+  Move(WideStringToLE(WideValue)[1], buf[SizeOf(Rec)], L*SizeOf(WideChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(rec) + L*SizeOf(WideChar));
+
+  { Clean up }
+  SetLength(buf, 0);
+
+    (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
   RecLen := 8 + 1 + L * SizeOf(WideChar);
@@ -978,7 +1017,7 @@ begin
   if TextTooLong then
     Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
   because the file wouldn't be written.
-  }
+  }    *)
 end;
 
 {*******************************************************************
