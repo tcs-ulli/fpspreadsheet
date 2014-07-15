@@ -667,9 +667,18 @@ end;
 *******************************************************************}
 procedure TsSpreadBiff5Writer.WriteFormat(AStream: TStream;
   AFormatData: TsNumFormatData; AListIndex: Integer);
+type
+  TNumFormatRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FormatIndex: Word;
+    FormatStringLen: Byte;
+  end;
 var
   len: Integer;
   s: ansistring;
+  rec: TNumFormatRecord;
+  buf: array of byte;
 begin
   if (AFormatData = nil) or (AFormatData.FormatString = '') then
     exit;
@@ -677,6 +686,28 @@ begin
   s := NumFormatList.FormatStringForWriting(AListIndex);
   len := Length(s);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
+  rec.RecordSize := WordToLE(2 + 1 + len * SizeOf(AnsiChar));
+
+  { Format index }
+  rec.FormatIndex := WordToLE(AFormatData.Index);
+
+  { Format string }
+  { Length in 1 byte }
+  rec.FormatStringLen := len;
+  { Copy the format string characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + SizeOf(ansiChar)*len);
+  Move(rec, buf[0], SizeOf(rec));
+  Move(s[1], buf[SizeOf(rec)], len*SizeOf(ansiChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*len);
+
+  { Clean up }
+  SetLength(buf, 0);
+
+(*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
   AStream.WriteWord(WordToLE(2 + 1 + len * SizeOf(AnsiChar)));
@@ -687,7 +718,9 @@ begin
   { Format string }
   AStream.WriteByte(len);        // AnsiString, char count in 1 byte
   AStream.WriteBuffer(s[1], len * SizeOf(AnsiChar));  // String data
+  *)
 end;
+
   (*
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteRPNFormula ()
@@ -893,44 +926,79 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
+type
+  TLabelRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    TextLen: Word;
+  end;
 const
-  MaxBytes=255; //limit for this format
+  MAXBYTES = 255; //limit for this format
 var
   L: Word;
   AnsiValue: ansistring;
   TextTooLong: boolean=false;
+  rec: TLabelRecord;
+  buf: array of byte;
 begin
   case WorkBookEncoding of
-  seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
-  seCyrillic: AnsiValue := UTF8ToCP1251(AValue);
-  seGreek:    AnsiValue := UTF8ToCP1253(AValue);
-  seTurkish:  AnsiValue := UTF8ToCP1254(AValue);
-  seHebrew:   AnsiValue := UTF8ToCP1255(AValue);
-  seArabic:   AnsiValue := UTF8ToCP1256(AValue);
+    seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
+    seCyrillic: AnsiValue := UTF8ToCP1251(AValue);
+    seGreek:    AnsiValue := UTF8ToCP1253(AValue);
+    seTurkish:  AnsiValue := UTF8ToCP1254(AValue);
+    seHebrew:   AnsiValue := UTF8ToCP1255(AValue);
+    seArabic:   AnsiValue := UTF8ToCP1256(AValue);
   else
     // Latin 1 is the default
     AnsiValue := UTF8ToCP1252(AValue);
   end;
 
-  if AnsiValue = '' then
-  begin
+  if AnsiValue = '' then begin
     // Bad formatted UTF8String (maybe ANSI?)
-    if Length(AValue)<>0 then begin
+    if Length(AValue) <> 0 then begin
       //It was an ANSI string written as UTF8 quite sure, so raise exception.
       Raise Exception.CreateFmt('Expected UTF8 text but probably ANSI text found in cell [%d,%d]',[ARow,ACol]);
     end;
     Exit;
   end;
 
-  if Length(AnsiValue)>MaxBytes then
-  begin
+  if Length(AnsiValue) > MAXBYTES then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     TextTooLong := true;
-    AnsiValue := Copy(AnsiValue,1,MaxBytes);
+    AnsiValue := Copy(AnsiValue, 1, MAXBYTES);
   end;
   L := Length(AnsiValue);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_LABEL);
+  rec.RecordSize := WordToLE(8 + L);
+
+  { BIFF record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record }
+  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+
+  { String length, 16 bit }
+  rec.TextLen := WordToLE(L);
+
+  { Copy the text characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + SizeOf(ansiChar)*L);
+  Move(rec, buf[0], SizeOf(rec));
+  Move(AnsiValue[1], buf[SizeOf(rec)], L*SizeOf(ansiChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*L);
+
+  { Clean up }
+  SetLength(buf, 0);
+
+  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
   AStream.WriteWord(WordToLE(8 + L));
@@ -945,7 +1013,7 @@ begin
   { Byte String with 16-bit size }
   AStream.WriteWord(WordToLE(L));
   AStream.WriteBuffer(AnsiValue[1], L);
-
+    *)
   {
   //todo: keep a log of errors and show with an exception after writing file or something.
   We can't just do the following

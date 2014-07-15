@@ -687,9 +687,19 @@ end;
 
 procedure TsSpreadBiff8Writer.WriteFormat(AStream: TStream;
   AFormatData: TsNumFormatData; AListIndex: Integer);
+type
+  TNumFormatRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FormatIndex: Word;
+    FormatStringLen: Word;
+    FormatStringFlags: Byte;
+  end;
 var
   len: Integer;
   s: widestring;
+  rec: TNumFormatRecord;
+  buf: array of byte;
 begin
   if (AFormatData = nil) or (AFormatData.FormatString = '') then
     exit;
@@ -697,6 +707,30 @@ begin
   s := NumFormatList.FormatStringForWriting(AListIndex);
   len := Length(s);
 
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
+  rec.RecordSize := WordToLE(2 + 2 + 1 + len * SizeOf(WideChar));
+
+  { Format index }
+  rec.FormatIndex := WordToLE(AFormatData.Index);
+
+  { Format string }
+  { - length of string = 16 bits }
+  rec.FormatStringLen := WordToLE(len);
+  { - Widestring flags, 1 = regular unicode LE string }
+  rec.FormatStringFlags := 1;
+  { - Copy the text characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + SizeOf(WideChar)*len);
+  Move(rec, buf[0], SizeOf(rec));
+  Move(s[1], buf[SizeOf(rec)], len*SizeOf(WideChar));
+
+  { Write out }
+  AStream.WriteBuffer(buf[0], SizeOf(rec) + SizeOf(WideChar)*len);
+
+  { Clean up }
+  SetLength(buf, 0);
+
+(*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
   AStream.WriteWord(WordToLE(2 + 2 + 1 + len * SizeOf(WideChar)));
@@ -711,6 +745,7 @@ begin
   AStream.WriteByte(1);
   { - String data }
   AStream.WriteBuffer(WideStringToLE(s)[1], len * Sizeof(WideChar));
+  *)
 end;
 
 {*******************************************************************

@@ -1730,7 +1730,31 @@ end;
   different record structure. }
 procedure TsSpreadBIFFWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
+type
+  TBlankRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+  end;
+var
+  rec: TBlankRecord;
 begin
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_BLANK);
+  rec.RecordSize := WordToLE(6);
+
+  { Row and column index }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record, according to formatting }
+  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
   AStream.WriteWord(WordToLE(6));
@@ -1741,6 +1765,7 @@ begin
 
   { Index to XF record, according to formatting }
   WriteXFIndex(AStream, ACell);
+  *)
 end;
 
 procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
@@ -1770,10 +1795,42 @@ end;
 { Writes column info for the given column. Currently only the colum width is used.
   Valid for BIFF5 and BIFF8 (BIFF2 uses a different record. }
 procedure TsSpreadBIFFWriter.WriteColInfo(AStream: TStream; ACol: PCol);
+type
+  TColRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    StartCol: Word;
+    EndCol: Word;
+    ColWidth: Word;
+    XFIndex: Word;
+    OptionFlags: Word;
+    NotUsed: Word;
+  end;
 var
+  rec: TColRecord;
   w: Integer;
 begin
   if Assigned(ACol) then begin
+    { BIFF record header }
+    rec.RecordID := WordToLE(INT_EXCEL_ID_COLINFO);
+    rec.RecordSize := WordToLE(12);
+
+    { Start and end column }
+    rec.StartCol := WordToLE(ACol^.Col);
+    rec.EndCol := WordToLE(ACol^.Col);
+
+    { calculate width to be in units of 1/256 of pixel width of character "0" }
+    w := round(ACol^.Width * 256);
+
+    rec.ColWidth := WordToLE(w);
+    rec.XFIndex := WordToLE(15);    // Index of XF record, not used
+    rec.OptionFlags := 0;           // not used
+    rec.NotUsed := 0;
+
+    { Write out }
+    AStream.WriteBuffer(rec, SizeOf(rec));
+
+    (*
     { BIFF Record header }
     AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLINFO));  // BIFF record header
     AStream.WriteWord(WordToLE(12));                    // Record size
@@ -1785,6 +1842,7 @@ begin
     AStream.WriteWord(15);                              // XF record, ignored
     AStream.WriteWord(0);                               // option flags, ignored
     AStream.WriteWord(0);                               // "not used"
+    *)
   end;
 end;
 
