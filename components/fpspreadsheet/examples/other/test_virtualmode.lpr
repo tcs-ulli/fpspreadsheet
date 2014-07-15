@@ -41,12 +41,12 @@ var
       // This makes the style of the "headerTemplate" cell available to
       // formatting of all virtual cells in row 0.
       // Important: The template cell must be an existing cell in the worksheet.
-    end else
-    if odd(random(10)) then begin
+    end else    {
+    if odd(random(10)) then }begin
       s := Format('R=%d-C=%d', [ARow, ACol]);
       AData := s;
-    end else
-      AData := 10000*ARow + ACol;
+    end {else
+      AData := 10000*ARow + ACol};
 
     // you can use the OnNeedData also to provide feedback on how the process
     // progresses:
@@ -65,8 +65,8 @@ begin
 
       { These are the essential commands to activate virtual mode: }
 
-//      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
-      workbook.WritingOptions := [woVirtualMode];
+      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
+//      workbook.WritingOptions := [woVirtualMode];
       { woSaveMemory can be omitted, but is essential for large files: it causes
         writing temporaray data to a file stream instead of a memory stream.
         woSaveMemory, however, considerably slows down writing of biff files. }
@@ -93,8 +93,8 @@ begin
       worksheet.WriteRowHeight(0, 3);
       worksheet.WriteColWidth(0, 30);
       { In case of a database, you would open the dataset before calling this: }
-      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-//      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
 
     finally
       workbook.Free;
