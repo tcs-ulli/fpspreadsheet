@@ -90,6 +90,8 @@ begin
       worksheet.WriteBackgroundColor(0, 0, scSilver);
       headerTemplate := worksheet.FindCell(0, 0);
 
+      worksheet.WriteRowHeight(0, 3);
+      worksheet.WriteColWidth(0, 30);
       { In case of a database, you would open the dataset before calling this: }
       workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
 //      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
