@@ -115,7 +115,7 @@ type
 implementation
 
 uses
-  variants, fpsNumFormatParser;
+  variants, fpsNumFormatParser, xlscommon;
 
 const
   { OOXML general XML constants }
@@ -1261,8 +1261,12 @@ end;
 *******************************************************************}
 procedure TsSpreadOOXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
+var
+  ExcelDateSerial: double;
 begin
-  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
+  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, dm1900); //FDateMode);
+  WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
+//  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
 end;
 
 {
