@@ -19,6 +19,7 @@ var
   i: Integer;
   a: TStringList;
   MyCell: PCell;
+
 begin
   // Open the output file
   MyDir := ExtractFilePath(ParamStr(0));
