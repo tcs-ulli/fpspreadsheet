@@ -19,6 +19,9 @@ Specifications obtained from:
 
 http://openxmldeveloper.org/default.aspx
 
+also:
+http://office.microsoft.com/en-us/excel-help/excel-specifications-and-limits-HP010073849.aspx#BMworksheetworkbook
+
 AUTHORS: Felipe Monteiro de Carvalho
 }
 unit xlsxooxml;
@@ -72,6 +75,7 @@ type
     procedure ListAllFills;
     procedure ResetStreams;
     procedure WriteBorderList(AStream: TStream);
+    procedure WriteCols(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
     procedure WriteNumFormatList(AStream: TStream);
@@ -441,6 +445,30 @@ begin
 
   AppendToStream(AStream,
     '</borders>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteCols(AStream: TStream; ASheet: TsWorksheet);
+var
+  col: PCol;
+  c: Integer;
+begin
+  if ASheet.Cols.Count = 0 then
+    exit;
+
+  AppendToStream(AStream,
+    '<cols>');
+
+  for c:=0 to ASheet.GetLastColIndex do begin
+    col := ASheet.FindCol(c);
+    if col <> nil then
+      AppendToStream(AStream, Format(
+        '<col min="%d" max="%d" width="%g" customWidth="1" />',
+        [c+1, c+1, col.Width])
+      );
+  end;
+
+  AppendToStream(AStream,
+    '</cols>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteFillList(AStream: TStream);
@@ -848,9 +876,13 @@ var
   value: Variant;
   styleCell: PCell;
   fn: String;
+  row: PRow;
+  rh: String;
+  h0: Single;
 begin
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
+  h0 := Workbook.GetDefaultFontSize;  // Point size of default font
 
   // Create the stream
   if (woSaveMemory in Workbook.WritingOptions) then begin
@@ -871,14 +903,23 @@ begin
         '<sheetView workbookViewId="0" />');
   AppendToStream(FSSheets[FCurSheetNum],
       '</sheetViews>');
+
+  WriteCols(FSSheets[FCurSheetNum], CurSheet);
+
   AppendToStream(FSSheets[FCurSheetNum],
       '<sheetData>');
 
   if (woVirtualMode in Workbook.WritingOptions) and Assigned(Workbook.OnNeedCellData)
   then begin
     for r := 0 to Workbook.VirtualRowCount-1 do begin
+      row := CurSheet.FindRow(r);
+      if row <> nil then
+        rh := Format(' ht="%g" customHeight="1"', [
+          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
+      else
+        rh := '';
       AppendToStream(FSSheets[FCurSheetNum], Format(
-        '<row r="%d" spans="1:%d">', [r+1, Workbook.VirtualColCount]));
+        '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
       for c := 0 to Workbook.VirtualColCount-1 do begin
         FillChar(lCell, SizeOf(lCell), 0);
         CellPosText := CurSheet.CellPosToText(r, c);
@@ -920,8 +961,15 @@ begin
     // The cells need to be written in order, row by row, cell by cell
     LastColIndex := CurSheet.GetLastColIndex;
     for r := 0 to CurSheet.GetLastRowIndex do begin
+      // If the row has a custom height add this value to the <row> specification
+      row := CurSheet.FindRow(r);
+      if row <> nil then
+        rh := Format(' ht="%g" customHeight="1"', [
+          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
+      else
+        rh := '';
       AppendToStream(FSSheets[FCurSheetNum], Format(
-        '<row r="%d" spans="1:%d">', [r+1, LastColIndex+1]));
+        '<row r="%d" spans="1:%d"%s>', [r+1, LastColIndex+1, rh]));
       // Write cells belonging to this row.
       for c := 0 to LastColIndex do begin
         LCell.Row := r;

@@ -36,6 +36,9 @@ begin
 
   MyWorksheet.WriteUTF8Text(0, 26, 'AA'); // Test for column name
 
+  MyWorksheet.WriteColWidth(0, 20);
+  MyWorksheet.WriteRowHeight(0, 4);
+
 // Uncomment this to test large XLS files
   for i := 2 to 2{20} do
   begin
