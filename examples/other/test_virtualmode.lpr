@@ -21,6 +21,7 @@ var
   worksheet: TsWorksheet;
   dataprovider: TDataProvider;
   headerTemplate: PCell;
+  t: TTime;
 
   procedure TDataProvider.NeedCellData(Sender: TObject; ARow, ACol: Cardinal;
     var AData: variant; var AStyleCell: PCell);
@@ -33,7 +34,6 @@ var
   }
   var
     s: String;
-    n: Double;
   begin
     if ARow = 0 then begin
       AData := Format('Column %d', [ACol + 1]);
@@ -65,8 +65,8 @@ begin
 
       { These are the essential commands to activate virtual mode: }
 
-      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
-//      workbook.WritingOptions := [woVirtualMode];
+//      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
+      workbook.WritingOptions := [woVirtualMode];
       { woSaveMemory can be omitted, but is essential for large files: it causes
         writing temporaray data to a file stream instead of a memory stream.
         woSaveMemory, however, considerably slows down writing of biff files. }
@@ -74,7 +74,7 @@ begin
       { Next two numbers define the size of virtual spreadsheet.
         In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
         the number of fields to be written to the spreadsheet file }
-      workbook.VirtualRowCount := 10000;
+      workbook.VirtualRowCount := 60000;
       workbook.VirtualColCount := 100;
 
       { The event handler for OnNeedCellData links the workbook to the method
@@ -93,13 +93,17 @@ begin
       worksheet.WriteRowHeight(0, 3);
       worksheet.WriteColWidth(0, 30);
       { In case of a database, you would open the dataset before calling this: }
-      //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+
+      t := Now;
+      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+      //workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      t := Now - t;
 
     finally
       workbook.Free;
     end;
 
+    WriteLn(Format('Execution time: %.3f sec', [t*24*60*60]));
     WriteLn('Press [ENTER] to quit...');
     ReadLn;
   finally

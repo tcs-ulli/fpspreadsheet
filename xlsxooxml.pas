@@ -115,7 +115,7 @@ type
 implementation
 
 uses
-  variants, fpsNumFormatParser, xlscommon;
+  variants, fpsStreams, fpsNumFormatParser, xlscommon;
 
 const
   { OOXML general XML constants }
@@ -737,16 +737,16 @@ begin
 
   // Style records
   AppendToStream(FSStyles,
-      '<cellStyleXfs count="1">',
-        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" />',
+      '<cellStyleXfs count="1">' +
+        '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" />' +
       '</cellStyleXfs>'
   );
   WriteStyleList(FSStyles, 'cellXfs');
 
   // Cell style records
   AppendToStream(FSStyles,
-      '<cellStyles count="1">',
-        '<cellStyle name="Normal" xfId="0" builtinId="0" />',
+      '<cellStyles count="1">' +
+        '<cellStyle name="Normal" xfId="0" builtinId="0" />' +
       '</cellStyles>');
 
   // Misc
@@ -779,7 +779,7 @@ begin
       '<Relationship Type="%s" Target="worksheets/sheet%d.xml" Id="rId%d" />',
         [SCHEMAS_WORKSHEET, i, i+2]));
 
-  AppendToStream(FSWOrkbookRels,
+  AppendToStream(FSWorkbookRels,
     '</Relationships>');
 
   { --- Workbook --- }
@@ -820,11 +820,10 @@ begin
     XML_HEADER, Format(
     '<sst xmlns="%s" count="%d" uniqueCount="%d">', [SCHEMAS_SPREADML, FSharedStringsCount, FSharedStringsCount]
   ));
-  FSSharedStrings.Position := 0;
+  ResetStream(FSSharedStrings);
   FSSharedStrings_complete.CopyFrom(FSSharedStrings, FSSharedStrings.Size);
   AppendToStream(FSSharedStrings_complete,
     '</sst>');
-  FSSharedStrings_complete.Position := 0;
 end;
 
 {
@@ -875,7 +874,6 @@ var
   CellPosText: string;
   value: Variant;
   styleCell: PCell;
-  fn: String;
   row: PRow;
   rh: String;
   h0: Single;
@@ -885,11 +883,9 @@ begin
   h0 := Workbook.GetDefaultFontSize;  // Point size of default font
 
   // Create the stream
-  if (woSaveMemory in Workbook.WritingOptions) then begin
-    fn := IncludeTrailingPathDelimiter(GetTempDir);
-    fn := GetTempFileName(fn, Format('fpsSH%d-', [FCurSheetNum+1]));
-    FSSheets[FCurSheetNum] := TFileStream.Create(fn, fmCreate);
-  end else
+  if (woSaveMemory in Workbook.WritingOptions) then
+    FSSheets[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsSH%d', [FCurSheetNum])))
+  else
     FSSheets[FCurSheetNum] := TMemoryStream.Create;
 
   // Header
@@ -1016,18 +1012,15 @@ end;
 { Creates the streams for the individual data files. Will be zipped into a
   single xlsx file. }
 procedure TsSpreadOOXMLWriter.CreateStreams;
-var
-  dir: String;
 begin
   if (woSaveMemory in Workbook.WritingOptions) then begin
-    dir := IncludeTrailingPathDelimiter(GetTempDir);
-    FSContentTypes := TFileStream.Create(GetTempFileName(dir, 'fpsCT'), fmCreate+fmOpenRead);
-    FSRelsRels := TFileStream.Create(GetTempFileName(dir, 'fpsRR'), fmCreate+fmOpenRead);
-    FSWorkbookRels := TFileStream.Create(GetTempFileName(dir, 'fpsWBR'), fmCreate+fmOpenRead);
-    FSWorkbook := TFileStream.Create(GetTempFileName(dir, 'fpsWB'), fmCreate+fmOpenRead);
-    FSStyles := TFileStream.Create(GetTempFileName(dir, 'fpsSTY'), fmCreate+fmOpenRead);
-    FSSharedStrings := TFileStream.Create(GetTempFileName(dir, 'fpsSST'), fmCreate+fmOpenRead);
-    FSSharedStrings_complete := TFileStream.Create(GetTempFileName(dir, 'fpsSSTc'), fmCreate+fmOpenRead);
+    FSContentTypes := TBufStream.Create(GetTempFileName('', 'fpsCT'));
+    FSRelsRels := TBufStream.Create(GetTempFileName('', 'fpsRR'));
+    FSWorkbookRels := TBufStream.Create(GetTempFileName('', 'fpsWBR'));
+    FSWorkbook := TBufStream.Create(GetTempFileName('', 'fpsWB'));
+    FSStyles := TBufStream.Create(GetTempFileName('', 'fpsSTY'));
+    FSSharedStrings := TBufStream.Create(GetTempFileName('', 'fpsSS'));
+    FSSharedStrings_complete := TBufStream.Create(GetTempFileName('', 'fpsSSC'));
   end else begin;
     FSContentTypes := TMemoryStream.Create;
     FSRelsRels := TMemoryStream.Create;
@@ -1072,7 +1065,17 @@ end;
 procedure TsSpreadOOXMLWriter.ResetStreams;
 var
   stream: TStream;
+  i: Integer;
 begin
+  ResetStream(FSContentTypes);
+  ResetStream(FSRelsRels);
+  ResetStream(FSWorkbookRels);
+  ResetStream(FSWorkbook);
+  ResetStream(FSStyles);
+  ResetStream(FSSharedStrings_complete);
+  for i := 0 to High(FSSheets) do
+    ResetStream(FSSheets[i]);
+    {
   FSContentTypes.Position := 0;
   FSRelsRels.Position := 0;
   FSWorkbookRels.Position := 0;
@@ -1080,6 +1083,7 @@ begin
   FSStyles.Position := 0;
   FSSharedStrings_complete.Position := 0;
   for stream in FSSheets do stream.Position := 0;
+  }
 end;
 
 {
@@ -1135,9 +1139,13 @@ begin
   WriteGlobalFiles;
   WriteContent;
 
+  // Stream position must be at beginning, it was moved to end during adding of xml strings.
+  ResetStreams;
+
   { Now compress the files }
   FZip := TZipper.Create;
   try
+    FZip.FileName := '__temp__.tmp';
     FZip.Entries.AddFileEntry(FSContentTypes, OOXML_PATH_TYPES);
     FZip.Entries.AddFileEntry(FSRelsRels, OOXML_PATH_RELS_RELS);
     FZip.Entries.AddFileEntry(FSWorkbookRels, OOXML_PATH_XL_RELS_RELS);
@@ -1149,9 +1157,6 @@ begin
       FSSheets[i].Position:= 0;
       FZip.Entries.AddFileEntry(FSSheets[i], OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i + 1) + '.xml');
     end;
-
-    // Stream position must be at beginning, it was moved to end during adding of xml strings.
-    ResetStreams;
 
     FZip.SaveToStream(AStream);
 

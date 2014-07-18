@@ -505,12 +505,12 @@ type
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteSheetPR(AStream: TStream);
     procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
+    // Writes cell content received by workbook in OnNeedCellData event
+    procedure WriteVirtualCells(AStream: TStream);
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
     // Writes the index of the XF record used in the given cell
     procedure WriteXFIndex(AStream: TStream; ACell: PCell);
-    // Writes cell content received by workbook in OnNeedCellData event
-    procedure WriteVirtualCells(AStream: TStream);
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -2568,6 +2568,49 @@ begin
   Unused(AStream, AString);
 end;
 
+procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);
+var
+  r,c: Cardinal;
+  lCell: TCell;
+  value: variant;
+  styleCell: PCell;
+begin
+  for r := 0 to Workbook.VirtualRowCount-1 do begin
+    for c := 0 to Workbook.VirtualColCount-1 do begin
+      FillChar(lCell, SizeOf(lCell), 0);
+      value := varNull;
+      styleCell := nil;
+      Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
+      if styleCell <> nil then lCell := styleCell^;
+      lCell.Row := r;
+      lCell.Col := c;
+      if VarIsNull(value) then
+        lCell.ContentType := cctEmpty
+      else
+      if VarIsNumeric(value) then begin
+        lCell.ContentType := cctNumber;
+        lCell.NumberValue := value;
+      end else
+      {
+      if VarIsDateTime(value) then begin
+        lCell.ContentType := cctNumber;
+        lCell.DateTimeValue := value;
+      end else
+      }
+      if VarIsStr(value) then begin
+        lCell.ContentType := cctUTF8String;
+        lCell.UTF8StringValue := VarToStrDef(value, '');
+      end else
+      if VarIsBool(value) then begin
+        lCell.ContentType := cctBool;
+        lCell.BoolValue := value <> 0;
+      end else
+        lCell.ContentType := cctEmpty;
+      WriteCellCallback(@lCell, AStream);
+    end;
+  end;
+end;
+
 { Writes an Excel 5/8 WINDOW1 record
   This record contains general settings for the document window and
   global workbook settings.
@@ -2640,49 +2683,6 @@ begin
   lXFIndex := FFormattingStyles[lIndex].Row;
 
   AStream.WriteWord(WordToLE(lXFIndex));
-end;
-
-procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);
-var
-  r,c: Cardinal;
-  lCell: TCell;
-  value: variant;
-  styleCell: PCell;
-begin
-  for r := 0 to Workbook.VirtualRowCount-1 do begin
-    for c := 0 to Workbook.VirtualColCount-1 do begin
-      FillChar(lCell, SizeOf(lCell), 0);
-      value := varNull;
-      styleCell := nil;
-      Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
-      if styleCell <> nil then lCell := styleCell^;
-      lCell.Row := r;
-      lCell.Col := c;
-      if VarIsNull(value) then
-        lCell.ContentType := cctEmpty
-      else
-      if VarIsNumeric(value) then begin
-        lCell.ContentType := cctNumber;
-        lCell.NumberValue := value;
-      end else
-      {
-      if VarIsDateTime(value) then begin
-        lCell.ContentType := cctNumber;
-        lCell.DateTimeValue := value;
-      end else
-      }
-      if VarIsStr(value) then begin
-        lCell.ContentType := cctUTF8String;
-        lCell.UTF8StringValue := VarToStrDef(value, '');
-      end else
-      if VarIsBool(value) then begin
-        lCell.ContentType := cctBool;
-        lCell.BoolValue := value <> 0;
-      end else
-        lCell.ContentType := cctEmpty;
-      WriteCellCallback(@lCell, AStream);
-    end;
-  end;
 end;
 
 end.

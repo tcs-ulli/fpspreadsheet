@@ -17,7 +17,7 @@ uses
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
   fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  fpsutils, testsutility, md5;
+  fpsutils, fpsstreams, testsutility, md5;
 
 type
   { TSpreadReadInternalTests }
@@ -35,6 +35,7 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
     procedure TestVirtualMode(AFormat: TsSpreadsheetFormat; SaveMemoryMode: Boolean);
+
   published
     // Tests getting Excel style A1 cell locations from row/column based locations.
     // Bug 26447
@@ -49,6 +50,8 @@ type
     procedure OverwriteExistingFile;
     // Write out date cell and try to read as UTF8; verify if contents the same
     procedure ReadDateAsUTF8;
+    // Test buffered stream
+    procedure TestBufStream;
 
     // Virtual mode tests for all file formats
     procedure TestVirtualMode_BIFF2;
@@ -170,6 +173,87 @@ begin
   CheckEquals(TestDT,ActualDT,'Date/time mismatch using ReadAsUTF8Text');
 
   MyWorkbook.Free;
+end;
+
+procedure TSpreadInternalTests.TestBufStream;
+const
+  BUFSIZE = 1024;
+var
+  stream: TBufStream;
+  readBuf, writeBuf1, writeBuf2: array of byte;
+  nRead, nWrite1, nWrite2: Integer;
+  i: Integer;
+begin
+  stream := TBufStream.Create(BUFSIZE);
+  try
+    // Write 100 random bytes. They fit into the BUFSIZE of the memory buffer
+    nWrite1 := 100;
+    SetLength(writeBuf1, nWrite1);
+    for i:=0 to nWrite1-1 do writeBuf1[i] := Random(255);
+    stream.WriteBuffer(writeBuf1[0], nWrite1);
+
+    // Check stream size - must be equal to nWrite
+    CheckEquals(nWrite1, stream.Size, 'Stream size mismatch (#1)');
+
+    // Check stream position must be equal to nWrite
+    CheckEquals(nWrite1, stream.Position, 'Stream position mismatch (#2)');
+
+    // Bring stream pointer back to start
+    stream.Position := 0;
+    CheckEquals(0, stream.Position, 'Stream position mismatch (#3)');
+
+    // Read the first 10 bytes just written and compare
+    nRead := 10;
+    SetLength(readBuf, nRead);
+    nRead := stream.Read(readBuf[0], nRead);
+    CheckEquals(10, nRead, 'Read/write size mismatch (#4)');
+    for i:=0 to 9 do
+      CheckEquals(writeBuf1[i], readBuf[i], Format('Read/write mismatch at position %d (#5)', [i]));
+
+    // Back to start, and read the entire stream
+    stream.Position := 0;
+    nRead := stream.Size;
+    Setlength(readBuf, nRead);
+    nRead := stream.Read(readBuf[0], stream.Size);
+    CheckEquals(nWrite1, nRead, 'Stream read size mismatch (#6)');
+    for i:=0 to nWrite1-1 do
+      CheckEquals(writeBuf1[i], readBuf[i], Format('Read/write mismatch at position %d (#7)', [i]));
+
+    // Now put stream pointer to end and write another 2000 bytes. This crosses
+    // the size of the memory buffer, and the stream must swap to file.
+    stream.Seek(0, soFromEnd);
+    CheckEquals(stream.Size, stream.Position, 'Stream position not at end (#8)');
+
+    nWrite2 := 2000;
+    SetLength(writeBuf2, nWrite2);
+    for i:=0 to nWrite2-1 do writeBuf2[i] := Random(255);
+    stream.WriteBuffer(writeBuf2[0], nWrite2);
+
+    // The stream pointer must be at 100+2000, same for the size
+    CheckEquals(nWrite1+nWrite2, stream.Position, 'Stream position mismatch (#9)');
+    CheckEquals(nWrite1+nWrite2, stream.Size, 'Stream size mismatch (#10)');
+
+    // Read the last 10 bytes and compare
+    Stream.Seek(10, soFromEnd);
+    SetLength(readBuf, 10);
+    Stream.ReadBuffer(readBuf[0], 10);
+    for i:=0 to 9 do
+      CheckEquals(writeBuf2[nWrite2-10+i], readBuf[i], Format('Read/write mismatch at position %d from end (#11)', [i]));
+
+    // Now read all from beginning
+    Stream.Position := 0;
+    SetLength(readBuf, stream.Size);
+    nRead := Stream.Read(readBuf[0], stream.Size);
+    CheckEquals(nWrite1+nWrite2, nRead, 'Read/write size mismatch (#4)');
+    for i:=0 to nRead-1 do
+      if i < nWrite1 then
+        CheckEquals(writeBuf1[i], readBuf[i], Format('Read/write mismatch at position %d (#11)', [i]))
+      else
+        CheckEquals(writeBuf2[i-nWrite1], readBuf[i], Format('Read/write mismatch at position %d (#11)', [i]));
+
+  finally
+    stream.Free;
+  end;
 end;
 
 procedure TSpreadInternalTests.TestCellString;
