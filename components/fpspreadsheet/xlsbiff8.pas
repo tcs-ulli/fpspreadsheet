@@ -220,6 +220,9 @@ var
 
 implementation
 
+uses
+  fpsStreams;
+
 const
   { Excel record IDs }
   INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
@@ -361,12 +364,9 @@ var
   Stream: TStream;
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
-  fn: String;
 begin
   if (woSaveMemory in Workbook.WritingOptions) then begin
-    fn := GetTempFileName('', 'fpsB8');
-    if FileExists(fn) then DeleteFile(fn);
-    Stream := TFileStream.Create(fn, fmCreate + fmOpenRead)
+    Stream := TBufStream.Create
   end else
     Stream := TMemoryStream.Create;
 
@@ -379,8 +379,6 @@ begin
 
     OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting, 'Workbook');
   finally
-    if (woSaveMemory in Workbook.WritingOptions) then
-      DeleteFile(fn);
     Stream.Free;
     OutputStorage.Free;
   end;

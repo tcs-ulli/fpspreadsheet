@@ -18,7 +18,6 @@
       </Parsing>
       <Other>
         <CustomOptions Value="$(IDEBuildOptions)"/>
-        <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
     <Description Value="laz_fpspreadsheet is a non-visual component that allows you to use the fpspreadsheet package to read/write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
@@ -26,7 +25,7 @@
 This package is all you need if you don't want graphical components (like grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="2"/>
-    <Files Count="21">
+    <Files Count="22">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -111,6 +110,10 @@ This package is all you need if you don't want graphical components (like grids 
         <Filename Value="fpsfunc.pas"/>
         <UnitName Value="fpsfunc"/>
       </Item21>
+      <Item22>
+        <Filename Value="fpsstreams.pas"/>
+        <UnitName Value="fpsStreams"/>
+      </Item22>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>
