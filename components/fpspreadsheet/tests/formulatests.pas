@@ -142,6 +142,7 @@ end;
 procedure TSpreadWriteReadFormulaTests.TestCalcRPNFormulas(AFormat: TsSpreadsheetFormat);
 const
   SHEET = 'Sheet1';
+  STATS_NUMBERS: Array[0..4] of Double = (1.0, 1.1, 1.2, 0.9, 0.8);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -156,8 +157,15 @@ var
   t: TTime;
   hr,min,sec,msec: Word;
   ErrorMargin: double;
+  k: Integer;
+  { When comparing soll and formula values we must make sure that the soll
+    values are calculated from double precision numbers, they are used in
+    the formula calculation as well. The next variables, along with STATS_NUMBERS
+    above, hold the arguments for the direction function calls. }
+  number: Double;
+  numberArray: array[0..4] of Double;
 begin
-  ErrorMargin:=1.44E-7;
+  ErrorMargin:=0; //1.44E-7;
   //1.44E-7 for SUMSQ formula
   //6.0E-8 for SUM formula
   //4.8E-8 for MAX formula
@@ -208,6 +216,19 @@ begin
     CheckEquals(ord(expected.ArgumentType), ord(actual.ArgumentType),
       'Test read calculated formula data type mismatch, formula "' + formula +
       '", cell '+CellNotation(MyWorkSheet,Row,1));
+
+    // The now function result is volatile, i.e. changes continuously. The
+    // time for the soll value was created such that we can expect to have
+    // the file value in the same second. Therefore we neglect the milliseconds.
+    if formula = '=NOW()' then begin
+      // Round soll value to seconds
+      DecodeTime(expected.NumberValue, hr,min,sec,msec);
+      expected.NumberValue := EncodeTime(hr, min, sec, 0);
+      // Round formula value to seconds
+      DecodeTime(actual.NumberValue, hr,min,sec,msec);
+      actual.NumberValue := EncodeTime(hr,min,sec,0);
+    end;
+
     case actual.ArgumentType of
       atBool:
         CheckEquals(BoolToStr(expected.BoolValue), BoolToStr(actual.BoolValue),

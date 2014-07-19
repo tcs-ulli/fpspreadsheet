@@ -99,7 +99,6 @@
       <Unit5>
         <Filename Value="testsutility.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="testsutility"/>
       </Unit5>
       <Unit6>
         <Filename Value="internaltests.pas"/>
@@ -109,7 +108,6 @@
       <Unit7>
         <Filename Value="formattests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formattests"/>
       </Unit7>
       <Unit8>
         <Filename Value="colortests.pas"/>
@@ -118,7 +116,6 @@
       <Unit9>
         <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fonttests"/>
       </Unit9>
       <Unit10>
         <Filename Value="optiontests.pas"/>
@@ -131,6 +128,7 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>

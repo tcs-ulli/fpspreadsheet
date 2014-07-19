@@ -569,12 +569,15 @@
 
   // ARCCOS - valid result
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=acos(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekACOS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(arccos(0.1));
+  sollValues[Row] := CreateNumberArg(arccos(number));
+  // Don't explicitly use the constant here because this will be "extended"
+  // which is slightly different from the double value used in the formula
 
   // ACOS - error result (arccos is not defined outside the interval [-1..1]
   inc(Row);
@@ -587,12 +590,13 @@
 
    // ARCCOSH - valid result
   inc(Row);
+  number := 1.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=acosh(1.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNNumber(1.1,
+    RPNNumber(number,
     RPNFunc(fekACOSH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(arccosh(1.1));
+  sollValues[Row] := CreateNumberArg(arccosh(number));
 
   // ACOSH - error result (arccos is not defined below 1
   inc(Row);
@@ -605,12 +609,13 @@
 
   // ASIN
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=asin(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekASIN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(arcsin(0.1));
+  sollValues[Row] := CreateNumberArg(arcsin(number));
 
   // ASIN - error result (arcsin is not defined outside the interval [-1..1]
   inc(Row);
@@ -623,30 +628,33 @@
 
    // ARCSINH
   inc(Row);
+  number := 1.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=asinh(1.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(1.1,
     RPNFunc(fekASINH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(arcsinh(1.1));
+  sollValues[Row] := CreateNumberArg(arcsinh(number));
 
   // ATAN
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=atan(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekATAN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(arctan(0.1));
+  sollValues[Row] := CreateNumberArg(arctan(number));
 
   // ATANH - valid result
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=atanh(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekATANH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(arctanh(0.1));
+  sollValues[Row] := CreateNumberArg(arctanh(number));
 
   // ATANH - error result (arctan is only defined within ]-1,1[
   inc(Row);
@@ -659,21 +667,23 @@
 
   // COS
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=cos(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekCOS, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(cos(0.1));
+  sollValues[Row] := CreateNumberArg(cos(number));
 
   // COSH
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=cosh(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekCOSH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(cosh(0.1));
+  sollValues[Row] := CreateNumberArg(cosh(number));
 
   // DEGREES
   inc(Row);
@@ -686,12 +696,13 @@
 
   // EXP
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=exp(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekEXP, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(exp(0.1));
+  sollValues[Row] := CreateNumberArg(exp(number));
 
   // INT (positive argument)
   inc(Row);
@@ -713,12 +724,13 @@
 
   // LN - valid result
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=ln(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekLN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(ln(0.1));
+  sollValues[Row] := CreateNumberArg(ln(number));
 
   // LN - error due to argument = 0
   inc(Row);
@@ -740,12 +752,13 @@
 
   // LOG10 - valid result
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=log10(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekLOG10, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(log10(0.1));
+  sollValues[Row] := CreateNumberArg(log10(number));
 
   // LOG10 - error due to argument = 0
   inc(Row);
@@ -767,13 +780,14 @@
 
   // LOG - valid result (2 arguments)
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=log(0.1, 2)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNNumber(2,
     RPNFunc(fekLOG, 2, nil)))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(logn(2, 0.1));
+  sollValues[Row] := CreateNumberArg(logn(2, number));
 
   // LOG - valid result (2 arguments, base missing)
   inc(Row);
@@ -787,12 +801,13 @@
 
   // LOG - valid result (1 argument)
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=log(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekLOG, 1, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(logn(10, 0.1));
+  sollValues[Row] := CreateNumberArg(logn(10, number));
 
   // LOG - negative base
   inc(Row);
@@ -883,12 +898,13 @@
 
   // SIN
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=sin(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekSIN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(sin(0.1));
+  sollValues[Row] := CreateNumberArg(sin(number));
 
   // SIN   of cell value
   inc(Row);
@@ -901,12 +917,13 @@
 
   // SINH
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=sinh(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekSINH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(sinh(0.1));
+  sollValues[Row] := CreateNumberArg(sinh(number));
 
   // SINH of cell value
   inc(Row);
@@ -919,12 +936,13 @@
 
   // SQRT - valid result
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=sqrt(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekSQRT, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(sqrt(0.1));
+  sollValues[Row] := CreateNumberArg(sqrt(number));
 
   // SQRT - error (negative argument)
   inc(Row);
@@ -946,12 +964,13 @@
 
   // TAN - valid result
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=tan(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekTAN, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(tan(0.1));
+  sollValues[Row] := CreateNumberArg(tan(number));
 
   // TAN - error (argument = pi/2)
   // This test is omitted because it is difficult to exactly hit pi/2.
@@ -967,12 +986,13 @@
 
   // TANH
   inc(Row);
+  number := 0.1;
   MyWorksheet.WriteUTF8Text(Row, 0, '=tanh(0.1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0.1,
     RPNFunc(fekTANH, nil))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(tanh(0.1));
+  sollValues[Row] := CreateNumberArg(tanh(number));
 
   // TANH of cell value
   inc(Row);
@@ -1222,8 +1242,11 @@
     RPNNumber(0.8,
     RPNFunc(fekAVEDEV, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(mean([0.0, 0.1, 0.2, 0.1, 0.2]));
-                            // these values are the absolute deviations from mean (1.0)
+  number := mean(STATS_NUMBERS);
+  for k := 0 to High(STATS_NUMBERS) do numberArray[k] := abs(STATS_NUMBERS[k] - number);
+    // these values are the absolute deviations from mean (1.0)
+  sollValues[Row] := CreateNumberArg(mean(numberArray));
+
   // AVERAGE
   inc(Row);
   MyWorksheet.WriteUTF8Text(Row, 0, '=AVERAGE(1, 1.1, 1.2, 0.9, 0.8)');
@@ -1235,7 +1258,7 @@
     RPNNumber(0.8,
     RPNFunc(fekAVERAGE, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(mean([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(mean(STATS_NUMBERS));
 
   // AVERAGE of cell block
   inc(Row);
@@ -1392,7 +1415,7 @@
     RPNNumber(0.8,
     RPNFunc(fekMAX, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(MaxValue([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(MaxValue(STATS_NUMBERS));
 
   // MAX of cell range (no empty cells)
   inc(Row);
@@ -1423,7 +1446,7 @@
     RPNNumber(0.8,
     RPNFunc(fekMIN, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(MinValue([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(MinValue(STATS_NUMBERS));
 
   // PRODUCT
   inc(Row);
@@ -1436,7 +1459,7 @@
     RPNNumber(0.8,
     RPNFunc(fekPRODUCT, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(1.0*1.1*1.2*0.9*0.8);
+  sollValues[Row] := CreateNumberArg(STATS_NUMBERS[0]*STATS_NUMBERS[1]*STATS_NUMBERS[2]*STATS_NUMBERS[3]*STATS_NUMBERS[4]);
 
   // STDEV
   inc(Row);
@@ -1449,7 +1472,7 @@
     RPNNumber(0.8,
     RPNFunc(fekSTDEV, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(StdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(StdDev(STATS_NUMBERS));
 
   // STDEVP
   inc(Row);
@@ -1462,7 +1485,7 @@
     RPNNumber(0.8,
     RPNFunc(fekSTDEVP, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(PopnStdDev([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(PopnStdDev(STATS_NUMBERS));
 
   // SUM
   inc(Row);
@@ -1475,7 +1498,7 @@
     RPNNumber(0.8,
     RPNFunc(fekSUM, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(Sum([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(Sum(STATS_NUMBERS));
 
   if AFormat <> sfExcel2 then begin
     // SUMSQ
@@ -1489,7 +1512,7 @@
       RPNNumber(0.8,
       RPNFunc(fekSUMSQ, 5, nil))))))));
     SetLength(sollValues, Row+1);
-    sollValues[Row] := CreateNumberArg(SumOfSquares([1.0, 1.1, 1.2, 0.9, 0.8]));
+    sollValues[Row] := CreateNumberArg(SumOfSquares(STATS_NUMBERS));
 
     // SUMIF
     inc(Row);
@@ -1558,7 +1581,7 @@
     RPNNumber(0.8,
     RPNFunc(fekVAR, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(Variance([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(Variance(STATS_NUMBERS));
 
   // VARP
   inc(Row);
@@ -1571,7 +1594,7 @@
     RPNNumber(0.8,
     RPNFunc(fekVARP, 5, nil))))))));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := CreateNumberArg(PopnVariance([1.0, 1.1, 1.2, 0.9, 0.8]));
+  sollValues[Row] := CreateNumberArg(PopnVariance(STATS_NUMBERS));
 
 
 {------------------------------------------------------------------------------}
