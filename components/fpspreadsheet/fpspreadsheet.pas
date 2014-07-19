@@ -704,10 +704,9 @@ type
     @param  woVirtualMode   If in virtual mode date are not taken from cells
                             when a spreadsheet is written to file, but are
                             provided by means of the event OnNeedCellData.
-    @param  woSaveMemory    When this option is set temporary files are not
-                            written to memory streams but to file streams using
-                            temporary files. }
-  TsWorkbookWritingOption = (woVirtualMode, woSaveMemory);
+    @param  woBufStream     When this option is set a buffered stream is used
+                            for writing (a memory stream swapping to disk) }
+  TsWorkbookWritingOption = (woVirtualMode, woBufStream);
 
   {@@
     Options considered when writing a workbook }
@@ -1076,7 +1075,7 @@ function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 implementation
 
 uses
-  Math, StrUtils, TypInfo, fpsUtils, fpsNumFormatParser, fpsFunc;
+  Math, StrUtils, TypInfo, fpsStreams, fpsUtils, fpsNumFormatParser, fpsFunc;
 
 { Translatable strings }
 resourcestring
@@ -5702,13 +5701,16 @@ end;
 procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean = False);
 var
-  OutputFile: TFileStream;
+  OutputFile: TStream;
   lMode: Word;
 begin
   if AOverwriteExisting then lMode := fmCreate or fmOpenWrite
   else lMode := fmCreate;
 
-  OutputFile := TFileStream.Create(AFileName, lMode);
+  if (woBufStream in Workbook.WritingOptions) then
+    OutputFile := TBufStream.Create(AFileName, lMode)
+  else
+    OutputFile := TFileStream.Create(AFileName, lMode);
   try
     WriteToStream(OutputFile);
   finally

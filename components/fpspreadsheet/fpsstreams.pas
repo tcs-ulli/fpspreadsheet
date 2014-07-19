@@ -6,7 +6,7 @@ uses
   SysUtils, Classes;
 
 const
-  DEFAULT_STREAM_BUFFER_SIZE = 1024; // * 1024;
+  DEFAULT_STREAM_BUFFER_SIZE = 1024 * 1024;
 
 type
   { A buffered stream }
@@ -18,11 +18,14 @@ type
     FBufSize: Int64;
     FKeepTmpFile: Boolean;
     FFileName: String;
+    FFileMode: Word;
   protected
     procedure CreateFileStream;
     function GetPosition: Int64; override;
     function GetSize: Int64; override;
   public
+    constructor Create(AFileName: String; AMode: Word;
+      ABufSize: Cardinal = DEFAULT_STREAM_BUFFER_SIZE); overload;
     constructor Create(ATempFile: String; AKeepFile: Boolean = false;
       ABufSize: Cardinal = DEFAULT_STREAM_BUFFER_SIZE); overload;
     constructor Create(ABufSize: Cardinal = DEFAULT_STREAM_BUFFER_SIZE); overload;
@@ -46,7 +49,18 @@ begin
   AStream.Position := 0;
 end;
 
+{@@
+  Constructor of the TBufStream. Creates a memory stream and prepares everything
+  to create also a file stream if the streamsize exceeds ABufSize bytes.
 
+  @param  ATempFile   File name for the file stream. If an empty string is
+                      used a temporary file name is created by calling GetTempFileName.
+  @param  AKeepFile   If true the stream is flushed to file when the stream is
+                      destroyed. If false the file is deleted when the stream
+                      is destroyed.
+  @param  ABufSize    Maximum size of the memory stream before swapping to file
+                      starts. Value is given in bytes.
+}
 constructor TBufStream.Create(ATempFile: String; AKeepFile: Boolean = false;
   ABufSize: Cardinal = DEFAULT_STREAM_BUFFER_SIZE);
 begin
@@ -60,17 +74,45 @@ begin
   // The file stream is only created when needed because of possible conflicts
   // of random file names.
   FBufSize := ABufSize;
+  FFileMode := fmCreate + fmOpenRead;
 end;
 
+{@@
+  Constructor of the TBufStream. Creates a memory stream and prepares everything
+  to create also a file stream if the streamsize exceeds ABufSize bytes. The
+  stream created by this constructor is mainly intended to serve a temporary
+  purpose, it is not stored permanently to file.
+
+  @param  ABufSize    Maximum size of the memory stream before swapping to file
+                      starts. Value is given in bytes.
+}
 constructor TBufStream.Create(ABufSize: Cardinal = DEFAULT_STREAM_BUFFER_SIZE);
 begin
   Create('', false, ABufSize);
 end;
 
+{@@
+  Constructor of the TBufStream. When swapping to file it will create a file
+  stream using the given file mode. This kind of BufStream is considered as a
+  fast replacement of TFileStream.
+
+  @param  AFileName   File name for the file stream. If an empty string is
+                      used a temporary file name is created by calling GetTempFileName.
+  @param  AMode       FileMode for the file stream (fmCreate, fmOpenRead etc.)
+  @param  ABufSize    Maximum size of the memory stream before swapping to file
+                      starts. Value is given in bytes.
+}
+constructor TBufStream.Create(AFileName: String; AMode: Word;
+  ABufSize: Cardinal = DEFAULT_STREAM_BUFFER_SIZE);
+begin
+  Create(AFileName, true, ABufSize);
+  FFileMode := AMode;
+end;
+
 destructor TBufStream.Destroy;
 begin
   // Write current buffer content to file
-  FlushBuffer;
+  if FKeepTmpFile then FlushBuffer;
 
   // Free streams and delete temporary file, if requested
   FreeAndNil(FMemoryStream);
@@ -87,7 +129,7 @@ procedure TBufStream.CreateFileStream;
 begin
   if FFileStream = nil then begin
     if FFileName = '' then FFileName := ChangeFileExt(GetTempFileName, '.~abc');
-    FFileStream := TFileStream.Create(FFileName, fmCreate + fmOpenRead);
+    FFileStream := TFileStream.Create(FFileName, FFileMode);
   end;
 end;
 
@@ -113,6 +155,8 @@ begin
     Result := FFileStream.Position + FMemoryStream.Position;
 end;
 
+{ Returns the size of the stream. Both memory and file streams are considered
+  if needed. }
 function TBufStream.GetSize: Int64;
 var
   n: Int64;
@@ -125,6 +169,15 @@ begin
   Result := Max(n, GetPosition);
 end;
 
+{@@
+  Reads a given number of bytes into a buffer and return the number of bytes
+  read. If the bytes are not in the memory stream they are read from the file
+  stream.
+
+  @param  Buffer  Buffer into which the bytes are read. Sufficient space must
+                  have been allocated for Count bytes
+  @param  Count   Number of bytes to read from the stream
+  @return Number of bytes that were read from the stream.}
 function TBufStream.Read(var Buffer; Count: Longint): Longint;
 begin
   // Case 1: All "Count" bytes are contained in memory stream
