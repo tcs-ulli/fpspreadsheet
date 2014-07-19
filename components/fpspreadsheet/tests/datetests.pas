@@ -370,12 +370,15 @@ end;
 procedure TSpreadReadDateTests.TestReadDate(FileName: string; Row: integer);
 var
   ActualDateTime: TDateTime;
+  ErrorMargin: TDateTime; //margin for error in comparison test
 begin
+  ErrorMargin:=0.000000000000001;
   if Row>High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
   // Load the file only if is the file name changes.
-  if TestFileName <> FileName then begin
+  if TestFileName <> FileName then
+  begin
     if TestWorkbook <> nil then
       TestWorkbook.Free;
 
@@ -389,7 +392,7 @@ begin
     end;
     TestWorksheet := GetWorksheetByName(TestWorkBook, DatesSheet);
     if TestWorksheet=nil then
-      fail('Error in test code. Failed to get named worksheet');
+      fail('Error in test code. Failed to get named worksheet '+DatesSheet);
 
     TestFileName := FileName;
   end;
@@ -402,7 +405,7 @@ begin
 
   if not(TestWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
     Fail('Could not read date time value for cell '+CellNotation(TestWorkSheet,Row));
-  CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch, '
+  CheckEquals(SollDates[Row],ActualDateTime,ErrorMargin,'Test date/time value mismatch, '
     +'cell '+CellNotation(TestWorksheet,Row));
 
   // Don't free the workbook here - it will be reused. It is destroyed at finalization.
