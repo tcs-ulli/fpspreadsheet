@@ -80,6 +80,7 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>

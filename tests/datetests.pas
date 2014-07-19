@@ -372,7 +372,8 @@ var
   ActualDateTime: TDateTime;
   ErrorMargin: TDateTime; //margin for error in comparison test
 begin
-  ErrorMargin:=0.000000000000001;
+  //ErrorMargin:=0.000000000000001;     // = 1E-15 = 9E-11 sec
+  ErrorMargin := 1E-5/(24*60*60*1000);  // = 10 nsec = 1E-8 sec   // 1 ns fails
   if Row>High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
