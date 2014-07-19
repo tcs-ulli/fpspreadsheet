@@ -372,7 +372,12 @@ var
   ActualDateTime: TDateTime;
   ErrorMargin: TDateTime; //margin for error in comparison test
 begin
+  // Seems to be needed for testing with FPC 2.7.x; 2.6.4 shows more precise comparison
+  {$if FPC_FULLVERSION>=20701}
   ErrorMargin := 1E-5/(24*60*60*1000);  // = 10 nsec = 1E-8 sec (1 ns fails)
+  {$else}
+  ErrorMargin:=0;
+  {$endif}
   if Row>High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
