@@ -1741,7 +1741,7 @@ begin
                'Token tNUM (Number)');
              numBytes := 8;
              Move(FBuffer[FBufferIndex], dbl, numBytes);
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%g', [dbl]), //FloatToStr(dbl),
                'IEEE 754 floating-point value');
            end;
       $20, $40, $60:
@@ -2565,7 +2565,7 @@ begin
   // Offset  6: Double value
   numBytes := 8;
   Move(FBuffer[FBufferIndex], dbl, numBytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%g', [dbl]), //FloatToStr(dbl),
     'IEEE 764 floating-point value');
 end;
 
