@@ -165,7 +165,8 @@ begin
   SollNumberFormats[6] := nfPercentage;   SollNumberDecimals[6] := 0;
   SollNumberFormats[7] := nfPercentage;   SollNumberDecimals[7] := 2;
 
-  for i:=Low(SollNumbers) to High(SollNumbers) do begin
+  for i:=Low(SollNumbers) to High(SollNumbers) do
+  begin
     SollNumberStrings[i, 0] := FloatToStr(SollNumbers[i], fs);
     SollNumberStrings[i, 1] := FormatFloat('0', SollNumbers[i], fs);
     SollNumberStrings[i, 2] := FormatFloat('0.00', SollNumbers[i], fs);
@@ -194,7 +195,8 @@ begin
   SollDateTimeFormats[8] := nfCustom;          SollDateTimeFormatStrings[8] := 'nn:ss';
   SollDateTimeFormats[9] := nfTimeInterval;    SollDateTimeFormatStrings[9] := '';
 
-  for i:=Low(SollDateTimes) to High(SollDateTimes) do begin
+  for i:=Low(SollDateTimes) to High(SollDateTimes) do
+  begin
     SollDateTimeStrings[i, 0] := DateToStr(SollDateTimes[i], fs) + ' ' + FormatDateTime('t', SollDateTimes[i], fs);
     SollDateTimeStrings[i, 1] := DateToStr(SollDateTimes[i], fs);
     SollDateTimeStrings[i, 2] := FormatDateTime(fs.ShortTimeFormat, SollDateTimes[i], fs);
@@ -274,7 +276,6 @@ var
   Row, Col: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -283,11 +284,13 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
   for Row := Low(SollNumbers) to High(SollNumbers) do
-    for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do begin
+    for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do
+    begin
       MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
       CheckEquals(SollNumberStrings[Row, Col], ActualString, 'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
     end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -301,7 +304,8 @@ begin
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollNumbers) to High(SollNumbers) do
-    for Col := Low(SollNumberFormats) to High(SollNumberFormats) do begin
+    for Col := Low(SollNumberFormats) to High(SollNumberFormats) do
+    begin
       ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
       CheckEquals(SollNumberStrings[Row,Col],ActualString,'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
     end;
@@ -338,12 +342,12 @@ var
   Row,Col: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   MyWorksheet := MyWorkbook.AddWorksheet(FmtDateTimesSheet);
   for Row := Low(SollDateTimes) to High(SollDateTimes) do
-    for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do begin
+    for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do
+    begin
       if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
         Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
@@ -354,6 +358,7 @@ begin
         'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col)
       );
     end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -367,7 +372,8 @@ begin
   if MyWorksheet = nil then
     fail('Error in test code. Failed to get named worksheet');
   for Row := Low(SollDateTimes) to High(SollDateTimes) do
-    for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do begin
+    for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do
+    begin
       if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
         Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
       ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
@@ -414,7 +420,6 @@ var
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -424,9 +429,11 @@ begin
   MyWorkSheet:= MyWorkBook.AddWorksheet(AlignmentSheet);
 
   row := 0;
-  for horAlign in TsHorAlignment do begin
+  for horAlign in TsHorAlignment do
+  begin
     col := 0;
-    if AFormat = sfExcel2 then begin
+    if AFormat = sfExcel2 then
+    begin
       // BIFF2 can only do horizontal alignment --> no need for vertical alignment.
       MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
       MyWorksheet.WriteHorAlignment(row, col, horAlign);
@@ -435,8 +442,10 @@ begin
         fail('Error in test code. Failed to get cell.');
       CheckEquals(ord(horAlign),  ord(MyCell^.HorAlignment),
         'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
-    end else
-      for vertAlign in TsVertAlignment do begin
+    end
+    else
+      for vertAlign in TsVertAlignment do
+      begin
         MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
         MyWorksheet.WriteHorAlignment(row, col, horAlign);
         MyWorksheet.WriteVertAlignment(row, col, vertAlign);
@@ -451,6 +460,7 @@ begin
       end;
     inc(row);
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -461,7 +471,8 @@ begin
     MyWorksheet := MyWorkbook.GetFirstWorksheet;
     if MyWorksheet=nil then
       fail('Error in test code. Failed to get named worksheet');
-    for row :=0 to MyWorksheet.GetLastRowIndex do begin
+    for row :=0 to MyWorksheet.GetLastRowIndex do
+    begin
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
@@ -475,7 +486,8 @@ begin
     if MyWorksheet=nil then
       fail('Error in test code. Failed to get named worksheet');
     for row :=0 to MyWorksheet.GetLastRowIndex do
-      for col := 0 to MyWorksheet.GetlastColIndex do begin
+      for col := 0 to MyWorksheet.GetlastColIndex do
+      begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
@@ -530,7 +542,6 @@ var
   current: String;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -538,12 +549,14 @@ begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
-  for col := Low(SollBorders) to High(SollBorders) do begin
+  for col := Low(SollBorders) to High(SollBorders) do
+  begin
     MyWorksheet.WriteUsedFormatting(row, col, [uffBorder]);
     MyCell := MyWorksheet.GetCell(row, col);
     Include(MyCell^.UsedFormattingFields, uffBorder);
     MyCell^.Border := SollBorders[col];
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -556,7 +569,8 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for col := 0 to MyWorksheet.GetLastColIndex do begin
+  for col := 0 to MyWorksheet.GetLastColIndex do
+  begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell');
@@ -611,7 +625,6 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
   c, ls: Integer;
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -622,14 +635,18 @@ begin
 
   c := 0;
   ls := 0;
-  for row := 1 to 10 do begin
-    for col := 1 to 10 do begin
+  for row := 1 to 10 do
+  begin
+    for col := 1 to 10 do
+    begin
       MyWorksheet.WriteBorders(row*2, col*2, [cbNorth, cbSouth, cbEast, cbWest]);
-      for b in TsCellBorders do begin
+      for b in TsCellBorders do
+      begin
         MyWorksheet.WriteBorderLineStyle(row*2, col*2, b, SollBorderLineStyles[ls]);
         MyWorksheet.WriteBorderColor(row*2, col*2, b, SollBorderColors[c]);
         inc(ls);
-        if ls > High(SollBorderLineStyles) then begin
+        if ls > High(SollBorderLineStyles) then
+        begin
           ls := 0;
           inc(c);
           if c > High(SollBorderColors) then
@@ -638,7 +655,7 @@ begin
       end;
     end;
   end;
-
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -653,12 +670,15 @@ begin
     fail('Error in test code. Failed to get named worksheet');
   c := 0;
   ls := 0;
-  for row := 1 to 10 do begin
-    for col := 1 to 10 do begin
+  for row := 1 to 10 do
+  begin
+    for col := 1 to 10 do
+    begin
       MyCell := MyWorksheet.FindCell(row*2, col*2);
       if myCell = nil then
         fail('Error in test code. Failed to get cell.');
-      for b in TsCellBorder do begin
+      for b in TsCellBorder do
+      begin
         current := ord(MyCell^.BorderStyles[b].LineStyle);
         expected := ord(SollBorderLineStyles[ls]);
         CheckEquals(expected, current,
@@ -712,7 +732,6 @@ var
   lCol: TCol;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -720,11 +739,13 @@ begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(ColWidthSheet);
-  for Col := Low(SollColWidths) to High(SollColWidths) do begin
+  for Col := Low(SollColWidths) to High(SollColWidths) do
+  begin
     lCol.Width := SollColWidths[Col];
     //MyWorksheet.WriteNumber(0, Col, 1);
     MyWorksheet.WriteColInfo(Col, lCol);
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -737,7 +758,8 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, ColWidthSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for Col := Low(SollColWidths) to High(SollColWidths) do begin
+  for Col := Low(SollColWidths) to High(SollColWidths) do
+  begin
     lpCol := MyWorksheet.GetCol(Col);
     if lpCol = nil then
       fail('Error in test code. Failed to return saved column width');
@@ -782,7 +804,6 @@ var
   Row: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -792,6 +813,7 @@ begin
   MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
   for Row := Low(SollRowHeights) to High(SollRowHeights) do
     MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row]);
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -804,7 +826,8 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, RowHeightSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for Row := Low(SollRowHeights) to High(SollRowHeights) do begin
+  for Row := Low(SollRowHeights) to High(SollRowHeights) do
+  begin
     ActualRowHeight := MyWorksheet.GetRowHeight(Row);
     // Take care of rounding errors
     if abs(ActualRowHeight - SollRowHeights[Row]) > 1e-2 then
@@ -851,7 +874,6 @@ var
   row: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -859,13 +881,15 @@ begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(TextRotationSheet);
-  for tr := Low(TsTextRotation) to High(TsTextRotation) do begin
+  for tr := Low(TsTextRotation) to High(TsTextRotation) do
+  begin
     row := ord(tr);
     MyWorksheet.WriteTextRotation(row, col, tr);
     MyCell := MyWorksheet.GetCell(row, col);
     CheckEquals(ord(tr), ord(MyCell^.TextRotation),
       'Test unsaved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -878,7 +902,8 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, TextRotationSheet);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowIndex do begin
+  for row := 0 to MyWorksheet.GetLastRowIndex do
+  begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell');
@@ -919,7 +944,6 @@ var
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -940,6 +964,7 @@ begin
   if MyCell = nil then
     fail('Error in test code. Failed to get word-wrapped cell.');
   CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 

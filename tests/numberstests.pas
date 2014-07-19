@@ -170,7 +170,6 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
 begin
   //todo: add support for ODF format
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -185,6 +184,7 @@ begin
     ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
     CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 

@@ -37,7 +37,24 @@ function RowNotation(Worksheet: TsWorksheet; Row: Integer): String;
 // older fpspreadsheet versions that don't have that function
 function GetWorksheetByName(AWorkBook: TsWorkBook; AName: String): TsWorksheet;
 
+// Gets new empty temp file and returns the file name
+// Removes any existing file by that name
+// Should be called just before writing to the file as
+// GetTempFileName is used which does not guarantee
+// file uniqueness
+function NewTempFile: String;
+
 implementation
+
+function NewTempFile: String;
+begin
+  Result := GetTempFileName;
+  if FileExists(Result) then
+  begin
+    DeleteFile(Result);
+    sleep(40); //e.g. on Windows, give file system chance to perform changes
+  end;
+end;
 
 function GetWorksheetByName(AWorkBook: TsWorkBook; AName: String): TsWorksheet;
 var
