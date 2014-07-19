@@ -30,12 +30,6 @@ type
   private
     procedure NeedVirtualCellData(Sender: TObject; ARow, ACol: Cardinal;
       var AValue:Variant; var AStyleCell: PCell);
-    // Gets new empty temp file and returns the file name
-    // Removes any existing file by that name
-    // Should be called just before writing to the file as
-    // GetTempFileName is used which does not guarantee
-    // file uniqueness
-    function NewTempFile: String;
   protected
     // Set up expected values:
     procedure SetUp; override;
@@ -78,19 +72,6 @@ uses
 
 const
   InternalSheet = 'Internal'; //worksheet name
-
-function TSpreadInternalTests.NewTempFile: String;
-var
-  tempFile: String;
-begin
-  TempFile := GetTempFileName;
-  if FileExists(TempFile) then
-  begin
-    DeleteFile(TempFile);
-    sleep(40); //e.g. on Windows, give file system chance to perform changes
-  end;
-  Result:=tempFile;
-end;
 
 procedure TSpreadInternalTests.GetSheetByIndex;
 var
@@ -347,12 +328,14 @@ begin
       col := 0;
       CheckEquals(Length(SollNumbers) + 4, worksheet.GetLastRowIndex+1,
         'Row count mismatch');
-      for row := 0 to Length(SollNumbers)-1 do begin
+      for row := 0 to Length(SollNumbers)-1 do
+      begin
         value := worksheet.ReadAsNumber(row, col);
         CheckEquals(SollNumbers[row], value,
           'Test number value mismatch, cell '+CellNotation(workSheet, row, col))
       end;
-      for row := Length(SollNumbers) to worksheet.GetLastRowIndex do begin
+      for row := Length(SollNumbers) to worksheet.GetLastRowIndex do
+      begin
         s := worksheet.ReadAsUTF8Text(row, col);
         CheckEquals(SollStrings[row - Length(SollNumbers)], s,
           'Test string value mismatch, cell '+CellNotation(workSheet, row, col));

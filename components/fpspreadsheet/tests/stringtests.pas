@@ -149,7 +149,6 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
 begin
   //todo: add support for ODF/LibreOffice format
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -164,6 +163,7 @@ begin
     ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
     CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
   MyWorkbook.Free;
 
@@ -204,7 +204,6 @@ begin
   LocalNormStrings[2]:=StringOfChar('z',MaxBytesBiff8+1); //problems should occur here
   LocalNormStrings[3]:='this text should be readable'; //whatever happens, this text should be ok
 
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -245,6 +244,7 @@ begin
     CheckTrue(TestResult,'Exception: '+ExceptionMessage);
   end;
   TestResult:=true;
+  TempFile:=NewTempFile;
   try
     MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
   except

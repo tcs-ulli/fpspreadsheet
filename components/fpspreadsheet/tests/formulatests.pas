@@ -106,7 +106,8 @@ begin
     MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
-  for Row := 0 to MyWorksheet.GetLastRowIndex do begin
+  for Row := 0 to MyWorksheet.GetLastRowIndex do
+  begin
     cell := MyWorksheet.FindCell(Row, 1);
     if (cell <> nil) and (Length(cell^.RPNFormulaValue) > 0) then begin
       actual := MyWorksheet.ReadRPNFormulaAsString(cell);
@@ -155,8 +156,6 @@ var
   t: TTime;
   hr,min,sec,msec: Word;
 begin
-  TempFile := GetTempFileName;
-
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
@@ -170,7 +169,7 @@ begin
     formula in column B. }
   Row := 0;
   {$I testcases_calcrpnformula.inc}
-
+  TempFile:=GetTempFileName;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -184,7 +183,8 @@ begin
   if MyWorksheet=nil then
     fail('Error in test code. Failed to get named worksheet');
 
-  for Row := 0 to MyWorksheet.GetLastRowIndex do begin
+  for Row := 0 to MyWorksheet.GetLastRowIndex do
+  begin
     formula := MyWorksheet.ReadAsUTF8Text(Row, 0);
     cell := MyWorksheet.FindCell(Row, 1);
     if (cell = nil) then

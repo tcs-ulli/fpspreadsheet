@@ -132,7 +132,6 @@ var
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  TempFile:=GetTempFileName;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -160,6 +159,7 @@ begin
   CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
     'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row, Col));
 
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -228,7 +228,7 @@ var
   expectedValue: String;
   counter: Integer;
 begin
-  TempFile:=GetTempFileName;
+
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -237,8 +237,10 @@ begin
   MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
 
   // Write out all font styles at various sizes
-  for row := 0 to High(SollSizes) do begin
-    for col := 0 to High(SollStyles) do begin
+  for row := 0 to High(SollSizes) do
+    begin
+    for col := 0 to High(SollStyles) do
+    begin
       cellText := Format('%s, %.1f-pt', [AFontName, SollSizes[row]]);
       MyWorksheet.WriteUTF8Text(row, col, celltext);
       MyWorksheet.WriteFont(row, col, AFontName, SollSizes[row], SollStyles[col], scBlack);
@@ -255,6 +257,7 @@ begin
         'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
     end;
   end;
+  TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
@@ -269,7 +272,8 @@ begin
     fail('Error in test code. Failed to get named worksheet');
   counter := 0;
   for row := 0 to MyWorksheet.GetLastRowIndex do
-    for col := 0 to MyWorksheet.GetLastColIndex do begin
+    for col := 0 to MyWorksheet.GetLastColIndex do
+    begin
       if (AFormat = sfExcel2) and (counter = 4) then
         break;  // Excel 2 allows only 4 fonts
       MyCell := MyWorksheet.FindCell(row, col);
