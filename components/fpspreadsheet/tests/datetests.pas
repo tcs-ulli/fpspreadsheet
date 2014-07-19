@@ -406,7 +406,8 @@ begin
 
   if not(TestWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
     Fail('Could not read date time value for cell '+CellNotation(TestWorkSheet,Row));
-  {$ifdef mswindows}
+  {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
+  // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
   CheckEquals(SollDates[Row],ActualDateTime,ErrorMargin,'Test date/time value mismatch, '
     +'cell '+CellNotation(TestWorksheet,Row));
   {$else}

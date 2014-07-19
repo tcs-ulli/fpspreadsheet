@@ -214,7 +214,8 @@ begin
           'Test read calculated formula result mismatch, formula "' + formula +
           '", cell '+CellNotation(MyWorkSheet,Row,1));
       atNumber:
-        {$ifdef mswindows}
+        {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
+        // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
         CheckEquals(expected.NumberValue, actual.NumberValue, ErrorMargin,
           'Test read calculated formula result mismatch, formula "' + formula +
           '", cell '+CellNotation(MyWorkSheet,Row,1));
