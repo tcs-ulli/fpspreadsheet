@@ -30,6 +30,12 @@ type
   private
     procedure NeedVirtualCellData(Sender: TObject; ARow, ACol: Cardinal;
       var AValue:Variant; var AStyleCell: PCell);
+    // Gets new empty temp file and returns the file name
+    // Removes any existing file by that name
+    // Should be called just before writing to the file as
+    // GetTempFileName is used which does not guarantee
+    // file uniqueness
+    function NewTempFile: String;
   protected
     // Set up expected values:
     procedure SetUp; override;
@@ -73,6 +79,18 @@ uses
 const
   InternalSheet = 'Internal'; //worksheet name
 
+function TSpreadInternalTests.NewTempFile: String;
+var
+  tempFile: String;
+begin
+  TempFile := GetTempFileName;
+  if FileExists(TempFile) then
+  begin
+    DeleteFile(TempFile);
+    sleep(40); //e.g. on Windows, give file system chance to perform changes
+  end;
+  Result:=tempFile;
+end;
 
 procedure TSpreadInternalTests.GetSheetByIndex;
 var
@@ -114,15 +132,12 @@ var
   MyWorkbook: TsWorkbook;
   TempFile: string;
 begin
-  TempFile:=GetTempFileName;
-  if fileexists(TempFile) then
-    DeleteFile(TempFile);
-
   // Write out first file
   MyWorkbook:=TsWorkbook.Create;
   try
     MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
     MyWorkSheet.WriteUTF8Text(0,0,FirstFileCellText);
+    TempFile:=NewTempFile;
     MyWorkBook.WriteToFile(TempFile,sfExcel8,false);
   finally
     MyWorkbook.Free;
@@ -308,10 +323,6 @@ var
   value: Double;
   s: String;
 begin
-  TempFile := GetTempFileName;
-  if FileExists(TempFile) then
-    DeleteFile(TempFile);
-
   workbook := TsWorkbook.Create;
   try
     worksheet := workbook.AddWorksheet('VirtualMode');
@@ -322,6 +333,7 @@ begin
     workbook.VirtualRowCount := Length(SollNumbers) + 4;
     // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.
     workbook.OnNeedCellData := @NeedVirtualCellData;
+    tempFile:=NewTempFile;
     workbook.WriteToFile(tempfile, AFormat, true);
   finally
     workbook.Free;
