@@ -2239,7 +2239,7 @@ procedure TsSpreadOpenDocWriter.CreateStreams;
 var
   dir: String;
 begin
-  if (woSaveMemory in Workbook.WritingOptions) then begin
+  if (woBufStream in Workbook.WritingOptions) then begin
     dir := IncludeTrailingPathDelimiter(GetTempDir);
     FSMeta := TFileStream.Create(GetTempFileName(dir, 'fpsM'), fmCreate+fmOpenRead);
     FSSettings := TFileStream.Create(GetTempFileName(dir, 'fpsS'), fmCreate+fmOpenRead);

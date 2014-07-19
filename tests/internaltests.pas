@@ -34,7 +34,7 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
-    procedure TestVirtualMode(AFormat: TsSpreadsheetFormat; SaveMemoryMode: Boolean);
+    procedure TestVirtualMode(AFormat: TsSpreadsheetFormat; ABufStreamMode: Boolean);
 
   published
     // Tests getting Excel style A1 cell locations from row/column based locations.
@@ -59,10 +59,10 @@ type
     procedure TestVirtualMode_BIFF8;
     procedure TestVirtualMode_OOXML;
 
-    procedure TestVirtualMode_BIFF2_SaveMemory;
-    procedure TestVirtualMode_BIFF5_SaveMemory;
-    procedure TestVirtualMode_BIFF8_SaveMemory;
-    procedure TestVirtualMode_OOXML_SaveMemory;
+    procedure TestVirtualMode_BIFF2_BufStream;
+    procedure TestVirtualMode_BIFF5_BufStream;
+    procedure TestVirtualMode_BIFF8_BufStream;
+    procedure TestVirtualMode_OOXML_BufStream;
   end;
 
 implementation
@@ -295,7 +295,7 @@ begin
 end;
 
 procedure TSpreadInternalTests.TestVirtualMode(AFormat: TsSpreadsheetFormat;
-  SaveMemoryMode: Boolean);
+  ABufStreamMode: Boolean);
 var
   tempFile: String;
   workbook: TsWorkbook;
@@ -308,8 +308,8 @@ begin
   try
     worksheet := workbook.AddWorksheet('VirtualMode');
     workbook.WritingOptions := workbook.WritingOptions + [woVirtualMode];
-    if SaveMemoryMode then
-      workbook.WritingOptions := workbook.WritingOptions + [woSaveMemory];
+    if ABufStreamMode then
+      workbook.WritingOptions := workbook.WritingOptions + [woBufStream];
     workbook.VirtualColCount := 1;
     workbook.VirtualRowCount := Length(SollNumbers) + 4;
     // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.
@@ -368,22 +368,22 @@ begin
   TestVirtualMode(sfOOXML, false);
 end;
 
-procedure TSpreadInternalTests.TestVirtualMode_BIFF2_SaveMemory;
+procedure TSpreadInternalTests.TestVirtualMode_BIFF2_BufStream;
 begin
   TestVirtualMode(sfExcel2, True);
 end;
 
-procedure TSpreadInternalTests.TestVirtualMode_BIFF5_SaveMemory;
+procedure TSpreadInternalTests.TestVirtualMode_BIFF5_BufStream;
 begin
   TestVirtualMode(sfExcel5, true);
 end;
 
-procedure TSpreadInternalTests.TestVirtualMode_BIFF8_SaveMemory;
+procedure TSpreadInternalTests.TestVirtualMode_BIFF8_BufStream;
 begin
   TestVirtualMode(sfExcel8, true);
 end;
 
-procedure TSpreadInternalTests.TestVirtualMode_OOXML_SaveMemory;
+procedure TSpreadInternalTests.TestVirtualMode_OOXML_BufStream;
 begin
   TestVirtualMode(sfOOXML, true);
 end;

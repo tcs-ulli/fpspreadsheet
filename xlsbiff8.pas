@@ -365,7 +365,7 @@ var
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
-  if (woSaveMemory in Workbook.WritingOptions) then begin
+  if (woBufStream in Workbook.WritingOptions) then begin
     Stream := TBufStream.Create
   end else
     Stream := TMemoryStream.Create;

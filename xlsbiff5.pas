@@ -219,6 +219,9 @@ var
 
 implementation
 
+uses
+  fpsStreams;
+
 const
   { Excel record IDs }
   // see: in xlscommon
@@ -330,21 +333,25 @@ end;
 procedure TsSpreadBIFF5Writer.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
-  MemStream: TMemoryStream;
+  Stream: TStream;
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
-  MemStream := TMemoryStream.Create;
+  if (woBufStream in Workbook.WritingOptions) then begin
+    Stream := TBufStream.Create
+  end else
+    Stream := TMemoryStream.Create;
+
   OutputStorage := TOLEStorage.Create;
   try
-    WriteToStream(MemStream);
+    WriteToStream(Stream);
 
     // Only one stream is necessary for any number of worksheets
-    OLEDocument.Stream := MemStream;
+    OLEDocument.Stream := Stream;
 
     OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting);
   finally
-    MemStream.Free;
+    Stream.Free;
     OutputStorage.Free;
   end;
 end;

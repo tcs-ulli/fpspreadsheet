@@ -65,11 +65,12 @@ begin
 
       { These are the essential commands to activate virtual mode: }
 
-//      workbook.WritingOptions := [woVirtualMode, woSaveMemory];
-      workbook.WritingOptions := [woVirtualMode];
-      { woSaveMemory can be omitted, but is essential for large files: it causes
-        writing temporaray data to a file stream instead of a memory stream.
-        woSaveMemory, however, considerably slows down writing of biff files. }
+      workbook.WritingOptions := [woVirtualMode, woBufStream];
+//      workbook.WritingOptions := [woVirtualMode];
+      { woBufStream can be omitted, but is important for large files: it causes
+        writing temporary data to a buffered file stream instead of a pure
+        memory stream which can overflow memory. The option can slow down the
+        writing process a bit. }
 
       { Next two numbers define the size of virtual spreadsheet.
         In case of a database, VirtualRowCount is the RecordCount, VirtualColCount

@@ -883,7 +883,7 @@ begin
   h0 := Workbook.GetDefaultFontSize;  // Point size of default font
 
   // Create the stream
-  if (woSaveMemory in Workbook.WritingOptions) then
+  if (woBufStream in Workbook.WritingOptions) then
     FSSheets[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsSH%d', [FCurSheetNum])))
   else
     FSSheets[FCurSheetNum] := TMemoryStream.Create;
@@ -1013,7 +1013,7 @@ end;
   single xlsx file. }
 procedure TsSpreadOOXMLWriter.CreateStreams;
 begin
-  if (woSaveMemory in Workbook.WritingOptions) then begin
+  if (woBufStream in Workbook.WritingOptions) then begin
     FSContentTypes := TBufStream.Create(GetTempFileName('', 'fpsCT'));
     FSRelsRels := TBufStream.Create(GetTempFileName('', 'fpsRR'));
     FSWorkbookRels := TBufStream.Create(GetTempFileName('', 'fpsWBR'));
@@ -1106,14 +1106,17 @@ end;
 procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
-  lStream: TFileStream;
+  lStream: TStream;
   lMode: word;
 begin
   if AOverwriteExisting
     then lMode := fmCreate or fmOpenWrite
     else lMode := fmCreate;
 
-  lStream:=TFileStream.Create(AFileName, lMode);
+  if (woBufStream in Workbook.WritingOptions) then
+    lStream := TBufStream.Create(AFileName, lMode)
+  else
+    lStream := TFileStream.Create(AFileName, lMode);
   try
     WriteToStream(lStream);
   finally
@@ -1139,7 +1142,7 @@ begin
   WriteGlobalFiles;
   WriteContent;
 
-  // Stream position must be at beginning, it was moved to end during adding of xml strings.
+  // Stream positions must be at beginning, they were moved to end during adding of xml strings.
   ResetStreams;
 
   { Now compress the files }
