@@ -157,17 +157,12 @@ var
   hr,min,sec,msec: Word;
   ErrorMargin: double;
 begin
-  // Seems to be needed for testing with FPC 2.7.x; 2.6.4 shows more precise comparison
-  {$if FPC_FULLVERSION>=20701}
   ErrorMargin:=1.44E-7;
   //1.44E-7 for SUMSQ formula
   //6.0E-8 for SUM formula
   //4.8E-8 for MAX formula
   //2.4E-8 for now formula
   //about 1E-15 is needed for some trig functions
-  {$else}
-  ErrorMargin:=0;
-  {$endif}
 
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
@@ -219,9 +214,16 @@ begin
           'Test read calculated formula result mismatch, formula "' + formula +
           '", cell '+CellNotation(MyWorkSheet,Row,1));
       atNumber:
+        {$ifdef mswindows}
         CheckEquals(expected.NumberValue, actual.NumberValue, ErrorMargin,
           'Test read calculated formula result mismatch, formula "' + formula +
           '", cell '+CellNotation(MyWorkSheet,Row,1));
+        {$else}
+        // Non-Windows: test without error margin
+        CheckEquals(expected.NumberValue, actual.NumberValue,
+          'Test read calculated formula result mismatch, formula "' + formula +
+          '", cell '+CellNotation(MyWorkSheet,Row,1));
+        {$endif}
       atString:
         CheckEquals(expected.StringValue, actual.StringValue,
           'Test read calculated formula result mismatch, formula "' + formula +

@@ -372,12 +372,8 @@ var
   ActualDateTime: TDateTime;
   ErrorMargin: TDateTime; //margin for error in comparison test
 begin
-  // Seems to be needed for testing with FPC 2.7.x; 2.6.4 shows more precise comparison
-  {$if FPC_FULLVERSION>=20701}
   ErrorMargin := 1E-5/(24*60*60*1000);  // = 10 nsec = 1E-8 sec (1 ns fails)
-  {$else}
-  ErrorMargin:=0;
-  {$endif}
+
   if Row>High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
@@ -410,8 +406,14 @@ begin
 
   if not(TestWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
     Fail('Could not read date time value for cell '+CellNotation(TestWorkSheet,Row));
+  {$ifdef mswindows}
   CheckEquals(SollDates[Row],ActualDateTime,ErrorMargin,'Test date/time value mismatch, '
     +'cell '+CellNotation(TestWorksheet,Row));
+  {$else}
+  // Non-windows: test without error margin
+  CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch, '
+    +'cell '+CellNotation(TestWorksheet,Row));
+  {$endif}
 
   // Don't free the workbook here - it will be reused. It is destroyed at finalization.
 end;
