@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Classes, laz_fpspreadsheet,
-  { you can add units after this }
+  { you can add units after this }    lazutf8,
   SysUtils, variants, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
 
 type
@@ -41,12 +41,11 @@ var
       // This makes the style of the "headerTemplate" cell available to
       // formatting of all virtual cells in row 0.
       // Important: The template cell must be an existing cell in the worksheet.
-    end else    {
-    if odd(random(10)) then }begin
-      s := Format('R=%d-C=%d', [ARow, ACol]);
-      AData := s;
-    end {else
-      AData := 10000*ARow + ACol};
+    end else
+    if odd(random(10)) then begin
+      AData := Format('R=%d-C=%d', [ARow, ACol]);
+    end else
+      AData := 10000*ARow + ACol;
 
     // you can use the OnNeedData also to provide feedback on how the process
     // progresses:
@@ -65,8 +64,8 @@ begin
 
       { These are the essential commands to activate virtual mode: }
 
-      workbook.WritingOptions := [woVirtualMode, woBufStream];
-//      workbook.WritingOptions := [woVirtualMode];
+//      workbook.WritingOptions := [woVirtualMode, woBufStream];
+      workbook.WritingOptions := [woVirtualMode];
       { woBufStream can be omitted, but is important for large files: it causes
         writing temporary data to a buffered file stream instead of a pure
         memory stream which can overflow memory. The option can slow down the
@@ -75,7 +74,7 @@ begin
       { Next two numbers define the size of virtual spreadsheet.
         In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
         the number of fields to be written to the spreadsheet file }
-      workbook.VirtualRowCount := 60000;
+      workbook.VirtualRowCount := 20000;
       workbook.VirtualColCount := 100;
 
       { The event handler for OnNeedCellData links the workbook to the method
@@ -96,19 +95,20 @@ begin
       { In case of a database, you would open the dataset before calling this: }
 
       t := Now;
-      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-      //workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
       t := Now - t;
 
     finally
       workbook.Free;
     end;
 
-    WriteLn(Format('Execution time: %.3f sec', [t*24*60*60]));
-    WriteLn('Press [ENTER] to quit...');
-    ReadLn;
   finally
     dataprovider.Free;
   end;
+
+  WriteLn(Format('Execution time: %.3f sec', [t*24*60*60]));
+  WriteLn('Press [ENTER] to quit...');
+  ReadLn;
 end.
 

@@ -249,12 +249,12 @@ begin
   SetLength(FFormattingStyles, 2);
 
   // Default style
-  FillChar(FFormattingStyles[0], SizeOf(TCell), 0);
+  InitCell(FFormattingStyles[0]);
   FFormattingStyles[0].BorderStyles := DEFAULT_BORDERSTYLES;
   FFormattingStyles[0].Row := 0;
 
   // Bold style
-  FillChar(FFormattingStyles[1], SizeOf(TCell), 0);
+  InitCell(FFormattingStyles[1]);
   FFormattingStyles[1].UsedFormattingFields := [uffBold];
   FFormattingStyles[1].FontIndex := 1;  // this is the "bold" font
   FFormattingStyles[1].Row := 1;
@@ -917,7 +917,8 @@ begin
       AppendToStream(FSSheets[FCurSheetNum], Format(
         '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
       for c := 0 to Workbook.VirtualColCount-1 do begin
-        FillChar(lCell, SizeOf(lCell), 0);
+        //FillChar(lCell, SizeOf(lCell), 0);
+        InitCell(lCell);
         CellPosText := CurSheet.CellPosToText(r, c);
         value := varNull;
         styleCell := nil;
@@ -948,6 +949,7 @@ begin
           lCell.BoolValue := value <> 0;
         end;
         WriteCellCallback(@lCell, FSSheets[FCurSheetNum]);
+        varClear(value);
       end;
       AppendToStream(FSSheets[FCurSheetNum],
         '</row>');

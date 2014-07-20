@@ -1072,6 +1072,9 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
+procedure InitCell(var ACell: TCell);
+
+
 implementation
 
 uses
@@ -1459,6 +1462,47 @@ begin
     Result := true;
   end;
 end;
+
+{@@
+  Initalizes a new cell
+}
+procedure InitCell(var ACell: TCell);
+begin
+  ACell.RPNFormulaValue := nil;
+  ACell.FormulaValue.FormulaStr := '';
+  ACell.UTF8StringValue := '';
+  ACell.NumberFormatStr := '';
+  FillChar(ACell, SizeOf(ACell), 0);
+end;
+(*
+      Col: Cardinal; // zero-based
+    Row: Cardinal; // zero-based
+    ContentType: TCellContentType;
+    { Possible values for the cells }
+    FormulaValue: TsFormula;
+    RPNFormulaValue: TsRPNFormula;
+    NumberValue: double;
+    UTF8StringValue: ansistring;
+    DateTimeValue: TDateTime;
+    BoolValue: Boolean;
+    ErrorValue: TsErrorValue;
+    { Formatting fields }
+    { When adding/deleting formatting fields don't forget to update CopyFormat! }
+    UsedFormattingFields: TsUsedFormattingFields;
+    FontIndex: Integer;
+    TextRotation: TsTextRotation;
+    HorAlignment: TsHorAlignment;
+    VertAlignment: TsVertAlignment;
+    Border: TsCellBorders;
+    BorderStyles: TsCelLBorderStyles;
+    BackgroundColor: TsColor;
+    NumberFormat: TsNumberFormat;
+    NumberFormatStr: String;
+    RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
+    { Status flags }
+    CalcState: TsCalcState;
+  *)
+
 
 { TsWorksheet }
 
@@ -5803,6 +5847,7 @@ end;
 function NewRPNItem: PRPNItem;
 begin
   Result := GetMem(SizeOf(TRPNItem));
+  Result^.FE.StringValue := '';
   FillChar(Result^.FE, SizeOf(Result^.FE), 0);
   Result^.FE.StringValue := '';
 end;
