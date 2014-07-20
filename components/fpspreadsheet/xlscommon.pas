@@ -2577,7 +2577,8 @@ var
 begin
   for r := 0 to Workbook.VirtualRowCount-1 do begin
     for c := 0 to Workbook.VirtualColCount-1 do begin
-      FillChar(lCell, SizeOf(lCell), 0);
+      InitCell(lCell);
+//      FillChar(lCell, SizeOf(lCell), 0);
       value := varNull;
       styleCell := nil;
       Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
@@ -2607,6 +2608,7 @@ begin
       end else
         lCell.ContentType := cctEmpty;
       WriteCellCallback(@lCell, AStream);
+      value := varNULL;
     end;
   end;
 end;
