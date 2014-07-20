@@ -3102,6 +3102,8 @@ begin
 
   for j:=FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
   FRowStyleList.Free;
+
+  inherited Destroy;
 end;
 
 {
