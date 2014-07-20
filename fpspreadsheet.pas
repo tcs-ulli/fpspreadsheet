@@ -5847,7 +5847,6 @@ end;
 function NewRPNItem: PRPNItem;
 begin
   Result := GetMem(SizeOf(TRPNItem));
-  Result^.FE.StringValue := '';
   FillChar(Result^.FE, SizeOf(Result^.FE), 0);
   Result^.FE.StringValue := '';
 end;
