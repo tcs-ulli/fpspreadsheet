@@ -167,6 +167,29 @@ const
   INT_EXCEL_CHART         = $0020;
   INT_EXCEL_MACRO_SHEET   = $0040;
 
+type
+  TBIFF2LabelRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1: Byte;
+    Attrib2: Byte;
+    Attrib3: Byte;
+    TextLen: Byte;
+  end;
+
+  TBIFF2NumberRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1: Byte;
+    Attrib2: Byte;
+    Attrib3: Byte;
+    Value: Double;
+  end;
+
 
 { TsBIFF2NumFormatList }
 
@@ -541,19 +564,23 @@ end;
 
 procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
 var
+  rec: TBIFF2LabelRecord;
   L: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
-  AValue: array[0..255] of Char;
+  AValue: ansistring;
   AStrValue: UTF8String;
 begin
-  { BIFF Record row/column/style }
-  ReadRowColXF(AStream, ARow, ACol, XF);
+  { Read entire record, starting at Row, except for string data }
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2LabelRecord) - 2*SizeOf(Word));
+  ARow := WordLEToN(rec.Row);
+  ACol := WordLEToN(rec.Col);
+  XF := rec.Attrib1 and $3F;
 
   { String with 8-bit size }
-  L := AStream.ReadByte();
-  AStream.ReadBuffer(AValue, L);
-  AValue[L] := #0;
+   L := rec.TextLen;
+  SetLength(AValue, L);
+  AStream.ReadBuffer(AValue[1], L);
 
   { Save the data }
   case WorkBookEncoding of
@@ -575,6 +602,7 @@ end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
 var
+  rec: TBIFF2NumberRecord;
   ARow, ACol: Cardinal;
   XF: Word;
   value: Double = 0.0;
@@ -582,11 +610,12 @@ var
   nf: TsNumberFormat;
   nfs: String;
 begin
-  { BIFF Record row/column/style }
-  ReadRowColXF(AStream, ARow, ACol, XF);
-
-  { IEE 754 floating-point value }
-  AStream.ReadBuffer(value, 8);
+  { Read entire record, starting at Row }
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
+  ARow := WordLEToN(rec.Row);
+  ACol := WordLEToN(rec.Col);
+  XF := rec.Attrib1 and $3F;
+  value := rec.Value;
 
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nfs);
@@ -1560,24 +1589,13 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
-type
-  TLabelRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
-    Row: Word;
-    Col: Word;
-    Attrib1: Byte;
-    Attrib2: Byte;
-    Attrib3: Byte;
-    TextLen: Byte;
-  end;
 const
   MAXBYTES = 255; //limit for this format
 var
   L: Byte;
   AnsiText: ansistring;
   TextTooLong: boolean=false;
-  rec: TLabelRecord;
+  rec: TBIFF2LabelRecord;
   buf: array of byte;
 var
   xf: Word;
@@ -1659,20 +1677,9 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF2Writer.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
-type
-  TNumberRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
-    Row: Word;
-    Col: Word;
-    Attrib1: Byte;
-    Attrib2: Byte;
-    Attrib3: Byte;
-    Value: Double;
-  end;
 var
   xf: Word;
-  rec: TNumberRecord;
+  rec: TBIFF2NumberRecord;
 begin
   xf := FindXFIndex(ACell);
   if xf >= 63 then

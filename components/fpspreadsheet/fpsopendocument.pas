@@ -3046,13 +3046,12 @@ procedure TsSpreadOpenDocWriter.WriteRowStyles(AStream: TStream);
 var
   i: Integer;
   rowstyle: TRowStyleData;
-  s: String;
   useOptRowH: String;
 begin
   if FRowStyleList.Count = 0 then begin
     AppendToStream(AStream,
-      '<style:style style:name="ro1" style:family="table-row">',
-        '<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>',
+      '<style:style style:name="ro1" style:family="table-row">' +
+        '<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' +
       '</style:style>');
     exit;
   end;

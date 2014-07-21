@@ -243,8 +243,6 @@ procedure TsSpreadOOXMLWriter.AddDefaultFormats();
 // We store the index of the XF record that will be assigned to this style in
 // the "row" of the style. Will be needed when writing the XF record.
 // --- This is needed for BIFF. Not clear if it is important here as well...
-var
-  len: Integer;
 begin
   SetLength(FFormattingStyles, 2);
 
@@ -559,7 +557,6 @@ var
   item: TsNumFormatData;
   s: String;
   n: Integer;
-  fmt: String;
 begin
   s := '';
   n := 0;
@@ -1066,7 +1063,6 @@ end;
 { Is called before zipping the individual file parts. Rewinds the streams. }
 procedure TsSpreadOOXMLWriter.ResetStreams;
 var
-  stream: TStream;
   i: Integer;
 begin
   ResetStream(FSContentTypes);
