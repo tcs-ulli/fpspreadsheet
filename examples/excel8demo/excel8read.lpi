@@ -52,10 +52,5 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Linking>
-      <Debugging>
-        <DebugInfoType Value="dsStabs"/>
-      </Debugging>
-    </Linking>
   </CompilerOptions>
 </CONFIG>

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids, ColorBox, Buttons,
+  StdCtrls, Menus, ExtCtrls, ActnList, Spin, Buttons,
   ButtonPanel, fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
@@ -31,16 +31,6 @@ type
   private
     { private declarations }
     procedure LoadFile(const AFileName: String);
-    procedure SetupBackgroundColorBox;
-    procedure UpdateBackgroundColorIndex;
-    procedure UpdateFontNameIndex;
-    procedure UpdateFontSizeIndex;
-    procedure UpdateFontStyleActions;
-    procedure UpdateHorAlignmentActions;
-    procedure UpdateNumFormatActions;
-    procedure UpdateTextRotationActions;
-    procedure UpdateVertAlignmentActions;
-    procedure UpdateWordwraps;
   public
     { public declarations }
   end; 
@@ -60,7 +50,6 @@ procedure TForm1.BtnNewClick(Sender: TObject);
 var
   dlg: TForm;
   edCols, edRows: TSpinEdit;
-  x: Integer;
 begin
   dlg := TForm.Create(nil);
   try
@@ -73,7 +62,7 @@ begin
       Parent := dlg;
       Left := dlg.ClientWidth - Width - 24;
       Top := 16;
-      Value := WorksheetGrid.ColCount - ord(WorksheetGrid.DisplayFixedColRow);
+      Value := WorksheetGrid.ColCount - ord(WorksheetGrid.ShowHeaders);
     end;
     with TLabel.Create(dlg) do begin
       Parent := dlg;
@@ -87,7 +76,7 @@ begin
       Parent := dlg;
       Left := edCols.Left;
       Top := edCols.Top + edCols.Height + 8;
-      Value := WorksheetGrid.RowCount - ord(WorksheetGrid.DisplayFixedColRow);
+      Value := WorksheetGrid.RowCount - ord(WorksheetGrid.ShowHeaders);
     end;
     with TLabel.Create(dlg) do begin
       Parent := dlg;
@@ -142,8 +131,6 @@ end;
 
 // Loads first worksheet from file into grid
 procedure TForm1.LoadFile(const AFileName: String);
-var
-  i: Integer;
 begin
   // Load file
   Screen.Cursor := crHourglass;
@@ -166,55 +153,6 @@ begin
   end;
 end;
 
-procedure TForm1.SetupBackgroundColorBox;
-begin
-
-end;
-
-procedure TForm1.UpdateBackgroundColorIndex;
-begin
-
-end;
-
-procedure TForm1.UpdateFontNameIndex;
-begin
-
-end;
-
-procedure TForm1.UpdateFontSizeIndex;
-begin
-
-end;
-
-procedure TForm1.UpdateFontStyleActions;
-begin
-
-end;
-
-procedure TForm1.UpdateHorAlignmentActions;
-begin
-
-end;
-
-procedure TForm1.UpdateNumFormatActions;
-begin
-
-end;
-
-procedure TForm1.UpdateTextRotationActions;
-begin
-
-end;
-
-procedure TForm1.UpdateVertAlignmentActions;
-begin
-
-end;
-
-procedure TForm1.UpdateWordwraps;
-begin
-
-end;
 
 initialization
   {$I mainform.lrs}

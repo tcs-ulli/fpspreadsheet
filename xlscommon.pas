@@ -677,6 +677,15 @@ const
     INT_EXCEL_TOKEN_TATTR           {fekOpSum}
   );
 
+type
+  TBIFF58NumberRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    Value: Double;
+  end;
 
 function ConvertExcelDateTimeToDateTime(
   const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
@@ -1230,6 +1239,7 @@ end;
 // NOTE: This procedure is valid after BIFF 3.
 procedure TsSpreadBIFFReader.ReadNumber(AStream: TStream);
 var
+  rec: TBIFF58NumberRecord;
   ARow, ACol: Cardinal;
   XF: WORD;
   value: Double = 0.0;
@@ -1237,10 +1247,18 @@ var
   nf: TsNumberFormat;
   nfs: String;
 begin
+  { Read entire record, starting at Row }
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF58NumberRecord) - 2*SizeOf(Word));
+  ARow := WordLEToN(rec.Row);
+  ACol := WordLEToN(rec.Col);
+  XF := WordLEToN(rec.XFIndex);
+  value := rec.Value;
+                     (*
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { IEE 754 floating-point value }
   AStream.ReadBuffer(value, 8);
+                       *)
 
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nfs);
@@ -1921,17 +1939,8 @@ end;
   Valid for BIFF5 and BIFF8 (BIFF2 has a different record structure.). }
 procedure TsSpreadBIFFWriter.WriteNumber(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: double; ACell: PCell);
-type
-  TNumberRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
-    Row: Word;
-    Col: Word;
-    XFIndex: Word;
-    Value: Double;
-  end;
 var
-  rec: TNumberRecord;
+  rec: TBIFF58NumberRecord;
 begin
   { BIFF Record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_NUMBER);

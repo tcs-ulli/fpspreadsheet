@@ -38,7 +38,6 @@
       <Unit0>
         <Filename Value="wikitableread.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="wikitableread"/>
       </Unit0>
     </Units>
   </ProjectOptions>
@@ -53,13 +52,5 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Linking>
-      <Debugging>
-        <DebugInfoType Value="dsStabs"/>
-      </Debugging>
-    </Linking>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
 </CONFIG>

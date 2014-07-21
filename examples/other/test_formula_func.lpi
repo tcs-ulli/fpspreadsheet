@@ -64,12 +64,10 @@
       <Unit0>
         <Filename Value="test_formula_func.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="test_formula_func"/>
       </Unit0>
       <Unit1>
         <Filename Value="financemath.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="financemath"/>
       </Unit1>
     </Units>
   </ProjectOptions>
@@ -82,11 +80,6 @@
     <CodeGeneration>
       <SmartLinkUnit Value="True"/>
     </CodeGeneration>
-    <Linking>
-      <Debugging>
-        <DebugInfoType Value="dsDwarf2Set"/>
-      </Debugging>
-    </Linking>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">

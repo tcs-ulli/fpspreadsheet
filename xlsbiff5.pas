@@ -307,6 +307,16 @@ const
     XF_ROTATION_STACKED
   );
 
+type
+  TBIFF5LabelRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    TextLen: Word;
+  end;
+
 
 { TsSpreadBIFF5Writer }
 
@@ -933,22 +943,13 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
-type
-  TLabelRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
-    Row: Word;
-    Col: Word;
-    XFIndex: Word;
-    TextLen: Word;
-  end;
 const
   MAXBYTES = 255; //limit for this format
 var
   L: Word;
   AnsiValue: ansistring;
   TextTooLong: boolean=false;
-  rec: TLabelRecord;
+  rec: TBIFF5LabelRecord;
   buf: array of byte;
 begin
   case WorkBookEncoding of
@@ -1756,12 +1757,29 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
 var
+  rec: TBIFF5LabelRecord;
   L: Word;
   ARow, ACol: Cardinal;
   XF: WORD;
-  AValue: array[0..255] of Char;
+//  AValue: array[0..255] of Char;
+  AValue: ansistring;
   AStrValue: ansistring;
 begin
+  { Read entire record, starting at Row, except for string data }
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF5LabelRecord) - 2*SizeOf(Word));
+  ARow := WordLEToN(rec.Row);
+  ACol := WordLEToN(rec.Col);
+  XF := WordLEToN(rec.XFIndex);
+
+  { Byte String with 16-bit size }
+  L := WordLEToN(rec.TextLen);
+  SetLength(AValue, L);
+  AStream.ReadBuffer(AValue[1], L);
+
+  { Save the data }
+  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AValue));
+
+                                                         (*
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
@@ -1772,7 +1790,7 @@ begin
 
   { Save the data }
   FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
-
+                                                           *)
   { Add attributes }
   ApplyCellFormatting(ARow, ACol, XF);
 end;

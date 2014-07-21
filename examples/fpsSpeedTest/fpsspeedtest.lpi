@@ -28,21 +28,19 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <RequiredPackages Count="3">
+    <RequiredPackages Count="2">
       <Item1>
-        <PackageName Value="SQLDBLaz"/>
+        <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
       <Item2>
-        <PackageName Value="laz_fpspreadsheet"/>
-      </Item2>
-      <Item3>
         <PackageName Value="LCL"/>
-      </Item3>
+      </Item2>
     </RequiredPackages>
     <Units Count="2">
       <Unit0>
         <Filename Value="fpsspeedtest.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="fpsspeedtest"/>
       </Unit0>
       <Unit1>
         <Filename Value="mainform.pas"/>
