@@ -521,7 +521,7 @@ type
 implementation
 
 uses
-  Variants, fpsNumFormatParser;
+  Variants, fpsStreams, fpsNumFormatParser;
 
 { Helper table for rpn formulas:
   Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
