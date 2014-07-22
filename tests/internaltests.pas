@@ -51,6 +51,7 @@ type
     // Write out date cell and try to read as UTF8; verify if contents the same
     procedure ReadDateAsUTF8;
     // Test buffered stream
+    procedure TestReadBufStream;
     procedure TestBufStream;
 
     // Virtual mode tests for all file formats
@@ -252,6 +253,95 @@ begin
   end;
 end;
 
+procedure TSpreadInternalTests.TestReadBufStream;
+const
+  BUF_SIZE = 1024;
+  FILE_SIZE = 2000;
+var
+  tempFileName: String;
+  stream: TStream;
+  writedata: array of Byte;
+  readdata: array of Byte;
+  i, n, nread: Integer;
+begin
+  RandSeed := 0;
+
+  // Create a test file
+  tempFileName := GetTempFileName;
+  stream := TFileStream.Create(tempFileName, fmCreate);
+  try
+    SetLength(writedata, FILE_SIZE);
+    for i:=0 to High(writedata) do
+      writedata[i] := random(256);
+    stream.WriteBuffer(writedata[0], Length(writedata));
+  finally
+    stream.Free;
+  end;
+
+  // Use a TBufStream to read parts of the file back
+  stream := TBufStream.Create(tempFilename, fmOpenRead, BUF_SIZE);
+  try
+    // Check stream size
+    CheckEquals(FILE_SIZE, stream.Size, 'Size mismatch');
+
+    // Read first 100 bytes and compare with data
+    nread := 100;
+    SetLength(readdata, nread);
+    n := stream.Read(readdata[0], nread);
+    CheckEquals(nread, n, 'Bytes count mismatch');
+    for i:=0 to nread-1 do
+      CheckEquals(writedata[i], readdata[i], Format('Read mismatch at position %d', [i]));
+
+    // Check stream size
+    CheckEquals(FILE_SIZE, stream.Size, 'Size mismatch');
+
+    // Read next 100 bytes and compare
+    stream.ReadBuffer(readdata[0], nread);
+    for i:=0 to nread-1 do
+      CheckEquals(writedata[i+nread], readdata[i], Format('Read mismatch at position %d', [i+nread]));
+
+    // Go to position 1000, this is 24 bytes to the end of the buffer, and read
+    // 100 bytes again - this process will require to refresh the buffer
+    stream.Position := 1000;
+    stream.ReadBuffer(readdata[0], nread);
+    for i:=0 to nread-1 do
+      CheckEquals(writedata[i+1000], readdata[i], Format('Read mismatch at position %d', [i+1000]));
+
+    // Check stream size
+    CheckEquals(FILE_SIZE, stream.Size, 'Size mismatch');
+
+    // Read next 100 bytes
+    stream.ReadBuffer(readdata[0], nread);
+    for i:=0 to nread-1 do
+      CheckEquals(writedata[i+1000+nread], readdata[i], Format('Read mismatch at position %d', [i+1000+nread]));
+
+    // Go back to start and fill the memory stream again with bytes 0..1023
+    stream.Position := 0;
+    stream.ReadBuffer(readdata[0], nread);
+
+    // Now read 100 bytes which are not in the buffer
+    stream.Position := 1500;  // this is past the buffered range
+    stream.ReadBuffer(readdata[0], 100);
+    for i:=0 to nread-1 do
+      CheckEquals(writedata[i+1500], readdata[i], Format('Read mismatch at position %d', [i+1500]));
+
+    // Go back to start and fill the memory stream again with bytes 0..1023
+    stream.Position := 0;
+    stream.ReadBuffer(readdata[0], 100);
+
+    // Read last 100 bytes
+    stream.Seek(nread, soFromEnd);
+    stream.ReadBuffer(readdata[0], nread);
+    for i:=0 to nread-1 do
+      CheckEquals(writedata[i+FILE_SIZE-nread], readdata[i],
+        Format('Read mismatch at position %d', [i+FILE_SIZE-nread]));
+
+  finally
+    stream.Free;
+    DeleteFile(tempFileName);
+  end;
+end;
+
 procedure TSpreadInternalTests.TestCellString;
 var
   r,c: Cardinal;
@@ -307,9 +397,9 @@ begin
   workbook := TsWorkbook.Create;
   try
     worksheet := workbook.AddWorksheet('VirtualMode');
-    workbook.WritingOptions := workbook.WritingOptions + [woVirtualMode];
+    workbook.Options := workbook.Options + [boVirtualMode];
     if ABufStreamMode then
-      workbook.WritingOptions := workbook.WritingOptions + [woBufStream];
+      workbook.Options := workbook.Options + [boBufStream];
     workbook.VirtualColCount := 1;
     workbook.VirtualRowCount := Length(SollNumbers) + 4;
     // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.

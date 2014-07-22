@@ -365,7 +365,7 @@ var
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
-  if (woBufStream in Workbook.WritingOptions) then begin
+  if (boBufStream in Workbook.Options) then begin
     Stream := TBufStream.Create
   end else
     Stream := TMemoryStream.Create;
@@ -446,7 +446,7 @@ begin
       WriteDimensions(AStream, sheet);
       //WriteRowAndCellBlock(AStream, sheet);
 
-      if (woVirtualMode in Workbook.WritingOptions) then
+      if (boVirtualMode in Workbook.Options) then
         WriteVirtualCells(AStream)
       else begin
         WriteRows(AStream, sheet);

@@ -880,7 +880,7 @@ begin
   h0 := Workbook.GetDefaultFontSize;  // Point size of default font
 
   // Create the stream
-  if (woBufStream in Workbook.WritingOptions) then
+  if (boBufStream in Workbook.Options) then
     FSSheets[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsSH%d', [FCurSheetNum])))
   else
     FSSheets[FCurSheetNum] := TMemoryStream.Create;
@@ -902,7 +902,7 @@ begin
   AppendToStream(FSSheets[FCurSheetNum],
       '<sheetData>');
 
-  if (woVirtualMode in Workbook.WritingOptions) and Assigned(Workbook.OnNeedCellData)
+  if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnNeedCellData)
   then begin
     for r := 0 to Workbook.VirtualRowCount-1 do begin
       row := CurSheet.FindRow(r);
@@ -1012,7 +1012,7 @@ end;
   single xlsx file. }
 procedure TsSpreadOOXMLWriter.CreateStreams;
 begin
-  if (woBufStream in Workbook.WritingOptions) then begin
+  if (boBufStream in Workbook.Options) then begin
     FSContentTypes := TBufStream.Create(GetTempFileName('', 'fpsCT'));
     FSRelsRels := TBufStream.Create(GetTempFileName('', 'fpsRR'));
     FSWorkbookRels := TBufStream.Create(GetTempFileName('', 'fpsWBR'));
@@ -1111,7 +1111,7 @@ begin
     then lMode := fmCreate or fmOpenWrite
     else lMode := fmCreate;
 
-  if (woBufStream in Workbook.WritingOptions) then
+  if (boBufStream in Workbook.Options) then
     lStream := TBufStream.Create(AFileName, lMode)
   else
     lStream := TFileStream.Create(AFileName, lMode);
