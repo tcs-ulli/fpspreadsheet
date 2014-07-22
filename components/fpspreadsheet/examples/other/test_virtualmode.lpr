@@ -64,17 +64,17 @@ begin
 
       { These are the essential commands to activate virtual mode: }
 
-//      workbook.WritingOptions := [woVirtualMode, woBufStream];
-      workbook.WritingOptions := [woVirtualMode];
-      { woBufStream can be omitted, but is important for large files: it causes
+      workbook.Options := [boVirtualMode, boBufStream];
+//      workbook.Options := [boVirtualMode];
+      { boBufStream can be omitted, but is important for large files: it causes
         writing temporary data to a buffered file stream instead of a pure
-        memory stream which can overflow memory. The option can slow down the
-        writing process a bit. }
+        memory stream which can overflow memory. In cases, the option can slow
+        down the writing process a bit. }
 
       { Next two numbers define the size of virtual spreadsheet.
         In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
         the number of fields to be written to the spreadsheet file }
-      workbook.VirtualRowCount := 20000;
+      workbook.VirtualRowCount := 5000;
       workbook.VirtualColCount := 100;
 
       { The event handler for OnNeedCellData links the workbook to the method
@@ -95,8 +95,10 @@ begin
       { In case of a database, you would open the dataset before calling this: }
 
       t := Now;
-      //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+      //workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      //workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
+      //workbook.WriteToFile('test_virtual.xls', sfExcel2, true);
       t := Now - t;
 
     finally

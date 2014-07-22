@@ -699,21 +699,32 @@ type
   end;
 
   {@@
-    Options considered when writing a workbook
+    Option flags for the workbook
 
-    @param  woVirtualMode   If in virtual mode date are not taken from cells
+    @param  boVirtualMode   If in virtual mode date are not taken from cells
                             when a spreadsheet is written to file, but are
                             provided by means of the event OnNeedCellData.
-    @param  woBufStream     When this option is set a buffered stream is used
-                            for writing (a memory stream swapping to disk) }
-  TsWorkbookWritingOption = (woVirtualMode, woBufStream);
+    @param  boBufStream     When this option is set a buffered stream is used
+                            for writing (a memory stream swapping to disk) or
+                            reading (a file stream pre-reading chunks of data
+                            to memory) }
+  TsWorkbookOption = (boVirtualMode, boBufStream);
 
   {@@
-    Options considered when writing a workbook }
-  TsWorkbookWritingOptions = set of TsWorkbookWritingOption;
+    Set of options flags for the workbook }
+  TsWorkbookOptions = set of TsWorkbookOption;
 
+  {@@
+    Event fired when writing a file in virtual mode. The event handler has to
+    pass data ("AValue") and formatting ("AStyleCell") to the writer }
   TsWorkbookNeedCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
     var AValue: variant; var AStyleCell: PCell) of object;
+
+  {@@
+    Event fired when reading a file in virtual mode. The event handler has to
+    process the data provided by the read in the "ADataCell". }
+  TsWorkbookHaveCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
+    const ADataCell: PCell) of object;
 
   {@@
     The workbook contains the worksheets and provides methods for reading from
@@ -734,8 +745,9 @@ type
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FWriting: Boolean;
-    FWritingOptions: TsWorkbookWritingOptions;
+    FOptions: TsWorkbookOptions;
     FOnNeedCellData: TsWorkbookNeedCellDataEvent;
+    FOnHaveCellData: TsWorkbookHaveCellDataEvent;
     FFileName: String;
 
     { Setter/Getter }
@@ -824,11 +836,15 @@ type
     property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
     property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
-    property WritingOptions: TsWorkbookWritingOptions read FWritingOptions write FWritingOptions;
+    property Options: TsWorkbookOptions read FOptions write FOptions;
     {@@ This event allows to provide external cell data for writing to file,
       standard cells are ignored. Intended for converting large database files
-      to s spreadsheet format. Requires WritingOption woVirtualMode to be set. }
+      to a spreadsheet format. Requires Option boVirtualMode to be set. }
     property OnNeedCellData: TsWorkbookNeedCellDataEvent read FOnNeedCellData write FOnNeedCellData;
+    {@@ This event accepts cell data while reading a spreadsheet file. Data are
+      not encorporated in a spreadsheet, they are just passed through to the
+      event handler for processing. Requires Optio boVirtualMode to be set. }
+    property OnHaveCellData: TsWorkbookHaveCellDataEvent read FOnHaveCellData write FOnHaveCellData;
   end;
 
   {@@ Contents of a number format record }
@@ -4188,7 +4204,7 @@ var
   sheet: TsWorksheet;
   r1,r2, c1,c2: Cardinal;
 begin
-  if (woVirtualMode in WritingOptions) then begin
+  if (boVirtualMode in Options) then begin
     ALastRow := FVirtualRowCount - 1;
     ALastCol := FVirtualColCount - 1;
   end else begin
@@ -5313,10 +5329,29 @@ end;
   @see    TsWorkbook
 }
 procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+{
 var
-  InputFile: TFileStream;
+  fs, ms: TStream;
 begin
-  InputFile := TFileStream.Create(AFileName, fmOpenRead);
+  fs := TFileStream.Create(AFileName, fmOpenRead);
+  ms := TMemoryStream.Create;
+  try
+    ms.CopyFrom(fs, fs.Size);
+    ms.Position := 0;
+    ReadFromStream(ms, AData);
+  finally
+    ms.Free;
+    fs.Free;
+  end;
+end;
+ }
+var
+  InputFile: TStream;
+begin
+  if (boBufStream in Workbook.Options) then
+    InputFile := TBufStream.Create(AFileName, fmOpenRead)
+  else
+    InputFile := TFileStream.Create(AFileName, fmOpenRead);
   try
     ReadFromStream(InputFile, AData);
   finally
@@ -5495,7 +5530,7 @@ procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
 begin
   AFirstRow := 0;
   AFirstCol := 0;
-  if (woVirtualMode in AWorksheet.Workbook.WritingOptions) then begin
+  if (boVirtualMode in AWorksheet.Workbook.Options) then begin
     ALastRow := AWorksheet.Workbook.VirtualRowCount-1;
     ALastCol := AWorksheet.Workbook.VirtualColCount-1;
   end else begin
@@ -5751,7 +5786,7 @@ begin
   if AOverwriteExisting then lMode := fmCreate or fmOpenWrite
   else lMode := fmCreate;
 
-  if (woBufStream in Workbook.WritingOptions) then
+  if (boBufStream in Workbook.Options) then
     OutputFile := TBufStream.Create(AFileName, lMode)
   else
     OutputFile := TFileStream.Create(AFileName, lMode);

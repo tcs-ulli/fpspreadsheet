@@ -1084,7 +1084,7 @@ begin
     WriteColWidths(AStream);
     WriteRows(AStream, sheet);
 
-    if (woVirtualMode in Workbook.WritingOptions) then
+    if (boVirtualMode in Workbook.Options) then
       WriteVirtualCells(AStream)
     else begin
       WriteRows(AStream, sheet);

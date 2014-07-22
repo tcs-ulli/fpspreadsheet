@@ -45,10 +45,8 @@ type
       var AValue: Variant; var AStyleCell: PCell);
     procedure ReadFromIni;
     procedure WriteToIni;
-    procedure RunReadTest(Idx: Integer; Log: String;
-      Options: TsWorkbookWritingOptions);
-    procedure RunWriteTest(Idx: integer; Rows: integer; Log: string;
-      Options: TsWorkbookWritingOptions);
+    procedure RunReadTest(Idx: Integer; Log: String; Options: TsWorkbookOptions);
+    procedure RunWriteTest(Idx: integer; Rows: integer; Log: string; Options: TsWorkbookOptions);
     procedure StatusMsg(const AMsg: String);
   public
     { public declarations }
@@ -80,6 +78,8 @@ const
   rc100k = 6;
 
   CONTENT_PREFIX: array[0..2] of Char = ('S', 'N', 'M');
+  CONTENT_TEXT: array[0..2] of string = ('strings only', 'numbers only', '50% strings and 50% numbers');
+
   FORMAT_EXT: array[0..4] of String = ('.ods', '.xlsx', '.xls', '_b5.xls', '_b2.xls');
   SPREAD_FORMAT: array[0..4] of TsSpreadsheetFormat = (sfOpenDocument, sfOOXML, sfExcel8, sfExcel5, sfExcel2);
 
@@ -116,7 +116,7 @@ begin
 end;
 
 procedure TForm1.RunReadTest(Idx: Integer; Log: String;
-  Options: TsWorkbookWritingOptions);
+  Options: TsWorkbookOptions);
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
@@ -127,9 +127,7 @@ var
   ok: Boolean;
 begin
   s := Trim(Log);
-
   Log := Log + '         ';
-
   try
     for i := 0 to CgFormats.Items.Count-1 do begin
       if FEscape then begin
@@ -162,6 +160,7 @@ begin
         MyWorkbook := TsWorkbook.Create;
         try
           Application.ProcessMessages;
+          MyWorkbook.Options := Options;
           Tm := GetTickCount;
           try
             MyWorkbook.ReadFromFile(fname, SPREAD_FORMAT[i]);
@@ -184,7 +183,7 @@ begin
 end;
 
 procedure TForm1.RunWriteTest(Idx: integer; Rows: integer; Log: string;
-  Options: TsWorkbookWritingOptions);
+  Options: TsWorkbookOptions);
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
@@ -201,13 +200,13 @@ begin
     end;
 
     MyWorksheet := MyWorkbook.AddWorksheet('Sheet1');
-    MyWorkbook.WritingOptions := Options;
+    MyWorkbook.Options := Options;
 
     Application.ProcessMessages;
     Tm := GetTickCount;
 
     try
-      if woVirtualMode in Options then
+      if boVirtualMode in Options then
       begin
         MyWorkbook.VirtualRowCount := Rows;
         MyWorkbook.VirtualColCount := COLCOUNT;
@@ -222,7 +221,7 @@ begin
         for ARow := 0 to Rows - 1 do
         begin
           if ARow mod 1000 = 0 then begin
-            StatusMsg(Format('Populating row %d', [ARow]));
+            StatusMsg(Format('Building row %d...', [ARow]));
             if FEscape then begin
               Log := 'Test aborted';
               exit;
@@ -236,7 +235,8 @@ begin
             1: for ACol := 0 to COLCOUNT-1 do
                  MyWorksheet.WriteNumber(ARow, ACol, 1E5*ARow + ACol);
             2: for ACol := 0 to COLCOUNT-1 do
-                 if (odd(ARow) and odd(ACol)) or odd(ARow+ACol) then begin
+                 if (odd(ARow) and odd(ACol)) or odd(ARow+ACol) then
+                 begin
                    S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
                    MyWorksheet.WriteUTF8Text(ARow, ACol, S);
                  end else
@@ -255,7 +255,8 @@ begin
 
     Log := Log + '  ' + format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
 
-    for k := 0 to CgFormats.Items.Count-1 do begin
+    for k := 0 to CgFormats.Items.Count-1 do
+    begin
       if FEscape then begin
         Log := 'Test aborted';
         exit;
@@ -313,34 +314,30 @@ begin
   FEscape := false;
   EnableControls(false);
 
-  try
-    Memo.Append     ('Running: Reading TsWorkbook from various file formats');
-    case RgContent.ItemIndex of
-      0: Memo.Append('         Worksheet contains strings only');
-      1: Memo.Append('         Worksheet contains numbers only');
-      2: Memo.Append('         Worksheet contains 50% strings and 50% numbers');
-    end;
-    Memo.Append     ('         (Times in seconds)');
-       //'-----------                        .ods  .xlsx  biff8  biff5  biff2');
-       //'Rows x Cols  W.Options     Build  Write  Write  Write  Write  Write'
-    s := '--------------------------------  ';
-    if CgFormats.Checked[fmtODS]  then s := s + ' .ods  ';
-    if CgFormats.Checked[fmtXLSX] then s := s + '.xlsx  ';
-    if CgFormats.Checked[fmtXLS8] then s := s + 'biff8  ';
-    if CgFormats.Checked[fmtXLS5] then s := s + 'biff5  ';
-    if CgFormats.Checked[fmtXLS2] then s := s + 'biff2';
-    Memo.Append(TrimRight(s));
-    s := 'Rows x Cols  W.Options            ';
-    if CgFormats.Checked[fmtODS]  then s := s + ' Read  ';
-    if CgFormats.Checked[fmtXLSX] then s := s + ' Read  ';
-    if CgFormats.Checked[fmtXLS8] then s := s + ' Read  ';
-    if CgFormats.Checked[fmtXLS5] then s := s + ' Read  ';
-    if CgFormats.Checked[fmtXLS2] then s := s + ' Read';
-    s := TrimRight(s);
-    Memo.Append(s);
-    len := Length(s);
-    Memo.Append(DupeString('-', len));
+  Memo.Append     ('Running: Reading TsWorkbook from various file formats');
+  Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
+  Memo.Append     ('         (Times in seconds)');
+     //'-----------                        .ods  .xlsx  biff8  biff5  biff2');
+     //'Rows x Cols  Options       Build  Write  Write  Write  Write  Write'
+  s := '--------------------------------  ';
+  if CgFormats.Checked[fmtODS]  then s := s + ' .ods  ';
+  if CgFormats.Checked[fmtXLSX] then s := s + '.xlsx  ';
+  if CgFormats.Checked[fmtXLS8] then s := s + 'biff8  ';
+  if CgFormats.Checked[fmtXLS5] then s := s + 'biff5  ';
+  if CgFormats.Checked[fmtXLS2] then s := s + 'biff2';
+  Memo.Append(TrimRight(s));
+  s := 'Rows x Cols  Options              ';
+  if CgFormats.Checked[fmtODS]  then s := s + ' Read  ';
+  if CgFormats.Checked[fmtXLSX] then s := s + ' Read  ';
+  if CgFormats.Checked[fmtXLS8] then s := s + ' Read  ';
+  if CgFormats.Checked[fmtXLS5] then s := s + ' Read  ';
+  if CgFormats.Checked[fmtXLS2] then s := s + ' Read';
+  s := TrimRight(s);
+  Memo.Append(s);
+  len := Length(s);
+  Memo.Append(DupeString('-', len));
 
+  try
     for i:=0 to CgRowCount.Items.Count-1 do begin
       if FEscape then
         exit;
@@ -351,12 +348,16 @@ begin
       rows := GetRowCount(i);
       s := Format('%7.0nx%d', [1.0*rows, COLCOUNT]);
 
-      RunReadTest(1, s + '  [          ]', []);
-      (*
-      RunReadTest(2, s + '  [woVM      ]', [woVirtualMode]);
-      RunReadTest(3, s + '  [      woBS]', [woBufStream]);
-      RunReadTest(4, s + '  [woVM, woBS]', [woVirtualMode, woBufStream]);
-      *)
+      if CbVirtualModeOnly.Checked then begin
+        //RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
+        //RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+      end else begin
+        RunReadTest(1, s + '  [          ]', []);
+        //RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
+        RunReadTest(3, s + '  [      boBS]', [boBufStream]);
+        //RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+      end;
+
       Memo.Append(DupeString('-', len));
     end;
     Memo.Append('Ready');
@@ -378,14 +379,10 @@ begin
   EnableControls(false);
 
   Memo.Append     ('Running: Building TsWorkbook and writing to different file formats');
-  case RgContent.ItemIndex of
-    0: Memo.Append('         Worksheet contains strings only');
-    1: Memo.Append('         Worksheet contains numbers only');
-    2: Memo.Append('         Worksheet contains 50% strings and 50% numbers');
-  end;
+  Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
   Memo.Append     ('         (Times in seconds)');
      //'-----------                        .ods  .xlsx  biff8  biff5  biff2');
-     //'Rows x Cols  W.Options     Build  Write  Write  Write  Write  Write'
+     //'Rows x Cols  Options       Build  Write  Write  Write  Write  Write'
   s := '--------------------------------  ';
   if CgFormats.Checked[fmtODS]  then s := s + ' .ods  ';
   if CgFormats.Checked[fmtXLSX] then s := s + '.xlsx  ';
@@ -393,7 +390,7 @@ begin
   if CgFormats.Checked[fmtXLS5] then s := s + 'biff5  ';
   if CgFormats.Checked[fmtXLS2] then s := s + 'biff2';
   Memo.Append(TrimRight(s));
-  s := 'Rows x Cols  W.Options     Build  ';
+  s := 'Rows x Cols  Options       Build  ';
   if CgFormats.Checked[fmtODS]  then s := s + 'Write  ';
   if CgFormats.Checked[fmtXLSX] then s := s + 'Write  ';
   if CgFormats.Checked[fmtXLS8] then s := s + 'Write  ';
@@ -414,13 +411,13 @@ begin
       Rows := GetRowCount(i);
       s := Format('%7.0nx%d', [1.0*Rows, COLCOUNT]);
       if CbVirtualModeOnly.Checked then begin
-        RunWriteTest(2, Rows, s + '  [woVM      ]', [woVirtualMode]);
-        RunWriteTest(4, Rows, s + '  [woVM, woBS]', [woVirtualMode, woBufStream]);
+        RunWriteTest(2, Rows, s + '  [boVM      ]', [boVirtualMode]);
+        RunWriteTest(4, Rows, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
       end else begin
         RunWriteTest(1, Rows, s + '  [          ]', []);
-        RunWriteTest(2, Rows, s + '  [woVM      ]', [woVirtualMode]);
-        RunWriteTest(3, Rows, s + '  [      woBS]', [woBufStream]);
-        RunWriteTest(4, Rows, s + '  [woVM, woBS]', [woVirtualMode, woBufStream]);
+        RunWriteTest(2, Rows, s + '  [boVM      ]', [boVirtualMode]);
+        RunWriteTest(3, Rows, s + '  [      boBS]', [boBufStream]);
+        RunWriteTest(4, Rows, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
       end;
       Memo.Append(DupeString('-', len));
     end;
@@ -450,6 +447,7 @@ begin
   CgRowCount.Enabled := AEnable;
   LblCancel.Visible := not AEnable;
   StatusMsg('');
+  Application.ProcessMessages;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);

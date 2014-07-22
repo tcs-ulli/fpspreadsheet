@@ -193,11 +193,11 @@ type
 implementation
 
 uses
-  StrUtils;
+  StrUtils, fpsStreams;
 
 const
   { OpenDocument general XML constants }
-  XML_HEADER           = '<?xml version="1.0" encoding="utf-8" ?>';
+  XML_HEADER             = '<?xml version="1.0" encoding="utf-8" ?>';
 
   { OpenDocument Directory structure constants }
   OPENDOC_PATH_CONTENT   = 'content.xml';
@@ -1191,8 +1191,23 @@ var
     parser: TDOMParser;
     src: TXMLInputSource;
     stream: TStream;
+//    fstream: TStream;
   begin
-    stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyWrite);
+    {
+    if (boBufStream in Workbook.Options) then begin
+      fstream := TFileStream.Create(AFilename, fmOpenRead + fmShareDenyWrite);
+      stream := TMemorystream.Create;
+      stream.CopyFrom(fstream, fstream.Size);
+      stream.Position := 0;
+      fstream.free;
+    end
+    }
+
+    if (boBufStream in Workbook.Options) then
+      stream := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyWrite)
+    else
+      stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyWrite);
+
     try
       parser := TDOMParser.Create;
       try
@@ -2239,7 +2254,14 @@ procedure TsSpreadOpenDocWriter.CreateStreams;
 var
   dir: String;
 begin
-  if (woBufStream in Workbook.WritingOptions) then begin
+  if (boBufStream in Workbook.Options) then begin
+    FSMeta := TBufStream.Create(GetTempFileName('', 'fpsM'));
+    FSSettings := TBufStream.Create(GetTempFileName('', 'fpsS'));
+    FSStyles := TBufStream.Create(GetTempFileName('', 'fpsSTY'));
+    FSContent := TBufStream.Create(GetTempFileName('', 'fpsC'));
+    FSMimeType := TBufStream.Create(GetTempFileName('', 'fpsMT'));
+    FSMetaInfManifest := TBufStream.Create(GetTempFileName('', 'fpsMIM'));
+    {
     dir := IncludeTrailingPathDelimiter(GetTempDir);
     FSMeta := TFileStream.Create(GetTempFileName(dir, 'fpsM'), fmCreate+fmOpenRead);
     FSSettings := TFileStream.Create(GetTempFileName(dir, 'fpsS'), fmCreate+fmOpenRead);
@@ -2247,6 +2269,7 @@ begin
     FSContent := TFileStream.Create(GetTempFileName(dir, 'fpsC'), fmCreate+fmOpenRead);
     FSMimeType := TFileStream.Create(GetTempFileName(dir, 'fpsMT'), fmCreate+fmOpenRead);
     FSMetaInfManifest := TFileStream.Create(GetTempFileName(dir, 'fpsMIM'), fmCreate+fmOpenRead);
+    }
   end else begin;
     FSMeta := TMemoryStream.Create;
     FSSettings := TMemoryStream.Create;
