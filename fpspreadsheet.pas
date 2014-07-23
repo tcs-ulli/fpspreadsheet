@@ -707,7 +707,7 @@ type
     @param  boBufStream     When this option is set a buffered stream is used
                             for writing (a memory stream swapping to disk) or
                             reading (a file stream pre-reading chunks of data
-                            to memory) }
+                            to memory)  }
   TsWorkbookOption = (boVirtualMode, boBufStream);
 
   {@@
@@ -1094,6 +1094,9 @@ procedure InitCell(var ACell: TCell);
 implementation
 
 uses
+ {$IFDEF UNIX}
+  clocale,
+ {$ENDIF}
   Math, StrUtils, TypInfo, fpsStreams, fpsUtils, fpsNumFormatParser, fpsFunc;
 
 { Translatable strings }

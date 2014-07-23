@@ -151,6 +151,10 @@ end;
 procedure TSpreadManualSetup.OneTimeTearDown;
 begin
   if Workbook <> nil then begin
+    // In Ubuntu explicit deletion of the existing file is needed.
+    // Otherwise an error would occur and a defective file would be written }
+    if FileExists(TestFileManual) then DeleteFile(TestFileManual);
+
     Workbook.WriteToFile(TestFileManual, OUTPUT_FORMAT, TRUE);
     Workbook.Free;
     Workbook := nil;
