@@ -28,7 +28,7 @@ type
 
   TSpreadInternalTests= class(TTestCase)
   private
-    procedure NeedVirtualCellData(Sender: TObject; ARow, ACol: Cardinal;
+    procedure WriteVirtualCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue:Variant; var AStyleCell: PCell);
   protected
     // Set up expected values:
@@ -373,7 +373,7 @@ begin
 
 end;
 
-procedure TSpreadInternalTests.NeedVirtualCellData(Sender: TObject;
+procedure TSpreadInternalTests.WriteVirtualCellDataHandler(Sender: TObject;
   ARow, ACol: Cardinal; var AValue:Variant; var AStyleCell: PCell);
 begin
   // First read the SollNumbers, then the first 4 SollStrings
@@ -403,7 +403,7 @@ begin
     workbook.VirtualColCount := 1;
     workbook.VirtualRowCount := Length(SollNumbers) + 4;
     // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.
-    workbook.OnNeedCellData := @NeedVirtualCellData;
+    workbook.OnWriteCellData := @WriteVirtualCellDataHandler;
     tempFile:=NewTempFile;
     workbook.WriteToFile(tempfile, AFormat, true);
   finally

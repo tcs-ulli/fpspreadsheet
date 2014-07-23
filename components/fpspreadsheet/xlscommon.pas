@@ -2587,10 +2587,9 @@ begin
   for r := 0 to Workbook.VirtualRowCount-1 do begin
     for c := 0 to Workbook.VirtualColCount-1 do begin
       InitCell(lCell);
-//      FillChar(lCell, SizeOf(lCell), 0);
       value := varNull;
       styleCell := nil;
-      Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
+      Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
       if styleCell <> nil then lCell := styleCell^;
       lCell.Row := r;
       lCell.Col := c;
