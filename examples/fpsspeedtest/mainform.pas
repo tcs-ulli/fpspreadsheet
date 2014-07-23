@@ -37,11 +37,11 @@ type
     FCurFormat: TsSpreadsheetFormat;
     procedure EnableControls(AEnable: Boolean);
     function  GetRowCount(AIndex: Integer): Integer;
-    procedure NeedCellString(Sender: TObject; ARow, ACol: Cardinal;
+    procedure WriteCellStringHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue: Variant; var AStyleCell: PCell);
-    procedure NeedCellNumber(Sender: TObject; ARow, ACol: Cardinal;
+    procedure WriteCellNumberHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue: Variant; var AStyleCell: PCell);
-    procedure NeedCellStringAndNumber(Sender: TObject; ARow, ACol: Cardinal;
+    procedure WriteCellStringAndNumberHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue: Variant; var AStyleCell: PCell);
     procedure ReadFromIni;
     procedure WriteToIni;
@@ -87,7 +87,7 @@ const
 
 { TForm1 }
 
-procedure TForm1.NeedCellString(Sender: TObject; ARow, ACol: cardinal;
+procedure TForm1.WriteCellStringHandler(Sender: TObject; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
 var
   S: string;
@@ -98,7 +98,7 @@ begin
     StatusMsg(Format('Writing %s row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
-procedure TForm1.NeedCellNumber(Sender: TObject; ARow, ACol: cardinal;
+procedure TForm1.WriteCellNumberHandler(Sender: TObject; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
 begin
   AValue := ARow * 1E5 + ACol;
@@ -106,13 +106,13 @@ begin
     StatusMsg(Format('Writing %s row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
-procedure TForm1.NeedCellStringAndNumber(Sender: TObject; ARow, ACol: cardinal;
+procedure TForm1.WriteCellStringAndNumberHandler(Sender: TObject; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
 begin
   if odd(ARow + ACol) then
-    NeedCellString(Sender, ARow, ACol, AValue, AStyleCell)
+    WriteCellStringHandler(Sender, ARow, ACol, AValue, AStyleCell)
   else
-    NeedCellNumber(Sender, ARow, ACol, AValue, AStyleCell);
+    WriteCellNumberHandler(Sender, ARow, ACol, AValue, AStyleCell);
 end;
 
 procedure TForm1.RunReadTest(Idx: Integer; Log: String;
@@ -211,9 +211,9 @@ begin
         MyWorkbook.VirtualRowCount := Rows;
         MyWorkbook.VirtualColCount := COLCOUNT;
         case RgContent.ItemIndex of
-          0: MyWorkbook.OnNeedCellData := @NeedCellString;
-          1: MyWorkbook.OnNeedCellData := @NeedCellNumber;
-          2: MyWorkbook.OnNeedCellData := @NeedCellStringAndNumber;
+          0: MyWorkbook.OnWriteCellData := @WriteCellStringHandler;
+          1: MyWorkbook.OnWriteCellData := @WriteCellNumberHandler;
+          2: MyWorkbook.OnWriteCellData := @WriteCellStringAndNumberHandler;
         end;
       end
       else

@@ -706,7 +706,9 @@ type
 
     @param  boVirtualMode   If in virtual mode date are not taken from cells
                             when a spreadsheet is written to file, but are
-                            provided by means of the event OnNeedCellData.
+                            provided by means of the event OnWriteCellData.
+                            Similarly, when data are read they are not added as
+                            cells but passed the the event OnReadCellData;
     @param  boBufStream     When this option is set a buffered stream is used
                             for writing (a memory stream swapping to disk) or
                             reading (a file stream pre-reading chunks of data
@@ -719,14 +721,15 @@ type
 
   {@@
     Event fired when writing a file in virtual mode. The event handler has to
-    pass data ("AValue") and formatting ("AStyleCell") to the writer }
-  TsWorkbookNeedCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
+    pass data ("AValue") and formatting style to be copied from a template
+    cell ("AStyleCell") to the writer }
+  TsWorkbookWriteCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
     var AValue: variant; var AStyleCell: PCell) of object;
 
   {@@
-    Event fired when reading a file in virtual mode. The event handler has to
-    process the data provided by the read in the "ADataCell". }
-  TsWorkbookHaveCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
+    Event fired when reading a file in virtual mode. Read data are provided in
+    the "ADataCell" (which is not added to the worksheet in virtual mode). }
+  TsWorkbookReadCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
     const ADataCell: PCell) of object;
 
   {@@
@@ -749,8 +752,8 @@ type
     FVirtualRowCount: Cardinal;
     FWriting: Boolean;
     FOptions: TsWorkbookOptions;
-    FOnNeedCellData: TsWorkbookNeedCellDataEvent;
-    FOnHaveCellData: TsWorkbookHaveCellDataEvent;
+    FOnWriteCellData: TsWorkbookWriteCellDataEvent;
+    FOnReadCellData: TsWorkbookReadCellDataEvent;
     FFileName: String;
 
     { Setter/Getter }
@@ -843,11 +846,11 @@ type
     {@@ This event allows to provide external cell data for writing to file,
       standard cells are ignored. Intended for converting large database files
       to a spreadsheet format. Requires Option boVirtualMode to be set. }
-    property OnNeedCellData: TsWorkbookNeedCellDataEvent read FOnNeedCellData write FOnNeedCellData;
+    property OnWriteCellData: TsWorkbookWriteCellDataEvent read FOnWriteCellData write FOnWriteCellData;
     {@@ This event accepts cell data while reading a spreadsheet file. Data are
       not encorporated in a spreadsheet, they are just passed through to the
-      event handler for processing. Requires Optio boVirtualMode to be set. }
-    property OnHaveCellData: TsWorkbookHaveCellDataEvent read FOnHaveCellData write FOnHaveCellData;
+      event handler for processing. Requires option boVirtualMode to be set. }
+    property OnReadCellData: TsWorkbookReadCellDataEvent read FOnReadCellData write FOnReadCellData;
   end;
 
   {@@ Contents of a number format record }

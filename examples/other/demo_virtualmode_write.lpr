@@ -14,7 +14,7 @@ uses
 
 type
   TDataProvider = class
-    procedure NeedCellData(Sender: TObject; ARow,ACol: Cardinal;
+    procedure WriteCellDataHandler(Sender: TObject; ARow,ACol: Cardinal;
       var AData: variant; var AStyleCell: PCell);
   end;
 
@@ -25,8 +25,8 @@ var
   headerTemplate: PCell;
   t: TTime;
 
-  procedure TDataProvider.NeedCellData(Sender: TObject; ARow, ACol: Cardinal;
-    var AData: variant; var AStyleCell: PCell);
+  procedure TDataProvider.WriteCellDataHandler(Sender: TObject;
+    ARow, ACol: Cardinal; var AData: variant; var AStyleCell: PCell);
   { This is just a sample using random data. Normally, in case of a database,
     you would read a record and return its field values, such as:
 
@@ -81,7 +81,7 @@ begin
 
       { The event handler for OnNeedCellData links the workbook to the method
         from which it gets the data to be written. }
-      workbook.OnNeedCellData := @dataprovider.NeedCellData;
+      workbook.OnWriteCellData := @dataprovider.WriteCellDataHandler;
 
       { If we want to change the format of some cells we have to provide this
         format in template cells of the worksheet. In the example, the first

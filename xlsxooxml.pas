@@ -902,7 +902,7 @@ begin
   AppendToStream(FSSheets[FCurSheetNum],
       '<sheetData>');
 
-  if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnNeedCellData)
+  if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnWriteCellData)
   then begin
     for r := 0 to Workbook.VirtualRowCount-1 do begin
       row := CurSheet.FindRow(r);
@@ -914,12 +914,11 @@ begin
       AppendToStream(FSSheets[FCurSheetNum], Format(
         '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
       for c := 0 to Workbook.VirtualColCount-1 do begin
-        //FillChar(lCell, SizeOf(lCell), 0);
         InitCell(lCell);
         CellPosText := CurSheet.CellPosToText(r, c);
         value := varNull;
         styleCell := nil;
-        Workbook.OnNeedCellData(Workbook, r, c, value, styleCell);
+        Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
         if styleCell <> nil then
           lCell := styleCell^;
         lCell.Row := r;
