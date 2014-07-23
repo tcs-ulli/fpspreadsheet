@@ -3,6 +3,9 @@ unit rpnFormulaUnit;
 interface
 
 uses
+  {$IFDEF Unix}
+  clocale, //required for formatsettings
+  {$ENDIF}
   SysUtils, fpspreadsheet,fpsutils;
 
 procedure WriteRPNFormulaSamples(Worksheet: TsWorksheet;
