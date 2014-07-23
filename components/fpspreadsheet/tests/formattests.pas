@@ -10,6 +10,10 @@ units (e.g. datetests).
 }
 
 uses
+  {$IFDEF Unix}
+  //required for formatsettings
+  clocale,
+  {$ENDIF}
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
