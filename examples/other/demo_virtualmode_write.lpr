@@ -1,4 +1,4 @@
-program test_virtualmode;
+program demo_virtualmode_write;
 
 {$mode objfpc}{$H+}
 
@@ -10,7 +10,7 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   lazutf8,
-  variants, laz_fpspreadsheet, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
+  variants, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
 
 type
   TDataProvider = class

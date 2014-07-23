@@ -5,14 +5,13 @@ Demonstrates how to write a formula using the fpspreadsheet library
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
-program test_write_formula;
+program demo_write_formula;
 
 {$mode delphi}{$H+}
 
 uses
   Classes, SysUtils,
-  fpspreadsheet, xlsbiff5, xlsbiff8, fpsopendocument,
-  laz_fpspreadsheet;
+  fpspreadsheet, xlsbiff5, xlsbiff8, fpsopendocument;
 
 var
   MyWorkbook: TsWorkbook;
@@ -86,6 +85,9 @@ end;
 
 const
   TestFile='test_formula.xls';
+
+{$R *.res}
+
 begin
   writeln('Starting program.');
   MyDir := ExtractFilePath(ParamStr(0));

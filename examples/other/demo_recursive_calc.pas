@@ -4,7 +4,7 @@
   Therefore calculation has to be done recursively until the independent third
   cell is found. }
 
-program test_recursive_calc;
+program demo_recursive_calc;
 
 {$mode objfpc}{$H+}
 
@@ -15,7 +15,7 @@ uses
   {$ENDIF}
   {$ENDIF}
   Classes,
-  math, laz_fpspreadsheet, fpspreadsheet, fpsfunc;
+  math, fpspreadsheet, fpsfunc, xlsbiff8;
 
 var
   workbook: TsWorkbook;
