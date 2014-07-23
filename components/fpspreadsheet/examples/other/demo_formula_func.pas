@@ -13,9 +13,8 @@
   Open/LibreOffice and compare).
 }
 
-program test_formula_func;
+program demo_formula_func;
 
-//{$mode objfpc}{$H+}
 {$mode delphi}{$H+}
 
 uses
@@ -25,7 +24,7 @@ uses
  {$ENDIF}
  {$ENDIF}
  Classes, SysUtils,
- math, laz_fpspreadsheet, fpspreadsheet, xlsbiff8, fpsfunc, financemath;
+ math, fpspreadsheet, xlsbiff8, fpsfunc, financemath;
 
 
 {------------------------------------------------------------------------------}

@@ -7,13 +7,12 @@ Adds formatting to the file
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
-program test_write_formatting;
+program demo_write_formatting;
 
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8, fpsopendocument,
-  laz_fpspreadsheet;
+  Classes, SysUtils, fpspreadsheet, xlsbiff8, fpsopendocument;
 
 var
   MyWorkbook: TsWorkbook;
@@ -161,6 +160,9 @@ end;
 
 const
   TestFile='test3.odt';
+
+{$R *.res}
+
 begin
   writeln('Starting program.');
   MyDir := ExtractFilePath(ParamStr(0));
