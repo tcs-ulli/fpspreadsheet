@@ -159,7 +159,10 @@ begin
   MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor];
 end;
 
+const
+  TestFile='test3.odt';
 begin
+  writeln('Starting program.');
   MyDir := ExtractFilePath(ParamStr(0));
 
   // Create the spreadsheet
@@ -171,7 +174,8 @@ begin
 
   // Save the spreadsheet to a file
 //  MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
-  MyWorkbook.WriteToFile(MyDir + 'test3.odt', sfOpenDocument, False);
+  MyWorkbook.WriteToFile(MyDir + TestFile, sfOpenDocument, False);
   MyWorkbook.Free;
+  writeln('Finished. Please open "'+TestFile+'" in your spreadsheet program.');
 end.
 

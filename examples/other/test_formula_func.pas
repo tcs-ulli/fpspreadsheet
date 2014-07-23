@@ -1,8 +1,8 @@
-{ This demo show how user-provided functions can be used for calculation of
-  rpn formulas that are built-in to fpspreadsheet, but don't have an own
+{ This demo shows how user-provided functions can be used for calculation of
+  RPN formulas that are built-in to fpspreadsheet, but don't have their own
   calculation procedure.
 
-  The example will show implementation of the some financial formulas:
+  The example will show implementation of some financial formulas:
   - FV()    (future value)
   - PV()    (present value)
   - PMT()   (payment)
@@ -19,12 +19,13 @@ program test_formula_func;
 {$mode delphi}{$H+}
 
 uses
- {$IFDEF UNIX}{$IFDEF UseCThreads}
-  cthreads,
-  {$ENDIF}{$ENDIF}
-  Classes, SysUtils, laz_fpspreadsheet
-  { you can add units after this },
-  math, fpspreadsheet, xlsbiff8, fpsfunc, financemath;
+ {$IFDEF UNIX}
+ {$IFDEF UseCThreads}
+ cthreads,
+ {$ENDIF}
+ {$ENDIF}
+ Classes, SysUtils,
+ math, laz_fpspreadsheet, fpspreadsheet, xlsbiff8, fpsfunc, financemath;
 
 
 {------------------------------------------------------------------------------}
@@ -65,6 +66,7 @@ begin
 end;
 
 function fpsPV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+// Present value
 var
   data: TsArgNumberArray;
 begin
@@ -121,7 +123,6 @@ var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
   fval, pval, pmtval, nperval, rateval: Double;
-
 begin
   { We have to register our financial functions in fpspreadsheet. Otherwise an
     error code would be displayed in the reading part of this demo for these
@@ -326,7 +327,8 @@ begin
     WriteLn('Contents of file "', AFileName, '"');
     WriteLn('');
 
-    for r := 0 to worksheet.GetLastRowIndex do begin
+    for r := 0 to worksheet.GetLastRowIndex do
+    begin
       s1 := UTF8ToAnsi(worksheet.ReadAsUTF8Text(r, 0));
       s2 := UTF8ToAnsi(worksheet.ReadAsUTF8Text(r, 1));
       if s1 = '' then
@@ -346,10 +348,11 @@ begin
   end;
 end;
 
-
+const
+  TestFile='test_fv.xls';
 begin
-  WriteFile('test_fv.xls');
-  ReadFile('test_fv.xls');
+  WriteFile(TestFile);
+  ReadFile(TestFile);
 end.
 
 

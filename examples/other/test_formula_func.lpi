@@ -38,11 +38,6 @@
               <StripSymbols Value="True"/>
             </Debugging>
             <LinkSmart Value="True"/>
-            <Options>
-              <Win32>
-                <GraphicApplication Value="True"/>
-              </Win32>
-            </Options>
           </Linking>
         </CompilerOptions>
       </Item2>
@@ -65,6 +60,7 @@
       <Unit0>
         <Filename Value="test_formula_func.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="test_formula_func"/>
       </Unit0>
       <Unit1>
         <Filename Value="financemath.pas"/>

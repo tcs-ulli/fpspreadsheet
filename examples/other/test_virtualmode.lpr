@@ -3,12 +3,14 @@ program test_virtualmode;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}{$IFDEF UseCThreads}
+  {$IFDEF UNIX}
+  {$IFDEF UseCThreads}
   cthreads,
-  {$ENDIF}{$ENDIF}
-  Classes, laz_fpspreadsheet,
-  { you can add units after this }    lazutf8,
-  SysUtils, variants, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
+  {$ENDIF}
+  {$ENDIF}
+  Classes, SysUtils,
+  lazutf8,
+  variants, laz_fpspreadsheet, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
 
 type
   TDataProvider = class
