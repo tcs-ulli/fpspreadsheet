@@ -57,7 +57,12 @@ var
   tmpStream: TStream; // workaround to a compiler bug, see bug 22370
 begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
-  if not AOverwriteExisting and FileExists(AFileName) then begin
+  if FileExists(AFileName) then begin
+    if AOverwriteExisting then
+      DeleteFile(AFileName)
+      // In Ubuntu is seems that fmCreate does not erase an existing file.
+      // Therefore we delete it manually.
+    else
       Raise EStreamError.Createfmt('File "%s" already exists.',[AFileName]);
   end;
   RealFile:=TFileStream.Create(AFileName,fmCreate);

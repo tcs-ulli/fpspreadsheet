@@ -14,6 +14,9 @@ unit fpspreadsheet;
 interface
 
 uses
+ {$IFDEF UNIX}
+  clocale,
+ {$ENDIF}
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding;
 
 type
@@ -1094,9 +1097,6 @@ procedure InitCell(var ACell: TCell);
 implementation
 
 uses
- {$IFDEF UNIX}
-  clocale,
- {$ENDIF}
   Math, StrUtils, TypInfo, fpsStreams, fpsUtils, fpsNumFormatParser, fpsFunc;
 
 { Translatable strings }
