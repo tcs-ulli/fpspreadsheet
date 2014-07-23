@@ -3148,10 +3148,28 @@ end;
 procedure TsSpreadOpenDocWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
+  lStream: TStream;
+  lMode: word;
+begin
+  if AOverwriteExisting
+    then lMode := fmCreate or fmOpenWrite
+    else lMode := fmCreate;
+
+  if (boBufStream in Workbook.Options) then
+    lStream := TBufStream.Create(AFileName, lMode)
+  else
+    lStream := TFileStream.Create(AFileName, lMode);
+  try
+    WriteToStream(lStream);
+  finally
+    FreeAndNil(lStream);
+  end;
+end;
+
+procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
+var
   FZip: TZipper;
 begin
-  Unused(AOverwriteExisting);
-
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
   ListAllFormattingStyles;
@@ -3172,7 +3190,7 @@ begin
   { Now compress the files }
   FZip := TZipper.Create;
   try
-    FZip.FileName := AFileName;
+    FZip.FileName := '__temp__.tmp';
 
     FZip.Entries.AddFileEntry(FSMeta, OPENDOC_PATH_META);
     FZip.Entries.AddFileEntry(FSSettings, OPENDOC_PATH_SETTINGS);
@@ -3183,20 +3201,22 @@ begin
 
     ResetStreams;
 
-    FZip.ZipAllFiles;
+    FZip.SaveToStream(AStream);
+
   finally
     DestroyStreams;
     FZip.Free;
   end;
 end;
 
-
+                 (*
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
 begin
   Unused(AStream);
   // Not supported at the moment
   raise Exception.Create('TsSpreadOpenDocWriter.WriteToStream not supported');
 end;
+                   *)
 
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
   ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
