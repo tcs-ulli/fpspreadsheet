@@ -1,7 +1,7 @@
 {
 test_write_formula.pas
 
-Demonstrates how to write an formula using the fpspreadsheet library
+Demonstrates how to write a formula using the fpspreadsheet library
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
@@ -84,7 +84,10 @@ begin
   MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor, uffBold];}
 end;
 
+const
+  TestFile='test_formula.xls';
 begin
+  writeln('Starting program.');
   MyDir := ExtractFilePath(ParamStr(0));
 
   // Create the spreadsheet
@@ -95,8 +98,9 @@ begin
   WriteSecondWorksheet();
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test_formula.xls', sfExcel8, True);
+  MyWorkbook.WriteToFile(MyDir + TestFile, sfExcel8, True);
 //  MyWorkbook.WriteToFile(MyDir + 'test_formula.odt', sfOpenDocument, False);
   MyWorkbook.Free;
+  writeln('Finished. Please open "'+Testfile+'" in your spreadsheet program.');
 end.
 

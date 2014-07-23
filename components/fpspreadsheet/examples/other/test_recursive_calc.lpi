@@ -38,11 +38,6 @@
               <StripSymbols Value="True"/>
             </Debugging>
             <LinkSmart Value="True"/>
-            <Options>
-              <Win32>
-                <GraphicApplication Value="True"/>
-              </Win32>
-            </Options>
           </Linking>
         </CompilerOptions>
       </Item2>
@@ -64,6 +59,7 @@
       <Unit0>
         <Filename Value="test_recursive_calc.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="test_recursive_calc"/>
       </Unit0>
     </Units>
   </ProjectOptions>
@@ -78,13 +74,6 @@
         <OptimizationLevel Value="0"/>
       </Optimizations>
     </CodeGeneration>
-    <Linking>
-      <Options>
-        <Win32>
-          <GraphicApplication Value="True"/>
-        </Win32>
-      </Options>
-    </Linking>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">

@@ -9,18 +9,21 @@ program test_recursive_calc;
 {$mode objfpc}{$H+}
 
 uses
-  {$IFDEF UNIX}{$IFDEF UseCThreads}
+  {$IFDEF UNIX}
+  {$IFDEF UseCThreads}
   cthreads,
-  {$ENDIF}{$ENDIF}
-  Classes, laz_fpspreadsheet
-  { you can add units after this },
-  math, fpspreadsheet, fpsfunc;
+  {$ENDIF}
+  {$ENDIF}
+  Classes,
+  math, laz_fpspreadsheet, fpspreadsheet, fpsfunc;
 
 var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
-
+const
+  OutputFile='test_calc.xls';
 begin
+  writeln('Starting program.');
   workbook := TsWorkbook.Create;
   try
     worksheet := workbook.AddWorksheet('Calc_test');
@@ -48,7 +51,8 @@ begin
     // B3
     worksheet.WriteNumber(2, 1, 1);
 
-    workbook.WriteToFile('test_calc.xls', sfExcel8, true);
+    workbook.WriteToFile(OutputFile, sfExcel8, true);
+    writeln('Finished. Please open "'+OutputFile+'" in your spreadsheet program.');
   finally
     workbook.Free;
   end;
