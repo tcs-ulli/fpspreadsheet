@@ -39,7 +39,8 @@ uses
   {$ELSE}
   fpszipper,
   {$ENDIF}
-  {xmlread, DOM,} AVL_Tree,
+  laz2_xmlread, laz2_DOM,
+  AVL_Tree,
   fpspreadsheet, fpsutils;
   
 type
@@ -51,6 +52,26 @@ type
   public
     procedure ConvertBeforeWriting(var AFormatString: String;
       var ANumFormat: TsNumberFormat); override;
+  end;
+
+  { TsSpreadOOXMLReader }
+
+  TsSpreadOOXMLReader = class(TsCustomSpreadReader)
+  private
+    FPointSeparatorSettings: TFormatSettings;
+    FSharedStrings: TStringList;
+    function GetAttrValue(ANode: TDOMNode; AAttrName: string): string;
+    function GetNodeValue(ANode: TDOMNode): String;
+    procedure ReadFont(ANode: TDOMNode);
+    procedure ReadFonts(ANode: TDOMNode);
+    procedure ReadSharedStrings(ANode: TDOMNode);
+    procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
+    procedure ReadWorksheet(ANode: TDOMNode; ASheet: TsWorksheet);
+  protected
+  public
+    constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
+    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
   end;
 
   { TsSpreadOOXMLWriter }
@@ -115,7 +136,7 @@ type
 implementation
 
 uses
-  variants, fpsStreams, fpsNumFormatParser, xlscommon;
+  variants, fileutil, fpsStreams, fpsNumFormatParser, xlscommon;
 
 const
   { OOXML general XML constants }
@@ -230,6 +251,415 @@ begin
     parser.Free;
   end;
 end;
+
+
+{ TsSpreadOOXMLReader }
+
+constructor TsSpreadOOXMLReader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FSharedStrings := TStringList.Create;
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+  // Set up the default palette in order to have the default color names correct.
+  Workbook.UseDefaultPalette;
+end;
+
+destructor TsSpreadOOXMLReader.Destroy;
+begin
+  FSharedStrings.Free;
+  inherited Destroy;
+end;
+
+function TsSpreadOOXMLReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
+var
+  i : integer;
+  Found : Boolean;
+begin
+  Found := false;
+  i := 0;
+  Result := '';
+  while not Found and (i < ANode.Attributes.Length) do begin
+    if ANode.Attributes.Item[i].NodeName = AAttrName then begin
+      Found := true;
+      Result := ANode.Attributes.Item[i].NodeValue;
+    end;
+    inc(i);
+  end;
+end;
+
+function TsSpreadOOXMLReader.GetNodeValue(ANode: TDOMNode): String;
+var
+  child: TDOMNode;
+begin
+  Result := '';
+  child := ANode.FirstChild;
+  if Assigned(child) and (child.NodeName = '#text') then
+    Result := child.NodeValue;
+end;
+
+procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
+var
+  node: TDOMNode;
+  fnt: TsFont;
+  fntName: String;
+  fntSize: Single;
+  fntStyles: TsFontStyles;
+  rgb: TsColorValue;
+  fntColor: TsColor;
+  nodename: String;
+  s: String;
+begin
+  fnt := Workbook.GetDefaultFont;
+  fntName := fnt.FontName;
+  fntSize := fnt.Size;
+  fntStyles := [];
+  fntColor := fnt.Color;
+
+  node := ANode.FirstChild;
+  while node <> nil do begin
+    nodename := node.NodeName;
+    if nodename = 'name' then begin
+      s := GetAttrValue(ANode, 'val');
+      if s <> '' then fntName := s;
+    end
+    else
+    if nodename = 'sz' then begin
+      s := GetAttrValue(node, 'val');
+      if s <> '' then fntSize := StrToFloat(s);
+    end
+    else
+    if nodename = 'b' then begin
+      if GetAttrValue(ANode, 'val') <> 'false'
+        then fntStyles := fntStyles + [fssBold];
+    end
+    else
+    if nodename = 'i' then begin
+      if GetAttrValue(ANode, 'val') <> 'false'
+        then fntStyles := fntStyles + [fssItalic];
+    end
+    else
+    if nodename = 'u' then begin
+      if GetAttrValue(ANode, 'val') <> 'false'
+        then fntStyles := fntStyles+ [fssUnderline]
+    end
+    else
+    if nodename = 'strike' then begin
+      if GetAttrValue(ANode, 'val') <> 'false'
+        then fntStyles := fntStyles + [fssStrikeout];
+    end
+    else
+    if nodename = 'color' then begin
+      s := GetAttrValue(ANode, 'rgb');
+      if s <> '' then
+        fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s));
+    end;
+    node := node.NextSibling;
+  end;
+
+  if FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor) = -1 then
+    FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+end;
+
+procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
+var
+  node: TDOMNode;
+begin
+  node := ANode.FirstChild;
+  while node <> nil do begin
+    ReadFont(node);
+    node := node.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
+var
+  valuenode: TDOMNode;
+  s: String;
+begin
+  while Assigned(ANode) do begin
+    if ANode.NodeName = 'si' then begin
+      valuenode := ANode.FirstChild;
+      s := GetNodeValue(valuenode);
+      FSharedStrings.Add(s);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
+var
+  node: TDOMNode;
+  sheetName: String;
+  sheetId: String;
+begin
+  node := ANode.FirstChild;
+  while node <> nil do begin
+    sheetName := GetAttrValue(node, 'name');
+    sheetId := GetAttrValue(node, 'sheetId');
+    AList.AddObject(sheetName, pointer(PtrInt(StrToInt(sheetId))));
+    node := node.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; ASheet: TsWorksheet);
+var
+  rownode: TDOMNode;
+  cellnode: TDOMNode;
+  datanode: TDOMNode;
+  s: String;
+  rowIndex, colIndex: Cardinal;
+  dataStr: String;
+  formulaStr: String;
+  sstIndex: Integer;
+  cell: PCell;
+begin
+  rownode := ANode.FirstChild;
+  while Assigned(rownode) do begin
+    if rownode.NodeName = 'row' then begin
+      cellnode := rownode.FirstChild;
+      while Assigned(cellnode) do begin
+        if cellnode.NodeName = 'c' then begin
+          // get row and column address
+          s := GetAttrValue(cellnode, 'r');       // cell address, like 'A1'
+          ParseCellString(s, rowIndex, colIndex);
+
+          // get style index
+          s := GetAttrValue(cellnode, 's');
+          //..
+
+          // create cell
+          if FIsVirtualMode then begin
+            InitCell(rowIndex, colIndex, FVirtualCell);
+            cell := @FVirtualCell;
+          end else
+            cell := ASheet.GetCell(rowIndex, colIndex);
+
+          // get data
+          datanode := cellnode.FirstChild;
+          dataStr := '';
+          formulaStr := '';
+          while Assigned(datanode) do begin
+            if datanode.NodeName = 'v' then
+              dataStr := GetNodeValue(datanode)
+            else
+            if datanode.NodeName = 'f' then
+              formulaStr := GetNodeValue(datanode);
+            datanode := datanode.NextSibling;
+          end;
+
+          // get data type
+          s := GetAttrValue(cellnode, 't');   // data type
+          if s = 'n' then
+            ASheet.WriteNumber(cell, StrToFloat(dataStr, FPointSeparatorSettings))
+          else
+          if s = 's' then begin
+            sstIndex := StrToInt(dataStr);
+            ASheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
+          end
+          else
+          if s = '' then
+            ASheet.WriteBlank(cell);
+        end;
+
+        cellnode := cellnode.NextSibling;
+      end;
+    end;
+    rownode := rownode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+var
+  Doc : TXMLDocument;
+  FilePath : string;
+  UnZip : TUnZipper;
+  FileList : TStringList;
+  SheetList: TStringList;
+  i: Integer;
+
+  BodyNode, SpreadSheetNode, TableNode: TDOMNode;
+  StylesNode: TDOMNode;
+  OfficeSettingsNode: TDOMNode;
+
+  { We have to use our own ReadXMLFile procedure (there is one in xmlread)
+    because we have to preserve spaces in element text for date/time separator.
+    As a side-effect we have to skip leading spaces by ourselves. }
+  procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
+  var
+    parser: TDOMParser;
+    src: TXMLInputSource;
+    stream: TStream;
+//    fstream: TStream;
+  begin
+    {
+    if (boBufStream in Workbook.Options) then begin
+      fstream := TFileStream.Create(AFilename, fmOpenRead + fmShareDenyWrite);
+      stream := TMemorystream.Create;
+      stream.CopyFrom(fstream, fstream.Size);
+      stream.Position := 0;
+      fstream.free;
+    end
+    }
+
+    if (boBufStream in Workbook.Options) then
+      stream := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyWrite)
+    else
+      stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyWrite);
+
+    try
+      parser := TDOMParser.Create;
+      try
+        parser.Options.PreserveWhiteSpace := true;    // This preserves spaces!
+        src := TXMLInputSource.Create(stream);
+        try
+          parser.Parse(src, ADoc);
+        finally
+          src.Free;
+        end;
+      finally
+        parser.Free;
+      end;
+    finally
+      stream.Free;
+    end;
+  end;
+
+var
+  s: String;
+  node: TDOMNode;
+
+begin
+  //unzip content.xml into AFileName path
+  FilePath := GetTempDir(false);
+  UnZip := TUnZipper.Create;
+  UnZip.OutputPath := FilePath;
+  FileList := TStringList.Create;
+
+  FileList.Add(OOXML_PATH_XL_STYLES);   // styles
+  FileList.Add(OOXML_PATH_XL_STRINGS);  // sharedstrings
+  FileList.Add(OOXML_PATH_XL_WORKBOOK); // workbook
+
+  try
+    Unzip.UnZipFiles(AFileName,FileList);
+  finally
+    FreeAndNil(FileList);
+    FreeAndNil(UnZip);
+  end; //try
+
+  Doc := nil;
+  SheetList := TStringList.Create;
+  try
+    // process the sharedStrings.xml file
+    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
+    DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
+    ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
+    FreeAndNil(Doc);
+
+    // process the styles.xml file
+    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
+    DeleteFile(FilePath + OOXML_PATH_XL_STYLES);
+    ReadFonts(Doc.DocumentElement.FindNode('fonts'));
+    (*
+    ReadNumFormats(StylesNode);
+    ReadStyles(StylesNode);
+      *)
+    FreeAndNil(Doc);
+
+    // process the workbook.xml file
+    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
+    DeleteFile(FilePath + OOXML_PATH_XL_WORKBOOK);
+
+    ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+
+    FreeAndNil(Doc);
+
+    // read worksheets
+    for i:=0 to SheetList.Count-1 do begin
+
+      // unzip sheet file
+      FileList := TStringList.Create;
+      try
+        FileList.Add(OOXML_PATH_XL_WORKSHEETS + SheetList[i] + '.xml');
+        UnZip := TUnZipper.Create;
+        try
+          UnZip.OutputPath := FilePath;
+          Unzip.UnZipFiles(AFileName, FileList);
+        finally
+          FreeAndNil(UnZip);
+        end;
+      finally
+        FreeAndNil(FileList);
+      end;
+
+      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKSHEETS + SheetList[i] + '.xml');
+      DeleteFile(FilePath + OOXML_PATH_XL_WORKSHEETS + SheetList[i] + '.xml');
+
+      FWorksheet := AData.AddWorksheet(SheetList[i]);
+
+      ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
+
+      FreeAndNil(Doc);
+    end;
+
+
+
+
+
+        (*
+    //process the content.xml file
+    ReadXMLFile(Doc, FilePath+'content.xml');
+    DeleteFile(FilePath+'content.xml');
+
+    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
+    ReadNumFormats(StylesNode);
+    ReadStyles(StylesNode);
+
+    BodyNode := Doc.DocumentElement.FindNode('office:body');
+    if not Assigned(BodyNode) then Exit;
+
+    SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
+    if not Assigned(SpreadSheetNode) then Exit;
+
+    ReadDateMode(SpreadSheetNode);
+
+    //process each table (sheet)
+    TableNode := SpreadSheetNode.FindNode('table:table');
+    while Assigned(TableNode) do begin
+      // These nodes occur due to leading spaces which are not skipped
+      // automatically any more due to PreserveWhiteSpace option applied
+      // to ReadXMLFile
+      if TableNode.NodeName = '#text' then begin
+        TableNode := TableNode.NextSibling;
+        continue;
+      end;
+      FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
+      // Collect column styles used
+      ReadColumns(TableNode);
+      // Process each row inside the sheet and process each cell of the row
+      ReadRowsAndCells(TableNode);
+      ApplyColWidths;
+      // Continue with next table
+      TableNode := TableNode.NextSibling;
+    end; //while Assigned(TableNode)
+
+    Doc.Free;
+
+    // process the settings.xml file (Note: it does not always exist!)
+    if FileExists(FilePath + 'settings.xml') then begin
+      ReadXMLFile(Doc, FilePath+'settings.xml');
+      DeleteFile(FilePath+'settings.xml');
+
+      OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
+      ReadSettings(OfficeSettingsNode);
+    end;
+               *)
+  finally
+    SheetList.Free;
+    FreeAndNil(Doc);
+  end;
+end;
+
 
 
 { TsSpreadOOXMLWriter }
@@ -1278,7 +1708,7 @@ end;
 }
 initialization
 
-  RegisterSpreadFormat(TsCustomSpreadReader, TsSpreadOOXMLWriter, sfOOXML);
+  RegisterSpreadFormat(TsSpreadOOXMLReader, TsSpreadOOXMLWriter, sfOOXML);
 
 end.
 
