@@ -57,7 +57,7 @@ type
     FWorksheet: TsWorksheet;
     FFont: TsFont;
   protected
-    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); override;
+    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); override;
     procedure CreateNumFormatList; override;
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); override;
@@ -110,8 +110,10 @@ type
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
       AListIndex: Integer); override;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: double; ACell: PCell); override;
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -188,6 +190,17 @@ type
     Attrib2: Byte;
     Attrib3: Byte;
     Value: Double;
+  end;
+
+  TBIFF2IntegerRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1: Byte;
+    Attrib2: Byte;
+    Attrib3: Byte;
+    Value: Word;
   end;
 
 
@@ -297,45 +310,41 @@ end;
 
 { TsSpreadBIFF2Reader }
 
-procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ARow, ACol: Cardinal;
-  XFIndex: Word);
+procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
 var
-  lCell: PCell;
   xfData: TXFListData;
 begin
-  lCell := FWorksheet.GetCell(ARow, ACol);
-
-  if Assigned(lCell) then begin
+  if Assigned(ACell) then begin
     xfData := TXFListData(FXFList.items[XFIndex]);
 
     // Font index, "bold" attribute
     if xfData.FontIndex = 1 then
-      Include(lCell^.UsedFormattingFields, uffBold)
+      Include(ACell^.UsedFormattingFields, uffBold)
     else
-      Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := xfData.FontIndex;
+      Include(ACell^.UsedFormattingFields, uffFont);
+    ACell^.FontIndex := xfData.FontIndex;
 
     // Alignment
-    lCell^.HorAlignment := xfData.HorAlignment;
-    lCell^.VertAlignment := xfData.VertAlignment;
+    ACell^.HorAlignment := xfData.HorAlignment;
+    ACell^.VertAlignment := xfData.VertAlignment;
 
     // Wordwrap not supported by BIFF2
-    Exclude(lCell^.UsedFormattingFields, uffWordwrap);
+    Exclude(ACell^.UsedFormattingFields, uffWordwrap);
     // Text rotation not supported by BIFF2
-    Exclude(lCell^.UsedFormattingFields, uffTextRotation);
+    Exclude(ACell^.UsedFormattingFields, uffTextRotation);
 
     // Border
     if xfData.Borders <> [] then begin
-      Include(lCell^.UsedFormattingFields, uffBorder);
-      lCell^.Border := xfData.Borders;
+      Include(ACell^.UsedFormattingFields, uffBorder);
+      ACell^.Border := xfData.Borders;
     end else
-      Exclude(lCell^.UsedFormattingFields, uffBorder);
+      Exclude(ACell^.UsedFormattingFields, uffBorder);
 
     // Background, only shaded, color is ignored
     if xfData.BackgroundColor <> 0 then
-      Include(lCell^.UsedFormattingFields, uffBackgroundColor)
+      Include(ACell^.UsedFormattingFields, uffBackgroundColor)
     else
-      Exclude(lCell^.UsedFormattingFields, uffBackgroundColor);
+      Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
   end;
 end;
 
@@ -368,9 +377,17 @@ procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: Word;
+  cell: PCell;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
-  ApplyCellFormatting(ARow, ACol, XF);
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+  ApplyCellFormatting(cell, XF);
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
@@ -514,13 +531,20 @@ begin
   { Recalculation byte - currently not used }
   AStream.ReadByte;
 
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
     case Data[0] of
       0: // String -> Value is found in next record (STRING)
-         FIncompleteCell := FWorksheet.GetCell(ARow, ACol);
+         FIncompleteCell := cell;
       1: // Boolean value
-         FWorksheet.WriteBoolValue(ARow, ACol, Data[2] = 1);
+         FWorksheet.WriteBoolValue(cell, Data[2] = 1);
       2: begin  // Error value
            case Data[2] of
              ERR_INTERSECTION_EMPTY   : err := errEmptyIntersection;
@@ -531,10 +555,10 @@ begin
              ERR_OVERFLOW             : err := errOverflow;
              ERR_ARG_ERROR            : err := errArgError;
            end;
-           FWorksheet.WriteErrorValue(ARow, ACol, err);
+           FWorksheet.WriteErrorValue(cell, err);
          end;
       3: // Empty cell
-         FWorksheet.WriteBlank(ARow, ACol);
+         FWorksheet.WriteBlank(cell);
     end
   else begin
     if SizeOf(Double) <> 8 then
@@ -546,20 +570,22 @@ begin
     {Find out what cell type, set content type and value}
     ExtractNumberFormat(XF, nf, nfs);
     if IsDateTime(formulaResult, nf, nfs, dt) then
-      FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
+      FWorksheet.WriteDateTime(cell, dt, nf, nfs)
     else
-      FWorksheet.WriteNumber(ARow, ACol, formulaResult, nf, nfs);
+      FWorksheet.WriteNumber(cell, formulaResult, nf, nfs);
   end;
 
   { Formula token array }
   if FWorkbook.ReadFormulas then begin
-    cell := FWorksheet.FindCell(ARow, ACol);
     ok := ReadRPNTokenArray(AStream, cell^.RPNFormulaValue);
     if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
 
   { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode and (cell <> FIncompleteCell) then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
@@ -570,6 +596,7 @@ var
   XF: Word;
   AValue: ansistring;
   AStrValue: UTF8String;
+  cell: PCell;
 begin
   { Read entire record, starting at Row, except for string data }
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2LabelRecord) - 2*SizeOf(Word));
@@ -594,10 +621,20 @@ begin
     // Latin 1 is the default
     AStrValue := CP1252ToUTF8(AValue);
   end;
-  FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
+
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+  FWorksheet.WriteUTF8Text(cell, AStrValue);
 
   { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode and (cell <> FIncompleteCell) then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
@@ -609,6 +646,7 @@ var
   dt: TDateTime;
   nf: TsNumberFormat;
   nfs: String;
+  cell: PCell;
 begin
   { Read entire record, starting at Row }
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
@@ -617,15 +655,25 @@ begin
   XF := rec.Attrib1 and $3F;
   value := rec.Value;
 
+  {Create cell}
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nfs);
   if IsDateTime(value, nf, nfs, dt) then
-    FWorksheet.WriteDateTime(ARow, ACol, dt, nf, nfs)
+    FWorksheet.WriteDateTime(cell, dt, nf, nfs)
   else
-    FWorksheet.WriteNumber(ARow, ACol, value, nf, nfs);
+    FWorksheet.WriteNumber(cell, value, nf, nfs);
 
   { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode and (cell <> FIncompleteCell) then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
@@ -633,18 +681,30 @@ var
   ARow, ACol: Cardinal;
   XF: Word;
   AWord  : Word = 0;
+  cell: PCell;
+  rec: TBIFF2IntegerRecord;
 begin
-  { BIFF Record row/column/style }
-  ReadRowColXF(AStream, ARow, ACol, XF);
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
+  ARow := WordLEToN(rec.Row);
+  ACol := WordLEToN(rec.Col);
+  XF := rec.Attrib1 and $3F;
+  AWord := WordLEToN(rec.Value);
 
-  { 16 bit unsigned integer }
-  AStream.ReadBuffer(AWord, 2);
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteNumber(ARow, ACol, AWord);
+  FWorksheet.WriteNumber(cell, AWord);
 
   { Apply formatting to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode and (cell <> FIncompleteCell) then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 // Read the row, column and xf index
@@ -723,6 +783,8 @@ begin
       // the FORMULA record which precedes the String record.
       FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
       FIncompleteCell^.ContentType := cctUTF8String;
+      if FIsVirtualMode then
+        Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
     end;
   end;
   FIncompleteCell := nil;

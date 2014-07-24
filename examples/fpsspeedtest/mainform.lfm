@@ -10,7 +10,7 @@ object Form1: TForm1
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnKeyPress = FormKeyPress
-  LCLVersion = '1.2.4.0'
+  LCLVersion = '1.3'
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
