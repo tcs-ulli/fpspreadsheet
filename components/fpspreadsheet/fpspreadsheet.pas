@@ -1,7 +1,7 @@
 {
 fpspreadsheet.pas
 
-Writes an spreadsheet document
+Writes a spreadsheet document
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
