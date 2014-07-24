@@ -1175,6 +1175,7 @@ end;
 }
 procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
 begin
+  if FWorkSheet = nil then exit;
   if (soHasFrozenPanes in FWorksheet.Options) then begin
     Canvas.Pen.Style := psSolid;
     Canvas.Pen.Color := clBlack;
