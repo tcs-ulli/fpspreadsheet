@@ -382,7 +382,7 @@ type
     FPaletteFound: Boolean;
     FXFList: TFPList;     // of TXFListData
     FIncompleteCell: PCell;
-    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); virtual; overload;
+    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); overload;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; overload;
     procedure CreateNumFormatList; override;
     // Extracts a number out of an RK value

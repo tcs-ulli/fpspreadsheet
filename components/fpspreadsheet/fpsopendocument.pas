@@ -1001,11 +1001,17 @@ end;
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
 var
   styleName: String;
+  cell: PCell;
 begin
-  FWorkSheet.WriteBlank(ARow, ACol);
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+  FWorkSheet.WriteBlank(cell);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(ARow, ACol, stylename);
+  ApplyStyleToCell(cell, stylename);
 end;
 
 { Collection columns used in the given table. The columns contain links to
@@ -1321,9 +1327,14 @@ begin
   fs.DecimalSeparator := '.';
 
   // Create cell and apply format
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
   styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(ARow, ACol, stylename);
-  cell := FWorksheet.FindCell(ARow, ACol);
+  ApplyStyleToCell(cell, stylename);
 
   // Read formula, store in the cell's FormulaValue.FormulaStr
   formula := GetAttrValue(ACellNode, 'table:formula');
@@ -1369,6 +1380,9 @@ begin
   end else
   // Text
     FWorksheet.WriteUTF8Text(cell, valueStr);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
@@ -1376,6 +1390,7 @@ var
   cellText: String;
   styleName: String;
   childnode: TDOMNode;
+  cell: PCell;
 begin
   //  cellText := ACellNode.TextContent;
   { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
@@ -1393,10 +1408,18 @@ begin
     childnode := childnode.NextSibling;
   end;
 
-  FWorkSheet.WriteUTF8Text(ARow, ACol, cellText);
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+  FWorkSheet.WriteUTF8Text(cell, cellText);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(ARow, ACol, stylename);
+  ApplyStyleToCell(cell, stylename);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
@@ -1405,42 +1428,50 @@ var
   Value, Str: String;
   lNumber: Double;
   styleName: String;
-  lCell: PCell;
+  cell: PCell;
 begin
   FSettings := DefaultFormatSettings;
   FSettings.DecimalSeparator:='.';
 
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
   Value := GetAttrValue(ACellNode,'office:value');
   if UpperCase(Value)='1.#INF' then
-    FWorkSheet.WriteNumber(Arow,ACol,1.0/0.0)
+    FWorkSheet.WriteNumber(cell, 1.0/0.0)
   else
   begin
     // Don't merge, or else we can't debug
     Str := GetAttrValue(ACellNode,'office:value');
     lNumber := StrToFloat(Str,FSettings);
-    FWorkSheet.WriteNumber(ARow,ACol,lNumber);
+    FWorkSheet.WriteNumber(cell, lNumber);
   end;
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(ARow, ACol, stylename);
+  ApplyStyleToCell(cell, stylename);
 
   // Sometimes date/time cells are stored as "float".
   // We convert them to date/time and also correct the date origin offset if
   // needed.
-  lCell := FWorksheet.FindCell(ARow, ACol);
-  if IsDateTimeFormat(lCell^.NumberFormat) or IsDateTimeFormat(lCell^.NumberFormatStr)
+  if IsDateTimeFormat(cell^.NumberFormat) or IsDateTimeFormat(cell^.NumberFormatStr)
   then begin
-    lCell^.ContentType := cctDateTime;
+    cell^.ContentType := cctDateTime;
     // No datemode correction for intervals and for time-only values
-    if (lCell^.NumberFormat = nfTimeInterval) or (lCell^.NumberValue < 1) then
-      lCell^.DateTimeValue := lCell^.NumberValue
+    if (cell^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
+      cell^.DateTimeValue := cell^.NumberValue
     else
       case FDateMode of
-        dm1899: lCell^.DateTimeValue := lCell^.NumberValue + DATEMODE_1899_BASE;
-        dm1900: lCell^.DateTimeValue := lCell^.NumberValue + DATEMODE_1900_BASE;
-        dm1904: lCell^.DateTimeValue := lCell^.NumberValue + DATEMODE_1904_BASE;
+        dm1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
+        dm1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
+        dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
       end;
   end;
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol: Word;
@@ -1450,13 +1481,20 @@ var
   styleName: String;
   cell: PCell;
 begin
-  cell := FWorksheet.GetCell(ARow, ACol);
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
 
   dt := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
   FWorkSheet.WriteDateTime(cell, dt, cell^.NumberFormat, cell^.NumberFormatStr);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);

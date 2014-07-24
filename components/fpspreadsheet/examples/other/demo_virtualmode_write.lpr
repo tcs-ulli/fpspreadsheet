@@ -98,9 +98,9 @@ begin
 
       t := Now;
       //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      //workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
       //workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
-      //workbook.WriteToFile('test_virtual.xls', sfExcel2, true);
+      workbook.WriteToFile('test_virtual.xls', sfExcel2, true);
       t := Now - t;
 
     finally

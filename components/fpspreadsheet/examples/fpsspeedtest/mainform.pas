@@ -92,7 +92,9 @@ const
 procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
   const ADataCell: PCell);
 begin
-  // nothing to do here.
+  // nothing to do here. Just do a progress display
+  if ARow mod 1000 = 0 then
+    StatusMsg(Format('Virtual mode reading %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
 procedure TForm1.WriteCellStringHandler(Sender: TObject; ARow, ACol: cardinal;
@@ -103,7 +105,7 @@ begin
   S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
   AValue := S;
   if ARow mod 1000 = 0 then
-    StatusMsg(Format('Writing %s row %d...', [GetFileFormatName(FCurFormat), ARow]));
+    StatusMsg(Format('Virtual mode writing %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
 procedure TForm1.WriteCellNumberHandler(Sender: TObject; ARow, ACol: cardinal;
@@ -111,7 +113,7 @@ procedure TForm1.WriteCellNumberHandler(Sender: TObject; ARow, ACol: cardinal;
 begin
   AValue := ARow * 1E5 + ACol;
   if ARow mod 1000 = 0 then
-    StatusMsg(Format('Writing %s row %d...', [GetFileFormatName(FCurFormat), ARow]));
+    StatusMsg(Format('Virtual mode writing %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
 procedure TForm1.WriteCellStringAndNumberHandler(Sender: TObject; ARow, ACol: cardinal;
@@ -137,6 +139,11 @@ begin
   s := Trim(Log);
   Log := Log + '         ';
   try
+    if FEscape then begin
+      Log := 'Test aborted';
+      exit;
+    end;
+
     for i := 0 to CgFormats.Items.Count-1 do begin
       if FEscape then begin
         Log := 'Test aborted';
@@ -153,9 +160,15 @@ begin
       end;
 
       FCurFormat := SPREAD_FORMAT[i];
+      StatusMsg('Reading ' + GetFileFormatName(FCurFormat));
 
       ok := false;
       for j:=1 to 4 do begin
+        if FEscape then begin
+          Log := 'Test aborted';
+          exit;
+        end;
+
         fName := FDir + CONTENT_PREFIX[RgContent.ItemIndex] + Copy(s, 1, Pos(' ', s)-1) + '_' + IntToStr(j) + FORMAT_EXT[i];
         if not FileExists(fname) then
           continue;
