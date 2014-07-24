@@ -12,6 +12,10 @@ This folder contains various demo applications:
 - demo_virtualmode_writing: demonstrates how the virtual mode of the workbook
   can be used to create huge spreadsheet files.
   
+- demo_virtualmode_reading: demonstrates how the virtual mode of the workbook
+  can be used to read huge spreadsheet files. Requires the file written by
+  demo_virtualmode_writing.
+  
 - demo_write_formatting: shows some simple cell formatting
 
 - demo_write_formula: shows some rpn formulas

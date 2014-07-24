@@ -82,7 +82,6 @@ type
     FCurrentWorksheet: Integer;
   protected
     { Record writing methods }
-    procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(const AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
@@ -1450,6 +1449,7 @@ var
   ARow, ACol: Cardinal;
   XF: Word;
   AStrValue: ansistring;
+  cell: PCell;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -1458,8 +1458,15 @@ begin
   SetLength(AStrValue,L);
   AStream.ReadBuffer(AStrValue[1], L);
 
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
+  FWorksheet.WriteUTF8Text(cell, ISO_8859_1ToUTF8(AStrValue));
   //Read formatting runs (not supported)
   B:=AStream.ReadByte;
   for L := 0 to B-1 do begin
@@ -1468,7 +1475,10 @@ begin
   end;
 
   { Add attributes to cell }
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 { Reads a STRING record which contains the result of string formula. }
@@ -1485,6 +1495,8 @@ begin
     if (FIncompleteCell <> nil) and (s <> '') then begin
       FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
       FIncompleteCell^.ContentType := cctUTF8String;
+      if FIsVirtualMode then
+        Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
     end;
   end;
   FIncompleteCell := nil;
@@ -1657,17 +1669,6 @@ begin
   FWorksheetNames.Free;
 end;
 
-procedure TsSpreadBIFF5Reader.ReadBlank(AStream: TStream);
-var
-  ARow, ACol: Cardinal;
-  XF: Word;
-begin
-  { Read row, column, and XF index from BIFF file }
-  ReadRowColXF(AStream, ARow, ACol, XF);
-  { Add attributes to cell}
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
 procedure TsSpreadBIFF5Reader.ReadFont(const AStream: TStream);
 var
   lCodePage: Word;
@@ -1761,7 +1762,7 @@ var
   L: Word;
   ARow, ACol: Cardinal;
   XF: WORD;
-//  AValue: array[0..255] of Char;
+  cell: PCell;
   AValue: ansistring;
   AStrValue: ansistring;
 begin
@@ -1776,23 +1777,21 @@ begin
   SetLength(AValue, L);
   AStream.ReadBuffer(AValue[1], L);
 
-  { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AValue));
-
-                                                         (*
-  ReadRowColXF(AStream, ARow, ACol, XF);
-
-  { Byte String with 16-bit size }
-  L := AStream.ReadWord();
-  AStream.ReadBuffer(AValue, L);
-  AValue[L] := #0;
-  AStrValue := AValue;
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, ISO_8859_1ToUTF8(AStrValue));
-                                                           *)
+  FWorksheet.WriteUTF8Text(cell, ISO_8859_1ToUTF8(AValue));
+
   { Add attributes }
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 

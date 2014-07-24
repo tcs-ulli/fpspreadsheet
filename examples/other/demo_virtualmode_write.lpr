@@ -49,7 +49,7 @@ var
     end else
       AData := 10000*ARow + ACol;
 
-    // you can use the OnNeedData also to provide feedback on how the process
+    // you can use the event handler also to provide feedback on how the process
     // progresses:
     if (ACol = 0) and (ARow mod 1000 = 0) then
       WriteLn('Writing row ', ARow, '...');
@@ -76,10 +76,10 @@ begin
       { Next two numbers define the size of virtual spreadsheet.
         In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
         the number of fields to be written to the spreadsheet file }
-      workbook.VirtualRowCount := 5000;
+      workbook.VirtualRowCount := 20000;
       workbook.VirtualColCount := 100;
 
-      { The event handler for OnNeedCellData links the workbook to the method
+      { The event handler for OnWriteCellData links the workbook to the method
         from which it gets the data to be written. }
       workbook.OnWriteCellData := @dataprovider.WriteCellDataHandler;
 
@@ -97,8 +97,8 @@ begin
       { In case of a database, you would open the dataset before calling this: }
 
       t := Now;
-      workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
-      //workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
+      //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
+      workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
       //workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
       //workbook.WriteToFile('test_virtual.xls', sfExcel2, true);
       t := Now - t;

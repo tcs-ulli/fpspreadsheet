@@ -85,7 +85,6 @@
       <Unit2>
         <Filename Value="stringtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="stringtests"/>
       </Unit2>
       <Unit3>
         <Filename Value="numberstests.pas"/>
@@ -94,7 +93,6 @@
       <Unit4>
         <Filename Value="manualtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="manualtests"/>
       </Unit4>
       <Unit5>
         <Filename Value="testsutility.pas"/>
@@ -128,12 +126,10 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>

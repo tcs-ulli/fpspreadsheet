@@ -78,12 +78,10 @@ type
     procedure ReadBoundsheet(AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
   protected
-    procedure ReadBlank(AStream: TStream); override;
     procedure ReadFont(const AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadLabelSST(const AStream: TStream);
-    // procedure ReadNumber() --> xlscommon
     procedure ReadRichString(const AStream: TStream);
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); override;
@@ -110,8 +108,6 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
-//    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-//      const AValue: TDateTime; ACell: PCell); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
@@ -277,6 +273,26 @@ const
     XF_ROTATION_90DEG_CCW,
     XF_ROTATION_STACKED
   );
+
+type
+  TBIFF8LabelRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    TextLen: Word;
+    TextFlags: Byte;
+  end;
+
+  TBIFF8LabelSSTRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    SSTIndex: DWord;
+  end;
 
 
 { TsSpreadBIFF8Writer }
@@ -960,16 +976,6 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
-type
-  TLabelRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
-    Row: Word;
-    Col: Word;
-    XFIndex: Word;
-    TextLen: Word;
-    TextFlags: Byte;
-  end;
 const
   //limit for this format: 32767 bytes - header (see reclen below):
   //37267-8-1=32758
@@ -978,7 +984,7 @@ var
   L, RecLen: Word;
   TextTooLong: boolean=false;
   WideValue: WideString;
-  rec: TLabelRecord;
+  rec: TBIFF8LabelRecord;
   buf: array of byte;
 begin
   WideValue := UTF8Decode(AValue); //to UTF16
@@ -1027,33 +1033,13 @@ begin
   { Clean up }
   SetLength(buf, 0);
 
-    (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-  RecLen := 8 + 1 + L * SizeOf(WideChar);
-  AStream.WriteWord(WordToLE(RecLen));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF record, according to formatting }
-  WriteXFIndex(AStream, ACell);
-
-  { Byte String with 16-bit size }
-  AStream.WriteWord(WordToLE(L));
-
-  { Byte flags. 1 means regular Unicode LE encoding}
-  AStream.WriteByte(1);
-  AStream.WriteBuffer(WideStringToLE(WideValue)[1], L * Sizeof(WideChar));
-
   {
   //todo: keep a log of errors and show with an exception after writing file or something.
   We can't just do the following
   if TextTooLong then
     Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
   because the file wouldn't be written.
-  }    *)
+  }
 end;
 
 {*******************************************************************
@@ -1539,7 +1525,8 @@ begin
   try
     // Only one stream is necessary for any number of worksheets
     OLEDocument.Stream := MemStream;
-    OLEStorage.ReadOLEFile(AFileName, OLEDocument,'Workbook');
+    OLEStorage.ReadOLEFile(AFileName, OLEDocument, 'Workbook');
+      // Can't be shared with BIFF5 because of the parameter "Workbook" !!!)
 
     // Check if the operation succeded
     if MemStream.Size = 0 then raise Exception.Create('FPSpreadsheet: Reading the OLE document failed');
@@ -1599,23 +1586,13 @@ begin
 
 end;
 
-procedure TsSpreadBIFF8Reader.ReadBlank(AStream: TStream);
-var
-  ARow, ACol: Cardinal;
-  XF: Word;
-begin
-  { Read row, column, and XF index from BIFF file }
-  ReadRowColXF(AStream, ARow, ACol, XF);
-  { Add attributes to cell}
-  ApplyCellFormatting(ARow, ACol, XF);
-end;
-
 procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
 var
   L: Word;
   ARow, ACol: Cardinal;
   XF: Word;
   WideStrValue: WideString;
+  cell: PCell;
 begin
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1627,10 +1604,19 @@ begin
   WideStrValue:=ReadWideString(AStream,L);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, UTF16ToUTF8(WideStrValue));
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);         // "virtual" cell
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);    // "real" cell
+
+  FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(WideStrValue));
 
   {Add attributes}
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
@@ -1640,15 +1626,23 @@ var
   ARow, ACol: Cardinal;
   XF: Word;
   AStrValue: ansistring;
+  cell: PCell;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
-  AStrValue:=ReadString(AStream,L);
+  AStrValue:=ReadString(AStream,L);        // ???? shouldn't this be a unicode string ????
+
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(ARow, ACol, AStrValue);
+  FWorksheet.WriteUTF8Text(cell, AStrValue);
   //Read formatting runs (not supported)
   B:=WordLEtoN(AStream.ReadWord);
   for L := 0 to B-1 do begin
@@ -1657,7 +1651,10 @@ begin
   end;
 
   {Add attributes}
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
@@ -1779,16 +1776,34 @@ var
   ACol,ARow: Cardinal;
   XF: WORD;
   SSTIndex: DWORD;
+  rec: TBIFF8LabelSSTRecord;
+  cell: PCell;
 begin
-  ReadRowColXF(AStream, ARow, ACol, XF);
-  SSTIndex := DWordLEtoN(AStream.ReadDWord);
+  { Read entire record, starting at Row }
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF8LabelSSTRecord) - 2*SizeOf(Word));
+  ARow := WordLEToN(rec.Row);
+  ACol := WordLEToN(rec.Col);
+  XF := WordLEToN(rec.XFIndex);
+  SSTIndex := DWordLEToN(rec.SSTIndex);
+
   if SizeInt(SSTIndex) >= FSharedStringTable.Count then begin
     Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
   end;
-  FWorksheet.WriteUTF8Text(ARow, ACol, FSharedStringTable[SSTIndex]);
+
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
+  FWorksheet.WriteUTF8Text(cell, FSharedStringTable[SSTIndex]);
 
   {Add attributes}
-  ApplyCellFormatting(ARow, ACol, XF);
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 { Helper function for reading a string with 8-bit length. }
@@ -1808,6 +1823,8 @@ begin
   if (FIncompleteCell <> nil) and (s <> '') then begin
     FIncompleteCell^.UTF8StringValue := UTF8Encode(s);
     FIncompleteCell^.ContentType := cctUTF8String;
+    if FIsVirtualMode then
+      Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
   end;
   FIncompleteCell := nil;
 end;
