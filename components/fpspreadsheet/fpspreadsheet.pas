@@ -941,6 +941,10 @@ type
     FWorksheet: TsWorksheet;
     {@@ List of number formats found in the file }
     FNumFormatList: TsCustomNumFormatList;
+    {@@ Temporary cell for virtual mode}
+    FVirtualCell: TCell;
+    {@@ Stores if the reader is in virtual mode }
+    FIsVirtualMode: Boolean;
     procedure CreateNumFormatList; virtual;
     { Record reading methods }
     {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
@@ -1094,7 +1098,8 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
-procedure InitCell(var ACell: TCell);
+procedure InitCell(var ACell: TCell); overload;
+procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell); overload;
 
 
 implementation
@@ -1496,34 +1501,13 @@ begin
   ACell.NumberFormatStr := '';
   FillChar(ACell, SizeOf(ACell), 0);
 end;
-(*
-      Col: Cardinal; // zero-based
-    Row: Cardinal; // zero-based
-    ContentType: TCellContentType;
-    { Possible values for the cells }
-    FormulaValue: TsFormula;
-    RPNFormulaValue: TsRPNFormula;
-    NumberValue: double;
-    UTF8StringValue: ansistring;
-    DateTimeValue: TDateTime;
-    BoolValue: Boolean;
-    ErrorValue: TsErrorValue;
-    { Formatting fields }
-    { When adding/deleting formatting fields don't forget to update CopyFormat! }
-    UsedFormattingFields: TsUsedFormattingFields;
-    FontIndex: Integer;
-    TextRotation: TsTextRotation;
-    HorAlignment: TsHorAlignment;
-    VertAlignment: TsVertAlignment;
-    Border: TsCellBorders;
-    BorderStyles: TsCelLBorderStyles;
-    BackgroundColor: TsColor;
-    NumberFormat: TsNumberFormat;
-    NumberFormatStr: String;
-    RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
-    { Status flags }
-    CalcState: TsCalcState;
-  *)
+
+procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell);
+begin
+  InitCell(ACell);
+  ACell.Row := ARow;
+  ACell.Col := ACol;
+end;
 
 
 { TsWorksheet }
@@ -5305,6 +5289,8 @@ constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
+  FIsVirtualMode := (boVirtualMode in FWorkbook.Options) and
+    Assigned(FWorkbook.OnReadCellData);
   CreateNumFormatList;
 end;
 

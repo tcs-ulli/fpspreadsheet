@@ -37,6 +37,8 @@ type
     FCurFormat: TsSpreadsheetFormat;
     procedure EnableControls(AEnable: Boolean);
     function  GetRowCount(AIndex: Integer): Integer;
+    procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
+      const ADataCell: PCell);
     procedure WriteCellStringHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue: Variant; var AStyleCell: PCell);
     procedure WriteCellNumberHandler(Sender: TObject; ARow, ACol: Cardinal;
@@ -86,6 +88,12 @@ const
   COLCOUNT = 100;
 
 { TForm1 }
+
+procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
+  const ADataCell: PCell);
+begin
+  // nothing to do here.
+end;
 
 procedure TForm1.WriteCellStringHandler(Sender: TObject; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
@@ -161,6 +169,8 @@ begin
         try
           Application.ProcessMessages;
           MyWorkbook.Options := Options;
+          if boVirtualMode in Options then
+            MyWorkbook.OnReadCellData := @ReadCellDataHandler;
           Tm := GetTickCount;
           try
             MyWorkbook.ReadFromFile(fname, SPREAD_FORMAT[i]);
@@ -349,13 +359,13 @@ begin
       s := Format('%7.0nx%d', [1.0*rows, COLCOUNT]);
 
       if CbVirtualModeOnly.Checked then begin
-        //RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
-        //RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+        RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
+        RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
       end else begin
         RunReadTest(1, s + '  [          ]', []);
-        //RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
+        RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
         RunReadTest(3, s + '  [      boBS]', [boBufStream]);
-        //RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+        RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
       end;
 
       Memo.Append(DupeString('-', len));
