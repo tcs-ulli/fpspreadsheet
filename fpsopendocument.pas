@@ -1233,7 +1233,7 @@ var
   end;
 
 begin
-  //unzip content.xml into AFileName path
+  //unzip files into AFileName path
   FilePath := GetTempDir(false);
   UnZip := TUnZipper.Create;
   UnZip.OutputPath := FilePath;
