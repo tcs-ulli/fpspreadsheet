@@ -448,6 +448,7 @@ var
   FileList : TStringList;
   SheetList: TStringList;
   i: Integer;
+  fn: String;
 
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
   StylesNode: TDOMNode;
@@ -478,10 +479,12 @@ begin
   SheetList := TStringList.Create;
   try
     // process the sharedStrings.xml file
-    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
-    DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
-    ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
-    FreeAndNil(Doc);
+    if FileExists(FilePath + OOXML_PATH_XL_STRINGS) then begin
+      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
+      DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
+      ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
+      FreeAndNil(Doc);
+    end;
 
     // process the styles.xml file
     ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
@@ -507,7 +510,9 @@ begin
       // unzip sheet file
       FileList := TStringList.Create;
       try
-        FileList.Add(OOXML_PATH_XL_WORKSHEETS + SheetList[i] + '.xml');
+        // The file name is always "sheet<n>.xml", irrespective of the sheet's name!
+        fn := OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i+1) + '.xml';
+        FileList.Add(fn);
         UnZip := TUnZipper.Create;
         try
           UnZip.OutputPath := FilePath;
@@ -519,8 +524,8 @@ begin
         FreeAndNil(FileList);
       end;
 
-      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKSHEETS + SheetList[i] + '.xml');
-      DeleteFile(FilePath + OOXML_PATH_XL_WORKSHEETS + SheetList[i] + '.xml');
+      ReadXMLFile(Doc, FilePath + fn);
+      DeleteFile(FilePath + fn);
 
       FWorksheet := AData.AddWorksheet(SheetList[i]);
 

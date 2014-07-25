@@ -11,7 +11,7 @@ uses
   xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpsStreams, fpszipper, 
   uvirtuallayer_types, uvirtuallayer, uvirtuallayer_ole, 
   uvirtuallayer_ole_helpers, uvirtuallayer_ole_types, uvirtuallayer_stream, 
-  fpolebasic, xlscommon, wikitable, fpsNumFormatParser, fpsfunc;
+  fpolebasic, xlscommon, wikitable, fpsNumFormatParser, fpsfunc, fpsxmlcommon;
 
 implementation
 

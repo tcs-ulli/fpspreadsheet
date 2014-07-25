@@ -4,7 +4,7 @@ program spready;
 
 uses
   Interfaces, // this includes the LCL widgetset
-  Forms, mainform, laz_fpspreadsheet_visual, laz_fpspreadsheet;
+  Forms, mainform, laz_fpspreadsheet_visual;
 
 {$R *.res}
 
