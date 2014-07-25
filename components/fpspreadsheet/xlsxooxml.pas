@@ -41,7 +41,7 @@ uses
   {$ENDIF}
   laz2_xmlread, laz2_DOM,
   AVL_Tree,
-  fpspreadsheet, fpsutils;
+  fpspreadsheet, fpsutils, fpsxmlcommon;
   
 type
 
@@ -56,12 +56,10 @@ type
 
   { TsSpreadOOXMLReader }
 
-  TsSpreadOOXMLReader = class(TsCustomSpreadReader)
+  TsSpreadOOXMLReader = class(TsSpreadXMLReader)
   private
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
-    function GetAttrValue(ANode: TDOMNode; AAttrName: string): string;
-    function GetNodeValue(ANode: TDOMNode): String;
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadSharedStrings(ANode: TDOMNode);
@@ -271,33 +269,6 @@ begin
   inherited Destroy;
 end;
 
-function TsSpreadOOXMLReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
-var
-  i : integer;
-  Found : Boolean;
-begin
-  Found := false;
-  i := 0;
-  Result := '';
-  while not Found and (i < ANode.Attributes.Length) do begin
-    if ANode.Attributes.Item[i].NodeName = AAttrName then begin
-      Found := true;
-      Result := ANode.Attributes.Item[i].NodeValue;
-    end;
-    inc(i);
-  end;
-end;
-
-function TsSpreadOOXMLReader.GetNodeValue(ANode: TDOMNode): String;
-var
-  child: TDOMNode;
-begin
-  Result := '';
-  child := ANode.FirstChild;
-  if Assigned(child) and (child.NodeName = '#text') then
-    Result := child.NodeValue;
-end;
-
 procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -482,50 +453,6 @@ var
   StylesNode: TDOMNode;
   OfficeSettingsNode: TDOMNode;
 
-  { We have to use our own ReadXMLFile procedure (there is one in xmlread)
-    because we have to preserve spaces in element text for date/time separator.
-    As a side-effect we have to skip leading spaces by ourselves. }
-  procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
-  var
-    parser: TDOMParser;
-    src: TXMLInputSource;
-    stream: TStream;
-//    fstream: TStream;
-  begin
-    {
-    if (boBufStream in Workbook.Options) then begin
-      fstream := TFileStream.Create(AFilename, fmOpenRead + fmShareDenyWrite);
-      stream := TMemorystream.Create;
-      stream.CopyFrom(fstream, fstream.Size);
-      stream.Position := 0;
-      fstream.free;
-    end
-    }
-
-    if (boBufStream in Workbook.Options) then
-      stream := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyWrite)
-    else
-      stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyWrite);
-
-    try
-      parser := TDOMParser.Create;
-      try
-        parser.Options.PreserveWhiteSpace := true;    // This preserves spaces!
-        src := TXMLInputSource.Create(stream);
-        try
-          parser.Parse(src, ADoc);
-        finally
-          src.Free;
-        end;
-      finally
-        parser.Free;
-      end;
-    finally
-      stream.Free;
-    end;
-  end;
-
-var
   s: String;
   node: TDOMNode;
 
