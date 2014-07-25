@@ -419,6 +419,10 @@ begin
             datanode := datanode.NextSibling;
           end;
 
+          // formula to cell
+          if formulaStr <> '' then
+            cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+
           // get data type
           s := GetAttrValue(cellnode, 't');   // data type
           if s = 'n' then
@@ -427,10 +431,37 @@ begin
           if s = 's' then begin
             sstIndex := StrToInt(dataStr);
             ASheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
-          end
+          end else
+          if s = 'str' then
+            ASheet.WriteUTF8Text(cell, datastr)
           else
-          if s = '' then
-            ASheet.WriteBlank(cell);
+          if s = 'b' then
+            ASheet.WriteBoolValue(cell, dataStr='1')
+          else
+          if s = 'e' then begin
+            if dataStr = '#NULL!' then
+              ASheet.WriteErrorValue(cell, errEmptyIntersection)
+            else if dataStr = '#DIV/0!' then
+              ASheet.WriteErrorValue(cell, errDivideByZero)
+            else if dataStr = '#VALUE!' then
+              ASheet.WriteErrorValue(cell, errWrongType)
+            else if dataStr = '#REF!' then
+              ASheet.WriteErrorValue(cell, errIllegalRef)
+            else if dataStr = '#NAME?' then
+              ASheet.WriteErrorValue(cell, errWrongName)
+            else if dataStr = '#NUM!' then
+              ASheet.WriteErrorValue(cell, errOverflow)
+            else if dataStr = '#N/A' then
+              ASheet.WriteErrorValue(cell, errArgError)
+            else
+              raise Exception.Create('unknown error type');
+          end else
+          if s = '' then begin
+            if formulaStr = '' then
+              ASheet.WriteBlank(cell)
+            else
+              ASheet.WriteNumber(cell, STrToFloat(dataStr, FPointSeparatorSettings));
+          end;
         end;
 
         cellnode := cellnode.NextSibling;
