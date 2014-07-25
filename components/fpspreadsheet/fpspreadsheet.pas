@@ -575,6 +575,7 @@ type
 
     procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue); overload;
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
+
     procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
 
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double); overload;
