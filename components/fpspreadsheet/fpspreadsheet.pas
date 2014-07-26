@@ -502,6 +502,8 @@ type
     { Callback procedures called when iterating through all cells }
     procedure CalcFormulaCallback(data, arg: Pointer);
     procedure CalcStateCallback(data, arg: Pointer);
+    procedure InsertColCallback(data, arg: Pointer);
+    procedure InsertRowCallback(data, arg: Pointer);
     procedure RemoveCallback(data, arg: pointer);
 
   protected
@@ -667,6 +669,8 @@ type
     function  GetRowHeight(ARow: Cardinal): Single;
     function  GetCol(ACol: Cardinal): PCol;
     function  GetColWidth(ACol: Cardinal): Single;
+    procedure InsertCol(ACol: Cardinal);
+    procedure InsertRow(ARow: Cardinal);
     procedure RemoveAllRows;
     procedure RemoveAllCols;
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
@@ -3829,8 +3833,10 @@ begin
     FillChar(Result^, SizeOf(TRow), #0);
     Result^.Row := ARow;
     FRows.Add(Result);
-    if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
-      else FLastRowIndex := Max(FLastRowIndex, ARow);
+    if FLastRowIndex = 0 then
+      FLastRowIndex := GetLastRowIndex(true)
+    else
+      FLastRowIndex := Max(FLastRowIndex, ARow);
   end;
 end;
 
@@ -3849,8 +3855,10 @@ begin
     FillChar(Result^, SizeOf(TCol), #0);
     Result^.Col := ACol;
     FCols.Add(Result);
-    if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
-      else FLastColIndex := Max(FLastColIndex, ACol);
+    if FLastColIndex = 0 then
+      FLastColIndex := GetLastColIndex(true)
+    else
+      FLastColIndex := Max(FLastColIndex, ACol);
   end;
 end;
 
@@ -3938,6 +3946,130 @@ begin
   else
     //Result := CalcAutoRowHeight(ARow);
     Result := FWorkbook.DefaultRowHeight;
+end;
+
+procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
+var
+  cell: PCell;
+  col: PtrInt;
+  fe: TsFormulaElement;
+  i: Integer;
+begin
+  col := PtrInt(arg);
+  cell := PCell(data);
+
+  // Update column index of moved cells
+  if cell^.Col >= col then
+    inc(cell^.Col);
+
+  // Update rpn formulas
+  for i:=0 to Length(cell^.RPNFormulaValue)-1 do begin
+    fe := cell^.RPNFormulaValue[i];   // "fe" means "formula element"
+    case fe.ElementKind of
+      fekCell, fekCellRef: if fe.Col >= col then inc(fe.Col);
+      fekCellRange:
+        begin
+          if fe.Col >= col then inc(fe.Col);
+          if fe.Col2 >= col then inc(fe.Col2);
+        end;
+    end;
+  end;
+end;
+
+{@@
+  Inserts a column BEFORE the index specified. Cells with greater column indexes are
+  moved one column up. Cell references in rpn formulas are considered as well.
+  However, lacking a parser for string formulas, references in string formulas
+  are not changed which may lead to incorrect operation!
+
+  @param   ACol   Index of the column before which a new column is inserted.
+}
+procedure TsWorksheet.InsertCol(ACol: Cardinal);
+var
+  cellnode: TAVLTreeNode;
+  cell: PCell;
+  col: PCol;
+  i: Integer;
+begin
+  // Update column index of cell records
+  cellnode := FCells.FindLowest;
+  while Assigned(cellnode) do begin
+    InsertColCallback(cellnode.Data, pointer(PtrInt(ACol)));
+    cellnode := FCells.FindSuccessor(cellnode);
+  end;
+
+  // Update column index of column records
+  for i:=0 to FCols.Count-1 do begin
+    col := PCol(FCols.Items[i]);
+    if col^.Col >= ACol then inc(col^.Col);
+  end;
+
+  // Update last column index
+  inc(FLastColIndex);
+
+  ChangedCell(0, ACol);
+end;
+
+procedure TsWorksheet.InsertRowCallback(data, arg: Pointer);
+var
+  cell: PCell;
+  row: PtrInt;
+  i: Integer;
+  fe: TsFormulaElement;
+begin
+  row := PtrInt(arg);
+  cell := PCell(data);
+
+  // Update row index of moved cells
+  if cell^.Row >= row then
+    inc(cell^.Row);
+
+  // Update rpn formulas
+  for i:=0 to Length(cell^.RPNFormulaValue)-1 do begin
+    fe := cell^.RPNFormulaValue[i];   // "fe" means "formula element"
+    case fe.ElementKind of
+      fekCell, fekCellRef: if fe.Row >= row then inc(fe.Row);
+      fekCellRange:
+        begin
+          if fe.Row >= row then inc(fe.Row);
+          if fe.Row2 >= row then inc(fe.Row2);
+        end;
+    end;
+  end;
+end;
+
+{@@
+  Inserts a row BEFORE the row specified. Cells with greater row indexes are
+  moved one row up. Cell references in rpn formulas are considered as well.
+  However, lacking a parser for string formulas, references in string formulas
+  are not changed which may lead to incorrect operation!
+
+  @param   ARow   Index of the row before which a new row is inserted.
+}
+procedure TsWorksheet.InsertRow(ARow: Cardinal);
+var
+  cell: PCell;
+  row: PRow;
+  cellnode: TAVLTreeNode;
+  i: Integer;
+begin
+  // Update row index of cell records
+  cellnode := FCells.FindLowest;
+  while Assigned(cellnode) do begin
+    InsertRowCallback(cellnode.Data, pointer(PtrInt(ARow)));
+    cellnode := FCells.FindSuccessor(cellnode);
+  end;
+
+  // Update row index of row records
+  for i:=0 to FRows.Count-1 do begin
+    row := PRow(FRows.Items[i]);
+    if row^.Row >= ARow then inc(row^.Row);
+  end;
+
+  // Update last row index
+  inc(FLastRowIndex);
+
+  ChangedCell(ARow, 0);
 end;
 
 {@@

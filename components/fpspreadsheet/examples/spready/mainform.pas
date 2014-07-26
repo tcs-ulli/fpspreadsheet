@@ -69,6 +69,8 @@ type
     AcNFCusstomMS: TAction;
     AcNFCustomMSZ: TAction;
     AcNew: TAction;
+    AcAddColumn: TAction;
+    AcAddRow: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
     AcVAlignTop: TAction;
@@ -146,6 +148,9 @@ type
     MenuItem61: TMenuItem;
     MenuItem62: TMenuItem;
     MenuItem63: TMenuItem;
+    MenuItem64: TMenuItem;
+    MenuItem65: TMenuItem;
+    MenuItem66: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
     MnuTimeInterval: TMenuItem;
     MnuShortTimeAM: TMenuItem;
@@ -198,6 +203,8 @@ type
     FormulaToolBar: TToolBar;
     FormulaToolbarSplitter: TSplitter;
     ToolButton22: TToolButton;
+    ToolButton23: TToolButton;
+    ToolButton27: TToolButton;
     WorksheetGrid: TsWorksheetGrid;
     TabSheet1: TTabSheet;
     ToolBar1: TToolBar;
@@ -228,6 +235,8 @@ type
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
     ToolButton9: TToolButton;
+    procedure AcAddColumnExecute(Sender: TObject);
+    procedure AcAddRowExecute(Sender: TObject);
     procedure AcBorderExecute(Sender: TObject);
     procedure AcCopyFormatExecute(Sender: TObject);
     procedure AcEditExecute(Sender: TObject);
@@ -405,6 +414,18 @@ begin
       EndUpdate;
     end;
   end;
+end;
+
+procedure TForm1.AcAddColumnExecute(Sender: TObject);
+begin
+  WorksheetGrid.InsertCol(WorksheetGrid.Col);
+  WorksheetGrid.Col := WorksheetGrid.Col + 1;
+end;
+
+procedure TForm1.AcAddRowExecute(Sender: TObject);
+begin
+  WorksheetGrid.InsertRow(WorksheetGrid.Row);
+  WorksheetGrid.Row := WorksheetGrid.Row + 1;
 end;
 
 procedure TForm1.AcCopyFormatExecute(Sender: TObject);
