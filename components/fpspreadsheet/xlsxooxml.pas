@@ -60,12 +60,19 @@ type
   private
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
+    FXfList: TFPList;
+    FFillList: TFPList;
+    FBorderList: TFPList;
+    procedure ReadCellXfs(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
+    procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
     procedure ReadWorksheet(ANode: TDOMNode; ASheet: TsWorksheet);
   protected
+    procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
+    procedure CreateNumFormatList; override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -175,6 +182,14 @@ const
   MIME_STYLES          = MIME_SPREADML + '.styles+xml';
   MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
 
+type
+  TXFListData = class
+    NumFmtIndex: Integer;
+    FontIndex: Integer;
+    FillIndex: Integer;
+    BorderIndex: Integer;
+  end;
+
 
 { TsOOXMLNumFormatList }
 
@@ -256,17 +271,138 @@ end;
 constructor TsSpreadOOXMLReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FSharedStrings := TStringList.Create;
-  FPointSeparatorSettings := DefaultFormatSettings;
-  FPointSeparatorSettings.DecimalSeparator := '.';
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
+
+  FSharedStrings := TStringList.Create;
+  FFillList := TFPList.Create;
+  FBorderList := TFPList.Create;
+  FXfList := TFPList.Create;
+
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
 end;
 
 destructor TsSpreadOOXMLReader.Destroy;
+var
+  j: Integer;
 begin
+  for j := FXfList.Count-1 downto 0 do TObject(FXfList[j]).Free;
+  FXfList.Free;
+
+  for j := FFillList.Count-1 downto 0 do TObject(FFillList[j]).Free;
+  FFillList.Free;
+
+  for j := FBorderList.Count-1 downto 0 do TObject(FBorderList[j]).Free;
+  FBorderList.Free;
+
   FSharedStrings.Free;
+
   inherited Destroy;
+end;
+
+procedure TsSpreadOOXMLReader.ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
+var
+  xf: TXfListData;
+  numFmtData: TsNumFormatData;
+  j: Integer;
+begin
+  if Assigned(ACell) then begin
+    xf := TXFListData(FXfList.Items[XfIndex]);
+
+    // Font
+    if xf.FontIndex = 1 then
+      Include(ACell^.UsedFormattingFields, uffBold)
+    else
+    if xf.FontIndex > 1 then
+      Include(ACell^.UsedFormattingFields, uffFont);
+    ACell^.FontIndex := xf.FontIndex;
+                          (*
+    // Alignment
+    ACell^.HorAlignment := xf.HorAlignment;
+    ACell^.VertAlignment := xf.VertAlignment;
+
+    // Word wrap
+    if xf.WordWrap then
+      Include(ACell^.UsedFormattingFields, uffWordWrap)
+    else
+      Exclude(ACell^.UsedFormattingFields, uffWordWrap);
+
+    // Text rotation
+    if xf.TextRotation > trHorizontal then
+      Include(ACell^.UsedFormattingFields, uffTextRotation)
+    else
+      Exclude(ACell^.UsedFormattingFields, uffTextRotation);
+    ACell^.TextRotation := xf.TextRotation;
+
+    // Borders
+    ACell^.BorderStyles := xf.BorderStyles;
+    if xf.Borders <> [] then begin
+      Include(ACell^.UsedFormattingFields, uffBorder);
+      ACell^.Border := xf.Borders;
+    end else
+      Exclude(ACell^.UsedFormattingFields, uffBorder);
+
+    // Background color
+    if xf.BackgroundColor <> scTransparent then begin
+      Include(ACell^.UsedFormattingFields, uffBackgroundColor);
+      ACell^.BackgroundColor := xf.BackgroundColor;
+    end else
+      Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
+      *)
+
+    if xf.NumFmtIndex > 0 then begin
+      j := NumFormatList.FindByIndex(xf.NumFmtIndex);
+      if j > -1then begin
+        numFmtData := NumFormatList[j];
+        Include(ACell^.UsedFormattingFields, uffNumberFormat);
+        ACell^.NumberFormat := numFmtData.NumFormat;
+        ACell^.NumberFormatStr := numFmtData.FormatString;
+      end;
+    end;
+  end;
+
+end;
+
+procedure TsSpreadOOXMLReader.CreateNumFormatList;
+begin
+  FreeAndNil(FNumFormatList);
+  FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
+end;
+
+procedure TsSpreadOOXMLReader.ReadCellXfs(ANode: TDOMNode);
+var
+  node: TDOMNode;
+  nodeName: String;
+  xf: TXfListData;
+  s1, s2: String;
+begin
+  node := ANode.FirstChild;
+  while Assigned(node) do begin
+    nodeName := node.NodeName;
+    if nodeName = 'xf' then begin
+      xf := TXfListData.Create;
+
+      s1 := GetAttrValue(node, 'numFmtId');
+      s2 := GetAttrValue(node, 'applyNumberFormat');
+      if s2 = '1' then xf.NumFmtIndex := StrToInt(s1);
+
+      s1 := GetAttrValue(node, 'fontId');
+      s2 := GetAttrValue(node, 'applyFont');
+      if s2 = '1' then xf.FontIndex := StrToInt(s1);
+
+      s1 := GetAttrValue(node, 'fillId');
+      s2 := GetAttrValue(node, 'applyFill');
+      if s2 = '1' then xf.FillIndex := StrToInt(s1);
+
+      s1 := GetAttrValue(node, 'borderId');
+      s2 := GetAttrValue(node, 'applyBorder');
+      if s2 = '1' then xf.BorderIndex := StrToInt(s1);
+
+      FXfList.Add(xf);
+    end;
+    node := node.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
@@ -343,6 +479,25 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadNumFormats(ANode: TDOMNode);
+var
+  node: TDOMNode;
+  idStr: String;
+  fmtStr: String;
+  nodeName: String;
+begin
+  node := ANode.FirstChild;
+  while Assigned(node) do begin
+    nodeName := node.NodeName;
+    if nodeName = 'numFmt' then begin
+      idStr := GetAttrValue(node, 'numFmtId');
+      fmtStr := GetAttrValue(node, 'formatCode');
+      NumFormatList.AnalyzeAndAdd(StrToInt(idStr), fmtStr);
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
 var
   valuenode: TDOMNode;
@@ -384,6 +539,7 @@ var
   formulaStr: String;
   sstIndex: Integer;
   cell: PCell;
+  number: Double;
 begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
@@ -395,16 +551,16 @@ begin
           s := GetAttrValue(cellnode, 'r');       // cell address, like 'A1'
           ParseCellString(s, rowIndex, colIndex);
 
-          // get style index
-          s := GetAttrValue(cellnode, 's');
-          //..
-
           // create cell
           if FIsVirtualMode then begin
             InitCell(rowIndex, colIndex, FVirtualCell);
             cell := @FVirtualCell;
           end else
             cell := ASheet.GetCell(rowIndex, colIndex);
+
+          // get style index
+          s := GetAttrValue(cellnode, 's');
+          ApplyCellFormatting(cell, StrToInt(s));
 
           // get data
           datanode := cellnode.FirstChild;
@@ -424,21 +580,34 @@ begin
             cell^.FormulaValue.FormulaStr := '=' + formulaStr;
 
           // get data type
-          s := GetAttrValue(cellnode, 't');   // data type
-          if s = 'n' then
-            ASheet.WriteNumber(cell, StrToFloat(dataStr, FPointSeparatorSettings))
+          s := GetAttrValue(cellnode, 't');   // "t" = data type
+          if (s = '') and (dataStr = '') then
+            ASheet.WriteBlank(cell)
+          else
+          if (s = '') or (s = 'n') then begin
+            // Number or date/time, depending on format
+            number := StrToFloat(dataStr, FPointSeparatorSettings);
+            if IsDateTimeFormat(cell^.NumberFormatStr) then
+              ASheet.WriteDateTime(cell, number, cell^.NumberFormatStr)
+            else
+              ASheet.WriteNumber(cell, number);
+          end
           else
           if s = 's' then begin
+            // String from shared strings table
             sstIndex := StrToInt(dataStr);
             ASheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
           end else
           if s = 'str' then
+            // literal string
             ASheet.WriteUTF8Text(cell, datastr)
           else
           if s = 'b' then
+            // boolean
             ASheet.WriteBoolValue(cell, dataStr='1')
           else
           if s = 'e' then begin
+            // error value
             if dataStr = '#NULL!' then
               ASheet.WriteErrorValue(cell, errEmptyIntersection)
             else if dataStr = '#DIV/0!' then
@@ -456,12 +625,7 @@ begin
             else
               raise Exception.Create('unknown error type');
           end else
-          if s = '' then begin
-            if formulaStr = '' then
-              ASheet.WriteBlank(cell)
-            else
-              ASheet.WriteNumber(cell, STrToFloat(dataStr, FPointSeparatorSettings));
-          end;
+            raise Exception.Create('Unknown data type');
         end;
 
         cellnode := cellnode.NextSibling;
@@ -518,14 +682,14 @@ begin
     end;
 
     // process the styles.xml file
-    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
-    DeleteFile(FilePath + OOXML_PATH_XL_STYLES);
-    ReadFonts(Doc.DocumentElement.FindNode('fonts'));
-    (*
-    ReadNumFormats(StylesNode);
-    ReadStyles(StylesNode);
-      *)
-    FreeAndNil(Doc);
+    if FileExists(FilePath + OOXML_PATH_XL_STYLES) then begin // should always exist, just to make sure...
+      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
+      DeleteFile(FilePath + OOXML_PATH_XL_STYLES);
+      ReadFonts(Doc.DocumentElement.FindNode('fonts'));
+      ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
+      ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
+      FreeAndNil(Doc);
+    end;
 
     // process the workbook.xml file
     ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
