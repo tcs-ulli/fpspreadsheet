@@ -105,6 +105,7 @@ type
     procedure TestWriteReadNumbers_BIFF5;
     procedure TestWriteReadNumbers_BIFF8;
     procedure TestWriteReadNumbers_ODS;
+    procedure TestWriteReadNumbers_OOXML;
   end;
 
 
@@ -169,7 +170,6 @@ var
   Row: Cardinal;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  //todo: add support for ODF format
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
     DeleteFile(TempFile);
@@ -228,6 +228,11 @@ end;
 procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_ODS;
 begin
   TestWriteReadNumbers(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_OOXML;
+begin
+  TestWriteReadNumbers(sfOOXML);
 end;
 
 

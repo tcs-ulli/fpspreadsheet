@@ -597,15 +597,17 @@ var
   fmtStr: String;
   nodeName: String;
 begin
-  node := ANode.FirstChild;
-  while Assigned(node) do begin
-    nodeName := node.NodeName;
-    if nodeName = 'numFmt' then begin
-      idStr := GetAttrValue(node, 'numFmtId');
-      fmtStr := GetAttrValue(node, 'formatCode');
-      NumFormatList.AnalyzeAndAdd(StrToInt(idStr), fmtStr);
+  if Assigned(ANode) then begin
+    node := ANode.FirstChild;
+    while Assigned(node) do begin
+      nodeName := node.NodeName;
+      if nodeName = 'numFmt' then begin
+        idStr := GetAttrValue(node, 'numFmtId');
+        fmtStr := GetAttrValue(node, 'formatCode');
+        NumFormatList.AnalyzeAndAdd(StrToInt(idStr), fmtStr);
+      end;
+      node := node.NextSibling;
     end;
-    node := node.NextSibling;
   end;
 end;
 
@@ -1373,7 +1375,8 @@ begin
       '<sheets>');
   for i:=1 to Workbook.GetWorksheetCount do
     AppendToStream(FSWorkbook, Format(
-        '<sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]));
+    '<sheet name="%s" sheetId="%d" r:id="rId%d" />', [Workbook.GetWorksheetByIndex(i-1).Name, i, i+2]));
+    //        '<sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]));
   AppendToStream(FSWorkbook,
       '</sheets>');
   AppendToStream(FSWorkbook,
@@ -1831,7 +1834,11 @@ begin
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
   lDateTime := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
-  CellValueText := Format('%g', [lDateTime], FPointSeparatorSettings);
+  // !!!!!!!!!!!!!!!!!!!!!  NEED "IF" TO CHECK FOR DATE/TIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+//  CellValueText := Format('%g', [lDateTime], FPointSeparatorSettings);
+  CellValueText := FloatToStr(lDateTime, FPointSeparatorSettings);
+
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="n"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;

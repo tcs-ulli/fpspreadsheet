@@ -215,6 +215,7 @@ type
     procedure TestWriteReadDates_BIFF5;
     procedure TestWriteReadDates_BIFF8;
     procedure TestWriteReadDates_ODS;
+    procedure TestWriteReadDates_OOXML;
   end;
 
 
@@ -362,6 +363,11 @@ end;
 procedure TSpreadWriteReadDateTests.TestWriteReadDates_ODS;
 begin
   TestWriteReadDates(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadDates_OOXML;
+begin
+  TestWriteReadDates(sfOOXML);
 end;
 
 
