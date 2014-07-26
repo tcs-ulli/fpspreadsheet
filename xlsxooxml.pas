@@ -41,7 +41,7 @@ uses
   {$ENDIF}
   laz2_xmlread, laz2_DOM,
   AVL_Tree,
-  fpspreadsheet, fpsutils, fpsxmlcommon;
+  fpspreadsheet, fpsutils, fpsxmlcommon, xlscommon;
   
 type
 
@@ -58,18 +58,21 @@ type
 
   TsSpreadOOXMLReader = class(TsSpreadXMLReader)
   private
+    FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
     FXfList: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
+    procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
+    procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
-    procedure ReadWorksheet(ANode: TDOMNode; ASheet: TsWorksheet);
+    procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
   protected
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure CreateNumFormatList; override;
@@ -82,8 +85,8 @@ type
   { TsSpreadOOXMLWriter }
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
-  private
   protected
+    FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStringsCount: Integer;
     FFillList: array of PCell;
@@ -141,7 +144,7 @@ type
 implementation
 
 uses
-  variants, fileutil, fpsStreams, fpsNumFormatParser, xlscommon;
+  variants, fileutil, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -271,6 +274,7 @@ end;
 constructor TsSpreadOOXMLReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FDateMode := dm1900;
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
 
@@ -370,6 +374,103 @@ begin
   FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
 end;
 
+procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
+var
+  s: String;
+  rowIndex, colIndex: Cardinal;
+  cell: PCell;
+  datanode: TDOMNode;
+  dataStr: String;
+  formulaStr: String;
+  sstIndex: Integer;
+  number: Double;
+begin
+  if ANode = nil then
+    exit;
+
+  // get row and column address
+  s := GetAttrValue(ANode, 'r');       // cell address, like 'A1'
+  ParseCellString(s, rowIndex, colIndex);
+
+  // create cell
+  if FIsVirtualMode then begin
+    InitCell(rowIndex, colIndex, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := AWorksheet.GetCell(rowIndex, colIndex);
+
+  // get style index
+  s := GetAttrValue(ANode, 's');
+  ApplyCellFormatting(cell, StrToInt(s));
+
+  // get data
+  datanode := ANode.FirstChild;
+  dataStr := '';
+  formulaStr := '';
+  while Assigned(datanode) do begin
+    if datanode.NodeName = 'v' then
+      dataStr := GetNodeValue(datanode)
+    else
+    if datanode.NodeName = 'f' then
+      formulaStr := GetNodeValue(datanode);
+    datanode := datanode.NextSibling;
+  end;
+
+  // formula to cell
+  if formulaStr <> '' then
+    cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+
+  // get data type
+  s := GetAttrValue(ANode, 't');   // "t" = data type
+  if (s = '') and (dataStr = '') then
+    AWorksheet.WriteBlank(cell)
+  else
+  if (s = '') or (s = 'n') then begin
+    // Number or date/time, depending on format
+    number := StrToFloat(dataStr, FPointSeparatorSettings);
+    if IsDateTimeFormat(cell^.NumberFormatStr) then begin
+      number := ConvertExcelDateTimeToDateTime(number, FDateMode);
+      AWorksheet.WriteDateTime(cell, number, cell^.NumberFormatStr)
+    end
+    else
+      AWorksheet.WriteNumber(cell, number);
+  end
+  else
+  if s = 's' then begin
+    // String from shared strings table
+    sstIndex := StrToInt(dataStr);
+    AWorksheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
+  end else
+  if s = 'str' then
+    // literal string
+    AWorksheet.WriteUTF8Text(cell, datastr)
+  else
+  if s = 'b' then
+    // boolean
+    AWorksheet.WriteBoolValue(cell, dataStr='1')
+  else
+  if s = 'e' then begin
+    // error value
+    if dataStr = '#NULL!' then
+      AWorksheet.WriteErrorValue(cell, errEmptyIntersection)
+    else if dataStr = '#DIV/0!' then
+      AWorksheet.WriteErrorValue(cell, errDivideByZero)
+    else if dataStr = '#VALUE!' then
+      AWorksheet.WriteErrorValue(cell, errWrongType)
+    else if dataStr = '#REF!' then
+      AWorksheet.WriteErrorValue(cell, errIllegalRef)
+    else if dataStr = '#NAME?' then
+      AWorksheet.WriteErrorValue(cell, errWrongName)
+    else if dataStr = '#NUM!' then
+      AWorksheet.WriteErrorValue(cell, errOverflow)
+    else if dataStr = '#N/A' then
+      AWorksheet.WriteErrorValue(cell, errArgError)
+    else
+      raise Exception.Create('unknown error type');
+  end else
+    raise Exception.Create('Unknown data type');
+end;
+
 procedure TsSpreadOOXMLReader.ReadCellXfs(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -402,6 +503,16 @@ begin
       FXfList.Add(xf);
     end;
     node := node.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadDateMode(ANode: TDOMNode);
+var
+  s: String;
+begin
+  if Assigned(ANode) then begin
+    s := GetAttrValue(ANode, 'date1904');
+    if s = '1' then FDateMode := dm1904
   end;
 end;
 
@@ -528,106 +639,18 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; ASheet: TsWorksheet);
+procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   rownode: TDOMNode;
   cellnode: TDOMNode;
-  datanode: TDOMNode;
-  s: String;
-  rowIndex, colIndex: Cardinal;
-  dataStr: String;
-  formulaStr: String;
-  sstIndex: Integer;
-  cell: PCell;
-  number: Double;
 begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
     if rownode.NodeName = 'row' then begin
       cellnode := rownode.FirstChild;
       while Assigned(cellnode) do begin
-        if cellnode.NodeName = 'c' then begin
-          // get row and column address
-          s := GetAttrValue(cellnode, 'r');       // cell address, like 'A1'
-          ParseCellString(s, rowIndex, colIndex);
-
-          // create cell
-          if FIsVirtualMode then begin
-            InitCell(rowIndex, colIndex, FVirtualCell);
-            cell := @FVirtualCell;
-          end else
-            cell := ASheet.GetCell(rowIndex, colIndex);
-
-          // get style index
-          s := GetAttrValue(cellnode, 's');
-          ApplyCellFormatting(cell, StrToInt(s));
-
-          // get data
-          datanode := cellnode.FirstChild;
-          dataStr := '';
-          formulaStr := '';
-          while Assigned(datanode) do begin
-            if datanode.NodeName = 'v' then
-              dataStr := GetNodeValue(datanode)
-            else
-            if datanode.NodeName = 'f' then
-              formulaStr := GetNodeValue(datanode);
-            datanode := datanode.NextSibling;
-          end;
-
-          // formula to cell
-          if formulaStr <> '' then
-            cell^.FormulaValue.FormulaStr := '=' + formulaStr;
-
-          // get data type
-          s := GetAttrValue(cellnode, 't');   // "t" = data type
-          if (s = '') and (dataStr = '') then
-            ASheet.WriteBlank(cell)
-          else
-          if (s = '') or (s = 'n') then begin
-            // Number or date/time, depending on format
-            number := StrToFloat(dataStr, FPointSeparatorSettings);
-            if IsDateTimeFormat(cell^.NumberFormatStr) then
-              ASheet.WriteDateTime(cell, number, cell^.NumberFormatStr)
-            else
-              ASheet.WriteNumber(cell, number);
-          end
-          else
-          if s = 's' then begin
-            // String from shared strings table
-            sstIndex := StrToInt(dataStr);
-            ASheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
-          end else
-          if s = 'str' then
-            // literal string
-            ASheet.WriteUTF8Text(cell, datastr)
-          else
-          if s = 'b' then
-            // boolean
-            ASheet.WriteBoolValue(cell, dataStr='1')
-          else
-          if s = 'e' then begin
-            // error value
-            if dataStr = '#NULL!' then
-              ASheet.WriteErrorValue(cell, errEmptyIntersection)
-            else if dataStr = '#DIV/0!' then
-              ASheet.WriteErrorValue(cell, errDivideByZero)
-            else if dataStr = '#VALUE!' then
-              ASheet.WriteErrorValue(cell, errWrongType)
-            else if dataStr = '#REF!' then
-              ASheet.WriteErrorValue(cell, errIllegalRef)
-            else if dataStr = '#NAME?' then
-              ASheet.WriteErrorValue(cell, errWrongName)
-            else if dataStr = '#NUM!' then
-              ASheet.WriteErrorValue(cell, errOverflow)
-            else if dataStr = '#N/A' then
-              ASheet.WriteErrorValue(cell, errArgError)
-            else
-              raise Exception.Create('unknown error type');
-          end else
-            raise Exception.Create('Unknown data type');
-        end;
-
+        if cellnode.NodeName = 'c' then
+          ReadCell(cellnode, AWorksheet);
         cellnode := cellnode.NextSibling;
       end;
     end;
@@ -644,10 +667,6 @@ var
   SheetList: TStringList;
   i: Integer;
   fn: String;
-
-  BodyNode, SpreadSheetNode, TableNode: TDOMNode;
-  StylesNode: TDOMNode;
-  OfficeSettingsNode: TDOMNode;
 
   s: String;
   node: TDOMNode;
@@ -694,7 +713,7 @@ begin
     // process the workbook.xml file
     ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
     DeleteFile(FilePath + OOXML_PATH_XL_WORKBOOK);
-
+    ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
     ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
 
     FreeAndNil(Doc);
@@ -1550,6 +1569,11 @@ end;
 constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  // Initial base date in case it won't be set otherwise.
+  // Use 1900 to get a bit more range between 1900..1904.
+  FDateMode := dm1900;
+
+  // Special version of FormatSettings using a point decimal separator for sure.
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
 
@@ -1801,11 +1825,13 @@ var
   CellPosText: String;
   CellValueText: String;
   lStyleIndex: Integer;
+  lDateTime: TDateTime;
 begin
   Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
-  CellValueText := Format('%g', [AValue], FPointSeparatorSettings);
   lStyleIndex := GetStyleIndex(ACell);
+  lDateTime := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
+  CellValueText := Format('%g', [lDateTime], FPointSeparatorSettings);
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="n"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
