@@ -113,8 +113,15 @@ type
     procedure TestWriteRead_ODS_BorderStyles;
     procedure TestWriteRead_ODS_ColWidths;
     procedure TestWriteRead_ODS_RowHeights;
+    procedure TestWriteRead_ODS_DateTimeFormats;
+    procedure TestWriteRead_ODS_NumberFormats;
     procedure TestWriteRead_ODS_TextRotation;
     procedure TestWriteRead_ODS_WordWrap;
+
+    { OOXML Tests }
+    procedure TestWriteRead_OOXML_DateTimeFormats;
+    procedure TestWriteRead_OOXML_NumberFormats;
+
   end;
 
 implementation
@@ -155,9 +162,9 @@ begin
   SollNumbers[0] := 0.0;
   SollNumbers[1] := 1.0;
   SollNumbers[2] := -1.0;
-  SollNumbers[3] := 1.2345E6;
+  SollNumbers[3] :=  1.23456E6;
   SollNumbers[4] := -1.23456E6;
-  SollNumbers[5] := 1.23456E-6;
+  SollNumbers[5] :=  1.23456E-6;
   SollNumbers[6] := -1.23456E-6;
 
   SollNumberFormats[0] := nfGeneral;      SollNumberDecimals[0] := 0;
@@ -292,13 +299,14 @@ begin
     begin
       MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
       ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
-      CheckEquals(SollNumberStrings[Row, Col], ActualString, 'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
+      CheckEquals(SollNumberStrings[Row, Col], ActualString,
+        'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
     end;
   TempFile:=NewTempFile;
   MyWorkBook.WriteToFile(TempFile, AFormat, true);
   MyWorkbook.Free;
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   MyWorkbook.ReadFromFile(TempFile, AFormat);
   if AFormat = sfExcel2 then
@@ -311,7 +319,8 @@ begin
     for Col := Low(SollNumberFormats) to High(SollNumberFormats) do
     begin
       ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
-      CheckEquals(SollNumberStrings[Row,Col],ActualString,'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
+      CheckEquals(SollNumberStrings[Row,Col], ActualString,
+        'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
     end;
 
   // Finalization
@@ -333,6 +342,16 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_NumberFormats;
 begin
   TestWriteReadNumberFormats(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_NumberFormats;
+begin
+  TestWriteReadNumberFormats(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_NumberFormats;
+begin
+  TestWriteReadNumberFormats(sfOOXML);
 end;
 
 
@@ -409,6 +428,15 @@ begin
   TestWriteReadDateTimeFormats(sfExcel8);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_DateTimeFormats;
+begin
+  TestWriteReadDateTimeFormats(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_DateTimeFormats;
+begin
+  TestWriteReadDateTimeFormats(sfOOXML);
+end;
 
 { --- Alignment tests --- }
 
