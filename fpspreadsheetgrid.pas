@@ -138,6 +138,8 @@ type
     procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
+    procedure UpdateColWidths(AStartIndex: Integer = 0);
+    procedure UpdateRowHeights(AStartIndex: Integer = 0);
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
@@ -168,6 +170,8 @@ type
     function GetGridRow(ASheetRow: Cardinal): Integer;
     function GetWorksheetCol(AGridCol: Integer): Cardinal;
     function GetWorksheetRow(AGridRow: Integer): Cardinal;
+    procedure InsertCol(AGridCol: Integer);
+    procedure InsertRow(AGridRow: Integer);
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
@@ -2235,6 +2239,41 @@ begin
   end;
 end;
 
+{@@
+  Inserts an empty column before the column specified
+}
+procedure TsCustomWorksheetGrid.InsertCol(AGridCol: Integer);
+var
+  c: Cardinal;
+begin
+  if AGridCol < FHeaderCount then
+    exit;
+
+  if FWorksheet.GetLastColIndex+1 + FHeaderCount >= FInitColCount then
+    ColCount := ColCount + 1;
+  c := AGridCol - FHeaderCount;
+  FWorksheet.InsertCol(c);
+
+  UpdateColWidths(AGridCol);
+end;
+
+{@@
+  Inserts an empty row before the row specified
+}
+procedure TsCustomWorksheetGrid.InsertRow(AGridRow: Integer);
+var
+  r: Cardinal;
+begin
+  if AGridRow < FHeaderCount then
+    exit;
+
+  if FWorksheet.GetlastRowIndex+1 + FHeaderCount >= FInitRowCount then
+    RowCount := RowCount + 1;
+  r := AGridRow - FHeaderCount;
+  FWorksheet.InsertRow(r);
+
+  UpdateRowHeights(AGridRow);
+end;
 
 {@@
   Internal general text drawing method.
@@ -2855,20 +2894,8 @@ begin
       ColWidths[0] := Canvas.TextWidth(' 999999 ');
       RowHeights[0] := DefaultRowHeight;
     end;
-    for i := FHeaderCount to ColCount-1 do begin
-      lCol := FWorksheet.FindCol(i - FHeaderCount);
-      if (lCol <> nil) then
-        ColWidths[i] := CalcColWidth(lCol^.Width)
-      else
-        ColWidths[i] := DefaultColWidth;
-    end;
-    for i := FHeaderCount to RowCount-1 do begin
-      lRow := FWorksheet.FindRow(i - FHeaderCount);
-      if (lRow = nil) then
-        RowHeights[i] := CalcAutoRowHeight(i)
-      else
-        RowHeights[i] := CalcRowHeight(lRow^.Height);
-    end;
+    UpdateColWidths;
+    UpdateRowHeights;
   end;
   Invalidate;
 end;
@@ -2914,6 +2941,36 @@ begin
         SetWordwrap(c, r, AValue);
   finally
     EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.UpdateColWidths(AStartIndex: Integer = 0);
+var
+  i: Integer;
+  lCol: PCol;
+begin
+  if AStartIndex = 0 then AStartIndex := FHeaderCount;
+  for i := AStartIndex to ColCount-1 do begin
+    lCol := FWorksheet.FindCol(i - FHeaderCount);
+    if lCol <> nil then
+      ColWidths[i] := CalcColWidth(lCol^.Width)
+    else
+      ColWidths[i] := DefaultColWidth;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartIndex: Integer = 0);
+var
+  i: Integer;
+  lRow: PRow;
+begin
+  if AStartIndex <= 0 then AStartIndex := FHeaderCount;
+  for i := AStartIndex to RowCount-1 do begin
+    lRow := FWorksheet.FindRow(i - FHeaderCount);
+    if (lRow = nil) then
+      RowHeights[i] := CalcAutoRowHeight(i)
+    else
+      RowHeights[i] := CalcRowHeight(lRow^.Height);
   end;
 end;
 
