@@ -1094,7 +1094,8 @@ begin
       then begin
         Result := true;
       end else
-      if FSections[section].Elements[elem].Token in [nftYear, nftMonth, nftDay, nftExpChar, nftCurrSymbol]
+      if FSections[section].Elements[elem].Token in
+         [nftYear, nftMonth, nftDay, nftExpChar, nftCurrSymbol]
       then begin
         Result := false;
         exit;

@@ -59,14 +59,14 @@ type
   { TsSpreadOpenDocNumFormatParser }
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
   private
-    function BuildCurrencyXMLAsString(ASection: Integer; AIndent: String): String;
-    function BuildDateTimeXMLAsString(ASection: Integer; AIndent: String;
-      out AIsTimeOnly: Boolean): String;
+    function BuildCurrencyXMLAsString(ASection: Integer): String;
+    function BuildDateTimeXMLAsString(ASection: Integer;
+      out AIsTimeOnly, AIsInterval: Boolean): String;
   protected
     function BuildXMLAsStringFromSection(ASection: Integer;
-      AIndent,AFormatName: String): String;
+      AFormatName: String): String;
   public
-    function BuildXMLAsString(AIndent,AFormatName: String): String;
+    function BuildXMLAsString(AFormatName: String): String;
   end;
 
   { TsSpreadOpenDocReader }
@@ -101,7 +101,9 @@ type
     function ReadFont(ANode: TDOMnode; IsDefaultFont: Boolean): Integer;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
+
   protected
+    FPointSeparatorSettings: TFormatSettings;
     procedure CreateNumFormatList; override;
     procedure ReadNumFormats(AStylesNode: TDOMNode);
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
@@ -295,8 +297,41 @@ type
     RowStyleIndex: Integer;   // index into FRowStyleList of reader
     DefaultCellStyleIndex: Integer;  // Index of default row style in FCellStyleList of reader
   end;
+                                   (*
+{ Utilities }
 
+function DecodeODSTime(ATimeStr: String; out AHours, AMinutes, ASeconds, AMilliseconds: Word): Boolean;
+var
+  p: Integer;
+  val: String;
+  hrStr: String;
+  minStr: String;
+  secStr: String;
+  msecStr: String;
+begin
+  Result := false;
+  ATimeStr := Uppercase(ATimeStr);
+  if ATimeStr = '' then
+    exit;
+  if ATimeStr[1] <> 'P' then
+    exit;
+  if (Length(ATimeStr) < 2) or (ATimeStr[2] <> 'T') then
+    exit;
+  p := 3;
+  val := '';
+  while p <= Length(ATimeStr) do begin
+    case ATimeStr[p] of
+      '0'..'9': val := val + ATimeStr[p];
+      'H': begin hrStr := val; val := ''; end;
+      'M': begin minStr := val; val := ''; end;
+      'S': begin secStr := val; val := ''; end;
+      ',', '.':
+    end;
 
+  end;
+
+end;
+                                 *)
 { TsSpreadOpenDocNumFormatList }
 
 procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
@@ -315,8 +350,7 @@ end;
 
 { TsSpreadOpenDocNumFormatParser }
 
-function TsSpreadOpenDocNumFormatParser.BuildCurrencyXMLAsString(ASection: Integer;
-  AIndent: String): String;
+function TsSpreadOpenDocNumFormatParser.BuildCurrencyXMLAsString(ASection: Integer): String;
 var
   el: Integer;
   clr: TsColorValue;
@@ -332,47 +366,46 @@ begin
         nftColor:
           begin
             clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
-            Result := Result + AIndent +
-              '  <style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
+            Result := Result +
+              '  <style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />';
             inc(el);
           end;
         nftSign, nftSignBracket:
           begin
-            Result := Result + AIndent +
-              '  <number:text>' + Elements[el].TextValue + '</number:text>' + LineEnding;
+            Result := Result +
+              '  <number:text>' + Elements[el].TextValue + '</number:text>';
             inc(el);
           end;
         nftSpace:
           begin
-            Result := Result + AIndent +
-              '  <number:text><![CDATA[ ]]></number:text>' + LineEnding;
+            Result := Result +
+              '  <number:text><![CDATA[ ]]></number:text>';
             inc(el);
           end;
         nftCurrSymbol:
           begin
-            Result := Result + AIndent +
+            Result := Result +
               '  <number:currency-symbol>' + Elements[el].TextValue +
-                '</number:currency-symbol>' + LineEnding;
+                '</number:currency-symbol>';
             inc(el);
           end;
         nftOptDigit:
           if IsNumberAt(ASection, el, nf, decs, el) then
-            Result := Result + AIndent +
+            Result := Result +
               '  <number:number decimal-places="' + IntToStr(decs) +
-                 '" number:min-integer-digits="1" number:grouping="true" />'
-              + LineEnding;
+                 '" number:min-integer-digits="1" number:grouping="true" />';
         nftDigit:
           if IsNumberAt(ASection, el, nf, decs, el) then
-            Result := Result + AIndent +
+            Result := Result +
             '  <number:number decimal-places="' + IntToStr(decs) +
-               '" number:min-integer-digits="1" />' + LineEnding;
+               '" number:min-integer-digits="1" />';
         nftRepeat:
           begin
             if FSections[ASection].Elements[el].TextValue = ' ' then
               s := '<![CDATA[ ]]>' else
               s := FSections[ASection].Elements[el].TextValue;
-            Result := Result + AIndent +
-            '  <number:text>' + s + '</number:text>' + LineEnding;
+            Result := Result +
+            '  <number:text>' + s + '</number:text>';
             inc(el);
           end
         else
@@ -382,7 +415,7 @@ begin
 end;
 
 function TsSpreadOpenDocNumFormatParser.BuildDateTimeXMLAsString(ASection: Integer;
-  AIndent: String; out AIsTimeOnly: boolean): String;
+  out AIsTimeOnly, AIsInterval: boolean): String;
 var
   el: Integer;
   s: String;
@@ -390,6 +423,7 @@ var
 begin
   Result := '';
   AIsTimeOnly := true;
+  AIsInterval := false;
   with FSections[ASection] do begin
     el := 0;
     while el < Length(Elements) do begin
@@ -399,8 +433,8 @@ begin
             prevToken := Elements[el].Token;
             AIsTimeOnly := false;
             s := IfThen(Elements[el].IntValue > 2, 'number:style="long" ', '');
-            Result := Result + AIndent +
-              '  <number:year ' + s + '/>' + LineEnding;
+            Result := Result +
+              '<number:year ' + s + '/>';
           end;
 
         nftMonth:
@@ -413,8 +447,8 @@ begin
               3: s := 'number:textual="true" ';
               4: s := 'number:style="long" number:textual="true" ';
             end;
-            Result := result + AIndent +
-              '  <number:month ' + s + '/>' + LineEnding;
+            Result := result +
+              '<number:month ' + s + '/>';
           end;
 
         nftDay:
@@ -427,8 +461,8 @@ begin
               3: s := 'day-of-week ';
               4: s := 'day-of-week number:style="long" ';
             end;
-            Result := Result + AIndent +
-              '  <number:' + s + '/>' + LineEnding;
+            Result := Result +
+              '<number:' + s + '/>';
           end;
 
         nftHour, nftMinute, nftSecond:
@@ -441,9 +475,9 @@ begin
             end;
             s := s + IfThen(abs(Elements[el].IntValue) = 1, '', 'number:style="long" ');
             if Elements[el].IntValue < 0 then
-              s := s + 'number:truncate-on-overflow="false" ';
-            Result := Result + AIndent +
-              '  <number:' + s + '/>' + LineEnding;
+              AIsInterval := true;
+            Result := Result +
+              '<number:' + s + '/>';
           end;
 
         nftMilliseconds:
@@ -464,21 +498,20 @@ begin
                   s := FWorkbook.FormatSettings.TimeSeparator;
               end;
             end;
-            Result := Result + AIndent +
-              '  <number:text>' + s + '</number:text>' + LineEnding;
+            Result := Result +
+              '<number:text>' + s + '</number:text>';
           end;
 
         nftAMPM:
-          Result := Result + AIndent +
-            '  <number:am-pm />' + LineEnding;
+          Result := Result +
+            '<number:am-pm />';
       end;
       inc(el);
     end;
   end;
 end;
 
-function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AIndent,
-  AFormatName: String): String;
+function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AFormatName: String): String;
 var
   i: Integer;
 begin
@@ -488,11 +521,11 @@ begin
     positive section (index 0), then the negative section (index 1), and
     finally the zero section (index 2) which contains the style-map. }
   for i:=0 to Length(FSections)-1 do
-    Result := Result + BuildXMLAsStringFromSection(i, AIndent, AFormatName);
+    Result := Result + BuildXMLAsStringFromSection(i, AFormatName);
 end;
 
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsStringFromSection(
-  ASection: Integer; AIndent,AFormatName: String): String;
+  ASection: Integer; AFormatName: String): String;
 var
   nf : TsNumberFormat;
   decs: Byte;
@@ -506,6 +539,7 @@ var
   el: Integer;
   s: String;
   isTimeOnly: Boolean;
+  isInterval: Boolean;
 
 begin
   Result := '';
@@ -521,17 +555,17 @@ begin
     // The file corresponding to the last section contains the styleMap.
     if (ASection = ns - 1) then
       case ns of
-        2: sStyleMap := AIndent +
-             '  <style:map ' +
-                 'style:apply-style-name="' + AFormatName + 'P0" ' +
-                 'style:condition="value()&gt;=0" />' + LineEnding;      // >= 0
-        3: sStyleMap := AIndent +
-             '  <style:map '+
-                 'style:apply-style-name="' + AFormatName + 'P0" ' +     // > 0
-                 'style:condition="value()&gt;0" />' + LineEnding + AIndent +
-             '  <style:map '+
-                 'style:apply-style-name="' + AFormatName + 'P1" ' +     // < 0
-                 'style:condition="value()&lt;0" />' + LineEnding;
+        2: sStyleMap :=
+             '<style:map ' +
+               'style:apply-style-name="' + AFormatName + 'P0" ' +
+               'style:condition="value()&gt;=0" />';                   // >= 0
+        3: sStyleMap :=
+             '<style:map '+
+               'style:apply-style-name="' + AFormatName + 'P0" ' +     // > 0
+               'style:condition="value()&gt;0" />' +
+             '<style:map '+
+               'style:apply-style-name="' + AFormatName + 'P1" ' +     // < 0
+               'style:condition="value()&lt;0" />';
         else
           raise Exception.Create('At most 3 format sections allowed.');
       end
@@ -543,7 +577,7 @@ begin
     next := 0;
     if IsTokenAt(nftColor, ASection, 0) then begin
       clr := FWorkbook.GetPaletteColor(Elements[0].IntValue);
-      sColor := AIndent + '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
+      sColor := '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
       next := 1;
     end;
     if IsNumberAt(ASection, next, nf, decs, next) then begin
@@ -552,30 +586,30 @@ begin
 
       // nfFixed, nfFixedTh
       if (next = Length(Elements)) then begin
-        Result := AIndent +
-          '<number:number-style style:name="' + AFormatName + '">' + LineEnding +
-          sColor + AIndent +
-          '  <number:number ' +
+        Result :=
+          '<number:number-style style:name="' + AFormatName + '">' +
+          sColor +
+            '<number:number ' +
               'number:min-integer-digits="1" ' + sGrouping +
               'number:decimal-places="' + IntToStr(decs) +
-            '" />' + LineEnding +
-          sStylemap + AIndent +
-          '</number:number-style>' + LineEnding;
+            '" />' +
+            sStylemap +
+          '</number:number-style>';
         exit;
       end;
 
       // nfPercentage
       if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements))
       then begin
-        Result := AIndent +
-          '<number:percentage-style style:name="' + AFormatName + '">' + LineEnding +
-          sColor + AIndent +
-          '  <number:number ' +
-             'number:min-integer-digits="1" ' + sGrouping +
-             'number:decimal-places="' + IntToStr(decs) + '" />' + LineEnding + AIndent +
-          '  <number:text>%</number:text>' + LineEnding +
-          sStyleMap + AIndent +
-          '</number:percentage-style>' + LineEnding;
+        Result :=
+          '<number:percentage-style style:name="' + AFormatName + '">' +
+          sColor +
+            '<number:number ' +
+              'number:min-integer-digits="1" ' + sGrouping +
+              'number:decimal-places="' + IntToStr(decs) + '" />' +
+              '<number:text>%</number:text>' +
+            sStyleMap +
+            '</number:percentage-style>';
         exit;
       end;
 
@@ -593,14 +627,14 @@ begin
           expdig := Elements[next+1].IntValue
         else
           exit;
-        Result := AIndent +
-          '<number:number-style style:name="' + AFormatName + '">' + LineEnding +
-          sColor + AIndent +
-          '  <number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
-             'number:min-integer-digits="1" '+
-             'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
-          sStylemap + AIndent +
-          '</number:number-style>';
+        Result :=
+          '<number:number-style style:name="' + AFormatName + '">' +
+          sColor +
+            '<number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
+              'number:min-integer-digits="1" '+
+              'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
+              sStylemap +
+            '</number:number-style>';
         exit;
       end;
     end;
@@ -620,14 +654,14 @@ begin
             while el < Length(Elements) do begin
               if Elements[el].Token = nftExpDigits then begin
                 expdig := Elements[el].IntValue;
-                Result := AIndent +
-                  '<number:number-style style:name="' + AFormatName + '">' + LineEnding +
-                  sColor + AIndent +
-                  '  <number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
-                     'number:min-integer-digits="1" '+
-                     'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
-                  sStylemap + AIndent +
-                  '</number:number-style>';
+                Result :=
+                  '<number:number-style style:name="' + AFormatName + '">' +
+                  sColor +
+                    '<number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
+                      'number:min-integer-digits="1" '+
+                      'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
+                      sStylemap +
+                    '</number:number-style>';
                 exit;
               end;
               inc(el);
@@ -638,28 +672,31 @@ begin
         // Currency
         nftCurrSymbol:
           begin
-            Result := AIndent +
-              '<number:currency-style style:name="' + AFormatName + '">' + LineEnding +
-              BuildCurrencyXMLAsString(ASection, AIndent) +
-              sStyleMap + LineEnding +
-              '</number:currency-style>' + LineEnding;
+            Result :=
+              '<number:currency-style style:name="' + AFormatName + '">' +
+                BuildCurrencyXMLAsString(ASection) +
+                sStyleMap +
+              '</number:currency-style>';
             exit;
           end;
 
         // date/time
         nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond:
           begin
-            s := BuildDateTimeXMLAsString(ASection, AIndent, isTimeOnly);
-            if isTimeOnly then
-              Result := Result + AIndent +
-                '<number:time-style style:name="' + AFormatName + '">' + LineEnding +
-                s + AIndent +
-                '</number:time-style>' + LineEnding
-            else
-              Result := Result + AIndent +
-                '<number:date-style style:name="' + AFormatName + '">' + LineEnding +
-                s + AIndent +
-                '</number:date-style>' + LineEnding;
+            s := BuildDateTimeXMLAsString(ASection, isTimeOnly, isInterval);
+            if isTimeOnly then begin
+              Result := Result +
+                '<number:time-style style:name="' + AFormatName + '"';
+              if isInterval then
+                Result := Result + ' number:truncate-on-overflow="false"';
+              Result := Result + '>' +
+                s +
+                '</number:time-style>';
+            end else
+              Result := Result +
+                '<number:date-style style:name="' + AFormatName + '">' +
+                s +
+                '</number:date-style>';
             exit;
           end;
       end;
@@ -674,6 +711,9 @@ end;
 constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+
   FCellStyleList := TFPList.Create;
   FColumnStyleList := TFPList.Create;
   FColumnList := TFPList.Create;
@@ -852,7 +892,8 @@ var
   Value: String;
   Fmt : TFormatSettings;
   FoundPos : integer;
-  Hours, Minutes, Seconds, Days: integer;
+  Hours, Minutes, Days: integer;
+  Seconds: Double;
   HoursPos, MinutesPos, SecondsPos: integer;
 begin
   Unused(AFormatStr);
@@ -908,7 +949,7 @@ begin
       // Get seconds
       SecondsPos := Pos('S', Value);
       if (SecondsPos > 0) and (SecondsPos > MinutesPos) then
-        Seconds := StrToInt(Copy(Value, MinutesPos+1, SecondsPos-MinutesPos-1))
+        Seconds := StrToFloat(Copy(Value, MinutesPos+1, SecondsPos-MinutesPos-1), FPointSeparatorSettings)
       else
         Seconds := 0;
 
@@ -1240,13 +1281,10 @@ var
   formula: String;
   stylename: String;
   floatValue: Double;
-  fs: TFormatSettings;
   valueType: String;
   valueStr: String;
   node: TDOMNode;
 begin
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
 
   // Create cell and apply format
   if FIsVirtualMode then begin
@@ -1271,7 +1309,7 @@ begin
     if UpperCase(valueStr) = '1.#INF' then
       FWorksheet.WriteNumber(cell, 1.0/0.0)
     else begin
-      floatValue := StrToFloat(valueStr, fs);
+      floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
       FWorksheet.WriteNumber(cell, floatValue);
     end;
     if IsDateTimeFormat(cell^.NumberFormat) then begin
@@ -1346,15 +1384,11 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
 var
-  FSettings: TFormatSettings;
   Value, Str: String;
   lNumber: Double;
   styleName: String;
   cell: PCell;
 begin
-  FSettings := DefaultFormatSettings;
-  FSettings.DecimalSeparator:='.';
-
   if FIsVirtualMode then begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
@@ -1368,7 +1402,7 @@ begin
   begin
     // Don't merge, or else we can't debug
     Str := GetAttrValue(ACellNode,'office:value');
-    lNumber := StrToFloat(Str,FSettings);
+    lNumber := StrToFloat(Str, FPointSeparatorSettings);
     FWorkSheet.WriteNumber(cell, lNumber);
   end;
 
@@ -1974,7 +2008,6 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
-  fs: TFormatSettings;
   style: TCellStyleData;
   styleNode: TDOMNode;
   styleChildNode: TDOMNode;
@@ -2023,17 +2056,17 @@ var
         end;
         p := pos('pt', s);
         if p = Length(s)-1 then begin
-          wid := StrToFloat(copy(s, 1, p-1), fs);
+          wid := StrToFloat(copy(s, 1, p-1), FPointSeparatorSettings);
           continue;
         end;
         p := pos('mm', s);
         if p = Length(s)-1 then begin
-          wid := mmToPts(StrToFloat(copy(s, 1, p-1), fs));
+          wid := mmToPts(StrToFloat(copy(s, 1, p-1), FPointSeparatorSettings));
           Continue;
         end;
         p := pos('cm', s);
         if p = Length(s)-1 then begin
-          wid := cmToPts(StrToFloat(copy(s, 1, p-1), fs));
+          wid := cmToPts(StrToFloat(copy(s, 1, p-1), FPointSeparatorSettings));
           Continue;
         end;
         rgb := HTMLColorStrToColor(s);
@@ -2064,9 +2097,6 @@ var
 begin
   if not Assigned(AStylesNode) then
     exit;
-
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
 
   numFmtIndexDefault := NumFormatList.FindByName('N0');
 
@@ -2463,41 +2493,26 @@ begin
      '" xmlns:config="' + SCHEMAS_XMLNS_CONFIG +
      '" xmlns:ooo="' + SCHEMAS_XMLNS_OOO + '">');
   AppendToStream(FSSettings,
-    '<office:settings>');
-  AppendToStream(FSSettings,
-      '<config:config-item-set config:name="ooo:view-settings">');
-  AppendToStream(FSSettings,
-       '<config:config-item-map-indexed config:name="Views">');
-  AppendToStream(FSSettings,
-          '<config:config-item-map-entry>');
-  AppendToStream(FSSettings,
-           '<config:config-item config:name="ActiveTable" config:type="string">Tabelle1</config:config-item>');
-  AppendToStream(FSSettings,
-            '<config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>');
-  AppendToStream(FSSettings,
-            '<config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>');
-  AppendToStream(FSSettings,
-          '<config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>');
-  AppendToStream(FSSettings,
-            '<config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>');
-  AppendToStream(FSSettings,
-          '<config:config-item config:name="HasColumnRowHeaders" config:type="boolean">'+FALSE_TRUE[showHeaders]+'</config:config-item>');
-  AppendToStream(FSSettings,
-            '<config:config-item-map-named config:name="Tables">');
+      '<office:settings>' +
+        '<config:config-item-set config:name="ooo:view-settings">' +
+         '<config:config-item-map-indexed config:name="Views">' +
+            '<config:config-item-map-entry>' +
+              '<config:config-item config:name="ActiveTable" config:type="string">Tabelle1</config:config-item>' +
+              '<config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>' +
+              '<config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>' +
+              '<config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>' +
+              '<config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' +
+              '<config:config-item config:name="HasColumnRowHeaders" config:type="boolean">'+FALSE_TRUE[showHeaders]+'</config:config-item>' +
+              '<config:config-item-map-named config:name="Tables">');
 
-              WriteTableSettings(FSSettings);
+                WriteTableSettings(FSSettings);
 
   AppendToStream(FSSettings,
-            '</config:config-item-map-named>');
-  AppendToStream(FSSettings,
-   '        </config:config-item-map-entry>');
-  AppendToStream(FSSettings,
-   '      </config:config-item-map-indexed>');
-  AppendToStream(FSSettings,
-   '    </config:config-item-set>');
-  AppendToStream(FSSettings,
-   '  </office:settings>');
-  AppendToStream(FSSettings,
+            '</config:config-item-map-named>' +
+          '</config:config-item-map-entry>' +
+        '</config:config-item-map-indexed>' +
+      '</config:config-item-set>' +
+    '</office:settings>' +
    '</office:document-settings>');
 end;
 
@@ -2531,39 +2546,27 @@ begin
       '</office:styles>');
 
   AppendToStream(FSStyles,
-      '<office:automatic-styles>');
-  AppendToStream(FSStyles,
-        '<style:page-layout style:name="pm1">');
-  AppendToStream(FSStyles,
-          '<style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />');
-  AppendToStream(FSStyles,
-          '<style:header-style>',
-            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />',
-          '</style:header-style>');
-  AppendToStream(FSStyles,
-          '<style:footer-style>',
-            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />',
-          '</style:footer-style>');
-  AppendToStream(FSStyles,
-        '</style:page-layout>');
-  AppendToStream(FSStyles,
+      '<office:automatic-styles>' +
+        '<style:page-layout style:name="pm1">' +
+          '<style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />' +
+          '<style:header-style>' +
+            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />' +
+          '</style:header-style>' +
+          '<style:footer-style>' +
+            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />' +
+          '</style:footer-style>' +
+        '</style:page-layout>' +
       '</office:automatic-styles>');
 
   AppendToStream(FSStyles,
-      '<office:master-styles>');
-  AppendToStream(FSStyles,
-        '<style:master-page style:name="Default" style:page-layout-name="pm1">');
-  AppendToStream(FSStyles,
-          '<style:header />',
-          '<style:header-left style:display="false" />');
-  AppendToStream(FSStyles,
-          '<style:footer />',
-          '<style:footer-left style:display="false" />');
-  AppendToStream(FSStyles,
-        '</style:master-page>');
-  AppendToStream(FSStyles,
-      '</office:master-styles>');
-  AppendToStream(FSStyles,
+      '<office:master-styles>' +
+        '<style:master-page style:name="Default" style:page-layout-name="pm1">' +
+          '<style:header />' +
+          '<style:header-left style:display="false" />' +
+          '<style:footer />' +
+          '<style:footer-left style:display="false" />' +
+        '</style:master-page>' +
+      '</office:master-styles>' +
     '</office:document-styles>');
 end;
 
@@ -2612,8 +2615,8 @@ begin
   WriteRowStyles(FSContent);
 
   AppendToStream(FSContent,
-        '<style:style style:name="ta1" style:family="table" style:master-page-name="Default">',
-          '<style:table-properties table:display="true" style:writing-mode="lr-tb"/>',
+        '<style:style style:name="ta1" style:family="table" style:master-page-name="Default">' +
+          '<style:table-properties table:display="true" style:writing-mode="lr-tb"/>' +
         '</style:style>');
   // Automatically generated styles
   WriteCellStyles(FSContent);
@@ -2622,7 +2625,7 @@ begin
 
   // Body
   AppendToStream(FSContent,
-      '<office:body>',
+      '<office:body>' +
         '<office:spreadsheet>');
 
   // Write all worksheets
@@ -2630,8 +2633,8 @@ begin
     WriteWorksheet(FSContent, Workbook.GetWorksheetByIndex(i));
 
   AppendToStream(FSContent,
-        '</office:spreadsheet>',
-      '</office:body>',
+        '</office:spreadsheet>' +
+      '</office:body>' +
     '</office:document-content>'
   );
 
@@ -2901,7 +2904,7 @@ begin
     parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString,
       fmtItem.NumFormat);
     try
-      numFmtXML := parser.BuildXMLAsString('  ', fmtItem.Name);
+      numFmtXML := parser.BuildXMLAsString(fmtItem.Name);
       if numFmtXML <> '' then
         AppendToStream(AStream, numFmtXML);
     finally
@@ -3541,6 +3544,7 @@ var
   displayStr: String;
   lIndex: Integer;
   isTimeOnly: Boolean;
+  lcfmt: String;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
@@ -3553,15 +3557,25 @@ begin
 
   // The row should already be the correct one
 
-  // We have to distinguish between time-only values and values that contain date parts.
-  isTimeOnly := IsTimeFormat(ACell^.NumberFormat) or IsTimeFormat(ACell^.NumberFormatStr);
-  strValue := FormatDateTime(FMT[isTimeOnly], AValue);
-  displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue);
-
-  AppendToStream(AStream, Format(
-    '<table:table-cell office:value-type="%s" office:%s-value="%s" %s>' +
-      '<text:p>%s</text:p> ' +
-    '</table:table-cell>', [DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, displayStr]));
+  // nfTimeInterval is a special case - let's handle it first:
+  if (ACell^.NumberFormat = nfTimeInterval) then begin
+    lcfmt := Lowercase(Copy(ACell^.NumberFormatStr, 1, 2));
+    strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
+    displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue, [fdoInterval]);
+    AppendToStream(AStream, Format(
+      '<table:table-cell office:value-type="time" office:time-value="%s" %s>' +
+        '<text:p>%s</text:p>' +
+      '</table:table-cell>', [strValue, lStyle, displayStr]));
+  end else begin
+    // We have to distinguish between time-only values and values that contain date parts.
+    isTimeOnly := IsTimeFormat(ACell^.NumberFormat) or IsTimeFormat(ACell^.NumberFormatStr);
+    strValue := FormatDateTime(FMT[isTimeOnly], AValue);
+    displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue);
+    AppendToStream(AStream, Format(
+      '<table:table-cell office:value-type="%s" office:%s-value="%s" %s>' +
+        '<text:p>%s</text:p> ' +
+      '</table:table-cell>', [DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, displayStr]));
+  end;
 end;
 
 {

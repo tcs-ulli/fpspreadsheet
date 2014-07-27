@@ -39,15 +39,18 @@
       <Unit0>
         <Filename Value="opendocread.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="opendocread"/>
       </Unit0>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
     <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="opendocread"/>
+    </Target>
     <SearchPaths>
-      <OtherUnitFiles Value=".."/>
+      <OtherUnitFiles Value="..\.."/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       <SrcPath Value=".."/>
     </SearchPaths>
     <Parsing>
@@ -55,11 +58,5 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Other>
-      <CompilerMessages>
-        <UseMsgFile Value="True"/>
-      </CompilerMessages>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
 </CONFIG>
