@@ -16,11 +16,6 @@
           <UseAnsiStrings Value="False"/>
         </SyntaxOptions>
       </Parsing>
-      <Linking>
-        <Debugging>
-          <UseExternalDbgSyms Value="True"/>
-        </Debugging>
-      </Linking>
       <Other>
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>
