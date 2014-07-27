@@ -401,7 +401,8 @@ begin
 
   // get style index
   s := GetAttrValue(ANode, 's');
-  ApplyCellFormatting(cell, StrToInt(s));
+  if s <> '' then
+    ApplyCellFormatting(cell, StrToInt(s));
 
   // get data
   datanode := ANode.FirstChild;
@@ -1828,17 +1829,11 @@ var
   CellPosText: String;
   CellValueText: String;
   lStyleIndex: Integer;
-  lDateTime: TDateTime;
 begin
   Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
-  lDateTime := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
-  // !!!!!!!!!!!!!!!!!!!!!  NEED "IF" TO CHECK FOR DATE/TIME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-//  CellValueText := Format('%g', [lDateTime], FPointSeparatorSettings);
-  CellValueText := FloatToStr(lDateTime, FPointSeparatorSettings);
-
+  CellValueText := FloatToStr(AValue, FPointSeparatorSettings);
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="n"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
@@ -1846,21 +1841,16 @@ end;
 {*******************************************************************
 *  TsSpreadOOXMLWriter.WriteDateTime ()
 *
-*  DESCRIPTION:    Writes a date/time value as a text
-*                  ISO 8601 format is used to preserve interoperability
-*                  between locales.
-*
-*  Note: this should be replaced by writing actual date/time values
-*
+*  DESCRIPTION:    Writes a date/time value as a number
+*                  Respects DateMode of the file
 *******************************************************************}
 procedure TsSpreadOOXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
   ExcelDateSerial: double;
 begin
-  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, dm1900); //FDateMode);
+  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
-//  WriteLabel(AStream, ARow, ACol, FormatDateTime(ISO8601Format, AValue), ACell);
 end;
 
 {

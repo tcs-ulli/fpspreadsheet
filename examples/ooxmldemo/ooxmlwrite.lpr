@@ -92,6 +92,16 @@ begin
   MyWorksheet.WriteDateTime(1, 5, now, nfShortTime);
   MyWorksheet.WriteDateTime(2, 5, now, 'nn:ss.zzz');
 
+  // Write some numbers in various formats
+  MyWorksheet.WriteNumber(0, 6, 12345.6789, nfFixed, 0);
+  MyWorksheet.WriteNumber(1, 6, 12345.6789, nfFixed, 3);
+  MyWorksheet.WriteNumber(2, 6, 12345.6789, nfFixedTh, 0);
+  MyWorksheet.Writenumber(3, 6, 12345.6789, nfFixedTh, 3);
+  MyWorksheet.WriteNumber(4, 6, 12345.6789, nfExp, 2);
+  Myworksheet.Writenumber(5, 6, 12345.6789, nfExp, 4);
+  MyWorksheet.WriteCurrency(6, 6,-12345.6789, nfCurrency, 2);
+  MyWorksheet.WriteCurrency(7, 6,-12345.6789, nfCurrencyRed, 2);
+
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML);
   MyWorkbook.Free;
