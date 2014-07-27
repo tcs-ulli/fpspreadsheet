@@ -114,6 +114,7 @@ type
     procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
     procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
     procedure ReadNumber(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
+
   public
     { General reading methods }
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -1199,12 +1200,12 @@ begin
   //unzip files into AFileName path
   FilePath := GetTempDir(false);
   UnZip := TUnZipper.Create;
-  UnZip.OutputPath := FilePath;
   FileList := TStringList.Create;
-  FileList.Add('styles.xml');
-  FileList.Add('content.xml');
-  FileList.Add('settings.xml');
   try
+    FileList.Add('styles.xml');
+    FileList.Add('content.xml');
+    FileList.Add('settings.xml');
+    UnZip.OutputPath := FilePath;
     Unzip.UnZipFiles(AFileName,FileList);
   finally
     FreeAndNil(FileList);

@@ -64,9 +64,11 @@ type
     FXfList: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
+    FWrittenByFPS: Boolean;
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
     procedure ReadDateMode(ANode: TDOMNode);
+    procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadNumFormats(ANode: TDOMNode);
@@ -517,6 +519,11 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadFileVersion(ANode: TDOMNode);
+begin
+  FWrittenByFPS := GetAttrValue(ANode, 'appName') = 'fpspreadsheet';
+end;
+
 procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -530,16 +537,23 @@ var
   s: String;
 begin
   fnt := Workbook.GetDefaultFont;
-  fntName := fnt.FontName;
-  fntSize := fnt.Size;
-  fntStyles := [];
-  fntColor := fnt.Color;
+  if fnt <> nil then begin
+    fntName := fnt.FontName;
+    fntSize := fnt.Size;
+    fntStyles := fnt.Style;
+    fntColor := fnt.Color;
+  end else begin
+    fntName := 'Arial';
+    fntSize := 10;
+    fntStyles := [];
+    fntColor := scBlack;
+  end;
 
   node := ANode.FirstChild;
   while node <> nil do begin
     nodename := node.NodeName;
     if nodename = 'name' then begin
-      s := GetAttrValue(ANode, 'val');
+      s := GetAttrValue(node, 'val');
       if s <> '' then fntName := s;
     end
     else
@@ -549,27 +563,27 @@ begin
     end
     else
     if nodename = 'b' then begin
-      if GetAttrValue(ANode, 'val') <> 'false'
+      if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles + [fssBold];
     end
     else
     if nodename = 'i' then begin
-      if GetAttrValue(ANode, 'val') <> 'false'
+      if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles + [fssItalic];
     end
     else
     if nodename = 'u' then begin
-      if GetAttrValue(ANode, 'val') <> 'false'
+      if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles+ [fssUnderline]
     end
     else
     if nodename = 'strike' then begin
-      if GetAttrValue(ANode, 'val') <> 'false'
+      if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles + [fssStrikeout];
     end
     else
     if nodename = 'color' then begin
-      s := GetAttrValue(ANode, 'rgb');
+      s := GetAttrValue(node, 'rgb');
       if s <> '' then
         fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s));
     end;
@@ -583,12 +597,29 @@ end;
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
 var
   node: TDOMNode;
+  n: Integer;
 begin
+  // Clear existing fonts. They will be replaced by those from the file.
+  FWorkbook.RemoveAllFonts;
+
   node := ANode.FirstChild;
   while node <> nil do begin
     ReadFont(node);
     node := node.NextSibling;
   end;
+
+  n := FWorkbook.GetFontCount;
+
+  { A problem is caused by the font #4 which is missing in BIFF file versions.
+    FPSpreadsheet writes a nil value to this position in order to keep compatibility
+    with other file formats. Other applications, however, have a valid font at
+    this index. Therefore, we delete the font #4 if the file was not written
+    by FPSpreadsheet. }
+  if not FWrittenByFPS then
+    FWorkbook.DeleteFont(4);
+
+  n := FWorkbook.GetFontCount;
+
 end;
 
 procedure TsSpreadOOXMLReader.ReadNumFormats(ANode: TDOMNode);
@@ -703,6 +734,16 @@ begin
       FreeAndNil(Doc);
     end;
 
+    // process the workbook.xml file
+    if not FileExists(FilePath + OOXML_PATH_XL_WORKBOOK) then
+      raise Exception.Create('Defective internal structure of xlsx file');
+    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
+    DeleteFile(FilePath + OOXML_PATH_XL_WORKBOOK);
+    ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
+    ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
+    ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+    FreeAndNil(Doc);
+
     // process the styles.xml file
     if FileExists(FilePath + OOXML_PATH_XL_STYLES) then begin // should always exist, just to make sure...
       ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
@@ -712,14 +753,6 @@ begin
       ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
       FreeAndNil(Doc);
     end;
-
-    // process the workbook.xml file
-    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
-    DeleteFile(FilePath + OOXML_PATH_XL_WORKBOOK);
-    ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
-    ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
-
-    FreeAndNil(Doc);
 
     // read worksheets
     for i:=0 to SheetList.Count-1 do begin
@@ -1376,8 +1409,7 @@ begin
       '<sheets>');
   for i:=1 to Workbook.GetWorksheetCount do
     AppendToStream(FSWorkbook, Format(
-    '<sheet name="%s" sheetId="%d" r:id="rId%d" />', [Workbook.GetWorksheetByIndex(i-1).Name, i, i+2]));
-    //        '<sheet name="Sheet%d" sheetId="%d" r:id="rId%d" />', [i, i, i+2]));
+        '<sheet name="%s" sheetId="%d" r:id="rId%d" />', [Workbook.GetWorksheetByIndex(i-1).Name, i, i+2]));
   AppendToStream(FSWorkbook,
       '</sheets>');
   AppendToStream(FSWorkbook,
@@ -1566,7 +1598,7 @@ begin
 
   // Footer
   AppendToStream(FSSheets[FCurSheetNum],
-      '</sheetData>',
+      '</sheetData>' +
     '</worksheet>');
 end;
 
