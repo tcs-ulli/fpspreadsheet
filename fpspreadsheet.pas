@@ -806,6 +806,7 @@ type
       AStyle: TsFontStyles; AColor: TsColor): Integer; overload;
     function AddFont(const AFont: TsFont): Integer; overload;
     procedure CopyFontList(ASource: TFPList);
+    procedure DeleteFont(AFontIndex: Integer);
     function FindFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer;
     function GetDefaultFont: TsFont;
@@ -4366,7 +4367,7 @@ end;
 {@@
   Reads the document from a file. This method will try to guess the format from
   the extension. In the case of the ambiguous xls extension, it will simply
-  assume that it is BIFF8. Note that it could be BIFF2, 3, 4 or 5 too.
+  assume that it is BIFF8. Note that it could be BIFF2 or 5 as well.
 }
 procedure TsWorkbook.ReadFromFile(AFileName: string); overload;
 var
@@ -4712,6 +4713,23 @@ begin
 end;
 
 {@@
+  Deletes a font.
+  Use with caution because this will screw up the font assignment to cells.
+  The only legal reason to call this method is from a reader of a file format
+  in which the missing font #4 of BIFF does exist.
+}
+procedure TsWorkbook.DeleteFont(AFontIndex: Integer);
+var
+  fnt: TsFont;
+begin
+  if AFontIndex < FFontList.Count then begin
+    fnt := TsFont(FFontList.Items[AFontIndex]);
+    if fnt <> nil then fnt.Free;
+    FFontList.Delete(AFontIndex);
+  end;
+end;
+
+{@@
   Checks whether the font with the given specification is already contained in
   the font list. Returns the index, or -1 if not found.
 
@@ -4788,6 +4806,7 @@ begin
     fnt.Free;
     FFontList.Delete(i);
   end;
+  FBuiltinFontCount := 0;
 end;
 
 {@@
