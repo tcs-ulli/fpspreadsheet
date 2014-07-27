@@ -42,6 +42,8 @@ const
   ISO8601FormatExtended='yyyy"-"mm"-"dd"T"hh":"mm":"ss';
   {@@  ISO 8601 time-only format, used in ODF/opendocument }
   ISO8601FormatTimeOnly='"PT"hh"H"nn"M"ss"S"';
+  {@@ ISO 8601 time-only format, with hours overflow }
+  ISO8601FormatHoursOverflow='"PT"[hh]"H"nn"M"ss.zz"S"';
 
 // Endianess helper functions
 function WordToLE(AValue: Word): Word;
