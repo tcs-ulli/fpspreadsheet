@@ -69,6 +69,7 @@ type
     procedure ReadCellXfs(ANode: TDOMNode);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadFileVersion(ANode: TDOMNode);
+    procedure ReadFills(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadNumFormats(ANode: TDOMNode);
@@ -190,6 +191,12 @@ const
   MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
 
 type
+  TFillListData = class
+    PatternType: String;
+    FgColor: TsColor;
+    BgColor: Tscolor;
+  end;
+
   TXFListData = class
     NumFmtIndex: Integer;
     FontIndex: Integer;
@@ -313,6 +320,7 @@ procedure TsSpreadOOXMLReader.ApplyCellFormatting(ACell: PCell; XfIndex: Integer
 var
   xf: TXfListData;
   numFmtData: TsNumFormatData;
+  fillData: TFillListData;
   j: Integer;
 begin
   if Assigned(ACell) then begin
@@ -350,14 +358,15 @@ begin
       ACell^.Border := xf.Borders;
     end else
       Exclude(ACell^.UsedFormattingFields, uffBorder);
+      *)
 
     // Background color
-    if xf.BackgroundColor <> scTransparent then begin
+    fillData := FFillList[xf.FillIndex];
+    if (fillData <> nil) and (fillData.PatternType <> 'none') then begin
       Include(ACell^.UsedFormattingFields, uffBackgroundColor);
-      ACell^.BackgroundColor := xf.BackgroundColor;
+      ACell^.BackgroundColor := fillData.FgColor;
     end else
       Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
-      *)
 
     if xf.NumFmtIndex > 0 then begin
       j := NumFormatList.FindByIndex(xf.NumFmtIndex);
@@ -526,6 +535,104 @@ begin
   FWrittenByFPS := GetAttrValue(ANode, 'appName') = 'fpspreadsheet';
 end;
 
+procedure TsSpreadOOXMLReader.ReadFills(ANode: TDOMNode);
+var
+  fillNode, patternNode, colorNode: TDOMNode;
+  nodeName: String;
+  filldata: TFillListData;
+  s: String;
+  patt: String;
+  fgclr: TsColor;
+  bgclr: TsColor;
+  ci: TsColor;
+begin
+  if ANode = nil then
+    exit;
+
+  fillNode := ANode.FirstChild;
+  while Assigned(fillNode) do begin
+    nodename := fillNode.NodeName;
+    patternNode := fillNode.FirstChild;
+    while Assigned(patternNode) do begin
+      nodename := patternNode.NodeName;
+      if nodename = 'patternFill' then begin
+        patt := GetAttrValue(patternNode, 'patternType');
+        fgclr := scWhite;
+        bgclr := scBlack;
+        colorNode := patternNode.FirstChild;
+        while Assigned(colorNode) do begin
+          nodeName := colorNode.NodeName;
+          if nodeName = 'fgColor' then begin
+            s := GetAttrValue(colorNode, 'rgb');
+            if s <> '' then
+              fgclr := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
+            else begin
+              s := GetAttrValue(colorNode, 'indexed');
+              if s <> '' then
+                fgclr := StrToInt(s);
+            end;
+          end
+          else
+          if nodeName = 'bgColor' then begin
+            s := GetAttrValue(colorNode, 'rgb');
+            if s <> '' then
+              bgclr := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
+            else begin
+              s := GetAttrValue(colorNode, 'indexed');
+              if s <> '' then
+                bgclr := StrToInt(s);
+            end;
+          end;
+          colorNode := colorNode.NextSibling;
+        end;
+
+        // Store in FFillList
+        fillData := TFillListData.Create;
+        fillData.PatternType := patt;
+        fillData.FgColor := fgclr;
+        fillData.BgColor := bgclr;
+        FFillList.Add(fillData);
+      end;
+      patternNode := patternNode.NextSibling;
+    end;
+    fillNode := fillNode.NextSibling;
+  end;
+end;
+
+(*
+AppendToStream(AStream, Format(
+  '<fills count="%d">', [Length(FFillList)]));
+
+// index 0 -- built-in empty fill
+AppendToStream(AStream,
+    '<fill>',
+      '<patternFill patternType="none" />',
+    '</fill>');
+
+// index 1 -- built-in gray125 pattern
+AppendToStream(AStream,
+    '<fill>',
+      '<patternFill patternType="gray125" />',
+    '</fill>');
+
+// user-defined fills
+for i:=2 to High(FFillList) do begin
+  styleCell := FFillList[i];
+  rgb := Workbook.GetPaletteColor(styleCell^.BackgroundColor);
+  AppendToStream(AStream,
+    '<fill>',
+      '<patternFill patternType="solid">');
+  AppendToStream(AStream, Format(
+        '<fgColor rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]),
+        '<bgColor indexed="64" />');
+  AppendToStream(AStream,
+      '</patternFill>',
+    '</fill>');
+end;
+
+AppendToStream(FSStyles,
+  '</fills>');
+*)
 procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -610,7 +717,6 @@ end;
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
 var
   node: TDOMNode;
-  n: Integer;
 begin
   // Clear existing fonts. They will be replaced by those from the file.
   FWorkbook.RemoveAllFonts;
@@ -621,8 +727,6 @@ begin
     node := node.NextSibling;
   end;
 
-  n := FWorkbook.GetFontCount;
-
   { A problem is caused by the font #4 which is missing in BIFF file versions.
     FPSpreadsheet writes a nil value to this position in order to keep compatibility
     with other file formats. Other applications, however, have a valid font at
@@ -630,9 +734,6 @@ begin
     by FPSpreadsheet. }
   if not FWrittenByFPS then
     FWorkbook.DeleteFont(4);
-
-  n := FWorkbook.GetFontCount;
-
 end;
 
 procedure TsSpreadOOXMLReader.ReadNumFormats(ANode: TDOMNode);
@@ -801,6 +902,7 @@ begin
       DeleteFile(FilePath + OOXML_PATH_XL_STYLES);
       ReadPalette(Doc.DocumentElement.FindNode('colors'));
       ReadFonts(Doc.DocumentElement.FindNode('fonts'));
+      ReadFills(Doc.DocumentElement.FindNode('fills'));
       ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
       ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
       FreeAndNil(Doc);
