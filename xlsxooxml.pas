@@ -72,6 +72,7 @@ type
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadNumFormats(ANode: TDOMNode);
+    procedure ReadPalette(ANode: TDOMNode);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -110,6 +111,7 @@ type
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
     procedure WriteNumFormatList(AStream: TStream);
+    procedure WritePalette(AStream: TStream);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
   protected
     { Streams with the contents of files }
@@ -584,8 +586,19 @@ begin
     else
     if nodename = 'color' then begin
       s := GetAttrValue(node, 'rgb');
-      if s <> '' then
+      if s <> '' then begin
         fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s));
+        node := node.NextSibling;
+        continue;
+      end;
+      s := GetAttrValue(node, 'indexed');
+      if s <> '' then begin
+        fntColor := StrToInt(s);
+        if (fntColor >= FWorkbook.GetPaletteSize) then
+          fntColor := scBlack;
+        node := node.NextSibling;
+        continue;
+      end;
     end;
     node := node.NextSibling;
   end;
@@ -641,6 +654,44 @@ begin
       node := node.NextSibling;
     end;
   end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
+var
+  node, colornode: TDOMNode;
+  nodename: String;
+  rgb: string;
+  n: Integer;
+  color: TsColorValue;
+  pal: array of TsColorValue;
+begin
+  if ANode = nil then
+    exit;
+  SetLength(pal, 1000);
+  n := 0;
+  node := ANode.FirstChild;
+  while Assigned(node) do begin
+    nodename := node.NodeName;
+    if nodename = 'indexedColors' then begin
+      colornode := node.FirstChild;
+      while Assigned(colornode) do begin
+        nodename := colornode.NodeName;
+        if nodename = 'rgbColor' then begin
+          rgb := GetAttrValue(colornode, 'rgb');
+          if rgb <> '' then begin
+            color := HTMLColorStrToColor('#' + rgb);
+            if n = Length(pal) then
+              SetLength(pal, Length(pal) + 1000);
+            pal[n] := color;
+            inc(n);
+          end;
+        end;
+        colornode := colorNode.NextSibling;
+      end;
+    end;
+    node := node.NextSibling;
+  end;
+  FWorkbook.UsePalette(@pal[0], n);
 end;
 
 procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
@@ -748,6 +799,7 @@ begin
     if FileExists(FilePath + OOXML_PATH_XL_STYLES) then begin // should always exist, just to make sure...
       ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
       DeleteFile(FilePath + OOXML_PATH_XL_STYLES);
+      ReadPalette(Doc.DocumentElement.FindNode('colors'));
       ReadFonts(Doc.DocumentElement.FindNode('fonts'));
       ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
       ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
@@ -1150,8 +1202,9 @@ begin
       if (fssStrikeout in font.Style) then
         s := s + '<strike />';
       if font.Color <> scBlack then begin
-        rgb := Workbook.GetPaletteColor(font.Color);
-        s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]);
+        s := s + Format('<color indexed="%d" />', [font.Color]);
+        // rgb := Workbook.GetPaletteColor(font.Color);
+        // s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]);
       end;
       AppendToStream(AStream,
         '<font>', s, '</font>');
@@ -1190,6 +1243,28 @@ begin
         '</numFmts>'
       );
   end;
+end;
+
+{ Writes the workbook's color palette to the file }
+procedure TsSpreadOOXMLWriter.WritePalette(AStream: TStream);
+var
+  c: TsColor;
+  rgb: TsColorValue;
+  i: Integer;
+begin
+  AppendToStream(AStream,
+    '<colors>' +
+      '<indexedColors>');
+
+  for i:=0 to Workbook.GetPaletteSize-1 do begin
+    rgb := Workbook.GetPaletteColor(i);
+    AppendToStream(AStream,
+        '<rgbColor rgb="'+ColorToHTMLColorStr(rgb, true) + '" />');
+  end;
+
+  AppendToStream(AStream,
+      '</indexedColors>' +
+    '</colors>');
 end;
 
 { Writes the style list which the writer has collected in FFormattingStyles. }
@@ -1363,6 +1438,9 @@ begin
       '<dxfs count="0" />');
   AppendToStream(FSStyles,
       '<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16" />');
+
+  // Palette
+  WritePalette(FSStyles);
 
   AppendToStream(FSStyles,
     '</styleSheet>');

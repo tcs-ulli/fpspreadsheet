@@ -142,7 +142,7 @@ type
   end;
 
 var
-  // the palette of the default BIFF8 colors as "big-endian color" values
+  // the palette of the 64 default BIFF8 colors as "big-endian color" values
   PALETTE_BIFF8: array[$00..$3F] of TsColorValue = (
     $000000,  // $00: black            // 8 built-in default colors
     $FFFFFF,  // $01: white

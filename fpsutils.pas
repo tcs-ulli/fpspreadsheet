@@ -127,7 +127,7 @@ function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer;
 function HTMLLengthStrToPts(AValue: String): Double;
 
 function HTMLColorStrToColor(AValue: String): TsColorValue;
-function ColorToHTMLColorStr(AValue: TsColorValue): String;
+function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
@@ -1408,7 +1408,7 @@ end;
 {@@
   Converts a HTML color string to a TsColorValue. Need for the ODS file format.
 
-  @param   AValue   HTML color string, such as '#FF0000'
+  @param   AValue         HTML color string, such as '#FF0000'
   @return  rgb color value in little endian byte-sequence. This value is
            compatible with the TColor data type of the graphics unit.
 }
@@ -1454,18 +1454,23 @@ end;
 {@@
   Converts an rgb color value to a string as used in HTML code (for ods)
 
-  @param   AValue   RGB color value (compatible with the TColor data type of the
-                    graphics unit)
-  @return  HTML-compatible string, like '#FF0000'
+  @param   AValue          RGB color value (compatible with the TColor data type
+                           of the graphics unit)
+  @param   AExcelDialect   If TRUE, returned string is in Excels format for xlsx,
+                           i.e. in AARRGGBB notation, like '00FF0000' for "red"
+  @return  HTML-compatible string, like '#FF0000' (AExcelDialect = false)
 }
-function ColorToHTMLColorStr(AValue: TsColorValue): String;
+function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 type
   TRGB = record r,g,b,a: Byte end;
 var
   rgb: TRGB;
 begin
   rgb := TRGB(AValue);
-  Result := Format('#%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
+  if AExcelDialect then
+    Result := Format('00%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b])
+  else
+    Result := Format('#%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
 end;
 
 {@@
@@ -1906,8 +1911,8 @@ end;
   Is needed for some Excel-strings.
 
   @param  AString     Input string starting with "<", "<=", ">", ">=", "<>" or "="
-                      If this start is missing a "=" is assumed.
-  @param  ACompareOp  Identifier for the comparins operation extracted - see TsCompareOperation
+                      If this start code is missing a "=" is assumed.
+  @param  ACompareOp  Identifier for the comparing operation extracted - see TsCompareOperation
   @return Input string with the comparing characters stripped.
 }
 function AnalyzeComparestr(AString: String; out ACompareOp: TsCompareOperation): String;
@@ -1931,7 +1936,7 @@ begin
             end;
       '>' : case AString[2] of
               '=' : RemoveChars(2, coGreaterEqual);
-              else  Removechars(1, coGreater);
+              else  RemoveChars(1, coGreater);
             end;
       '=' : RemoveChars(1, coEqual);
       else  RemoveChars(0, coEqual);
