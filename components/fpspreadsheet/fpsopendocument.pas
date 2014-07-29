@@ -3316,7 +3316,7 @@ begin
     exit;
 
   fnt := Workbook.GetFont(AFormat.FontIndex);
-  defFnt := Workbook.GetFont(0);  // Defaultfont
+  defFnt := Workbook.GetDefaultfont;
 
   if fnt.FontName <> defFnt.FontName then
     Result := Result + Format('style:font-name="%s" ', [fnt.FontName]);
