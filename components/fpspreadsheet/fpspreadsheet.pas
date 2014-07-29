@@ -819,6 +819,7 @@ type
 
     { Color handling }
     function AddColorToPalette(AColorValue: TsColorValue): TsColor;
+    function FindClosestColor(AColorValue: TsColorValue): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
     function GetColorName(AColorIndex: TsColor): string;
     function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
@@ -4888,6 +4889,35 @@ begin
   Result := Length(FPalette);
   SetLength(FPalette, Result+1);
   FPalette[Result] := AColorValue;
+end;
+
+{@@
+  Finds the palette color index which points to a color that is closest to a
+  given color. "Close" means here smallest length of the rgb-difference vector.
+
+  @param   AColorValue   Rgb color value to be considered
+  @return  Palette index of the color closest to AColorValue
+}
+function TsWorkbook.FindClosestColor(AColorValue: TsColorValue): TsColor;
+type
+  TRGBA = record r,g,b, a: Byte end;
+var
+  rgb: TRGBA;
+  rgb0: TRGBA absolute AColorValue;
+  dist: Double;
+  mindist: Double;
+  i: Integer;
+begin
+  Result := scNotDefined;
+  mindist := 1E108;
+  for i:=0 to Length(FPalette)-1 do begin
+    rgb := TRGBA(GetPaletteColor(i));
+    dist := sqr(rgb.r - rgb0.r) + sqr(rgb.g - rgb0.g) + sqr(rgb.b - rgb0.b);
+    if dist < mindist then begin
+      Result := i;
+      mindist := dist;
+    end;
+  end;
 end;
 
 {@@

@@ -67,14 +67,12 @@ type
     procedure TestWriteRead_ODS_Font_Biff8Pal;             // official biff8 palette in BIFF8 file format
     procedure TestWriteRead_ODS_Font_RandomPal;            // palette 64, top 56 entries random
 
-    { OpenDocument file format tests }
+    { OOXML file format tests }
     // Background colors...
-    (*
     procedure TestWriteRead_OOXML_Background_InternalPal;  // internal palette
     procedure TestWriteRead_OOXML_Background_Biff5Pal;     // official biff5 palette
     procedure TestWriteRead_OOXML_Background_Biff8Pal;     // official biff8 palette
     procedure TestWriteRead_OOXML_Background_RandomPal;    // palette 64, top 56 entries random
-    *)
     // Font colors...
     procedure TestWriteRead_OOXML_Font_InternalPal;        // internal palette for BIFF8 file format
     procedure TestWriteRead_OOXML_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
@@ -402,7 +400,6 @@ begin
 end;
 
 { Tests for OOXML file format }
-(*
 procedure TSpreadWriteReadColorTests.TestWriteRead_OOXML_Background_InternalPal;
 begin
   TestWriteReadBackgroundColors(sfOOXML, 0);
@@ -422,7 +419,7 @@ procedure TSpreadWriteReadColorTests.TestWriteRead_OOXML_Background_RandomPal;
 begin
   TestWriteReadBackgroundColors(sfOOXML, 999);
 end;
-  *)
+
 procedure TSpreadWriteReadColorTests.TestWriteRead_OOXML_Font_InternalPal;
 begin
   TestWriteReadFontColors(sfOOXML, 0);
