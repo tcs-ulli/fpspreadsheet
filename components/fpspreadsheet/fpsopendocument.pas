@@ -2172,6 +2172,16 @@ begin
               Include(borders, cbWest);
               SetBorderStyle(cbWest, s);
             end;
+            s := GetAttrValue(styleChildNode, 'style:diagonal-bl-tr');
+            if (s <> '') and (s <> 'none') then begin
+              Include(borders, cbDiagUp);
+              SetBorderStyle(cbDiagUp, s);
+            end;
+            s := GetAttrValue(styleChildNode, 'style:diagonal-tl-br');
+            if (s <> '') and (s <>'none') then begin
+              Include(borders, cbDiagDown);
+              SetBorderStyle(cbDiagDown, s);
+            end;
 
             // Text wrap
             s := GetAttrValue(styleChildNode, 'fo:wrap-option');
@@ -3292,6 +3302,24 @@ begin
       Result := Result + 'style:border-linewidth-top="0.002cm 0.035cm 0.002cm" ';
   end else
     Result := Result + 'fo:border-top="none" ';
+
+  if cbDiagUp in AFormat.Border then begin
+    Result := Result + Format('style:diagonal-bl-tr="%s %s %s" ', [
+      BORDER_LINEWIDTHS[AFormat.BorderStyles[cbDiagUp].LineStyle],
+      BORDER_LINESTYLES[AFormat.BorderStyles[cbDiagUp].LineStyle],
+      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbDiagUp].Color)
+    ]);
+  end;
+
+  if cbDiagDown in AFormat.Border then begin
+    Result := Result + Format('style:diagonal-tl-br="%s %s %s" ', [
+      BORDER_LINEWIDTHS[AFormat.BorderStyles[cbDiagDown].LineStyle],
+      BORDER_LINESTYLES[AFormat.BorderStyles[cbDiagDown].LineStyle],
+      Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbDiagDown].Color)
+    ]);
+  end;
+
+
 end;
 
 function TsSpreadOpenDocWriter.WriteDefaultFontXMLAsString: String;

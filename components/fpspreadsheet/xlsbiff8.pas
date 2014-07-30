@@ -257,12 +257,17 @@ const
   MASK_XF_BORDER_RIGHT                = $000000F0;
   MASK_XF_BORDER_TOP                  = $00000F00;
   MASK_XF_BORDER_BOTTOM               = $0000F000;
+  MASK_XF_BORDER_DIAGONAL             = $01E00000;
+
+  MASK_XF_BORDER_SHOW_DIAGONAL_DOWN   = $40000000;
+  MASK_XF_BORDER_SHOW_DIAGONAL_UP     = $80000000;
 
   { XF CELL BORDER COLORS }
   MASK_XF_BORDER_LEFT_COLOR           = $007F0000;
   MASK_XF_BORDER_RIGHT_COLOR          = $3F800000;
   MASK_XF_BORDER_TOP_COLOR            = $0000007F;
   MASK_XF_BORDER_BOTTOM_COLOR         = $00003F80;
+  MASK_XF_BORDER_DIAGONAL_COLOR       = $001FC000;
 
   { XF CELL BACKGROUND PATTERN }
   MASK_XF_BACKGROUND_PATTERN          = $FC000000;
@@ -1214,11 +1219,21 @@ begin
     XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbNorth].LineStyle)+1) shl 8);
   if cbSouth in ABorders then
     XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbSouth].LineStyle)+1) shl 12);
+  if cbDiagDown in ABorders then
+    XFBorderDWord1 := XFBorderDWord1 or $40000000;
+  if cbDiagUp in ABorders then
+    XFBorderDWord1 := XFBorderDWord1 or $80000000;
   AStream.WriteDWord(DWordToLE(XFBorderDWord1));
 
-  // Top and Bottom line colors
-  XFBorderDWord2 := ABorderStyles[cbNorth].Color + ABorderStyles[cbSouth].Color shl 7;
-//  XFBorderDWord2 := 8 {top line - black} + 8 * $80 {bottom line - black};
+  // Top, bottom and diagonal line colors
+  XFBorderDWord2 := ABorderStyles[cbNorth].Color + ABorderStyles[cbSouth].Color shl 7 +
+    ABorderStyles[cbDiagUp].Color shl 14;
+    // In BIFF8 both diagonals have the same color - we use the color of the up-diagonal.
+
+  // Diagonal line style
+  if (ABorders + [cbDiagUp, cbDiagDown] <> []) then
+    XFBorderDWord2 := XFBorderDWord2 or ((ord(ABorderStyles[cbDiagUp].LineStyle)+1) shl 21);
+    // In BIFF8 both diagonals have the same color - we use the color of the up-diagonal.
 
   // Add a background, if desired
   if AddBackground then XFBorderDWord2 := XFBorderDWord2 or $4000000;
@@ -1922,12 +1937,23 @@ begin
     Include(lData.Borders, cbSouth);
     lData.BorderStyles[cbSouth].LineStyle := FixLineStyle(dw shr 12);
   end;
+  dw := xf.Border_Background_2 and MASK_XF_BORDER_DIAGONAL;
+  if dw <> 0 then begin
+    lData.BorderStyles[cbDiagUp].LineStyle := FixLineStyle(dw shr 21);
+    lData.BorderStyles[cbDiagDown].LineStyle := lData.BorderStyles[cbDiagUp].LineStyle;
+    if xf.Border_Background_1 and MASK_XF_BORDER_SHOW_DIAGONAL_UP <> 0 then
+      Include(lData.Borders, cbDiagUp);
+    if xf.Border_Background_1 and MASK_XF_BORDER_SHOW_DIAGONAL_DOWN <> 0 then
+      Include(lData.Borders, cbDiagDown);
+  end;
 
   // Border line colors
   lData.BorderStyles[cbWest].Color := (xf.Border_Background_1 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
   lData.BorderStyles[cbEast].Color := (xf.Border_Background_1 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
   lData.BorderStyles[cbNorth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_TOP_COLOR);
   lData.BorderStyles[cbSouth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_BOTTOM_COLOR) shr 7;
+  lData.BorderStyles[cbDiagUp].Color := (xf.Border_Background_2 and MASK_XF_BORDER_DIAGONAL_COLOR) shr 14;
+  lData.BorderStyles[cbDiagDown].Color := lData.BorderStyles[cbDiagUp].Color;
 
   // Background fill pattern
   fill := (xf.Border_Background_2 and MASK_XF_BACKGROUND_PATTERN) shr 26;

@@ -1071,8 +1071,13 @@ end;
   @param  ARect  Rectangle in pixels occupied by the cell.
 }
 procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer; ARect: TRect);
+const
+  drawHor = 0;
+  drawVert = 1;
+  drawDiagUp = 2;
+  drawDiagDown = 3;
 
-  procedure DrawBorderLine(ACoord: Integer; ARect: TRect; IsHor: Boolean;
+  procedure DrawBorderLine(ACoord: Integer; ARect: TRect; ADrawDirection: Byte;
     ABorderStyle: TsCellBorderStyle);
   const
     // TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair);
@@ -1082,6 +1087,8 @@ procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer; ARect: TRec
       (1, 2, 1, 1, 3, 1, 1);
   var
     width3: Boolean;     // line is 3 pixels wide
+    deltax, deltay: Integer;
+    angle: Double;
   begin
     Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
     Canvas.Pen.Width := PEN_WIDTHS[ABorderStyle.LineStyle];
@@ -1089,66 +1096,124 @@ procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer; ARect: TRec
     Canvas.Pen.EndCap := pecSquare;
     width3 := (ABorderStyle.LineStyle in [lsThick, lsDouble]);
 
+    // Workaround until efficient drawing procedures for diagonal "hair" lines
+    // is available
+    if (ADrawDirection in [drawDiagUp, drawDiagDown]) and
+       (ABorderStyle.LineStyle = lsHair)
+    then
+      ABorderStyle.LineStyle := lsDotted;
+
     // Tuning the rectangle to avoid issues at the grid borders and to get nice corners
     if (ABorderStyle.LineStyle in [lsMedium, lsThick, lsDouble]) then begin
       if ACol = ColCount-1 then begin
-        if not IsHor and (ACoord = ARect.Right-1) and width3 then dec(ACoord);
+        if (ADrawDirection = drawVert) and (ACoord = ARect.Right-1) and width3
+          then dec(ACoord);
         dec(ARect.Right);
       end;
       if ARow = RowCount-1 then begin
-        if IsHor and (ACoord = ARect.Bottom-1) and width3 then dec(ACoord);
+        if (ADrawDirection = drawHor) and (ACoord = ARect.Bottom-1) and width3
+          then dec(ACoord);
         dec(ARect.Bottom);
       end;
     end;
     if ABorderStyle.LineStyle in [lsMedium, lsThick] then begin
-      if IsHor then dec(ARect.Right, 1) else dec(ARect.Bottom, 1);
+      if (ADrawDirection = drawHor) then
+        dec(ARect.Right, 1)
+      else if (ADrawDirection = drawVert) then
+        dec(ARect.Bottom, 1);
     end;
 
     // Painting
     case ABorderStyle.LineStyle of
       lsThin, lsMedium, lsThick, lsDotted, lsDashed:
-        if IsHor then
-          Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord)
-        else
-          Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);
+        case ADrawDirection of
+          drawHor     : Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord);
+          drawVert    : Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);
+          drawDiagUp  : Canvas.Line(ARect.Left, ARect.Bottom, ARect.Right, ARect.Top);
+          drawDiagDown: Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom);
+        end;
 
       lsHair:
-        if IsHor then
-          DrawHairLineHor(Canvas, ARect.Left, ARect.Right, ACoord)
-        else
-          DrawHairLineVert(Canvas, ACoord, ARect.Top, ARect.Bottom);
+        case ADrawDirection of
+          drawHor     : DrawHairLineHor(Canvas, ARect.Left, ARect.Right, ACoord);
+          drawVert    : DrawHairLineVert(Canvas, ACoord, ARect.Top, ARect.Bottom);
+          drawDiagUp  : ;
+          drawDiagDown: ;
+        end;
 
       lsDouble:
-        if IsHor then begin
-          Canvas.Line(ARect.Left, ACoord-1, ARect.Right, ACoord-1);
-          Canvas.Line(ARect.Left, ACoord+1, ARect.Right, ACoord+1);
-          Canvas.Pen.Color := Color;
-          Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord);
-        end else begin
-          Canvas.Line(ACoord-1, ARect.Top, ACoord-1, ARect.Bottom);
-          Canvas.Line(ACoord+1, ARect.Top, ACoord+1, ARect.Bottom);
-          Canvas.Pen.Color := Color;
-          Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);
+        case ADrawDirection of
+          drawHor:
+            begin
+              Canvas.Line(ARect.Left, ACoord-1, ARect.Right, ACoord-1);
+              Canvas.Line(ARect.Left, ACoord+1, ARect.Right, ACoord+1);
+              Canvas.Pen.Color := Color;
+              Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord);
+            end;
+          drawVert:
+            begin
+              Canvas.Line(ACoord-1, ARect.Top, ACoord-1, ARect.Bottom);
+              Canvas.Line(ACoord+1, ARect.Top, ACoord+1, ARect.Bottom);
+              Canvas.Pen.Color := Color;
+              Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);
+            end;
+          drawDiagUp:
+            begin
+              if ARect.Right = ARect.Left then
+                angle := pi/2
+              else
+                angle := arctan((ARect.Bottom-ARect.Top) / (ARect.Right-ARect.Left));
+              deltax := Max(1, round(1.0 / sin(angle)));
+              deltay := Max(1, round(1.0 / cos(angle)));
+              Canvas.Line(ARect.Left, ARect.Bottom-deltay-1, ARect.Right-deltax, ARect.Top-1);
+              Canvas.Line(ARect.Left+deltax, ARect.Bottom-1, ARect.Right, ARect.Top+deltay-1);
+            end;
+          drawDiagDown:
+            begin
+              if ARect.Right = ARect.Left then
+                angle := pi/2
+              else
+                angle := arctan((ARect.Bottom-ARect.Top) / (ARect.Right-ARect.Left));
+              deltax := Max(1, round(1.0 / sin(angle)));
+              deltay := Max(1, round(1.0 / cos(angle)));
+              Canvas.Line(ARect.Left, ARect.Top+deltay-1, ARect.Right-deltax, ARect.Bottom-1);
+              Canvas.Line(ARect.Left+deltax, ARect.Top-1, ARect.Right, ARect.Bottom-deltay-1);
+            end;
         end;
     end;
   end;
 
 var
   bs: TsCellBorderStyle;
+  cell: PCell;
 begin
   if Assigned(FWorksheet) then begin
     // Left border
     if GetBorderStyle(ACol, ARow, -1, 0, bs) then
-      DrawBorderLine(ARect.Left-1, ARect, false, bs);
+      DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
     // Right border
     if GetBorderStyle(ACol, ARow, +1, 0, bs) then
-      DrawBorderLine(ARect.Right-1, ARect, false, bs);
+      DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
     // Top border
     if GetBorderstyle(ACol, ARow, 0, -1, bs) then
-      DrawBorderLine(ARect.Top-1, ARect, true, bs);
+      DrawBorderLine(ARect.Top-1, ARect, drawHor, bs);
     // Bottom border
     if GetBorderStyle(ACol, ARow, 0, +1, bs) then
-      DrawBorderLine(ARect.Bottom-1, ARect, true, bs);
+      DrawBorderLine(ARect.Bottom-1, ARect, drawHor, bs);
+
+    cell := FWorksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
+    if cell <> nil then begin
+      // Diagonal up
+      if cbDiagUp in cell^.Border then begin
+        bs := cell^.Borderstyles[cbDiagUp];
+        DrawBorderLine(0, ARect, drawDiagUp, bs);
+      end;
+      // Diagonal down
+      if cbDiagDown in cell^.Border then begin
+        bs := cell^.BorderStyles[cbDiagDown];
+        DrawborderLine(0, ARect, drawDiagDown, bs);
+      end;
+    end;
   end;
 end;
 
@@ -1977,7 +2042,10 @@ begin
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
   cell := FWorksheet.FindCell(r, c);
-  neighborcell := FWorksheet.FindCell(r+ADeltaRow, c+ADeltaCol);
+  if (r+ADeltaRow < 0) or (c + ADeltaCol < 0) then
+    neighborcell := nil
+  else
+    neighborcell := FWorksheet.FindCell(r+ADeltaRow, c+ADeltaCol);
   // Only cell has border, but neighbor has not
   if ((cell <> nil) and (border in cell^.Border)) and
      ((neighborcell = nil) or (neighborborder in neighborcell^.Border))
