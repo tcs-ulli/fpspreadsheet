@@ -7,11 +7,11 @@ unit laz_fpspreadsheet;
 interface
 
 uses
-  fpolestorage, fpsallformats, fpsopendocument, fpspreadsheet, xlsbiff2, 
-  xlsbiff5, xlsbiff8, xlsxooxml, fpsutils, fpsStreams, fpszipper, 
-  uvirtuallayer_types, uvirtuallayer, uvirtuallayer_ole, 
+  fpolestorage, fpsallformats, xlscommon, fpsStreams, fpspreadsheet, 
+  fpsxmlcommon, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml, fpsopendocument, 
+  fpsutils, fpszipper, uvirtuallayer_types, uvirtuallayer, uvirtuallayer_ole, 
   uvirtuallayer_ole_helpers, uvirtuallayer_ole_types, uvirtuallayer_stream, 
-  fpolebasic, xlscommon, wikitable, fpsNumFormatParser, fpsfunc, fpsxmlcommon;
+  fpolebasic, wikitable, fpsNumFormatParser, fpsfunc;
 
 implementation
 

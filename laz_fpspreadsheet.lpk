@@ -35,88 +35,88 @@ This package is all you need if you don't want graphical components (like grids 
         <UnitName Value="fpsallformats"/>
       </Item2>
       <Item3>
-        <Filename Value="fpsopendocument.pas"/>
-        <UnitName Value="fpsopendocument"/>
-      </Item3>
-      <Item4>
-        <Filename Value="fpspreadsheet.pas"/>
-        <UnitName Value="fpspreadsheet"/>
-      </Item4>
-      <Item5>
-        <Filename Value="xlsbiff2.pas"/>
-        <UnitName Value="xlsbiff2"/>
-      </Item5>
-      <Item6>
-        <Filename Value="xlsbiff5.pas"/>
-        <UnitName Value="xlsbiff5"/>
-      </Item6>
-      <Item7>
-        <Filename Value="xlsbiff8.pas"/>
-        <UnitName Value="xlsbiff8"/>
-      </Item7>
-      <Item8>
-        <Filename Value="xlsxooxml.pas"/>
-        <UnitName Value="xlsxooxml"/>
-      </Item8>
-      <Item9>
-        <Filename Value="fpsutils.pas"/>
-        <UnitName Value="fpsutils"/>
-      </Item9>
-      <Item10>
-        <Filename Value="fpsstreams.pas"/>
-        <UnitName Value="fpsStreams"/>
-      </Item10>
-      <Item11>
-        <Filename Value="fpszipper.pp"/>
-        <UnitName Value="fpszipper"/>
-      </Item11>
-      <Item12>
-        <Filename Value="uvirtuallayer_types.pas"/>
-        <UnitName Value="uvirtuallayer_types"/>
-      </Item12>
-      <Item13>
-        <Filename Value="uvirtuallayer.pas"/>
-        <UnitName Value="uvirtuallayer"/>
-      </Item13>
-      <Item14>
-        <Filename Value="uvirtuallayer_ole.pas"/>
-        <UnitName Value="uvirtuallayer_ole"/>
-      </Item14>
-      <Item15>
-        <Filename Value="uvirtuallayer_ole_helpers.pas"/>
-        <UnitName Value="uvirtuallayer_ole_helpers"/>
-      </Item15>
-      <Item16>
-        <Filename Value="uvirtuallayer_ole_types.pas"/>
-        <UnitName Value="uvirtuallayer_ole_types"/>
-      </Item16>
-      <Item17>
-        <Filename Value="uvirtuallayer_stream.pas"/>
-        <UnitName Value="uvirtuallayer_stream"/>
-      </Item17>
-      <Item18>
-        <Filename Value="fpolebasic.pas"/>
-        <UnitName Value="fpolebasic"/>
-      </Item18>
-      <Item19>
         <Filename Value="xlscommon.pas"/>
         <UnitName Value="xlscommon"/>
-      </Item19>
-      <Item20>
-        <Filename Value="wikitable.pas"/>
-        <UnitName Value="wikitable"/>
-      </Item20>
-      <Item21>
-        <Filename Value="fpsnumformatparser.pas"/>
-        <UnitName Value="fpsNumFormatParser"/>
-      </Item21>
-      <Item22>
-        <Filename Value="fpsfunc.pas"/>
-        <UnitName Value="fpsfunc"/>
-      </Item22>
-      <Item23>
+      </Item3>
+      <Item4>
+        <Filename Value="fpsstreams.pas"/>
+        <UnitName Value="fpsStreams"/>
+      </Item4>
+      <Item5>
+        <Filename Value="fpspreadsheet.pas"/>
+        <UnitName Value="fpspreadsheet"/>
+      </Item5>
+      <Item6>
         <Filename Value="fpsxmlcommon.pas"/>
         <UnitName Value="fpsxmlcommon"/>
+      </Item6>
+      <Item7>
+        <Filename Value="xlsbiff2.pas"/>
+        <UnitName Value="xlsbiff2"/>
+      </Item7>
+      <Item8>
+        <Filename Value="xlsbiff5.pas"/>
+        <UnitName Value="xlsbiff5"/>
+      </Item8>
+      <Item9>
+        <Filename Value="xlsbiff8.pas"/>
+        <UnitName Value="xlsbiff8"/>
+      </Item9>
+      <Item10>
+        <Filename Value="xlsxooxml.pas"/>
+        <UnitName Value="xlsxooxml"/>
+      </Item10>
+      <Item11>
+        <Filename Value="fpsopendocument.pas"/>
+        <UnitName Value="fpsopendocument"/>
+      </Item11>
+      <Item12>
+        <Filename Value="fpsutils.pas"/>
+        <UnitName Value="fpsutils"/>
+      </Item12>
+      <Item13>
+        <Filename Value="fpszipper.pp"/>
+        <UnitName Value="fpszipper"/>
+      </Item13>
+      <Item14>
+        <Filename Value="uvirtuallayer_types.pas"/>
+        <UnitName Value="uvirtuallayer_types"/>
+      </Item14>
+      <Item15>
+        <Filename Value="uvirtuallayer.pas"/>
+        <UnitName Value="uvirtuallayer"/>
+      </Item15>
+      <Item16>
+        <Filename Value="uvirtuallayer_ole.pas"/>
+        <UnitName Value="uvirtuallayer_ole"/>
+      </Item16>
+      <Item17>
+        <Filename Value="uvirtuallayer_ole_helpers.pas"/>
+        <UnitName Value="uvirtuallayer_ole_helpers"/>
+      </Item17>
+      <Item18>
+        <Filename Value="uvirtuallayer_ole_types.pas"/>
+        <UnitName Value="uvirtuallayer_ole_types"/>
+      </Item18>
+      <Item19>
+        <Filename Value="uvirtuallayer_stream.pas"/>
+        <UnitName Value="uvirtuallayer_stream"/>
+      </Item19>
+      <Item20>
+        <Filename Value="fpolebasic.pas"/>
+        <UnitName Value="fpolebasic"/>
+      </Item20>
+      <Item21>
+        <Filename Value="wikitable.pas"/>
+        <UnitName Value="wikitable"/>
+      </Item21>
+      <Item22>
+        <Filename Value="fpsnumformatparser.pas"/>
+        <UnitName Value="fpsNumFormatParser"/>
+      </Item22>
+      <Item23>
+        <Filename Value="fpsfunc.pas"/>
+        <UnitName Value="fpsfunc"/>
       </Item23>
     </Files>
     <RequiredPkgs Count="2">

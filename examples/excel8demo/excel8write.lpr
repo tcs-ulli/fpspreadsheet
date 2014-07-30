@@ -95,12 +95,15 @@ begin
   MyWorksheet.WriteBorderLineStyle(5, 7, cbWest, lsMedium);
   MyWorksheet.WriteBorderLineStyle(5, 7, cbNorth, lsMedium);
 
-  // J6 empty cell, all thick borders
-  MyWorksheet.WriteBorders(5, 9, [cbNorth, cbEast, cbSouth, cbWest]);
+  // J6 empty cell, all thick borders, diagonals thin&red
+  MyWorksheet.WriteBorders(5, 9, [cbNorth, cbEast, cbSouth, cbWest, cbDiagUp, cbDiagDown]);
   MyWorksheet.WriteBorderLineStyle(5, 9, cbSouth, lsThick);
   MyWorksheet.WriteBorderLineStyle(5, 9, cbEast, lsThick);
   MyWorksheet.WriteBorderLineStyle(5, 9, cbWest, lsThick);
   MyWorksheet.WriteBorderLineStyle(5, 9, cbNorth, lsThick);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbDiagUp, lsThin);
+  MyWorksheet.WriteBorderLineStyle(5, 9, cbDiagDown, lsThin);
+  MyWorksheet.WriteBorderColor(5, 9, cbDiagUp, scRed);
 
   // K6 empty cell, top border thick
   MyWorksheet.WriteBorders(5, 11, [cbNorth]);

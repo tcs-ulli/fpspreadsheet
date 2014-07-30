@@ -34,7 +34,7 @@ var
 
   SollColWidths: array[0..1] of Single;
   SollRowHeights: Array[0..2] of Single;
-  SollBorders: array[0..15] of TsCellBorders;
+  SollBorders: array[0..19] of TsCellBorders;
   SollBorderLineStyles: array[0..6] of TsLineStyle;
   SollBorderColors: array[0..5] of TsColor;
 
@@ -245,15 +245,19 @@ begin
   SollBorders[12] := [cbEast, cbSouth, cbNorth];
   SollBorders[13] := [cbSouth, cbWest, cbNorth];
   SollBorders[14] := [cbWest, cbNorth, cbEast];
-  SollBorders[15] := [cbEast, cbSouth, cbWest, cbNorth];
+  SollBorders[15] := [cbEast, cbSouth, cbWest, cbNorth];     // BIFF2/5 end here
+  SollBorders[16] := [cbDiagUp];
+  SollBorders[17] := [cbDiagDown];
+  SollBorders[18] := [cbDiagUp, cbDiagDown];
+  SollBorders[19] := [cbEast, cbSouth, cbWest, cbNorth, cbDiagUp, cbDiagDown];
 
   SollBorderLineStyles[0] := lsThin;
   SollBorderLineStyles[1] := lsMedium;
   SollBorderLineStyles[2] := lsThick;
-  SollBorderLineStyles[3] := lsThick;
-  SollBorderLineStyles[4] := lsDashed;
-  SollBorderLineStyles[5] := lsDotted;
-  SollBorderLineStyles[6] := lsDouble;
+  SollBorderLineStyles[3] := lsDashed;
+  SollBorderLineStyles[4] := lsDotted;
+  SollBorderLineStyles[5] := lsDouble;
+  SollBorderLineStyles[6] := lsHair;
 
   SollBorderColors[0] := scBlue;
   SollBorderColors[1] := scRed;
@@ -569,7 +573,7 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   MyCell: PCell;
-  col: Integer;
+  col, maxCol: Integer;
   expected: String;
   current: String;
   TempFile: string; //write xls/xml to this file and read back from it
@@ -581,7 +585,11 @@ begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
-  for col := Low(SollBorders) to High(SollBorders) do
+  if AFormat in [sfExcel2, sfExcel5] then
+    maxCol := 15   // no diagonal border support in BIFF2 and BIFF5
+  else
+    maxCol := High(SollBorders);
+  for col := Low(SollBorders) to maxCol do
   begin
     MyWorksheet.WriteUsedFormatting(row, col, [uffBorder]);
     MyCell := MyWorksheet.GetCell(row, col);
@@ -656,6 +664,9 @@ var
   current: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
   c, ls: Integer;
+  borders: TsCellBorders;
+  diagUp_ls: Integer;
+  diagUp_clr: integer;
 begin
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -665,14 +676,18 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
 
+  borders := [cbNorth, cbSouth, cbEast, cbWest];
+  if AFormat in [sfExcel8, sfOpenDocument, sfOOXML] then
+    borders := borders + [cbDiagUp, cbDiagDown];
+
   c := 0;
   ls := 0;
   for row := 1 to 10 do
   begin
     for col := 1 to 10 do
     begin
-      MyWorksheet.WriteBorders(row*2, col*2, [cbNorth, cbSouth, cbEast, cbWest]);
-      for b in TsCellBorders do
+      MyWorksheet.WriteBorders(row*2, col*2, borders);
+      for b in borders do
       begin
         MyWorksheet.WriteBorderLineStyle(row*2, col*2, b, SollBorderLineStyles[ls]);
         MyWorksheet.WriteBorderColor(row*2, col*2, b, SollBorderColors[c]);
@@ -709,14 +724,30 @@ begin
       MyCell := MyWorksheet.FindCell(row*2, col*2);
       if myCell = nil then
         fail('Error in test code. Failed to get cell.');
-      for b in TsCellBorder do
+      for b in borders do
       begin
         current := ord(MyCell^.BorderStyles[b].LineStyle);
+        // In Excel both diagonals have the same line style. The reader picks
+        // the line style of the "diagonal-up" border. We use this as expected
+        // value in the "diagonal-down" case.
         expected := ord(SollBorderLineStyles[ls]);
+        if AFormat in [sfExcel8, sfOOXML] then
+          case b of
+            cbDiagUp  : diagUp_ls := expected;
+            cbDiagDown: expected := diagUp_ls;
+          end;
         CheckEquals(expected, current,
           'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
         current := MyCell^.BorderStyles[b].Color;
         expected := SollBorderColors[c];
+        // In Excel both diagonals have the same line color. The reader picks
+        // the color of the "diagonal-up" border. We use this as expected value
+        // in the "diagonal-down" case.
+        if AFormat in [sfExcel8, sfOOXML] then
+          case b of
+            cbDiagUp  : diagUp_clr := expected;
+            cbDiagDown: expected := diagUp_clr;
+          end;
         CheckEquals(expected, current,
           'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
         inc(ls);

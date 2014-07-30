@@ -599,40 +599,6 @@ begin
   end;
 end;
 
-(*
-AppendToStream(AStream, Format(
-  '<fills count="%d">', [Length(FFillList)]));
-
-// index 0 -- built-in empty fill
-AppendToStream(AStream,
-    '<fill>',
-      '<patternFill patternType="none" />',
-    '</fill>');
-
-// index 1 -- built-in gray125 pattern
-AppendToStream(AStream,
-    '<fill>',
-      '<patternFill patternType="gray125" />',
-    '</fill>');
-
-// user-defined fills
-for i:=2 to High(FFillList) do begin
-  styleCell := FFillList[i];
-  rgb := Workbook.GetPaletteColor(styleCell^.BackgroundColor);
-  AppendToStream(AStream,
-    '<fill>',
-      '<patternFill patternType="solid">');
-  AppendToStream(AStream, Format(
-        '<fgColor rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]),
-        '<bgColor indexed="64" />');
-  AppendToStream(AStream,
-      '</patternFill>',
-    '</fill>');
-end;
-
-AppendToStream(FSStyles,
-  '</fills>');
-*)
 procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
 var
   node: TDOMNode;

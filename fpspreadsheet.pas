@@ -342,7 +342,7 @@ type
 
   {@@ Indicates the border for a cell. If included in the CellBorders set the
       corresponding border is drawn in the style defined by the CellBorderStyle. }
-  TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth);
+  TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown);
 
   {@@ Indicates the border for a cell }
   TsCellBorders = set of TsCellBorder;
@@ -363,6 +363,8 @@ type
   {@@ Border styles for each cell border used by default: a thin, black, solid line }
 const
   DEFAULT_BORDERSTYLES: TsCellBorderStyles = (
+    (LineStyle: lsThin; Color: scBlack),
+    (LineStyle: lsThin; Color: scBlack),
     (LineStyle: lsThin; Color: scBlack),
     (LineStyle: lsThin; Color: scBlack),
     (LineStyle: lsThin; Color: scBlack),
