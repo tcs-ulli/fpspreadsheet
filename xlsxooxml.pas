@@ -65,6 +65,7 @@ type
     FFillList: TFPList;
     FBorderList: TFPList;
     FWrittenByFPS: Boolean;
+    procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
     procedure ReadDateMode(ANode: TDOMNode);
@@ -197,6 +198,11 @@ type
     BgColor: Tscolor;
   end;
 
+  TBorderListData = class
+    Borders: TsCellBorders;
+    BorderStyles: TsCellBorderStyles;
+  end;
+
   TXFListData = class
     NumFmtIndex: Integer;
     FontIndex: Integer;
@@ -321,6 +327,7 @@ var
   xf: TXfListData;
   numFmtData: TsNumFormatData;
   fillData: TFillListData;
+  borderData: TBorderListData;
   j: Integer;
 begin
   if Assigned(ACell) then begin
@@ -350,15 +357,17 @@ begin
     else
       Exclude(ACell^.UsedFormattingFields, uffTextRotation);
     ACell^.TextRotation := xf.TextRotation;
-
+  *)
     // Borders
-    ACell^.BorderStyles := xf.BorderStyles;
-    if xf.Borders <> [] then begin
-      Include(ACell^.UsedFormattingFields, uffBorder);
-      ACell^.Border := xf.Borders;
-    end else
-      Exclude(ACell^.UsedFormattingFields, uffBorder);
-      *)
+    borderData := FBorderList[xf.BorderIndex];
+    if (borderData <> nil) then begin
+      ACell^.BorderStyles := borderData.BorderStyles;
+      if borderData.Borders <> [] then begin
+        Include(Acell^.UsedFormattingFields, uffBorder);
+        ACell^.Border := borderData.Borders;
+      end else
+        Exclude(ACell^.UsedFormattingFields, uffBorder);
+    end;
 
     // Background color
     fillData := FFillList[xf.FillIndex];
@@ -385,6 +394,115 @@ procedure TsSpreadOOXMLReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
+end;
+
+procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
+
+  function ReadBorderStyle(ANode: TDOMNode; var ABorderStyle: TsCellBorderStyle): Boolean;
+  var
+    s: String;
+    colorNode: TDOMNode;
+    nodeName: String;
+  begin
+    Result := false;
+
+    s := GetAttrValue(ANode, 'style');
+    if s = '' then
+      exit;
+
+    ABorderStyle.LineStyle := lsThin;
+    if s = 'thin' then
+      ABorderStyle.LineStyle := lsThin
+    else if s = 'medium' then
+      ABorderStyle.LineStyle := lsMedium
+    else if s = 'thick' then
+      ABorderStyle.LineStyle := lsThick
+    else if s = 'dotted' then
+      ABorderStyle.LineStyle := lsDotted
+    else if s = 'dashed' then
+      ABorderStyle.LineStyle := lsDashed
+    else if s = 'double' then
+      ABorderStyle.LineStyle := lsDouble
+    else if s = 'hair' then
+      ABorderStyle.LineStyle := lsHair;
+
+    ABorderStyle.Color := scBlack;
+    colorNode := ANode.FirstChild;
+    while Assigned(colorNode) do begin
+      nodeName := colorNode.NodeName;
+      if nodeName = 'color' then begin
+        s := GetAttrValue(colorNode, 'rgb');
+        if s <> '' then
+          ABorderStyle.Color := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
+        else begin
+          s := GetAttrValue(colorNode, 'indexed');
+          if s <> '' then
+            ABorderStyle.Color := StrToInt(s);
+        end;
+      end;
+      colorNode := colorNode.NextSibling;
+    end;
+    Result := true;
+  end;
+
+var
+  borderNode: TDOMNode;
+  edgeNode: TDOMNode;
+  nodeName: String;
+  borders: TsCellBorders;
+  borderStyles: TsCellBorderStyles;
+  borderData: TBorderListData;
+  s: String;
+
+begin
+  if ANode = nil then
+    exit;
+
+  borderNode := ANode.FirstChild;
+  while Assigned(borderNode) do begin
+    nodeName := borderNode.NodeName;
+    if nodeName = 'border' then begin
+      borders := [];
+      s := GetAttrValue(borderNode, 'diagonalUp');
+      if s = '1' then
+        Include(borders, cbDiagUp);
+      s := GetAttrValue(borderNode, 'diagonalDown');
+      if s = '1' then
+        Include(borders, cbDiagDown);
+      edgeNode := borderNode.FirstChild;
+      while Assigned(edgeNode) do begin
+        nodeName := edgeNode.NodeName;
+        if nodeName = 'left' then begin
+          if ReadBorderStyle(edgeNode, borderStyles[cbWest]) then
+            Include(borders, cbWest);
+        end
+        else if nodeName = 'right' then begin
+          if ReadBorderStyle(edgeNode, borderStyles[cbEast]) then
+            Include(borders, cbEast);
+        end
+        else if nodeName = 'top' then begin
+          if ReadBorderStyle(edgeNode, borderStyles[cbNorth]) then
+            Include(borders, cbNorth);
+        end
+        else if nodeName = 'bottom' then begin
+          if ReadBorderStyle(edgeNode, borderStyles[cbSouth]) then
+            Include(borders, cbSouth);
+        end
+        else if nodeName = 'diagonal' then begin
+          if ReadBorderStyle(edgeNode, borderStyles[cbDiagUp]) then
+            borderStyles[cbDiagDown] := borderStyles[cbDiagUp];
+        end;
+        edgeNode := edgeNode.NextSibling;
+      end;
+
+      // add to border list
+      borderData := TBorderListData.Create;
+      borderData.Borders := borders;
+      borderData.BorderStyles := borderStyles;
+      FBorderList.Add(borderData);
+    end;
+    borderNode := borderNode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -869,6 +987,7 @@ begin
       ReadPalette(Doc.DocumentElement.FindNode('colors'));
       ReadFonts(Doc.DocumentElement.FindNode('fonts'));
       ReadFills(Doc.DocumentElement.FindNode('fills'));
+      ReadBorders(Doc.DocumentElement.FindNode('borders'));
       ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
       ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
       FreeAndNil(Doc);

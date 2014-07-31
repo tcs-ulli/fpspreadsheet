@@ -119,6 +119,8 @@ type
     procedure TestWriteRead_ODS_WordWrap;
 
     { OOXML Tests }
+    procedure TestWriteRead_OOXML_Border;
+    procedure TestWriteRead_OOXML_BorderStyles;
     procedure TestWriteRead_OOXML_DateTimeFormats;
     procedure TestWriteRead_OOXML_NumberFormats;
 
@@ -645,6 +647,11 @@ begin
   TestWriteReadBorder(sfOpenDocument);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Border;
+begin
+  TestWriteReadBorder(sfOOXML);
+end;
+
 
 { --- BorderStyle tests --- }
 
@@ -780,6 +787,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_BorderStyles;
 begin
   TestWriteReadBorderStyles(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_BorderStyles;
+begin
+  TestWriteReadBorderStyles(sfOOXML);
 end;
 
 
