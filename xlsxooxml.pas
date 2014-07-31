@@ -1105,51 +1105,39 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
+const
+  LINESTYLE_NAME: Array[TsLineStyle] of String = (
+     'thin', 'medium', 'dashed', 'dotted', 'thick', 'double', 'hair');
 
-  procedure WriteBorderStyle(AStream: TStream; ACell: PCell; ABorder: TsCellBorder);
+  procedure WriteBorderStyle(AStream: TStream; ACell: PCell; ABorder: TsCellBorder;
+    ABorderName: String);
   { border names found in xlsx files for Excel selections:
     "thin", "hair", "dotted", "dashed", "dashDotDot", "dashDot", "mediumDashDotDot",
     "slantDashDot", "mediumDashDot", "mediumDashed", "medium", "thick", "double" }
   var
-    borderName: String;
     styleName: String;
     colorName: String;
     rgb: TsColorValue;
   begin
-    // Border line location
-    case ABorder of
-      cbWest  : borderName := 'left';
-      cbEast  : borderName := 'right';
-      cbNorth : borderName := 'top';
-      cbSouth : borderName := 'bottom';
-    end;
     if (ABorder in ACell^.Border) then begin
       // Line style
-      case ACell.BorderStyles[ABorder].LineStyle of
-        lsThin   : styleName := 'thin';
-        lsMedium : styleName := 'medium';
-        lsDashed : styleName := 'dashed';
-        lsDotted : styleName := 'dotted';
-        lsThick  : styleName := 'thick';
-        lsDouble : styleName := 'double';
-        lsHair   : styleName := 'hair';
-        else       raise Exception.Create('TsOOXMLWriter.WriteBorderList: LineStyle not supported.');
-      end;
+      styleName := LINESTYLE_NAME[ACell.BorderStyles[ABorder].LineStyle];
       // Border color
       rgb := Workbook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
-      colorName := Copy(ColorToHTMLColorStr(rgb), 2, 255);
+      colorName := ColorToHTMLColorStr(rgb, true);
       AppendToStream(AStream, Format(
         '<%s style="%s"><color rgb="%s" /></%s>',
-          [borderName, styleName, colorName, borderName]
+          [ABorderName, styleName, colorName, ABorderName]
         ));
     end else
       AppendToStream(AStream, Format(
-        '<%s />', [borderName]));
+        '<%s />', [ABorderName]));
   end;
 
 var
   i: Integer;
   styleCell: PCell;
+  diag: String;
 begin
   AppendToStream(AStream, Format(
     '<borders count="%d">', [Length(FBorderList)]));
@@ -1162,14 +1150,19 @@ begin
 
   for i:=1 to High(FBorderList) do begin
     styleCell := FBorderList[i];
+    diag := '';
+    if (cbDiagUp in FBorderList[i].Border) then diag := diag + ' diagonalUp="1"';
+    if (cbDiagDown in FBorderList[i].Border) then diag := diag + ' diagonalDown="1"';
     AppendToStream(AStream,
-      '<border>');
-    WriteBorderStyle(AStream, styleCell, cbWest);
-    WriteBorderStyle(AStream, styleCell, cbEast);
-    WriteBorderStyle(AStream, styleCell, cbNorth);
-    WriteBorderStyle(AStream, styleCell, cbSouth);
+      '<border' + diag + '>');
+        WriteBorderStyle(AStream, styleCell, cbWest, 'left');
+        WriteBorderStyle(AStream, styleCell, cbEast, 'right');
+        WriteBorderStyle(AStream, styleCell, cbNorth, 'top');
+        WriteBorderStyle(AStream, styleCell, cbSouth, 'bottom');
+        // OOXML uses the same border style for both diagonals. In agreement with
+        // the biff implementation we select the style from the diagonal-up line.
+        WriteBorderStyle(AStream, styleCell, cbDiagUp, 'diagonal');
     AppendToStream(AStream,
-        '<diagonal />',
       '</border>');
   end;
 
