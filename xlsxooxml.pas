@@ -208,6 +208,10 @@ type
     FontIndex: Integer;
     FillIndex: Integer;
     BorderIndex: Integer;
+    HorAlignment: TsHorAlignment;
+    VertAlignment: TsVertAlignment;
+    WordWrap: Boolean;
+    TextRotation: TsTextRotation;
   end;
 
 
@@ -340,7 +344,7 @@ begin
     if xf.FontIndex > 1 then
       Include(ACell^.UsedFormattingFields, uffFont);
     ACell^.FontIndex := xf.FontIndex;
-                          (*
+
     // Alignment
     ACell^.HorAlignment := xf.HorAlignment;
     ACell^.VertAlignment := xf.VertAlignment;
@@ -357,7 +361,7 @@ begin
     else
       Exclude(ACell^.UsedFormattingFields, uffTextRotation);
     ACell^.TextRotation := xf.TextRotation;
-  *)
+
     // Borders
     borderData := FBorderList[xf.BorderIndex];
     if (borderData <> nil) then begin
@@ -606,6 +610,7 @@ end;
 procedure TsSpreadOOXMLReader.ReadCellXfs(ANode: TDOMNode);
 var
   node: TDOMNode;
+  childNode: TDOMNode;
   nodeName: String;
   xf: TXfListData;
   s1, s2: String;
@@ -632,6 +637,51 @@ begin
       s2 := GetAttrValue(node, 'applyBorder');
       if s2 = '1' then xf.BorderIndex := StrToInt(s1);
 
+      s2 := GetAttrValue(node, 'applyAlignment');
+      if s2 = '1' then begin
+        childNode := node.FirstChild;
+        while Assigned(childNode) do begin
+          nodeName := childNode.NodeName;
+          if nodeName = 'alignment' then begin
+            s1 := GetAttrValue(childNode, 'horizontal');
+            if s1 = 'left' then
+              xf.HorAlignment := haLeft
+            else
+            if s1 = 'center' then
+              xf.HorAlignment := haCenter
+            else
+            if s1 = 'right' then
+              xf.HorAlignment := haRight;
+
+            s1 := GetAttrValue(childNode, 'vertical');
+            if s1 = 'top' then
+              xf.VertAlignment := vaTop
+            else
+            if s1 = 'center' then
+              xf.VertAlignment := vaCenter
+            else
+            if s1 = 'bottom' then
+              xf.VertAlignment := vaBottom;
+
+            s1 := GetAttrValue(childNode, 'wrapText');
+            if s1 = '1' then
+              xf.WordWrap := true;
+
+            s1 := GetAttrValue(childNode, 'textRotation');
+            if s1 = '90' then
+              xf.TextRotation := rt90DegreeCounterClockwiseRotation
+            else
+            if s1 = '180' then
+              xf.TextRotation := rt90DegreeClockwiseRotation
+            else
+            if s1 = '255' then
+              xf.TextRotation := rtStacked
+            else
+              xf.TextRotation := trHorizontal;
+          end;
+          childNode := childNode.NextSibling;
+        end;
+      end;
       FXfList.Add(xf);
     end;
     node := node.NextSibling;
@@ -1486,7 +1536,7 @@ begin
     if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
 
     { Text rotation }
-    if (uffTextRotation in styleCell.UsedFormattingFields) or (styleCell.TextRotation <> trHorizontal)
+    if (uffTextRotation in styleCell.UsedFormattingFields) and (styleCell.TextRotation <> trHorizontal)
     then
       case styleCell.TextRotation of
         rt90DegreeClockwiseRotation       : sAlign := sAlign + Format('textRotation="%d" ', [180]);
@@ -1495,7 +1545,7 @@ begin
       end;
 
     { Text alignment }
-    if (uffHorAlign in styleCell.UsedFormattingFields) or (styleCell.HorAlignment <> haDefault)
+    if (uffHorAlign in styleCell.UsedFormattingFields) and (styleCell.HorAlignment <> haDefault)
     then
       case styleCell.HorAlignment of
         haLeft  : sAlign := sAlign + 'horizontal="left" ';
@@ -1503,7 +1553,7 @@ begin
         haRight : sAlign := sAlign + 'horizontal="right" ';
       end;
 
-    if (uffVertAlign in styleCell.UsedformattingFields) or (styleCell.VertAlignment <> vaDefault)
+    if (uffVertAlign in styleCell.UsedformattingFields) and (styleCell.VertAlignment <> vaDefault)
     then
       case styleCell.VertAlignment of
         vaTop   : sAlign := sAlign + 'vertical="top" ';
