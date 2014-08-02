@@ -30,47 +30,42 @@ begin
   MyWorksheet.WriteUTF8Text(0, 1, 'Text Formula');// B1
   MyWorksheet.WriteUTF8Text(0, 2, 'RPN');// C1
 
+  MyWorksheet.WriteNumber(0, 4, -3.14);  // E1
+  MyWorksheet.WriteNumber(1, 4, 100);    // E2
+  MyWorksheet.WriteNumber(2, 4, 200);    // E3
+  Myworksheet.WriteNumber(3, 4, 300);    // E4
+  MyWorksheet.WriteNumber(4, 4, 250);    // E5
+
   // =Sum(E2:e5)
   MyWorksheet.WriteUTF8Text(1, 0, '=Sum(E2:e5)'); // A2
   //
-  MyFormula.FormulaStr := '=Sum(DE:e5)';
+  MyFormula.FormulaStr := '=Sum(E2:e5)';
   MyFormula.DoubleValue := 0.0;
   MyWorksheet.WriteFormula(1, 1, MyFormula);    // B2
   //
-  SetLength(MyRPNFormula, 2);
-  MyRPNFormula[0].ElementKind := fekCellRange;
-  MyRPNFormula[0].Row := 1;
-  MyRPNFormula[0].Row2 := 4;
-  MyRPNFormula[0].Col := 4;
-  MyRPNFormula[0].Col2 := 4;
-  MyRPNFormula[1].ElementKind := fekOpSUM;
-  MyWorksheet.WriteRPNFormula(1, 2, MyRPNFormula);   // C2
+  MyWorksheet.WriteRPNFormula(1, 2, CreateRPNFormula(  // C2
+    RPNCellRange('E2:E5',
+    RPNFunc(fekSum, 1, nil))));
 
   // Write the formula =ABS(E1)
   MyWorksheet.WriteUTF8Text(2, 0, '=ABS(E1)'); // A3
   //
-  SetLength(MyRPNFormula, 2);
-  MyRPNFormula[0].ElementKind := fekCell;
-  MyRPNFormula[0].Col := 4;
-  MyRPNFormula[0].Row := 0;
-  MyRPNFormula[1].ElementKind := fekABS;
-  MyWorksheet.WriteRPNFormula(2, 2, MyRPNFormula);
+  MyWorksheet.WriteRPNFormula(2, 2, CreateRPNFormula(  // C3
+    RPNCellValue('E1',
+    RPNFunc(fekAbs, nil))));
 
   // Write the formula =4+5
   MyWorksheet.WriteUTF8Text(3, 0, '=4+5'); // A4
   //
-  SetLength(MyRPNFormula, 3);
-  MyRPNFormula[0].ElementKind := fekNum;
-  MyRPNFormula[0].DoubleValue := 4.0;
-  MyRPNFormula[1].ElementKind := fekNum;
-  MyRPNFormula[1].DoubleValue := 5.0;
-  MyRPNFormula[2].ElementKind := fekAdd;
-  MyWorksheet.WriteRPNFormula(3, 2, MyRPNFormula);
+  MyWorksheet.WriteRPNFormula(3, 2, CreateRPNFormula(  //C4
+    RPNNumber(4.0,
+    RPNNumber(5.0,
+    RPNFunc(fekAdd, nil)))));
 end;
 
 procedure WriteSecondWorksheet();
 begin
-{  MyWorksheet := MyWorkbook.AddWorksheet('Worksheet2');
+  MyWorksheet := MyWorkbook.AddWorksheet('Worksheet2');
 
   // Write some cells
 
@@ -78,9 +73,8 @@ begin
 
   MyWorksheet.WriteUTF8Text(1, 1, 'Relatório');
   MyCell := MyWorksheet.GetCell(1, 1);
-  MyCell^.Border := [cbNorth, cbWest, cbSouth];
-  MyCell^.BackgroundColor := scGrey20pct;
-  MyCell^.UsedFormattingFields := [uffBorder, uffBackgroundColor, uffBold];}
+  MyWorksheet.WriteBorders(MyCell, [cbNorth, cbWest, cbSouth]);
+  Myworksheet.WriteBackgroundColor(MyCell, scGray20pct);
 end;
 
 const

@@ -598,17 +598,27 @@ type
     procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
     { Writing of cell attributes }
-    procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor);
+    procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor); overload;
+    procedure WriteBackgroundColor(ACell: PCell; AColor: TsColor); overload;
 
-    procedure WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder; AColor: TsColor);
+    procedure WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder; AColor: TsColor); overload;
+    procedure WriteBorderColor(ACell: PCell; ABorder: TsCellBorder; AColor: TsColor); overload;
     procedure WriteBorderLineStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
-      ALineStyle: TsLineStyle);
-    procedure WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
+      ALineStyle: TsLineStyle); overload;
+    procedure WriteBorderLineStyle(ACell: PCell; ABorder: TsCellBorder;
+      ALineStyle: TsLineStyle); overload;
+    procedure WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders); overload;
+    procedure WriteBorders(ACell: PCell; ABorders: TsCellBorders); overload;
     procedure WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      AStyle: TsCellBorderStyle); overload;
+    procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
       AStyle: TsCellBorderStyle); overload;
     procedure WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
       ALineStyle: TsLineStyle; AColor: TsColor); overload;
-    procedure WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles);
+    procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
+      ALineStyle: TsLineStyle; AColor: TsColor); overload;
+    procedure WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles); overload;
+    procedure WriteBorderStyles(ACell: PCell; const AStyles: TsCellBorderStyles); overload;
 
     procedure WriteDecimals(ARow, ACol: Cardinal; ADecimals: byte); overload;
     procedure WriteDecimals(ACell: PCell; ADecimals: Byte); overload;
@@ -3564,17 +3574,29 @@ end;
 }
 procedure TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
   AColor: TsColor);
-var
-  ACell: PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  if AColor = scTransparent then
-    Exclude(ACell^.UsedFormattingFields, uffBackgroundColor)
-  else begin
-    Include(ACell^.UsedFormattingFields, uffBackgroundColor);
-    ACell^.BackgroundColor := AColor;
+  WriteBackgroundColor(GetCell(ARow, ACol), AColor);
+end;
+
+{@@
+  Sets the color of a background color of a cell.
+
+  @param  ACell      Pointer to cell
+  @param  AColor     Index of the new background color into the workbook's
+                     color palette. Use the color index scTransparent to
+                     erase an existing background color.
+}
+procedure TsWorksheet.WriteBackgroundColor(ACell: PCell; AColor: TsColor);
+begin
+  if ACell <> nil then begin
+    if AColor = scTransparent then
+      Exclude(ACell^.UsedFormattingFields, uffBackgroundColor)
+    else begin
+      Include(ACell^.UsedFormattingFields, uffBackgroundColor);
+      ACell^.BackgroundColor := AColor;
+    end;
+    ChangedCell(ACell^.Row, ACell^.Col);
   end;
-  ChangedCell(ARow, ACol);
 end;
 
 {@@
@@ -3590,12 +3612,27 @@ end;
   }
 procedure TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; AColor: TsColor);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  lCell^.BorderStyles[ABorder].Color := AColor;
-  ChangedCell(ARow, ACol);
+  WriteBorderColor(GetCell(ARow, ACol), ABorder, AColor);
+end;
+
+{@@
+  Sets the color of a cell border line.
+  Note: the border must be included in Borders set in order to be shown!
+
+  @param  ACell      Pointer to cell
+  @param  ABorder    Indicates to which border (left/top etc) this color is
+                     to be applied
+  @param  AColor     Index of the new border color into the workbook's
+                     color palette.
+  }
+procedure TsWorksheet.WriteBorderColor(ACell: PCell; ABorder: TsCellBorder;
+  AColor: TsColor);
+begin
+  if ACell <> nil then begin
+    ACell^.BorderStyles[ABorder].Color := AColor;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -3612,12 +3649,28 @@ end;
 }
 procedure TsWorksheet.WriteBorderLineStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; ALineStyle: TsLineStyle);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  lCell^.BorderStyles[ABorder].LineStyle := ALineStyle;
-  ChangedCell(ARow, ACol);
+  WriteBorderLineStyle(GetCell(ARow, ACol), ABorder, ALineStyle);
+end;
+
+{@@
+  Sets the linestyle of a cell border.
+  Note: the border must be included in the "Borders" set in order to be shown!
+
+  @param  ACell      Pointer to cell
+  @param  ABorder    Indicates to which border (left/top etc) this color is
+                     to be applied
+  @param  ALineStyle Identifier of the new line style to be applied.
+
+  @see    TsLineStyle
+}
+procedure TsWorksheet.WriteBorderLineStyle(ACell: PCell;
+  ABorder: TsCellBorder; ALineStyle: TsLineStyle);
+begin
+  if ACell <> nil then begin
+    ACell^.BorderStyles[ABorder].LineStyle := ALineStyle;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -3632,13 +3685,27 @@ end;
   @see    TsCellBorder
 }
 procedure TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  Include(lCell^.UsedFormattingFields, uffBorder);
-  lCell^.Border := ABorders;
-  ChangedCell(ARow, ACol);
+  WriteBorders(GetCell(ARow, ACol), ABorders);
+end;
+
+{@@
+  Shows the cell borders included in the set ABorders. No border lines are drawn
+  for those not included.
+
+  The borders are drawn using the "BorderStyles" assigned to the cell.
+
+  @param  ACell     Pointer to cell
+  @param  ABorders  Set with elements to identify the border(s) to will be shown
+  @see    TsCellBorder
+}
+procedure TsWorksheet.WriteBorders(ACell: PCell; ABorders: TsCellBorders);
+begin
+  if ACell <> nil then begin
+    Include(ACell^.UsedFormattingFields, uffBorder);
+    ACell^.Border := ABorders;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -3653,12 +3720,26 @@ end;
 }
 procedure TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; AStyle: TsCellBorderStyle);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  lCell^.BorderStyles[ABorder] := AStyle;
-  ChangedCell(ARow, ACol);
+  WriteBorderStyle(GetCell(ARow, ACol), ABorder, AStyle);
+end;
+
+{@@
+  Sets the style of a cell border, i.e. line style and line color.
+  Note: the border must be included in the "Borders" set in order to be shown!
+
+  @param  ACell      Pointer to cell
+  @param  ABorder    Identifies the border to be modified (left/top/right/bottom)
+  @param  AStyle     record of parameters controlling how the border line is drawn
+                     (line style, line color)
+}
+procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
+  AStyle: TsCellBorderStyle);
+begin
+  if ACell <> nil then begin
+    ACell^.BorderStyles[ABorder] := AStyle;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -3675,13 +3756,29 @@ end;
 }
 procedure TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; ALineStyle: TsLinestyle; AColor: TsColor);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  lCell^.BorderStyles[ABorder].LineStyle := ALineStyle;
-  lCell^.BorderStyles[ABorder].Color := AColor;
-  ChangedCell(ARow, ACol);
+  WriteBorderStyle(GetCell(ARow, ACol), ABorder, ALineStyle, AColor);
+end;
+
+{@@
+  Sets line style and line color of a cell border.
+  Note: the border must be included in the "Borders" set in order to be shown!
+
+  @param  ACell      Pointer to cell
+  @param  ABorder    Identifier of the border to be modified
+  @param  ALineStyle Identifier for the new line style of the border
+  @param  AColor     Palette index for the color of the border line
+
+  @see WriteBorderStyles
+}
+procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
+  ALineStyle: TsLinestyle; AColor: TsColor);
+begin
+  if ACell <> nil then begin
+    ACell^.BorderStyles[ABorder].LineStyle := ALineStyle;
+    ACell^.BorderStyles[ABorder].Color := AColor;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
@@ -3696,13 +3793,29 @@ end;
 }
 procedure TsWorksheet.WriteBorderStyles(ARow, ACol: Cardinal;
   const AStyles: TsCellBorderStyles);
+begin
+  WriteBorderStyles(GetCell(ARow, ACol), AStyles);
+end;
+
+{@@
+  Sets the style of all cell border of a cell, i.e. line style and line color.
+  Note: Only those borders included in the "Borders" set are shown!
+
+  @param  ACell   Pointer to cell
+  @param  ACol    Column index of the considered cell
+  @param  AStyles Array of CellBorderStyles for each cell border.
+
+  @see WriteBorderStyle
+}
+procedure TsWorksheet.WriteBorderStyles(ACell: PCell;
+  const AStyles: TsCellBorderStyles);
 var
   b: TsCellBorder;
-  cell: PCell;
 begin
-  cell := GetCell(ARow, ACol);
-  for b in TsCellBorder do cell^.BorderStyles[b] := AStyles[b];
-  ChangedCell(ARow, ACol);
+  if Assigned(ACell) then begin
+    for b in TsCellBorder do ACell^.BorderStyles[b] := AStyles[b];
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@
