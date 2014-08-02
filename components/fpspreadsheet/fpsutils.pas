@@ -1419,7 +1419,7 @@ begin
   else
   if AValue[1] = '#' then begin
     AValue[1] := '$';
-    Result := LongRGBToExcelPhysical(StrToInt(AValue));
+    Result := LongRGBToExcelPhysical(DWord(StrToInt(AValue)));
   end else begin
     AValue := lowercase(AValue);
     if AValue = 'red' then

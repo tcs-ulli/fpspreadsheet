@@ -119,10 +119,13 @@ type
     procedure TestWriteRead_ODS_WordWrap;
 
     { OOXML Tests }
+    procedure TestWriteRead_OOXML_Alignment;
     procedure TestWriteRead_OOXML_Border;
     procedure TestWriteRead_OOXML_BorderStyles;
     procedure TestWriteRead_OOXML_DateTimeFormats;
     procedure TestWriteRead_OOXML_NumberFormats;
+    procedure TestWriteRead_OOXML_TextRotation;
+    procedure TestWriteRead_OOXML_WordWrap;
 
   end;
 
@@ -299,40 +302,43 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
-  for Row := Low(SollNumbers) to High(SollNumbers) do
-    for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do
-    begin
-      MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
-      ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
-      CheckEquals(SollNumberStrings[Row, Col], ActualString,
-        'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
-    end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
+    for Row := Low(SollNumbers) to High(SollNumbers) do
+      for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do
+      begin
+        MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
+        ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
+        CheckEquals(SollNumberStrings[Row, Col], ActualString,
+          'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col));
+      end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for Row := Low(SollNumbers) to High(SollNumbers) do
-    for Col := Low(SollNumberFormats) to High(SollNumberFormats) do
-    begin
-      ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
-      CheckEquals(SollNumberStrings[Row,Col], ActualString,
-        'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
-    end;
-
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, FmtNumbersSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for Row := Low(SollNumbers) to High(SollNumbers) do
+      for Col := Low(SollNumberFormats) to High(SollNumberFormats) do
+      begin
+        ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
+        CheckEquals(SollNumberStrings[Row,Col], ActualString,
+          'Test saved string mismatch cell '+CellNotation(MyWorkSheet,Row,Col));
+      end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_NumberFormats;
@@ -373,50 +379,53 @@ var
 begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorksheet := MyWorkbook.AddWorksheet(FmtDateTimesSheet);
-  for Row := Low(SollDateTimes) to High(SollDateTimes) do
-    for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do
-    begin
-      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
-        Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
-      MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
-      ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
-      CheckEquals(
-        Lowercase(SollDateTimeStrings[Row, Col]),
-        Lowercase(ActualString),
-        'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col)
-      );
-    end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+  try
+    MyWorksheet := MyWorkbook.AddWorksheet(FmtDateTimesSheet);
+    for Row := Low(SollDateTimes) to High(SollDateTimes) do
+      for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do
+      begin
+        if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
+          Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
+        MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
+        ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
+        CheckEquals(
+          Lowercase(SollDateTimeStrings[Row, Col]),
+          Lowercase(ActualString),
+          'Test unsaved string mismatch cell ' + CellNotation(MyWorksheet,Row,Col)
+        );
+      end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkbook, FmtDateTimesSheet);
-  if MyWorksheet = nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for Row := Low(SollDateTimes) to High(SollDateTimes) do
-    for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do
-    begin
-      if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
-        Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
-      ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
-      CheckEquals(
-        Lowercase(SollDateTimeStrings[Row, Col]),
-        Lowercase(ActualString),
-        'Test saved string mismatch cell '+CellNotation(MyWorksheet,Row,Col)
-      );
-    end;
-
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkbook, FmtDateTimesSheet);
+    if MyWorksheet = nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for Row := Low(SollDateTimes) to High(SollDateTimes) do
+      for Col := Low(SollDateTimeFormats) to High(SollDateTimeFormats) do
+      begin
+        if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
+          Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
+        ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
+        CheckEquals(
+          Lowercase(SollDateTimeStrings[Row, Col]),
+          Lowercase(ActualString),
+          'Test saved string mismatch cell '+CellNotation(MyWorksheet,Row,Col)
+        );
+      end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_DateTimeFormats;
@@ -448,7 +457,8 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadAlignment(AFormat: TsSpreadsheetFormat);
 const
-  CELLTEXT = 'This is a text.';
+  HORALIGN_TEXT: Array[TsHorAlignment] of String = ('haDefault', 'haLeft', 'haCenter', 'haRight');
+  VERTALIGN_TEXT: Array[TsVertAlignment] of String = ('vaDefault', 'vaTop', 'vaCenter', 'vaBottom');
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -462,87 +472,110 @@ begin
   if fileexists(TempFile) then
     DeleteFile(TempFile);
   }
-  // Write out all test values: HorAlignments along columns, VertAlignments along rows
+  // Write out all test values: HorAlignments along rows, VertAlignments along columns
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(AlignmentSheet);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(AlignmentSheet);
 
-  row := 0;
-  for horAlign in TsHorAlignment do
-  begin
     col := 0;
-    if AFormat = sfExcel2 then
+    for horAlign in TsHorAlignment do
     begin
-      // BIFF2 can only do horizontal alignment --> no need for vertical alignment.
-      MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
-      MyWorksheet.WriteHorAlignment(row, col, horAlign);
-      MyCell := MyWorksheet.FindCell(row, col);
-      if MyCell = nil then
-        fail('Error in test code. Failed to get cell.');
-      CheckEquals(ord(horAlign),  ord(MyCell^.HorAlignment),
-        'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
-    end
-    else
-      for vertAlign in TsVertAlignment do
+      row := 0;
+      if AFormat = sfExcel2 then
       begin
-        MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+        // BIFF2 can only do horizontal alignment --> no need for vertical alignment.
+        MyWorksheet.WriteUTF8Text(row, col, HORALIGN_TEXT[horAlign]);
         MyWorksheet.WriteHorAlignment(row, col, horAlign);
-        MyWorksheet.WriteVertAlignment(row, col, vertAlign);
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
-        CheckEquals(ord(vertAlign),ord(MyCell^.VertAlignment),
-          'Test unsaved vertical alignment, cell ' + CellNotation(MyWorksheet,0,0));
-        CheckEquals(ord(horAlign), ord(MyCell^.HorAlignment),
-          'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0));
-        inc(col);
-      end;
-    inc(row);
+        CheckEquals(
+          GetEnumName(TypeInfo(TsHorAlignment), Integer(horAlign)),
+          GetEnumName(TypeInfo(TsHorAlignment), Integer(MyCell^.HorAlignment)),
+          'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0)
+        );
+      end
+      else
+        for vertAlign in TsVertAlignment do
+        begin
+          MyWorksheet.WriteUTF8Text(row, col, HORALIGN_TEXT[horAlign]+'/'+VERTALIGN_TEXT[vertAlign]);
+          MyWorksheet.WriteHorAlignment(row, col, horAlign);
+          MyWorksheet.WriteVertAlignment(row, col, vertAlign);
+          MyCell := MyWorksheet.FindCell(row, col);
+          if MyCell = nil then
+            fail('Error in test code. Failed to get cell.');
+          CheckEquals(
+            GetEnumName(TypeInfo(TsVertAlignment), Integer(vertAlign)),
+            GetEnumName(TypeInfo(TsVertAlignment), Integer(MyCell^.VertAlignment)),
+            'Test unsaved vertical alignment, cell ' + CellNotation(MyWorksheet,0,0)
+          );
+          CheckEquals(
+            GetEnumName(TypeInfo(TsHorAlignment), Integer(horAlign)),
+            GetEnumName(TypeInfo(TsHorAlignment), Integer(MyCell^.HorAlignment)),
+            'Test unsaved horizontal alignment, cell ' + CellNotation(MyWorksheet,0,0)
+          );
+          inc(row);
+        end;
+      inc(col);
+    end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then begin
-    MyWorksheet := MyWorkbook.GetFirstWorksheet;
-    if MyWorksheet=nil then
-      fail('Error in test code. Failed to get named worksheet');
-    for row :=0 to MyWorksheet.GetLastRowIndex do
-    begin
-      MyCell := MyWorksheet.FindCell(row, col);
-      if MyCell = nil then
-        fail('Error in test code. Failed to get cell.');
-      horAlign := TsHorAlignment(row);
-      CheckEquals(ord(horAlign), ord(MyCell^.HorAlignment),
-        'Test save horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
-    end
-  end
-  else begin
-    MyWorksheet := GetWorksheetByName(MyWorkBook, AlignmentSheet);
-    if MyWorksheet=nil then
-      fail('Error in test code. Failed to get named worksheet');
-    for row :=0 to MyWorksheet.GetLastRowIndex do
-      for col := 0 to MyWorksheet.GetlastColIndex do
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then begin
+      MyWorksheet := MyWorkbook.GetFirstWorksheet;
+      if MyWorksheet=nil then
+        fail('Error in test code. Failed to get named worksheet');
+      row := 0;
+      for col :=0 to MyWorksheet.GetLastColIndex do
       begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
-        vertAlign := TsVertAlignment(col);
-        if (vertAlign = vaDefault) and (AFormat <> sfOpenDocument) then
-          vertAlign := vaBottom;
-        CheckEquals(ord(vertAlign), ord(MyCell^.VertAlignment),
-          'Test saved vertical alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
-        horAlign := TsHorAlignment(row);
-        CheckEquals(ord(horAlign), ord(MyCell^.HorAlignment),
-          'Test saved horizontal alignment mismatch, cell '+CellNotation(MyWorksheet,row,col));
-      end;
+        horAlign := TsHorAlignment(col);
+        CheckEquals(
+          GetEnumName(TypeInfo(TsHorAlignment), Integer(horAlign)),
+          GetEnumName(TypeInfo(TsHorAlignment), Integer(MyCell^.HorAlignment)),
+          'Test saved horizontal alignment mismatch, cell ' + CellNotation(MyWorksheet,row, col)
+        );
+      end
+    end
+    else begin
+      MyWorksheet := GetWorksheetByName(MyWorkBook, AlignmentSheet);
+      if MyWorksheet=nil then
+        fail('Error in test code. Failed to get named worksheet');
+      for col :=0 to MyWorksheet.GetLastColIndex do
+        for row := 0 to MyWorksheet.GetlastRowIndex do
+        begin
+          MyCell := MyWorksheet.FindCell(row, col);
+          if MyCell = nil then
+            fail('Error in test code. Failed to get cell.');
+          vertAlign := TsVertAlignment(row);
+          if (vertAlign = vaDefault) and (AFormat in [sfExcel5, sfExcel8]) then
+            vertAlign := vaBottom;
+          CheckEquals(
+            GetEnumName(TypeInfo(TsVertAlignment), Integer(vertAlign)),
+            GetEnumName(TypeInfo(TsVertAlignment), Integer(MyCell^.VertAlignment)),
+            'Test saved vertical alignment mismatch, cell ' + CellNotation(MyWorksheet,row,col)
+          );
+          horAlign := TsHorAlignment(col);
+          CheckEquals(
+            GetEnumName(TypeInfo(TsHorAlignment), Integer(horAlign)),
+            GetEnumName(TypeInfo(TsHorAlignment), Integer(MyCell^.HorAlignment)),
+            'Test saved horizontal alignment mismatch, cell ' + CellNotation(MyWorksheet,row,col)
+          );
+        end;
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_Alignment;
@@ -565,6 +598,11 @@ begin
   TestWriteReadAlignment(sfOpenDocument);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Alignment;
+begin
+  TestWriteReadAlignment(sfOOXML);
+end;
+
 
 { --- Border on/off tests --- }
 
@@ -579,6 +617,19 @@ var
   expected: String;
   current: String;
   TempFile: string; //write xls/xml to this file and read back from it
+
+  function GetBordersAsText(ABorders: TsCellBorders): String;
+  var
+    cb: TsCellBorder;
+  begin
+    Result := '';
+    for cb in ABorders do
+      if Result = '' then
+        Result := GetEnumName(TypeInfo(TsCellBorder), ord(cb))
+      else
+        Result := Result + ', ' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
+  end;
+
 begin
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -586,45 +637,51 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
-  if AFormat in [sfExcel2, sfExcel5] then
-    maxCol := 15   // no diagonal border support in BIFF2 and BIFF5
-  else
-    maxCol := High(SollBorders);
-  for col := Low(SollBorders) to maxCol do
-  begin
-    MyWorksheet.WriteUsedFormatting(row, col, [uffBorder]);
-    MyCell := MyWorksheet.GetCell(row, col);
-    Include(MyCell^.UsedFormattingFields, uffBorder);
-    MyCell^.Border := SollBorders[col];
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
+    if AFormat in [sfExcel2, sfExcel5] then
+      maxCol := 15   // no diagonal border support in BIFF2 and BIFF5
+    else
+      maxCol := High(SollBorders);
+    for col := Low(SollBorders) to maxCol do
+    begin
+      MyWorksheet.WriteUsedFormatting(row, col, [uffBorder]);
+      MyCell := MyWorksheet.GetCell(row, col);
+      Include(MyCell^.UsedFormattingFields, uffBorder);
+      MyCell^.Border := SollBorders[col];
+    end;
+
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for col := 0 to MyWorksheet.GetLastColIndex do
-  begin
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell');
-    current := GetEnumName(TypeInfo(TsCellBorders), byte(MyCell^.Border));
-    expected := GetEnumName(TypeInfo(TsCellBorders), byte(SollBorders[col]));
-    CheckEquals(expected, current,
-      'Test saved border mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for col := 0 to MyWorksheet.GetLastColIndex do
+    begin
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell');
+      CheckEquals(
+        GetBordersAsText(SollBorders[col]),
+        GetBordersAsText(MyCell^.Border),
+        'Test saved border mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+      );
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_Border;
@@ -681,97 +738,101 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
 
-  borders := [cbNorth, cbSouth, cbEast, cbWest];
-  if AFormat in [sfExcel8, sfOpenDocument, sfOOXML] then
-    borders := borders + [cbDiagUp, cbDiagDown];
+    borders := [cbNorth, cbSouth, cbEast, cbWest];
+    if AFormat in [sfExcel8, sfOpenDocument, sfOOXML] then
+      borders := borders + [cbDiagUp, cbDiagDown];
 
-  c := 0;
-  ls := 0;
-  for row := 1 to 10 do
-  begin
-    for col := 1 to 10 do
+    c := 0;
+    ls := 0;
+    for row := 1 to 10 do
     begin
-      MyWorksheet.WriteBorders(row*2, col*2, borders);
-      for b in borders do
+      for col := 1 to 10 do
       begin
-        MyWorksheet.WriteBorderLineStyle(row*2, col*2, b, SollBorderLineStyles[ls]);
-        MyWorksheet.WriteBorderColor(row*2, col*2, b, SollBorderColors[c]);
-        inc(ls);
-        if ls > High(SollBorderLineStyles) then
+        MyWorksheet.WriteBorders(row*2, col*2, borders);
+        for b in borders do
         begin
-          ls := 0;
-          inc(c);
-          if c > High(SollBorderColors) then
-            c := 0;
+          MyWorksheet.WriteBorderLineStyle(row*2, col*2, b, SollBorderLineStyles[ls]);
+          MyWorksheet.WriteBorderColor(row*2, col*2, b, SollBorderColors[c]);
+          inc(ls);
+          if ls > High(SollBorderLineStyles) then
+          begin
+            ls := 0;
+            inc(c);
+            if c > High(SollBorderColors) then
+              c := 0;
+          end;
         end;
       end;
     end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  c := 0;
-  ls := 0;
-  for row := 1 to 10 do
-  begin
-    for col := 1 to 10 do
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, BordersSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    c := 0;
+    ls := 0;
+    for row := 1 to 10 do
     begin
-      MyCell := MyWorksheet.FindCell(row*2, col*2);
-      if myCell = nil then
-        fail('Error in test code. Failed to get cell.');
-      for b in borders do
+      for col := 1 to 10 do
       begin
-        current := ord(MyCell^.BorderStyles[b].LineStyle);
-        // In Excel both diagonals have the same line style. The reader picks
-        // the line style of the "diagonal-up" border. We use this as expected
-        // value in the "diagonal-down" case.
-        expected := ord(SollBorderLineStyles[ls]);
-        if AFormat in [sfExcel8, sfOOXML] then
-          case b of
-            cbDiagUp  : diagUp_ls := expected;
-            cbDiagDown: expected := diagUp_ls;
+        MyCell := MyWorksheet.FindCell(row*2, col*2);
+        if myCell = nil then
+          fail('Error in test code. Failed to get cell.');
+        for b in borders do
+        begin
+          current := ord(MyCell^.BorderStyles[b].LineStyle);
+          // In Excel both diagonals have the same line style. The reader picks
+          // the line style of the "diagonal-up" border. We use this as expected
+          // value in the "diagonal-down" case.
+          expected := ord(SollBorderLineStyles[ls]);
+          if AFormat in [sfExcel8, sfOOXML] then
+            case b of
+              cbDiagUp  : diagUp_ls := expected;
+              cbDiagDown: expected := diagUp_ls;
+            end;
+          CheckEquals(expected, current,
+            'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
+          current := MyCell^.BorderStyles[b].Color;
+          expected := SollBorderColors[c];
+          // In Excel both diagonals have the same line color. The reader picks
+          // the color of the "diagonal-up" border. We use this as expected value
+          // in the "diagonal-down" case.
+          if AFormat in [sfExcel8, sfOOXML] then
+            case b of
+              cbDiagUp  : diagUp_clr := expected;
+              cbDiagDown: expected := diagUp_clr;
+            end;
+          CheckEquals(expected, current,
+            'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
+          inc(ls);
+          if ls > High(SollBorderLineStyles) then begin
+            ls := 0;
+            inc(c);
+            if c > High(SollBorderColors) then
+              c := 0;
           end;
-        CheckEquals(expected, current,
-          'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
-        current := MyCell^.BorderStyles[b].Color;
-        expected := SollBorderColors[c];
-        // In Excel both diagonals have the same line color. The reader picks
-        // the color of the "diagonal-up" border. We use this as expected value
-        // in the "diagonal-down" case.
-        if AFormat in [sfExcel8, sfOOXML] then
-          case b of
-            cbDiagUp  : diagUp_clr := expected;
-            cbDiagDown: expected := diagUp_clr;
-          end;
-        CheckEquals(expected, current,
-          'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
-        inc(ls);
-        if ls > High(SollBorderLineStyles) then begin
-          ls := 0;
-          inc(c);
-          if c > High(SollBorderColors) then
-            c := 0;
         end;
       end;
     end;
+
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_BorderStyles;
@@ -813,40 +874,44 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(ColWidthSheet);
-  for Col := Low(SollColWidths) to High(SollColWidths) do
-  begin
-    lCol.Width := SollColWidths[Col];
-    //MyWorksheet.WriteNumber(0, Col, 1);
-    MyWorksheet.WriteColInfo(Col, lCol);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(ColWidthSheet);
+    for Col := Low(SollColWidths) to High(SollColWidths) do
+    begin
+      lCol.Width := SollColWidths[Col];
+      //MyWorksheet.WriteNumber(0, Col, 1);
+      MyWorksheet.WriteColInfo(Col, lCol);
+    end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, ColWidthSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for Col := Low(SollColWidths) to High(SollColWidths) do
-  begin
-    lpCol := MyWorksheet.GetCol(Col);
-    if lpCol = nil then
-      fail('Error in test code. Failed to return saved column width');
-    ActualColWidth := lpCol^.Width;
-    if abs(SollColWidths[Col] - ActualColWidth) > 1E-2 then   // take rounding errors into account
-      CheckEquals(SollColWidths[Col], ActualColWidth,
-        'Test saved colwidth mismatch, column '+ColNotation(MyWorkSheet,Col));
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, ColWidthSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for Col := Low(SollColWidths) to High(SollColWidths) do
+    begin
+      lpCol := MyWorksheet.GetCol(Col);
+      if lpCol = nil then
+        fail('Error in test code. Failed to return saved column width');
+      ActualColWidth := lpCol^.Width;
+      if abs(SollColWidths[Col] - ActualColWidth) > 1E-2 then   // take rounding errors into account
+        CheckEquals(SollColWidths[Col], ActualColWidth,
+          'Test saved colwidth mismatch, column '+ColNotation(MyWorkSheet,Col));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_ColWidths;
@@ -885,34 +950,39 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
-  for Row := Low(SollRowHeights) to High(SollRowHeights) do
-    MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row]);
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
-
-  // Open the spreadsheet, as biff8
-  MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, RowHeightSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for Row := Low(SollRowHeights) to High(SollRowHeights) do
-  begin
-    ActualRowHeight := MyWorksheet.GetRowHeight(Row);
-    // Take care of rounding errors
-    if abs(ActualRowHeight - SollRowHeights[Row]) > 1e-2 then
-      CheckEquals(SollRowHeights[Row], ActualRowHeight,
-        'Test saved row height mismatch, row '+RowNotation(MyWorkSheet,Row));
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
+    for Row := Low(SollRowHeights) to High(SollRowHeights) do
+      MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row]);
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  // Finalization
-  MyWorkbook.Free;
 
-  DeleteFile(TempFile);
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, RowHeightSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for Row := Low(SollRowHeights) to High(SollRowHeights) do
+    begin
+      ActualRowHeight := MyWorksheet.GetRowHeight(Row);
+      // Take care of rounding errors - due to missing details of calculation
+      // they can be quite large...
+      if abs(ActualRowHeight - SollRowHeights[Row]) > 1e-2 then
+        CheckEquals(SollRowHeights[Row], ActualRowHeight,
+          'Test saved row height mismatch, row '+RowNotation(MyWorkSheet,Row));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_RowHeights;
@@ -955,41 +1025,49 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(TextRotationSheet);
-  for tr := Low(TsTextRotation) to High(TsTextRotation) do
-  begin
-    row := ord(tr);
-    MyWorksheet.WriteTextRotation(row, col, tr);
-    MyCell := MyWorksheet.GetCell(row, col);
-    CheckEquals(ord(tr), ord(MyCell^.TextRotation),
-      'Test unsaved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(TextRotationSheet);
+    for tr := Low(TsTextRotation) to High(TsTextRotation) do
+    begin
+      row := ord(tr);
+      MyWorksheet.WriteTextRotation(row, col, tr);
+      MyCell := MyWorksheet.GetCell(row, col);
+      CheckEquals(
+        GetEnumName(TypeInfo(TsTextRotation), ord(tr)),
+        GetEnumName(TypeInfo(TsTextRotation), ord(MyCell^.TextRotation)),
+        'Test unsaved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+    end;
+    TempFile:=NewTempFile;
+  finally
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, TextRotationSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowIndex do
-  begin
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell');
-    tr := MyCell^.TextRotation;
-    CheckEquals(ord(TsTextRotation(row)), ord(MyCell^.TextRotation),
-      'Test saved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, TextRotationSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for row := 0 to MyWorksheet.GetLastRowIndex do
+    begin
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell');
+      tr := MyCell^.TextRotation;
+      CheckEquals(
+        GetEnumName(TypeInfo(TsTextRotation), ord(TsTextRotation(row))),
+        GetEnumName(TypeInfo(TsTextRotation), ord(MyCell^.TextRotation)),
+        'Test saved textrotation mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_TextRotation;
@@ -1005,6 +1083,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_TextRotation;
 begin
   TestWriteReadTextRotation(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_TextRotation;
+begin
+  TestWriteReadTextRotation(sfOOXML);
 end;
 
 
@@ -1026,43 +1109,50 @@ begin
   // Write out all test values:
   // Cell A1 is word-wrapped, Cell B1 is NOT word-wrapped
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(WordwrapSheet);
-  MyWorksheet.WriteUTF8Text(0, 0, LONGTEXT);
-  MyWorksheet.WriteUsedFormatting(0, 0, [uffWordwrap]);
-  MyCell := MyWorksheet.FindCell(0, 0);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get word-wrapped cell.');
-  CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
-  MyWorksheet.WriteUTF8Text(1, 0, LONGTEXT);
-  MyWorksheet.WriteUsedFormatting(1, 0, []);
-  MyCell := MyWorksheet.FindCell(1, 0);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get word-wrapped cell.');
-  CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(WordwrapSheet);
+    MyWorksheet.WriteUTF8Text(0, 0, LONGTEXT);
+    MyWorksheet.WriteUsedFormatting(0, 0, [uffWordwrap]);
+    MyCell := MyWorksheet.FindCell(0, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get word-wrapped cell.');
+    CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
+    MyWorksheet.WriteUTF8Text(1, 0, LONGTEXT);
+    MyWorksheet.WriteUsedFormatting(1, 0, []);
+    MyCell := MyWorksheet.FindCell(1, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get word-wrapped cell.');
+    CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, WordwrapSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  MyCell := MyWorksheet.FindCell(0, 0);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get word-wrapped cell.');
-  CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields), 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
-  MyCell := MyWorksheet.FindCell(1, 0);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get non-wrapped cell.');
-  CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, WordwrapSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    MyCell := MyWorksheet.FindCell(0, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get word-wrapped cell.');
+    CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields),
+      'Failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
+    MyCell := MyWorksheet.FindCell(1, 0);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get non-wrapped cell.');
+    CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields),
+      'Failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Wordwrap;
@@ -1078,6 +1168,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Wordwrap;
 begin
   TestWriteReadWordwrap(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Wordwrap;
+begin
+  TestWriteReadWordwrap(sfOOXML);
 end;
 
 
