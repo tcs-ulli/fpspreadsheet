@@ -69,6 +69,12 @@ type
     procedure TestWriteRead_ODS_Panes_Hor;
     procedure TestWriteRead_ODS_Panes_Vert;
     procedure TestWriteRead_ODS_Panes_None;
+
+    { OOXML tests }
+    procedure TestWriteRead_OOXML_ShowGridLines_ShowHeaders;
+    procedure TestWriteRead_OOXML_ShowGridLines_HideHeaders;
+    procedure TestWriteRead_OOXML_HideGridLines_ShowHeaders;
+    procedure TestWriteRead_OOXML_HideGridLines_HideHeaders;
   end;
 
 implementation
@@ -219,6 +225,28 @@ procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_HideGridLines_HideHeade
 begin
   TestWriteReadGridHeaders(sfOpenDocument, false, false);
 end;
+
+{ Tests for OOXML grid lines and/or headers }
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_OOXML_ShowGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfOOXML, true, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_OOXML_ShowGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfOOXML, true, false);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_OOXML_HideGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfOOXML, false, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_OOXML_HideGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfOOXML, false, false);
+end;
+
 
 { Test for frozen panes }
 

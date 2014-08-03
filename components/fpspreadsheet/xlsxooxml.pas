@@ -79,6 +79,7 @@ type
     procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
+    procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
   protected
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
@@ -1014,6 +1015,30 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
+var
+  sheetViewNode: TDOMNode;
+  nodeName: String;
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  sheetViewNode := ANode.FirstChild;
+  while Assigned(sheetViewNode) do begin
+    nodeName := sheetViewNode.NodeName;
+    if nodeName = 'sheetView' then begin
+      s := GetAttrValue(sheetViewNode, 'showGridLines');
+      if s = '0' then
+        AWorksheet.Options := AWorksheet.Options - [soShowGridLines];
+      s := GetAttrValue(sheetViewNode, 'showRowColHeaders');
+      if s = '0' then
+         AWorksheet.Options := AWorksheet.Options - [soShowHeaders];
+    end;
+    sheetViewNode := sheetViewNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   rownode: TDOMNode;
@@ -1124,6 +1149,7 @@ begin
 
       FWorksheet := AData.AddWorksheet(SheetList[i]);
 
+      ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
 
@@ -1851,6 +1877,8 @@ var
   row: PRow;
   rh: String;
   h0: Single;
+  showGridLines: String;
+  showHeaders: String;
 begin
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
@@ -1863,14 +1891,24 @@ begin
     FSSheets[FCurSheetNum] := TMemoryStream.Create;
 
   // Header
+  if not (soShowGridLines in CurSheet.Options) then
+    showGridLines := 'showGridLines="0"'
+  else
+    showGridLines := '';
+
+  if not (soShowHeaders in CurSheet.Options) then
+    showHeaders := 'showRowColHeaders="0"'
+  else
+    showHeaders := '';
+
   AppendToStream(FSSheets[FCurSheetNum],
     XML_HEADER);
   AppendToStream(FSSheets[FCurSheetNum], Format(
     '<worksheet xmlns="%s" xmlns:r="%s">', [SCHEMAS_SPREADML, SCHEMAS_DOC_RELS]));
   AppendToStream(FSSheets[FCurSheetNum],
       '<sheetViews>');
-  AppendToStream(FSSheets[FCurSheetNum],
-        '<sheetView workbookViewId="0" />');
+  AppendToStream(FSSheets[FCurSheetNum], Format(
+        '<sheetView workbookViewId="0" %s %s />', [showGridLines, showHeaders]));
   AppendToStream(FSSheets[FCurSheetNum],
       '</sheetViews>');
 
