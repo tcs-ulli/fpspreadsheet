@@ -68,6 +68,7 @@ type
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
+    procedure ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
@@ -75,6 +76,7 @@ type
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPalette(ANode: TDOMNode);
+    procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -688,6 +690,35 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
+var
+  colNode: TDOMNode;
+  col, col1, col2: Cardinal;
+  w: Double;
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  colNode := ANode.FirstChild;
+  while Assigned(colNode) do begin
+    s := GetAttrValue(colNode, 'customWidth');
+    if s = '1' then begin
+      s := GetAttrValue(colNode, 'min');
+      if s <> '' then col1 := StrToInt(s)-1 else col1 := 0;
+      s := GetAttrValue(colNode, 'max');
+      if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
+      s := GetAttrValue(colNode, 'width');
+      if s <> '' then begin
+        w := StrToFloat(s, FPointSeparatorSettings);
+        for col := col1 to col2 do
+          FWorksheet.WriteColWidth(col, w);
+      end;
+    end;
+    colNode := colNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadDateMode(ANode: TDOMNode);
 var
   s: String;
@@ -929,6 +960,30 @@ begin
   FWorkbook.UsePalette(@pal[0], n);
 end;
 
+procedure TsSpreadOOXMLReader.ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
+var
+  s: String;
+  ht: Single;
+  r: Cardinal;
+  row: PRow;
+begin
+  if ANode = nil then
+    exit;
+  s := GetAttrValue(ANode, 'customHeight');
+  if s = '1' then begin
+    s := GetAttrValue(ANode, 'r');
+    r := StrToInt(s) - 1;
+    s := GetAttrValue(ANode, 'ht');
+    ht := StrToFloat(s, FPointSeparatorSettings);    // seems to be in "Points"
+    row := FWorksheet.GetRow(r);
+    row^.Height := ht / FWorkbook.GetDefaultFontSize;
+    if row^.Height > ROW_HEIGHT_CORRECTION then
+      row^.Height := row^.Height - ROW_HEIGHT_CORRECTION
+    else
+      row^.Height := 0;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
 var
   valuenode: TDOMNode;
@@ -967,6 +1022,7 @@ begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
     if rownode.NodeName = 'row' then begin
+      ReadRowHeight(rownode, AWorksheet);
       cellnode := rownode.FirstChild;
       while Assigned(cellnode) do begin
         if cellnode.NodeName = 'c' then
@@ -1068,6 +1124,7 @@ begin
 
       FWorksheet := AData.AddWorksheet(SheetList[i]);
 
+      ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
 
       FreeAndNil(Doc);
