@@ -340,10 +340,10 @@ begin
     xf := TXFListData(FXfList.Items[XfIndex]);
 
     // Font
-    if xf.FontIndex = 1 then
+    if FWrittenByFPS and (xf.FontIndex = 1) then
       Include(ACell^.UsedFormattingFields, uffBold)
     else
-    if xf.FontIndex > 1 then
+    if xf.FontIndex > 0 then
       Include(ACell^.UsedFormattingFields, uffFont);
     ACell^.FontIndex := xf.FontIndex;
 
