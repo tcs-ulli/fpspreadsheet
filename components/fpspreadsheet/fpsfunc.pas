@@ -184,7 +184,7 @@ function fpsVALUE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 implementation
 
 uses
-  Math, lazutf8, StrUtils, DateUtils, fpsUtils;
+  Math, lazutf8, DateUtils, fpsUtils;
 
 
 { Helpers }

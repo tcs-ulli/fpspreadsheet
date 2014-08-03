@@ -87,38 +87,43 @@ begin
 
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
 
-  // Write out all test formulas
-  // All formulas are in column B
-  WriteRPNFormulaSamples(MyWorksheet, AFormat, true);
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+    // Write out all test formulas
+    // All formulas are in column B
+    WriteRPNFormulaSamples(MyWorksheet, AFormat, true);
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFormulas := true;
+  try
+    MyWorkbook.ReadFormulas := true;
 
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for Row := 0 to MyWorksheet.GetLastRowIndex do
-  begin
-    cell := MyWorksheet.FindCell(Row, 1);
-    if (cell <> nil) and (Length(cell^.RPNFormulaValue) > 0) then begin
-      actual := MyWorksheet.ReadRPNFormulaAsString(cell);
-      expected := MyWorksheet.ReadAsUTF8Text(Row, 0);
-      CheckEquals(expected, actual, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for Row := 0 to MyWorksheet.GetLastRowIndex do
+    begin
+      cell := MyWorksheet.FindCell(Row, 1);
+      if (cell <> nil) and (Length(cell^.RPNFormulaValue) > 0) then begin
+        actual := MyWorksheet.ReadRPNFormulaAsString(cell);
+        expected := MyWorksheet.ReadAsUTF8Text(Row, 0);
+        CheckEquals(expected, actual, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
+      end;
     end;
-  end;
 
-  // Finalization
-  MyWorkbook.Free;
-  DeleteFile(TempFile);
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF2_FormulaStrings;
@@ -174,94 +179,99 @@ begin
 
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
-  MyWorkSheet.Options := MyWorkSheet.Options + [soCalcBeforeSaving];
-  // Calculation of rpn formulas must be activated explicitly!
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
+    MyWorkSheet.Options := MyWorkSheet.Options + [soCalcBeforeSaving];
+    // Calculation of rpn formulas must be activated explicitly!
 
-  { Write out test formulas.
-    This include file creates various rpn formulas and stores the expected
-    results in array "sollValues".
-    The test file contains the text representation in column A, and the
-    formula in column B. }
-  Row := 0;
-  {$I testcases_calcrpnformula.inc}
-  TempFile:=GetTempFileName;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+    { Write out test formulas.
+      This include file creates various rpn formulas and stores the expected
+      results in array "sollValues".
+      The test file contains the text representation in column A, and the
+      formula in column B. }
+    Row := 0;
+    {$I testcases_calcrpnformula.inc}
+    TempFile:=GetTempFileName;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Open the workbook
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
 
-  for Row := 0 to MyWorksheet.GetLastRowIndex do
-  begin
-    formula := MyWorksheet.ReadAsUTF8Text(Row, 0);
-    cell := MyWorksheet.FindCell(Row, 1);
-    if (cell = nil) then
-      fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
-    case cell^.ContentType of
-      cctBool       : actual := CreateBoolArg(cell^.BoolValue);
-      cctNumber     : actual := CreateNumberArg(cell^.NumberValue);
-      cctError      : actual := CreateErrorArg(cell^.ErrorValue);
-      cctUTF8String : actual := CreateStringArg(cell^.UTF8StringValue);
-      else            fail('ContentType not supported');
-    end;
-    expected := SollValues[row];
-    CheckEquals(ord(expected.ArgumentType), ord(actual.ArgumentType),
-      'Test read calculated formula data type mismatch, formula "' + formula +
-      '", cell '+CellNotation(MyWorkSheet,Row,1));
+    for Row := 0 to MyWorksheet.GetLastRowIndex do
+    begin
+      formula := MyWorksheet.ReadAsUTF8Text(Row, 0);
+      cell := MyWorksheet.FindCell(Row, 1);
+      if (cell = nil) then
+        fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
+      case cell^.ContentType of
+        cctBool       : actual := CreateBoolArg(cell^.BoolValue);
+        cctNumber     : actual := CreateNumberArg(cell^.NumberValue);
+        cctError      : actual := CreateErrorArg(cell^.ErrorValue);
+        cctUTF8String : actual := CreateStringArg(cell^.UTF8StringValue);
+        else            fail('ContentType not supported');
+      end;
+      expected := SollValues[row];
+      CheckEquals(ord(expected.ArgumentType), ord(actual.ArgumentType),
+        'Test read calculated formula data type mismatch, formula "' + formula +
+        '", cell '+CellNotation(MyWorkSheet,Row,1));
 
-    // The now function result is volatile, i.e. changes continuously. The
-    // time for the soll value was created such that we can expect to have
-    // the file value in the same second. Therefore we neglect the milliseconds.
-    if formula = '=NOW()' then begin
-      // Round soll value to seconds
-      DecodeTime(expected.NumberValue, hr,min,sec,msec);
-      expected.NumberValue := EncodeTime(hr, min, sec, 0);
-      // Round formula value to seconds
-      DecodeTime(actual.NumberValue, hr,min,sec,msec);
-      actual.NumberValue := EncodeTime(hr,min,sec,0);
+      // The now function result is volatile, i.e. changes continuously. The
+      // time for the soll value was created such that we can expect to have
+      // the file value in the same second. Therefore we neglect the milliseconds.
+      if formula = '=NOW()' then begin
+        // Round soll value to seconds
+        DecodeTime(expected.NumberValue, hr,min,sec,msec);
+        expected.NumberValue := EncodeTime(hr, min, sec, 0);
+        // Round formula value to seconds
+        DecodeTime(actual.NumberValue, hr,min,sec,msec);
+        actual.NumberValue := EncodeTime(hr,min,sec,0);
+      end;
+
+      case actual.ArgumentType of
+        atBool:
+          CheckEquals(BoolToStr(expected.BoolValue), BoolToStr(actual.BoolValue),
+            'Test read calculated formula result mismatch, formula "' + formula +
+            '", cell '+CellNotation(MyWorkSheet,Row,1));
+        atNumber:
+          {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
+          // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
+          CheckEquals(expected.NumberValue, actual.NumberValue, ErrorMargin,
+            'Test read calculated formula result mismatch, formula "' + formula +
+            '", cell '+CellNotation(MyWorkSheet,Row,1));
+          {$else}
+          // Non-Windows: test without error margin
+          CheckEquals(expected.NumberValue, actual.NumberValue,
+            'Test read calculated formula result mismatch, formula "' + formula +
+            '", cell '+CellNotation(MyWorkSheet,Row,1));
+          {$endif}
+        atString:
+          CheckEquals(expected.StringValue, actual.StringValue,
+            'Test read calculated formula result mismatch, formula "' + formula +
+            '", cell '+CellNotation(MyWorkSheet,Row,1));
+        atError:
+          CheckEquals(
+            GetEnumName(TypeInfo(TsErrorValue), ord(expected.ErrorValue)),
+            GetEnumname(TypeInfo(TsErrorValue), ord(actual.ErrorValue)),
+            'Test read calculated formula error value mismatch, formula ' + formula +
+            ', cell '+CellNotation(MyWorkSheet,Row,1));
+      end;
     end;
 
-    case actual.ArgumentType of
-      atBool:
-        CheckEquals(BoolToStr(expected.BoolValue), BoolToStr(actual.BoolValue),
-          'Test read calculated formula result mismatch, formula "' + formula +
-          '", cell '+CellNotation(MyWorkSheet,Row,1));
-      atNumber:
-        {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
-        // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
-        CheckEquals(expected.NumberValue, actual.NumberValue, ErrorMargin,
-          'Test read calculated formula result mismatch, formula "' + formula +
-          '", cell '+CellNotation(MyWorkSheet,Row,1));
-        {$else}
-        // Non-Windows: test without error margin
-        CheckEquals(expected.NumberValue, actual.NumberValue,
-          'Test read calculated formula result mismatch, formula "' + formula +
-          '", cell '+CellNotation(MyWorkSheet,Row,1));
-        {$endif}
-      atString:
-        CheckEquals(expected.StringValue, actual.StringValue,
-          'Test read calculated formula result mismatch, formula "' + formula +
-          '", cell '+CellNotation(MyWorkSheet,Row,1));
-      atError:
-        CheckEquals(
-          GetEnumName(TypeInfo(TsErrorValue), ord(expected.ErrorValue)),
-          GetEnumname(TypeInfo(TsErrorValue), ord(actual.ErrorValue)),
-          'Test read calculated formula error value mismatch, formula ' + formula +
-          ', cell '+CellNotation(MyWorkSheet,Row,1));
-    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-
-  // Finalization
-  MyWorkbook.Free;
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF2_CalcRPNFormula;

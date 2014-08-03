@@ -122,6 +122,8 @@ type
     procedure TestWriteRead_OOXML_Alignment;
     procedure TestWriteRead_OOXML_Border;
     procedure TestWriteRead_OOXML_BorderStyles;
+    procedure TestWriteRead_OOXML_ColWidths;
+    procedure TestWriteRead_OOXML_RowHeights;
     procedure TestWriteRead_OOXML_DateTimeFormats;
     procedure TestWriteRead_OOXML_NumberFormats;
     procedure TestWriteRead_OOXML_TextRotation;
@@ -934,6 +936,12 @@ begin
   TestWriteReadColWidths(sfOpenDocument);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_ColWidths;
+begin
+  TestWriteReadColWidths(sfOOXML);
+end;
+
+
 { --- Row height tests --- }
 
 procedure TSpreadWriteReadFormatTests.TestWriteReadRowHeights(AFormat: TsSpreadsheetFormat);
@@ -1003,6 +1011,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_RowHeights;
 begin
   TestWriteReadRowHeights(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_RowHeights;
+begin
+  TestWriteReadRowHeights(sfOOXML);
 end;
 
 
