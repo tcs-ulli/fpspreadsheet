@@ -635,13 +635,18 @@ type
     function  WriteFont(ACell: PCell; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
-    function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
-    function WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
-    function WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
+    procedure WriteFont(ACell: PCell; AFontIndex: Integer); overload;
+    function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer; overload;
+    function WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer; overload;
+    function WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer; overload;
+    function WriteFontName(ACell: PCell; AFontName: String): Integer; overload;
+    function WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer; overload;
+    function WriteFontSize(ACell: PCell; ASize: Single): Integer; overload;
     function WriteFontStyle(ARow, ACol: Cardinal; AStyle: TsFontStyles): Integer; overload;
     function WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer; overload;
 
-    procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
+    procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment); overload;
+    procedure WriteHorAlignment(ACell: PCell; AValue: TsHorAlignment); overload;
 
     procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
       const AFormatString: String = ''); overload;
@@ -654,13 +659,16 @@ type
       ADecimals: Integer; ACurrencySymbol: String = '';
       APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1); overload;
 
-    procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation);
+    procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation); overload;
+    procedure WriteTextRotation(ACell: PCell; ARotation: TsTextRotation); overload;
 
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
 
-    procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
+    procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment); overload;
+    procedure WriteVertAlignment(ACell: PCell; AValue: TsVertAlignment); overload;
 
-    procedure WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean);
+    procedure WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean); overload;
+    procedure WriteWordwrap(ACell: PCell; AValue: boolean); overload;
 
     { Data manipulation methods - For Cells }
     procedure CalcFormulas;
@@ -3593,18 +3601,29 @@ end;
   @param  AFontIndex  Index of the font in the workbook's font list
 }
 procedure TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer);
-var
-  lCell: PCell;
 begin
-  if (AFontIndex >= 0) and (AFontIndex < Workbook.GetFontCount) and (AFontIndex <> 4)
+  WriteFont(GetCell(ARow, ACol), AFontIndex);
+end;
+
+{@@
+  Applies a font to the formatting of a cell. The font is determined by its
+  index in the workbook's font list:
+
+  @param  ACell       Pointer to the cell considered
+  @param  AFontIndex  Index of the font in the workbook's font list
+}
+procedure TsWorksheet.WriteFont(ACell: PCell; AFontIndex: Integer);
+begin
+  if ACell = nil then
+    exit;
+
+  if (AFontIndex < 0) or (AFontIndex >= Workbook.GetFontCount) or (AFontIndex = 4) then
     // note: Font index 4 is not defined in BIFF
-  then begin
-    lCell := GetCell(ARow, ACol);
-    Include(lCell^.UsedFormattingFields, uffFont);
-    lCell^.FontIndex := AFontIndex;
-    ChangedFont(ARow, ACol);
-  end else
     raise Exception.Create(lpInvalidFontIndex);
+
+  Include(ACell^.UsedFormattingFields, uffFont);
+  ACell^.FontIndex := AFontIndex;
+  ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -3619,13 +3638,30 @@ end;
   @return Index of the font in the workbook's font list.
 }
 function TsWorksheet.WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
+begin
+  Result := WriteFontColor(GetCell(ARow, ACol), AFontColor);
+end;
+
+{@@
+  Replaces the text color used in formatting of a cell. Looks in the workbook's
+  font list if this modified font has already been used. If not a new font entry
+  is created. Returns the index of this font in the font list.
+
+  @param  ACell       Pointer to the cell
+  @param  AFontColor  Index into the workbook's color palette identifying the
+                      new text color.
+  @return Index of the font in the workbook's font list.
+}
+function TsWorksheet.WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer;
 var
-  lCell: PCell;
   fnt: TsFont;
 begin
-  lCell := GetCell(ARow, ACol);
-  fnt := Workbook.GetFont(lCell^.FontIndex);
-  Result := WriteFont(ARow, ACol, fnt.FontName, fnt.Size, fnt.Style, AFontColor);
+  if ACell = nil then begin
+    Result := 0;
+    exit;
+  end;
+  fnt := Workbook.GetFont(ACell^.FontIndex);
+  Result := WriteFont(ACell, fnt.FontName, fnt.Size, fnt.Style, AFontColor);
 end;
 
 {@@
@@ -3640,13 +3676,30 @@ end;
   @return Index of the font in the workbook's font list.
 }
 function TsWorksheet.WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
+begin
+  result := WriteFontName(GetCell(ARow, ACol), AFontName);
+end;
+
+{@@
+  Replaces the font used in formatting of a cell considering only the font face
+  and leaving font size, style and color unchanged. Looks in the workbook's
+  font list if this modified font has already been used. If not a new font entry
+  is created. Returns the index of this font in the font list.
+
+  @param  ACell       Pointer to the cell
+  @param  AFontName   Name of the new font to be used
+  @return Index of the font in the workbook's font list.
+}
+function TsWorksheet.WriteFontName(ACell: PCell; AFontName: String): Integer;
 var
-  lCell: PCell;
   fnt: TsFont;
 begin
-  lCell := GetCell(ARow, ACol);
-  fnt := Workbook.GetFont(lCell^.FontIndex);
-  result := WriteFont(ARow, ACol, AFontName, fnt.Size, fnt.Style, fnt.Color);
+  if ACell = nil then begin
+    Result := 0;
+    exit;
+  end;
+  fnt := Workbook.GetFont(ACell^.FontIndex);
+  result := WriteFont(ACell, AFontName, fnt.Size, fnt.Style, fnt.Color);
 end;
 
 {@@
@@ -3660,13 +3713,29 @@ end;
   @return Index of the font in the workbook's font list.
 }
 function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
+begin
+  Result := WriteFontSize(GetCell(ARow, ACol), ASize);
+end;
+
+{@@
+  Replaces the font size in formatting of a cell. Looks in the workbook's
+  font list if this modified font has already been used. If not a new font entry
+  is created. Returns the index of this font in the font list.
+
+  @param  ACell       Pointer to the cell
+  @param  ASize       Size of the font to be used (in points).
+  @return Index of the font in the workbook's font list.
+}
+function TsWorksheet.WriteFontSize(ACell: PCell; ASize: Single): Integer;
 var
-  lCell: PCell;
   fnt: TsFont;
 begin
-  lCell := GetCell(ARow, ACol);
-  fnt := Workbook.GetFont(lCell^.FontIndex);
-  Result := WriteFont(ARow, ACol, fnt.FontName, ASize, fnt.Style, fnt.Color);
+  if ACell = nil then begin
+    Result := 0;
+    exit;
+  end;
+  fnt := Workbook.GetFont(ACell^.FontIndex);
+  Result := WriteFont(ACell, fnt.FontName, ASize, fnt.Style, fnt.Color);
 end;
 
 {@@
@@ -3724,13 +3793,25 @@ end;
 }
 procedure TsWorksheet.WriteTextRotation(ARow, ACol: Cardinal;
   ARotation: TsTextRotation);
-var
-  ACell: PCell;
 begin
-  ACell := GetCell(ARow, ACol);
+  WriteTextRotation(GetCell(ARow, ACol), ARotation);
+end;
+
+{@@
+  Adds text rotation to the formatting of a cell
+
+  @param  ACell      Pointer to the cell
+  @param  ARotation  How to rotate the text
+
+  @see    TsTextRotation
+}
+procedure TsWorksheet.WriteTextRotation(ACell: PCell; ARotation: TsTextRotation);
+begin
+  if ACell = nil then
+    exit;
   Include(ACell^.UsedFormattingFields, uffTextRotation);
   ACell^.TextRotation := ARotation;
-  ChangedFont(ARow, ACol);
+  ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -4018,13 +4099,24 @@ end;
                  By default, texts are left-aligned, numbers and dates are right-aligned.
 }
 procedure TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  Include(lCell^.UsedFormattingFields, uffHorAlign);
-  lCell^.HorAlignment := AValue;
-  ChangedCell(ARow, ACol);
+  WriteHorAlignment(GetCell(ARow, ACol), AValue);
+end;
+
+{@@
+  Defines the horizontal alignment of text in a cell.
+
+  @param ACell   Pointer to the cell considered
+  @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight)
+                 By default, texts are left-aligned, numbers and dates are right-aligned.
+}
+procedure TsWorksheet.WriteHorAlignment(ACell: PCell; AValue: TsHorAlignment);
+begin
+  if ACell = nil then
+    exit;
+  Include(ACell^.UsedFormattingFields, uffHorAlign);
+  ACell^.HorAlignment := AValue;
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -4036,13 +4128,24 @@ end;
                  By default, texts are bottom-aligned.
 }
 procedure TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  Include(lCell^.UsedFormattingFields, uffVertAlign);
-  lCell^.VertAlignment := AValue;
-  ChangedCell(ARow, ACol);
+  WriteVertAlignment(GetCell(ARow, ACol), AValue);
+end;
+
+{@@
+  Defines the vertical alignment of text in a cell.
+
+  @param ACell   Poiner to the cell considered
+  @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom)
+                 By default, texts are bottom-aligned.
+}
+procedure TsWorksheet.WriteVertAlignment(ACell: PCell; AValue: TsVertAlignment);
+begin
+  if ACell = nil then
+    exit;
+  Include(ACell^.UsedFormattingFields, uffVertAlign);
+  ACell^.VertAlignment := AValue;
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -4053,15 +4156,25 @@ end;
   @param AValue  true = word-wrapping enabled, false = disabled.
 }
 procedure TsWorksheet.WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean);
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
+  WriteWordWrap(GetCell(ARow, ACol), AValue);
+end;
+
+{@@
+  Enables or disables the word-wrapping feature for a cell.
+
+  @param ACel    Pointer to the cell considered
+  @param AValue  true = word-wrapping enabled, false = disabled.
+}
+procedure TsWorksheet.WriteWordwrap(ACell: PCell; AValue: boolean);
+begin
+  if ACell = nil then
+    exit;
   if AValue then
-    Include(lCell^.UsedFormattingFields, uffWordwrap)
+    Include(ACell^.UsedFormattingFields, uffWordwrap)
   else
-    Exclude(lCell^.UsedFormattingFields, uffWordwrap);
-  ChangedCell(ARow, ACol);
+    Exclude(ACell^.UsedFormattingFields, uffWordwrap);
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 function TsWorksheet.GetFormatSettings: TFormatSettings;
