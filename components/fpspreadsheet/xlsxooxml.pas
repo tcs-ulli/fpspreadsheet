@@ -112,11 +112,13 @@ type
     procedure ListAllFills;
     procedure ResetStreams;
     procedure WriteBorderList(AStream: TStream);
-    procedure WriteCols(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
+    procedure WriteSheetData(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteSheetViews(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
   protected
     { Streams with the contents of files }
@@ -133,7 +135,7 @@ type
     { Routines to write the files }
     procedure WriteGlobalFiles;
     procedure WriteContent;
-    procedure WriteWorksheet(CurSheet: TsWorksheet);
+    procedure WriteWorksheet(AWorksheet: TsWorksheet);
   protected
     { Record writing methods }
     //todo: add WriteDate
@@ -153,7 +155,7 @@ type
 implementation
 
 uses
-  variants, fileutil, fpsStreams, fpsNumFormatParser;
+  variants, fileutil, StrUtils, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -1018,11 +1020,24 @@ end;
 procedure TsSpreadOOXMLReader.ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   sheetViewNode: TDOMNode;
+  childNode: TDOMNode;
   nodeName: String;
   s: String;
 begin
   if ANode = nil then
     exit;
+
+
+{
+'<sheetViews>' +
+  '<sheetView workbookViewId="0" %s%s>'+
+    '<pane xSplit="%d" ySplit="%d" topLeftCell="%s" activePane="bottomRight" state="frozen" />' +
+    '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
+    '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
+    '<selection pane="bottomRight" activeCell="%s" sqref="%s" />' +
+  '</sheetView>' +
+'</sheetViews>', [
+}
 
   sheetViewNode := ANode.FirstChild;
   while Assigned(sheetViewNode) do begin
@@ -1034,6 +1049,22 @@ begin
       s := GetAttrValue(sheetViewNode, 'showRowColHeaders');
       if s = '0' then
          AWorksheet.Options := AWorksheet.Options - [soShowHeaders];
+
+      childNode := sheetViewNode.FirstChild;
+      while Assigned(childNode) do begin
+        nodeName := childNode.NodeName;
+        if nodeName = 'pane' then begin
+          s := GetAttrValue(childNode, 'state');
+          if s = 'frozen' then begin
+            AWorksheet.Options := AWorksheet.Options + [soHasFrozenPanes];
+            s := GetAttrValue(childNode, 'xSplit');
+            if s <> '' then AWorksheet.LeftPaneWidth := StrToInt(s);
+            s := GetAttrValue(childNode, 'ySplit');
+            if s <> '' then AWorksheet.TopPaneHeight := StrToInt(s);
+          end;
+        end;
+        childNode := childNode.NextSibling;
+      end;
     end;
     sheetViewNode := sheetViewNode.NextSibling;
   end;
@@ -1422,19 +1453,19 @@ begin
     '</borders>');
 end;
 
-procedure TsSpreadOOXMLWriter.WriteCols(AStream: TStream; ASheet: TsWorksheet);
+procedure TsSpreadOOXMLWriter.WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
 var
   col: PCol;
   c: Integer;
 begin
-  if ASheet.Cols.Count = 0 then
+  if AWorksheet.Cols.Count = 0 then
     exit;
 
   AppendToStream(AStream,
     '<cols>');
 
-  for c:=0 to ASheet.GetLastColIndex do begin
-    col := ASheet.FindCol(c);
+  for c:=0 to AWorksheet.GetLastColIndex do begin
+    col := AWorksheet.FindCol(c);
     if col <> nil then
       AppendToStream(AStream, Format(
         '<col min="%d" max="%d" width="%g" customWidth="1" />',
@@ -1580,6 +1611,175 @@ begin
     '</colors>');
 end;
 
+procedure TsSpreadOOXMLWriter.WriteSheetData(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  r, c, c1, c2: Cardinal;
+  row: PRow;
+  value: Variant;
+  lCell: TCell;
+  styleCell: PCell;
+  AVLNode: TAVLTreeNode;
+  rh: String;
+  h0: Single;
+begin
+  h0 := Workbook.GetDefaultFontSize;  // Point size of default font
+
+  AppendToStream(AStream,
+      '<sheetData>');
+
+  if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnWriteCellData)
+  then begin
+    for r := 0 to Workbook.VirtualRowCount-1 do begin
+      row := AWorksheet.FindRow(r);
+      if row <> nil then
+        rh := Format(' ht="%g" customHeight="1"', [
+          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
+      else
+        rh := '';
+      AppendToStream(AStream, Format(
+        '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
+      for c := 0 to Workbook.VirtualColCount-1 do begin
+        InitCell(lCell);
+        value := varNull;
+        styleCell := nil;
+        Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
+        if styleCell <> nil then
+          lCell := styleCell^;
+        lCell.Row := r;
+        lCell.Col := c;
+        if VarIsNull(value) then
+          lCell.ContentType := cctEmpty
+        else
+        if VarIsNumeric(value) then begin
+          lCell.ContentType := cctNumber;
+          lCell.NumberValue := value;
+        end else
+        if VarType(value) = varDate then begin
+          lCell.ContentType := cctDateTime;
+          lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
+        end else
+        if VarIsStr(value) then begin
+          lCell.ContentType := cctUTF8String;
+          lCell.UTF8StringValue := VarToStrDef(value, '');
+        end else
+        if VarIsBool(value) then begin
+          lCell.ContentType := cctBool;
+          lCell.BoolValue := value <> 0;
+        end;
+        WriteCellCallback(@lCell, AStream);
+        varClear(value);
+      end;
+      AppendToStream(AStream,
+        '</row>');
+    end;
+  end else
+  begin
+    // The cells need to be written in order, row by row, cell by cell
+    for r := 0 to AWorksheet.GetLastRowIndex do begin
+      // If the row has a custom height add this value to the <row> specification
+      row := AWorksheet.FindRow(r);
+      if row <> nil then
+        rh := Format(' ht="%g" customHeight="1"', [
+          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
+      else
+        rh := '';
+      c1 := AWorksheet.GetFirstColIndex;
+      c2 := AWorksheet.GetLastColIndex;
+      AppendToStream(AStream, Format(
+        '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
+      // Write cells belonging to this row.
+      for c := c1 to c2 do begin
+        lCell.Row := r;
+        lCell.Col := c;
+        AVLNode := AWorksheet.Cells.Find(@lCell);
+        if Assigned(AVLNode) then
+          WriteCellCallback(PCell(AVLNode.Data), AStream);
+      end;
+      AppendToStream(AStream,
+        '</row>');
+    end;
+  end;
+  AppendToStream(AStream,
+      '</sheetData>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteSheetViews(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  showGridLines: String;
+  showHeaders: String;
+  topRightCell: String;
+  bottomLeftCell: String;
+  bottomRightCell: String;
+begin
+  // Show gridlines ?
+  showGridLines := IfThen(soShowGridLines in AWorksheet.Options, ' ', 'showGridLines="0" ');
+
+  // Show headers?
+  showHeaders := IfThen(soShowHeaders in AWorksheet.Options, ' ', 'showRowColHeaders="0" ');
+
+  // No frozen panes
+  if not (soHasFrozenPanes in AWorksheet.Options) or
+     ((AWorksheet.LeftPaneWidth = 0) and (AWorksheet.TopPaneHeight = 0))
+  then
+    AppendToStream(AStream, Format(
+      '<sheetViews>' +
+        '<sheetView workbookViewId="0" %s%s/>' +
+//       <sheetView workbookViewID="0" />
+      '</sheetViews>', [
+      showGridLines, showHeaders
+    ]))
+  else
+  begin  // Frozen panes
+    topRightCell := GetCellString(0, AWorksheet.LeftPaneWidth, [rfRelRow, rfRelCol]);
+    bottomLeftCell := GetCellString(AWorksheet.TopPaneHeight, 0, [rfRelRow, rfRelCol]);
+    bottomRightCell := GetCellString(AWorksheet.TopPaneHeight, AWorksheet.LeftPaneWidth, [rfRelRow, rfRelCol]);
+    if (AWorksheet.LeftPaneWidth > 0) and (AWorksheet.TopPaneHeight > 0) then
+      AppendToStream(AStream, Format(
+        '<sheetViews>' +
+          '<sheetView workbookViewId="0" %s%s>'+
+            '<pane xSplit="%d" ySplit="%d" topLeftCell="%s" activePane="bottomRight" state="frozen" />' +
+            '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
+            '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
+            '<selection pane="bottomRight" activeCell="%s" sqref="%s" />' +
+          '</sheetView>' +
+        '</sheetViews>', [
+        showGridLines, showHeaders,
+        AWorksheet.LeftPaneWidth, AWorksheet.TopPaneHeight, bottomRightCell,
+        topRightCell, topRightCell,
+        bottomLeftCell, bottomLeftCell,
+        bottomRightCell, bottomrightCell
+      ]))
+    else
+    if (AWorksheet.LeftPaneWidth > 0) then
+      AppendToStream(AStream, Format(
+        '<sheetViews>' +
+          '<sheetView workbookViewId="0" %s%s>'+
+            '<pane xSplit="%d" topLeftCell="%s" activePane="topRight" state="frozen" />' +
+            '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
+          '</sheetView>' +
+        '</sheetViews>', [
+        showGridLines, showHeaders,
+        AWorksheet.LeftPaneWidth, topRightCell,
+        topRightCell, topRightCell
+      ]))
+    else
+    if (AWorksheet.TopPaneHeight > 0) then
+      AppendToStream(AStream, Format(
+        '<sheetViews>'+
+          '<sheetView workbookViewId="0" %s%s>'+
+             '<pane ySplit="%d" topLeftCell="%s" activePane="bottomLeft" state="frozen" />'+
+             '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
+          '</sheetView>'+
+        '</sheetViews>', [
+        showGridLines, showHeaders,
+        AWorksheet.TopPaneHeight, bottomLeftCell,
+        bottomLeftCell, bottomLeftCell
+      ]));
+  end;
+end;
+
 { Writes the style list which the writer has collected in FFormattingStyles. }
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
@@ -1710,7 +1910,7 @@ begin
   AppendToStream(FSRelsRels, Format(
     '<Relationships xmlns="%s">', [SCHEMAS_RELS]));
   AppendToStream(FSRelsRels, Format(
-    '<Relationship Type="%s" Target="xl/workbook.xml" Id="rId1" />', [SCHEMAS_DOCUMENT]));
+      '<Relationship Type="%s" Target="xl/workbook.xml" Id="rId1" />', [SCHEMAS_DOCUMENT]));
   AppendToStream(FSRelsRels,
     '</Relationships>');
 
@@ -1793,8 +1993,8 @@ begin
   AppendToStream(FSWorkbook,
       '<workbookPr defaultThemeVersion="124226" />');
   AppendToStream(FSWorkbook,
-      '<bookViews>',
-        '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />',
+      '<bookViews>' +
+        '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' +
       '</bookViews>');
   AppendToStream(FSWorkbook,
       '<sheets>');
@@ -1826,63 +2026,10 @@ begin
     '</sst>');
 end;
 
-{
-FSheets[CurStr] :=
- XML_HEADER + LineEnding +
- '<worksheet xmlns="' + SCHEMAS_SPREADML + '" xmlns:r="' + SCHEMAS_DOC_RELS + '">' + LineEnding +
- '  <sheetViews>' + LineEnding +
- '    <sheetView workbookViewId="0" />' + LineEnding +
- '  </sheetViews>' + LineEnding +
- '  <sheetData>' + LineEnding +
- '  <row r="1" spans="1:4">' + LineEnding +
- '    <c r="A1">' + LineEnding +
- '      <v>1</v>' + LineEnding +
- '    </c>' + LineEnding +
- '    <c r="B1">' + LineEnding +
- '      <v>2</v>' + LineEnding +
- '    </c>' + LineEnding +
- '    <c r="C1">' + LineEnding +
- '      <v>3</v>' + LineEnding +
- '    </c>' + LineEnding +
- '    <c r="D1">' + LineEnding +
- '      <v>4</v>' + LineEnding +
- '    </c>' + LineEnding +
- '  </row>' + LineEnding +
- '  <row r="2" spans="1:4">' + LineEnding +
- '    <c r="A2" t="s">' + LineEnding +
- '      <v>0</v>' + LineEnding +
- '    </c>' + LineEnding +
- '    <c r="B2" t="s">' + LineEnding +
- '      <v>1</v>' + LineEnding +
- '    </c>' + LineEnding +
- '    <c r="C2" t="s">' + LineEnding +
- '      <v>2</v>' + LineEnding +
- '    </c>' + LineEnding +
- '    <c r="D2" t="s">' + LineEnding +
- '      <v>3</v>' + LineEnding +
- '    </c>' + LineEnding +
- '  </row>' + LineEnding +
- '  </sheetData>' + LineEnding +
- '</worksheet>';
-}
-procedure TsSpreadOOXMLWriter.WriteWorksheet(CurSheet: TsWorksheet);
-var
-  r, c: Cardinal;
-  LastColIndex: Cardinal;
-  lCell: TCell;
-  AVLNode: TAVLTreeNode;
-  CellPosText: string;
-  value: Variant;
-  styleCell: PCell;
-  row: PRow;
-  rh: String;
-  h0: Single;
-  showGridLines: String;
-  showHeaders: String;
+procedure TsSpreadOOXMLWriter.WriteWorksheet(AWorksheet: TsWorksheet);
 begin
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
-  h0 := Workbook.GetDefaultFontSize;  // Point size of default font
 
   // Create the stream
   if (boBufStream in Workbook.Options) then
@@ -1891,117 +2038,17 @@ begin
     FSSheets[FCurSheetNum] := TMemoryStream.Create;
 
   // Header
-  if not (soShowGridLines in CurSheet.Options) then
-    showGridLines := 'showGridLines="0"'
-  else
-    showGridLines := '';
-
-  if not (soShowHeaders in CurSheet.Options) then
-    showHeaders := 'showRowColHeaders="0"'
-  else
-    showHeaders := '';
-
   AppendToStream(FSSheets[FCurSheetNum],
     XML_HEADER);
   AppendToStream(FSSheets[FCurSheetNum], Format(
     '<worksheet xmlns="%s" xmlns:r="%s">', [SCHEMAS_SPREADML, SCHEMAS_DOC_RELS]));
-  AppendToStream(FSSheets[FCurSheetNum],
-      '<sheetViews>');
-  AppendToStream(FSSheets[FCurSheetNum], Format(
-        '<sheetView workbookViewId="0" %s %s />', [showGridLines, showHeaders]));
-  AppendToStream(FSSheets[FCurSheetNum],
-      '</sheetViews>');
 
-  WriteCols(FSSheets[FCurSheetNum], CurSheet);
-
-  AppendToStream(FSSheets[FCurSheetNum],
-      '<sheetData>');
-
-  if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnWriteCellData)
-  then begin
-    for r := 0 to Workbook.VirtualRowCount-1 do begin
-      row := CurSheet.FindRow(r);
-      if row <> nil then
-        rh := Format(' ht="%g" customHeight="1"', [
-          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
-      else
-        rh := '';
-      AppendToStream(FSSheets[FCurSheetNum], Format(
-        '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
-      for c := 0 to Workbook.VirtualColCount-1 do begin
-        InitCell(lCell);
-        CellPosText := CurSheet.CellPosToText(r, c);
-        value := varNull;
-        styleCell := nil;
-        Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
-        if styleCell <> nil then
-          lCell := styleCell^;
-        lCell.Row := r;
-        lCell.Col := c;
-        if VarIsNull(value) then
-          lCell.ContentType := cctEmpty
-        else
-        if VarIsNumeric(value) then begin
-          lCell.ContentType := cctNumber;
-          lCell.NumberValue := value;
-        end
-        {
-        else if VarIsDateTime(value) then begin
-          lCell.ContentType := cctNumber;
-          lCell.DateTimeValue := value;
-        end
-        }
-        else if VarIsStr(value) then begin
-          lCell.ContentType := cctUTF8String;
-          lCell.UTF8StringValue := VarToStrDef(value, '');
-        end else
-        if VarIsBool(value) then begin
-          lCell.ContentType := cctBool;
-          lCell.BoolValue := value <> 0;
-        end;
-        WriteCellCallback(@lCell, FSSheets[FCurSheetNum]);
-        varClear(value);
-      end;
-      AppendToStream(FSSheets[FCurSheetNum],
-        '</row>');
-    end;
-  end else
-  begin
-    // The cells need to be written in order, row by row, cell by cell
-    LastColIndex := CurSheet.GetLastColIndex;
-    for r := 0 to CurSheet.GetLastRowIndex do begin
-      // If the row has a custom height add this value to the <row> specification
-      row := CurSheet.FindRow(r);
-      if row <> nil then
-        rh := Format(' ht="%g" customHeight="1"', [
-          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
-      else
-        rh := '';
-      AppendToStream(FSSheets[FCurSheetNum], Format(
-        '<row r="%d" spans="1:%d"%s>', [r+1, LastColIndex+1, rh]));
-      // Write cells belonging to this row.
-      for c := 0 to LastColIndex do begin
-        LCell.Row := r;
-        LCell.Col := c;
-        AVLNode := CurSheet.Cells.Find(@LCell);
-        if Assigned(AVLNode) then
-          WriteCellCallback(PCell(AVLNode.Data), FSSheets[FCurSheetNum])
-        else begin
-          CellPosText := CurSheet.CellPosToText(r, c);
-          AppendToStream(FSSheets[FCurSheetNum], Format(
-            '<c r="%s">', [CellPosText]),
-              '<v></v>',
-            '</c>');
-        end;
-      end;
-      AppendToStream(FSSheets[FCurSheetNum],
-        '</row>');
-    end;
-  end;
+  WriteSheetViews(FSSheets[FCurSheetNum], AWorksheet);
+  WriteCols(FSSheets[FCurSheetNum], AWorksheet);
+  WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
   AppendToStream(FSSheets[FCurSheetNum],
-      '</sheetData>' +
     '</worksheet>');
 end;
 

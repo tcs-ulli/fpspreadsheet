@@ -2676,6 +2676,7 @@ var
   lCell: TCell;
   value: variant;
   styleCell: PCell;
+
 begin
   for r := 0 to Workbook.VirtualRowCount-1 do begin
     for c := 0 to Workbook.VirtualColCount-1 do begin
@@ -2693,12 +2694,10 @@ begin
         lCell.ContentType := cctNumber;
         lCell.NumberValue := value;
       end else
-      {
-      if VarIsDateTime(value) then begin
-        lCell.ContentType := cctNumber;
-        lCell.DateTimeValue := value;
+      if VarType(value) = varDate then begin
+        lCell.ContentType := cctDateTime;
+        lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
       end else
-      }
       if VarIsStr(value) then begin
         lCell.ContentType := cctUTF8String;
         lCell.UTF8StringValue := VarToStrDef(value, '');
