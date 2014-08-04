@@ -493,6 +493,8 @@ type
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
+    FFirstRowIndex: Cardinal;
+    FFirstColIndex: Cardinal;
     FLastRowIndex: Cardinal;
     FLastColIndex: Cardinal;
     FOnChangeCell: TsCellEvent;
@@ -620,16 +622,24 @@ type
     procedure WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles); overload;
     procedure WriteBorderStyles(ACell: PCell; const AStyles: TsCellBorderStyles); overload;
 
+    procedure WriteDateTimeFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
+      const AFormatString: String = ''); overload;
+    procedure WriteDateTimeFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
+      const AFormatString: String = ''); overload;
+
     procedure WriteDecimals(ARow, ACol: Cardinal; ADecimals: byte); overload;
     procedure WriteDecimals(ACell: PCell; ADecimals: Byte); overload;
 
     function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
+    function  WriteFont(ACell: PCell; const AFontName: String;
+      AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
     function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
     function WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
     function WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
-    function WriteFontStyle(ARow, ACol: Cardinal; AStyle: TsFontStyles): Integer;
+    function WriteFontStyle(ARow, ACol: Cardinal; AStyle: TsFontStyles): Integer; overload;
+    function WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer; overload;
 
     procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
 
@@ -666,8 +676,10 @@ type
     function  GetNextCell(): PCell;
     function  GetFirstCellOfRow(ARow: Cardinal): PCell;
     function  GetLastCellOfRow(ARow: Cardinal): PCell;
+    function  GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColNumber: Cardinal; deprecated 'Use GetLastColIndex';
+    function  GetFirstRowIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
 
@@ -1573,6 +1585,8 @@ begin
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
 
+  FFirstRowIndex := $FFFFFFFF;
+  FFirstColIndex := $FFFFFFFF;
   FLastRowIndex := 0;
   FLastColIndex := 0;
 
@@ -1923,6 +1937,10 @@ begin
     Result^.BorderStyles := DEFAULT_BORDERSTYLES;
 
     Cells.Add(Result);
+    if FFirstColIndex = $FFFFFFFF then FFirstColIndex := GetFirstColIndex(true)
+      else FFirstColIndex := Min(FFirstColIndex, ACol);
+    if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
+      else FFirstRowIndex := Min(FFirstRowIndex, ARow);
     if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
       else FLastColIndex := Max(FLastColIndex, ACol);
     if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
@@ -2056,6 +2074,46 @@ begin
 end;
 
 {@@
+  Returns the 0-based index of the first column with a cell with contents.
+
+  If no cells have contents, zero will be returned, which is also a valid value.
+
+  Use GetCellCount to verify if there is at least one cell with contents in the
+  worksheet.
+
+  @param  AForceCalculation  The index of the first column is continuously updated
+                             whenever a new cell is created. If AForceCalculation
+                             is true all cells are scanned to determine the index
+                             of the first column.
+  @see GetCellCount
+}
+function TsWorksheet.GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
+var
+  AVLNode: TAVLTreeNode;
+  i: Integer;
+begin
+  if AForceCalculation then begin
+    Result := $FFFFFFFF;
+    // Traverse the tree from lowest to highest.
+    // Since tree primary sort order is on row lowest col could exist anywhere.
+    AVLNode := FCells.FindLowest;
+    While Assigned(AVLNode) do begin
+      Result := Math.Min(Result, PCell(AVLNode.Data)^.Col);
+      AVLNode := FCells.FindSuccessor(AVLNode);
+    end;
+   // In addition, there may be column records defining the column width even
+    // without content
+    for i:=0 to FCols.Count-1 do
+      if FCols[i] <> nil then
+        Result := Math.Min(Result, PCol(FCols[i])^.Col);
+    // Store the result
+    FFirstColIndex := Result;
+  end
+  else
+    Result := FFirstColIndex;
+end;
+
+{@@
   Returns the 0-based index of the last column with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
@@ -2143,6 +2201,41 @@ begin
     dec(c);
     Result := FindCell(ARow, c);
   end;
+end;
+
+{@@
+  Returns the 0-based index of the first row with a cell with contents.
+
+  If no cells have contents, zero will be returned, which is also a valid value.
+
+  Use GetCellCount to verify if there is at least one cell with contents in the
+  worksheet.
+
+  @param  AForceCalculation  The index of the first row is continuously updated
+                             whenever a new cell is created. If AForceCalculation
+                             is true all cells are scanned to determine the index
+                             of the first row.
+  @see GetCellCount
+}
+function TsWorksheet.GetFirstRowIndex(AForceCalculation: Boolean = false): Cardinal;
+var
+  AVLNode: TAVLTreeNode;
+  i: Integer;
+begin
+  if AForceCalculation then begin
+    Result := $FFFFFFFF;
+    AVLNode := FCells.FindLowest;
+    if Assigned(AVLNode) then
+      Result := PCell(AVLNode.Data).Row;
+    // In addition, there may be row records even for rows without cells.
+    for i:=0 to FRows.Count-1 do
+      if FRows[i] <> nil then
+        Result := Math.Min(Result, PRow(FRows[i])^.Row);
+    // Store result
+    FFirstRowIndex := Result;
+  end
+  else
+    Result := FFirstRowIndex
 end;
 
 {@@
@@ -2620,6 +2713,8 @@ end;
 }
 procedure TsWorksheet.UpdateCaches;
 begin
+  FFirstColIndex := GetFirstColIndex(true);
+  FFirstRowIndex := GetFirstRowIndex(true);
   FLastColIndex := GetLastColIndex(true);
   FLastRowIndex := GetLastRowIndex(true);
 end;
@@ -3164,6 +3259,62 @@ begin
   WriteDateTime(ACell, AValue, nfCustom, AFormatStr);
 end;
 
+
+
+{@@
+  Adds a date/time format to the formatting of a cell
+
+  @param  ARow          The row of the cell
+  @param  ACol          The column of the cell
+  @param  ANumberFormat Identifier of the format to be applied (nfXXXX constant)
+  @param  AFormatString optional string of formatting codes. Is only considered
+                        if ANumberFormat is nfCustom.
+
+  @see    TsNumberFormat
+}
+procedure TsWorksheet.WriteDateTimeFormat(ARow, ACol: Cardinal;
+  ANumberFormat: TsNumberFormat; const AFormatString: String = '');
+begin
+  WriteDateTimeFormat(GetCell(ARow, ACol), ANumberFormat, AFormatString);
+end;
+
+{@@
+  Adds a date/time format to the formatting of a cell
+
+  @param  ACell         Pointer to the cell considered
+  @param  ANumberFormat Identifier of the format to be applied (nxXXXX constant)
+  @param  AFormatString optional string of formatting codes. Is only considered
+                        if ANumberFormat is nfCustom.
+
+  @see    TsNumberFormat
+}
+procedure TsWorksheet.WriteDateTimeFormat(ACell: PCell;
+  ANumberFormat: TsNumberFormat; const AFormatString: String = '');
+begin
+  if ACell = nil then
+    exit;
+
+  if not ((ANumberFormat in [nfGeneral, nfCustom]) or IsDateTimeFormat(ANumberFormat)) then
+    raise Exception.Create('WriteDateTimeFormat can only be called with date/time formats.');
+
+  ACell^.NumberFormat := ANumberFormat;
+  if (ANumberFormat <> nfGeneral) then begin
+    Include(ACell^.UsedFormattingFields, uffNumberFormat);
+    if (AFormatString = '') then
+      ACell^.NumberFormatStr := BuildDateTimeFormatString(ANumberFormat, Workbook.FormatSettings)
+    else
+      ACell^.NumberFormatStr := AFormatString;
+  end else begin
+    Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
+    ACell^.NumberFormatStr := '';
+  end;
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+
+
+
+
 {@@
   Formats the number in a cell to show a given count of decimal places.
   Is ignored for non-decimal formats (such as most date/time formats).
@@ -3401,16 +3552,36 @@ end;
 }
 function TsWorksheet.WriteFont(ARow, ACol: Cardinal; const AFontName: String;
   AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
-var
-  lCell: PCell;
 begin
-  lCell := GetCell(ARow, ACol);
-  Include(lCell^.UsedFormattingFields, uffFont);
+  Result := WriteFont(GetCell(ARow, ACol), AFontName, AFontSize, AFontStyle, AFontColor);
+end;
+
+{@@
+  Adds font specification to the formatting of a cell. Looks in the workbook's
+  FontList and creates an new entry if the font is not used so far. Returns the
+  index of the font in the font list.
+
+  @param  ACell       Pointer to the cell considered
+  @param  AFontName   Name of the font
+  @param  AFontSize   Size of the font, in points
+  @param  AFontStyle  Set with font style attributes
+                      (don't use those of unit "graphics" !)
+  @return Index of the font in the workbook's font list.
+}
+function TsWorksheet.WriteFont(ACell: PCell; const AFontName: String;
+  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
+begin
+  if ACell = nil then begin
+    Result := -1;
+    Exit;
+  end;
+
+  Include(ACell^.UsedFormattingFields, uffFont);
   Result := FWorkbook.FindFont(AFontName, AFontSize, AFontStyle, AFontColor);
   if Result = -1 then
     result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor);
-  lCell^.FontIndex := Result;
-  ChangedFont(ARow, ACol);
+  ACell^.FontIndex := Result;
+  ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -3513,13 +3684,33 @@ end;
 }
 function TsWorksheet.WriteFontStyle(ARow, ACol: Cardinal;
   AStyle: TsFontStyles): Integer;
+begin
+  Result := WriteFontStyle(GetCell(ARow, ACol), AStyle);
+end;
+
+{@@
+  Replaces the font style (bold, italic, etc) in formatting of a cell.
+  Looks in the workbook's font list if this modified font has already been used.
+  If not a new font entry is created.
+  Returns the index of this font in the font list.
+
+  @param  ACell       Pointer to the cell considered
+  @param  AStyle      New font style to be used
+  @return Index of the font in the workbook's font list.
+
+  @see TsFontStyle
+}
+function TsWorksheet.WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer;
 var
-  lCell: PCell;
   fnt: TsFont;
 begin
-  lCell := GetCell(ARow, ACol);
-  fnt := Workbook.GetFont(lCell^.FontIndex);
-  Result := WriteFont(ARow, ACol, fnt.FontName, fnt.Size, AStyle, fnt.Color);
+  if ACell = nil then begin
+    Result := -1;
+    exit;
+  end;
+
+  fnt := Workbook.GetFont(ACell^.FontIndex);
+  Result := WriteFont(ACell, fnt.FontName, fnt.Size, AStyle, fnt.Color);
 end;
 
 {@@
@@ -3893,7 +4084,7 @@ var
 begin
   Result := 0;
   h0 := Workbook.GetDefaultFontSize;
-  for col := 0 to GetLastColIndex do begin
+  for col := GetFirstColIndex to GetLastColIndex do begin
     cell := FindCell(ARow, col);
     if cell <> nil then
       Result := Max(Result, Workbook.GetFont(cell^.FontIndex).Size / h0);
@@ -3972,10 +4163,12 @@ begin
     FillChar(Result^, SizeOf(TCol), #0);
     Result^.Col := ACol;
     FCols.Add(Result);
-    if FLastColIndex = 0 then
-      FLastColIndex := GetLastColIndex(true)
-    else
-      FLastColIndex := Max(FLastColIndex, ACol);
+    if FFirstColIndex = 0
+      then FFirstColIndex := GetFirstColIndex(true)
+      else FFirstColIndex := Min(FFirstColIndex, ACol);
+    if FLastColIndex = 0
+      then FLastColIndex := GetLastColIndex(true)
+      else FLastColIndex := Max(FLastColIndex, ACol);
   end;
 end;
 
