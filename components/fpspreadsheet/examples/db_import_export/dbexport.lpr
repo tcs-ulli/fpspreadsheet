@@ -1,4 +1,4 @@
-program project1;
+program dbexport;
 
 {$mode objfpc}{$H+}
 
@@ -7,8 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, main
-  { you can add units after this };
+  Forms, main;
 
 {$R *.res}
 
