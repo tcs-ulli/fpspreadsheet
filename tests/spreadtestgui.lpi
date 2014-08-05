@@ -48,10 +48,12 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="stringtests"/>
       </Unit2>
       <Unit3>
         <Filename Value="numberstests.pas"/>
@@ -81,18 +83,22 @@
       <Unit8>
         <Filename Value="colortests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="colortests"/>
       </Unit8>
       <Unit9>
         <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="fonttests"/>
       </Unit9>
       <Unit10>
         <Filename Value="optiontests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="optiontests"/>
       </Unit10>
       <Unit11>
         <Filename Value="numformatparsertests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="numformatparsertests"/>
       </Unit11>
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
@@ -127,6 +133,9 @@
         <DebugInfoType Value="dsDwarf2Set"/>
       </Debugging>
     </Linking>
+    <Other>
+      <CompilerPath Value="$(CompPath)"/>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">

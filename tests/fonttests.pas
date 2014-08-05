@@ -143,61 +143,66 @@ begin
     DeleteFile(TempFile);
   }
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
 
-  // Write out a cell without "bold" formatting style
-  row := 0;
-  col := 0;
-  MyWorksheet.WriteUTF8Text(row, col, 'not bold');
-  MyCell := MyWorksheet.FindCell(row, col);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get cell.');
-  CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
-    'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row,Col));
+    // Write out a cell without "bold" formatting style
+    row := 0;
+    col := 0;
+    MyWorksheet.WriteUTF8Text(row, col, 'not bold');
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell.');
+    CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
+      'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row,Col));
 
-  // Write out a cell with "bold" formatting style
-  inc(row);
-  MyWorksheet.WriteUTF8Text(row, col, 'bold');
-  MyWorksheet.WriteUsedFormatting(row, col, [uffBold]);
-  MyCell := MyWorksheet.FindCell(row, col);
-  if MyCell = nil then
-    fail('Error in test code. Failded to get cell.');
-  CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
-    'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row, Col));
+    // Write out a cell with "bold" formatting style
+    inc(row);
+    MyWorksheet.WriteUTF8Text(row, col, 'bold');
+    MyWorksheet.WriteUsedFormatting(row, col, [uffBold]);
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failded to get cell.');
+    CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
+      'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row, Col));
 
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
 
-  // Try to read cell without "bold"
-  row := 0;
-  col := 0;
-  MyCell := MyWorksheet.FindCell(row, col);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get cell.');
-  CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
-    'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
+    // Try to read cell without "bold"
+    row := 0;
+    col := 0;
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell.');
+    CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
+      'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
 
-  // Try to read cell with "bold"
-  inc(row);
-  MyCell := MyWorksheet.FindCell(row, col);
-  if MyCell = nil then
-    fail('Error in test code. Failed to get cell.');
-  CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
-    'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
-
-  MyWorkbook.Free;
-  DeleteFile(TempFile);
+    // Try to read cell with "bold"
+    inc(row);
+    MyCell := MyWorksheet.FindCell(row, col);
+    if MyCell = nil then
+      fail('Error in test code. Failed to get cell.');
+    CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
+      'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 procedure TSpreadWriteReadFontTests.TestWriteReadFont(AFormat: TsSpreadsheetFormat;
@@ -220,64 +225,69 @@ begin
     DeleteFile(TempFile);
   }
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
 
-  // Write out all font styles at various sizes
-  for row := 0 to High(SollSizes) do
-    begin
-    for col := 0 to High(SollStyles) do
-    begin
-      cellText := Format('%s, %.1f-pt', [AFontName, SollSizes[row]]);
-      MyWorksheet.WriteUTF8Text(row, col, celltext);
-      MyWorksheet.WriteFont(row, col, AFontName, SollSizes[row], SollStyles[col], scBlack);
+    // Write out all font styles at various sizes
+    for row := 0 to High(SollSizes) do
+      begin
+      for col := 0 to High(SollStyles) do
+      begin
+        cellText := Format('%s, %.1f-pt', [AFontName, SollSizes[row]]);
+        MyWorksheet.WriteUTF8Text(row, col, celltext);
+        MyWorksheet.WriteFont(row, col, AFontName, SollSizes[row], SollStyles[col], scBlack);
 
-      MyCell := MyWorksheet.FindCell(row, col);
-      if MyCell = nil then
-        fail('Error in test code. Failed to get cell.');
-      font := MyWorkbook.GetFont(MyCell^.FontIndex);
-      CheckEquals(SollSizes[row], font.Size,
-        'Test unsaved font size, cell ' + CellNotation(MyWorksheet,0,0));
-      currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));
-      expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
-      CheckEquals(currValue, expectedValue,
-        'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
+        MyCell := MyWorksheet.FindCell(row, col);
+        if MyCell = nil then
+          fail('Error in test code. Failed to get cell.');
+        font := MyWorkbook.GetFont(MyCell^.FontIndex);
+        CheckEquals(SollSizes[row], font.Size,
+          'Test unsaved font size, cell ' + CellNotation(MyWorksheet,0,0));
+        currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));
+        expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
+        CheckEquals(currValue, expectedValue,
+          'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
+      end;
     end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  counter := 0;
-  for row := 0 to MyWorksheet.GetLastRowIndex do
-    for col := 0 to MyWorksheet.GetLastColIndex do
-    begin
-      if (AFormat = sfExcel2) and (counter = 4) then
-        break;  // Excel 2 allows only 4 fonts
-      MyCell := MyWorksheet.FindCell(row, col);
-      if MyCell = nil then
-        fail('Error in test code. Failed to get cell.');
-      font := MyWorkbook.GetFont(MyCell^.FontIndex);
-      if abs(SollSizes[row] - font.Size) > 1e-6 then  // safe-guard against rounding errors
-        CheckEquals(SollSizes[row], font.Size,
-          'Test saved font size, cell '+CellNotation(MyWorksheet,Row,Col));
-      currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));
-      expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
-      CheckEquals(currValue, expectedValue,
-        'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
-      inc(counter);
-    end;
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    counter := 0;
+    for row := 0 to MyWorksheet.GetLastRowIndex do
+      for col := 0 to MyWorksheet.GetLastColIndex do
+      begin
+        if (AFormat = sfExcel2) and (counter = 4) then
+          break;  // Excel 2 allows only 4 fonts
+        MyCell := MyWorksheet.FindCell(row, col);
+        if MyCell = nil then
+          fail('Error in test code. Failed to get cell.');
+        font := MyWorkbook.GetFont(MyCell^.FontIndex);
+        if abs(SollSizes[row] - font.Size) > 1e-6 then  // safe-guard against rounding errors
+          CheckEquals(SollSizes[row], font.Size,
+            'Test saved font size, cell '+CellNotation(MyWorksheet,Row,Col));
+        currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));
+        expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
+        CheckEquals(currValue, expectedValue,
+          'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
+        inc(counter);
+      end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 { BIFF2 }
