@@ -41,7 +41,7 @@ type
   published
     // Reads numbers values from spreadsheet and checks against list
     // One cell per test so some tests can fail and those further below may still work
-    procedure TestReadNumber0; //number tests
+    procedure TestReadNumber0; //number tests for biff8 file format
     procedure TestReadNumber1; //number and time
     procedure TestReadNumber2;
     procedure TestReadNumber3;
@@ -64,6 +64,7 @@ type
     procedure TestReadNumber20;
     procedure TestReadNumber21;
     procedure TestReadNumber22;
+
     procedure TestReadODFNumber0; //number tests using ODF/LibreOffice file format
     procedure TestReadODFNumber1; //number and time
     procedure TestReadODFNumber2;
@@ -87,6 +88,30 @@ type
     procedure TestReadODFNumber20;
     procedure TestReadODFNumber21;
     procedure TestReadODFNumber22;
+
+    procedure TestReadOOXMLNumber0; //number tests using ODF/LibreOffice file format
+    procedure TestReadOOXMLNumber1; //number and time
+    procedure TestReadOOXMLNumber2;
+    procedure TestReadOOXMLNumber3;
+    procedure TestReadOOXMLNumber4; //time only tests start here
+    procedure TestReadOOXMLNumber5;
+    procedure TestReadOOXMLNumber6;
+    procedure TestReadOOXMLNumber7;
+    procedure TestReadOOXMLNumber8;
+    procedure TestReadOOXMLNumber9;
+    procedure TestReadOOXMLNumber10;
+    procedure TestReadOOXMLNumber11;
+    procedure TestReadOOXMLNumber12;
+    procedure TestReadOOXMLNumber13;
+    procedure TestReadOOXMLNumber14;
+    procedure TestReadOOXMLNumber15;
+    procedure TestReadOOXMLNumber16;
+    procedure TestReadOOXMLNumber17;
+    procedure TestReadOOXMLNumber18;
+    procedure TestReadOOXMLNumber19;
+    procedure TestReadOOXMLNumber20;
+    procedure TestReadOOXMLNumber21;
+    procedure TestReadOOXMLNumber22;
   end;
 
   { TSpreadWriteReadNumberTests }
@@ -510,6 +535,123 @@ end;
 procedure TSpreadReadNumberTests.TestReadODFNumber22;
 begin
   TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileODF,22);
+end;
+
+
+{ OOXML Tests }
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber0;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,0);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber1;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,1);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber2;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,2);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber3;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,3);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber4;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,4);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber5;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,5);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber6;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,6);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber7;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,7);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber8;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,8);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber9;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,9);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber10;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,10);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber11;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,11);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber12;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,12);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber13;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,13);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber14;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,14);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber15;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,15);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber16;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,16);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber17;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,17);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber18;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,18);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber19;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,19);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber20;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,20);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber21;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,21);
+end;
+
+procedure TSpreadReadNumberTests.TestReadOOXMLNumber22;
+begin
+  TestReadNumber(ExtractFilePath(ParamStr(0)) + TestFileOOXML,22);
 end;
 
 

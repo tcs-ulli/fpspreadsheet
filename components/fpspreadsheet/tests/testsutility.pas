@@ -17,6 +17,9 @@ const
   TestFileODF_1904='testodf_1904.ods'; //OpenDocument/LibreOffice with 1904 datemode date system
   TestFileODF_1899='testodf_1899.ods'; //OpenDocument/LibreOffice with 1899/1900 datemode date system
   TestFileODF=TestFileODF_1899;
+  TestFileOOXML_1904='testooxml_1904.xlsx'; //Excel xlsx with 1904 datemode date system
+  TestFileOOXML_1899='testooxml_1899.xlsx'; //Excel xlsx with 1899/1900 datemode date system
+  TestFileOOXML=TestFileOOXML_1899;
   TestFileManual='testmanual.xls'; //file name for manual checking using external spreadsheet program (Excel/LibreOffice..)
   DatesSheet = 'Dates'; //worksheet name
   FormulasSheet = 'Formulas'; //worksheet name

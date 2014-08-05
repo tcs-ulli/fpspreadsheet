@@ -570,7 +570,8 @@ begin
     // Number or date/time, depending on format
     number := StrToFloat(dataStr, FPointSeparatorSettings);
     if IsDateTimeFormat(cell^.NumberFormatStr) then begin
-      number := ConvertExcelDateTimeToDateTime(number, FDateMode);
+      if cell^.NumberFormat <> nfTimeInterval then   // no correction of time origin for "time interval" format
+        number := ConvertExcelDateTimeToDateTime(number, FDateMode);
       AWorksheet.WriteDateTime(cell, number, cell^.NumberFormatStr)
     end
     else
