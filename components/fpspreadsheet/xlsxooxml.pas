@@ -1677,6 +1677,9 @@ begin
   end else
   begin
     // The cells need to be written in order, row by row, cell by cell
+    c1 := AWorksheet.GetFirstColIndex;
+    c2 := AWorksheet.GetLastColIndex;
+    if (c1 = $FFFFFFFF) and (c2 = 0) then c1 := 0;  // avoid arithmetic overflow in case of empty worksheet
     for r := 0 to AWorksheet.GetLastRowIndex do begin
       // If the row has a custom height add this value to the <row> specification
       row := AWorksheet.FindRow(r);
@@ -1685,8 +1688,6 @@ begin
           (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
       else
         rh := '';
-      c1 := AWorksheet.GetFirstColIndex;
-      c2 := AWorksheet.GetLastColIndex;
       AppendToStream(AStream, Format(
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
       // Write cells belonging to this row.

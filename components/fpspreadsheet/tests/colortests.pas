@@ -120,66 +120,71 @@ begin
   TempFile:=GetTempFileName;
 
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
 
-  // Define palette
-  case whichPalette of
-    5: MyWorkbook.UsePalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
-    8: MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
-  999: begin  // Random palette: testing of color replacement
-         MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
-         for i:=8 to 63 do  // first 8 colors cannot be changed
-           MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
-       end;
-    // else use default palette
+    // Define palette
+    case whichPalette of
+      5: MyWorkbook.UsePalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));
+      8: MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+    999: begin  // Random palette: testing of color replacement
+           MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+           for i:=8 to 63 do  // first 8 colors cannot be changed
+             MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
+         end;
+      // else use default palette
+    end;
+
+    // Remember all colors because ODS does not have a palette in the file; therefore
+    // we do not know which colors to expect.
+    SetLength(pal, MyWorkbook.GetPaletteSize);
+    for i:=0 to High(pal) do
+      pal[i] := MyWorkbook.GetPaletteColor(i);
+
+    // Write out all colors
+    row := 0;
+    col := 0;
+    for color := 0 to MyWorkbook.GetPaletteSize-1 do begin
+      MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+      MyWorksheet.WriteBackgroundColor(row, col, color);
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
+      expectedRGB := MyWorkbook.GetPaletteColor(color);
+      CheckEquals(expectedRGB, currentRGB,
+        'Test unsaved background color, cell ' + CellNotation(MyWorksheet,0,0));
+      inc(row);
+    end;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-
-  // Remember all colors because ODS does not have a palette in the file; therefore
-  // we do not know which colors to expect.
-  SetLength(pal, MyWorkbook.GetPaletteSize);
-  for i:=0 to High(pal) do
-    pal[i] := MyWorkbook.GetPaletteColor(i);
-
-  // Write out all colors
-  row := 0;
-  col := 0;
-  for color := 0 to MyWorkbook.GetPaletteSize-1 do begin
-    MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
-    MyWorksheet.WriteBackgroundColor(row, col, color);
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
-    expectedRGB := MyWorkbook.GetPaletteColor(color);
-    CheckEquals(expectedRGB, currentRGB,
-      'Test unsaved background color, cell ' + CellNotation(MyWorksheet,0,0));
-    inc(row);
-  end;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowIndex do begin
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    color := TsColor(row);
-    currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
-    expectedRGB := pal[color];
-    CheckEquals(expectedRGB, currentRGB,
-      'Test saved background color, cell '+CellNotation(MyWorksheet,Row,Col));
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for row := 0 to MyWorksheet.GetLastRowIndex do begin
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      color := TsColor(row);
+      currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
+      expectedRGB := pal[color];
+      CheckEquals(expectedRGB, currentRGB,
+        'Test saved background color, cell '+CellNotation(MyWorksheet,Row,Col));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadColorTests.TestWriteReadFontColors(AFormat: TsSpreadsheetFormat;
@@ -204,68 +209,73 @@ begin
   TempFile:=GetTempFileName;
 
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
 
-  // Define palette
-  case whichPalette of
-     5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1);
-     8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1);
-   999: begin  // Random palette: testing of color replacement
-          MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
-          for i:=8 to 63 do  // first 8 colors cannot be changed
-            MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
-        end;
-   // else use default palette
+    // Define palette
+    case whichPalette of
+       5: MyWorkbook.UsePalette(@PALETTE_BIFF5, High(PALETTE_BIFF5)+1);
+       8: MyWorkbook.UsePalette(@PALETTE_BIFF8, High(PALETTE_BIFF8)+1);
+     999: begin  // Random palette: testing of color replacement
+            MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+            for i:=8 to 63 do  // first 8 colors cannot be changed
+              MyWorkbook.SetPaletteColor(i, random(256) + random(256) shr 8 + random(256) shr 16);
+          end;
+     // else use default palette
+    end;
+
+    // Remember all colors because ODS does not have a palette in the file;
+    // therefore we do not know which colors to expect.
+    SetLength(pal, MyWorkbook.GetPaletteSize);
+    for color:=0 to High(pal) do
+      pal[color] := MyWorkbook.GetPaletteColor(color);
+
+    // Write out all colors
+    row := 0;
+    col := 0;
+    for color := 0 to MyWorkbook.GetPaletteSize-1 do begin
+      MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+      MyWorksheet.WriteFontColor(row, col, color);
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
+      currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
+      expectedRGB := MyWorkbook.GetPaletteColor(color);
+      CheckEquals(expectedRGB, currentRGB,
+        'Test unsaved font color, cell ' + CellNotation(MyWorksheet,row, col));
+      inc(row);
+    end;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-
-  // Remember all colors because ODS does not have a palette in the file;
-  // therefore we do not know which colors to expect.
-  SetLength(pal, MyWorkbook.GetPaletteSize);
-  for color:=0 to High(pal) do
-    pal[color] := MyWorkbook.GetPaletteColor(color);
-
-  // Write out all colors
-  row := 0;
-  col := 0;
-  for color := 0 to MyWorkbook.GetPaletteSize-1 do begin
-    MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
-    MyWorksheet.WriteFontColor(row, col, color);
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
-    currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
-    expectedRGB := MyWorkbook.GetPaletteColor(color);
-    CheckEquals(expectedRGB, currentRGB,
-      'Test unsaved font color, cell ' + CellNotation(MyWorksheet,row, col));
-    inc(row);
-  end;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  for row := 0 to MyWorksheet.GetLastRowIndex do begin
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    color := TsColor(row);
-    colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
-    currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
-    expectedRGB := pal[color]; //MyWorkbook.GetPaletteColor(color);
-    CheckEquals(expectedRGB, currentRGB,
-      'Test saved font color, cell '+CellNotation(MyWorksheet,Row,Col));
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    for row := 0 to MyWorksheet.GetLastRowIndex do begin
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell.');
+      color := TsColor(row);
+      colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
+      currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
+      expectedRGB := pal[color]; //MyWorkbook.GetPaletteColor(color);
+      CheckEquals(expectedRGB, currentRGB,
+        'Test saved font color, cell '+CellNotation(MyWorksheet,Row,Col));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 { Tests for BIFF2 file format }

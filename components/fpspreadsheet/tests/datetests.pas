@@ -389,39 +389,43 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:=MyWorkBook.AddWorksheet(DatesSheet);
-  for Row := Low(SollDates) to High(SollDates) do
-  begin
-    MyWorkSheet.WriteDateTime(Row, 0, SollDates[Row], nfShortDateTime);
-    // Some checks inside worksheet itself
-    if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
-      Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet,Row));
-    CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorksheet,Row));
+  try
+    MyWorkSheet:=MyWorkBook.AddWorksheet(DatesSheet);
+    for Row := Low(SollDates) to High(SollDates) do
+    begin
+      MyWorkSheet.WriteDateTime(Row, 0, SollDates[Row], nfShortDateTime);
+      // Some checks inside worksheet itself
+      if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
+        Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet,Row));
+      CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorksheet,Row));
+    end;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook,DatesSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook,DatesSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
 
-  // Read test data from A column & compare if written=original
-  for Row := Low(SollDates) to High(SollDates) do
-  begin
-    if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
-      Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row));
-    CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorkSheet,Row));
+    // Read test data from A column & compare if written=original
+    for Row := Low(SollDates) to High(SollDates) do
+    begin
+      if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
+        Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row));
+      CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorkSheet,Row));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF2;

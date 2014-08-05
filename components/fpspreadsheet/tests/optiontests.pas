@@ -116,35 +116,40 @@ begin
 
   // Write out show/hide grid lines/sheet headers
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(OptionsSheet);
-  if AShowGridLines then
-    MyWorksheet.Options := MyWorksheet.Options + [soShowGridLines]
-  else
-    MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];
-  if AShowHeaders then
-    MyWorksheet.Options := MyWorksheet.Options + [soShowHeaders]
-  else
-    MyWorksheet.Options := MyWorksheet.Options - [soShowHeaders];
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(OptionsSheet);
+    if AShowGridLines then
+      MyWorksheet.Options := MyWorksheet.Options + [soShowGridLines]
+    else
+      MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];
+    if AShowHeaders then
+      MyWorksheet.Options := MyWorksheet.Options + [soShowHeaders]
+    else
+      MyWorksheet.Options := MyWorksheet.Options - [soShowHeaders];
 
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Read back presence of grid lines/sheet headers
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, OptionsSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  CheckEquals(soShowGridLines in MyWorksheet.Options, AShowGridLines,
-    'Test saved show grid lines mismatch');
-  CheckEquals(soShowHeaders in MyWorksheet.Options, AShowHeaders,
-    'Test saved show headers mismatch');
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, OptionsSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    CheckEquals(soShowGridLines in MyWorksheet.Options, AShowGridLines,
+      'Test saved show grid lines mismatch');
+    CheckEquals(soShowHeaders in MyWorksheet.Options, AShowHeaders,
+      'Test saved show headers mismatch');
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 { Tests for BIFF2 grid lines and/or headers }
@@ -270,34 +275,39 @@ begin
 
   // Write out pane sizes
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(OptionsSheet);
-  MyWorksheet.LeftPaneWidth := ALeftPaneWidth;
-  MyWorksheet.TopPaneHeight := ATopPaneHeight;
-  MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(OptionsSheet);
+    MyWorksheet.LeftPaneWidth := ALeftPaneWidth;
+    MyWorksheet.TopPaneHeight := ATopPaneHeight;
+    MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
   // Read back pane sizes
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook, OptionsSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
-  CheckEquals(
-    (AleftPaneWidth > 0) or (ATopPaneHeight > 0),
-    (soHasFrozenPanes in MyWorksheet.Options)
-      and ((MyWorksheet.LeftPaneWidth > 0) or (MyWorksheet.TopPaneHeight > 0)),
-    'Test saved frozen panes mismatch');
-  CheckEquals(ALeftPaneWidth, MyWorksheet.LeftPaneWidth,
-    'Test saved left pane width mismatch');
-  CheckEquals(ATopPaneHeight, MyWorksheet.TopPaneHeight,
-    'Test save top pane height mismatch');
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, OptionsSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    CheckEquals(
+      (AleftPaneWidth > 0) or (ATopPaneHeight > 0),
+      (soHasFrozenPanes in MyWorksheet.Options)
+        and ((MyWorksheet.LeftPaneWidth > 0) or (MyWorksheet.TopPaneHeight > 0)),
+      'Test saved frozen panes mismatch');
+    CheckEquals(ALeftPaneWidth, MyWorksheet.LeftPaneWidth,
+      'Test saved left pane width mismatch');
+    CheckEquals(ATopPaneHeight, MyWorksheet.TopPaneHeight,
+      'Test save top pane height mismatch');
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
 end;
 
 { Tests for BIFF5 frozen panes }

@@ -201,38 +201,42 @@ begin
   }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet := MyWorkBook.AddWorksheet(NumbersSheet);
-  for Row := Low(SollNumbers) to High(SollNumbers) do
-  begin
-    MyWorkSheet.WriteNumber(Row,0,SollNumbers[Row]);
-    // Some checks inside worksheet itself
-    ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
-    CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
+  try
+    MyWorkSheet := MyWorkBook.AddWorksheet(NumbersSheet);
+    for Row := Low(SollNumbers) to High(SollNumbers) do
+    begin
+      MyWorkSheet.WriteNumber(Row,0,SollNumbers[Row]);
+      // Some checks inside worksheet itself
+      ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
+      CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
+    end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
   end;
-  TempFile:=NewTempFile;
-  MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  MyWorkbook.Free;
 
   // Open the spreadsheet, as biff8
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFromFile(TempFile, AFormat);
-  if AFormat = sfExcel2 then
-    MyWorksheet := MyWorkbook.GetFirstWorksheet
-  else
-    MyWorksheet := GetWorksheetByName(MyWorkBook,NumbersSheet);
-  if MyWorksheet=nil then
-    fail('Error in test code. Failed to get named worksheet');
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook,NumbersSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
 
-  // Read test data from A column & compare if written=original
-  for Row := Low(SollNumbers) to High(SollNumbers) do
-  begin
-    ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
-    CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
+    // Read test data from A column & compare if written=original
+    for Row := Low(SollNumbers) to High(SollNumbers) do
+    begin
+      ActualNumber:=MyWorkSheet.ReadAsNumber(Row,0);
+      CheckEquals(SollNumbers[Row],ActualNumber,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
   end;
-  // Finalization
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 procedure TSpreadWriteReadNumberTests.TestWriteReadNumbers_BIFF2;
@@ -279,7 +283,7 @@ begin
     TestWorkbook := TsWorkbook.Create;
     case UpperCase(ExtractFileExt(FileName)) of
       '.XLSX': TestWorkbook.ReadFromFile(FileName, sfOOXML);
-      '.ODS': TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
+      '.ODS' : TestWorkbook.ReadFromFile(FileName, sfOpenDocument);
       // Excel XLS/BIFF
       else TestWorkbook.ReadFromFile(FileName, sfExcel8);
     end;

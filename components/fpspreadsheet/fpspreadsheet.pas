@@ -4540,7 +4540,6 @@ end;
 }
 procedure TsWorksheet.InsertRow(ARow: Cardinal);
 var
-  cell: PCell;
   row: PRow;
   cellnode: TAVLTreeNode;
   i: Integer;
@@ -4817,7 +4816,6 @@ procedure TsWorkbook.GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
 var
   i: Integer;
   sheet: TsWorksheet;
-  r1,r2, c1,c2: Cardinal;
 begin
   if (boVirtualMode in Options) then begin
     ALastRow := FVirtualRowCount - 1;
@@ -6555,8 +6553,10 @@ end;
 }
 procedure DisposeRPNItem(AItem: PRPNItem);
 begin
-  if AItem <> nil then
+  if AItem <> nil then begin
+    AItem.FE.StringValue := '';;
     FreeMem(AItem, SizeOf(TRPNItem));
+  end;
 end;
 
 {@@

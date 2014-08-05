@@ -155,62 +155,67 @@ var
 begin
   TempFile := GetTempFileName;
 
-  MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:= MyWorkBook.AddWorksheet(EmptyCellsSheet);
-
   L := TStringList.Create;
   try
     L.Delimiter := '|';
     L.StrictDelimiter := true;
     L.DelimitedText := SollLayoutStrings[ALayout];
 
-    // Write out cells
-    for row := 0 to L.Count-1 do begin
-      s := L[row];
-      for col := 0 to Length(s)-1 do begin
-        if AInverted then begin
-          if s[col+1] = ' ' then s[col+1] := 'x' else s[col+1] := ' ';
+    MyWorkbook := TsWorkbook.Create;
+    try
+      MyWorkSheet:= MyWorkBook.AddWorksheet(EmptyCellsSheet);
+
+        // Write out cells
+        for row := 0 to L.Count-1 do begin
+          s := L[row];
+          for col := 0 to Length(s)-1 do begin
+            if AInverted then begin
+              if s[col+1] = ' ' then s[col+1] := 'x' else s[col+1] := ' ';
+            end;
+            if s[col+1] = 'x' then
+              MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+          end;
         end;
-        if s[col+1] = 'x' then
-          MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+        MyWorkBook.WriteToFile(TempFile, AFormat, true);
+      finally
+        MyWorkbook.Free;
       end;
-    end;
-    MyWorkBook.WriteToFile(TempFile, AFormat, true);
-    MyWorkbook.Free;
 
     // Open the spreadsheet
     MyWorkbook := TsWorkbook.Create;
-    MyWorkbook.ReadFromFile(TempFile, AFormat);
-    if AFormat = sfExcel2 then
-      MyWorksheet := MyWorkbook.GetFirstWorksheet
-    else
-      MyWorksheet := GetWorksheetByName(MyWorkBook, EmptyCellsSheet);
-    if MyWorksheet=nil then
-      fail('Error in test code. Failed to get named worksheet');
-
-    for row := 0 to MyWorksheet.GetLastRowIndex do begin
-      SetLength(s, MyWorksheet.GetLastColIndex + 1);
-      for col := 0 to MyWorksheet.GetLastColIndex do begin
-        MyCell := MyWorksheet.FindCell(row, col);
-        if MyCell = nil then s[col+1] := ' ' else s[col+1] := 'x';
-        if AInverted then begin
-          if s[col+1] = ' ' then s[col+1] := 'x' else s[col+1] := ' ';
-        end;
-      end;
-      if AInverted then
-        while Length(s) < Length(L[row]) do s := s + 'x'
+    try
+      MyWorkbook.ReadFromFile(TempFile, AFormat);
+      if AFormat = sfExcel2 then
+        MyWorksheet := MyWorkbook.GetFirstWorksheet
       else
-        while Length(s) < Length(L[row]) do s := s + ' ';
-      CheckEquals(L[row], s,
-        'Test empty cell layout mismatch, cell '+CellNotation(MyWorksheet, Row, Col));
+        MyWorksheet := GetWorksheetByName(MyWorkBook, EmptyCellsSheet);
+      if MyWorksheet=nil then
+        fail('Error in test code. Failed to get named worksheet');
+
+      for row := 0 to MyWorksheet.GetLastRowIndex do begin
+        SetLength(s, MyWorksheet.GetLastColIndex + 1);
+        for col := 0 to MyWorksheet.GetLastColIndex do begin
+          MyCell := MyWorksheet.FindCell(row, col);
+          if MyCell = nil then s[col+1] := ' ' else s[col+1] := 'x';
+          if AInverted then begin
+            if s[col+1] = ' ' then s[col+1] := 'x' else s[col+1] := ' ';
+          end;
+        end;
+        if AInverted then
+          while Length(s) < Length(L[row]) do s := s + 'x'
+        else
+          while Length(s) < Length(L[row]) do s := s + ' ';
+        CheckEquals(L[row], s,
+          'Test empty cell layout mismatch, cell '+CellNotation(MyWorksheet, Row, Col));
+      end;
+    finally
+      MyWorkbook.Free;
+      DeleteFile(TempFile);
     end;
+
   finally
     L.Free;
   end;
-
-  MyWorkbook.Free;
-
-  DeleteFile(TempFile);
 end;
 
 { BIFF2 tests }

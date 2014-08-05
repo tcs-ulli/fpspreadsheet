@@ -20,6 +20,19 @@ type
   TsArgument = record
     IsMissing: Boolean;
     Worksheet: TsWorksheet;
+    ArgumentType: TsArgumentType;
+    Cell: PCell;
+    FirstRow, FirstCol, LastRow, LastCol: Cardinal;
+    NumberValue: Double;
+    StringValue: String;
+    BoolValue: Boolean;
+    ErrorValue: TsErrorValue;
+  end;
+
+{
+  TsArgument = record
+    IsMissing: Boolean;
+    Worksheet: TsWorksheet;
     case ArgumentType: TsArgumentType of
       atCell      : (Cell: PCell);
       atCellRange : (FirstRow,FirstCol,LastRow,LastCol: Cardinal);
@@ -28,6 +41,7 @@ type
       atBool      : (BoolValue: Boolean);
       atError     : (ErrorValue: TsErrorValue);
   end;
+  }
   PsArgument = ^TsArgument;
 
   TsArgumentStack = class(TFPList)
@@ -191,6 +205,7 @@ uses
 
 function CreateArgument: TsArgument;
 begin
+  Result.StringValue := '';
   FillChar(Result, SizeOf(Result), 0);
 end;
 
@@ -419,7 +434,7 @@ var
 begin
   P := PsArgument(Items[AIndex]);
   P^.StringValue := '';
-  FreeMem(P, SizeOf(P));
+  FreeMem(P, SizeOf(P^));
   inherited Delete(AIndex);
 end;
 
