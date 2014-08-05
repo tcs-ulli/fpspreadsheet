@@ -38,6 +38,7 @@ type
     FWorkbook: TsWorkbook;
     FHeaderTemplateCell: PCell;
     FDateTemplateCell: PCell;
+    // All data for the cells is generated here (out of the .dbf file)
     procedure WriteCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue: variant; var AStyleCell: PCell);
   public
@@ -64,6 +65,8 @@ const
   CITIES: array[0..NUM_CITIES-1] of string = (
     'New York', 'Los Angeles', 'San Francisco', 'Chicago', 'Miami',
     'New Orleans', 'Washington', 'Boston', 'Seattle', 'Las Vegas');
+  TABLENAME = 'people.dbf'; //name for the dbf table
+  DATADIR = 'data'; //subdirectory where .dbf is stored
 
 
 { TForm1 }
@@ -78,12 +81,13 @@ begin
   if FDataset <> nil then
     FDataset.Free;
 
-  ForceDirectories('data');
+  ForceDirectories(DATADIR);
   startDate := EncodeDate(2010, 8, 1);
 
   FDataset := TDbf.Create(self);
-  FDataset.FilePathFull := 'data' + DirectorySeparator;
-  FDataset.TableName := 'people.dbf';
+  FDataset.FilePathFull := DATADIR + DirectorySeparator;
+  FDataset.TableName := TABLENAME;
+  FDataset.TableLevel := 4; //DBase IV; most widely used.
   FDataset.FieldDefs.Add('Last name', ftString);
   FDataset.FieldDefs.Add('First name', ftString);
   FDataset.FieldDefs.Add('City', ftString);
@@ -93,7 +97,8 @@ begin
 
   FDataset.Open;
   for i:=1 to StrToInt(EdRecordCount.Text) do begin
-    if (i mod 25) = 0 then begin
+    if (i mod 25) = 0 then
+    begin
       InfoLabel1.Caption := Format('Adding record %d...', [i]);
       Application.ProcessMessages;
     end;
@@ -121,22 +126,24 @@ const
   EXT: array[0..4] of string = (
     '_excel2.xls', '_excel5.xls', '.xls', '.xlsx', '.ods');
 var
-  fn: String;
+  DataFileName: String;
   worksheet: TsWorksheet;
 begin
   InfoLabel2.Caption := '';
   Application.ProcessMessages;
 
-  if FDataset = nil then begin
+  if FDataset = nil then
+  begin
     FDataset := TDbf.Create(self);
-    FDataset.FilePathFull := 'data' + DirectorySeparator;
-    FDataset.TableName := 'people.dbf';
+    FDataset.FilePathFull := DATADIR + DirectorySeparator;
+    FDataset.TableName := TABLENAME;
   end;
 
-  fn := FDataset.FilePathFull + FDataset.TableName;
-  if not FileExists(fn) then begin
+  DataFileName := FDataset.FilePathFull + FDataset.TableName;
+  if not FileExists(DataFileName) then
+  begin
     MessageDlg(Format('Database file "%s" not found. Please run "Create database" first.',
-      [fn]), mtError, [mbOK], 0);
+      [DataFileName]), mtError, [mbOK], 0);
     exit;
   end;
 
@@ -165,7 +172,7 @@ begin
     worksheet.WriteColWidth(1, 20);
     worksheet.WriteColWidth(2, 20);
 
-    // Setup virtual mode
+    // Setup virtual mode to save memory
 //    FWorkbook.Options := FWorkbook.Options + [boVirtualMode, boBufStream];
     FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
     FWorkbook.OnWriteCellData := @WriteCellDataHandler;
@@ -173,8 +180,8 @@ begin
     FWorkbook.VirtualColCount := FDataset.FieldCount;
 
     // Write
-    fn := ChangeFileExt(fn, EXT[RgFileFormat.ItemIndex]);
-    FWorkbook.WriteToFile(fn, FILE_FORMATS[RgFileFormat.ItemIndex], true);
+    DataFileName := ChangeFileExt(DataFileName, EXT[RgFileFormat.ItemIndex]);
+    FWorkbook.WriteToFile(DataFileName, FILE_FORMATS[RgFileFormat.ItemIndex], true);
   finally
     FreeAndNil(FWorkbook);
   end;
@@ -194,17 +201,22 @@ procedure TForm1.WriteCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
   var AValue: variant; var AStyleCell: PCell);
 begin
   // Header line: we want to show the field names here.
-  if ARow = 0 then begin
+  if ARow = 0 then
+  begin
     AValue := FDataset.Fields[ACol].FieldName;
     AStyleCell := FHeaderTemplateCell;
     FDataset.First;
-  end else begin
+  end
+  else
+  begin
     AValue := FDataset.Fields[ACol].Value;
     if FDataset.Fields[ACol].DataType = ftDate then
       AStyleCell := FDateTemplateCell;
-    if ACol = FWorkbook.VirtualColCount-1 then begin
+    if ACol = FWorkbook.VirtualColCount-1 then
+    begin
       FDataset.Next;
-      if (ARow-1) mod 25 = 0 then begin
+      if (ARow-1) mod 25 = 0 then
+      begin
         InfoLabel1.Caption := Format('Writing record %d...', [ARow-1]);
         Application.ProcessMessages;
       end;
