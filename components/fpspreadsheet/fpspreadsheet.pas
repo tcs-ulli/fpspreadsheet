@@ -548,41 +548,42 @@ type
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
 
     { Writing of values }
-    procedure WriteBlank(ARow, ACol: Cardinal); overload;
+    function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
     procedure WriteBlank(ACell: PCell); overload;
 
-    procedure WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean); overload;
+    function WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean): PCell; overload;
     procedure WriteBoolValue(ACell: PCell; AValue: Boolean); overload;
 
-    procedure WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String); overload;
+    function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String): PCell; overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
 
-    procedure WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
+    function WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
       AFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
       ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
-      ANegCurrFormat: Integer = -1); overload;
+      ANegCurrFormat: Integer = -1): PCell; overload;
     procedure WriteCurrency(ACell: PCell; AValue: Double;
       AFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = -1;
       ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
       ANegCurrFormat: Integer = -1); overload;
-    procedure WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
-      AFormat: TsNumberFormat; AFormatString: String); overload;
+    function WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
+      AFormat: TsNumberFormat; AFormatString: String): PCell; overload;
     procedure WriteCurrency(ACell: PCell; AValue: Double;
       AFormat: TsNumberFormat; AFormatString: String); overload;
 
-    procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
+    function WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
+      AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''): PCell; overload;
     procedure WriteDateTime(ACell: PCell; AValue: TDateTime;
       AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''); overload;
-    procedure WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-      AFormatStr: String); overload;
+    function WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
+      AFormatStr: String): PCell; overload;
     procedure WriteDateTime(ACell: PCell; AValue: TDateTime;
       AFormatStr: String); overload;
 
-    procedure WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue); overload;
+    function WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue): PCell; overload;
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
 
-    procedure WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
+    function WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula): PCell; overload;
+    procedure WriteFormula(ACell: PCell; AFormula: TsFormula); overload;
 
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double); overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
@@ -595,46 +596,48 @@ type
     procedure WriteNumber(ACell: PCell; ANumber: Double;
       AFormat: TsNumberFormat; AFormatString: String); overload;
 
-    procedure WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula);
+    function WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula): PCell; overload;
+    procedure WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula); overload;
+
     procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring); overload;
     procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
     { Writing of cell attributes }
-    procedure WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor); overload;
+    function WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor): PCell; overload;
     procedure WriteBackgroundColor(ACell: PCell; AColor: TsColor); overload;
 
-    procedure WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder; AColor: TsColor); overload;
+    function WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder; AColor: TsColor): PCell; overload;
     procedure WriteBorderColor(ACell: PCell; ABorder: TsCellBorder; AColor: TsColor); overload;
-    procedure WriteBorderLineStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
-      ALineStyle: TsLineStyle); overload;
+    function WriteBorderLineStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      ALineStyle: TsLineStyle): PCell; overload;
     procedure WriteBorderLineStyle(ACell: PCell; ABorder: TsCellBorder;
       ALineStyle: TsLineStyle); overload;
-    procedure WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders); overload;
+    function WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders): PCell; overload;
     procedure WriteBorders(ACell: PCell; ABorders: TsCellBorders); overload;
-    procedure WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
-      AStyle: TsCellBorderStyle); overload;
+    function WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      AStyle: TsCellBorderStyle): PCell; overload;
     procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
       AStyle: TsCellBorderStyle); overload;
-    procedure WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
-      ALineStyle: TsLineStyle; AColor: TsColor); overload;
+    function WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      ALineStyle: TsLineStyle; AColor: TsColor): PCell; overload;
     procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
       ALineStyle: TsLineStyle; AColor: TsColor); overload;
-    procedure WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles); overload;
+    function WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles): PCell; overload;
     procedure WriteBorderStyles(ACell: PCell; const AStyles: TsCellBorderStyles); overload;
 
-    procedure WriteDateTimeFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
-      const AFormatString: String = ''); overload;
+    function WriteDateTimeFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
+      const AFormatString: String = ''): PCell; overload;
     procedure WriteDateTimeFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
       const AFormatString: String = ''); overload;
 
-    procedure WriteDecimals(ARow, ACol: Cardinal; ADecimals: byte); overload;
+    function WriteDecimals(ARow, ACol: Cardinal; ADecimals: byte): PCell; overload;
     procedure WriteDecimals(ACell: PCell; ADecimals: Byte); overload;
 
     function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
     function  WriteFont(ACell: PCell; const AFontName: String;
       AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
-    procedure WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer); overload;
+    function WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer): PCell; overload;
     procedure WriteFont(ACell: PCell; AFontIndex: Integer); overload;
     function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer; overload;
     function WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer; overload;
@@ -645,29 +648,29 @@ type
     function WriteFontStyle(ARow, ACol: Cardinal; AStyle: TsFontStyles): Integer; overload;
     function WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer; overload;
 
-    procedure WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment); overload;
+    function WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment): PCell; overload;
     procedure WriteHorAlignment(ACell: PCell; AValue: TsHorAlignment); overload;
 
-    procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
-      const AFormatString: String = ''); overload;
+    function WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
+      const AFormatString: String = ''): PCell; overload;
     procedure WriteNumberFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
       const AFormatString: String = ''); overload;
-    procedure WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
+    function WriteNumberFormat(ARow, ACol: Cardinal; ANumberFormat: TsNumberFormat;
       ADecimals: Integer; ACurrencySymbol: String = ''; APosCurrFormat: Integer = -1;
-      ANegCurrFormat: Integer = -1); overload;
+      ANegCurrFormat: Integer = -1): PCell; overload;
     procedure WriteNumberFormat(ACell: PCell; ANumberFormat: TsNumberFormat;
       ADecimals: Integer; ACurrencySymbol: String = '';
       APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1); overload;
 
-    procedure WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation); overload;
+    function WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation): PCell; overload;
     procedure WriteTextRotation(ACell: PCell; ARotation: TsTextRotation); overload;
 
     procedure WriteUsedFormatting(ARow, ACol: Cardinal; AUsedFormatting: TsUsedFormattingFields);
 
-    procedure WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment); overload;
+    function WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment): PCell; overload;
     procedure WriteVertAlignment(ACell: PCell; AValue: TsVertAlignment); overload;
 
-    procedure WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean); overload;
+    function WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean): PCell; overload;
     procedure WriteWordwrap(ACell: PCell; AValue: boolean); overload;
 
     { Data manipulation methods - For Cells }
@@ -2909,12 +2912,14 @@ end;
 
   @param  ARow       The row of the cell
   @param  ACol       The column of the cell
+  @return Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
 }
-procedure TsWorksheet.WriteBlank(ARow, ACol: Cardinal);
+function TsWorksheet.WriteBlank(ARow, ACol: Cardinal): PCell;
 begin
-  WriteBlank(GetCell(ARow, ACol));
+  Result := GetCell(ARow, ACol);
+  WriteBlank(Result);
 end;
 
 {@@
@@ -2938,10 +2943,12 @@ end;
   @param  ARow       The row of the cell
   @param  ACol       The column of the cell
   @param  AValue     The boolean value
+  @return Pointer to the cell
 }
-procedure TsWorksheet.WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean);
+function TsWorksheet.WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean): PCell;
 begin
-  WriteBoolValue(GetCell(ARow, ACol), AValue);
+  Result := GetCell(ARow, ACol);
+  WriteBoolValue(Result, AValue);
 end;
 
 {@@
@@ -2969,11 +2976,13 @@ end;
   @param  AValue  Value to be written into the cell given as a string. Depending
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
+  @return Pointer to the cell
 }
-procedure TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
-  AValue: String);
+function TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
+  AValue: String): PCell;
 begin
-  WriteCellValueAsString(GetCell(ARow, ACol), AValue);
+  Result := GetCell(ARow, ACol);
+  WriteCellValueAsString(Result, AValue);
 end;
 
 {@@
@@ -3058,13 +3067,15 @@ end;
   @param ACurrencySymbol String to be shown as currency, such as '$', or 'EUR'.
                          In case of '?' the currency symbol defined in the
                          workbook's FormatSettings is used.
+  @return Pointer to the cell
 }
-procedure TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
+function TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
   AFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
   ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
-  ANegCurrFormat: Integer = -1);
+  ANegCurrFormat: Integer = -1): PCell;
 begin
-  WriteCurrency(GetCell(ARow, ACol), AValue, AFormat, ADecimals, ACurrencySymbol,
+  Result := GetCell(ARow, ACol);
+  WriteCurrency(Result, AValue, AFormat, ADecimals, ACurrencySymbol,
     APosCurrFormat, ANegCurrFormat);
 end;
 
@@ -3123,11 +3134,13 @@ end;
   @param AFormatString   String of formatting codes, including currency symbol.
                          Can contain sections for different formatting of positive
                          and negative number. Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
+  @return Pointer to the cell
 }
-procedure TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
-  AFormat: TsNumberFormat; AFormatString: String);
+function TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
+  AFormat: TsNumberFormat; AFormatString: String): PCell;
 begin
-  WriteCurrency(GetCell(ARow, ACol), AValue, AFormat, AFormatString);
+  Result := GetCell(ARow, ACol);
+  WriteCurrency(Result, AValue, AFormat, AFormatString);
 end;
 
 {@@
@@ -3150,7 +3163,6 @@ begin
     ACell^.NumberValue := AValue;
     ACell^.NumberFormat := AFormat;
     ACell^.NumberFormatStr := AFormatString;
-
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
@@ -3164,15 +3176,17 @@ end;
   @param  AFormat    The format specifier, e.g. nfShortDate (optional)
                      If not specified format is not changed.
   @param  AFormatStr Format string, used only for nfCustom or nfTimeInterval.
+  @return Pointer to the cell
 
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
 }
-procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-  AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
+function TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
+  AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''): PCell;
 begin
-  WriteDateTime(GetCell(ARow, ACol), AValue, AFormat, AFormatStr);
+  Result := GetCell(ARow, ACol);
+  WriteDateTime(Result, AValue, AFormat, AFormatStr);
 end;
 
 {@@
@@ -3239,15 +3253,17 @@ end;
   @param  ACol       The column index of the cell
   @param  AValue     The date/time/datetime to be written
   @param  AFormatStr Format string (the format identifier nfCustom is used to classify the format).
+  @return Pointer to the cell
 
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
 }
-procedure TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
-  AFormatStr: String);
+function TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
+  AFormatStr: String): PCell;
 begin
-  WriteDateTime(GetCell(ARow, ACol), AValue, AFormatStr);
+  Result := GetCell(ARow, ACol);
+  WriteDateTime(Result, AValue, AFormatStr);
 end;
 
 {@@
@@ -3267,8 +3283,6 @@ begin
   WriteDateTime(ACell, AValue, nfCustom, AFormatStr);
 end;
 
-
-
 {@@
   Adds a date/time format to the formatting of a cell
 
@@ -3277,13 +3291,15 @@ end;
   @param  ANumberFormat Identifier of the format to be applied (nfXXXX constant)
   @param  AFormatString optional string of formatting codes. Is only considered
                         if ANumberFormat is nfCustom.
+  @return Pointer to the cell
 
   @see    TsNumberFormat
 }
-procedure TsWorksheet.WriteDateTimeFormat(ARow, ACol: Cardinal;
-  ANumberFormat: TsNumberFormat; const AFormatString: String = '');
+function TsWorksheet.WriteDateTimeFormat(ARow, ACol: Cardinal;
+  ANumberFormat: TsNumberFormat; const AFormatString: String = ''): PCell;
 begin
-  WriteDateTimeFormat(GetCell(ARow, ACol), ANumberFormat, AFormatString);
+  Result := GetCell(ARow, ACol);
+  WriteDateTimeFormat(Result, ANumberFormat, AFormatString);
 end;
 
 {@@
@@ -3319,10 +3335,6 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-
-
-
-
 {@@
   Formats the number in a cell to show a given count of decimal places.
   Is ignored for non-decimal formats (such as most date/time formats).
@@ -3330,11 +3342,13 @@ end;
   @param  ARow       Row indows of the cell considered
   @param  ACol       Column indows of the cell considered
   @param  ADecimals  Number of decimal places to be displayed
+  @return Pointer to the cell
   @see    TsNumberFormat
 }
-procedure TsWorksheet.WriteDecimals(ARow, ACol: Cardinal; ADecimals: Byte);
+function TsWorksheet.WriteDecimals(ARow, ACol: Cardinal; ADecimals: Byte): PCell;
 begin
-  WriteDecimals(FindCell(ARow, ACol), ADecimals);
+  Result := FindCell(ARow, ACol);
+  WriteDecimals(Result, ADecimals);
 end;
 
 {@@
@@ -3368,12 +3382,14 @@ end;
   @param  ARow       The row of the cell
   @param  ACol       The column of the cell
   @param  AValue     The error code value
+  @return Pointer to the cell
 
   @see TsErrorValue
 }
-procedure TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue);
+function TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue): PCell;
 begin
-  WriteErrorValue(GetCell(ARow, ACol), AValue);
+  Result := GetCell(ARow, ACol);
+  WriteErrorValue(Result, AValue);
 end;
 
 {@@
@@ -3399,15 +3415,27 @@ end;
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  AFormula  The formula to be written
+  @return Pointer to the cell
 }
-procedure TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula);
-var
-  ACell: PCell;
+function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula): PCell;
 begin
-  ACell := GetCell(ARow, ACol);
+  Result := GetCell(ARow, ACol);
+  WriteFormula(Result, AFormula);
+end;
+
+{@@
+  Writes a formula to a given cell
+
+  @param  ACell     Pointer to the cell
+  @param  AFormula  Formula to be written
+}
+procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: TsFormula);
+begin
+  if ACell = nil then
+    exit;
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
-  ChangedCell(ARow, ACol);
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -3420,17 +3448,16 @@ end;
   @param  ACurrencySymbol optional currency symbol in case of nfCurrency
   @param  APosCurrFormat  optional identifier for positive currencies
   @param  ANegCurrFormat  optional identifier for negative currencies
+  @return Pointer to the cell
 
   @see    TsNumberFormat
 }
-procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
+function TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumberFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
-  APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1);
-var
-  ACell: PCell;
+  APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1): PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  WriteNumberFormat(ACell, ANumberFormat, ADecimals, ACurrencySymbol,
+  Result := GetCell(ARow, ACol);
+  WriteNumberFormat(Result, ANumberFormat, ADecimals, ACurrencySymbol,
     APosCurrFormat, ANegCurrFormat);
 end;
 
@@ -3479,16 +3506,15 @@ end;
   @param  ANumberFormat Identifier of the format to be applied
   @param  AFormatString optional string of formatting codes. Is only considered
                         if ANumberFormat is nfCustom.
+  @return Pointer to the cell
 
   @see    TsNumberFormat
 }
-procedure TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
-  ANumberFormat: TsNumberFormat; const AFormatString: String = '');
-var
-  ACell: PCell;
+function TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
+  ANumberFormat: TsNumberFormat; const AFormatString: String = ''): PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  WriteNumberFormat(ACell, ANumberFormat, AFormatString);
+  Result := GetCell(ARow, ACol);
+  WriteNumberFormat(Result, ANumberFormat, AFormatString);
 end;
 
 {@@
@@ -3529,20 +3555,39 @@ end;
   @param  ACol          Column index of the cell
   @param  AFormula      Array of TsFormulaElements. The array can be created by
                         using "CreateRPNFormla".
+  @return Pointer to the cell
 
   @see    TsNumberFormat
   @see    TsFormulaElements
   @see    CreateRPNFormula
 }
-procedure TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
-  AFormula: TsRPNFormula);
-var
-  ACell: PCell;
+function TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
+  AFormula: TsRPNFormula): PCell;
 begin
-  ACell := GetCell(ARow, ACol);
+  Result := GetCell(ARow, ACol);
+  WriteRPNFormula(Result, AFormula);
+end;
+
+{@@
+  Writes an RPN formula to a cell. An RPN formula is an array of tokens
+  describing the calculation to be performed.
+
+  @param  ACell         Pointer to the cell
+  @param  AFormula      Array of TsFormulaElements. The array can be created by
+                        using "CreateRPNFormla".
+
+  @see    TsNumberFormat
+  @see    TsFormulaElements
+  @see    CreateRPNFormula
+}
+procedure TsWorksheet.WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula);
+begin
+  if ACell = nil then
+    exit;
+
   ACell^.ContentType := cctRPNFormula;
   ACell^.RPNFormulaValue := AFormula;
-  ChangedCell(ARow, ACol);
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@
@@ -3599,10 +3644,12 @@ end;
   @param  ARow        The row of the cell
   @param  ACol        The column of the cell
   @param  AFontIndex  Index of the font in the workbook's font list
+  @return Pointer to the cell
 }
-procedure TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer);
+function TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer): PCell;
 begin
-  WriteFont(GetCell(ARow, ACol), AFontIndex);
+  Result := GetCell(ARow, ACol);
+  WriteFont(Result, AFontIndex);
 end;
 
 {@@
@@ -3788,13 +3835,15 @@ end;
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  ARotation How to rotate the text
+  @return Pointer to cell
 
   @see    TsTextRotation
 }
-procedure TsWorksheet.WriteTextRotation(ARow, ACol: Cardinal;
-  ARotation: TsTextRotation);
+function TsWorksheet.WriteTextRotation(ARow, ACol: Cardinal;
+  ARotation: TsTextRotation): PCell;
 begin
-  WriteTextRotation(GetCell(ARow, ACol), ARotation);
+  Result := GetCell(ARow, ACol);
+  WriteTextRotation(Result, ARotation);
 end;
 
 {@@
@@ -3843,11 +3892,13 @@ end;
   @param  AColor     Index of the new background color into the workbook's
                      color palette. Use the color index scTransparent to
                      erase an existing background color.
+  @return Pointer to cell
 }
-procedure TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
-  AColor: TsColor);
+function TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
+  AColor: TsColor): PCell;
 begin
-  WriteBackgroundColor(GetCell(ARow, ACol), AColor);
+  Result := GetCell(ARow, ACol);
+  WriteBackgroundColor(Result, AColor);
 end;
 
 {@@
@@ -3881,11 +3932,13 @@ end;
                      to be applied
   @param  AColor     Index of the new border color into the workbook's
                      color palette.
+  @return Pointer to cell
   }
-procedure TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
-  ABorder: TsCellBorder; AColor: TsColor);
+function TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; AColor: TsColor): PCell;
 begin
-  WriteBorderColor(GetCell(ARow, ACol), ABorder, AColor);
+  Result := GetCell(ARow, ACol);
+  WriteBorderColor(Result, ABorder, AColor);
 end;
 
 {@@
@@ -3916,13 +3969,15 @@ end;
   @param  ABorder    Indicates to which border (left/top etc) this color is
                      to be applied
   @param  ALineStyle Identifier of the new line style to be applied.
+  @return Pointer to cell
 
   @see    TsLineStyle
 }
-procedure TsWorksheet.WriteBorderLineStyle(ARow, ACol: Cardinal;
-  ABorder: TsCellBorder; ALineStyle: TsLineStyle);
+function TsWorksheet.WriteBorderLineStyle(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; ALineStyle: TsLineStyle): PCell;
 begin
-  WriteBorderLineStyle(GetCell(ARow, ACol), ABorder, ALineStyle);
+  Result := GetCell(ARow, ACol);
+  WriteBorderLineStyle(Result, ABorder, ALineStyle);
 end;
 
 {@@
@@ -3954,11 +4009,13 @@ end;
   @param  ARow      Row index of the cell
   @param  ACol      Column index of the cell
   @param  ABorders  Set with elements to identify the border(s) to will be shown
+  @return Pointer to cell
   @see    TsCellBorder
 }
-procedure TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders);
+function TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders): PCell;
 begin
-  WriteBorders(GetCell(ARow, ACol), ABorders);
+  Result := GetCell(ARow, ACol);
+  WriteBorders(Result, ABorders);
 end;
 
 {@@
@@ -3989,11 +4046,13 @@ end;
   @param  ABorder    Identifies the border to be modified (left/top/right/bottom)
   @param  AStyle     record of parameters controlling how the border line is drawn
                      (line style, line color)
+  @result Pointer to cell
 }
-procedure TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
-  ABorder: TsCellBorder; AStyle: TsCellBorderStyle);
+function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; AStyle: TsCellBorderStyle): PCell;
 begin
-  WriteBorderStyle(GetCell(ARow, ACol), ABorder, AStyle);
+  Result := GetCell(ARow, ACol);
+  WriteBorderStyle(Result, ABorder, AStyle);
 end;
 
 {@@
@@ -4023,13 +4082,15 @@ end;
   @param  ABorder    Identifier of the border to be modified
   @param  ALineStyle Identifier for the new line style of the border
   @param  AColor     Palette index for the color of the border line
+  @return Pointer to cell
 
   @see WriteBorderStyles
 }
-procedure TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
-  ABorder: TsCellBorder; ALineStyle: TsLinestyle; AColor: TsColor);
+function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
+  ABorder: TsCellBorder; ALineStyle: TsLinestyle; AColor: TsColor): PCell;
 begin
-  WriteBorderStyle(GetCell(ARow, ACol), ABorder, ALineStyle, AColor);
+  Result := GetCell(ARow, ACol);
+  WriteBorderStyle(Result, ABorder, ALineStyle, AColor);
 end;
 
 {@@
@@ -4060,13 +4121,15 @@ end;
   @param  ARow    Row index of the considered cell
   @param  ACol    Column index of the considered cell
   @param  AStyles Array of CellBorderStyles for each cell border.
+  @return Pointer to cell
 
   @see WriteBorderStyle
 }
-procedure TsWorksheet.WriteBorderStyles(ARow, ACol: Cardinal;
-  const AStyles: TsCellBorderStyles);
+function TsWorksheet.WriteBorderStyles(ARow, ACol: Cardinal;
+  const AStyles: TsCellBorderStyles): PCell;
 begin
-  WriteBorderStyles(GetCell(ARow, ACol), AStyles);
+  Result := GetCell(ARow, ACol);
+  WriteBorderStyles(Result, AStyles);
 end;
 
 {@@
@@ -4097,10 +4160,12 @@ end;
   @param ACol    Column index of the cell considered
   @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight)
                  By default, texts are left-aligned, numbers and dates are right-aligned.
+  @return Pointer to cell
 }
-procedure TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment);
+function TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment): PCell;
 begin
-  WriteHorAlignment(GetCell(ARow, ACol), AValue);
+  Result := GetCell(ARow, ACol);
+  WriteHorAlignment(Result, AValue);
 end;
 
 {@@
@@ -4126,10 +4191,12 @@ end;
   @param ACol    Column index of the cell considered
   @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom)
                  By default, texts are bottom-aligned.
+  @return Pointer to cell
 }
-procedure TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment);
+function TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment): PCell;
 begin
-  WriteVertAlignment(GetCell(ARow, ACol), AValue);
+  Result := GetCell(ARow, ACol);
+  WriteVertAlignment(Result, AValue);
 end;
 
 {@@
@@ -4151,13 +4218,15 @@ end;
 {@@
   Enables or disables the word-wrapping feature for a cell.
 
-  @param ARow    Row index of the cell considered
-  @param ACol    Column index of the cell considered
-  @param AValue  true = word-wrapping enabled, false = disabled.
+  @param  ARow    Row index of the cell considered
+  @param  ACol    Column index of the cell considered
+  @param  AValue  true = word-wrapping enabled, false = disabled.
+  @return Pointer to cell
 }
-procedure TsWorksheet.WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean);
+function TsWorksheet.WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean): PCell;
 begin
-  WriteWordWrap(GetCell(ARow, ACol), AValue);
+  Result := GetCell(ARow, ACol);
+  WriteWordWrap(Result, AValue);
 end;
 
 {@@
