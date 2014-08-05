@@ -611,6 +611,9 @@ begin
       raise Exception.Create('unknown error type');
   end else
     raise Exception.Create('Unknown data type');
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, rowIndex, colIndex, cell);
 end;
 
 procedure TsSpreadOOXMLReader.ReadCellXfs(ANode: TDOMNode);

@@ -153,12 +153,6 @@ begin
       if not CgFormats.Checked[i] then
         continue;
 
-      // Currently no reader support for xlsx, skip test to avoid the exception.
-      if SPREAD_FORMAT[i] = sfOOXML then begin
-        Log := Log + '  n/a  ';
-        continue;
-      end;
-
       FCurFormat := SPREAD_FORMAT[i];
       StatusMsg('Reading ' + GetFileFormatName(FCurFormat));
 
