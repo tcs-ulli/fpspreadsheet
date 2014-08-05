@@ -49,7 +49,7 @@ type
   published
     // Reads string values from spreadsheet and checks against list
     // One cell per test so some tests can fail and those further below may still work
-    procedure TestReadString0; //empty string
+    procedure TestReadString0; //biff8 empty string
     procedure TestReadString1;
     procedure TestReadString2;
     procedure TestReadString3;
@@ -63,6 +63,7 @@ type
     procedure TestReadString11;
     procedure TestReadString12;
     procedure TestReadString13;
+
     procedure TestReadODFString0; //OpenDocument/LibreOffice format empty string
     procedure TestReadODFString1;
     procedure TestReadODFString2;
@@ -77,6 +78,22 @@ type
     procedure TestReadODFString11;
     procedure TestReadODFString12;
     procedure TestReadODFString13;
+
+    procedure TestReadOOXMLString0; //Excel xlsx format empty string
+    procedure TestReadOOXMLString1;
+    procedure TestReadOOXMLString2;
+    procedure TestReadOOXMLString3;
+    procedure TestReadOOXMLString4;
+    procedure TestReadOOXMLString5;
+    procedure TestReadOOXMLString6;
+    procedure TestReadOOXMLString7;
+    procedure TestReadOOXMLString8;
+    procedure TestReadOOXMLString9;
+    procedure TestReadOOXMLString10;
+    procedure TestReadOOXMLString11;
+    procedure TestReadOOXMLString12;
+    procedure TestReadOOXMLString13;
+
   end;
 
   { TSpreadWriteReadStringTests }
@@ -412,6 +429,7 @@ begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileBIFF8,13);
 end;
 
+{ ODF Tests }
 procedure TSpreadReadStringTests.TestReadODFString0;
 begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,0);
@@ -480,6 +498,77 @@ end;
 procedure TSpreadReadStringTests.TestReadODFString13;
 begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
+end;
+
+{ ODF Tests }
+procedure TSpreadReadStringTests.TestReadOOXMLString0;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,0);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString1;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,1);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString2;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,2);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString3;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,3);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString4;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,4);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString5;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,5);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString6;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,6);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString7;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,7);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString8;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,8);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString9;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,9);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString10;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,10);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString11;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,11);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString12;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,12);
+end;
+
+procedure TSpreadReadStringTests.TestReadOOXMLString13;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,13);
 end;
 
 

@@ -197,6 +197,85 @@ type
     procedure TestReadODFDate1899_35;
     procedure TestReadODFDate1899_36;
     procedure TestReadODFDate1899_37;
+
+    procedure TestReadOOXMLDate1904_0; // same as above except Excel xlsx format
+    procedure TestReadOOXMLDate1904_1; //date and time
+    procedure TestReadOOXMLDate1904_2;
+    procedure TestReadOOXMLDate1904_3;
+    procedure TestReadOOXMLDate1904_4; //time only tests start here
+    procedure TestReadOOXMLDate1904_5;
+    procedure TestReadOOXMLDate1904_6;
+    procedure TestReadOOXMLDate1904_7;
+    procedure TestReadOOXMLDate1904_8;
+    procedure TestReadOOXMLDate1904_9;
+    procedure TestReadOOXMLDate1904_10;
+    procedure TestReadOOXMLDate1904_11;
+    procedure TestReadOOXMLDate1904_12;
+    procedure TestReadOOXMLDate1904_13;
+    procedure TestReadOOXMLDate1904_14;
+    procedure TestReadOOXMLDate1904_15;
+    procedure TestReadOOXMLDate1904_16;
+    procedure TestReadOOXMLDate1904_17;
+    procedure TestReadOOXMLDate1904_18;
+    procedure TestReadOOXMLDate1904_19;
+    procedure TestReadOOXMLDate1904_20;
+    procedure TestReadOOXMLDate1904_21;
+    procedure TestReadOOXMLDate1904_22;
+    procedure TestReadOOXMLDate1904_23;
+    procedure TestReadOOXMLDate1904_24;
+    procedure TestReadOOXMLDate1904_25;
+    procedure TestReadOOXMLDate1904_26;
+    procedure TestReadOOXMLDate1904_27;
+    procedure TestReadOOXMLDate1904_28;
+    procedure TestReadOOXMLDate1904_29;
+    procedure TestReadOOXMLDate1904_30;
+    procedure TestReadOOXMLDate1904_31;
+    procedure TestReadOOXMLDate1904_32;
+    procedure TestReadOOXMLDate1904_33;
+    procedure TestReadOOXMLDate1904_34;
+    procedure TestReadOOXMLDate1904_35;
+    procedure TestReadOOXMLDate1904_36;
+    procedure TestReadOOXMLDate1904_37;
+
+    procedure TestReadOOXMLDate1899_0; //same as above except with the 1899/1900 date system set
+    procedure TestReadOOXMLDate1899_1;
+    procedure TestReadOOXMLDate1899_2;
+    procedure TestReadOOXMLDate1899_3;
+    procedure TestReadOOXMLDate1899_4;
+    procedure TestReadOOXMLDate1899_5;
+    procedure TestReadOOXMLDate1899_6;
+    procedure TestReadOOXMLDate1899_7;
+    procedure TestReadOOXMLDate1899_8;
+    procedure TestReadOOXMLDate1899_9;
+    procedure TestReadOOXMLDate1899_10;
+    procedure TestReadOOXMLDate1899_11;
+    procedure TestReadOOXMLDate1899_12;
+    procedure TestReadOOXMLDate1899_13;
+    procedure TestReadOOXMLDate1899_14;
+    procedure TestReadOOXMLDate1899_15;
+    procedure TestReadOOXMLDate1899_16;
+    procedure TestReadOOXMLDate1899_17;
+    procedure TestReadOOXMLDate1899_18;
+    procedure TestReadOOXMLDate1899_19;
+    procedure TestReadOOXMLDate1899_20;
+    procedure TestReadOOXMLDate1899_21;
+    procedure TestReadOOXMLDate1899_22;
+    procedure TestReadOOXMLDate1899_23;
+    procedure TestReadOOXMLDate1899_24;
+    procedure TestReadOOXMLDate1899_25;
+    procedure TestReadOOXMLDate1899_26;
+    procedure TestReadOOXMLDate1899_27;
+    procedure TestReadOOXMLDate1899_28;
+    procedure TestReadOOXMLDate1899_29;
+    procedure TestReadOOXMLDate1899_30;
+    procedure TestReadOOXMLDate1899_31;
+    procedure TestReadOOXMLDate1899_32;
+    procedure TestReadOOXMLDate1899_33;
+    procedure TestReadOOXMLDate1899_34;
+    procedure TestReadOOXMLDate1899_35;
+    procedure TestReadOOXMLDate1899_36;
+    procedure TestReadOOXMLDate1899_37;
+
   end;
 
   { TSpreadWriteReadDateTests }
@@ -1205,6 +1284,392 @@ end;
 procedure TSpreadReadDateTests.TestReadODFDate1899_37;
 begin
   TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileODF_1899,37);
+end;
+
+
+{ Excel xlsx 1904 datemode tests }
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_0;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,0);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_1;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,1);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_2;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,2);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_3;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,3);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_4;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,4);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_5;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,5);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_6;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,6);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_7;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,7);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_8;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,8);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_9;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,9);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_10;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,10);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_11;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,11);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_12;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,12);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_13;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,13);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_14;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,14);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_15;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,15);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_16;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,16);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_17;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,17);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_18;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,18);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_19;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,19);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_20;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,20);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_21;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,21);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_22;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,22);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_23;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,23);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_24;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,24);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_25;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,25);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_26;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,26);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_27;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,27);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_28;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,28);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_29;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,29);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_30;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,30);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_31;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,31);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_32;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,32);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_33;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,33);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_34;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,34);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_35;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,35);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_36;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,36);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1904_37;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1904,37);
+end;
+
+
+{ ODS 1899 datemode tests }
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_0;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,0);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_1;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,1);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_2;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,2);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_3;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,3);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_4;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,4);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_5;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,5);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_6;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,6);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_7;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,7);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_8;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,8);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_9;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,9);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_10;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,10);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_11;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,11);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_12;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,12);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_13;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,13);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_14;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,14);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_15;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,15);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_16;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,16);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_17;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,17);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_18;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,18);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_19;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,19);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_20;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,20);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_21;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,21);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_22;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,22);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_23;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,23);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_24;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,24);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_25;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,25);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_26;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,26);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_27;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,27);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_28;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,28);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_29;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,29);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_30;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,30);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_31;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,31);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_32;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,32);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_33;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,33);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_34;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,34);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_35;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,35);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_36;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,36);
+end;
+
+procedure TSpreadReadDateTests.TestReadOOXMLDate1899_37;
+begin
+  TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,37);
 end;
 
 
