@@ -54,7 +54,6 @@ type
   TsSpreadBIFF2Reader = class(TsSpreadBIFFReader)
   private
     WorkBookEncoding: TsEncoding;
-    FWorksheet: TsWorksheet;
     FFont: TsFont;
   protected
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); override;

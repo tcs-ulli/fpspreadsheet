@@ -1,4 +1,4 @@
-program dbexport;
+program db_export_import;
 
 {$mode objfpc}{$H+}
 
