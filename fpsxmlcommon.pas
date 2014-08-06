@@ -29,9 +29,12 @@ var
   i: integer;
   Found: Boolean;
 begin
+  Result := '';
+  if ANode = nil then
+    exit;
+
   Found := false;
   i := 0;
-  Result := '';
   while not Found and (i < ANode.Attributes.Length) do begin
     if ANode.Attributes.Item[i].NodeName = AAttrName then begin
       Found := true;
