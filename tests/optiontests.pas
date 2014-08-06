@@ -37,6 +37,11 @@ type
     procedure TestWriteRead_BIFF2_HideGridLines_ShowHeaders;
     procedure TestWriteRead_BIFF2_HideGridLines_HideHeaders;
 
+    procedure TestWriteRead_BIFF2_Panes_HorVert;
+    procedure TestWriteRead_BIFF2_Panes_Hor;
+    procedure TestWriteRead_BIFF2_Panes_Vert;
+    procedure TestWriteRead_BIFF2_Panes_None;
+
     { BIFF5 tests }
     procedure TestWriteRead_BIFF5_ShowGridLines_ShowHeaders;
     procedure TestWriteRead_BIFF5_ShowGridLines_HideHeaders;
@@ -309,6 +314,28 @@ begin
     DeleteFile(TempFile);
   end;
 end;
+
+{ Tests for BIFF2 frozen panes }
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF2_Panes_HorVert;
+begin
+  TestWriteReadPanes(sfExcel2, 1, 2);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF2_Panes_Hor;
+begin
+  TestWriteReadPanes(sfExcel2, 1, 0);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF2_Panes_Vert;
+begin
+  TestWriteReadPanes(sfExcel2, 0, 2);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF2_Panes_None;
+begin
+  TestWriteReadPanes(sfExcel2, 0, 0);
+end;
+
 
 { Tests for BIFF5 frozen panes }
 procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF5_Panes_HorVert;

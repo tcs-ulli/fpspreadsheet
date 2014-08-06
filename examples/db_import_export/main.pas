@@ -39,6 +39,7 @@ type
     procedure BtnCreateDbfClick(Sender: TObject);
     procedure BtnExportClick(Sender: TObject);
     procedure BtnImportClick(Sender: TObject);
+    procedure FileListClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure PageControlChange(Sender: TObject);
@@ -50,7 +51,7 @@ type
     FHeaderTemplateCell: PCell;
     FDateTemplateCell: PCell;
     FImportedFieldNames: TStringList;
-    FImportedFieldTypes: Array of TFieldType;
+    FImportedRowCells: Array of TCell;
     // For reading: all data for the database is generated here out of the spreadsheet file
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       const ADataCell: PCell);
@@ -69,6 +70,7 @@ implementation
 {$R *.lfm}
 
 const
+  // Parameters for generating dbf file contents
   NUM_LAST_NAMES = 8;
   NUM_FIRST_NAMES = 8;
   NUM_CITIES = 10;
@@ -121,8 +123,11 @@ begin
   FExportDataset.CreateTable;
 
   FExportDataset.Open;
+  // We generate random records by combining first names, last names and cities
+  // defined in the FIRST_NAMES, LAST_NAMES and CITIES arrays. We also add a
+  // random birthday.
   for i:=1 to StrToInt(EdRecordCount.Text) do begin
-    if (i mod 25) = 0 then
+    if (i mod 1000 = 0) then
     begin
       InfoLabel1.Caption := Format('Adding record %d...', [i]);
       Application.ProcessMessages;
@@ -142,8 +147,12 @@ begin
   ]);
   InfoLabel2.Caption := '';
   InfoLabel3.Caption := '';
+  Application.ProcessMessages;
 end;
 
+{ This procedure exports the data in the dbf file created by BtnCreateDbfClick
+  to a spreadsheet file. The workbook operates in virtual mode to minimize
+  memory load of this process }
 procedure TForm1.BtnExportClick(Sender: TObject);
 var
   DataFileName: String;
@@ -151,6 +160,12 @@ var
 begin
   InfoLabel2.Caption := '';
   Application.ProcessMessages;
+
+  if RgFileFormat.ItemIndex = 4 then
+  begin
+    MessageDlg('Virtual mode is not yet implemented for .ods files.', mtError, [mbOK], 0);
+    exit;
+  end;
 
   if FExportDataset = nil then
   begin
@@ -173,24 +188,28 @@ begin
   try
     worksheet := FWorkbook.AddWorksheet(FExportDataset.TableName);
 
-    // Make header line frozen
-    worksheet.Options := worksheet.Options + [soHasFrozenPanes];
-    worksheet.TopPaneHeight := 1;
+    // Make header line frozen - but not in Excel2 where frozen panes do not yet work properly
+    if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then begin
+      worksheet.Options := worksheet.Options + [soHasFrozenPanes];
+      worksheet.TopPaneHeight := 1;
+    end;
 
-    // Prepare template for header line
+    // Use cell A1 as format template of header line
     FHeaderTemplateCell := worksheet.GetCell(0, 0);
     worksheet.WriteFontStyle(FHeaderTemplateCell, [fssBold]);
-    worksheet.WriteFontColor(FHeaderTemplateCell, scWhite);
     worksheet.WriteBackgroundColor(FHeaderTemplateCell, scGray);
+    if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then
+      worksheet.WriteFontColor(FHeaderTemplateCell, scWhite);  // Does not look nice in the limited Excel2 format
 
-    // Prepare template for date column
+    // Use cell B1 as format template of date column
     FDateTemplateCell := worksheet.GetCell(0, 1);
     worksheet.WriteDateTimeFormat(FDateTemplateCell, nfShortDate);
 
-    // Make first three columns a bit wider
+    // Make rows a bit wider
     worksheet.WriteColWidth(0, 20);
     worksheet.WriteColWidth(1, 20);
     worksheet.WriteColWidth(2, 20);
+    worksheet.WriteCOlWidth(3, 15);
 
     // Setup virtual mode to save memory
 //    FWorkbook.Options := FWorkbook.Options + [boVirtualMode, boBufStream];
@@ -208,7 +227,7 @@ begin
 
   InfoLabel2.Caption := Format('Done. Database exported to file "%s" in folder "%s"', [
     ChangeFileExt(FExportDataset.TableName, FILE_EXT[RgFileFormat.ItemIndex]),
-    FExportDataset.FilePathFull
+    DATADIR
   ]);
 end;
 
@@ -264,9 +283,9 @@ begin
     FImportedFieldNames := TStringList.Create;
   FImportedFieldNames.Clear;
 
-  // ... and this array stores the field types until we have all information
-  // to create the dbf table.
-  SetLength(FImportedFieldTypes, 0);
+  // ... and this array will temporarily store the cells of the second row
+  // until we have all information to create the dbf table.
+  SetLength(FImportedRowCells, 0);
 
   // Create the workbook and activate virtual mode
   FWorkbook := TsWorkbook.Create;
@@ -277,9 +296,18 @@ begin
     // The data are not permanently available in the worksheet and do occupy
     // memory there - this is virtual mode.
     FWorkbook.ReadFromFile(DataFilename, fmt);
+    // We close the ImportDataset after import process has finished:
+    FImportDataset.Close;
+    InfoLabel3.Caption := Format('Done. File "%s" imported in database "%s".',
+      [ExtractFileName(DataFileName), FImportDataset.TableName]);
   finally
     FWorkbook.Free;
   end;
+end;
+
+procedure TForm1.FileListClick(Sender: TObject);
+begin
+  BtnImport.Enabled := (FileList.ItemIndex > -1);
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
@@ -316,23 +344,26 @@ begin
       until FindNext(sr) <> 0;
       FindClose(sr);
     end;
+    BtnImport.Enabled := FileList.ItemIndex > -1;
   end;
 end;
 
 { This is the event handler for reading a spreadsheet file in virtual mode.
-  The data are not stored in the worksheet and exist only temporarily.
-  This event handler picks the data and posts them to the database table.
-  Note that we do not make many assumptions on the data structure here. Therefore
-  we have to buffer the first two rows of the spreadsheet file until the
-  structure of the table is clear. }
+  ADataCell has just been read from the spreadsheet file, but will not be added
+  to the workbook and will be discarded. The event handler, however, can pick
+  the data and post them to the database table.
+  Note that we do not make too many assumptions on the data structure here.
+  Therefore we have to buffer the first two rows of the spreadsheet file until
+  the structure of the table is clear. }
 procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, Acol: Cardinal;
   const ADataCell: PCell);
 var
   i: Integer;
+  fieldType: TFieldType;
 begin
   // The first row (index 0) holds the field names. We temporarily store the
   // field names in a string list because we don't know the data types of the
-  // cell before we have not read the second row (index 1).
+  // cell until we have not read the second row (index 1).
   if ARow = 0 then begin
     // We know that the first row contains string cells -> no further checks.
     FImportedFieldNames.Add(ADataCell^.UTF8StringValue);
@@ -341,25 +372,48 @@ begin
   // We have to buffer the second row (index 1) as well. When it is fully read
   // we can put everything together and create the dfb table.
   if ARow = 1 then begin
-    if Length(FImportedFieldTypes) = 0 then
-      SetLength(FImportedFieldTypes, FImportedFieldNames.Count);
-    case ADataCell^.ContentType of
-      cctNumber    : FImportedFieldTypes[ACol] := ftFloat;
-      cctUTF8String: FImportedFieldTypes[ACol] := ftString;
-      cctDateTime  : FImportedFieldTypes[ACol] := ftDate;
-    end;
-    // All field types are known --> we create the table
-    if ACol = High(FImportedFieldTypes) then begin
-      for i:=0 to High(FImportedFieldTypes) do
-        FImportDataset.FieldDefs.Add(FImportedFieldNames[i], FImportedFieldTypes[i]);
+    if Length(FImportedRowCells) = 0 then
+      SetLength(FImportedRowCells, FImportedFieldNames.Count);
+    FImportedRowCells[ACol] := ADataCell^;
+    // The row is read completely, all field types are known --> we create the table
+    if ACol = High(FImportedRowCells) then begin
+      // Add fields - the required information is stored in FImportedFieldNames
+      // and FImportedFieldTypes
+      for i:=0 to High(FImportedRowCells) do begin
+        case FImportedRowCells[i].ContentType of
+          cctNumber     : fieldType := ftFloat;
+          cctDateTime   : fieldType := ftDateTime;
+          cctUTF8String : fieldType := ftString;
+        end;
+        FImportDataset.FieldDefs.Add(FImportedFieldNames[i], fieldType);
+      end;
+      // Create the table and open it
       DeleteFile(FImportDataset.FilePathFull + FImportDataset.TableName);
       FImportDataset.CreateTable;
       FImportDataset.Open;
+      // Now we have to post the cells of the buffered row, otherwise these data
+      // will be lost
+      FImportDataset.Insert;
+      for i:=0 to High(FImportedRowCells) do
+        case FImportedRowCells[i].ContentType of
+          cctNumber    : FImportDataset.Fields[i].AsFloat := FImportedRowCells[i].NumberValue;
+          cctDateTime  : FImportDataset.Fields[i].AsDateTime := FImportedRowCells[i].DateTimeValue;
+          cctUTF8String: FImportDataset.Fields[i].AsString := FImportedRowCells[i].UTF8StringValue;
+        end;
+      FImportDataset.Post;
+      // Finally we dispose the buffered cells, we don't need them any more
+      SetLength(FImportedRowCells, 0);
     end;
   end
   else
   begin
     // Now that we know everything we can add the data to the table
+    if ARow mod 25 = 0 then
+    begin
+      InfoLabel3.Caption := Format('Writing row %d to database...', [ARow]);
+      Application.ProcessMessages;
+    end;
+
     if ACol = 0 then
       FImportDataset.Insert;
     case ADataCell^.ContentType of
@@ -367,8 +421,8 @@ begin
       cctUTF8String: FImportDataset.Fields[Acol].AsString := ADataCell^.UTF8StringValue;
       cctDateTime  : FImportDataset.Fields[ACol].AsDateTime := ADataCell^.DateTimeValue;
     end;
-    if ACol = High(FImportedFieldTypes) then
-      FImportDataset.Post;
+    if ACol = FImportedFieldNames.Count-1 then
+      FImportDataset.Post;   // We post the data after the last cell of the row has been received.
   end;
 end;
 
@@ -386,16 +440,20 @@ begin
     FExportDataset.First;
   end
   else
+  // After the header line we write the record data. Note that we are responsible
+  // for advancing the dataset cursor whenever a row is complete.
   begin
     AValue := FExportDataset.Fields[ACol].Value;
     if FExportDataset.Fields[ACol].DataType = ftDate then
       AStyleCell := FDateTemplateCell;
     if ACol = FWorkbook.VirtualColCount-1 then
     begin
+      // Move to next record after last field has been written
       FExportDataset.Next;
-      if (ARow-1) mod 25 = 0 then
+      // Progress display
+      if (ARow-1) mod 1000 = 0 then
       begin
-        InfoLabel1.Caption := Format('Writing record %d...', [ARow-1]);
+        InfoLabel2.Caption := Format('Writing record %d to spreadsheet...', [ARow-1]);
         Application.ProcessMessages;
       end;
     end;

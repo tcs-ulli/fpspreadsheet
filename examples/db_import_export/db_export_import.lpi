@@ -6,7 +6,7 @@
     <General>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <Title Value="dbexport"/>
+      <Title Value="db_export_import"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
     </General>
@@ -37,7 +37,7 @@
     </RequiredPackages>
     <Units Count="2">
       <Unit0>
-        <Filename Value="dbexport.lpr"/>
+        <Filename Value="db_export_import.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
@@ -54,7 +54,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="dbexport"/>
+      <Filename Value="db_export_import"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
