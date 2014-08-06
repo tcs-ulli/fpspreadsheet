@@ -159,7 +159,7 @@ type
 implementation
 
 uses
-  variants, fileutil, StrUtils, fpsStreams, fpsNumFormatParser;
+  variants, fileutil, StrUtils, math, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -200,6 +200,82 @@ const
   MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
   MIME_STYLES          = MIME_SPREADML + '.styles+xml';
   MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
+
+  LAST_PALETTE_COLOR   = $3F;  // 63
+
+var
+  // the palette of the 64 default colors as "big-endian color" values
+  // (identical to BIFF8)
+  PALETTE_OOXML: array[$00..LAST_PALETTE_COLOR] of TsColorValue = (
+    $000000,  // $00: black            // 8 built-in default colors
+    $FFFFFF,  // $01: white
+    $FF0000,  // $02: red
+    $00FF00,  // $03: green
+    $0000FF,  // $04: blue
+    $FFFF00,  // $05: yellow
+    $FF00FF,  // $06: magenta
+    $00FFFF,  // $07: cyan
+
+    $000000,  // $08: EGA black
+    $FFFFFF,  // $09: EGA white
+    $FF0000,  // $0A: EGA red
+    $00FF00,  // $0B: EGA green
+    $0000FF,  // $0C: EGA blue
+    $FFFF00,  // $0D: EGA yellow
+    $FF00FF,  // $0E: EGA magenta
+    $00FFFF,  // $0F: EGA cyan
+
+    $800000,  // $10: EGA dark red
+    $008000,  // $11: EGA dark green
+    $000080,  // $12: EGA dark blue
+    $808000,  // $13: EGA olive
+    $800080,  // $14: EGA purple
+    $008080,  // $15: EGA teal
+    $C0C0C0,  // $16: EGA silver
+    $808080,  // $17: EGA gray
+    $9999FF,  // $18:
+    $993366,  // $19:
+    $FFFFCC,  // $1A:
+    $CCFFFF,  // $1B:
+    $660066,  // $1C:
+    $FF8080,  // $1D:
+    $0066CC,  // $1E:
+    $CCCCFF,  // $1F:
+
+    $000080,  // $20:
+    $FF00FF,  // $21:
+    $FFFF00,  // $22:
+    $00FFFF,  // $23:
+    $800080,  // $24:
+    $800000,  // $25:
+    $008080,  // $26:
+    $0000FF,  // $27:
+    $00CCFF,  // $28:
+    $CCFFFF,  // $29:
+    $CCFFCC,  // $2A:
+    $FFFF99,  // $2B:
+    $99CCFF,  // $2C:
+    $FF99CC,  // $2D:
+    $CC99FF,  // $2E:
+    $FFCC99,  // $2F:
+
+    $3366FF,  // $30:
+    $33CCCC,  // $31:
+    $99CC00,  // $32:
+    $FFCC00,  // $33:
+    $FF9900,  // $34:
+    $FF6600,  // $35:
+    $666699,  // $36:
+    $969696,  // $37:
+    $003366,  // $38:
+    $339966,  // $39:
+    $003300,  // $3A:
+    $333300,  // $3B:
+    $993300,  // $3C:
+    $993366,  // $3D:
+    $333399,  // $3E:
+    $333333   // $3F:
+  );
 
 type
   TFillListData = class
@@ -714,6 +790,7 @@ var
   rgba: TRGBA absolute(rgb);  // just for debugging
   idx: Integer;
   tint: Double;
+  n: Integer;
 begin
   Assert(ANode <> nil);
 
@@ -726,8 +803,23 @@ begin
   s := GetAttrValue(ANode, 'indexed');
   if s <> '' then begin
     Result := StrToInt(s);
-    if (Result >= FWorkbook.GetPaletteSize) then
-      Result := scBlack;
+    n := FWorkbook.GetPaletteSize;
+    if (Result <= LAST_PALETTE_COLOR) and (Result < FWorkbook.GetPaletteSize) then
+      exit;
+    // System colors
+    // taken from OpenOffice docs
+    case Result of
+      $0040: Result := scBlack;  // Default border color
+      $0041: Result := scWhite;  // Default background color
+      $0043: Result := scGray;   // Dialog background color
+      $004D: Result := scBlack;  // Text color, chart border lines
+      $004E: Result := scGray;   // Background color for chart areas
+      $004F: Result := scBlack;  // Automatic color for chart border lines
+      $0050: Result := scBlack;  // ???
+      $0051: Result := scBlack;  // ??
+      $7FFF: Result := scBlack;  // ??
+      else   Result := scBlack;
+    end;
     exit;
   end;
 
@@ -735,7 +827,14 @@ begin
   if s <> '' then begin
     idx := StrToInt(s);
     if idx < Length(FThemeColors) then begin
-      rgb := FThemeColors[StrToInt(s)];
+      // For some reason the first two pairs of colors are interchanged in Excel!
+      case idx of
+        0: idx := 1;
+        1: idx := 0;
+        2: idx := 3;
+        3: idx := 2;
+      end;
+      rgb := FThemeColors[idx];
       s := GetAttrValue(ANode, 'tint');
       if s <> '' then begin
         tint := StrToFloat(s, FPointSeparatorSettings);
@@ -977,15 +1076,20 @@ procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
 var
   node, colornode: TDOMNode;
   nodename: String;
-  rgb: string;
+  s: string;
+  clr: TsColor;
+  rgb: TsColorValue;
   n: Integer;
-  color: TsColorValue;
-  pal: array of TsColorValue;
 begin
+  // OOXML sometimes specifies color by index even if a palette ("indexedColors")
+  // is not loaeded. Therefore, we use the BIFF8 palette as default because
+  // the default indexedColors are identical to it.
+  n := Length(PALETTE_OOXML);
+  FWorkbook.UsePalette(@PALETTE_OOXML, n);
   if ANode = nil then
     exit;
-  SetLength(pal, 1000);
-  n := 0;
+
+  clr := 0;
   node := ANode.FirstChild;
   while Assigned(node) do begin
     nodename := node.NodeName;
@@ -994,13 +1098,15 @@ begin
       while Assigned(colornode) do begin
         nodename := colornode.NodeName;
         if nodename = 'rgbColor' then begin
-          rgb := GetAttrValue(colornode, 'rgb');
-          if rgb <> '' then begin
-            color := HTMLColorStrToColor('#' + rgb);
-            if n = Length(pal) then
-              SetLength(pal, Length(pal) + 1000);
-            pal[n] := color;
-            inc(n);
+          s := GetAttrValue(colornode, 'rgb');
+          if s <> '' then begin
+            rgb := HTMLColorStrToColor('#' + s);
+            if clr < n then begin
+              FWorkbook.SetPaletteColor(clr, rgb);
+              inc(clr);
+            end
+            else
+              FWorkbook.AddColorToPalette(rgb);
           end;
         end;
         colornode := colorNode.NextSibling;
@@ -1008,7 +1114,6 @@ begin
     end;
     node := node.NextSibling;
   end;
-  FWorkbook.UsePalette(@pal[0], n);
 end;
 
 procedure TsSpreadOOXMLReader.ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -1721,7 +1826,9 @@ begin
     '<colors>' +
       '<indexedColors>');
 
-  for i:=0 to Workbook.GetPaletteSize-1 do begin
+  // There must not be more than 64 palette entries because the next colors
+  // are system colors.
+  for i:=0 to Min(LAST_PALETTE_COLOR, Workbook.GetPaletteSize-1) do begin
     rgb := Workbook.GetPaletteColor(i);
     AppendToStream(AStream,
         '<rgbColor rgb="'+ColorToHTMLColorStr(rgb, true) + '" />');
@@ -2463,6 +2570,7 @@ end;
 initialization
 
   RegisterSpreadFormat(TsSpreadOOXMLReader, TsSpreadOOXMLWriter, sfOOXML);
+  MakeLEPalette(@PALETTE_OOXML, Length(PALETTE_OOXML));
 
 end.
 
