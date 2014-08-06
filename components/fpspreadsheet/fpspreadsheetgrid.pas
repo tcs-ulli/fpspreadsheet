@@ -2047,21 +2047,28 @@ begin
   else
     neighborcell := FWorksheet.FindCell(r+ADeltaRow, c+ADeltaCol);
   // Only cell has border, but neighbor has not
-  if ((cell <> nil) and (border in cell^.Border)) and
+  if HasBorder(cell, border) and not HasBorder(neighborCell, neighborBorder) then
+{  if ((cell <> nil) and (border in cell^.Border)) and
      ((neighborcell = nil) or (neighborborder in neighborcell^.Border))
-  then
+  then               }
     ABorderStyle := cell^.BorderStyles[border]
   else
   // Only neighbor has border, cell has not
-  if ((cell = nil) or not (border in cell^.Border)) and
+  if not HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
+{
+if ((cell = nil) or not (border in cell^.Border)) and
      (neighborcell <> nil) and (neighborborder in neighborcell^.Border)
   then
+}
     ABorderStyle := neighborcell^.BorderStyles[neighborborder]
   else
   // Both cells have shared border -> use top or left border
+  if HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then begin
+    {
   if (cell <> nil) and (border in cell^.Border) and
      (neighborcell <> nil) and (neighborborder in neighborcell^.Border)
   then begin
+  }
     if (border in [cbNorth, cbWest]) then
       ABorderStyle := neighborcell^.BorderStyles[neighborborder]
     else
