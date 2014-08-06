@@ -64,10 +64,12 @@ type
     FXfList: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
+    FThemeColors: array of TsColorValue;
     FWrittenByFPS: Boolean;
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
+    function  ReadColor(ANode: TDOMNode): TsColor;
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadFileVersion(ANode: TDOMNode);
@@ -80,6 +82,8 @@ type
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
     procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
+    procedure ReadThemeElements(ANode: TDOMNode);
+    procedure ReadThemeColors(ANode: TDOMNode);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
   protected
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
@@ -159,23 +163,24 @@ uses
 
 const
   { OOXML general XML constants }
-  XML_HEADER           = '<?xml version="1.0" encoding="utf-8" ?>';
+  XML_HEADER               = '<?xml version="1.0" encoding="utf-8" ?>';
 
   { OOXML Directory structure constants }
   // Note: directory separators are always / because the .xlsx is a zip file which
   // requires / instead of \, even on Windows; see 
   // http://www.pkware.com/documents/casestudies/APPNOTE.TXT
   // 4.4.17.1 All slashes MUST be forward slashes '/' as opposed to backwards slashes '\'
-  OOXML_PATH_TYPES     = '[Content_Types].xml';
-  OOXML_PATH_RELS      = '_rels/';
-  OOXML_PATH_RELS_RELS = '_rels/.rels';
-  OOXML_PATH_XL        = 'xl/';
-  OOXML_PATH_XL_RELS   = 'xl/_rels/';
-  OOXML_PATH_XL_RELS_RELS = 'xl/_rels/workbook.xml.rels';
-  OOXML_PATH_XL_WORKBOOK = 'xl/workbook.xml';
-  OOXML_PATH_XL_STYLES   = 'xl/styles.xml';
-  OOXML_PATH_XL_STRINGS  = 'xl/sharedStrings.xml';
+  OOXML_PATH_TYPES         = '[Content_Types].xml';
+  OOXML_PATH_RELS          = '_rels/';
+  OOXML_PATH_RELS_RELS     = '_rels/.rels';
+  OOXML_PATH_XL            = 'xl/';
+  OOXML_PATH_XL_RELS       = 'xl/_rels/';
+  OOXML_PATH_XL_RELS_RELS  = 'xl/_rels/workbook.xml.rels';
+  OOXML_PATH_XL_WORKBOOK   = 'xl/workbook.xml';
+  OOXML_PATH_XL_STYLES     = 'xl/styles.xml';
+  OOXML_PATH_XL_STRINGS    = 'xl/sharedStrings.xml';
   OOXML_PATH_XL_WORKSHEETS = 'xl/worksheets/';
+  OOXML_PATH_XL_THEME      = 'xl/theme/theme1.xml';
 
   { OOXML schemas constants }
   SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -440,6 +445,8 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
     while Assigned(colorNode) do begin
       nodeName := colorNode.NodeName;
       if nodeName = 'color' then begin
+        ABorderStyle.Color := ReadColor(colorNode);
+        {
         s := GetAttrValue(colorNode, 'rgb');
         if s <> '' then
           ABorderStyle.Color := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
@@ -448,6 +455,7 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
           if s <> '' then
             ABorderStyle.Color := StrToInt(s);
         end;
+        }
       end;
       colorNode := colorNode.NextSibling;
     end;
@@ -697,6 +705,50 @@ begin
   end;
 end;
 
+function TsSpreadOOXMLReader.ReadColor(ANode: TDOMNode): TsColor;
+type
+  TRGBA = record r,g,b,a: Byte end;
+var
+  s: String;
+  rgb: TsColorValue;
+  rgba: TRGBA absolute(rgb);  // just for debugging
+  idx: Integer;
+  tint: Double;
+begin
+  Assert(ANode <> nil);
+
+  s := GetAttrValue(ANode, 'rgb');
+  if s <> '' then begin
+    Result := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s));
+    exit;
+  end;
+
+  s := GetAttrValue(ANode, 'indexed');
+  if s <> '' then begin
+    Result := StrToInt(s);
+    if (Result >= FWorkbook.GetPaletteSize) then
+      Result := scBlack;
+    exit;
+  end;
+
+  s := GetAttrValue(ANode, 'theme');
+  if s <> '' then begin
+    idx := StrToInt(s);
+    if idx < Length(FThemeColors) then begin
+      rgb := FThemeColors[StrToInt(s)];
+      s := GetAttrValue(ANode, 'tint');
+      if s <> '' then begin
+        tint := StrToFloat(s, FPointSeparatorSettings);
+        rgb := TintedColor(rgb, tint);
+      end;
+      Result := FWorkBook.AddColorToPalette(rgb);
+      exit;
+    end;
+  end;
+
+  Result := scBlack;
+end;
+
 procedure TsSpreadOOXMLReader.ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   colNode: TDOMNode;
@@ -769,6 +821,8 @@ begin
         while Assigned(colorNode) do begin
           nodeName := colorNode.NodeName;
           if nodeName = 'fgColor' then begin
+            fgclr := ReadColor(colorNode);
+            {
             s := GetAttrValue(colorNode, 'rgb');
             if s <> '' then
               fgclr := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
@@ -777,9 +831,12 @@ begin
               if s <> '' then
                 fgclr := StrToInt(s);
             end;
+            }
           end
           else
           if nodeName = 'bgColor' then begin
+            bgclr := ReadColor(colorNode);
+            {
             s := GetAttrValue(colorNode, 'rgb');
             if s <> '' then
               bgclr := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
@@ -788,6 +845,7 @@ begin
               if s <> '' then
                 bgclr := StrToInt(s);
             end;
+            }
           end;
           colorNode := colorNode.NextSibling;
         end;
@@ -863,22 +921,8 @@ begin
         then fntStyles := fntStyles + [fssStrikeout];
     end
     else
-    if nodename = 'color' then begin
-      s := GetAttrValue(node, 'rgb');
-      if s <> '' then begin
-        fntColor := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s));
-        node := node.NextSibling;
-        continue;
-      end;
-      s := GetAttrValue(node, 'indexed');
-      if s <> '' then begin
-        fntColor := StrToInt(s);
-        if (fntColor >= FWorkbook.GetPaletteSize) then
-          fntColor := scBlack;
-        node := node.NextSibling;
-        continue;
-      end;
-    end;
+    if nodename = 'color' then
+      fntColor := ReadColor(node);
     node := node.NextSibling;
   end;
 
@@ -1031,18 +1075,6 @@ begin
   if ANode = nil then
     exit;
 
-
-{
-'<sheetViews>' +
-  '<sheetView workbookViewId="0" %s%s>'+
-    '<pane xSplit="%d" ySplit="%d" topLeftCell="%s" activePane="bottomRight" state="frozen" />' +
-    '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
-    '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
-    '<selection pane="bottomRight" activeCell="%s" sqref="%s" />' +
-  '</sheetView>' +
-'</sheetViews>', [
-}
-
   sheetViewNode := ANode.FirstChild;
   while Assigned(sheetViewNode) do begin
     nodeName := sheetViewNode.NodeName;
@@ -1071,6 +1103,82 @@ begin
       end;
     end;
     sheetViewNode := sheetViewNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadThemeColors(ANode: TDOMNode);
+var
+  clrNode: TDOMNode;
+  nodeName: String;
+
+  procedure AddColor(AColorStr: String);
+  begin
+    if AColorStr <> '' then begin
+      SetLength(FThemeColors, Length(FThemeColors)+1);
+      FThemeColors[Length(FThemeColors)-1] := HTMLColorStrToColor('#' + AColorStr);
+    end;
+  end;
+
+begin
+  if not Assigned(ANode) then
+    exit;
+
+  SetLength(FThemeColors, 0);
+  clrNode := ANode.FirstChild;
+  while Assigned(clrNode) do begin
+    nodeName := clrNode.NodeName;
+    if nodeName = 'a:dk1' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'lastClr'))
+    else
+    if nodeName = 'a:lt1' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'lastClr'))
+    else
+    if nodeName = 'a:dk2' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:lt2' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:accent1' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:accent2' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:accent3' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:accent4' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:accent5' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:accent6' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:hlink' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+    else
+    if nodeName = 'a:folHlink' then
+      AddColor(GetAttrValue(clrNode.FirstChild, 'aval'));
+    clrNode := clrNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadThemeElements(ANode: TDOMNode);
+var
+  childNode: TDOMNode;
+  nodeName: String;
+begin
+  if not Assigned(ANode) then
+    exit;
+  childNode := ANode.FirstChild;
+  while Assigned(childNode) do begin
+    nodeName := childNode.NodeName;
+    if nodeName = 'a:clrScheme' then
+      ReadThemeColors(childNode);
+    childNode := childNode.NextSibling;
   end;
 end;
 
@@ -1117,6 +1225,7 @@ begin
   FileList.Add(OOXML_PATH_XL_STYLES);   // styles
   FileList.Add(OOXML_PATH_XL_STRINGS);  // sharedstrings
   FileList.Add(OOXML_PATH_XL_WORKBOOK); // workbook
+  FileList.Add(OOXML_PATH_XL_THEME);    // theme
 
   try
     Unzip.UnZipFiles(AFileName,FileList);
@@ -1128,6 +1237,14 @@ begin
   Doc := nil;
   SheetList := TStringList.Create;
   try
+    // Retrieve theme colors
+    if FileExists(FilePath + OOXML_PATH_XL_THEME) then begin
+      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_THEME);
+      DeleteFile(FilePath + OOXML_PATH_XL_THEME);
+      ReadThemeElements(Doc.DocumentElement.FindNode('a:themeElements'));
+      FreeAndNil(Doc);
+    end;
+
     // process the sharedStrings.xml file
     if FileExists(FilePath + OOXML_PATH_XL_STRINGS) then begin
       ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);

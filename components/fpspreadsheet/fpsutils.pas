@@ -12,7 +12,8 @@ unit fpsutils;
 interface
 
 uses
-  Classes, SysUtils, StrUtils, fpspreadsheet, fpsNumFormatParser;
+  Classes, SysUtils, StrUtils,
+  fpspreadsheet, fpsNumFormatParser;
 
 // Exported types
 type
@@ -137,6 +138,8 @@ procedure AppendToStream(AStream: TStream; const AString1, AString2: String); in
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
 
 function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
+
+function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
 
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
@@ -1985,6 +1988,148 @@ begin
       end;
     end;
   end;
+end;
+
+{ Modifying colors }
+{ Next function are copies of GraphUtils to avoid a dependence on the Graphics unit. }
+
+const
+  HUE_000 = 0;
+  HUE_060 = 43;
+  HUE_120 = 85;
+  HUE_180 = 128;
+  HUE_240 = 170;
+  HUE_300 = 213;
+
+procedure RGBtoHLS(const R, G, B: Byte; out H, L, S: Byte);
+var
+  cMax, cMin: Byte;             // max and min RGB values
+  Rdelta, Gdelta, Bdelta: Byte; // intermediate value: % of spread from max
+  diff: Byte;
+begin
+  // calculate lightness
+  cMax := MaxIntValue([R, G, B]);
+  cMin := MinIntValue([R, G, B]);
+  L := (integer(cMax) + cMin + 1) div 2;
+  diff := cMax - cMin;
+
+  if diff = 0
+  then begin
+    // r=g=b --> achromatic case
+    S := 0;
+    H := 0;
+  end
+  else begin
+    // chromatic case
+    // saturation
+    if L <= 128
+    then S := integer(diff * 255) div (cMax + cMin)
+    else S := integer(diff * 255) div (510 - cMax - cMin);
+
+    // hue
+    Rdelta := (cMax - R);
+    Gdelta := (cMax - G);
+    Bdelta := (cMax - B);
+
+    if R = cMax
+    then H := (HUE_000 + integer(Bdelta - Gdelta) * HUE_060 div diff) and $ff
+    else if G = cMax
+    then H := HUE_120 + integer(Rdelta - Bdelta) * HUE_060 div diff
+    else H := HUE_240 + integer(Gdelta - Rdelta) * HUE_060 div diff;
+  end;
+end;
+
+
+procedure HLStoRGB(const H, L, S: Byte; out R, G, B: Byte);
+
+  // utility routine for HLStoRGB
+  function HueToRGB(const n1, n2: Byte; Hue: Integer): Byte;
+  begin
+    if Hue > 255
+    then Dec(Hue, 255)
+    else if Hue < 0
+    then Inc(Hue, 255);
+
+    // return r,g, or b value from this tridrant
+    case Hue of
+      HUE_000..HUE_060 - 1: Result := n1 + (n2 - n1) * Hue div HUE_060;
+      HUE_060..HUE_180 - 1: Result := n2;
+      HUE_180..HUE_240 - 1: Result := n1 + (n2 - n1) * (HUE_240 - Hue) div HUE_060;
+    else
+      Result := n1;
+    end;
+  end;
+
+var
+  n1, n2: Byte;
+begin
+  if S = 0
+  then begin
+    // achromatic case
+    R := L;
+    G := L;
+    B := L;
+  end
+  else begin
+    // chromatic case
+    // set up magic numbers
+    if L < 128
+    then begin
+      n2 := L + (L * S) div 255;
+      n1 := 2 * L - n2;
+    end
+    else begin
+      n2 := S + L - (L * S) div 255;
+      n1 := 2 * L - n2 - 1;
+    end;
+
+
+    // get RGB
+    R := HueToRGB(n1, n2, H + HUE_120);
+    G := HueToRGB(n1, n2, H);
+    B := HueToRGB(n1, n2, H - HUE_120);
+  end;
+end;
+
+{ Excel defines theme colors and applies a "tint" factor (-1...+1) to darken
+  or brighten them.
+  The algorithm is described in
+  http://msdn.microsoft.com/en-us/library/documentformat.openxml.spreadsheet.backgroundcolor.aspx
+  (with the exception that max hue is 240, nur 255!)
+}
+function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
+type
+  TRGBA = record r, g, b, a: byte end;
+const
+  HLSMAX = 255;
+var
+  r, g, b: byte;
+  h, l, s: Byte;
+  lum: Double;
+begin
+  if tint = 0 then begin
+    Result := AColor;
+    exit;
+  end;
+
+  r := TRGBA(AColor).r;
+  g := TRGBA(AColor).g;
+  b := TRGBA(AColor).b;
+  RGBToHLS(r, g, b, h, l, s);
+
+  lum := l;
+  if tint < 0 then
+    lum := lum * (1.0 + tint)
+  else
+  if tint > 0 then
+    lum := lum * (1.0-tint) + (HLSMAX - HLSMAX * (1.0-tint));
+  l := Min(255, round(lum));
+  HLSToRGB(h, l, s, r, g, b);
+
+  TRGBA(Result).r := r;
+  TRGBA(Result).g := g;
+  TRGBA(Result).b := b;
+  TRGBA(Result).a := 0;
 end;
 
 {$PUSH}{$HINTS OFF}
