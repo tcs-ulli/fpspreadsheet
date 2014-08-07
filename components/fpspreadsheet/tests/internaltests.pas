@@ -58,12 +58,14 @@ type
     procedure TestVirtualMode_BIFF2;
     procedure TestVirtualMode_BIFF5;
     procedure TestVirtualMode_BIFF8;
+    procedure TestVirtualMode_ODS;
     procedure TestVirtualMode_OOXML;
 
     procedure TestVirtualMode_BIFF2_BufStream;
     procedure TestVirtualMode_BIFF5_BufStream;
     procedure TestVirtualMode_BIFF8_BufStream;
-    procedure TestVirtualMode_OOXML_BufStream;
+    //procedure TestVirtualMode_ODS_BufStream;
+    //procedure TestVirtualMode_OOXML_BufStream;
   end;
 
 implementation
@@ -394,23 +396,23 @@ var
   value: Double;
   s: String;
 begin
-  workbook := TsWorkbook.Create;
   try
-    worksheet := workbook.AddWorksheet('VirtualMode');
-    workbook.Options := workbook.Options + [boVirtualMode];
-    if ABufStreamMode then
-      workbook.Options := workbook.Options + [boBufStream];
-    workbook.VirtualColCount := 1;
-    workbook.VirtualRowCount := Length(SollNumbers) + 4;
-    // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.
-    workbook.OnWriteCellData := @WriteVirtualCellDataHandler;
-    tempFile:=NewTempFile;
-    workbook.WriteToFile(tempfile, AFormat, true);
-  finally
-    workbook.Free;
-  end;
+    workbook := TsWorkbook.Create;
+    try
+      worksheet := workbook.AddWorksheet('VirtualMode');
+      workbook.Options := workbook.Options + [boVirtualMode];
+      if ABufStreamMode then
+        workbook.Options := workbook.Options + [boBufStream];
+      workbook.VirtualColCount := 1;
+      workbook.VirtualRowCount := Length(SollNumbers) + 4;
+      // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.
+      workbook.OnWriteCellData := @WriteVirtualCellDataHandler;
+      tempFile:=NewTempFile;
+      workbook.WriteToFile(tempfile, AFormat, true);
+    finally
+      workbook.Free;
+    end;
 
-  if AFormat <> sfOOXML then begin     // No reader support for OOXML
     workbook := TsWorkbook.Create;
     try
       workbook.ReadFromFile(tempFile, AFormat);
@@ -433,9 +435,10 @@ begin
     finally
       workbook.Free;
     end;
-  end;
 
-  DeleteFile(tempFile);
+  finally
+    DeleteFile(tempFile);
+  end;
 end;
 
 procedure TSpreadInternalTests.TestVirtualMode_BIFF2;
@@ -451,6 +454,11 @@ end;
 procedure TSpreadInternalTests.TestVirtualMode_BIFF8;
 begin
   TestVirtualMode(sfExcel8, false);
+end;
+
+procedure TSpreadInternalTests.TestVirtualMode_ODS;
+begin
+  TestVirtualMode(sfOpenDocument, false);
 end;
 
 procedure TSpreadInternalTests.TestVirtualMode_OOXML;
@@ -472,11 +480,17 @@ procedure TSpreadInternalTests.TestVirtualMode_BIFF8_BufStream;
 begin
   TestVirtualMode(sfExcel8, true);
 end;
+  (*
+procedure TSpreadInternalTests.TestVirtualMode_ODS_BufStream;
+begin
+  TestVirtualMode(sfOpenDocument, true);
+end;
 
 procedure TSpreadInternalTests.TestVirtualMode_OOXML_BufStream;
 begin
   TestVirtualMode(sfOOXML, true);
 end;
+  *)
 
 initialization
   // Register so these tests are included in a full run
