@@ -52,7 +52,7 @@ type
     procedure ReadDateAsUTF8;
     // Test buffered stream
     procedure TestReadBufStream;
-    procedure TestBufStream;
+    procedure TestWriteBufStream;
 
     // Virtual mode tests for all file formats
     procedure TestVirtualMode_BIFF2;
@@ -64,8 +64,8 @@ type
     procedure TestVirtualMode_BIFF2_BufStream;
     procedure TestVirtualMode_BIFF5_BufStream;
     procedure TestVirtualMode_BIFF8_BufStream;
-    //procedure TestVirtualMode_ODS_BufStream;
-    //procedure TestVirtualMode_OOXML_BufStream;
+    procedure TestVirtualMode_ODS_BufStream;
+    procedure TestVirtualMode_OOXML_BufStream;
   end;
 
 implementation
@@ -174,7 +174,7 @@ begin
   MyWorkbook.Free;
 end;
 
-procedure TSpreadInternalTests.TestBufStream;
+procedure TSpreadInternalTests.TestWriteBufStream;
 const
   BUFSIZE = 1024;
 var
@@ -480,7 +480,7 @@ procedure TSpreadInternalTests.TestVirtualMode_BIFF8_BufStream;
 begin
   TestVirtualMode(sfExcel8, true);
 end;
-  (*
+
 procedure TSpreadInternalTests.TestVirtualMode_ODS_BufStream;
 begin
   TestVirtualMode(sfOpenDocument, true);
@@ -490,11 +490,12 @@ procedure TSpreadInternalTests.TestVirtualMode_OOXML_BufStream;
 begin
   TestVirtualMode(sfOOXML, true);
 end;
-  *)
+
 
 initialization
   // Register so these tests are included in a full run
   RegisterTest(TSpreadInternalTests);
+
 end.
 
 

@@ -224,7 +224,11 @@ end;
   @param  Count   Number of bytes to read from the stream
   @return Number of bytes that were read from the stream.}
 function TBufStream.Read(var Buffer; Count: Longint): Longint;
+var
+  p: Int64;
 begin
+  p := GetPosition;  // Save stream position
+
   // Case 1: Memory stream is empty
   if FMemoryStream.Size = 0 then begin
     CreateFileStream;
@@ -237,7 +241,7 @@ begin
     exit;
   end;
 
-  // Case 2: All "Count" bytes are contained in memory stream
+  // Case 2: All "Count" bytes are contained in memory stream starting at current position
   if FMemoryStream.Position + Count <= FMemoryStream.Size then begin
     Result := FMemoryStream.Read(Buffer, Count);
     exit;
@@ -246,6 +250,7 @@ begin
   // Case 3: Memory stream is not empty but contains only part of the bytes requested
   if IsWritingMode then begin
     FlushBuffer;
+    FFileStream.Position := p;
     Result := FFileStream.Read(Buffer, Count);
   end else begin
     FillBuffer;

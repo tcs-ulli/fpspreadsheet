@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 445
-  Height = 546
+  Height = 562
   Top = 178
-  Width = 739
+  Width = 764
   Caption = 'fpsSpeedTest'
-  ClientHeight = 546
-  ClientWidth = 739
+  ClientHeight = 562
+  ClientWidth = 764
   KeyPreview = True
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
@@ -13,25 +13,25 @@ object Form1: TForm1
   LCLVersion = '1.3'
   object StatusBar: TStatusBar
     Left = 0
-    Height = 23
-    Top = 523
-    Width = 739
+    Height = 28
+    Top = 534
+    Width = 764
     Panels = <>
   end
   object Panel1: TPanel
     Left = 0
-    Height = 42
+    Height = 52
     Top = 0
-    Width = 739
+    Width = 764
     Align = alTop
     BevelOuter = bvNone
-    ClientHeight = 42
-    ClientWidth = 739
+    ClientHeight = 52
+    ClientWidth = 764
     TabOrder = 1
     object BtnWrite: TButton
       Left = 8
       Height = 29
-      Top = 8
+      Top = 12
       Width = 75
       Caption = 'Write'
       OnClick = BtnWriteClick
@@ -39,9 +39,9 @@ object Form1: TForm1
     end
     object LblCancel: TLabel
       Left = 208
-      Height = 30
+      Height = 40
       Top = 6
-      Width = 309
+      Width = 385
       Caption = 'Press ESC to cancel when current file is completely written.'#13#10'This may take some time...'
       ParentColor = False
       Visible = False
@@ -49,7 +49,7 @@ object Form1: TForm1
     object BtnRead: TButton
       Left = 96
       Height = 29
-      Top = 8
+      Top = 12
       Width = 75
       Caption = 'Read'
       OnClick = BtnReadClick
@@ -58,27 +58,27 @@ object Form1: TForm1
   end
   object ParameterPanel: TPanel
     Left = 0
-    Height = 477
-    Top = 46
-    Width = 150
+    Height = 478
+    Top = 56
+    Width = 182
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 477
-    ClientWidth = 150
+    ClientHeight = 478
+    ClientWidth = 182
     TabOrder = 2
     object CbVirtualModeOnly: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 8
-      Width = 114
+      Width = 142
       Caption = 'Virtual mode only'
       TabOrder = 0
     end
     object RgContent: TRadioGroup
       Left = 8
-      Height = 84
+      Height = 88
       Top = 40
-      Width = 136
+      Width = 160
       AutoFill = True
       Caption = 'Content'
       ChildSizing.LeftRightSpacing = 6
@@ -89,7 +89,7 @@ object Form1: TForm1
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
       ClientHeight = 66
-      ClientWidth = 132
+      ClientWidth = 156
       ItemIndex = 0
       Items.Strings = (
         'Strings'
@@ -102,7 +102,7 @@ object Form1: TForm1
       Left = 8
       Height = 137
       Top = 140
-      Width = 136
+      Width = 160
       AutoFill = True
       Caption = 'File formats: '
       ChildSizing.LeftRightSpacing = 6
@@ -113,8 +113,8 @@ object Form1: TForm1
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 119
-      ClientWidth = 132
+      ClientHeight = 115
+      ClientWidth = 156
       Items.Strings = (
         'ods'
         'xlsx'
@@ -131,7 +131,7 @@ object Form1: TForm1
       Left = 8
       Height = 177
       Top = 295
-      Width = 136
+      Width = 160
       AutoFill = True
       Caption = 'Row count'
       ChildSizing.LeftRightSpacing = 6
@@ -142,8 +142,8 @@ object Form1: TForm1
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 159
-      ClientWidth = 132
+      ClientHeight = 155
+      ClientWidth = 156
       Items.Strings = (
         '10k'
         '20k'
@@ -162,16 +162,16 @@ object Form1: TForm1
   object Bevel1: TBevel
     Left = 0
     Height = 4
-    Top = 42
-    Width = 739
+    Top = 52
+    Width = 764
     Align = alTop
     Shape = bsTopLine
   end
   object Memo: TMemo
-    Left = 150
-    Height = 477
-    Top = 46
-    Width = 589
+    Left = 182
+    Height = 478
+    Top = 56
+    Width = 582
     Align = alClient
     Font.Height = -12
     Font.Name = 'Courier New'
