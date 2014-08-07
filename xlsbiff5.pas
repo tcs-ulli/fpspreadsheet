@@ -951,6 +951,9 @@ var
   rec: TBIFF5LabelRecord;
   buf: array of byte;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   case WorkBookEncoding of
     seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
     seCyrillic: AnsiValue := UTF8ToCP1251(AValue);
@@ -977,6 +980,11 @@ begin
     // with the problem or purposefully ignore it.
     TextTooLong := true;
     AnsiValue := Copy(AnsiValue, 1, MAXBYTES);
+    Workbook.AddErrorMsg(
+      'Text value exceeds %d character limit in cell %s. ' +
+      'Text has been truncated.', [
+      MAXBYTES, GetCellString(ARow, ACol)
+    ]);
   end;
   L := Length(AnsiValue);
 
@@ -1004,30 +1012,6 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
-
-  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-  AStream.WriteWord(WordToLE(8 + L));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF record }
-  WriteXFIndex(AStream, ACell);
-
-  { Byte String with 16-bit size }
-  AStream.WriteWord(WordToLE(L));
-  AStream.WriteBuffer(AnsiValue[1], L);
-    *)
-  {
-  //todo: keep a log of errors and show with an exception after writing file or something.
-  We can't just do the following
-  if TextTooLong then
-    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
-    because the file wouldn't be written.
-  }
 end;
 
 { Writes an Excel 5 STRING record which immediately follows a FORMULA record

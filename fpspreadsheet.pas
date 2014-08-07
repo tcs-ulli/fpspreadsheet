@@ -795,8 +795,10 @@ type
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
     FFileName: String;
+    FLog: TStringList;
 
     { Setter/Getter }
+    function GetErrorMsg: String;
     procedure SetVirtualColCount(AValue: Cardinal);
     procedure SetVirtualRowCount(AValue: Cardinal);
 
@@ -865,6 +867,11 @@ type
     procedure UsePalette(APalette: PsPalette; APaletteCount: Word;
       ABigEndian: Boolean = false);
 
+    { Error messages }
+    procedure AddErrorMsg(const AMsg: String); overload;
+    procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
+    procedure ClearErrorList;
+
     {@@ The default column width given in "character units" (width of the
       character "0" in the default font) }
     property DefaultColWidth: Single read FDefaultColWidth;
@@ -874,6 +881,8 @@ type
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
+    {@@ Retrieves error messages collected during reading/writing }
+    property ErrorMsg: String read GetErrorMsg;
     {@@ Filename of the saved workbook }
     property FileName: String read FFileName;
     {@@ Identifies the file format which was detected when reading the file }
@@ -970,9 +979,6 @@ type
   {@@ Common ancestor of the spreadsheet reader and writer classes providing
       shared data and methods. }
   TsCustomSpreadReaderWriter = class
-  private
-    FLog: TStringList;
-    function GetErrorMsg: String;
   protected
     {@@ Instance of the workbook which is currently being read. }
     FWorkbook: TsWorkbook;
@@ -982,9 +988,6 @@ type
     {@@ List of number formats found in the file }
     FNumFormatList: TsCustomNumFormatList;
     procedure CreateNumFormatList; virtual;
-  protected
-    procedure AddToLog(const AMsg: String); overload;
-    procedure AddToLog(const AMsg: String; const Args: array of const); overload;
   public
     constructor Create(AWorkbook: TsWorkbook); virtual; // to allow descendents to override it
     destructor Destroy; override;
@@ -992,8 +995,6 @@ type
     property Workbook: TsWorkbook read FWorkbook;
     {@@ List of number formats found in the workbook. }
     property NumFormatList: TsCustomNumFormatList read FNumFormatList;
-    {@@ Retrieve error messages logged during writing}
-    property ErrorMsg: String read GetErrorMsg;
   end;
 
   { TsCustomSpreadReader }
@@ -2130,8 +2131,11 @@ begin
     // Store the result
     FFirstColIndex := Result;
   end
-  else
+  else begin
     Result := FFirstColIndex;
+    if Result = $FFFFFFFF then
+      Result := GetFirstColIndex(true);
+  end;
 end;
 
 {@@
@@ -2255,8 +2259,11 @@ begin
     // Store result
     FFirstRowIndex := Result;
   end
-  else
-    Result := FFirstRowIndex
+  else begin
+    Result := FFirstRowIndex;
+    if Result = $FFFFFFFF then
+      Result := GetFirstRowIndex(true);
+  end;
 end;
 
 {@@
@@ -4717,6 +4724,7 @@ constructor TsWorkbook.Create;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
+  FLog := TStringList.Create;
   FFormat := sfExcel8;
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
@@ -4739,6 +4747,7 @@ begin
   FWorksheets.Free;
   FFontList.Free;
 
+  FLog.Free;
   inherited Destroy;
 end;
 
@@ -5390,6 +5399,43 @@ begin
 end;
 
 {@@
+  Adds a (simple) error message to an internal list
+
+  @param   AMsg   Error text to be stored in the list
+}
+procedure TsWorkbook.AddErrorMsg(const AMsg: String);
+begin
+  FLog.Add(AMsg);
+end;
+
+{@@
+  Adds an error message composed by means of format codes to an internal list
+
+  @param   AMsg   Error text to be stored in the list
+  @param   Args   Array of arguments to be used by the Format() function
+}
+procedure TsWorkbook.AddErrorMsg(const AMsg: String; const Args: Array of const);
+begin
+  FLog.Add(Format(AMsg, Args));
+end;
+
+{@@
+  Clears the internal list with error messages
+}
+procedure TsWorkbook.ClearErrorList;
+begin
+  FLog.Clear;
+end;
+
+{@@
+  Getter to retrieve the error messages collected during reading/writing
+}
+function TsWorkbook.GetErrorMsg: String;
+begin
+  Result := FLog.Text;
+end;
+
+{@@
   Finds the palette color index which points to a color that is closest to a
   given color. "Close" means here smallest length of the rgb-difference vector.
 
@@ -5970,7 +6016,6 @@ constructor TsCustomSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
-  FLog := TStringList.Create;
   CreateNumFormatList;
 end;
 
@@ -5980,25 +6025,7 @@ end;
 destructor TsCustomSpreadReaderWriter.Destroy;
 begin
   FNumFormatList.Free;
-  FLog.Free;
   inherited Destroy;
-end;
-
-{@@
-  Adds an (simple) error message to the log list
-}
-procedure TsCustomSpreadReaderWriter.AddToLog(const AMsg: String);
-begin
-  FLog.Add(AMsg);
-end;
-
-{@@
-  Adds an error message to the log list by using the Format function
-}
-procedure TsCustomSpreadReaderWriter.AddToLog(const AMsg: String;
-  const Args: array of const);
-begin
-  FLog.Add(Format(AMsg, Args));
 end;
 
 {@@
@@ -6011,12 +6038,6 @@ end;
 procedure TsCustomSpreadReaderWriter.CreateNumFormatList;
 begin
   // nothing to do here
-end;
-
-{@@ Getter method to retrieve the error messages collected during reading/writing }
-function TsCustomSpreadReaderWriter.GetErrorMsg: String;
-begin
-  Result := FLog.Text;
 end;
 
 
@@ -6133,7 +6154,7 @@ begin
   inherited Create(AWorkbook);
   { A good starting point valid for many formats... }
   FLimitations.MaxCols := 256;
-  FLimitations.MaxRows :=  65536;
+  FLimitations.MaxRows := 65536;
 end;
 
 {@@
@@ -6267,9 +6288,9 @@ var
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
   if lastRow >= FLimitations.MaxRows then
-    AddToLog(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRows]);
+    Workbook.AddErrorMsg(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRows]);
   if lastCol >= FLimitations.MaxCols then
-    AddToLog(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxCols]);
+    Workbook.AddErrorMsg(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxCols]);
 end;
 
 
