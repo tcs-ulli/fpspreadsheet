@@ -87,8 +87,6 @@ type
   { TsWikiTableWriter }
 
   TsWikiTableWriter = class(TsCustomSpreadWriter)
-  private
-    FWorksheet: TsWorksheet;
   protected
     // Helpers
     procedure CreateNumFormatList; override;

@@ -965,6 +965,37 @@ type
   end;
 
 
+  { TsCustomSpreadReaderWriter }
+
+  {@@ Common ancestor of the spreadsheet reader and writer classes providing
+      shared data and methods. }
+  TsCustomSpreadReaderWriter = class
+  private
+    FLog: TStringList;
+    function GetErrorMsg: String;
+  protected
+    {@@ Instance of the workbook which is currently being read. }
+    FWorkbook: TsWorkbook;
+    {@@ Instance of the worksheet which is currently being read. }
+    FWorksheet: TsWorksheet;
+  protected
+    {@@ List of number formats found in the file }
+    FNumFormatList: TsCustomNumFormatList;
+    procedure CreateNumFormatList; virtual;
+  protected
+    procedure AddToLog(const AMsg: String); overload;
+    procedure AddToLog(const AMsg: String; const Args: array of const); overload;
+  public
+    constructor Create(AWorkbook: TsWorkbook); virtual; // to allow descendents to override it
+    destructor Destroy; override;
+    {@@ Instance of the workbook which is currently being read/written. }
+    property Workbook: TsWorkbook read FWorkbook;
+    {@@ List of number formats found in the workbook. }
+    property NumFormatList: TsCustomNumFormatList read FNumFormatList;
+    {@@ Retrieve error messages logged during writing}
+    property ErrorMsg: String read GetErrorMsg;
+  end;
+
   { TsCustomSpreadReader }
 
   {@@ TsSpreadReader class reference type }
@@ -975,19 +1006,12 @@ type
     the basic functionality. The main implementation is done in derived classes
     for each individual file format.
   }
-  TsCustomSpreadReader = class
+  TsCustomSpreadReader = class(TsCustomSpreadReaderWriter)
   protected
-    {@@ A copy of the workbook's FormatSetting to extract some localized number format information }
-    FWorkbook: TsWorkbook;
-    {@@ Instance of the worksheet which is currently being read. }
-    FWorksheet: TsWorksheet;
-    {@@ List of number formats found in the file }
-    FNumFormatList: TsCustomNumFormatList;
     {@@ Temporary cell for virtual mode}
     FVirtualCell: TCell;
     {@@ Stores if the reader is in virtual mode }
     FIsVirtualMode: Boolean;
-    procedure CreateNumFormatList; virtual;
     { Record reading methods }
     {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
     procedure ReadBlank(AStream: TStream); virtual; abstract;
@@ -998,16 +1022,11 @@ type
     {@@ Abstract method for reading a number cell. Must be overridden by descendent classes. }
     procedure ReadNumber(AStream: TStream); virtual; abstract;
   public
-    constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
-    destructor Destroy; override;
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
     procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
-    {@@ Instance of the workbook which is currently being read. }
-    property Workbook: TsWorkbook read FWorkbook;
-    {@@ List of number formats found in the file. }
-    property NumFormatList: TsCustomNumFormatList read FNumFormatList;
   end;
 
 
@@ -1023,19 +1042,13 @@ type
     Custom writer of spreadsheet files. "Custom" means that it provides only
     the basic functionality. The main implementation is done in derived classes
     for each individual file format. }
-  TsCustomSpreadWriter = class
-  private
-    FWorkbook: TsWorkbook;
-
+  TsCustomSpreadWriter = class(TsCustomSpreadReaderWriter)
   protected
     {@@ Limitations for the specific data file format }
     FLimitations: TsSpreadsheetFormatLimitations;
-    {@@ List of number formats found in the workbook. }
-    FNumFormatList: TsCustomNumFormatList;
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
     procedure CheckLimitations;
-    procedure CreateNumFormatList; virtual;
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     function  FindFormattingInList(AFormat: PCell): Integer;
     procedure FixFormat(ACell: PCell); virtual;
@@ -1069,18 +1082,15 @@ type
     FFormattingStyles: array of TCell;
     {@@ Indicates which should be the next XF (style) index when filling the FFormattingStyles array }
     NextXFIndex: Integer;
-    constructor Create(AWorkbook: TsWorkbook); virtual; // To allow descendents to override it
-    destructor Destroy; override;
+
+  public
+    constructor Create(AWorkbook: TsWorkbook); override;
     function Limitations: TsSpreadsheetFormatLimitations;
     { General writing methods }
     procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
     procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream); virtual;
     procedure WriteToStrings(AStrings: TStrings); virtual;
-    {@@ Instance of the workbook which is currently being saved. }
-    property Workbook: TsWorkbook read FWorkbook;
-    {@@ List of number formats found in the workbook. }
-    property NumFormatList: TsCustomNumFormatList read FNumFormatList;
   end;
 
   {@@ List of registered formats }
@@ -5945,6 +5955,71 @@ begin
 end;
 
 
+{ TsCustomSpreadReaderWriter }
+
+{@@
+  Constructor of the reader/writer. Has the workbook to be read/written as a
+  parameter to apply the localization information found in its FormatSettings.
+  Creates an internal instance of the number format list according to the
+  file format being read/written.
+
+  @param AWorkbook  Workbook into which the file is being read or from with the
+                    file is written. This parameter is passed from the workbook
+                    which creates the reader/writer. }
+constructor TsCustomSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create;
+  FWorkbook := AWorkbook;
+  FLog := TStringList.Create;
+  CreateNumFormatList;
+end;
+
+{@@
+  Destructor of the reader. Destroys the internal number format list and the
+  error log list. }
+destructor TsCustomSpreadReaderWriter.Destroy;
+begin
+  FNumFormatList.Free;
+  FLog.Free;
+  inherited Destroy;
+end;
+
+{@@
+  Adds an (simple) error message to the log list
+}
+procedure TsCustomSpreadReaderWriter.AddToLog(const AMsg: String);
+begin
+  FLog.Add(AMsg);
+end;
+
+{@@
+  Adds an error message to the log list by using the Format function
+}
+procedure TsCustomSpreadReaderWriter.AddToLog(const AMsg: String;
+  const Args: array of const);
+begin
+  FLog.Add(Format(AMsg, Args));
+end;
+
+{@@
+  Creates an instance of the number format list which contains prototypes of
+  all number formats found in the workbook (when writing) or in the file (when
+  reading).
+
+  The method has to be overridden because the descendants know the special
+  requirements of the file format. }
+procedure TsCustomSpreadReaderWriter.CreateNumFormatList;
+begin
+  // nothing to do here
+end;
+
+{@@ Getter method to retrieve the error messages collected during reading/writing }
+function TsCustomSpreadReaderWriter.GetErrorMsg: String;
+begin
+  Result := FLog.Text;
+end;
+
+
 { TsCustomSpreadReader }
 
 {@@
@@ -5957,28 +6032,9 @@ end;
                     is passed from the workbook which creates the reader. }
 constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
-  FWorkbook := AWorkbook;
+  inherited Create(AWorkbook);
   FIsVirtualMode := (boVirtualMode in FWorkbook.Options) and
     Assigned(FWorkbook.OnReadCellData);
-  CreateNumFormatList;
-end;
-
-{@@
-  Destructor of the reader. Destroys the internal number format list. }
-destructor TsCustomSpreadReader.Destroy;
-begin
-  FNumFormatList.Free;
-  inherited Destroy;
-end;
-
-{@@
-  This method creates an instance of the number format list according to the
-  file format being read. The method has to be overridden because the
-  descendants know the special requirements of the file format. }
-procedure TsCustomSpreadReader.CreateNumFormatList;
-begin
-  // nothing to do here
 end;
 
 {@@
@@ -6074,21 +6130,10 @@ end;
 }
 constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
-  inherited Create;
-  FWorkbook := AWorkbook;
-  CreateNumFormatList;
+  inherited Create(AWorkbook);
   { A good starting point valid for many formats... }
   FLimitations.MaxCols := 256;
   FLimitations.MaxRows :=  65536;
-
-//  FNumFormatList.FWorkbook := AWorkbook;
-end;
-
-{@@ Destructor of the writer. Destroys the internal number format list. }
-destructor TsCustomSpreadWriter.Destroy;
-begin
-  FNumFormatList.Free;
-  inherited Destroy;
 end;
 
 {@@
@@ -6222,21 +6267,11 @@ var
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
   if lastRow >= FLimitations.MaxRows then
-    raise Exception.CreateFmt(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRows]);
+    AddToLog(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRows]);
   if lastCol >= FLimitations.MaxCols then
-    raise Exception.CreateFmt(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxCols]);
+    AddToLog(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxCols]);
 end;
 
-{@@
-  Creates an instance of the number format list which contains prototypes of
-  all number formats found in the workbook.
-
-  Create a descendant that knows about the details how to write the
-  formats correctly to the destination file. }
-procedure TsCustomSpreadWriter.CreateNumFormatList;
-begin
-  // nothing to do here
-end;
 
 {@@
   Callback function for collecting all formatting styles found in the worksheet.
