@@ -270,7 +270,10 @@ begin
     fname := CONTENT_PREFIX[RgContent.ItemIndex] + copy(fname, 1, pos(' ', fname)-1);
     fname := FDir + fname + '_' + IntToStr(idx);
 
-    Log := Log + '  ' + format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
+    if Idx in [2, 4]  then
+      Log := Log +  '     -   '    // No build time in virtual mode
+    else
+      Log := Log + '  ' + format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
 
     for k := 0 to CgFormats.Items.Count-1 do
     begin

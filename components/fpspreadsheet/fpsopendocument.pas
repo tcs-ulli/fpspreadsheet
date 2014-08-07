@@ -2253,8 +2253,6 @@ end;
 { Creates the streams for the individual data files. Will be zipped into a
   single xlsx file. }
 procedure TsSpreadOpenDocWriter.CreateStreams;
-var
-  dir: String;
 begin
   if (boBufStream in Workbook.Options) then begin
     FSMeta := TBufStream.Create(GetTempFileName('', 'fpsM'));
@@ -2263,16 +2261,7 @@ begin
     FSContent := TBufStream.Create(GetTempFileName('', 'fpsC'));
     FSMimeType := TBufStream.Create(GetTempFileName('', 'fpsMT'));
     FSMetaInfManifest := TBufStream.Create(GetTempFileName('', 'fpsMIM'));
-    {
-    dir := IncludeTrailingPathDelimiter(GetTempDir);
-    FSMeta := TFileStream.Create(GetTempFileName(dir, 'fpsM'), fmCreate+fmOpenRead);
-    FSSettings := TFileStream.Create(GetTempFileName(dir, 'fpsS'), fmCreate+fmOpenRead);
-    FSStyles := TFileStream.Create(GetTempFileName(dir, 'fpsSTY'), fmCreate+fmOpenRead);
-    FSContent := TFileStream.Create(GetTempFileName(dir, 'fpsC'), fmCreate+fmOpenRead);
-    FSMimeType := TFileStream.Create(GetTempFileName(dir, 'fpsMT'), fmCreate+fmOpenRead);
-    FSMetaInfManifest := TFileStream.Create(GetTempFileName(dir, 'fpsMIM'), fmCreate+fmOpenRead);
-    }
-  end else begin;
+  end else begin
     FSMeta := TMemoryStream.Create;
     FSSettings := TMemoryStream.Create;
     FSStyles := TMemoryStream.Create;
