@@ -138,6 +138,7 @@ type
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteTableSettings(AStream: TStream);
+    procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TCell): String;
     function WriteBorderStyleXMLAsString(const AFormat: TCell): String;
@@ -192,7 +193,7 @@ type
 implementation
 
 uses
-  StrUtils, fpsStreams;
+  StrUtils, Variants, fpsStreams;
 
 const
   { OpenDocument general XML constants }
@@ -2738,7 +2739,11 @@ begin
 
   // rows and cells
   // The cells need to be written in order, row by row, cell by cell
-  WriteRowsAndCells(AStream, CurSheet);
+  if (boVirtualMode in Workbook.Options) then begin
+    if Assigned(Workbook.OnWriteCellData) then
+      WriteVirtualCells(AStream, CurSheet)
+  end else
+    WriteRowsAndCells(AStream, CurSheet);
 
   // Footer
   AppendToStream(AStream,
@@ -3473,6 +3478,120 @@ begin
     vaTop    : Result := 'style:vertical-align="top" ';
     vaCenter : Result := 'style:vertical-align="middle" ';
     vaBottom : Result := 'style:vertical-align="bottom" ';
+  end;
+end;
+
+procedure TsSpreadOpenDocWriter.WriteVirtualCells(AStream: TStream;
+  ASheet: TsWorksheet);
+var
+  r, c, cc: Cardinal;
+  lCell: TCell;
+  row: PRow;
+  value: variant;
+  styleCell: PCell;
+  styleName: String;
+  h, h_mm: Single;      // row height in "lines" and millimeters, respectively
+  k: Integer;
+  rowStyleData: TRowStyleData;
+  rowsRepeated: Integer;
+  colsRepeated: Integer;
+  colsRepeatedStr: String;
+  defFontSize: Single;
+  lastCol, lastRow: Cardinal;
+begin
+  // some abbreviations...
+  lastCol := Workbook.VirtualColCount - 1;
+  lastRow := Workbook.VirtualRowCount - 1;
+  defFontSize := Workbook.GetFont(0).Size;
+
+  rowsRepeated := 1;
+  r := 0;
+  while (r <= lastRow) do begin
+    // Look for the row style of the current row (r)
+    row := ASheet.FindRow(r);
+    if row = nil then
+      styleName := 'ro1'
+    else begin
+      styleName := '';
+
+      h := row^.Height;   // row height in "lines"
+      h_mm := PtsToMM((h + ROW_HEIGHT_CORRECTION) * defFontSize);  // in mm
+      for k := 0 to FRowStyleList.Count-1 do begin
+        rowStyleData := TRowStyleData(FRowStyleList[k]);
+        // Compare row heights, but be aware of rounding errors
+        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then begin
+          styleName := rowStyleData.Name;
+          break;
+        end;
+      end;
+      if styleName = '' then
+        raise Exception.Create('Row style not found.');
+    end;
+
+    // No empty rows allowed here for the moment!
+
+
+    // Write the row XML
+    AppendToStream(AStream, Format(
+        '<table:table-row table:style-name="%s">', [styleName]));
+
+    // Loop along the row and write the cells.
+    c := 0;
+    while c <= lastCol do begin
+      // Empty cell? Need to count how many "table:number-columns-repeated" to be added
+      colsRepeated := 1;
+
+      InitCell(r, c, lCell);
+      value := varNull;
+      styleCell := nil;
+
+      Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
+
+      if VarIsNull(value) then begin
+        // Local loop to count empty cells
+        cc := c + 1;
+        while (cc <= lastCol) do begin
+          InitCell(r, cc, lCell);
+          value := varNull;
+          styleCell := nil;
+          Workbook.OnWriteCellData(Workbook, r, cc, value, styleCell);
+          if not VarIsNull(value) then
+            break;
+          inc(cc);
+        end;
+        colsRepeated := cc - c;
+        colsRepeatedStr := IfThen(colsRepeated = 1, '',
+          Format('table:number-columns-repeated="%d"', [colsRepeated]));
+        AppendToStream(AStream, Format(
+          '<table:table-cell %s />', [colsRepeatedStr]));
+      end else begin
+        if VarIsNumeric(value) then begin
+          lCell.ContentType := cctNumber;
+          lCell.NumberValue := value;
+        end else
+        if VarType(value) = varDate then begin
+          lCell.ContentType := cctDateTime;
+          lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
+        end else
+        if VarIsStr(value) then begin
+          lCell.ContentType := cctUTF8String;
+          lCell.UTF8StringValue := VarToStrDef(value, '');
+        end else
+        if VarIsBool(value) then begin
+          lCell.ContentType := cctBool;
+          lCell.BoolValue := value <> 0;
+        end else
+          lCell.ContentType := cctEmpty;
+        WriteCellCallback(@lCell, AStream);
+      end;
+      inc(c, colsRepeated);
+    end;
+
+    AppendToStream(AStream,
+        '</table:table-row>');
+
+    // Next row
+    inc(r, rowsRepeated);
   end;
 end;
 

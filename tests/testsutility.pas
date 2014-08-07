@@ -55,7 +55,7 @@ begin
   if FileExists(Result) then
   begin
     DeleteFile(Result);
-    sleep(40); //e.g. on Windows, give file system chance to perform changes
+    sleep(50); //e.g. on Windows, give file system chance to perform changes
   end;
 end;
 

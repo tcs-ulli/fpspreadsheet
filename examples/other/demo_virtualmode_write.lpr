@@ -10,7 +10,7 @@ uses
   {$ENDIF}
   Classes, SysUtils,
   lazutf8,
-  variants, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
+  variants, fpspreadsheet, fpsallformats;
 
 type
   TDataProvider = class
@@ -66,8 +66,8 @@ begin
 
       { These are the essential commands to activate virtual mode: }
 
-      workbook.Options := [boVirtualMode, boBufStream];
-//      workbook.Options := [boVirtualMode];
+//      workbook.Options := [boVirtualMode, boBufStream];
+      workbook.Options := [boVirtualMode];
       { boBufStream can be omitted, but is important for large files: it causes
         writing temporary data to a buffered file stream instead of a pure
         memory stream which can overflow memory. In cases, the option can slow
@@ -97,10 +97,11 @@ begin
       { In case of a database, you would open the dataset before calling this: }
 
       t := Now;
+      workbook.WriteToFile('test_virtual.ods', sfOpenDocument, true);
       //workbook.WriteToFile('test_virtual.xlsx', sfOOXML, true);
       //workbook.WriteToFile('test_virtual.xls', sfExcel8, true);
       //workbook.WriteToFile('test_virtual.xls', sfExcel5, true);
-      workbook.WriteToFile('test_virtual.xls', sfExcel2, true);
+      //workbook.WriteToFile('test_virtual.xls', sfExcel2, true);
       t := Now - t;
 
     finally
