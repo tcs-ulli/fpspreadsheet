@@ -1852,6 +1852,9 @@ procedure TsSpreadBIFFWriter.WriteBlank(AStream: TStream;
 var
   rec: TBIFF58BlankRecord;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_BLANK);
   rec.RecordSize := WordToLE(6);
@@ -1922,6 +1925,9 @@ var
   w: Integer;
 begin
   if Assigned(ACol) then begin
+    if (ACol^.Col >= FLimitations.MaxCols) then
+      exit;
+
     { BIFF record header }
     rec.RecordID := WordToLE(INT_EXCEL_ID_COLINFO);
     rec.RecordSize := WordToLE(12);
@@ -2035,6 +2041,9 @@ procedure TsSpreadBIFFWriter.WriteNumber(AStream: TStream;
 var
   rec: TBIFF58NumberRecord;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   { BIFF Record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_NUMBER);
   rec.RecordSize := WordToLE(14);
@@ -2260,6 +2269,9 @@ var
   RPNLength: Word;
   RecordSizePos, FinalPos: Int64;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
   RecordSizePos := AStream.Position;
@@ -2482,6 +2494,12 @@ var
   rowheight: Word;
   h: Single;
 begin
+  if (ARowIndex >= FLimitations.MaxRows) or
+     (AFirstColIndex >= FLimitations.MaxCols) or
+     (ALastColIndex >= FLimitations.MaxCols)
+  then
+    exit;
+
   // Check for additional space above/below row
   spaceabove := false;
   spacebelow := false;

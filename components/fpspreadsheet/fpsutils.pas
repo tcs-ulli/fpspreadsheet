@@ -75,7 +75,7 @@ function ParseCellColString(const AStr: string;
   out AResult: Cardinal): Boolean;
 
 function GetColString(AColIndex: Integer): String;
-function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags): String;
+function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
@@ -610,13 +610,15 @@ const
 
   @param   ARowIndex   Zero-based row index
   @param   AColIndex   Zero-based column index
-  @param   AFlags      A set containing an entry for column and row if these
-                       addresses are relative.
+  @param   AFlags      An optional set containing an entry for column and row
+                       if these addresses are relative. By default, relative
+                       addresses are assumed.
   @return  Excel type of cell address containing $ characters for absolute
            address parts.
   @example ARowIndex = 0, AColIndex = 0, AFlags = [rfRelRow] --> $A1
 }
-function GetCellString(ARow, ACol: Cardinal; AFlags: TsRelFlags): String;
+function GetCellString(ARow, ACol: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 begin
   Result := Format('%s%s%s%d', [
     RELCHAR[rfRelCol in AFlags], GetColString(ACol),

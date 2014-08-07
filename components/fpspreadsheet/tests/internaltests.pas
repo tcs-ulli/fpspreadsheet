@@ -1,5 +1,7 @@
 unit internaltests;
 
+{$DEFINE SKIP_TestWriteErrorMessages_ODS}
+
 { Other units test file read/write capability.
 This unit tests functions, procedures and properties that fpspreadsheet provides.
 }
@@ -34,6 +36,7 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
+    procedure TestWriteErrorMessages(AFormat: TsSpreadsheetFormat);
     procedure TestVirtualMode(AFormat: TsSpreadsheetFormat; ABufStreamMode: Boolean);
 
   published
@@ -50,9 +53,17 @@ type
     procedure OverwriteExistingFile;
     // Write out date cell and try to read as UTF8; verify if contents the same
     procedure ReadDateAsUTF8;
+
     // Test buffered stream
     procedure TestReadBufStream;
     procedure TestWriteBufStream;
+
+    // Tests collection of error messages during writing
+    procedure TestWriteErrorMessages_BIFF2;
+    procedure TestWriteErrorMessages_BIFF5;
+    procedure TestWriteErrorMessages_BIFF8;
+    procedure TestWriteErrorMessages_ODS;
+    procedure TestWriteErrorMessages_OOXML;
 
     // Virtual mode tests for all file formats
     procedure TestVirtualMode_BIFF2;
@@ -71,7 +82,7 @@ type
 implementation
 
 uses
-  numberstests, stringtests;
+  StrUtils, numberstests, stringtests;
 
 const
   InternalSheet = 'Internal'; //worksheet name
@@ -82,11 +93,14 @@ var
   MyWorkbook: TsWorkbook;
 begin
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
-  MyWorkSheet:=nil;
-  MyWorkSheet:=MyWorkBook.GetWorksheetByIndex(0);
-  CheckFalse((MyWorksheet=nil),'GetWorksheetByIndex should return a valid index');
-  MyWorkbook.Free;
+  try
+    MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
+    MyWorkSheet:=nil;
+    MyWorkSheet:=MyWorkBook.GetWorksheetByIndex(0);
+    CheckFalse((MyWorksheet=nil),'GetWorksheetByIndex should return a valid index');
+  finally
+    MyWorkbook.Free;
+  end;
 end;
 
 procedure TSpreadInternalTests.GetSheetByName;
@@ -97,13 +111,16 @@ var
   MyWorkbook: TsWorkbook;
 begin
   MyWorkbook := TsWorkbook.Create;
-  MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
-  MyWorkSheet:=MyWorkBook.AddWorksheet(AnotherSheet);
-  MyWorkSheet:=nil;
-  MyWorkSheet:=MyWorkBook.GetWorksheetByName(InternalSheet);
-  CheckFalse((MyWorksheet=nil),'GetWorksheetByName should return a valid index');
-  CheckEquals(MyWorksheet.Name,InternalSheet,'GetWorksheetByName should return correct name.');
-  MyWorkbook.Free;
+  try
+    MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
+    MyWorkSheet:=MyWorkBook.AddWorksheet(AnotherSheet);
+    MyWorkSheet:=nil;
+    MyWorkSheet:=MyWorkBook.GetWorksheetByName(InternalSheet);
+    CheckFalse((MyWorksheet=nil),'GetWorksheetByName should return a valid index');
+    CheckEquals(MyWorksheet.Name,InternalSheet,'GetWorksheetByName should return correct name.');
+  finally
+    MyWorkbook.Free;
+  end;
 end;
 
 procedure TSpreadInternalTests.OverwriteExistingFile;
@@ -156,22 +173,26 @@ begin
   Row:=0;
   Column:=0;
   TestDT:=EncodeDate(1969,7,21)+EncodeTime(2,56,0,0);
+
   MyWorkbook:=TsWorkbook.Create;
-  MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
-  MyWorkSheet.WriteDateTime(Row,Column,TestDT); //write date
+  try
+    MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
+    MyWorkSheet.WriteDateTime(Row,Column,TestDT); //write date
 
-  // Reading as date/time should just work
-  if not(MyWorksheet.ReadAsDateTime(Row,Column,ActualDT)) then
-    Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row,Column));
-  CheckEquals(TestDT,ActualDT,'Test date/time value mismatch '
-    +'cell '+CellNotation(MyWorkSheet,Row,Column));
+    // Reading as date/time should just work
+    if not(MyWorksheet.ReadAsDateTime(Row,Column,ActualDT)) then
+      Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row,Column));
+    CheckEquals(TestDT,ActualDT,'Test date/time value mismatch '
+      +'cell '+CellNotation(MyWorkSheet,Row,Column));
 
-  //Check reading as string, convert to date & compare
-  ActualDTString:=MyWorkSheet.ReadAsUTF8Text(Row,Column);
-  ActualDT:=StrToDateTimeDef(ActualDTString,EncodeDate(1906,1,1));
-  CheckEquals(TestDT,ActualDT,'Date/time mismatch using ReadAsUTF8Text');
+    //Check reading as string, convert to date & compare
+    ActualDTString:=MyWorkSheet.ReadAsUTF8Text(Row,Column);
+    ActualDT:=StrToDateTimeDef(ActualDTString,EncodeDate(1906,1,1));
+    CheckEquals(TestDT,ActualDT,'Date/time mismatch using ReadAsUTF8Text');
 
-  MyWorkbook.Free;
+  finally
+    MyWorkbook.Free;
+  end;
 end;
 
 procedure TSpreadInternalTests.TestWriteBufStream;
@@ -254,6 +275,122 @@ begin
     stream.Free;
   end;
 end;
+
+procedure TSpreadInternalTests.TestWriteErrorMessages(AFormat: TsSpreadsheetFormat);
+type
+  TTestFormat = (sfExcel2, sfExcel5, sfExcel8, sfOOXML, sfOpenDocument);
+const
+  MAX_ROW_COUNT: array[TTestFormat] of Cardinal = (65536, 65536, 65536, 1048576, 1048576);
+  MAX_COL_COUNT: array[TTestFormat] of Cardinal = (256, 256, 256, 16384, 1024);
+  MAX_CELL_LEN: array[TTestFormat] of Cardinal = (255, 255, 32767, cardinal(-1), Cardinal(-1));
+var
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  row, col: Cardinal;
+  row1, row2: Cardinal;
+  col1, col2: Cardinal;
+  s: String;
+  TempFile: String;
+  ErrList: TStringList;
+begin
+  ErrList := TStringList.Create;
+  try
+    // Test 1: Too many rows
+    MyWorkbook := TsWorkbook.Create;
+    try
+      MyWorkSheet:= MyWorkBook.AddWorksheet('Test');
+      row1 := MAX_ROW_COUNT[TTestFormat(AFormat)] - 5;
+      row2 := MAX_ROW_COUNT[TTestFormat(AFormat)] + 5;
+      for row :=row1 to row2 do begin
+        MyWorksheet.WriteBlank(row, 0);
+        MyWorksheet.WriteNumber(row, 1, 1.0);
+        MyWorksheet.WriteUTF8Text(row, 2, 'A');
+        MyWorksheet.WriteRPNFormula(row, 3, CreateRPNFormula(
+          RPNCellValue('A1', nil)));
+      end;
+      TempFile:=NewTempFile;
+      MyWorkBook.WriteToFile(TempFile, AFormat, true);
+      ErrList.Text := MyWorkbook.ErrorMsg;
+      CheckEquals(1, ErrList.Count, 'Error count mismatch in test 1');
+    finally
+      MyWorkbook.Free;
+      DeleteFile(TempFile);
+    end;
+
+    // Test 2: Too many columns
+    MyWorkbook := TsWorkbook.Create;
+    try
+      MyWorkSheet:= MyWorkBook.AddWorksheet('Test');
+      col1 := MAX_COL_COUNT[TTestFormat(AFormat)] - 5;
+      col2 := MAX_COL_COUNT[TTestFormat(AFormat)] + 5;
+      for col := col1 to col2 do begin
+        MyWorksheet.WriteBlank(row, 0);
+        MyWorksheet.WriteNumber(row, 1, 1.0);
+        MyWorksheet.WriteUTF8Text(row, 2, 'A');
+        MyWorksheet.WriteRPNFormula(row, 3, CreateRPNFormula(
+          RPNCellValue('A1', nil)));
+      end;
+      TempFile:=NewTempFile;
+      MyWorkBook.WriteToFile(TempFile, AFormat, true);
+      ErrList.Text := MyWorkbook.ErrorMsg;
+      CheckEquals(1, ErrList.Count, 'Error count mismatch in test 2');
+    finally
+      MyWorkbook.Free;
+      DeleteFile(TempFile);
+    end;
+
+    // Test 3: Too long cell label
+    if MAX_CELL_LEN[TTestFormat(AFormat)] <> Cardinal(-1) then begin
+      s := DupeString('A', MAX_CELL_LEN[TTestFormat(AFormat)] + 10);
+      MyWorkbook := TsWorkbook.Create;
+      try
+        MyWorkSheet:= MyWorkBook.AddWorksheet('Test');
+        MyWorksheet.WriteUTF8Text(0, 0, s);
+        TempFile:=NewTempFile;
+        MyWorkBook.WriteToFile(TempFile, AFormat, true);
+        ErrList.Text := MyWorkbook.ErrorMsg;
+        CheckEquals(1, ErrList.Count, 'Error count mismatch in test 3');
+      finally
+        MyWorkbook.Free;
+        DeleteFile(TempFile);
+      end;
+    end;
+
+  finally
+    ErrList.Free;
+  end;
+end;
+
+procedure TSpreadInternalTests.TestWriteErrorMessages_BIFF2;
+begin
+  TestWriteErrorMessages(sfExcel2);
+end;
+
+procedure TSpreadInternalTests.TestWriteErrorMessages_BIFF5;
+begin
+  TestWriteErrorMessages(sfExcel5);
+end;
+
+procedure TSpreadInternalTests.TestWriteErrorMessages_BIFF8;
+begin
+  TestWriteErrorMessages(sfExcel8);
+end;
+
+procedure TSpreadInternalTests.TestWriteErrorMessages_ODS;
+begin
+ {$IFDEF SKIP_TestWriteErrorMessages_ODS}
+  //Ignore(TestWriteErrorMessages(sfOpenDocument));
+  // How to do that?
+ {$ELSE}
+  TestWriteErrorMessages(sfOpenDocument);
+ {$ENDIF}
+end;
+
+procedure TSpreadInternalTests.TestWriteErrorMessages_OOXML;
+begin
+  TestWriteErrorMessages(sfOOXML);
+end;
+
 
 procedure TSpreadInternalTests.TestReadBufStream;
 const

@@ -604,7 +604,7 @@ begin
   XF := rec.Attrib1 and $3F;
 
   { String with 8-bit size }
-   L := rec.TextLen;
+  L := rec.TextLen;
   SetLength(AValue, L);
   AStream.ReadBuffer(AValue[1], L);
 
@@ -1502,6 +1502,9 @@ var
   s: ansistring;
   xf: Word;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   RPNLength := 0;
   FormulaResult := 0.0;
 
@@ -1605,6 +1608,9 @@ var
   xf: Word;
   rec: TBlankRecord;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   xf := FindXFIndex(ACell);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
@@ -1661,6 +1667,9 @@ var
 var
   xf: Word;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   if AValue = '' then Exit; // Writing an empty text doesn't work
 
   AnsiText := UTF8ToISO_8859_1(AValue);
@@ -1672,6 +1681,11 @@ begin
     // with the problem or purposefully ignore it.
     TextTooLong:=true;
     AnsiText := Copy(AnsiText, 1, MAXBYTES);
+    Workbook.AddErrorMsg(
+      'Text value exceeds %d character limit in cell %s. ' +
+      'Text has been truncated.', [
+      MAXBYTES, GetCellString(ARow, ACol)
+    ]);
   end;
   L := Length(AnsiText);
 
@@ -1700,32 +1714,6 @@ begin
 
   { Write out }
   AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*L);
-
-
-                  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_LABEL));
-  AStream.WriteWord(WordToLE(8 + L));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  WriteCellFormatting(AStream, ACell, xf);
-
-  { String with 8-bit size }
-  AStream.WriteByte(L);
-  AStream.WriteBuffer(AnsiText[1], L);
-                   *)
-
-  {
-  //todo: keep a log of errors and show with an exception after writing file or something.
-  We can't just do the following
-  if TextTooLong then
-    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
-    because the file wouldn't be written.
-  }
 end;
 
 {*******************************************************************
@@ -1742,24 +1730,12 @@ var
   xf: Word;
   rec: TBIFF2NumberRecord;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   xf := FindXFIndex(ACell);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
-                  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
-  AStream.WriteWord(WordToLE(15));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  WriteCellFormatting(AStream, ACell, xf);
-
-  { IEE 754 floating-point value }
-  AStream.WriteBuffer(AValue, 8);
-  *)
 
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_NUMBER);
@@ -1787,6 +1763,11 @@ var
   w: Word;
   h: Single;
 begin
+  if (ARowIndex >= FLimitations.MaxRows) or (AFirstColIndex >= FLimitations.MaxCols)
+    or (ALastColIndex >= FLimitations.MaxCols)
+  then
+    exit;
+
   Unused(ASheet);
 
   containsXF := false;

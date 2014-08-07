@@ -1842,7 +1842,8 @@ end;
 procedure TsSpreadOOXMLWriter.WriteSheetData(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
-  r, c, c1, c2: Cardinal;
+  r, r1, r2: Cardinal;
+  c, c1, c2: Cardinal;
   row: PRow;
   value: Variant;
   lCell: TCell;
@@ -1907,7 +1908,11 @@ begin
     c1 := AWorksheet.GetFirstColIndex;
     c2 := AWorksheet.GetLastColIndex;
     if (c1 = $FFFFFFFF) and (c2 = 0) then c1 := 0;  // avoid arithmetic overflow in case of empty worksheet
-    for r := 0 to AWorksheet.GetLastRowIndex do begin
+    r1 := AWorksheet.GetFirstRowIndex;
+    r2 := AWorksheet.GetlastRowIndex;
+    if (r1 = $FFFFFFFF) and (r2 = 0) then r1 := 0;  // avoid arithmetic overflow in case of empty worksheet
+//    for r := 0 to AWorksheet.GetLastRowIndex do begin
+    for r := r1 to r2 do begin
       // If the row has a custom height add this value to the <row> specification
       row := AWorksheet.FindRow(r);
       if row <> nil then

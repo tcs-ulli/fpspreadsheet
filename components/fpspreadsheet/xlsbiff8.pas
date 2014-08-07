@@ -788,7 +788,11 @@ procedure TsSpreadBIFF8Writer.WriteFormula(AStream: TStream; const ARow,
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Int64;}
 begin
-(*  RPNLength := 0;
+(*
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
+  RPNLength := 0;
   FormulaResult := 0.0;
 
   { BIFF Record header }
@@ -992,6 +996,9 @@ var
   rec: TBIFF8LabelRecord;
   buf: array of byte;
 begin
+  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+    exit;
+
   WideValue := UTF8Decode(AValue); //to UTF16
   if WideValue = '' then begin
     // Badly formatted UTF8String (maybe ANSI?)
@@ -1007,6 +1014,11 @@ begin
     // with the problem or purposefully ignore it.
     TextTooLong := true;
     SetLength(WideValue, MaxBytes); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    Workbook.AddErrorMsg(
+      'Text value exceeds %d character limit in cell %s. ' +
+      'Text has been truncated.', [
+      MAXBYTES, GetCellString(ARow, ACol)
+    ]);
   end;
   L := Length(WideValue);
 
@@ -1037,14 +1049,6 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
-
-  {
-  //todo: keep a log of errors and show with an exception after writing file or something.
-  We can't just do the following
-  if TextTooLong then
-    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
-  because the file wouldn't be written.
-  }
 end;
 
 {*******************************************************************
