@@ -26,8 +26,8 @@ type
 
   {@@ Record collection limitations of a particular file format }
   TsSpreadsheetFormatLimitations = record
-    MaxRows: Cardinal;
-    MaxCols: Cardinal;
+    MaxRowCount: Cardinal;
+    MaxColCount: Cardinal;
   end;
 
 const
@@ -6173,8 +6173,8 @@ constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   { A good starting point valid for many formats... }
-  FLimitations.MaxCols := 256;
-  FLimitations.MaxRows := 65536;
+  FLimitations.MaxColCount := 256;
+  FLimitations.MaxRowCount := 65536;
 end;
 
 {@@
@@ -6265,7 +6265,8 @@ end;
 
 {@@
   Determines the size of the worksheet to be written. VirtualMode is respected.
-  Is called when the writer needs the size for output.
+  Is called when the writer needs the size for output. Column and row count
+  limitations are repsected as well.
 
   @param   AWorksheet  Worksheet to be written
   @param   AFirsRow    Index of first row to be written
@@ -6276,15 +6277,26 @@ end;
 procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
   out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal);
 begin
-  AFirstRow := 0;
-  AFirstCol := 0;
   if (boVirtualMode in AWorksheet.Workbook.Options) then begin
+    AFirstRow := 0;
+    AFirstCol := 0;
     ALastRow := AWorksheet.Workbook.VirtualRowCount-1;
     ALastCol := AWorksheet.Workbook.VirtualColCount-1;
   end else begin
+    Workbook.UpdateCaches;
+    AFirstRow := AWorksheet.GetFirstRowIndex;
+    AFirstCol := AWorksheet.GetFirstColIndex;
     ALastRow := AWorksheet.GetLastRowIndex;
     ALastCol := AWorksheet.GetLastColIndex;
   end;
+  if AFirstCol >= Limitations.MaxColCount then
+    AFirstCol := Limitations.MaxColCount-1;
+  if AFirstRow >= Limitations.MaxRowCount then
+    AFirstRow := Limitations.MaxRowCount-1;
+  if ALastCol >= Limitations.MaxColCount then
+    ALastCol := Limitations.MaxColCount-1;
+  if ALastRow >= Limitations.MaxRowCount then
+    ALastRow := Limitations.MaxRowCount-1;
 end;
 
 {@@
@@ -6307,10 +6319,10 @@ var
   lastCol, lastRow: Cardinal;
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
-  if lastRow >= FLimitations.MaxRows then
-    Workbook.AddErrorMsg(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRows]);
-  if lastCol >= FLimitations.MaxCols then
-    Workbook.AddErrorMsg(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxCols]);
+  if lastRow >= FLimitations.MaxRowCount then
+    Workbook.AddErrorMsg(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRowCount]);
+  if lastCol >= FLimitations.MaxColCount then
+    Workbook.AddErrorMsg(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
 end;
 
 

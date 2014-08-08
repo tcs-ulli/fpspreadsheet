@@ -1502,7 +1502,7 @@ var
   s: ansistring;
   xf: Word;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   RPNLength := 0;
@@ -1608,7 +1608,7 @@ var
   xf: Word;
   rec: TBlankRecord;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   xf := FindXFIndex(ACell);
@@ -1667,7 +1667,7 @@ var
 var
   xf: Word;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   if AValue = '' then Exit; // Writing an empty text doesn't work
@@ -1730,7 +1730,7 @@ var
   xf: Word;
   rec: TBIFF2NumberRecord;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   xf := FindXFIndex(ACell);
@@ -1763,8 +1763,8 @@ var
   w: Word;
   h: Single;
 begin
-  if (ARowIndex >= FLimitations.MaxRows) or (AFirstColIndex >= FLimitations.MaxCols)
-    or (ALastColIndex >= FLimitations.MaxCols)
+  if (ARowIndex >= FLimitations.MaxRowCount) or (AFirstColIndex >= FLimitations.MaxColCount)
+    or (ALastColIndex >= FLimitations.MaxColCount)
   then
     exit;
 

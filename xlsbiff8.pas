@@ -34,8 +34,10 @@ EOF
 The row and column numbering in BIFF files is zero-based.
 
 Excel file format specification obtained from:
-
 http://sc.openoffice.org/excelfileformat.pdf
+
+see also:
+http://office.microsoft.com/en-us/excel-help/excel-specifications-and-limits-HP005199291.aspx
 
 AUTHORS:  Felipe Monteiro de Carvalho
           Jose Mejuto
@@ -280,6 +282,16 @@ const
   );
 
 type
+  TBIFF8DimensionsRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FirstRow: DWord;
+    LastRowPlus1: DWord;
+    FirstCol: Word;
+    LastColPlus1: Word;
+    NotUsed: Word;
+  end;
+
   TBIFF8LabelRecord = packed record
     RecordID: Word;
     RecordSize: Word;
@@ -578,7 +590,24 @@ end;
 procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
   firstRow, lastRow, firstCol, lastCol: Cardinal;
+  rec: TBIFF8DimensionsRecord;
 begin
+  { Determine sheet size }
+  GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
+
+  { Populate BIFF record }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_DIMENSIONS);
+  rec.RecordSize := WordToLE(14);
+  rec.FirstRow := DWordToLE(firstRow);
+  rec.LastRowPlus1 := DWordToLE(lastRow+1);
+  rec.FirstCol := WordToLE(firstCol);
+  rec.LastColPlus1 := WordToLE(lastCol+1);
+  rec.NotUsed := 0;
+
+  { Write BIFF record to stream }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+
+  (*
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
   AStream.WriteWord(WordToLE(14));
@@ -600,6 +629,7 @@ begin
 
   { Not used }
   AStream.WriteWord(WordToLE(0));
+  *)
 end;
 
 {*******************************************************************
@@ -996,7 +1026,7 @@ var
   rec: TBIFF8LabelRecord;
   buf: array of byte;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   WideValue := UTF8Decode(AValue); //to UTF16

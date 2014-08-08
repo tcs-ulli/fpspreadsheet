@@ -1857,9 +1857,11 @@ begin
   AppendToStream(AStream,
       '<sheetData>');
 
+  GetSheetDimensions(AWorksheet, r1, r2, c1, c2);
+
   if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnWriteCellData)
   then begin
-    for r := 0 to Workbook.VirtualRowCount-1 do begin
+    for r := 0 to r2 do begin
       row := AWorksheet.FindRow(r);
       if row <> nil then
         rh := Format(' ht="%g" customHeight="1"', [
@@ -1868,7 +1870,7 @@ begin
         rh := '';
       AppendToStream(AStream, Format(
         '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
-      for c := 0 to Workbook.VirtualColCount-1 do begin
+      for c := 0 to c2 do begin
         InitCell(lCell);
         value := varNull;
         styleCell := nil;
@@ -1905,6 +1907,7 @@ begin
   end else
   begin
     // The cells need to be written in order, row by row, cell by cell
+    (*
     c1 := AWorksheet.GetFirstColIndex;
     c2 := AWorksheet.GetLastColIndex;
     if (c1 = $FFFFFFFF) and (c2 = 0) then c1 := 0;  // avoid arithmetic overflow in case of empty worksheet
@@ -1912,6 +1915,7 @@ begin
     r2 := AWorksheet.GetlastRowIndex;
     if (r1 = $FFFFFFFF) and (r2 = 0) then r1 := 0;  // avoid arithmetic overflow in case of empty worksheet
 //    for r := 0 to AWorksheet.GetLastRowIndex do begin
+    *)
     for r := r1 to r2 do begin
       // If the row has a custom height add this value to the <row> specification
       row := AWorksheet.FindRow(r);
@@ -2298,8 +2302,8 @@ begin
   FPointSeparatorSettings.DecimalSeparator := '.';
 
   // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
-  FLimitations.MaxCols := 16384;
-  FLimitations.MaxRows := 1048576;
+  FLimitations.MaxColCount := 16384;
+  FLimitations.MaxRowCount := 1048576;
 end;
 
 procedure TsSpreadOOXMLWriter.CreateNumFormatList;

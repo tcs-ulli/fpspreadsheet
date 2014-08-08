@@ -1852,7 +1852,7 @@ procedure TsSpreadBIFFWriter.WriteBlank(AStream: TStream;
 var
   rec: TBIFF58BlankRecord;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   { BIFF record header }
@@ -1925,7 +1925,7 @@ var
   w: Integer;
 begin
   if Assigned(ACol) then begin
-    if (ACol^.Col >= FLimitations.MaxCols) then
+    if (ACol^.Col >= FLimitations.MaxColCount) then
       exit;
 
     { BIFF record header }
@@ -2041,7 +2041,7 @@ procedure TsSpreadBIFFWriter.WriteNumber(AStream: TStream;
 var
   rec: TBIFF58NumberRecord;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   { BIFF Record header }
@@ -2269,7 +2269,7 @@ var
   RPNLength: Word;
   RecordSizePos, FinalPos: Int64;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   { BIFF Record header }
@@ -2494,9 +2494,9 @@ var
   rowheight: Word;
   h: Single;
 begin
-  if (ARowIndex >= FLimitations.MaxRows) or
-     (AFirstColIndex >= FLimitations.MaxCols) or
-     (ALastColIndex >= FLimitations.MaxCols)
+  if (ARowIndex >= FLimitations.MaxRowCount) or
+     (AFirstColIndex >= FLimitations.MaxColCount) or
+     (ALastColIndex >= FLimitations.MaxColCount)
   then
     exit;
 
