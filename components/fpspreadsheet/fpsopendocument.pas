@@ -2932,17 +2932,25 @@ var
   rowsRepeated: Integer;
   colsRepeatedStr: String;
   rowsRepeatedStr: String;
-  lastCol, lastRow: Cardinal;
+  firstCol, firstRow, lastCol, lastRow: Cardinal;
   rowStyleData: TRowStyleData;
   defFontSize: Single;
+  emptyRowsAbove: Boolean;
 begin
   // some abbreviations...
+  defFontSize := Workbook.GetFont(0).Size;
+  firstCol := ASheet.GetFirstColIndex;
+  firstRow := ASheet.GetFirstRowIndex;
   lastCol := ASheet.GetLastColIndex;
   lastRow := ASheet.GetLastRowIndex;
-  defFontSize := Workbook.GetFont(0).Size;
+  // avoid arithmetic overflow in case of empty worksheet
+  if (firstCol = $FFFFFFFF) and (lastCol = 0) then firstCol := 0;
+  if (FirstRow = $FFFFFFFF) and (lastRow = 0) then firstRow := 0;
+  emptyRowsAbove := firstRow > 0;
 
   // Now loop through all rows
-  r := 0;
+//  r := 0;
+  r := firstRow;
   while (r <= lastRow) do begin
     // Look for the row style of the current row (r)
     row := ASheet.FindRow(r);
@@ -2965,8 +2973,23 @@ begin
         raise Exception.Create('Row style not found.');
     end;
 
+    // Take care of empty rows above the first row
+    if (r = firstRow) and emptyRowsAbove then begin
+      rowsRepeated := r;
+      rowsRepeatedStr := IfThen(rowsRepeated = 1, '',
+        Format('table:number-rows-repeated="%d"', [rowsRepeated]));
+      colsRepeated := lastCol + 1;
+      colsRepeatedStr := IfThen(colsRepeated = 1, '',
+        Format('table:number-columns-repeated="%d"', [colsRepeated]));
+      AppendToStream(AStream, Format(
+        '<table:table-row table:style-name="%s" %s>' +
+          '<table:table-cell %s/>' +
+        '</table:table-row>',
+        [styleName, rowsRepeatedStr, colsRepeatedStr]));
+      rowsRepeated := 1;
+    end
+    else
     // Look for empty rows with the same style, they need the "number-rows-repeated" element.
-    rowsRepeated := 1;
     if (ASheet.GetFirstCellOfRow(r) = nil) then begin
       rr := r + 1;
       while (rr <= lastRow) do begin
@@ -2981,7 +3004,7 @@ begin
       rowsRepeated := rr - r;
       rowsRepeatedStr := IfThen(rowsRepeated = 1, '',
         Format('table:number-rows-repeated="%d"', [rowsRepeated]));
-      colsRepeated := lastCol+1;
+      colsRepeated := lastCol - firstCol + 1;
       colsRepeatedStr := IfThen(colsRepeated = 1, '',
         Format('table:number-columns-repeated="%d"', [colsRepeated]));
 
@@ -3030,6 +3053,7 @@ begin
 
     // Next row
     inc(r, rowsRepeated);
+    rowsRepeated := 1;
   end;
 end;
 

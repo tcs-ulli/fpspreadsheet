@@ -40,7 +40,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="15">
+    <Units Count="17">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -48,10 +48,12 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="stringtests"/>
       </Unit2>
       <Unit3>
         <Filename Value="numberstests.pas"/>
@@ -61,14 +63,17 @@
       <Unit4>
         <Filename Value="manualtests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="manualtests"/>
       </Unit4>
       <Unit5>
         <Filename Value="testsutility.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="testsutility"/>
       </Unit5>
       <Unit6>
         <Filename Value="internaltests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="internaltests"/>
       </Unit6>
       <Unit7>
         <Filename Value="formattests.pas"/>
@@ -86,6 +91,7 @@
       <Unit10>
         <Filename Value="optiontests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="optiontests"/>
       </Unit10>
       <Unit11>
         <Filename Value="numformatparsertests.pas"/>
@@ -94,15 +100,28 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="emptycelltests"/>
       </Unit14>
+      <Unit15>
+        <Filename Value="errortests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="errortests"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="virtualmodetests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="virtualmodetests"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
