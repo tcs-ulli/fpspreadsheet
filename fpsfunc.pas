@@ -1372,7 +1372,6 @@ function fpsDATEDIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
              = YD - The difference between the days (years and dates are ignored). }
 var
   interval: String;
-  data: TsArgStringArray;
   start_date, end_date: TDate;
   res1, res2, res3: TsArgument;
 begin
@@ -1599,7 +1598,6 @@ function fpsCOUNTBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
   r, c, n: Cardinal;
-  cell: PCell;
 begin
   arg := Args.Pop;
   case arg.ArgumentType of

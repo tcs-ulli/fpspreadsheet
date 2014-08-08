@@ -606,30 +606,6 @@ begin
 
   { Write BIFF record to stream }
   AStream.WriteBuffer(rec, SizeOf(rec));
-
-  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
-  AStream.WriteWord(WordToLE(14));
-
-  { Determine sheet size }
-  GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
-
-  { Index to first used row }
-  AStream.WriteDWord(DWordToLE(firstRow));
-
-  { Index to last used row, increased by 1 }
-  AStream.WriteDWord(DWordToLE(lastRow+1));
-
-  { Index to first used column }
-  AStream.WriteWord(WordToLE(firstCol));
-
-  { Index to last used column, increased by 1 }
-  AStream.WriteWord(WordToLE(lastCol+1));
-
-  { Not used }
-  AStream.WriteWord(WordToLE(0));
-  *)
 end;
 
 {*******************************************************************

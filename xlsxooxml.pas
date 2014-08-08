@@ -114,6 +114,7 @@ type
     function GetStyleIndex(ACell: PCell): Cardinal;
     procedure ListAllBorders;
     procedure ListAllFills;
+    function  PrepareFormula(const AFormula: TsFormula): String;
     procedure ResetStreams;
     procedure WriteBorderList(AStream: TStream);
     procedure WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
@@ -143,10 +144,16 @@ type
   protected
     { Record writing methods }
     //todo: add WriteDate
-    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); override;
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); override;
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      const AFormula: TsFormula; ACell: PCell); override;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: string; ACell: PCell); override;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: double; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); override;
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -1907,15 +1914,6 @@ begin
   end else
   begin
     // The cells need to be written in order, row by row, cell by cell
-    (*
-    c1 := AWorksheet.GetFirstColIndex;
-    c2 := AWorksheet.GetLastColIndex;
-    if (c1 = $FFFFFFFF) and (c2 = 0) then c1 := 0;  // avoid arithmetic overflow in case of empty worksheet
-    r1 := AWorksheet.GetFirstRowIndex;
-    r2 := AWorksheet.GetlastRowIndex;
-    if (r1 = $FFFFFFFF) and (r2 = 0) then r1 := 0;  // avoid arithmetic overflow in case of empty worksheet
-//    for r := 0 to AWorksheet.GetLastRowIndex do begin
-    *)
     for r := r1 to r2 do begin
       // If the row has a custom height add this value to the <row> specification
       row := AWorksheet.FindRow(r);
@@ -2364,6 +2362,13 @@ begin
   SetLength(FSSheets, 0);
 end;
 
+{ Prepares a string formula for writing }
+function TsSpreadOOXMLWriter.PrepareFormula(const AFormula: TsFormula): String;
+begin
+  Result := AFormula.FormulaStr;
+  if (Result <> '') and (Result[1] = '=') then Delete(Result, 1, 1);
+end;
+
 { Is called before zipping the individual file parts. Rewinds the streams. }
 procedure TsSpreadOOXMLWriter.ResetStreams;
 var
@@ -2486,6 +2491,24 @@ begin
     '</c>');
 end;
 
+{ Writes a string formula to the given cell. }
+procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
+var
+  cellPosText: String;
+  lStyleIndex: Integer;
+begin
+  cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  lStyleIndex := GetStyleIndex(ACell);
+
+  AppendToStream(AStream, Format(
+    '<c r="%s" s="%d">' +
+      '<f>%s</f>' +
+    '</c>', [
+    CellPosText, lStyleIndex,
+    PrepareFormula(AFormula)
+    ]));
+end;
 
 {*******************************************************************
 *  TsSpreadOOXMLWriter.WriteLabel ()
