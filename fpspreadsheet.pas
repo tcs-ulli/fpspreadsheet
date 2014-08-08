@@ -804,6 +804,7 @@ type
 
     { Internal methods }
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
+    procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
     procedure RemoveWorksheetsCallback(data, arg: pointer);
     procedure UpdateCaches;
@@ -4683,13 +4684,30 @@ end;
 { TsWorkbook }
 
 {@@
-  Helper method called before saving the workbook. Calculates the formulas
-  in all worksheets having the option soCalcBeforeSaving set.
+  Helper method called before reading the workbook. Clears the error log.
+}
+procedure TsWorkbook.PrepareBeforeReading;
+begin
+  // Clear error log
+  FLog.Clear;
+end;
+
+{@@
+  Helper method called before saving the workbook. Clears the error log, and
+  calculates the formulas in all worksheets having the option soCalcBeforeSaving
+  set.
 }
 procedure TsWorkbook.PrepareBeforeSaving;
 var
   sheet: TsWorksheet;
 begin
+  // Clear error log
+  FLog.Clear;
+
+  // Updates fist/last column/row index
+  UpdateCaches;
+
+  // Calculated formulas (if requested)
   for sheet in FWorksheets do
     if (soCalcBeforeSaving in sheet.Options) then
       sheet.CalcFormulas;
@@ -4864,6 +4882,7 @@ begin
   AReader := CreateSpreadReader(AFormat);
   try
     FFileName := AFileName;
+    PrepareBeforeReading;
     AReader.ReadFromFile(AFileName, Self);
     UpdateCaches;
     FFormat := AFormat;
@@ -4951,6 +4970,7 @@ var
 begin
   AReader := CreateSpreadReader(AFormat);
   try
+    PrepareBeforeReading;
     AReader.ReadFromStream(AStream, Self);
     UpdateCaches;
   finally
@@ -4987,9 +5007,9 @@ begin
   AWriter := CreateSpreadWriter(AFormat);
   try
     FFileName := AFileName;
+    PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FWriting := true;
-    PrepareBeforeSaving;
     AWriter.WriteToFile(AFileName, AOverwriteExisting);
   finally
     FWriting := false;
@@ -5030,9 +5050,9 @@ var
 begin
   AWriter := CreateSpreadWriter(AFormat);
   try
+    PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FWriting := true;
-    PrepareBeforeSaving;
     AWriter.WriteToStream(AStream);
   finally
     FWriting := false;
