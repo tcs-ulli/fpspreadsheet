@@ -584,6 +584,8 @@ type
 
     function WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula): PCell; overload;
     procedure WriteFormula(ACell: PCell; AFormula: TsFormula); overload;
+    function WriteFormula(ARow, ACol: Cardinal; AFormula: String): PCell; overload;
+    procedure WriteFormula(ACell: PCell; AFormula: String); overload;
 
     procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double); overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
@@ -1700,7 +1702,6 @@ end;
 procedure TsWorksheet.CalcRPNFormula(ACell: PCell);
 var
   i: Integer;
-  formula: TsRPNFormula;
   args: TsArgumentStack;
   func: TsFormulaFunc;
   val: TsArgument;
@@ -2342,7 +2343,6 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
     ANumberFormat: TsNumberFormat; ANumberFormatStr: string): ansistring;
   var
     fs: TFormatSettings;
-    left, right: String;
   begin
     fs := FWorkbook.FormatSettings;
     if IsNan(Value) then
@@ -3453,6 +3453,35 @@ begin
     exit;
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+{@@
+  Writes a formula to a given cell
+
+  @param  ARow      The row of the cell
+  @param  ACol      The column of the cell
+  @param  AFormula  The formula string to be written
+  @return Pointer to the cell
+}
+function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: string): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteFormula(Result, AFormula);
+end;
+
+{@@
+  Writes a formula to a given cell
+
+  @param  ACell     Pointer to the cell
+  @param  AFormula  Formula string to be written
+}
+procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: String);
+begin
+  if ACell = nil then
+    exit;
+  ACell^.ContentType := cctFormula;
+  ACell^.FormulaValue.FormulaStr := AFormula;
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 

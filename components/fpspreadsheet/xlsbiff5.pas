@@ -219,7 +219,7 @@ var
 implementation
 
 uses
-  fpsStreams;
+  Math, fpsStreams;
 
 const
   { Excel record IDs }
@@ -563,7 +563,6 @@ procedure TsSpreadBIFF5Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWo
 var
   rec: TBIFF5DimensionsRecord;
   firstCol, lastCol, firstRow, lastRow: Cardinal;
-  lLastRow, lLastCol: Word;
 begin
   { Determine sheet size }
   GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
@@ -572,37 +571,13 @@ begin
   rec.RecordID := WordToLE(INT_EXCEL_ID_DIMENSIONS);
   rec.RecordSize := WordToLE(10);
   rec.FirstRow := WordToLE(firstRow);
-  rec.LastRowPlus1 := WordToLE(lastRow+1);
+  rec.LastRowPlus1 := WordToLE(Min(lastRow+1, $FFFF));  // avoid word overflow
   rec.FirstCol := WordToLe(firstCol);
   rec.LastColPlus1 := WordToLE(lastCol+1);
   rec.NotUsed := 0;
 
   { Write BIFF record }
   AStream.WriteBuffer(rec, SizeOf(rec));
-
-  (*
-
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
-  AStream.WriteWord(WordToLE(10));
-
-  { Index to first used row }
-  AStream.WriteWord(0);
-
-  { Index to last used row, increased by 1 }
-  lLastRow := Word(GetLastRowIndex(AWorksheet)+1);
-  AStream.WriteWord(WordToLE(lLastRow)); // Old dummy value: 33
-
-  { Index to first used column }
-  AStream.WriteWord(0);
-
-  { Index to last used column, increased by 1 }
-  lLastCol := Word(GetLastColIndex(AWorksheet)+1);
-  AStream.WriteWord(WordToLE(lLastCol)); // Old dummy value: 10
-
-  { Not used }
-  AStream.WriteWord(0);
-  *)
 end;
 
 {*******************************************************************

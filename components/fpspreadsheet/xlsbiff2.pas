@@ -93,6 +93,7 @@ type
     procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
     procedure WriteColWidth(AStream: TStream; ACol: PCol);
     procedure WriteColWidths(AStream: TStream);
+    procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFontIndex: Integer);
     procedure WriteFonts(AStream: TStream);
@@ -148,6 +149,7 @@ uses
 
 const
   { Excel record IDs }
+  INT_EXCEL_ID_DIMENSIONS = $0000;
   INT_EXCEL_ID_BLANK      = $0001;
   INT_EXCEL_ID_INTEGER    = $0002;
   INT_EXCEL_ID_NUMBER     = $0003;
@@ -169,6 +171,15 @@ const
   INT_EXCEL_MACRO_SHEET   = $0040;
 
 type
+  TBIFF2DimensionsRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FirstRow: Word;
+    LastRowPlus1: Word;
+    FirstCol: Word;
+    LastColPlus1: Word;
+  end;
+
   TBIFF2LabelRecord = packed record
     RecordID: Word;
     RecordSize: Word;
@@ -1113,6 +1124,30 @@ begin
 end;
 
 {
+  Writes an Excel 2 DIMENSIONS record
+}
+procedure TsSpreadBIFF2Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
+var
+  firstRow, lastRow, firstCol, lastCol: Cardinal;
+  rec: TBIFF2DimensionsRecord;
+begin
+  { Determine sheet size }
+  GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
+
+  { Populate BIFF record }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_DIMENSIONS);
+  rec.RecordSize := WordToLE(8);
+  rec.FirstRow := WordToLE(firstRow);
+  rec.LastRowPlus1 := WordToLE(Min(lastRow+1, $FFFF));  // avoid WORD overflow
+  rec.FirstCol := WordToLE(firstCol);
+  rec.LastColPlus1 := WordToLE(lastCol+1);
+
+  { Write BIFF record to stream }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
+
+{
   Writes an Excel 2 IXFE record
   This record contains the "real" XF index if it is > 62.
 }
@@ -1143,6 +1178,7 @@ begin
     WriteFormats(AStream);
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
+    WriteDimensions(AStream, sheet);
     WriteRows(AStream, sheet);
 
     if (boVirtualMode in Workbook.Options) then
