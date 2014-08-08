@@ -94,10 +94,12 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>

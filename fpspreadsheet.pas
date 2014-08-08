@@ -14,9 +14,9 @@ unit fpspreadsheet;
 interface
 
 uses
- {$IFDEF UNIX}
+ {$ifdef UNIX}{$ifndef DARWIN}{$ifndef FPS_DONT_USE_CLOCALE}
   clocale,
- {$ENDIF}
+ {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding;
 
 type
