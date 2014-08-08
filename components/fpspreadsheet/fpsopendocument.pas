@@ -2939,6 +2939,8 @@ var
 begin
   // some abbreviations...
   defFontSize := Workbook.GetFont(0).Size;
+  GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
+  {
   firstCol := ASheet.GetFirstColIndex;
   firstRow := ASheet.GetFirstRowIndex;
   lastCol := ASheet.GetLastColIndex;
@@ -2946,6 +2948,7 @@ begin
   // avoid arithmetic overflow in case of empty worksheet
   if (firstCol = $FFFFFFFF) and (lastCol = 0) then firstCol := 0;
   if (FirstRow = $FFFFFFFF) and (lastRow = 0) then firstRow := 0;
+  }
   emptyRowsAbove := firstRow > 0;
 
   // Now loop through all rows
@@ -3103,8 +3106,8 @@ begin
   FPointSeparatorSettings.DecimalSeparator:='.';
 
   // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
-  FLimitations.MaxCols := 1024;
-  FLimitations.MaxRows := 1048576;
+  FLimitations.MaxColCount := 1024;
+  FLimitations.MaxRowCount := 1048576;
 end;
 
 destructor TsSpreadOpenDocWriter.Destroy;

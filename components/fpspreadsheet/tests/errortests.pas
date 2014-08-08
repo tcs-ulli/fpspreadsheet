@@ -30,7 +30,6 @@ type
     procedure TestWriteErrorMessages_BIFF8;
     procedure TestWriteErrorMessages_ODS;
     procedure TestWriteErrorMessages_OOXML;
-
   end;
 
 implementation
@@ -62,10 +61,14 @@ var
   row, col: Cardinal;
   row1, row2: Cardinal;
   col1, col2: Cardinal;
+  formula: TsFormula;
   s: String;
   TempFile: String;
   ErrList: TStringList;
 begin
+  formula.FormulaStr := '=A1';
+  formula.DoubleValue := 0.0;
+
   ErrList := TStringList.Create;
   try
     // Test 1: Too many rows
@@ -78,7 +81,8 @@ begin
         MyWorksheet.WriteBlank(row, 0);
         MyWorksheet.WriteNumber(row, 1, 1.0);
         MyWorksheet.WriteUTF8Text(row, 2, 'A');
-        MyWorksheet.WriteRPNFormula(row, 3, CreateRPNFormula(
+        MyWorksheet.WriteFormula(Row, 3, formula);
+        MyWorksheet.WriteRPNFormula(row, 4, CreateRPNFormula(
           RPNCellValue('A1', nil)));
       end;
       TempFile:=NewTempFile;
@@ -97,10 +101,11 @@ begin
       col1 := MAX_COL_COUNT[TTestFormat(AFormat)] - 5;
       col2 := MAX_COL_COUNT[TTestFormat(AFormat)] + 5;
       for col := col1 to col2 do begin
-        MyWorksheet.WriteBlank(row, 0);
-        MyWorksheet.WriteNumber(row, 1, 1.0);
-        MyWorksheet.WriteUTF8Text(row, 2, 'A');
-        MyWorksheet.WriteRPNFormula(row, 3, CreateRPNFormula(
+        MyWorksheet.WriteBlank(0, col);
+        MyWorksheet.WriteNumber(1, col, 1.0);
+        MyWorksheet.WriteUTF8Text(2, col, 'A');
+        MyWorksheet.WriteFormula(3, col, formula);
+        MyWorksheet.WriteRPNFormula(4, col, CreateRPNFormula(
           RPNCellValue('A1', nil)));
       end;
       TempFile:=NewTempFile;

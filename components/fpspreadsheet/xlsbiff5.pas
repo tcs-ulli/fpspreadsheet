@@ -307,6 +307,16 @@ const
   );
 
 type
+  TBIFF5DimensionsRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FirstRow: Word;
+    LastRowPlus1: Word;
+    FirstCol: Word;
+    LastColPlus1: Word;
+    NotUsed: Word;
+  end;
+
   TBIFF5LabelRecord = packed record
     RecordID: Word;
     RecordSize: Word;
@@ -431,7 +441,7 @@ begin
       WriteWindow2(AStream, sheet);
       WritePane(AStream, sheet, true, pane);  // true for "is BIFF5 or BIFF8"
       WriteSelection(AStream, sheet, pane);
-      WriteRows(AStream, sheet);
+      //WriteRows(AStream, sheet);
 
       if (boVirtualMode in Workbook.Options) then
         WriteVirtualCells(AStream)
@@ -551,8 +561,27 @@ end;
 }
 procedure TsSpreadBIFF5Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
-  lLastCol, lLastRow: Word;
+  rec: TBIFF5DimensionsRecord;
+  firstCol, lastCol, firstRow, lastRow: Cardinal;
+  lLastRow, lLastCol: Word;
 begin
+  { Determine sheet size }
+  GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
+
+  { Setup BIFF record }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_DIMENSIONS);
+  rec.RecordSize := WordToLE(10);
+  rec.FirstRow := WordToLE(firstRow);
+  rec.LastRowPlus1 := WordToLE(lastRow+1);
+  rec.FirstCol := WordToLe(firstCol);
+  rec.LastColPlus1 := WordToLE(lastCol+1);
+  rec.NotUsed := 0;
+
+  { Write BIFF record }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+
+  (*
+
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_DIMENSIONS));
   AStream.WriteWord(WordToLE(10));
@@ -573,6 +602,7 @@ begin
 
   { Not used }
   AStream.WriteWord(0);
+  *)
 end;
 
 {*******************************************************************
@@ -951,7 +981,7 @@ var
   rec: TBIFF5LabelRecord;
   buf: array of byte;
 begin
-  if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   case WorkBookEncoding of
