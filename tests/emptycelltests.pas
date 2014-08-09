@@ -16,7 +16,7 @@ uses
 
 var
   // Norm to test against - list of strings that show the layout of empty and occupied cells
-  SollLayoutStrings: array[0..6] of string;
+  SollLayoutStrings: array[0..7] of string;
 
   procedure InitSollLayouts;
 
@@ -151,8 +151,14 @@ begin
 
   SollLayoutStrings[6] := '        |'+
                           '        |'+
+                          '   xx   |'+
+                          '   xx   |';
+
+  SollLayoutStrings[7] := '        |'+
+                          '        |'+
                           '   x x  |'+
                           '   x x  |';
+
 end;
 
 
