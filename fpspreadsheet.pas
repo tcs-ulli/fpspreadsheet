@@ -1574,12 +1574,15 @@ end;
 procedure TsWorksheet.RemoveCallback(data, arg: pointer);
 begin
   Unused(arg);
+  (*
   { The strings and dyn arrays must be reset to nil content manually, because
     FreeMem only frees the record mem, without checking its content }
   PCell(data).UTF8StringValue := '';
   PCell(data).NumberFormatStr := '';
   SetLength(PCell(data).RPNFormulaValue, 0);
-  FreeMem(data);
+//  FreeMem(data);
+*)
+  Dispose(PCell(data));
 end;
 
 function CompareCells(Item1, Item2: Pointer): Integer;
@@ -1952,7 +1955,8 @@ begin
   
   if (Result = nil) then
   begin
-    Result := GetMem(SizeOf(TCell));
+    New(Result);
+//    Result := GetMem(SizeOf(TCell));
     FillChar(Result^, SizeOf(TCell), #0);
 
     Result^.Row := ARow;
@@ -6660,7 +6664,8 @@ end;
 }
 function NewRPNItem: PRPNItem;
 begin
-  Result := GetMem(SizeOf(TRPNItem));
+  New(Result);
+//  Result := GetMem(SizeOf(TRPNItem));
   FillChar(Result^.FE, SizeOf(Result^.FE), 0);
   Result^.FE.StringValue := '';
 end;
@@ -6671,8 +6676,11 @@ end;
 procedure DisposeRPNItem(AItem: PRPNItem);
 begin
   if AItem <> nil then begin
+{
     AItem.FE.StringValue := '';;
     FreeMem(AItem, SizeOf(TRPNItem));
+}
+    Dispose(AItem);
   end;
 end;
 
