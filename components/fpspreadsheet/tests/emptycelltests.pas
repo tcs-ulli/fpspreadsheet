@@ -16,7 +16,7 @@ uses
 
 var
   // Norm to test against - list of strings that show the layout of empty and occupied cells
-  SollLayoutStrings: array[0..7] of string;
+  SollLayoutStrings: array[0..9] of string;
 
   procedure InitSollLayouts;
 
@@ -50,6 +50,12 @@ type
     procedure TestWriteReadEmptyCells_BIFF2_5_inv;
     procedure TestWriteReadEmptyCells_BIFF2_6;
     procedure TestWriteReadEmptyCells_BIFF2_6_inv;
+    procedure TestWriteReadEmptyCells_BIFF2_7;
+    procedure TestWriteReadEmptyCells_BIFF2_7_inv;
+    procedure TestWriteReadEmptyCells_BIFF2_8;
+    procedure TestWriteReadEmptyCells_BIFF2_8_inv;
+    procedure TestWriteReadEmptyCells_BIFF2_9;
+    procedure TestWriteReadEmptyCells_BIFF2_9_inv;
 
     { BIFF5 file format tests }
     procedure TestWriteReadEmptyCells_BIFF5_0;
@@ -66,6 +72,12 @@ type
     procedure TestWriteReadEmptyCells_BIFF5_5_inv;
     procedure TestWriteReadEmptyCells_BIFF5_6;
     procedure TestWriteReadEmptyCells_BIFF5_6_inv;
+    procedure TestWriteReadEmptyCells_BIFF5_7;
+    procedure TestWriteReadEmptyCells_BIFF5_7_inv;
+    procedure TestWriteReadEmptyCells_BIFF5_8;
+    procedure TestWriteReadEmptyCells_BIFF5_8_inv;
+    procedure TestWriteReadEmptyCells_BIFF5_9;
+    procedure TestWriteReadEmptyCells_BIFF5_9_inv;
 
     { BIFF8 file format tests }
     procedure TestWriteReadEmptyCells_BIFF8_0;
@@ -82,6 +94,12 @@ type
     procedure TestWriteReadEmptyCells_BIFF8_5_inv;
     procedure TestWriteReadEmptyCells_BIFF8_6;
     procedure TestWriteReadEmptyCells_BIFF8_6_inv;
+    procedure TestWriteReadEmptyCells_BIFF8_7;
+    procedure TestWriteReadEmptyCells_BIFF8_7_inv;
+    procedure TestWriteReadEmptyCells_BIFF8_8;
+    procedure TestWriteReadEmptyCells_BIFF8_8_inv;
+    procedure TestWriteReadEmptyCells_BIFF8_9;
+    procedure TestWriteReadEmptyCells_BIFF8_9_inv;
 
     { OpenDocument file format tests }
     procedure TestWriteReadEmptyCells_ODS_0;
@@ -98,6 +116,12 @@ type
     procedure TestWriteReadEmptyCells_ODS_5_inv;
     procedure TestWriteReadEmptyCells_ODS_6;
     procedure TestWriteReadEmptyCells_ODS_6_inv;
+    procedure TestWriteReadEmptyCells_ODS_7;
+    procedure TestWriteReadEmptyCells_ODS_7_inv;
+    procedure TestWriteReadEmptyCells_ODS_8;
+    procedure TestWriteReadEmptyCells_ODS_8_inv;
+    procedure TestWriteReadEmptyCells_ODS_9;
+    procedure TestWriteReadEmptyCells_ODS_9_inv;
 
     { OOXML file format tests }
     procedure TestWriteReadEmptyCells_OOXML_0;
@@ -114,6 +138,12 @@ type
     procedure TestWriteReadEmptyCells_OOXML_5_inv;
     procedure TestWriteReadEmptyCells_OOXML_6;
     procedure TestWriteReadEmptyCells_OOXML_6_inv;
+    procedure TestWriteReadEmptyCells_OOXML_7;
+    procedure TestWriteReadEmptyCells_OOXML_7_inv;
+    procedure TestWriteReadEmptyCells_OOXML_8;
+    procedure TestWriteReadEmptyCells_OOXML_8_inv;
+    procedure TestWriteReadEmptyCells_OOXML_9;
+    procedure TestWriteReadEmptyCells_OOXML_9_inv;
 
   end;
 
@@ -126,7 +156,7 @@ procedure InitSollLayouts;
 begin
   SollLayoutStrings[0] := 'x      x|'+
                           '        |'+
-                          '   x    |'+
+                          '  ox    |'+
                           '        |'+
                           'x      x|';
 
@@ -134,29 +164,38 @@ begin
                           '  xx  xx|'+
                           'xx  xx  |';
 
-  SollLayoutStrings[2] := '        |'+
+  SollLayoutStrings[2] := 'xxooxxoo|'+
+                          'ooxxooxx|'+
+                          'xxooxxoo|';
+
+  SollLayoutStrings[3] := '        |'+
                           'xxxxxxxx|'+
                           '        |';
 
-  SollLayoutStrings[3] := '        |'+
+  SollLayoutStrings[4] := '        |'+
                           'xxxxxxxx';
 
-  SollLayoutStrings[4] := 'xxxxxxxx|'+
+  SollLayoutStrings[5] := 'xxxxxxxx|'+
                           '        |'+
                           '        ';
 
-  SollLayoutStrings[5] := 'xxxxxxxx|'+
+  SollLayoutStrings[6] := 'xxxxxxxx|'+
                           '  x  x  |'+
                           '        |';
 
-  SollLayoutStrings[6] := '        |'+
+  SollLayoutStrings[7] := '        |'+
                           '        |'+
                           '   xx   |'+
                           '   xx   |';
 
-  SollLayoutStrings[7] := '        |'+
+  SollLayoutStrings[8] := '        |'+
                           '        |'+
                           '   x x  |'+
+                          '   x x  |';
+
+  SollLayoutStrings[9] := 'oooooooo|'+
+                          'oooooooo|'+
+                          'oooxoxoo|'+
                           '   x x  |';
 
 end;
@@ -187,6 +226,19 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
   L: TStringList;
   s: String;
+
+  function FixODS(s: String): String;
+  // In this test, ODS cannot distinguish between a blank and a nonexisting cell
+  var
+    i: Integer;
+  begin
+    Result := s;
+    for i := 1 to Length(Result) do
+      if Result[i] = 'o' then begin
+        if AInverted then Result[i] := 'x' else Result[i] := ' ';
+      end;
+  end;
+
 begin
   TempFile := GetTempFileName;
 
@@ -201,14 +253,22 @@ begin
       MyWorkSheet:= MyWorkBook.AddWorksheet(EmptyCellsSheet);
 
         // Write out cells
+        // 'x' --> write label cell
+        // 'o' --> write blank cell
+        // ' ' --> do not write a cell
         for row := 0 to L.Count-1 do begin
           s := L[row];
           for col := 0 to Length(s)-1 do begin
             if AInverted then begin
-              if s[col+1] = ' ' then s[col+1] := 'x' else s[col+1] := ' ';
+              if s[col+1] = ' ' then s[col+1] := 'x'
+              else
+              if s[col+1] = 'x' then s[col+1] := ' ';
             end;
             if s[col+1] = 'x' then
-              MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+              MyWorksheet.WriteUTF8Text(row, col, CELLTEXT)
+            else
+            if s[col+1] = 'o' then
+              MyWorksheet.WriteBlank(row, col);
           end;
         end;
         MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -231,17 +291,29 @@ begin
         SetLength(s, MyWorksheet.GetLastColIndex + 1);
         for col := 0 to MyWorksheet.GetLastColIndex do begin
           MyCell := MyWorksheet.FindCell(row, col);
-          if MyCell = nil then s[col+1] := ' ' else s[col+1] := 'x';
+          if MyCell = nil then
+            s[col+1] := ' '
+          else
+          if MyCell^.ContentType = cctEmpty then
+            s[col+1] := 'o'
+          else
+            s[col+1] := 'x';
           if AInverted then begin
-            if s[col+1] = ' ' then s[col+1] := 'x' else s[col+1] := ' ';
+            if s[col+1] = ' ' then s[col+1] := 'x'
+            else
+            if s[col+1] = 'x' then s[col+1] := ' ';
           end;
         end;
         if AInverted then
           while Length(s) < Length(L[row]) do s := s + 'x'
         else
           while Length(s) < Length(L[row]) do s := s + ' ';
-        CheckEquals(L[row], s,
-          'Test empty cell layout mismatch, cell '+CellNotation(MyWorksheet, Row, Col));
+        if AFormat = sfOpenDocument then
+          CheckEquals(FixODS(L[row]), s,
+            'Test empty cell layout mismatch, cell '+CellNotation(MyWorksheet, Row, Col))
+        else
+          CheckEquals(L[row], s,
+            'Test empty cell layout mismatch, cell '+CellNotation(MyWorksheet, Row, Col));
       end;
     finally
       MyWorkbook.Free;
@@ -325,6 +397,36 @@ begin
   TestWriteReadEmptyCells(sfExcel2, 6, true);
 end;
 
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF2_7;
+begin
+  TestWriteReadEmptyCells(sfExcel2, 7, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF2_7_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel2, 7, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF2_8;
+begin
+  TestWriteReadEmptyCells(sfExcel2, 8, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF2_8_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel2, 8, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF2_9;
+begin
+  TestWriteReadEmptyCells(sfExcel2, 9, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF2_9_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel2, 9, true);
+end;
+
 
 { BIFF5 tests }
 
@@ -396,6 +498,36 @@ end;
 procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_6_inv;
 begin
   TestWriteReadEmptyCells(sfExcel5, 6, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_7;
+begin
+  TestWriteReadEmptyCells(sfExcel5, 7, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_7_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel5, 7, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_8;
+begin
+  TestWriteReadEmptyCells(sfExcel5, 8, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_8_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel5, 8, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_9;
+begin
+  TestWriteReadEmptyCells(sfExcel5, 9, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF5_9_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel5, 9, true);
 end;
 
 
@@ -471,6 +603,36 @@ begin
   TestWriteReadEmptyCells(sfExcel8, 6, true);
 end;
 
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF8_7;
+begin
+  TestWriteReadEmptyCells(sfExcel8, 7, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF8_7_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel8, 7, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF8_8;
+begin
+  TestWriteReadEmptyCells(sfExcel8, 8, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF8_8_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel8, 8, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF8_9;
+begin
+  TestWriteReadEmptyCells(sfExcel8, 9, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_BIFF8_9_inv;
+begin
+  TestWriteReadEmptyCells(sfExcel8, 9, true);
+end;
+
 
 { OpenDocument tests }
 
@@ -544,6 +706,36 @@ begin
   TestWriteReadEmptyCells(sfOpenDocument, 6, true);
 end;
 
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_ODS_7;
+begin
+  TestWriteReadEmptyCells(sfOpenDocument, 7, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_ODS_7_inv;
+begin
+  TestWriteReadEmptyCells(sfOpenDocument, 7, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_ODS_8;
+begin
+  TestWriteReadEmptyCells(sfOpenDocument, 8, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_ODS_8_inv;
+begin
+  TestWriteReadEmptyCells(sfOpenDocument, 8, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_ODS_9;
+begin
+  TestWriteReadEmptyCells(sfOpenDocument, 9, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_ODS_9_inv;
+begin
+  TestWriteReadEmptyCells(sfOpenDocument, 9, true);
+end;
+
 
 { OOXML tests }
 
@@ -615,6 +807,36 @@ end;
 procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_6_inv;
 begin
   TestWriteReadEmptyCells(sfOOXML, 6, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_7;
+begin
+  TestWriteReadEmptyCells(sfOOXML, 7, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_7_inv;
+begin
+  TestWriteReadEmptyCells(sfOOXML, 7, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_8;
+begin
+  TestWriteReadEmptyCells(sfOOXML, 8, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_8_inv;
+begin
+  TestWriteReadEmptyCells(sfOOXML, 8, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_9;
+begin
+  TestWriteReadEmptyCells(sfOOXML, 9, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_9_inv;
+begin
+  TestWriteReadEmptyCells(sfOOXML, 9, true);
 end;
 
 
