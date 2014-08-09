@@ -1021,6 +1021,9 @@ begin
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 { Collection columns used in the given table. The columns contain links to
@@ -3215,8 +3218,6 @@ end;
 
 {
   Writes an empty cell
-
-  Not clear whether this is needed for ods, but the inherited procedure is abstract.
 }
 procedure TsSpreadOpenDocWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
@@ -3227,13 +3228,14 @@ begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
 
-  // Write empty cell only if it has formatting
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     AppendToStream(AStream, Format(
       '<table:table-cell table:style-name="ce%d">', [lIndex]),
       '</table:table-cell>');
-  end;
+  end else
+    AppendToStream(AStream,
+      '<table:table-cell />');
 end;
 
 { Creates an XML string for inclusion of the background color into the
