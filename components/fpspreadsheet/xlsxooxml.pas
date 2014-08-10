@@ -166,7 +166,7 @@ type
 implementation
 
 uses
-  variants, fileutil, StrUtils, math, fpsStreams, fpsNumFormatParser;
+  variants, fileutil, strutils, math, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -796,7 +796,6 @@ type
 var
   s: String;
   rgb: TsColorValue;
-  rgba: TRGBA absolute(rgb);  // just for debugging
   idx: Integer;
   tint: Double;
   n: Integer;
@@ -813,7 +812,7 @@ begin
   if s <> '' then begin
     Result := StrToInt(s);
     n := FWorkbook.GetPaletteSize;
-    if (Result <= LAST_PALETTE_COLOR) and (Result < FWorkbook.GetPaletteSize) then
+    if (Result <= LAST_PALETTE_COLOR) and (Result < n) then
       exit;
     // System colors
     // taken from OpenOffice docs
@@ -879,7 +878,7 @@ begin
       if s <> '' then begin
         w := StrToFloat(s, FPointSeparatorSettings);
         for col := col1 to col2 do
-          FWorksheet.WriteColWidth(col, w);
+          AWorksheet.WriteColWidth(col, w);
       end;
     end;
     colNode := colNode.NextSibling;
@@ -906,11 +905,9 @@ var
   fillNode, patternNode, colorNode: TDOMNode;
   nodeName: String;
   filldata: TFillListData;
-  s: String;
   patt: String;
   fgclr: TsColor;
   bgclr: TsColor;
-  ci: TsColor;
 begin
   if ANode = nil then
     exit;
@@ -978,7 +975,6 @@ var
   fntName: String;
   fntSize: Single;
   fntStyles: TsFontStyles;
-  rgb: TsColorValue;
   fntColor: TsColor;
   nodename: String;
   s: String;
@@ -1141,7 +1137,7 @@ begin
     r := StrToInt(s) - 1;
     s := GetAttrValue(ANode, 'ht');
     ht := StrToFloat(s, FPointSeparatorSettings);    // seems to be in "Points"
-    row := FWorksheet.GetRow(r);
+    row := AWorksheet.GetRow(r);
     row^.Height := ht / FWorkbook.GetDefaultFontSize;
     if row^.Height > ROW_HEIGHT_CORRECTION then
       row^.Height := row^.Height - ROW_HEIGHT_CORRECTION
@@ -1326,10 +1322,6 @@ var
   SheetList: TStringList;
   i: Integer;
   fn: String;
-
-  s: String;
-  node: TDOMNode;
-
 begin
   //unzip content.xml into AFileName path
   FilePath := GetTempDir(false);
@@ -1761,7 +1753,6 @@ var
   i: Integer;
   font: TsFont;
   s: String;
-  rgb: TsColorValue;
 begin
   AppendToStream(FSStyles, Format(
       '<fonts count="%d">', [Workbook.GetFontCount]));
@@ -1828,7 +1819,6 @@ end;
 { Writes the workbook's color palette to the file }
 procedure TsSpreadOOXMLWriter.WritePalette(AStream: TStream);
 var
-  c: TsColor;
   rgb: TsColorValue;
   i: Integer;
 begin
@@ -1953,10 +1943,10 @@ var
   bottomRightCell: String;
 begin
   // Show gridlines ?
-  showGridLines := IfThen(soShowGridLines in AWorksheet.Options, ' ', 'showGridLines="0" ');
+  showGridLines := StrUtils.IfThen(soShowGridLines in AWorksheet.Options, ' ', 'showGridLines="0" ');
 
   // Show headers?
-  showHeaders := IfThen(soShowHeaders in AWorksheet.Options, ' ', 'showRowColHeaders="0" ');
+  showHeaders := StrUtils.IfThen(soShowHeaders in AWorksheet.Options, ' ', 'showRowColHeaders="0" ');
 
   // No frozen panes
   if not (soHasFrozenPanes in AWorksheet.Options) or
@@ -2529,7 +2519,6 @@ const
 var
   CellPosText: string;
   lStyleIndex: Cardinal;
-  TextTooLong: boolean=false;
   ResultingValue: string;
   //S: string;
 begin
@@ -2537,9 +2526,14 @@ begin
   Unused(ARow, ACol, ACell);
 
   // Office 2007-2010 (at least) support no more characters in a cell;
-  if Length(AValue) > MAXBYTES then begin
-    TextTooLong := true;
+  if Length(AValue) > MAXBYTES then
+  begin
     ResultingValue := Copy(AValue, 1, MAXBYTES); //may chop off multicodepoint UTF8 characters but well...
+    Workbook.AddErrorMsg(
+      'Text value exceeds %d character limit in cell %s. ' +
+      'Text has been truncated.', [
+      MAXBYTES, GetCellString(ARow, ACol)
+    ]);
   end
   else
     ResultingValue:=AValue;

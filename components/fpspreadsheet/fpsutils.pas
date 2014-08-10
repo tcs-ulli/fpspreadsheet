@@ -2003,7 +2003,6 @@ const
   HUE_120 = 85;
   HUE_180 = 128;
   HUE_240 = 170;
-  HUE_300 = 213;
 
 procedure RGBtoHLS(const R, G, B: Byte; out H, L, S: Byte);
 var

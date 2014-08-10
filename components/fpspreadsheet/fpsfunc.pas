@@ -274,9 +274,7 @@ end;
 function CompareArgs(Arg1, Arg2: TsArgument; AExact: Boolean): integer;
 var
   val1, val2: Double;
-  b1, b2: Boolean;
   cell1, cell2: PCell;
-  s: String;
 begin
   Result := MaxInt;
 
@@ -846,7 +844,7 @@ var
   arg: TsArgument;
   err: TsErrorValue;
   counter, j: Integer;
-  b: Boolean;
+  b: Boolean = false;
 begin
   SetLength(AValues, NumArgs);
   j := 0;
@@ -954,6 +952,7 @@ function fpsAdd(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(2, false, data, Result) then
     Result := CreateNumberArg(data[0] + data[1]);
 end;
@@ -962,6 +961,7 @@ function fpsSub(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(2, false, data, Result) then
     Result := CreateNumberArg(data[0] - data[1]);
 end;
@@ -970,6 +970,7 @@ function fpsMul(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(2, false, data, Result) then
     Result := CreateNumberArg(data[0] * data[1]);
 end;
@@ -978,6 +979,7 @@ function fpsDiv(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(2, false, data, Result) then begin
     if data[1] = 0 then
       Result := CreateErrorArg(errDivideByZero)
@@ -990,6 +992,7 @@ function fpsPercent(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(data[0] * 0.01);
 end;
@@ -998,6 +1001,7 @@ function fpsPower(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(2, false, data, Result) then
     try
       Result := CreateNumberArg(power(data[0], data[1]));
@@ -1011,6 +1015,7 @@ function fpsUMinus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(-data[0]);
 end;
@@ -1019,6 +1024,7 @@ function fpsUPlus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(data[0]);
 end;
@@ -1027,6 +1033,7 @@ function fpsConcat(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgStringArray;
 begin
+  Unused(NumArgs);
   if Args.PopStringValues(2, false, data, Result) then
     Result := CreateStringArg(data[0] + data[1]);
 end;
@@ -1036,6 +1043,7 @@ var
   arg1, arg2: TsArgument;
   res: Integer;
 begin
+  Unused(NumArgs);
   arg2 := NoCellRangeArg(Args.Pop);
   arg1 := NoCellRangeArg(Args.Pop);
   res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
@@ -1047,6 +1055,7 @@ var
   arg1, arg2: TsArgument;
   res: Integer;
 begin
+  Unused(NumArgs);
   arg2 := NoCellRangeArg(Args.Pop);
   arg1 := NoCellRangeArg(Args.Pop);
   res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
@@ -1058,6 +1067,7 @@ var
   arg1, arg2: TsArgument;
   res: Integer;
 begin
+  Unused(NumArgs);
   arg2 := NoCellRangeArg(Args.Pop);
   arg1 := NoCellRangeArg(Args.Pop);
   res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
@@ -1069,6 +1079,7 @@ var
   arg1, arg2: TsArgument;
   res: Integer;
 begin
+  Unused(NumArgs);
   arg2 := NoCellRangeArg(Args.Pop);
   arg1 := NoCellRangeArg(Args.Pop);
   res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
@@ -1080,6 +1091,7 @@ var
   arg1, arg2: TsArgument;
   res: Integer;
 begin
+  Unused(NumArgs);
   arg2 := NoCellRangeArg(Args.Pop);
   arg1 := NoCellRangeArg(Args.Pop);
   res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
@@ -1091,6 +1103,7 @@ var
   arg1, arg2: TsArgument;
   res: Integer;
 begin
+  Unused(NumArgs);
   arg2 := NoCellRangeArg(Args.Pop);
   arg1 := NoCellRangeArg(Args.Pop);
   res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
@@ -1104,6 +1117,7 @@ function fpsABS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(abs(data[0]));
 end;
@@ -1112,6 +1126,7 @@ function fpsACOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if InRange(data[0], -1, +1) then
       Result := CreateNumberArg(arccos(data[0]))
@@ -1124,6 +1139,7 @@ function fpsACOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if data[0] >= 1 then
       Result := CreateNumberArg(arccosh(data[0]))
@@ -1136,6 +1152,7 @@ function fpsASIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if InRange(data[0], -1, +1) then
       Result := CreateNumberArg(arcsin(data[0]))
@@ -1148,6 +1165,7 @@ function fpsASINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(arcsinh(data[0]));
 end;
@@ -1156,6 +1174,7 @@ function fpsATAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(arctan(data[0]));
 end;
@@ -1164,6 +1183,7 @@ function fpsATANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] > -1) and (data[0] < +1) then
       Result := CreateNumberArg(arctanh(data[0]))
@@ -1176,6 +1196,7 @@ function fpsCOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(cos(data[0]));
 end;
@@ -1184,6 +1205,7 @@ function fpsCOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(cosh(data[0]));
 end;
@@ -1192,6 +1214,7 @@ function fpsDEGREES(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(RadToDeg(data[0]));
 end;
@@ -1200,6 +1223,7 @@ function fpsEXP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(exp(data[0]));
 end;
@@ -1208,6 +1232,7 @@ function fpsINT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(floor(data[0]));
 end;
@@ -1216,6 +1241,7 @@ function fpsLN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] > 0) then
       Result := CreateNumberArg(ln(data[0]))
@@ -1256,6 +1282,7 @@ function fpsLOG10(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] > 0) then
       Result := CreateNumberArg(log10(data[0]))
@@ -1266,6 +1293,7 @@ end;
 
 function fpsPI(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
+  Unused(NumArgs);
   Result := CreateNumberArg(pi);
 end;
 
@@ -1273,12 +1301,14 @@ function fpsRADIANS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(degtorad(data[0]))
 end;
 
 function fpsRAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
+  Unused(NumArgs);
   Result := CreateNumberArg(random);
 end;
 
@@ -1286,6 +1316,7 @@ function fpsROUND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(2, false, data, Result) then
     Result := CreateNumberArg(RoundTo(data[0], round(data[1])))
 end;
@@ -1294,6 +1325,7 @@ function fpsSIGN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(sign(data[0]))
 end;
@@ -1302,6 +1334,7 @@ function fpsSIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(sin(data[0]))
 end;
@@ -1310,6 +1343,7 @@ function fpsSINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(sinh(data[0]))
 end;
@@ -1318,6 +1352,7 @@ function fpsSQRT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if data[0] >= 0.0 then
       Result := CreateNumberArg(sqrt(data[0]))
@@ -1330,6 +1365,7 @@ function fpsTAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if frac(data[0] / (pi*0.5)) = 0 then
       Result := CreateErrorArg(errOverflow)
@@ -1342,6 +1378,7 @@ function fpsTANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then
     Result := CreateNumberArg(tanh(data[0]))
 end;
@@ -1355,6 +1392,7 @@ var
   data: TsArgNumberArray;
   d: TDate;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(3, false, data, Result) then begin
     d := EncodeDate(round(data[0]), round(data[1]), round(data[2]));
     Result := CreateNumberArg(d);
@@ -1375,6 +1413,7 @@ var
   start_date, end_date: TDate;
   res1, res2, res3: TsArgument;
 begin
+  Unused(NumArgs);
   Args.PopString(interval, res1);
   PopDateValue(Args, end_date, res2);;
   PopDateValue(Args, start_date, res3);
@@ -1410,6 +1449,7 @@ function fpsDATEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   d: TDate;
 begin
+  Unused(NumArgs);
   if PopDateValue(Args, d, Result) then
     Result := CreateNumberArg(d);
 end;
@@ -1418,6 +1458,7 @@ function fpsDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   d: TDate;
 begin
+  Unused(NumArgs);
   if PopDateValue(Args, d, Result) then
     Result := CreateNumberArg(DayOf(d));
 end;
@@ -1426,6 +1467,7 @@ function fpsHOUR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   t: TTime;
 begin
+  Unused(NumArgs);
   if PopTimeValue(Args, t, Result) then
     Result := CreateNumberArg(HourOf(t));
 end;
@@ -1434,6 +1476,7 @@ function fpsMINUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   t: TTime;
 begin
+  Unused(NumArgs);
   if PopTimeValue(Args, t, Result) then
     Result := CreateNumberArg(MinuteOf(t));
 end;
@@ -1442,6 +1485,7 @@ function fpsMONTH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   d: TDate;
 begin
+  Unused(NumArgs);
   if PopDateValue(Args, d, Result) then
     Result := CreateNumberArg(MonthOf(d));
 end;
@@ -1449,6 +1493,7 @@ end;
 function fpsNOW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // NOW()
 begin
+  Unused(NumArgs);
   Result := CreateNumberArg(now);
 end;
 
@@ -1456,6 +1501,7 @@ function fpsSECOND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   t: TTime;
 begin
+  Unused(NumArgs);
   if PopTimeValue(Args, t, Result) then
     Result := CreateNumberArg(SecondOf(t));
 end;
@@ -1466,6 +1512,7 @@ var
   data: TsArgNumberArray;
   t: TTime;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(3, false, data, Result) then begin
     t := EncodeTime(round(data[0]), round(data[1]), round(data[2]), 0);
     Result := CreateNumberArg(t);
@@ -1477,6 +1524,7 @@ function fpsTIMEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   t: TTime;
 begin
+  Unused(NumArgs);
   if PopTimeValue(Args, t, Result) then
     Result := CreateNumberArg(t);
 end;
@@ -1484,6 +1532,7 @@ end;
 function fpsToday(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TODAY()
 begin
+  Unused(NumArgs);
   Result := CreateNumberArg(Date());
 end;
 
@@ -1515,6 +1564,7 @@ function fpsYEAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   d: TDate;
 begin
+  Unused(NumArgs);
   if PopDateValue(Args, d, Result) then
     Result := CreateNumberArg(YearOf(d));
 end;
@@ -1599,6 +1649,7 @@ var
   arg: TsArgument;
   r, c, n: Cardinal;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   case arg.ArgumentType of
     atCell:
@@ -1633,6 +1684,7 @@ var
   res: Integer;
   cell: PCell;
 begin
+  Unused(NumArgs);
   criteria := Args.Pop;
   arg := Args.Pop;
   compare := coEqual;
@@ -1847,6 +1899,7 @@ end;
 function fpsFALSE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // FALSE( )
 begin
+  Unused(NumArgs);
   Result := CreateBoolArg(false);
 end;
 
@@ -1901,6 +1954,7 @@ end;
 function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TRUE ( )
 begin
+  Unused(NumArgs);
   Result := CreateBoolArg(true);
 end;
 
@@ -1912,6 +1966,7 @@ function fpsCHAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   data: TsArgNumberArray;
 begin
+  Unused(NumArgs);
   if Args.PopNumberValues(1, false, data, Result) then begin
     if (data[0] >= 0) and (data[0] <= 255) then
       Result := CreateStringArg(AnsiToUTF8(Char(Round(data[0]))));
@@ -1924,6 +1979,7 @@ var
   s: String;
   ch: Char;
 begin
+  Unused(NumArgs);
   if Args.PopString(s, Result) then begin
     if s <> '' then begin
       ch := UTF8ToAnsi(s)[1];
@@ -1965,6 +2021,7 @@ function fpsLOWER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   s: String;
 begin
+  Unused(NumArgs);
   if Args.PopString(s, Result) then
     Result := CreateStringArg(UTF8LowerCase(s));
 end;
@@ -1976,6 +2033,7 @@ var
   s: String;
   res1, res2: TsArgument;
 begin
+  Unused(NumArgs);
   Args.PopNumberValues(2, false, data, res1);
   Args.PopString(s, res2);
   if res1.ErrorValue <> errOK then begin
@@ -1996,6 +2054,7 @@ var
   s, s1, s2, snew: String;
   p, count: Integer;
 begin
+  Unused(NumArgs);
   arg_new := Args.Pop;
   if arg_new.ArgumentType <> atString then begin
     Result := CreateErrorArg(errWrongType);
@@ -2092,6 +2151,7 @@ function fpsTRIM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   s: String;
 begin
+  Unused(NumArgs);
   if Args.PopString(s, Result) then
     Result := CreateStringArg(UTF8Trim(s));
 end;
@@ -2101,6 +2161,7 @@ function fpsUPPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   s: String;
 begin
+  Unused(NumArgs);
   if Args.PopString(s, Result) then
     Result := CreateStringArg(UTF8UpperCase(s));
 end;
@@ -2135,6 +2196,7 @@ function fpsCOLUMNS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   case arg.ArgumentType of
     atCell     : Result := CreateNumberArg(1);
@@ -2171,6 +2233,7 @@ function fpsROWS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   case arg.ArgumentType of
     atCell     : Result := CreateNumberArg(1);
@@ -2364,6 +2427,7 @@ var
   workbook: TsWorkbook;
   s: String;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   if arg.ArgumentType <> atString then
     Result := CreateErrorArg(errWrongType)
@@ -2386,6 +2450,7 @@ function fpsISBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg(
     (arg.ArgumentType = atCell) and
@@ -2400,6 +2465,7 @@ function fpsISERR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg((arg.ArgumentType = atError) and (arg.ErrorValue <> errArgError));
 end;
@@ -2411,6 +2477,7 @@ function fpsISERROR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg((arg.ArgumentType = atError));
 end;
@@ -2420,6 +2487,7 @@ function fpsISLOGICAL(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg(arg.ArgumentType = atBool);
 end;
@@ -2431,6 +2499,7 @@ function fpsISNA(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg((arg.ArgumentType = atError) and (arg.ErrorValue = errArgError));
 end;
@@ -2440,6 +2509,7 @@ function fpsISNONTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg(arg.ArgumentType <> atString);
 end;
@@ -2449,6 +2519,7 @@ function fpsISNUMBER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg(arg.ArgumentType = atNumber);
 end;
@@ -2458,6 +2529,7 @@ function fpsISREF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg(arg.ArgumentType in [atCell, atCellRange]);
 end;
@@ -2467,6 +2539,7 @@ function fpsISTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   arg: TsArgument;
 begin
+  Unused(NumArgs);
   arg := Args.Pop;
   Result := CreateBoolArg(arg.ArgumentType = atString);
 end;
@@ -2479,6 +2552,7 @@ var
   s: String;
   x: Double;
 begin
+  Unused(NumArgs);
   if Args.PopString(s, Result) then
     if TryStrToFloat(s, x) then
       Result := CreateNumberArg(x)
