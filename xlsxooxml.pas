@@ -725,19 +725,19 @@ begin
       // to check against "<>0" instead of "=1"
       s1 := GetAttrValue(node, 'numFmtId');
       s2 := GetAttrValue(node, 'applyNumberFormat');
-      if (s2 <> '') and (s2 <> '0') then xf.NumFmtIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then xf.NumFmtIndex := StrToInt(s1);
 
       s1 := GetAttrValue(node, 'fontId');
       s2 := GetAttrValue(node, 'applyFont');
-      if (s2 <> '') and (s2 <> '0') then xf.FontIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then xf.FontIndex := StrToInt(s1);
 
       s1 := GetAttrValue(node, 'fillId');
       s2 := GetAttrValue(node, 'applyFill');
-      if (s2 <> '') and (s2 <> '0') then xf.FillIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then xf.FillIndex := StrToInt(s1);
 
       s1 := GetAttrValue(node, 'borderId');
       s2 := GetAttrValue(node, 'applyBorder');
-      if (s2 <> '') and (s2 <> '0') then xf.BorderIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then xf.BorderIndex := StrToInt(s1);
 
       s2 := GetAttrValue(node, 'applyAlignment');
       if (s2 <> '0') then begin
@@ -766,7 +766,7 @@ begin
               xf.VertAlignment := vaBottom;
 
             s1 := GetAttrValue(childNode, 'wrapText');
-            if (s2 <> '0') then
+            if (s1 <> '0') then
               xf.WordWrap := true;
 
             s1 := GetAttrValue(childNode, 'textRotation');
