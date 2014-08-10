@@ -130,6 +130,7 @@ function HTMLLengthStrToPts(AValue: String): Double;
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
+function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
@@ -139,11 +140,12 @@ procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: S
 
 function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
 
-function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
-
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
 procedure Unused(const A1, A2, A3);
+
+{ For debugging purposes }
+procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 
 var
   ScreenPixelsPerInch: Integer = 96;
@@ -2134,6 +2136,7 @@ begin
   TRGBA(Result).a := 0;
 end;
 
+
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }
 procedure Unused(const A1);
@@ -2153,6 +2156,41 @@ procedure Unused(const A1, A2, A3);
 begin
 end;
 {$POP}
+
+
+{ For debugging only }
+
+{@@ Write the fonts stored for a given workbook to a file. }
+procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
+var
+  L: TStringList;
+  i: Integer;
+  fnt: TsFont;
+begin
+  L := TStringList.Create;
+  try
+    for i:=0 to AWorkbook.GetFontCount-1 do begin
+      fnt := AWorkbook.GetFont(i);
+      if fnt = nil then
+        L.Add(Format('#%.3d: ---------------', [i]))
+      else
+        L.Add(Format('#%.3d: %-15s %4.1f %s%s%s%s %s', [
+          i,
+          fnt.FontName,
+          fnt.Size,
+          IfThen(fssBold in fnt.Style, 'b', '.'),
+          IfThen(fssItalic in fnt.Style, 'i', '.'),
+          IfThen(fssUnderline in fnt.Style, 'u', '.'),
+          IfThen(fssStrikeOut in fnt.Style, 's', '.'),
+          AWorkbook.GetPaletteColorAsHTMLStr(fnt.Color)
+        ]));
+    end;
+    L.SaveToFile(AFileName);
+  finally
+    L.Free;
+  end;
+end;
+
 
 end.
 
