@@ -1034,8 +1034,9 @@ begin
     node := node.NextSibling;
   end;
 
-  if FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor) = -1 then
-    FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+  { We must not check for duplicate fonts here because then we cannot reconstruct
+    the correct font id later }
+  FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
