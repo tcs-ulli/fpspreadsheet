@@ -587,21 +587,21 @@ type
     function WriteFormula(ARow, ACol: Cardinal; AFormula: String): PCell; overload;
     procedure WriteFormula(ACell: PCell; AFormula: String); overload;
 
-    procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double); overload;
+    function WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
-    procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-      AFormat: TsNumberFormat; ADecimals: Byte = 2); overload;
+    function WriteNumber(ARow, ACol: Cardinal; ANumber: double;
+      AFormat: TsNumberFormat; ADecimals: Byte = 2): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
       AFormat: TsNumberFormat; ADecimals: Byte = 2); overload;
-    procedure WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-      AFormat: TsNumberFormat; AFormatString: String); overload;
+    function WriteNumber(ARow, ACol: Cardinal; ANumber: double;
+      AFormat: TsNumberFormat; AFormatString: String): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
       AFormat: TsNumberFormat; AFormatString: String); overload;
 
     function WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula): PCell; overload;
     procedure WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula); overload;
 
-    procedure WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring); overload;
+    function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell; overload;
     procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
     { Writing of cell attributes }
@@ -2761,13 +2761,12 @@ end;
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  AText     The text to be written encoded in utf-8
+  @return Pointer to cell created or used
 }
-procedure TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring);
-var
-  ACell: PCell;
+function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell;
 begin
-  ACell := GetCell(ARow, ACol);
-  WriteUTF8Text(ACell, AText);
+  Result := GetCell(ARow, ACol);
+  WriteUTF8Text(Result, AText);
 end;
 
 {@@
@@ -2794,10 +2793,12 @@ end;
   @param  ARow      Cell row index
   @param  ACol      Cell column index
   @param  ANumber   Number to be written
+  @return Pointer to cell created or used
 }
-procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double);
+function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell;
 begin
-  WriteNumber(GetCell(ARow, ACol), ANumber);
+  Result := GetCell(ARow, ACol);
+  WriteNumber(Result, ANumber);
 end;
 
 {@@
@@ -2824,12 +2825,14 @@ end;
   @param  ANumber   Number to be written
   @param  AFormat   Identifier for a built-in number format, e.g. nfFixed (optional)
   @param  ADecimals Number of decimal places used for formatting (optional)
+  @return Pointer to cell created or used
   @see    TsNumberFormat
 }
-procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-  AFormat: TsNumberFormat; ADecimals: Byte = 2);
+function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
+  AFormat: TsNumberFormat; ADecimals: Byte = 2): PCell;
 begin
-  WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, ADecimals);
+  Result := GetCell(ARow, ACol);
+  WriteNumber(Result, ANumber, AFormat, ADecimals);
 end;
 
 {@@
@@ -2876,11 +2879,13 @@ end;
   @param  ANumber        Number to be written
   @param  AFormat        Format identifier (nfCustom)
   @param  AFormatString  String of formatting codes (such as 'dd/mmm'
+  @return Pointer to cell created or used
 }
-procedure TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double;
-  AFormat: TsNumberFormat; AFormatString: String);
+function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double;
+  AFormat: TsNumberFormat; AFormatString: String): PCell;
 begin
-  WriteNumber(GetCell(ARow, ACol), ANumber, AFormat, AFormatString);
+  Result := GetCell(ARow, ACol);
+  WriteNumber(Result, ANumber, AFormat, AFormatString);
 end;
 
 {@@
