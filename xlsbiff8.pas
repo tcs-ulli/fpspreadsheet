@@ -996,8 +996,7 @@ const
   //37267-8-1=32758
   MAXBYTES = 32758;
 var
-  L, RecLen: Word;
-  TextTooLong: boolean=false;
+  L: Word;
   WideValue: WideString;
   rec: TBIFF8LabelRecord;
   buf: array of byte;
@@ -1018,8 +1017,7 @@ begin
   if Length(WideValue) > MAXBYTES then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    TextTooLong := true;
-    SetLength(WideValue, MaxBytes); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    SetLength(WideValue, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
     Workbook.AddErrorMsg(
       'Text value exceeds %d character limit in cell %s. ' +
       'Text has been truncated.', [

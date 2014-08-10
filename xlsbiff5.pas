@@ -1753,7 +1753,6 @@ var
   XF: WORD;
   cell: PCell;
   AValue: ansistring;
-  AStrValue: ansistring;
 begin
   { Read entire record, starting at Row, except for string data }
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF5LabelRecord) - 2*SizeOf(Word));

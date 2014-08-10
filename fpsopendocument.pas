@@ -2018,7 +2018,6 @@ var
   styleChildNode: TDOMNode;
   family: String;
   styleName: String;
-  styleIndex: Integer;
   numFmtName: String;
   numFmtIndex: Integer;
   numFmtIndexDefault: Integer;
@@ -2237,7 +2236,7 @@ begin
         style.BackgroundColor := IfThen(bkClr = TsColorValue(-1), scNotDefined,
           Workbook.AddColorToPalette(bkClr));
 
-        styleIndex := FCellStyleList.Add(style);
+        FCellStyleList.Add(style);
       end;
     end;
     styleNode := styleNode.NextSibling;
@@ -2577,10 +2576,6 @@ end;
 procedure TsSpreadOpenDocWriter.WriteContent;
 var
   i: Integer;
-  lCellStylesCode: string;
-  lColStylesCode: String;
-  lRowStylesCode: String;
-  lNumFmtCode: String;
 begin
   AppendToStream(FSContent,
     XML_HEADER);
@@ -3067,7 +3062,6 @@ procedure TsSpreadOpenDocWriter.WriteRowStyles(AStream: TStream);
 var
   i: Integer;
   rowstyle: TRowStyleData;
-  useOptRowH: String;
 begin
   if FRowStyleList.Count = 0 then begin
     AppendToStream(AStream,
@@ -3222,7 +3216,6 @@ end;
 procedure TsSpreadOpenDocWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
-  lStyle: String = '';
   lIndex: Integer;
 begin
   Unused(AStream, ACell);
@@ -3400,7 +3393,6 @@ var
   hsm: Integer;  // HorizontalSplitMode
   vsm: Integer;  // VerticalSplitMode
   asr: Integer;  // ActiveSplitRange
-  showGrid: Boolean;
 begin
   for i:=0 to Workbook.GetWorksheetCount-1 do begin
     sheet := Workbook.GetWorksheetByIndex(i);
@@ -3419,7 +3411,7 @@ begin
         hsm := 0; vsm := 2; asr := 2;
       end;
     end;
-    showGrid := (soShowGridLines in sheet.Options);
+    {showGrid := (soShowGridLines in sheet.Options);}
 
     AppendToStream(AStream,
         '<config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>');
@@ -3736,7 +3728,6 @@ var
   displayStr: String;
   lIndex: Integer;
   isTimeOnly: Boolean;
-  lcfmt: String;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
@@ -3751,7 +3742,7 @@ begin
 
   // nfTimeInterval is a special case - let's handle it first:
   if (ACell^.NumberFormat = nfTimeInterval) then begin
-    lcfmt := Lowercase(Copy(ACell^.NumberFormatStr, 1, 2));
+    //lcfmt := Lowercase(Copy(ACell^.NumberFormatStr, 1, 2));
     strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
     displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(

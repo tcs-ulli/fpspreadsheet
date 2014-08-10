@@ -262,7 +262,6 @@ function TBufStream.Seek(const Offset: Int64; Origin: TSeekOrigin): Int64;
 var
   oldPos: Int64;
   newPos: Int64;
-  n: Int64;
 begin
   oldPos := GetPosition;
   case Origin of
@@ -272,8 +271,10 @@ begin
   end;
 
   // case #1: New position is within buffer, no file stream yet
-  if (FFileStream = nil) and (newPos < FMemoryStream.Size) then begin
+  if (FFileStream = nil) and (newPos < FMemoryStream.Size) then
+  begin
     FMemoryStream.Position := newPos;
+    Result := FMemoryStream.Position;
     exit;
   end;
 
@@ -283,6 +284,7 @@ begin
   if (newPos >= FFileStream.Position) and (newPos < FFileStream.Position + FMemoryStream.Size)
   then begin
     FMemoryStream.Position := newPos - FFileStream.Position;
+    Result := FMemoryStream.Position;
     exit;
   end;
 
@@ -291,16 +293,8 @@ begin
     FlushBuffer;
   FFileStream.Position := newPos;
   FMemoryStream.Position := 0;
-  if not IsWritingMode then begin
+  if not IsWritingMode then
     FillBuffer;
-    {
-    FMemoryStream.Position := 0;
-    n := Min(FBufSize, FFileStream.Size - newPos);
-    FMemoryStream.CopyFrom(FFileStream, n);
-    FFileStream.Position := newPos;
-    FMemoryStream.Position := 0;
-    }
-  end;
 end;
 
 function TBufStream.Write(const ABuffer; ACount: LongInt): LongInt;
