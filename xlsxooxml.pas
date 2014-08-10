@@ -978,6 +978,7 @@ var
   fntColor: TsColor;
   nodename: String;
   s: String;
+  isNilFont: Boolean;
 begin
   fnt := Workbook.GetDefaultFont;
   if fnt <> nil then begin
@@ -993,6 +994,7 @@ begin
   end;
 
   node := ANode.FirstChild;
+  isNilFont := node = nil;
   while node <> nil do begin
     nodename := node.NodeName;
     if nodename = 'name' then begin
@@ -1032,7 +1034,8 @@ begin
 
   { We must not check for duplicate fonts here because then we cannot reconstruct
     the correct font id later }
-  FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+  if not isNilFont then  // the font #4 (nil) is added automatically --> skip it here
+    FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
