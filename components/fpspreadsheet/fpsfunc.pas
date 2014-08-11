@@ -1293,6 +1293,7 @@ end;
 
 function fpsPI(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
+  Unused(Args);
   Unused(NumArgs);
   Result := CreateNumberArg(pi);
 end;
@@ -1308,6 +1309,7 @@ end;
 
 function fpsRAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 begin
+  Unused(Args);
   Unused(NumArgs);
   Result := CreateNumberArg(random);
 end;
@@ -1493,6 +1495,7 @@ end;
 function fpsNOW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // NOW()
 begin
+  Unused(Args);
   Unused(NumArgs);
   Result := CreateNumberArg(now);
 end;
@@ -1532,6 +1535,7 @@ end;
 function fpsToday(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TODAY()
 begin
+  Unused(Args);
   Unused(NumArgs);
   Result := CreateNumberArg(Date());
 end;
@@ -1899,6 +1903,7 @@ end;
 function fpsFALSE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // FALSE( )
 begin
+  Unused(Args);
   Unused(NumArgs);
   Result := CreateBoolArg(false);
 end;
@@ -1908,7 +1913,6 @@ function fpsIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   condition: TsArgument;
   case1, case2: TsArgument;
-  err: TsErrorValue;
 begin
   if NumArgs = 3 then
     case2 := Args.Pop;
@@ -1954,6 +1958,7 @@ end;
 function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // TRUE ( )
 begin
+  Unused(Args);
   Unused(NumArgs);
   Result := CreateBoolArg(true);
 end;
@@ -2118,7 +2123,6 @@ function fpsSUBSTITUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   number: Double;
   n: Integer;
-  arg: TsArgument;
   data: TsArgStringArray;
   s, s_old, s_new: String;
 begin
@@ -2310,7 +2314,6 @@ var
   arg: TsArgument;
   cell: PCell;
   sname: String;
-  data: TsArgStringArray;
   res: TsArgument;
 begin
   if NumArgs < 2 then begin

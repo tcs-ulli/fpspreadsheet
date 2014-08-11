@@ -952,7 +952,6 @@ const
 var
   L: Word;
   AnsiValue: ansistring;
-  TextTooLong: boolean=false;
   rec: TBIFF5LabelRecord;
   buf: array of byte;
 begin
@@ -983,7 +982,6 @@ begin
   if Length(AnsiValue) > MAXBYTES then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    TextTooLong := true;
     AnsiValue := Copy(AnsiValue, 1, MAXBYTES);
     Workbook.AddErrorMsg(
       'Text value exceeds %d character limit in cell %s. ' +

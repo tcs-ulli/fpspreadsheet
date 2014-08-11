@@ -791,8 +791,6 @@ begin
 end;
 
 function TsSpreadOOXMLReader.ReadColor(ANode: TDOMNode): TsColor;
-type
-  TRGBA = record r,g,b,a: Byte end;
 var
   s: String;
   rgb: TsColorValue;

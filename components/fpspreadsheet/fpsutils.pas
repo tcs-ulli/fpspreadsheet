@@ -155,6 +155,9 @@ implementation
 uses
   Math, lazutf8;
 
+type
+  TRGBA = record r, g, b, a: byte end;
+
 {******************************************************************************}
 {                       Endianess helper functions                             }
 {******************************************************************************}
@@ -2101,8 +2104,6 @@ end;
   (with the exception that max hue is 240, nur 255!)
 }
 function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
-type
-  TRGBA = record r, g, b, a: byte end;
 const
   HLSMAX = 255;
 var
@@ -2134,7 +2135,6 @@ begin
   TRGBA(Result).b := b;
   TRGBA(Result).a := 0;
 end;
-
 
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }
