@@ -35,7 +35,11 @@ interface
 uses
   Classes, SysUtils,
   fpspreadsheet, xlscommon, fpsutils, lconvencoding;
-  
+
+const
+  BIFF2_MAX_PALETTE_SIZE = 8;
+  // There are more colors but they do not seem to be controlled by a palette.
+
 type
 
   { TsBIFF2NumFormatList }
@@ -143,6 +147,8 @@ var
     $00FFFF   // $07: cyan
   );
 
+  // However, it looks as if BIFF2 can handle more colors, at least 16 are
+  // compatible with the other formats.
 
 implementation
 
@@ -325,7 +331,7 @@ end;
 constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FLimitations.MaxPaletteSize := 16;
+  FLimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
 end;
 
 procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
@@ -936,7 +942,7 @@ end;
 constructor TsSpreadBIFF2Writer.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FLimitations.MaxPaletteSize := 16;
+  FLimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
 end;
 
 { Creates the correct version of the number format list.

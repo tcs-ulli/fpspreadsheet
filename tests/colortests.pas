@@ -266,9 +266,16 @@ begin
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
       color := TsColor(row);
+      expectedRGB := pal[color];
       colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
       currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
-      expectedRGB := pal[color]; //MyWorkbook.GetPaletteColor(color);
+
+      // Excel2 cannot write the entire palette. The writer had called "FixColor".
+      // We simulate that here to get the color correct.
+      if (AFormat = sfExcel2) and (color >= BIFF2_MAX_PALETTE_SIZE) then begin
+        color := MyWorkbook.FindClosestColor(expectedRGB, BIFF2_MAX_PALETTE_SIZE);
+        expectedRGB := MyWorkbook.GetPaletteColor(color);
+      end;
       CheckEquals(expectedRGB, currentRGB,
         'Test saved font color, cell '+CellNotation(MyWorksheet,Row,Col));
     end;
