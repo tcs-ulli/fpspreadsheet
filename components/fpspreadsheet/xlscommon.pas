@@ -1815,7 +1815,6 @@ var
   rgb: TsColorValue;
 begin
   if AColor >= Limitations.MaxPaletteSize then begin
-//  if AColor >= 64 then begin
     rgb := Workbook.GetPaletteColor(AColor);
     Result := Workbook.FindClosestColor(rgb, FLimitations.MaxPaletteSize);
   end else

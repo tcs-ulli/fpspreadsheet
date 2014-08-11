@@ -1203,6 +1203,32 @@ resourcestring
   lpErrArgError = '#N/A';
   lpErrFormulaNotSupported = '<FORMULA?>';
 
+const
+  { These are reserved system colors by Microsoft
+
+  0x0040 Default foreground color - window text color in the sheet display.
+  0x0041 Default background color - window background color in the sheet display and is the default background color for a cell.
+  0x004D Default chart foreground color - window text color in the chart display.
+  0x004E Default chart background color - window background color in the chart display.
+  0x004F Chart neutral color which is black, an RGB value of (0,0,0).
+  0x0051 ToolTip text color - automatic font color for comments.
+  0x7FFF Font automatic color - window text color. }
+  DEF_FOREGROUND_COLOR = $0040;
+  DEF_BACKGROUND_COLOR = $0041;
+  DEF_CHART_FOREGROUND_COLOR = $004D;
+  DEF_CHART_BACKGROUND_COLOR = $004E;
+  DEF_CHART_NEUTRAL_COLOR = $004F;
+  DEF_TOOLTIP_TEXT_COLOR = $0051;
+  DEF_FONT_AUTOMATIC_COLOR = $7FFF;
+
+  DEF_FOREGROUND_COLORVALUE = $000000;
+  DEF_BACKGROUND_COLORVALUE = $FFFFFF;
+  DEF_CHART_FOREGROUND_COLORVALUE = $000000;
+  DEF_CHART_BACKGROUND_COLORVALUE = $FFFFFF;
+  DEF_CHART_NEUTRAL_COLORVALUE = $FFFFFF;
+  DEF_TOOLTIP_TEXT_COLORVALUE = $000000;
+  DEF_FONT_AUTOMATIC_COLORVALUE = $000000;
+
 var
   {@@ RGB colors RGB in "big-endian" notation (red at left). The values are inverted
     at initialization to be little-endian at run-time!
@@ -5452,17 +5478,74 @@ end;
   @return  Index of the new (or already existing) color item
 }
 function TsWorkbook.AddColorToPalette(AColorValue: TsColorValue): TsColor;
+var
+  n: Integer;
 begin
+  n := Length(FPalette);
+
   // Look look for the color. Is it already in the existing palette?
-  if Length(FPalette) > 0 then
-    for Result := 0 to Length(FPalette)-1 do
+  if n > 0 then
+    for Result := 0 to n-1 do
       if FPalette[Result] = AColorValue then
         exit;
 
   // No --> Add it to the palette.
-  Result := Length(FPalette);
-  SetLength(FPalette, Result+1);
-  FPalette[Result] := AColorValue;
+
+  // Do not overwrite Excel's built-in system colors
+  case n of
+    DEF_FOREGROUND_COLOR:
+      begin
+        SetLength(FPalette, n+3);
+        FPalette[n] := DEF_FOREGROUND_COLORVALUE;
+        FPalette[n+1] := DEF_BACKGROUND_COLORVALUE;
+        FPalette[n+2] := AColorValue;
+      end;
+    DEF_BACKGROUND_COLOR:
+      begin
+        SetLength(FPalette, n+2);
+        FPalette[n] := DEF_BACKGROUND_COLORVALUE;
+        FPalette[n+1] := AColorValue;
+      end;
+    DEF_CHART_FOREGROUND_COLOR:
+      begin
+        SetLength(FPalette, n+4);
+        FPalette[n] := DEF_CHART_FOREGROUND_COLORVALUE;
+        FPalette[n+1] := DEF_CHART_BACKGROUND_COLORVALUE;
+        FPalette[n+2] := DEF_CHART_NEUTRAL_COLORVALUE;
+        FPalette[n+3] := AColorValue;
+      end;
+    DEF_CHART_BACKGROUND_COLOR:
+      begin
+        SetLength(FPalette, n+3);
+        FPalette[n] := DEF_CHART_BACKGROUND_COLORVALUE;
+        FPalette[n+1] := DEF_CHART_NEUTRAL_COLORVALUE;
+        FPalette[n+2] := AColorValue;
+      end;
+    DEF_CHART_NEUTRAL_COLOR:
+      begin
+        SetLength(FPalette, n+2);
+        FPalette[n] := DEF_CHART_NEUTRAL_COLORVALUE;
+        FPalette[n+1] := AColorValue;
+      end;
+    DEF_TOOLTIP_TEXT_COLOR:
+      begin
+        SetLength(FPalette, n+2);
+        FPalette[n] := DEF_TOOLTIP_TEXT_COLORVALUE;
+        FPalette[n+1] := AColorValue;
+      end;
+    DEF_FONT_AUTOMATIC_COLOR:
+      begin
+        SetLength(FPalette, n+2);
+        FPalette[n] := DEF_FONT_AUTOMATIC_COLORVALUE;
+        FPalette[n+1] := AColorValue;
+      end;
+    else
+      begin
+        SetLength(FPalette, n+1);
+        FPalette[n] := AColorValue;
+      end;
+  end;
+  Result := Length(FPalette) - 1;
 end;
 
 {@@
@@ -5600,13 +5683,36 @@ end;
 }
 function TsWorkbook.GetPaletteColor(AColorIndex: TsColor): TsColorValue;
 begin
-  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then begin
+  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
+  begin
     if ((FPalette = nil) or (Length(FPalette) = 0)) then
       Result := DEFAULT_PALETTE[AColorIndex]
     else
       Result := FPalette[AColorIndex];
-  end else
+  end
+  else
     Result := $000000;  // "black" as default
+  {
+
+  case AColorIndex of
+    $0040: Result := DEF_FOREGROUND_COLORVALUE;
+    $0041: Result := DEF_BACKGROUND_COLORVALUE;
+    $004D: Result := DEF_CHART_FOREGROUND_COLORVALUE;
+    $004E: Result := DEF_CHART_BACKGROUND_COLORVALUE;
+    $004F: Result := DEF_CHART_NEUTRAL_COLORVALUE;
+    $0051: Result := DEF_TOOLTIP_TEXT_COLORVALUE;
+    $7FFF: Result := DEF_FONT_AUTOMATIC_COLORVALUE;
+    else   if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
+           begin
+             if ((FPalette = nil) or (Length(FPalette) = 0)) then
+               Result := DEFAULT_PALETTE[AColorIndex]
+             else
+               Result := FPalette[AColorIndex];
+           end
+           else
+             Result := $000000;  // "black" as default
+  end;
+  }
 end;
 
 {@@
@@ -5677,6 +5783,9 @@ procedure TsWorkbook.UsePalette(APalette: PsPalette; APaletteCount: Word;
 var
   i: Integer;
 begin
+  if APaletteCount > 64 then
+    raise Exception.Create('Due to Excel-compatibility, palettes cannot have more then 64 colors.');
+
  {$IFOPT R+}
   {$DEFINE RNGCHECK}
  {$ENDIF}
