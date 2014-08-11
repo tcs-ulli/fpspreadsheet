@@ -28,6 +28,7 @@ type
   TsSpreadsheetFormatLimitations = record
     MaxRowCount: Cardinal;
     MaxColCount: Cardinal;
+    MaxPaletteSize: Cardinal;
   end;
 
 const
@@ -859,7 +860,8 @@ type
 
     { Color handling }
     function AddColorToPalette(AColorValue: TsColorValue): TsColor;
-    function FindClosestColor(AColorValue: TsColorValue): TsColor;
+    function FindClosestColor(AColorValue: TsColorValue;
+      AMaxPaletteCount: Integer): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
     function GetColorName(AColorIndex: TsColor): string;
     function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
@@ -869,6 +871,7 @@ type
     procedure UseDefaultPalette;
     procedure UsePalette(APalette: PsPalette; APaletteCount: Word;
       ABigEndian: Boolean = false);
+    function UsesColor(AColorIndex: TsColor): Boolean;
 
     { Error messages }
     procedure AddErrorMsg(const AMsg: String); overload;
@@ -987,6 +990,8 @@ type
     FWorkbook: TsWorkbook;
     {@@ Instance of the worksheet which is currently being read. }
     FWorksheet: TsWorksheet;
+    {@@ Limitations for the specific data file format }
+    FLimitations: TsSpreadsheetFormatLimitations;
   protected
     {@@ List of number formats found in the file }
     FNumFormatList: TsCustomNumFormatList;
@@ -994,6 +999,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); virtual; // to allow descendents to override it
     destructor Destroy; override;
+    function Limitations: TsSpreadsheetFormatLimitations;
     {@@ Instance of the workbook which is currently being read/written. }
     property Workbook: TsWorkbook read FWorkbook;
     {@@ List of number formats found in the workbook. }
@@ -1048,13 +1054,13 @@ type
     for each individual file format. }
   TsCustomSpreadWriter = class(TsCustomSpreadReaderWriter)
   protected
-    {@@ Limitations for the specific data file format }
-    FLimitations: TsSpreadsheetFormatLimitations;
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
     procedure CheckLimitations;
     function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     function  FindFormattingInList(AFormat: PCell): Integer;
+    procedure FixCellColors(ACell: PCell);
+    function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
@@ -1089,7 +1095,6 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    function Limitations: TsSpreadsheetFormatLimitations;
     { General writing methods }
     procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
     procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); virtual;
@@ -1169,8 +1174,13 @@ resourcestring
   lpUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
   lpUnknownSpreadsheetFormat = 'unknown format';
-  lpMaxRowsExceeded = 'This workbook contains %d rows, but the selected file format does not support more than %d rows.';
-  lpMaxColsExceeded = 'This workbook contains %d columns, but the selected file format does not support more than %d columns.';
+  lpMaxRowsExceeded = 'This workbook contains %d rows, but the selected ' +
+    'file format does not support more than %d rows.';
+  lpMaxColsExceeded = 'This workbook contains %d columns, but the selected ' +
+    'file format does not support more than %d columns.';
+  lpTooManyPaletteColors = 'This workbook contains more colors (%d) than are ' +
+    'supported by the file format (%d). The redundant colors are replaced by '+
+    'the best-matching palette colors.';
   lpInvalidFontIndex = 'Invalid font index';
   lpInvalidNumberFormat = 'Trying to use an incompatible number format.';
   lpInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
@@ -5315,7 +5325,7 @@ begin
        SameText(AFontName, fnt.FontName) and
       (abs(ASize - fnt.Size) < 0.001) and   // careful when comparing floating point numbers
       (AStyle = fnt.Style) and
-      (AColor = fnt.Color)
+      (AColor = fnt.Color)    // Take care of limited palette size!
     then
       exit;
   end;
@@ -5496,27 +5506,33 @@ end;
   Finds the palette color index which points to a color that is closest to a
   given color. "Close" means here smallest length of the rgb-difference vector.
 
-  @param   AColorValue   Rgb color value to be considered
+  @param   AColorValue       Rgb color value to be considered
+  @param   AMaxPaletteCount  Number of palette entries considered. Example:
+                             BIFF5/BIFF8 can write only 64 colors, i.e
+                             AMaxPaletteCount = 64
   @return  Palette index of the color closest to AColorValue
 }
-function TsWorkbook.FindClosestColor(AColorValue: TsColorValue): TsColor;
+function TsWorkbook.FindClosestColor(AColorValue: TsColorValue;
+  AMaxPaletteCount: Integer): TsColor;
 type
   TRGBA = record r,g,b, a: Byte end;
 var
   rgb: TRGBA;
   rgb0: TRGBA absolute AColorValue;
   dist: Double;
-  mindist: Double;
+  minDist: Double;
   i: Integer;
+  n: Integer;
 begin
   Result := scNotDefined;
-  mindist := 1E108;
-  for i:=0 to Length(FPalette)-1 do begin
+  minDist := 1E108;
+  n := Min(Length(FPalette), AMaxPaletteCount);
+  for i:=0 to n-1 do begin
     rgb := TRGBA(GetPaletteColor(i));
     dist := sqr(rgb.r - rgb0.r) + sqr(rgb.g - rgb0.g) + sqr(rgb.b - rgb0.b);
-    if dist < mindist then begin
+    if dist < minDist then begin
       Result := i;
-      mindist := dist;
+      minDist := dist;
     end;
   end;
 end;
@@ -5685,6 +5701,45 @@ begin
      {$ENDIF}
 end;
 
+{@@
+  Checks whether a given color is used somewhere within the entire workbook
+
+  @param  AColorIndex   Palette index of the color
+  @result True if the color is used by at least one cell, false if not.
+}
+function TsWorkbook.UsesColor(AColorIndex: TsColor): Boolean;
+var
+  Node: TAVLTreeNode;
+  sheet: TsWorksheet;
+  cell: PCell;
+  i: Integer;
+  fnt: TsFont;
+  b: TsCellBorder;
+begin
+  Result := true;
+  for i:=0 to GetWorksheetCount-1 do begin
+    sheet := GetWorksheetByIndex(i);
+    Node := sheet.Cells.FindLowest;
+    while Assigned(Node) do
+    begin
+      cell := PCell(Node.Data);
+      if (uffBackgroundColor in cell^.UsedFormattingFields) then
+        if cell^.BackgroundColor = AColorIndex then exit;
+      if (uffBorder in cell^.UsedFormattingFields) then
+        for b in TsCellBorders do
+          if cell^.BorderStyles[b].Color = AColorIndex then
+            exit;
+      if (uffFont in cell^.UsedFormattingFields) then
+      begin
+        fnt := GetFont(cell^.FontIndex);
+        if fnt.Color = AColorIndex then
+          exit;
+      end;
+      Node := sheet.Cells.FindSuccessor(Node);
+    end;
+  end;
+  Result := false;
+end;
 
 { TsCustomNumFormatList }
 
@@ -6073,6 +6128,11 @@ constructor TsCustomSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
+  { A good starting point valid for many formats ... }
+  FLimitations.MaxColCount := 256;
+  FLimitations.MaxRowCount := 65536;
+  FLimitations.MaxPaletteSize := $FFFFFFFF;
+  // Number formats
   CreateNumFormatList;
 end;
 
@@ -6097,6 +6157,14 @@ begin
   // nothing to do here
 end;
 
+{@@
+  Returns a record containing limitations of the specific file format of the
+  writer.
+}
+function TsCustomSpreadReaderWriter.Limitations: TsSpreadsheetFormatLimitations;
+begin
+  Result := FLimitations;
+end;
 
 { TsCustomSpreadReader }
 
@@ -6209,9 +6277,6 @@ end;
 constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  { A good starting point valid for many formats... }
-  FLimitations.MaxColCount := 256;
-  FLimitations.MaxRowCount := 65536;
 end;
 
 {@@
@@ -6226,6 +6291,7 @@ var
   i, n: Integer;
   b: TsCellBorder;
   equ: Boolean;
+  clr: TsColor;
 begin
   Result := -1;
 
@@ -6251,7 +6317,7 @@ begin
           equ := false;
           Break;
         end;
-        if FFormattingStyles[i].BorderStyles[b].Color <> AFormat^.BorderStyles[b].Color
+        if FFormattingStyles[i].BorderStyles[b].Color <> FixColor(AFormat^.BorderStyles[b].Color)
         then begin
           equ := false;
           Break;
@@ -6261,7 +6327,7 @@ begin
     end;
 
     if uffBackgroundColor in AFormat^.UsedFormattingFields then
-      if (FFormattingStyles[i].BackgroundColor <> AFormat^.BackgroundColor) then Continue;
+      if (FFormattingStyles[i].BackgroundColor <> FixColor(AFormat^.BackgroundColor)) then Continue;
 
     if uffNumberFormat in AFormat^.UsedFormattingFields then begin
       if (FFormattingStyles[i].NumberFormat <> AFormat^.NumberFormat) then Continue;
@@ -6277,6 +6343,41 @@ begin
 end;
 
 {@@
+  Makes sure that all colors used in a given cell belong to the workbook's
+  color palette.
+}
+procedure TsCustomSpreadWriter.FixCellColors(ACell: PCell);
+var
+  b: TsCellBorder;
+begin
+  if ACell = nil then
+    exit;
+
+  ACell^.BackgroundColor := FixColor(ACell^.BackgroundColor);
+
+  for b in TsCellBorders do
+    ACell^.BorderStyles[b].Color := FixColor(ACell^.BorderStyles[b].Color);
+
+  // Font color is not corrected here because this would affect other writers.
+  // Font color is handled immediately before writing.
+end;
+
+{@@
+  If a color index is greater then the maximum palette color count this
+  color is replaced by the closest palette color.
+
+  The present implementation does not change the color. Must be overridden by
+  writers of formats with limited palette sizes.
+
+  @param  AColor   Color palette index to be checked
+  @return Closest color to AColor. If AColor belongs to the palette it must
+          be returned unchanged. }
+function TsCustomSpreadWriter.FixColor(AColor: TsColor): TsColor;
+begin
+  Result := AColor;
+end;
+
+{@@
   If formatting features of a cell are not supported by the destination file
   format of the writer, here is the place to apply replacements.
   Must be overridden by descendants, nothin happens here. See BIFF2.
@@ -6289,15 +6390,6 @@ procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 begin
   Unused(ACell);
   // to be overridden
-end;
-
-{@@
-  Returns a record containing limitations of the specific file format of the
-  writer.
-}
-function TsCustomSpreadWriter.Limitations: TsSpreadsheetFormatLimitations;
-begin
-  Result := FLimitations;
 end;
 
 {@@
@@ -6354,14 +6446,29 @@ end;
 procedure TsCustomSpreadWriter.CheckLimitations;
 var
   lastCol, lastRow: Cardinal;
+  i, n: Integer;
+  fnt: TsFont;
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
+
+  // Check row count
   if lastRow >= FLimitations.MaxRowCount then
     Workbook.AddErrorMsg(lpMaxRowsExceeded, [lastRow+1, FLimitations.MaxRowCount]);
+
+  // Check column count
   if lastCol >= FLimitations.MaxColCount then
     Workbook.AddErrorMsg(lpMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
-end;
 
+  // Check color count.
+  n := Workbook.GetPaletteSize;
+  if n > FLimitations.MaxPaletteSize then
+    for i:= FLimitations.MaxPaletteSize to n-1 do
+      if Workbook.UsesColor(i) then
+      begin
+        Workbook.AddErrorMsg(lpTooManyPaletteColors, [n, FLimitations.MaxPaletteSize]);
+        break;
+      end;
+end;
 
 {@@
   Callback function for collecting all formatting styles found in the worksheet.
@@ -6384,6 +6491,10 @@ begin
   Len := Length(FFormattingStyles);
   SetLength(FFormattingStyles, Len+1);
   FFormattingStyles[Len] := ACell^;
+
+  // Make sure that all colors of the formatting style cell are used in the workbook's
+  // palette.
+  FixCellColors(@FFormattingStyles[Len]);
 
   // We store the index of the XF record that will be assigned to this style in
   // the "row" of the style. Will be needed when writing the XF record.

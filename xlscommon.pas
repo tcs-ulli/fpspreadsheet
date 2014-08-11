@@ -457,6 +457,7 @@ type
     procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     function FindXFIndex(ACell: PCell): Integer;
+    function FixColor(AColor: TsColor): TsColor; override;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
@@ -685,11 +686,6 @@ const
     INT_EXCEL_TOKEN_TATTR           {fekOpSum}
   );
 
-resourcestring
-  rsTooManyPaletteColors = 'This workbook contains more colors (%d) than are ' +
-    'supported by the file format (%d). The redundant colors are replaced by '+
-    'the best-matching palette colors.';
-
 type
   TBIFF58BlankRecord = packed record
     RecordID: Word;
@@ -841,6 +837,10 @@ begin
   FXFList := TFPList.Create;
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
+  // Limitations of BIFF5 and BIFF8 file format
+  FLimitations.MaxColCount := 256;
+  FLimitations.MaxRowCount := 65536;
+  FLimitations.MaxPaletteSize := 64;
 end;
 
 destructor TsSpreadBIFFReader.Destroy;
@@ -1126,7 +1126,7 @@ begin
   //BIFF2 BIFF3 BIFF4 BIFF5 BIFF8
   //0022H 0022H 0022H 0022H 0022H
   //This record specifies the base date for displaying date values. All dates are stored as count of days past this base date. In
-  //BIFF2-BIFF4 this record is part of the Calculation Settings Block (➜4.3). In BIFF5-BIFF8 it is stored in the Workbook
+  //BIFF2-BIFF4 this record is part of the Calculation Settings Block (➜4.3). In BIFF5-BIFF8 it is stored in the Workbookk
   //Globals Substream.
   //Record DATEMODE, BIFF2-BIFF8:
   //Offset Size Contents
@@ -1739,9 +1739,15 @@ end;
 constructor TsSpreadBIFFWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.
   FDateMode := dm1900;
+
+  // Limitations of BIFF5 and BIFF8 file formats
+  FLimitations.MaxColCount := 256;
+  FLimitations.MaxRowCount := 65536;
+  FLimitations.MaxPaletteSize := 64;
 end;
 
 destructor TsSpreadBIFFWriter.Destroy;
@@ -1802,6 +1808,18 @@ begin
     Result := -1
   else
     Result := FFormattingStyles[idx].Row;
+end;
+
+function TsSpreadBIFFWriter.FixColor(AColor: TsColor): TsColor;
+var
+  rgb: TsColorValue;
+begin
+  if AColor >= Limitations.MaxPaletteSize then begin
+//  if AColor >= 64 then begin
+    rgb := Workbook.GetPaletteColor(AColor);
+    Result := Workbook.FindClosestColor(rgb, FLimitations.MaxPaletteSize);
+  end else
+    Result := AColor;
 end;
 
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
@@ -2094,9 +2112,6 @@ begin
 
   { Take the colors from the palette of the Worksheet }
   n := Workbook.GetPaletteSize;
-
-  if n > 64 then
-    Workbook.AddErrorMsg(rsTooManyPaletteColors, [n, 64]);
 
   { Skip the first 8 entries - they are hard-coded into Excel }
   for i:=8 to 63 do

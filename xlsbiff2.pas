@@ -77,6 +77,7 @@ type
     procedure ReadWindow2(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General reading methods }
     procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
   end;
@@ -124,6 +125,7 @@ type
     procedure WriteWindow1(AStream: TStream); override;
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
   public
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToStream(AStream: TStream); override;
   end;
@@ -319,6 +321,12 @@ end;
 
 
 { TsSpreadBIFF2Reader }
+
+constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FLimitations.MaxPaletteSize := 16;
+end;
 
 procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
 var
@@ -925,6 +933,12 @@ end;
 
 { TsSpreadBIFF2Writer }
 
+constructor TsSpreadBIFF2Writer.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FLimitations.MaxPaletteSize := 16;
+end;
+
 { Creates the correct version of the number format list.
   It is for BIFF2 and BIFF3 file formats. }
 procedure TsSpreadBIFF2Writer.CreateNumFormatList;
@@ -1443,7 +1457,7 @@ begin
   AStream.WriteWord(WordToLE(2));
 
   { Font color index, only first 8 palette entries allowed! }
-  AStream.WriteWord(WordToLE(word(font.Color)));
+  AStream.WriteWord(WordToLE(word(FixColor(font.Color))));
 end;
 
 procedure TsSpreadBiff2Writer.WriteFonts(AStream: TStream);

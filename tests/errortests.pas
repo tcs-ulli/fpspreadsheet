@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  StrUtils;
+  StrUtils, xlsbiff5;
 
 const
   ERROR_SHEET = 'ErrorTest'; //worksheet name
@@ -65,6 +65,7 @@ var
   s: String;
   TempFile: String;
   ErrList: TStringList;
+  newColor: TsColor;
 begin
   formula.FormulaStr := '=A1';
   formula.DoubleValue := 0.0;
@@ -77,7 +78,7 @@ begin
       MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
       row1 := MAX_ROW_COUNT[TTestFormat(AFormat)] - 5;
       row2 := MAX_ROW_COUNT[TTestFormat(AFormat)] + 5;
-      for row :=row1 to row2 do begin
+      for row := row1 to row2 do begin
         MyWorksheet.WriteBlank(row, 0);
         MyWorksheet.WriteNumber(row, 1, 1.0);
         MyWorksheet.WriteUTF8Text(row, 2, 'A');
@@ -117,7 +118,31 @@ begin
       DeleteFile(TempFile);
     end;
 
-    // Test 3: Too long cell label
+    // Test 3: Too many colors
+    if (TTestFormat(AFormat) in [sfExcel2, sfExcel5, sfExcel8]) then begin
+      MyWorkbook := TsWorkbook.Create;
+      try
+        // Prepare a full palette
+        MyWorkbook.UsePalette(@PALETTE_BIFF5[0], Length(PALETTE_BIFF5));
+        // Add 1 more color - this is one too many for BIFF5 and 8, and a lot
+        // too many for BIFF2 !
+        newColor := MyWorkbook.AddColorToPalette($FF7878);
+
+        MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
+        MyWorksheet.WriteUTF8Text(0, 0, s);
+        MyWorksheet.WriteFontColor(0, 0, newColor);
+
+        TempFile:=NewTempFile;
+        MyWorkBook.WriteToFile(TempFile, AFormat, true);
+        ErrList.Text := MyWorkbook.ErrorMsg;
+        CheckEquals(1, ErrList.Count, 'Error count mismatch in test 3');
+      finally
+        MyWorkbook.Free;
+        DeleteFile(TempFile);
+      end;
+    end;
+
+    // Test 4: Too long cell label
     if MAX_CELL_LEN[TTestFormat(AFormat)] <> Cardinal(-1) then begin
       s := DupeString('A', MAX_CELL_LEN[TTestFormat(AFormat)] + 10);
       MyWorkbook := TsWorkbook.Create;
@@ -127,7 +152,7 @@ begin
         TempFile:=NewTempFile;
         MyWorkBook.WriteToFile(TempFile, AFormat, true);
         ErrList.Text := MyWorkbook.ErrorMsg;
-        CheckEquals(1, ErrList.Count, 'Error count mismatch in test 3');
+        CheckEquals(1, ErrList.Count, 'Error count mismatch in test 4');
       finally
         MyWorkbook.Free;
         DeleteFile(TempFile);
