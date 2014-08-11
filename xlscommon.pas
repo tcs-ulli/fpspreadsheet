@@ -400,7 +400,7 @@ type
       ANumberFormatStr: String; out ADateTime: TDateTime): Boolean;
     // Here we can add reading of records which didn't change across BIFF5-8 versions
     // Read a blank cell
-    procedure ReadBlank(AStream: TStream); virtual;
+    procedure ReadBlank(AStream: TStream); override;
     procedure ReadCodePage(AStream: TStream);
     // Read column info
     procedure ReadColInfo(const AStream: TStream);
@@ -529,7 +529,7 @@ type
 implementation
 
 uses
-  Variants, fpsStreams, fpsNumFormatParser;
+  Math, Variants, fpsStreams, fpsNumFormatParser;
 
 { Helper table for rpn formulas:
   Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
@@ -684,6 +684,11 @@ const
     // Other operations
     INT_EXCEL_TOKEN_TATTR           {fekOpSum}
   );
+
+resourcestring
+  rsTooManyPaletteColors = 'This workbook contains more colors (%d) than are ' +
+    'supported by the file format (%d). The redundant colors are replaced by '+
+    'the best-matching palette colors.';
 
 type
   TBIFF58BlankRecord = packed record
@@ -1151,7 +1156,6 @@ var
   XF: WORD;
   ResultFormula: Double = 0.0;
   Data: array [0..7] of byte;
-  Flags: WORD;
   dt: TDateTime;
   nf: TsNumberFormat;
   nfs: String;
@@ -1169,7 +1173,7 @@ begin
   AStream.ReadBuffer(Data, Sizeof(Data));
 
   { Options flags }
-  Flags := WordLEtoN(AStream.ReadWord);
+  WordLEtoN(AStream.ReadWord);
 
   { Not used }
   AStream.ReadDWord;
@@ -1779,7 +1783,6 @@ end;
 function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
 var
   idx: Integer;
-  xfIndex: Word;
   cell: TCell;
 begin
   // First try the fast methods for default formats
@@ -2080,6 +2083,7 @@ end;         *)
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 var
   i, n: Integer;
+  rgb: TsColorValue;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_PALETTE));
@@ -2089,13 +2093,17 @@ begin
   AStream.WriteWord(WordToLE(56));
 
   { Take the colors from the palette of the Worksheet }
-  { Skip the first 8 entries - they are hard-coded into Excel }
   n := Workbook.GetPaletteSize;
+
+  if n > 64 then
+    Workbook.AddErrorMsg(rsTooManyPaletteColors, [n, 64]);
+
+  { Skip the first 8 entries - they are hard-coded into Excel }
   for i:=8 to 63 do
-    if i < n then
-      AStream.WriteDWord(DWordToLE(Workbook.GetPaletteColor(i)))
-    else
-      AStream.WriteDWord(DWordToLE($FFFFFF));
+  begin
+    rgb := Math.IfThen(i < n, Workbook.GetPaletteColor(i), $FFFFFF);
+    AStream.WriteDWord(DWordToLE(rgb))
+  end;
 end;
 
 {@@
@@ -2103,7 +2111,6 @@ end;
 }
 procedure TsSpreadBIFFWriter.WritePageSetup(AStream: TStream);
 var
-  flags: Word;
   dbl: Double;
 begin
   { BIFF record header }
@@ -2125,7 +2132,6 @@ begin
   { Fit worksheet height to this number of pages, 0 = use as many as needed }
   AStream.WriteWord(WordToLE(0));
 
-  flags := 0;
   AStream.WriteWord(WordToLE(0));
 
   { Print resolution in dpi }
@@ -2265,8 +2271,7 @@ end;
 procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
-  i: Integer;
-  RPNLength: Word;
+  RPNLength: Word = 0;
   RecordSizePos, FinalPos: Int64;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then

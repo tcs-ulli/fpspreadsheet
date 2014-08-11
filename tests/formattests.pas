@@ -616,8 +616,6 @@ var
   MyWorkbook: TsWorkbook;
   MyCell: PCell;
   col, maxCol: Integer;
-  expected: String;
-  current: String;
   TempFile: string; //write xls/xml to this file and read back from it
 
   function GetBordersAsText(ABorders: TsCellBorders): String;

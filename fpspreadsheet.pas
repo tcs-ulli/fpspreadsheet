@@ -4535,7 +4535,6 @@ end;
 procedure TsWorksheet.InsertCol(ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
-  cell: PCell;
   col: PCol;
   i: Integer;
 begin

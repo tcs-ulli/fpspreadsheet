@@ -1035,7 +1035,6 @@ var
   s: String;
   defCellStyleIndex: Integer;
   colStyleIndex: Integer;
-  colStyleData: TColumnStyleData;
   colData: TColumnData;
   colsRepeated: Integer;
   j: Integer;
@@ -1052,7 +1051,6 @@ begin
       colStyleIndex := FindColStyleByName(s);
       if colStyleIndex <> -1 then begin
         defCellStyleIndex := -1;
-        colStyleData := TColumnStyleData(FColumnStyleList[colStyleIndex]);
         s := GetAttrValue(ColNode, 'table:default-cell-style-name');
         if s <> '' then begin
           defCellStyleIndex := FindCellStyleByName(s);

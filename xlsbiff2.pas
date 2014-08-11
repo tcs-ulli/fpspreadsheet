@@ -1529,13 +1529,8 @@ procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   FormulaResult: double;
-  i: Integer;
   RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Cardinal;
-  FormulaKind, ExtraInfo: Word;
-  r: Cardinal;
-  len: Integer;
-  s: ansistring;
+  RecordSizePos, FinalPos: Cardinal;
   xf: Word;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
@@ -1697,7 +1692,6 @@ const
 var
   L: Byte;
   AnsiText: ansistring;
-  TextTooLong: boolean=false;
   rec: TBIFF2LabelRecord;
   buf: array of byte;
 var
@@ -1715,7 +1709,6 @@ begin
     // so BIFF2 won't either
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    TextTooLong:=true;
     AnsiText := Copy(AnsiText, 1, MAXBYTES);
     Workbook.AddErrorMsg(
       'Text value exceeds %d character limit in cell %s. ' +

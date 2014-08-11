@@ -59,6 +59,8 @@ end;
 procedure TSpreadVirtualModeTests.WriteVirtualCellDataHandler(Sender: TObject;
   ARow, ACol: Cardinal; var AValue:Variant; var AStyleCell: PCell);
 begin
+  Unused(ACol);
+  Unused(AStyleCell);
   // First read the SollNumbers, then the first 4 SollStrings
   // See comment in TestVirtualMode().
   if ARow < Length(SollNumbers) then

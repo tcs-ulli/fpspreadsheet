@@ -190,8 +190,8 @@ begin
       The test file contains the text representation in column A, and the
       formula in column B. }
     Row := 0;
-    {$I testcases_calcrpnformula.inc}
     TempFile:=GetTempFileName;
+    {$I testcases_calcrpnformula.inc}
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
