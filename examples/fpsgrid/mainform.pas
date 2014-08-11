@@ -109,6 +109,8 @@ end;
 
 // Saves sheet in grid to file, overwriting existing file
 procedure TForm1.BtnSaveClick(Sender: TObject);
+var
+  err: String;
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
@@ -120,6 +122,10 @@ begin
       WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
     finally
       Screen.Cursor := crDefault;
+      // Show a message in case of error(s)
+      err := WorksheetGrid.Workbook.ErrorMsg;
+      if err <> '' then
+        MessageDlg(err, mtError, [mbOK], 0);
     end;
   end;
 end;
@@ -131,6 +137,8 @@ end;
 
 // Loads first worksheet from file into grid
 procedure TForm1.LoadFile(const AFileName: String);
+var
+  err: String;
 begin
   // Load file
   Screen.Cursor := crHourglass;
@@ -147,9 +155,13 @@ begin
     WorksheetGrid.GetSheets(SheetsCombo.Items);
     SheetsCombo.ItemIndex := 0;
 
-//    WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
   finally
     Screen.Cursor := crDefault;
+
+    // Show a message in case of error(s)
+    err := WorksheetGrid.Workbook.ErrorMsg;
+    if err <> '' then
+      MessageDlg(err, mtError, [mbOK], 0);
   end;
 end;
 
