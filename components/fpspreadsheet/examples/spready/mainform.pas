@@ -641,6 +641,8 @@ end;
 
 procedure TForm1.acSaveAsExecute(Sender: TObject);
 // Saves sheet in grid to file, overwriting existing file
+var
+  err: String = '';
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
@@ -652,6 +654,9 @@ begin
       WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
     finally
       Screen.Cursor := crDefault;
+      err := WorksheetGrid.Workbook.ErrorMsg;
+      if err <> '' then
+        MessageDlg(err, mtError, [mbOK], 0);
     end;
   end;
 end;
@@ -765,6 +770,7 @@ procedure TForm1.LoadFile(const AFileName: String);
 var
   pages: TStrings;
   i: Integer;
+  err: String;
 begin
   // Load file
   Screen.Cursor := crHourglass;
@@ -797,8 +803,13 @@ begin
     end;
 
     WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
+
   finally
     Screen.Cursor := crDefault;
+
+    err := WorksheetGrid.Workbook.ErrorMsg;
+    if err <> '' then
+      MessageDlg(err, mtError, [mbOK], 0);
   end;
 end;
 
