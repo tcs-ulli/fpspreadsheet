@@ -134,7 +134,6 @@ type
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
     procedure WriteXFRecords(AStream: TStream);
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
@@ -328,11 +327,6 @@ type
 
 
 { TsSpreadBIFF5Writer }
-
-constructor TsSpreadBIFF5Writer.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create(AWorkbook);
-end;
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteToFile ()
@@ -634,7 +628,7 @@ begin
   AStream.WriteWord(WordToLE(optn));
 
   { Colour index }
-  AStream.WriteWord(WordToLE(ord(AFont.Color)));
+  AStream.WriteWord(WordToLE(ord(FixColor(AFont.Color))));
 
   { Font weight }
   if fssBold in AFont.Style then

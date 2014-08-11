@@ -665,7 +665,7 @@ begin
   AStream.WriteWord(WordToLE(optn));
 
   { Colour index }
-  AStream.WriteWord(WordToLE(ord(AFont.Color)));
+  AStream.WriteWord(WordToLE(ord(FixColor(AFont.Color))));
 
   { Font weight }
   if fssBold in AFont.Style then
