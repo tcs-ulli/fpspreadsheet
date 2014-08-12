@@ -66,6 +66,7 @@ var
   TempFile: String;
   ErrList: TStringList;
   newColor: TsColor;
+  expected: integer;
 begin
   formula.FormulaStr := '=A1';
   formula.DoubleValue := 0.0;
@@ -119,27 +120,31 @@ begin
     end;
 
     // Test 3: Too many colors
-    if (TTestFormat(AFormat) in [sfExcel2, sfExcel5, sfExcel8]) then begin
-      MyWorkbook := TsWorkbook.Create;
-      try
-        // Prepare a full palette
-        MyWorkbook.UsePalette(@PALETTE_BIFF5[0], Length(PALETTE_BIFF5));
-        // Add 1 more color - this is one too many for BIFF5 and 8, and a lot
-        // too many for BIFF2 !
-        newColor := MyWorkbook.AddColorToPalette($FF7878);
+    MyWorkbook := TsWorkbook.Create;
+    try
+      // Prepare a full palette
+      MyWorkbook.UsePalette(@PALETTE_BIFF5[0], Length(PALETTE_BIFF5));
+      // Add 1 more color - this is one too many for BIFF5 and 8, and a lot
+      // too many for BIFF2 !
+      newColor := MyWorkbook.AddColorToPalette($FF7878);
 
-        MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
-        MyWorksheet.WriteUTF8Text(0, 0, s);
-        MyWorksheet.WriteFontColor(0, 0, newColor);
+      MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
+      MyWorksheet.WriteUTF8Text(0, 0, s);
+      MyWorksheet.WriteFontColor(0, 0, newColor);
 
-        TempFile:=NewTempFile;
-        MyWorkBook.WriteToFile(TempFile, AFormat, true);
-        ErrList.Text := MyWorkbook.ErrorMsg;
-        CheckEquals(1, ErrList.Count, 'Error count mismatch in test 3');
-      finally
-        MyWorkbook.Free;
-        DeleteFile(TempFile);
-      end;
+      TempFile:=NewTempFile;
+      MyWorkBook.WriteToFile(TempFile, AFormat, true);
+      ErrList.Text := MyWorkbook.ErrorMsg;
+      // Palette usage in biff --> expecting error due to too large palette
+      if (TTestFormat(AFormat) in [sfExcel2, sfExcel5, sfExcel8]) then
+        expected := 1
+      else
+        // no palette in xml --> no error expected
+        expected := 0;
+      CheckEquals(expected, ErrList.Count, 'Error count mismatch in test 3');
+    finally
+      MyWorkbook.Free;
+      DeleteFile(TempFile);
     end;
 
     // Test 4: Too long cell label

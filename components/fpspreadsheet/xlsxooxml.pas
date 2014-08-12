@@ -1754,6 +1754,7 @@ var
   i: Integer;
   font: TsFont;
   s: String;
+  rgb: TsColorValue;
 begin
   AppendToStream(FSStyles, Format(
       '<fonts count="%d">', [Workbook.GetFontCount]));
@@ -1774,9 +1775,12 @@ begin
       if (fssStrikeout in font.Style) then
         s := s + '<strike />';
       if font.Color <> scBlack then begin
-        s := s + Format('<color indexed="%d" />', [font.Color]);
-        // rgb := Workbook.GetPaletteColor(font.Color);
-        // s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]);
+        if font.Color < 64 then
+          s := s + Format('<color indexed="%d" />', [font.Color])
+        else begin
+          rgb := Workbook.GetPaletteColor(font.Color);
+          s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]);
+        end;
       end;
       AppendToStream(AStream,
         '<font>', s, '</font>');
