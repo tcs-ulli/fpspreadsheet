@@ -1178,8 +1178,8 @@ resourcestring
     'file format does not support more than %d rows.';
   lpMaxColsExceeded = 'This workbook contains %d columns, but the selected ' +
     'file format does not support more than %d columns.';
-  lpTooManyPaletteColors = 'This workbook contains more colors (%d) than are ' +
-    'supported by the file format (%d). The redundant colors are replaced by '+
+  lpTooManyPaletteColors = 'This workbook contains more colors (%d) than ' +
+    'supported by the file format (%d). The additional colors are replaced by '+
     'the best-matching palette colors.';
   lpInvalidFontIndex = 'Invalid font index';
   lpInvalidNumberFormat = 'Trying to use an incompatible number format.';
