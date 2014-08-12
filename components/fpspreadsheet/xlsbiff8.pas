@@ -222,64 +222,64 @@ uses
   fpsStreams;
 
 const
-  { Excel record IDs }
-  INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
-  INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
-  INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
+   { Excel record IDs }
+     INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
+     INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
+{%H-}INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
 
-  { Cell Addresses constants }
-  MASK_EXCEL_COL_BITS_BIFF8     = $00FF;
-  MASK_EXCEL_RELATIVE_COL_BIFF8 = $4000;  // This is according to Microsoft documentation,
-  MASK_EXCEL_RELATIVE_ROW_BIFF8 = $8000;  // but opposite to OpenOffice documentation!
+   { Cell Addresses constants }
+     MASK_EXCEL_COL_BITS_BIFF8     = $00FF;
+     MASK_EXCEL_RELATIVE_COL_BIFF8 = $4000;  // This is according to Microsoft documentation,
+     MASK_EXCEL_RELATIVE_ROW_BIFF8 = $8000;  // but opposite to OpenOffice documentation!
 
-  { BOF record constants }
-  INT_BOF_BIFF8_VER       = $0600;
-  INT_BOF_WORKBOOK_GLOBALS= $0005;
-  INT_BOF_VB_MODULE       = $0006;
-  INT_BOF_SHEET           = $0010;
-  INT_BOF_CHART           = $0020;
-  INT_BOF_MACRO_SHEET     = $0040;
-  INT_BOF_WORKSPACE       = $0100;
-  INT_BOF_BUILD_ID        = $1FD2;
-  INT_BOF_BUILD_YEAR      = $07CD;
+   { BOF record constants }
+     INT_BOF_BIFF8_VER       = $0600;
+     INT_BOF_WORKBOOK_GLOBALS= $0005;
+{%H-}INT_BOF_VB_MODULE       = $0006;
+     INT_BOF_SHEET           = $0010;
+{%H-}INT_BOF_CHART           = $0020;
+{%H-}INT_BOF_MACRO_SHEET     = $0040;
+{%H-}INT_BOF_WORKSPACE       = $0100;
+     INT_BOF_BUILD_ID        = $1FD2;
+     INT_BOF_BUILD_YEAR      = $07CD;
 
-  { STYLE record constants }
-  MASK_STYLE_BUILT_IN     = $8000;
+   { STYLE record constants }
+     MASK_STYLE_BUILT_IN     = $8000;
 
-  { XF substructures }
+   { XF substructures }
 
-  { XF_ROTATION }
-  XF_ROTATION_HORIZONTAL              = 0;
-  XF_ROTATION_90DEG_CCW               = 90;
-  XF_ROTATION_90DEG_CW                = 180;
-  XF_ROTATION_STACKED                 = 255;   // Letters stacked top to bottom, but not rotated
+   { XF_ROTATION }
+     XF_ROTATION_HORIZONTAL              = 0;
+     XF_ROTATION_90DEG_CCW               = 90;
+     XF_ROTATION_90DEG_CW                = 180;
+     XF_ROTATION_STACKED                 = 255;   // Letters stacked top to bottom, but not rotated
 
-  { XF CELL BORDER LINE STYLES }
-  MASK_XF_BORDER_LEFT                 = $0000000F;
-  MASK_XF_BORDER_RIGHT                = $000000F0;
-  MASK_XF_BORDER_TOP                  = $00000F00;
-  MASK_XF_BORDER_BOTTOM               = $0000F000;
-  MASK_XF_BORDER_DIAGONAL             = $01E00000;
+   { XF CELL BORDER LINE STYLES }
+     MASK_XF_BORDER_LEFT                 = $0000000F;
+     MASK_XF_BORDER_RIGHT                = $000000F0;
+     MASK_XF_BORDER_TOP                  = $00000F00;
+     MASK_XF_BORDER_BOTTOM               = $0000F000;
+     MASK_XF_BORDER_DIAGONAL             = $01E00000;
 
-  MASK_XF_BORDER_SHOW_DIAGONAL_DOWN   = $40000000;
-  MASK_XF_BORDER_SHOW_DIAGONAL_UP     = $80000000;
+     MASK_XF_BORDER_SHOW_DIAGONAL_DOWN   = $40000000;
+     MASK_XF_BORDER_SHOW_DIAGONAL_UP     = $80000000;
 
-  { XF CELL BORDER COLORS }
-  MASK_XF_BORDER_LEFT_COLOR           = $007F0000;
-  MASK_XF_BORDER_RIGHT_COLOR          = $3F800000;
-  MASK_XF_BORDER_TOP_COLOR            = $0000007F;
-  MASK_XF_BORDER_BOTTOM_COLOR         = $00003F80;
-  MASK_XF_BORDER_DIAGONAL_COLOR       = $001FC000;
+   { XF CELL BORDER COLORS }
+     MASK_XF_BORDER_LEFT_COLOR           = $007F0000;
+     MASK_XF_BORDER_RIGHT_COLOR          = $3F800000;
+     MASK_XF_BORDER_TOP_COLOR            = $0000007F;
+     MASK_XF_BORDER_BOTTOM_COLOR         = $00003F80;
+     MASK_XF_BORDER_DIAGONAL_COLOR       = $001FC000;
 
-  { XF CELL BACKGROUND PATTERN }
-  MASK_XF_BACKGROUND_PATTERN          = $FC000000;
+   { XF CELL BACKGROUND PATTERN }
+     MASK_XF_BACKGROUND_PATTERN          = $FC000000;
 
-  TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
-    XF_ROTATION_HORIZONTAL,
-    XF_ROTATION_90DEG_CW,
-    XF_ROTATION_90DEG_CCW,
-    XF_ROTATION_STACKED
-  );
+     TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
+       XF_ROTATION_HORIZONTAL,
+       XF_ROTATION_90DEG_CW,
+       XF_ROTATION_90DEG_CCW,
+       XF_ROTATION_STACKED
+     );
 
 type
   TBIFF8DimensionsRecord = packed record
@@ -794,6 +794,9 @@ procedure TsSpreadBIFF8Writer.WriteFormula(AStream: TStream; const ARow,
   RPNLength: Word;
   TokenArraySizePos, RecordSizePos, FinalPos: Int64;}
 begin
+  Unused(AStream);
+  Unused(ARow, ACol);
+  Unused(AFormula, ACell);
 (*
   if (ARow >= FLimitations.MaxRows) or (ACol >= FLimitations.MaxCols) then
     exit;
@@ -1220,13 +1223,13 @@ begin
 
   // Border line styles
   if cbWest in ABorders then
-    XFBorderDWord1 := XFBorderDWord1 or (ord(ABorderStyles[cbWest].LineStyle)+1);
+    XFBorderDWord1 := XFBorderDWord1 or (DWord(ABorderStyles[cbWest].LineStyle)+1);
   if cbEast in ABorders then
-    XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbEast].LineStyle)+1) shl 4);
+    XFBorderDWord1 := XFBorderDWord1 or ((DWord(ABorderStyles[cbEast].LineStyle)+1) shl 4);
   if cbNorth in ABorders then
-    XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbNorth].LineStyle)+1) shl 8);
+    XFBorderDWord1 := XFBorderDWord1 or ((DWord(ABorderStyles[cbNorth].LineStyle)+1) shl 8);
   if cbSouth in ABorders then
-    XFBorderDWord1 := XFBorderDWord1 or ((ord(ABorderStyles[cbSouth].LineStyle)+1) shl 12);
+    XFBorderDWord1 := XFBorderDWord1 or ((DWord(ABorderStyles[cbSouth].LineStyle)+1) shl 12);
   if cbDiagDown in ABorders then
     XFBorderDWord1 := XFBorderDWord1 or $40000000;
   if cbDiagUp in ABorders then
@@ -1240,7 +1243,7 @@ begin
 
   // Diagonal line style
   if (ABorders + [cbDiagUp, cbDiagDown] <> []) then
-    XFBorderDWord2 := XFBorderDWord2 or ((ord(ABorderStyles[cbDiagUp].LineStyle)+1) shl 21);
+    XFBorderDWord2 := XFBorderDWord2 or ((DWord(ABorderStyles[cbDiagUp].LineStyle)+1) shl 21);
     // In BIFF8 both diagonals have the same color - we use the color of the up-diagonal.
 
   // Add a background, if desired

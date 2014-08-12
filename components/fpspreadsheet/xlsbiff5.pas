@@ -218,92 +218,92 @@ var
 implementation
 
 uses
-  Math, fpsStreams;
+  fpsStreams;
 
 const
-  { Excel record IDs }
-  // see: in xlscommon
+   { Excel record IDs }
+     // see: in xlscommon
 
-  { BOF record constants }
-  INT_BOF_BIFF5_VER       = $0500;
-  INT_BOF_WORKBOOK_GLOBALS= $0005;
-  INT_BOF_VB_MODULE       = $0006;
-  INT_BOF_SHEET           = $0010;
-  INT_BOF_CHART           = $0020;
-  INT_BOF_MACRO_SHEET     = $0040;
-  INT_BOF_WORKSPACE       = $0100;
-  INT_BOF_BUILD_ID        = $1FD2;
-  INT_BOF_BUILD_YEAR      = $07CD;
+   { BOF record constants }
+     INT_BOF_BIFF5_VER       = $0500;
+     INT_BOF_WORKBOOK_GLOBALS= $0005;
+{%H-}INT_BOF_VB_MODULE       = $0006;
+     INT_BOF_SHEET           = $0010;
+{%H-}INT_BOF_CHART           = $0020;
+{%H-}INT_BOF_MACRO_SHEET     = $0040;
+{%H-}INT_BOF_WORKSPACE       = $0100;
+     INT_BOF_BUILD_ID        = $1FD2;
+     INT_BOF_BUILD_YEAR      = $07CD;
 
-  { FONT record constants }
-  INT_FONT_WEIGHT_NORMAL  = $0190;
+   { FONT record constants }
+     INT_FONT_WEIGHT_NORMAL  = $0190;
 
-  BYTE_ANSILatin1         = $00;
-  BYTE_SYSTEM_DEFAULT     = $01;
-  BYTE_SYMBOL             = $02;
-  BYTE_Apple_Roman        = $4D;
-  BYTE_ANSI_Japanese_Shift_JIS = $80;
-  BYTE_ANSI_Korean_Hangul = $81;
-  BYTE_ANSI_Korean_Johab  = $81;
-  BYTE_ANSI_Chinese_Simplified_GBK = $86;
-  BYTE_ANSI_Chinese_Traditional_BIG5 = $88;
-  BYTE_ANSI_Greek         = $A1;
-  BYTE_ANSI_Turkish       = $A2;
-  BYTE_ANSI_Vietnamese    = $A3;
-  BYTE_ANSI_Hebrew        = $B1;
-  BYTE_ANSI_Arabic        = $B2;
-  BYTE_ANSI_Baltic        = $BA;
-  BYTE_ANSI_Cyrillic      = $CC;
-  BYTE_ANSI_Thai          = $DE;
-  BYTE_ANSI_Latin2        = $EE;
-  BYTE_OEM_Latin1         = $FF;
+{%H-}BYTE_ANSILatin1         = $00;
+{%H-}BYTE_SYSTEM_DEFAULT     = $01;
+{%H-}BYTE_SYMBOL             = $02;
+{%H-}BYTE_Apple_Roman        = $4D;
+{%H-}BYTE_ANSI_Japanese_Shift_JIS = $80;
+{%H-}BYTE_ANSI_Korean_Hangul = $81;
+{%H-}BYTE_ANSI_Korean_Johab  = $81;
+{%H-}BYTE_ANSI_Chinese_Simplified_GBK = $86;
+{%H-}BYTE_ANSI_Chinese_Traditional_BIG5 = $88;
+{%H-}BYTE_ANSI_Greek         = $A1;
+{%H-}BYTE_ANSI_Turkish       = $A2;
+{%H-}BYTE_ANSI_Vietnamese    = $A3;
+{%H-}BYTE_ANSI_Hebrew        = $B1;
+{%H-}BYTE_ANSI_Arabic        = $B2;
+{%H-}BYTE_ANSI_Baltic        = $BA;
+{%H-}BYTE_ANSI_Cyrillic      = $CC;
+{%H-}BYTE_ANSI_Thai          = $DE;
+{%H-}BYTE_ANSI_Latin2        = $EE;
+{%H-}BYTE_OEM_Latin1         = $FF;
 
-  { FORMULA record constants }
-  MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
-  MASK_FORMULA_RECALCULATE_ON_OPEN = $0002;
-  MASK_FORMULA_SHARED_FORMULA      = $0008;
+   { FORMULA record constants }
+{%H-}MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
+{%H-}MASK_FORMULA_RECALCULATE_ON_OPEN = $0002;
+{%H-}MASK_FORMULA_SHARED_FORMULA      = $0008;
 
-  { STYLE record constants }
-  MASK_STYLE_BUILT_IN     = $8000;
+   { STYLE record constants }
+     MASK_STYLE_BUILT_IN     = $8000;
 
-  { WINDOW1 record constants }
-  MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
-  MASK_WINDOW1_OPTION_WINDOW_MINIMISED          = $0002;
-  MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE       = $0008;
-  MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE       = $0010;
-  MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE     = $0020;
+   { WINDOW1 record constants }
+{%H-}MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
+{%H-}MASK_WINDOW1_OPTION_WINDOW_MINIMISED          = $0002;
+{%H-}MASK_WINDOW1_OPTION_HORZ_SCROLL_VISIBLE       = $0008;
+{%H-}MASK_WINDOW1_OPTION_VERT_SCROLL_VISIBLE       = $0010;
+{%H-}MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE     = $0020;
 
   { XF substructures }
 
-  { XF substructures --- see xlscommon! }
-  XF_ROTATION_HORIZONTAL              = 0;
-  XF_ROTATION_STACKED                 = 1;
-  XF_ROTATION_90DEG_CCW               = 2;
-  XF_ROTATION_90DEG_CW                = 3;
+   { XF substructures --- see xlscommon! }
+     XF_ROTATION_HORIZONTAL              = 0;
+     XF_ROTATION_STACKED                 = 1;
+     XF_ROTATION_90DEG_CCW               = 2;
+     XF_ROTATION_90DEG_CW                = 3;
 
-  { XF CELL BORDER }
-  MASK_XF_BORDER_LEFT                 = $00000038;
-  MASK_XF_BORDER_RIGHT                = $000001C0;
-  MASK_XF_BORDER_TOP                  = $00000007;
-  MASK_XF_BORDER_BOTTOM               = $01C00000;
+   { XF CELL BORDER }
+     MASK_XF_BORDER_LEFT                 = $00000038;
+     MASK_XF_BORDER_RIGHT                = $000001C0;
+     MASK_XF_BORDER_TOP                  = $00000007;
+     MASK_XF_BORDER_BOTTOM               = $01C00000;
 
-  { XF CELL BORDER COLORS }
-  MASK_XF_BORDER_LEFT_COLOR           = $007F0000;
-  MASK_XF_BORDER_RIGHT_COLOR          = $3F800000;
-  MASK_XF_BORDER_TOP_COLOR            = $0000FE00;
-  MASK_XF_BORDER_BOTTOM_COLOR         = $FE000000;
+   { XF CELL BORDER COLORS }
+     MASK_XF_BORDER_LEFT_COLOR           = $007F0000;
+     MASK_XF_BORDER_RIGHT_COLOR          = $3F800000;
+     MASK_XF_BORDER_TOP_COLOR            = $0000FE00;
+     MASK_XF_BORDER_BOTTOM_COLOR         = $FE000000;
 
-  { XF CELL BACKGROUND }
-  MASK_XF_BKGR_PATTERN_COLOR          = $0000007F;
-  MASK_XF_BKGR_BACKGROUND_COLOR       = $00003F80;
-  MASK_XF_BKGR_FILLPATTERN            = $003F0000;
+   { XF CELL BACKGROUND }
+     MASK_XF_BKGR_PATTERN_COLOR          = $0000007F;
+{%H-}MASK_XF_BKGR_BACKGROUND_COLOR       = $00003F80;
+     MASK_XF_BKGR_FILLPATTERN            = $003F0000;
 
-  TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
-    XF_ROTATION_HORIZONTAL,
-    XF_ROTATION_90DEG_CW,
-    XF_ROTATION_90DEG_CCW,
-    XF_ROTATION_STACKED
-  );
+     TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
+       XF_ROTATION_HORIZONTAL,
+       XF_ROTATION_90DEG_CW,
+       XF_ROTATION_90DEG_CCW,
+       XF_ROTATION_STACKED
+     );
 
 type
   TBIFF5DimensionsRecord = packed record
@@ -565,7 +565,10 @@ begin
   rec.RecordID := WordToLE(INT_EXCEL_ID_DIMENSIONS);
   rec.RecordSize := WordToLE(10);
   rec.FirstRow := WordToLE(firstRow);
-  rec.LastRowPlus1 := WordToLE(Min(lastRow+1, $FFFF));  // avoid word overflow
+  if lastRow < $FFFF then   // avoid WORD overflow
+    rec.LastRowPlus1 := WordToLE(lastRow + 1)
+  else
+    rec.LastRowPlus1 := $FFFF;
   rec.FirstCol := WordToLe(firstCol);
   rec.LastColPlus1 := WordToLE(lastCol+1);
   rec.NotUsed := 0;
@@ -1166,14 +1169,14 @@ begin
   end;
   // Border lines
   if cbSouth in ABorders then
-    dw1 := dw1 or ((ord(ABorderStyles[cbSouth].LineStyle)+1) shl 22);
+    dw1 := dw1 or ((DWord(ABorderStyles[cbSouth].LineStyle)+1) shl 22);
   dw1 := dw1 or (ABorderStyles[cbSouth].Color shl 25); // Bottom line color
   dw2 := (ABorderStyles[cbNorth].Color shl 9) or       // Top line color
          (ABorderStyles[cbWest].Color shl 16) or       // Left line color
          (ABorderStyles[cbEast].Color shl 23);         // Right line color
-  if cbNorth in ABorders then dw2 := dw2 or (ord(ABorderStyles[cbNorth].LineStyle)+1);
-  if cbWest in ABorders then dw2 := dw2  or ((ord(ABorderStyles[cbWest].LineStyle)+1) shl 3);
-  if cbEast in ABorders then dw2 := dw2  or ((ord(ABorderStyles[cbEast].LineStyle)+1) shl 6);
+  if cbNorth in ABorders then dw2 := dw2 or  (DWord(ABorderStyles[cbNorth].LineStyle)+1);
+  if cbWest in ABorders then dw2 := dw2  or ((DWord(ABorderStyles[cbWest].LineStyle)+1) shl 3);
+  if cbEast in ABorders then dw2 := dw2  or ((DWord(ABorderStyles[cbEast].LineStyle)+1) shl 6);
   AStream.WriteDWord(DWordToLE(dw1));
   AStream.WriteDWord(DWordToLE(dw2));
 end;

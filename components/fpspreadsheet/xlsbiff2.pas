@@ -164,7 +164,7 @@ const
   INT_EXCEL_ID_LABEL      = $0004;
   INT_EXCEL_ID_ROW        = $0008;
   INT_EXCEL_ID_BOF        = $0009;
-  INT_EXCEL_ID_INDEX      = $000B;
+  {%H-}INT_EXCEL_ID_INDEX = $000B;
   INT_EXCEL_ID_FORMAT     = $001E;
   INT_EXCEL_ID_FORMATCOUNT= $001F;
   INT_EXCEL_ID_COLWIDTH   = $0024;
@@ -175,8 +175,8 @@ const
 
   { BOF record constants }
   INT_EXCEL_SHEET         = $0010;
-  INT_EXCEL_CHART         = $0020;
-  INT_EXCEL_MACRO_SHEET   = $0040;
+  {%H-}INT_EXCEL_CHART    = $0020;
+  {%H-}INT_EXCEL_MACRO_SHEET = $0040;
 
 type
   TBIFF2DimensionsRecord = packed record
@@ -585,8 +585,8 @@ begin
          FWorksheet.WriteBlank(cell);
     end
   else begin
-    if SizeOf(Double) <> 8 then
-      raise Exception.Create('Double is not 8 bytes');
+    {if SizeOf(Double) <> 8 then
+      raise Exception.Create('Double is not 8 bytes');}
 
     // Result is a number or a date/time
     Move(Data[0], formulaResult, SizeOf(Data));
@@ -1158,7 +1158,10 @@ begin
   rec.RecordID := WordToLE(INT_EXCEL_ID_DIMENSIONS);
   rec.RecordSize := WordToLE(8);
   rec.FirstRow := WordToLE(firstRow);
-  rec.LastRowPlus1 := WordToLE(Min(lastRow+1, $FFFF));  // avoid WORD overflow
+  if lastRow < $FFFF then             // avoid WORD overflow when adding 1
+    rec.LastRowPlus1 := WordToLE(lastRow+1)
+  else
+    rec.LastRowPlus1 := $FFFF;
   rec.FirstCol := WordToLE(firstCol);
   rec.LastColPlus1 := WordToLE(lastCol+1);
 
@@ -1548,7 +1551,6 @@ end;
 procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
-  FormulaResult: double;
   RPNLength: Word;
   RecordSizePos, FinalPos: Cardinal;
   xf: Word;
@@ -1557,7 +1559,6 @@ begin
     exit;
 
   RPNLength := 0;
-  FormulaResult := 0.0;
 
   xf := FindXFIndex(ACell);
   if xf >= 63 then

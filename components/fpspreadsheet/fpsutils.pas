@@ -459,7 +459,7 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     // Scan letters
     while (i <= Length(AStr)) do begin
       if (UpCase(AStr[i]) in LETTERS) then begin
-        ACellCol := ord(UpCase(AStr[i])) - ord('A') + 1 + ACellCol * 26;
+        ACellCol := Cardinal(ord(UpCase(AStr[i])) - ord('A')) + 1 + ACellCol * 26;
         inc(i);
       end
       else
@@ -478,7 +478,7 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     // Scan digits
     while (i <= Length(AStr)) do begin
       if (AStr[i] in DIGITS) then begin
-        ACellRow := (ord(AStr[i]) - ord('0')) + ACellRow * 10;
+        ACellRow := Cardinal(ord(AStr[i]) - ord('0')) + ACellRow * 10;
         inc(i);
       end
       else begin
@@ -2009,9 +2009,9 @@ const
 
 procedure RGBtoHLS(const R, G, B: Byte; out H, L, S: Byte);
 var
-  cMax, cMin: Byte;             // max and min RGB values
+  cMax, cMin: Integer;          // max and min RGB values
   Rdelta, Gdelta, Bdelta: Byte; // intermediate value: % of spread from max
-  diff: Byte;
+  diff: Integer;
 begin
   // calculate lightness
   cMax := MaxIntValue([R, G, B]);
@@ -2067,7 +2067,7 @@ procedure HLStoRGB(const H, L, S: Byte; out R, G, B: Byte);
   end;
 
 var
-  n1, n2: Byte;
+  n1, n2: Integer;
 begin
   if S = 0
   then begin

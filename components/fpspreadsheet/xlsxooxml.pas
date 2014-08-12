@@ -170,45 +170,45 @@ uses
 
 const
   { OOXML general XML constants }
-  XML_HEADER               = '<?xml version="1.0" encoding="utf-8" ?>';
+     XML_HEADER               = '<?xml version="1.0" encoding="utf-8" ?>';
 
   { OOXML Directory structure constants }
   // Note: directory separators are always / because the .xlsx is a zip file which
   // requires / instead of \, even on Windows; see 
   // http://www.pkware.com/documents/casestudies/APPNOTE.TXT
   // 4.4.17.1 All slashes MUST be forward slashes '/' as opposed to backwards slashes '\'
-  OOXML_PATH_TYPES         = '[Content_Types].xml';
-  OOXML_PATH_RELS          = '_rels/';
-  OOXML_PATH_RELS_RELS     = '_rels/.rels';
-  OOXML_PATH_XL            = 'xl/';
-  OOXML_PATH_XL_RELS       = 'xl/_rels/';
-  OOXML_PATH_XL_RELS_RELS  = 'xl/_rels/workbook.xml.rels';
-  OOXML_PATH_XL_WORKBOOK   = 'xl/workbook.xml';
-  OOXML_PATH_XL_STYLES     = 'xl/styles.xml';
-  OOXML_PATH_XL_STRINGS    = 'xl/sharedStrings.xml';
-  OOXML_PATH_XL_WORKSHEETS = 'xl/worksheets/';
-  OOXML_PATH_XL_THEME      = 'xl/theme/theme1.xml';
+     OOXML_PATH_TYPES         = '[Content_Types].xml';
+{%H-}OOXML_PATH_RELS          = '_rels/';
+     OOXML_PATH_RELS_RELS     = '_rels/.rels';
+{%H-}OOXML_PATH_XL            = 'xl/';
+{%H-}OOXML_PATH_XL_RELS       = 'xl/_rels/';
+     OOXML_PATH_XL_RELS_RELS  = 'xl/_rels/workbook.xml.rels';
+     OOXML_PATH_XL_WORKBOOK   = 'xl/workbook.xml';
+     OOXML_PATH_XL_STYLES     = 'xl/styles.xml';
+     OOXML_PATH_XL_STRINGS    = 'xl/sharedStrings.xml';
+     OOXML_PATH_XL_WORKSHEETS = 'xl/worksheets/';
+     OOXML_PATH_XL_THEME      = 'xl/theme/theme1.xml';
 
-  { OOXML schemas constants }
-  SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
-  SCHEMAS_RELS         = 'http://schemas.openxmlformats.org/package/2006/relationships';
-  SCHEMAS_DOC_RELS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
-  SCHEMAS_DOCUMENT     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
-  SCHEMAS_WORKSHEET    = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet';
-  SCHEMAS_STYLES       = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
-  SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
-  SCHEMAS_SPREADML     = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+     { OOXML schemas constants }
+     SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
+     SCHEMAS_RELS         = 'http://schemas.openxmlformats.org/package/2006/relationships';
+     SCHEMAS_DOC_RELS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+     SCHEMAS_DOCUMENT     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
+     SCHEMAS_WORKSHEET    = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet';
+     SCHEMAS_STYLES       = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
+     SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
+     SCHEMAS_SPREADML     = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
   { OOXML mime types constants }
-  MIME_XML             = 'application/xml';
-  MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
-  MIME_SPREADML        = 'application/vnd.openxmlformats-officedocument.spreadsheetml';
-  MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
-  MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
-  MIME_STYLES          = MIME_SPREADML + '.styles+xml';
-  MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
+{%H-}MIME_XML             = 'application/xml';
+     MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
+     MIME_SPREADML        = 'application/vnd.openxmlformats-officedocument.spreadsheetml';
+     MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
+     MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
+     MIME_STYLES          = MIME_SPREADML + '.styles+xml';
+     MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
 
-  LAST_PALETTE_COLOR   = $3F;  // 63
+     LAST_PALETTE_COLOR   = $3F;  // 63
 
 var
   // the palette of the 64 default colors as "big-endian color" values
@@ -1166,13 +1166,14 @@ procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
 var
   node: TDOMNode;
   sheetName: String;
-  sheetId: String;
+  //sheetId: String;
 begin
   node := ANode.FirstChild;
   while node <> nil do begin
     sheetName := GetAttrValue(node, 'name');
-    sheetId := GetAttrValue(node, 'sheetId');
-    AList.AddObject(sheetName, pointer(PtrInt(StrToInt(sheetId))));
+    //sheetId := GetAttrValue(node, 'sheetId');
+    AList.Add(sheetName);
+//    AList.AddObject(sheetName, pointer(PtrInt(StrToInt(sheetId))));
     node := node.NextSibling;
   end;
 end;
@@ -1560,10 +1561,13 @@ end;
   "FormattingStyles" which correspond to the section cellXfs of the styles.xml
   file. }
 function TsSpreadOOXMLWriter.GetStyleIndex(ACell: PCell): Cardinal;
+var
+  idx: Integer;
 begin
-  Result := FindFormattingInList(ACell);
-  if Result = -1 then
-    Result := 0;
+  idx := FindFormattingInList(ACell);
+  if idx = -1 then
+    idx := 0;
+  Result := idx;
 end;
 
 { Creates a list of all border styles found in the workbook.

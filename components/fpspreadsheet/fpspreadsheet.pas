@@ -1159,8 +1159,8 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
-procedure InitCell(var ACell: TCell); overload;
-procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell); overload;
+procedure InitCell(out ACell: TCell); overload;
+procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 
 
 implementation
@@ -1185,10 +1185,8 @@ resourcestring
   lpInvalidNumberFormat = 'Trying to use an incompatible number format.';
   lpInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
   lpNoValidNumberFormatString = 'No valid number format string.';
-  lpNoValidDateTimeFormatString = 'No valid date/time format string.';
   lpNoValidCellAddress = '"%s" is not a valid cell address.';
   lpNoValidCellRangeAddress = '"%s" is not a valid cell range address.';
-  lpIllegalNumberFormat = 'Illegal number format.';
   lpSpecifyNumberOfParams = 'Specify number of parameters for function %s';
   lpIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
   lpCircularReference = 'Circular reference found when calculating worksheet formulas';
@@ -1202,6 +1200,10 @@ resourcestring
   lpErrOverflow = '#NUM!';
   lpErrArgError = '#N/A';
   lpErrFormulaNotSupported = '<FORMULA?>';
+
+{%H-}lpNoValidDateTimeFormatString = 'No valid date/time format string.';
+{%H-}lpIllegalNumberFormat = 'Illegal number format.';
+
 
 const
   { These are reserved system colors by Microsoft
@@ -1585,7 +1587,7 @@ end;
 {@@
   Initalizes a new cell
 }
-procedure InitCell(var ACell: TCell);
+procedure InitCell(out ACell: TCell);
 begin
   ACell.RPNFormulaValue := nil;
   ACell.FormulaValue.FormulaStr := '';
@@ -1594,7 +1596,7 @@ begin
   FillChar(ACell, SizeOf(ACell), 0);
 end;
 
-procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell);
+procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
 begin
   InitCell(ACell);
   ACell.Row := ARow;
@@ -5015,6 +5017,7 @@ var
   SheetType: TsSpreadsheetFormat;
   lException: Exception;
 begin
+  lException := pointer(1);
   SheetType := sfExcel8;
   while (SheetType in [sfExcel2..sfExcel8, sfOpenDocument, sfOOXML]) and (lException <> nil) do
   begin
@@ -6400,7 +6403,6 @@ var
   i, n: Integer;
   b: TsCellBorder;
   equ: Boolean;
-  clr: TsColor;
 begin
   Result := -1;
 
@@ -6556,7 +6558,6 @@ procedure TsCustomSpreadWriter.CheckLimitations;
 var
   lastCol, lastRow: Cardinal;
   i, n: Integer;
-  fnt: TsFont;
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
 
