@@ -1550,6 +1550,7 @@ var
   d: TDate;
   data: TsArgNumberArray;
   n: Integer;
+  dow: Integer;
 begin
   n := 1;
   if NumArgs = 2 then begin
@@ -1560,8 +1561,18 @@ begin
       exit;
     end;
   end;
-  if PopDateValue(Args, d, Result) then
-    Result := CreateNumberArg(DayOfWeek(d));
+  if PopDateValue(Args, d, Result) then begin
+    dow := DayOfWeek(d);   // Sunday = 1 ... Saturday = 7
+    case n of
+      1: ;
+      2: if dow > 1 then dow := dow - 1 else dow := 7;
+      3: if dow > 1 then dow := dow - 2 else dow := 6;
+      else
+         Result := CreateErrorArg(errOverflow);  // #NUM!
+         exit;
+    end;
+    Result := CreateNumberArg(dow);
+  end;
 end;
 
 function fpsYEAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;

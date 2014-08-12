@@ -205,8 +205,8 @@ const
   OPENDOC_PATH_SETTINGS  = 'settings.xml';
   OPENDOC_PATH_STYLES    = 'styles.xml';
   OPENDOC_PATH_MIMETYPE  = 'mimetype';
-  OPENDOC_PATH_METAINF   = 'META-INF' + '/';
-  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + '/' + 'manifest.xml';
+  {%H-}OPENDOC_PATH_METAINF   = 'META-INF' + '/';
+  {%H-}OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + '/' + 'manifest.xml';
 
   { OpenDocument schemas constants }
   SCHEMAS_XMLNS_OFFICE   = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
@@ -293,47 +293,17 @@ type
     AutoRowHeight: Boolean;
   end;
 
+  (* --- presently not used, but this may change... ---
+
   { Row data items stored in the RowList of the reader }
   TRowData = class
     Row: Integer;
     RowStyleIndex: Integer;   // index into FRowStyleList of reader
     DefaultCellStyleIndex: Integer;  // Index of default row style in FCellStyleList of reader
   end;
-                                   (*
-{ Utilities }
+  *)
 
-function DecodeODSTime(ATimeStr: String; out AHours, AMinutes, ASeconds, AMilliseconds: Word): Boolean;
-var
-  p: Integer;
-  val: String;
-  hrStr: String;
-  minStr: String;
-  secStr: String;
-  msecStr: String;
-begin
-  Result := false;
-  ATimeStr := Uppercase(ATimeStr);
-  if ATimeStr = '' then
-    exit;
-  if ATimeStr[1] <> 'P' then
-    exit;
-  if (Length(ATimeStr) < 2) or (ATimeStr[2] <> 'T') then
-    exit;
-  p := 3;
-  val := '';
-  while p <= Length(ATimeStr) do begin
-    case ATimeStr[p] of
-      '0'..'9': val := val + ATimeStr[p];
-      'H': begin hrStr := val; val := ''; end;
-      'M': begin minStr := val; val := ''; end;
-      'S': begin secStr := val; val := ''; end;
-      ',', '.':
-    end;
 
-  end;
-
-end;
-                                 *)
 { TsSpreadOpenDocNumFormatList }
 
 procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
@@ -2924,8 +2894,8 @@ var
   k: Integer;
   h, h_mm: Single;  // row height in "lines" and millimeters, respectively
   h1: Single;
-  colsRepeated: Integer;
-  rowsRepeated: Integer;
+  colsRepeated: Cardinal;
+  rowsRepeated: Cardinal;
   colsRepeatedStr: String;
   rowsRepeatedStr: String;
   firstCol, firstRow, lastCol, lastRow: Cardinal;
@@ -3486,8 +3456,8 @@ var
   h, h_mm: Single;      // row height in "lines" and millimeters, respectively
   k: Integer;
   rowStyleData: TRowStyleData;
-  rowsRepeated: Integer;
-  colsRepeated: Integer;
+  rowsRepeated: Cardinal;
+  colsRepeated: Cardinal;
   colsRepeatedStr: String;
   defFontSize: Single;
   lastCol, lastRow: Cardinal;

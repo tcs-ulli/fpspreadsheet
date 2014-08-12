@@ -26,7 +26,7 @@ uses
   not found. }
 function TsSpreadXMLReader.GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 var
-  i: integer;
+  i: LongWord;
   Found: Boolean;
 begin
   Result := '';

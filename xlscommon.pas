@@ -11,11 +11,13 @@ interface
 
 uses
   Classes, SysUtils, DateUtils,
+  (*
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
   fpolestorage,
   {$endif}
+  *)
   fpspreadsheet, fpsutils, lconvencoding;
 
 const
@@ -530,7 +532,7 @@ type
 implementation
 
 uses
-  Math, Variants, fpsStreams, fpsNumFormatParser;
+  Math, Variants, fpsNumFormatParser;
 
 { Helper table for rpn formulas:
   Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
@@ -1210,8 +1212,10 @@ begin
       3: FWorksheet.WriteBlank(cell);
     end
   else begin
+    {
     if SizeOf(Double) <> 8 then
       raise Exception.Create('Double is not 8 bytes');
+    }
 
     // Result is a number or a date/time
     Move(Data[0], ResultFormula, SizeOf(Data));
