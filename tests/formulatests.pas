@@ -180,10 +180,10 @@ begin
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
   try
-    MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
-    MyWorkSheet.Options := MyWorkSheet.Options + [soCalcBeforeSaving];
+    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
     // Calculation of rpn formulas must be activated explicitly!
 
+    MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
     { Write out test formulas.
       This include file creates various rpn formulas and stores the expected
       results in array "sollValues".

@@ -459,12 +459,8 @@ type
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
     @param soHasFrozenPanes If set a number of rows and columns of the spreadsheet
                             is fixed and does not scroll. The number is defined by
-                            LeftPaneWidth and TopPaneHeight.
-    @param soCalcBeforeSaving Calculates formulas before saving the file. Otherwise
-                            there are no results when the file is loaded back by
-                            fpspreadsheet. }
-  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes,
-    soCalcBeforeSaving);
+                            LeftPaneWidth and TopPaneHeight. }
+  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes);
 
   {@@ Set of user interface options
     @ see TsSheetOption }
@@ -750,19 +746,21 @@ type
   {@@
     Option flags for the workbook
 
-    @param  boVirtualMode   If in virtual mode date are not taken from cells
-                            when a spreadsheet is written to file, but are
-                            provided by means of the event OnWriteCellData.
-                            Similarly, when data are read they are not added as
-                            cells but passed the the event OnReadCellData;
-    @param  boBufStream     When this option is set a buffered stream is used
-                            for writing (a memory stream swapping to disk) or
-                            reading (a file stream pre-reading chunks of data
-                            to memory)
-    @param  boAutoCalc      Automatically recalculate rpn formulas whenever
-                            a cell value changes.
-  }
-  TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc);
+    @param  boVirtualMode      If in virtual mode date are not taken from cells
+                               when a spreadsheet is written to file, but are
+                               provided by means of the event OnWriteCellData.
+                               Similarly, when data are read they are not added as
+                               cells but passed the the event OnReadCellData;
+    @param  boBufStream        When this option is set a buffered stream is used
+                               for writing (a memory stream swapping to disk) or
+                               reading (a file stream pre-reading chunks of data
+                               to memory)
+    @param  boAutoCalc         Automatically recalculate rpn formulas whenever
+                               a cell value changes.
+    @param  boCalcBeforeSaving Calculates formulas before saving the file.
+                               Otherwise there are no results when the file is
+                               loaded back by fpspreadsheet. }
+  TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc, boCalcBeforeSaving);
 
   {@@
     Set of options flags for the workbook }
@@ -800,7 +798,7 @@ type
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FWriting: Boolean;
-    FCalculating: Boolean;
+    FCalculationLock: Integer;
     FOptions: TsWorkbookOptions;
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
@@ -816,6 +814,7 @@ type
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
+    procedure ReCalc;
     procedure RemoveWorksheetsCallback(data, arg: pointer);
     procedure UpdateCaches;
 
@@ -1730,7 +1729,7 @@ var
 begin
   // prevent infinite loop due to triggering of formula calculation whenever
   // a cell changes during execution of CalcFormulas.
-  FWorkbook.FCalculating := true;
+  inc(FWorkbook.FCalculationLock);
   try
     // Step 1 - mark all formula cells as "not calculated"
     node := FCells.FindLowest;
@@ -1747,7 +1746,7 @@ begin
       node := FCells.FindSuccessor(node);
     end;
   finally
-    FWorkbook.FCalculating := false;
+    dec(FWorkbook.FCalculationLock);
   end;
 end;
 
@@ -1914,7 +1913,7 @@ end;
 }
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
 begin
-  if not FWorkbook.FCalculating and (boAutoCalc in FWorkbook.Options) then
+  if (FWorkbook.FCalculationLock = 0) and (boAutoCalc in FWorkbook.Options) then
   begin
     if CellUsedInFormula(ARow, ACol) then
       CalcFormulas;
@@ -4849,9 +4848,20 @@ begin
   UpdateCaches;
 
   // Calculated formulas (if requested)
-  for sheet in FWorksheets do
-    if (soCalcBeforeSaving in sheet.Options) then
+  if (boCalcBeforeSaving in FOptions) then
+    for sheet in FWorksheets do
       sheet.CalcFormulas;
+end;
+
+{@@
+  Recalculates rpn formulas in all worksheets
+}
+procedure TsWorkbook.Recalc;
+var
+  sheet: TsWorksheet;
+begin
+  for sheet in FWorksheets do
+    sheet.CalcFormulas;
 end;
 
 {@@
@@ -5026,6 +5036,8 @@ begin
     PrepareBeforeReading;
     AReader.ReadFromFile(AFileName, Self);
     UpdateCaches;
+    if (boAutoCalc in Options) then
+      Recalc;
     FFormat := AFormat;
   finally
     AReader.Free;
@@ -5083,7 +5095,7 @@ var
   SheetType: TsSpreadsheetFormat;
   lException: Exception;
 begin
-  lException := pointer(1);
+  lException := pointer(1);  // Must not be nil initially
   SheetType := sfExcel8;
   while (SheetType in [sfExcel2..sfExcel8, sfOpenDocument, sfOOXML]) and (lException <> nil) do
   begin
@@ -5092,8 +5104,7 @@ begin
       ReadFromFile(AFileName, SheetType);
       lException := nil;
     except
-      on E: Exception do
-           { do nothing } ;
+      on E: Exception do { do nothing } ;
     end;
     if lException = nil then Break;
   end;
@@ -5115,6 +5126,8 @@ begin
     PrepareBeforeReading;
     AReader.ReadFromStream(AStream, Self);
     UpdateCaches;
+    if (boAutoCalc in Options) then
+      Recalc;
   finally
     AReader.Free;
   end;
