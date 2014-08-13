@@ -38,6 +38,7 @@ type
     procedure ShowDateMode;
     procedure ShowDBCell;
     procedure ShowDefColWidth;
+    procedure ShowDefinedName;
     procedure ShowDefRowHeight;
     procedure ShowDelta;
     procedure ShowDimensions;
@@ -269,6 +270,8 @@ begin
       ShowHeader;
     $0015:
       ShowFooter;
+    $0018, $0218:
+      ShowDefinedName;
     $0019:
       ShowWindowProtect;
     $001C:
@@ -874,6 +877,208 @@ begin
 end;
 
 
+procedure TBIFFGrid.ShowDefinedName;
+var
+  numBytes: Integer;
+  b: Byte;
+  w: Word;
+  isFuncMacro: Boolean;
+  lenName: Word;
+  ansistr: AnsiString;
+  widestr: WideString;
+  s: String;
+  macro: Boolean;
+begin
+  if FFormat = sfExcel2 then begin
+    RowCount := FixedRows + 7;
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    isFuncMacro := b and $02 <> 0;
+    if Row = FCurrRow then begin
+      FDetails.Add('Option flags:'#13);
+      if b and $02 = 0 then
+        FDetails.Add('Bit $02 = 0: NO function macro or command macro')
+      else
+        FDetails.Add('Bit $02 = 1: Function macro or command macro');
+      if b and $04 = 0 then
+        FDetails.Add('Bit $04 = 0: NO Complex function (array formula or user defined)')
+      else
+        FDetails.Add('Bit $04 = 1: Complex function (array formula or user defined)');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]),
+      'Option flags');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    if isFuncMacro then
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
+        '$01 = Function macro, $02 = Command macro')
+    else
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
+        'unknown');
+
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+      'Keyboard shortcut (only for command macro names)');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
+      'Length of the name (character count)');
+    lenName := b;
+
+    numbytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(b),
+      'Size of the formula data');
+
+    ShowInRow(FCurrRow, FBufferIndex, 1, '',
+      'Formula data follow...');
+  end else
+  begin
+    RowCount := FixedRows + 12;
+
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    if Row = FCurrRow then begin
+      macro := (w and $0008 <> 0);
+      FDetails.Add('Option flags:'#13);
+      if w and $0001 = 0
+        then FDetails.Add('Bit $0001 (flag name "hidden") = 0: Visible')
+        else FDetails.Add('Bit $0001 (flag name "hidden")= 1: Hidden');
+      if w and $0002 = 0
+        then FDetails.Add('Bit §0002 (flag name "func") = 0: Command macro')
+        else FDetails.Add('Bit $0002 (flag name "func") = 1: Function macro');
+      if w and $0004 = 0
+        then FDetails.Add('Bit $0004 (flag name "vbasic") = 0: Sheet macro')
+        else FDetails.Add('Bit $0004 (flag name "vbasic") = 1: Visual basic macro');
+      if w and $0008 = 0
+        then FDetails.Add('Bit $0008 (flag name "macro") = 0: Standard name')
+        else FDetails.Add('Bit $0008 (flag name "macro") = 1: Macro name');
+      if w and $0010 = 0
+        then FDetails.Add('Bit $0010 (flag name "complex") = 0: Simple formula')
+        else FDetails.Add('Bit $0010 (flag name "complex") = 1: Complex formula (array formula or user defined)');
+      if w and $0020 = 0
+        then FDetails.Add('Bit $0020 (flag name "builtin") = 0: User-defined name')
+        else FDetails.Add('Bit $0020 (flag name "builtin") = 1: Built-in name');
+      case (w and $0FC0) shr 6 of
+        0: if macro then
+             FDetails.Add('Bit $0FC0 = 0: --- forbidden value, must be > 0 ---')
+           else
+             FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 0: not used (requires "macro" = 1)');
+        1: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 1: financial');
+        2: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 2: date & time');
+        3: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 3: math & trig');
+        4: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 4: statistical');
+        5: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 5: lookup & reference');
+        6: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 6: database');
+        7: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 7: text');
+        8: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 8: logical');
+        9: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 9: information');
+       10: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 10: commands');
+       11: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 11: customizing');
+       12: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 12: macro control');
+       13: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 13: dde/external');
+       14: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 14: user defined');
+      end;
+      if w and $1000 = 0
+        then FDetails.Add('Bit $1000 (flag name "binary") = 0: formula definition')
+        else FDetails.add('Bit $1000 (flag name "binary") = 1: binary data (BIFF5-BIFF8)');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+      'Option flags');
+
+    numbytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInrow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b, b]),
+      'Keyboard shortcurt (only for command macro names)');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
+      'Length of the name (character count)');
+    lenName := b;
+
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+      'Size of the formula data');
+
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    if FFormat = sfExcel5 then
+      ShowInRow(FCurrRow, FBufferIndex, NumBytes, IntToStr(w),
+        '0 = Global name, otherwise index to EXTERNSHEET record (one-based)')
+    else
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+        'not used');
+
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, NumBytes, IntToStr(w),
+      '0 = Global name, otherwise index to sheet (one-based)');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBufferIndex, nuMbytes, IntToStr(b),
+      'Length of the menu text (character count)');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBufferIndex, nuMbytes, IntToStr(b),
+      'Length of the description text (character count)');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBufferIndex, nuMbytes, IntToStr(b),
+      'Length of the help topic text (character count)');
+
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    ShowInRow(FCurrRow, FBufferIndex, nuMbytes, IntToStr(b),
+      'Length of the status bar text (character count)');
+
+    if FFormat = sfExcel5 then begin
+      numBytes := lenName * sizeOf(ansiChar);
+      SetLength(ansiStr, lenName);
+      Move(FBuffer[FBufferIndex], ansiStr[1], numbytes);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, ansiStr,
+        'Character array of the name');
+    end else begin
+
+      if (FBuffer[FBufferIndex] and $01 = 0) //and (not IgnoreCompressedFlag)
+      then begin   // compressed --> 1 byte per character
+        SetLength(ansiStr, lenName);
+        numbytes := lenName*SizeOf(ansiChar) + 1;
+        Move(FBuffer[FBufferIndex + 1], ansiStr[1], lenName*SizeOf(AnsiChar));
+        s := AnsiToUTF8(ansiStr);
+      end else begin
+        SetLength(wideStr, lenName);
+        numBytes := lenName*SizeOf(WideChar) + 1;
+        Move(FBuffer[FBufferIndex + 1], wideStr[1], lenName*SizeOf(WideChar));
+        s := UTF8Encode(WideStringLEToN(wideStr));
+      end;
+{
+      numBytes := lenName * SizeOf(wideChar);
+      SetLength(wideStr, lenName);
+      Move(FBuffer[FBufferIndex], wideStr[1], numBytes);
+      }
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+        'Name (Unicode string without length field)');
+    end;
+
+    ShowInRow(FCurrRow, FBufferIndex, 1, '',
+      'Formula data follow...');
+  end;
+end;
+
 procedure TBIFFGrid.ShowDefRowHeight;
 var
   numBytes: Integer;
@@ -886,7 +1091,7 @@ begin
     Move(FBuffer[FBufferIndex], w, numBytes);
     w := WordLEToN(w);
     if Row = FCurrRow then begin
-      FDetails.Add('Default height for unused rows');
+      FDetails.Add('Default height for unused rows:'#13);
       FDetails.Add(Format(
         'Bits $7FFF = %d: Default height for unused rows, in twips = 1/20 of a point',
         [w and $7FFF]));
@@ -902,7 +1107,7 @@ begin
     Move(FBuffer[FBufferIndex], w, numBytes);
     w := WordLEToN(w);
     if Row = FCurrRow then begin
-      FDetails.Add('Option flags');
+      FDetails.Add('Option flags:'#13);
       if w and $0001 = 0
         then FDetails.Add('Bit $0001 = 0: Row height and default font height do match')
         else FDetails.Add('Bit $0001 = 1: Row height and default font height do not match');

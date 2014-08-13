@@ -135,7 +135,6 @@
         <ComponentName Value="AboutForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="beAbout"/>
       </Unit1>
       <Unit2>
         <Filename Value="bebiffgrid.pas"/>
@@ -145,7 +144,6 @@
       <Unit3>
         <Filename Value="bebiffutils.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="beBIFFUtils"/>
       </Unit3>
       <Unit4>
         <Filename Value="behtml.pas"/>
