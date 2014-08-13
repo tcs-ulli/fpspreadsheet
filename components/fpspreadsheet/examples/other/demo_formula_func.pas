@@ -134,8 +134,9 @@ begin
 
   workbook := TsWorkbook.Create;
   try
+    workbook.Options := workbook.Options + [boCalcBeforeSaving];
+
     worksheet := workbook.AddWorksheet('Financial');
-    worksheet.Options := worksheet.Options + [soCalcBeforeSaving];
     worksheet.WriteColWidth(0, 40);
     worksheet.WriteColWidth(1, 15);
 

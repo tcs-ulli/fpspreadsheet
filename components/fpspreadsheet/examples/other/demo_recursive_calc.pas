@@ -22,12 +22,14 @@ var
   worksheet: TsWorksheet;
 const
   OutputFile='test_calc.xls';
+
 begin
   writeln('Starting program.');
   workbook := TsWorkbook.Create;
   try
+    workbook.Options := workbook.Options + [boCalcBeforeSaving];
+
     worksheet := workbook.AddWorksheet('Calc_test');
-    worksheet.Options := worksheet.Options + [soCalcBeforeSaving];
     worksheet.WriteColWidth(0, 20);
 
     // A1
