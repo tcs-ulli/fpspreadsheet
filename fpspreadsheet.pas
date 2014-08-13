@@ -4834,8 +4834,8 @@ end;
 
 {@@
   Helper method called before saving the workbook. Clears the error log, and
-  calculates the formulas in all worksheets having the option soCalcBeforeSaving
-  set.
+  calculates the formulas in all worksheets if workbook option soCalcBeforeSaving
+  is set.
 }
 procedure TsWorkbook.PrepareBeforeSaving;
 var
