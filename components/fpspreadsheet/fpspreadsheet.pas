@@ -676,8 +676,11 @@ type
     function WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean): PCell; overload;
     procedure WriteWordwrap(ACell: PCell; AValue: boolean); overload;
 
-    { Data manipulation methods - For Cells }
+    { Formulas }
     procedure CalcFormulas;
+    function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
+
+    { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
     procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal); overload;
     procedure CopyFormat(AFromCell, AToCell: PCell); overload;
@@ -755,8 +758,11 @@ type
     @param  boBufStream     When this option is set a buffered stream is used
                             for writing (a memory stream swapping to disk) or
                             reading (a file stream pre-reading chunks of data
-                            to memory)  }
-  TsWorkbookOption = (boVirtualMode, boBufStream);
+                            to memory)
+    @param  boAutoCalc      Automatically recalculate rpn formulas whenever
+                            a cell value changes.
+  }
+  TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc);
 
   {@@
     Set of options flags for the workbook }
@@ -789,11 +795,12 @@ type
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
     FReadFormulas: Boolean;
-    FDefaultColWidth: Single; // in "characters". Excel uses the width of char "0" in 1st font
+    FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FWriting: Boolean;
+    FCalculating: Boolean;
     FOptions: TsWorkbookOptions;
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
@@ -1207,14 +1214,18 @@ resourcestring
 
 const
   { These are reserved system colors by Microsoft
+    0x0040 - Default foreground color - window text color in the sheet display.
+    0x0041 - Default background color - window background color in the sheet
+             display and is the default background color for a cell.
+    0x004D - Default chart foreground color - window text color in the
+             chart display.
+    0x004E - Default chart background color - window background color in the
+             chart display.
+    0x004F - Chart neutral color which is black, an RGB value of (0,0,0).
+    0x0051 - ToolTip text color - automatic font color for comments.
+    0x7FFF - Font automatic color - window text color. }
 
-  0x0040 Default foreground color - window text color in the sheet display.
-  0x0041 Default background color - window background color in the sheet display and is the default background color for a cell.
-  0x004D Default chart foreground color - window text color in the chart display.
-  0x004E Default chart background color - window background color in the chart display.
-  0x004F Chart neutral color which is black, an RGB value of (0,0,0).
-  0x0051 ToolTip text color - automatic font color for comments.
-  0x7FFF Font automatic color - window text color. }
+  // Color indexes of reserved system colors
   DEF_FOREGROUND_COLOR = $0040;
   DEF_BACKGROUND_COLOR = $0041;
   DEF_CHART_FOREGROUND_COLOR = $004D;
@@ -1223,6 +1234,7 @@ const
   DEF_TOOLTIP_TEXT_COLOR = $0051;
   DEF_FONT_AUTOMATIC_COLOR = $7FFF;
 
+  // Color rgb values of reserved system colors
   DEF_FOREGROUND_COLORVALUE = $000000;
   DEF_BACKGROUND_COLORVALUE = $FFFFFF;
   DEF_CHART_FOREGROUND_COLORVALUE = $000000;
@@ -1846,6 +1858,47 @@ begin
 end;
 
 {@@
+  Checks entire workbook, whether this cell is used in any formula.
+
+  @param   ARow  Row index of the cell considered
+  @param   ACol  Column index of the cell considered
+  @return  TRUE if the cell is used in a formula, FALSE if not
+}
+function TsWorksheet.CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
+var
+  cell: PCell;
+  cellNode: TAVLTreeNode;
+  fe: TsFormulaElement;
+  i: Integer;
+begin
+  cellNode := FCells.FindLowest;
+  while Assigned(cellNode) do begin
+    cell := PCell(cellNode.Data);
+    if Length(cell^.RPNFormulaValue) > 0 then
+      for i := 0 to Length(cell^.RPNFormulaValue)-1 do
+      begin
+        fe := cell^.RPNFormulaValue[i];
+        case fe.ElementKind of
+          fekCell, fekCellRef:
+            if (fe.Row = ARow) and (fe.Col = ACol) then
+            begin
+              Result := true;
+              exit;
+            end;
+          fekCellRange:
+            if (fe.Row <= ARow) and (ARow <= fe.Row2) and
+               (fe.Col <= ACol) and (ACol <= fe.Col2) then
+            begin
+              Result := true;
+              exit;
+            end;
+        end;
+      end;
+    cellNode := FCells.FindSuccessor(cellNode);
+  end;
+end;
+
+{@@
   Is called whenever a cell value or formatting has changed. Fires an event
   "OnChangeCell". This is handled by TsWorksheetGrid to update the grid cell.
 
@@ -1854,6 +1907,16 @@ end;
 }
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
 begin
+  if not FWorkbook.FCalculating and (boAutoCalc in FWorkbook.Options) then begin
+    if CellUsedInFormula(ARow, ACol) then begin
+      FWorkbook.FCalculating := true;
+      try
+        CalcFormulas;
+      finally
+        FWorkbook.FCalculating := false;
+      end;
+    end;
+  end;
   if Assigned(FOnChangeCell) then FOnChangeCell(Self, ARow, ACol);
 end;
 

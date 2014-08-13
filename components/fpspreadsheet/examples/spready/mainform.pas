@@ -82,6 +82,7 @@ type
     CbBackgroundColor: TColorBox;
     CbReadFormulas: TCheckBox;
     CbHeaderStyle: TComboBox;
+    CbAutoCalcFormulas: TCheckBox;
     EdFormula: TEdit;
     EdCellAddress: TEdit;
     FontComboBox: TComboBox;
@@ -252,6 +253,7 @@ type
     procedure AcTextRotationExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
+    procedure CbAutoCalcFormulasChange(Sender: TObject);
     procedure CbBackgroundColorSelect(Sender: TObject);
     procedure CbHeaderStyleChange(Sender: TObject);
     procedure CbReadFormulasChange(Sender: TObject);
@@ -601,6 +603,11 @@ end;
 procedure TForm1.AcWordwrapExecute(Sender: TObject);
 begin
   with WorksheetGrid do Wordwraps[Selection] := TAction(Sender).Checked;
+end;
+
+procedure TForm1.CbAutoCalcFormulasChange(Sender: TObject);
+begin
+  WorksheetGrid.AutoCalc := CbAutoCalcFormulas.Checked;;
 end;
 
 procedure TForm1.CbBackgroundColorSelect(Sender: TObject);

@@ -46,6 +46,7 @@ type
     FLockCount: Integer;
     FEditing: Boolean;
     FCellFont: TFont;
+    FAutoCalc: Boolean;
     FReadFormulas: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
@@ -83,6 +84,7 @@ type
     function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
     function GetWordwraps(ARect: TGridRect): Boolean;
+    procedure SetAutoCalc(AValue: Boolean);
     procedure SetBackgroundColor(ACol, ARow: Integer; AValue: TsColor);
     procedure SetBackgroundColors(ARect: TGridRect; AValue: TsColor);
     procedure SetCellBorder(ACol, ARow: Integer; AValue: TsCellBorders);
@@ -114,6 +116,7 @@ type
 
   protected
     { Protected declarations }
+    procedure CreateNewWorkbook;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
@@ -140,6 +143,8 @@ type
     procedure Setup;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeights(AStartIndex: Integer = 0);
+    {@@ Automatically recalculate formulas whenever a cell value changes, }
+    property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
@@ -298,6 +303,8 @@ type
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
+    {@@ Automatically recalculates the worksheet of a cell value changes. }
+    property AutoCalc;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
@@ -906,6 +913,18 @@ begin
     DrawCellGrid(ACol, ARow, ARect, AState);
     AState := AState + [gdFixed];
   end;
+end;
+
+{@@
+  Creates a new empty workbook into which a file will be loaded. Destroys the
+  previously used workbook.
+}
+procedure TsCustomWorksheetGrid.CreateNewWorkbook;
+begin
+  FreeAndNil(FWorkbook);
+  FWorkbook := TsWorkbook.Create;
+  FWorkbook.ReadFormulas := FReadFormulas;
+  SetAutoCalc(FAutoCalc);
 end;
 
 {@@
@@ -2606,6 +2625,18 @@ begin
   inherited;
 end;
 
+procedure TsCustomWorksheetGrid.SetAutoCalc(AValue: Boolean);
+begin
+  FAutoCalc := AValue;
+  if Assigned(FWorkbook) then
+  begin
+    if FAutoCalc then
+      FWorkbook.Options := FWorkbook.Options + [boAutoCalc]
+    else
+      FWorkbook.Options := FWorkbook.Options - [boAutoCalc];
+  end;
+end;
+
 procedure TsCustomWorksheetGrid.SetBackgroundColor(ACol, ARow: Integer;
   AValue: TsColor);
 var
@@ -3088,9 +3119,7 @@ procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
 begin
   BeginUpdate;
   try
-    FreeAndNil(FWorkbook);
-    FWorkbook := TsWorkbook.Create;
-    FWorkbook.ReadFormulas := FReadFormulas;
+    CreateNewWorkbook;
     FWorkbook.ReadFromFile(AFileName, AFormat);
     LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
   finally
@@ -3110,9 +3139,7 @@ procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
 begin
   BeginUpdate;
   try
-    FreeAndNil(FWorkbook);
-    FWorkbook := TsWorkbook.Create;
-    FWorkbook.ReadFormulas := FReadFormulas;
+    CreateNewWorkbook;
     FWorkbook.ReadFromFile(AFilename);
     LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
   finally
