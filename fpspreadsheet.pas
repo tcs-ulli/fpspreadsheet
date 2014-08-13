@@ -513,6 +513,7 @@ type
 
   protected
     procedure CalcRPNFormula(ACell: PCell);
+    function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
@@ -678,7 +679,6 @@ type
 
     { Formulas }
     procedure CalcFormulas;
-    function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
@@ -1728,19 +1728,26 @@ procedure TsWorksheet.CalcFormulas;
 var
   node: TAVLTreeNode;
 begin
-  // Step 1 - mark all formula cells as "not calculated"
-  node := FCells.FindLowest;
-  while Assigned(node) do begin
-    CalcStateCallback(node.Data, nil);
-    node := FCells.FindSuccessor(node);
-  end;
+  // prevent infinite loop due to triggering of formula calculation whenever
+  // a cell changes during execution of CalcFormulas.
+  FWorkbook.FCalculating := true;
+  try
+    // Step 1 - mark all formula cells as "not calculated"
+    node := FCells.FindLowest;
+    while Assigned(node) do begin
+      CalcStateCallback(node.Data, nil);
+      node := FCells.FindSuccessor(node);
+    end;
 
-  // Step 2 - calculate cells. If a not-calculated cell is found it is
-  // calculated and then marked as such.
-  node := FCells.FindLowest;
-  while Assigned(Node) do begin
-    CalcFormulaCallback(Node.Data, nil);
-    node := FCells.FindSuccessor(node);
+    // Step 2 - calculate cells. If a not-calculated cell is found it is
+    // calculated and then marked as such.
+    node := FCells.FindLowest;
+    while Assigned(Node) do begin
+      CalcFormulaCallback(Node.Data, nil);
+      node := FCells.FindSuccessor(node);
+    end;
+  finally
+    FWorkbook.FCalculating := false;
   end;
 end;
 
@@ -1907,17 +1914,13 @@ end;
 }
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
 begin
-  if not FWorkbook.FCalculating and (boAutoCalc in FWorkbook.Options) then begin
-    if CellUsedInFormula(ARow, ACol) then begin
-      FWorkbook.FCalculating := true;
-      try
-        CalcFormulas;
-      finally
-        FWorkbook.FCalculating := false;
-      end;
-    end;
+  if not FWorkbook.FCalculating and (boAutoCalc in FWorkbook.Options) then
+  begin
+    if CellUsedInFormula(ARow, ACol) then
+      CalcFormulas;
   end;
-  if Assigned(FOnChangeCell) then FOnChangeCell(Self, ARow, ACol);
+  if Assigned(FOnChangeCell) then
+    FOnChangeCell(Self, ARow, ACol);
 end;
 
 {@@
