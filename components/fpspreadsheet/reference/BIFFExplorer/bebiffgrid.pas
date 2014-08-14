@@ -58,6 +58,7 @@ type
     procedure ShowFormat;
     procedure ShowFormatCount;
     procedure ShowFormula;
+    procedure ShowFormulaTokens(ATokenBytes: Integer);
     procedure ShowHeader;
     procedure ShowHideObj;
     procedure ShowInteger;
@@ -91,6 +92,7 @@ type
     procedure ShowRK;
     procedure ShowRow;
     procedure ShowSelection;
+    procedure ShowSharedFormula;
     procedure ShowSheet;
     procedure ShowSheetPR;
     procedure ShowSST;
@@ -396,6 +398,8 @@ begin
       ShowRK;
     $0293:
       ShowStyle;
+    $04BC:
+      ShowSharedFormula;
     $087C:
       ShowXFCRC;
     $087D:
@@ -954,7 +958,7 @@ begin
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numbytes);
   ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
-    'Index to XF record for default column formattingg');
+    'Index to XF record for default column formatting');
 
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numbytes);
@@ -1932,10 +1936,10 @@ var
   dbl: double absolute q;
   bytearr: array[0..7] of byte absolute q;
   wordarr: array[0..3] of word absolute q;
-  s: String;
+//  s: String;
   tokenBytes: Integer;
-  firstTokenBufIdx: Integer;
-  token: Byte;
+//  firstTokenBufIdx: Integer;
+//  token: Byte;
   r,c, r2,c2: Integer;
 begin
   BeginUpdate;
@@ -2137,6 +2141,8 @@ begin
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(tokenBytes),
     'Size of formula data (in Bytes)');
 
+  ShowFormulaTokens(tokenBytes);
+(*
   // Tokens and parameters
   firstTokenBufIdx := FBufferIndex;
   while FBufferIndex < firstTokenBufIdx + tokenBytes do begin
@@ -2352,11 +2358,298 @@ begin
              '(unknown)');
     end;
   end;
-
+*)
   RowCount := FCurrRow;
   EndUpdate(true);
 end;
 
+
+procedure TBIFFGrid.ShowFormulaTokens(ATokenBytes: Integer);
+var
+  numBytes: Integer;
+  b: Byte;
+  w: Word;
+  s: String;
+  dbl: Double;
+  firstTokenBufIndex: Integer;
+  token: Byte;
+begin
+  // Tokens and parameters
+  firstTokenBufIndex := FBufferIndex;
+  while FBufferIndex < firstTokenBufIndex + ATokenBytes do begin
+    token := FBuffer[FBufferIndex];
+    numBytes := 1;
+    case token of
+      $01: begin
+             ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
+               'Token for "Cell is part of shared formula"');
+             numbytes := 2;
+             Move(FBuffer[FBufferIndex], w, numBytes);
+             ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+               'Index to row of first FORMULA record in the formula range');
+             if FFormat = sfExcel2 then begin
+               numbytes := 1;
+               b := FBuffer[FBufferIndex];
+               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
+                 'Index to column of first FORMULA record in the formula range');
+             end else begin
+               numbytes := 2;
+               Move(FBuffer[FBufferIndex], w, numbytes);
+               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+                 'Index to column of first FORMULA record in the formula range');
+             end;
+           end;
+      $02: begin
+             ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
+               'Token for "Cell is part of a multiple operations table"');
+             numbytes := 2;
+             Move(FBuffer[FBufferIndex], w, numBytes);
+             ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+               'Index to first row of the table range');
+             if FFormat = sfExcel2 then begin
+               numbytes := 1;
+               b := FBuffer[FBufferIndex];
+               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
+                 'Index to first column of the table range');
+             end else begin
+               numbytes := 2;
+               Move(FBuffer[FBufferIndex], w, numbytes);
+               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+                 'Index to first column of the table range');
+             end;
+           end;
+      $03: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "+" (add)');
+      $04: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "-" (subtract)');
+      $05: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "*" (multiply)');
+      $06: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "/" (divide)');
+      $07: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "^" (power)');
+      $08: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "&" (concat)');
+      $09: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "<" (less than)');
+      $0A: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "<=" (less equal)');
+      $0B: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "=" (equal)');
+      $0C: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token ">=" (greater equal)');
+      $0D: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token ">" (greater than)');
+      $0E: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "<>" (not equal)');
+      $0F: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token " " (intersect)');
+      $10: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "list character"');
+      $11: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token ":" (range)');
+      $12: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "+" (unary plus)');
+      $13: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "-" (unary minus)');
+      $14: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "%" (percent)');
+      $15: ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
+             'Token "()" (operator in parenthesis)');
+      $16: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             'Token "missing argument"');
+      $17: begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tSTR (Label)');
+             ExtractString(FBufferIndex, 1, (FFormat = sfExcel8), s, numBytes);
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'String value');
+           end;
+      $1C: begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tERR (Error)');
+             numBytes := 1;
+             b := FBuffer[FBufferIndex];
+             if FCurrRow = Row then begin
+               FDetails.Add('Error code:'#13);
+               FDetails.Add(Format('Code $%.2x --> "%s"', [b, b]));
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]), 'Error code');
+           end;
+      $1D: begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tBOOL');
+             numBytes := 1;
+             b := FBuffer[FBufferIndex];
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
+               '0=FALSE, 1=TRUE');
+           end;
+      $1E: begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tINT (Integer)');
+             numBytes := 2;
+             Move(FBuffer[FBufferIndex], w, numBytes);
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+               'Integer value');
+           end;
+      $1F: begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tNUM (Number)');
+             numBytes := 8;
+             Move(FBuffer[FBufferIndex], dbl, numBytes);
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%g', [dbl]), //FloatToStr(dbl),
+               'IEEE 754 floating-point value');
+           end;
+      $20, $40, $60:
+           begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tARRAY');
+             if FFormat = sfExcel2 then numBytes := 6 else numBytes := 7;
+             ShowInRow(FCurrRow, FBufferIndex, numbytes, '', '(not used)');
+           end;
+      $21, $41, $61:
+           begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tFUNC (Function with fixed argument count)');
+             if FFormat = sfExcel2 then begin
+               numBytes := 1;
+               b := FBuffer[FBufferIndex];
+               s := Format('Index of function (%s)', [SheetFuncName(b)]);
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), s);
+             end else begin
+               numBytes := 2;
+               Move(FBuffer[FBufferIndex], w, numBytes);
+               w := WordLEToN(w);
+               s := Format('Index of function (%s)', [SheetFuncName(w)]);
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), s);
+             end;
+           end;
+      $22, $42, $62:
+           begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tFUNCVAR (Function with variable argument count)');
+             numBytes := 1;
+             b := FBuffer[FBufferIndex];
+             ShowInRow(FCurrRow, FBufferIndex, numBytes,  IntToStr(b),
+               'Number of arguments');
+             if FFormat = sfExcel2 then begin
+               numBytes := 1;
+               s := Format('Index of built-in function (%s)', [SheetFuncName(b)]);
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), s);
+             end else begin
+               numBytes := 2;
+               Move(FBuffer[FBufferIndex], w, numbytes);
+               w := WordLEToN(w);
+               s := Format('Index of built-in function (%s)', [SheetFuncName(w)]);
+               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), s);
+             end;
+           end;
+      $23, $43, $63:
+           begin
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               'Token tNAME');
+             numBytes := 2;
+             Move(FBuffer[FBufferIndex], w, numBytes);
+             case FFormat of
+               sfExcel2: s := 'DEFINEDNAME or EXTERNALNAME record';
+               sfExcel5: s := 'DEFINEDNAME record in Global Link Table';
+               sfExcel8: s := 'DEFINEDNAME record in Link Table';
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+               '1-based index to '+s);
+             case FFormat of
+               sfExcel2: numBytes := 5;
+               sfExcel5: numBytes := 12;
+               sfExcel8: numBytes := 2;
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, '', '(not used)');
+           end;
+      $24, $44, $64:
+           begin
+             case token of
+               $24: s := 'reference';
+               $44: s := 'value';
+               $64: s := 'array';
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               Format('Token tREF (Cell %s)', [s]));
+             ShowCellAddress;
+           end;
+      $25, $45, $65:
+           begin
+             case token of
+               $25: s := 'reference';
+               $45: s := 'value';
+               $65: s := 'array';
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+               Format('Token tAREA (Cell range %s)', [s]));
+             ShowCellAddressRange;
+           end;
+      $2C, $4C, $6C:
+          begin
+            case token of
+              $2C: s := 'reference';
+              $4C: s := 'value';
+              $6C: s := 'array';
+            end;
+            ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+              Format('Token tREFN (Relative reference to cell %s in same sheet)', [s]));
+
+            // Encoded relative cell address
+            if FFormat = sfExcel8 then
+            begin
+              numBytes := 2;
+              Move(FBuffer[FBufferIndex], w, numBytes);
+              w := WordLEToN(w);
+              if Row = FCurrRow then begin
+                FDetails.Add('Encoded cell address (row):'#13);
+                FDetails.Add('Relative row index: ' + IntToStr(Smallint(w)));
+              end;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [SmallInt(w)]),
+                'Relative row index');
+
+              numBytes := 2;
+              Move(FBuffer[FBufferIndex], w, numbytes);
+              w := WordLEToN(w);
+              b := Lo(w);
+              if Row = FCurrRow then
+              begin
+                FDetails.Add('Encoded cell address (column):'#13);
+                FDetails.Add('Relative column index: ' + IntToStr(ShortInt(b)));
+              end;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [ShortInt(b)]),
+                'Relative column index');
+            end else
+            begin
+              numBytes := 2;
+              Move(FBuffer[FBufferIndex], w, numBytes);
+              w := WordLEToN(w) and $3FFF;
+              if Row = FCurrRow then begin
+                FDetails.Add('Encoded cell address (row):'#13);
+                FDetails.Add('Relative row index: ' + IntToStr(Smallint(w)));
+              end;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [SmallInt(w)]),
+                'Relative row index');
+
+              numBytes := 1;
+              b := FBuffer[FBufferIndex];
+              if Row = FCurrRow then
+              begin
+                FDetails.Add('Encoded cell address (column):'#13);
+                FDetails.Add('Relative column index: ' + IntToStr(ShortInt(b)));
+              end;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [ShortInt(b)]),
+                'Relative column index');
+            end;
+          end;
+    else
+           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+             '(unknown token)');
+
+    end;  // case
+  end;  // while
+
+end;
 
 procedure TBIFFGrid.ShowHeader;
 var
@@ -3657,6 +3950,63 @@ begin
     b := FBuffer[FBufferIndex];
     ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), 'Index to last column');
   end;
+end;
+
+
+procedure TBIFFGrid.ShowSharedFormula;
+var
+  numBytes: Integer;
+  b: Byte;
+  w: Word;
+  tokenBytes: Integer;
+begin
+  BeginUpdate;
+  RowCount := FixedRows + 1000;
+  // Brute force simplification because of unknown row count at this point
+  // Will be reduced at the end.
+
+  // Index to first row
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)), 'Index to first row');
+
+  // Index to last row
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)), 'Index to last row');
+
+  // Index to first column
+  numBytes := 1;  // 8-bit also for BIFF8!
+  Move(FBuffer[FBufferIndex], b, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), 'Index to first column');
+
+  // Index to last column
+  numBytes := 1;  // 8-bit also for BIFF8!
+  Move(FBuffer[FBufferIndex], b, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), 'Index to last column');
+
+  // Not used
+  numBytes := 1;
+  Move(FBuffer[FBufferIndex], b, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), 'Not used');
+
+  // Number of existing FORMULA records for this shared formula
+  numBytes := 1;
+  Move(FBuffer[FBufferIndex], b, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), 'Number of FORMULA records in shared formula');
+
+  // Size of Token array (in Bytes)
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  tokenBytes := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(tokenBytes),
+    'Size of formula data (in Bytes)');
+
+  // Formula tokens
+  ShowFormulaTokens(tokenBytes);
+
+  RowCount := FCurrRow;
+  EndUpdate(true);
 end;
 
 
