@@ -65,21 +65,4 @@ object AboutForm: TAboutForm
     Align = alTop
     Shape = bsTopLine
   end
-  object HTMLViewer: TIpHtmlPanel
-    Left = 0
-    Height = 440
-    Top = 72
-    Width = 642
-    Align = alClient
-    FixedTypeface = 'Courier New'
-    DefaultTypeFace = 'default'
-    DefaultFontSize = 9
-    FlagErrors = False
-    PrintSettings.MarginLeft = 0.5
-    PrintSettings.MarginTop = 0.5
-    PrintSettings.MarginRight = 0.5
-    PrintSettings.MarginBottom = 0.5
-    TabOrder = 1
-    OnHotClick = HTMLViewerHotClick
-  end
 end
