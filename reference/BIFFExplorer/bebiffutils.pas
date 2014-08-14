@@ -386,7 +386,7 @@ begin
     $0409: Result := 'BOF';
     $041E: Result := 'FORMAT: Number format';
     $0443: Result := 'XF';
-    $04BC: Result := 'SharedFormula';
+    $04BC: Result := 'SHAREDFMLA: Shared formula';
     $0800: Result := 'HLINKTOOLTOP: Hyperlink tooltip';
     $0801: Result := 'WEBPUB: Web publish item';
     $0802: Result := 'QSISXTAG: PivotTable and query table extensions';
