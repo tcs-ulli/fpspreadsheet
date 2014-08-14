@@ -15,15 +15,18 @@ object MainForm: TMainForm
   LCLVersion = '1.3'
   object Splitter1: TSplitter
     Left = 419
-    Height = 497
-    Top = 26
+    Height = 496
+    Top = 27
     Width = 5
   end
   object ToolBar: TToolBar
-    Left = 0
-    Height = 26
+    Left = 4
+    Height = 27
     Top = 0
-    Width = 1089
+    Width = 1085
+    AutoSize = True
+    BorderSpacing.Left = 4
+    ButtonHeight = 25
     Caption = 'ToolBar'
     Images = ImageList
     TabOrder = 1
@@ -54,17 +57,17 @@ object MainForm: TMainForm
   end
   object DetailPanel: TPanel
     Left = 424
-    Height = 497
-    Top = 26
+    Height = 496
+    Top = 27
     Width = 665
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 497
+    ClientHeight = 496
     ClientWidth = 665
     TabOrder = 2
     object PageControl: TPageControl
       Left = 0
-      Height = 497
+      Height = 496
       Top = 0
       Width = 665
       ActivePage = PgValues
@@ -104,12 +107,12 @@ object MainForm: TMainForm
       end
       object PgValues: TTabSheet
         Caption = 'Values'
-        ClientHeight = 464
+        ClientHeight = 463
         ClientWidth = 657
         object ValueGrid: TStringGrid
           Left = 0
           Height = 158
-          Top = 306
+          Top = 305
           Width = 657
           Align = alBottom
           ColCount = 3
@@ -140,17 +143,17 @@ object MainForm: TMainForm
         end
         object HexPanel: TPanel
           Left = 0
-          Height = 301
+          Height = 300
           Top = 0
           Width = 657
           Align = alClient
           Caption = 'HexPanel'
-          ClientHeight = 301
+          ClientHeight = 300
           ClientWidth = 657
           TabOrder = 1
           object HexGrid: TStringGrid
             Left = 1
-            Height = 299
+            Height = 298
             Top = 1
             Width = 390
             Align = alClient
@@ -238,7 +241,7 @@ object MainForm: TMainForm
           end
           object AlphaGrid: TStringGrid
             Left = 396
-            Height = 299
+            Height = 298
             Top = 1
             Width = 260
             Align = alRight
@@ -323,7 +326,7 @@ object MainForm: TMainForm
           end
           object HexDumpSplitter: TSplitter
             Left = 391
-            Height = 299
+            Height = 298
             Top = 1
             Width = 5
             Align = alRight
@@ -334,7 +337,7 @@ object MainForm: TMainForm
           Cursor = crVSplit
           Left = 0
           Height = 5
-          Top = 301
+          Top = 300
           Width = 657
           Align = alBottom
           ResizeAnchor = akBottom
@@ -344,19 +347,19 @@ object MainForm: TMainForm
   end
   object TreePanel: TPanel
     Left = 0
-    Height = 497
-    Top = 26
+    Height = 496
+    Top = 27
     Width = 419
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 497
+    ClientHeight = 496
     ClientWidth = 419
     Constraints.MinWidth = 275
     TabOrder = 3
     object FindPanel: TPanel
       Left = 0
       Height = 36
-      Top = 461
+      Top = 460
       Width = 419
       Align = alBottom
       BevelOuter = bvNone
@@ -509,7 +512,7 @@ object MainForm: TMainForm
     end
     object BIFFTree: TVirtualStringTree
       Left = 0
-      Height = 461
+      Height = 460
       Top = 0
       Width = 419
       Align = alClient

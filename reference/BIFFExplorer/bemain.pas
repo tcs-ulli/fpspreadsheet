@@ -142,6 +142,7 @@ type
     FFontIndex: Integer;
     FFormatIndex: Integer;
     FRowIndex: Integer;
+    FExternSheetIndex: Integer;
     FLockHexDumpGrids: Integer;
     FAnalysisGrid: TBIFFGrid;
     FMRUMenuManager : TMRUMenuManager;
@@ -467,7 +468,7 @@ begin
     data := TBiffNodeData(ptr^.Data);
     case Sender.GetNodeLevel(Node) of
       0: if Column = 0 then
-             CellText := data.RecordName;
+           CellText := data.RecordName;
       1: case Column of
            0: CellText := IntToStr(data.Offset);
            1: CellText := Format('$%.4x', [data.RecordID]);
@@ -1112,6 +1113,7 @@ begin
     FFontIndex := -1;
     FFormatIndex := -1;
     FRowIndex := -1;
+    FExternSheetIndex := 0;  // 1-based!
     AStream.Position := 0;
     while AStream.Position < AStream.Size do begin
       p := AStream.Position;
@@ -1164,6 +1166,11 @@ begin
           begin
             inc(FXFIndex);
             data.Index := FXFIndex;
+          end;
+        $0017:   // EXTERNSHEET record
+          if FFormat < sfExcel8 then begin
+            inc(FExternSheetIndex);
+            data.Index := FExternSheetIndex;
           end;
         $001E, $041E:  // Format record
           begin

@@ -16,13 +16,13 @@ type
     Bevel1: TBevel;
     BtnClose: TButton;
     IconImage: TImage;
-    HTMLViewer: TIpHtmlPanel;
     LblTitle: TLabel;
     Panel1: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure HTMLViewerHotClick(Sender: TObject);
   private
     { private declarations }
+    FHTMLViewer: TIpHtmlPanel;
     function CreateCredits: String;
   public
     { public declarations }
@@ -101,6 +101,8 @@ begin
           ));
         EndBulletList;
 
+        AddEmptyLine;
+
       EndDocument;
 
       Result := Lines.Text;
@@ -127,13 +129,19 @@ begin
     ico.Free;
   end;
 
-  HTMLViewer.SetHTMLFromStr(CreateCredits);
+  FHTMLViewer := TIpHtmlPanel.Create(self);
+  FHTMLViewer.Parent := self;
+  FHTMLViewer.Align := alClient;
+  FHTMLViewer.DefaultFontSize := 9;
+  FHTMLViewer.OnHotClick := @HTMLViewerHotClick;
+
+  FHTMLViewer.SetHTMLFromStr(CreateCredits);
 end;
 
 
 procedure TAboutForm.HTMLViewerHotClick(Sender: TObject);
 begin
-  OpenURL(HTMLViewer.HotURL);
+  OpenURL((Sender as TIpHtmlPanel).HotURL);
 end;
 
 

@@ -30,6 +30,8 @@ type
     procedure ShowBottomMargin;
     procedure ShowCalcCount;
     procedure ShowCalcMode;
+    procedure ShowCellAddress;
+    procedure ShowCellAddressRange;
     procedure ShowClrtClient;
     procedure ShowCodePage;
     procedure ShowColInfo;
@@ -45,6 +47,9 @@ type
     procedure ShowDSF;
     procedure ShowEOF;
     procedure ShowExcel9File;
+    procedure ShowExternalBook;
+    procedure ShowExternCount;
+    procedure ShowExternSheet;
     procedure ShowFileSharing;
     procedure ShowFnGroupCount;
     procedure ShowFont;
@@ -127,6 +132,9 @@ uses
   StrUtils, Math,
   fpsutils,
   beBIFFUtils;
+
+const
+  ABS_REL: array[boolean] of string = ('abs', 'rel');
 
 constructor TBIFFGrid.Create(AOwner: TComponent);
 begin
@@ -270,6 +278,10 @@ begin
       ShowHeader;
     $0015:
       ShowFooter;
+    $0016:
+      ShowExternCount;
+    $0017:
+      ShowExternSheet;
     $0018, $0218:
       ShowDefinedName;
     $0019:
@@ -370,6 +382,8 @@ begin
       ShowTabID;
     $0161:
       ShowDSF;
+    $01AE:
+      ShowExternalBook;
     $01AF:
       ShowProt4Rev;
     $01B7:
@@ -683,6 +697,186 @@ begin
 end;
 
 
+procedure TBIFFGrid.ShowCellAddress;
+var
+  numBytes: Word;
+  b: Byte;
+  w: Word;
+  r,c: Integer;
+  s: String;
+begin
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);   // row --> w
+  r := WordLEToN(w);
+  if FFormat = sfExcel8 then begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex+2], w, numBytes);  // column --w1
+    c := WordLEToN(w);
+    if FCurrRow = Row then begin
+      FDetails.Add('RowIndex information:'#13);
+      FDetails.Add(Format('RowIndex = %d (%s)', [r, ABS_REL[c and $4000 <> 0]]));
+    end;
+    s := Format('%d ($%.4x)', [r, r]);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Row index');
+    if FCurrRow = Row then begin
+      FDetails.Add('ColIndex information:'#13);
+      FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
+      if c and $4000 = 0
+        then FDetails.Add('Bit 14=0: absolute row index')
+        else FDetails.Add('Bit 14=1: relative row index');
+      if c and $8000 = 0
+        then FDetails.Add('Bit 15=0: absolute column index')
+        else FDetails.Add('Bit 15=1: relative column index');
+    end;
+    s := Format('%d ($%.4x)', [c, c]);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
+  end else begin
+    numbytes := 1;
+    Move(FBuffer[FBufferIndex+2], b, numBytes);
+    c := b;
+    if FCurrRow = Row then begin
+      FDetails.Add('RowIndex information:'#13);
+      FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
+      if r and $4000 = 0
+        then FDetails.Add('Bit 14=0: absolute row index')
+        else FDetails.Add('Bit 14=1: relative row index');
+      if r and $8000 = 0
+        then FDetails.Add('Bit 15=0: absolute column index')
+        else FDetails.Add('Bit 15=1: relative column index');
+    end;
+    //s := Format('$%.4x (%d, %s)', [r, r and $3FFF, ABS_REL[r and $4000 <> 0]]);
+    s := Format('%d ($%.4x)', [r, r]);
+    ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Row index');
+    if FCurrRow = Row then begin
+      FDetails.Add('ColIndex information:'#13);
+      FDetails.Add(Format('ColIndex = %d (%s)', [c, ABS_REL[r and $8000 <> 0]]));
+    end;
+    //s := Format('$%.2x (%d, %s)', [c, c, ABS_REL[r and $8000 <> 0]]);
+    s := Format('%d ($%.4x)', [c, c]);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
+  end;
+end;
+
+
+procedure TBIFFGrid.ShowCellAddressRange;
+var
+  numbytes: Word;
+  b: Byte;
+  w: Word;
+  r, c, r2, c2: Integer;
+  s: String;
+begin
+  if FFormat = sfExcel8 then begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    r := WordLEToN(w);
+    if FCurrRow = Row then begin
+      FDetails.Add('RowIndex information:'#13);
+      FDetails.Add(Format('RowIndex = %d (%s)', [r, ABS_REL[c and $4000 <> 0]]));
+    end;
+    s := Format('%d ($%.4x)', [r, r]);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'First row index');
+
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    r2 := WordLEToN(w);
+    if FCurrRow = Row then begin
+      FDetails.Add('RowIndex information:'#13);
+      FDetails.Add(Format('RowIndex = %d (%s)', [r2, ABS_REL[c and $4000 <> 0]]));
+    end;
+    s := Format('%d ($%.4x)', [r2, r2]);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Last row index');
+
+    Move(FBuffer[FBufferIndex], w, numBytes);  // column
+    c := WordLEToN(w);
+    Move(FBuffer[FBufferIndex+2], w, numBytes);
+    c2 := WordLEToN(w);
+
+    if FCurrRow = Row then begin
+      FDetails.Add('ColIndex information:'#13);
+      FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
+      if c and $4000 = 0
+        then FDetails.Add('Bit 14=0: absolute row index')
+        else FDetails.Add('Bit 14=1: relative row index');
+      if c and $8000 = 0
+        then FDetails.Add('Bit 15=0: absolute column index')
+        else FDetails.Add('Bit 15=1: relative column index');
+    end;
+    s := Format('%d ($%.4x)', [c, c]);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
+
+    if FCurrRow = Row then
+    begin
+      FDetails.Add('ColIndex information:'#13);
+      FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c2 and $3FFF, ABS_REL[c2 and $8000 <> 0]]));
+      if c2 and $4000 = 0
+        then FDetails.Add('Bit 14=0: absolute row index')
+        else FDetails.Add('Bit 14=1: relative row index');
+      if c2 and $8000 = 0
+        then FDetails.Add('Bit 15=0: absolute column index')
+        else FDetails.Add('Bit 15=1: relative column index');
+    end;
+    s := Format('%d ($%.4x)', [c2, c2]);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
+  end
+  else
+  begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    r := WordLEToN(w);
+    Move(FBuffer[FBufferIndex+2], w, numBytes);
+    r2 := WordLEToN(w);
+
+    numbytes := 1;
+    c := FBuffer[FBufferIndex+4];
+    c2 := FBuffer[FBufferIndex+5];
+
+    if FCurrRow = Row then
+    begin
+      FDetails.Add('RowIndex information:'#13);
+      FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
+      if r and $4000 = 0
+        then FDetails.Add('Bit 14=0: absolute row index')
+        else FDetails.Add('Bit 14=1: relative row index');
+      if r and $8000 = 0
+        then FDetails.Add('Bit 15=0: absolute column index')
+        else FDetails.Add('Bit 15=1: relative column index');
+    end;
+    s := Format('%d ($%.4x)', [r, r]);
+    ShowInRow(FCurrRow, FBufferIndex, 2, s, 'First row index');
+
+    if FCurrRow = Row then
+    begin
+      FDetails.Add('RowIndex information:'#13);
+      FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r2 and $3FFF, ABS_REL[r2 and $4000 <> 0]]));
+      if r2 and $4000 = 0
+        then FDetails.Add('Bit 14=0: absolute row index')
+        else FDetails.Add('Bit 14=1: relative row index');
+      if r2 and $8000 = 0
+        then FDetails.Add('Bit 15=0: absolute column index')
+        else FDetails.Add('Bit 15=1: relative column index');
+    end;
+    s := Format('%d ($%.4x)', [r2, r2]);
+    ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Last row index');
+
+    if FCurrRow = Row then
+    begin
+      FDetails.Add('ColIndex information:'#13);
+      FDetails.Add(Format('ColIndex = %d (%s)', [c, ABS_REL[r and $8000 <> 0]]));
+    end;
+    s := Format('%d ($%.4x)', [c, c]);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
+
+    if FCurrRow = Row then
+    begin
+      FDetails.Add('ColIndex information:'#13);
+      FDetails.Add(Format('ColIndex = %d (%s)', [c2, ABS_REL[r2 and $8000 <> 0]]));
+    end;
+    s := Format('%d ($%.4x)', [c2, c2]);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
+  end;
+end;
+
+
 procedure TBIFFGrid.ShowClrtClient;
 var
   w: Word;
@@ -888,10 +1082,18 @@ var
   widestr: WideString;
   s: String;
   macro: Boolean;
+  formulaSize: Word;
+  firstTokenBufIdx: Integer;
+  token: Byte;
+  r,c, r2,c2: Integer;
 begin
-  if FFormat = sfExcel2 then begin
-    RowCount := FixedRows + 7;
+  BeginUpdate;
+  RowCount := FixedRows + 1000;
+  // Brute force simplification because of unknown row count at this point
+  // Will be reduced at the end.
 
+  if FFormat = sfExcel2 then
+  begin
     numBytes := 1;
     b := FBuffer[FBufferIndex];
     isFuncMacro := b and $02 <> 0;
@@ -934,13 +1136,10 @@ begin
     b := FBuffer[FBufferIndex];
     ShowInRow(FCurrRow, FBUfferIndex, numBytes, IntToStr(b),
       'Size of the formula data');
-
-    ShowInRow(FCurrRow, FBufferIndex, 1, '',
-      'Formula data follow...');
-  end else
+    formulaSize := b;
+  end
+  else
   begin
-    RowCount := FixedRows + 12;
-
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
     w := WordLEToN(w);
@@ -1008,6 +1207,7 @@ begin
     w := WordLEToN(w);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
       'Size of the formula data');
+    formulaSize := w;
 
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
@@ -1065,18 +1265,70 @@ begin
         Move(FBuffer[FBufferIndex + 1], wideStr[1], lenName*SizeOf(WideChar));
         s := UTF8Encode(WideStringLEToN(wideStr));
       end;
-{
-      numBytes := lenName * SizeOf(wideChar);
-      SetLength(wideStr, lenName);
-      Move(FBuffer[FBufferIndex], wideStr[1], numBytes);
-      }
       ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
         'Name (Unicode string without length field)');
     end;
-
-    ShowInRow(FCurrRow, FBufferIndex, 1, '',
-      'Formula data follow...');
   end;
+
+  firstTokenBufIdx := FBufferIndex;
+  while FBufferIndex < firstTokenBufIdx + formulaSize do begin
+    token := FBuffer[FBufferIndex];
+    numBytes := 1;
+    case token of
+      $3A, $3B, $5A, $5B, $7A, $7B:
+        begin
+          case token of
+            $3A: s := 'Token tRef3dR for "3D or external reference to a cell" (R = Reference)';
+            $5A: s := 'Token tRef3dV for "3D or external reference to a cell" (V = Value)';
+            $7A: s := 'Token tRef3dA for "3D or external reference to a cell" (A = Area)';
+            $3B: s := 'Token tArea3dR for "3D or external reference to a cell range" (R = Reference)';
+            $5B: s := 'Token tArea3dV for "3D or external reference to a cell range" (V = Value)';
+            $7B: s := 'Token tArea3dA for "3D or external reference to a cell range" (A = Area)';
+          end;
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]), s);
+
+          numbytes := 2;
+          Move(FBuffer[FBufferIndex], w, numBytes);
+          w := WordLEToN(w);
+          if FFormat = sfExcel5 then begin
+            if w and $8000 <> 0 then begin  // negative value --> 3D reference
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(SmallInt(w)),
+                '3D reference, 1-based index to EXTERNSHEET record');
+              numBytes := 8;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, '', 'Not used');
+              numBytes := 2;
+              Move(FBuffer[FBufferIndex], w, numBytes);
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+                'Index to first referenced sheet ($FFFF = deleted sheet)');
+              Move(FBuffer[FBufferIndex], w, numBytes);
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+                'Index to last referenced sheet ($FFFF = deleted sheet)');
+            end else
+            begin
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+                'External reference, 1-based index to EXTERNSHEET record');
+              numBytes := 12;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, '', 'Not used');
+            end;
+          end else
+            ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+              'Index to REF entry in EXTERNSHEET record');
+
+          if token in [$3A, $5A, $7A] then
+            ShowCellAddress        // Cell address
+          else
+            ShowCellAddressRange;  // Cell range
+        end;
+
+      else
+        numBytes := 1;
+        ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+          '(unknown token)');
+    end;  // case
+  end;  // while
+
+  RowCount := FCurrRow;
+  EndUpdate(true);
 end;
 
 procedure TBIFFGrid.ShowDefRowHeight;
@@ -1214,6 +1466,141 @@ procedure TBIFFGrid.ShowExcel9File;
 begin
   RowCount := FixedRows + 1;
   ShowInRow(FCurrRow, FBufferIndex, 0, '', 'Optional and unused');
+end;
+
+
+procedure TBIFFGrid.ShowExternalBook;
+var
+  numBytes: Integer;
+  w: Word;
+  wideStr: WideString;
+  ansiStr: AnsiString;
+  s: String;
+  i, n: Integer;
+begin
+  BeginUpdate;
+  RowCount := FixedRows + 1000;
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  n := WordLEToN(w);
+
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(n),
+    'Number of sheet names / number of sheets');
+
+  if Length(FBuffer) - FBufferIndex = 2 then begin
+    SetLength(ansiStr, 1);
+    Move(FBuffer[FBufferIndex], ansiStr[1], 1);
+
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
+      '(relict of BIFF5)');
+  end else begin
+    ExtractString(FBufferIndex, 2, true, s, numBytes);
+    if Row = FCurrRow then begin
+      FDetails.Add('Encoded URL without sheet name:'#13);
+      case s[1] of
+        #0: FDetails.Add('First character = #00: Reference relative to current sheet');
+        #1: FDetails.Add('First character = #01: Encoded URL follows');
+        #2: if FFormat = sfExcel8 then
+              FDetails.Add('First character = #02: Reference to a sheet in own document; sheet name follows')
+            else
+              FDetails.Add('First character = #02: Reference to the corrent sheet (nothing will follow)');
+        #3: if FFormat = sfExcel5 then
+              FDetails.Add('First character = #03: Reference to a sheet in own document; sheet name follows')
+            else
+              FDetails.Add('First character = #03: not used');
+        #4: if FFormat = sfExcel5 then
+              FDetails.ADd('First character = #03: Reference to the own workbook, sheet is unspecified (nothing will follow)')
+            else
+              FDetails.Add('First character = #03: not used');
+      end;
+    end;
+    if s[1] in [#0, #1, #2, #3, #4] then Delete(s, 1, 1);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
+      'Encoded URL without sheet name (Unicode string, 16-bit string length)');
+
+    for i:=0 to n-1 do begin
+      ExtractString(FBufferIndex, 2, true, s, numBytes);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
+        'Sheet name (Unicode string with 16-bit string length)');
+    end;
+  end;
+
+  RowCount := FCurrRow;
+  EndUpdate(true);
+end;
+
+
+procedure TBIFFGrid.ShowExternCount;
+var
+  numBytes: Integer;
+  w: Word;
+begin
+  RowCount := FixedRows + 1;
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+    'Number of following EXTERNSHEET records');
+end;
+
+
+procedure TBIFFGrid.ShowExternSheet;
+var
+  numBytes: Integer;
+  w: Word;
+  s: String;
+  nREF: Integer;
+  i: Integer;
+  len: Byte;
+  ansiStr: AnsiString;
+begin
+  if FFormat <= sfExcel5 then begin
+    RowCount := FixedRows + 1;
+    len := FBuffer[0];
+    if FBuffer[1] = $03 then inc(len);
+    numBytes := len*SizeOf(AnsiChar) + 1;
+    SetLength(ansiStr, len);
+    Move(FBuffer[1], ansiStr[1], len*SizeOf(AnsiChar));
+    s := AnsiToUTF8(ansiStr);
+    if FCurrRow = Row then begin
+      FDetails.Add('Encoded document and sheet name:'#13);
+      if s[1] = #03 then begin
+        FDetails.Add('First character = $03: EXTERNSHEET stores a reference to one of the own sheets');
+        FDetails.Add('Document name: ' + Copy(s, 2, Length(s)));
+      end else
+      if (s[1] = ':') and (Length(s) = 1) then begin
+        FDetails.Add('Special EXTERNSHEET record for an add-in function. EXTERNName record with the name of the function follows.');
+      end else
+        FDetails.Add('Document name: ' + s);
+    end;
+    if s[1] = #03 then
+      Delete(s, 1, 1);
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
+      'Encoded document and sheet name (Byte string, 8-bit string length)');
+  end else begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    nREF := WordLEToN(w);
+
+    RowCount := FixedRows + 1 + nREF*3;
+
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(nREF),
+      'Number of following REF structures');
+
+    for i:=1 to nREF do begin
+      Move(FBuffer[FBufferIndex], w, numBytes);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+        Format('REF #%d: Index to EXTERNALBOOK record', [i]));
+
+      Move(FBuffer[FBufferIndex], w, numBytes);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+        Format('REF #%d: Index to first sheet in EXTERNALBOOK sheet list', [i]));
+
+      Move(FBuffer[FBufferIndex], w, numBytes);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+        Format('REF #%d: Index to last sheet in EXTERNALBOOK sheet list', [i]));
+    end;
+  end;
 end;
 
 
@@ -1537,8 +1924,6 @@ end;
 
 
 procedure TBIFFGrid.ShowFormula;
-const
-  ABS_REL: array[boolean] of string = ('abs', 'rel');
 var
   numBytes: Integer;
   b: Byte;
@@ -1694,79 +2079,7 @@ begin
          end;
     end;
   end;
-         (*
-  if (FFormat > sfExcel2) then begin
-    if wordarr[3] <> $FFFF then begin
-      if FCurrRow = Row then begin
-        FDetails.Add('Formula result:'#13);
-        FDetails.Add(Format('Bytes 0-7: $%.15x --> IEEE 764 floating-point value, 64-bit double precision'#13+
-                            '           = %g', [q, dbl]));
-      end;
-      ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
-        'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
-    end else begin
-      case bytearr[0] of
-        0: begin
-             if FCurrRow = Row then begin
-               FDetails.Add('Formula result:'#13);
-               FDetails.Add('Byte 0 = 0  --> Result is string, follows in STRING record');
-               FDetails.Add('Byte 1-5: Not used');
-               FDetails.Add('Byte 6&7: $FFFF --> no floating point number');
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-               'Result is a string, follows in STRING record');
-           end;
-        1: begin
-             if FCurrRow = Row then begin
-               FDetails.Add('Formula result:'#13);
-               FDetails.Add('Byte 0 = 1 --> Result is BOOLEAN');
-               FDetails.Add('Byte 1: Not used');
-               if bytearr[2] = 0
-                 then FDetails.Add('Byte 2 = 0 --> FALSE')
-                 else FDetails.Add('Byte 2 = 1 --> TRUE');
-               FDetails.Add('Bytes 3-5: Not used');
-               FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-               'Result is BOOLEAN');
-           end;
-        2: begin
-             if FCurrRow = Row then begin
-               FDetails.Add('Formula result:'#13);
-               FDetails.Add('Byte 0 = 2 --> Result is an ERROR value');
-               FDetails.Add('Byte 1: Not used');
-               case bytearr[2] of
-                 $00: FDetails.Add('Byte 2 = $00 --> #NULL! Intersection of two cell ranges is empty');
-                 $07: FDetails.Add('Byte 2 = $07 --> #DIV/0! Division by zero');
-                 $0F: FDetails.Add('Byte 2 = $0F --> #VALUE! Wrong type of operand');
-                 $17: FDetails.Add('Byte 2 = $17 --> #REF! Illegal or deleted cell reference');
-                 $1D: FDetails.Add('Byte 2 = $1D --> #NAME? Wrong function or range name');
-                 $24: FDetails.Add('Byte 2 = $24 --> #NUM! Value range overflow');
-                 $2A: FDetails.Add('Byte 2 = $2A --> #N/A Argument or function not available');
-               end;
-               FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-               'Result is an ERROR value');
-           end;
-        3: begin
-             if FCurrRow = Row then begin
-               FDetails.Add('Formula result:'#13);
-               FDetails.Add('Byte 0 = 3 --> Result is an empty cell, for example an empty string');
-               FDetails.Add('Byte 1-5: Not used');
-               FDetails.Add('Bytes 6&7: $FFFF --> no floating point number');
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.16x', [q]),
-               'Result is an EMPTY cell (empty string)');
-           end;
-      end;
-    end;
-  end
-  else begin    // Excel 2
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
-      'Result of formula (IEEE 764 floating-point value, 64-bit double precision)');
-  end;
-              *)
+
   // Option flags
   if FFormat = sfExcel2 then begin
     numBytes := 1;
@@ -1882,8 +2195,6 @@ begin
              'Token "&" (concat)');
       $09: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
              'Token "<" (less than)');
-      $15: ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
-             'Token "()" (operator in parenthesis)');
       $0A: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
              'Token "<=" (less equal)');
       $0B: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
@@ -1906,6 +2217,8 @@ begin
              'Token "-" (unary minus)');
       $14: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
              'Token "%" (percent)');
+      $15: ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
+             'Token "()" (operator in parenthesis)');
       $16: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
              'Token "missing argument"');
       $17: begin
@@ -2022,56 +2335,7 @@ begin
              end;
              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
                Format('Token tREF (Cell %s)', [s]));
-             numBytes := 2;
-             Move(FBuffer[FBufferIndex], w, numBytes);   // row --> w
-             r := WordLEToN(w);
-             if FFormat = sfExcel8 then begin
-               numBytes := 2;
-               Move(FBuffer[FBufferIndex+2], w, numBytes);  // column --w1
-               c := WordLEToN(w);
-               if FCurrRow = Row then begin
-                 FDetails.Add('RowIndex information:'#13);
-                 FDetails.Add(Format('RowIndex = %d (%s)', [r, ABS_REL[c and $4000 <> 0]]));
-               end;
-               s := Format('%d ($%.4x)', [r, r]);
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Row index');
-               if FCurrRow = Row then begin
-                 FDetails.Add('ColIndex information:'#13);
-                 FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
-                 if c and $4000 = 0
-                   then FDetails.Add('Bit 14=0: absolute row index')
-                   else FDetails.Add('Bit 14=1: relative row index');
-                 if c and $8000 = 0
-                   then FDetails.Add('Bit 15=0: absolute column index')
-                   else FDetails.Add('Bit 15=1: relative column index');
-               end;
-               s := Format('%d ($%.4x)', [c, c]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
-             end else begin
-               numbytes := 1;
-               Move(FBuffer[FBufferIndex+2], b, numBytes);
-               c := b;
-               if FCurrRow = Row then begin
-                 FDetails.Add('RowIndex information:'#13);
-                 FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
-                 if r and $4000 = 0
-                   then FDetails.Add('Bit 14=0: absolute row index')
-                   else FDetails.Add('Bit 14=1: relative row index');
-                 if r and $8000 = 0
-                   then FDetails.Add('Bit 15=0: absolute column index')
-                   else FDetails.Add('Bit 15=1: relative column index');
-               end;
-               //s := Format('$%.4x (%d, %s)', [r, r and $3FFF, ABS_REL[r and $4000 <> 0]]);
-               s := Format('%d ($%.4x)', [r, r]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Row index');
-               if FCurrRow = Row then begin
-                 FDetails.Add('ColIndex information:'#13);
-                 FDetails.Add(Format('ColIndex = %d (%s)', [c, ABS_REL[r and $8000 <> 0]]));
-               end;
-               //s := Format('$%.2x (%d, %s)', [c, c, ABS_REL[r and $8000 <> 0]]);
-               s := Format('%d ($%.4x)', [c, c]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
-             end;
+             ShowCellAddress;
            end;
       $25, $45, $65:
            begin
@@ -2082,138 +2346,7 @@ begin
              end;
              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
                Format('Token tAREA (Cell range %s)', [s]));
-
-             if FFormat = sfExcel8 then begin
-               numBytes := 2;
-               Move(FBuffer[FBufferIndex], w, numBytes);
-               r := WordLEToN(w);
-               if FCurrRow = Row then begin
-                 FDetails.Add('RowIndex information:'#13);
-                 FDetails.Add(Format('RowIndex = %d (%s)', [r, ABS_REL[c and $4000 <> 0]]));
-               end;
-               s := Format('%d ($%.4x)', [r, r]);
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'First row index');
-
-               Move(FBuffer[FBufferIndex], w, numBytes);
-               r2 := WordLEToN(w);
-               if FCurrRow = Row then begin
-                 FDetails.Add('RowIndex information:'#13);
-                 FDetails.Add(Format('RowIndex = %d (%s)', [r2, ABS_REL[c and $4000 <> 0]]));
-               end;
-               s := Format('%d ($%.4x)', [r2, r2]);
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Last row index');
-
-               Move(FBuffer[FBufferIndex], w, numBytes);  // column
-               c := WordLEToN(w);
-               Move(FBuffer[FBufferIndex+2], w, numBytes);
-               c2 := WordLEToN(w);
-
-               if FCurrRow = Row then begin
-                 FDetails.Add('ColIndex information:'#13);
-                 FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
-                 if c and $4000 = 0
-                   then FDetails.Add('Bit 14=0: absolute row index')
-                   else FDetails.Add('Bit 14=1: relative row index');
-                 if c and $8000 = 0
-                   then FDetails.Add('Bit 15=0: absolute column index')
-                   else FDetails.Add('Bit 15=1: relative column index');
-               end;
-               s := Format('%d ($%.4x)', [c, c]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
-
-               if FCurrRow = Row then begin
-                 FDetails.Add('ColIndex information:'#13);
-                 FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c2 and $3FFF, ABS_REL[c2 and $8000 <> 0]]));
-                 if c2 and $4000 = 0
-                   then FDetails.Add('Bit 14=0: absolute row index')
-                   else FDetails.Add('Bit 14=1: relative row index');
-                 if c2 and $8000 = 0
-                   then FDetails.Add('Bit 15=0: absolute column index')
-                   else FDetails.Add('Bit 15=1: relative column index');
-               end;
-               s := Format('%d ($%.4x)', [c2, c2]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
-
-             end else begin
-
-               numBytes := 2;
-               Move(FBuffer[FBufferIndex], w, numBytes);
-               r := WordLEToN(w);
-               Move(FBuffer[FBufferIndex+2], w, numBytes);
-               r2 := WordLEToN(w);
-
-               numbytes := 1;
-               c := FBuffer[FBufferIndex+4];
-               c2 := FBuffer[FBufferIndex+5];
-
-               if FCurrRow = Row then begin
-                 FDetails.Add('RowIndex information:'#13);
-                 FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
-                 if r and $4000 = 0
-                   then FDetails.Add('Bit 14=0: absolute row index')
-                   else FDetails.Add('Bit 14=1: relative row index');
-                 if r and $8000 = 0
-                   then FDetails.Add('Bit 15=0: absolute column index')
-                   else FDetails.Add('Bit 15=1: relative column index');
-               end;
-               s := Format('%d ($%.4x)', [r, r]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'First row index');
-
-               if FCurrRow = Row then begin
-                 FDetails.Add('RowIndex information:'#13);
-                 FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r2 and $3FFF, ABS_REL[r2 and $4000 <> 0]]));
-                 if r2 and $4000 = 0
-                   then FDetails.Add('Bit 14=0: absolute row index')
-                   else FDetails.Add('Bit 14=1: relative row index');
-                 if r2 and $8000 = 0
-                   then FDetails.Add('Bit 15=0: absolute column index')
-                   else FDetails.Add('Bit 15=1: relative column index');
-               end;
-               s := Format('%d ($%.4x)', [r2, r2]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Last row index');
-
-               if FCurrRow = Row then begin
-                 FDetails.Add('ColIndex information:'#13);
-                 FDetails.Add(Format('ColIndex = %d (%s)', [c, ABS_REL[r and $8000 <> 0]]));
-               end;
-               s := Format('%d ($%.4x)', [c, c]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
-
-               if FCurrRow = Row then begin
-                 FDetails.Add('ColIndex information:'#13);
-                 FDetails.Add(Format('ColIndex = %d (%s)', [c2, ABS_REL[r2 and $8000 <> 0]]));
-               end;
-               s := Format('%d ($%.4x)', [c2, c2]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
-             end;
-             {
-             if FFormat = sfExcel8 then begin
-               numBytes := 2;
-               Move(FBuffer[FBufferIndex+4], w, numBytes);
-               c := WordLEToN(w);
-               Move(FBuffer[FBufferIndex+6], w, numBytes);
-               c2 := WordLEToN(w);
-               s := Format('$%.4x (%d, %s)', [r, r, ABS_REL[c and $4000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Index to first row');
-               s := Format('$%.4x (%d, %s)', [r2, r2, ABS_REL[c2 and $4000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Index to last row');
-               s := Format('$%.4x (%d, %s)', [c, c and $3FFF, ABS_REL[c and $8000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Index to first column');
-               s := Format('$%.4x (%d, %s)', [c2, c2 and $3FFF, ABS_REL[c2 and $8000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Index to last columns');
-             end else begin
-               c := FBuffer[FBufferIndex+4];
-               c2 := FBuffer[FBufferIndex+5];
-               s := Format('$%.4x (%d, %s)', [r, r and $3FFF, ABS_REL[r and $4000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Index to first row');
-               s := Format('$%.4x (%d, %s)', [r2, r2 and $3FFF, ABS_REL[r2 and $4000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Index to last row');
-               s := Format('$%.2x (%d, %s)', [c, c, ABS_REL[r and $8000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 1, s, 'Index to first column');
-               s := Format('$%.2x (%d, %s)', [c2, c2, ABS_REL[r2 and $8000 <> 0]]);
-               ShowInRow(FCurrRow, FBufferIndex, 1, s, 'Index to last column');
-             end;
-             }
+             ShowCellAddressRange;
            end;
     else   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
              '(unknown)');
@@ -2222,7 +2355,6 @@ begin
 
   RowCount := FCurrRow;
   EndUpdate(true);
-
 end;
 
 
@@ -2363,6 +2495,11 @@ var
   numbytes: Integer;
   w: Word;
 begin
+  if FFormat < sfExcel8 then begin
+    RowCount := FixedRows;
+    exit;
+  end;
+
   RowCount := FixedRows + 1;
   numbytes := 2;
   Move(FBuffer[FBufferIndex], w, numbytes);
