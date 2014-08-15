@@ -60,6 +60,7 @@ const
   INT_EXCEL_ID_MULBLANK   = $00BE;    // does not exist before BIFF5
   INT_EXCEL_ID_XF         = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
   INT_EXCEL_ID_RSTRING    = $00D6;    // does not exist before BIFF5
+  INT_EXCEL_ID_SHAREDFMLA = $04BC;    // does not exist before BIFF5
   INT_EXCEL_ID_BOF        = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
 
   { FONT record constants }
@@ -105,6 +106,9 @@ const
   INT_EXCEL_TOKEN_TAREA_R = $25;
   INT_EXCEL_TOKEN_TAREA_V = $45;
   INT_EXCEL_TOKEN_TAREA_A = $65;
+  INT_EXCEL_TOKEN_TREFN_R = $2C;
+  INT_EXCEL_TOKEN_TREFN_V = $4C;
+  INT_EXCEL_TOKEN_TREFN_A = $6C;
 
   { Function Tokens }
   // _R: reference; _V: value; _A: array
@@ -114,9 +118,12 @@ const
   INT_EXCEL_TOKEN_FUNC_A  = $61;
 
   //VAR: variable number of arguments:
-  INT_EXCEL_TOKEN_FUNCVAR_R = $22;
-  INT_EXCEL_TOKEN_FUNCVAR_V = $42;
-  INT_EXCEL_TOKEN_FUNCVAR_A = $62;
+  INT_EXCEL_TOKEN_FUNCVAR_R  = $22;
+  INT_EXCEL_TOKEN_FUNCVAR_V  = $42;
+  INT_EXCEL_TOKEN_FUNCVAR_A  = $62;
+
+  { Special tokens }
+  INT_EXCEL_TOKEN_TEXP       = $01;  // cell belongs to shared formula
 
   { Built-in/worksheet functions }
   INT_EXCEL_SHEET_FUNC_COUNT      = 0;
@@ -431,11 +438,15 @@ type
     // Read the array of RPN tokens of a formula
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); virtual;
+    procedure ReadRPNCellAddressOffset(AStream: TStream;
+      out ARowOffset, AColOffset: Integer); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
-    function ReadRPNTokenArray(AStream: TStream; var AFormula: TsRPNFormula): Boolean;
+    procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); virtual;
+    function ReadRPNTokenArray(AStream: TStream; ACell: PCell): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
+    procedure ReadSharedFormula(AStream: TStream);
 
     // Helper function for reading a string with 8-bit length
     function ReadString_8bitLen(AStream: TStream): String; virtual;
@@ -542,6 +553,7 @@ const
     INT_EXCEL_TOKEN_TREFV,          {fekCell}
     INT_EXCEL_TOKEN_TREFR,          {fekCellRef}
     INT_EXCEL_TOKEN_TAREA_R,        {fekCellRange}
+    INT_EXCEL_TOKEN_TREFN_V,        {fekCellOffset}
     INT_EXCEL_TOKEN_TNUM,           {fekNum}
     INT_EXCEL_TOKEN_TINT,           {fekInteger}
     INT_EXCEL_TOKEN_TSTR,           {fekString}
@@ -1166,8 +1178,6 @@ var
   cell: PCell;
 
 begin
-  { BIFF Record header }
-  { BIFF Record data }
   { Index to XF Record }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -1230,8 +1240,9 @@ begin
 
   { Formula token array }
   if FWorkbook.ReadFormulas then begin
-    ok := ReadRPNTokenArray(AStream, cell^.RPNFormulaValue);
-    if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
+    ok := ReadRPNTokenArray(AStream, cell);
+    if not ok then
+      FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
 
   {Add attributes}
@@ -1533,6 +1544,24 @@ begin
   if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
+{ Read the difference between cell row and column indexed of a cell and a reference
+  cell.
+  Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2. }
+procedure TsSpreadBIFFReader.ReadRPNCellAddressOffset(AStream: TStream;
+  out ARowOffset, AColOffset: Integer);
+var
+  r: SmallInt;
+  c: ShortInt;
+begin
+  // 2 bytes for row
+  r := WordLEToN(AStream.ReadWord) and $3FFF;
+  ARowOffset := r;
+
+  // 1 byte for column
+  c := AStream.ReadByte;
+  AColOffset := c;
+end;
+
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
   bits to distinguish between absolute and relative addresses.
   Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
@@ -1565,8 +1594,22 @@ begin
   Result := WordLEToN(AStream.ReadWord);
 end;
 
+{ Reads the cell coordiantes of the top/left cell of a range using a shared formula.
+  This cell contains the rpn token sequence of the formula.
+  Valid for BIFF3-BIFF8. BIFF2 needs to be overridden (has 1 byte for column). }
+procedure TsSpreadBIFFReader.ReadRPNSharedFormulaBase(AStream: TStream;
+  out ARow, ACol: Cardinal);
+begin
+  // 2 bytes for row of first cell in shared formula
+  ARow := WordLEToN(AStream.ReadWord);
+  // 2 bytes for column of first cell in shared formula
+  ACol := WordLEToN(AStream.ReadWord);
+end;
+
+{ Reads the array of rpn tokens from the current stream position, creates an
+  rpn formula and stores it in the cell. }
 function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
-  var AFormula: TsRPNFormula): Boolean;
+  ACell: PCell): Boolean;
 var
   n: Word;
   p0: Int64;
@@ -1576,6 +1619,7 @@ var
   dblVal: Double = 0.0;   // IEEE 8 byte floating point number
   flags: TsRelFlags;
   r, c, r2, c2: Cardinal;
+  dr, dc: Integer;
   fek: TFEKind;
   func: Word;
   b: Byte;
@@ -1602,6 +1646,15 @@ begin
         begin
           ReadRPNCellRangeAddress(AStream, r, c, r2, c2, flags);
           rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFN_R, INT_EXCEL_TOKEN_TREFN_V:
+        begin
+          ReadRPNCellAddressOffset(AStream, dr, dc);
+          rpnItem := RPNCellOffset(dr, dc, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFN_A:
+        begin
+          raise Exception.Create('Cell range offset not yet implemented. Please report an issue');
         end;
       INT_EXCEL_TOKEN_TMISSARG:
         rpnItem := RPNMissingArg(rpnItem);
@@ -1655,7 +1708,15 @@ begin
             end;
           if not found then
             supported := false;
-        end
+        end;
+
+      INT_EXCEL_TOKEN_TEXP:
+        // Indicates that cell belongs to a shared or array formula. We determine
+        // the base cell of the shared formula and store it in the current cell.
+        begin
+           ReadRPNSharedFormulaBase(AStream, r, c);
+           ACell^.SharedFormulaBase := FWorksheet.FindCell(r, c);
+        end;
 
       else
         found := false;
@@ -1671,11 +1732,11 @@ begin
   end;
   if not supported then begin
     DestroyRPNFormula(rpnItem);
-    SetLength(AFormula, 0);
+    SetLength(ACell^.RPNFormulaValue, 0);
     Result := false;
   end
   else begin
-    AFormula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
+    ACell^.RPNFormulaValue := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
     Result := true;
   end;
 end;
@@ -1686,6 +1747,40 @@ end;
 function TsSpreadBIFFReader.ReadRPNTokenArraySize(AStream: TStream): Word;
 begin
   Result := WordLEToN(AStream.ReadWord);
+end;
+
+{ Reads a SHAREDFMLA record, i.e. reads cell range coordinates and a rpn
+  formula. The formula is applied to all cells in the range. The formula stored
+  only in the top/left cell of the range. }
+procedure TsSpreadBIFFReader.ReadSharedFormula(AStream: TStream);
+var
+  r1, r2, c1, c2: Cardinal;
+  flags: TsRelFlags;
+  b: Byte;
+  ok: Boolean;
+  cell: PCell;
+begin
+  // Cell range in which the formula is valid
+  r1 := WordLEToN(AStream.ReadWord);
+  r2 := WordLEToN(AStream.ReadWord);
+  c1 := AStream.ReadByte;         // 8 bit, even for BIFF8
+  c2 := AStream.ReadByte;
+
+  { Create cell }
+  if FIsVirtualMode then begin                 // "Virtual" cell
+    InitCell(r1, c1, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(r1, c1);       // "Real" cell
+
+  // Unused
+  AStream.ReadByte;
+
+  // Number of existing FORMULA records for this shared formula
+  AStream.ReadByte;
+
+  // RPN formula tokens
+  ok := ReadRPNTokenArray(AStream, cell);
 end;
 
 { Helper function for reading a string with 8-bit length. Here, we implement the

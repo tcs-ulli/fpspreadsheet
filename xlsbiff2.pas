@@ -76,6 +76,7 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
     function ReadRPNFunc(AStream: TStream): Word; override;
+    procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal);
     function ReadRPNTokenArraySize(AStream: TStream): Word; override;
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadWindow2(AStream: TStream); override;
@@ -601,7 +602,7 @@ begin
 
   { Formula token array }
   if FWorkbook.ReadFormulas then begin
-    ok := ReadRPNTokenArray(AStream, cell^.RPNFormulaValue);
+    ok := ReadRPNTokenArray(AStream, cell);
     if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
 
@@ -783,6 +784,19 @@ begin
   b := AStream.ReadByte;
   Result := b;
 end;
+
+{ Reads the cell coordiantes of the top/left cell of a range using a shared formula.
+  This cell contains the rpn token sequence of the formula.
+  Is overridden because BIFF2 has 1 byte for column. }
+procedure TsSpreadBIFF2Reader.ReadRPNSharedFormulaBase(AStream: TStream;
+  out ARow, ACol: Cardinal);
+begin
+  // 2 bytes for row of first cell in shared formula
+  ARow := WordLEToN(AStream.ReadWord);
+  // 1 byte for column of first cell in shared formula
+  ACol := AStream.ReadByte;
+end;
+
 
 { Helper funtion for reading of the size of the token array of an RPN formula.
   Is overridden because BIFF2 uses 1 byte only. }

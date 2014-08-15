@@ -87,6 +87,8 @@ type
     procedure ReadRichString(const AStream: TStream);
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); override;
+    procedure ReadRPNCellAddressOffset(AStream: TStream;
+      out ARowOffset, AColOffset: Integer); override;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); override;
     procedure ReadSST(const AStream: TStream);
@@ -1474,29 +1476,30 @@ begin
 
     case RecordType of
 
-    INT_EXCEL_ID_BLANK   : ReadBlank(AStream);
-    INT_EXCEL_ID_MULBLANK: ReadMulBlank(AStream);
-    INT_EXCEL_ID_NUMBER  : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL   : ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA : ReadFormula(AStream);
-    INT_EXCEL_ID_STRING  : ReadStringRecord(AStream);
+    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
+    INT_EXCEL_ID_MULBLANK  : ReadMulBlank(AStream);
+    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
+    INT_EXCEL_ID_SHAREDFMLA: ReadSharedFormula(AStream);
+    INT_EXCEL_ID_STRING    : ReadStringRecord(AStream);
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
     // In BIFF8 it is usually replaced by the LABELSST record. Excel still
     // uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RSTRING : ReadRichString(AStream);
+    INT_EXCEL_ID_RSTRING   : ReadRichString(AStream);
     // (RK) This record represents a cell that contains an RK value
     // (encoded integer or floating-point value). If a floating-point
     // value cannot be encoded to an RK value, a NUMBER record will be written.
     // This record replaces the record INTEGER written in BIFF2.
-    INT_EXCEL_ID_RK      : ReadRKValue(AStream);
-    INT_EXCEL_ID_MULRK   : ReadMulRKValues(AStream);
-    INT_EXCEL_ID_LABELSST: ReadLabelSST(AStream); //BIFF8 only
-    INT_EXCEL_ID_COLINFO : ReadColInfo(AStream);
-    INT_EXCEL_ID_ROW     : ReadRowInfo(AStream);
-    INT_EXCEL_ID_WINDOW2 : ReadWindow2(AStream);
-    INT_EXCEL_ID_PANE    : ReadPane(AStream);
-    INT_EXCEL_ID_BOF     : ;
-    INT_EXCEL_ID_EOF     : SectionEOF := True;
+    INT_EXCEL_ID_RK        : ReadRKValue(AStream);
+    INT_EXCEL_ID_MULRK     : ReadMulRKValues(AStream);
+    INT_EXCEL_ID_LABELSST  : ReadLabelSST(AStream); //BIFF8 only
+    INT_EXCEL_ID_COLINFO   : ReadColInfo(AStream);
+    INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
+    INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
+    INT_EXCEL_ID_PANE      : ReadPane(AStream);
+    INT_EXCEL_ID_BOF       : ;
+    INT_EXCEL_ID_EOF       : SectionEOF := True;
     else
       // nothing
     end;
@@ -1701,6 +1704,24 @@ begin
   AFlags := [];
   if (c and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
   if (c and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+end;
+
+{ Read the difference between cell row and column indexed of a cell and a reference
+  cell.
+  Overriding the implementation in xlscommon. }
+procedure TsSpreadBIFF8Reader.ReadRPNCellAddressOffset(AStream: TStream;
+  out ARowOffset, AColOffset: Integer);
+var
+  dr: SmallInt;
+  dc: ShortInt;
+begin
+  // 2 bytes for row offset
+  dr := WordLEToN(AStream.ReadWord);
+  ARowOffset := dr;
+
+  // 2 bytes for column offset
+  dc := Lo(WordLEToN(AStream.ReadWord));
+  AColOffset := dc;
 end;
 
 { Reads a cell range address used in an RPN formula element.

@@ -81,8 +81,8 @@ type
   }
   TFEKind = (
     { Basic operands }
-    fekCell, fekCellRef, fekCellRange, fekNum, fekInteger, fekString, fekBool,
-    fekErr, fekMissingArg,
+    fekCell, fekCellRef, fekCellRange, fekCellOffset, fekNum, fekInteger,
+    fekString, fekBool, fekErr, fekMissingArg,
     { Basic operations }
     fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
     fekConcat,  // string concatenation
@@ -137,11 +137,13 @@ type
       or relative. It is a set consisting of TsRelFlag elements. }
   TsRelFlags = set of TsRelFlag;
 
-  {@@ Elements of an expanded formula. }
+  {@@ Elements of an expanded formula.
+    Note: If ElementKind is fekCellOffset, "Row" and "Col" have to be cast
+          to signed integers! }
   TsFormulaElement = record
     ElementKind: TFEKind;
-    Row, Row2: Word; // zero-based
-    Col, Col2: Word; // zero-based
+    Row, Row2: Cardinal; // zero-based
+    Col, Col2: Cardinal; // zero-based
     Param1, Param2: Word; // Extra parameters
     DoubleValue: double;
     IntValue: Word;
@@ -381,6 +383,9 @@ type
   {@@ State flags while calculating formulas }
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
+  {@@ Pointer to a TCell record }
+  PCell = ^TCell;
+
   {@@ Cell structure for TsWorksheet
       The cell record contains information on the location of the cell (row and
       column index), on the value contained (number, date, text, ...), and on
@@ -403,6 +408,7 @@ type
     DateTimeValue: TDateTime;
     BoolValue: Boolean;
     ErrorValue: TsErrorValue;
+    SharedFormulaBase: PCell;     // Cell containing the shared formula
     { Formatting fields }
     { When adding/deleting formatting fields don't forget to update CopyFormat! }
     UsedFormattingFields: TsUsedFormattingFields;
@@ -419,9 +425,6 @@ type
     { Status flags }
     CalcState: TsCalcState;
   end;
-
-  {@@ Pointer to a TCell record }
-  PCell = ^TCell;
 
 const
   // Takes account of effect of cell margins on row height by adding this
@@ -537,7 +540,6 @@ type
     function  ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean; overload;
     function  ReadFormulaAsString(ACell: PCell): String;
     function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
-    function  ReadRPNFormulaAsString(ACell: PCell): String;
 
     { Reading of cell attributes }
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
@@ -675,6 +677,8 @@ type
 
     { Formulas }
     procedure CalcFormulas;
+    function  HasFormula(ACell: PCell): Boolean;
+    function  ReadRPNFormulaAsString(ACell: PCell): String;
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
@@ -1141,6 +1145,7 @@ type
     ANext: PRPNItem): PRPNItem; overload;
   function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
     ANext: PRPNItem): PRPNItem; overload;
+  function RPNCellOffset(ARowOffset, AColOffset: Integer; ANext: PRPNItem): PRPNItem;
   function RPNErr(AErrCode: Byte; ANext: PRPNItem): PRPNItem;
   function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
   function RPNMissingArg(ANext: PRPNItem): PRPNItem;
@@ -1320,6 +1325,7 @@ var
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCell
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRef
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRange
+    (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellOffset
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellNum
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellInteger
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellString
@@ -1767,6 +1773,7 @@ var
   fe: TsFormulaElement;
   cell: PCell;
   r,c: Cardinal;
+  formula: TsRPNFormula;
 begin
   if (Length(ACell^.RPNFormulaValue) = 0) or
      (ACell^.ContentType = cctError)
@@ -1777,8 +1784,14 @@ begin
 
   args := TsArgumentStack.Create;
   try
-    for i := 0 to Length(ACell^.RPNFormulaValue) - 1 do begin
-      fe := ACell^.RPNFormulaValue[i];   // "fe" means "formula element"
+    // Take care of shared formulas
+    if ACell^.SharedFormulaBase = nil then
+      formula := ACell^.RPNFormulaValue
+    else
+      formula := ACell^.SharedFormulaBase^.RPNFormulaValue;
+
+    for i := 0 to Length(formula) - 1 do begin
+      fe := formula[i];             // "fe" means "formula element"
       case fe.ElementKind of
         fekCell, fekCellRef:
           begin
@@ -1802,6 +1815,16 @@ begin
                   end;
               end;
             args.PushCellRange(fe.Row, fe.Col, fe.Row2, fe.Col2, self);
+          end;
+        fekCellOffset:
+          begin
+            cell := FindCell(aCell^.Row + SmallInt(fe.Row), ACell^.Col + SmallInt(fe.Col));
+            if cell <> nil then
+              case cell^.CalcState of
+                csNotCalculated: CalcRPNFormula(cell);
+                csCalculating  : raise Exception.Create(lpCircularReference);
+              end;
+            args.PushCell(cell, self);
           end;
         fekNum:
           args.PushNumber(fe.DoubleValue, self);
@@ -1956,17 +1979,6 @@ begin
   lDestCell^.Col := AToCol;
   ChangedCell(AToRow, AToCol);
   ChangedFont(AToRow, AToCol);
-  {
-  lCurStr := AFromWorksheet.ReadAsUTF8Text(AFromRow, AFromCol);
-  lCurUsedFormatting := AFromWorksheet.ReadUsedFormatting(AFromRow, AFromCol);
-  lCurColor := AFromWorksheet.ReadBackgroundColor(AFromRow, AFromCol);
-  WriteUTF8Text(AToRow, AToCol, lCurStr);
-  WriteUsedFormatting(AToRow, AToCol, lCurUsedFormatting);
-  if uffBackgroundColor in lCurUsedFormatting then
-  begin
-    WriteBackgroundColor(AToRow, AToCol, lCurColor);
-  end;
-  }
 end;
 
 {@@
@@ -2059,7 +2071,6 @@ begin
   if (Result = nil) then
   begin
     New(Result);
-//    Result := GetMem(SizeOf(TCell));
     FillChar(Result^, SizeOf(TCell), #0);
 
     Result^.Row := ARow;
@@ -2140,16 +2151,19 @@ var
   nf: TsNumberFormat;
 begin
   Result := false;
-  if ACell <> nil then begin
+  if ACell <> nil then
+  begin
     parser := TsNumFormatParser.Create(FWorkbook, ACell^.NumberFormatStr);
     try
       if parser.Status = psOK then begin
         nf := parser.NumFormat;
-        if (nf = nfGeneral) or IsDateTimeFormat(nf) then begin
+        if (nf = nfGeneral) or IsDateTimeFormat(nf) then
+        begin
           ADecimals := 2;
           ACurrencySymbol := '?';
         end
-        else begin
+        else
+        begin
           ADecimals := parser.Decimals;
           ACurrencySymbol := parser.CurrencySymbol;
         end;
@@ -2223,12 +2237,14 @@ var
   AVLNode: TAVLTreeNode;
   i: Integer;
 begin
-  if AForceCalculation then begin
+  if AForceCalculation then
+  begin
     Result := $FFFFFFFF;
     // Traverse the tree from lowest to highest.
     // Since tree primary sort order is on row lowest col could exist anywhere.
     AVLNode := FCells.FindLowest;
-    While Assigned(AVLNode) do begin
+    while Assigned(AVLNode) do
+    begin
       Result := Math.Min(Result, PCell(AVLNode.Data)^.Col);
       AVLNode := FCells.FindSuccessor(AVLNode);
     end;
@@ -2240,7 +2256,8 @@ begin
     // Store the result
     FFirstColIndex := Result;
   end
-  else begin
+  else
+  begin
     Result := FFirstColIndex;
     if Result = $FFFFFFFF then
       Result := GetFirstColIndex(true);
@@ -2266,7 +2283,8 @@ var
   AVLNode: TAVLTreeNode;
   i: Integer;
 begin
-  if AForceCalculation then begin
+  if AForceCalculation then
+  begin
     Result := 0;
     // Traverse the tree from lowest to highest.
     // Since tree primary sort order is on Row
@@ -2312,7 +2330,8 @@ begin
   n := GetLastColIndex;
   c := 0;
   Result := FindCell(ARow, c);
-  while (result = nil) and (c < n) do begin
+  while (result = nil) and (c < n) do
+  begin
     inc(c);
     result := FindCell(ARow, c);
   end;
@@ -2331,7 +2350,8 @@ begin
   n := GetLastColIndex;
   c := n;
   Result := FindCell(ARow, c);
-  while (Result = nil) and (c > 0) do begin
+  while (Result = nil) and (c > 0) do
+  begin
     dec(c);
     Result := FindCell(ARow, c);
   end;
@@ -2356,7 +2376,8 @@ var
   AVLNode: TAVLTreeNode;
   i: Integer;
 begin
-  if AForceCalculation then begin
+  if AForceCalculation then
+  begin
     Result := $FFFFFFFF;
     AVLNode := FCells.FindLowest;
     if Assigned(AVLNode) then
@@ -2368,7 +2389,8 @@ begin
     // Store result
     FFirstRowIndex := Result;
   end
-  else begin
+  else
+  begin
     Result := FFirstRowIndex;
     if Result = $FFFFFFFF then
       Result := GetFirstRowIndex(true);
@@ -2394,7 +2416,8 @@ var
   AVLNode: TAVLTreeNode;
   i: Integer;
 begin
-  if AForceCalculation then begin
+  if AForceCalculation then
+  begin
     Result := 0;
     AVLNode := FCells.FindHighest;
     if Assigned(AVLNode) then
@@ -2418,6 +2441,18 @@ end;
 function TsWorksheet.GetLastRowNumber: Cardinal;
 begin
   Result := GetLastRowIndex;
+end;
+
+{@@
+  Returns TRUE if the cell contains a formula (direct or shared, does not matter).
+}
+function TsWorksheet.HasFormula(ACell: PCell): Boolean;
+begin
+  Result := Assigned(ACell) and (
+    (ACell^.SharedFormulaBase <> nil) or
+    (Length(ACell^.RPNFormulaValue) > 0) or
+    (Length(ACell^.FormulaValue.FormulaStr) > 0)
+  );
 end;
 
 {@@
@@ -2470,7 +2505,8 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
     fmtp, fmtn, fmt0: String;
   begin
     Result := '';
-    if not IsNaN(Value) then begin
+    if not IsNaN(Value) then
+    begin
       if ANumberFormatStr = '' then
         ANumberFormatStr := BuildDateTimeFormatString(ANumberFormat,
           Workbook.FormatSettings, ANumberFormatStr);
@@ -2613,10 +2649,11 @@ begin
   Result := '';
   if ACell = nil then
     exit;
-  if Length(ACell^.RPNFormulaValue) > 0 then
-    Result := ReadRPNFormulaAsString(ACell)
-  else
-    Result := ACell^.FormulaValue.FormulaStr;
+  if HasFormula(ACell) then begin
+    Result := ReadRPNFormulaAsString(ACell);
+    if Result = '' then
+      Result := ACell^.FormulaValue.FormulaStr;
+  end;
 end;
 
 {@@
@@ -2668,6 +2705,7 @@ var
   s: String;
   ptr: Pointer;
   fek: TFEKind;
+  formula: TsRPNFormula;
 begin
   Result := '';
   if ACell = nil then
@@ -2676,13 +2714,19 @@ begin
   fs := Workbook.FormatSettings;
   L := TStringList.Create;
   try
+    // Take care of shared formulas
+    if ACell^.SharedFormulaBase = nil then
+      formula := ACell^.RPNFormulaValue
+    else
+      formula := ACell^.SharedFormulaBase^.RPNFormulaValue;
+
     // We store the cell values and operation codes in a stringlist which serves
     // as kind of stack. Therefore, we do not destroy the original formula array.
     // We reverse the order of the items because in the next step stringlist
     // items will subsequently be deleted, and this is much easier when going
     // in reverse direction.
-    for i := Length(ACell^.RPNFormulaValue)-1 downto 0 do begin
-      elem := ACell^.RPNFormulaValue[i];
+    for i := Length(formula)-1 downto 0 do begin
+      elem := formula[i];
       ptr := Pointer(elem.ElementKind);
       case elem.ElementKind of
         fekNum:
@@ -2698,6 +2742,8 @@ begin
           L.AddObject(GetCellString(elem.Row, elem.Col, elem.RelFlags), ptr);
         fekCellRange:
           L.AddObject(GetCellRangeString(elem.Row, elem.Col, elem.Row2, elem.Col2, elem.RelFlags), ptr);
+        fekCellOffset:
+          L.AddObject(GetCellString(ACell^.Row + SmallInt(elem.Row), ACell^.Col + SmallInt(elem.Col)), ptr);
         // Operations:
         else
           L.AddObject(FEProps[elem.ElementKind].Symbol, ptr);
@@ -2752,7 +2798,7 @@ begin
           end;
         else
           if fek >= fekAdd then begin
-            elem := ACell^.RPNFormulaValue[Length(ACell^.RPNFormulaValue) - 1 - i];
+            elem := formula[Length(formula) - 1 - i];
             s := '';
             for j:= i+elem.ParamsNum downto i+1 do begin
               if j < L.Count then begin
@@ -6964,12 +7010,11 @@ end;
   Creates a pointer to a new RPN item. This represents an element in the array
   of token of an RPN formula.
 
-  @return  Pointer the the RPN item
+  @return  Pointer to the RPN item
 }
 function NewRPNItem: PRPNItem;
 begin
   New(Result);
-//  Result := GetMem(SizeOf(TRPNItem));
   FillChar(Result^.FE, SizeOf(Result^.FE), 0);
   Result^.FE.StringValue := '';
 end;
@@ -6979,13 +7024,8 @@ end;
 }
 procedure DisposeRPNItem(AItem: PRPNItem);
 begin
-  if AItem <> nil then begin
-{
-    AItem.FE.StringValue := '';;
-    FreeMem(AItem, SizeOf(TRPNItem));
-}
+  if AItem <> nil then
     Dispose(AItem);
-  end;
 end;
 
 {@@
@@ -7122,6 +7162,25 @@ begin
   Result^.FE.Row2 := ARow2;
   Result^.FE.Col2 := ACol2;
   Result^.FE.RelFlags := AFlags;
+  Result^.Next := ANext;
+end;
+
+{@@
+  Creates an entry in the RPN array for a relative cell reference as used in
+  shared formulas. The given parameters indicate the relativ offset between
+  the current cell coordinates and a reference rell.
+
+  @param  ARowOffset  Offset between current row and the row of a reference cell
+  @param  AColOffset  Offset between current column and the column of a reference cell
+  @param  ANext       Pointer to the next RPN item in the list
+}
+function RPNCellOffset(ARowOffset, AColOffset: Integer; ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekCellOffset;
+  Result^.FE.Row := ARowOffset;
+  Result^.FE.Col := AColOffset;
+  Result^.FE.RelFlags := [rfRelRow, rfRelCol];
   Result^.Next := ANext;
 end;
 
