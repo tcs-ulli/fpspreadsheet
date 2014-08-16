@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 258
   Width = 884
   Caption = 'spready'
-  ClientHeight = 614
+  ClientHeight = 619
   ClientWidth = 884
   Menu = MainMenu
   OnActivate = FormActivate
@@ -14,7 +14,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 78
-    Top = 536
+    Top = 541
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,9 +23,9 @@ object Form1: TForm1
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 8
-      Width = 116
+      Width = 93
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 39
-      Width = 125
+      Width = 100
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -45,7 +45,7 @@ object Form1: TForm1
     end
     object EdFrozenCols: TSpinEdit
       Left = 645
-      Height = 28
+      Height = 23
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -53,7 +53,7 @@ object Form1: TForm1
     end
     object EdFrozenRows: TSpinEdit
       Left = 645
-      Height = 28
+      Height = 23
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -61,37 +61,37 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 560
-      Height = 20
+      Height = 15
       Top = 13
-      Width = 77
+      Width = 62
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 560
-      Height = 20
+      Height = 15
       Top = 40
-      Width = 82
+      Width = 66
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
       Left = 160
-      Height = 24
+      Height = 19
       Top = 8
-      Width = 120
+      Width = 96
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
       TabOrder = 2
     end
     object CbHeaderStyle: TComboBox
       Left = 408
-      Height = 28
+      Height = 23
       Top = 8
       Width = 116
-      ItemHeight = 20
+      ItemHeight = 15
       ItemIndex = 2
       Items.Strings = (
         'Lazarus'
@@ -105,9 +105,9 @@ object Form1: TForm1
     end
     object CbAutoCalcFormulas: TCheckBox
       Left = 160
-      Height = 24
+      Height = 19
       Top = 39
-      Width = 158
+      Width = 128
       Caption = 'Calculate on change'
       OnChange = CbAutoCalcFormulasChange
       TabOrder = 3
@@ -115,9 +115,9 @@ object Form1: TForm1
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 457
+    Height = 462
     Top = 79
-    Width = 884
+    Width = 648
     ActivePage = TabSheet1
     Align = alClient
     TabIndex = 0
@@ -125,13 +125,13 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 424
-      ClientWidth = 876
+      ClientHeight = 434
+      ClientWidth = 640
       object WorksheetGrid: TsWorksheetGrid
         Left = 0
-        Height = 424
+        Height = 434
         Top = 0
-        Width = 876
+        Width = 640
         FrozenCols = 0
         FrozenRows = 0
         ReadFormulas = False
@@ -145,7 +145,7 @@ object Form1: TForm1
         TitleStyle = tsNative
         OnSelection = WorksheetGridSelection
         ColWidths = (
-          56
+          42
           64
           64
           64
@@ -263,19 +263,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 28
+      Height = 23
       Top = 2
       Width = 127
-      ItemHeight = 20
+      ItemHeight = 15
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 28
+      Height = 23
       Top = 2
       Width = 48
-      ItemHeight = 20
+      ItemHeight = 15
       Items.Strings = (
         '8'
         '9'
@@ -439,6 +439,69 @@ object Form1: TForm1
       Height = 24
       Top = 2
       Width = 5
+    end
+  end
+  object InspectorSplitter: TSplitter
+    Left = 648
+    Height = 462
+    Top = 79
+    Width = 5
+    Align = alRight
+    ResizeAnchor = akRight
+  end
+  object InspectorPageControl: TPageControl
+    Left = 653
+    Height = 462
+    Top = 79
+    Width = 231
+    ActivePage = PgCellValue
+    Align = alRight
+    TabIndex = 0
+    TabOrder = 6
+    OnChange = InspectorPageControlChange
+    object PgCellValue: TTabSheet
+      Caption = 'Cell value'
+      ClientHeight = 434
+      ClientWidth = 223
+      object CellInspector: TValueListEditor
+        Left = 0
+        Height = 434
+        Top = 0
+        Width = 223
+        Align = alClient
+        FixedCols = 0
+        RowCount = 15
+        TabOrder = 0
+        TitleStyle = tsNative
+        DisplayOptions = [doColumnTitles, doAutoColResize]
+        Strings.Strings = (
+          'Row='
+          'Column='
+          'ContentType='
+          'NumberValue='
+          'DateTimeValue='
+          'UTF8StringValue='
+          'BoolValue='
+          'ErrorValue='
+          'RPNFormulaValue='
+          'StringFormula.FormulaStr='
+          'SharedFormulaBase='
+          ''
+          ''
+          ''
+        )
+        TitleCaptions.Strings = (
+          ''
+          ''
+        )
+        ColWidths = (
+          109
+          110
+        )
+      end
+    end
+    object PgProperties: TTabSheet
+      Caption = 'Properties'
     end
   end
   object OpenDialog: TOpenDialog
@@ -1159,6 +1222,13 @@ object Form1: TForm1
       end
       object MnuWordwrap: TMenuItem
         Action = AcWordwrap
+        AutoCheck = True
+      end
+    end
+    object mnuView: TMenuItem
+      Caption = 'View'
+      object mnuInspector: TMenuItem
+        Action = AcViewInspector
         AutoCheck = True
       end
     end
@@ -2796,6 +2866,12 @@ object Form1: TForm1
       Hint = 'Add row'
       ImageIndex = 35
       OnExecute = AcAddRowExecute
+    end
+    object AcViewInspector: TAction
+      AutoCheck = True
+      Caption = 'Inspector'
+      Checked = True
+      OnExecute = AcViewInspectorExecute
     end
   end
   object FontDialog: TFontDialog
