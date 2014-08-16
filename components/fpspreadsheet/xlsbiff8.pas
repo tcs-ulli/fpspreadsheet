@@ -88,7 +88,7 @@ type
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); override;
     procedure ReadRPNCellAddressOffset(AStream: TStream;
-      out ARowOffset, AColOffset: Integer); override;
+      out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); override;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); override;
     procedure ReadSST(const AStream: TStream);
@@ -1710,18 +1710,25 @@ end;
   cell.
   Overriding the implementation in xlscommon. }
 procedure TsSpreadBIFF8Reader.ReadRPNCellAddressOffset(AStream: TStream;
-  out ARowOffset, AColOffset: Integer);
+  out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags);
 var
   dr: SmallInt;
   dc: ShortInt;
+  c: Word;
 begin
   // 2 bytes for row offset
   dr := WordLEToN(AStream.ReadWord);
   ARowOffset := dr;
 
   // 2 bytes for column offset
-  dc := Lo(WordLEToN(AStream.ReadWord));
+  c := WordLEToN(AStream.ReadWord);
+  dc := Lo(c);
   AColOffset := dc;
+
+  // Extract info on absolute/relative addresses.
+  AFlags := [];
+  if (c and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (c and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
 { Reads a cell range address used in an RPN formula element.
