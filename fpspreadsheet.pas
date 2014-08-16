@@ -863,6 +863,7 @@ type
     function GetDefaultFont: TsFont;
     function GetDefaultFontSize: Single;
     function GetFont(AIndex: Integer): TsFont;
+    function GetFontAsString(AIndex: Integer): String;
     function GetFontCount: Integer;
     procedure InitFonts;
     procedure RemoveAllFonts;
@@ -5586,6 +5587,28 @@ begin
     Result := FFontList.Items[AIndex]
   else
     Result := nil;
+end;
+
+{@@
+  Returns a string which identifies the font with a given index.
+
+  @param  AIndex    Index of the font
+  @return String with font name, font size etc.
+}
+function TsWorkbook.GetFontAsString(AIndex: Integer): String;
+var
+  fnt: TsFont;
+begin
+  fnt := GetFont(AIndex);
+  if fnt <> nil then begin
+    Result := Format('%s, size %.1f, color %s', [
+      fnt.FontName, fnt.Size, GetColorName(fnt.Color)]);
+    if (fssBold in fnt.Style) then Result := Result + ', bold';
+    if (fssItalic in fnt.Style) then Result := Result + ', italic';
+    if (fssUnderline in fnt.Style) then Result := Result + ', underline';
+    if (fssStrikeout in fnt.Style) then result := Result + ', strikeout';
+  end else
+    Result := '';
 end;
 
 {@@
