@@ -439,7 +439,7 @@ type
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellAddressOffset(AStream: TStream;
-      out ARowOffset, AColOffset: Integer); virtual;
+      out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
@@ -1548,18 +1548,25 @@ end;
   cell.
   Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2. }
 procedure TsSpreadBIFFReader.ReadRPNCellAddressOffset(AStream: TStream;
-  out ARowOffset, AColOffset: Integer);
+  out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags);
 var
-  r: SmallInt;
-  c: ShortInt;
+  r: Word;
+  dr: SmallInt;
+  dc: ShortInt;
 begin
   // 2 bytes for row
-  r := WordLEToN(AStream.ReadWord) and $3FFF;
-  ARowOffset := r;
+  r := WordLEToN(AStream.ReadWord);
+  dr := SmallInt(r and $3FFF);
+  ARowOffset := dr;
 
   // 1 byte for column
-  c := AStream.ReadByte;
-  AColOffset := c;
+  dc := AStream.ReadByte;
+  AColOffset := dc;
+
+  // Extract absolute/relative flags
+  AFlags := [];
+  if (r and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
@@ -1649,8 +1656,8 @@ begin
         end;
       INT_EXCEL_TOKEN_TREFN_R, INT_EXCEL_TOKEN_TREFN_V:
         begin
-          ReadRPNCellAddressOffset(AStream, dr, dc);
-          rpnItem := RPNCellOffset(dr, dc, rpnItem);
+          ReadRPNCellAddressOffset(AStream, dr, dc, flags);
+          rpnItem := RPNCellOffset(dr, dc, flags, rpnItem);
         end;
       INT_EXCEL_TOKEN_TREFN_A:
         begin

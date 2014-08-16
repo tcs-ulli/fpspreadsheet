@@ -702,6 +702,8 @@ end;
 
 
 procedure TBIFFGrid.ShowCellAddress;
+{ Note: The bitmask assignment to relative column/row is reversed in relation
+  to OpenOffice documentation in order to match with Excel files. }
 var
   numBytes: Word;
   b: Byte;
@@ -726,15 +728,16 @@ begin
       FDetails.Add('ColIndex information:'#13);
       FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
       if c and $4000 = 0
-        then FDetails.Add('Bit 14=0: absolute row index')
-        else FDetails.Add('Bit 14=1: relative row index');
+        then FDetails.Add('Bit 14=0: absolute column index')
+        else FDetails.Add('Bit 14=1: relative column index');
       if c and $8000 = 0
-        then FDetails.Add('Bit 15=0: absolute column index')
-        else FDetails.Add('Bit 15=1: relative column index');
+        then FDetails.Add('Bit 15=0: absolute row index')
+        else FDetails.Add('Bit 15=1: relative row index');
     end;
     s := Format('%d ($%.4x)', [c, c]);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Column index');
-  end else begin
+  end else
+  begin
     numbytes := 1;
     Move(FBuffer[FBufferIndex+2], b, numBytes);
     c := b;
@@ -742,11 +745,11 @@ begin
       FDetails.Add('RowIndex information:'#13);
       FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
       if r and $4000 = 0
-        then FDetails.Add('Bit 14=0: absolute row index')
-        else FDetails.Add('Bit 14=1: relative row index');
+        then FDetails.Add('Bit 14=0: absolute column index')
+        else FDetails.Add('Bit 14=1: relative column index');
       if r and $8000 = 0
-        then FDetails.Add('Bit 15=0: absolute column index')
-        else FDetails.Add('Bit 15=1: relative column index');
+        then FDetails.Add('Bit 15=0: absolute row index')
+        else FDetails.Add('Bit 15=1: relative row index');
     end;
     //s := Format('$%.4x (%d, %s)', [r, r and $3FFF, ABS_REL[r and $4000 <> 0]]);
     s := Format('%d ($%.4x)', [r, r]);
@@ -763,6 +766,8 @@ end;
 
 
 procedure TBIFFGrid.ShowCellAddressRange;
+{ Note: The bitmask assignment to relative column/row is reversed in relation
+  to OpenOffice documentation in order to match with Excel files. }
 var
   numbytes: Word;
   b: Byte;
@@ -799,11 +804,11 @@ begin
       FDetails.Add('ColIndex information:'#13);
       FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c and $3FFF, ABS_REL[c and $8000 <> 0]]));
       if c and $4000 = 0
-        then FDetails.Add('Bit 14=0: absolute row index')
-        else FDetails.Add('Bit 14=1: relative row index');
+        then FDetails.Add('Bit 14=0: absolute column index')
+        else FDetails.Add('Bit 14=1: relative column index');
       if c and $8000 = 0
-        then FDetails.Add('Bit 15=0: absolute column index')
-        else FDetails.Add('Bit 15=1: relative column index');
+        then FDetails.Add('Bit 15=0: absolute row index')
+        else FDetails.Add('Bit 15=1: relative row index');
     end;
     s := Format('%d ($%.4x)', [c, c]);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'First column index');
@@ -813,11 +818,11 @@ begin
       FDetails.Add('ColIndex information:'#13);
       FDetails.Add(Format('Bits 0-13: ColIndex = %d (%s)', [c2 and $3FFF, ABS_REL[c2 and $8000 <> 0]]));
       if c2 and $4000 = 0
-        then FDetails.Add('Bit 14=0: absolute row index')
-        else FDetails.Add('Bit 14=1: relative row index');
+        then FDetails.Add('Bit 14=0: absolute column index')
+        else FDetails.Add('Bit 14=1: relative column index');
       if c2 and $8000 = 0
-        then FDetails.Add('Bit 15=0: absolute column index')
-        else FDetails.Add('Bit 15=1: relative column index');
+        then FDetails.Add('Bit 15=0: absolute row index')
+        else FDetails.Add('Bit 15=1: relative row index');
     end;
     s := Format('%d ($%.4x)', [c2, c2]);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Last column index');
@@ -839,11 +844,11 @@ begin
       FDetails.Add('RowIndex information:'#13);
       FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r and $3FFF, ABS_REL[r and $4000 <> 0]]));
       if r and $4000 = 0
-        then FDetails.Add('Bit 14=0: absolute row index')
-        else FDetails.Add('Bit 14=1: relative row index');
+        then FDetails.Add('Bit 14=0: absolute column index')
+        else FDetails.Add('Bit 14=1: relative column index');
       if r and $8000 = 0
-        then FDetails.Add('Bit 15=0: absolute column index')
-        else FDetails.Add('Bit 15=1: relative column index');
+        then FDetails.Add('Bit 15=0: absolute row index')
+        else FDetails.Add('Bit 15=1: relative row index');
     end;
     s := Format('%d ($%.4x)', [r, r]);
     ShowInRow(FCurrRow, FBufferIndex, 2, s, 'First row index');
@@ -853,11 +858,11 @@ begin
       FDetails.Add('RowIndex information:'#13);
       FDetails.Add(Format('Bits 0-13: RowIndex = %d (%s)', [r2 and $3FFF, ABS_REL[r2 and $4000 <> 0]]));
       if r2 and $4000 = 0
-        then FDetails.Add('Bit 14=0: absolute row index')
-        else FDetails.Add('Bit 14=1: relative row index');
+        then FDetails.Add('Bit 14=0: absolute column index')
+        else FDetails.Add('Bit 14=1: relative column index');
       if r2 and $8000 = 0
-        then FDetails.Add('Bit 15=0: absolute column index')
-        else FDetails.Add('Bit 15=1: relative column index');
+        then FDetails.Add('Bit 15=0: absolute row index')
+        else FDetails.Add('Bit 15=1: relative row index');
     end;
     s := Format('%d ($%.4x)', [r2, r2]);
     ShowInRow(FCurrRow, FBufferIndex, 2, s, 'Last row index');
@@ -2373,6 +2378,7 @@ var
   dbl: Double;
   firstTokenBufIndex: Integer;
   token: Byte;
+  r, c: Word;
 begin
   // Tokens and parameters
   firstTokenBufIndex := FBufferIndex;
@@ -2599,52 +2605,96 @@ begin
             if FFormat = sfExcel8 then
             begin
               numBytes := 2;
-              Move(FBuffer[FBufferIndex], w, numBytes);
-              w := WordLEToN(w);
+              Move(FBuffer[FBufferIndex], w, numBytes);    // row
+              r := WordLEToN(w);
+              Move(FBuffer[FBufferIndex+2], w, numBytes);  // column with flags
+              c := WordLEToN(w);
+
+              { Note: The bitmask assignment to relative column/row is reversed in relation
+                to OpenOffice documentation in order to match with Excel files. }
               if Row = FCurrRow then begin
                 FDetails.Add('Encoded cell address (row):'#13);
-                FDetails.Add('Relative row index: ' + IntToStr(Smallint(w)));
+                if c and $8000 = 0 then
+                begin
+                  FDetails.Add('Row index is ABSOLUTE (see Encoded column index)');
+                  FDetails.Add('Absolute row index: ' + IntToStr(r));
+                end else
+                begin
+                  FDetails.Add('Row index is RELATIVE (see Encoded column index)');
+                  FDetails.Add('Relative row index: ' + IntToStr(Smallint(r)));
+                end;
               end;
-              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [SmallInt(w)]),
-                'Relative row index');
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [r, r]),
+                'Encoded row index');
 
-              numBytes := 2;
-              Move(FBuffer[FBufferIndex], w, numbytes);
-              w := WordLEToN(w);
-              b := Lo(w);
+              // Bit mask $4000 --> column
+              // Bit mask $8000 --> row
               if Row = FCurrRow then
               begin
                 FDetails.Add('Encoded cell address (column):'#13);
-                FDetails.Add('Relative column index: ' + IntToStr(ShortInt(b)));
+                if c and $4000 = 0
+                  then FDetails.Add('Bit 14=0: Column index is ABSOLUTE')
+                  else FDetails.Add('Bit 14=1: Column index is RELATIVE');
+                if c and $8000 = 0
+                  then FDetails.Add('Bit 15=0: Row index is ABSOLUTE')
+                  else FDetails.Add('Bit 15=1: Row index is RELATIVE');
+                FDetails.Add('');
+                if c and $4000 = 0
+                  then FDetails.Add('Absolute column index: ' + IntToStr(Lo(c)))
+                  else FDetails.Add('Relative column index: ' + IntToStr(ShortInt(Lo(c))));
               end;
-              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [ShortInt(b)]),
-                'Relative column index');
-            end else
+
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [c, c]),
+                'Encoded column index');
+            end
+            else
+            // Excel5 (Excel2 does not support shared formulas)
             begin
               numBytes := 2;
               Move(FBuffer[FBufferIndex], w, numBytes);
-              w := WordLEToN(w) and $3FFF;
+              w := WordLEToN(w);
+              r := w and $3FFF;
+              b := FBuffer[FBufferIndex+2];
+              c := b;
+
+              // Bit mask $4000 --> column
+              // Bit mask $8000 --> row
               if Row = FCurrRow then begin
                 FDetails.Add('Encoded cell address (row):'#13);
-                FDetails.Add('Relative row index: ' + IntToStr(Smallint(w)));
+                if w and $4000 = 0
+                  then FDetails.Add('Bit 14=0: Column index is ABSOLUTE')
+                  else FDetails.Add('Bit 14=0: Column index is RELATIVE');
+                if w and $8000 = 0
+                  then FDetails.Add('Bit 15=0: Row index is ABSOLUTE')
+                  else FDetails.Add('Bit 15=1: Row index is RELATIVE');
+                FDetails.Add('');
+                if w and $8000 = 0
+                  then FDetails.Add('Absolute row index: ' + IntToStr(r))
+                  else FDetails.Add('Relative row index: ' + IntToStr(Smallint(r)));
               end;
-              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [SmallInt(w)]),
-                'Relative row index');
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+                'Encoded row index');
 
-              numBytes := 1;
-              b := FBuffer[FBufferIndex];
               if Row = FCurrRow then
               begin
                 FDetails.Add('Encoded cell address (column):'#13);
-                FDetails.Add('Relative column index: ' + IntToStr(ShortInt(b)));
+                if w and $4000 = 0 then begin
+                  FDetails.Add('Column index is ABSOLUTE (see Encoded row index)');
+                  FDetails.Add('Absolute column index: ' + IntToStr(c));
+                end else begin
+                  FDetails.Add('Column index is RELATIVE (see Encoded row index)');
+                  FDetails.Add('Relative column index: ' + IntToStr(ShortInt(c)));
+                end;
               end;
-              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d', [ShortInt(b)]),
-                'Relative column index');
+              numBytes := 1;
+              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b, b]),
+                'Encoded column index');
             end;
           end;
+
     else
-           ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             '(unknown token)');
+          ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+            '(unknown token)');
 
     end;  // case
   end;  // while

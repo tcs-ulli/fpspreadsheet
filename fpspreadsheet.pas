@@ -1146,7 +1146,8 @@ type
     ANext: PRPNItem): PRPNItem; overload;
   function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
     ANext: PRPNItem): PRPNItem; overload;
-  function RPNCellOffset(ARowOffset, AColOffset: Integer; ANext: PRPNItem): PRPNItem;
+  function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
+    ANext: PRPNItem): PRPNItem;
   function RPNErr(AErrCode: Byte; ANext: PRPNItem): PRPNItem;
   function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
   function RPNMissingArg(ANext: PRPNItem): PRPNItem;
@@ -2707,6 +2708,7 @@ var
   ptr: Pointer;
   fek: TFEKind;
   formula: TsRPNFormula;
+  r,c: Cardinal;
 begin
   Result := '';
   if ACell = nil then
@@ -2720,6 +2722,9 @@ begin
       formula := ACell^.RPNFormulaValue
     else
       formula := ACell^.SharedFormulaBase^.RPNFormulaValue;
+
+    if Length(formula) = 0 then
+      exit;
 
     // We store the cell values and operation codes in a stringlist which serves
     // as kind of stack. Therefore, we do not destroy the original formula array.
@@ -2744,7 +2749,15 @@ begin
         fekCellRange:
           L.AddObject(GetCellRangeString(elem.Row, elem.Col, elem.Row2, elem.Col2, elem.RelFlags), ptr);
         fekCellOffset:
-          L.AddObject(GetCellString(ACell^.Row + SmallInt(elem.Row), ACell^.Col + SmallInt(elem.Col)), ptr);
+          begin
+            if rfRelRow in elem.RelFlags
+              then r := ACell^.Row + SmallInt(elem.Row)
+              else r := elem.Row;
+            if rfRelCol in elem.RelFlags
+              then c := ACell^.Col + SmallInt(elem.Col)
+              else c := elem.Col;
+            L.AddObject(GetCellString(r, c, elem.RelFlags), ptr);
+          end
         // Operations:
         else
           L.AddObject(FEProps[elem.ElementKind].Symbol, ptr);
@@ -7195,15 +7208,17 @@ end;
 
   @param  ARowOffset  Offset between current row and the row of a reference cell
   @param  AColOffset  Offset between current column and the column of a reference cell
+  @param  AFlags      Flags specifying absolute or relative cell addresses
   @param  ANext       Pointer to the next RPN item in the list
 }
-function RPNCellOffset(ARowOffset, AColOffset: Integer; ANext: PRPNItem): PRPNItem;
+function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
+  ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
   Result^.FE.ElementKind := fekCellOffset;
   Result^.FE.Row := ARowOffset;
   Result^.FE.Col := AColOffset;
-  Result^.FE.RelFlags := [rfRelRow, rfRelCol];
+  Result^.FE.RelFlags := AFlags;
   Result^.Next := ANext;
 end;
 
