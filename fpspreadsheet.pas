@@ -677,8 +677,8 @@ type
 
     { Formulas }
     procedure CalcFormulas;
-    function  HasFormula(ACell: PCell): Boolean;
     function  ReadRPNFormulaAsString(ACell: PCell): String;
+    function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
@@ -1073,6 +1073,7 @@ type
     procedure FixCellColors(ACell: PCell);
     function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
+    procedure FixRelativeReferences(ACell: PCell; var AElement: TsFormulaElement);
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
@@ -1088,10 +1089,12 @@ type
     {@@ Abstract method for writing a date/time value to a cell. Must be overridden by descendent classes. }
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a formula to a cell. Must be overridden by descendent classes. }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell); virtual;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual;
+    (*
     {@@ Abstract method for writing an RPN formula to a cell. Must be overridden by descendent classes. }
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); virtual;
+      *)
     {@@ Abstract method for writing a string to a cell. Must be overridden by descendent classes. }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
@@ -1174,6 +1177,8 @@ function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
 procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
+
+function HasFormula(ACell: PCell): Boolean;
 
 
 implementation
@@ -1605,6 +1610,7 @@ end;
 
 {@@
   Initalizes a new cell
+  @return  New cell record
 }
 procedure InitCell(out ACell: TCell);
 begin
@@ -1615,12 +1621,33 @@ begin
   FillChar(ACell, SizeOf(ACell), 0);
 end;
 
+{@@
+  Initalizes a new cell and presets the row and column fields of the cell record
+  to the parameters passesd to the procedure.
+
+  @param  ARow   Row index of the new cell
+  @param  ACol   Column index of the new cell
+  @return New cell record with row and column fields preset to passed parameters.
+}
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
 begin
   InitCell(ACell);
   ACell.Row := ARow;
   ACell.Col := ACol;
 end;
+
+{@@
+  Returns TRUE if the cell contains a formula (direct or shared, does not matter).
+}
+function HasFormula(ACell: PCell): Boolean;
+begin
+  Result := Assigned(ACell) and (
+    (ACell^.SharedFormulaBase <> nil) or
+    (Length(ACell^.RPNFormulaValue) > 0) or
+    (Length(ACell^.FormulaValue.FormulaStr) > 0)
+  );
+end;
+
 
 
 { TsWorksheet }
@@ -2446,18 +2473,6 @@ begin
 end;
 
 {@@
-  Returns TRUE if the cell contains a formula (direct or shared, does not matter).
-}
-function TsWorksheet.HasFormula(ACell: PCell): Boolean;
-begin
-  Result := Assigned(ACell) and (
-    (ACell^.SharedFormulaBase <> nil) or
-    (Length(ACell^.RPNFormulaValue) > 0) or
-    (Length(ACell^.FormulaValue.FormulaStr) > 0)
-  );
-end;
-
-{@@
   Reads the contents of a cell and returns an user readable text
   representing the contents of the cell.
 
@@ -2913,6 +2928,32 @@ begin
   FFirstRowIndex := GetFirstRowIndex(true);
   FLastColIndex := GetLastColIndex(true);
   FLastRowIndex := GetLastRowIndex(true);
+end;
+
+{@@
+  Creates a link to a shared formula
+
+  @param  ARow                Row of the cell
+  @param  ACol                Column index of the cell
+  @param  ASharedFormulaBase  Cell containing the shared formula token array
+
+  Note:   An exception is raised if the cell already contains a formula (and is
+          different from the ASharedFormulaBase cell).
+}
+function TsWorksheet.UseSharedFormula(ARow, ACol: Cardinal;
+  ASharedFormulaBase: PCell): PCell;
+begin
+  if ASharedFormulaBase = nil then begin
+    Result := nil;
+    exit;
+  end;
+  Result := GetCell(ARow, ACol);
+  Result.SharedFormulaBase := ASharedFormulaBase;
+  if ((Length(Result^.RPNFormulaValue) > 0) or (Length(Result^.FormulaValue.FormulaStr) > 0))
+    and ((ASharedFormulaBase.Row <> ARow) or (ASharedFormulaBase.Col <> ACol))
+  then
+    raise Exception.CreateFmt('Cell %s uses a shared formula, but contains an own formula.',
+      [GetCellString(ARow, ACol)]);
 end;
 
 {@@
@@ -6665,6 +6706,44 @@ begin
 end;
 
 {@@
+  Adjusts relative references in the formula element to the position of cell
+  and the shared formula base. }
+procedure TsCustomSpreadWriter.FixRelativeReferences(ACell: PCell;
+  var AElement: TsFormulaElement);
+var
+  rowOffset: Integer;
+  colOffset: Integer;
+begin
+  if (ACell = nil) or (ACell^.SharedFormulaBase = nil) then
+    exit;
+
+  case AElement.ElementKind of
+    fekCell:
+      begin
+        rowOffset := AElement.Row - ACell^.SharedFormulaBase^.Row;
+        colOffset := AElement.Col - ACell^.SharedFormulaBase^.Col;
+        if (rfRelRow in AElement.RelFlags) then
+          AElement.Row := Integer(ACell^.Row) + rowOffset;
+        if (rfRelCol in AElement.RelFlags) then
+          AElement.Col := Integer(ACell^.Col) + colOffset;
+      end;
+    fekCellRange:
+      begin
+        rowOffset := AElement.Row - ACell^.SharedFormulaBase^.Row;
+        colOffset := AElement.Col - ACell^.SharedFormulaBase^.Col;
+        if (rfRelRow in AElement.RelFlags) then
+          AElement.Row := Integer(ACell^.Row) + rowOffset;
+        if (rfRelCol in AElement.RelFlags) then
+          AElement.Col := Integer(ACell^.Col) + colOffset;
+        if (rfRelRow2 in AElement.RelFlags) then
+          AElement.Row2 := Integer(ACell^.Row) + rowOffset;
+        if (rfRelCol2 in AElement.RelFlags) then
+          AElement.Col2 := Integer(ACell^.Col) + colOffset;
+      end;
+  end;
+end;
+
+{@@
   Determines the size of the worksheet to be written. VirtualMode is respected.
   Is called when the writer needs the size for output. Column and row count
   limitations are repsected as well.
@@ -6885,6 +6964,10 @@ end;
 }
 procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
+  if HasFormula(ACell) then
+    WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell)
+  else
+  {
   if Length(ACell^.RPNFormulaValue) > 0 then
     // A non-calculated RPN formula has ContentType cctUTF8Formula, but after
     // calculation it has the content type of the result. Both cases have in
@@ -6892,12 +6975,13 @@ begin
     // be written to file.
     WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell)
   else
+  }
   case ACell.ContentType of
     cctEmpty      : WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
     cctDateTime   : WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
     cctNumber     : WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String : WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
-    cctFormula    : WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
+   // cctFormula    : WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
   end;
 end;
 
@@ -6998,24 +7082,22 @@ begin
 end;
 
 {@@
-  Basic method which is called when writing a string formula to a stream.
+  Basic method which is called when writing a formula to a stream. The formula
+  is already stored in the cell fields.
   Present implementation does nothing. Needs to be overridden by descendants.
 
   @param   AStream   Stream to be written
   @param   ARow      Row index of the cell containing the formula
   @param   ACol      Column index of the cell containing the formula
-  @param   AFormula  String formula given as an Excel-like string, such as '=A1+B1'
   @param   ACell     Pointer to the cell containing the formula and being written
                      to the stream
 }
-procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream; const ARow,
-  ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
+procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
 begin
   Unused(AStream, ARow, ACol);
-  Unused(AFormula, ACell);
-  // Silently dump the formula; child classes should implement their own support
 end;
-
+(*
 {@@
   Basic method which is called when writing an RPN formula to a stream.
   Present implementation does nothing. Needs to be overridden by descendants.
@@ -7036,6 +7118,7 @@ begin
   Unused(AFormula, ACell);
   // Silently dump the formula; child classes should implement their own support
 end;
+*)
 
 
 {******************************************************************************}
@@ -7216,8 +7299,8 @@ function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
 begin
   Result := NewRPNItem;
   Result^.FE.ElementKind := fekCellOffset;
-  Result^.FE.Row := ARowOffset;
-  Result^.FE.Col := AColOffset;
+  Result^.FE.Row := Cardinal(ARowOffset);
+  Result^.FE.Col := Cardinal(AColOffset);
   Result^.FE.RelFlags := AFlags;
   Result^.Next := ANext;
 end;

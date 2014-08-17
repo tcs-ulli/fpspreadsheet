@@ -173,7 +173,7 @@ type
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      const AFormula: TsFormula; ACell: PCell); override;
+      ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -3571,15 +3571,13 @@ begin
 end;
 
 { Writes a string formula }
-
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
-  ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
+  ACol: Cardinal; ACell: PCell);
 var
   lStyle: String = '';
   lIndex: Integer;
 begin
   Unused(AStream, ARow, ACol);
-  Unused(AFormula, ACell);
 
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
@@ -3587,28 +3585,13 @@ begin
   end else
     lStyle := '';
 
-  // We are writing a very rudimentary formula here without result and result
-  // data type. Seems to work...
+  { We are writing a very rudimentary formula here without result and result
+    data type. Seems to work... }
   AppendToStream(AStream, Format(
     '<table:table-cell table:formula="%s" %s>' +
     '</table:table-cell>', [
     ACell^.FormulaValue.FormulaStr, lStyle
   ]));
-
-{
-  <table:table-cell table:formula="of:=[.A1]" office:value-type="time" office:time-value="PT982093H14M15.566999875S" calcext:value-type="time">
-    <text:p>982093:14:16</text:p>
-    </table:table-cell>
- }
-
-{  // The row should already be the correct one
-  FContent := FContent +
-    '  <table:table-cell office:value-type="string">' + LineEnding +
-    '    <text:p>' + AFormula.DoubleValue + '</text:p>' + LineEnding +
-    '  </table:table-cell>' + LineEnding;
-<table:table-cell table:formula="of:=[.A1]+[.B2]" office:value-type="float" office:value="1833">
-<text:p>1833</text:p>
-</table:table-cell>}
 end;
 
 {

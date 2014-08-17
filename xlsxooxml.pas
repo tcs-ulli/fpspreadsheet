@@ -147,7 +147,7 @@ type
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      const AFormula: TsFormula; ACell: PCell); override;
+      ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -2495,7 +2495,7 @@ end;
 
 { Writes a string formula to the given cell. }
 procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; const AFormula: TsFormula; ACell: PCell);
+  const ARow, ACol: Cardinal; ACell: PCell);
 var
   cellPosText: String;
   lStyleIndex: Integer;
@@ -2508,7 +2508,7 @@ begin
       '<f>%s</f>' +
     '</c>', [
     CellPosText, lStyleIndex,
-    PrepareFormula(AFormula)
+    PrepareFormula(ACell^.FormulaValue)
     ]));
 end;
 
