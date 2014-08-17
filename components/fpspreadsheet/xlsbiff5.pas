@@ -119,10 +119,7 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-{
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      const AFormula: TsRPNFormula; ACell: PCell); override;
-      }
+    procedure WriteSharedFormulaRange(AStream: TStream; const ARange: TRect); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -724,180 +721,7 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
-
-(*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
-  AStream.WriteWord(WordToLE(2 + 1 + len * SizeOf(AnsiChar)));
-
-  { Format index }
-  AStream.WriteWord(WordToLE(AFormatData.Index));
-
-  { Format string }
-  AStream.WriteByte(len);        // AnsiString, char count in 1 byte
-  AStream.WriteBuffer(s[1], len * SizeOf(AnsiChar));  // String data
-  *)
 end;
-
-  (*
-{*******************************************************************
-*  TsSpreadBIFF5Writer.WriteRPNFormula ()
-*
-*  DESCRIPTION:    Writes an Excel 5 FORMULA record
-*
-*                  To input a formula to this method, first convert it
-*                  to RPN, and then list all it's members in the
-*                  AFormula array
-*
-*******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteRPNFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
-var
-  FormulaResult: double;
-  i: Integer;
-  RPNLength: Word;
-  TokenArraySizePos, RecordSizePos, FinalPos: Int64;
-  FormulaKind: Word;
-  ExtraInfo: Word;
-  r: Cardinal;
-  len: Integer;
-  s: ansistring;
-begin
-  RPNLength := 0;
-  FormulaResult := 0.0;
-
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
-  RecordSizePos := AStream.Position;
-  AStream.WriteWord(WordToLE(22 + RPNLength));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF Record }
-  WriteXFIndex(AStream, ACell);
-
-  { Result of the formula in IEEE 754 floating-point value }
-  AStream.WriteBuffer(FormulaResult, 8);
-
-  { Options flags }
-  AStream.WriteWord(WordToLE(MASK_FORMULA_RECALCULATE_ALWAYS));
-
-  { Not used }
-  AStream.WriteDWord(0);
-
-  { Formula }
-
-  { The size of the token array is written later,
-    because it's necessary to calculate if first,
-    and this is done at the same time it is written }
-  TokenArraySizePos := AStream.Position;
-  AStream.WriteWord(RPNLength);
-
-  { Formula data (RPN token array) }
-  for i := 0 to Length(AFormula) - 1 do
-  begin
-    { Token identifier }
-    FormulaKind := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind, ExtraInfo);
-    AStream.WriteByte(FormulaKind);
-    Inc(RPNLength);
-
-    { Additional data }
-    case FormulaKind of
-
-    { binary operation tokens }
-
-    INT_EXCEL_TOKEN_TADD, INT_EXCEL_TOKEN_TSUB, INT_EXCEL_TOKEN_TMUL,
-     INT_EXCEL_TOKEN_TDIV, INT_EXCEL_TOKEN_TPOWER: begin end;
-
-    INT_EXCEL_TOKEN_TNUM:
-    begin
-      AStream.WriteBuffer(AFormula[i].DoubleValue, 8);
-      Inc(RPNLength, 8);
-    end;
-
-    INT_EXCEL_TOKEN_TSTR:
-    begin
-      s := ansistring(AFormula[i].StringValue);
-      len := Length(s);
-      AStream.WriteByte(len);
-      AStream.WriteBuffer(s[1], len);
-      Inc(RPNLength, len + 1);
-    end;
-
-    INT_EXCEL_TOKEN_TBOOL:  { fekBool }
-    begin
-      AStream.WriteByte(ord(AFormula[i].DoubleValue <> 0.0));
-      inc(RPNLength, 1);
-    end;
-
-    INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:
-    begin
-      r := AFormula[i].Row and MASK_EXCEL_ROW;
-      if (rfRelRow in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
-      if (rfRelCol in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
-      AStream.WriteWord(r);
-      AStream.WriteByte(AFormula[i].Col);
-      Inc(RPNLength, 3);
-    end;
-
-    INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
-    begin
-      r := AFormula[i].Row and MASK_EXCEL_ROW;
-      if (rfRelRow in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
-      if (rfRelCol in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
-      AStream.WriteWord(WordToLE(r));
-
-      r := AFormula[i].Row2 and MASK_EXCEL_ROW;
-      if (rfRelRow2 in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_ROW;
-      if (rfRelCol2 in AFormula[i].RelFlags) then r := r or MASK_EXCEL_RELATIVE_COL;
-      AStream.WriteWord(WordToLE(r));
-
-      AStream.WriteByte(AFormula[i].Col);
-      AStream.WriteByte(AFormula[i].Col2);
-      Inc(RPNLength, 6);
-    end;
-
-    {
-    sOffset Size Contents
-    0 1 22H (tFuncVarR), 42H (tFuncVarV), 62H (tFuncVarA)
-    1 1 Number of arguments
-    Bit Mask Contents
-    6-0 7FH Number of arguments
-    7 80H 1 = User prompt for macro commands (shown by a question mark
-    following the command name)
-    2 2 Index to a sheet function
-    Bit Mask Contents
-    14-0 7FFFH Index to a built-in sheet function (➜3.11) or a macro command
-    15 8000H 0 = Built-in function; 1 = Macro command
-    }
-    // Functions
-    INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
-    begin
-      AStream.WriteWord(WordToLE(ExtraInfo));
-      Inc(RPNLength, 2);
-    end;
-
-    INT_EXCEL_TOKEN_FUNCVAR_V:
-    begin
-      AStream.WriteByte(AFormula[i].ParamsNum);
-      AStream.WriteWord(WordToLE(ExtraInfo));
-      Inc(RPNLength, 3);
-    end;
-
-    end;
-  end;
-
-  { Write sizes in the end, after we known them }
-  FinalPos := AStream.Position;
-  AStream.position := TokenArraySizePos;
-  AStream.WriteByte(RPNLength);
-  AStream.Position := RecordSizePos;
-  AStream.WriteWord(WordToLE(22 + RPNLength));
-  AStream.position := FinalPos;
-end;
-    *)
 
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteIndex ()
@@ -1012,6 +836,18 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
+end;
+
+{ Writes the borders of the cell range covered by a shared formula.
+  Needs to be overridden to write the column data (2 bytes in case of BIFF8). }
+procedure TsSpreadBIFF5Writer.WriteSharedFormulaRange(AStream: TStream;
+  const ARange: TRect);
+begin
+  inherited WriteSharedFormulaRange(AStream, ARange);
+  // Index to first column
+  AStream.WriteByte(ARange.Left);
+  // Index to last rcolumn
+  AStream.WriteByte(ARange.Right);
 end;
 
 { Writes an Excel 5 STRING record which immediately follows a FORMULA record

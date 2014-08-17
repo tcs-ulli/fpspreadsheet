@@ -125,7 +125,10 @@ type
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       const AFormula: TsRPNFormula; ACell: PCell); override;
     function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; override;
+    procedure WriteRPNSharedFormulaLink(AStream: TStream; ACell: PCell;
+      var RPNLength: Word); override;
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); override;
+    procedure WriteSharedFormula(AStream: TStream; ACell: PCell); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteWindow1(AStream: TStream); override;
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -1566,7 +1569,7 @@ procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   RPNLength: Word;
-  RecordSizePos, FinalPos: Cardinal;
+  RecordSizePos, StartPos, FinalPos: Cardinal;
   xf: Word;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
@@ -1581,7 +1584,8 @@ begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
   RecordSizePos := AStream.Position;
-  AStream.WriteWord(WordToLE(17 + RPNLength));
+  AStream.WriteWord(0); // We don't know the record size yet. It will be replaced at end.
+  StartPos := AStream.Position;
 
   { Row and column }
   AStream.WriteWord(WordToLE(ARow));
@@ -1598,7 +1602,15 @@ begin
   AStream.WriteByte(1);
 
   { Formula data (RPN token array) }
-  WriteRPNTokenArray(AStream, AFormula, RPNLength);
+  if ACell^.SharedFormulaBase <> nil then
+    WriteRPNSharedFormulaLink(AStream, ACell, RPNLength)
+  else
+    WriteRPNTokenArray(AStream, AFormula, true, RPNLength);
+
+(*
+{ Formula data (RPN token array) }
+  WriteRPNTokenArray(AStream, AFormula, true, RPNLength);
+*)
 
   { Finally write sizes after we know them }
   FinalPos := AStream.Position;
@@ -1620,12 +1632,44 @@ begin
   Result := 1;
 end;
 
+{ This method is intended to write a link to the cell containing the shared
+  formula used by the cell. But since BIFF2 does not support shared formulas
+  the writer must copy the shared formula and adapt the relative
+  references. }
+procedure TsSpreadBIFF2Writer.WriteRPNSharedFormulaLink(AStream: TStream;
+  ACell: PCell; var RPNLength: Word);
+var
+  i: Integer;
+  formula: TsRPNFormula;
+begin
+  SetLength(formula, Length(ACell^.SharedFormulaBase^.RPNFormulaValue));
+  for i:=0 to Length(formula)-1 do begin
+    // Copy formula
+    formula[i] := ACell^.SharedFormulaBase^.RPNFormulaValue[i];
+    // Adapt relative cell references
+    FixRelativeReferences(ACell, formula[i]);
+  end;
+
+  // Write adapted copy of shared formula to stream.
+  WriteRPNTokenArray(AStream, formula, true, RPNLength);
+
+  // Clean up
+  SetLength(formula, 0);
+end;
+
 { Writes the size of the RPN token array. Called from WriteRPNFormula.
   Overrides xlscommon. }
 procedure TsSpreadBIFF2Writer.WriteRPNTokenArraySize(AStream: TStream;
   ASize: Word);
 begin
   AStream.WriteByte(Lo(ASize));
+end;
+
+{ Is intended to write the token array of a shared formula stored in ACell.
+  But since BIFF2 does not support shared formulas this method must not do
+  anything. }
+procedure TsSpreadBIFF2Writer.WriteSharedFormula(AStream: TStream; ACell: PCell);
+begin
 end;
 
 { Writes an Excel 2 STRING record which immediately follows a FORMULA record
