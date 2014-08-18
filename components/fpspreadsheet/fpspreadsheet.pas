@@ -678,7 +678,8 @@ type
     { Formulas }
     procedure CalcFormulas;
     function  ReadRPNFormulaAsString(ACell: PCell): String;
-    function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
+    function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell; overload;
+    procedure UseSharedFormula(ACellRangeStr: String; ASharedFormulaBase: PCell); overload;
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
@@ -2954,6 +2955,33 @@ begin
   then
     raise Exception.CreateFmt('Cell %s uses a shared formula, but contains an own formula.',
       [GetCellString(ARow, ACol)]);
+end;
+
+{@@
+  Uses the formula defined in cell "ASharedFormulaBase" as a shared formula in
+  all cells of the given cell range.
+
+  @param ACellRangeStr       Range of cells which will use the shared formula.
+                             The range is given as a string in Excel notation,
+                             such as A1:B5, or A1
+  @param ASharedFormulaBase  Cell containing the formula to be shared
+}
+procedure TsWorksheet.UseSharedFormula(ACellRangeStr: String; ASharedFormulaBase: PCell);
+var
+  r, c, r1, c1, r2, c2: Cardinal;
+  ok: Boolean;
+begin
+  if pos(':', ACellRangeStr) = 0 then
+  begin
+    ok := ParseCellString(ACellRangeStr, r1, c1);
+    r2 := r1;
+    c2 := c1;
+  end else
+    ok := ParseCellRangeString(ACellRangeStr, r1, c1, r2, c2);
+  if ok then
+    for r := r1 to r2 do
+      for c := c1 to c2 do
+        UseSharedFormula(r, c, ASharedFormulaBase);
 end;
 
 {@@
