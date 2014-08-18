@@ -127,7 +127,7 @@ type
       AFlags: TsRelFlags): Word; override;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
       AFlags: TsRelFlags): Word; override;
-    procedure WriteSharedFormulaRange(AStream: TStream; const ARange: TRect); override;
+//    procedure WriteSharedFormulaRange(AStream: TStream; const ARange: TRect); override;
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteStringRecord(AStream: TStream; AString: string); override;
     procedure WriteStyle(AStream: TStream);
@@ -435,7 +435,6 @@ const
 var
   CurrentPos: Int64;
   Boundsheets: array of Int64;
-  sheet: TsWorksheet;
   i, len: Integer;
   pane: Byte;
 begin
@@ -465,8 +464,7 @@ begin
 
   for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
-    FWorksheet := sheet;
+    FWorksheet := Workbook.GetWorksheetByIndex(i);
 
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
@@ -479,20 +477,20 @@ begin
       WriteIndex(AStream);
       //WriteSheetPR(AStream);
 //      WritePageSetup(AStream);
-      WriteColInfos(AStream, sheet);
-      WriteDimensions(AStream, sheet);
+      WriteColInfos(AStream, FWorksheet);
+      WriteDimensions(AStream, FWorksheet);
       //WriteRowAndCellBlock(AStream, sheet);
 
       if (boVirtualMode in Workbook.Options) then
         WriteVirtualCells(AStream)
       else begin
-        WriteRows(AStream, sheet);
-        WriteCellsToStream(AStream, sheet.Cells);
+        WriteRows(AStream, FWorksheet);
+        WriteCellsToStream(AStream, FWorksheet.Cells);
       end;
 
-      WriteWindow2(AStream, sheet);
-      WritePane(AStream, sheet, isBIFF8, pane);
-      WriteSelection(AStream, sheet, pane);
+      WriteWindow2(AStream, FWorksheet);
+      WritePane(AStream, FWorksheet, isBIFF8, pane);
+      WriteSelection(AStream, FWorksheet, pane);
     WriteEOF(AStream);
   end;
   
@@ -800,13 +798,15 @@ end;
 function TsSpreadBIFF8Writer.WriteRPNCellOffset(AStream: TStream;
   ARowOffset, AColOffset: Integer; AFlags: TsRelFlags): Word;
 var
-  c: Word;
+  c: word;
+  r: SmallInt;
 begin
   // row address
-  AStream.WriteWord(WordToLE(Word(Lo(ARowOffset))));
+  r := SmallInt(ARowOffset);
+  AStream.WriteWord(WordToLE(Word(r)));
 
   // Encoded column address
-  c := word(Lo(AColOffset)) and MASK_EXCEL_COL_BITS_BIFF8;
+  c := word(SmallInt(AColOffset)) and MASK_EXCEL_COL_BITS_BIFF8;
   if (rfRelRow in AFlags) then c := c or MASK_EXCEL_RELATIVE_ROW_BIFF8;
   if (rfRelCol in AFlags) then c := c or MASK_EXCEL_RELATIVE_COL_BIFF8;
   AStream.WriteWord(WordToLE(c));
@@ -836,18 +836,21 @@ begin
 
   Result := 8;
 end;
-
+                 (*
 { Writes the borders of the cell range covered by a shared formula.
   Needs to be overridden to write the column data (2 bytes in case of BIFF8). }
 procedure TsSpreadBIFF8Writer.WriteSharedFormulaRange(AStream: TStream;
   const ARange: TRect);
 begin
   inherited WriteSharedFormulaRange(AStream, ARange);
+  {
   // Index to first column
   AStream.WriteWord(WordToLE(ARange.Left));
   // Index to last rcolumn
   AStream.WriteWord(WordToLE(ARange.Right));
+  }
 end;
+*)
 
 { Helper function for writing a string with 8-bit length. Overridden version
   for BIFF8. Called for writing rpn formula string tokens.

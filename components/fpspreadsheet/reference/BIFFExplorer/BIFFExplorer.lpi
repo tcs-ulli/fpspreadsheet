@@ -164,7 +164,6 @@
       <Unit7>
         <Filename Value="mrumanager.pp"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="mrumanager"/>
       </Unit7>
       <Unit8>
         <Filename Value="bemain.lfm"/>
