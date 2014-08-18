@@ -2555,13 +2555,13 @@ end;
 
 { Is called from WriteRPNFormula in the case that the cell uses a shared
   formula and writes the token "array" pointing to the shared formula base.
-  This implementation is valid for BIFF5 and BIFF8. BIFF2 does not support
-  shared formulas; the BIFF2 writer must copy the formula found in the
+  This implementation is valid for BIFF3-BIFF8. BIFF2 is different, but does not
+  support shared formulas; the BIFF2 writer must copy the formula found in the
   SharedFormulaBase field of the cell and adjust the relative references. }
 procedure TsSpreadBIFFWriter.WriteRPNSharedFormulaLink(AStream: TStream;
   ACell: PCell; var RPNLength: Word);
 type
-  TSharedFormulaLinkRecord = record
+  TSharedFormulaLinkRecord = packed record
     FormulaSize: Word;   // Size of token array
     Token: Byte;         // 1st (and only) token of the rpn formula array
     Row: Word;           // row of cell containing the shared formula
@@ -2570,6 +2570,7 @@ type
 var
   rec: TSharedFormulaLinkRecord;
 begin
+  FillChar(rec, SizeOf(rec), 0);
   rec.FormulaSize := WordToLE(5);
   rec.Token := INT_EXCEL_TOKEN_TEXP;  // Marks the cell for using a shared formula
   rec.Row := WordToLE(ACell^.SharedFormulaBase.Row);
@@ -2636,7 +2637,7 @@ begin
         begin
           n := WriteRPNCellOffset(
             AStream,
-            AFormula[i].Row, AFormula[i].Col,
+            integer(AFormula[i].Row), integer(AFormula[i].Col),
             AFormula[i].RelFlags
           );
           inc(RPNLength, n);
@@ -2928,6 +2929,12 @@ begin
   // Write borders of cell range covered by the formula
   WriteSharedFormulaRange(AStream, range);
 
+  // Not used
+  AStream.WriteByte(0);
+
+  // Number of existing formula records
+  AStream.WriteByte((range.Right-range.Left+1)*(range.Bottom-range.Top+1));
+
   // Copy the formula (we don't want to overwrite the cell formulas)
   // and adjust relative references
   SetLength(formula, Length(ACell^.SharedFormulaBase^.RPNFormulaValue));
@@ -2936,7 +2943,7 @@ begin
     FixRelativeReferences(ACell, formula[i]);
   end;
   // Writes the (copied) rpn token array
-  WriteRPNTokenArray(AStream, formula, false, RPNLength);
+  WriteRPNTokenArray(AStream, formula, true, RPNLength);
 
   { Write record size at the end after we known it }
   finalPos := AStream.Position;
@@ -2946,9 +2953,8 @@ begin
 end;
 
 { Writes the borders of the cell range covered by a shared formula.
-  Needs to be overridden by BIFF5 and BIFF8 to write the column data
-  (1 byte in BIFF5, 2 bytes in BIFF8). No need for BIFF2 which does not
-  support shared formulas. }
+  Valid for BIFF5 and BIFF8 - BIFF8 writes 8-bit column index as well.
+  No need for BIFF2 which does not support shared formulas. }
 procedure TsSpreadBIFFWriter.WriteSharedFormulaRange(AStream: TStream;
   const ARange: TRect);
 begin
@@ -2956,8 +2962,10 @@ begin
   AStream.WriteWord(WordToLE(ARange.Top));
   // Index to last row
   AStream.WriteWord(WordToLE(ARange.Bottom));
-
-  // column indexes follow in overridden procedure!
+  // Index to first column
+  AStream.WriteByte(Lo(ARange.Left));
+  // Index to last rcolumn
+  AStream.WriteByte(Lo(ARange.Right));
 end;
 
 

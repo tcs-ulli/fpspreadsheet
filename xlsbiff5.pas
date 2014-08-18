@@ -119,7 +119,6 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WriteSharedFormulaRange(AStream: TStream; const ARange: TRect); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -380,7 +379,6 @@ var
   CurrentPos: Int64;
   Boundsheets: array of Int64;
   i, len: Integer;
-  sheet : TsWorksheet;
   pane: Byte;
 begin
   { Store some data about the workbook that other routines need }
@@ -414,7 +412,7 @@ begin
 
   for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
+    FWorksheet := Workbook.GetWorksheetByIndex(i);
 
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
@@ -427,18 +425,18 @@ begin
 
       WriteIndex(AStream);
 //      WritePageSetup(AStream);
-      WriteColInfos(AStream, sheet);
-      WriteDimensions(AStream, sheet);
-      WriteWindow2(AStream, sheet);
-      WritePane(AStream, sheet, true, pane);  // true for "is BIFF5 or BIFF8"
-      WriteSelection(AStream, sheet, pane);
+      WriteColInfos(AStream, FWorksheet);
+      WriteDimensions(AStream, FWorksheet);
+      WriteWindow2(AStream, FWorksheet);
+      WritePane(AStream, FWorksheet, true, pane);  // true for "is BIFF5 or BIFF8"
+      WriteSelection(AStream, FWorksheet, pane);
       //WriteRows(AStream, sheet);
 
       if (boVirtualMode in Workbook.Options) then
         WriteVirtualCells(AStream)
       else begin
-        WriteRows(AStream, sheet);
-        WriteCellsToStream(AStream, sheet.Cells);
+        WriteRows(AStream, FWorksheet);
+        WriteCellsToStream(AStream, FWorksheet.Cells);
       end;
 
     WriteEOF(AStream);
@@ -836,18 +834,6 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
-end;
-
-{ Writes the borders of the cell range covered by a shared formula.
-  Needs to be overridden to write the column data (2 bytes in case of BIFF8). }
-procedure TsSpreadBIFF5Writer.WriteSharedFormulaRange(AStream: TStream;
-  const ARange: TRect);
-begin
-  inherited WriteSharedFormulaRange(AStream, ARange);
-  // Index to first column
-  AStream.WriteByte(ARange.Left);
-  // Index to last rcolumn
-  AStream.WriteByte(ARange.Right);
 end;
 
 { Writes an Excel 5 STRING record which immediately follows a FORMULA record
