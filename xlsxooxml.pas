@@ -615,6 +615,9 @@ var
   formulaStr: String;
   sstIndex: Integer;
   number: Double;
+  ref: String;
+  r1,r2, c1,c2: Cardinal;
+  sharedFormulaBase: PCell;
 begin
   if ANode = nil then
     exit;
@@ -624,7 +627,8 @@ begin
   ParseCellString(s, rowIndex, colIndex);
 
   // create cell
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(rowIndex, colIndex, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -639,18 +643,38 @@ begin
   datanode := ANode.FirstChild;
   dataStr := '';
   formulaStr := '';
-  while Assigned(datanode) do begin
+  while Assigned(datanode) do
+  begin
     if datanode.NodeName = 'v' then
       dataStr := GetNodeValue(datanode)
     else
     if datanode.NodeName = 'f' then
+    begin
+      // Formula to cell
       formulaStr := GetNodeValue(datanode);
+      if formulaStr <> '' then
+      begin
+        s := GetAttrValue(datanode, 't');
+        if s = 'shared' then
+        begin
+          s := GetAttrValue(datanode, 'ref');
+          if (s <>'') then
+          begin
+            cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+            FWorksheet.UseSharedFormula(s, cell);
+          end;
+        end
+        else
+          cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+      end;
+    end;
     datanode := datanode.NextSibling;
   end;
 
-  // formula to cell
+{  // formula to cell
   if formulaStr <> '' then
     cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+ }
 
   // get data type
   s := GetAttrValue(ANode, 't');   // "t" = data type
