@@ -535,7 +535,8 @@ type
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
     // Writes out a shared formula
     procedure WriteSharedFormula(AStream: TStream; ACell: PCell); virtual;
-    procedure WriteSharedFormulaRange(AStream: TStream; const ARange: TRect); virtual;
+    procedure WriteSharedFormulaRange(AStream: TStream;
+      AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal); virtual;
     procedure WriteSheetPR(AStream: TStream);
     procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
     // Writes cell content received by workbook in OnNeedCellData event
@@ -2882,8 +2883,7 @@ end;
   the formulas in each cell. In BIFF2 WriteSharedFormula must not do anything. }
 procedure TsSpreadBIFFWriter.WriteSharedFormula(AStream: TStream; ACell: PCell);
 var
-  range: TRect;
-  node: TAVLTreeNode;
+  r, c, r1, r2, c1, c2: Cardinal;
   cell: PCell;
   RPNLength: word;
   recordSizePos: Int64;
@@ -2892,32 +2892,29 @@ var
   i: Integer;
 begin
   // Determine cell range covered by the shared formula in ACell.
-  range := Rect(-1, -1, -1, -1);
-  node := FWorksheet.Cells.FindLowest;
-  while Assigned(node) do begin
-    cell := PCell(node.Data);
-    if cell.SharedFormulaBase = ACell then begin
-      // Nodes are ordered along rows --> the first cell met must be the left border of the range
-      if range.Left = -1 then
-        range.Left := cell.Col
-      else
-      if cell.Col < range.Left then begin
-        FWorkbook.AddErrorMsg('Non-rectangular cell range covered by shared formula in cell %s',
-          [GetCellString(ACell^.Row, ACell^.Col)]);
-        exit;
-      end;
-      // The right border of the range must have the max col index
-      if range.Right = -1 then
-        range.Right := cell.Col
-      else if cell.Col > range.Right then
-        range.Right := cell.Col;
-      // The first cell met must be the top border of the range
-      if range.Top = -1 then
-        range.Top := Cell.Row;
-      // dto. with bottom border
-      range.Bottom := Cell.Row;
-    end;
-    node := FWorksheet.Cells.FindSuccessor(node);
+  // Find range of cells using this shared formula
+  r1 := ACell^.Row;   r2 := r1;
+  c1 := ACell^.Col;   c2 := c1;
+  r := r1;
+  c := c1;
+  while c <= FWorksheet.GetLastColIndex do
+  begin
+    cell := FWorksheet.FindCell(r, c);
+    if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
+      c2 := c
+    else
+      break;
+    inc(c);
+  end;
+  c := c1;
+  while r <= FWorksheet.GetLastRowIndex do
+  begin
+    cell := FWorksheet.FindCell(r, c);
+    if (cell <> nil) and (cell^.SharedFormulaBase <> ACell^.SharedFormulaBase) then
+      r2 := r
+    else
+      break;
+    inc(r);
   end;
 
   // Write BIFF record ID and size
@@ -2927,13 +2924,13 @@ begin
   startPos := AStream.Position;
 
   // Write borders of cell range covered by the formula
-  WriteSharedFormulaRange(AStream, range);
+  WriteSharedFormulaRange(AStream, r1, c1, r2, c2);
 
   // Not used
   AStream.WriteByte(0);
 
   // Number of existing formula records
-  AStream.WriteByte((range.Right-range.Left+1)*(range.Bottom-range.Top+1));
+  AStream.WriteByte((r2-r1+1) * (c2-c1+1));
 
   // Copy the formula (we don't want to overwrite the cell formulas)
   // and adjust relative references
@@ -2956,16 +2953,20 @@ end;
   Valid for BIFF5 and BIFF8 - BIFF8 writes 8-bit column index as well.
   No need for BIFF2 which does not support shared formulas. }
 procedure TsSpreadBIFFWriter.WriteSharedFormulaRange(AStream: TStream;
-  const ARange: TRect);
+  AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal);
+var
+  c: Word;
 begin
   // Index to first row
-  AStream.WriteWord(WordToLE(ARange.Top));
+  AStream.WriteWord(WordToLE(AFirstRow));
   // Index to last row
-  AStream.WriteWord(WordToLE(ARange.Bottom));
+  AStream.WriteWord(WordToLE(ALastRow));
   // Index to first column
-  AStream.WriteByte(Lo(ARange.Left));
+  c := Lo(AFirstCol);
+  AStream.WriteByte(Lo(c));
   // Index to last rcolumn
-  AStream.WriteByte(Lo(ARange.Right));
+  c := Lo(ALastCol);
+  AStream.WriteByte(Lo(c));
 end;
 
 

@@ -2266,6 +2266,8 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheet(AWorksheet: TsWorksheet);
 begin
+  FWorksheet := AWorksheet;
+
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
 
@@ -2499,16 +2501,69 @@ procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
 var
   cellPosText: String;
   lStyleIndex: Integer;
+  r, c, r2, c2: Cardinal;
+  cell: PCell;
+  id: Cardinal;
 begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
 
-  AppendToStream(AStream, Format(
-    '<c r="%s" s="%d">' +
-      '<f>%s</f>' +
-    '</c>', [
-    CellPosText, lStyleIndex,
-    PrepareFormula(ACell^.FormulaValue)
+  // Cell uses a shared formula
+  if Assigned(ACell^.SharedFormulaBase) then begin
+    // Cell is base of the shared formula, i.e. contains the shared formula
+    if (ACell = ACell^.SharedFormulaBase) then
+    begin
+      // Find range of cells using this shared formula
+      r2 := ACell^.Row;
+      c2 := ACell^.Col;
+      c := c2;
+      r := r2;
+      while c <= FWorksheet.GetLastColIndex do
+      begin
+        cell := FWorksheet.FindCell(r, c);
+        if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
+          c2 := c
+        else
+          break;
+        inc(c);
+      end;
+      c := ACell^.Col;
+      while r <= FWorksheet.GetLastRowIndex do
+      begin
+        cell := FWorksheet.FindCell(r, c);
+        if (cell <> nil) and (cell^.SharedFormulaBase <> ACell^.SharedFormulaBase) then
+          r2 := r
+        else
+          break;
+        inc(r);
+      end;
+
+      AppendToStream(AStream, Format(
+        '<c r="%s" s="%d">' +
+          '<f t="shared" ref="%s" si="%d">%s</f>' +
+        '</c>', [
+        CellPosText, lStyleIndex,
+        GetCellRangeString(ACell^.Row, ACell^.Col, r2, c2),
+        PtrInt(ACell),       // Use the cell pointer as ID of the shared formula
+        PrepareFormula(ACell^.FormulaValue)
+      ]));
+    end else
+      // Cell uses the shared formula
+      AppendToStream(AStream, Format(
+        '<c r="%s" s="%d">' +
+          '<f t="shared" si="%d" />' +
+        '</c>', [
+        CellPosText, lStyleIndex,
+        PtrInt(ACell^.SharedFormulaBase)   // ID of the shared formula
+      ]));
+  end else
+    // "normal" formula
+    AppendToStream(AStream, Format(
+      '<c r="%s" s="%d">' +
+        '<f>%s</f>' +
+      '</c>', [
+      CellPosText, lStyleIndex,
+      PrepareFormula(ACell^.FormulaValue)
     ]));
 end;
 

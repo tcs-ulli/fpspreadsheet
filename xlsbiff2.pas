@@ -790,7 +790,9 @@ end;
 
 { Reads the cell coordiantes of the top/left cell of a range using a shared formula.
   This cell contains the rpn token sequence of the formula.
-  Is overridden because BIFF2 has 1 byte for column. }
+  Is overridden because BIFF2 has 1 byte for column.
+  Code is not called for shared formulas (which are not supported by BIFF2), but
+  maybe for array formulas. }
 procedure TsSpreadBIFF2Reader.ReadRPNSharedFormulaBase(AStream: TStream;
   out ARow, ACol: Cardinal);
 begin

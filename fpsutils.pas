@@ -64,7 +64,9 @@ function ParseIntervalString(const AStr: string;
   out ADirection: TsSelectionDirection): Boolean;
 function ParseCellRangeString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
-  out AFlags: TsRelFlags): Boolean;
+  out AFlags: TsRelFlags): Boolean; overload;
+function ParseCellRangeString(const AStr: string;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal): Boolean; overload;
 function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString(const AStr: string;
@@ -76,7 +78,8 @@ function ParseCellColString(const AStr: string;
 
 function GetColString(AColIndex: Integer): String;
 function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
-function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;
+function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2]): String;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
@@ -428,6 +431,26 @@ end;
 
 
 {@@
+  Parses strings like A5:C10 into a range selection information.
+  Information on relative/absolute cells is ignored.
+
+  @param  AStr           Cell range string, such as A5:C10
+  @param  AFirstCellRow  Row index of the top/left cell of the range (output)
+  @param  AFirstCellCol  Column index of the top/left cell of the range (output)
+  @param  ALastCellRow   Row index of the bottom/right cell of the range (output)
+  @param  ALastCellCol   Column index of the bottom/right cell of the range (output)
+  @return                false if the string is not a valid cell range
+}
+function ParseCellRangeString(const AStr: string;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal): Boolean;
+var
+  flags: TsRelFlags;
+begin
+  Result := ParseCellRangeString(AStr, AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol, flags);
+end;
+
+
+{@@
   Parses a cell string, like 'A1' into zero-based column and row numbers
   Note that there can be several letters to address for more than 26 columns.
   'AFlags' indicates relative addresses.
@@ -647,7 +670,8 @@ end;
   @example ARow1 = 0, ACol1 = 0, ARow = 2, ACol = 1, AFlags = [rfRelRow, rfRelRow2]
            --> $A1:$B3
 }
-function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): String;
+function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2]): String;
 begin
   Result := Format('%s%s%s%d:%s%s%s%d', [
     RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
