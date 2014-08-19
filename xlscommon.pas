@@ -1607,7 +1607,7 @@ begin
 end;
 
 { Reads the identifier for an RPN function with fixed argument count.
-  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3 }
+  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3 which read 1 byte only. }
 function TsSpreadBIFFReader.ReadRPNFunc(AStream: TStream): Word;
 begin
   Result := WordLEToN(AStream.ReadWord);

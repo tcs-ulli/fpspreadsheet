@@ -1074,7 +1074,7 @@ type
     procedure FixCellColors(ACell: PCell);
     function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
-    procedure FixRelativeReferences(ACell: PCell; var AElement: TsFormulaElement);
+    procedure FixRelativeReferences(ACell: PCell; var AElement: TsFormulaElement); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
