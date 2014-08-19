@@ -112,6 +112,7 @@ type
     procedure WriteXFRecords(AStream: TStream);
   protected
     procedure CreateNumFormatList; override;
+    procedure FixRelativeReferences(ACell: PCell; var AElement: TsFormulaElement); override;
     procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
@@ -989,6 +990,26 @@ begin
     if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
       raise Exception.Create('[TsSpreadBIFF2Writer.WriteXFIndex] Invalid Index, this should not happen!');
     Result := FFormattingStyles[lIndex].Row;
+  end;
+end;
+
+{ Since BIFF2 does not support shared formulas it cannot handle the fekCellOffset
+  token. It is replaced by a fekCellValue token and correct relative references. }
+procedure TsSpreadBIFF2Writer.FixRelativeReferences(ACell: PCell;
+  var AElement: TsFormulaElement);
+begin
+  inherited FixRelativeReferences(ACell, AElement);
+
+  if (ACell = nil) or (ACell^.SharedFormulaBase = nil) then
+    exit;
+
+  if AElement.ElementKind = fekCellOffset then
+  begin
+    AElement.ElementKind := fekCell;
+    if (rfRelRow in AElement.RelFlags) then
+      AElement.Row := Integer(ACell^.Row) + Integer(AElement.Row);  // AElement.Row means here: "RowOffsset"
+    if (rfRelCol in AElement.RelFlags) then
+      AElement.Col := Integer(ACell^.Col) + Integer(AElement.Col);  // AElement.Col means here: "ColOffsset"
   end;
 end;
 
