@@ -23,6 +23,7 @@ procedure WriteFirstWorksheet();
 var
   MyFormula: TsFormula;
   MyRPNFormula: TsRPNFormula;
+  MyCell: PCell;
 begin
   MyWorksheet := MyWorkbook.AddWorksheet('Worksheet1');
 
@@ -61,6 +62,15 @@ begin
     RPNNumber(4.0,
     RPNNumber(5.0,
     RPNFunc(fekAdd, nil)))));
+
+  // Write a shared formula "=E1+100" to the cell range F1:F5
+  // Please note that shared formulas are not written by sfOOXML and sfOpenDocument formats.
+  MyCell := MyWorksheet.WriteRPNFormula(0, 5, CreateRPNFormula(
+    RPNCellOffset(0, -1, [rfRelRow, rfRelCol],
+    RPNNumber(100,
+    RPNFunc(fekAdd, nil)))));
+  MyWorksheet.UseSharedFormula('F1:F5', MyCell);
+
 end;
 
 procedure WriteSecondWorksheet();
