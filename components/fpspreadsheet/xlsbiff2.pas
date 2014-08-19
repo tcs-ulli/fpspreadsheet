@@ -1007,9 +1007,9 @@ begin
   begin
     AElement.ElementKind := fekCell;
     if (rfRelRow in AElement.RelFlags) then
-      AElement.Row := Integer(ACell^.Row) + Integer(AElement.Row);  // AElement.Row means here: "RowOffsset"
+      AElement.Row := ACell^.Row + Integer(AElement.Row);  // AElement.Row means here: "RowOffsset"
     if (rfRelCol in AElement.RelFlags) then
-      AElement.Col := Integer(ACell^.Col) + Integer(AElement.Col);  // AElement.Col means here: "ColOffsset"
+      AElement.Col := ACell^.Col + Integer(AElement.Col);  // AElement.Col means here: "ColOffsset"
   end;
 end;
 

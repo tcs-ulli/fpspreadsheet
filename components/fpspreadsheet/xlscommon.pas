@@ -2397,7 +2397,8 @@ begin
   if (rfRelCol in AFlags) then r := r + MASK_EXCEL_RELATIVE_COL;
   AStream.WriteWord(WordToLE(r));
   // Column address
-  c := Lo(AColOffset);
+  c := Lo(word(AColOffset));
+  //c := Lo(AColOffset);
   AStream.WriteByte(c);
   // Number of bytes written
   Result := 3;
@@ -2910,7 +2911,7 @@ begin
   while r <= FWorksheet.GetLastRowIndex do
   begin
     cell := FWorksheet.FindCell(r, c);
-    if (cell <> nil) and (cell^.SharedFormulaBase <> ACell^.SharedFormulaBase) then
+    if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
       r2 := r
     else
       break;
