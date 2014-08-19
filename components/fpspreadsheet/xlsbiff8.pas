@@ -1656,12 +1656,12 @@ var
   c: Word;
 begin
   // 2 bytes for row offset
-  dr := WordLEToN(AStream.ReadWord);
+  dr := ShortInt(WordLEToN(AStream.ReadWord));
   ARowOffset := dr;
 
   // 2 bytes for column offset
   c := WordLEToN(AStream.ReadWord);
-  dc := Lo(c);
+  dc := ShortInt(Lo(c));
   AColOffset := dc;
 
   // Extract info on absolute/relative addresses.

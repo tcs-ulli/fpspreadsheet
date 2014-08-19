@@ -1737,8 +1737,19 @@ begin
     exit;
 
   // Cell contains an RPN formula --> calculate the formula
-  if Length(cell^.RPNFormulaValue) > 0 then
+  if (Length(cell^.RPNFormulaValue) > 0) or
+     ((cell^.SharedFormulaBase <> nil) and (Length(cell^.SharedFormulaBase^.RPNFormulaValue) > 0))
+  then
     CalcRPNFormula(cell);
+
+  // Here should be other case of string formula:
+  {
+  else
+  if (Length(cell^.FormulaValue.FormulaStr) > 0) or
+     ((cell^.SharedFormulaBase <> nil) and (Length(cell^.SharedFormulaBase^.FomrulaValue.FormulaStr) > 0))
+  then
+    CalcStringFormula(cell);
+  }
 end;
 
 {@@
@@ -1805,10 +1816,14 @@ var
   r,c: Cardinal;
   formula: TsRPNFormula;
 begin
-  if (Length(ACell^.RPNFormulaValue) = 0) or
-     (ACell^.ContentType = cctError)
-  then
+  if (ACell^.ContentType = cctError) then
     exit;
+
+  if (ACell^.SharedFormulaBase = nil) and (Length(ACell^.RPNFormulaValue) = 0) then
+    exit;
+
+  if (ACell^.SharedFormulaBase <> nil) and (Length(ACell^.SharedFormulaBase^.RPNFormulaValue) = 0)
+    then exit;
 
   ACell^.CalcState := csCalculating;
 
@@ -1848,13 +1863,27 @@ begin
           end;
         fekCellOffset:
           begin
-            cell := FindCell(aCell^.Row + SmallInt(fe.Row), ACell^.Col + SmallInt(fe.Col));
-            if cell <> nil then
+            if ACell^.SharedFormulaBase = nil then begin
+              WriteErrorValue(ACell, errIllegalRef);
+              exit;
+            end;
+            if (rfRelRow in fe.RelFlags)
+              then r := ACell^.Row + SmallInt(fe.Row)
+              else r := ACell^.SharedFormulaBase^.Row;
+            if (rfRelCol in fe.RelFlags)
+              then c := ACell^.Col + SmallInt(fe.Col)
+              else c := ACell^.SharedFormulaBase^.Col;
+            cell := FindCell(r, c);
+            if cell <> nil then begin
               case cell^.CalcState of
                 csNotCalculated: CalcRPNFormula(cell);
                 csCalculating  : raise Exception.Create(lpCircularReference);
               end;
-            args.PushCell(cell, self);
+              args.PushCell(cell, self);
+            end else begin
+              WriteErrorValue(ACell, errIllegalRef);
+              exit;
+            end;
           end;
         fekNum:
           args.PushNumber(fe.DoubleValue, self);

@@ -8,9 +8,9 @@ interface
 
 uses
   // Not using lazarus package as the user may be working with multiple versions
-  // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpsallformats, fpspreadsheet {and a project requirement for lclbase for utf8 handling},
+  // Instead, add ".." to unit search path
+  Classes, SysUtils, fpcunit, testregistry,
+  fpspreadsheet {and a project requirement for lclbase for utf8 handling},
   fpsutils, testsutility;
 
 type
