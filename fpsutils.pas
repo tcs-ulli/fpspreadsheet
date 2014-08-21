@@ -498,6 +498,9 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     isAbs := (AStr[i] = '$');
     if isAbs then inc(i);
 
+    if i > Length(AStr) then
+      exit;
+
     // Scan digits
     while (i <= Length(AStr)) do begin
       if (AStr[i] in DIGITS) then begin
