@@ -31,14 +31,15 @@ begin
   workbook := TsWorkbook.Create;
   try
     worksheet := workbook.AddWorksheet('Test');
-
+    {
     worksheet.WriteNumber(0, 0, 2);         // A1
     worksheet.WriteNumber(0, 1, 2.5);         // B1
-    {
+    }
     worksheet.WriteUTF8Text(0, 0, 'Hallo');         // A1
-    worksheet.WriteUTF8Text(0, 1, 'Welt');         // B1
-     }
-    cell := worksheet.WriteFormula(1, 0, '=(A1+2)*3');    // A2
+    worksheet.WriteUTF8Text(0, 1, 'World');         // B1
+
+    //cell := worksheet.WriteFormula(1, 0, '=(A1+2)*3');    // A2
+    cell := worksheet.WriteFormula(1, 0, 'A1&" "&B1');
 
     WriteLn('A1 = ', worksheet.ReadAsUTF8Text(0, 0));
     WriteLn('B1 = ', worksheet.ReadAsUTF8Text(0, 1));

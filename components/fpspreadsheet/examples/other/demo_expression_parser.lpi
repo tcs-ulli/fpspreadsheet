@@ -36,12 +36,17 @@
         <PackageName Value="LazUtils"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="1">
+    <Units Count="2">
       <Unit0>
         <Filename Value="demo_expression_parser.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="demo_expression_parser"/>
       </Unit0>
+      <Unit1>
+        <Filename Value="..\..\fpsexprparser.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="fpsExprParser"/>
+      </Unit1>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
