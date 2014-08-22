@@ -26,6 +26,7 @@
       - TsConcatExprNode and token "&" to handle string concatenation
     - remove and modifiy built-in function such that the parser is compatible
       with Excel syntax (and OpenOffice - which is the same).
+    - use double quotes for strings (instead of single quotes)
 
  ******************************************************************************}
 {$mode objfpc}
@@ -735,7 +736,6 @@ uses
 
 const
   cNull = #0;
-  cSingleQuote = '''';
   cDoubleQuote = '"';
 
   Digits        = ['0'..'9', '.'];
@@ -948,10 +948,8 @@ function TsExpressionScanner.DoString: TTokenType;
   function TerminatingChar(C: Char): boolean;
   begin
     Result := (C = cNull)
-           or ((C = cSingleQuote) and
-                not ((FPos < LSource) and (FSource[FPos+1] = cSingleQuote)))
-           or ((C = cDoubleQuote) and
-                not ((FPos < LSource) and (FSource[FPos+1] = cDoubleQuote)));
+          or ((C = cDoubleQuote) and
+               not ((FPos < LSource) and (FSource[FPos+1] = cDoubleQuote)));
   end;
 
 var
@@ -962,8 +960,6 @@ begin
   while not TerminatingChar(C) do
   begin
     FToken := FToken+C;
-    if C = cSingleQuote then
-      NextPos;
     if C = cDoubleQuote then
       NextPos;
     C := NextPos;
@@ -1058,7 +1054,7 @@ begin
     Result := ttEOF
   else if IsDelim(C) then
     Result := DoDelimiter
-  else if (C = cSingleQuote) or (C = cDoubleQuote) then
+  else if (C = cDoubleQuote) then
     Result := DoString
   else if IsDigit(C) then
     Result := DoNumber
@@ -2131,10 +2127,10 @@ end;
 function TsConstExprNode.AsString: string;
 begin
   case NodeType of
-    rtString   : Result := '''' + FValue.ResString + '''';
+    rtString   : Result := cDoubleQuote + FValue.ResString + cDoubleQuote;
     rtInteger  : Result := IntToStr(FValue.ResInteger);
-    rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime) + '''';
-    rtBoolean  : if FValue.ResBoolean then Result := 'True' else Result := 'False';
+    rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime) + '''';    // Probably wrong !!!
+    rtBoolean  : if FValue.ResBoolean then Result := 'TRUE' else Result := 'FALSE';
     rtFloat    : Str(FValue.ResFloat, Result);
   end;
 end;

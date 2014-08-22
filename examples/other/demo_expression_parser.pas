@@ -69,7 +69,7 @@ begin
         case formula[i].ElementKind of
           fekCell   : Write(' / cell: ' +GetCellString(formula[i].Row, formula[i].Col, formula[i].RelFlags));
           fekNum    : Write(' / number value: ', FloatToStr(formula[i].DoubleValue));
-          fekString : Write(' / string value: ', formula[i].StringValue);
+          fekString : Write(' / string value: "', formula[i].StringValue, '"');
           fekBool   : Write(' / boolean value: ', BoolToStr(formula[i].DoubleValue <> 0));
         end;
         WriteLn;
