@@ -15,7 +15,8 @@
     Modified for integration into fpspreadsheet by Werner Pamler:
     - Original file name: fpexprpars.pp
     - Rename identifiers to avoid naming conflicts with the original
-    - TsExpressionParser and TsBuiltinExpressionManager are not components any more
+    - TsExpressionParser and TsBuiltinExpressionManager are not components
+      any more
     - TsExpressionParser is created with the worksheet as a parameter.
     - add new TExprNode classes:
       - TsCellExprNode for references to cells
@@ -26,7 +27,7 @@
     - remove and modifiy built-in function such that the parser is compatible
       with Excel syntax (and OpenOffice - which is the same).
 
- **********************************************************************}
+ ******************************************************************************}
 {$mode objfpc}
 {$h+}
 unit fpsExprParser;
@@ -49,7 +50,7 @@ type
   fekParen,
 *)
   TTokenType = (
-    ttPlus, ttMinus, ttMul, ttDiv, ttPercent, ttPower, ttLeft, ttRight,
+    ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
     ttNumber, ttString, ttIdentifier, ttCell, ttCellRange,
     ttComma, ttAnd, ttOr, ttXor, ttTrue, ttFalse, ttNot, ttIf,
@@ -270,6 +271,17 @@ type
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
     property Condition: TsExprNode read FCondition;
+  end;
+
+  { TsConcatExprNode }
+  TsConcatExprNode = class(TsBinaryOperationExprNode)
+  protected
+    procedure Check; override;
+    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    function NodeType: TsResultType; override;
+  public
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function AsString: string ; override;
   end;
 
   { TsMathOperationExprNode }
@@ -914,7 +926,7 @@ begin
       '/' : Result := ttDiv;
       '^' : Result := ttPower;
       '%' : Result := ttPercent;
-      '&' : Result := ttPlus;
+      '&' : Result := ttConcat;
       '<' : Result := ttLessThan;
       '>' : Result := ttLargerThan;
       '=' : Result := ttEqual;
@@ -1356,7 +1368,7 @@ begin
 {$ifdef debugexpr}  Writeln('Level 3 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
   Result := Level4;
   try
-    while TokenType in [ttPlus, ttMinus] do begin
+    while TokenType in [ttPlus, ttMinus, ttConcat] do begin
       tt := TokenType;
       GetToken;
       CheckEOF;
@@ -1365,6 +1377,7 @@ begin
       case tt of
         ttPlus  : Result := TsAddExprNode.Create(Result, right);
         ttMinus : Result := TsSubtractExprNode.Create(Result, right);
+        ttConcat: Result := TsConcatExprNode.Create(Result, right);
       end;
     end;
   except
@@ -1483,10 +1496,6 @@ begin
     // Determine number of arguments
     if isIF then
       ACount := 3
-      {
-    else if isCASE then
-      ACount := -4
-      }
     else if (ID.IdentifierType in [itFunctionCallBack, itFunctionHandler]) then
       ACount := ID.ArgumentCount
     else
@@ -2662,11 +2671,49 @@ begin
 end;
 
 
+{ TsConcatExprNode }
+
+procedure TsConcatExprNode.Check;
+begin
+  inherited Check;
+  CheckNodeType(Left, [rtString]);
+  CheckNodeType(Right, [rtString]);
+end;
+
+procedure TsConcatExprNode.GetNodeValue(var Result: TsExpressionResult);
+var
+  RRes : TsExpressionResult;
+begin
+  Left.GetNodeValue(Result);
+  Right.GetNodeValue(RRes);
+  Result.ResString := Result.ResString + RRes.ResString;
+  Result.ResultType := rtString;
+end;
+
+function TsConcatExprNode.NodeType: TsResultType;
+begin
+  Result := rtString;
+end;
+
+function TsConcatExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
+begin
+  Result := RPNFunc(fekConcat,
+    Right.AsRPNItem(
+    Left.AsRPNItem(
+    nil)));
+end;
+
+function TsConcatExprNode.AsString: string;
+begin
+  Result := Left.AsString + '&' + Right.AsString;
+end;
+
+
 { TsMathOperationExprNode }
 
 procedure TsMathOperationExprNode.Check;
 const
-  AllowedTypes  = [rtInteger, rtfloat, rtDateTime, rtString];
+  AllowedTypes  = [rtInteger, rtfloat, rtDateTime];
 begin
   inherited Check;
   CheckNodeType(Left, AllowedTypes);
@@ -2704,7 +2751,7 @@ begin
   Right.GetNodeValue(RRes);
   case Result.ResultType of
     rtInteger  : Result.ResInteger := Result.ResInteger + RRes.ResInteger;
-    rtString   : Result.ResString := Result.ResString + RRes.ResString;
+//    rtString   : Result.ResString := Result.ResString + RRes.ResString;
     rtDateTime : Result.ResDateTime := Result.ResDateTime + RRes.ResDateTime;
     rtFloat    : Result.ResFloat := Result.ResFloat + RRes.ResFloat;
   end;
