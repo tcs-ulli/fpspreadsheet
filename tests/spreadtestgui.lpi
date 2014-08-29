@@ -56,7 +56,6 @@
       <Unit3>
         <Filename Value="numberstests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="numberstests"/>
       </Unit3>
       <Unit4>
         <Filename Value="manualtests.pas"/>
@@ -65,7 +64,6 @@
       <Unit5>
         <Filename Value="testsutility.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="testsutility"/>
       </Unit5>
       <Unit6>
         <Filename Value="internaltests.pas"/>
@@ -74,7 +72,6 @@
       <Unit7>
         <Filename Value="formattests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formattests"/>
       </Unit7>
       <Unit8>
         <Filename Value="colortests.pas"/>
@@ -106,17 +103,14 @@
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="emptycelltests"/>
       </Unit14>
       <Unit15>
         <Filename Value="errortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="errortests"/>
       </Unit15>
       <Unit16>
         <Filename Value="virtualmodetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="virtualmodetests"/>
       </Unit16>
     </Units>
   </ProjectOptions>

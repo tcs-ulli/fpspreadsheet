@@ -317,7 +317,7 @@ var
 begin
   workbook := TsWorkbook.Create;
   try
-    workbook.ReadFormulas := true;
+    workbook.Options := workbook.Options + [boReadFormulas];
     workbook.ReadFromFile(AFilename, sfExcel8);
 
     worksheet := workbook.GetFirstWorksheet;

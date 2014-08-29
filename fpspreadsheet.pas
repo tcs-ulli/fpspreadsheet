@@ -764,8 +764,13 @@ type
                                a cell value changes.
     @param  boCalcBeforeSaving Calculates formulas before saving the file.
                                Otherwise there are no results when the file is
-                               loaded back by fpspreadsheet. }
-  TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc, boCalcBeforeSaving);
+                               loaded back by fpspreadsheet.
+    @param  boReadFormulas     Allows to turn on/off reading of formulas; this
+                               is a precaution since formulas not or not fully
+                               implemented by fpspreadsheet could crash the
+                               reading operation. }
+  TsWorkbookOption = (boVirtualMode, boBufStream,
+    boAutoCalc, boCalcBeforeSaving, boReadFormulas);
 
   {@@
     Set of options flags for the workbook }
@@ -797,7 +802,6 @@ type
     FFontList: TFPList;
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
-    FReadFormulas: Boolean;
     FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FVirtualColCount: Cardinal;
@@ -905,10 +909,6 @@ type
     property FileName: String read FFileName;
     {@@ Identifies the file format which was detected when reading the file }
     property FileFormat: TsSpreadsheetFormat read FFormat;
-    {@@ This property allows to turn off reading of rpn formulas; this is a
-      precaution since formulas not correctly implemented by fpspreadsheet
-      could crash the reading operation. }
-    property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
     property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
     property Options: TsWorkbookOptions read FOptions write FOptions;

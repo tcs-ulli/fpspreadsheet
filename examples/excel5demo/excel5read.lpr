@@ -10,8 +10,7 @@ program excel5read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff5,
-  laz_fpspreadsheet;
+  Classes, SysUtils, fpspreadsheet, xlsbiff5;
 
 var
   MyWorkbook: TsWorkbook;

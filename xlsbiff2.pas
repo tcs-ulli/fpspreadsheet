@@ -605,7 +605,7 @@ begin
   end;
 
   { Formula token array }
-  if FWorkbook.ReadFormulas then begin
+  if boReadFormulas in FWorkbook.Options then begin
     ok := ReadRPNTokenArray(AStream, cell);
     if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
