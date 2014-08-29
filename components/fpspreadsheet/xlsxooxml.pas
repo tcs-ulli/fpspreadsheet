@@ -1174,12 +1174,28 @@ end;
 procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
 var
   valuenode: TDOMNode;
+  childnode: TDOMNode;
+  nodename: String;
   s: String;
 begin
   while Assigned(ANode) do begin
     if ANode.NodeName = 'si' then begin
+      s := '';
       valuenode := ANode.FirstChild;
-      s := GetNodeValue(valuenode);
+      while valuenode <> nil do begin
+        nodename := valuenode.NodeName;
+        if nodename = 't' then
+          s := GetNodeValue(valuenode)
+        else
+        if nodename = 'r' then begin
+          childnode := valuenode.FirstChild;
+          while childnode <> nil do begin
+            s := s + GetNodeValue(childnode);
+            childnode := childnode.NextSibling;
+          end;
+        end;
+        valuenode := valuenode.NextSibling;
+      end;
       FSharedStrings.Add(s);
     end;
     ANode := ANode.NextSibling;
