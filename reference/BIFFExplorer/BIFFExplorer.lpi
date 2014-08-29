@@ -155,7 +155,6 @@
         <ComponentName Value="MainForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="beMain"/>
       </Unit5>
       <Unit6>
         <Filename Value="beutils.pas"/>

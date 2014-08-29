@@ -11,7 +11,7 @@ program excel8read;
 
 uses
   Classes, SysUtils, fpspreadsheet, xlsbiff8,
-  laz_fpspreadsheet, fpsutils;
+  fpsutils;
 
 var
   MyWorkbook: TsWorkbook;
