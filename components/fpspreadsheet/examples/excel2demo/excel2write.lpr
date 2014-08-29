@@ -10,7 +10,7 @@ program excel2write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff2, laz_fpspreadsheet;
+  Classes, SysUtils, fpspreadsheet, xlsbiff2;
 
 var
   MyWorkbook: TsWorkbook;

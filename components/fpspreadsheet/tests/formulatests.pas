@@ -101,7 +101,7 @@ begin
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   try
-    MyWorkbook.ReadFormulas := true;
+    MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
 
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     if AFormat = sfExcel2 then

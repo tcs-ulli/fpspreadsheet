@@ -32,7 +32,7 @@
     </RunParams>
     <RequiredPackages Count="1">
       <Item1>
-        <PackageName Value="laz_fpspreadsheet"/>
+        <PackageName Value="LazUtils"/>
       </Item1>
     </RequiredPackages>
     <Units Count="1">
@@ -45,14 +45,22 @@
   <CompilerOptions>
     <Version Value="11"/>
     <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="ooxmlwrite"/>
+    </Target>
     <SearchPaths>
-      <OtherUnitFiles Value=".."/>
-      <SrcPath Value=".."/>
+      <OtherUnitFiles Value="..\.."/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
+    <Linking>
+      <Debugging>
+        <UseExternalDbgSyms Value="True"/>
+      </Debugging>
+    </Linking>
   </CompilerOptions>
 </CONFIG>

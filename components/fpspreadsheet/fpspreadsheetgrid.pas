@@ -923,7 +923,10 @@ procedure TsCustomWorksheetGrid.CreateNewWorkbook;
 begin
   FreeAndNil(FWorkbook);
   FWorkbook := TsWorkbook.Create;
-  FWorkbook.ReadFormulas := FReadFormulas;
+  if FReadFormulas then
+    FWorkbook.Options := FWorkbook.Options + [boReadFormulas]
+  else
+    FWorkbook.Options := FWorkbook.Options - [boReadFormulas];
   SetAutoCalc(FAutoCalc);
 end;
 

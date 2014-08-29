@@ -32,31 +32,35 @@
     </RunParams>
     <RequiredPackages Count="1">
       <Item1>
-        <PackageName Value="laz_fpspreadsheet"/>
+        <PackageName Value="LazUtils"/>
       </Item1>
     </RequiredPackages>
     <Units Count="1">
       <Unit0>
         <Filename Value="excel5read.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="excel5read"/>
       </Unit0>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
     <PathDelim Value="\"/>
+    <Target>
+      <Filename Value="excel5read"/>
+    </Target>
     <SearchPaths>
-      <OtherUnitFiles Value=".."/>
-      <SrcPath Value=".."/>
+      <OtherUnitFiles Value="..\.."/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
+    <Linking>
+      <Debugging>
+        <UseExternalDbgSyms Value="True"/>
+      </Debugging>
+    </Linking>
   </CompilerOptions>
 </CONFIG>
