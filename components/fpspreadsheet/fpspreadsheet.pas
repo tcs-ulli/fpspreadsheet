@@ -40,6 +40,8 @@ const
   STR_WIKITABLE_PIPES = '.wikitable_pipes';
   STR_WIKITABLE_WIKIMEDIA = '.wikitable_wikimedia';
 
+  MAX_COL_COUNT = 65535;
+
 type
 
   {@@ Possible encodings for a non-unicode encoded text }
@@ -52,7 +54,7 @@ type
     seHebrew,
     seArabic
     );
-
+        (*
   {@@ Describes a formula
 
     Supported syntax:
@@ -65,7 +67,7 @@ type
     FormulaStr: string;
     DoubleValue: double;
   end;
-
+          *)
   {@@ Tokens to identify the elements in an expanded formula.
 
    See http://www.techonthenet.com/excel/formulas/ for an explanation of
@@ -79,6 +81,19 @@ type
      in TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID, unit xlscommon,
      in sync
   }
+  TFEKind = (
+    { Basic operands }
+    fekCell, fekCellRef, fekCellRange, fekCellOffset, fekNum, fekInteger,
+    fekString, fekBool, fekErr, fekMissingArg,
+    { Basic operations }
+    fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
+    fekConcat,  // string concatenation
+    fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual, fekNotEqual,
+    fekParen,   // show parenthesis around expression node
+    { Functions - they are identified by their name }
+    fekFunc
+  );
+  (*
   TFEKind = (
     { Basic operands }
     fekCell, fekCellRef, fekCellRange, fekCellOffset, fekNum, fekInteger,
@@ -119,15 +134,17 @@ type
     { Other operations }
     fekOpSUM {Unary sum operation. Note: CANNOT be used for summing sell contents; use fekSUM}
     );
-
+    *)
   {@@ These tokens identify operands in RPN formulas. }
   TOperandTokens = fekCell..fekMissingArg;
 
   {@@ These tokens identify basic operations in RPN formulas. }
   TBasicOperationTokens = fekAdd..fekParen;
 
+  (*
   {@@ These tokens identify spreadsheet functions in RPN formulas. }
   TFuncTokens = fekAbs..fekOpSum;
+    *)
 
   {@@ Flags to mark the address or a cell or a range of cells to be absolute
       or relative. They are used in the set TsRelFlags. }
@@ -149,20 +166,17 @@ type
     IntValue: Word;
     StringValue: String;
     RelFlags: TsRelFlags;  // store info on relative/absolute addresses
+    FuncName: String;
     ParamsNum: Byte;
   end;
-
-  {@@ Expanded formula. Used by backend modules. Provides more information than the text only.
-      Is an array of TsFormulaElement items. }
-  TsExpandedFormula = array of TsFormulaElement;
 
   {@@ RPN formula. Similar to the expanded formula, but in RPN notation.
       Simplifies the task of format writers which need RPN }
   TsRPNFormula = array of TsFormulaElement;
 
   {@@ Describes the type of content in a cell of a TsWorksheet }
-  TCellContentType = (cctEmpty, cctFormula, cctRPNFormula, cctNumber,
-    cctUTF8String, cctDateTime, cctBool, cctError);
+  TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
+    cctDateTime, cctBool, cctError);
 
   {@@ Error code values }
   TsErrorValue = (
@@ -383,6 +397,16 @@ type
   {@@ State flags while calculating formulas }
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
+  {@@ Record combining a cell's row and column indexes }
+  TsCellCoord = record
+    Row, Col: Cardinal;
+  end;
+
+  {@@ Record combining row and column cornder indexes of a range of cells }
+  TsCellRange = record
+    Row1, Col1, Row2, Col2: Cardinal;
+  end;
+
   {@@ Pointer to a TCell record }
   PCell = ^TCell;
 
@@ -401,8 +425,8 @@ type
     Row: Cardinal; // zero-based
     ContentType: TCellContentType;
     { Possible values for the cells }
-    FormulaValue: TsFormula;
-    RPNFormulaValue: TsRPNFormula;
+    FormulaValue: string;
+//    RPNFormulaValue: TsRPNFormula;
     NumberValue: double;
     UTF8StringValue: ansistring;
     DateTimeValue: TDateTime;
@@ -475,7 +499,6 @@ type
   TsCustomSpreadWriter = class;
   TsWorkbook = class;
 
-
   { TsWorksheet }
 
   {@@ This event fires whenever a cell value or cell formatting changes. It is
@@ -511,7 +534,6 @@ type
     procedure RemoveCallback(data, arg: pointer);
 
   protected
-    procedure CalcRPNFormula(ACell: PCell);
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -582,8 +604,6 @@ type
     function WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue): PCell; overload;
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
 
-    function WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula): PCell; overload;
-    procedure WriteFormula(ACell: PCell; AFormula: TsFormula); overload;
     function WriteFormula(ARow, ACol: Cardinal; AFormula: String): PCell; overload;
     procedure WriteFormula(ACell: PCell; AFormula: String); overload;
 
@@ -676,8 +696,10 @@ type
     procedure WriteWordwrap(ACell: PCell; AValue: boolean); overload;
 
     { Formulas }
+    function BuildRPNFormula(ACell: PCell): TsRPNFormula;
+    procedure CalcFormula(ACell: PCell);
     procedure CalcFormulas;
-    function  ReadRPNFormulaAsString(ACell: PCell): String;
+    function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
     function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell; overload;
     procedure UseSharedFormula(ACellRangeStr: String; ASharedFormulaBase: PCell); overload;
 
@@ -765,12 +787,12 @@ type
     @param  boCalcBeforeSaving Calculates formulas before saving the file.
                                Otherwise there are no results when the file is
                                loaded back by fpspreadsheet.
-    @param  boReadFormulas     Allows to turn on/off reading of formulas; this
-                               is a precaution since formulas not or not fully
+    @param  boReadFormulas     Allows to turn off reading of rpn formulas; this is
+                               a precaution since formulas not correctly
                                implemented by fpspreadsheet could crash the
                                reading operation. }
-  TsWorkbookOption = (boVirtualMode, boBufStream,
-    boAutoCalc, boCalcBeforeSaving, boReadFormulas);
+  TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc, boCalcBeforeSaving,
+    boReadFormulas);
 
   {@@
     Set of options flags for the workbook }
@@ -1069,7 +1091,6 @@ type
     { Helper routines }
     procedure AddDefaultFormats(); virtual;
     procedure CheckLimitations;
-    function  ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
     function  FindFormattingInList(AFormat: PCell): Integer;
     procedure FixCellColors(ACell: PCell);
     function  FixColor(AColor: TsColor): TsColor; virtual;
@@ -1159,14 +1180,15 @@ type
   function RPNParenthesis(ANext: PRPNItem): PRPNItem;
   function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
   function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem; overload;
-  function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem; overload;
+  function RPNFunc(AFuncName: String; ANext: PRPNItem): PRPNItem; overload;
+  function RPNFunc(AFuncName: String; ANumParams: Byte; ANext: PRPNItem): PRPNItem; overload;
 
-  function FixedParamCount(AElementKind: TFEKind): Boolean;
+//  function FixedParamCount(AElementKind: TFEKind): Boolean;
 
 var
   GsSpreadFormats: array of TsSpreadFormatData;
 
-procedure RegisterFormulaFunc(AFormulaKind: TFEKind; AFunc: pointer);
+//procedure RegisterFormulaFunc(AFormulaKind: TFEKind; AFunc: pointer);
 
 procedure RegisterSpreadFormat( AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat);
@@ -1185,7 +1207,8 @@ function HasFormula(ACell: PCell): Boolean;
 implementation
 
 uses
-  Math, StrUtils, TypInfo, fpsStreams, fpsUtils, fpsNumFormatParser, fpsFunc;
+  Math, StrUtils, TypInfo,
+  fpsStreams, fpsUtils, fpsNumFormatParser, fpsExprParser, fpsFunc;
 
 { Translatable strings }
 resourcestring
@@ -1312,7 +1335,7 @@ var
     'wheat'       // $16
   );
 
-
+(*
 { Properties of formula elements }
 
 type
@@ -1328,7 +1351,7 @@ type
   end;
 
 var
-  FEProps: array[TFEKind] of TFEProp = (                                        // functions marked by (*)
+  FEProps: array[TFEKind] of TFEProp = (                                        // functions marked by ( * )
   { Operands }                                                                  // are only partially supported
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCell
     (Symbol:'';          MinParams:Byte(-1); MaxParams:Byte(-1); Func:nil),     // fekCellRef
@@ -1385,7 +1408,7 @@ var
     (Symbol:'TANH';      MinParams:1; MaxParams:1;  Func:fpsTANH),              // fekTANH,
   { date/time }
     (Symbol:'DATE';      MinParams:3; MaxParams:3;  Func:fpsDATE),              // fekDATE
-    (Symbol:'DATEDIF';   MinParams:3; MaxParams:3;  Func:fpsDATEDIF),           // fekDATEDIF    (*)
+    (Symbol:'DATEDIF';   MinParams:3; MaxParams:3;  Func:fpsDATEDIF),           // fekDATEDIF    ( * )
     (Symbol:'DATEVALUE'; MinParams:1; MaxParams:1;  Func:fpsDATEVALUE),         // fekDATEVALUE
     (Symbol:'DAY';       MinParams:1; MaxParams:1;  Func:fpsDAY),               // fekDAY
     (Symbol:'HOUR';      MinParams:1; MaxParams:1;  Func:fpsHOUR),              // fekHOUR
@@ -1445,7 +1468,7 @@ var
     (Symbol:'PROPER';    MinParams:1; MaxParams:1;  Func:nil),   // fekPROPER
     (Symbol:'REPLACE';   MinParams:4; MaxParams:4;  Func:fpsREPLACE),           // fekREPLACE
     (Symbol:'RIGHT';     MinParams:1; MaxParams:2;  Func:fpsRIGHT),             // fekRIGHT
-    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4;  Func:fpsSUBSTITUTE),        // fekSUBSTITUTE (*)
+    (Symbol:'SUBSTITUTE';MinParams:3; MaxParams:4;  Func:fpsSUBSTITUTE),        // fekSUBSTITUTE ( * )
     (Symbol:'TRIM';      MinParams:1; MaxParams:1;  Func:fpsTRIM),              // fekTRIM
     (Symbol:'UPPER';     MinParams:1; MaxParams:1;  Func:fpsUPPER),             // fekUPPER
   {  lookup/reference }
@@ -1454,8 +1477,8 @@ var
     (Symbol:'ROW';       MinParams:0; MaxParams:1;  Func:fpsROW),               // fekROW
     (Symbol:'ROWS';      MinParams:1; MaxParams:1;  Func:fpsROWS),              // fekROWS
   { info }
-    (Symbol:'CELL';      MinParams:1; MaxParams:2;  Func:fpsCELLINFO),          // fekCELLINFO  (*)
-    (Symbol:'INFO';      MinParams:1; MaxParams:1;  Func:fpsINFO),              // fekINFO      (*)
+    (Symbol:'CELL';      MinParams:1; MaxParams:2;  Func:fpsCELLINFO),          // fekCELLINFO  ( * )
+    (Symbol:'INFO';      MinParams:1; MaxParams:1;  Func:fpsINFO),              // fekINFO      ( * )
     (Symbol:'ISBLANK';   MinParams:1; MaxParams:1;  Func:fpsISBLANK),           // fekIsBLANK
     (Symbol:'ISERR';     MinParams:1; MaxParams:1;  Func:fpsISERR),             // fekIsERR
     (Symbol:'ISERROR';   MinParams:1; MaxParams:1;  Func:fpsISERROR),           // fekIsERROR
@@ -1484,7 +1507,7 @@ procedure RegisterFormulaFunc(AFormulaKind: TFEKind; AFunc: Pointer);
 begin
   FEProps[AFormulaKind].Func := TsFormulaFunc(AFunc);
 end;
-
+  *)
 
 {@@
   Registers a new reader/writer pair for a given spreadsheet file format
@@ -1615,8 +1638,7 @@ end;
 }
 procedure InitCell(out ACell: TCell);
 begin
-  ACell.RPNFormulaValue := nil;
-  ACell.FormulaValue.FormulaStr := '';
+  ACell.FormulaValue := '';
   ACell.UTF8StringValue := '';
   ACell.NumberFormatStr := '';
   FillChar(ACell, SizeOf(ACell), 0);
@@ -1643,9 +1665,7 @@ end;
 function HasFormula(ACell: PCell): Boolean;
 begin
   Result := Assigned(ACell) and (
-    (ACell^.SharedFormulaBase <> nil) or
-    (Length(ACell^.RPNFormulaValue) > 0) or
-    (Length(ACell^.FormulaValue.FormulaStr) > 0)
+    (ACell^.SharedFormulaBase <> nil) or (Length(ACell^.FormulaValue) > 0)
   );
 end;
 
@@ -1723,7 +1743,29 @@ begin
 end;
 
 {@@
-  Helper method for clearing the records in a spreadsheet.
+  Helper function which constructs an rpn formula from the cell's string
+  formula. This is needed, for example, when writing a formula to xls biff
+  file format.
+}
+function TsWorksheet.BuildRPNFormula(ACell: PCell): TsRPNFormula;
+var
+  parser: TsSpreadsheetParser;
+begin
+  if not HasFormula(ACell) then begin
+    SetLength(Result, 0);
+    exit;
+  end;
+  parser := TsSpreadsheetParser.Create(self);
+  try
+    parser.Expression := ACell^.FormulaValue;
+    Result := parser.RPNFormula;
+  finally
+    parser.Free;
+  end;
+end;
+
+{@@
+  Helper method for calculation of the formulas in a spreadsheet.
 }
 procedure TsWorksheet.CalcFormulaCallback(data, arg: pointer);
 var
@@ -1736,35 +1778,103 @@ begin
   if (cell = nil) or (cell^.ContentType = cctError) then
     exit;
 
-  // Cell contains an RPN formula --> calculate the formula
-  if (Length(cell^.RPNFormulaValue) > 0) or
-     ((cell^.SharedFormulaBase <> nil) and (Length(cell^.SharedFormulaBase^.RPNFormulaValue) > 0))
-  then
-    CalcRPNFormula(cell);
-
-  // Here should be other case of string formula:
-  {
-  else
-  if (Length(cell^.FormulaValue.FormulaStr) > 0) or
-     ((cell^.SharedFormulaBase <> nil) and (Length(cell^.SharedFormulaBase^.FomrulaValue.FormulaStr) > 0))
-  then
-    CalcStringFormula(cell);
-  }
+  if HasFormula(cell) or HasFormula(cell^.SharedFormulaBase) then
+    CalcFormula(cell);
 end;
 
 {@@
-  Helper method marking all cells with formulas as "not calculated". This flag
-  is needed for recursive calculation of the entire worksheet.
-}
-procedure TsWorksheet.CalcStateCallback(data, arg: Pointer);
-var
-  cell: PCell;
-begin
-  Unused(arg);
-  cell := PCell(data);
+  Calculates the formula in a cell
+  Should not be called by itself because the result may depend on other cells
+  which may have not yet been calculated. It is better to call CalcFormulas
+  instead.
 
-  if Length(cell^.RPNFormulaValue) > 0 then
-    cell^.CalcState := csNotCalculated;
+  @param  ACell  Cell containing the formula.
+}
+procedure TsWorksheet.CalcFormula(ACell: PCell);
+var
+  parser: TsSpreadsheetParser;
+  res: TsExpressionResult;
+  rpnFormula: TsRPNFormula;
+  cell: PCell;
+  i: Integer;
+  r, c: Cardinal;
+  fe: TsFormulaElement;
+begin
+  ACell^.CalcState := csCalculating;
+
+  parser := TsSpreadsheetParser.Create(self);
+  try
+    parser.Expression := ACell^.FormulaValue;
+    (*
+    // Check whether all used cells are already calculated.
+    rpnFormula := parser.RPNFormula;
+    for i:=0 to High(rpnFormula) do begin
+      fe := rpnFormula[i];
+      case fe.ElementKind of
+        fekCell, fekCellRef:
+          begin
+            cell := FindCell(fe.Row, fe.Col);
+            if cell <> nil then
+              case cell^.CalcState of
+                csNotCalculated: CalcFormula(cell);
+                csCalculating  : raise Exception.Create(lpCircularReference);
+              end;
+          end;
+        fekCellRange:
+          begin
+            for r := fe.Row to fe.Row2 do
+              for c := fe.Col to fe.Col2 do begin
+                cell := FindCell(r, c);
+                if cell <> nil then
+                  case cell^.CalcState of
+                    csNotCalculated: CalcFormula(cell);
+                    csCalculating  : raise Exception.Create(lpCircularReference);
+                  end;
+              end;
+          end;
+        {
+         fekCellOffset:
+           begin
+             if ACell^.SharedFormulaBase = nil then begin
+               ACell^.WriteErrorValue(ACell, errIllegalRef);
+               exit;
+             end;
+             if (rfRelRow in fe.RelFlags)
+               then r := ACell^.Row + SmallInt(fe.Row)
+               else r := ACell^.SharedFormulaBase^.Row;
+             if (rfRelCol in fe.RelFlags)
+               then c := ACell^.Col + SmallInt(fe.Col)
+               else c := ACell^.SharedFormulaBase^.Col;
+             cell := FindCell(r, c);
+             if cell <> nil then begin
+               case cell^.CalcState of
+                 csNotCalculated: CalcFormula(cell);
+                 csCalculating  : raise Exception.Create(lpCircularReference);
+               end;
+             end else begin
+               WriteErrorValue(ACell, errIllegalRef);
+               exit;
+             end;
+           end;
+           }
+      end;
+    end;
+     *)
+    parser.EvaluateExpression(res);
+    case res.ResultType of
+      rtEmpty    : WriteBlank(ACell);
+      rtError    : WriteErrorValue(ACell, res.ResError);
+      rtInteger  : WriteNumber(ACell, res.ResInteger);
+      rtFloat    : WriteNumber(ACell, res.ResFloat);
+      rtDateTime : WriteDateTime(ACell, res.ResDateTime);
+      rtString   : WriteUTF8Text(ACell, res.ResString);
+      rtBoolean  : WriteBoolValue(ACell, res.ResBoolean);
+    end;
+  finally
+    parser.Free;
+  end;
+
+  ACell^.CalcState := csCalculated;
 end;
 
 {@@
@@ -1798,142 +1908,18 @@ begin
 end;
 
 {@@
-  Calculates the rpn formula assigned to a cell.
-  Should not be called by itself because the result may depend on other cells
-  which may have not yet been calculated. It is better to call CalcFormulas
-  instead.
-
-  @param  ACell  Cell containing the rpn formula.
+  Helper method marking all cells with formulas as "not calculated". This flag
+  is needed for recursive calculation of the entire worksheet.
 }
-procedure TsWorksheet.CalcRPNFormula(ACell: PCell);
+procedure TsWorksheet.CalcStateCallback(data, arg: Pointer);
 var
-  i: Integer;
-  args: TsArgumentStack;
-  func: TsFormulaFunc;
-  val: TsArgument;
-  fe: TsFormulaElement;
   cell: PCell;
-  r,c: Cardinal;
-  formula: TsRPNFormula;
 begin
-  if (ACell^.ContentType = cctError) then
-    exit;
+  Unused(arg);
+  cell := PCell(data);
 
-  if (ACell^.SharedFormulaBase = nil) and (Length(ACell^.RPNFormulaValue) = 0) then
-    exit;
-
-  if (ACell^.SharedFormulaBase <> nil) and (Length(ACell^.SharedFormulaBase^.RPNFormulaValue) = 0)
-    then exit;
-
-  ACell^.CalcState := csCalculating;
-
-  args := TsArgumentStack.Create;
-  try
-    // Take care of shared formulas
-    if ACell^.SharedFormulaBase = nil then
-      formula := ACell^.RPNFormulaValue
-    else
-      formula := ACell^.SharedFormulaBase^.RPNFormulaValue;
-
-    for i := 0 to Length(formula) - 1 do begin
-      fe := formula[i];             // "fe" means "formula element"
-      case fe.ElementKind of
-        fekCell, fekCellRef:
-          begin
-            cell := FindCell(fe.Row, fe.Col);
-            if cell <> nil then
-              case cell^.CalcState of
-                csNotCalculated: CalcRPNFormula(cell);
-                csCalculating  : raise Exception.Create(lpCircularReference);
-              end;
-            args.PushCell(cell, self);
-          end;
-        fekCellRange:
-          begin
-            for r := fe.Row to fe.Row2 do
-              for c := fe.Col to fe.Col2 do begin
-                cell := FindCell(r, c);
-                if cell <> nil then
-                  case cell^.CalcState of
-                    csNotCalculated: CalcRPNFormula(cell);
-                    csCalculating  : raise Exception.Create(lpCircularReference);
-                  end;
-              end;
-            args.PushCellRange(fe.Row, fe.Col, fe.Row2, fe.Col2, self);
-          end;
-        fekCellOffset:
-          begin
-            if ACell^.SharedFormulaBase = nil then begin
-              WriteErrorValue(ACell, errIllegalRef);
-              exit;
-            end;
-            if (rfRelRow in fe.RelFlags)
-              then r := ACell^.Row + SmallInt(fe.Row)
-              else r := ACell^.SharedFormulaBase^.Row;
-            if (rfRelCol in fe.RelFlags)
-              then c := ACell^.Col + SmallInt(fe.Col)
-              else c := ACell^.SharedFormulaBase^.Col;
-            cell := FindCell(r, c);
-            if cell <> nil then begin
-              case cell^.CalcState of
-                csNotCalculated: CalcRPNFormula(cell);
-                csCalculating  : raise Exception.Create(lpCircularReference);
-              end;
-              args.PushCell(cell, self);
-            end else begin
-              WriteErrorValue(ACell, errIllegalRef);
-              exit;
-            end;
-          end;
-        fekNum:
-          args.PushNumber(fe.DoubleValue, self);
-        fekInteger:
-          args.PushNumber(1.0*fe.IntValue, self);
-        fekString:
-          args.PushString(fe.StringValue, self);
-        fekBool:
-          args.PushBool(fe.DoubleValue <> 0.0, self);
-        fekMissingArg:
-          args.PushMissing(self);
-        fekParen: ;  // visual effect only
-        fekErr:
-          exit;
-        else
-          func := FEProps[fe.ElementKind].Func;
-          if not Assigned(func) then begin
-            // calculation of function not implemented
-            WriteErrorValue(ACell, errFormulaNotSupported);
-            exit;
-          end;
-          if args.Count < fe.ParamsNum then begin
-            // not enough parameters
-            WriteErrorValue(ACell, errArgError);
-            exit;
-          end;
-          // Result of function
-          val := func(args, fe.ParamsNum);
-          // Push result on stack for usage by next function or as final result
-          args.Push(val, self);
-      end;  // case
-    end;  // for
-
-    { When all formula elements have been processed the stack contains the
-      final result. }
-    if args.Count = 1 then begin
-      val := args.Pop;
-      case val.ArgumentType of
-        atNumber: WriteNumber(ACell, val.NumberValue);
-        atBool  : WriteBoolValue(ACell, val.BoolValue);
-        atString: WriteUTF8Text(ACell, val.StringValue);
-        atError : WriteErrorValue(ACell, val.ErrorValue);
-        atEmpty : WriteBlank(ACell);
-      end;
-    end else
-      WriteErrorValue(ACell, errArgError);
-  finally
-    ACell^.CalcState := csCalculated;
-    args.Free;
-  end;
+  if HasFormula(cell) then
+    cell^.CalcState := csNotCalculated;
 end;
 
 {@@
@@ -1958,14 +1944,16 @@ var
   cellNode: TAVLTreeNode;
   fe: TsFormulaElement;
   i: Integer;
+  rpnFormula: TsRPNFormula;
 begin
   cellNode := FCells.FindLowest;
   while Assigned(cellNode) do begin
     cell := PCell(cellNode.Data);
-    if Length(cell^.RPNFormulaValue) > 0 then
-      for i := 0 to Length(cell^.RPNFormulaValue)-1 do
+    if HasFormula(cell) then begin
+      rpnFormula := BuildRPNFormula(cell);
+      for i := 0 to Length(rpnFormula)-1 do
       begin
-        fe := cell^.RPNFormulaValue[i];
+        fe := rpnFormula[i];
         case fe.ElementKind of
           fekCell, fekCellRef:
             if (fe.Row = ARow) and (fe.Col = ACol) then
@@ -1982,8 +1970,10 @@ begin
             end;
         end;
       end;
+    end;
     cellNode := FCells.FindSuccessor(cellNode);
   end;
+  SetLength(rpnFormula, 0);
 end;
 
 {@@
@@ -2689,18 +2679,15 @@ end;
   is returned as a string in Excel syntax.
 
   @param   ACell Pointer to the cell considered
-  @return  Formula string in Excel syntax.
+  @return  Formula string in Excel syntax (does not contain a leading "=")
 }
 function TsWorksheet.ReadFormulaAsString(ACell: PCell): String;
 begin
   Result := '';
   if ACell = nil then
     exit;
-  if HasFormula(ACell) then begin
-    Result := ReadRPNFormulaAsString(ACell);
-    if Result = '' then
-      Result := ACell^.FormulaValue.FormulaStr;
-  end;
+  if HasFormula(ACell) then
+    Result := ACell^.FormulaValue;
 end;
 
 {@@
@@ -2737,152 +2724,24 @@ end;
 
 
 {@@
-  If a cell contains an RPN formula an Excel-like formula string is constructed
-  and returned.
+  Converts an RPN formula (as read from an xls biff file, for example) to a
+  string formula.
 
-  @param   ACell  Pointer to the cell considered
-  @return  Formula string in Excel syntax.
+  @param    AFormula  Array of rpn formula tokens
+  @return   Formula string in Excel syntax (without leading "=")
 }
-function TsWorksheet.ReadRPNFormulaAsString(ACell: PCell): String;
+function TsWorksheet.ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
 var
-  fs: TFormatSettings;
-  elem: TsFormulaElement;
-  i, j: Integer;
-  L: TStringList;
-  s: String;
-  ptr: Pointer;
-  fek: TFEKind;
-  formula: TsRPNFormula;
-  r,c: Cardinal;
+  parser: TsSpreadsheetParser;
 begin
   Result := '';
-  if ACell = nil then
-    exit;
 
-  fs := Workbook.FormatSettings;
-  L := TStringList.Create;
+  parser := TsSpreadsheetParser.Create(self);
   try
-    // Take care of shared formulas
-    if ACell^.SharedFormulaBase = nil then
-      formula := ACell^.RPNFormulaValue
-    else
-      formula := ACell^.SharedFormulaBase^.RPNFormulaValue;
-
-    if Length(formula) = 0 then
-      exit;
-
-    // We store the cell values and operation codes in a stringlist which serves
-    // as kind of stack. Therefore, we do not destroy the original formula array.
-    // We reverse the order of the items because in the next step stringlist
-    // items will subsequently be deleted, and this is much easier when going
-    // in reverse direction.
-    for i := Length(formula)-1 downto 0 do begin
-      elem := formula[i];
-      ptr := Pointer(elem.ElementKind);
-      case elem.ElementKind of
-        fekNum:
-          L.AddObject(Format('%g', [elem.DoubleValue], fs), ptr);
-        fekInteger:
-          L.AddObject(IntToStr(elem.IntValue), ptr);
-        fekString:
-          L.AddObject('"' + elem.StringValue + '"', ptr);
-        fekBool:
-          L.AddObject(IfThen(boolean(elem.IntValue), 'FALSE', 'TRUE'), ptr);
-        fekCell,
-        fekCellRef:
-          L.AddObject(GetCellString(elem.Row, elem.Col, elem.RelFlags), ptr);
-        fekCellRange:
-          L.AddObject(GetCellRangeString(elem.Row, elem.Col, elem.Row2, elem.Col2, elem.RelFlags), ptr);
-        fekCellOffset:
-          begin
-            if rfRelRow in elem.RelFlags
-              then r := ACell^.Row + SmallInt(elem.Row)
-              else r := elem.Row;
-            if rfRelCol in elem.RelFlags
-              then c := ACell^.Col + SmallInt(elem.Col)
-              else c := elem.Col;
-            L.AddObject(GetCellString(r, c, elem.RelFlags), ptr);
-          end
-        // Operations:
-        else
-          L.AddObject(FEProps[elem.ElementKind].Symbol, ptr);
-      end;
-    end;
-
-    // Now we construct the string from the parts stored in the stringlist.
-    // Every item processed is deleted from the list for error detection.
-    // In order not to confuse indexes we start at the end of the list and
-    // work forward.
-    i := L.Count-1;
-    while (L.Count > 0) and (i >= 0) do begin
-      fek := TFEKind(PtrInt(L.Objects[i]));
-      case fek of
-        fekAdd, fekSub, fekMul, fekDiv, fekPower, fekConcat,
-        fekEqual, fekNotEqual, fekLess, fekLessEqual, fekGreater, fekGreaterEqual:
-          if i+2 < L.Count then begin
-            L.Strings[i] := Format('%s%s%s', [L[i+2], L[i], L[i+1]]);
-            L.Delete(i+2);
-            L.Delete(i+1);
-            L.Objects[i] := pointer(fekString);
-          end else begin
-            Result := '=' + lpErrArgError;
-            exit;
-          end;
-        fekUPlus, fekUMinus:
-          if i+1 < L.Count then begin
-            L.Strings[i] := L[i]+L[i+1];
-            L.Delete(i+1);
-            L.Objects[i] := Pointer(fekString);
-          end else begin
-            Result := '=' + lpErrArgError;
-            exit;
-          end;
-        fekPercent:
-          if i+1 < L.Count then begin
-            L.Strings[i] := L[i+1]+L[i];
-            L.Delete(i+1);
-            L.Objects[i] := Pointer(fekString);
-          end else begin
-            Result := '=' + lpErrArgError;
-            exit;
-          end;
-        fekParen:
-          if i+1 < L.Count then begin
-            L.Strings[i] := Format('(%s)', [L[i+1]]);
-            L.Delete(i+1);
-            L.Objects[i] := pointer(fekString);
-          end else begin
-            Result := '=' + lpErrArgError;
-            exit;
-          end;
-        else
-          if fek >= fekAdd then begin
-            elem := formula[Length(formula) - 1 - i];
-            s := '';
-            for j:= i+elem.ParamsNum downto i+1 do begin
-              if j < L.Count then begin
-                s := s + fs.ListSeparator + ' ' + L[j];
-                L.Delete(j);
-              end else begin
-                Result := '=' + lpErrArgError;
-                exit;
-              end;
-            end;
-            Delete(s, 1, 2);
-            L.Strings[i] := Format('%s(%s)', [L[i], s]);
-            L.Objects[i] := pointer(fekString);
-          end;
-      end;
-      dec(i);
-    end;
-
-    if L.Count > 1 then
-      Result := '=' + lpErrArgError  // too many arguments
-    else
-      Result := '=' + L[0];
-
+    parser.RPNFormula := AFormula;
+    Result := parser.BuildStringFormula;
   finally
-    L.Free;
+    parser.Free;
   end;
 end;
 
@@ -2979,8 +2838,8 @@ begin
   end;
   Result := GetCell(ARow, ACol);
   Result.SharedFormulaBase := ASharedFormulaBase;
-  if ((Length(Result^.RPNFormulaValue) > 0) or (Length(Result^.FormulaValue.FormulaStr) > 0))
-    and ((ASharedFormulaBase.Row <> ARow) or (ASharedFormulaBase.Col <> ACol))
+  if HasFormula(Result) and
+     ((ASharedFormulaBase.Row <> ARow) or (ASharedFormulaBase.Col <> ACol))
   then
     raise Exception.CreateFmt('Cell %s uses a shared formula, but contains an own formula.',
       [GetCellString(ARow, ACol)]);
@@ -3702,36 +3561,7 @@ end;
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
-  @param  AFormula  The formula to be written
-  @return Pointer to the cell
-}
-function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: TsFormula): PCell;
-begin
-  Result := GetCell(ARow, ACol);
-  WriteFormula(Result, AFormula);
-end;
-
-{@@
-  Writes a formula to a given cell
-
-  @param  ACell     Pointer to the cell
-  @param  AFormula  Formula to be written
-}
-procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: TsFormula);
-begin
-  if ACell = nil then
-    exit;
-  ACell^.ContentType := cctFormula;
-  ACell^.FormulaValue := AFormula;
-  ChangedCell(ACell^.Row, ACell^.Col);
-end;
-
-{@@
-  Writes a formula to a given cell
-
-  @param  ARow      The row of the cell
-  @param  ACol      The column of the cell
-  @param  AFormula  The formula string to be written
+  @param  AFormula  The formula string to be written. A leading "=" will be removed.
   @return Pointer to the cell
 }
 function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: string): PCell;
@@ -3744,14 +3574,17 @@ end;
   Writes a formula to a given cell
 
   @param  ACell     Pointer to the cell
-  @param  AFormula  Formula string to be written
+  @param  AFormula  Formula string to be written. A leading '=' will be removed.
 }
-procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: String);
+procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string);
 begin
   if ACell = nil then
     exit;
   ACell^.ContentType := cctFormula;
-  ACell^.FormulaValue.FormulaStr := AFormula;
+  if (AFormula <> '') and (AFormula[1] = '=') then
+    ACell^.FormulaValue := Copy(AFormula, 2, Length(AFormula))
+  else
+    ACell^.FormulaValue := AFormula;
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -3887,7 +3720,8 @@ end;
 
 {@@
   Writes an RPN formula to a cell. An RPN formula is an array of tokens
-  describing the calculation to be performed.
+  describing the calculation to be performed. In addition,the RPN formula is
+  converted to a string formula.
 
   @param  ACell         Pointer to the cell
   @param  AFormula      Array of TsFormulaElements. The array can be created by
@@ -3902,8 +3736,9 @@ begin
   if ACell = nil then
     exit;
 
-  ACell^.ContentType := cctRPNFormula;
-  ACell^.RPNFormulaValue := AFormula;
+  ACell^.ContentType := cctFormula;
+  ACell^.FormulaValue := ConvertRPNFormulaToStringFormula(AFormula);
+
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -4762,6 +4597,7 @@ var
   cell: PCell;
   col: PtrInt;
   fe: TsFormulaElement;
+  formula: TsRPNFormula;
   i: Integer;
 begin
   col := PtrInt(arg);
@@ -4771,11 +4607,15 @@ begin
   if cell^.Col >= col then
     inc(cell^.Col);
 
-  // Update rpn formulas
-  for i:=0 to Length(cell^.RPNFormulaValue)-1 do begin
-    fe := cell^.RPNFormulaValue[i];   // "fe" means "formula element"
+  // Update formulas
+  // (1) create an rpn formula
+  formula := BuildRPNFormula(cell);
+  // (2) update cell addresses affected by the insertion of a column
+  for i:=0 to Length(formula)-1 do begin
+    fe := Formula[i];   // "fe" means "formula element"
     case fe.ElementKind of
-      fekCell, fekCellRef: if fe.Col >= col then inc(fe.Col);
+      fekCell, fekCellRef:
+        if fe.Col >= col then inc(fe.Col);
       fekCellRange:
         begin
           if fe.Col >= col then inc(fe.Col);
@@ -4783,6 +4623,8 @@ begin
         end;
     end;
   end;
+  // (3) convert rpn formula back to string formula
+  cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
 end;
 
 {@@
@@ -4824,6 +4666,7 @@ var
   row: PtrInt;
   i: Integer;
   fe: TsFormulaElement;
+  formula: TsRPNFormula;
 begin
   row := PtrInt(arg);
   cell := PCell(data);
@@ -4833,10 +4676,14 @@ begin
     inc(cell^.Row);
 
   // Update rpn formulas
-  for i:=0 to Length(cell^.RPNFormulaValue)-1 do begin
-    fe := cell^.RPNFormulaValue[i];   // "fe" means "formula element"
+  // (1) create an rpn formula
+  formula := BuildRPNFormula(cell);
+  // (2) update cell addresses affected by the insertion of a column
+  for i:=0 to Length(formula)-1 do begin
+    fe := formula[i];   // "fe" means "formula element"
     case fe.ElementKind of
-      fekCell, fekCellRef: if fe.Row >= row then inc(fe.Row);
+      fekCell, fekCellRef:
+        if fe.Row >= row then inc(fe.Row);
       fekCellRange:
         begin
           if fe.Row >= row then inc(fe.Row);
@@ -4844,6 +4691,8 @@ begin
         end;
     end;
   end;
+  // (3) convert rpn formula back to string formula
+  cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
 end;
 
 {@@
@@ -6966,50 +6815,6 @@ begin
 end;
 
 {@@
-  Expands a formula, separating it in it's constituent parts,
-  so that it is already partially parsed and it is easier to
-  convert it into the format supported by the writer module
-}
-function TsCustomSpreadWriter.ExpandFormula(AFormula: TsFormula): TsExpandedFormula;
-var
-  StrPos: Integer;
-  ResPos: Integer;
-begin
-  ResPos := -1;
-  SetLength(Result, 0);
-
-  // The formula needs to start with a "=" character.
-  if AFormula.FormulaStr[1] <> '=' then raise Exception.Create('Formula doesn''t start with =');
-
-  StrPos := 2;
-
-  while Length(AFormula.FormulaStr) <= StrPos do
-  begin
-    // Checks for cell with the format [Letter][Number]
-{    if (AFormula.FormulaStr[StrPos] in [a..zA..Z]) and
-       (AFormula.FormulaStr[StrPos + 1] in [0..9]) then
-    begin
-      Inc(ResPos);
-      SetLength(Result, ResPos + 1);
-      Result[ResPos].ElementKind := fekCell;
-//      Result[ResPos].Col1 := fekCell;
-      Result[ResPos].Row1 := AFormula.FormulaStr[StrPos + 1];
-
-      Inc(StrPos);
-    end
-    // Checks for arithmetical operations
-    else} if AFormula.FormulaStr[StrPos] = '+' then
-    begin
-      Inc(ResPos);
-      SetLength(Result, ResPos + 1);
-      Result[ResPos].ElementKind := fekAdd;
-    end;
-
-    Inc(StrPos);
-  end;
-end;
-
-{@@
   Helper function for the spreadsheet writers. Writes the cell value to the
   stream. Calls the WriteNumber method of the worksheet for writing a number,
   the WriteDateTime method for writing a date/time etc.
@@ -7152,7 +6957,8 @@ end;
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 begin
-  Unused(AStream, ARow, ACol);
+  Unused(AStream);
+  Unused(ARow, ACol, ACell);
 end;
 (*
 {@@
@@ -7405,8 +7211,7 @@ begin
 end;
 
 {@@
-  Creates an entry in the RPN array for a number. Integers and floating-point
-  values can be used likewise.
+  Creates an entry in the RPN array for a floating point number.
 
   @param  AValue  Number value to be inserted into the formula
   @param  ANext   Pointer to the next RPN item in the list
@@ -7459,10 +7264,35 @@ end;
 }
 function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem;
 begin
+  {
   if FEProps[AToken].MinParams <> FEProps[AToken].MaxParams then
     raise Exception.CreateFmt(lpSpecifyNumberOfParams, [FEProps[AToken].Symbol]);
+   }
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := AToken;
+  Result^.Fe.FuncName := '';
+  Result^.Next := ANext;
+end;
 
-  Result := RPNFunc(AToken, FEProps[AToken].MinParams, ANext);
+
+{@@
+  Creates an entry in the RPN array for an Excel function or operation
+  specified by its TokenID (--> TFEKind). Note that array elements for all
+  needed parameters must have been created before.
+
+  @param  AToken  Formula element indicating the function to be executed,
+                  see the TFEKind enumeration for possible values.
+  @param  ANext   Pointer to the next RPN item in the list
+
+  @see TFEKind
+}
+function RPNFunc(AFuncName: String; ANext: PRPNItem): PRPNItem;
+begin
+  {
+  if FEProps[AToken].MinParams <> FEProps[AToken].MaxParams then
+    raise Exception.CreateFmt(lpSpecifyNumberOfParams, [FEProps[AToken].Symbol]);
+   }
+  Result := RPNFunc(AFuncName, 255, ANext); //FEProps[AToken].MinParams, ANext);
 end;
 
 {@@
@@ -7472,27 +7302,29 @@ end;
 
   @param  AToken     Formula element indicating the function to be executed,
                      see the TFEKind enumeration for possible values.
-  @param  ANumParams Number of arguments used in the formula
+  @param  ANumParams Number of arguments used in the formula. If -1 then the
+                     fixed number of arguments known from the function definiton
+                     is used.
   @param  ANext      Pointer to the next RPN item in the list
 
   @see TFEKind
 }
-function RPNFunc(AToken: TFEKind; ANumParams: Byte; ANext: PRPNItem): PRPNItem;
+function RPNFunc(AFuncName: String; ANumParams: Byte; ANext: PRPNItem): PRPNItem;
 begin
-  if ord(AToken) < ord(fekAdd) then
-    raise Exception.Create('No basic tokens allowed here.');
-
-  if (ANumParams < FEProps[AToken].MinParams) or (ANumParams > FEProps[AToken].MaxParams) then
-    raise Exception.CreateFmt(lpIncorrectParamCount, [
-      FEProps[AToken].Symbol, FEProps[AToken].MinParams, FEProps[AToken].MaxParams
-    ]);
-
+   {
+  if (ANumParams > -1) then
+    if (ANumParams < FEProps[AToken].MinParams) or (ANumParams > FEProps[AToken].MaxParams) then
+      raise Exception.CreateFmt(lpIncorrectParamCount, [
+        FEProps[AToken].Symbol, FEProps[AToken].MinParams, FEProps[AToken].MaxParams
+      ]);
+  }
   Result := NewRPNItem;
-  Result^.FE.ElementKind := AToken;
+  Result^.FE.ElementKind := fekFunc;
+  Result^.Fe.FuncName := AFuncName;
   Result^.FE.ParamsNum := ANumParams;
   Result^.Next := ANext;
 end;
-
+             (*
 {@@
   Returns if the function defined by the token requires a fixed number of parameter.
 
@@ -7503,7 +7335,7 @@ begin
   Result := (FEProps[AElementKind].MinParams = FEProps[AElementKind].MaxParams)
         and (FEProps[AElementKind].MinParams >= 0);
 end;
-
+               *)
 {@@
   Creates an RPN formula by a single call using nested RPN items.
 

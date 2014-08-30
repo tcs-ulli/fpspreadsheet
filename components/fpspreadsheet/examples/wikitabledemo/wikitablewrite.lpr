@@ -10,7 +10,8 @@ program wikitablewrite;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, wikitable;
+  Classes, SysUtils, fpspreadsheet, wikitable,
+  laz_fpspreadsheet;
 
 const
   Str_First = 'First';

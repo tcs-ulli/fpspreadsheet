@@ -40,6 +40,11 @@ begin
   MyWorksheet.WriteColWidth(0, 20);
   MyWorksheet.WriteRowHeight(0, 4);
 
+  // Write some formulas
+  Myworksheet.WriteFormula(0, 5, '=A1-B1');
+  Myworksheet.WriteFormula(0, 6, '=SUM(A1:D1)');
+  MyWorksheet.WriteFormula(0, 7, '=SIN(A1+B1)');
+
 // Uncomment this to test large XLS files
   for i := 2 to 2{20} do
   begin

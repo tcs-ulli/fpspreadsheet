@@ -727,10 +727,15 @@ end;
 procedure TForm1.EdFormulaEditingDone(Sender: TObject);
 var
   r, c: Cardinal;
+  s: String;
 begin
   r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
   c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
-  WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, EdFormula.Text);
+  s := EdFormula.Text;
+  if (s <> '') and (s[1] = '=') then
+    WorksheetGrid.Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)))
+  else
+    WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, EdFormula.Text);
 end;
 
 procedure TForm1.EdFrozenColsChange(Sender: TObject);
@@ -895,8 +900,10 @@ begin
   cell := WorksheetGrid.Worksheet.FindCell(r, c);
   if cell <> nil then begin
     s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell);
-    if s <> '' then
-      EdFormula.Text := s
+    if s <> '' then begin
+      if s[1] <> '=' then s := '=' + s;
+      EdFormula.Text := s;
+    end
     else
       case cell^.ContentType of
         cctNumber:
@@ -993,12 +1000,9 @@ begin
         then Strings.Add('ErrorValue=')
         else Strings.Add(Format('ErrorValue=%s', [
                GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue)) ]));
-      if (ACell=nil) or (Length(ACell^.RPNFormulaValue) = 0)
-        then Strings.Add('RPNFormulaValue=')
-        else Strings.Add(Format('RPNFormulaValue=(%d tokens)', [Length(ACell^.RPNFormulaValue)]));
-      if (ACell=nil) or (Length(ACell^.FormulaValue.FormulaStr)=0)
-        then Strings.Add('FormulaValue.FormulaStr=')
-        else Strings.Add(Format('FormulaValue.FormulaStr="%s"', [ACell^.FormulaValue.FormulaStr]));
+      if (ACell=nil) or (Length(ACell^.FormulaValue)=0)
+        then Strings.Add('FormulaValue=')
+        else Strings.Add(Format('FormulaValue="%s"', [ACell^.FormulaValue]));
       if (ACell=nil) or (ACell^.SharedFormulaBase=nil)
         then Strings.Add('SharedFormulaBase=')
         else Strings.Add(Format('SharedFormulaBase=%s', [GetCellString(

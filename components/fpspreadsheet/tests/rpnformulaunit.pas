@@ -150,7 +150,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, Format('=COUNT(%s)', [cellAddr]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange(cellAddr,
-    RPNFunc(fekCOUNT, 1,     // 1 parameter used in COUNT
+    RPNFunc('COUNT', 1,     // 1 parameter used in COUNT
     nil
   ))));
   Worksheet.WriteNumber(Row, 2, 6);   // 7 cells, but 1 is alpha-numerical!
@@ -161,7 +161,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, Format('=COUNT(%s)', [cellAddr]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange(cellAddr,
-    RPNFunc(fekCOUNT, 1,
+    RPNFunc('COUNT', 1,
     nil
   ))));
   Worksheet.WriteNumber(Row, 2, 6);   // 7 cells, but 1 is alph-numerical!
@@ -172,7 +172,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, Format('=COUNT(%s)', [cellAddr]));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellRange(cellAddr,
-    RPNFunc(fekCOUNT, 1,
+    RPNFunc('COUNT', 1,
     nil
   ))));
   Worksheet.WriteNumber(Row, 2, 6);   // 7 cells, but 1 is alpha-numerical!
@@ -486,7 +486,7 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=TRUE()');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekTRUE,
+    RPNFunc('TRUE',
     nil)));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[true]);
 
@@ -494,7 +494,7 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=FALSE()');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekFALSE,
+    RPNFunc('FALSE',
     nil)));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[false]);
 
@@ -505,8 +505,8 @@ begin
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('C1',
     RPNCellValue('C1',
-    RPNFunc(fekEQUAL,
-    RPNFunc(fekNOT,
+    RPNFunc(fekEqual,
+    RPNFunc('NOT',
     nil))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[not (cellC1=cellC1)]);
 
@@ -520,7 +520,7 @@ begin
     RPNNumber(1,
     RPNNumber(2,
     RPNFunc(fekEQUAL,
-    RPNFunc(fekAND, 2,
+    RPNFunc('AND', 2,
     nil)))))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[(1=0) and (1=2)]);
 
@@ -534,7 +534,7 @@ begin
     RPNNumber(2,
     RPNNumber(2,
     RPNFunc(fekEQUAL,
-    RPNFunc(fekAND, 2,
+    RPNFunc('AND', 2,
     nil)))))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[(1=0) and (2=2)]);
 
@@ -548,7 +548,7 @@ begin
     RPNNumber(2,
     RPNNumber(2,
     RPNFunc(fekEQUAL,
-    RPNFunc(fekAND, 2,
+    RPNFunc('AND', 2,
     nil)))))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[(1=1) and (2=2)]);
 
@@ -562,7 +562,7 @@ begin
     RPNNumber(1,
     RPNNumber(2,
     RPNFunc(fekEQUAL,
-    RPNFunc(fekOR, 2,
+    RPNFunc('OR', 2,
     nil)))))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[(1=0) or (1=2)]);
 
@@ -576,7 +576,7 @@ begin
     RPNNumber(2,
     RPNNumber(2,
     RPNFunc(fekEQUAL,
-    RPNFunc(fekOR, 2,
+    RPNFunc('OR', 2,
     nil)))))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[(1=0) or (2=2)]);
 
@@ -590,7 +590,7 @@ begin
     RPNNumber(2,
     RPNNumber(2,
     RPNFunc(fekEQUAL,
-    RPNFunc(fekOR, 2,
+    RPNFunc('OR', 2,
     nil)))))))));
   Worksheet.WriteUTF8Text(Row, 2, FALSE_TRUE[(1=1) or (2=2)]);
 
@@ -603,7 +603,7 @@ begin
     RPNFunc(fekEQUAL,
     RPNString('correct',
     RPNString('wrong',
-    RPNFunc(fekIF, 3,
+    RPNFunc('IF', 3,
     nil))))))));
   Worksheet.WriteUTF8Text(Row, 2, IfThen(cellB1=1.0, 'correct', 'wrong'));
 
@@ -616,7 +616,7 @@ begin
     RPNFunc(fekNotEQUAL,
     RPNString('correct',
     RPNString('wrong',
-    RPNFunc(fekIF, 3,
+    RPNFunc('IF', 3,
     nil))))))));
   Worksheet.WriteUTF8Text(Row, 2, IfThen(cellB1<>1.0, 'correct', 'wrong'));
 
@@ -628,7 +628,7 @@ begin
     RPNNumber(1,
     RPNFunc(fekEQUAL,
     RPNString('correct',
-    RPNFunc(fekIF, 2,
+    RPNFunc('IF', 2,
     nil)))))));
   Worksheet.WriteUTF8Text(Row, 2, IfThen(cellB1=1.0, 'correct', 'FALSE'));
 
@@ -640,7 +640,7 @@ begin
     RPNNumber(1,
     RPNFunc(fekNotEQUAL,
     RPNString('correct',
-    RPNFunc(fekIF, 2,
+    RPNFunc('IF', 2,
     nil)))))));
   Worksheet.WriteUTF8Text(Row, 2, IfThen(cellB1<>1.0, 'correct', 'FALSE'));
 
@@ -656,7 +656,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=ABS($B1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$B1',
-    RPNFunc(fekABS,
+    RPNFunc('ABS',
     nil))));
   Worksheet.WriteNumber(Row, 2, abs(cellB1));
 
@@ -665,7 +665,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=ABS(E$1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('E$1',
-    RPNFunc(fekABS,
+    RPNFunc('ABS',
     nil))));
   Worksheet.WriteNumber(Row, 2, abs(cellE1));
 
@@ -674,7 +674,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=SIGN(F1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('F1',
-    RPNFunc(fekSIGN,
+    RPNFunc('SIGN',
     nil))));
   Worksheet.WriteNumber(Row, 2, sign(cellF1));
 
@@ -683,7 +683,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=SIGN(0)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(0,
-    RPNFunc(fekSIGN,
+    RPNFunc('SIGN',
     nil))));
   Worksheet.WriteNumber(Row, 2, sign(0));
 
@@ -692,7 +692,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=SIGN(G1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('G1',
-    RPNFunc(fekSIGN,
+    RPNFunc('SIGN',
     nil))));
   Worksheet.WriteNumber(Row, 2, sign(cellG1));
 
@@ -700,7 +700,7 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=RAND()');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekRAND,
+    RPNFunc('RAND',
     nil)));
   Worksheet.WriteUTF8Text(Row, 2, '(random number - cannot compare)');
 
@@ -708,7 +708,7 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=PI()');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekPI,
+    RPNFunc('PI',
     nil)));
   Worksheet.WriteNumber(Row, 2, pi);
 
@@ -718,10 +718,10 @@ begin
     value := pi/2;
     Worksheet.WriteUTF8Text(Row, 0, '=DEGREES(PI()/2)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-      RPNFunc(fekPI,
+      RPNFunc('PI',
       RPNNumber(2,
       RPNFunc(fekDIV,
-      RPNFunc(fekDEGREES,
+      RPNFunc('DEGREES',
       nil))))));
     Worksheet.WriteNumber(Row, 2, value/pi*180);
 
@@ -731,7 +731,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, '=RADIANS(90)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekRADIANS,
+      RPNFunc('RADIANS',
       nil))));
     Worksheet.WriteNumber(Row, 2, value/180*pi);
   end;
@@ -740,10 +740,10 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=SIN(PI()/2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekPI,
+    RPNFunc('PI',
     RPNNumber(2,
     RPNFunc(fekDIV,
-    RPNFunc(fekSIN,
+    RPNFunc('SIN',
     nil))))));
   Worksheet.WriteNumber(Row, 2, sin(pi/2));
 
@@ -753,7 +753,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, Format('=ASIN(%.1f)', [value], fs));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekASIN,
+    RPNFunc('ASIN',
     nil))));
   Worksheet.WriteNumber(Row, 2, arcsin(value));
 
@@ -761,8 +761,8 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=COS(PI())');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekPI,
-    RPNFunc(fekCOS,
+    RPNFunc('PI',
+    RPNFunc('COS',
     nil))));
   Worksheet.WriteNumber(Row, 2, cos(pi));
 
@@ -772,7 +772,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, Format('=ACOS(%.1f)', [value], fs));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekACOS,
+    RPNFunc('ACOS',
     nil))));
   Worksheet.WriteNumber(Row, 2, arccos(value));
 
@@ -780,10 +780,10 @@ begin
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, '=TAN(PI()/4)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-    RPNFunc(fekPI,
+    RPNFunc('PI',
     RPNNumber(4,
     RPNFunc(fekDiv,
-    RPNFunc(fekTAN,
+    RPNFunc('TAN',
     nil))))));
   Worksheet.WriteNumber(Row, 2, tan(pi/4));
 
@@ -793,7 +793,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=ATAN(1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekATAN,
+    RPNFunc('ATAN',
     nil))));
   Worksheet.WriteNumber(Row, 2, arctan(1.0));
 
@@ -806,7 +806,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, '=SINH(3)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekSINH,
+      RPNFunc('SINH',
       nil))));
     Worksheet.WriteNumber(Row, 2, sinh(value));
 
@@ -816,7 +816,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, Format('=ASINH(%.1f)', [value], fs));
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekASINH,
+      RPNFunc('ASINH',
       nil))));
     Worksheet.WriteNumber(Row, 2, arcsinh(value));
 
@@ -826,7 +826,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, '=COSH(3)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekCOSH,
+      RPNFunc('COSH',
       nil))));
     Worksheet.WriteNumber(Row, 2, cosh(value));
 
@@ -836,7 +836,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, '=ACOSH(10)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekACOSH,
+      RPNFunc('ACOSH',
       nil))));
     Worksheet.WriteNumber(Row, 2, arccosh(value));
 
@@ -846,7 +846,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, '=TANH(3)');
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekTANH,
+      RPNFunc('TANH',
       nil))));
     Worksheet.WriteNumber(Row, 2, tanh(value));
 
@@ -856,7 +856,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 0, Format('=ATANH(%.1f)', [value], fs));
     Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNNumber(value,
-      RPNFunc(fekATANH,
+      RPNFunc('ATANH',
       nil))));
     Worksheet.WriteNumber(Row, 2, arctanh(value));
   end;
@@ -867,7 +867,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=SQRT(2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekSQRT,
+    RPNFunc('SQRT',
     nil))));
   Worksheet.WriteNumber(Row, 2, sqrt(value));
 
@@ -877,7 +877,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=EXP(2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekEXP,
+    RPNFunc('EXP',
     nil))));
   Worksheet.WriteNumber(Row, 2, exp(value));
 
@@ -887,7 +887,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=LN(2)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekLN,
+    RPNFunc('LN',
     nil))));
   Worksheet.WriteNumber(Row, 2, ln(value));
 
@@ -898,7 +898,7 @@ begin
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
     RPNNumber(2,
-    RPNFunc(fekLOG, 2,
+    RPNFunc('LOG', 2,
     nil)))));
   Worksheet.WriteNumber(Row, 2, logn(2.0, value));
 
@@ -908,7 +908,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=LOG10(100)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekLOG10,
+    RPNFunc('LOG10',
     nil))));
   Worksheet.WriteNumber(Row, 2, log10(value));
 
@@ -918,7 +918,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, Format('=LOG10(%.2f)', [value], fs));
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNNumber(value,
-    RPNFunc(fekLOG10,
+    RPNFunc('LOG10',
     nil))));
   Worksheet.WriteNumber(Row, 2, log10(value));
 
@@ -935,7 +935,7 @@ begin
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('$F$1',
     RPNNumber(1,
-    RPNFunc(fekROUND,
+    RPNFunc('ROUND',
     nil)))));
   Worksheet.WriteNumber(Row, 2, Round(cellF1*10)/10); //RoundTo(cellF1, 1));
 
@@ -945,7 +945,7 @@ begin
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('G1',
     RPNNumber(1,
-    RPNFunc(fekROUND,
+    RPNFunc('ROUND',
     nil)))));
   Worksheet.WriteNumber(Row, 2, Round(cellG1*10)/10); //RoundTo(cellG1, 1));
 
@@ -954,7 +954,7 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=INT(F1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('F1',
-    RPNFunc(fekINT,
+    RPNFunc('INT',
     nil))));
   Worksheet.WriteNumber(Row, 2, trunc(cellF1));
 
@@ -963,10 +963,10 @@ begin
   Worksheet.WriteUTF8Text(Row, 0, '=INT(G1)');
   Worksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
     RPNCellValue('G1',
-    RPNFunc(fekINT,
+    RPNFunc('INT',
     nil))));
   Worksheet.WriteNumber(Row, 2, floor(cellG1));  // is this true?
-
+               (*
   { ---------- }
 
   inc(Row);
@@ -2012,6 +2012,7 @@ begin
     Worksheet.WriteUTF8Text(Row, 2, 'Error #N/A!');
     Worksheet.WriteUTF8Text(Row, 3, 'Should be "=1/2", but there are too many operands...');
   end;
+  *)
 end;
 
 end.

@@ -8,7 +8,7 @@
   - PMT()   (payment)
   - NPER()  (number of payment periods)
 
-  The demo writes an xls file which uses these formulas and then displays
+  The demo writes a spreadsheet file which uses these formulas and then displays
   the result in a console window. (Open the generated file in Excel or
   Open/LibreOffice and compare).
 }
@@ -24,117 +24,118 @@ uses
  {$ENDIF}
  {$ENDIF}
  Classes, SysUtils,
- math, fpspreadsheet, xlsbiff8, fpsfunc, financemath;
+ math, fpspreadsheet, fpsallformats, fpsexprparser, financemath;
 
+{ Base data used in this demonstration }
+const
+  INTEREST_RATE = 0.03;                         // interest rate per period
+  NUMBER_PAYMENTS = 10;                         // number of payment periods
+  REG_PAYMENT = 1000;                           // regular payment per period
+  PRESENT_VALUE = 10000.0;                      // present value of investment
+  PAYMENT_WHEN: TPaymentTime = ptEndOfPeriod;   // when is the payment made
 
 {------------------------------------------------------------------------------}
 {          Adaption of financial functions to usage by fpspreadsheet           }
 {         The functions are implemented in the unit "financemath.pas".         }
 {------------------------------------------------------------------------------}
 
-function fpsFV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
+procedure fpsFV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  // Pop the argument from the stack. This can be done by means of PopNumberValues
-  // which brings the values back in the right order and reports an error
-  // in case of non-numerical values.
-  if Args.PopNumberValues(NumArgs, false, data, Result) then
-    // Call the FutureValue function with the NumberValues of the arguments.
-    Result := CreateNumberArg(FutureValue(
-      data[0],         // interest rate
-      round(data[1]),  // number of payments
-      data[2],         // payment
-      data[3],         // present value
-      TPaymentTime(round(data[4]))   // payment type
-    ));
+  Result.ResFloat := FutureValue(
+    ArgToFloat(Args[0]),                 // interest rate
+    ArgToInt(Args[1]),                   // number of payments
+    ArgToFloat(Args[2]),                 // payment
+    ArgToFloat(Args[3]),                 // present value
+    TPaymentTime(ArgToInt(Args[4]))      // payment type
+  );
 end;
 
-function fpsPMT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
+procedure fpsPMT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  if Args.PopNumberValues(NumArgs, false, data, Result) then
-    Result := CreateNumberArg(Payment(
-      data[0],         // interest rate
-      round(data[1]),  // number of payments
-      data[2],         // present value
-      data[3],         // future value
-      TPaymentTime(round(data[4]))   // payment type
-    ));
+  Result.ResFloat := Payment(
+    ArgToFloat(Args[0]),                 // interest rate
+    ArgToInt(Args[1]),                   // number of payments
+    ArgToFloat(Args[2]),                 // present value
+    ArgToFloat(Args[3]),                 // future value
+    TPaymentTime(ArgToInt(Args[4]))      // payment type
+  );
 end;
 
-function fpsPV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// Present value
-var
-  data: TsArgNumberArray;
+procedure fpsPV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  if Args.PopNumberValues(NumArgs, false, data, Result) then
-    Result := CreateNumberArg(PresentValue(
-      data[0],         // interest rate
-      round(data[1]),  // number of payments
-      data[2],         // payment
-      data[3],         // future value
-      TPaymentTime(round(data[4]))   // payment type
-    ));
+  Result.ResFloat := PresentValue(
+    ArgToFloat(Args[0]),                 // interest rate
+    ArgToInt(Args[1]),                   // number of payments
+    ArgToFloat(Args[2]),                 // payment
+    ArgToFloat(Args[3]),                 // future value
+    TPaymentTime(ArgToInt(Args[4]))      // payment type
+  );
 end;
 
-function fpsNPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
+procedure fpsNPER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  if Args.PopNumberValues(NumArgs, false, data, Result) then
-    Result := CreateNumberArg(NumberOfPeriods(
-      data[0],         // interest rate
-      data[1],         // payment
-      data[2],         // present value
-      data[3],         // future value
-      TPaymentTime(round(data[4]))   // payment type
-    ));
+  Result.ResFloat := NumberOfPeriods(
+    ArgToFloat(Args[0]),                 // interest rate
+    ArgToFloat(Args[1]),                 // payment
+    ArgToFloat(Args[2]),                 // present value
+    ArgToFloat(Args[3]),                 // future value
+    TPaymentTime(ArgToInt(Args[4]))      // payment type
+  );
 end;
 
-function fpsRATE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
+procedure fpsRATE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  if Args.PopNumberValues(NumArgs, false, data, Result) then
-    Result := CreateNumberArg(InterestRate(
-      round(data[0]),  // number of payment periods
-      data[1],         // payment
-      data[2],         // present value
-      data[3],         // future value
-      TPaymentTime(round(data[4]))   // payment type
-    ));
+  Result.ResFloat := InterestRate(
+    ArgToInt(Args[0]),                   // number of payments
+    ArgToFloat(Args[1]),                 // payment
+    ArgToFloat(Args[2]),                 // present value
+    ArgToFloat(Args[3]),                 // future value
+    TPaymentTime(ArgToInt(Args[4]))      // payment type
+  );
 end;
+
 
 {------------------------------------------------------------------------------}
 {        Write xls file comparing our own calculations with Excel result       }
 {------------------------------------------------------------------------------}
 procedure WriteFile(AFileName: String);
 const
-  INTEREST_RATE = 0.03;                         // interest rate per period
-  NUMBER_PAYMENTS = 10;                         // number of payment periods
-  REG_PAYMENT = 1000;                           // regular payment per period
-  PRESENT_VALUE = 10000;                        // present value of investment
-  PAYMENT_WHEN: TPaymentTime = ptEndOfPeriod;   // when is the payment made
+  INT_EXCEL_SHEET_FUNC_PV    = 56;
+  INT_EXCEL_SHEET_FUNC_FV    = 57;
+  INT_EXCEL_SHEET_FUNC_NPER  = 58;
+  INT_EXCEL_SHEET_FUNC_PMT   = 59;
+  INT_EXCEL_SHEET_FUNC_RATE  = 60;
 
 var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
   fval, pval, pmtval, nperval, rateval: Double;
+  formula: String;
+  fs: TFormatSettings;
+
 begin
   { We have to register our financial functions in fpspreadsheet. Otherwise an
     error code would be displayed in the reading part of this demo for these
-    formula cells. }
-  RegisterFormulaFunc(fekFV, @fpsFV);
-  RegisterFormulaFunc(fekPMT, @fpsPMT);
-  RegisterFormulaFunc(fekPV, @fpsPV);
-  RegisterFormulaFunc(fekNPER, @fpsNPER);
-  RegisterFormulaFunc(fekRATE, @fpsRATE);
+    formula cells.
+    The 1st parameter is the data type of the function result ('F'=float)
+    The 2nd parameter shows the data types of the arguments ('F=float, 'I'=integer)
+    The 3rd parameter is the Excel ID needed when writing to xls files. (see
+    "OpenOffice Documentation of Microsoft Excel File Format", section 3.11)
+    The 4th parameter is the address of the function to be used for calculation. }
+
+  RegisterFunction('FV',   'F', 'FIFFI', INT_EXCEL_SHEET_FUNC_FV,   @fpsFV);
+  RegisterFunction('PMT',  'F', 'FIFFI', INT_EXCEL_SHEET_FUNC_PMT,  @fpsPMT);
+  RegisterFunction('PV',   'F', 'FIFFI', INT_EXCEL_SHEET_FUNC_PV,   @fpsPV);
+  RegisterFunction('NPER', 'F', 'FFFFI', INT_EXCEL_SHEET_FUNC_NPER, @fpsNPER);
+  RegisterFunction('RATE', 'F', 'IFFFI', INT_EXCEL_SHEET_FUNC_RATE, @fpsRATE);
+
+  // The formula parser requires a point as decimals separator.
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
 
   workbook := TsWorkbook.Create;
   try
-    workbook.Options := workbook.Options + [boCalcBeforeSaving];
+    //workbook.Options := workbook.Options + [boCalcBeforeSaving];
 
     worksheet := workbook.AddWorksheet('Financial');
     worksheet.WriteColWidth(0, 40);
@@ -167,24 +168,14 @@ begin
 
     worksheet.WriteUTF8Text(9, 0, 'Worksheet calculation using constants');
     worksheet.WriteNumberFormat(9, 1, nfCurrency, 2, '$');
-    worksheet.WriteRPNFormula(9, 1, CreateRPNFormula(
-      RPNNumber(INTEREST_RATE,
-      RPNNumber(NUMBER_PAYMENTS,
-      RPNNumber(REG_PAYMENT,
-      RPNNumber(PRESENT_VALUE,
-      RPNNumber(ord(PAYMENT_WHEN),
-      RPNFunc(fekFV, 5,
-      nil))))))));
+    worksheet.WriteNumberFormat(9, 1, nfCurrency, 2, '$');
+    formula := Format('FV(%f,%d,%f,%f,%d)',
+      [1.0*INTEREST_RATE, NUMBER_PAYMENTS, 1.0*REG_PAYMENT, 1.0*PRESENT_VALUE, ord(PAYMENT_WHEN)], fs
+    );
+    worksheet.WriteFormula(9, 1, formula);
     worksheet.WriteUTF8Text(10, 0, 'Worksheet calculation using cell values');
     worksheet.WriteNumberFormat(10, 1, nfCurrency, 2, '$');
-    worksheet.WriteRPNFormula(10, 1, CreateRPNFormula(
-      RPNCellValue('B2',   // interest rate
-      RPNCellValue('B3',   // number of periods
-      RPNCellValue('B4',   // payment
-      RPNCellValue('B5',   // present value
-      RPNCellValue('B6',   // payment at end or at start
-      RPNFunc(fekFV, 5,    // Call Excel's FV formula
-      nil))))))));
+    worksheet.WriteFormula(10, 1, 'FV(B2,B3,B4,B5,B6)');
 
     // present value calculation
     pval := PresentValue(INTEREST_RATE, NUMBER_PAYMENTS, REG_PAYMENT, fval, PAYMENT_WHEN);
@@ -194,25 +185,14 @@ begin
     worksheet.WriteCurrency(13, 1, pval, nfCurrency, 2, '$');
 
     worksheet.WriteUTF8Text(14, 0, 'Worksheet calculation using constants');
+    formula := Format('PV(%f,%d,%f,%f,%d)',
+      [1.0*INTEREST_RATE, NUMBER_PAYMENTS, 1.0*REG_PAYMENT, fval, ord(PAYMENT_WHEN)], fs
+    );
     worksheet.WriteNumberFormat(14, 1, nfCurrency, 2, '$');
-    worksheet.WriteRPNFormula(14, 1, CreateRPNFormula(
-      RPNNumber(INTEREST_RATE,
-      RPNNumber(NUMBER_PAYMENTS,
-      RPNNumber(REG_PAYMENT,
-      RPNNumber(fval,
-      RPNNumber(ord(PAYMENT_WHEN),
-      RPNFunc(fekPV, 5,
-      nil))))))));
+    worksheet.WriteFormula(14, 1, formula);
     Worksheet.WriteUTF8Text(15, 0, 'Worksheet calculation using cell values');
     worksheet.WriteNumberFormat(15, 1, nfCurrency, 2, '$');
-    worksheet.WriteRPNFormula(15, 1, CreateRPNFormula(
-      RPNCellValue('B2',   // interest rate
-      RPNCellValue('B3',   // number of periods
-      RPNCellValue('B4',   // payment
-      RPNCellValue('B11',  // future value
-      RPNCellValue('B6',   // payment at end or at start
-      RPNFunc(fekPV, 5,    // Call Excel's PV formula
-      nil))))))));
+    worksheet.WriteFormula(15, 1, 'PV(B2,B3,B4,B11,B6)');
 
     // payments calculation
     pmtval := Payment(INTEREST_RATE, NUMBER_PAYMENTS, PRESENT_VALUE, fval, PAYMENT_WHEN);
@@ -223,24 +203,13 @@ begin
 
     worksheet.WriteUTF8Text(19, 0, 'Worksheet calculation using constants');
     worksheet.WriteNumberFormat(19, 1, nfCurrency, 2, '$');
-    worksheet.WriteRPNFormula(19, 1, CreateRPNFormula(
-      RPNNumber(INTEREST_RATE,
-      RPNNumber(NUMBER_PAYMENTS,
-      RPNNumber(PRESENT_VALUE,
-      RPNNumber(fval,
-      RPNNumber(ord(PAYMENT_WHEN),
-      RPNFunc(fekPMT, 5,
-      nil))))))));
+    formula := Format('PMT(%g,%d,%g,%g,%d)',
+      [INTEREST_RATE, NUMBER_PAYMENTS, PRESENT_VALUE, fval, ord(PAYMENT_WHEN)], fs
+    );
+    worksheet.WriteFormula(19, 1, formula);
     Worksheet.WriteUTF8Text(20, 0, 'Worksheet calculation using cell values');
     worksheet.WriteNumberFormat(20, 1, nfCurrency, 2, '$');
-    worksheet.WriteRPNFormula(20, 1, CreateRPNFormula(
-      RPNCellValue('B2',   // interest rate
-      RPNCellValue('B3',   // number of periods
-      RPNCellValue('B5',   // present value
-      RPNCellValue('B11',  // future value
-      RPNCellValue('B6',   // payment at end or at start
-      RPNFunc(fekPMT, 5,   // Call Excel's PMT formula
-      nil))))))));
+    worksheet.WriteFormula(20, 1, 'PMT(B2,B3,B5,B11,B6)');
 
     // number of periods calculation
     nperval := NumberOfPeriods(INTEREST_RATE, REG_PAYMENT, PRESENT_VALUE, fval, PAYMENT_WHEN);
@@ -251,24 +220,13 @@ begin
 
     worksheet.WriteUTF8Text(24, 0, 'Worksheet calculation using constants');
     worksheet.WriteNumberFormat(24, 1, nfFixed, 2);
-    worksheet.WriteRPNFormula(24, 1, CreateRPNFormula(
-      RPNNumber(INTEREST_RATE,
-      RPNNumber(REG_PAYMENT,
-      RPNNumber(PRESENT_VALUE,
-      RPNNumber(fval,
-      RPNNumber(ord(PAYMENT_WHEN),
-      RPNFunc(fekNPER, 5,
-      nil))))))));
+    formula := Format('NPER(%g,%g,%g,%g,%d)',
+      [1.0*INTEREST_RATE, 1.0*REG_PAYMENT, 1.0*PRESENT_VALUE, fval, ord(PAYMENT_WHEN)], fs
+    );
+    worksheet.WriteFormula(24, 1, formula);
     Worksheet.WriteUTF8Text(25, 0, 'Worksheet calculation using cell values');
     worksheet.WriteNumberFormat(25, 1, nfFixed, 2);
-    worksheet.WriteRPNFormula(25, 1, CreateRPNFormula(
-      RPNCellValue('B2',   // interest rate
-      RPNCellValue('B4',   // payment
-      RPNCellValue('B5',   // present value
-      RPNCellValue('B11',  // future value
-      RPNCellValue('B6',   // payment at end or at start
-      RPNFunc(fekNPER, 5,  // Call Excel's PMT formula
-      nil))))))));
+    worksheet.WriteFormula(25, 1, 'NPER(B2,B4,B5,B11,B6)');
 
     // interest rate calculation
     rateval := InterestRate(NUMBER_PAYMENTS, REG_PAYMENT, PRESENT_VALUE, fval, PAYMENT_WHEN);
@@ -279,26 +237,15 @@ begin
 
     worksheet.WriteUTF8Text(29, 0, 'Worksheet calculation using constants');
     worksheet.WriteNumberFormat(29, 1, nfPercentage, 2);
-    worksheet.WriteRPNFormula(29, 1, CreateRPNFormula(
-      RPNNumber(NUMBER_PAYMENTS,
-      RPNNumber(REG_PAYMENT,
-      RPNNumber(PRESENT_VALUE,
-      RPNNumber(fval,
-      RPNNumber(ord(PAYMENT_WHEN),
-      RPNFunc(fekRATE, 5,
-      nil))))))));
+    formula := Format('RATE(%d,%g,%g,%g,%d)',
+      [NUMBER_PAYMENTS, 1.0*REG_PAYMENT, 1.0*PRESENT_VALUE, fval, ord(PAYMENT_WHEN)], fs
+    );
+    worksheet.WriteFormula(29, 1, formula);
     Worksheet.WriteUTF8Text(30, 0, 'Worksheet calculation using cell values');
     worksheet.WriteNumberFormat(30, 1, nfPercentage, 2);
-    worksheet.WriteRPNFormula(30, 1, CreateRPNFormula(
-      RPNCellValue('B3',   // number of payments
-      RPNCellValue('B4',   // payment
-      RPNCellValue('B5',   // present value
-      RPNCellValue('B11',  // future value
-      RPNCellValue('B6',   // payment at end or at start
-      RPNFunc(fekRATE, 5,  // Call Excel's PMT formula
-      nil))))))));
+    worksheet.WriteFormula(30, 1, 'RATE(B3,B4,B5,B11,B6)');
 
-    workbook.WriteToFile(AFileName, sfExcel8, true);
+    workbook.WriteToFile(AFileName, true);
 
   finally
     workbook.Free;
@@ -317,9 +264,8 @@ var
 begin
   workbook := TsWorkbook.Create;
   try
-    workbook.Options := workbook.Options + [boReadFormulas];
-    workbook.ReadFromFile(AFilename, sfExcel8);
-
+    workbook.Options := workbook.Options + [boReadFormulas, boAutoCalc];
+    workbook.ReadFromFile(AFilename);
     worksheet := workbook.GetFirstWorksheet;
 
     // Write all cells with contents to the console
@@ -340,19 +286,27 @@ begin
         WriteLn(s1+': ':50, s2);
     end;
 
-    WriteLn;
-    WriteLn('Press [ENTER] to close...');
-    ReadLn;
   finally
     workbook.Free;
   end;
 end;
 
 const
-  TestFile='test_fv.xls';
+  TestFile='test_user_formula.xlsx';  // Format depends on extension selected
+  // !!!! ods not working yet !!!!
+
 begin
+  WriteLn('This demo registers user-defined functions for financial calculations');
+  WriteLn('and writes and reads the corresponding spreadsheet file.');
+  WriteLn;
+
   WriteFile(TestFile);
   ReadFile(TestFile);
+
+  WriteLn;
+  WriteLn('Open the file in Excel or OpenOffice/LibreOffice.');
+  WriteLn('Press [ENTER] to close...');
+  ReadLn;
 end.
 
 

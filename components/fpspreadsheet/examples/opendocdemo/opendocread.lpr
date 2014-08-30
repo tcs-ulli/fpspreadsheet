@@ -11,7 +11,8 @@ program opendocread;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, fpsallformats;
+  Classes, SysUtils, fpspreadsheet, fpsallformats,
+  laz_fpspreadsheet;
 
 var
   MyWorkbook: TsWorkbook;

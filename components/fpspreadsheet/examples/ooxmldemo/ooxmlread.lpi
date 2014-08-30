@@ -56,7 +56,6 @@
     <SearchPaths>
       <OtherUnitFiles Value="..\.."/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
-      <SrcPath Value=".."/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>

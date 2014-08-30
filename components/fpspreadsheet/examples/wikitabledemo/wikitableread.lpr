@@ -11,7 +11,7 @@ program wikitableread;
 
 uses
   Classes, SysUtils, fpspreadsheet, wikitable,
-  fpsutils;
+  laz_fpspreadsheet, fpsutils;
 
 var
   MyWorkbook: TsWorkbook;

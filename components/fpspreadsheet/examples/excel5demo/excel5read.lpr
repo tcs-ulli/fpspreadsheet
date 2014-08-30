@@ -31,6 +31,7 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
+  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
   MyWorkbook.ReadFromFile(InputFilename, sfExcel5);
 
   MyWorksheet := MyWorkbook.GetFirstWorksheet;
@@ -43,11 +44,12 @@ begin
   CurCell := MyWorkSheet.GetFirstCell();
   for i := 0 to MyWorksheet.GetCellCount - 1 do
   begin
-    WriteLn('Row: ', CurCell^.Row,
+    Write('Row: ', CurCell^.Row,
      ' Col: ', CurCell^.Col, ' Value: ',
-     UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
-       CurCell^.Col))
-     );
+    UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col)));
+    if HasFormula(CurCell) then
+      Write(' - Formula: ', CurCell^.FormulaValue);
+    WriteLn;
     CurCell := MyWorkSheet.GetNextCell();
   end;
 

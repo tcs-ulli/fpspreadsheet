@@ -67,176 +67,6 @@ const
   INT_FONT_WEIGHT_NORMAL  = $0190;
   INT_FONT_WEIGHT_BOLD    = $02BC;
 
-  { Formula constants TokenID values }
-
-  { Binary Operator Tokens 3.6}
-  INT_EXCEL_TOKEN_TADD    = $03;
-  INT_EXCEL_TOKEN_TSUB    = $04;
-  INT_EXCEL_TOKEN_TMUL    = $05;
-  INT_EXCEL_TOKEN_TDIV    = $06;
-  INT_EXCEL_TOKEN_TPOWER  = $07; // Power Exponentiation ^
-  INT_EXCEL_TOKEN_TCONCAT = $08; // Concatenation &
-  INT_EXCEL_TOKEN_TLT     = $09; // Less than <
-  INT_EXCEL_TOKEN_TLE     = $0A; // Less than or equal <=
-  INT_EXCEL_TOKEN_TEQ     = $0B; // Equal =
-  INT_EXCEL_TOKEN_TGE     = $0C; // Greater than or equal >=
-  INT_EXCEL_TOKEN_TGT     = $0D; // Greater than >
-  INT_EXCEL_TOKEN_TNE     = $0E; // Not equal <>
-  INT_EXCEL_TOKEN_TISECT  = $0F; // Cell range intersection
-  INT_EXCEL_TOKEN_TLIST   = $10; // Cell range list
-  INT_EXCEL_TOKEN_TRANGE  = $11; // Cell range
-  INT_EXCEL_TOKEN_TUPLUS  = $12; // Unary plus  +
-  INT_EXCEL_TOKEN_TUMINUS = $13; // Unary minus +
-  INT_EXCEL_TOKEN_TPERCENT= $14; // Percent (%, divides operand by 100)
-  INT_EXCEL_TOKEN_TPAREN  = $15; // Operator in parenthesis
-
-  { Constant Operand Tokens, 3.8}
-  INT_EXCEL_TOKEN_TMISSARG= $16; //missing operand
-  INT_EXCEL_TOKEN_TSTR    = $17; //string
-  INT_EXCEL_TOKEN_TERR    = $1C; //error value
-  INT_EXCEL_TOKEN_TBOOL   = $1D; //boolean
-  INT_EXCEL_TOKEN_TINT    = $1E; //(unsigned) integer
-  INT_EXCEL_TOKEN_TNUM    = $1F; //floating-point
-
-  { Operand Tokens }
-  // _R: reference; _V: value; _A: array
-  INT_EXCEL_TOKEN_TREFR   = $24;
-  INT_EXCEL_TOKEN_TREFV   = $44;
-  INT_EXCEL_TOKEN_TREFA   = $64;
-  INT_EXCEL_TOKEN_TAREA_R = $25;
-  INT_EXCEL_TOKEN_TAREA_V = $45;
-  INT_EXCEL_TOKEN_TAREA_A = $65;
-  INT_EXCEL_TOKEN_TREFN_R = $2C;
-  INT_EXCEL_TOKEN_TREFN_V = $4C;
-  INT_EXCEL_TOKEN_TREFN_A = $6C;
-
-  { Function Tokens }
-  // _R: reference; _V: value; _A: array
-  // Offset 0: token; offset 1: index to a built-in sheet function ( ➜ 3.111)
-  INT_EXCEL_TOKEN_FUNC_R  = $21;
-  INT_EXCEL_TOKEN_FUNC_V  = $41;
-  INT_EXCEL_TOKEN_FUNC_A  = $61;
-
-  //VAR: variable number of arguments:
-  INT_EXCEL_TOKEN_FUNCVAR_R  = $22;
-  INT_EXCEL_TOKEN_FUNCVAR_V  = $42;
-  INT_EXCEL_TOKEN_FUNCVAR_A  = $62;
-
-  { Special tokens }
-  INT_EXCEL_TOKEN_TEXP       = $01;  // cell belongs to shared formula
-
-  { Built-in/worksheet functions }
-  INT_EXCEL_SHEET_FUNC_COUNT      = 0;
-  INT_EXCEL_SHEET_FUNC_IF         = 1;
-  INT_EXCEL_SHEET_FUNC_ISNA       = 2;
-  INT_EXCEL_SHEET_FUNC_ISERROR    = 3;
-  INT_EXCEL_SHEET_FUNC_SUM        = 4;
-  INT_EXCEL_SHEET_FUNC_AVERAGE    = 5;
-  INT_EXCEL_SHEET_FUNC_MIN        = 6;
-  INT_EXCEL_SHEET_FUNC_MAX        = 7;
-  INT_EXCEL_SHEET_FUNC_ROW        = 8;
-  INT_EXCEL_SHEET_FUNC_COLUMN     = 9;
-  INT_EXCEL_SHEET_FUNC_STDEV      = 12;
-  INT_EXCEL_SHEET_FUNC_SIN        = 15;
-  INT_EXCEL_SHEET_FUNC_COS        = 16;
-  INT_EXCEL_SHEET_FUNC_TAN        = 17;
-  INT_EXCEL_SHEET_FUNC_ATAN       = 18;
-  INT_EXCEL_SHEET_FUNC_PI         = 19;
-  INT_EXCEL_SHEET_FUNC_SQRT       = 20;
-  INT_EXCEL_SHEET_FUNC_EXP        = 21;
-  INT_EXCEL_SHEET_FUNC_LN         = 22;
-  INT_EXCEL_SHEET_FUNC_LOG10      = 23;
-  INT_EXCEL_SHEET_FUNC_ABS        = 24; // $18
-  INT_EXCEL_SHEET_FUNC_INT        = 25;
-  INT_EXCEL_SHEET_FUNC_SIGN       = 26;
-  INT_EXCEL_SHEET_FUNC_ROUND      = 27; // $1B
-  INT_EXCEL_SHEET_FUNC_MID        = 31;
-  INT_EXCEL_SHEET_FUNC_VALUE      = 33;
-  INT_EXCEL_SHEET_FUNC_TRUE       = 34;
-  INT_EXCEL_SHEET_FUNC_FALSE      = 35;
-  INT_EXCEL_SHEET_FUNC_AND        = 36;
-  INT_EXCEL_SHEET_FUNC_OR         = 37;
-  INT_EXCEL_SHEET_FUNC_NOT        = 38;
-  INT_EXCEL_SHEET_FUNC_VAR        = 46;
-  INT_EXCEL_SHEET_FUNC_PV         = 56;
-  INT_EXCEL_SHEET_FUNC_FV         = 57;
-  INT_EXCEL_SHEET_FUNC_NPER       = 58;
-  INT_EXCEL_SHEET_FUNC_PMT        = 59;
-  INT_EXCEL_SHEET_FUNC_RATE       = 60;
-  INT_EXCEL_SHEET_FUNC_RAND       = 63;
-  INT_EXCEL_SHEET_FUNC_DATE       = 65; // $41
-  INT_EXCEL_SHEET_FUNC_TIME       = 66; // $42
-  INT_EXCEL_SHEET_FUNC_DAY        = 67;
-  INT_EXCEL_SHEET_FUNC_MONTH      = 68;
-  INT_EXCEL_SHEET_FUNC_YEAR       = 69;
-  INT_EXCEL_SHEET_FUNC_WEEKDAY    = 70;
-  INT_EXCEL_SHEET_FUNC_HOUR       = 71;
-  INT_EXCEL_SHEET_FUNC_MINUTE     = 72;
-  INT_EXCEL_SHEET_FUNC_SECOND     = 73;
-  INT_EXCEL_SHEET_FUNC_NOW        = 74;
-  INT_EXCEL_SHEET_FUNC_ROWS       = 76;
-  INT_EXCEL_SHEET_FUNC_COLUMNS    = 77;
-  INT_EXCEL_SHEET_FUNC_ASIN       = 98;
-  INT_EXCEL_SHEET_FUNC_ACOS       = 99;
-  INT_EXCEL_SHEET_FUNC_ISREF      = 105;
-  INT_EXCEL_SHEET_FUNC_LOG        = 109;
-  INT_EXCEL_SHEET_FUNC_CHAR       = 111;
-  INT_EXCEL_SHEET_FUNC_LOWER      = 112;
-  INT_EXCEL_SHEET_FUNC_UPPER      = 113;
-  INT_EXCEL_SHEET_FUNC_PROPER     = 114;
-  INT_EXCEL_SHEET_FUNC_LEFT       = 115;
-  INT_EXCEL_SHEET_FUNC_RIGHT      = 116;
-  INT_EXCEL_SHEET_FUNC_TRIM       = 118;
-  INT_EXCEL_SHEET_FUNC_REPLACE    = 119;
-  INT_EXCEL_SHEET_FUNC_SUBSTITUTE = 120;
-  INT_EXCEL_SHEET_FUNC_CODE       = 121;
-  INT_EXCEL_SHEET_FUNC_CELL       = 125;
-  INT_EXCEL_SHEET_FUNC_ISERR      = 126;
-  INT_EXCEL_SHEET_FUNC_ISTEXT     = 127;
-  INT_EXCEL_SHEET_FUNC_ISNUMBER   = 128;
-  INT_EXCEL_SHEET_FUNC_ISBLANK    = 129;
-  INT_EXCEL_SHEET_FUNC_DATEVALUE  = 140;
-  INT_EXCEL_SHEET_FUNC_TIMEVALUE  = 141;
-  INT_EXCEL_SHEET_FUNC_COUNTA     = 169;
-  INT_EXCEL_SHEET_FUNC_PRODUCT    = 183;
-  INT_EXCEL_SHEET_FUNC_ISNONTEXT  = 190;
-  INT_EXCEL_SHEET_FUNC_STDEVP     = 193;
-  INT_EXCEL_SHEET_FUNC_VARP       = 194;
-  INT_EXCEL_SHEET_FUNC_ISLOGICAL  = 198;
-  INT_EXCEL_SHEET_FUNC_TODAY      = 221;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_MEDIAN     = 227;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_SINH       = 229;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_COSH       = 230;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_TANH       = 231;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_ASINH      = 232;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_ACOSH      = 233;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_ATANH      = 234;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_INFO       = 244;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_AVEDEV     = 269;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_BETADIST   = 270;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_BETAINV    = 272;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_BINOMDIST  = 273;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_CHIDIST    = 274;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_CHIINV     = 275;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_PERMUT     = 299;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_POISSON    = 300;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_SUMSQ      = 321;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_RADIANS    = 342;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_DEGREES    = 343;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_SUMIF      = 345;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_COUNTIF    = 346;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_COUNTBLANK = 347;  // not available in BIFF2
-  INT_EXCEL_SHEET_FUNC_DATEDIF    = 351;  // not available in BIFF2
-
-  { Control Tokens, Special Tokens }
-//  01H tExp Matrix formula or shared formula
-//  02H tTbl Multiple operation table
-//  15H tParen Parentheses
-//  18H tNlr Natural language reference (BIFF8)
-  INT_EXCEL_TOKEN_TATTR = $19; // tAttr Special attribute
-//  1AH tSheet Start of external sheet reference (BIFF2-BIFF4)
-//  1BH tEndSheet End of external sheet reference (BIFF2-BIFF4)
-
   { CODEPAGE record constants }
   WORD_ASCII = 367;
   WORD_UTF_16 = 1200; // BIFF 8
@@ -475,7 +305,7 @@ type
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
-    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
+//    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
     // Helper function for writing a string with 8-bit length }
     function WriteString_8BitLen(AStream: TStream; AString: String): Integer; virtual;
 
@@ -555,11 +385,11 @@ type
 implementation
 
 uses
-  AVL_Tree, Math, Variants, fpsNumFormatParser;
+  AVL_Tree, Math, Variants, xlsConst, fpsNumFormatParser, fpsExprParser;
 
-{ Helper table for rpn formulas:
-  Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
 const
+  { Helper table for rpn formulas:
+    Assignment of FormulaElementKinds (fekXXXX) to EXCEL_TOKEN IDs. }
   TokenIDs: array[TFEKind] of Word = (
     // Basic operands
     INT_EXCEL_TOKEN_TREFV,          {fekCell}
@@ -590,6 +420,9 @@ const
     INT_EXCEL_TOKEN_TLE,            {fekLessEqual, <=}
     INT_EXCEL_TOKEN_TNE,            {fekNotEqual, <>}
     INT_EXCEL_TOKEN_TPAREN,         {Operator in parenthesis}
+    Word(-1)                        {fekFunc}
+  );
+  (*
 
     // Math functions
     INT_EXCEL_SHEET_FUNC_ABS,       {fekABS}
@@ -711,7 +544,7 @@ const
     // Other operations
     INT_EXCEL_TOKEN_TATTR           {fekOpSum}
   );
-
+    *)
 type
   TBIFF58BlankRecord = packed record
     RecordID: Word;
@@ -1188,7 +1021,6 @@ var
   err: TsErrorValue;
   ok: Boolean;
   cell: PCell;
-
 begin
   { Index to XF Record }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1247,7 +1079,7 @@ begin
     if IsDateTime(ResultFormula, nf, nfs, dt) then
       FWorksheet.WriteDateTime(cell, dt, nf, nfs)
     else
-      FWorksheet.WriteNumber(cell, ResultFormula, nf, nfs); //, nd, ncs);
+      FWorksheet.WriteNumber(cell, ResultFormula, nf, nfs);
   end;
 
   { Formula token array }
@@ -1274,7 +1106,7 @@ var
 begin
   ARow := WordLEtoN(AStream.ReadWord);
   fc := WordLEtoN(AStream.ReadWord);
-  pending := RecordSize - Sizeof(fc) - Sizeof(ARow);
+  pending := RecordSize - SizeOf(fc) - SizeOf(ARow);
   if FIsVirtualMode then begin
     InitCell(ARow, 0, FVirtualCell);
     cell := @FVirtualCell;
@@ -1626,7 +1458,7 @@ begin
 end;
 
 { Reads the array of rpn tokens from the current stream position, creates an
-  rpn formula and stores it in the cell. }
+  rpn formula, converts it to a string formula and stores it in the cell. }
 function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
   ACell: PCell): Boolean;
 var
@@ -1640,9 +1472,11 @@ var
   r, c, r2, c2: Cardinal;
   dr, dc: Integer;
   fek: TFEKind;
-  func: Word;
+  exprDef: TsBuiltInExprIdentifierDef;
+  funcCode: Word;
   b: Byte;
   found: Boolean;
+  formula: TsRPNformula;
 begin
   rpnItem := nil;
   n := ReadRPNTokenArraySize(AStream);
@@ -1698,16 +1532,11 @@ begin
       INT_EXCEL_TOKEN_FUNC_A:
         // functions with fixed argument count
         begin
-          func := ReadRPNFunc(AStream);
-          found := false;
-          for fek in TFuncTokens do begin
-            if (TokenIDs[fek] = func) and  FixedParamCount(fek) then begin
-              rpnItem := RPNFunc(fek, rpnItem);
-              found := true;
-              break;
-            end;
-          end;
-          if not found then
+          funcCode := ReadRPNFunc(AStream);
+          exprDef := BuiltInIdentifiers.IdentifierByExcelCode(funcCode);
+          if exprDef <> nil then
+            rpnItem := RPNFunc(exprDef.Name, rpnItem)
+          else
             supported := false;
         end;
 
@@ -1717,15 +1546,11 @@ begin
         // functions with variable argument count
         begin
           b := AStream.ReadByte;
-          func := ReadRPNFunc(AStream);
-          found := false;
-          for fek in TFuncTokens do
-            if (TokenIDs[fek] = func) and not FixedParamCount(fek) then begin
-              rpnItem := RPNFunc(fek, b, rpnItem);
-              found := true;
-              break;
-            end;
-          if not found then
+          funcCode := ReadRPNFunc(AStream);
+          exprDef := BuiltinIdentifiers.IdentifierByExcelCode(funcCode);
+          if exprDef <> nil then
+            rpnItem := RPNFunc(exprDef.Name, b, rpnItem)
+          else
             supported := false;
         end;
 
@@ -1751,11 +1576,11 @@ begin
   end;
   if not supported then begin
     DestroyRPNFormula(rpnItem);
-    SetLength(ACell^.RPNFormulaValue, 0);
     Result := false;
   end
   else begin
-    ACell^.RPNFormulaValue := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
+    formula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
+    ACell^.FormulaValue := FWorksheet.ConvertRPNFormulaToStringFormula(formula);
     Result := true;
   end;
 end;
@@ -1938,10 +1763,11 @@ begin
   end else
     Result := AColor;
 end;
-
+                          (*
 function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
   AElementKind: TFEKind; out ASecondaryID: Word): Word;
 begin
+  if AElementKind = fekFunc then
   if (AElementKind >= Low(TFuncTokens)) and (AElementKind <= High(TFuncTokens))
   then begin
     if FixedParamCount(AElementKind) then
@@ -1955,7 +1781,7 @@ begin
     ASecondaryID := 0;
   end;
 end;
-
+                            *)
 procedure TsSpreadBIFFWriter.GetLastRowCallback(ACell: PCell; AStream: TStream);
 begin
   Unused(AStream);
@@ -2174,12 +2000,17 @@ end;
 
 { Writes an Excel FORMULA record.
   Note: The formula is already stored in the cell.
-  Since BIFF files contain RPN formulas the method calls WriteRPNFormula.
+  Since BIFF files contain RPN formulas the string formula of the cell is
+  converted to an RPN formula and the method calls WriteRPNFormula.
 }
 procedure TsSpreadBIFFWriter.WriteFormula(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
+var
+  formula: TsRPNFormula;
 begin
-  WriteRPNFormula(AStream, ARow, ACol, ACell^.RPNFormulaValue, ACell);
+  formula := FWorksheet.BuildRPNFormula(ACell);
+  WriteRPNFormula(AStream, ARow, ACol, formula, ACell);
+  SetLength(formula, 0);
 end;
 
 { Writes a 64-bit floating point NUMBER record.
@@ -2586,10 +2417,12 @@ procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
   const AFormula: TsRPNFormula; WriteTokenArraySize: Boolean; var RPNLength: Word);
 var
   i: Integer;
-  tokenID, secondaryID: Word;
   n: Word;
   TokenArraySizePos: Int64;
   FinalPos: Int64;
+  exprDef: TsExprIdentifierDef;
+  excelCode: Word;
+  primaryExcelCode, secondaryExcelCode: Word;
 begin
   RPNLength := 0;
 
@@ -2604,12 +2437,22 @@ begin
   for i := 0 to Length(AFormula) - 1 do begin
 
     { Token identifier }
-    tokenID := FormulaElementKindToExcelTokenID(AFormula[i].ElementKind, secondaryID);
-    AStream.WriteByte(tokenID);
+    if AFormula[i].ElementKind = fekFunc then begin
+      exprDef := BuiltinIdentifiers.IdentifierByName(Aformula[i].FuncName);
+      if exprDef.HasFixedArgumentCount then
+        primaryExcelCode := INT_EXCEL_TOKEN_FUNC_V
+      else
+        primaryExcelCode := INT_EXCEL_TOKEN_FUNCVAR_V;
+      secondaryExcelCode := exprDef.ExcelCode;
+    end else begin
+      primaryExcelCode := TokenIDs[AFormula[i].ElementKind];
+      secondaryExcelCode := 0;
+    end;
+    AStream.WriteByte(primaryExcelCode);
     inc(RPNLength);
 
     { Token data }
-    case tokenID of
+    case primaryExcelCode of
       { Operand Tokens }
       INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:  { fekCell }
 //      INT_EXCEL_TOKEN_TREFN_R, INT_EXCEL_TOKEN_TREFN_V, INT_EXCEL_TOKEN_TREFN_A:  { fekCellOffset}
@@ -2651,6 +2494,12 @@ begin
           inc(RPNLength, 8);
         end;
 
+      INT_EXCEL_TOKEN_TINT:  { fekNum, but integer }
+        begin
+          AStream.WriteBuffer(AFormula[i].IntValue, 2);
+          inc(RPNLength, 2);
+        end;
+
       INT_EXCEL_TOKEN_TSTR: { fekString }
       { string constant is stored as widestring in BIFF8, otherwise as ansistring
         Writing is done by the virtual method WriteString_8bitLen. }
@@ -2667,7 +2516,7 @@ begin
       // Functions with fixed parameter count
       INT_EXCEL_TOKEN_FUNC_R, INT_EXCEL_TOKEN_FUNC_V, INT_EXCEL_TOKEN_FUNC_A:
         begin
-          n := WriteRPNFunc(AStream, secondaryID);
+          n := WriteRPNFunc(AStream, secondaryExcelCode);
           inc(RPNLength, n);
         end;
 
@@ -2675,7 +2524,7 @@ begin
       INT_EXCEL_TOKEN_FUNCVAR_V:
         begin
           AStream.WriteByte(AFormula[i].ParamsNum);
-          n := WriteRPNFunc(AStream, secondaryID);
+          n := WriteRPNFunc(AStream, secondaryExcelCode);
           inc(RPNLength, 1 + n);
         end;
 
@@ -2933,14 +2782,13 @@ begin
   // Number of existing formula records
   AStream.WriteByte((r2-r1+1) * (c2-c1+1));
 
-  // Copy the formula (we don't want to overwrite the cell formulas)
+  // Create an RPN formula from the shared formula base's string formula
   // and adjust relative references
-  SetLength(formula, Length(ACell^.SharedFormulaBase^.RPNFormulaValue));
-  for i:=0 to Length(ACell^.SharedFormulaBase^.RPNFormulaValue)-1 do begin
-    formula[i] := ACell^.SharedFormulaBase^.RPNFormulaValue[i];
+  formula := FWorksheet.BuildRPNFormula(ACell^.SharedFormulaBase);
+  for i:=0 to Length(formula)-1 do
     FixRelativeReferences(ACell, formula[i]);
-  end;
-  // Writes the (copied) rpn token array
+
+  // Writes the rpn token array
   WriteRPNTokenArray(AStream, formula, true, RPNLength);
 
   { Write record size at the end after we known it }

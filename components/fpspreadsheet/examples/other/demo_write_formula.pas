@@ -21,7 +21,7 @@ var
 
 procedure WriteFirstWorksheet();
 var
-  MyFormula: TsFormula;
+  MyFormula: String;
   MyRPNFormula: TsRPNFormula;
   MyCell: PCell;
 begin
@@ -37,40 +37,41 @@ begin
   Myworksheet.WriteNumber(3, 4, 300);    // E4
   MyWorksheet.WriteNumber(4, 4, 250);    // E5
 
-  // =Sum(E2:e5)
-  MyWorksheet.WriteUTF8Text(1, 0, '=Sum(E2:e5)'); // A2
-  //
-  MyFormula.FormulaStr := '=Sum(E2:e5)';
-  MyFormula.DoubleValue := 0.0;
+  // =Sum(E2:E5)
+  MyWorksheet.WriteUTF8Text(1, 0, '=Sum(E2:E5)'); // A2
+  MyFormula := '=Sum(E2:E5)';
   MyWorksheet.WriteFormula(1, 1, MyFormula);    // B2
-  //
   MyWorksheet.WriteRPNFormula(1, 2, CreateRPNFormula(  // C2
     RPNCellRange('E2:E5',
-    RPNFunc(fekSum, 1, nil))));
+    RPNFunc('SUM', 1,
+    nil))));
 
   // Write the formula =ABS(E1)
   MyWorksheet.WriteUTF8Text(2, 0, '=ABS(E1)'); // A3
-  //
+  MyWorksheet.WriteFormula(2, 1, 'ABS(E1)');   // B3
   MyWorksheet.WriteRPNFormula(2, 2, CreateRPNFormula(  // C3
     RPNCellValue('E1',
-    RPNFunc(fekAbs, nil))));
+    RPNFunc('ABS',
+    nil))));
 
   // Write the formula =4+5
   MyWorksheet.WriteUTF8Text(3, 0, '=4+5'); // A4
-  //
+  MyWorksheet.WriteFormula(3, 1, '=4+5');  // B4
   MyWorksheet.WriteRPNFormula(3, 2, CreateRPNFormula(  //C4
     RPNNumber(4.0,
     RPNNumber(5.0,
-    RPNFunc(fekAdd, nil)))));
-
+    RPNFunc(fekAdd,
+    nil)))));
+                       (*
   // Write a shared formula "=E1+100" to the cell range F1:F5
   // Please note that shared formulas are not written by sfOOXML and sfOpenDocument formats.
   MyCell := MyWorksheet.WriteRPNFormula(0, 5, CreateRPNFormula(
     RPNCellOffset(0, -1, [rfRelRow, rfRelCol],
     RPNNumber(100,
-    RPNFunc(fekAdd, nil)))));
+    RPNFunc(fekAdd,
+    nil)))));
   MyWorksheet.UseSharedFormula('F1:F5', MyCell);
-
+  *)
 end;
 
 procedure WriteSecondWorksheet();
@@ -98,15 +99,17 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
+  try
+    WriteFirstWorksheet();
+    WriteSecondWorksheet();
 
-  WriteFirstWorksheet();
+    // Save the spreadsheet to a file
+    MyWorkbook.WriteToFile(MyDir + TestFile, sfExcel8, True);
 
-  WriteSecondWorksheet();
+  finally
+    MyWorkbook.Free;
+  end;
 
-  // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + TestFile, sfExcel8, True);
-//  MyWorkbook.WriteToFile(MyDir + 'test_formula.odt', sfOpenDocument, False);
-  MyWorkbook.Free;
   writeln('Finished. Please open "'+Testfile+'" in your spreadsheet program.');
 end.
 

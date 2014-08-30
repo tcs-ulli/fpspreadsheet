@@ -35,6 +35,7 @@ begin
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
 
+  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
   MyWorkbook.ReadFromFile(InputFilename, sfOOXML);
 
   MyWorksheet := MyWorkbook.GetFirstWorksheet;

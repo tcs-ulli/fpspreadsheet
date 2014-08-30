@@ -12,18 +12,6 @@ type
 
   TBIFFDetailsEvent = procedure(Sender: TObject; ADetails: TStrings) of object;
 
-  TBIFF2RichTextRun = packed record   // valid up to BIFF5
-    IndexToFirstChar: Byte;
-    FontIndex: Byte;
-  end;
-
-  TBIFF8RichTextRun = packed record
-    IndexToFirstChar: Word;
-    FontIndex: Word;
-  end;
-
-  TRichTextRuns = array of TBiff8RichTextRun;
-
   TBIFFGrid = class(TStringGrid)
   private
     FRecType: Word;
@@ -126,11 +114,7 @@ type
     procedure Click; override;
     procedure DoExtractDetails;
     procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
-      out AString: String; out ANumBytes: Integer; out AOffsetToAsianPhoneticBlock: Integer;
-      out AsianPhoneticBlockSize: DWord; out ARichTextRuns: TRichTextRuns;
-      AIgnoreCompressedFlag: Boolean = false); overload;
-    procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
-      out AString: String; out ANumBytes: Integer; AIgnoreCompressedFlag: Boolean = false); overload;
+      out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
     procedure PopulateGrid;
     procedure ShowInRow(var ARow: Integer; var AOffs: LongWord; ASize: Word; AValue,ADescr: String);
     procedure ShowRowColData(var ABufIndex: LongWord);
@@ -147,7 +131,7 @@ type
 implementation
 
 uses
-  StrUtils, Math, lazutf8,
+  StrUtils, Math,
   fpsutils,
   beBIFFUtils;
 
@@ -198,32 +182,19 @@ end;
 
 
 procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
-  out AString: String; out ANumBytes: Integer; out AOffsetToAsianPhoneticBlock: Integer;
-  out AsianPhoneticBlockSize: DWord; out ARichTextRuns: TRichTextRuns;
-  AIgnoreCompressedFlag: Boolean = false);
+  out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
 var
-  i: Integer;
   ls: Integer;
   sa: ansiString;
   sw: WideString;
   w: Word;
   optn: Byte;
-  bytesPerChar: Byte;
-  containsAsianPhonetics: Boolean;
-  containsRichText: Boolean;
-  richTextCount: Word = 0;
-  savedBufIndex: Integer;
 begin
-  AString := '';
-  ANumBytes := 0;
-  AOffsetToAsianPhoneticBlock := -1;
-  AsianPhoneticBlockSize := 0;
-  SetLength(ARichTextRuns, 0);
-
-  if Length(FBuffer) = 0 then
+  if Length(FBuffer) = 0 then begin
+    AString := '';
+    ANumBytes := 0;
     exit;
-
-  savedBufIndex := ABufIndex;
+  end;
   if ALenBytes = 1 then
     ls := FBuffer[ABufIndex]
   else begin
@@ -232,48 +203,18 @@ begin
   end;
   if AUnicode then begin
     optn := FBuffer[ABufIndex + ALenBytes];
-    if (optn and $01 = 0) and (not AIgnoreCompressedFlag) then
-      bytesPerChar := 1
-    else
-      bytesPerChar := 2;
-    containsAsianPhonetics := (optn and $04 <> 0);
-    containsRichText := (optn and $08 <> 0);
-    ABufIndex := ABufIndex + ALenBytes + 1;
-    if containsRichText then begin
-      Move(FBuffer[ABufIndex], richTextCount, 2);
-      richTextCount := WordLEToN(richTextCount);
-      inc(ABufIndex, 2);
-    end;
-    if containsAsianPhonetics then begin
-      Move(FBuffer[ABufIndex], AsianPhoneticBlockSize, 4);
-      AsianPhoneticBlockSize := DWordLEToN(AsianPhoneticBlockSize);
-      inc(ABufIndex, 4);
-    end;
-    if bytesPerChar = 1 then begin
+    if (optn  and $01 = 0) and (not IgnoreCompressedFlag)
+    then begin   // compressed --> 1 byte per character
       SetLength(sa, ls);
-      Move(FBuffer[ABufIndex], sa[1], ls*SizeOf(AnsiChar));
-      inc(ABufIndex, ls*SizeOf(AnsiChar));
-      AString := AnsiToUTF8(sa);
+      ANumbytes := ls*SizeOf(AnsiChar) + ALenBytes + 1;
+      Move(FBuffer[ABufIndex + ALenBytes + 1], sa[1], ls*SizeOf(AnsiChar));
+      AString := sa;
     end else begin
       SetLength(sw, ls);
-      Move(FBuffer[ABufIndex], sw[1], ls*SizeOf(WideChar));
-      inc(ABufIndex, ls*SizeOf(WideChar));
+      ANumBytes := ls*SizeOf(WideChar) + ALenBytes + 1;
+      Move(FBuffer[ABufIndex + ALenBytes + 1], sw[1], ls*SizeOf(WideChar));
       AString := UTF8Encode(WideStringLEToN(sw));
     end;
-    if containsRichText then begin
-      SetLength(ARichTextRuns, richTextCount);
-      Move(FBuffer[ABufIndex], ARichTextRuns[0], richTextCount*SizeOf(TBiff8RichTextRun));
-      for i:=0 to richTextCount-1 do begin
-        ARichTextRuns[i].IndexToFirstchar := WordLEToN(ARichTextRuns[i].IndexToFirstChar);
-        ARichTextRuns[i].FontIndex := WordLEToN(ARichTextRuns[i].FontIndex);
-      end;
-      inc(ABufIndex, richTextCount*SizeOf(word));
-    end;
-    if containsAsianPhonetics then begin
-      AOffsetToAsianPhoneticBlock := ABufIndex;
-      inc(ABufIndex, AsianPhoneticBlockSize);
-    end;
-    ANumBytes := ABufIndex - savedBufIndex;
   end else begin
     SetLength(sa, ls);
     ANumBytes := ls*SizeOf(AnsiChar) + ALenBytes;
@@ -282,17 +223,6 @@ begin
   end;
 end;
 
-procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
-  out AString: String; out ANumBytes: Integer; AIgnoreCompressedFlag: Boolean = false);
-var
-  asianPhoneticBlockOffset: Integer;
-  asianPhoneticBlockSize: DWord;
-  richTextRuns: TRichTextRuns;
-begin
-  ExtractString(ABufIndex, ALenBytes, AUnicode, AString, ANumBytes,
-    asianPhoneticBlockOffset, asianPhoneticBlockSize, richTextRuns,
-    AIgnoreCompressedFlag);
-end;
 
 function TBIFFGrid.GetStringType: String;
 begin
@@ -1575,7 +1505,6 @@ begin
       '(relict of BIFF5)');
   end else begin
     ExtractString(FBufferIndex, 2, true, s, numBytes);
-
     if Row = FCurrRow then begin
       FDetails.Add('Encoded URL without sheet name:'#13);
       case s[1] of
@@ -4225,12 +4154,7 @@ var
   numBytes: Integer;
   s: String;
   total1, total2: DWord;
-  i, j: Integer;
-  asianPhoneticBlockOffset: Integer;
-  asianPhoneticBlockSize: DWord;
-  richTextRuns: TRichTextRuns;
-  dw: DWord;
-  b: Byte;
+  i: Integer;
 begin
   numBytes := 4;
   Move(FBuffer[FBufferIndex], total1, numBytes);
@@ -4246,46 +4170,8 @@ begin
     'Number of following strings');
 
   for i:=1 to total2 do begin
-    ExtractString(FBufferIndex, 2, true, s, numBytes, asianPhoneticBlockOffset,
-      asianPhoneticBlockSize, richTextRuns);
-    if FFormat = sfExcel8 then begin
-      if Row = FCurrRow then begin
-        FDetails.Add('Wide string info:'#13);
-        FDetails.Add('2 length bytes: ' + IntToStr(UTF8Length(s)));
-        b := FBuffer[FBufferIndex+2];
-        FDetails.Add('Options byte: ' + IntToStr(b));
-        if b and $01 = 0
-          then FDetails.Add('  Bit 1 = 0: compressed characters (8-bit characters)')
-          else FDetails.Add('  Bit 1 = 1: uncompressed characters (16-bit characters)');
-        if b and $04 = 0
-          then FDetails.Add('  Bit 4 = 0: Does not contain Asian phonetic settings')
-          else FDetails.Add('  Bit 4 = 1: Contains Asian phonetic settings');
-        if b and $08 = 0
-          then FDetails.Add('  Bit 8 = 0: Does not contain Rich-Text settings')
-          else FDetails.Add('  Bit 8 = 1: Contains Rich-Text settings');
-        if Length(richTextRuns) > 0 then begin
-          FDetails.Add('Rich-Text information (2 bytes):');
-          FDetails.Add('  ' +IntToStr(Length(richTextRuns)) + ' Rich-Text runs');
-        end;
-        if asianPhoneticBlockSize > 0 then begin
-          FDetails.Add('Asian phonetic block size information (4 bytes): ');
-          FDetails.Add('  Block size: ' + IntToStr(AsianPhoneticBlockSize) + ' bytes');
-        end;
-        FDetails.Add('String text: ' + s);
-        if Length(richTextRuns)>0 then begin
-          FDetails.Add('Rich text runs:');
-          for j:=0 to High(richTextRuns) do
-            FDetails.Add(Format('  Rich text run #%d: binary data $%.4x --> index of first formatted character %d, font index %d',
-              [j, DWord(richTextRuns[j]), richTextRuns[j].IndexToFirstChar, richTextRuns[j].FontIndex]));
-        end;
-        if asianPhoneticBlockSize>0 then begin
-          FDetails.Add('Asian phonetic block:');
-          FDetails.Add('  Size: ' + IntToStr(asianPhoneticBlockSize));
-          FDetails.Add('  (not decoded)');
-        end;
-      end;
+    ExtractString(FBufferIndex, 2, true, s, numBytes);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]));
-  end;
   end;
 end;
 

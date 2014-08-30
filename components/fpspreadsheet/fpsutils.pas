@@ -483,6 +483,8 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     while (i <= Length(AStr)) do begin
       if (UpCase(AStr[i]) in LETTERS) then begin
         ACellCol := Cardinal(ord(UpCase(AStr[i])) - ord('A')) + 1 + ACellCol * 26;
+        if ACellCol >= MAX_COL_COUNT then  // too many columns (dropping this limitation could cause overflow if a too long string is passed
+          exit;
         inc(i);
       end
       else

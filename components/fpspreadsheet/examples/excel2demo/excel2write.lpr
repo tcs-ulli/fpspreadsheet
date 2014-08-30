@@ -51,30 +51,31 @@ begin
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);
 
-  // Write the formula E1 = ABS(A1)
+  // Write the formula E1 = ABS(A1) as rpn token array
   SetLength(MyRPNFormula, 2);
   MyRPNFormula[0].ElementKind := fekCell;
   MyRPNFormula[0].Col := 0;
   MyRPNFormula[0].Row := 0;
-  MyRPNFormula[1].ElementKind := fekABS;
+  MyRPNFormula[1].ElementKind := fekFUNC;
+  MyRPNFormula[1].FuncName := 'ABS';
   MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
 
-  // Write the formula F1 = ROUND(A1, 0)
+  // Write the formula F1 = ROUND(A1, 0) as rpn token array
   SetLength(MyRPNFormula, 3);
   MyRPNFormula[0].ElementKind := fekCell;
   MyRPNFormula[0].Col := 0;
   MyRPNFormula[0].Row := 0;
   MyRPNFormula[1].ElementKind := fekNum;
   MyRPNFormula[1].DoubleValue := 0.0;
-  MyRPNFormula[2].ElementKind := fekROUND;
+  MyRPNFormula[2].ElementKind := fekFUNC;
+  MyRPNFormula[2].FuncName := 'ROUND';
   MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
 
   // Write a string formula to G1 = "A" & "B"
-  MyWorksheet.WriteRPNFormula(0, 6, CreateRPNFormula(
-    RPNString('A',
-    RPNSTring('B',
-    RPNFunc(fekConcat,
-    nil)))));
+  MyWorksheet.WriteFormula(0, 6, '="A"&"B"');
+
+  // Write string formula to H1 = sin(A1+B1)
+  MyWorksheet.WriteFormula(0, 7, '=SIN(A1+B1)');
 
   // Write some string cells
   MyWorksheet.WriteUTF8Text(1, 0, 'First');

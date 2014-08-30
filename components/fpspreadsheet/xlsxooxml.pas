@@ -114,7 +114,7 @@ type
     function GetStyleIndex(ACell: PCell): Cardinal;
     procedure ListAllBorders;
     procedure ListAllFills;
-    function  PrepareFormula(const AFormula: TsFormula): String;
+    function  PrepareFormula(const AFormula: String): String;
     procedure ResetStreams;
     procedure WriteBorderList(AStream: TStream);
     procedure WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
@@ -648,7 +648,7 @@ begin
     if datanode.NodeName = 'v' then
       dataStr := GetNodeValue(datanode)
     else
-    if datanode.NodeName = 'f' then
+    if (boReadFormulas in FWorkbook.Options) and (datanode.NodeName = 'f') then
     begin
       // Formula to cell
       formulaStr := GetNodeValue(datanode);
@@ -660,12 +660,12 @@ begin
           s := GetAttrValue(datanode, 'ref');
           if (s <>'') then
           begin
-            cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+            cell^.FormulaValue := formulaStr;
             FWorksheet.UseSharedFormula(s, cell);
           end;
         end
         else
-          cell^.FormulaValue.FormulaStr := '=' + formulaStr;
+          cell^.FormulaValue := formulaStr;
       end;
     end;
     datanode := datanode.NextSibling;
@@ -2407,10 +2407,11 @@ begin
 end;
 
 { Prepares a string formula for writing }
-function TsSpreadOOXMLWriter.PrepareFormula(const AFormula: TsFormula): String;
+function TsSpreadOOXMLWriter.PrepareFormula(const AFormula: String): String;
 begin
-  Result := AFormula.FormulaStr;
+  Result := AFormula;
   if (Result <> '') and (Result[1] = '=') then Delete(Result, 1, 1);
+  Result := UTF8TextToXMLText(Result)
 end;
 
 { Is called before zipping the individual file parts. Rewinds the streams. }
@@ -2426,15 +2427,6 @@ begin
   ResetStream(FSSharedStrings_complete);
   for i := 0 to High(FSSheets) do
     ResetStream(FSSheets[i]);
-    {
-  FSContentTypes.Position := 0;
-  FSRelsRels.Position := 0;
-  FSWorkbookRels.Position := 0;
-  FSWorkbook.Position := 0;
-  FSStyles.Position := 0;
-  FSSharedStrings_complete.Position := 0;
-  for stream in FSSheets do stream.Position := 0;
-  }
 end;
 
 {
@@ -2544,6 +2536,7 @@ var
   r, c, r2, c2: Cardinal;
   cell: PCell;
   id: Cardinal;
+  t, v: String;
 begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
@@ -2596,15 +2589,53 @@ begin
         CellPosText, lStyleIndex,
         PtrInt(ACell^.SharedFormulaBase)   // ID of the shared formula
       ]));
-  end else
+  end else begin
     // "normal" formula
+    case ACell^.ContentType of
+      cctFormula:
+        begin
+          t := '';
+          v := '';
+        end;
+      cctUTF8String:
+        begin
+          t := ' t="str"';
+          v := Format('<v>%s</v>', [UTF8TextToXMLText(ACell^.UTF8StringValue)]);
+        end;
+      cctNumber:
+        begin
+          t := '';
+          v := Format('<v>%g</v>', [ACell^.NumberValue], FPointSeparatorSettings);
+        end;
+      cctDateTime:
+        begin
+          t := '';
+          v := Format('<v>%g</v>', [ACell^.DateTimeValue], FPointSeparatorSettings);
+        end;
+      cctBool:
+        begin
+          t := ' t="b"';
+          if ACell^.BoolValue then
+            v := '<v>1</v>'
+          else
+            v := '<v>0</v>';
+        end;
+      cctError:
+        begin
+          t := ' t="e"';
+          v := Format('<v>%s</v>', [GetErrorValueStr(ACell^.ErrorValue)]);
+        end;
+    end;
     AppendToStream(AStream, Format(
-      '<c r="%s" s="%d">' +
+      '<c r="%s" s="%d"%s>' +
         '<f>%s</f>' +
+        '%s' +
       '</c>', [
-      CellPosText, lStyleIndex,
-      PrepareFormula(ACell^.FormulaValue)
+      CellPosText, lStyleIndex, t,
+      PrepareFormula(ACell^.FormulaValue),
+      v
     ]));
+  end;
 end;
 
 {*******************************************************************

@@ -2182,7 +2182,7 @@ begin
 end;
 
 
-{ Lookup / refernence functions }
+{ Lookup / reference functions }
 
 function fpsCOLUMN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { COLUMN( [reference] )
