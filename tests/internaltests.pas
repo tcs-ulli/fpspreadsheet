@@ -350,7 +350,8 @@ begin
   CheckEquals('$XFE$1',GetCellString(0,16384,[])); // the first column beyond xlsx
 
   // Something VERY big, beyond xlsx
-  s := 'ZZZZ1';
+//  s := 'ZZZZ1';   // this is case is no longer possible because max column count has been cut down to 65536
+  s := 'CRAA1';
   ParseCellString(s, r, c, flags);
   CheckEquals(s, GetCellString(r, c, flags));
 end;

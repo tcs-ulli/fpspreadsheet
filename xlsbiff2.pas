@@ -605,7 +605,7 @@ begin
   end;
 
   { Formula token array }
-  if boReadFormulas in FWorkbook.Options then begin
+  if (boReadFormulas in FWorkbook.Options) then begin
     ok := ReadRPNTokenArray(AStream, cell);
     if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
@@ -1230,10 +1230,9 @@ end;
 }
 procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream);
 var
-  sheet: TsWorksheet;
   pane: Byte;
 begin
-  sheet := Workbook.GetFirstWorksheet;
+  FWorksheet := Workbook.GetFirstWorksheet;
 
   WriteBOF(AStream);
     WriteFonts(AStream);
@@ -1241,21 +1240,21 @@ begin
     WriteFormats(AStream);
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
-    WriteDimensions(AStream, sheet);
-    WriteRows(AStream, sheet);
+    WriteDimensions(AStream, FWorksheet);
+    WriteRows(AStream, FWorksheet);
 
     if (boVirtualMode in Workbook.Options) then
       WriteVirtualCells(AStream)
     else begin
-      WriteRows(AStream, sheet);
-      WriteCellsToStream(AStream, sheet.Cells);
+      WriteRows(AStream, FWorksheet);
+      WriteCellsToStream(AStream, FWorksheet.Cells);
     end;
 
     WriteWindow1(AStream);
     //  { -- currently not working
-    WriteWindow2(AStream, sheet);
-    WritePane(AStream, sheet, false, pane);  // false for "is not BIFF5 or BIFF8"
-    WriteSelections(AStream, sheet);
+    WriteWindow2(AStream, FWorksheet);
+    WritePane(AStream, FWorksheet, false, pane);  // false for "is not BIFF5 or BIFF8"
+    WriteSelections(AStream, FWorksheet);
       //}
   WriteEOF(AStream);
 end;
@@ -1630,11 +1629,6 @@ begin
   else
     WriteRPNTokenArray(AStream, AFormula, true, RPNLength);
 
-(*
-{ Formula data (RPN token array) }
-  WriteRPNTokenArray(AStream, AFormula, true, RPNLength);
-*)
-
   { Finally write sizes after we know them }
   FinalPos := AStream.Position;
   AStream.Position := RecordSizePos;
@@ -1665,13 +1659,12 @@ var
   i: Integer;
   formula: TsRPNFormula;
 begin
-  SetLength(formula, Length(ACell^.SharedFormulaBase^.RPNFormulaValue));
-  for i:=0 to Length(formula)-1 do begin
-    // Copy formula
-    formula[i] := ACell^.SharedFormulaBase^.RPNFormulaValue[i];
-    // Adapt relative cell references
+  // Create RPN formula from the shared formula base's string formula
+  formula := FWorksheet.BuildRPNFormula(ACell^.SharedFormulaBase);
+
+  // Adapt relative cell references
+  for i:=0 to Length(formula)-1 do
     FixRelativeReferences(ACell, formula[i]);
-  end;
 
   // Write adapted copy of shared formula to stream.
   WriteRPNTokenArray(AStream, formula, true, RPNLength);

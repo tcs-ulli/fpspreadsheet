@@ -32,7 +32,7 @@
     </RunParams>
     <RequiredPackages Count="1">
       <Item1>
-        <PackageName Value="LazUtils"/>
+        <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
     </RequiredPackages>
     <Units Count="1">
@@ -51,16 +51,12 @@
     <SearchPaths>
       <OtherUnitFiles Value="..\.."/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+      <SrcPath Value=".."/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
-    <Linking>
-      <Debugging>
-        <UseExternalDbgSyms Value="True"/>
-      </Debugging>
-    </Linking>
   </CompilerOptions>
 </CONFIG>

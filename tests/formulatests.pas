@@ -17,7 +17,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpsallformats, fpspreadsheet, fpsfunc,
+  fpsallformats, fpspreadsheet, fpsexprparser,
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
@@ -31,33 +31,60 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
     // Test formula strings
-    procedure TestWriteReadFormulaStrings(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteReadFormulaStrings(AFormat: TsSpreadsheetFormat;
+      UseRPNFormula: Boolean);
     // Test calculation of rpn formulas
-    procedure TestCalcRPNFormulas(AFormat: TsSpreadsheetformat);
+    procedure TestCalcFormulas(AFormat: TsSpreadsheetformat; UseRPNFormula: Boolean);
 
   published
     // Writes out numbers & reads back.
     // If previous read tests are ok, this effectively tests writing.
     { BIFF2 Tests }
-    procedure TestWriteRead_BIFF2_FormulaStrings;
+    procedure Test_Write_Read_FormulaStrings_BIFF2;
     { BIFF5 Tests }
-    procedure TestWriteRead_BIFF5_FormulaStrings;
+    procedure Test_Write_Read_FormulaStrings_BIFF5;
     { BIFF8 Tests }
-    procedure TestWriteRead_BIFF8_FormulaStrings;
+    procedure Test_Write_Read_FormulaStrings_BIFF8;
+    { OOXML Tests }
+    procedure Test_Write_Read_FormulaStrings_OOXML;
 
-    // Writes out and calculates formulas, read back
+    // Writes out and calculates rpn formulas, read back
     { BIFF2 Tests }
-    procedure TestWriteRead_BIFF2_CalcRPNFormula;
+    procedure Test_Write_Read_CalcRPNFormula_BIFF2;
     { BIFF5 Tests }
-    procedure TestWriteRead_BIFF5_CalcRPNFormula;
+    procedure Test_Write_Read_CalcRPNFormula_BIFF5;
     { BIFF8 Tests }
-    procedure TestWriteRead_BIFF8_CalcRPNFormula;
+    procedure Test_Write_Read_CalcRPNFormula_BIFF8;
+    { OOXML Tests }
+    procedure Test_Write_Read_CalcRPNFormula_OOXML;
+
+    // Writes out and calculates string formulas, read back
+    { BIFF2 Tests }
+    procedure Test_Write_Read_CalcStringFormula_BIFF2;
+    { BIFF5 Tests }
+    procedure Test_Write_Read_CalcStringFormula_BIFF5;
+    { BIFF8 Tests }
+    procedure Test_Write_Read_CalcStringFormula_BIFF8;
+    { OOXML Tests }
+    procedure Test_Write_Read_CalcStringFormula_OOXML;
   end;
 
 implementation
 
 uses
   math, typinfo, lazUTF8, fpsUtils, rpnFormulaUnit;
+
+var
+  // Array containing the "true" results of the formulas, for comparison
+  SollValues: array of TsExpressionResult;
+
+// Helper for statistics tests
+const
+  STATS_NUMBERS: Array[0..4] of Double = (1.0, 1.1, 1.2, 0.9, 0.8);
+var
+  numberArray: array[0..4] of Double;
+
+
 
 { TSpreadWriteReadFormatTests }
 
@@ -71,7 +98,10 @@ begin
   inherited TearDown;
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteReadFormulaStrings(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormulaTests.TestWriteReadFormulaStrings(
+  AFormat: TsSpreadsheetFormat; UseRPNFormula: Boolean);
+{ If UseRPNFormula is true the test formulas are generated from RPN formulas.
+  Otherwise they are generated from string formulas. }
 const
   SHEET = 'Sheet1';
 var
@@ -79,20 +109,29 @@ var
   MyWorkbook: TsWorkbook;
   Row: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
+  formula: String;
   expected: String;
   actual: String;
   cell: PCell;
+  cellB1: Double;
+  cellB2: Double;
+  number: Double;
+  s: String;
+  hr, min, sec, msec: Word;
+  k: Integer;
 begin
   TempFile := GetTempFileName;
 
   // Create test workbook
   MyWorkbook := TsWorkbook.Create;
   try
+    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
     MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
 
     // Write out all test formulas
     // All formulas are in column B
-    WriteRPNFormulaSamples(MyWorksheet, AFormat, true);
+    {$I testcases_calcrpnformula.inc}
+//    WriteRPNFormulaSamples(MyWorksheet, AFormat, true, UseRPNFormula);
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
@@ -113,8 +152,8 @@ begin
     for Row := 0 to MyWorksheet.GetLastRowIndex do
     begin
       cell := MyWorksheet.FindCell(Row, 1);
-      if (cell <> nil) and (Length(cell^.RPNFormulaValue) > 0) then begin
-        actual := MyWorksheet.ReadRPNFormulaAsString(cell);
+      if HasFormula(cell) then begin
+        actual := MyWorksheet.ReadFormulaAsString(cell);
         expected := MyWorksheet.ReadAsUTF8Text(Row, 0);
         CheckEquals(expected, actual, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
       end;
@@ -126,40 +165,46 @@ begin
   end;
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF2_FormulaStrings;
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_BIFF2;
 begin
-  TestWriteReadFormulaStrings(sfExcel2);
+  TestWriteReadFormulaStrings(sfExcel2, true);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF5_FormulaStrings;
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_BIFF5;
 begin
-  TestWriteReadFormulaStrings(sfExcel5);
+  TestWriteReadFormulaStrings(sfExcel5, true);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF8_FormulaStrings;
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_BIFF8;
 begin
-  TestWriteReadFormulaStrings(sfExcel8);
+  TestWriteReadFormulaStrings(sfExcel8, true);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_OOXML;
+begin
+  TestWriteReadFormulaStrings(sfOOXML, true);
 end;
 
 
-{ Test calculation of rpn formulas }
+{ Test calculation of formulas }
 
-procedure TSpreadWriteReadFormulaTests.TestCalcRPNFormulas(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormulaTests.TestCalcFormulas(AFormat: TsSpreadsheetFormat;
+  UseRPNFormula: Boolean);
+{ If UseRPNFormula is TRUE, the test formulas are generated from RPN syntax,
+  otherwise string formulas are used. }
 const
   SHEET = 'Sheet1';
-  STATS_NUMBERS: Array[0..4] of Double = (1.0, 1.1, 1.2, 0.9, 0.8);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   Row: Integer;
   TempFile: string;    //write xls/xml to this file and read back from it
-  actual: TsArgument;
-  expected: TsArgument;
+  actual: TsExpressionResult;
+  expected: TsExpressionResult;
   cell: PCell;
-  sollValues: array of TsArgument;
+  sollValues: array of TsExpressionResult;
   formula: String;
   s: String;
-  t: TTime;
   hr,min,sec,msec: Word;
   ErrorMargin: double;
   k: Integer;
@@ -168,7 +213,8 @@ var
     the formula calculation as well. The next variables, along with STATS_NUMBERS
     above, hold the arguments for the direction function calls. }
   number: Double;
-  numberArray: array[0..4] of Double;
+  cellB1: Double;
+  cellB2: Double;
 begin
   ErrorMargin:=0; //1.44E-7;
   //1.44E-7 for SUMSQ formula
@@ -200,6 +246,7 @@ begin
   // Open the workbook
   MyWorkbook := TsWorkbook.Create;
   try
+    MyWorkbook.Options := Myworkbook.Options + [boReadFormulas];
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     if AFormat = sfExcel2 then
       MyWorksheet := MyWorkbook.GetFirstWorksheet
@@ -214,15 +261,24 @@ begin
       cell := MyWorksheet.FindCell(Row, 1);
       if (cell = nil) then
         fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
+
       case cell^.ContentType of
-        cctBool       : actual := CreateBoolArg(cell^.BoolValue);
-        cctNumber     : actual := CreateNumberArg(cell^.NumberValue);
-        cctError      : actual := CreateErrorArg(cell^.ErrorValue);
-        cctUTF8String : actual := CreateStringArg(cell^.UTF8StringValue);
+        cctBool       : actual := BooleanResult(cell^.BoolValue);
+        cctNumber     : actual := FloatResult(cell^.NumberValue);
+        cctDateTime   : actual := DateTimeResult(cell^.DateTimeValue);
+        cctUTF8String : actual := StringResult(cell^.UTF8StringValue);
+        cctError      : actual := ErrorResult(cell^.ErrorValue);
+        cctEmpty      : actual := EmptyResult;
         else            fail('ContentType not supported');
       end;
+
       expected := SollValues[row];
-      CheckEquals(ord(expected.ArgumentType), ord(actual.ArgumentType),
+      // Cell does not store integers!
+      if expected.ResultType = rtInteger then expected := FloatResult(expected.ResInteger);
+
+      CheckEquals(
+        GetEnumName(TypeInfo(TsExpressionResult), ord(expected.ResultType)),
+        GetEnumName(TypeInfo(TsExpressionResult), ord(actual.ResultType)),
         'Test read calculated formula data type mismatch, formula "' + formula +
         '", cell '+CellNotation(MyWorkSheet,Row,1));
 
@@ -231,22 +287,22 @@ begin
       // the file value in the same second. Therefore we neglect the milliseconds.
       if formula = '=NOW()' then begin
         // Round soll value to seconds
-        DecodeTime(expected.NumberValue, hr,min,sec,msec);
-        expected.NumberValue := EncodeTime(hr, min, sec, 0);
+        DecodeTime(expected.ResDateTime, hr,min,sec,msec);
+        expected.ResDateTime := EncodeTime(hr, min, sec, 0);
         // Round formula value to seconds
-        DecodeTime(actual.NumberValue, hr,min,sec,msec);
-        actual.NumberValue := EncodeTime(hr,min,sec,0);
+        DecodeTime(actual.ResDateTime, hr,min,sec,msec);
+        actual.ResDateTime := EncodeTime(hr,min,sec,0);
       end;
 
-      case actual.ArgumentType of
-        atBool:
-          CheckEquals(BoolToStr(expected.BoolValue), BoolToStr(actual.BoolValue),
+      case actual.ResultType of
+        rtBoolean:
+          CheckEquals(BoolToStr(expected.ResBoolean), BoolToStr(actual.ResBoolean),
             'Test read calculated formula result mismatch, formula "' + formula +
             '", cell '+CellNotation(MyWorkSheet,Row,1));
-        atNumber:
+        rtFloat:
           {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
           // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
-          CheckEquals(expected.NumberValue, actual.NumberValue, ErrorMargin,
+          CheckEquals(expected.ResFloat, actual.ResFloat, ErrorMargin,
             'Test read calculated formula result mismatch, formula "' + formula +
             '", cell '+CellNotation(MyWorkSheet,Row,1));
           {$else}
@@ -255,14 +311,14 @@ begin
             'Test read calculated formula result mismatch, formula "' + formula +
             '", cell '+CellNotation(MyWorkSheet,Row,1));
           {$endif}
-        atString:
-          CheckEquals(expected.StringValue, actual.StringValue,
+        rtString:
+          CheckEquals(expected.ResString, actual.ResString,
             'Test read calculated formula result mismatch, formula "' + formula +
             '", cell '+CellNotation(MyWorkSheet,Row,1));
-        atError:
+        rtError:
           CheckEquals(
-            GetEnumName(TypeInfo(TsErrorValue), ord(expected.ErrorValue)),
-            GetEnumname(TypeInfo(TsErrorValue), ord(actual.ErrorValue)),
+            GetEnumName(TypeInfo(TsErrorValue), ord(expected.ResError)),
+            GetEnumname(TypeInfo(TsErrorValue), ord(actual.ResError)),
             'Test read calculated formula error value mismatch, formula ' + formula +
             ', cell '+CellNotation(MyWorkSheet,Row,1));
       end;
@@ -274,19 +330,44 @@ begin
   end;
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF2_CalcRPNFormula;
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_BIFF2;
 begin
-  TestCalcRPNFormulas(sfExcel2);
+  TestCalcFormulas(sfExcel2, true);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF5_CalcRPNFormula;
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_BIFF5;
 begin
-  TestCalcRPNFormulas(sfExcel5);
+  TestCalcFormulas(sfExcel5, true);
 end;
 
-procedure TSpreadWriteReadFormulaTests.TestWriteRead_BIFF8_CalcRPNFormula;
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_BIFF8;
 begin
-  TestCalcRPNFormulas(sfExcel8);
+  TestCalcFormulas(sfExcel8, true);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_OOXML;
+begin
+  TestCalcFormulas(sfOOXML, true);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_BIFF2;
+begin
+  TestCalcFormulas(sfExcel2, false);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_BIFF5;
+begin
+  TestCalcFormulas(sfExcel5, false);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_BIFF8;
+begin
+  TestCalcFormulas(sfExcel8, false);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_OOXML;
+begin
+  TestCalcFormulas(sfOOXML, false);
 end;
 
 

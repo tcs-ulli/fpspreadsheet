@@ -36,7 +36,7 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas, boAutoCalc];
+  MyWorkbook.ReadFormulas := true;
 
   MyWorkbook.ReadFromFile(InputFilename, sfExcel8);
 
@@ -55,8 +55,8 @@ begin
      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
        CurCell^.Col))
      );
-    if Length(CurCell^.RPNFormulaValue) > 0 then
-      WriteLn(' Formula: ', MyWorkSheet.ReadRPNFormulaAsString(CurCell))
+    if HasFormula(CurCell) then
+      WriteLn(' Formula: ', MyWorkSheet.ReadFormulaAsString(CurCell))
     else
       WriteLn;
     CurCell := MyWorkSheet.GetNextCell();

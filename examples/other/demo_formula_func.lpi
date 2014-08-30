@@ -46,6 +46,7 @@
       <Unit1>
         <Filename Value="financemath.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="financemath"/>
       </Unit1>
     </Units>
   </ProjectOptions>

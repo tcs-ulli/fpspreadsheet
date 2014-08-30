@@ -2975,10 +2975,6 @@ end;
   initial column widths and row heights.
 }
 procedure TsCustomWorksheetGrid.Setup;
-var
-  i: Integer;
-  lCol: PCol;
-  lRow: PRow;
 begin
   if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin

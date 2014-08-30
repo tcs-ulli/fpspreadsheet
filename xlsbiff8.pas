@@ -222,7 +222,7 @@ var
 implementation
 
 uses
-  fpsStreams;
+  fpsStreams, fpsExprParser;
 
 const
    { Excel record IDs }
@@ -1247,6 +1247,14 @@ begin
   inherited;
 end;
 
+
+var
+
+
+    counter: Integer = 0;
+
+
+
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const ALength: WORD): WideString;
 var
@@ -1264,16 +1272,15 @@ var
 begin
   StringFlags:=AStream.ReadByte;
   Dec(PendingRecordSize);
+  if StringFlags and 4 = 4 then begin
+    //Asian phonetics
+    //Read Asian phonetics Length (not used)
+    AsianPhoneticBytes:=DWordLEtoN(AStream.ReadDWord);
+  end;
   if StringFlags and 8 = 8 then begin
     //Rich string
     RunsCounter:=WordLEtoN(AStream.ReadWord);
-    dec(PendingRecordSize, 2);
-  end;
-  if StringFlags and 4 = 4 then begin
-    //Asian phonetics
-    //Read Asian phonetics length (not used)
-    AsianPhoneticBytes:=DWordLEtoN(AStream.ReadDWord);
-    dec(PendingRecordSize, 4);
+    dec(PendingRecordSize,2);
   end;
   if StringFlags and 1 = 1 Then begin
     //String is WideStringLE
@@ -1290,6 +1297,11 @@ begin
   end else begin
     //String is 1 byte per char, this is UTF-16 with the high byte ommited because it is zero
     //so decompress and then convert
+
+
+    inc(Counter);
+
+
     lLen:=ALength;
     SetLength(DecomprStrValue, lLen);
     for i := 1 to lLen do
@@ -1298,7 +1310,7 @@ begin
       DecomprStrValue[i] := C;
       Dec(PendingRecordSize);
       if (PendingRecordSize<=0) and (i<lLen) then begin
-        //A CONTINUE may happen here
+        //A CONTINUE may happend here
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
         if RecordType<>INT_EXCEL_ID_CONTINUE then begin
@@ -1310,13 +1322,14 @@ begin
         end;
       end;
     end;
+
     Result := DecomprStrValue;
   end;
   if StringFlags and 8 = 8 then begin
-    //Rich string (This only happens in BIFF8)
+    //Rich string (This only happened in BIFF8)
     for j := 1 to RunsCounter do begin
       if (PendingRecordSize<=0) then begin
-        //A CONTINUE may happen here
+        //A CONTINUE may happend here
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
         if RecordType<>INT_EXCEL_ID_CONTINUE then begin

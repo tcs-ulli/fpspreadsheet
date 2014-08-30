@@ -58,6 +58,8 @@ type
     // As described in bug 25718: Feature request & patch: Implementation of writing more functions
     // Writes all rpn formulas. Use Excel or Open/LibreOffice to check validity.
     procedure TestRPNFormula;
+    // Dto, but writes string formulas.
+//    procedure TestStringFormula;
     {$ENDIF}
     // For BIFF8 format, writes all background colors in A1..A16
     procedure TestBiff8CellBackgroundColor;
@@ -69,8 +71,9 @@ uses
   fpsUtils, rpnFormulaUnit;
 
 const
-  COLORSHEETNAME='colorsheet'; //for background color tests
-  RPNSHEETNAME='formula_sheet'; //for rpn formula tests
+  COLORSHEETNAME='color_sheet'; //for background color tests
+  RPNSHEETNAME='rpn_formula_sheet'; //for rpn formula tests
+  FORMULASHEETNAME='formula_sheet';  // for string formula tests
   OUTPUT_FORMAT = sfExcel8; //change manually if you want to test different formats. To do: automatically output all formats
 
 var
@@ -195,7 +198,7 @@ begin
 
   Worksheet := Workbook.AddWorksheet(COLORSHEETNAME);
   WorkSheet.WriteUTF8Text(0,1,'TSpreadManualTests.TestBiff8CellBackgroundColor');
-  RowOffset:=1;
+  RowOffset := 1;
   for i:=0 to Workbook.GetPaletteSize-1 do begin
     WorkSheet.WriteUTF8Text(i+RowOffset,0,'BACKGROUND COLOR TEST');
     Cell := Worksheet.GetCell(i+RowOffset, 0);
@@ -218,6 +221,18 @@ begin
   Worksheet := Workbook.AddWorksheet(RPNSHEETNAME);
   WriteRPNFormulaSamples(Worksheet, OUTPUT_FORMAT, false);
 end;
+                                                               (*
+procedure TSpreadManualTests.TestStringFormula;
+var
+  Worksheet: TsWorksheet;
+begin
+  if Workbook = nil then
+    Workbook := TsWorkbook.Create;
+
+  Worksheet := Workbook.AddWorksheet(FORMULASHEETNAME);
+  WriteRPNFormulaSamples(Worksheet, OUTPUT_FORMAT, false, false);
+end;
+*)
 {$ENDIF}
 
 initialization

@@ -35,7 +35,9 @@ begin
   MyWorkbook := TsWorkbook.Create;
   MyWorksheet := MyWorkbook.AddWorksheet(UTF8ToAnsi(Str_Worksheet1));
 
+  MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
   MyWorksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
+
   MyWorksheet.LeftPaneWidth := 1;
   MyWorksheet.TopPaneHeight := 2;
 
@@ -139,7 +141,7 @@ begin
   end;
 }
 
-  // Write the formula E1 = A1 + B1
+  // Write the formula E1 = A1 + B1 as rpn roken array
   SetLength(MyRPNFormula, 3);
   MyRPNFormula[0].ElementKind := fekCell;
   MyRPNFormula[0].Col := 0;
@@ -150,15 +152,22 @@ begin
   MyRPNFormula[2].ElementKind := fekAdd;
   MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
 
-  // Write the formula F1 = ABS(A1)
+  // Write the formula F1 = ABS(A1) as rpn token array
   SetLength(MyRPNFormula, 2);
   MyRPNFormula[0].ElementKind := fekCell;
   MyRPNFormula[0].Col := 0;
   MyRPNFormula[0].Row := 0;
-  MyRPNFormula[1].ElementKind := fekABS;
+  MyRPNFormula[1].ElementKind := fekFunc;
+  MyRPNFormula[1].FuncName := 'ABS';
   MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
 
-  r:= 10;
+  // Write formula G1 = "A"&"B" as string formula
+  MyWorksheet.WriteFormula(0, 6, '="A"&"B"');
+
+  // Write formula H1 = sin(A1+B1) as string formula
+  Myworksheet.WriteFormula(0, 7, '=SIN(A1+B1)');
+
+  r := 10;
   // Write current date/time to cells B11:B16
   MyWorksheet.WriteUTF8Text(r, 0, 'nfShortDate');
   MyWorksheet.WriteDateTime(r, 1, now, nfShortDate);

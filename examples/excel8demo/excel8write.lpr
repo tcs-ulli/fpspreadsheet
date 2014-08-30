@@ -10,8 +10,7 @@ program excel8write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8,
-  laz_fpspreadsheet;
+  Classes, SysUtils, fpspreadsheet, xlsbiff8;
 
 const
   Str_First = 'First';
@@ -41,6 +40,7 @@ begin
   MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
   MyWorkbook.FormatSettings.CurrencyFormat := 2;
   MyWorkbook.FormatSettings.NegCurrFormat := 14;
+  MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];
@@ -147,28 +147,27 @@ begin
   end;
      }
 
-  // Write the formula E1 = A1 + B1
-  SetLength(MyRPNFormula, 3);
-  MyRPNFormula[0].ElementKind := fekCell;
-  MyRPNFormula[0].Col := 0;
-  MyRPNFormula[0].Row := 0;
-  MyRPNFormula[1].ElementKind := fekCell;
-  MyRPNFormula[1].Col := 1;
-  MyRPNFormula[1].Row := 0;
-  MyRPNFormula[2].ElementKind := fekAdd;
-  MyWorksheet.WriteRPNFormula(0, 4, MyRPNFormula);
-  MyWorksheet.WriteFont(0, 4, 'Arial', 10, [fssUnderline], scBlack);
+  // Write the string formula E1 = A1 + B1 ...
+  MyWorksheet.WriteFormula(0, 4, 'A1+B1');
+  // ... and the rpn formula E2 = A1 + B1
+  MyWorksheet.WriteRPNFormula(1, 4, CreateRPNFormula(
+    RPNCellValue('A1',
+    RPNCellValue('B1',
+    RPNFunc(fekAdd,
+    nil)))));
 
-  // Write the formula F1 = ABS(A1)
-  SetLength(MyRPNFormula, 2);
-  MyRPNFormula[0].ElementKind := fekCell;
-  MyRPNFormula[0].Col := 0;
-  MyRPNFormula[0].Row := 0;
-  MyRPNFormula[1].ElementKind := fekABS;
-  MyWorksheet.WriteRPNFormula(0, 5, MyRPNFormula);
+  // Write the formula F1 = ABS(A1) as string formula ...
+  MyWorksheet.WriteFormula(0, 5, 'ABS(A1)');
+  // ... and F2 = ABS(A1) as rpn formula
+  MyWorksheet.WriteRPNFormula(1, 5, CreateRPNFormula(
+    RPNCellValue('A1',
+    RPNFunc('ABS',
+    nil))));
 
-  // Write a string formula to G1 = "A" & "B"
-  MyWorksheet.WriteRPNFormula(0, 6, CreateRPNFormula(
+  // Write a string formula to G1 = "A" & "B" ...
+  MyWorksheet.WriteFormula(0, 6, '"A"&"B"');
+  // ... and again as rpn formula
+  MyWorksheet.WriteRPNFormula(1, 6, CreateRPNFormula(
     RPNString('A',
     RPNSTring('B',
     RPNFunc(fekConcat,

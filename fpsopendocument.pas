@@ -1272,7 +1272,7 @@ begin
   // Read formula, store in the cell's FormulaValue.FormulaStr
   formula := GetAttrValue(ACellNode, 'table:formula');
   if formula <> '' then Delete(formula, 1, 3);  // delete "of:"
-  cell^.FormulaValue.FormulaStr := formula;
+  cell^.FormulaValue := formula;
 
   // Read formula results
   // ... number value
@@ -3590,7 +3590,7 @@ begin
   AppendToStream(AStream, Format(
     '<table:table-cell table:formula="%s" %s>' +
     '</table:table-cell>', [
-    ACell^.FormulaValue.FormulaStr, lStyle
+    ACell^.FormulaValue, lStyle
   ]));
 end;
 

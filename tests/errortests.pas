@@ -61,15 +61,14 @@ var
   row, col: Cardinal;
   row1, row2: Cardinal;
   col1, col2: Cardinal;
-  formula: TsFormula;
+  formula: string;
   s: String;
   TempFile: String;
   ErrList: TStringList;
   newColor: TsColor;
   expected: integer;
 begin
-  formula.FormulaStr := '=A1';
-  formula.DoubleValue := 0.0;
+  formula := '=A1';
 
   ErrList := TStringList.Create;
   try

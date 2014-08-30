@@ -111,7 +111,10 @@ begin
   if not(assigned(Worksheet)) then
     result:='CellNotation: error getting worksheet.'
   else
-    result:=WorkSheet.Name+'!'+ColumnToLetter(Column)+inttostr(Row+1)
+  if Worksheet.Name <> '' then
+    result := WorkSheet.Name + '!' + ColumnToLetter(Column) + inttostr(Row+1)
+  else
+    Result := ColumnToLetter(Column) + IntToStr(Row + 1);
 end;
 
 function ColNotation(WorkSheet: TsWorksheet; Column:Integer): String;
@@ -119,7 +122,10 @@ begin
   if not Assigned(Worksheet) then
     Result := 'ColNotation: error getting worksheet.'
   else
-    Result := WorkSheet.Name + '!' + ColumnToLetter(Column);
+  if Worksheet.Name <> '' then
+    Result := WorkSheet.Name + '!' + ColumnToLetter(Column)
+  else
+    Result := ColumnToLetter(Column);
 end;
 
 function RowNotation(Worksheet: TsWorksheet; Row: Integer): String;
@@ -127,7 +133,10 @@ begin
   if not Assigned(Worksheet) then
     Result := 'RowNotation: error getting worksheet.'
   else
-    Result := Worksheet.Name + '!' + IntToStr(Row+1);
+  if Worksheet.Name <> '' then
+    Result := Worksheet.Name + '!' + IntToStr(Row+1)
+  else
+    Result := IntToStr(Row+1);
 end;
 
 end.
