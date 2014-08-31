@@ -1229,6 +1229,7 @@ resourcestring
   lpNoValidNumberFormatString = 'No valid number format string.';
   lpNoValidCellAddress = '"%s" is not a valid cell address.';
   lpNoValidCellRangeAddress = '"%s" is not a valid cell range address.';
+  lpNoValidCellRangeOrCellAddress = '"%s" is not a valid cell or cell range address.';
   lpSpecifyNumberOfParams = 'Specify number of parameters for function %s';
   lpIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
   lpCircularReference = 'Circular reference found when calculating worksheet formulas';
@@ -1794,72 +1795,17 @@ procedure TsWorksheet.CalcFormula(ACell: PCell);
 var
   parser: TsSpreadsheetParser;
   res: TsExpressionResult;
-  rpnFormula: TsRPNFormula;
-  cell: PCell;
-  i: Integer;
-  r, c: Cardinal;
-  fe: TsFormulaElement;
+  formula: String;
 begin
   ACell^.CalcState := csCalculating;
 
   parser := TsSpreadsheetParser.Create(self);
   try
-    parser.Expression := ACell^.FormulaValue;
-    (*
-    // Check whether all used cells are already calculated.
-    rpnFormula := parser.RPNFormula;
-    for i:=0 to High(rpnFormula) do begin
-      fe := rpnFormula[i];
-      case fe.ElementKind of
-        fekCell, fekCellRef:
-          begin
-            cell := FindCell(fe.Row, fe.Col);
-            if cell <> nil then
-              case cell^.CalcState of
-                csNotCalculated: CalcFormula(cell);
-                csCalculating  : raise Exception.Create(lpCircularReference);
-              end;
-          end;
-        fekCellRange:
-          begin
-            for r := fe.Row to fe.Row2 do
-              for c := fe.Col to fe.Col2 do begin
-                cell := FindCell(r, c);
-                if cell <> nil then
-                  case cell^.CalcState of
-                    csNotCalculated: CalcFormula(cell);
-                    csCalculating  : raise Exception.Create(lpCircularReference);
-                  end;
-              end;
-          end;
-        {
-         fekCellOffset:
-           begin
-             if ACell^.SharedFormulaBase = nil then begin
-               ACell^.WriteErrorValue(ACell, errIllegalRef);
-               exit;
-             end;
-             if (rfRelRow in fe.RelFlags)
-               then r := ACell^.Row + SmallInt(fe.Row)
-               else r := ACell^.SharedFormulaBase^.Row;
-             if (rfRelCol in fe.RelFlags)
-               then c := ACell^.Col + SmallInt(fe.Col)
-               else c := ACell^.SharedFormulaBase^.Col;
-             cell := FindCell(r, c);
-             if cell <> nil then begin
-               case cell^.CalcState of
-                 csNotCalculated: CalcFormula(cell);
-                 csCalculating  : raise Exception.Create(lpCircularReference);
-               end;
-             end else begin
-               WriteErrorValue(ACell, errIllegalRef);
-               exit;
-             end;
-           end;
-           }
-      end;
-    end;
-     *)
+    if ACell^.SharedFormulaBase = nil then
+      formula := ACell^.FormulaValue
+    else
+      formula := ACell^.SharedFormulaBase^.FormulaValue;
+    parser.Expression := formula;
     parser.EvaluateExpression(res);
     case res.ResultType of
       rtEmpty    : WriteBlank(ACell);
@@ -2839,7 +2785,7 @@ begin
   Result := GetCell(ARow, ACol);
   Result.SharedFormulaBase := ASharedFormulaBase;
   if HasFormula(Result) and
-     ((ASharedFormulaBase.Row <> ARow) or (ASharedFormulaBase.Col <> ACol))
+     ((ASharedFormulaBase.Row <> ARow) and (ASharedFormulaBase.Col <> ACol))
   then
     raise Exception.CreateFmt('Cell %s uses a shared formula, but contains an own formula.',
       [GetCellString(ARow, ACol)]);
