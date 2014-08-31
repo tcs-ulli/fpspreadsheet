@@ -1,3 +1,7 @@
+{------------------------------------------------------------------------------}
+{  Standard built-in formula support                                           }
+{------------------------------------------------------------------------------}
+
 unit fpsfunc;
 
 {$mode objfpc}
@@ -5,1403 +9,245 @@ unit fpsfunc;
 interface
 
 uses
-  Classes, SysUtils, fpspreadsheet;
+  Classes, SysUtils, fpspreadsheet, fpsExprParser;
 
-type
-  TsArgumentType = (atCell, atCellRange, atNumber, atString,
-    atBool, atError, atEmpty);
-
-  TsArgumentTypes = set of TsArgumentType;
-
-  TsArgBoolArray  = array of boolean;
-  TsArgNumberArray = array of double;
-  TsArgStringArray   = array of string;
-
-  TsArgument = record
-    IsMissing: Boolean;
-    Worksheet: TsWorksheet;
-    ArgumentType: TsArgumentType;
-    Cell: PCell;
-    FirstRow, FirstCol, LastRow, LastCol: Cardinal;
-    NumberValue: Double;
-    StringValue: String;
-    BoolValue: Boolean;
-    ErrorValue: TsErrorValue;
-  end;
-
-{
-  TsArgument = record
-    IsMissing: Boolean;
-    Worksheet: TsWorksheet;
-    case ArgumentType: TsArgumentType of
-      atCell      : (Cell: PCell);
-      atCellRange : (FirstRow,FirstCol,LastRow,LastCol: Cardinal);
-      atNumber    : (NumberValue: Double);
-      atString    : (StringValue: String);
-      atBool      : (BoolValue: Boolean);
-      atError     : (ErrorValue: TsErrorValue);
-  end;
-  }
-  PsArgument = ^TsArgument;
-
-  TsArgumentStack = class(TFPList)
-  protected
-    function PopMultiple(ACount: Integer): TsArgumentStack;
-  public
-    destructor Destroy; override;
-    function Pop: TsArgument;
-    function PopNumber(out AValue: Double; out AErrArg: TsArgument): Boolean;
-    function PopNumberValues(ANumArgs: Integer; ARangeAllowed: Boolean;
-      out AValues: TsArgNumberArray; out AErrArg: TsArgument;
-      AErrorOnNoNumber: Boolean = true): Boolean;
-    function PopString(out AValue: String; out AErrArg: TsArgument): Boolean;
-    function PopStringValues(ANumArgs: Integer; ARangeAllowed:Boolean;
-      out AValues: TsArgStringArray; out AErrArg: TsArgument): Boolean;
-    procedure Push(AValue: TsArgument; AWorksheet: TsWorksheet);
-    procedure PushBool(AValue: Boolean; AWorksheet: TsWorksheet);
-    procedure PushCell(AValue: PCell; AWorksheet: TsWorksheet);
-    procedure PushCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
-      AWorksheet: TsWorksheet);
-    procedure PushMissing(AWorksheet: TsWorksheet);
-    procedure PushNumber(AValue: Double; AWorksheet: TsWorksheet);
-    procedure PushString(AValue: String; AWorksheet: TsWorksheet);
-    procedure Clear;
-    procedure Delete(AIndex: Integer);
-  end;
-
-function CreateBoolArg(AValue: Boolean): TsArgument;
-function CreateCellArg(AValue: PCell): TsArgument;
-function CreateCellRangeArg(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
-function CreateNumberArg(AValue: Double): TsArgument;
-function CreateStringArg(AValue: String): TsArgument;
-function CreateErrorArg(AError: TsErrorValue): TsArgument;
-function CreateEmptyArg: TsArgument;
-function NoCellRangeArg(Arg: TsArgument): TsArgument;
-
-{
-These are the functions called when calculating an RPN formula.
-}
-type
-  TsFormulaFunc = function(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-
-function fpsAdd         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSub         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsMul         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsDiv         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsPercent     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsPower       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsUMinus      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsUPlus       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsConcat      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsEqual       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsGreater     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLess        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLessEqual   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsNotEqual    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Math }
-function fpsABS         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsACOS        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsACOSH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsASIN        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsASINH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsATAN        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsATANH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOS         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOSH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsDEGREES     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsEXP         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsINT         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLN          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLOG         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLOG10       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsPI          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsRADIANS     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsRAND        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsROUND       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSIGN        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSIN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSINH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSQRT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTAN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTANH        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Date/time functions }
-function fpsDATE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsDATEDIF     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsDATEVALUE   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsDAY         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsHOUR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsMINUTE      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsMONTH       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsNOW         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSECOND      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTIME        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTIMEVALUE   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTODAY       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsWEEKDAY     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsYEAR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Statistical functions }
-function fpsAVEDEV      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsAVERAGE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOUNT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOUNTA      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOUNTBLANK  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOUNTIF     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsMAX         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsMIN         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsPRODUCT     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSTDEV       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSTDEVP      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSUM         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSUMIF       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSUMSQ       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsVAR         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsVARP        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ Logical functions }
-function fpsAND         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsFALSE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsIF          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsNOT         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsOR          (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTRUE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ String functions }
-function fpsCHAR        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCODE        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLEFT        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsLOWER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsMID         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsREPLACE     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsRIGHT       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsSUBSTITUTE  (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsTRIM        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsUPPER       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ lookup / reference }
-function fpsCOLUMN      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsCOLUMNS     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsROW         (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsROWS        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ info functions }
-function fpsCELLINFO    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsINFO        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISBLANK     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISERR       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISERROR     (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISLOGICAL   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISNA        (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISNONTEXT   (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISNUMBER    (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISREF       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsISTEXT      (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-function fpsVALUE       (Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-
+procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
 
 implementation
 
 uses
-  Math, lazutf8, DateUtils, fpsUtils;
+  Math, lazutf8, DateUtils, xlsconst, fpsUtils;
 
 
-{ Helpers }
+{------------------------------------------------------------------------------}
+{   Builtin math functions                                                     }
+{------------------------------------------------------------------------------}
 
-function CreateArgument: TsArgument;
+procedure fpsABS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  Result.StringValue := '';
-  FillChar(Result, SizeOf(Result), 0);
+  Result := FloatResult(abs(ArgToFloat(Args[0])));
 end;
 
-function CreateBoolArg(AValue: Boolean): TsArgument;
+procedure fpsACOS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := CreateArgument;
-  Result.ArgumentType := atBool;
-  Result.Boolvalue := AValue;
-end;
-
-function CreateCellArg(AValue: PCell): TsArgument;
-begin
-  Result := CreateArgument;
-  Result.ArgumentType := atCell;
-  Result.Cell := AValue;
-end;
-
-function CreateCellRangeArg(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal): TsArgument;
-begin
-  Result := CreateArgument;
-  Result.ArgumentType := atCellRange;
-  Result.FirstRow := AFirstRow;
-  Result.FirstCol := AFirstCol;
-  Result.LastRow := ALastRow;
-  Result.LastCol := ALastCol;
-end;
-
-function CreateNumberArg(AValue: Double): TsArgument;
-begin
-  Result := CreateArgument;
-  Result.ArgumentType := atNumber;
-  Result.NumberValue := AValue;
-end;
-
-function CreateStringArg(AValue: String): TsArgument;
-begin
-  Result := CreateArgument;
-  Result.ArgumentType := atString;
-  Result.StringValue := AValue;
-end;
-
-function CreateErrorArg(AError: TsErrorValue): TsArgument;
-begin
-  Result := CreateArgument;
-  Result.ArgumentType := atError;
-  Result.ErrorValue := AError;
-end;
-
-function CreateEmptyArg: TsArgument;
-begin
-  Result := CreateArgument;
-  Result.ArgumentType := atEmpty;
-end;
-
-function NoCellRangeArg(Arg: TsArgument): TsArgument;
-begin
-  if Arg.ArgumentType = atCellRange then
-    Result := CreateCellArg(Arg.Worksheet.FindCell(Arg.FirstRow, Arg.FirstCol))
+  x := ArgToFloat(Args[0]);
+  if InRange(x, -1, +1) then
+    Result := FloatResult(arccos(x))
   else
-    Result := Arg;
+    Result := ErrorResult(errOverflow);   // #NUM!
 end;
 
-{ Compares two arguments and returns -1 if "Arg2 > Arg1", +1 if "Arg1 < Arg2",
-  0 if "Arg1 = Arg2", MaxInt if result meaningless
-  If AExact is true only matching types are compared, otherwise types are converted before comparing. }
-function CompareArgs(Arg1, Arg2: TsArgument; AExact: Boolean): integer;
+procedure fpsACOSH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  val1, val2: Double;
-  cell1, cell2: PCell;
+  x: TsExprFloat;
 begin
-  Result := MaxInt;
-
-  // Number - Number
-  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType = atNumber) then begin
-    Result := CompareValue(Arg1.NumberValue, Arg2.NumberValue);
-    exit;
-  end;
-
-  // String - String
-  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType = atString) then begin
-    if TryStrToFloat(Arg1.StringValue, val1) and TryStrToFloat(Arg2.StringValue, val2) then
-      Result := CompareValue(val1, val2)
-    else
-      Result := UTF8CompareText(Arg1.StringValue, Arg2.StringValue);
-    exit;
-  end;
-
-  // Bool - Bool
-  if (Arg1.ArgumentType = atBool) and (Arg2.ArgumentType = atBool) then begin
-    Result := CompareValue(ord(Arg1.BoolValue), ord(Arg2.BoolValue));
-    exit;
-  end;
-
-  // Cell - Cell
-  if (Arg1.ArgumentType in [atCell, atCellRange]) and (Arg2.ArgumentType in [atCell, atCellRange])
-  then begin
-    if Arg1.ArgumentType = atCell
-      then cell1 := Arg1.Cell
-      else cell1 := Arg1.Worksheet.FindCell(Arg1.FirstRow, Arg1.FirstCol);
-    if Arg2.ArgumentType = atCell
-      then cell2 := Arg2.Cell
-      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
-    if Arg1.Worksheet.ReadNumericValue(cell1, val1) and Arg2.Worksheet.ReadNumericValue(cell2, val2) then begin
-      Result := CompareValue(val1, val2);
-      exit;
-    end;
-    Result := UTF8CompareText(cell1^.UTF8StringValue, cell2^.UTF8StringValue);
-    exit;
-  end;
-
-  // Mixed type comparison only if AExact = true
-  if AExact then
-    exit;
-
-  // Number - string
-  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType = atString) then begin
-    if TryStrToFloat(Arg2.StringValue, val2) then
-      Result := CompareValue(Arg1.NumberValue, val2);
-    exit;
-  end;
-  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType = atNumber) then begin
-    if TryStrToFloat(Arg1.StringValue, val1) then
-      Result := CompareValue(val1, Arg2.NumberValue);
-    exit;
-  end;
-
-  // Number - bool
-  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType = atBool) then begin
-    Result := CompareValue(Arg1.NumberValue, ord(Arg2.BoolValue));
-    exit;
-  end;
-  if (Arg1.ArgumentType = atBool) and (Arg2.ArgumentType = atNumber) then begin
-    Result := CompareValue(ord(Arg1.BoolValue), Arg2.NumberValue);
-    exit;
-  end;
-
-  // Number - cell
-  if (Arg1.ArgumentType = atNumber) and (Arg2.ArgumentType in [atCell, atCellRange]) then begin
-    if Arg2.ArgumentType = atCell
-      then cell2 := Arg2.Cell
-      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
-    if (cell2 <> nil) and Arg2.Worksheet.ReadNumericValue(cell2, val2) then
-      Result := CompareValue(Arg1.NumberValue, val2);
-    exit;
-  end;
-  if (Arg2.ArgumentType = atNumber) and (Arg1.ArgumentType in [atCell, atCellRange]) then begin
-    Result := CompareArgs(Arg2, Arg1, AExact);
-    if Result <> MaxInt then Result := -Result;
-    exit;
-  end;
-
-  // String - bool
-  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType = atBool) then begin
-    if not TryStrToFloat(Arg1.StringValue, val1) then
-      exit;
-    val2 := ord(Arg2.BoolValue);
-    Result := CompareValue(val1, val2);
-    exit;
-  end;
-  if (Arg2.ArgumentType = atString) and (Arg1.ArgumentType = atBool) then begin
-    Result := CompareArgs(Arg2, Arg1, AExact);
-    if Result <> MaxInt then Result := -Result;
-  end;
-
-  // String - cell
-  if (Arg1.ArgumentType = atString) and (Arg2.ArgumentType in [atCell, atCellRange]) then begin
-    if Arg2.ArgumentType = atCell
-      then cell2 := Arg2.Cell
-      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
-    if cell2 = nil then
-      exit;
-    if TryStrToFloat(Arg1.stringValue, val1) then begin
-      if Arg2.Worksheet.ReadNumericValue(cell2, val2) then
-        Result := CompareValue(val1, val2);
-      exit;
-    end;
-    Result := UTF8CompareText(Arg1.StringValue, cell2^.UTF8StringValue);
-    exit;
-  end;
-  if (Arg2.ArgumentType = atString) and (Arg1.ArgumentType in [atCell, atCellRange]) then begin
-    Result := CompareArgs(Arg2, Arg1, AExact);
-    if Result <> MaxInt then Result := -Result;
-    exit;
-  end;
-
-  // Bool - cell
-  if (Arg1.ArgumentType = atBool) and (Arg2.ArgumentType in [atCell, atCellRange]) then begin
-    val1 := ord(Arg1.BoolValue);
-    if Arg2.ArgumentType = atCell
-      then cell2 := Arg2.Cell
-      else cell2 := Arg2.Worksheet.FindCell(Arg2.FirstRow, Arg2.FirstCol);
-    if (cell2 <> nil) and Arg2.Worksheet.ReadNumericValue(cell2, val2) then
-      Result := CompareValue(val1, val2);
-    exit;
-  end;
-  if (Arg2.ArgumentType = atBool) and (Arg1.ArgumentType in [atCell, atCellRange]) then begin
-    Result := CompareArgs(Arg2, Arg1, AExact);
-    if Result <> MaxInt then Result := -Result;
-    exit;
-  end;
-end;
-
-
-{ TsArgumentStack }
-
-destructor TsArgumentStack.Destroy;
-begin
-  Clear;
-  inherited Destroy;
-end;
-
-procedure TsArgumentStack.Clear;
-var
-  i: Integer;
-begin
-  for i := Count-1 downto 0 do
-    Delete(i);
-  inherited Clear;
-end;
-
-procedure TsArgumentStack.Delete(AIndex: Integer);
-var
-  P: PsArgument;
-begin
-  P := PsArgument(Items[AIndex]);
-  P^.StringValue := '';
-  FreeMem(P, SizeOf(P^));
-  inherited Delete(AIndex);
-end;
-
-function TsArgumentStack.Pop: TsArgument;
-var
-  arg: PsArgument;
-begin
-  if Count = 0 then
-    Result := CreateErrorArg(errArgError)
-  else begin
-    arg := PsArgument(Items[Count-1]);
-    Result := arg^;
-    Result.StringValue := arg^.StringValue;  // necessary?
-    Result.Cell := arg^.Cell;
-    Delete(Count-1);
-  end;
-end;
-
-{ Pops ACount arguments from the stack and pushes them onto an intermediate
-  stack. After popping the arguments from that stack, the arguments are in
-  the correct order! }
-function TsArgumentStack.PopMultiple(ACount: Integer): TsArgumentStack;
-var
-  arg: TsArgument;
-  counter: Integer;
-begin
-  Result := TsArgumentStack.Create;
-  for counter := 1 to ACount do begin
-    arg := Pop;
-    Result.Push(arg, arg.Worksheet);
-  end;
-end;
-
-{@@
-  Pops an argument from the stack and assumes that it is a number. Returns the
-  number value if it is. Otherwise report an error in AErrArg and return false.
-  In case of a cell range, only the left/top cell is considered.
-}
-function TsArgumentStack.PopNumber(out AValue: Double;
-  out AErrArg: TsArgument): Boolean;
-var
-  arg: TsArgument;
-  cell: PCell;
-begin
-  Result := true;
-  arg := Pop;
-  if arg.isMissing then
-    AValue := NaN
+  x := ArgToFloat(Args[0]);
+  if x >= 1 then
+    Result := FloatResult(arccosh(ArgToFloat(Args[0])))
   else
-    case arg.ArgumentType of
-      atNumber:
-        AValue := arg.NumberValue;
-      atCell, atCellRange:
-        begin
-          if arg.ArgumentType = atCell then
-            cell := arg.Cell
-          else   // In case of cell range, consider only top/left cell.
-            cell := arg.Worksheet.FindCell(arg.FirstRow, arg.FirstCol);
-          if cell = nil then begin
-            Result := false;
-            AErrArg := CreateErrorArg(errWrongType);
-          end else
-            case cell^.ContentType of
-              cctNumber  : AValue := cell^.NumberValue;
-              cctDateTime: AValue := cell^.DateTimeValue;
-              else         begin
-                             Result := false;
-                             if cell^.ContentType = cctError then
-                               AErrArg := CreateErrorArg(cell^.ErrorValue)
-                             else
-                               AErrArg := CreateErrorArg(errWrongType);
-                           end;
-            end;
-        end;
-      else
-        begin
-          Result := false;
-          if arg.ArgumentType = atError then
-            AErrArg := CreateErrorArg(arg.ErrorValue)
-          else
-            AErrArg := CreateErrorArg(errWrongType);
-        end;
-    end;  // case
-  if Result then
-    AErrArg := CreateErrorArg(errOK);
+    Result := ErrorResult(errOverflow);
 end;
 
-{@@
-  Pops a given number of arguments from the stack and returns an array with
-  their number values. In case of a cell range, a value of each contained cell
-  is extracted. The numbers are in the same order as they were pushed onto the
-  stack.
-  If not all argument types correspond to number arguments the function returns
-  false and reports the error in the ErrArg parameter. }
-function TsArgumentStack.PopNumberValues(ANumArgs: Integer; ARangeAllowed:Boolean;
-  out AValues: TsArgNumberArray; out AErrArg: TsArgument;
-  AErrorOnNoNumber: Boolean = true): Boolean;
-
-  procedure AddNumber(ANumber: Double);
-  begin
-    SetLength(AValues, Length(AValues) + 1);
-    AValues[Length(AValues)-1] := ANumber;
-  end;
-
-  function AddCellNumber(ACell: PCell): Boolean;
-  begin
-    Result := true;
-    case ACell^.ContentType of
-      cctNumber:
-        AddNumber(ACell^.NumberValue);
-      cctDateTime:
-        AddNumber(ACell^.DateTimeValue);
-      cctBool:
-        AddNumber(IfThen(ACell^.BoolValue, 1.0, 0.0));
-      cctError:
-        if AErrorOnNoNumber then begin
-          result := false;
-          AErrArg := CreateErrorArg(ACell^.ErrorValue);
-        end;
-    end;
-  end;
-
+procedure fpsASIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  arg: TsArgument;
-  r,c: Cardinal;
-  cell: PCell;
-  ok: Boolean;
-  stack: TsArgumentStack;
+  x: TsExprFloat;
 begin
-  Result := true;
-  SetLength(AValues, 0);
-  stack := PopMultiple(ANumArgs);
-  try
-    while stack.Count > 0 do begin
-      arg := stack.Pop;
-      if arg.IsMissing then
-        AddNumber(NaN)
-      else
-        case arg.ArgumentType of
-          atNumber:
-            AddNumber(arg.NumberValue);
-          atBool:
-            AddNumber(IfThen(arg.BoolValue, 1.0, 0.0));
-          atCell:
-            if arg.Cell <> nil then begin
-              ok := AddCellNumber(arg.Cell);
-              if not ok then Result := false;
-            end;
-          atCellRange:
-            if ARangeAllowed then begin
-              if arg.Worksheet <> nil then
-                for r := arg.FirstRow to arg.LastRow do
-                  for c := arg.FirstCol to arg.LastCol do begin
-                    cell := arg.Worksheet.FindCell(r, c);
-                    if cell <> nil then begin
-                      ok := AddCellNumber(cell);
-                      if not ok then Result := false;
-                    end;
-                 end;
-            end else begin
-              result := false;
-              AErrArg := CreateErrorArg(errWrongType);
-            end;
-          atString:
-            if AErrorOnNoNumber then begin
-              result := false;
-              AErrArg := CreateErrorArg(errWrongType);
-            end;
-          atError:
-            begin
-              result := false;
-              AErrArg := CreateErrorArg(arg.ErrorValue);
-            end;
-        end;  // case
-    end;  // while
-    if Result then
-      AErrArg := CreateErrorArg(errOK)
-    else
-      SetLength(AValues, 0);
-  finally
-    stack.Free;
-  end;
+  x := ArgToFloat(Args[0]);
+  if InRange(x, -1, +1) then
+    Result := FloatResult(arcsin(ArgToFloat(Args[0])))
+  else
+    Result := ErrorResult(errOverflow);
 end;
 
-{@@
-  Pops an argument from the stack and assumes that it is a string. Returns the
-  text if it is. Otherwise report an error in AErrArg and return false.
-  In case of a cell range, only the left/top cell is considered.
-}
-function TsArgumentStack.PopString(out AValue: String;
-  out AErrArg: TsArgument): Boolean;
+procedure fpsASINH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(arcsinh(ArgToFloat(Args[0])));
+end;
+
+procedure fpsATAN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(arctan(ArgToFloat(Args[0])));
+end;
+
+procedure fpsATANH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  arg: TsArgument;
-  cell: PCell;
+  x: TsExprFloat;
 begin
-  Result := true;
-  AValue := '';
-  arg := Pop;
-  if not arg.isMissing then
-    case arg.ArgumentType of
-      atString:
-        AValue := arg.StringValue;
-      atCell, atCellRange:
-        begin
-          if arg.ArgumentType = atCell then
-            cell := arg.Cell
-          else    // In case of cell range, consider only top/left cell.
-            cell := arg.Worksheet.FindCell(arg.FirstRow, arg.FirstCol);
-          if (cell <> nil) and (cell^.ContentType = cctUTF8String) then
-            AValue := cell^.UTF8StringValue
-          else begin
-            Result := false;
-            AErrArg := CreateErrorArg(errWrongType);
-          end;
-        end;
-      else
-        begin
-          if arg.ArgumentType = atError then
-            AErrArg := CreateErrorArg(arg.ErrorValue)
-          else
-            AErrArg := CreateErrorArg(errWrongType);
-          Result := false;
-        end;
-    end;  // case
-  if Result then
-    AErrArg := CreateErrorArg(errOK);
+  x := ArgToFloat(Args[0]);
+  if (x > -1) and (x < +1) then
+    Result := FloatResult(arctanh(ArgToFloat(Args[0])))
+  else
+    Result := ErrorResult(errOverflow);   // #NUM!
 end;
 
-{@@
-  Pops a given count of arguments from the stack and returns an array with
-  their string values. In case of a cell range, a value of each contained cell
-  is extracted. The strings are in the same order as they were pushed onto the
-  stack.
-  If not all argument types correspond to string arguments the function returns
-  false and reports the error in the ErrArg parameter. }
-function TsArgumentStack.PopStringValues(ANumArgs: Integer; ARangeAllowed:Boolean;
-  out AValues: TsArgStringArray; out AErrArg: TsArgument): Boolean;
+procedure fpsCOS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(cos(ArgToFloat(Args[0])));
+end;
 
-  procedure AddString(AString: String);
-  begin
-    SetLength(AValues, Length(AValues) + 1);
-    AValues[Length(AValues)-1] := AString;
-  end;
+procedure fpsCOSH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(cosh(ArgToFloat(Args[0])));
+end;
 
-  function AddCellString(ACell: PCell): Boolean;
-  begin
-    Result := true;
-    case ACell^.ContentType of
-      cctUTF8String:
-        AddString(ACell^.UTF8StringValue);
-      cctError:
-        begin
-          result := false;
-          AErrArg := CreateErrorArg(ACell^.ErrorValue);
-        end;
-      else
-        Result := false;
-        AErrArg := CreateErrorArg(errWrongType);
-    end;
-  end;
+procedure fpsDEGREES(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(RadToDeg(ArgToFloat(Args[0])));
+end;
 
+procedure fpsEXP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(exp(ArgToFloat(Args[0])));
+end;
+
+procedure fpsINT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(floor(ArgToFloat(Args[0])));
+end;
+
+procedure fpsLN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  arg: TsArgument;
-  r,c: Cardinal;
-  cell: PCell;
-  ok: Boolean;
-  stack: TsArgumentStack;
+  x: TsExprFloat;
 begin
-  Result := true;
-  SetLength(AValues, 0);
-  stack := PopMultiple(ANumArgs);
-  try
-    while stack.Count > 0 do begin
-      arg := stack.Pop;
-      if arg.IsMissing then
-        AddString('')
-      else
-        case arg.ArgumentType of
-          atString:
-            AddString(arg.StringValue);
-
-          atCell, atCellRange:
-            if (arg.ArgumentType = atCellRange) and ARangeAllowed then begin
-              if (arg.Worksheet <> nil) then begin
-                for r := arg.FirstRow to arg.LastRow do
-                  for c := arg.FirstCol to arg.LastCol do begin
-                    cell := arg.Worksheet.FindCell(r, c);
-                    if cell <> nil then begin
-                      ok := AddCellString(cell);
-                      if not ok then Result := false;
-                    end;
-                 end;
-              end else begin
-                result := false;
-                AErrArg := CreateErrorArg(errWrongType);
-              end;
-            end else begin
-              cell := nil;
-              if arg.ArgumentType = atCell then
-                cell := arg.Cell
-              else if arg.Worksheet <> nil then
-                cell := arg.Worksheet.FindCell(arg.FirstRow, arg.FirstCol);
-              if cell <> nil then begin
-                ok := AddCellString(arg.Cell);
-                if not ok then Result := false;
-              end;
-            end;
-
-          else
-            begin
-              Result := false;
-              if arg.ArgumentTYpe = atError then
-                AErrArg := CreateErrorArg(arg.ErrorValue)
-              else
-                AErrArg := CreateErrorArg(errWrongType);
-            end;
-        end;  // case
-    end;  // while
-
-    if Result then
-      AErrArg := CreateErrorArg(errOK)
-    else
-      SetLength(AValues, 0);
-  finally
-    stack.Free;
-  end;
+  x := ArgToFloat(Args[0]);
+  if x > 0 then
+    Result := FloatResult(ln(x))
+  else
+    Result := ErrorResult(errOverflow);   // #NUM!
 end;
 
-procedure TsArgumentStack.Push(AValue: TsArgument; AWorksheet: TsWorksheet);
-var
-  arg: PsArgument;
-begin
-  GetMem(arg, SizeOf(TsArgument));
-  arg^ := AValue;
-  arg^.StringValue := AValue.StringValue;
-  arg^.Cell := AValue.Cell;
-  arg^.Worksheet := AWorksheet;
-  Add(arg);
-end;
-
-procedure TsArgumentStack.PushBool(AValue: Boolean; AWorksheet: TsWorksheet);
-begin
-  Push(CreateBoolArg(AValue), AWorksheet);
-end;
-
-procedure TsArgumentStack.PushCell(AValue: PCell; AWorksheet: TsWorksheet);
-begin
-  Push(CreateCellArg(AValue), AWorksheet);
-end;
-
-procedure TsArgumentStack.PushCellRange(AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal;
-  AWorksheet: TsWorksheet);
-begin
-  Push(CreateCellRangeArg(AFirstRow, AFirstCol, ALastRow, ALastCol), AWorksheet);
-end;
-
-procedure TsArgumentStack.PushMissing(AWorksheet: TsWorksheet);
-var
-  arg: TsArgument;
-begin
-  arg := CreateArgument;
-  arg.IsMissing := true;
-  Push(arg, AWorksheet);
-end;
-
-procedure TsArgumentStack.PushNumber(AValue: Double; AWorksheet: TsWorksheet);
-begin
-  Push(CreateNumberArg(AValue), AWorksheet);
-end;
-
-procedure TsArgumentStack.PushString(AValue: String; AWorksheet: TsWorksheet);
-begin
-  Push(CreateStringArg(AValue), AWorksheet);
-end;
-
-
-{ Preparing arguments }
-
-function GetBoolFromArgument(Arg: TsArgument; var AValue: Boolean): TsErrorValue;
-begin
-  Result := errOK;
-  case Arg.ArgumentType of
-    atBool : AValue := Arg.BoolValue;
-    atCell : if (Arg.Cell <> nil) and (Arg.Cell^.ContentType = cctBool)
-               then AValue := Arg.Cell^.BoolValue
-               else Result := errWrongType;
-    atError: Result := Arg.ErrorValue;
-    else     Result := errWrongType;
-  end;
-end;
-
-{@@
-  Pops boolean values from the argument stack. Is called when calculating rpn
-  formulas.
-  @param  Args      Argument stack to be used.
-  @param  NumArgs   Count of arguments to be popped from the stack
-  @param  AValues   (output) Array containing the retrieved boolean values.
-                    The array length is given by NumArgs. The data in the array
-                    are in the same order in which they were pushed onto the stack.
-                    Missing arguments are not included in the array, the case
-                    of missing arguments must be handled separately if the are
-                    important.
-  @param  AErrArg   (output) Argument containing an error code, e.g. errWrongType
-                    if non-boolean data were met on the stack.
-  @return TRUE if everything was ok, FALSE, if AErrArg reports an error. }
-function PopBoolValues(Args: TsArgumentStack; NumArgs: Integer;
-  out AValues: TsArgBoolArray; out AErrArg: TsArgument): Boolean;
-var
-  arg: TsArgument;
-  err: TsErrorValue;
-  counter, j: Integer;
-  b: Boolean = false;
-begin
-  SetLength(AValues, NumArgs);
-  j := 0;
-  for counter := 1 to NumArgs do begin
-    arg := Args.Pop;
-    if not arg.IsMissing then begin
-      err := GetBoolFromArgument(arg, b);
-      if err = errOK then begin
-        AValues[j] := b;
-        inc(j);
-      end else begin
-        Result := false;
-        AErrArg := CreateErrorArg(err);
-        SetLength(AValues, 0);
-        exit;
-      end;
-    end;
-  end;
-  Result := true;
-  AErrArg := CreateErrorArg(errOK);
-  SetLength(AValues, j);
-  // Flip array - we want to have the arguments in the array in the same order
-  // they were pushed.
-  for j:=0 to Length(AValues) div 2 - 1 do begin
-    b := AValues[j];
-    AValues[j] := AValues[High(AValues)-j];
-    AValues[High(AValues)-j] := b;
-  end;
-end;
-
-function PopDateValue(Args: TsArgumentStack; out ADate: TDate;
-  out AErrArg: TsArgument): Boolean;
-var
-  arg: TsArgument;
-begin
-  arg := Args.Pop;
-  case arg.ArgumentType of
-    atError, atBool, atEmpty:
-      begin
-        Result := false;
-        AErrArg := CreateErrorArg(errWrongType);
-      end;
-    atNumber:
-      begin
-        Result := true;
-        ADate := arg.NumberValue;
-      end;
-    atString:
-      begin
-        Result := TryStrToDate(arg.StringValue, ADate);
-        if not Result then AErrArg := CreateErrorArg(errWrongType);
-      end;
-    atCell:
-      if (arg.Cell <> nil) then begin
-        Result := true;
-        case arg.Cell^.ContentType of
-          cctDateTime: ADate := arg.Cell^.DateTimeValue;
-          cctNumber  : ADate := arg.Cell^.NumberValue;
-          else         Result := false;
-                       AErrArg := CreateErrorArg(errWrongType);
-        end;
-      end;
-  end;
-end;
-
-function PopTimeValue(Args: TsArgumentStack; out ATime: TTime;
-  out AErrArg: TsArgument): Boolean;
-var
-  arg: TsArgument;
-begin
-  arg := Args.Pop;
-  case arg.ArgumentType of
-    atError, atBool, atEmpty:
-      begin
-        Result := false;
-        AErrArg := CreateErrorArg(errWrongType);
-      end;
-    atNumber:
-      begin
-        Result := true;
-        ATime := frac(arg.NumberValue);
-      end;
-    atString:
-      begin
-        Result := TryStrToTime(arg.StringValue, ATime);
-        if not Result then AErrArg := CreateErrorArg(errWrongType);
-      end;
-    atCell:
-      if (arg.Cell <> nil) then begin
-        Result := true;
-        case arg.Cell^.ContentType of
-          cctDateTime: ATime := frac(arg.Cell^.DateTimeValue);
-          cctNumber  : ATime := frac(arg.Cell^.NumberValue);
-          else         Result := false;
-                       AErrArg := CreateErrorArg(errWrongType);
-        end;
-      end;
-  end;
-end;
-
-
-{ Operations }
-
-function fpsAdd(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumberArg(data[0] + data[1]);
-end;
-
-function fpsSub(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumberArg(data[0] - data[1]);
-end;
-
-function fpsMul(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumberArg(data[0] * data[1]);
-end;
-
-function fpsDiv(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(2, false, data, Result) then begin
-    if data[1] = 0 then
-      Result := CreateErrorArg(errDivideByZero)
-    else
-      Result := CreateNumberArg(data[0] / data[1]);
-  end;
-end;
-
-function fpsPercent(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(data[0] * 0.01);
-end;
-
-function fpsPower(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(2, false, data, Result) then
-    try
-      Result := CreateNumberArg(power(data[0], data[1]));
-    except on E: EInvalidArgument do
-      Result := CreateErrorArg(errOverflow);
-      // this could happen, e.g., for "power( (neg value), (non-integer) )"
-    end;
-end;
-
-function fpsUMinus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(-data[0]);
-end;
-
-function fpsUPlus(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(data[0]);
-end;
-
-function fpsConcat(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgStringArray;
-begin
-  Unused(NumArgs);
-  if Args.PopStringValues(2, false, data, Result) then
-    Result := CreateStringArg(data[0] + data[1]);
-end;
-
-function fpsEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  arg1, arg2: TsArgument;
-  res: Integer;
-begin
-  Unused(NumArgs);
-  arg2 := NoCellRangeArg(Args.Pop);
-  arg1 := NoCellRangeArg(Args.Pop);
-  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
-  Result := CreateBoolArg(res = 0);
-end;
-
-function fpsGreater(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  arg1, arg2: TsArgument;
-  res: Integer;
-begin
-  Unused(NumArgs);
-  arg2 := NoCellRangeArg(Args.Pop);
-  arg1 := NoCellRangeArg(Args.Pop);
-  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
-  Result := CreateBoolArg(res > 0);
-end;
-
-function fpsGreaterEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  arg1, arg2: TsArgument;
-  res: Integer;
-begin
-  Unused(NumArgs);
-  arg2 := NoCellRangeArg(Args.Pop);
-  arg1 := NoCellRangeArg(Args.Pop);
-  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
-  Result := CreateBoolArg(res >= 0);
-end;
-
-function fpsLess(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  arg1, arg2: TsArgument;
-  res: Integer;
-begin
-  Unused(NumArgs);
-  arg2 := NoCellRangeArg(Args.Pop);
-  arg1 := NoCellRangeArg(Args.Pop);
-  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
-  Result := CreateBoolArg(res < 0);
-end;
-
-function fpsLessEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  arg1, arg2: TsArgument;
-  res: Integer;
-begin
-  Unused(NumArgs);
-  arg2 := NoCellRangeArg(Args.Pop);
-  arg1 := NoCellRangeArg(Args.Pop);
-  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
-  Result := CreateBoolArg(res <= 0);
-end;
-
-function fpsNotEqual(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  arg1, arg2: TsArgument;
-  res: Integer;
-begin
-  Unused(NumArgs);
-  arg2 := NoCellRangeArg(Args.Pop);
-  arg1 := NoCellRangeArg(Args.Pop);
-  res := CompareArgs(arg1, arg2, (arg1.ArgumentType <> atCell) and (arg2.ArgumentType <> atCell));
-  Result := CreateBoolArg(res <> 0);
-end;
-
-
-{ Math functions }
-
-function fpsABS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(abs(data[0]));
-end;
-
-function fpsACOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if InRange(data[0], -1, +1) then
-      Result := CreateNumberArg(arccos(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);  // #NUM!
-  end;
-end;
-
-function fpsACOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if data[0] >= 1 then
-      Result := CreateNumberArg(arccosh(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);  // #NUM!
-  end;
-end;
-
-function fpsASIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if InRange(data[0], -1, +1) then
-      Result := CreateNumberArg(arcsin(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);  // #NUM!
-  end;
-end;
-
-function fpsASINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(arcsinh(data[0]));
-end;
-
-function fpsATAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(arctan(data[0]));
-end;
-
-function fpsATANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if (data[0] > -1) and (data[0] < +1) then
-      Result := CreateNumberArg(arctanh(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);  // #NUM!
-  end;
-end;
-
-function fpsCOS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(cos(data[0]));
-end;
-
-function fpsCOSH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(cosh(data[0]));
-end;
-
-function fpsDEGREES(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(RadToDeg(data[0]));
-end;
-
-function fpsEXP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(exp(data[0]));
-end;
-
-function fpsINT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(floor(data[0]));
-end;
-
-function fpsLN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if (data[0] > 0) then
-      Result := CreateNumberArg(ln(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);  // #NUM!
-  end;
-end;
-
-function fpsLOG(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsLOG(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // LOG( number [, base] )  -  base is 10 if omitted.
 var
-  data: TsArgNumberArray;
-  base: Double;
+  x: TsExprFloat;
+  base: TsExprFloat;
 begin
-  base := 10;
-  if Args.PopNumberValues(NumArgs, false, data, Result) then begin
-    if NumArgs = 2 then begin
-      if IsNaN(data[1]) then begin
-        Result := CreateErrorArg(errOverflow);
-        exit;
-      end;
-      base := data[1];
-    end;
+  x := ArgToFloat(Args[0]);
+  if x <= 0 then begin
+    Result := ErrorResult(errOverflow);  // #NUM!
+    exit;
+  end;
 
+  if Length(Args) = 2 then begin
+    base := ArgToFloat(Args[1]);
     if base < 0 then begin
-      Result := CreateErrorArg(errOverflow);
+      Result := ErrorResult(errOverflow);  // #NUM!
       exit;
     end;
+  end else
+    base := 10;
 
-    if data[0] > 0 then
-      Result := CreateNumberArg(logn(base, data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);
-  end;
+  Result := FloatResult(logn(base, x));
 end;
 
-function fpsLOG10(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsLOG10(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsArgNumberArray;
+  x: TsExprFloat;
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if (data[0] > 0) then
-      Result := CreateNumberArg(log10(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);  // #NUM!
-  end;
+  x := ArgToFloat(Args[0]);
+  if x > 0 then
+    Result := FloatResult(log10(x))
+  else
+    Result := ErrorResult(errOverflow);   // #NUM!
 end;
 
-function fpsPI(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsPI(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   Unused(Args);
-  Unused(NumArgs);
-  Result := CreateNumberArg(pi);
+  Result := FloatResult(pi);
 end;
 
-function fpsRADIANS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
+procedure fpsPOWER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(degtorad(data[0]))
+  try
+    Result := FloatResult(Power(ArgToFloat(Args[0]), ArgToFloat(Args[1])));
+  except
+    Result := ErrorResult(errOverflow);
+  end;
 end;
 
-function fpsRAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsRADIANS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(DegToRad(ArgToFloat(Args[0])));
+end;
+
+procedure fpsRAND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   Unused(Args);
-  Unused(NumArgs);
-  Result := CreateNumberArg(random);
+  Result := FloatResult(random);
 end;
 
-function fpsROUND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsROUND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsArgNumberArray;
+  n: Integer;
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(2, false, data, Result) then
-    Result := CreateNumberArg(RoundTo(data[0], round(data[1])))
+  if Args[1].ResultType = rtInteger then
+    n := Args[1].ResInteger
+  else
+    n := round(Args[1].ResFloat);
+  Result := FloatResult(RoundTo(ArgToFloat(Args[0]), n));
 end;
 
-function fpsSIGN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsSIGN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(sign(ArgToFloat(Args[0])));
+end;
+
+procedure fpsSIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(sin(ArgToFloat(Args[0])));
+end;
+
+procedure fpsSINH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+begin
+  Result := FloatResult(sinh(ArgToFloat(Args[0])));
+end;
+
+procedure fpsSQRT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsArgNumberArray;
+  x: TsExprFloat;
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(sign(data[0]))
+  x := ArgToFloat(Args[0]);
+  if x >= 0 then
+    Result := FloatResult(sqrt(x))
+  else
+    Result := ErrorResult(errOverflow);
 end;
 
-function fpsSIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsTAN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsArgNumberArray;
+  x: TsExprFloat;
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(sin(data[0]))
+  x := ArgToFloat(Args[0]);
+  if frac(x / (pi*0.5)) = 0 then
+    Result := ErrorResult(errOverflow)   // #NUM!
+  else
+    Result := FloatResult(tan(ArgToFloat(Args[0])));
 end;
 
-function fpsSINH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
+procedure fpsTANH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(sinh(data[0]))
-end;
-
-function fpsSQRT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if data[0] >= 0.0 then
-      Result := CreateNumberArg(sqrt(data[0]))
-    else
-      Result := CreateErrorArg(errOverflow);
-  end;
-end;
-
-function fpsTAN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if frac(data[0] / (pi*0.5)) = 0 then
-      Result := CreateErrorArg(errOverflow)
-    else
-      Result := CreateNumberArg(tan(data[0]))
-  end;
-end;
-
-function fpsTANH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then
-    Result := CreateNumberArg(tanh(data[0]))
+  Result := FloatResult(tanh(ArgToFloat(Args[0])));
 end;
 
 
-{ Date/time functions }
+{------------------------------------------------------------------------------}
+{   Built-in date/time functions                                               }
+{------------------------------------------------------------------------------}
 
-function fpsDATE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsDATE(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 // DATE( year, month, day )
-var
-  data: TsArgNumberArray;
-  d: TDate;
 begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(3, false, data, Result) then begin
-    d := EncodeDate(round(data[0]), round(data[1]), round(data[2]));
-    Result := CreateNumberArg(d);
-  end;
+  Result := DateTimeResult(
+    EncodeDate(ArgToInt(Args[0]), ArgToInt(Args[1]), ArgToInt(Args[2]))
+  );
 end;
 
-function fpsDATEDIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsDATEDIF(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 { DATEDIF( start_date, end_date, interval )
     start_date <= end_date !
     interval = Y  - The number of complete years.
@@ -1413,277 +259,1250 @@ function fpsDATEDIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 var
   interval: String;
   start_date, end_date: TDate;
-  res1, res2, res3: TsArgument;
 begin
-  Unused(NumArgs);
-  Args.PopString(interval, res1);
-  PopDateValue(Args, end_date, res2);;
-  PopDateValue(Args, start_date, res3);
-  if res1.ErrorValue <> errOK then begin
-    Result := CreateErrorArg(res1.ErrorValue);
-    exit;
-  end;
-  if res2.ErrorValue <> errOK then begin
-    Result := CreateErrorArg(res2.ErrorValue);
-    exit;
-  end;
-  if res3.ErrorValue <> errOK then begin
-    Result := CreateErrorArg(res3.ErrorValue);
-    exit;
-  end;
-
-  interval := Uppercase(interval);
+  start_date := ArgToDateTime(Args[0]);
+  end_date := ArgToDateTime(Args[1]);
+  interval := ArgToString(Args[2]);
 
   if end_date > start_date then
-    Result := CreateErrorArg(errOverflow)
+    Result := ErrorResult(errOverflow)
   else if interval = 'Y' then
-    Result := CreateNumberArg(YearsBetween(end_date, start_date))
+    Result := FloatResult(YearsBetween(end_date, start_date))
   else if interval = 'M' then
-    Result := CreateNumberArg(MonthsBetween(end_date, start_date))
+    Result := FloatResult(MonthsBetween(end_date, start_date))
   else if interval = 'D' then
-    Result := CreateNumberArg(DaysBetween(end_date, start_date))
+    Result := FloatResult(DaysBetween(end_date, start_date))
   else
-    Result := CreateErrorArg(errFormulaNotSupported);
+    Result := ErrorResult(errFormulaNotSupported);
 end;
 
-function fpsDATEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// DATEVALUE( date )   -- date can be a string or a date/time
+procedure fpsDATEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the serial number of a date. Input is a string.
+// DATE( date_string )
 var
-  d: TDate;
+  d: TDateTime;
 begin
-  Unused(NumArgs);
-  if PopDateValue(Args, d, Result) then
-    Result := CreateNumberArg(d);
+  if TryStrToDate(Args[0].ResString, d) then
+    Result := DateTimeResult(d)
+  else
+    Result := ErrorResult(errWrongType);
 end;
 
-function fpsDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsDAY(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// DAY( date_value )
+// date_value can be a serial number or a string
 var
-  d: TDate;
+  y,m,d: Word;
+  dt: TDateTime;
 begin
-  Unused(NumArgs);
-  if PopDateValue(Args, d, Result) then
-    Result := CreateNumberArg(DayOf(d));
-end;
-
-function fpsHOUR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  t: TTime;
-begin
-  Unused(NumArgs);
-  if PopTimeValue(Args, t, Result) then
-    Result := CreateNumberArg(HourOf(t));
-end;
-
-function fpsMINUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  t: TTime;
-begin
-  Unused(NumArgs);
-  if PopTimeValue(Args, t, Result) then
-    Result := CreateNumberArg(MinuteOf(t));
-end;
-
-function fpsMONTH(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  d: TDate;
-begin
-  Unused(NumArgs);
-  if PopDateValue(Args, d, Result) then
-    Result := CreateNumberArg(MonthOf(d));
-end;
-
-function fpsNOW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// NOW()
-begin
-  Unused(Args);
-  Unused(NumArgs);
-  Result := CreateNumberArg(now);
-end;
-
-function fpsSECOND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-var
-  t: TTime;
-begin
-  Unused(NumArgs);
-  if PopTimeValue(Args, t, Result) then
-    Result := CreateNumberArg(SecondOf(t));
-end;
-
-function fpsTIME(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// TIME( hour, minute, second )
-var
-  data: TsArgNumberArray;
-  t: TTime;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(3, false, data, Result) then begin
-    t := EncodeTime(round(data[0]), round(data[1]), round(data[2]), 0);
-    Result := CreateNumberArg(t);
-  end;
-end;
-
-function fpsTIMEVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// TIMEVALUE( time_value )
-var
-  t: TTime;
-begin
-  Unused(NumArgs);
-  if PopTimeValue(Args, t, Result) then
-    Result := CreateNumberArg(t);
-end;
-
-function fpsToday(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// TODAY()
-begin
-  Unused(Args);
-  Unused(NumArgs);
-  Result := CreateNumberArg(Date());
-end;
-
-function fpsWEEKDAY(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ WEEKDAY( serial_number, [return_value]
-   return_value = 1 - Returns a number from 1 (Sunday) to 7 (Saturday).
-                      This is the default if parameter is omitted.
-                = 2 - Returns a number from 1 (Monday) to 7 (Sunday).
-                = 3 - Returns a number from 0 (Monday) to 6 (Sunday). }
-var
-  d: TDate;
-  data: TsArgNumberArray;
-  n: Integer;
-  dow: Integer;
-begin
-  n := 1;
-  if NumArgs = 2 then begin
-    if Args.PopNumberValues(1, false, data, Result) then
-      n := round(data[0])
-    else begin
-      Args.Pop;
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
+    DecodeDate(ArgToFloat(Args[0]), y,m,d)
+  else
+  if Args[0].ResultType in [rtString] then
+  begin
+    if TryStrToDate(Args[0].ResString, dt) then
+      DecodeDate(dt, y,m,d)
+    else
+    begin
+      Result := ErrorResult(errWrongType);
       exit;
     end;
   end;
-  if PopDateValue(Args, d, Result) then begin
-    dow := DayOfWeek(d);   // Sunday = 1 ... Saturday = 7
-    case n of
-      1: ;
-      2: if dow > 1 then dow := dow - 1 else dow := 7;
-      3: if dow > 1 then dow := dow - 2 else dow := 6;
-      else
-         Result := CreateErrorArg(errOverflow);  // #NUM!
-         exit;
+  Result := IntegerResult(d);
+end;
+
+procedure fpsHOUR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// HOUR( time_value )
+// time_value can be a number or a string.
+var
+  h, m, s, ms: Word;
+  t: double;
+begin
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
+    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms)
+  else
+  if (Args[0].ResultType in [rtString]) then
+  begin
+    if TryStrToTime(Args[0].ResString, t) then
+      DecodeTime(t, h,m,s,ms)
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
     end;
-    Result := CreateNumberArg(dow);
+  end;
+  Result := IntegerResult(h);
+end;
+
+procedure fpsMINUTE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// MINUTE( serial_number or string )
+var
+  h, m, s, ms: Word;
+  t: double;
+begin
+  if (Args[0].resultType in [rtDateTime, rtFloat, rtInteger]) then
+    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms)
+  else
+  if (Args[0].ResultType in [rtString]) then
+  begin
+    if TryStrToTime(Args[0].ResString, t) then
+      DecodeTime(t, h,m,s,ms)
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+  end;
+  Result := IntegerResult(m);
+end;
+
+procedure fpsMONTH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// MONTH( date_value or string )
+var
+  y,m,d: Word;
+  dt: TDateTime;
+begin
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
+    DecodeDate(ArgToFloat(Args[0]), y,m,d)
+  else
+  if (Args[0].ResultType in [rtString]) then
+  begin
+    if TryStrToDate(Args[0].ResString, dt) then
+      DecodeDate(dt, y,m,d)
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+  end;
+  Result := IntegerResult(m);
+end;
+
+procedure fpsNOW(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the current system date and time. Willrefresh the date/time value
+// whenever the worksheet recalculates.
+//   NOW()
+begin
+  Result := DateTimeResult(Now);
+end;
+
+procedure fpsSECOND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// SECOND( serial_number )
+var
+  h, m, s, ms: Word;
+  t: Double;
+begin
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
+    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms)
+  else
+  if (Args[0].ResultType in [rtString]) then
+  begin
+    if TryStrToTime(Args[0].ResString, t) then
+      DecodeTime(t, h,m,s,ms)
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+  end;
+  Result := IntegerResult(s);
+end;
+
+procedure fpsTIME(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// TIME( hour, minute, second)
+begin
+  Result := DateTimeResult(
+    EncodeTime(ArgToInt(Args[0]), ArgToInt(Args[1]), ArgToInt(Args[2]), 0)
+  );
+end;
+
+procedure fpsTIMEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the serial number of a time. Input must be a string.
+// DATE( date_string )
+var
+  t: TDateTime;
+begin
+  if TryStrToTime(Args[0].ResString, t) then
+    Result := DateTimeResult(t)
+  else
+    Result := ErrorResult(errWrongType);
+end;
+
+procedure fpsTODAY(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the current system date. This function will refresh the date
+// whenever the worksheet recalculates.
+//   TODAY()
+begin
+  Result := DateTimeResult(Date);
+end;
+
+procedure fpsWEEKDAY(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+{ WEEKDAY( serial_number, [return_value] )
+   return_value = 1 - Returns a number from 1 (Sunday) to 7 (Saturday) (default)
+                = 2 - Returns a number from 1 (Monday) to 7 (Sunday).
+                = 3 - Returns a number from 0 (Monday) to 6 (Sunday). }
+var
+  n: Integer;
+  dow: Integer;
+  dt: TDateTime;
+begin
+  if Length(Args) = 2 then
+    n := ArgToInt(Args[1])
+  else
+    n := 1;
+  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger] then
+    dt := ArgToDateTime(Args[0])
+  else
+  if Args[0].ResultType in [rtString] then
+    if not TryStrToDate(Args[0].ResString, dt) then
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+  dow := DayOfWeek(dt);   // Sunday = 1 ... Saturday = 7
+  case n of
+    1: ;
+    2: if dow > 1 then dow := dow - 1 else dow := 7;
+    3: if dow > 1 then dow := dow - 2 else dow := 6;
+  end;
+  Result := IntegerResult(dow);
+end;
+
+procedure fpsYEAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// YEAR( date_value )
+var
+  y,m,d: Word;
+  dt: TDateTime;
+begin
+  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger] then
+    DecodeDate(ArgToFloat(Args[0]), y,m,d)
+  else
+  if Args[0].ResultType in [rtString] then
+  begin
+    if TryStrToDate(Args[0].ResString, dt) then
+      DecodeDate(dt, y,m,d)
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+  end;
+  Result := IntegerResult(y);
+end;
+
+
+{------------------------------------------------------------------------------}
+{    Builtin string functions                                                  }
+{------------------------------------------------------------------------------}
+
+procedure fpsCHAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// CHAR( ascii_value )
+// returns the character based on the ASCII value
+var
+  arg: Integer;
+begin
+  Result := ErrorResult(errWrongType);
+  case Args[0].ResultType of
+    rtInteger, rtFloat:
+      if Args[0].ResultType in [rtInteger, rtFloat] then
+      begin
+        arg := ArgToInt(Args[0]);
+        if (arg >= 0) and (arg < 256) then
+          Result := StringResult(AnsiToUTF8(Char(arg)));
+      end;
+    rtError:
+      Result := ErrorResult(Args[0].ResError);
+    rtEmpty:
+      Result.ResultType := rtEmpty;
   end;
 end;
 
-function fpsYEAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsCODE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// CODE( text )
+// returns the ASCII value of a character or the first character in a string.
 var
-  d: TDate;
+  s: String;
+  ch: Char;
 begin
-  Unused(NumArgs);
-  if PopDateValue(Args, d, Result) then
-    Result := CreateNumberArg(YearOf(d));
+  s := ArgToString(Args[0]);
+  if s = '' then
+    Result := ErrorResult(errWrongType)
+  else
+  begin
+    ch := UTF8ToAnsi(s)[1];
+    Result := IntegerResult(ord(ch));
+  end;
 end;
 
-
-{ Statistical functions }
-
-function fpsAVEDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// Average value of absolute deviations of data from their mean.
-// AVEDEV( argument1, [argument2, ... argument_n] )
+procedure fpsCONCATENATE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// CONCATENATE( text1, text2, ... text_n )
+// Joins two or more strings together
 var
-  data: TsArgNumberArray;
-  m: Double;
+  s: String;
   i: Integer;
 begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then begin
-    m := Mean(data);
-    for i:=0 to High(data) do
-      data[i] := abs(data[i] - m);
-    m := Mean(data);
-    Result := CreateNumberArg(m)
+  s := '';
+  for i:=0 to Length(Args)-1 do
+  begin
+    if Args[i].ResultType = rtError then
+    begin
+      Result := ErrorResult(Args[i].ResError);
+      exit;
+    end;
+    s := s + ArgToString(Args[i]);
+  end;
+  Result := StringResult(s);
+end;
+
+procedure fpsLEFT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// LEFT( text, [number_of_characters] )
+// extracts a substring from a string, starting from the left-most character
+var
+  s: String;
+  count: Integer;
+begin
+  s := Args[0].ResString;
+  if s = '' then
+    Result.ResultType := rtEmpty
+  else
+  begin
+    if Length(Args) = 1 then
+      count := 1
+    else
+    if Args[1].ResultType in [rtInteger, rtFloat] then
+      count := ArgToInt(Args[1])
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+    Result := StringResult(UTF8LeftStr(s, count));
   end;
 end;
 
-function fpsAVERAGE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// AVERAGE( argument1, [argument2, ... argument_n] )
-var
-  data: TsArgNumberArray;
+procedure fpsLEN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// LEN( text )
+//  returns the length of the specified string.
 begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(Mean(data))
+  Result := IntegerResult(UTF8Length(Args[0].ResString));
 end;
 
-function fpsCOUNT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
+procedure fpsLOWER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// LOWER( text )
+// converts all letters in the specified string to lowercase. If there are
+// characters in the string that are not letters, they are not affected.
+begin
+  Result := StringResult(UTF8Lowercase(Args[0].ResString));
+end;
+
+procedure fpsMID(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// MID( text, start_position, number_of_characters )
+// extracts a substring from a string (starting at any position).
+begin
+  Result := StringResult(UTF8Copy(Args[0].ResString, ArgToInt(Args[1]), ArgToInt(Args[2])));
+end;
+
+procedure fpsREPLACE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// REPLACE( old_text, start, number_of_chars, new_text )
+//  replaces a sequence of characters in a string with another set of characters
+var
+  sOld, sNew, s1, s2: String;
+  start: Integer;
+  count: Integer;
+begin
+  sOld := Args[0].ResString;
+  start := ArgToInt(Args[1]);
+  count := ArgToInt(Args[2]);
+  sNew := Args[3].ResString;
+  s1 := UTF8Copy(sOld, 1, start-1);
+  s2 := UTF8Copy(sOld, start+count, UTF8Length(sOld));
+  Result := StringResult(s1 + sNew + s2);
+end;
+
+procedure fpsRIGHT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// RIGHT( text, [number_of_characters] )
+// extracts a substring from a string, starting from the last character
+var
+  s: String;
+  count: Integer;
+begin
+  s := Args[0].ResString;
+  if s = '' then
+    Result.ResultType := rtEmpty
+  else begin
+    if Length(Args) = 1 then
+      count := 1
+    else
+    if Args[1].ResultType in [rtInteger, rtFloat] then
+      count := ArgToInt(Args[1])
+    else
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+    Result := StringResult(UTF8RightStr(s, count));
+  end;
+end;
+
+procedure fpsSUBSTITUTE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// SUBSTITUTE( text, old_text, new_text, [nth_appearance] )
+// replaces a set of characters with another.
+var
+  sOld: String;
+  sNew: String;
+  s1, s2: String;
+  n: Integer;
+  s: String;
+  p: Integer;
+begin
+  s := Args[0].ResString;
+  sOld := ArgToString(Args[1]);
+  sNew := ArgToString(Args[2]);
+  if Length(Args) = 4 then
+  begin
+    n := ArgToInt(Args[3]);               // THIS PART NOT YET CHECKED !!!!!!
+    if n <= 0 then
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+    p := UTF8Pos(sOld, s);
+    while (n > 1) do begin
+      p := UTF8Pos(sOld, s, p+1);
+      dec(n);
+    end;
+    if p > 0 then begin
+      s1 := UTF8Copy(s, 1, p-1);
+      s2 := UTF8Copy(s, p+UTF8Length(sOld), UTF8Length(s));
+      s := s1 + sNew + s2;
+    end;
+    Result := StringResult(s);
+  end else
+    Result := StringResult(UTF8StringReplace(s, sOld, sNew, [rfReplaceAll]));
+end;
+
+procedure fpsTRIM(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// TRIM( text )
+// returns a text value with the leading and trailing spaces removed
+begin
+  Result := StringResult(UTF8Trim(Args[0].ResString));
+end;
+
+procedure fpsUPPER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// UPPER( text )
+// converts all letters in the specified string to uppercase. If there are
+// characters in the string that are not letters, they are not affected.
+begin
+  Result := StringResult(UTF8Uppercase(Args[0].ResString));
+end;
+
+procedure fpsVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// VALUE( text )
+// converts a text value that represents a number to a number.
+var
+  x: Double;
+  n: Integer;
+  s: String;
+begin
+  s := ArgToString(Args[0]);
+  if TryStrToInt(s, n) then
+    Result := IntegerResult(n)
+  else
+  if TryStrToFloat(s, x, ExprFormatSettings) then
+    Result := FloatResult(x)
+  else
+    Result := ErrorResult(errWrongType);
+end;
+
+
+{------------------------------------------------------------------------------}
+{    Built-in logical functions                                                }
+{------------------------------------------------------------------------------}
+
+procedure fpsAND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// AND( condition1, [condition2], ... )
+// up to 30 parameters. At least 1 parameter.
+var
+  i: Integer;
+  b: Boolean;
+begin
+  b := true;
+  for i:=0 to High(Args) do
+    b := b and Args[i].ResBoolean;
+  Result.ResBoolean := b;
+end;
+
+procedure fpsFALSE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// FALSE ()
+begin
+  Unused(Args);
+  Result.ResBoolean := false;
+end;
+
+procedure fpsIF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// IF( condition, value_if_true, [value_if_false] )
+begin
+  if Length(Args) > 2 then
+  begin
+    if Args[0].ResBoolean then
+      Result := Args[1]
+    else
+      Result := Args[2];
+  end else
+  begin
+    if Args[0].ResBoolean then
+      Result := Args[1]
+    else
+      Result.ResBoolean := false;
+  end;
+end;
+
+procedure fpsNOT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// NOT( condition )
+begin
+  Result.ResBoolean := not Args[0].ResBoolean;
+end;
+
+procedure fpsOR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// OR( condition1, [condition2], ... )
+// up to 30 parameters. At least 1 parameter.
+var
+  i: Integer;
+  b: Boolean;
+begin
+  b := false;
+  for i:=0 to High(Args) do
+    b := b or Args[i].ResBoolean;
+  Result.ResBoolean := b;
+end;
+
+procedure fpsTRUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// TRUE()
+begin
+  Unused(Args);
+  Result.ResBoolean := true;
+end;
+
+
+{------------------------------------------------------------------------------}
+{    Built-in statistical functions                                            }
+{------------------------------------------------------------------------------}
+
+procedure fpsAVEDEV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Average value of absolute deviations of data from their mean.
+// AVEDEV( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+  m: TsExprFloat;
+  i: Integer;
+begin
+  ArgsToFloatArray(Args, data);
+  m := Mean(data);
+  for i:=0 to High(data) do      // replace data by their average deviation from the mean
+    data[i] := abs(data[i] - m);
+  Result.ResFloat := Mean(data);
+end;
+
+procedure fpsAVERAGE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// AVERAGE( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  Result.ResFloat := Mean(data);
+end;
+
+procedure fpsCOUNT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 { counts the number of cells that contain numbers as well as the number of
   arguments that contain numbers.
-  COUNT( argument1 [, argument2, ... argument_n] )
-}
+    COUNT( value1, [value2, ... value_n] )  }
 var
-  data: TsArgNumberArray;
+  data: TsExprFloatArray;
 begin
-  if Args.PopNumberValues(NumArgs, true, data, result, false) then
-    Result := CreateNumberArg(Length(data));
+  ArgsToFloatArray(Args, data);
+  Result.ResInteger := Length(data);
 end;
 
-function fpsCOUNTA(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// COUNTA (argument1 [, argument2, ... argument_n] )
-// Counts the number of non-empty cells specified by arguments of misc type.
+procedure fpsCOUNTA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Counts the number of cells that are not empty as well as the number of
+// arguments that contain values
+//   COUNTA( value1, [value2, ... value_n] )
 var
-  arg: TsArgument;
-  counter: Integer;
-  r, c: Integer;
+  i, n: Integer;
+  r, c: Cardinal;
   cell: PCell;
-  n: Integer;
+  arg: TsExpressionResult;
 begin
   n := 0;
-  // The order of arguments is not important for counting --> we just pop them from the stack.
-  for counter := 1 to NumArgs do begin
-    arg := Args.Pop;
-    case arg.ArgumentType of
-      atCell:
-        if arg.Cell^.ContentType <> cctEmpty then inc(n);
-      atCellRange:
-        for r := arg.FirstRow to arg.LastRow do
-          for c := arg.FirstCol to arg.LastCol do begin
-            cell := arg.Worksheet.FindCell(r, c);
-            if (cell <> nil) and (cell^.ContentType <> cctEmpty) then inc(n);
-          end;
-      atString:
-        if arg.StringValue <> '' then inc(n);
-      atNumber, atBool, atError:
+  for i:=0 to High(Args) do
+  begin
+    arg := Args[i];
+    case arg.ResultType of
+      rtInteger, rtFloat, rtDateTime, rtBoolean:
         inc(n);
+      rtString:
+        if arg.ResString <> '' then inc(n);
+      rtError:
+        if arg.ResError <> errOK then inc(n);
+      rtCell:
+        begin
+          cell := ArgToCell(arg);
+          if cell <> nil then
+            case cell^.ContentType of
+              cctNumber, cctDateTime, cctBool: inc(n);
+              cctUTF8String: if cell^.UTF8StringValue <> '' then inc(n);
+              cctError: if cell^.ErrorValue <> errOK then inc(n);
+            end;
+        end;
+      rtCellRange:
+        for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
+          for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
+          begin
+            cell := arg.Worksheet.FindCell(r, c);
+            if (cell <> nil) then
+              case cell^.ContentType of
+                cctNumber, cctDateTime, cctBool : inc(n);
+                cctUTF8String: if cell^.UTF8StringValue <> '' then inc(n);
+                cctError: if cell^.ErrorValue <> errOK then inc(n);
+              end;
+          end;
     end;
   end;
-  Result := CreateNumberArg(n);
+  Result.ResInteger := n;
 end;
 
-function fpsCOUNTBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// COUNTBLANK( range )
-// counts the number of empty cells in a range.
+procedure fpsCOUNTBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+{ Counts the number of empty cells in a range.
+    COUNTBLANK( range )
+  "range" is the range of cells to count empty cells. }
 var
-  arg: TsArgument;
-  r, c, n: Cardinal;
+  n: Integer;
+  r, c: Cardinal;
+  cell: PCell;
+  arg: TsExpressionResult;
 begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  case arg.ArgumentType of
-    atCell:
-      if arg.Cell = nil
-        then Result := CreateNumberArg(1)
-        else Result := CreateNumberArg(0);
-    atCellRange:
+  n := 0;
+  case Args[0].ResultType of
+    rtEmpty:
+      inc(n);
+    rtCell:
       begin
-        n := 0;
-        for r := arg.FirstRow to arg.LastRow do
-          for c := arg.FirstCol to arg.LastCol do
-            if arg.Worksheet.FindCell(r, c) = nil then inc(n);
-        Result := CreateNumberArg(n);
+        cell := ArgToCell(Args[0]);
+        if cell = nil then
+          inc(n)
+        else
+          case cell^.ContentType of
+            cctNumber, cctDateTime, cctBool: ;
+            cctUTF8String: if cell^.UTF8StringValue = '' then inc(n);
+            cctError: if cell^.ErrorValue = errOK then inc(n);
+          end;
       end;
-    else
-      Result := CreateErrorArg(errWrongType);
+    rtCellRange:
+      for r := Args[0].ResCellRange.Row1 to Args[0].ResCellRange.Row2 do
+        for c := Args[0].ResCellRange.Col1 to Args[0].ResCellRange.Col2 do begin
+          cell := Args[0].Worksheet.FindCell(r, c);
+          if cell = nil then
+            inc(n)
+          else
+            case cell^.ContentType of
+              cctNumber, cctDateTime, cctBool: ;
+              cctUTF8String: if cell^.UTF8StringValue = '' then inc(n);
+              cctError: if cell^.ErrorValue = errOK then inc(n);
+            end;
+        end;
+  end;
+  Result.ResInteger := n;
+end;
+
+procedure fpsMAX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// MAX( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  Result.ResFloat := MaxValue(data);
+end;
+
+procedure fpsMIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// MIN( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  Result.ResFloat := MinValue(data);
+end;
+
+procedure fpsPRODUCT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// PRODUCT( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+  i: Integer;
+  p: TsExprFloat;
+begin
+  ArgsToFloatArray(Args, data);
+  p := 1.0;
+  for i := 0 to High(data) do
+    p := p * data[i];
+  Result.ResFloat := p;
+end;
+
+procedure fpsSTDEV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the standard deviation of a population based on a sample of numbers
+// of numbers.
+//   STDEV( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  if Length(data) > 1 then
+    Result.ResFloat := StdDev(data)
+  else
+  begin
+    Result.ResultType := rtError;
+    Result.ResError := errDivideByZero;
   end;
 end;
 
+procedure fpsSTDEVP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the standard deviation of a population based on an entire population
+// STDEVP( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  if Length(data) > 0 then
+    Result.ResFloat := PopnStdDev(data)
+  else
+  begin
+    Result.ResultType := rtError;
+    Result.ResError := errDivideByZero;
+  end;
+end;
+
+procedure fpsSUM(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// SUM( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  Result.ResFloat := Sum(data);
+end;
+
+procedure fpsSUMSQ(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the sum of the squares of a series of values.
+// SUMSQ( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  Result.ResFloat := SumOfSquares(data);
+end;
+
+procedure fpsVAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the variance of a population based on a sample of numbers.
+// VAR( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  if Length(data) > 1 then
+    Result.ResFloat := Variance(data)
+  else
+  begin
+    Result.ResultType := rtError;
+    Result.ResError := errDivideByZero;
+  end;
+end;
+
+procedure fpsVARP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// Returns the variance of a population based on an entire population of numbers.
+// VARP( value1, [value2, ... value_n] )
+var
+  data: TsExprFloatArray;
+begin
+  ArgsToFloatArray(Args, data);
+  if Length(data) > 0 then
+    Result.ResFloat := PopnVariance(data)
+  else
+  begin
+    Result.ResultType := rtError;
+    Result.ResError := errDivideByZero;
+  end;
+end;
+
+
+{------------------------------------------------------------------------------}
+{    Builtin info functions                                                    }
+{------------------------------------------------------------------------------}
+
+{ !!!!!!!!!!!!!!  not working !!!!!!!!!!!!!!!!!!!!!! }
+{ !!!!!!!!!!!!!! needs localized strings !!!!!!!!!!! }
+
+procedure fpsCELL(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// CELL( type, [range] )
+
+{ from http://www.techonthenet.com/excel/formulas/cell.php:
+
+  "type" is the type of information that we retrieve for the cell and can have
+  one of the following values:
+    Value         Explanation
+    ------------- --------------------------------------------------------------
+    "address"     Address of the cell. If the cell refers to a range, it is the
+                  first cell in the range.
+    "col"         Column number of the cell.
+    "color"       Returns 1 if the color is a negative value; Otherwise it returns 0.
+    "contents"    Contents of the upper-left cell.
+    "filename"    Filename of the file that contains reference.
+    "format"      Number format of the cell according to:
+                     "G"    General
+                     "F0"   0
+                     ",0"   #,##0
+                     "F2"   0.00
+                     ",2"   #,##0.00
+                     "C0"   $#,##0_);($#,##0)
+                     "C0-"  $#,##0_);[Red]($#,##0)
+                     "C2"   $#,##0.00_);($#,##0.00)
+                     "C2-"  $#,##0.00_);[Red]($#,##0.00)
+                     "P0"   0%
+                     "P2"   0.00%
+                     "S2"   0.00E+00
+                     "G"    # ?/? or # ??/??
+                     "D4"   m/d/yy or m/d/yy h:mm or mm/dd/yy
+                     "D1"   d-mmm-yy or dd-mmm-yy
+                     "D2"   d-mmm or dd-mmm
+                     "D3"   mmm-yy
+                     "D5"   mm/dd
+                     "D6"   h:mm:ss AM/PM
+                     "D7"   h:mm AM/PM
+                     "D8"   h:mm:ss
+                     "D9"   h:mm
+    "parentheses" Returns 1 if the cell is formatted with parentheses;
+                  Otherwise, it returns 0.
+    "prefix"      Label prefix for the cell.
+                  - Returns a single quote (') if the cell is left-aligned.
+                  - Returns a double quote (") if the cell is right-aligned.
+                  - Returns a caret (^) if the cell is center-aligned.
+                  - Returns a back slash (\) if the cell is fill-aligned.
+                  - Returns an empty text value for all others.
+    "protect"     Returns 1 if the cell is locked. Returns 0 if the cell is not locked.
+    "row"         Row number of the cell.
+    "type"        Returns "b" if the cell is empty.
+                  Returns "l" if the cell contains a text constant.
+                  Returns "v" for all others.
+    "width"       Column width of the cell, rounded to the nearest integer.
+
+  !!!! NOT ALL OF THEM ARE SUPPORTED HERE !!!
+
+  "range" is optional in Excel. It is the cell (or range) that you wish to retrieve
+  information for. If the range parameter is omitted, the CELL function will
+  assume that you are retrieving information for the last cell that was changed.
+
+  "range" is NOT OPTIONAL here because we don't know the last cell changed !!!
+}
+var
+  stype: String;
+  r1,r2, c1,c2: Cardinal;
+  cell: PCell;
+  res: TsExpressionResult;
+begin
+  if Length(Args)=1 then
+  begin
+    // This case is not supported by us, but it is by Excel.
+    // Therefore the error is not quite correct...
+    Result := ErrorResult(errIllegalRef);
+    exit;
+  end;
+
+  stype := lowercase(ArgToString(Args[0]));
+
+  case Args[1].ResultType of
+    rtCell:
+      begin
+        cell := ArgToCell(Args[1]);
+        r1 := Args[1].ResRow;
+        c1 := Args[1].ResCol;
+        r2 := r1;
+        c2 := c1;
+      end;
+    rtCellRange:
+      begin
+        r1 := Args[1].ResCellRange.Row1;
+        r2 := Args[1].ResCellRange.Row2;
+        c1 := Args[1].ResCellRange.Col1;
+        c2 := Args[1].ResCellRange.Col2;
+        cell := Args[1].Worksheet.FindCell(r1, c1);
+      end;
+    else
+      Result := ErrorResult(errWrongType);
+      exit;
+  end;
+
+  if stype = 'address' then
+    Result := StringResult(GetCellString(r1, c1, []))
+  else
+  if stype = 'col' then
+    Result := IntegerResult(c1+1)
+  else
+  if stype = 'color' then
+  begin
+    if (cell <> nil) and (cell^.NumberFormat = nfCurrencyRed) then
+      Result := IntegerResult(1)
+    else
+      Result := IntegerResult(0);
+  end else
+  if stype = 'contents' then
+  begin
+    if cell = nil then
+      Result := IntegerResult(0)
+    else
+      case cell^.ContentType of
+        cctNumber     : if frac(cell^.NumberValue) = 0 then
+                          Result := IntegerResult(trunc(cell^.NumberValue))
+                        else
+                          Result := FloatResult(cell^.NumberValue);
+        cctDateTime   : Result := DateTimeResult(cell^.DateTimeValue);
+        cctUTF8String : Result := StringResult(cell^.UTF8StringValue);
+        cctBool       : Result := BooleanResult(cell^.BoolValue);
+        cctError      : Result := ErrorResult(cell^.ErrorValue);
+      end;
+  end else
+  if stype = 'filename' then
+    Result := Stringresult(
+      ExtractFilePath(Args[1].Worksheet.Workbook.FileName) + '[' +
+      ExtractFileName(Args[1].Worksheet.Workbook.FileName) + ']' +
+      Args[1].Worksheet.Name
+    )
+  else
+  if stype = 'format' then begin
+    Result := StringResult('G');
+    if cell <> nil then
+      case cell^.NumberFormat of
+        nfGeneral:
+          Result := StringResult('G');
+        nfFixed:
+          if cell^.NumberFormatStr= '0' then Result := StringResult('0') else
+          if cell^.NumberFormatStr = '0.00' then  Result := StringResult('F0');
+        nfFixedTh:
+          if cell^.NumberFormatStr = '#,##0' then Result := StringResult(',0') else
+          if cell^.NumberFormatStr = '#,##0.00' then Result := StringResult(',2');
+        nfPercentage:
+          if cell^.NumberFormatStr = '0%' then Result := StringResult('P0') else
+          if cell^.NumberFormatStr = '0.00%' then Result := StringResult('P2');
+        nfExp:
+          if cell^.NumberFormatStr = '0.00E+00' then Result := StringResult('S2');
+        nfShortDate, nfLongDate, nfShortDateTime:
+          Result := StringResult('D4');
+        nfLongTimeAM:
+          Result := StringResult('D6');
+        nfShortTimeAM:
+          Result := StringResult('D7');
+        nfLongTime:
+          Result := StringResult('D8');
+        nfShortTime:
+          Result := StringResult('D9');
+      end;
+  end else
+  if stype = 'prefix' then
+  begin
+    Result := StringResult('');
+    if (cell^.ContentType = cctUTF8String) then
+      case cell^.HorAlignment of
+        haLeft  : Result := StringResult('''');
+        haCenter: Result := StringResult('^');
+        haRight : Result := StringResult('"');
+      end;
+  end else
+  if stype = 'row' then
+    Result := IntegerResult(r1+1)
+  else
+  if stype = 'type' then begin
+    if (cell = nil) or (cell^.ContentType = cctEmpty) then
+      Result := StringResult('b')
+    else if cell^.ContentType = cctUTF8String then begin
+      if (cell^.UTF8StringValue = '')
+        then Result := StringResult('b')
+        else Result := StringResult('l');
+    end else
+      Result := StringResult('v');
+  end else
+  if stype = 'width' then
+    Result := FloatResult(Args[1].Worksheet.GetColWidth(c1))
+  else
+    Result := ErrorResult(errWrongType);
+end;
+
+procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+//  ISBLANK( value )
+// Checks for blank or null values.
+// "value" is the value that you want to test.
+// If "value" is blank, this function will return TRUE.
+// If "value" is not blank, the function will return FALSE.
+var
+  cell: PCell;
+begin
+  case Args[0].ResultType of
+    rtEmpty : Result := BooleanResult(true);
+    rtString: Result := BooleanResult(Result.ResString = '');
+    rtCell  : begin
+                cell := ArgToCell(Args[0]);
+                if (cell = nil) or (cell^.ContentType = cctEmpty) then
+                  Result := BooleanResult(true)
+                else
+                  Result := BooleanResult(false);
+              end;
+  end;
+end;
+
+procedure fpsISERR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISERR( value )
+// If "value" is an error value (except #N/A), this function will return TRUE.
+// Otherwise, it will return FALSE.
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType = cctError) and (cell^.ErrorValue <> errArgError)
+      then Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType = rtError) and (Args[0].ResError <> errArgError) then
+    Result := BooleanResult(true);
+end;
+
+procedure fpsISERROR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISERROR( value )
+// If "value" is an error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?
+// or #NULL), this function will return TRUE. Otherwise, it will return FALSE.
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType = cctError) and (cell^.ErrorValue <= errArgError)
+      then Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType = rtError) then
+    Result := BooleanResult(true);
+end;
+
+procedure fpsISLOGICAL(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISLOGICAL( value )
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType = cctBool) then
+      Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType = rtBoolean) then
+    Result := BooleanResult(true);
+end;
+
+procedure fpsISNA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISNA( value )
+// If "value" is a #N/A error value , this function will return TRUE.
+// Otherwise, it will return FALSE.
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType = cctError) and (cell^.ErrorValue = errArgError)
+      then Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType = rtError) and (Args[0].ResError = errArgError) then
+    Result := BooleanResult(true);
+end;
+
+procedure fpsISNONTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISNONTEXT( value )
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell = nil) or ((cell <> nil) and (cell^.ContentType <> cctUTF8String)) then
+      Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType <> rtString) then
+    Result := BooleanResult(true);
+end;
+
+procedure fpsISNUMBER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISNUMBER( value )
+// Tests "value" for a number (or date/time - checked with Excel).
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
+      Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType in [rtFloat, rtInteger, rtDateTime]) then
+    Result := BooleanResult(true);
+end;
+
+procedure fpsISREF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISREF( value )
+begin
+  Result := BooleanResult(Args[0].ResultType in [rtCell, rtCellRange]);
+end;
+
+procedure fpsISTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ISTEXT( value )
+var
+  cell: PCell;
+begin
+  Result := BooleanResult(false);
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType = cctUTF8String) then
+      Result := BooleanResult(true);
+  end else
+  if (Args[0].ResultType = rtString) then
+    Result := BooleanResult(true);
+end;
+
+
+{------------------------------------------------------------------------------}
+{   Registration                                                               }
+{------------------------------------------------------------------------------}
+
+{@@ Registers the standard built-in functions. Called automatically. }
+procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
+var
+  cat: TsBuiltInExprCategory;
+begin
+  with AManager do
+  begin
+    // Math functions
+    cat := bcMath;
+    AddFunction(cat, 'ABS',       'F', 'F',    INT_EXCEL_SHEET_FUNC_ABS,        @fpsABS);
+    AddFunction(cat, 'ACOS',      'F', 'F',    INT_EXCEL_SHEET_FUNC_ACOS,       @fpsACOS);
+    AddFunction(cat, 'ACOSH',     'F', 'F',    INT_EXCEL_SHEET_FUNC_ACOSH,      @fpsACOSH);
+    AddFunction(cat, 'ASIN',      'F', 'F',    INT_EXCEL_SHEET_FUNC_ASIN,       @fpsASIN);
+    AddFunction(cat, 'ASINH',     'F', 'F',    INT_EXCEL_SHEET_FUNC_ASINH,      @fpsASINH);
+    AddFunction(cat, 'ATAN',      'F', 'F',    INT_EXCEL_SHEET_FUNC_ATAN,       @fpsATAN);
+    AddFunction(cat, 'ATANH',     'F', 'F',    INT_EXCEL_SHEET_FUNC_ATANH,      @fpsATANH);
+    AddFunction(cat, 'COS',       'F', 'F',    INT_EXCEL_SHEET_FUNC_COS,        @fpsCOS);
+    AddFunction(cat, 'COSH',      'F', 'F',    INT_EXCEL_SHEET_FUNC_COSH,       @fpsCOSH);
+    AddFunction(cat, 'DEGREES',   'F', 'F',    INT_EXCEL_SHEET_FUNC_DEGREES,    @fpsDEGREES);
+    AddFunction(cat, 'EXP',       'F', 'F',    INT_EXCEL_SHEET_FUNC_EXP,        @fpsEXP);
+    AddFunction(cat, 'INT',       'I', 'F',    INT_EXCEL_SHEET_FUNC_INT,        @fpsINT);
+    AddFunction(cat, 'LN',        'F', 'F',    INT_EXCEL_SHEET_FUNC_LN,         @fpsLN);
+    AddFunction(cat, 'LOG',       'F', 'Ff',   INT_EXCEL_SHEET_FUNC_LOG,        @fpsLOG);
+    AddFunction(cat, 'LOG10',     'F', 'F',    INT_EXCEL_SHEET_FUNC_LOG10,      @fpsLOG10);
+    AddFunction(cat, 'PI',        'F', '',     INT_EXCEL_SHEET_FUNC_PI,         @fpsPI);
+    AddFunction(cat, 'POWER',     'F', 'FF',   INT_EXCEL_SHEET_FUNC_POWER,      @fpsPOWER);
+    AddFunction(cat, 'RADIANS',   'F', 'F',    INT_EXCEL_SHEET_FUNC_RADIANS,    @fpsRADIANS);
+    AddFunction(cat, 'RAND',      'F', '',     INT_EXCEL_SHEET_FUNC_RAND,       @fpsRAND);
+    AddFunction(cat, 'ROUND',     'F', 'FF',   INT_EXCEL_SHEET_FUNC_ROUND,      @fpsROUND);
+    AddFunction(cat, 'SIGN',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SIGN,       @fpsSIGN);
+    AddFunction(cat, 'SIN',       'F', 'F',    INT_EXCEL_SHEET_FUNC_SIN,        @fpsSIN);
+    AddFunction(cat, 'SINH',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SINH,       @fpsSINH);
+    AddFunction(cat, 'SQRT',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SQRT,       @fpsSQRT);
+    AddFunction(cat, 'TAN',       'F', 'F',    INT_EXCEL_SHEET_FUNC_TAN,        @fpsTAN);
+    AddFunction(cat, 'TANH',      'F', 'F',    INT_EXCEL_SHEET_FUNC_TANH,       @fpsTANH);
+
+    // Date/time
+    cat := bcDateTime;
+    AddFunction(cat, 'DATE',      'D', 'III',  INT_EXCEL_SHEET_FUNC_DATE,       @fpsDATE);
+    AddFunction(cat, 'DATEDIF',   'F', 'DDS',  INT_EXCEL_SHEET_FUNC_DATEDIF,    @fpsDATEDIF);
+    AddFunction(cat, 'DATEVALUE', 'D', 'S',    INT_EXCEL_SHEET_FUNC_DATEVALUE,  @fpsDATEVALUE);
+    AddFunction(cat, 'DAY',       'I', '?',    INT_EXCEL_SHEET_FUNC_DAY,        @fpsDAY);
+    AddFunction(cat, 'HOUR',      'I', '?',    INT_EXCEL_SHEET_FUNC_HOUR,       @fpsHOUR);
+    AddFunction(cat, 'MINUTE',    'I', '?',    INT_EXCEL_SHEET_FUNC_MINUTE,     @fpsMINUTE);
+    AddFunction(cat, 'MONTH',     'I', '?',    INT_EXCEL_SHEET_FUNC_MONTH,      @fpsMONTH);
+    AddFunction(cat, 'NOW',       'D', '',     INT_EXCEL_SHEET_FUNC_NOW,        @fpsNOW);
+    AddFunction(cat, 'SECOND',    'I', '?',    INT_EXCEL_SHEET_FUNC_SECOND,     @fpsSECOND);
+    AddFunction(cat, 'TIME' ,     'D', 'III',  INT_EXCEL_SHEET_FUNC_TIME,       @fpsTIME);
+    AddFunction(cat, 'TIMEVALUE', 'D', 'S',    INT_EXCEL_SHEET_FUNC_TIMEVALUE,  @fpsTIMEVALUE);
+    AddFunction(cat, 'TODAY',     'D', '',     INT_EXCEL_SHEET_FUNC_TODAY,      @fpsTODAY);
+    AddFunction(cat, 'WEEKDAY',   'I', '?i',   INT_EXCEL_SHEET_FUNC_WEEKDAY,    @fpsWEEKDAY);
+    AddFunction(cat, 'YEAR',      'I', '?',    INT_EXCEL_SHEET_FUNC_YEAR,       @fpsYEAR);
+
+    // Strings
+    cat := bcStrings;
+    AddFunction(cat, 'CHAR',      'S', 'I',    INT_EXCEL_SHEET_FUNC_CHAR,       @fpsCHAR);
+    AddFunction(cat, 'CODE',      'I', 'S',    INT_EXCEL_SHEET_FUNC_CODE,       @fpsCODE);
+    AddFunction(cat, 'CONCATENATE','S','S+',   INT_EXCEL_SHEET_FUNC_CONCATENATE,@fpsCONCATENATE);
+    AddFunction(cat, 'LEFT',      'S', 'Si',   INT_EXCEL_SHEET_FUNC_LEFT,       @fpsLEFT);
+    AddFunction(cat, 'LEN',       'I', 'S',    INT_EXCEL_SHEET_FUNC_LEN,        @fpsLEN);
+    AddFunction(cat, 'LOWER',     'S', 'S',    INT_EXCEL_SHEET_FUNC_LOWER,      @fpsLOWER);
+    AddFunction(cat, 'MID',       'S', 'SII',  INT_EXCEL_SHEET_FUNC_MID,        @fpsMID);
+    AddFunction(cat, 'REPLACE',   'S', 'SIIS', INT_EXCEL_SHEET_FUNC_REPLACE,    @fpsREPLACE);
+    AddFunction(cat, 'RIGHT',     'S', 'Si',   INT_EXCEL_SHEET_FUNC_RIGHT,      @fpsRIGHT);
+    AddFunction(cat, 'SUBSTITUTE','S', 'SSSi', INT_EXCEL_SHEET_FUNC_SUBSTITUTE, @fpsSUBSTITUTE);
+    AddFunction(cat, 'TRIM',      'S', 'S',    INT_EXCEL_SHEET_FUNC_TRIM,       @fpsTRIM);
+    AddFunction(cat, 'UPPER',     'S', 'S',    INT_EXCEL_SHEET_FUNC_UPPER,      @fpsUPPER);
+    AddFunction(cat, 'VALUE',     'F', 'S',    INT_EXCEL_SHEET_FUNC_VALUE,      @fpsVALUE);
+
+    // Logical
+    cat := bcLogical;
+    AddFunction(cat, 'AND',       'B', 'B+',   INT_EXCEL_SHEET_FUNC_AND,        @fpsAND);
+    AddFunction(cat, 'FALSE',     'B', '',     INT_EXCEL_SHEET_FUNC_FALSE,      @fpsFALSE);
+    AddFunction(cat, 'IF',        'B', 'B?+',  INT_EXCEL_SHEET_FUNC_IF,         @fpsIF);
+    AddFunction(cat, 'NOT',       'B', 'B',    INT_EXCEL_SHEET_FUNC_NOT,        @fpsNOT);
+    AddFunction(cat, 'OR',        'B', 'B+',   INT_EXCEL_SHEET_FUNC_OR,         @fpsOR);
+    AddFunction(cat, 'TRUE',      'B', '',     INT_EXCEL_SHEET_FUNC_TRUE ,      @fpsTRUE);
+
+    // Statistical
+    cat := bcStatistics;
+    AddFunction(cat, 'AVEDEV',    'F', '?+',   INT_EXCEL_SHEET_FUNC_AVEDEV,     @fpsAVEDEV);
+    AddFunction(cat, 'AVERAGE',   'F', '?+',   INT_EXCEL_SHEET_FUNC_AVERAGE,    @fpsAVERAGE);
+    AddFunction(cat, 'COUNT',     'I', '?+',   INT_EXCEL_SHEET_FUNC_COUNT,      @fpsCOUNT);
+    AddFunction(cat, 'COUNTA',    'I', '?+',   INT_EXCEL_SHEET_FUNC_COUNTA,     @fpsCOUNTA);
+    AddFunction(cat, 'COUNTBLANK','I', 'R',    INT_EXCEL_SHEET_FUNC_COUNTBLANK, @fpsCOUNTBLANK);
+    AddFunction(cat, 'MAX',       'F', '?+',   INT_EXCEL_SHEET_FUNC_MAX,        @fpsMAX);
+    AddFunction(cat, 'MIN',       'F', '?+',   INT_EXCEL_SHEET_FUNC_MIN,        @fpsMIN);
+    AddFunction(cat, 'PRODUCT',   'F', '?+',   INT_EXCEL_SHEET_FUNC_PRODUCT,    @fpsPRODUCT);
+    AddFunction(cat, 'STDEV',     'F', '?+',   INT_EXCEL_SHEET_FUNC_STDEV,      @fpsSTDEV);
+    AddFunction(cat, 'STDEVP',    'F', '?+',   INT_EXCEL_SHEET_FUNC_STDEVP,     @fpsSTDEVP);
+    AddFunction(cat, 'SUM',       'F', '?+',   INT_EXCEL_SHEET_FUNC_SUM,        @fpsSUM);
+    AddFunction(cat, 'SUMSQ',     'F', '?+',   INT_EXCEL_SHEET_FUNC_SUMSQ,      @fpsSUMSQ);
+    AddFunction(cat, 'VAR',       'F', '?+',   INT_EXCEL_SHEET_FUNC_VAR,        @fpsVAR);
+    AddFunction(cat, 'VARP',      'F', '?+',   INT_EXCEL_SHEET_FUNC_VARP,       @fpsVARP);
+    // to do: CountIF, SUMIF
+
+    // Info functions
+    cat := bcInfo;
+    //AddFunction(cat, 'CELL',      '?', 'Sr',   INT_EXCEL_SHEET_FUNC_CELL,       @fpsCELL);
+    AddFunction(cat, 'ISBLANK',   'B', '?',    INT_EXCEL_SHEET_FUNC_ISBLANK,    @fpsISBLANK);
+    AddFunction(cat, 'ISERR',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISERR,      @fpsISERR);
+    AddFunction(cat, 'ISERROR',   'B', '?',    INT_EXCEL_SHEET_FUNC_ISERROR,    @fpsISERROR);
+    AddFunction(cat, 'ISLOGICAL', 'B', '?',    INT_EXCEL_SHEET_FUNC_ISLOGICAL,  @fpsISLOGICAL);
+    AddFunction(cat, 'ISNA',      'B', '?',    INT_EXCEL_SHEET_FUNC_ISNA,       @fpsISNA);
+    AddFunction(cat, 'ISNONTEXT', 'B', '?',    INT_EXCEL_SHEET_FUNC_ISNONTEXT,  @fpsISNONTEXT);
+    AddFunction(cat, 'ISNUMBER',  'B', '?',    INT_EXCEL_SHEET_FUNC_ISNUMBER,   @fpsISNUMBER);
+    AddFunction(cat, 'ISREF',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISREF,      @fpsISREF);
+    AddFunction(cat, 'ISTEXT',    'B', '?',    INT_EXCEL_SHEET_FUNC_ISTEXT,     @fpsISTEXT);
+
+    (*
+    // Lookup / reference functions
+    cat := bcLookup;
+    AddFunction(cat, 'COLUMN',    'I', 'R',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
+                  *)
+
+  end;
+end;
+
+
+  (*
 function fpsCOUNTIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // COUNTIF( range, criteria )
 // - "range" is to the cell range to be analyzed
@@ -1732,67 +1551,9 @@ begin
     end;
   Result := CreateNumberArg(n);
 end;
+*)
 
-function fpsMAX(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// MAX( number1, number2, ... number_n )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(MaxValue(data))
-end;
-
-function fpsMIN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// MIN( number1, number2, ... number_n )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(MinValue(data))
-end;
-
-function fpsPRODUCT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// PRODUCT( number1, number2, ... number_n )
-var
-  data: TsArgNumberArray;
-  i: Integer;
-  p: Double;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then begin
-    p := 1.0;
-    for i:=0 to High(data) do
-      p := p * data[i];
-    Result := CreateNumberArg(p);
-  end;
-end;
-
-function fpsSTDEV(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// STDEV( number1, [number2, ... number_n] )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(StdDev(data))
-end;
-
-function fpsSTDEVP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// STDEVP( number1, [number2, ... number_n] )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(PopnStdDev(data))
-end;
-
-function fpsSUM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// SUM( value1, [value2, ... value_n] )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(Sum(data))
-end;
-
+  (*
 function fpsSUMIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 // SUMIF( range, criteria [, sum_range] )
 // - "range" is to the cell range to be analyzed
@@ -1861,329 +1622,10 @@ begin
   end;
   Result := CreateNumberArg(sum);
 end;
-
-function fpsSUMSQ(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// SUMSQ( value1, [value2, ... value_n] )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(SumOfSquares(data))
-end;
-
-function fpsVAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// VAR( number1, number2, ... number_n )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(Variance(data))
-end;
-
-function fpsVARP(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// VARP( number1, number2, ... number_n )
-var
-  data: TsArgNumberArray;
-begin
-  if Args.PopNumberValues(NumArgs, true, data, Result) then
-    Result := CreateNumberArg(PopnVariance(data))
-end;
-
-
-{ Logical functions }
-
-function fpsAND(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// AND( condition1, [condition2], ... )
-var
-  data: TsArgBoolArray;
-  i: Integer;
-  b: Boolean;
-begin
-  if PopBoolValues(Args, NumArgs, data, Result) then begin
-    // If at least one case is false the entire AND condition is false
-    b := true;
-    for i:=0 to High(data) do
-      if not data[i] then begin
-        b := false;
-        break;
-      end;
-    Result := CreateBoolArg(b);
-  end;
-end;
-
-function fpsFALSE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// FALSE( )
-begin
-  Unused(Args);
-  Unused(NumArgs);
-  Result := CreateBoolArg(false);
-end;
-
-function fpsIF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// IF( condition, [value_if_true], [value_if_false] )
-var
-  condition: TsArgument;
-  case1, case2: TsArgument;
-begin
-  if NumArgs = 3 then
-    case2 := Args.Pop;
-  case1 := Args.Pop;
-  condition := Args.Pop;
-  if condition.ArgumentType <> atBool then
-    Result := CreateErrorArg(errWrongType)
-  else
-    case NumArgs of
-      2: if condition.BoolValue then Result := case1 else Result := Condition;
-      3: if condition.BoolValue then Result := case1 else Result := case2;
-    end;
-end;
-
-function fpsNOT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// NOT( logical_value )
-var
-  data: TsArgBoolArray;
-begin
-  if PopBoolValues(Args, NumArgs, data, Result) then
-    Result := CreateBoolArg(not data[0]);
-end;
-
-function fpsOR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// OR( condition1, [condition2], ... )
-var
-  data: TsArgBoolArray;
-  i: Integer;
-  b: Boolean;
-begin
-  if PopBoolValues(Args, NumArgs, data, Result) then begin
-    // If at least one case is true, the entire OR condition is true
-    b := false;
-    for i:=0 to High(data) do
-      if data[i] then begin
-        b := true;
-        break;
-      end;
-    Result := CreateBoolArg(b);
-  end;
-end;
-
-function fpsTRUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// TRUE ( )
-begin
-  Unused(Args);
-  Unused(NumArgs);
-  Result := CreateBoolArg(true);
-end;
-
-
-{ String functions }
-
-function fpsCHAR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// CHAR( ascii_value )
-var
-  data: TsArgNumberArray;
-begin
-  Unused(NumArgs);
-  if Args.PopNumberValues(1, false, data, Result) then begin
-    if (data[0] >= 0) and (data[0] <= 255) then
-      Result := CreateStringArg(AnsiToUTF8(Char(Round(data[0]))));
-  end;
-end;
-
-function fpsCODE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// CODE( text )
-var
-  s: String;
-  ch: Char;
-begin
-  Unused(NumArgs);
-  if Args.PopString(s, Result) then begin
-    if s <> '' then begin
-      ch := UTF8ToAnsi(s)[1];
-      Result := CreateNumberArg(Ord(ch));
-    end else
-      Result := CreateEmptyArg;
-  end;
-end;
-
-function fpsLEFT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// LEFT( text, [number_of_characters] )
-var
-  arg1, arg2: TsArgument;
-  count: Integer;
-  s: String;
-begin
-  count := 1;
-  if NumArgs = 2 then begin
-    arg2 := Args.Pop;
-    if not arg2.IsMissing then begin
-      if arg2.ArgumentType <> atNumber then begin
-        Result := CreateErrorArg(errWrongType);
-        exit;
-      end;
-      count := Round(arg2.NumberValue);
-    end;
-  end;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType <> atString then begin
-    Result := CreateErrorArg(errWrongType);
-    exit;
-  end;
-  s := arg1.StringValue;
-  Result := CreateStringArg(UTF8LeftStr(s, count));
-end;
-
-function fpsLOWER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// LOWER( text )
-var
-  s: String;
-begin
-  Unused(NumArgs);
-  if Args.PopString(s, Result) then
-    Result := CreateStringArg(UTF8LowerCase(s));
-end;
-
-function fpsMID(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// MID( text, start_position, number_of_characters )
-var
-  data: TsArgNumberArray;
-  s: String;
-  res1, res2: TsArgument;
-begin
-  Unused(NumArgs);
-  Args.PopNumberValues(2, false, data, res1);
-  Args.PopString(s, res2);
-  if res1.ErrorValue <> errOK then begin
-    Result := CreateErrorArg(res1.ErrorValue);
-    exit;
-  end;
-  if res2.ErrorValue <> errOK then begin
-    Result := CreateErrorArg(res2.ErrorValue);
-    exit;
-  end;
-  Result := CreateStringArg(UTF8Copy(s, Round(data[0]), Round(data[1])));
-end;
-
-function fpsREPLACE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// REPLACE( old_text, start, number_of_chars, new_text )
-var
-  arg_new, arg_old, arg_start, arg_count: TsArgument;
-  s, s1, s2, snew: String;
-  p, count: Integer;
-begin
-  Unused(NumArgs);
-  arg_new := Args.Pop;
-  if arg_new.ArgumentType <> atString then begin
-    Result := CreateErrorArg(errWrongType);
-    exit;
-  end;
-  arg_count := Args.Pop;
-  if arg_count.ArgumentType <> atNumber then begin
-    Result := CreateErrorArg(errWrongType);
-    exit;
-  end;
-  arg_start := Args.Pop;
-  if arg_start.ArgumentType <> atNumber then begin
-    Result := CreateErrorArg(errWrongType);
-    exit;
-  end;
-  arg_old := Args.Pop;
-  if arg_old.ArgumentType <> atString then begin
-    Result := CreateErrorArg(errWrongType);
-    exit;
-  end;
-
-  s := arg_old.StringValue;
-  snew := arg_new.StringValue;
-  p := round(arg_start.NumberValue);
-  count := round(arg_count.NumberValue);
-
-  s1 := UTF8Copy(s, 1, p-1);
-  s2 := UTF8Copy(s, p+count, UTF8Length(s));
-  Result := CreateStringArg(s1 + snew + s2);
-end;
-
-function fpsRIGHT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// RIGHT( text, [number_of_characters] )
-var
-  arg1, arg2: TsArgument;
-  count: Integer;
-  s: String;
-begin
-  count := 1;
-  if NumArgs = 2 then begin
-    arg2 := Args.Pop;
-    if not arg2.IsMissing then begin
-      if arg2.ArgumentType <> atNumber then begin
-        Result := CreateErrorArg(errWrongType);
-        exit;
-      end;
-      count := round(arg2.NumberValue);
-    end;
-  end;
-  arg1 := Args.Pop;
-  if arg1.ArgumentType <> atString then begin
-    Result := CreateErrorArg(errWrongType);
-    exit;
-  end;
-  s := arg1.StringValue;
-  Result := CreateStringArg(UTF8RightStr(s, count));
-end;
-
-function fpsSUBSTITUTE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// SUBSTITUTE( text, old_text, new_text, [nth_appearance] )
-var
-  number: Double;
-  n: Integer;
-  data: TsArgStringArray;
-  s, s_old, s_new: String;
-begin
-  Result := CreateErrorArg(errWrongType);
-  n := -1;
-  if (NumArgs = 4) then begin
-    if Args.PopNumber(number, Result) then
-      n := round(number)
-    else begin
-      Args.Pop;
-      Args.Pop;
-      Args.Pop;
-      exit;
-    end;
-  end;
-
-  if Args.PopStringValues(3, false, data, Result) then begin
-    s := data[0];
-    s_old := data[1];
-    s_new := data[2];
-    if n = -1 then
-      Result := CreateStringArg(UTF8StringReplace(s, s_old, s_new, [rfReplaceAll]))
-    else
-      Result := CreateErrorArg(errFormulaNotSupported);
-  end;
-end;
-
-function fpsTRIM(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// TRIM( text )
-var
-  s: String;
-begin
-  Unused(NumArgs);
-  if Args.PopString(s, Result) then
-    Result := CreateStringArg(UTF8Trim(s));
-end;
-
-function fpsUPPER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// UPPER( text )
-var
-  s: String;
-begin
-  Unused(NumArgs);
-  if Args.PopString(s, Result) then
-    Result := CreateStringArg(UTF8UpperCase(s));
-end;
-
+*)
 
 { Lookup / reference functions }
-
+  (*
 function fpsCOLUMN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { COLUMN( [reference] )
   Returns the column number of a cell reference (starting at 1).
@@ -2257,173 +1699,9 @@ begin
   end;
 end;
 
+*)
 
-{ Info functions }
-
-function fpsCELLINFO(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// CELL( type, [range] )
-
-{ from http://www.techonthenet.com/excel/formulas/cell.php:
-
-  "type" is the type of information that we retrieve for the cell and can have
-  one of the following values:
-    Value         Explanation
-    ------------- --------------------------------------------------------------
-    "address"     Address of the cell. If the cell refers to a range, it is the
-                  first cell in the range.
-    "col"         Column number of the cell.
-    "color"       Returns 1 if the color is a negative value; Otherwise it returns 0.
-    "contents"    Contents of the upper-left cell.
-    "filename"    Filename of the file that contains reference.
-    "format"      Number format of the cell according to next table:
-                     "G"    General
-                     "F0"   0
-                     ",0"   #,##0
-                     "F2"   0.00
-                     ",2"   #,##0.00
-                     "C0"   $#,##0_);($#,##0)
-                     "C0-"  $#,##0_);[Red]($#,##0)
-                     "C2"   $#,##0.00_);($#,##0.00)
-                     "C2-"  $#,##0.00_);[Red]($#,##0.00)
-                     "P0"   0%
-                     "P2"   0.00%
-                     "S2"   0.00E+00
-                     "G"    # ?/? or # ??/??
-                     "D4"   m/d/yy or m/d/yy h:mm or mm/dd/yy
-                     "D1"   d-mmm-yy or dd-mmm-yy
-                     "D2"   d-mmm or dd-mmm
-                     "D3"   mmm-yy
-                     "D5"   mm/dd
-                     "D6"   h:mm:ss AM/PM
-                     "D7"   h:mm AM/PM
-                     "D8"   h:mm:ss
-                     "D9"   h:mm
-    "parentheses" Returns 1 if the cell is formatted with parentheses;
-                  Otherwise, it returns 0.
-    "prefix"      Label prefix for the cell.
-                  - Returns a single quote (') if the cell is left-aligned.
-                  - Returns a double quote (") if the cell is right-aligned.
-                  - Returns a caret (^) if the cell is center-aligned.
-                  - Returns a back slash (\) if the cell is fill-aligned.
-                  - Returns an empty text value for all others.
-    "protect"     Returns 1 if the cell is locked. Returns 0 if the cell is not locked.
-    "row"         Row number of the cell.
-    "type"        Returns "b" if the cell is empty.
-                  Returns "l" if the cell contains a text constant.
-                  Returns "v" for all others.
-    "width"       Column width of the cell, rounded to the nearest integer.
-
-  !!!! NOT ALL OF THEM ARE SUPPORTED HERE !!!
-
-  "range" is optional in Excel. It is the cell (or range) that you wish to retrieve
-  information for. If the range parameter is omitted, the CELL function will
-  assume that you are retrieving information for the last cell that was changed.
-
-  "range" is NOT OPTIONAL here because we don't know the last cell changed !!!
-}
-var
-  arg: TsArgument;
-  cell: PCell;
-  sname: String;
-  res: TsArgument;
-begin
-  if NumArgs < 2 then begin
-    Result := CreateErrorArg(errArgError);
-    exit;
-  end;
-
-  arg := Args.Pop;
-  Args.PopString(sname, res);
-
-  if (arg.ArgumentType = atCellRange) then
-    cell := arg.Worksheet.FindCell(arg.FirstRow, arg.FirstCol)
-  else
-  if (arg.ArgumentType = atCell) then
-    cell := arg.Cell
-  else begin
-    Result := CreateErrorArg(errArgError);
-    exit;
-  end;
-
-  if (cell = nil) then begin
-    Result := CreateErrorArg(errArgError);
-    exit;
-  end;
-
-  if (res.ErrorValue <> errOK) then begin
-    Result := CreateErrorArg(res.ErrorValue);
-    exit;
-  end;
-
-  sname := Lowercase(sname);
-
-  if sname = 'address' then
-    Result := CreateStringArg(GetCellString(cell^.Row, cell^.Col, []))
-  else if sname = 'col' then
-    Result := CreateNumberArg(cell^.Col + 1)
-  else if sname = 'color' then begin
-    if (cell^.NumberFormat = nfCurrencyRed)
-      then Result := CreateNumberArg(1)
-      else Result := CreateNumberArg(0);
-  end else if sname = 'contents' then
-    case cell^.ContentType of
-      cctNumber     : Result := CreateNumberArg(cell^.NumberValue);
-      cctDateTime   : Result := CreateNumberArg(cell^.DateTimeValue);
-      cctUTF8String : Result := CreateStringArg(cell^.UTF8StringValue);
-      cctBool       : Result := CreateStringArg(BoolToStr(cell^.BoolValue));
-      cctError      : Result := CreateStringArg('Error');
-    end
-  else if sname = 'format' then begin
-    Result := CreateStringArg('');
-    case cell^.NumberFormat of
-      nfGeneral:
-        Result := CreateStringArg('G');
-      nfFixed:
-        if cell^.NumberFormatStr= '0' then Result := CreateStringArg('0') else
-        if cell^.NumberFormatStr = '0.00' then  Result := CreateStringArg('F0');
-      nfFixedTh:
-        if cell^.NumberFormatStr = '#,##0' then Result := CreateStringArg(',0') else
-        if cell^.NumberFormatStr = '#,##0.00' then Result := CreateStringArg(',2');
-      nfPercentage:
-        if cell^.NumberFormatStr = '0%' then Result := CreateStringArg('P0') else
-        if cell^.NumberFormatStr = '0.00%' then Result := CreateStringArg('P2');
-      nfExp:
-        if cell^.NumberFormatStr = '0.00E+00' then Result := CreateStringArg('S2');
-      nfShortDate, nfLongDate, nfShortDateTime:
-        Result := CreateStringArg('D4');
-      nfLongTimeAM:
-        Result := CreateStringArg('D6');
-      nfShortTimeAM:
-        Result := CreateStringArg('D7');
-      nfLongTime:
-        Result := CreateStringArg('D8');
-      nfShortTime:
-        Result := CreateStringArg('D9');
-    end;
-  end else
-  if (sname = 'prefix') then begin
-    Result := CreateStringArg('');
-    if (cell^.ContentType = cctUTF8String) then
-      case cell^.HorAlignment of
-        haLeft  : Result := CreateStringArg('''');
-        haCenter: Result := CreateStringArg('^');
-        haRight : Result := CreateStringArg('"');
-      end;
-  end else
-  if sname = 'row' then
-    Result := CreateNumberArg(cell^.Row + 1)
-  else if sname = 'type' then begin
-    if (cell^.ContentType = cctEmpty) then
-      Result := CreateStringArg('b')
-    else if cell^.ContentType = cctUTF8String then begin
-      if (cell^.UTF8StringValue = '')
-        then Result := CreateStringArg('b')
-        else Result := CreateStringArg('l');
-    end else
-      Result := CreateStringArg('v');
-  end;
-end;
-
+(*
 function fpsINFO(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 {  INFO( type )
    returns information about the operating environment.
@@ -2458,121 +1736,8 @@ begin
   end;
 end;
 
-function fpsISBLANK(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISBLANK( value )
-// Checks for blank cell
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg(
-    (arg.ArgumentType = atCell) and
-    ((arg.Cell = nil) or (arg.Cell^.ContentType = cctEmpty))
-  );
-end;
+*)
 
-function fpsISERR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISERR( value )
-// If value is an error value (except #N/A), this function will return TRUE.
-// Otherwise, it will return FALSE.
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg((arg.ArgumentType = atError) and (arg.ErrorValue <> errArgError));
-end;
-
-function fpsISERROR(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISERROR( value )
-// If value is an error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?
-// or #NULL), this function will return TRUE. Otherwise, it will return FALSE.
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg((arg.ArgumentType = atError));
-end;
-
-function fpsISLOGICAL(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISLOGICAL( value )
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg(arg.ArgumentType = atBool);
-end;
-
-function fpsISNA(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISNA( value )
-//  If value is a #N/A error value , this function will return TRUE.
-// Otherwise, it will return FALSE.
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg((arg.ArgumentType = atError) and (arg.ErrorValue = errArgError));
-end;
-
-function fpsISNONTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISNONTEXT( value )
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg(arg.ArgumentType <> atString);
-end;
-
-function fpsISNUMBER(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISNUMBER( value )
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg(arg.ArgumentType = atNumber);
-end;
-
-function fpsISREF(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISREF( value )
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg(arg.ArgumentType in [atCell, atCellRange]);
-end;
-
-function fpsISTEXT(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// ISTEXT( value )
-var
-  arg: TsArgument;
-begin
-  Unused(NumArgs);
-  arg := Args.Pop;
-  Result := CreateBoolArg(arg.ArgumentType = atString);
-end;
-
-function fpsVALUE(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-// VALUE( text )
-// text is the text value to convert to a number. If text is not a number, the
-// VALUE function will return #VALUE!.
-var
-  s: String;
-  x: Double;
-begin
-  Unused(NumArgs);
-  if Args.PopString(s, Result) then
-    if TryStrToFloat(s, x) then
-      Result := CreateNumberArg(x)
-    else
-      Result := CreateErrorArg(errWrongType);
-end;
-
+initialization
 
 end.
