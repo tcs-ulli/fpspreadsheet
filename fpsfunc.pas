@@ -1463,20 +1463,20 @@ begin
 
     // Statistical
     cat := bcStatistics;
-    AddFunction(cat, 'AVEDEV',    'F', '?+',   INT_EXCEL_SHEET_FUNC_AVEDEV,     @fpsAVEDEV);
-    AddFunction(cat, 'AVERAGE',   'F', '?+',   INT_EXCEL_SHEET_FUNC_AVERAGE,    @fpsAVERAGE);
+    AddFunction(cat, 'AVEDEV',    'F', 'F+',   INT_EXCEL_SHEET_FUNC_AVEDEV,     @fpsAVEDEV);
+    AddFunction(cat, 'AVERAGE',   'F', 'F+',   INT_EXCEL_SHEET_FUNC_AVERAGE,    @fpsAVERAGE);
     AddFunction(cat, 'COUNT',     'I', '?+',   INT_EXCEL_SHEET_FUNC_COUNT,      @fpsCOUNT);
     AddFunction(cat, 'COUNTA',    'I', '?+',   INT_EXCEL_SHEET_FUNC_COUNTA,     @fpsCOUNTA);
     AddFunction(cat, 'COUNTBLANK','I', 'R',    INT_EXCEL_SHEET_FUNC_COUNTBLANK, @fpsCOUNTBLANK);
-    AddFunction(cat, 'MAX',       'F', '?+',   INT_EXCEL_SHEET_FUNC_MAX,        @fpsMAX);
-    AddFunction(cat, 'MIN',       'F', '?+',   INT_EXCEL_SHEET_FUNC_MIN,        @fpsMIN);
-    AddFunction(cat, 'PRODUCT',   'F', '?+',   INT_EXCEL_SHEET_FUNC_PRODUCT,    @fpsPRODUCT);
-    AddFunction(cat, 'STDEV',     'F', '?+',   INT_EXCEL_SHEET_FUNC_STDEV,      @fpsSTDEV);
-    AddFunction(cat, 'STDEVP',    'F', '?+',   INT_EXCEL_SHEET_FUNC_STDEVP,     @fpsSTDEVP);
-    AddFunction(cat, 'SUM',       'F', '?+',   INT_EXCEL_SHEET_FUNC_SUM,        @fpsSUM);
-    AddFunction(cat, 'SUMSQ',     'F', '?+',   INT_EXCEL_SHEET_FUNC_SUMSQ,      @fpsSUMSQ);
-    AddFunction(cat, 'VAR',       'F', '?+',   INT_EXCEL_SHEET_FUNC_VAR,        @fpsVAR);
-    AddFunction(cat, 'VARP',      'F', '?+',   INT_EXCEL_SHEET_FUNC_VARP,       @fpsVARP);
+    AddFunction(cat, 'MAX',       'F', 'F+',   INT_EXCEL_SHEET_FUNC_MAX,        @fpsMAX);
+    AddFunction(cat, 'MIN',       'F', 'F+',   INT_EXCEL_SHEET_FUNC_MIN,        @fpsMIN);
+    AddFunction(cat, 'PRODUCT',   'F', 'F+',   INT_EXCEL_SHEET_FUNC_PRODUCT,    @fpsPRODUCT);
+    AddFunction(cat, 'STDEV',     'F', 'F+',   INT_EXCEL_SHEET_FUNC_STDEV,      @fpsSTDEV);
+    AddFunction(cat, 'STDEVP',    'F', 'F+',   INT_EXCEL_SHEET_FUNC_STDEVP,     @fpsSTDEVP);
+    AddFunction(cat, 'SUM',       'F', 'F+',   INT_EXCEL_SHEET_FUNC_SUM,        @fpsSUM);
+    AddFunction(cat, 'SUMSQ',     'F', 'F+',   INT_EXCEL_SHEET_FUNC_SUMSQ,      @fpsSUMSQ);
+    AddFunction(cat, 'VAR',       'F', 'F+',   INT_EXCEL_SHEET_FUNC_VAR,        @fpsVAR);
+    AddFunction(cat, 'VARP',      'F', 'F+',   INT_EXCEL_SHEET_FUNC_VARP,       @fpsVARP);
     // to do: CountIF, SUMIF
 
     // Info functions
