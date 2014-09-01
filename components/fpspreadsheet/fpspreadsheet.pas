@@ -2668,7 +2668,6 @@ begin
     Result := False;
 end;
 
-
 {@@
   Converts an RPN formula (as read from an xls biff file, for example) to a
   string formula.
@@ -2685,7 +2684,7 @@ begin
   parser := TsSpreadsheetParser.Create(self);
   try
     parser.RPNFormula := AFormula;
-    Result := parser.BuildStringFormula;
+    Result := parser.Expression;
   finally
     parser.Free;
   end;

@@ -67,7 +67,7 @@ type
     ttCell, ttCellRange, ttNumber, ttString, ttIdentifier,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
-    ttComma, ttTrue, ttFalse, ttEOF
+    ttListSep, ttTrue, ttFalse, ttEOF
   );
 
   TsExprFloat = Double;
@@ -110,6 +110,8 @@ type
 
   { TsExprNode }
   TsExprNode = class(TObject)
+  private
+    FParser: TsExpressionParser;
   protected
     procedure CheckNodeType(ANode: TsExprNode; Allowed: TsResultTypes);
     // A procedure with var saves an implicit try/finally in each node
@@ -121,6 +123,7 @@ type
     procedure Check; virtual; abstract;
     function NodeType: TsResultType; virtual; abstract;
     function NodeValue: TsExpressionResult;
+    property Parser: TsExpressionParser read FParser;
   end;
 
   TsExprArgumentArray = array of TsExprNode;
@@ -133,7 +136,7 @@ type
   protected
     procedure CheckSameNodeTypes; virtual;
   public
-    constructor Create(ALeft, ARight: TsExprNode);
+    constructor Create(AParser: TsExpressionParser; ALeft, ARight: TsExprNode);
     destructor Destroy; override;
     procedure Check; override;
     property Left: TsExprNode read FLeft;
@@ -295,7 +298,7 @@ type
   protected
     procedure Check; override;
   public
-    constructor Create(AOperand: TsExprNode);
+    constructor Create(AParser: TsExpressionParser; AOperand: TsExprNode);
     destructor Destroy; override;
     property Operand: TsExprNode read FOperand;
   end;
@@ -399,12 +402,12 @@ type
     procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
-    constructor CreateString(AValue: String);
-    constructor CreateInteger(AValue: Int64);
-    constructor CreateDateTime(AValue: TDateTime);
-    constructor CreateFloat(AValue: TsExprFloat);
-    constructor CreateBoolean(AValue: Boolean);
-    constructor CreateError(AValue: TsErrorValue);
+    constructor CreateString(AParser: TsExpressionParser; AValue: String);
+    constructor CreateInteger(AParser: TsExpressionParser; AValue: Int64);
+    constructor CreateDateTime(AParser: TsExpressionParser; AValue: TDateTime);
+    constructor CreateFloat(AParser: TsExpressionParser; AValue: TsExprFloat);
+    constructor CreateBoolean(AParser: TsExpressionParser; AValue: Boolean);
+    constructor CreateError(AParser: TsExpressionParser; AValue: TsErrorValue);
     function AsString: string; override;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function NodeType : TsResultType; override;
@@ -451,6 +454,7 @@ type
   protected
     procedure CheckResultType(const AType: TsResultType);
     procedure CheckVariable;
+    function GetFormatSettings: TFormatSettings;
   public
     function ArgumentCount: Integer;
     procedure Assign(Source: TPersistent); override;
@@ -533,7 +537,7 @@ type
   protected
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
-    constructor CreateIdentifier(AID: TsExprIdentifierDef);
+    constructor CreateIdentifier(AParser: TsExpressionParser; AID: TsExprIdentifierDef);
     function NodeType: TsResultType; override;
     property Identifier: TsExprIdentifierDef read FID;
   end;
@@ -553,8 +557,8 @@ type
   protected
     procedure CalcParams;
   public
-    constructor CreateFunction(AID: TsExprIdentifierDef;
-      const Args: TsExprArgumentArray); virtual;
+    constructor CreateFunction(AParser: TsExpressionParser;
+      AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); virtual;
     destructor Destroy; override;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
@@ -570,8 +574,8 @@ type
   protected
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
-    constructor CreateFunction(AID: TsExprIdentifierDef;
-      const Args: TsExprArgumentArray); override;
+    constructor CreateFunction(AParser: TsExpressionParser;
+      AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); override;
     property CallBack: TsExprFunctionCallBack read FCallBack;
   end;
 
@@ -582,8 +586,8 @@ type
   protected
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
-    constructor CreateFunction(AID: TsExprIdentifierDef;
-      const Args: TsExprArgumentArray); override;
+    constructor CreateFunction(AParser: TsExpressionParser;
+      AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); override;
     property CallBack: TsExprFunctionEvent read FCallBack;
   end;
 
@@ -599,9 +603,10 @@ type
     procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
-    constructor Create(AWorksheet: TsWorksheet; ACellString: String); overload;
-    constructor Create(AWorksheet: TsWorksheet; ARow, ACol: Cardinal;
-      AFlags: TsRelFlags); overload;
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ACellString: String); overload;
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ARow, ACol: Cardinal; AFlags: TsRelFlags); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
     function NodeType: TsResultType; override;
@@ -619,9 +624,10 @@ type
     procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
-    constructor Create(AWorksheet: TsWorksheet; ACellRangeString: String); overload;
-    constructor Create(AWorksheet: TsWorksheet; ARow1,ACol1, ARow2,ACol2: Cardinal;
-      AFlags: TsRelFlags); overload;
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ACellRangeString: String); overload;
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ARow1,ACol1, ARow2,ACol2: Cardinal; AFlags: TsRelFlags); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
     function NodeType: TsResultType; override;
@@ -637,6 +643,7 @@ type
     FToken: String;
     FTokenType: TsTokenType;
   private
+    FParser: TsExpressionParser;
     function GetCurrentChar: Char;
     procedure ScanError(Msg: String);
   protected
@@ -652,7 +659,7 @@ type
     function IsDigit(C: Char): Boolean; // inline;
     function IsAlpha(C: Char): Boolean; // inline;
   public
-    constructor Create;
+    constructor Create(AParser: TsExpressionParser);
     function GetToken: TsTokenType;
     property Token: String read FToken;
     property TokenType: TsTokenType read FTokenType;
@@ -689,9 +696,15 @@ type
     procedure SetRPNFormula(const AFormula: TsRPNFormula);
 
   protected
+    FFormatSettings: TFormatSettings;
     class function BuiltinExpressionManager: TsBuiltInExpressionManager;
+    function BuildStringFormula(AFormatSettings: TFormatSettings): String;
     procedure ParserError(Msg: String);
-    procedure SetExpression(const AValue: String); virtual;
+    function GetExpression: String;
+    function GetLocalizedExpression(const AFormatSettings: TFormatSettings): String; virtual;
+    procedure SetExpression(const AValue: String);
+    procedure SetLocalizedExpression(const AFormatSettings: TFormatSettings;
+      const AValue: String); virtual;
     procedure CheckResultType(const Res: TsExpressionResult;
       AType: TsResultType); inline;
     function CurrentToken: String;
@@ -714,7 +727,6 @@ type
     destructor Destroy; override;
     function IdentifierByName(AName: ShortString): TsExprIdentifierDef; virtual;
     procedure Clear;
-    function BuildStringFormula: String;
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(var Result: TsExpressionResult);
     function ResultType: TsResultType;
@@ -724,7 +736,9 @@ type
     property AsBoolean: Boolean read GetAsBoolean;
     property AsDateTime: TDateTime read GetAsDateTime;
     // The expression to parse
-    property Expression: String read FExpression write SetExpression;
+    property Expression: String read GetExpression write SetExpression;
+    property LocalizedExpression[AFormatSettings: TFormatSettings]: String
+        read GetLocalizedExpression write SetLocalizedExpression;
     property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
@@ -805,7 +819,8 @@ const
     bcInfo, bcUser];
 
 var
-  ExprFormatSettings: TFormatSettings;
+  ExprFormatSettings: TFormatSettings;     // MUST BE REMOVED
+
 
 implementation
 
@@ -816,10 +831,10 @@ const
   cNull = #0;
   cDoubleQuote = '"';
 
-  Digits         = ['0'..'9', '.'];
+  Digits         = ['0'..'9'];   // + decimalseparator
   WhiteSpace     = [' ', #13, #10, #9];
   Operators      = ['+', '-', '<', '>', '=', '/', '*', '&', '%', '^'];
-  Delimiters     = Operators + [',', '(', ')'];
+  Delimiters     = Operators + ['(', ')'];  // + listseparator
   Symbols        = Delimiters;
   WordDelimiters = WhiteSpace + Symbols;
 
@@ -921,9 +936,10 @@ end;
 {  TsExpressionScanner                                                        }
 {------------------------------------------------------------------------------}
 
-constructor TsExpressionScanner.Create;
+constructor TsExpressionScanner.Create(AParser: TsExpressionParser);
 begin
   Source := '';
+  FParser := AParser;
 end;
 
 function TsExpressionScanner.DoDelimiter: TsTokenType;
@@ -949,6 +965,9 @@ begin
       Result := ttLessThanEqual;
   end
   else
+  if D = FParser.FFormatSettings.ListSeparator then
+    Result := ttListSep
+  else
     case D of
       '+' : Result := ttPlus;
       '-' : Result := ttMinus;
@@ -962,7 +981,7 @@ begin
       '=' : Result := ttEqual;
       '(' : Result := ttLeft;
       ')' : Result := ttRight;
-      ',' : Result := ttComma;
+  //    ',' : Result := ttComma;
     else
       ScanError(Format(SUnknownDelimiter, [D]));
     end;
@@ -1015,7 +1034,7 @@ begin
     prevC := Upcase(C);
     C := NextPos;
   end;
-  if not TryStrToFloat(FToken, X, ExprFormatSettings) then
+  if not TryStrToFloat(FToken, X, FParser.FFormatSettings) then
     ScanError(Format(SErrInvalidNumber, [FToken]));
   Result := ttNumber;
 end;
@@ -1085,17 +1104,17 @@ end;
 
 function TsExpressionScanner.IsDelim(C: Char): Boolean;
 begin
-  Result := C in Delimiters;
+  Result := (C in Delimiters) or (C = FParser.FFormatSettings.ListSeparator);
 end;
 
 function TsExpressionScanner.IsDigit(C: Char): Boolean;
 begin
-  Result := C in Digits;
+  Result := (C in Digits) or (C = FParser.FFormatSettings.DecimalSeparator);
 end;
 
 function TsExpressionScanner.IsWordDelim(C: Char): Boolean;
 begin
-  Result := C in WordDelimiters;
+  Result := (C in WordDelimiters) or (C = FParser.FFormatSettings.ListSeparator);
 end;
 
 function TsExpressionScanner.NextPos: Char;
@@ -1140,7 +1159,7 @@ begin
   FWorksheet := AWorksheet;
   FIdentifiers := TsExprIdentifierDefs.Create(TsExprIdentifierDef);
   FIdentifiers.FParser := Self;
-  FScanner := TsExpressionScanner.Create;
+  FScanner := TsExpressionScanner.Create(self);
   FHashList := TFPHashObjectList.Create(False);
 end;
 
@@ -1153,12 +1172,17 @@ begin
   inherited Destroy;
 end;
 
-function TsExpressionParser.BuildStringFormula: String;
+{ Constructs the string formula from the tree of expression nodes. Gets the
+  decimal and list separator from the formatsettings provided. }
+function TsExpressionParser.BuildStringFormula(AFormatSettings: TFormatSettings): String;
 begin
   if FExprNode = nil then
     Result := ''
   else
+  begin
+    FFormatSettings := AFormatSettings;
     Result := FExprNode.AsString;
+  end;
 end;
 
 class function TsExpressionParser.BuiltinExpressionManager: TsBuiltInExpressionManager;
@@ -1200,12 +1224,12 @@ begin
   case ToDo.NodeType of
     rtInteger :
       case ToType of
-        rtFloat    : Result := TsIntToFloatExprNode.Create(Result);
-        rtDateTime : Result := TsIntToDateTimeExprNode.Create(Result);
+        rtFloat    : Result := TsIntToFloatExprNode.Create(self, Result);
+        rtDateTime : Result := TsIntToDateTimeExprNode.Create(self, Result);
       end;
     rtFloat :
       case ToType of
-        rtDateTime : Result := TsFloatToDateTimeExprNode.Create(Result);
+        rtDateTime : Result := TsFloatToDateTimeExprNode.Create(self, Result);
       end;
   end;
 end;
@@ -1404,7 +1428,7 @@ begin
       else
         ParserError(SErrUnknownComparison)
       end;
-      Result := C.Create(Result, right);
+      Result := C.Create(self, Result, right);
     end;
   except
     Result.Free;
@@ -1427,9 +1451,9 @@ begin
       right := Level4;
       CheckNodes(Result, right);
       case tt of
-        ttPlus  : Result := TsAddExprNode.Create(Result, right);
-        ttMinus : Result := TsSubtractExprNode.Create(Result, right);
-        ttConcat: Result := TsConcatExprNode.Create(Result, right);
+        ttPlus  : Result := TsAddExprNode.Create(self, Result, right);
+        ttMinus : Result := TsSubtractExprNode.Create(self, Result, right);
+        ttConcat: Result := TsConcatExprNode.Create(self, Result, right);
       end;
     end;
   except
@@ -1453,8 +1477,8 @@ begin
       right := Level5;
       CheckNodes(Result, right);
       case tt of
-        ttMul : Result := TsMultiplyExprNode.Create(Result, right);
-        ttDiv : Result := TsDivideExprNode.Create(Result, right);
+        ttMul : Result := TsMultiplyExprNode.Create(self, Result, right);
+        ttDiv : Result := TsDivideExprNode.Create(self, Result, right);
       end;
     end;
   except
@@ -1479,9 +1503,9 @@ begin
   end;
   Result := Level6;
   if isPlus then
-    Result := TsUPlusExprNode.Create(Result);
+    Result := TsUPlusExprNode.Create(self, Result);
   if isMinus then
-    Result := TsUMinusExprNode.Create(Result);
+    Result := TsUMinusExprNode.Create(self, Result);
 end;
 
 function TsExpressionParser.Level6: TsExprNode;
@@ -1493,7 +1517,7 @@ begin
   if (TokenType = ttLeft) then
   begin
     GetToken;
-    Result := TsParenthesisExprNode.Create(Level1);
+    Result := TsParenthesisExprNode.Create(self, Level1);
     try
       if (TokenType <> ttRight) then
         ParserError(Format(SErrBracketExpected, [SCanner.Pos, CurrentToken]));
@@ -1514,7 +1538,7 @@ begin
       GetToken;
       Right := Primitive;
       CheckNodes(Result, right);
-      Result := TsPowerExprNode.Create(Result, Right);
+      Result := TsPowerExprNode.Create(self, Result, Right);
       //GetToken;
     except
       Result.Free;
@@ -1570,26 +1594,26 @@ begin
   if (TokenType = ttNumber) then
   begin
     if TryStrToInt64(CurrentToken, I) then
-      Result := TsConstExprNode.CreateInteger(I)
+      Result := TsConstExprNode.CreateInteger(self, I)
     else
     begin
-      if TryStrToFloat(CurrentToken, X, ExprFormatSettings) then
-        Result := TsConstExprNode.CreateFloat(X)
+      if TryStrToFloat(CurrentToken, X, FFormatSettings) then
+        Result := TsConstExprNode.CreateFloat(self, X)
       else
         ParserError(Format(SErrInvalidFloat, [CurrentToken]));
     end;
   end
   else if (TokenType = ttTrue) then
-    Result := TsConstExprNode.CreateBoolean(true)
+    Result := TsConstExprNode.CreateBoolean(self, true)
   else if (TokenType = ttFalse) then
-    Result := TsConstExprNode.CreateBoolean(false)
+    Result := TsConstExprNode.CreateBoolean(self, false)
   else if (TokenType = ttString) then
-    Result := TsConstExprNode.CreateString(CurrentToken)
+    Result := TsConstExprNode.CreateString(self, CurrentToken)
   else if (TokenType = ttCell) then
-    Result := TsCellExprNode.Create(FWorksheet, CurrentToken)
+    Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken)
   else if (TokenType = ttCellRange) then
-    Result := TsCellRangeExprNode.Create(FWorksheet, CurrentToken)
-  else if not (TokenType in [ttIdentifier{, ttIf}]) then
+    Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
+  else if not (TokenType in [ttIdentifier]) then
     ParserError(Format(SerrUnknownTokenAtPos, [Scanner.Pos, CurrentToken]))
   else
   begin
@@ -1637,7 +1661,7 @@ begin
           optional := ID.IsOptionalArgument(AI+1);
           if not optional then
           begin
-            if (TokenType <> ttComma) then
+            if (TokenType <> ttListSep) then
               if (AI < abs(lCount)) then
                 ParserError(Format(SErrCommaExpected, [Scanner.Pos, CurrentToken]))
           end;
@@ -1660,14 +1684,17 @@ begin
       end;
     end;
     case ID.IdentifierType of
-      itVariable         : Result := TsVariableExprNode.CreateIdentifier(ID);
-      itFunctionCallBack : Result := TsFunctionCallBackExprNode.CreateFunction(ID, Args);
-      itFunctionHandler  : Result := TFPFunctionEventHandlerExprNode.CreateFunction(ID, Args);
+      itVariable:
+        Result := TsVariableExprNode.CreateIdentifier(self, ID);
+      itFunctionCallBack:
+        Result := TsFunctionCallBackExprNode.CreateFunction(self, ID, Args);
+      itFunctionHandler:
+        Result := TFPFunctionEventHandlerExprNode.CreateFunction(self, ID, Args);
     end;
   end;
   GetToken;
   if TokenType = ttPercent then begin
-    Result := TsPercentExprNode.Create(Result);
+    Result := TsPercentExprNode.Create(self, Result);
     GetToken;
   end;
 end;
@@ -1687,10 +1714,37 @@ begin
   FDirty := true;
 end;
 
+function TsExpressionParser.GetExpression: String;
+var
+  fs: TFormatsettings;
+begin
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
+  fs.ListSeparator := ',';
+  Result := BuildStringFormula(fs);
+end;
+
+function TsExpressionParser.GetLocalizedExpression(const AFormatSettings: TFormatSettings): String;
+begin
+  Result := BuildStringFormula(AFormatSettings);
+end;
+
 procedure TsExpressionParser.SetExpression(const AValue: String);
+var
+  fs: TFormatSettings;
+begin
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
+  fs.ListSeparator := ',';
+  SetLocalizedExpression(fs, AValue);
+end;
+
+procedure TsExpressionParser.SetLocalizedExpression(const AFormatSettings: TFormatSettings;
+  const AValue: String);
 begin
   if FExpression = AValue then
     exit;
+  FFormatSettings := AFormatSettings;
   FExpression := AValue;
   if (AValue <> '') and (AValue[1] = '=') then
     FScanner.Source := Copy(AValue, 2, Length(AValue))
@@ -1738,7 +1792,7 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           r := AFormula[AIndex].Row;
           c := AFormula[AIndex].Col;
           flags := AFormula[AIndex].RelFlags;
-          ANode := TsCellExprNode.Create(FWorksheet, r, c, flags);
+          ANode := TsCellExprNode.Create(self, FWorksheet, r, c, flags);
           dec(AIndex);
         end;
       fekCellRange:
@@ -1748,32 +1802,32 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           r2 := AFormula[AIndex].Row2;
           c2 := AFormula[AIndex].Col2;
           flags := AFormula[AIndex].RelFlags;
-          ANode := TsCellRangeExprNode.Create(FWorksheet, r, c, r2, c2, flags);
+          ANode := TsCellRangeExprNode.Create(self, FWorksheet, r, c, r2, c2, flags);
           dec(AIndex);
         end;
       fekNum:
         begin
-          ANode := TsConstExprNode.CreateFloat(AFormula[AIndex].DoubleValue);
+          ANode := TsConstExprNode.CreateFloat(self, AFormula[AIndex].DoubleValue);
           dec(AIndex);
         end;
       fekInteger:
         begin
-          ANode := TsConstExprNode.CreateInteger(AFormula[AIndex].IntValue);
+          ANode := TsConstExprNode.CreateInteger(self, AFormula[AIndex].IntValue);
           dec(AIndex);
         end;
       fekString:
         begin
-          ANode := TsConstExprNode.CreateString(AFormula[AIndex].StringValue);
+          ANode := TsConstExprNode.CreateString(self, AFormula[AIndex].StringValue);
           dec(AIndex);
         end;
       fekBool:
         begin
-          ANode := TsConstExprNode.CreateBoolean(AFormula[AIndex].DoubleValue <> 0.0);
+          ANode := TsConstExprNode.CreateBoolean(self, AFormula[AIndex].DoubleValue <> 0.0);
           dec(AIndex);
         end;
       fekErr:
         begin
-          ANode := TsConstExprNode.CreateError(TsErrorValue(AFormula[AIndex].IntValue));
+          ANode := TsConstExprNode.CreateError(self, TsErrorValue(AFormula[AIndex].IntValue));
           dec(AIndex);
         end;
 
@@ -1783,10 +1837,10 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           dec(AIndex);
           CreateNodeFromRPN(operand, AIndex);
           case fek of
-            fekPercent : ANode := TsPercentExprNode.Create(operand);
-            fekUMinus  : ANode := TsUMinusExprNode.Create(operand);
-            fekUPlus   : ANode := TsUPlusExprNode.Create(operand);
-            fekParen   : ANode := TsParenthesisExprNode.Create(operand);
+            fekPercent : ANode := TsPercentExprNode.Create(self, operand);
+            fekUMinus  : ANode := TsUMinusExprNode.Create(self, operand);
+            fekUPlus   : ANode := TsUPlusExprNode.Create(self, operand);
+            fekParen   : ANode := TsParenthesisExprNode.Create(self, operand);
           end;
         end;
 
@@ -1802,18 +1856,18 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           CreateNodeFromRPN(left, AIndex);
           CheckNodes(left, right);
           case fek of
-            fekAdd         : ANode := TsAddExprNode.Create(left, right);
-            fekSub         : ANode := TsSubtractExprNode.Create(left, right);
-            fekMul         : ANode := TsMultiplyExprNode.Create(left, right);
-            fekDiv         : ANode := TsDivideExprNode.Create(left, right);
-            fekPower       : ANode := TsPowerExprNode.Create(left, right);
-            fekConcat      : ANode := tsConcatExprNode.Create(left, right);
-            fekEqual       : ANode := TsEqualExprNode.Create(left, right);
-            fekNotEqual    : ANode := TsNotEqualExprNode.Create(left, right);
-            fekGreater     : ANode := TsGreaterExprNode.Create(left, right);
-            fekGreaterEqual: ANode := TsGreaterEqualExprNode.Create(left, right);
-            fekLess        : ANode := TsLessExprNode.Create(left, right);
-            fekLessEqual   : ANode := tsLessEqualExprNode.Create(left, right);
+            fekAdd         : ANode := TsAddExprNode.Create(self, left, right);
+            fekSub         : ANode := TsSubtractExprNode.Create(self, left, right);
+            fekMul         : ANode := TsMultiplyExprNode.Create(self, left, right);
+            fekDiv         : ANode := TsDivideExprNode.Create(self, left, right);
+            fekPower       : ANode := TsPowerExprNode.Create(self, left, right);
+            fekConcat      : ANode := tsConcatExprNode.Create(self, left, right);
+            fekEqual       : ANode := TsEqualExprNode.Create(self, left, right);
+            fekNotEqual    : ANode := TsNotEqualExprNode.Create(self, left, right);
+            fekGreater     : ANode := TsGreaterExprNode.Create(self, left, right);
+            fekGreaterEqual: ANode := TsGreaterEqualExprNode.Create(self, left, right);
+            fekLess        : ANode := TsLessExprNode.Create(self, left, right);
+            fekLessEqual   : ANode := tsLessEqualExprNode.Create(self, left, right);
           end;
         end;
 
@@ -1836,9 +1890,12 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
             for i:=n-1 downto 0 do
               CreateNodeFromRPN(args[i], AIndex);
             case ID.IdentifierType of
-              itVariable         : ANode := TsVariableExprNode.CreateIdentifier(ID);
-              itFunctionCallBack : ANode := TsFunctionCallBackExprNode.CreateFunction(ID, args);
-              itFunctionHandler  : ANode := TFPFunctionEventHandlerExprNode.CreateFunction(ID, args);
+              itVariable:
+                ANode := TsVariableExprNode.CreateIdentifier(self, ID);
+              itFunctionCallBack:
+                ANode := TsFunctionCallBackExprNode.CreateFunction(self, ID, args);
+              itFunctionHandler:
+                ANode := TFPFunctionEventHandlerExprNode.CreateFunction(self, ID, args);
             end;
           end;
         end;
@@ -2127,6 +2184,11 @@ begin
   Result := FValue.ResString;
 end;
 
+function TsExprIdentifierDef.GetFormatSettings: TFormatSettings;
+begin
+  Result := TsExprIdentifierDefs(Collection).Parser.FFormatSettings;
+end;
+
 function TsExprIdentifierDef.GetResultType: TsResultType;
 begin
   Result := FValue.ResultType;
@@ -2136,12 +2198,12 @@ function TsExprIdentifierDef.GetValue: String;
 begin
   case FValue.ResultType of
     rtBoolean  : if FValue.ResBoolean then
-                   Result := 'True'
+                   Result := 'TRUE'
                  else
-                   Result := 'False';
+                   Result := 'FALSE';
     rtInteger  : Result := IntToStr(FValue.ResInteger);
-    rtFloat    : Result := FloatToStr(FValue.ResFloat, ExprFormatSettings);
-    rtDateTime : Result := FormatDateTime('cccc', FValue.ResDateTime);
+    rtFloat    : Result := FloatToStr(FValue.ResFloat, GetFormatSettings);
+    rtDateTime : Result := FormatDateTime('cccc', FValue.ResDateTime, GetFormatSettings);
     rtString   : Result := FValue.ResString;
   end;
 end;
@@ -2216,7 +2278,7 @@ procedure TsExprIdentifierDef.SetAsString(const AValue: String);
 begin
   CheckVariable;
   CheckResultType(rtString);
-  FValue.resString := AValue;
+  FValue.ResString := AValue;
 end;
 
 procedure TsExprIdentifierDef.SetName(const AValue: ShortString);
@@ -2243,10 +2305,10 @@ begin
   FStringValue := AValue;
   if (AValue <> '') then
     case FValue.ResultType of
-      rtBoolean  : FValue.ResBoolean := FStringValue='True';
+      rtBoolean  : FValue.ResBoolean := (FStringValue='True');
       rtInteger  : FValue.ResInteger := StrToInt(AValue);
-      rtFloat    : FValue.ResFloat := StrToFloat(AValue);
-      rtDateTime : FValue.ResDateTime := StrToDateTime(AValue);
+      rtFloat    : FValue.ResFloat := StrToFloat(AValue, GetFormatSettings);
+      rtDateTime : FValue.ResDateTime := StrToDateTime(AValue, GetFormatSettings);
       rtString   : FValue.ResString := AValue;
     end
   else
@@ -2411,8 +2473,10 @@ end;
 
 { TsUnaryOperationExprNode }
 
-constructor TsUnaryOperationExprNode.Create(AOperand: TsExprNode);
+constructor TsUnaryOperationExprNode.Create(AParser: TsExpressionParser;
+  AOperand: TsExprNode);
 begin
+  FParser := AParser;
   FOperand := AOperand;
 end;
 
@@ -2431,8 +2495,10 @@ end;
 
 { TsBinaryOperationExprNode }
 
-constructor TsBinaryOperationExprNode.Create(ALeft, ARight: TsExprNode);
+constructor TsBinaryOperationExprNode.Create(AParser: TsExpressionParser;
+  ALeft, ARight: TsExprNode);
 begin
+  FParser := AParser;
   FLeft := ALeft;
   FRight := ARight;
 end;
@@ -2481,39 +2547,50 @@ end;
 
 { TsConstExprNode }
 
-constructor TsConstExprNode.CreateString(AValue: String);
+constructor TsConstExprNode.CreateString(AParser: TsExpressionParser;
+  AValue: String);
 begin
+  FParser := AParser;
   FValue.ResultType := rtString;
   FValue.ResString := AValue;
 end;
 
-constructor TsConstExprNode.CreateInteger(AValue: Int64);
+constructor TsConstExprNode.CreateInteger(AParser: TsExpressionParser;
+  AValue: Int64);
 begin
+  FParser := AParser;
   FValue.ResultType := rtInteger;
   FValue.ResInteger := AValue;
 end;
 
-constructor TsConstExprNode.CreateDateTime(AValue: TDateTime);
+constructor TsConstExprNode.CreateDateTime(AParser: TsExpressionParser;
+  AValue: TDateTime);
 begin
+  FParser := AParser;
   FValue.ResultType := rtDateTime;
   FValue.ResDateTime := AValue;
 end;
 
-constructor TsConstExprNode.CreateFloat(AValue: TsExprFloat);
+constructor TsConstExprNode.CreateFloat(AParser: TsExpressionParser;
+  AValue: TsExprFloat);
 begin
-  Inherited Create;
+  FParser := AParser;
   FValue.ResultType := rtFloat;
   FValue.ResFloat := AValue;
 end;
 
-constructor TsConstExprNode.CreateBoolean(AValue: Boolean);
+constructor TsConstExprNode.CreateBoolean(AParser: TsExpressionParser;
+  AValue: Boolean);
 begin
+  FParser := AParser;
   FValue.ResultType := rtBoolean;
   FValue.ResBoolean := AValue;
 end;
 
-constructor TsConstExprNode.CreateError(AValue: TsErrorValue);
+constructor TsConstExprNode.CreateError(AParser: TsExpressionParser;
+  AValue: TsErrorValue);
 begin
+  FParser := AParser;
   FValue.ResultType := rtError;
   FValue.ResError := AValue;
 end;
@@ -2538,9 +2615,9 @@ begin
   case NodeType of
     rtString   : Result := cDoubleQuote + FValue.ResString + cDoubleQuote;
     rtInteger  : Result := IntToStr(FValue.ResInteger);
-    rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime) + '''';    // Probably wrong !!!
+    rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime, Parser.FFormatSettings) + '''';    // Probably wrong !!!
     rtBoolean  : if FValue.ResBoolean then Result := 'TRUE' else Result := 'FALSE';
-    rtFloat    : Result := FloatToStr(FValue.ResFloat, ExprFormatSettings);
+    rtFloat    : Result := FloatToStr(FValue.ResFloat, Parser.FFormatSettings);
   end;
 end;
 
@@ -3419,9 +3496,10 @@ end;
 
 { TsIdentifierExprNode }
 
-constructor TsIdentifierExprNode.CreateIdentifier(AID: TsExprIdentifierDef);
+constructor TsIdentifierExprNode.CreateIdentifier(AParser: TsExpressionParser;
+  AID: TsExprIdentifierDef);
 begin
-  inherited Create;
+  FParser := AParser;
   FID := AID;
   PResult := @FID.FValue;
   FResultType := FID.ResultType;
@@ -3459,10 +3537,10 @@ end;
 
 { TsFunctionExprNode }
 
-constructor TsFunctionExprNode.CreateFunction(AID: TsExprIdentifierDef;
-  const Args: TsExprArgumentArray);
+constructor TsFunctionExprNode.CreateFunction(AParser: TsExpressionParser;
+  AID: TsExprIdentifierDef; const Args: TsExprArgumentArray);
 begin
-  inherited CreateIdentifier(AID);
+  inherited CreateIdentifier(AParser, AID);
   FArgumentNodes := Args;
   SetLength(FArgumentParams, Length(Args));
 end;
@@ -3500,7 +3578,7 @@ begin
   for i := 0 to Length(FArgumentNodes)-1 do
   begin
     if (S <> '') then
-      S := S + ',';
+      S := S + Parser.FFormatSettings.ListSeparator;
     S := S + FArgumentNodes[i].AsString;
   end;
   S := '(' + S + ')';
@@ -3544,18 +3622,20 @@ begin
   begin
     rta := FArgumentNodes[i].NodeType;
 
-    // A "cell" can return any type --> no type conversion required here.
-    if rta = rtCell then
-      Continue;
-
     if i+1 <= Length(FID.ParameterTypes) then
     begin
       rtp := CharToResultType(FID.ParameterTypes[i+1]);
       lastrtp := rtp;
     end else
       rtp := lastrtp;
+
     if rtp = rtAny then
       Continue;
+    // A "cell" can return any type --> no type conversion required here.
+
+    if rta = rtCell then
+      Continue;
+
     if (rtp <> rta) and not (rta in [rtCellRange, rtError, rtEmpty]) then
     begin
       // Automatically convert integers to floats in functions that return a float
@@ -3575,8 +3655,8 @@ end;
 
 { TsFunctionCallBackExprNode }
 
-constructor TsFunctionCallBackExprNode.CreateFunction(AID: TsExprIdentifierDef;
-  const Args: TsExprArgumentArray);
+constructor TsFunctionCallBackExprNode.CreateFunction(AParser: TsExpressionParser;
+  AID: TsExprIdentifierDef; const Args: TsExprArgumentArray);
 begin
   inherited;
   FCallBack := AID.OnGetFunctionValueCallBack;
@@ -3593,8 +3673,8 @@ end;
 
 { TFPFunctionEventHandlerExprNode }
 
-constructor TFPFunctionEventHandlerExprNode.CreateFunction(AID: TsExprIdentifierDef;
-  const Args: TsExprArgumentArray);
+constructor TFPFunctionEventHandlerExprNode.CreateFunction(AParser: TsExpressionParser;
+  AID: TsExprIdentifierDef; const Args: TsExprArgumentArray);
 begin
   inherited;
   FCallBack := AID.OnGetFunctionValue;
@@ -3611,18 +3691,20 @@ end;
 
 { TsCellExprNode }
 
-constructor TsCellExprNode.Create(AWorksheet: TsWorksheet; ACellString: String);
+constructor TsCellExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ACellString: String);
 var
   r, c: Cardinal;
   flags: TsRelFlags;
 begin
   ParseCellString(ACellString, r, c, flags);
-  Create(AWorksheet, r, c, flags);
+  Create(AParser, AWorksheet, r, c, flags);
 end;
 
-constructor TsCellExprNode.Create(AWorksheet: TsWorksheet; ARow,ACol: Cardinal;
-  AFlags: TsRelFlags);
+constructor TsCellExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ARow,ACol: Cardinal; AFlags: TsRelFlags);
 begin
+  FParser := AParser;
   FWorksheet := AWorksheet;
   FRow := ARow;
   FCol := ACol;
@@ -3696,7 +3778,8 @@ end;
 
 { TsCellRangeExprNode }
 
-constructor TsCellRangeExprNode.Create(AWorksheet: TsWorksheet; ACellRangeString: String);
+constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ACellRangeString: String);
 var
   r1, c1, r2, c2: Cardinal;
   flags: TsRelFlags;
@@ -3706,17 +3789,18 @@ begin
     ParseCellString(ACellRangeString, r1, c1, flags);
     if rfRelRow in flags then Include(flags, rfRelRow2);
     if rfRelCol in flags then Include(flags, rfRelCol2);
-    Create(AWorksheet, r1, c1, r1, c1, flags);
+    Create(AParser, AWorksheet, r1, c1, r1, c1, flags);
   end else
   begin
     ParseCellRangeString(ACellRangeString, r1, c1, r2, c2, flags);
-    Create(AWorksheet, r1, c1, r2, c2, flags);
+    Create(AParser, AWorksheet, r1, c1, r2, c2, flags);
   end;
 end;
 
-constructor TsCellRangeExprNode.Create(AWorksheet: TsWorksheet;
-  ARow1,ACol1,ARow2,ACol2: Cardinal; AFlags: TsRelFlags);
+constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ARow1,ACol1,ARow2,ACol2: Cardinal; AFlags: TsRelFlags);
 begin
+  FParser := AParser;
   FWorksheet := AWorksheet;
   FRow1 := ARow1;
   FCol1 := ACol1;

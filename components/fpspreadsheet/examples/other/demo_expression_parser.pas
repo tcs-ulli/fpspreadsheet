@@ -41,7 +41,7 @@ begin
     //cell := Worksheet.WriteFormula(1, 0, 'Day(Date(2014, 1, 12))');
     //cell := Worksheet.WriteFormula(1, 0, 'SUM(1,2,3)');
     //cell := Worksheet.WriteFormula(1, 0, 'CELL("address",A1)');
-    cell := Worksheet.WriteFormula(1, 0, 'ISBLANK(A1)');
+    cell := Worksheet.WriteFormula(1, 0, 'SUM(A1, 1.2, 1.3)');
 
     WriteLn('A1: ', worksheet.ReadAsUTF8Text(0, 0));
     WriteLn('B1: ', worksheet.ReadAsUTF8Text(0, 1));
@@ -64,7 +64,8 @@ begin
           rtError    : WriteLn(GetErrorValueStr(res.ResError));
         end;
 
-        WriteLn('Reconstructed string formula: ', parser.BuildStringFormula);
+        WriteLn('Reconstructed string formula: ', parser.Expression);
+        WriteLn('Reconstructed localized formula: ', parser.LocalizedExpression[DefaultFormatSettings]);
         formula := parser.RPNFormula;
 
         for i:=0 to Length(formula)-1 do begin
@@ -93,7 +94,7 @@ begin
     try
       try
         parser.RPNFormula := formula;
-        s := parser.BuildStringFormula;
+        s := parser.Expression;
         WriteLn('String formula, reconstructed from RPN formula: ', s);
       except on E:Exception do
         begin
