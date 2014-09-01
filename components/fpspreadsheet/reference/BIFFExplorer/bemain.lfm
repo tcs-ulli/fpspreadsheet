@@ -4,7 +4,7 @@ object MainForm: TMainForm
   Top = 177
   Width = 1089
   Caption = 'BIFF Explorer'
-  ClientHeight = 551
+  ClientHeight = 556
   ClientWidth = 1089
   Menu = MainMenu
   OnCloseQuery = FormCloseQuery
@@ -15,7 +15,7 @@ object MainForm: TMainForm
   LCLVersion = '1.3'
   object Splitter1: TSplitter
     Left = 419
-    Height = 496
+    Height = 506
     Top = 27
     Width = 5
   end
@@ -57,17 +57,17 @@ object MainForm: TMainForm
   end
   object DetailPanel: TPanel
     Left = 424
-    Height = 496
+    Height = 506
     Top = 27
     Width = 665
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 496
+    ClientHeight = 506
     ClientWidth = 665
     TabOrder = 2
     object PageControl: TPageControl
       Left = 0
-      Height = 496
+      Height = 506
       Top = 0
       Width = 665
       ActivePage = PgValues
@@ -77,12 +77,12 @@ object MainForm: TMainForm
       OnChange = PageControlChange
       object PgAnalysis: TTabSheet
         Caption = 'Analysis'
-        ClientHeight = 479
+        ClientHeight = 478
         ClientWidth = 657
         object AnalysisDetails: TMemo
           Left = 0
           Height = 191
-          Top = 288
+          Top = 287
           Width = 657
           Align = alBottom
           Font.CharSet = ANSI_CHARSET
@@ -99,7 +99,7 @@ object MainForm: TMainForm
           Cursor = crVSplit
           Left = 0
           Height = 5
-          Top = 283
+          Top = 282
           Width = 657
           Align = alBottom
           ResizeAnchor = akBottom
@@ -107,12 +107,12 @@ object MainForm: TMainForm
       end
       object PgValues: TTabSheet
         Caption = 'Values'
-        ClientHeight = 463
+        ClientHeight = 478
         ClientWidth = 657
         object ValueGrid: TStringGrid
           Left = 0
           Height = 158
-          Top = 305
+          Top = 320
           Width = 657
           Align = alBottom
           ColCount = 3
@@ -143,19 +143,19 @@ object MainForm: TMainForm
         end
         object HexPanel: TPanel
           Left = 0
-          Height = 300
+          Height = 315
           Top = 0
           Width = 657
           Align = alClient
           Caption = 'HexPanel'
-          ClientHeight = 300
+          ClientHeight = 315
           ClientWidth = 657
           TabOrder = 1
           object HexGrid: TStringGrid
             Left = 1
-            Height = 298
+            Height = 313
             Top = 1
-            Width = 390
+            Width = 373
             Align = alClient
             AutoFillColumns = True
             ColCount = 17
@@ -170,22 +170,22 @@ object MainForm: TMainForm
             OnSelection = HexGridSelection
             ColWidths = (
               28
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              22
-              28
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              21
+              26
             )
             Cells = (
               16
@@ -240,10 +240,10 @@ object MainForm: TMainForm
             )
           end
           object AlphaGrid: TStringGrid
-            Left = 396
-            Height = 298
+            Left = 379
+            Height = 313
             Top = 1
-            Width = 260
+            Width = 277
             Align = alRight
             AutoFillColumns = True
             ColCount = 16
@@ -255,22 +255,22 @@ object MainForm: TMainForm
             OnClick = GridClick
             OnSelection = AlphaGridSelection
             ColWidths = (
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
-              16
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              17
+              18
             )
             Cells = (
               16
@@ -325,8 +325,8 @@ object MainForm: TMainForm
             )
           end
           object HexDumpSplitter: TSplitter
-            Left = 391
-            Height = 298
+            Left = 374
+            Height = 313
             Top = 1
             Width = 5
             Align = alRight
@@ -337,7 +337,7 @@ object MainForm: TMainForm
           Cursor = crVSplit
           Left = 0
           Height = 5
-          Top = 300
+          Top = 315
           Width = 657
           Align = alBottom
           ResizeAnchor = akBottom
@@ -347,19 +347,19 @@ object MainForm: TMainForm
   end
   object TreePanel: TPanel
     Left = 0
-    Height = 496
+    Height = 506
     Top = 27
     Width = 419
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 496
+    ClientHeight = 506
     ClientWidth = 419
     Constraints.MinWidth = 275
     TabOrder = 3
     object FindPanel: TPanel
       Left = 0
       Height = 36
-      Top = 460
+      Top = 470
       Width = 419
       Align = alBottom
       BevelOuter = bvNone
@@ -501,10 +501,10 @@ object MainForm: TMainForm
       end
       object CbFind: TComboBox
         Left = 28
-        Height = 28
+        Height = 23
         Top = 5
         Width = 183
-        ItemHeight = 20
+        ItemHeight = 15
         OnChange = CbFindChange
         OnKeyPress = CbFindKeyPress
         TabOrder = 0
@@ -512,11 +512,12 @@ object MainForm: TMainForm
     end
     object BIFFTree: TVirtualStringTree
       Left = 0
-      Height = 460
+      Height = 470
       Top = 0
       Width = 419
       Align = alClient
       ButtonStyle = bsTriangle
+      Colors.UnfocusedColor = clMedGray
       DefaultText = 'Node'
       Header.AutoSizeIndex = 4
       Header.Columns = <      
@@ -574,8 +575,8 @@ object MainForm: TMainForm
   end
   object StatusBar: TStatusBar
     Left = 0
-    Height = 28
-    Top = 523
+    Height = 23
+    Top = 533
     Width = 1089
     Panels = <    
       item

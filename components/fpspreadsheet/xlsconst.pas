@@ -226,6 +226,10 @@ const
   INT_EXCEL_SHEET_FUNC_BINOMDIST  = 273;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_CHIDIST    = 274;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_CHIINV     = 275;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_EVEN       = 279;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_FLOOR      = 285;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_CEILING    = 288;  // not available in BIFF2
+  INT_EXCEL_SHEET_FUNC_ODD        = 298;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_PERMUT     = 299;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_POISSON    = 300;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_SUMSQ      = 321;  // not available in BIFF2
