@@ -33,6 +33,9 @@
     - add boolean constants "TRUE" and "FALSE".
     - add property RPNFormula to interface the parser to RPN formulas of xls files.
     - accept funtions with zero parameters
+    - generalize scanner and parser to allow localized decimal and list separators
+    - add to spreadsheet format to parser to take account of formula "dialect"
+      (see OpenDocument using [] around cell addresses)
 
  ******************************************************************************}
 
@@ -86,6 +89,8 @@ const
 type
   TsExpressionParser = class;
   TsBuiltInExpressionManager = class;
+
+  TsFormulaDialect = (fdExcel, fdOpenDocument);
 
   TsResultType = (rtEmpty, rtBoolean, rtInteger, rtFloat, rtDateTime, rtString,
     rtCell, rtCellRange, rtError, rtAny);
@@ -651,6 +656,7 @@ type
     function DoIdentifier: TsTokenType;
     function DoNumber: TsTokenType;
     function DoDelimiter: TsTokenType;
+    function DoSquareBracket: TsTokenType;
     function DoString: TsTokenType;
     function NextPos: Char; // inline;
     procedure SkipWhiteSpace; // inline;
@@ -681,6 +687,7 @@ type
     FHashList: TFPHashObjectlist;
     FDirty: Boolean;
     FWorksheet: TsWorksheet;
+    FDialect: TsFormulaDialect;
     procedure CheckEOF;
     procedure CheckNodes(var ALeft, ARight: TsExprNode);
     function ConvertNode(Todo: TsExprNode; ToType: TsResultType): TsExprNode;
@@ -743,6 +750,7 @@ type
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
     property Worksheet: TsWorksheet read FWorksheet;
+    property Dialect: TsFormulaDialect read FDialect write FDialect;
   end;
 
   TsSpreadsheetParser = class(TsExpressionParser)
@@ -855,6 +863,8 @@ resourcestring
   SErrCommaExpected =  'Expected comma (,) at position %d, but got %s';
   SErrInvalidNumberChar = 'Unexpected character in number : %s';
   SErrInvalidNumber = 'Invalid numerical value : %s';
+  SErrInvalidCell = 'No valid cell address specification : %s';
+  SErrInvalidCellRange = 'No valid cell range specification : %s';
   SErrNoOperand = 'No operand for unary operation %s';
   SErrNoLeftOperand = 'No left operand for binary operation %s';
   SErrNoRightOperand = 'No left operand for binary operation %s';
@@ -1039,6 +1049,40 @@ begin
   Result := ttNumber;
 end;
 
+{ Scans until closing square bracket is reached. In OpenDocument, this is
+  a cell or cell range identifier. }
+function TsExpressionScanner.DoSquareBracket: TsTokenType;
+var
+  C: Char;
+  p: Integer;
+  r1,c1,r2,c2: Cardinal;
+  flags: TsRelFlags;
+begin
+  FToken := '';
+  C := NextPos;
+  while (C <> ']') do
+  begin
+    if C = cNull then
+      ScanError(SErrUnexpectedEndOfExpression);
+    FToken := FToken + C;
+    C := NextPos;
+  end;
+  FToken := Copy(FToken, 2, Length(FToken) - 2);  // Delete "[" and "]"
+  p := system.pos('.', FToken);                          // Delete up tp "."  (--> to be considered later!)
+  if p <> 0 then Delete(FToken, 1, p);
+  if system.pos(':', FToken) > 0 then
+  begin
+    if ParseCellRangeString(FToken, r1, c1, r2, c2, flags) then
+      Result := ttCellRange
+    else
+      ScanError(Format(SErrInvalidCellRange, [FToken]));
+  end else
+  if ParseCellString(FToken, r1, c1, flags) then
+    Result := ttCell
+  else
+    ScanError(Format(SErrInvalidCell, [FToken]));
+end;
+
 function TsExpressionScanner.DoString: TsTokenType;
 
   function TerminatingChar(C: Char): boolean;
@@ -1055,7 +1099,7 @@ begin
   C := NextPos;
   while not TerminatingChar(C) do
   begin
-    FToken := FToken+C;
+    FToken := FToken + C;
     if C = cDoubleQuote then
       NextPos;
     C := NextPos;
@@ -1082,7 +1126,9 @@ begin
   FToken := '';
   SkipWhiteSpace;
   C := FChar^;
-  if c = cNull then
+  if (FParser.Dialect = fdOpenDocument) and (C = '[') then
+    Result := DoSquareBracket
+  else if C = cNull then
     Result := ttEOF
   else if IsDelim(C) then
     Result := DoDelimiter
@@ -1156,6 +1202,7 @@ end;
 constructor TsExpressionParser.Create(AWorksheet: TsWorksheet);
 begin
   inherited Create;
+  FDialect := fdExcel;
   FWorksheet := AWorksheet;
   FIdentifiers := TsExprIdentifierDefs.Create(TsExprIdentifierDef);
   FIdentifiers.FParser := Self;
@@ -3723,6 +3770,8 @@ end;
 function TsCellExprNode.AsString: string;
 begin
   Result := GetCellString(FRow, FCol, FFlags);
+  if FParser.Dialect = fdOpenDocument then
+    Result := '[.' + Result + ']';
 end;
 
 procedure TsCellExprNode.GetNodeValue(var Result: TsExpressionResult);

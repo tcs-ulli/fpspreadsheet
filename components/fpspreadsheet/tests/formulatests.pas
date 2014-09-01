@@ -47,6 +47,8 @@ type
     procedure Test_Write_Read_FormulaStrings_BIFF8;
     { OOXML Tests }
     procedure Test_Write_Read_FormulaStrings_OOXML;
+    { ODS Tests }
+    procedure Test_Write_Read_FormulaStrings_ODS;
 
     // Writes out and calculates rpn formulas, read back
     { BIFF2 Tests }
@@ -183,6 +185,11 @@ end;
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_OOXML;
 begin
   TestWriteReadFormulaStrings(sfOOXML, true);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_ODS;
+begin
+  TestWriteReadFormulaStrings(sfOpenDocument, true);
 end;
 
 
