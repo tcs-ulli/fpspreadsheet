@@ -193,7 +193,7 @@ type
 implementation
 
 uses
-  StrUtils, Variants, fpsStreams;
+  StrUtils, Variants, fpsStreams, fpsExprParser;
 
 const
   { OpenDocument general XML constants }
@@ -685,6 +685,7 @@ begin
   inherited Create(AWorkbook);
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
+  FPointSeparatorSettings.ListSeparator := ';';  // for formulas
 
   FCellStyleList := TFPList.Create;
   FColumnStyleList := TFPList.Create;
@@ -1257,10 +1258,12 @@ var
   valueType: String;
   valueStr: String;
   node: TDOMNode;
+  parser: TsSpreadsheetParser;
+  p: Integer;
 begin
-
   // Create cell and apply format
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -1269,10 +1272,28 @@ begin
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
 
-  // Read formula, store in the cell's FormulaValue.FormulaStr
-  formula := GetAttrValue(ACellNode, 'table:formula');
-  if formula <> '' then Delete(formula, 1, 3);  // delete "of:"
-  cell^.FormulaValue := formula;
+  if (boReadFormulas in FWorkbook.Options) then begin
+    // Read formula, trim it, ...
+    formula := GetAttrValue(ACellNode, 'table:formula');
+    if formula <> '' then
+    begin
+      // formulas written by Spread begin with 'of:=', our's with '=' --> remove that
+      p := pos('=', formula);
+      Delete(formula, 1, p);
+    end;
+    // ... convert to Excel dialect used by fps by defailt
+    parser := TsSpreadsheetParser.Create(FWorksheet);
+    try
+      parser.Dialect := fdOpenDocument;
+      parser.Expression := formula;
+      parser.Dialect := fdExcel;
+      formula := parser.Expression;
+    finally
+      parser.Free;
+    end;
+    // ... and store in cell's FormulaValue field.
+    cell^.FormulaValue := formula;
+  end;
 
   // Read formula results
   // ... number value
@@ -2685,6 +2706,8 @@ end;
 procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
   CurSheet: TsWorksheet);
 begin
+  FWorksheet := CurSheet;
+
   // Header
   AppendToStream(AStream,
     '<table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">');
@@ -3069,6 +3092,7 @@ begin
 
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
+  FPointSeparatorSettings.ListSeparator := ';';   // for formulas
 
   // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
   FLimitations.MaxColCount := 1024;
@@ -3576,6 +3600,10 @@ procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
 var
   lStyle: String = '';
   lIndex: Integer;
+  parser: TsExpressionParser;
+  formula: String;
+  valuetype: String;
+  value: string;
 begin
   Unused(AStream, ARow, ACol);
 
@@ -3585,14 +3613,64 @@ begin
   end else
     lStyle := '';
 
+  // Convert string formula to the format needed by ods: semicolon list separators!
+  parser := TsSpreadsheetParser.Create(FWorksheet);
+  try
+    parser.Dialect := fdOpenDocument;
+    parser.Expression := ACell^.FormulaValue;
+    formula := Parser.LocalizedExpression[FPointSeparatorSettings];
+  finally
+    parser.Free;
+  end;
+
+  case ACell^.ContentType of
+    cctNumber:
+      begin
+        valuetype := 'float';
+        value := FormatFloat('%g', ACell^.NumberValue, FPointSeparatorSettings);
+      end;
+    cctDateTime:
+      begin
+        valuetype := 'float';
+        value := FormatFloat('%g', ACell^.DateTimeValue, FPointSeparatorSettings);
+      end;
+    cctUTF8String:
+      begin
+        valuetype := 'string';
+        value := ACell^.UTF8StringValue;
+      end;
+    cctBool:
+      begin
+        valuetype := 'boolean';
+        value := BoolToStr(ACell^.BoolValue, 'true', 'false');
+      end;
+    cctError:
+      begin
+        valuetype := 'error';
+        value := GetErrorValueStr(ACell^.ErrorValue);
+      end;
+  end;
+
+  { Fix special xml characters }
+  formula := UTF8TextToXMLText(formula);
+
   { We are writing a very rudimentary formula here without result and result
     data type. Seems to work... }
-  AppendToStream(AStream, Format(
-    '<table:table-cell table:formula="%s" %s>' +
-    '</table:table-cell>', [
-    ACell^.FormulaValue, lStyle
-  ]));
+  if ACell^.CalcState=csCalculated then
+    AppendToStream(AStream, Format(
+      '<table:table-cell table:formula="=%s" office:value-type="%s" office-value="%s" %s>' +
+        '<text:p>%s</text:p>'+
+      '</table:table-cell>', [
+      formula, valuetype, value, lStyle,
+      value
+    ]))
+  else
+    AppendToStream(AStream, Format(
+      '<table:table-cell table:formula="=%s" %s/>', [
+      formula, lStyle
+    ]));
 end;
+
 
 {
   Writes a cell with text content
