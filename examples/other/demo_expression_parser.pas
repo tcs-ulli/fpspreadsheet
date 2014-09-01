@@ -41,7 +41,7 @@ begin
     //cell := Worksheet.WriteFormula(1, 0, 'Day(Date(2014, 1, 12))');
     //cell := Worksheet.WriteFormula(1, 0, 'SUM(1,2,3)');
     //cell := Worksheet.WriteFormula(1, 0, 'CELL("address",A1)');
-    cell := Worksheet.WriteFormula(1, 0, 'SUM(A1, 1.2, 1.3)');
+    cell := Worksheet.WriteFormula(1, 0, 'REPT("Hallo", 3)');
 
     WriteLn('A1: ', worksheet.ReadAsUTF8Text(0, 0));
     WriteLn('B1: ', worksheet.ReadAsUTF8Text(0, 1));

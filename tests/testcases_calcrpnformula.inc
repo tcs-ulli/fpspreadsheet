@@ -1077,6 +1077,24 @@
   sollValues[Row] := ErrorResult(errOverFlow);
   MyWorksheet.WriteErrorValue(Row, 2, errOverFlow);
 
+  // CEILING
+  if AFormat <> sfExcel2 then begin
+    inc(Row);
+    number := 0.1;
+    formula := 'CEILING(5.02,0.25)';
+    MyWorksheet.WriteUTF8Text(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(5.02,
+        RPNNumber(0.25,
+        RPNFunc('CEILING', nil)))))
+    else
+      myWorksheet.WriteFormula(Row, 1, formula);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := FloatResult(ceil(5.02/0.25)*0.25);
+    MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
+  end;
+
   // COS
   inc(Row);
   number := 0.1;
@@ -1124,6 +1142,23 @@
     myWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
   end;
 
+  // EVEN
+  if AFormat <> sfExcel2 then
+  begin
+    inc(Row);
+    formula := 'EVEN(11.2)';
+    MyWorksheet.WriteUTF8Text(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(11.2,
+        RPNFunc('EVEN', nil))))
+    else
+      MyWorksheet.WriteFormula(Row, 1, formula);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := IntegerResult(12);
+    myWorksheet.WriteNumber(Row, 2, 12);
+  end;
+
   // EXP
   inc(Row);
   number := 0.1;
@@ -1138,6 +1173,38 @@
   myWorksheet.WriteNumber(Row, 2, exp(number));
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(exp(number));
+
+  // FACT
+  inc(Row);
+  formula := 'FACT(5)';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNInteger(5,
+      RPNFunc('FACT', nil))))
+  else
+    myWorksheet.WriteFormula(Row, 1, formula);
+  myWorksheet.WriteNumber(Row, 2, 1*2*3*4*5);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := FloatResult(1*2*3*4*5);
+
+  // FLOOR
+  if AFormat <> sfExcel2 then begin
+    inc(Row);
+    number := 0.1;
+    formula := 'FLOOR(5.02,0.25)';
+    MyWorksheet.WriteUTF8Text(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(5.02,
+        RPNNumber(0.25,
+        RPNFunc('FLOOR', nil)))))
+    else
+      myWorksheet.WriteFormula(Row, 1, formula);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := FloatResult(floor(5.02/0.25)*0.25);
+    MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
+  end;
 
   // INT (positive argument)
   inc(Row);
@@ -1346,6 +1413,38 @@
   MyWorksheet.WriteNumber(Row, 2, logn(10, 2));
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(logn(10, 2));
+
+  // MOD
+  inc(Row);
+  formula := 'MOD(12,5)';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNInteger(12,
+      RPNInteger(5,
+      RPNFunc('MOD', nil)))))
+  else
+    MyWorksheet.WriteFormula(Row, 1, formula);
+  MyWorksheet.WriteNumber(Row, 2, 12 mod 5);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := IntegerResult(12 mod 5);
+
+  // ODD
+  if AFormat <> sfExcel2 then
+  begin
+    inc(Row);
+    formula := 'ODD(11.2)';
+    MyWorksheet.WriteUTF8Text(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(11.2,
+        RPNFunc('ODD', nil))))
+    else
+      MyWorksheet.WriteFormula(Row, 1, formula);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := IntegerResult(13);
+    myWorksheet.WriteNumber(Row, 2, 13);
+  end;
 
   // PI
   inc(Row);
@@ -2831,6 +2930,21 @@
   sollValues[Row] := StringResult('ABC');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
 
+  // EXACT
+  inc(Row);
+  formula := 'EXACT("abc","ABC")';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNString('abc',
+      RPNString('ABC',
+      RPNFunc('EXACT', nil)))))
+  else
+    Myworksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := BooleanResult(false);
+  Myworksheet.WriteUTF8Text(Row, 2, 'FALSE');
+
   // LEFT (2 parameters)
   inc(Row);
   formula := 'LEFT("Hallo world",2)';
@@ -2983,7 +3097,22 @@
   sollValues[Row] := StringResult('wurde');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
 
-// RIGHT (2 parameters)
+  // REPT
+  inc(Row);
+  formula := 'REPT("ABC",3)';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNString('ABC',
+      RPNInteger(3,
+      RPNFunc('REPT', nil)))))
+  else
+    Myworksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('ABCABCABC');
+  Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
+
+  // RIGHT (2 parameters)
   inc(Row);
   formula := 'RIGHT("Hallo world",2)';
   MyWorksheet.WriteUTF8Text(Row, 0, formula);

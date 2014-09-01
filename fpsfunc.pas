@@ -16,7 +16,7 @@ procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
 implementation
 
 uses
-  Math, lazutf8, DateUtils, xlsconst, fpsUtils;
+  Math, lazutf8, StrUtils, DateUtils, xlsconst, fpsUtils;
 
 
 {------------------------------------------------------------------------------}
@@ -82,6 +82,20 @@ begin
     Result := ErrorResult(errOverflow);   // #NUM!
 end;
 
+procedure fpsCEILING(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// CEILING( number, significance )
+// returns a number rounded up to a multiple of significance
+var
+  num, sig: TsExprFloat;
+begin
+  num := ArgToFloat(Args[0]);
+  sig := ArgToFloat(Args[1]);
+  if sig = 0 then
+    Result := ErrorResult(errDivideByZero)
+  else
+    Result := FloatResult(ceil(num/sig)*sig);
+end;
+
 procedure fpsCOS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   Result := FloatResult(cos(ArgToFloat(Args[0])));
@@ -97,9 +111,75 @@ begin
   Result := FloatResult(RadToDeg(ArgToFloat(Args[0])));
 end;
 
+procedure fpsEVEN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// EVEN( number )
+// rounds a number up to the nearest even integer.
+// If the number is negative, the number is rounded away from zero.
+var
+  x: TsExprFloat;
+  n: Integer;
+begin
+  if Args[0].ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty] then begin
+    x := ArgToFloat(Args[0]);
+    if x > 0 then
+    begin
+      n := Trunc(x) + 1;
+      if odd(n) then inc(n);
+    end else
+    if x < 0 then
+    begin
+      n := Trunc(x) - 1;
+      if odd(n) then dec(n);
+    end else
+      n := 0;
+    Result := IntegerResult(n);
+  end
+  else
+    Result := ErrorResult(errWrongType);
+end;
+
 procedure fpsEXP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   Result := FloatResult(exp(ArgToFloat(Args[0])));
+end;
+
+procedure fpsFACT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// FACT( number )
+//  returns the factorial of a number.
+var
+  res: TsExprFloat;
+  i, n: Integer;
+begin
+  if Args[0].ResultType in [rtInteger, rtFloat, rtEmpty, rtDateTime] then
+  begin
+    res := 1.0;
+    n := ArgToInt(Args[0]);
+    if n < 0 then
+      Result := ErrorResult(errOverflow)
+    else
+      try
+        for i:=1 to n do
+          res := res * i;
+        Result := FloatResult(res);
+      except on E:Exception do
+        Result := ErrorResult(errOverflow);
+      end;
+  end else
+    Result := ErrorResult(errWrongType);
+end;
+
+procedure fpsFLOOR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// FLOOR( number, significance )
+// returns a number rounded down to a multiple of significance
+var
+  num, sig: TsExprFloat;
+begin
+  num := ArgToFloat(Args[0]);
+  sig := ArgToFloat(Args[1]);
+  if sig = 0 then
+    Result := ErrorResult(errDivideByZero)
+  else
+    Result := FloatResult(floor(num/sig)*sig);
 end;
 
 procedure fpsINT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -151,6 +231,46 @@ begin
     Result := FloatResult(log10(x))
   else
     Result := ErrorResult(errOverflow);   // #NUM!
+end;
+
+procedure fpsMOD(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+//  MOD( number, divisor )
+// Returns the remainder after a number is divided by a divisor.
+var
+  n, m: Integer;
+begin
+  n := ArgToInt(Args[0]);
+  m := ArgToInt(Args[1]);
+  if m = 0 then
+    Result := ErrorResult(errDivideByZero)
+  else
+    Result := IntegerResult(n mod m);
+end;
+
+procedure fpsODD(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// ODD( number )
+// rounds a number up to the nearest odd integer.
+// If the number is negative, the number is rounded away from zero.
+var
+  x: TsExprFloat;
+  n: Integer;
+begin
+  if Args[0].ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty] then
+  begin
+    x := ArgToFloat(Args[0]);
+    if x >= 0 then
+    begin
+      n := Trunc(x) + 1;
+      if not odd(n) then inc(n);
+    end else
+    begin
+      n := Trunc(x) - 1;
+      if not odd(n) then dec(n);
+    end;
+    Result := IntegerResult(n);
+  end
+  else
+    Result := ErrorResult(errWrongType);
 end;
 
 procedure fpsPI(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -554,6 +674,17 @@ begin
   Result := StringResult(s);
 end;
 
+procedure fpsEXACT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// EXACT( text1, text2 )
+// Compares two strings (case-sensitive) and returns TRUE if they are equal
+var
+  s1, s2: String;
+begin
+  s1 := ArgToString(Args[0]);
+  s2 := ArgToString(Args[1]);
+  Result := BooleanResult(s1 = s2);
+end;
+
 procedure fpsLEFT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // LEFT( text, [number_of_characters] )
 // extracts a substring from a string, starting from the left-most character
@@ -561,7 +692,7 @@ var
   s: String;
   count: Integer;
 begin
-  s := Args[0].ResString;
+  s := ArgToString(Args[0]);
   if s = '' then
     Result.ResultType := rtEmpty
   else
@@ -584,7 +715,7 @@ procedure fpsLEN(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // LEN( text )
 //  returns the length of the specified string.
 begin
-  Result := IntegerResult(UTF8Length(Args[0].ResString));
+  Result := IntegerResult(UTF8Length(ArgToString(Args[0])));
 end;
 
 procedure fpsLOWER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -592,14 +723,14 @@ procedure fpsLOWER(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // converts all letters in the specified string to lowercase. If there are
 // characters in the string that are not letters, they are not affected.
 begin
-  Result := StringResult(UTF8Lowercase(Args[0].ResString));
+  Result := StringResult(UTF8Lowercase(ArgToString(Args[0])));
 end;
 
 procedure fpsMID(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MID( text, start_position, number_of_characters )
 // extracts a substring from a string (starting at any position).
 begin
-  Result := StringResult(UTF8Copy(Args[0].ResString, ArgToInt(Args[1]), ArgToInt(Args[2])));
+  Result := StringResult(UTF8Copy(ArgToString(Args[0]), ArgToInt(Args[1]), ArgToInt(Args[2])));
 end;
 
 procedure fpsREPLACE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -619,6 +750,23 @@ begin
   Result := StringResult(s1 + sNew + s2);
 end;
 
+procedure fpsREPT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// REPT( text, count )
+// repeats text a specified number of times.
+var
+  s: String;
+  count: Integer;
+begin
+  s := ArgToString(Args[0]);
+  if s = '' then
+    Result.ResultType := rtEmpty
+  else
+  if Args[1].ResultType in [rtInteger, rtFloat] then begin
+    count := ArgToInt(Args[1]);
+    Result := StringResult(DupeString(s, count));
+  end;
+end;
+
 procedure fpsRIGHT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // RIGHT( text, [number_of_characters] )
 // extracts a substring from a string, starting from the last character
@@ -626,7 +774,7 @@ var
   s: String;
   count: Integer;
 begin
-  s := Args[0].ResString;
+  s := ArgToString(Args[0]);
   if s = '' then
     Result.ResultType := rtEmpty
   else begin
@@ -655,7 +803,7 @@ var
   s: String;
   p: Integer;
 begin
-  s := Args[0].ResString;
+  s := ArgToString(Args[0]);
   sOld := ArgToString(Args[1]);
   sNew := ArgToString(Args[2]);
   if Length(Args) = 4 then
@@ -685,7 +833,7 @@ procedure fpsTRIM(var Result: TsExpressionResult; const Args: TsExprParameterArr
 // TRIM( text )
 // returns a text value with the leading and trailing spaces removed
 begin
-  Result := StringResult(UTF8Trim(Args[0].ResString));
+  Result := StringResult(UTF8Trim(ArgToString(Args[0])));
 end;
 
 procedure fpsUPPER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -693,7 +841,7 @@ procedure fpsUPPER(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // converts all letters in the specified string to uppercase. If there are
 // characters in the string that are not letters, they are not affected.
 begin
-  Result := StringResult(UTF8Uppercase(Args[0].ResString));
+  Result := StringResult(UTF8Uppercase(ArgToString(Args[0])));
 end;
 
 procedure fpsVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -1399,14 +1547,20 @@ begin
     AddFunction(cat, 'ASINH',     'F', 'F',    INT_EXCEL_SHEET_FUNC_ASINH,      @fpsASINH);
     AddFunction(cat, 'ATAN',      'F', 'F',    INT_EXCEL_SHEET_FUNC_ATAN,       @fpsATAN);
     AddFunction(cat, 'ATANH',     'F', 'F',    INT_EXCEL_SHEET_FUNC_ATANH,      @fpsATANH);
+    AddFunction(cat, 'CEILING',   'F', 'FF',   INT_EXCEL_SHEET_FUNC_CEILING,    @fpsCEILING);
     AddFunction(cat, 'COS',       'F', 'F',    INT_EXCEL_SHEET_FUNC_COS,        @fpsCOS);
     AddFunction(cat, 'COSH',      'F', 'F',    INT_EXCEL_SHEET_FUNC_COSH,       @fpsCOSH);
     AddFunction(cat, 'DEGREES',   'F', 'F',    INT_EXCEL_SHEET_FUNC_DEGREES,    @fpsDEGREES);
+    AddFunction(cat, 'EVEN',      'I', 'F',    INT_EXCEL_SHEET_FUNC_EVEN,       @fpsEVEN);
     AddFunction(cat, 'EXP',       'F', 'F',    INT_EXCEL_SHEET_FUNC_EXP,        @fpsEXP);
+    AddFunction(cat, 'FACT',      'F', 'I',    INT_EXCEL_SHEET_FUNC_FACT,       @fpsFACT);
+    AddFunction(cat, 'FLOOR',     'F', 'FF',   INT_EXCEL_SHEET_FUNC_FLOOR,      @fpsFLOOR);
     AddFunction(cat, 'INT',       'I', 'F',    INT_EXCEL_SHEET_FUNC_INT,        @fpsINT);
     AddFunction(cat, 'LN',        'F', 'F',    INT_EXCEL_SHEET_FUNC_LN,         @fpsLN);
     AddFunction(cat, 'LOG',       'F', 'Ff',   INT_EXCEL_SHEET_FUNC_LOG,        @fpsLOG);
     AddFunction(cat, 'LOG10',     'F', 'F',    INT_EXCEL_SHEET_FUNC_LOG10,      @fpsLOG10);
+    AddFunction(cat, 'MOD',       'I', 'II',   INT_EXCEL_SHEET_FUNC_MOD,        @fpsMOD);
+    AddFunction(cat, 'ODD',       'I', 'F',    INT_EXCEL_SHEET_FUNC_ODD,        @fpsODD);
     AddFunction(cat, 'PI',        'F', '',     INT_EXCEL_SHEET_FUNC_PI,         @fpsPI);
     AddFunction(cat, 'POWER',     'F', 'FF',   INT_EXCEL_SHEET_FUNC_POWER,      @fpsPOWER);
     AddFunction(cat, 'RADIANS',   'F', 'F',    INT_EXCEL_SHEET_FUNC_RADIANS,    @fpsRADIANS);
@@ -1441,11 +1595,13 @@ begin
     AddFunction(cat, 'CHAR',      'S', 'I',    INT_EXCEL_SHEET_FUNC_CHAR,       @fpsCHAR);
     AddFunction(cat, 'CODE',      'I', 'S',    INT_EXCEL_SHEET_FUNC_CODE,       @fpsCODE);
     AddFunction(cat, 'CONCATENATE','S','S+',   INT_EXCEL_SHEET_FUNC_CONCATENATE,@fpsCONCATENATE);
+    AddFunction(cat, 'EXACT',     'B', 'SS',   INT_EXCEL_SHEET_FUNC_EXACT,      @fpsEXACT);
     AddFunction(cat, 'LEFT',      'S', 'Si',   INT_EXCEL_SHEET_FUNC_LEFT,       @fpsLEFT);
     AddFunction(cat, 'LEN',       'I', 'S',    INT_EXCEL_SHEET_FUNC_LEN,        @fpsLEN);
     AddFunction(cat, 'LOWER',     'S', 'S',    INT_EXCEL_SHEET_FUNC_LOWER,      @fpsLOWER);
     AddFunction(cat, 'MID',       'S', 'SII',  INT_EXCEL_SHEET_FUNC_MID,        @fpsMID);
     AddFunction(cat, 'REPLACE',   'S', 'SIIS', INT_EXCEL_SHEET_FUNC_REPLACE,    @fpsREPLACE);
+    AddFunction(cat, 'REPT',      'S', 'SI',   INT_EXCEL_SHEET_FUNC_REPT,       @fpsREPT);
     AddFunction(cat, 'RIGHT',     'S', 'Si',   INT_EXCEL_SHEET_FUNC_RIGHT,      @fpsRIGHT);
     AddFunction(cat, 'SUBSTITUTE','S', 'SSSi', INT_EXCEL_SHEET_FUNC_SUBSTITUTE, @fpsSUBSTITUTE);
     AddFunction(cat, 'TRIM',      'S', 'S',    INT_EXCEL_SHEET_FUNC_TRIM,       @fpsTRIM);
