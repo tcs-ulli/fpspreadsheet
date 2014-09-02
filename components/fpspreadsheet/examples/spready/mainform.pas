@@ -733,7 +733,7 @@ begin
   c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
   s := EdFormula.Text;
   if (s <> '') and (s[1] = '=') then
-    WorksheetGrid.Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)))
+    WorksheetGrid.Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
   else
     WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, EdFormula.Text);
 end;
@@ -899,7 +899,7 @@ begin
 
   cell := WorksheetGrid.Worksheet.FindCell(r, c);
   if cell <> nil then begin
-    s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell);
+    s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell, true);
     if s <> '' then begin
       if s[1] <> '=' then s := '=' + s;
       EdFormula.Text := s;
