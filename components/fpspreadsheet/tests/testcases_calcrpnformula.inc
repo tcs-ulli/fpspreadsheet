@@ -220,7 +220,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteErrorValue(Row, 2, errDivideByZero);
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errDivideByZero);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errDivideByZero);
 
   // Division of cell values
   inc(Row);
@@ -956,9 +959,12 @@
       RPNFunc('ACOS', nil))))
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
+  MyWorksheet.WriteErrorValue(Row, 2, errOverflow);;
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverFlow);
-  MyWorksheet.WriteErrorValue(Row, 2, errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverFlow);
 
    // ARCCOSH - valid result
   inc(Row);
@@ -985,9 +991,12 @@
       RPNFunc('ACOSH', nil))))
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverFlow);
   MyWorksheet.WriteErrorValue(Row, 2, errOverflow);
+  SetLength(sollValues, Row+1);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverFlow);
 
   // ASIN
   inc(Row);
@@ -1014,9 +1023,12 @@
       RPNFunc('ASIN', nil))))
   else
     Myworksheet.WriteFormula(Row, 1, formula);
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverFlow);
   MyWorksheet.WriteErrorValue(Row, 2, errOverflow);
+  SetLength(sollValues, Row+1);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverFlow);
 
    // ARCSINH
   inc(Row);
@@ -1073,9 +1085,12 @@
       RPNFunc('ATANH', nil))))
   else
     myWorksheet.WriteFormula(Row, 1, formula);
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverFlow);
   MyWorksheet.WriteErrorValue(Row, 2, errOverFlow);
+  SetLength(sollValues, Row+1);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverFlow);
 
   // CEILING
   if AFormat <> sfExcel2 then begin
@@ -1262,7 +1277,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   myWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // LN - error due to argument < 0
   inc(Row);
@@ -1276,7 +1294,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG10 - valid result
   inc(Row);
@@ -1305,7 +1326,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   myWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG10 - error due to argument < 0
   inc(Row);
@@ -1319,7 +1343,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverFlow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG - valid result (2 arguments)
   inc(Row);
@@ -1352,7 +1379,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 }
 
   // LOG - valid result (1 argument)
@@ -1383,7 +1413,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG - negative value
   inc(Row);
@@ -1398,7 +1431,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG of cell
   inc(Row);
@@ -1623,7 +1659,10 @@
     myWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteUTF8Text(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := ErrorResult(errOverflow);
+  if AFormat = sfOpenDocument then
+    sollValues[Row] := FloatResult(0)
+  else
+    sollValues[Row] := ErrorResult(errOverflow);
 
   // SQRT of cell value
   inc(Row);

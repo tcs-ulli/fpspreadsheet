@@ -1230,9 +1230,12 @@ begin
   end;
 
   // Read formula results
-  // ... number value
   valueType := GetAttrValue(ACellNode, 'office:value-type');
   valueStr := GetAttrValue(ACellNode, 'office:value');
+  // ODS wants a 0 in the NumberValue field in case of an error. If there is
+  // no error, this value will be corrected below.
+  cell^.NumberValue := 0.0;
+  // (a) number value
   if (valueType = 'float') then begin
     if UpperCase(valueStr) = '1.#INF' then
       FWorksheet.WriteNumber(cell, 1.0/0.0)
@@ -1253,12 +1256,12 @@ begin
         end;
     end;
   end else
-  // Date/time value
+  // (b) Date/time value
   if (valueType = 'date') or (valueType = 'time') then begin
     floatValue := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
     FWorkSheet.WriteDateTime(cell, floatValue);
   end else
-  // text
+  // (c) text
   if (valueType = 'string') then begin
     node := ACellNode.FindNode('text:p');
     if (node <> nil) and (node.FirstChild <> nil) then begin
@@ -1266,7 +1269,7 @@ begin
       FWorksheet.WriteUTF8Text(cell, valueStr);
     end;
   end else
-  // Text
+  // (e) Text
     FWorksheet.WriteUTF8Text(cell, valueStr);
 
   if FIsVirtualMode then
@@ -3604,6 +3607,7 @@ var
   formula: String;
   valuetype: String;
   value: string;
+  valueStr: String;
 begin
   Unused(AStream, ARow, ACol);
 
@@ -3623,6 +3627,7 @@ begin
     parser.Free;
   end;
 
+  valueStr := '';
   case ACell^.ContentType of
     cctNumber:
       begin
@@ -3647,6 +3652,7 @@ begin
       begin
         valuetype := 'string';
         value := 'office:string-value="' + ACell^.UTF8StringValue +'"';
+        valueStr := '<text:p>' + ACell^.UTF8StringValue + '</text:p>';
       end;
     cctBool:
       begin
@@ -3655,8 +3661,10 @@ begin
       end;
     cctError:
       begin
-        valuetype := 'error';
-        value := 'office:value="' + GetErrorValueStr(ACell^.ErrorValue) + '"';
+        // Strange: but in case of an error, Open/LibreOffice always writes a
+        // float value 0 to the cell
+        valuetype := 'float';
+        value := 'office:value="0"';
       end;
   end;
 
@@ -3668,10 +3676,9 @@ begin
   if ACell^.CalcState=csCalculated then
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s>' +
-  //      '<text:p>%s</text:p>'+
+      valueStr +
       '</table:table-cell>', [
       formula, valuetype, value, lStyle
-      //value
     ]))
   else
     AppendToStream(AStream, Format(

@@ -3956,86 +3956,117 @@ var
   cell: PCell;
 begin
   Result := 0;
-  if Arg.ResultType = rtInteger then
-    result := Arg.ResInteger
-  else
-  if Arg.ResultType = rtFloat then
-    result := trunc(Arg.ResFloat)
-  else
-  if Arg.ResultType = rtDateTime then
-    result := trunc(Arg.ResDateTime)
-  else
-  if (Arg.ResultType = rtCell) then
-  begin
-    cell := ArgToCell(Arg);
-    if Assigned(cell) and (cell^.ContentType = cctNumber) then
-      result := trunc(cell^.NumberValue);
+  case Arg.ResultType of
+    rtInteger  : result := Arg.ResInteger;
+    rtFloat    : result := trunc(Arg.ResFloat);
+    rtDateTime : result := trunc(Arg.ResDateTime);
+    rtBoolean  : if Arg.ResBoolean then Result := 1 else Result := 0;
+    rtString   : if not TryStrToInt(Arg.ResString, Result) then Result := 0;
+    rtCell     : begin
+                   cell := ArgToCell(Arg);
+                   if Assigned(cell) then
+                     case cell^.ContentType of
+                       cctNumber    : result := trunc(cell^.NumberValue);
+                       cctDateTime  : result := trunc(cell^.DateTimeValue);
+                       cctBool      : if cell^.BoolValue then result := 1;
+                       cctUTF8String: if not TryStrToInt(cell^.UTF8StringValue, result)
+                                        then Result := 0;
+                     end;
+                 end;
   end;
 end;
 
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
-// Utility function for the built-in math functions. Accepts also integers
-// in place of the floating point arguments. To be called in builtins or
-// user-defined callbacks having float results.
+// Utility function for the built-in math functions. Accepts also integers and
+// other data types in place of floating point arguments. To be called in
+// builtins or user-defined callbacks having float results or arguments.
 var
   cell: PCell;
+  s: String;
+  fs: TFormatSettings;
 begin
   Result := 0.0;
-  if Arg.ResultType = rtInteger then
-    result := Arg.ResInteger
-  else
-  if Arg.ResultType = rtDateTime then
-    result := Arg.ResDateTime
-  else
-  if Arg.ResultType = rtFloat then
-    result := Arg.ResFloat
-  else
-  if (Arg.ResultType = rtCell) then
-  begin
-    cell := ArgToCell(Arg);
-    if Assigned(cell) then
-      case cell^.ContentType of
-        cctNumber   : Result := cell^.NumberValue;
-        cctDateTime : Result := cell^.DateTimeValue;
-      end;
+  case Arg.ResultType of
+    rtInteger  : result := Arg.ResInteger;
+    rtDateTime : result := Arg.ResDateTime;
+    rtFloat    : result := Arg.ResFloat;
+    rtBoolean  : if Arg.ResBoolean then Result := 1.0 else Result := 0.0;
+    rtString   : if not TryStrToFloat(Arg.ResString, Result) then Result := 0.0;
+    rtCell     : begin
+                   cell := ArgToCell(Arg);
+                   if Assigned(cell) then
+                     case cell^.ContentType of
+                       cctNumber    : Result := cell^.NumberValue;
+                       cctDateTime  : Result := cell^.DateTimeValue;
+                       cctBool      : if cell^.BoolValue then result := 1.0;
+                       cctUTF8String: begin
+                                        fs := Arg.Worksheet.Workbook.FormatSettings;
+                                        s := cell^.UTF8StringValue;
+                                        if not TryStrToFloat(s, result, fs) then
+                                          result := 0.0;
+                                      end;
+                     end;
+                 end;
   end;
 end;
 
 function ArgToDateTime(Arg: TsExpressionResult): TDateTime;
 var
   cell: PCell;
+  fs: TFormatSettings;
 begin
   Result := 0.0;
-  if Arg.ResultType = rtDateTime then
-    result := Arg.ResDateTime
-  else
-  if Arg.ResultType = rtInteger then
-    Result := Arg.ResInteger
-  else
-  if Arg.ResultType = rtFloat then
-    Result := Arg.ResFloat
-  else
-  if (Arg.ResultType = rtCell) then
-  begin
-    cell := ArgToCell(Arg);
-    if Assigned(cell) and (cell^.ContentType = cctDateTime) then
-      Result := cell^.DateTimeValue;
+  case Arg.ResultType of
+    rtDateTime  : result := Arg.ResDateTime;
+    rtInteger   : Result := Arg.ResInteger;
+    rtFloat     : Result := Arg.ResFloat;
+    rtBoolean   : if Arg.ResBoolean then Result := 1.0;
+    rtString    : begin
+                    fs := Arg.Worksheet.Workbook.FormatSettings;
+                    if not TryStrToDateTime(Arg.ResString, Result) then
+                      Result := 1.0;
+                  end;
+    rtCell      : begin
+                    cell := ArgToCell(Arg);
+                    if Assigned(cell) then
+                      if (cell^.ContentType = cctDateTime) then
+                        Result := cell^.DateTimeValue;
+                  end;
   end;
 end;
 
 function ArgToString(Arg: TsExpressionResult): String;
+// The Office applications are very fuzzy about data types...
 var
   cell: PCell;
+  fs: TFormatSettings;
+  dt: TDateTime;
 begin
   Result := '';
   case Arg.ResultType of
     rtString  : result := Arg.ResString;
     rtInteger : Result := IntToStr(Arg.ResInteger);
     rtFloat   : Result := FloatToStr(Arg.ResFloat);
+    rtBoolean : if Arg.ResBoolean then Result := '1' else Result := '0';
     rtCell    : begin
                   cell := ArgToCell(Arg);
-                  if Assigned(cell) and (cell^.ContentType = cctUTF8String) then
-                    Result := cell^.UTF8Stringvalue;
+                  if Assigned(cell) then
+                    case cell^.ContentType of
+                      cctUTF8String : Result := cell^.UTF8Stringvalue;
+                      cctNumber     : Result := Format('%g', [cell^.NumberValue]);
+                      cctBool       : if cell^.BoolValue then Result := '1' else Result := '0';
+                      cctDateTime   : begin
+                                        fs := Arg.Worksheet.Workbook.FormatSettings;
+                                        dt := cell^.DateTimeValue;
+                                        if frac(dt) = 0.0 then
+                                          Result := FormatDateTime(fs.LongTimeFormat, dt, fs)
+                                        else
+                                        if trunc(dt) = 0 then
+                                          Result := FormatDateTime(fs.ShortDateFormat, dt, fs)
+                                        else
+                                          Result := FormatDateTime('cc', dt, fs);
+                                      end;
+                    end;
                 end;
   end;
 end;
@@ -4070,7 +4101,7 @@ begin
           end;
         end
     else
-    if (arg.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell]) then
+    if (arg.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtBoolean]) then
     begin
       AData[n] := ArgToFloat(arg);
       inc(n);
