@@ -560,7 +560,7 @@ type
     function  ReadAsNumber(ACell: PCell): Double; overload;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean; overload;
     function  ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean; overload;
-    function  ReadFormulaAsString(ACell: PCell): String;
+    function  ReadFormulaAsString(ACell: PCell; ALocalized: Boolean = false): String;
     function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
 
     { Reading of cell attributes }
@@ -604,8 +604,10 @@ type
     function WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue): PCell; overload;
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
 
-    function WriteFormula(ARow, ACol: Cardinal; AFormula: String): PCell; overload;
-    procedure WriteFormula(ACell: PCell; AFormula: String); overload;
+    function WriteFormula(ARow, ACol: Cardinal; AFormula: String;
+      ALocalized: Boolean = false): PCell; overload;
+    procedure WriteFormula(ACell: PCell; AFormula: String;
+      ALocalized: Boolean = false); overload;
 
     function WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
@@ -2634,16 +2636,34 @@ end;
 {@@ If a cell contains a formula (string formula or RPN formula) the formula
   is returned as a string in Excel syntax.
 
-  @param   ACell Pointer to the cell considered
+  @param   ACell      Pointer to the cell considered
+  @param   ALocalized If true, the formula is returned with decimal and list
+                      separators accoding to the workbook's FormatSettings.
+                      Otherwise it uses dot and comma, respectively.
   @return  Formula string in Excel syntax (does not contain a leading "=")
 }
-function TsWorksheet.ReadFormulaAsString(ACell: PCell): String;
+function TsWorksheet.ReadFormulaAsString(ACell: PCell;
+  ALocalized: Boolean = false): String;
+var
+  parser: TsSpreadsheetParser;
 begin
   Result := '';
   if ACell = nil then
     exit;
-  if HasFormula(ACell) then
-    Result := ACell^.FormulaValue;
+  if HasFormula(ACell) then begin
+    if ALocalized then
+    begin
+      parser := TsSpreadsheetParser.Create(self);
+      try
+        parser.Expression := ACell^.FormulaValue;
+        Result := parser.LocalizedExpression[Workbook.FormatSettings];
+      finally
+        parser.Free;
+      end;
+    end
+    else
+      Result := ACell^.FormulaValue;
+  end;
 end;
 
 {@@
@@ -3524,29 +3544,53 @@ end;
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  AFormula  The formula string to be written. A leading "=" will be removed.
+  @param  ALocalized If true, the formula is expected to have decimal and list
+                     separators of the workbook's FormatSettings. Otherwise
+                     uses dot and comma, respectively.
   @return Pointer to the cell
 }
-function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: string): PCell;
+function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: string;
+  ALocalized: Boolean = false): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteFormula(Result, AFormula);
+  WriteFormula(Result, AFormula, ALocalized);
 end;
 
 {@@
   Writes a formula to a given cell
 
-  @param  ACell     Pointer to the cell
-  @param  AFormula  Formula string to be written. A leading '=' will be removed.
+  @param  ACell      Pointer to the cell
+  @param  AFormula   Formula string to be written. A leading '=' will be removed.
+  @param  ALocalized If true, the formula is expected to have decimal and list
+                     separators of the workbook's FormatSettings. Otherwise
+                     uses dot and comma, respectively.
 }
-procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string);
+procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string;
+  ALocalized: Boolean = false);
+var
+  parser: TsExpressionParser;
 begin
   if ACell = nil then
     exit;
-  ACell^.ContentType := cctFormula;
+
+  // Remove '='; is not stored internally
   if (AFormula <> '') and (AFormula[1] = '=') then
-    ACell^.FormulaValue := Copy(AFormula, 2, Length(AFormula))
-  else
-    ACell^.FormulaValue := AFormula;
+    AFormula := Copy(AFormula, 2, Length(AFormula));
+
+  // Convert "localized" formula to standard format
+  if ALocalized then begin
+    parser := TsSpreadsheetParser.Create(self);
+    try
+      parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
+      AFormula := parser.Expression;
+    finally
+      parser.Free;
+    end;
+  end;
+
+  // Store formula in cell
+  ACell^.ContentType := cctFormula;
+  ACell^.FormulaValue := AFormula;
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 

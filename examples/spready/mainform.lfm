@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 258
   Width = 884
   Caption = 'spready'
-  ClientHeight = 619
+  ClientHeight = 614
   ClientWidth = 884
   Menu = MainMenu
   OnActivate = FormActivate
@@ -14,7 +14,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 78
-    Top = 541
+    Top = 536
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,9 +23,9 @@ object Form1: TForm1
     TabOrder = 0
     object CbShowHeaders: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 8
-      Width = 93
+      Width = 116
       Caption = 'Show headers'
       Checked = True
       OnClick = CbShowHeadersClick
@@ -34,9 +34,9 @@ object Form1: TForm1
     end
     object CbShowGridLines: TCheckBox
       Left = 8
-      Height = 19
+      Height = 24
       Top = 39
-      Width = 100
+      Width = 125
       Caption = 'Show grid lines'
       Checked = True
       OnClick = CbShowGridLinesClick
@@ -45,7 +45,7 @@ object Form1: TForm1
     end
     object EdFrozenCols: TSpinEdit
       Left = 645
-      Height = 23
+      Height = 28
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -53,7 +53,7 @@ object Form1: TForm1
     end
     object EdFrozenRows: TSpinEdit
       Left = 645
-      Height = 23
+      Height = 28
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -61,37 +61,37 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 560
-      Height = 15
+      Height = 20
       Top = 13
-      Width = 62
+      Width = 77
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 560
-      Height = 15
+      Height = 20
       Top = 40
-      Width = 66
+      Width = 82
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
       Left = 160
-      Height = 19
+      Height = 24
       Top = 8
-      Width = 96
+      Width = 120
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
       TabOrder = 2
     end
     object CbHeaderStyle: TComboBox
       Left = 408
-      Height = 23
+      Height = 28
       Top = 8
       Width = 116
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 2
       Items.Strings = (
         'Lazarus'
@@ -105,9 +105,9 @@ object Form1: TForm1
     end
     object CbAutoCalcFormulas: TCheckBox
       Left = 160
-      Height = 19
+      Height = 24
       Top = 39
-      Width = 128
+      Width = 158
       Caption = 'Calculate on change'
       OnChange = CbAutoCalcFormulasChange
       TabOrder = 3
@@ -115,7 +115,7 @@ object Form1: TForm1
   end
   object PageControl1: TPageControl
     Left = 0
-    Height = 462
+    Height = 457
     Top = 79
     Width = 648
     ActivePage = TabSheet1
@@ -125,11 +125,11 @@ object Form1: TForm1
     OnChange = PageControl1Change
     object TabSheet1: TTabSheet
       Caption = 'Sheet1'
-      ClientHeight = 434
+      ClientHeight = 424
       ClientWidth = 640
       object WorksheetGrid: TsWorksheetGrid
         Left = 0
-        Height = 434
+        Height = 424
         Top = 0
         Width = 640
         FrozenCols = 0
@@ -145,7 +145,7 @@ object Form1: TForm1
         TitleStyle = tsNative
         OnSelection = WorksheetGridSelection
         ColWidths = (
-          42
+          56
           64
           64
           64
@@ -263,19 +263,19 @@ object Form1: TForm1
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 23
+      Height = 28
       Top = 2
       Width = 127
-      ItemHeight = 15
+      ItemHeight = 20
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 23
+      Height = 28
       Top = 2
       Width = 48
-      ItemHeight = 15
+      ItemHeight = 20
       Items.Strings = (
         '8'
         '9'
@@ -443,7 +443,7 @@ object Form1: TForm1
   end
   object InspectorSplitter: TSplitter
     Left = 648
-    Height = 462
+    Height = 457
     Top = 79
     Width = 5
     Align = alRight
@@ -451,7 +451,7 @@ object Form1: TForm1
   end
   object InspectorPageControl: TPageControl
     Left = 653
-    Height = 462
+    Height = 457
     Top = 79
     Width = 231
     ActivePage = PgCellValue
@@ -461,11 +461,11 @@ object Form1: TForm1
     OnChange = InspectorPageControlChange
     object PgCellValue: TTabSheet
       Caption = 'Cell value'
-      ClientHeight = 434
+      ClientHeight = 424
       ClientWidth = 223
       object CellInspector: TValueListEditor
         Left = 0
-        Height = 434
+        Height = 424
         Top = 0
         Width = 223
         Align = alClient
