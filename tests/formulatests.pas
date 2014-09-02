@@ -59,6 +59,8 @@ type
     procedure Test_Write_Read_CalcRPNFormula_BIFF8;
     { OOXML Tests }
     procedure Test_Write_Read_CalcRPNFormula_OOXML;
+    { ODSL Tests }
+    procedure Test_Write_Read_CalcRPNFormula_ODS;
 
     // Writes out and calculates string formulas, read back
     { BIFF2 Tests }
@@ -69,6 +71,8 @@ type
     procedure Test_Write_Read_CalcStringFormula_BIFF8;
     { OOXML Tests }
     procedure Test_Write_Read_CalcStringFormula_OOXML;
+    { ODS Tests }
+    procedure Test_Write_Read_CalcStringFormula_ODS;
   end;
 
 implementation
@@ -189,7 +193,7 @@ end;
 
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_ODS;
 begin
-  //TestWriteReadFormulaStrings(sfOpenDocument, true);
+  TestWriteReadFormulaStrings(sfOpenDocument, true);
 end;
 
 
@@ -357,6 +361,11 @@ begin
   TestCalcFormulas(sfOOXML, true);
 end;
 
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_ODS;
+begin
+  TestCalcFormulas(sfOpenDocument, true);
+end;
+
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_BIFF2;
 begin
   TestCalcFormulas(sfExcel2, false);
@@ -375,6 +384,11 @@ end;
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_OOXML;
 begin
   TestCalcFormulas(sfOOXML, false);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_ODS;
+begin
+  TestCalcFormulas(sfOpenDocument, false);
 end;
 
 

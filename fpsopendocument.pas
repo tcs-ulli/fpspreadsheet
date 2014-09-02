@@ -1082,6 +1082,29 @@ begin
   FColumnStyleList.Add(colStyle);
 end;
 
+procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol: Word;
+  ACellNode : TDOMNode);
+var
+  dt: TDateTime;
+  styleName: String;
+  cell: PCell;
+begin
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(cell, stylename);
+
+  dt := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
+  FWorkSheet.WriteDateTime(cell, dt, cell^.NumberFormat, cell^.NumberFormatStr);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+end;
+
 procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
 var
   CalcSettingsNode, NullDateNode: TDOMNode;
@@ -1158,6 +1181,96 @@ begin
     if Result = -1 then
       Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
   end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+var
+  cell: PCell;
+  formula: String;
+  stylename: String;
+  floatValue: Double;
+  valueType: String;
+  valueStr: String;
+  node: TDOMNode;
+  parser: TsSpreadsheetParser;
+  p: Integer;
+begin
+  // Create cell and apply format
+  if FIsVirtualMode then
+  begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(cell, stylename);
+
+  if (boReadFormulas in FWorkbook.Options) then begin
+    // Read formula, trim it, ...
+    formula := GetAttrValue(ACellNode, 'table:formula');
+    if formula <> '' then
+    begin
+      // formulas written by Spread begin with 'of:=', our's with '=' --> remove that
+      p := pos('=', formula);
+      Delete(formula, 1, p);
+    end;
+    // ... convert to Excel dialect used by fps by defailt
+    parser := TsSpreadsheetParser.Create(FWorksheet);
+    try
+      parser.Dialect := fdOpenDocument;
+      parser.LocalizedExpression[FPointSeparatorSettings] := formula;
+      parser.Dialect := fdExcel;
+      formula := parser.Expression;
+    finally
+      parser.Free;
+    end;
+    // ... and store in cell's FormulaValue field.
+    cell^.FormulaValue := formula;
+  end;
+
+  // Read formula results
+  // ... number value
+  valueType := GetAttrValue(ACellNode, 'office:value-type');
+  valueStr := GetAttrValue(ACellNode, 'office:value');
+  if (valueType = 'float') then begin
+    if UpperCase(valueStr) = '1.#INF' then
+      FWorksheet.WriteNumber(cell, 1.0/0.0)
+    else begin
+      floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
+      FWorksheet.WriteNumber(cell, floatValue);
+    end;
+    if IsDateTimeFormat(cell^.NumberFormat) then begin
+      cell^.ContentType := cctDateTime;
+      // No datemode correction for intervals and for time-only values
+      if (cell^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
+        cell^.DateTimeValue := cell^.NumberValue
+      else
+        case FDateMode of
+          dm1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
+          dm1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
+          dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
+        end;
+    end;
+  end else
+  // Date/time value
+  if (valueType = 'date') or (valueType = 'time') then begin
+    floatValue := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
+    FWorkSheet.WriteDateTime(cell, floatValue);
+  end else
+  // text
+  if (valueType = 'string') then begin
+    node := ACellNode.FindNode('text:p');
+    if (node <> nil) and (node.FirstChild <> nil) then begin
+      valueStr := node.FirstChild.Nodevalue;
+      FWorksheet.WriteUTF8Text(cell, valueStr);
+    end;
+  end else
+  // Text
+    FWorksheet.WriteUTF8Text(cell, valueStr);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1249,96 +1362,6 @@ begin
   end;
 end;
 
-procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
-var
-  cell: PCell;
-  formula: String;
-  stylename: String;
-  floatValue: Double;
-  valueType: String;
-  valueStr: String;
-  node: TDOMNode;
-  parser: TsSpreadsheetParser;
-  p: Integer;
-begin
-  // Create cell and apply format
-  if FIsVirtualMode then
-  begin
-    InitCell(ARow, ACol, FVirtualCell);
-    cell := @FVirtualCell;
-  end else
-    cell := FWorksheet.GetCell(ARow, ACol);
-
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(cell, stylename);
-
-  if (boReadFormulas in FWorkbook.Options) then begin
-    // Read formula, trim it, ...
-    formula := GetAttrValue(ACellNode, 'table:formula');
-    if formula <> '' then
-    begin
-      // formulas written by Spread begin with 'of:=', our's with '=' --> remove that
-      p := pos('=', formula);
-      Delete(formula, 1, p);
-    end;
-    // ... convert to Excel dialect used by fps by defailt
-    parser := TsSpreadsheetParser.Create(FWorksheet);
-    try
-      parser.Dialect := fdOpenDocument;
-      parser.Expression := formula;
-      parser.Dialect := fdExcel;
-      formula := parser.Expression;
-    finally
-      parser.Free;
-    end;
-    // ... and store in cell's FormulaValue field.
-    cell^.FormulaValue := formula;
-  end;
-
-  // Read formula results
-  // ... number value
-  valueType := GetAttrValue(ACellNode, 'office:value-type');
-  valueStr := GetAttrValue(ACellNode, 'office:value');
-  if (valueType = 'float') then begin
-    if UpperCase(valueStr) = '1.#INF' then
-      FWorksheet.WriteNumber(cell, 1.0/0.0)
-    else begin
-      floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
-      FWorksheet.WriteNumber(cell, floatValue);
-    end;
-    if IsDateTimeFormat(cell^.NumberFormat) then begin
-      cell^.ContentType := cctDateTime;
-      // No datemode correction for intervals and for time-only values
-      if (cell^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
-        cell^.DateTimeValue := cell^.NumberValue
-      else
-        case FDateMode of
-          dm1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
-          dm1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
-          dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
-        end;
-    end;
-  end else
-  // Date/time value
-  if (valueType = 'date') or (valueType = 'time') then begin
-    floatValue := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
-    FWorkSheet.WriteDateTime(cell, floatValue);
-  end else
-  // text
-  if (valueType = 'string') then begin
-    node := ACellNode.FindNode('text:p');
-    if (node <> nil) and (node.FirstChild <> nil) then begin
-      valueStr := node.FirstChild.Nodevalue;
-      FWorksheet.WriteUTF8Text(cell, valueStr);
-    end;
-  end else
-  // Text
-    FWorksheet.WriteUTF8Text(cell, valueStr);
-
-  if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
-end;
-
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
 var
   cellText: String;
@@ -1419,29 +1442,6 @@ begin
         dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
       end;
   end;
-
-  if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
-end;
-
-procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol: Word;
-  ACellNode : TDOMNode);
-var
-  dt: TDateTime;
-  styleName: String;
-  cell: PCell;
-begin
-  if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
-    cell := @FVirtualCell;
-  end else
-    cell := FWorksheet.GetCell(ARow, ACol);
-
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(cell, stylename);
-
-  dt := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
-  FWorkSheet.WriteDateTime(cell, dt, cell^.NumberFormat, cell^.NumberFormatStr);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -3627,27 +3627,36 @@ begin
     cctNumber:
       begin
         valuetype := 'float';
-        value := FormatFloat('%g', ACell^.NumberValue, FPointSeparatorSettings);
+        value := 'office:value="' + Format('%g', [ACell^.NumberValue], FPointSeparatorSettings) + '"';
       end;
     cctDateTime:
+      if trunc(ACell^.DateTimeValue) = 0 then
       begin
-        valuetype := 'float';
-        value := FormatFloat('%g', ACell^.DateTimeValue, FPointSeparatorSettings);
+        valuetype := 'time';
+        value := 'office:time-value="' + FormatDateTime(ISO8601FormatTimeOnly, ACell^.DateTimeValue) + '"';
+      end
+      else
+      begin
+        valuetype := 'date';
+        if frac(ACell^.DateTimeValue) = 0.0 then
+          value := 'office:date-value="' + FormatDateTime(ISO8601FormatDateOnly, ACell^.DateTimeValue) + '"'
+        else
+          value := 'office:date-value="' + FormatDateTime(ISO8601FormatExtended, ACell^.DateTimeValue) + '"';
       end;
     cctUTF8String:
       begin
         valuetype := 'string';
-        value := ACell^.UTF8StringValue;
+        value := 'office:string-value="' + ACell^.UTF8StringValue +'"';
       end;
     cctBool:
       begin
         valuetype := 'boolean';
-        value := BoolToStr(ACell^.BoolValue, 'true', 'false');
+        value := 'office:boolean-value="' + BoolToStr(ACell^.BoolValue, 'true', 'false') + '"';
       end;
     cctError:
       begin
         valuetype := 'error';
-        value := GetErrorValueStr(ACell^.ErrorValue);
+        value := 'office:value="' + GetErrorValueStr(ACell^.ErrorValue) + '"';
       end;
   end;
 
@@ -3658,11 +3667,11 @@ begin
     data type. Seems to work... }
   if ACell^.CalcState=csCalculated then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" office:value-type="%s" office-value="%s" %s>' +
-        '<text:p>%s</text:p>'+
+      '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s>' +
+  //      '<text:p>%s</text:p>'+
       '</table:table-cell>', [
-      formula, valuetype, value, lStyle,
-      value
+      formula, valuetype, value, lStyle
+      //value
     ]))
   else
     AppendToStream(AStream, Format(

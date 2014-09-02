@@ -41,6 +41,8 @@ const
   ISO8601Format='yyyymmdd"T"hhmmss';
   {@@ Extended ISO 8601 date/time format, used in e.g. ODF/opendocument }
   ISO8601FormatExtended='yyyy"-"mm"-"dd"T"hh":"mm":"ss';
+  {@@  ISO 8601 date-only format, used in ODF/opendocument }
+  ISO8601FormatDateOnly='yyyy"-"mm"-"dd';
   {@@  ISO 8601 time-only format, used in ODF/opendocument }
   ISO8601FormatTimeOnly='"PT"hh"H"nn"M"ss"S"';
   {@@ ISO 8601 time-only format, with hours overflow }
