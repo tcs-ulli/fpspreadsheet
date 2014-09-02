@@ -715,6 +715,7 @@ type
     procedure CheckResultType(const Res: TsExpressionResult;
       AType: TsResultType); inline;
     function CurrentToken: String;
+    function CurrentOrEOFToken: String;
     function GetToken: TsTokenType;
     function Level1: TsExprNode;
     function Level2: TsExprNode;
@@ -1067,8 +1068,8 @@ begin
     FToken := FToken + C;
     C := NextPos;
   end;
-  FToken := Copy(FToken, 2, Length(FToken) - 2);  // Delete "[" and "]"
-  p := system.pos('.', FToken);                          // Delete up tp "."  (--> to be considered later!)
+  C := NextPos;
+  p := system.pos('.', FToken);  // Delete up tp "."  (--> to be considered later!)
   if p <> 0 then Delete(FToken, 1, p);
   if system.pos(':', FToken) > 0 then
   begin
@@ -1310,6 +1311,14 @@ end;
 function TsExpressionParser.CurrentToken: String;
 begin
   Result := FScanner.Token;
+end;
+
+function TsExpressionParser.CurrentOrEOFToken: String;
+begin
+  if (FScanner.TokenType = ttEOF) or (FScanner.Token = '') then
+    Result := 'end of formula'
+  else
+    Result := FScanner.Token;
 end;
 
 function TsExpressionParser.Evaluate: TsExpressionResult;
@@ -1559,6 +1568,7 @@ function TsExpressionParser.Level6: TsExprNode;
 var
   tt: TsTokenType;
   Right: TsExprNode;
+  currToken: String;
 begin
 {$ifdef debugexpr} Writeln('Level 6 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
   if (TokenType = ttLeft) then
@@ -1566,8 +1576,11 @@ begin
     GetToken;
     Result := TsParenthesisExprNode.Create(self, Level1);
     try
-      if (TokenType <> ttRight) then
-        ParserError(Format(SErrBracketExpected, [SCanner.Pos, CurrentToken]));
+      if (TokenType <> ttRight) then begin
+        currToken := CurrentToken;
+        if TokenType = ttEOF then currToken := 'end of formula';
+        ParserError(Format(SErrBracketExpected, [SCanner.Pos, currToken]));
+      end;
       GetToken;
     except
       Result.Free;
@@ -1675,10 +1688,10 @@ begin
       begin
         GetToken;
         if (TokenType <> ttLeft) then
-          ParserError(Format(SErrLeftBracketExpected, [Scanner.Pos, CurrentToken]));
+          ParserError(Format(SErrLeftBracketExpected, [Scanner.Pos, CurrentOrEOFToken]));
         GetToken;
         if (TokenType <> ttRight) then
-          ParserError(Format(SErrBracketExpected, [Scanner.Pos, CurrentToken]));
+          ParserError(Format(SErrBracketExpected, [Scanner.Pos, CurrentOrEOFToken]));
         SetLength(Args, 0);
       end;
     end
@@ -1691,7 +1704,7 @@ begin
     begin
       GetToken;
       if (TokenType <> ttLeft) then
-        ParserError(Format(SErrLeftBracketExpected, [Scanner.Pos, CurrentToken]));
+        ParserError(Format(SErrLeftBracketExpected, [Scanner.Pos, CurrentOrEofToken]));
       SetLength(Args, abs(lCount));
       AI := 0;
       try
@@ -1710,11 +1723,11 @@ begin
           begin
             if (TokenType <> ttListSep) then
               if (AI < abs(lCount)) then
-                ParserError(Format(SErrCommaExpected, [Scanner.Pos, CurrentToken]))
+                ParserError(Format(SErrCommaExpected, [Scanner.Pos, CurrentOrEofToken]))
           end;
         until (AI = lCount) or (((lCount < 0) or optional) and (TokenType = ttRight));
         if TokenType <> ttRight then
-          ParserError(Format(SErrBracketExpected, [Scanner.Pos, CurrentToken]));
+          ParserError(Format(SErrBracketExpected, [Scanner.Pos, CurrentOrEofToken]));
         if AI < abs(lCount) then
           SetLength(Args, AI);
       except

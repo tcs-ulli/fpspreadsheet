@@ -2490,9 +2490,19 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
     Result := '';
     if not IsNaN(Value) then
     begin
+      if (ANumberFormat = nfGeneral) then
+      begin
+        if frac(Value) = 0 then                 // date only
+          ANumberFormatStr := Workbook.FormatSettings.ShortDateFormat
+        else if trunc(Value) = 0 then           // time only
+          ANumberFormatStr := Workbook.FormatSettings.LongTimeFormat
+        else
+          ANumberFormatStr := 'cc'
+      end else
       if ANumberFormatStr = '' then
         ANumberFormatStr := BuildDateTimeFormatString(ANumberFormat,
           Workbook.FormatSettings, ANumberFormatStr);
+
       // Saw strange cases in ods where date/time formats contained pos/neg/zero parts.
       // Split to be on the safe side.
       SplitFormatString(ANumberFormatStr, fmtp, fmtn, fmt0);
@@ -3306,6 +3316,13 @@ begin
     // Date/time is actually a number field in Excel.
     // To make sure it gets saved correctly, set a date format (instead of General).
     // The user can choose another date format if he wants to
+
+    if AFormat = nfGeneral then begin
+      if trunc(AValue) = 0 then         // time only
+        AFormat := nfLongTime
+      else if frac(AValue) = 0.0 then   // date only
+        AFormat := nfShortDate;
+    end;
 
     if AFormatStr = '' then
       AFormatStr := BuildDateTimeFormatString(AFormat, Workbook.FormatSettings, AFormatStr)
