@@ -3621,7 +3621,11 @@ begin
   parser := TsSpreadsheetParser.Create(FWorksheet);
   try
     parser.Dialect := fdOpenDocument;
-    parser.Expression := ACell^.FormulaValue;
+    if ACell^.SharedFormulaBase <> nil then begin
+      parser.ActiveCell := ACell;
+      parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
+    end else
+      parser.Expression := ACell^.FormulaValue;
     formula := Parser.LocalizedExpression[FPointSeparatorSettings];
   finally
     parser.Free;
