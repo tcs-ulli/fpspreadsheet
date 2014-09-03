@@ -1760,7 +1760,11 @@ begin
   end;
   parser := TsSpreadsheetParser.Create(self);
   try
-    parser.Expression := ACell^.FormulaValue;
+    if (ACell^.SharedFormulaBase <> nil) then begin
+      parser.ActiveCell := ACell;
+      parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
+    end else
+      parser.Expression := ACell^.FormulaValue;
     Result := parser.RPNFormula;
   finally
     parser.Free;
@@ -1798,6 +1802,7 @@ var
   parser: TsSpreadsheetParser;
   res: TsExpressionResult;
   formula: String;
+  cell: PCell;
 begin
   ACell^.CalcState := csCalculating;
 
@@ -1817,6 +1822,20 @@ begin
       rtDateTime : WriteDateTime(ACell, res.ResDateTime);
       rtString   : WriteUTF8Text(ACell, res.ResString);
       rtBoolean  : WriteBoolValue(ACell, res.ResBoolean);
+      rtCell     : begin
+                     cell := FindCell(res.ResRow, res.ResCol);
+                     if cell = nil then
+                       WriteBlank(ACell)
+                     else
+                       case cell^.ContentType of
+                         cctNumber    : WriteNumber(ACell, cell^.NumberValue);
+                         cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
+                         cctUTF8String: WriteUTF8Text(ACell, cell^.UTF8StringValue);
+                         cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
+                         cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
+                         cctEmpty     : WriteBlank(ACell);
+                       end;
+                   end;
     end;
   finally
     parser.Free;

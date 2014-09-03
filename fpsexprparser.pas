@@ -606,6 +606,8 @@ type
     FIsRef: Boolean;
   protected
     procedure Check; override;
+    function GetCol: Cardinal;
+    function GetRow: Cardinal;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
@@ -688,6 +690,7 @@ type
     FDirty: Boolean;
     FWorksheet: TsWorksheet;
     FDialect: TsFormulaDialect;
+    FActiveCell: PCell;
     procedure CheckEOF;
     procedure CheckNodes(var ALeft, ARight: TsExprNode);
     function ConvertNode(Todo: TsExprNode; ToType: TsResultType): TsExprNode;
@@ -738,6 +741,8 @@ type
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(var Result: TsExpressionResult);
     function ResultType: TsResultType;
+    function SharedFormulaMode: Boolean;
+
     property AsFloat: TsExprFloat read GetAsFloat;
     property AsInteger: Int64 read GetAsInteger;
     property AsString: String read GetAsString;
@@ -750,6 +755,7 @@ type
     property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
+    property ActiveCell: PCell read FActiveCell write FActiveCell;
     property Worksheet: TsWorksheet read FWorksheet;
     property Dialect: TsFormulaDialect read FDialect write FDialect;
   end;
@@ -1972,6 +1978,13 @@ begin
   index := Length(AFormula)-1;
   CreateNodeFromRPN(FExprNode, index);
   if Assigned(FExprNode) then FExprNode.Check;
+end;
+
+{ Signals that the parser is in SharedFormulaMode, i.e. there is an active cell
+  to which all relative addresses have to be adapted. }
+function TsExpressionParser.SharedFormulaMode: Boolean;
+begin
+  Result := (ActiveCell <> nil) and (ActiveCell^.SharedFormulaBase <> nil);
 end;
 
 function TsExpressionParser.TokenType: TsTokenType;
@@ -3775,32 +3788,16 @@ end;
 function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
   if FIsRef then
-    Result := RPNCellRef(FRow, FCol, FFlags, ANext)
+    Result := RPNCellRef(GetRow, GetCol, FFlags, ANext)
   else
-    Result := RPNCellValue(FRow, FCol, FFlags, ANext);
+    Result := RPNCellValue(GetRow, GetCol, FFlags, ANext);
 end;
 
 function TsCellExprNode.AsString: string;
 begin
-  Result := GetCellString(FRow, FCol, FFlags);
+  Result := GetCellString(GetRow, GetCol, FFlags);
   if FParser.Dialect = fdOpenDocument then
     Result := '[.' + Result + ']';
-end;
-
-procedure TsCellExprNode.GetNodeValue(var Result: TsExpressionResult);
-begin
-  if (FCell <> nil) and HasFormula(FCell) then
-    case FCell^.CalcState of
-      csNotCalculated:
-        Worksheet.CalcFormula(FCell);
-      csCalculating:
-        raise Exception.Create(SErrCircularReference);
-    end;
-
-  Result.ResultType := rtCell;
-  Result.ResRow := FRow;
-  Result.ResCol := FCol;
-  Result.Worksheet := FWorksheet;
 end;
 
 procedure TsCellExprNode.Check;
@@ -3808,33 +3805,73 @@ begin
   // Nothing to check;
 end;
 
+{ Calculates the row address of the node's cell for various cases:
+  (1) SharedFormula mode:
+      The "ActiveCell" of the parser is the cell for which the formula is
+      calculated. If the formula contains a relative address in the cell node
+      the function calculates the row address of the cell represented by the
+      node as seen from the active cell.
+      If the formula contains an absolute address the function returns the row
+      address of the SharedFormulaBase of the ActiveCell.
+  (2) Normal mode:
+      Returns the "true" row address of the cell assigned to the formula node. }
+function TsCellExprNode.GetCol: Cardinal;
+begin
+  if FParser.SharedFormulaMode then
+  begin
+    // A shared formula is stored in the SharedFormulaBase cell of the ActiveCell
+    // Since the cell data stored in the node are those used by the formula in
+    // the SharedFormula, the current node is relative to the SharedFormulaBase
+    if rfRelCol in FFlags then
+      Result := FCol - FParser.ActiveCell^.SharedFormulaBase^.Col + FParser.ActiveCell^.Col
+    else
+      Result := FParser.ActiveCell^.SharedFormulaBase^.Col;
+  end
+  else
+    // Normal mode
+    Result := FCol;
+end;
+
+procedure TsCellExprNode.GetNodeValue(var Result: TsExpressionResult);
+var
+  cell: PCell;
+begin
+  if Parser.SharedFormulaMode then
+    cell := FWorksheet.FindCell(GetRow, GetCol)
+  else
+    cell := FCell;
+
+  if (cell <> nil) and HasFormula(cell) then
+    case cell^.CalcState of
+      csNotCalculated:
+        Worksheet.CalcFormula(cell);
+      csCalculating:
+        raise Exception.Create(SErrCircularReference);
+    end;
+
+  Result.ResultType := rtCell;
+  Result.ResRow := GetRow;
+  Result.ResCol := GetCol;
+  Result.Worksheet := FWorksheet;
+end;
+
+{ See GetCol }
+function TsCellExprNode.GetRow: Cardinal;
+begin
+  if Parser.SharedFormulaMode then
+  begin
+    if rfRelRow in FFlags then
+      Result := FRow - FParser.ActiveCell^.SharedFormulaBase^.Row + FParser.ActiveCell^.Row
+    else
+      Result := FParser.ActiveCell^.SharedFormulaBase^.Row;
+  end
+  else
+    Result := FRow;
+end;
+
 function TsCellExprNode.NodeType: TsResultType;
 begin
   Result := rtCell;
-  {
-  if FIsRef then
-    Result := rtCell
-  else
-  begin
-    Result := rtEmpty;
-    if FCell <> nil then
-      case FCell^.ContentType of
-        cctNumber:
-          if frac(FCell^.NumberValue) = 0 then
-            Result := rtInteger
-          else
-            Result := rtFloat;
-        cctDateTime:
-          Result := rtDateTime;
-        cctUTF8String:
-          Result := rtString;
-        cctBool:
-          Result := rtBoolean;
-        cctError:
-          Result := rtError;
-      end;
-  end;
-  }
 end;
 
 
