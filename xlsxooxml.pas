@@ -652,29 +652,24 @@ begin
     begin
       // Formula to cell
       formulaStr := GetNodeValue(datanode);
-      if formulaStr <> '' then
+
+      s := GetAttrValue(datanode, 't');
+      if s = 'shared' then
       begin
-        s := GetAttrValue(datanode, 't');
-        if s = 'shared' then
+        s := GetAttrValue(datanode, 'ref');
+        if (s <>'') then
         begin
-          s := GetAttrValue(datanode, 'ref');
-          if (s <>'') then
-          begin
-            cell^.FormulaValue := formulaStr;
-            FWorksheet.UseSharedFormula(s, cell);
-          end;
-        end
-        else
-          cell^.FormulaValue := formulaStr;
-      end;
+          AWorksheet.WriteFormula(cell, formulaStr);
+//          cell^.FormulaValue := formulaStr;
+          FWorksheet.UseSharedFormula(s, cell);
+        end;
+      end
+      else
+        AWorksheet.WriteFormula(cell, formulaStr);
+//          cell^.FormulaValue := formulaStr;
     end;
     datanode := datanode.NextSibling;
   end;
-
-{  // formula to cell
-  if formulaStr <> '' then
-    cell^.FormulaValue.FormulaStr := '=' + formulaStr;
- }
 
   // get data type
   s := GetAttrValue(ANode, 't');   // "t" = data type
@@ -2533,7 +2528,8 @@ procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
 var
   cellPosText: String;
   lStyleIndex: Integer;
-  r, c, r2, c2: Cardinal;
+  r, r1, r2: Cardinal;
+  c, c1, c2: Cardinal;
   cell: PCell;
   id: Cardinal;
   t, v: String;
@@ -2541,91 +2537,97 @@ begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
 
+  case ACell^.ContentType of
+    cctFormula:
+      begin
+        t := '';
+        v := '';
+      end;
+    cctUTF8String:
+      begin
+        t := ' t="str"';
+        v := Format('<v>%s</v>', [UTF8TextToXMLText(ACell^.UTF8StringValue)]);
+      end;
+    cctNumber:
+      begin
+        t := '';
+        v := Format('<v>%g</v>', [ACell^.NumberValue], FPointSeparatorSettings);
+      end;
+    cctDateTime:
+      begin
+        t := '';
+        v := Format('<v>%g</v>', [ACell^.DateTimeValue], FPointSeparatorSettings);
+      end;
+    cctBool:
+      begin
+        t := ' t="b"';
+        if ACell^.BoolValue then
+          v := '<v>1</v>'
+        else
+          v := '<v>0</v>';
+      end;
+    cctError:
+      begin
+        t := ' t="e"';
+        v := Format('<v>%s</v>', [GetErrorValueStr(ACell^.ErrorValue)]);
+      end;
+  end;
+
   // Cell uses a shared formula
   if Assigned(ACell^.SharedFormulaBase) then begin
     // Cell is base of the shared formula, i.e. contains the shared formula
     if (ACell = ACell^.SharedFormulaBase) then
     begin
       // Find range of cells using this shared formula
-      r2 := ACell^.Row;
-      c2 := ACell^.Col;
-      c := c2;
-      r := r2;
+      // The base of the shared formula is the left/top edge of the range
+      r1 := ACell^.Row;
+      r2 := r1;
+      r := r1 + 1;
+      while r <= FWorksheet.GetLastRowIndex do
+      begin
+        cell := FWorksheet.FindCell(r, ACell^.Col);
+        if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
+          r2 := r
+        else
+          break;
+        inc(r);
+      end;
+      c1 := ACell^.Col;
+      c2 := c1;
+      c := c1 + 1;
       while c <= FWorksheet.GetLastColIndex do
       begin
-        cell := FWorksheet.FindCell(r, c);
+        cell := FWorksheet.FindCell(ACell^.Row, c);
         if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
           c2 := c
         else
           break;
         inc(c);
       end;
-      c := ACell^.Col;
-      while r <= FWorksheet.GetLastRowIndex do
-      begin
-        cell := FWorksheet.FindCell(r, c);
-        if (cell <> nil) and (cell^.SharedFormulaBase <> ACell^.SharedFormulaBase) then
-          r2 := r
-        else
-          break;
-        inc(r);
-      end;
-
       AppendToStream(AStream, Format(
-        '<c r="%s" s="%d">' +
+        '<c r="%s" s="%d"%s>' +
           '<f t="shared" ref="%s" si="%d">%s</f>' +
+          '%s' +
         '</c>', [
-        CellPosText, lStyleIndex,
+        CellPosText, lStyleIndex, t,
         GetCellRangeString(ACell^.Row, ACell^.Col, r2, c2),
         PtrInt(ACell),       // Use the cell pointer as ID of the shared formula
-        PrepareFormula(ACell^.FormulaValue)
+        PrepareFormula(ACell^.FormulaValue),
+        v
       ]));
     end else
       // Cell uses the shared formula
       AppendToStream(AStream, Format(
-        '<c r="%s" s="%d">' +
+        '<c r="%s" s="%d"%s>' +
           '<f t="shared" si="%d" />' +
+          '%s' +
         '</c>', [
-        CellPosText, lStyleIndex,
-        PtrInt(ACell^.SharedFormulaBase)   // ID of the shared formula
+        CellPosText, lStyleIndex, t,
+        PtrInt(ACell^.SharedFormulaBase),   // ID of the shared formula
+        v
       ]));
   end else begin
     // "normal" formula
-    case ACell^.ContentType of
-      cctFormula:
-        begin
-          t := '';
-          v := '';
-        end;
-      cctUTF8String:
-        begin
-          t := ' t="str"';
-          v := Format('<v>%s</v>', [UTF8TextToXMLText(ACell^.UTF8StringValue)]);
-        end;
-      cctNumber:
-        begin
-          t := '';
-          v := Format('<v>%g</v>', [ACell^.NumberValue], FPointSeparatorSettings);
-        end;
-      cctDateTime:
-        begin
-          t := '';
-          v := Format('<v>%g</v>', [ACell^.DateTimeValue], FPointSeparatorSettings);
-        end;
-      cctBool:
-        begin
-          t := ' t="b"';
-          if ACell^.BoolValue then
-            v := '<v>1</v>'
-          else
-            v := '<v>0</v>';
-        end;
-      cctError:
-        begin
-          t := ' t="e"';
-          v := Format('<v>%s</v>', [GetErrorValueStr(ACell^.ErrorValue)]);
-        end;
-    end;
     AppendToStream(AStream, Format(
       '<c r="%s" s="%d"%s>' +
         '<f>%s</f>' +

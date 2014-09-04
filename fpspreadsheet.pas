@@ -1809,9 +1809,15 @@ begin
   parser := TsSpreadsheetParser.Create(self);
   try
     if ACell^.SharedFormulaBase = nil then
-      formula := ACell^.FormulaValue
+    begin
+      formula := ACell^.FormulaValue;
+      parser.ActiveCell := nil;
+    end
     else
+    begin
       formula := ACell^.SharedFormulaBase^.FormulaValue;
+      parser.ActiveCell := ACell;
+    end;
     parser.Expression := formula;
     parser.EvaluateExpression(res);
     case res.ResultType of
@@ -2654,6 +2660,7 @@ end;
 
 {@@ If a cell contains a formula (string formula or RPN formula) the formula
   is returned as a string in Excel syntax.
+  If the cell belongs to a shared formula the adapted shared formula is returned.
 
   @param   ACell      Pointer to the cell considered
   @param   ALocalized If true, the formula is returned with decimal and list
@@ -2674,7 +2681,13 @@ begin
     begin
       parser := TsSpreadsheetParser.Create(self);
       try
-        parser.Expression := ACell^.FormulaValue;
+        if ACell^.SharedFormulaBase <> nil then begin
+          parser.ActiveCell := ACell;
+          parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
+        end else begin
+          parser.ActiveCell := nil;
+          parser.Expression := ACell^.FormulaValue;
+        end;
         Result := parser.LocalizedExpression[Workbook.FormatSettings];
       finally
         parser.Free;
