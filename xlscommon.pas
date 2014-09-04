@@ -272,6 +272,9 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
+    procedure ReadRPNCellRangeOffset(AStream: TStream;
+      out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
+      out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); virtual;
     function ReadRPNTokenArray(AStream: TStream; ACell: PCell): Boolean;
@@ -1388,8 +1391,8 @@ begin
   if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
-{ Read the difference between cell row and column indexed of a cell and a reference
-  cell.
+{ Read the difference between cell row and column indexes of a cell and a
+  reference cell.
   Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2. }
 procedure TsSpreadBIFFReader.ReadRPNCellAddressOffset(AStream: TStream;
   out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags);
@@ -1404,7 +1407,7 @@ begin
   ARowOffset := dr;
 
   // 1 byte for column
-  dc := AStream.ReadByte;
+  dc := ShortInt(AStream.ReadByte);
   AColOffset := dc;
 
   // Extract absolute/relative flags
@@ -1413,8 +1416,9 @@ begin
   if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
-{ Reads the cell address used in an RPN formula element. Evaluates the corresponding
-  bits to distinguish between absolute and relative addresses.
+{ Reads the cell range address used in an RPN formula element.
+  Evaluates the corresponding bits to distinguish between absolute and
+  relative addresses.
   Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
 procedure TsSpreadBIFFReader.ReadRPNCellRangeAddress(AStream: TStream;
   out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags);
@@ -1435,6 +1439,43 @@ begin
   if (r1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
   if (r2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (r1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
+
+{ Read the difference between row and column corner indexes of a cell range
+  and a reference cell.
+  Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2. }
+procedure TsSpreadBIFFReader.ReadRPNCellRangeOffset(AStream: TStream;
+  out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
+  out AFlags: TsRelFlags);
+var
+  r1, r2: Word;
+  dr1, dr2: SmallInt;
+  dc1, dc2: ShortInt;
+begin
+  // 2 bytes for offset to first row
+  r1 := WordLEToN(AStream.ReadWord);
+  dr1 := SmallInt(r1 and $3FFF);
+  ARow1Offset := dr1;
+
+  // 2 bytes for offset to last row
+  r2 := WordLEToN(AStream.ReadWord);
+  dr2 := SmallInt(r2 and $3FFF);
+  ARow1Offset := dr2;
+
+  // 1 byte for offset to first column
+  dc1 := ShortInt(AStream.ReadByte);
+  ACol1Offset := dc1;
+
+  // 1 byte for offset to last column
+  dc2 := ShortInt(AStream.ReadByte);
+  ACol2Offset := dc2;
+
+  // Extract absolute/relative flags
+  AFlags := [];
+  if (r1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (r1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (r2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
@@ -1470,7 +1511,7 @@ var
   dblVal: Double = 0.0;   // IEEE 8 byte floating point number
   flags: TsRelFlags;
   r, c, r2, c2: Cardinal;
-  dr, dc: Integer;
+  dr, dc, dr2, dc2: Integer;
   fek: TFEKind;
   exprDef: TsBuiltInExprIdentifierDef;
   funcCode: Word;
@@ -1503,11 +1544,35 @@ begin
       INT_EXCEL_TOKEN_TREFN_R, INT_EXCEL_TOKEN_TREFN_V:
         begin
           ReadRPNCellAddressOffset(AStream, dr, dc, flags);
-          rpnItem := RPNCellOffset(dr, dc, flags, rpnItem);
+          // For compatibility with other formats, convert offsets back to regular indexes.
+          if (rfRelRow in flags)
+            then r := ACell^.Row + dr
+            else r := ACell^.SharedFormulaBase^.Row + dr;
+          if (rfRelCol in flags)
+            then c := ACell^.Col + dc
+            else c := ACell^.SharedFormulaBase^.Col + dc;
+          case token of
+            INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
+            INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
+          end;
         end;
       INT_EXCEL_TOKEN_TREFN_A:
         begin
-          raise Exception.Create('Cell range offset not yet implemented. Please report an issue');
+          ReadRPNCellRangeOffset(AStream, dr, dc, dr2, dc2, flags);
+          // For compatibility with other formats, convert offsets back to regular indexes.
+          if (rfRelRow in flags)
+            then r := ACell^.Row + dr
+            else r := ACell^.SharedFormulaBase^.Row + dr;
+          if (rfRelRow2 in flags)
+            then r2 := ACell^.Row + dr2
+            else r2 := ACell^.SharedFormulaBase^.Row + dr2;
+          if (rfRelCol in flags)
+            then c := ACell^.Col + dc
+            else c := ACell^.SharedFormulaBase^.Col + dc;
+          if (rfRelCol2 in flags)
+            then c2 := ACell^.Col + dc2
+            else c2 := ACell^.SharedFormulaBase^.Col + dc2;
+          rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
         end;
       INT_EXCEL_TOKEN_TMISSARG:
         rpnItem := RPNMissingArg(rpnItem);
@@ -1594,8 +1659,8 @@ begin
 end;
 
 { Reads a SHAREDFMLA record, i.e. reads cell range coordinates and a rpn
-  formula. The formula is applied to all cells in the range. The formula stored
-  only in the top/left cell of the range. }
+  formula. The formula is applied to all cells in the range. The formula is
+  stored only in the top/left cell of the range. }
 procedure TsSpreadBIFFReader.ReadSharedFormula(AStream: TStream);
 var
   r1, r2, c1, c2: Cardinal;

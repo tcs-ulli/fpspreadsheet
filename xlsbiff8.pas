@@ -91,6 +91,9 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); override;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); override;
+    procedure ReadRPNCellRangeOffset(AStream: TStream;
+      out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
+      out AFlags: TsRelFlags); override;
     procedure ReadSST(const AStream: TStream);
     function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
@@ -1708,6 +1711,38 @@ begin
   if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
   if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
+
+{ Reads the difference between row and column corner indexes of a cell range
+  and a reference cell.
+  Overriding the implementation in xlscommon. }
+procedure TsSpreadBIFF8Reader.ReadRPNCellRangeOffset(AStream: TStream;
+  out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
+  out AFlags: TsRelFlags);
+var
+  c1, c2: Word;
+begin
+  // 2 bytes for offset of first row
+  ARow1Offset := ShortInt(WordLEToN(AStream.ReadWord));
+
+  // 2 bytes for offset to last row
+  ARow2Offset := ShortInt(WordLEToN(AStream.ReadWord));
+
+  // 2 bytes for offset of first column
+  c1 := WordLEToN(AStream.ReadWord);
+  ACol1Offset := Shortint(Lo(c1));
+
+  // 2 bytes for offset of last column
+  c2 := WordLEToN(AStream.ReadWord);
+  ACol2Offset := ShortInt(Lo(c2));
+
+  // Extract info on absolute/relative addresses.
+  AFlags := [];
+  if (c1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
+  if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+
 end;
 
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);

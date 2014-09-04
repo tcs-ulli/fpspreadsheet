@@ -2677,14 +2677,17 @@ begin
   if ACell = nil then
     exit;
   if HasFormula(ACell) then begin
+    // case (1): Formula is localized and has to be converted to default syntax
     if ALocalized then
     begin
       parser := TsSpreadsheetParser.Create(self);
       try
         if ACell^.SharedFormulaBase <> nil then begin
+          // case (1a): shared formula
           parser.ActiveCell := ACell;
           parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
         end else begin
+          // case (1b): normal formula
           parser.ActiveCell := nil;
           parser.Expression := ACell^.FormulaValue;
         end;
@@ -2694,6 +2697,20 @@ begin
       end;
     end
     else
+    // case (2): Formula is in default syntax
+    if ACell^.SharedFormulaBase <> nil then
+    begin
+      // case (2a): shared formula
+      parser := TsSpreadsheetParser.Create(self);
+      try
+        parser.ActiveCell := ACell;
+        parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
+        Result := parser.Expression;
+      finally
+        parser.Free;
+      end;
+    end else
+      // case (2b): normal formula
       Result := ACell^.FormulaValue;
   end;
 end;
