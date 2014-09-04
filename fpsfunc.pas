@@ -503,6 +503,7 @@ procedure fpsNOW(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // whenever the worksheet recalculates.
 //   NOW()
 begin
+  Unused(Args);
   Result := DateTimeResult(Now);
 end;
 
@@ -553,6 +554,7 @@ procedure fpsTODAY(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // whenever the worksheet recalculates.
 //   TODAY()
 begin
+  Unused(Args);
   Result := DateTimeResult(Date);
 end;
 
@@ -1251,7 +1253,6 @@ var
   stype: String;
   r1,r2, c1,c2: Cardinal;
   cell: PCell;
-  res: TsExpressionResult;
 begin
   if Length(Args)=1 then
   begin

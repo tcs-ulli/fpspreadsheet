@@ -186,8 +186,6 @@ type
 
   { TsOrderingExprNode }
   TsOrderingExprNode = class(TsBooleanResultExprNode)
-  protected
-    procedure CheckSameNodeTypes; override;
   public
     procedure Check; override;
   end;
@@ -300,10 +298,9 @@ type
   TsUnaryOperationExprNode = class(TsExprNode)
   private
     FOperand: TsExprNode;
-  protected
-    procedure Check; override;
   public
     constructor Create(AParser: TsExpressionParser; AOperand: TsExprNode);
+    procedure Check; override;
     destructor Destroy; override;
     property Operand: TsExprNode read FOperand;
   end;
@@ -317,11 +314,11 @@ type
   { TsNotExprNode }
   TsNotExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
+    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
 
@@ -350,9 +347,9 @@ type
   { TsFloatToDateTimeExprNode }
   TsFloatToDateTimeExprNode = class(TsConvertExprNode)
   protected
-    procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
+    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
 
@@ -404,9 +401,9 @@ type
   private
     FValue: TsExpressionResult;
   protected
-    procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
+    procedure Check; override;
     constructor CreateString(AParser: TsExpressionParser; AValue: String);
     constructor CreateInteger(AParser: TsExpressionParser; AValue: Int64);
     constructor CreateDateTime(AParser: TsExpressionParser; AValue: TDateTime);
@@ -549,6 +546,7 @@ type
 
   { TsVariableExprNode }
   TsVariableExprNode = class(TsIdentifierExprNode)
+  public
     procedure Check; override;
     function AsString: string; override;
     Function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
@@ -605,7 +603,6 @@ type
     FCell: PCell;
     FIsRef: Boolean;
   protected
-    procedure Check; override;
     function GetCol: Cardinal;
     function GetRow: Cardinal;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
@@ -616,6 +613,7 @@ type
       ARow, ACol: Cardinal; AFlags: TsRelFlags); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
+    procedure Check; override;
     function NodeType: TsResultType; override;
     property Worksheet: TsWorksheet read FWorksheet;
   end;
@@ -628,7 +626,6 @@ type
     FCol1, FCol2: Cardinal;
     FFlags: TsRelFlags;
   protected
-    procedure Check; override;
     procedure GetNodeValue(var Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
@@ -637,6 +634,7 @@ type
       ARow1,ACol1, ARow2,ACol2: Cardinal; AFlags: TsRelFlags); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
+    procedure Check; override;
     function NodeType: TsResultType; override;
     property Worksheet: TsWorksheet read FWorksheet;
   end;
@@ -859,7 +857,6 @@ resourcestring
   SErrUnknownCharacter = 'Unknown character at pos %d: "%s"';
   SErrUnexpectedEndOfExpression = 'Unexpected end of expression';
   SErrUnknownComparison = 'Internal error: Unknown comparison';
-  SErrUnknownBooleanOp = 'Internal error: Unknown boolean operation';
   SErrBracketExpected = 'Expected ) bracket at position %d, but got %s';
   SerrUnknownTokenAtPos = 'Unknown token at pos %d : %s';
   SErrLeftBracketExpected = 'Expected ( bracket at position %d, but got %s';
@@ -880,7 +877,6 @@ resourcestring
   SErrNoNOTOperation = 'Cannot perform NOT operation on expression of type %s: %s';
   SErrNoPercentOperation = 'Cannot perform percent operation on expression of type %s: %s';
   SErrTypesDoNotMatch = 'Type mismatch: %s<>%s for expressions "%s" and "%s".';
-  SErrTypesIncompatible = 'Incompatible types: %s<>%s for expressions "%s" and "%s".';
   SErrNoNodeToCheck = 'Internal error: No node to check !';
   SInvalidNodeType = 'Node type (%s) not in allowed types (%s) for expression: %s';
   SErrUnterminatedExpression = 'Badly terminated expression. Found token at position %d : %s';
@@ -890,7 +886,6 @@ resourcestring
   SErrInvalidArgumentType = 'Invalid type for argument %d: Expected %s, got %s';
   SErrInvalidResultType = 'Invalid result type: %s';
   SErrNotVariable = 'Identifier %s is not a variable';
-  SErrInactive = 'Operation not allowed while an expression is active';
   SErrCircularReference = 'Circular reference found when calculating worksheet formulas';
 
 { ---------------------------------------------------------------------
@@ -1409,9 +1404,11 @@ begin
 end;
 
 function TsExpressionParser.Level1: TsExprNode;
+{
 var
   tt: TsTokenType;
   Right: TsExprNode;
+  }
 begin
 {$ifdef debugexpr}Writeln('Level 1 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
 {
@@ -1425,21 +1422,6 @@ begin
   else
   }
   Result := Level2;
-   {
-  try
-    if TokenType = ttPower then
-    begin
-      tt := Tokentype;
-      GetToken;
-      CheckEOF;
-      Right := Level2;
-      Result := TsPowerExprNode.Create(Result, Right);
-    end;
-  except
-    Result.Free;
-    raise;
-  end;
-  }
 {
   try
 
@@ -1572,7 +1554,6 @@ end;
 
 function TsExpressionParser.Level6: TsExprNode;
 var
-  tt: TsTokenType;
   Right: TsExprNode;
   currToken: String;
 begin
@@ -1600,7 +1581,6 @@ begin
   begin
     try
       CheckEOF;
-      tt := Tokentype;
       GetToken;
       Right := Primitive;
       CheckNodes(Result, right);
@@ -1651,7 +1631,6 @@ var
   ID: TsExprIdentifierDef;
   Args: TsExprArgumentArray;
   AI: Integer;
-  cell: PCell;
   optional: Boolean;
   token: String;
 begin
@@ -1836,10 +1815,9 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
 
   procedure CreateNodeFromRPN(var ANode: TsExprNode; var AIndex: Integer);
   var
-    node: TsExprNode;
-    left: TsExprNode;
-    right: TsExprNode;
-    operand: TsExprNode;
+    left: TsExprNode = nil;
+    right: TsExprNode = nil;
+    operand: TsExprNode = nil;
     fek: TFEKind;
     r,c, r2,c2: Cardinal;
     flags: TsRelFlags;
@@ -1971,7 +1949,6 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
 
 var
   index: Integer;
-  node: TsExprNode;
 begin
   FExpression := '';
   FreeAndNil(FExprNode);
@@ -2172,6 +2149,7 @@ end;
 
 procedure TsExprIdentifierDefs.Update(Item: TCollectionItem);
 begin
+  Unused(Item);
   if Assigned(FParser) then
     FParser.FDirty := true;
 end;
@@ -2732,7 +2710,6 @@ end;
 
 procedure TsUPlusExprNode.GetNodeValue(var Result: TsExpressionResult);
 var
-  res: TsExpressionresult;
   cell: PCell;
 begin
   Operand.GetNodeValue(Result);
@@ -3040,22 +3017,6 @@ begin
   inherited Check;
 end;
 
-procedure TsOrderingExprNode.CheckSameNodeTypes;
-var
-  LT, RT: TsResultType;
-begin
-  {
-  LT := Left.NodeType;
-  RT := Right.NodeType;
-  case LT of
-    rtFloat, rtInteger:
-      if (RT in [rtFloat, rtInteger]) or
-         ((Rt = rtCell) and (Right.Res
-  if (RT <> LT) then
-    RaiseParserError(SErrTypesDoNotMatch, [ResultTypeName(LT), ResultTypeName(RT), Left.AsString, Right.AsString])
-    }
-end;
-
 
 
 { TsLessExprNode }
@@ -3205,7 +3166,7 @@ begin
   Result := RPNFunc(fekConcat,
     Right.AsRPNItem(
     Left.AsRPNItem(
-    nil)));
+    ANext)));
 end;
 
 function TsConcatExprNode.AsString: string;
@@ -3468,7 +3429,6 @@ end;
 procedure TsPowerExprNode.GetNodeValue(var Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
-  ex: TsExprFloat;
 begin
   Left.GetNodeValue(Result);
   if Result.ResultType = rtError then
@@ -3599,6 +3559,7 @@ end;
 
 function TsVariableExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
+  Result := ANext;  // Just a dummy assignment to silence the compiler...
   RaiseParserError('Cannot handle variables for RPN, so far.');
 end;
 
@@ -4060,7 +4021,7 @@ begin
     rtBoolean   : if Arg.ResBoolean then Result := 1.0;
     rtString    : begin
                     fs := Arg.Worksheet.Workbook.FormatSettings;
-                    if not TryStrToDateTime(Arg.ResString, Result) then
+                    if not TryStrToDateTime(Arg.ResString, Result, fs) then
                       Result := 1.0;
                   end;
     rtCell      : begin

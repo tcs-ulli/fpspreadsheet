@@ -1461,7 +1461,7 @@ begin
   // 2 bytes for offset to last row
   r2 := WordLEToN(AStream.ReadWord);
   dr2 := SmallInt(r2 and $3FFF);
-  ARow1Offset := dr2;
+  ARow2Offset := dr2;
 
   // 1 byte for offset to first column
   dc1 := ShortInt(AStream.ReadByte);
@@ -1664,9 +1664,6 @@ end;
 procedure TsSpreadBIFFReader.ReadSharedFormula(AStream: TStream);
 var
   r1, r2, c1, c2: Cardinal;
-  flags: TsRelFlags;
-  b: Byte;
-  ok: Boolean;
   cell: PCell;
 begin
   // Cell range in which the formula is valid
@@ -1689,7 +1686,7 @@ begin
   AStream.ReadByte;
 
   // RPN formula tokens
-  ok := ReadRPNTokenArray(AStream, cell);
+  ReadRPNTokenArray(AStream, cell);
 end;
 
 { Helper function for reading a string with 8-bit length. Here, we implement the
@@ -2488,7 +2485,6 @@ var
   TokenArraySizePos: Int64;
   FinalPos: Int64;
   exprDef: TsExprIdentifierDef;
-  excelCode: Word;
   primaryExcelCode, secondaryExcelCode: Word;
 begin
   RPNLength := 0;
@@ -2815,8 +2811,9 @@ var
   recordSizePos: Int64;
   startPos, finalPos: Int64;
   formula: TsRPNFormula;
-  i: Integer;
 begin
+  RPNLength := 0;
+
   // Determine cell range covered by the shared formula in ACell.
   // Find range of cells using this shared formula
   r1 := ACell^.Row;   r2 := r1;
