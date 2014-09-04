@@ -112,7 +112,6 @@ type
     procedure WriteXFRecords(AStream: TStream);
   protected
     procedure CreateNumFormatList; override;
-    procedure FixRelativeReferences(ACell: PCell; var AElement: TsFormulaElement); override;
     procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
@@ -993,26 +992,6 @@ begin
   end;
 end;
 
-{ Since BIFF2 does not support shared formulas it cannot handle the fekCellOffset
-  token. It is replaced by a fekCellValue token and correct relative references. }
-procedure TsSpreadBIFF2Writer.FixRelativeReferences(ACell: PCell;
-  var AElement: TsFormulaElement);
-begin
-  inherited FixRelativeReferences(ACell, AElement);
-
-  if (ACell = nil) or (ACell^.SharedFormulaBase = nil) then
-    exit;
-
-  if AElement.ElementKind = fekCellOffset then
-  begin
-    AElement.ElementKind := fekCell;
-    if (rfRelRow in AElement.RelFlags) then
-      AElement.Row := ACell^.Row + Integer(AElement.Row);  // AElement.Row means here: "RowOffsset"
-    if (rfRelCol in AElement.RelFlags) then
-      AElement.Col := ACell^.Col + Integer(AElement.Col);  // AElement.Col means here: "ColOffsset"
-  end;
-end;
-
 { Determines the cell attributes needed for writing a cell content record, such
   as WriteLabel, WriteNumber, etc.
   The cell attributes contain, in bit masks, xf record index, font index, borders, etc.}
@@ -1627,7 +1606,7 @@ begin
   if ACell^.SharedFormulaBase <> nil then
     WriteRPNSharedFormulaLink(AStream, ACell, RPNLength)
   else
-    WriteRPNTokenArray(AStream, AFormula, true, RPNLength);
+    WriteRPNTokenArray(AStream, ACell, AFormula, false, RPNLength);
 
   { Finally write sizes after we know them }
   FinalPos := AStream.Position;
@@ -1660,14 +1639,14 @@ var
   formula: TsRPNFormula;
 begin
   // Create RPN formula from the shared formula base's string formula
-  formula := FWorksheet.BuildRPNFormula(ACell^.SharedFormulaBase);
-
-  // Adapt relative cell references
-  for i:=0 to Length(formula)-1 do
-    FixRelativeReferences(ACell, formula[i]);
+  formula := FWorksheet.BuildRPNFormula(ACell);
+    // Don't use ACell^.SharedFormulaBase here because this lookup is made
+    // by the worksheet automatically.
 
   // Write adapted copy of shared formula to stream.
-  WriteRPNTokenArray(AStream, formula, true, RPNLength);
+  WriteRPNTokenArray(AStream, ACell, formula, false, RPNLength);
+  // false --> "do not convert cess addresses to relative offsets", because
+  // biff2 does not support shared formulas!
 
   // Clean up
   SetLength(formula, 0);

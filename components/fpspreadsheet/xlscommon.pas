@@ -360,8 +360,8 @@ type
     procedure WriteRPNResult(AStream: TStream; ACell: PCell);
     procedure WriteRPNSharedFormulaLink(AStream: TStream; ACell: PCell;
       var RPNLength: Word); virtual;
-    procedure WriteRPNTokenArray(AStream: TStream; const AFormula: TsRPNFormula;
-      WriteTokenArraySize: Boolean; var RPNLength: Word);
+    procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
+      const AFormula: TsRPNFormula; UseRelAddr: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
     // Writes out a SELECTION record
     procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
@@ -2368,7 +2368,7 @@ begin
   if ACell^.SharedFormulaBase <> nil then
     WriteRPNSharedFormulaLink(AStream, ACell, RPNLength)
   else
-    WriteRPNTokenArray(AStream, AFormula, true, RPNLength);
+    WriteRPNTokenArray(AStream, ACell, AFormula, false, RPNLength);
 
   { Write sizes in the end, after we known them }
   FinalPos := AStream.Position;
@@ -2479,10 +2479,12 @@ end;
 
 { Writes the token array of the given RPN formula and returns its size }
 procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
-  const AFormula: TsRPNFormula; WriteTokenArraySize: Boolean; var RPNLength: Word);
+  ACell: PCell; const AFormula: TsRPNFormula; UseRelAddr: boolean;
+  var RPNLength: Word);
 var
   i: Integer;
   n: Word;
+  dr, dc: Integer;
   TokenArraySizePos: Int64;
   FinalPos: Int64;
   exprDef: TsExprIdentifierDef;
@@ -2491,12 +2493,10 @@ var
 begin
   RPNLength := 0;
 
-  if WriteTokenArraySize then begin
-    { The size of the token array is written later, because it's necessary to
-      calculate it first, and this is done at the same time it is written }
-    TokenArraySizePos := AStream.Position;
-    WriteRPNTokenArraySize(AStream, 0);
-  end;
+  { The size of the token array is written later, because it's necessary to
+    calculate it first, and this is done at the same time it is written }
+  TokenArraySizePos := AStream.Position;
+  WriteRPNTokenArraySize(AStream, 0);
 
   { Formula data (RPN token array) }
   for i := 0 to Length(AFormula) - 1 do begin
@@ -2513,6 +2513,18 @@ begin
       primaryExcelCode := TokenIDs[AFormula[i].ElementKind];
       secondaryExcelCode := 0;
     end;
+
+    if UseRelAddr then
+      case primaryExcelCode of
+        INT_EXCEL_TOKEN_TREFR : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_R;
+        INT_EXCEL_TOKEN_TREFV : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_V;
+        INT_EXCEL_TOKEN_TREFA : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_A;
+
+        INT_EXCEL_TOKEN_TAREA_R: primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_R;
+        INT_EXCEL_TOKEN_TAREA_V: primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_V;
+        INT_EXCEL_TOKEN_TAREA_A: primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_A;
+      end;
+
     AStream.WriteByte(primaryExcelCode);
     inc(RPNLength);
 
@@ -2520,7 +2532,6 @@ begin
     case primaryExcelCode of
       { Operand Tokens }
       INT_EXCEL_TOKEN_TREFR, INT_EXCEL_TOKEN_TREFV, INT_EXCEL_TOKEN_TREFA:  { fekCell }
-//      INT_EXCEL_TOKEN_TREFN_R, INT_EXCEL_TOKEN_TREFN_V, INT_EXCEL_TOKEN_TREFN_A:  { fekCellOffset}
         begin
           n := WriteRPNCellAddress(
             AStream,
@@ -2545,11 +2556,13 @@ begin
       INT_EXCEL_TOKEN_TREFN_V,
       INT_EXCEL_TOKEN_TREFN_A:  { fekCellOffset }
         begin
-          n := WriteRPNCellOffset(
-            AStream,
-            integer(AFormula[i].Row), integer(AFormula[i].Col),
-            AFormula[i].RelFlags
-          );
+          if rfRelRow in AFormula[i].RelFlags
+            then dr := integer(AFormula[i].Row) - ACell^.Row
+            else dr := integer(AFormula[i].Row) - ACell^.SharedFormulaBase^.Row;
+          if rfRelCol in AFormula[i].RelFlags
+            then dc := integer(AFormula[i].Col) - ACell^.Col
+            else dc := integer(AFormula[i].Col) - ACell^.SharedFormulaBase^.Col;
+          n := WriteRPNCellOffset(AStream, dr, dc, AFormula[i].RelFlags);
           inc(RPNLength, n);
         end;
 
@@ -2608,17 +2621,15 @@ begin
   end; // for
 
   // Now update the size of the token array.
-  if WriteTokenArraySize then begin
-    finalPos := AStream.Position;
-    AStream.Position := TokenArraySizePos;
-    WriteRPNTokenArraySize(AStream, RPNLength);
-    AStream.Position := finalPos;
-  end;
+  finalPos := AStream.Position;
+  AStream.Position := TokenArraySizePos;
+  WriteRPNTokenArraySize(AStream, RPNLength);
+  AStream.Position := finalPos;
 end;
 
 { Writes the size of the RPN token array. Called from WriteRPNFormula.
   Valid for BIFF3-BIFF8. Override in BIFF2. }
-procedure TsSPREADBIFFWriter.WriteRPNTokenArraySize(AStream: TStream; ASize: Word);
+procedure TsSpreadBIFFWriter.WriteRPNTokenArraySize(AStream: TStream; ASize: Word);
 begin
   AStream.WriteWord(WordToLE(ASize));
 end;
@@ -2850,11 +2861,11 @@ begin
   // Create an RPN formula from the shared formula base's string formula
   // and adjust relative references
   formula := FWorksheet.BuildRPNFormula(ACell^.SharedFormulaBase);
-  for i:=0 to Length(formula)-1 do
+{  for i:=0 to Length(formula)-1 do
     FixRelativeReferences(ACell, formula[i]);
-
+ }
   // Writes the rpn token array
-  WriteRPNTokenArray(AStream, formula, true, RPNLength);
+  WriteRPNTokenArray(AStream, ACell, formula, true, RPNLength);
 
   { Write record size at the end after we known it }
   finalPos := AStream.Position;

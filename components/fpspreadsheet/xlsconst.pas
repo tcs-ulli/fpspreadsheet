@@ -9,60 +9,63 @@ const
   { Formula constants TokenID values }
 
   { Binary Operator Tokens 3.6}
-  INT_EXCEL_TOKEN_TADD    = $03;
-  INT_EXCEL_TOKEN_TSUB    = $04;
-  INT_EXCEL_TOKEN_TMUL    = $05;
-  INT_EXCEL_TOKEN_TDIV    = $06;
-  INT_EXCEL_TOKEN_TPOWER  = $07; // Power Exponentiation ^
-  INT_EXCEL_TOKEN_TCONCAT = $08; // Concatenation &
-  INT_EXCEL_TOKEN_TLT     = $09; // Less than <
-  INT_EXCEL_TOKEN_TLE     = $0A; // Less than or equal <=
-  INT_EXCEL_TOKEN_TEQ     = $0B; // Equal =
-  INT_EXCEL_TOKEN_TGE     = $0C; // Greater than or equal >=
-  INT_EXCEL_TOKEN_TGT     = $0D; // Greater than >
-  INT_EXCEL_TOKEN_TNE     = $0E; // Not equal <>
-  INT_EXCEL_TOKEN_TISECT  = $0F; // Cell range intersection
-  INT_EXCEL_TOKEN_TLIST   = $10; // Cell range list
-  INT_EXCEL_TOKEN_TRANGE  = $11; // Cell range
-  INT_EXCEL_TOKEN_TUPLUS  = $12; // Unary plus  +
-  INT_EXCEL_TOKEN_TUMINUS = $13; // Unary minus +
-  INT_EXCEL_TOKEN_TPERCENT= $14; // Percent (%, divides operand by 100)
-  INT_EXCEL_TOKEN_TPAREN  = $15; // Operator in parenthesis
+  INT_EXCEL_TOKEN_TADD      = $03;
+  INT_EXCEL_TOKEN_TSUB      = $04;
+  INT_EXCEL_TOKEN_TMUL      = $05;
+  INT_EXCEL_TOKEN_TDIV      = $06;
+  INT_EXCEL_TOKEN_TPOWER    = $07; // Power Exponentiation ^
+  INT_EXCEL_TOKEN_TCONCAT   = $08; // Concatenation &
+  INT_EXCEL_TOKEN_TLT       = $09; // Less than <
+  INT_EXCEL_TOKEN_TLE       = $0A; // Less than or equal <=
+  INT_EXCEL_TOKEN_TEQ       = $0B; // Equal =
+  INT_EXCEL_TOKEN_TGE       = $0C; // Greater than or equal >=
+  INT_EXCEL_TOKEN_TGT       = $0D; // Greater than >
+  INT_EXCEL_TOKEN_TNE       = $0E; // Not equal <>
+  INT_EXCEL_TOKEN_TISECT    = $0F; // Cell range intersection
+  INT_EXCEL_TOKEN_TLIST     = $10; // Cell range list
+  INT_EXCEL_TOKEN_TRANGE    = $11; // Cell range
+  INT_EXCEL_TOKEN_TUPLUS    = $12; // Unary plus  +
+  INT_EXCEL_TOKEN_TUMINUS   = $13; // Unary minus +
+  INT_EXCEL_TOKEN_TPERCENT  = $14; // Percent (%, divides operand by 100)
+  INT_EXCEL_TOKEN_TPAREN    = $15; // Operator in parenthesis
 
   { Constant Operand Tokens, 3.8}
-  INT_EXCEL_TOKEN_TMISSARG= $16; //missing operand
-  INT_EXCEL_TOKEN_TSTR    = $17; //string
-  INT_EXCEL_TOKEN_TERR    = $1C; //error value
-  INT_EXCEL_TOKEN_TBOOL   = $1D; //boolean
-  INT_EXCEL_TOKEN_TINT    = $1E; //(unsigned) integer
-  INT_EXCEL_TOKEN_TNUM    = $1F; //floating-point
+  INT_EXCEL_TOKEN_TMISSARG  = $16; //missing operand
+  INT_EXCEL_TOKEN_TSTR      = $17; //string
+  INT_EXCEL_TOKEN_TERR      = $1C; //error value
+  INT_EXCEL_TOKEN_TBOOL     = $1D; //boolean
+  INT_EXCEL_TOKEN_TINT      = $1E; //(unsigned) integer
+  INT_EXCEL_TOKEN_TNUM      = $1F; //floating-point
 
   { Operand Tokens }
   // _R: reference; _V: value; _A: array
-  INT_EXCEL_TOKEN_TREFR   = $24;
-  INT_EXCEL_TOKEN_TREFV   = $44;
-  INT_EXCEL_TOKEN_TREFA   = $64;
-  INT_EXCEL_TOKEN_TAREA_R = $25;
-  INT_EXCEL_TOKEN_TAREA_V = $45;
-  INT_EXCEL_TOKEN_TAREA_A = $65;
-  INT_EXCEL_TOKEN_TREFN_R = $2C;
-  INT_EXCEL_TOKEN_TREFN_V = $4C;
-  INT_EXCEL_TOKEN_TREFN_A = $6C;
+  INT_EXCEL_TOKEN_TREFR     = $24;
+  INT_EXCEL_TOKEN_TREFV     = $44;
+  INT_EXCEL_TOKEN_TREFA     = $64;
+  INT_EXCEL_TOKEN_TAREA_R   = $25;
+  INT_EXCEL_TOKEN_TAREA_V   = $45;
+  INT_EXCEL_TOKEN_TAREA_A   = $65;
+  INT_EXCEL_TOKEN_TREFN_R   = $2C;
+  INT_EXCEL_TOKEN_TREFN_V   = $4C;
+  INT_EXCEL_TOKEN_TREFN_A   = $6C;
+  INT_EXCEL_TOKEN_TAREAN_R  = $2D;
+  INT_EXCEL_TOKEN_TAREAN_V  = $4D;
+  INT_EXCEL_TOKEN_TAREAN_A  = $6D;
 
   { Function Tokens }
   // _R: reference; _V: value; _A: array
   // Offset 0: token; offset 1: index to a built-in sheet function ( ➜ 3.111)
-  INT_EXCEL_TOKEN_FUNC_R  = $21;
-  INT_EXCEL_TOKEN_FUNC_V  = $41;
-  INT_EXCEL_TOKEN_FUNC_A  = $61;
+  INT_EXCEL_TOKEN_FUNC_R    = $21;
+  INT_EXCEL_TOKEN_FUNC_V    = $41;
+  INT_EXCEL_TOKEN_FUNC_A    = $61;
 
   //VAR: variable number of arguments:
-  INT_EXCEL_TOKEN_FUNCVAR_R  = $22;
-  INT_EXCEL_TOKEN_FUNCVAR_V  = $42;
-  INT_EXCEL_TOKEN_FUNCVAR_A  = $62;
+  INT_EXCEL_TOKEN_FUNCVAR_R = $22;
+  INT_EXCEL_TOKEN_FUNCVAR_V = $42;
+  INT_EXCEL_TOKEN_FUNCVAR_A = $62;
 
   { Special tokens }
-  INT_EXCEL_TOKEN_TEXP       = $01;  // cell belongs to shared formula
+  INT_EXCEL_TOKEN_TEXP     = $01;  // cell belongs to shared formula
 
   { Built-in/worksheet functions }
   INT_EXCEL_SHEET_FUNC_COUNT      = 0;

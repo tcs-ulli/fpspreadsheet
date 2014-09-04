@@ -1097,7 +1097,6 @@ type
     procedure FixCellColors(ACell: PCell);
     function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
-    procedure FixRelativeReferences(ACell: PCell; var AElement: TsFormulaElement); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
     procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
@@ -1749,6 +1748,8 @@ end;
   Helper function which constructs an rpn formula from the cell's string
   formula. This is needed, for example, when writing a formula to xls biff
   file format.
+  If the cell belongs to a shared formula the formula is taken from the
+  shared formula base cell, cell references used are adapted accordingly.
 }
 function TsWorksheet.BuildRPNFormula(ACell: PCell): TsRPNFormula;
 var
@@ -6664,44 +6665,6 @@ procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 begin
   Unused(ACell);
   // to be overridden
-end;
-
-{@@
-  Adjusts relative references in the formula element to the position of cell
-  and the shared formula base. }
-procedure TsCustomSpreadWriter.FixRelativeReferences(ACell: PCell;
-  var AElement: TsFormulaElement);
-var
-  rowOffset: Integer;
-  colOffset: Integer;
-begin
-  if (ACell = nil) or (ACell^.SharedFormulaBase = nil) then
-    exit;
-
-  case AElement.ElementKind of
-    fekCell:
-      begin
-        rowOffset := AElement.Row - ACell^.SharedFormulaBase^.Row;
-        colOffset := AElement.Col - ACell^.SharedFormulaBase^.Col;
-        if (rfRelRow in AElement.RelFlags) then
-          AElement.Row := Integer(ACell^.Row) + rowOffset;
-        if (rfRelCol in AElement.RelFlags) then
-          AElement.Col := Integer(ACell^.Col) + colOffset;
-      end;
-    fekCellRange:
-      begin
-        rowOffset := AElement.Row - ACell^.SharedFormulaBase^.Row;
-        colOffset := AElement.Col - ACell^.SharedFormulaBase^.Col;
-        if (rfRelRow in AElement.RelFlags) then
-          AElement.Row := Integer(ACell^.Row) + rowOffset;
-        if (rfRelCol in AElement.RelFlags) then
-          AElement.Col := Integer(ACell^.Col) + colOffset;
-        if (rfRelRow2 in AElement.RelFlags) then
-          AElement.Row2 := Integer(ACell^.Row) + rowOffset;
-        if (rfRelCol2 in AElement.RelFlags) then
-          AElement.Col2 := Integer(ACell^.Col) + colOffset;
-      end;
-  end;
 end;
 
 {@@
