@@ -615,9 +615,6 @@ var
   formulaStr: String;
   sstIndex: Integer;
   number: Double;
-  ref: String;
-  r1,r2, c1,c2: Cardinal;
-  sharedFormulaBase: PCell;
 begin
   if ANode = nil then
     exit;
@@ -2531,7 +2528,6 @@ var
   r, r1, r2: Cardinal;
   c, c1, c2: Cardinal;
   cell: PCell;
-  id: Cardinal;
   t, v: String;
 begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);

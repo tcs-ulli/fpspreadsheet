@@ -1209,7 +1209,7 @@ implementation
 
 uses
   Math, StrUtils, TypInfo,
-  fpsStreams, fpsUtils, fpsNumFormatParser, fpsExprParser, fpsFunc;
+  fpsStreams, fpsUtils, fpsNumFormatParser, fpsExprParser;
 
 { Translatable strings }
 resourcestring
@@ -1820,7 +1820,7 @@ begin
       parser.ActiveCell := ACell;
     end;
     parser.Expression := formula;
-    parser.EvaluateExpression(res);
+    res := parser.Evaluate;
     case res.ResultType of
       rtEmpty    : WriteBlank(ACell);
       rtError    : WriteErrorValue(ACell, res.ResError);
