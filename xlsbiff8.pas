@@ -130,7 +130,6 @@ type
       AFlags: TsRelFlags): Word; override;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
       AFlags: TsRelFlags): Word; override;
-//    procedure WriteSharedFormulaRange(AStream: TStream; const ARange: TRect); override;
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteStringRecord(AStream: TStream; AString: string); override;
     procedure WriteStyle(AStream: TStream);
@@ -801,7 +800,7 @@ end;
 function TsSpreadBIFF8Writer.WriteRPNCellOffset(AStream: TStream;
   ARowOffset, AColOffset: Integer; AFlags: TsRelFlags): Word;
 var
-  c: word;
+  c: Word;
   r: SmallInt;
 begin
   // row address
@@ -809,7 +808,7 @@ begin
   AStream.WriteWord(WordToLE(Word(r)));
 
   // Encoded column address
-  c := word(SmallInt(AColOffset)) and MASK_EXCEL_COL_BITS_BIFF8;
+  c := word(AColOffset) and MASK_EXCEL_COL_BITS_BIFF8;
   if (rfRelRow in AFlags) then c := c or MASK_EXCEL_RELATIVE_ROW_BIFF8;
   if (rfRelCol in AFlags) then c := c or MASK_EXCEL_RELATIVE_COL_BIFF8;
   AStream.WriteWord(WordToLE(c));

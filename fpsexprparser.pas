@@ -3786,7 +3786,7 @@ begin
     if rfRelCol in FFlags then
       Result := FCol - FParser.ActiveCell^.SharedFormulaBase^.Col + FParser.ActiveCell^.Col
     else
-      Result := FParser.ActiveCell^.SharedFormulaBase^.Col;
+      Result := FCol; //FParser.ActiveCell^.SharedFormulaBase^.Col;
   end
   else
     // Normal mode
@@ -3824,7 +3824,7 @@ begin
     if rfRelRow in FFlags then
       Result := FRow - FParser.ActiveCell^.SharedFormulaBase^.Row + FParser.ActiveCell^.Row
     else
-      Result := FParser.ActiveCell^.SharedFormulaBase^.Row;
+      Result := FRow; //FParser.ActiveCell^.SharedFormulaBase^.Row;
   end
   else
     Result := FRow;
