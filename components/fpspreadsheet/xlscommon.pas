@@ -1403,7 +1403,13 @@ var
 begin
   // 2 bytes for row
   r := WordLEToN(AStream.ReadWord);
-  dr := SmallInt(r and $3FFF);
+
+  // Check sign bit
+  if r and $2000 = 0 then
+    dr := SmallInt(r and $3FFF)
+  else
+    dr := SmallInt($C000 or (r and $3FFF));
+//  dr := SmallInt(r and $3FFF);
   ARowOffset := dr;
 
   // 1 byte for column
@@ -1547,10 +1553,10 @@ begin
           // For compatibility with other formats, convert offsets back to regular indexes.
           if (rfRelRow in flags)
             then r := ACell^.Row + dr
-            else r := ACell^.SharedFormulaBase^.Row + dr;
+            else r := dr; //ACell^.SharedFormulaBase^.Row + dr;
           if (rfRelCol in flags)
             then c := ACell^.Col + dc
-            else c := ACell^.SharedFormulaBase^.Col + dc;
+            else c := dc; //ACell^.SharedFormulaBase^.Col + dc;
           case token of
             INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
             INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
@@ -1645,7 +1651,10 @@ begin
   end
   else begin
     formula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
-    ACell^.FormulaValue := FWorksheet.ConvertRPNFormulaToStringFormula(formula);
+    if (ACell^.SharedFormulaBase = nil) or (ACell = ACell^.SharedFormulaBase) then
+      ACell^.FormulaValue := FWorksheet.ConvertRPNFormulaToStringFormula(formula)
+    else
+      ACell^.FormulaValue := '';
     Result := true;
   end;
 end;
@@ -2554,10 +2563,10 @@ begin
         begin
           if rfRelRow in AFormula[i].RelFlags
             then dr := integer(AFormula[i].Row) - ACell^.Row
-            else dr := integer(AFormula[i].Row) - ACell^.SharedFormulaBase^.Row;
+            else dr := integer(AFormula[i].Row);
           if rfRelCol in AFormula[i].RelFlags
             then dc := integer(AFormula[i].Col) - ACell^.Col
-            else dc := integer(AFormula[i].Col) - ACell^.SharedFormulaBase^.Col;
+            else dc := integer(AFormula[i].Col);
           n := WriteRPNCellOffset(AStream, dr, dc, AFormula[i].RelFlags);
           inc(RPNLength, n);
         end;
@@ -2802,7 +2811,8 @@ end;
   token fekCellOffset
   Valid for BIFF5-BIFF8. No shared formulas before BIFF2. But since a worksheet
   containing shared formulas can be written the BIFF2 writer needs to duplicate
-  the formulas in each cell. In BIFF2 WriteSharedFormula must not do anything. }
+  the formulas in each cell (with adjusted cell references). In BIFF2
+  WriteSharedFormula must not do anything. }
 procedure TsSpreadBIFFWriter.WriteSharedFormula(AStream: TStream; ACell: PCell);
 var
   r, c, r1, r2, c1, c2: Cardinal;
@@ -2858,9 +2868,7 @@ begin
   // Create an RPN formula from the shared formula base's string formula
   // and adjust relative references
   formula := FWorksheet.BuildRPNFormula(ACell^.SharedFormulaBase);
-{  for i:=0 to Length(formula)-1 do
-    FixRelativeReferences(ACell, formula[i]);
- }
+
   // Writes the rpn token array
   WriteRPNTokenArray(AStream, ACell, formula, true, RPNLength);
 

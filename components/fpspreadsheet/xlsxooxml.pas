@@ -654,16 +654,11 @@ begin
       if s = 'shared' then
       begin
         s := GetAttrValue(datanode, 'ref');
-        if (s <>'') then
-        begin
-          AWorksheet.WriteFormula(cell, formulaStr);
-//          cell^.FormulaValue := formulaStr;
-          FWorksheet.UseSharedFormula(s, cell);
-        end;
+        if (s <> '') then
+          AWorksheet.WriteSharedFormula(s, formulaStr);
       end
       else
         AWorksheet.WriteFormula(cell, formulaStr);
-//          cell^.FormulaValue := formulaStr;
     end;
     datanode := datanode.NextSibling;
   end;

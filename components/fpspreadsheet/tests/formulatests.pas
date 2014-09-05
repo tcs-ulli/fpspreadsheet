@@ -33,12 +33,12 @@ type
     // Test formula strings
     procedure TestWriteReadFormulaStrings(AFormat: TsSpreadsheetFormat;
       UseRPNFormula: Boolean);
+    procedure Test_Write_Read_SharedFormulaStrings(AFormat: TsSpreadsheetFormat);
     // Test calculation of rpn formulas
     procedure TestCalcFormulas(AFormat: TsSpreadsheetformat; UseRPNFormula: Boolean);
 
   published
-    // Writes out numbers & reads back.
-    // If previous read tests are ok, this effectively tests writing.
+    // Writes out formulas & reads them back.
     { BIFF2 Tests }
     procedure Test_Write_Read_FormulaStrings_BIFF2;
     { BIFF5 Tests }
@@ -49,6 +49,18 @@ type
     procedure Test_Write_Read_FormulaStrings_OOXML;
     { ODS Tests }
     procedure Test_Write_Read_FormulaStrings_ODS;
+
+    // Writes out shared formulas & reads them back.
+    { BIFF2 Tests }
+    procedure Test_Write_Read_SharedFormulaStrings_BIFF2;
+    { BIFF2 Tests }
+    procedure Test_Write_Read_SharedFormulaStrings_BIFF5;
+    { BIFF8 Tests }
+    procedure Test_Write_Read_SharedFormulaStrings_BIFF8;
+    { OOXML Tests }
+    procedure Test_Write_Read_SharedFormulaStrings_OOXML;
+    { ODS Tests }
+    procedure Test_Write_Read_SharedFormulaStrings_ODS;
 
     // Writes out and calculates rpn formulas, read back
     { BIFF2 Tests }
@@ -196,6 +208,133 @@ begin
   TestWriteReadFormulaStrings(sfOpenDocument, true);
 end;
 
+
+{ Test writing and reading (i.e. reconstruction) of shared formula strings }
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings(
+  AFormat: TsSpreadsheetFormat);
+const
+  SHEET = 'SharedFormulaSheet';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  cell: PCell;
+  row, col: Cardinal;
+  TempFile: String;
+  actual, expected: String;
+  sollValues: array[1..4, 0..5] of string;
+begin
+  TempFile := GetTempFileName;
+
+  // Create test workbook
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
+    MyWorkSheet:= MyWorkBook.AddWorksheet(SHEET);
+
+    // Write out test values
+    MyWorksheet.WriteNumber(0, 0, 1.0);  // A1
+    MyWorksheet.WriteNumber(0, 1, 2.0);
+    MyWorksheet.WriteNumber(0, 2, 3.0);
+    MyWorksheet.WriteNumber(0, 3, 4.0);
+    MyWorksheet.WriteNumber(0, 4, 5.0);  // E1
+
+    // Write out all test formulas
+    // sollValues contains the expected formula as seen from each cell in the
+    // shared formula block.
+    MyWorksheet.WriteSharedFormula('A2:E2', 'A1');
+      sollValues[1, 0] := 'A1';
+      sollValues[1, 1] := 'B1';
+      sollValues[1, 2] := 'C1';
+      sollValues[1, 3] := 'D1';
+      sollValues[1, 4] := 'E1';
+    MyWorksheet.WriteSharedFormula('A3:E3', '$A1');
+      sollValues[2, 0] := '$A1';
+      sollValues[2, 1] := '$A1';
+      sollValues[2, 2] := '$A1';
+      sollValues[2, 3] := '$A1';
+      sollValues[2, 4] := '$A1';
+    MyWorksheet.WriteSharedFormula('A4:E4', 'A$1');
+      sollValues[3, 0] := 'A$1';
+      sollValues[3, 1] := 'B$1';
+      sollValues[3, 2] := 'C$1';
+      sollValues[3, 3] := 'D$1';
+      sollValues[3, 4] := 'E$1';
+    MyWorksheet.WriteSharedFormula('A5:E5', '$A$1');
+      sollValues[4, 0] := '$A$1';
+      sollValues[4, 1] := '$A$1';
+      sollValues[4, 2] := '$A$1';
+      sollValues[4, 3] := '$A$1';
+      sollValues[4, 4] := '$A$1';
+
+    MyWorksheet.WriteSharedFormula('A6:E6', 'SIN(A1)');
+    MyWorksheet.WriteSharedFormula('A7:E7', 'SIN($A1)');
+    MyWorksheet.WriteSharedFormula('A8:E8', 'SIN(A$1)');
+    MyWorksheet.WriteSharedFormula('A9:E9', 'SIN($A$1)');
+
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas, boAutoCalc];
+
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SHEET);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    for row := 1 to 8 do begin
+      for col := 0 to MyWorksheet.GetLastColIndex do begin
+        cell := Myworksheet.FindCell(row, col);
+        if HasFormula(cell) then begin
+          actual := MyWorksheet.ReadFormulaAsString(cell);
+          if row <= 4 then
+            expected := SollValues[row, col]
+          else
+            expected := 'SIN(' + SollValues[row-4, col] + ')';
+          CheckEquals(expected, actual, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,Col));
+        end else
+          fail('No formula found in cell ' + CellNotation(MyWorksheet, Row, Col));
+      end;
+    end;
+
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings_BIFF2;
+begin
+  Test_Write_Read_SharedFormulaStrings(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings_BIFF5;
+begin
+  Test_Write_Read_SharedFormulaStrings(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings_BIFF8;
+begin
+  Test_Write_Read_SharedFormulaStrings(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings_OOXML;
+begin
+  Test_Write_Read_SharedFormulaStrings(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings_ODS;
+begin
+  Test_Write_Read_SharedFormulaStrings(sfOpenDocument);
+end;
 
 { Test calculation of formulas }
 

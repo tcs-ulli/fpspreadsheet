@@ -623,6 +623,11 @@ type
     function WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula): PCell; overload;
     procedure WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula); overload;
 
+    procedure WriteSharedFormula(ARow1, ACol1, ARow2, ACol2: Cardinal;
+      const AFormula: String); overload;
+    procedure WriteSharedFormula(ACellRange: String;
+      const AFormula: String); overload;
+
     function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell; overload;
     procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
@@ -702,8 +707,7 @@ type
     procedure CalcFormula(ACell: PCell);
     procedure CalcFormulas;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
-    function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell; overload;
-    procedure UseSharedFormula(ACellRangeStr: String; ASharedFormulaBase: PCell); overload;
+    function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
@@ -2866,35 +2870,8 @@ begin
   if HasFormula(Result) and
      ((ASharedFormulaBase.Row <> ARow) and (ASharedFormulaBase.Col <> ACol))
   then
-    raise Exception.CreateFmt('Cell %s uses a shared formula, but contains an own formula.',
+    raise Exception.CreateFmt('[TsWorksheet.UseSharedFormula] Cell %s uses a shared formula, but contains an own formula.',
       [GetCellString(ARow, ACol)]);
-end;
-
-{@@
-  Uses the formula defined in cell "ASharedFormulaBase" as a shared formula in
-  all cells of the given cell range.
-
-  @param ACellRangeStr       Range of cells which will use the shared formula.
-                             The range is given as a string in Excel notation,
-                             such as A1:B5, or A1
-  @param ASharedFormulaBase  Cell containing the formula to be shared
-}
-procedure TsWorksheet.UseSharedFormula(ACellRangeStr: String; ASharedFormulaBase: PCell);
-var
-  r, c, r1, c1, r2, c2: Cardinal;
-  ok: Boolean;
-begin
-  if pos(':', ACellRangeStr) = 0 then
-  begin
-    ok := ParseCellString(ACellRangeStr, r1, c1);
-    r2 := r1;
-    c2 := c1;
-  end else
-    ok := ParseCellRangeString(ACellRangeStr, r1, c1, r2, c2);
-  if ok then
-    for r := r1 to r2 do
-      for c := c1 to c2 do
-        UseSharedFormula(r, c, ASharedFormulaBase);
 end;
 
 {@@
@@ -3796,6 +3773,57 @@ begin
   ACell^.FormulaValue := ConvertRPNFormulaToStringFormula(AFormula);
 
   ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+{@@
+  Writes a formula to a cell and shares it with other cells.
+
+  @param ARow1, ACol1    Row and column index of the top left corner of
+                         the range sharing the formula. The cell in this
+                         cell stores the formula.
+  @param ARow2, ACol2    Row and column of the bottom right corner of the
+                         range sharing the formula.
+  @param AFormula        Formula in Excel notation
+}
+procedure TsWorksheet.WriteSharedFormula(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  const AFormula: String);
+var
+  cell: PCell;
+  r, c: Cardinal;
+begin
+  if (ARow1 > ARow2) or (ACol1 > ACol2) then
+    raise Exception.Create('[TsWorksheet.WriteSharedFormula] Rows/cols not ordered correctly: ARow1 <= ARow2, ACol1 <= ACol2.');
+
+  if (ARow1 = ARow2) and (ACol1 = ACol2) then
+    raise Exception.Create('[TsWorksheet.WriteSharedFormula] A shared formula range must contain at least two cells.');
+
+  // The cell at the top/left corner of the cell range is the "SharedFormulaBase".
+  // It is the only cell which stores the formula.
+  cell := WriteFormula(ARow1, ACol1, AFormula);
+  for r := ARow1 to ARow2 do
+    for c := ACol1 to ACol2 do
+      UseSharedFormula(r, c, cell);
+end;
+
+{@@
+  Writes a formula to a cell and shares it with other cells.
+
+  @param ACellRangeStr       Range of cells which will use the shared formula.
+                             The range is given as a string in Excel notation,
+                             such as A1:B5, or A1
+  @param AFormula       Formula (in Excel notation) to be shared. The cell
+                        addresses are relative to the top/left cell of the
+                        range.
+}
+procedure TsWorksheet.WriteSharedFormula(ACellRange: String;
+  const AFormula: String);
+var
+  r1,r2, c1,c2: Cardinal;
+begin
+  if ParseCellRangeString(ACellRange, r1, c1, r2, c2) then
+    WriteSharedFormula(r1, c1, r2, c2, AFormula)
+  else
+    raise Exception.Create('[TsWorksheet.WriteSharedFormula] No valid cell range string.');
 end;
 
 {@@
