@@ -1291,11 +1291,11 @@ begin
       AStream.ReadBuffer(Result[1],PendingRecordSize);
       Dec(PendingRecordSize,PendingRecordSize);
     end else begin
-      SetLength(Result,ALength);
+      SetLength(Result, ALength);
       AStream.ReadBuffer(Result[1],ALength * SizeOf(WideChar));
       Dec(PendingRecordSize,ALength * SizeOf(WideChar));
     end;
-    Result:=WideStringLEToN(Result);
+    Result := WideStringLEToN(Result);
   end else begin
     //String is 1 byte per char, this is UTF-16 with the high byte ommited because it is zero
     //so decompress and then convert
@@ -1464,6 +1464,9 @@ begin
     // Check for the end of the file
     if AStream.Position >= AStream.Size then SectionEOF := True;
   end;
+
+  FixCols(FWorksheet);
+  FixRows(FWorksheet);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadBoundsheet(AStream: TStream);

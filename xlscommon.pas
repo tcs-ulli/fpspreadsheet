@@ -2689,8 +2689,8 @@ begin
 
   { Row height (in twips, 1/20 point) and info on custom row height }
   h := Workbook.GetFont(0).Size;  // Point size of default font
-  if (ARow = nil) or (ARow^.Height = Workbook.DefaultRowHeight) then
-    rowheight := PtsToTwips((Workbook.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * h)
+  if (ARow = nil) or (ARow^.Height = ASheet.DefaultRowHeight) then
+    rowheight := PtsToTwips((ASheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * h)
   else
   if (ARow^.Height = 0) then
     rowheight := 0

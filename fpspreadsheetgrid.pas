@@ -2015,6 +2015,7 @@ begin
         end;
       end;
     end;
+//    else Result := 'NIL';
   end;
 end;
 

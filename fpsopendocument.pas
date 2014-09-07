@@ -747,7 +747,7 @@ begin
     colWidth := mmToPts(colStyle.ColWidth)/factor;
     { Add only column records to the worksheet if their width is different from
       the default column width. }
-    if not SameValue(colWidth, Workbook.DefaultColWidth, COLWIDTH_EPS) then begin
+    if not SameValue(colWidth, FWorksheet.DefaultColWidth, COLWIDTH_EPS) then begin
       col := FWorksheet.GetCol(colIndex);
       col^.Width := colWidth;
     end;
@@ -1011,7 +1011,7 @@ var
   j: Integer;
 begin
   // clear previous column list (from other sheets)
-  for j:=FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
+  for j := FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
   FColumnList.Clear;
 
   col := 0;
@@ -1344,7 +1344,10 @@ begin
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
       ReadRowsAndCells(TableNode);
+      // Handle columns and rows
       ApplyColWidths;
+      FixCols(FWorksheet);
+      FixRows(FWorksheet);
       // Continue with next table
       TableNode := TableNode.NextSibling;
     end; //while Assigned(TableNode)
@@ -2301,11 +2304,12 @@ begin
   { At first, add the default column width }
   colStyle := TColumnStyleData.Create;
   colStyle.Name := 'co1';
-  colStyle.ColWidth := Workbook.DefaultColWidth;
+  colStyle.ColWidth := 12; //Workbook.DefaultColWidth;
   FColumnStyleList.Add(colStyle);
 
   for i:=0 to Workbook.GetWorksheetCount-1 do begin
     sheet := Workbook.GetWorksheetByIndex(i);
+//    colStyle.ColWidth := sheet.DefaultColWidth;
     for c:=0 to sheet.GetLastColIndex do begin
       w := sheet.GetColWidth(c);
       // Look for this width in the current ColumnStyleList
@@ -2368,7 +2372,7 @@ begin
   { Initially, row height units will be the same as in the sheet, i.e. in "lines" }
   rowStyle := TRowStyleData.Create;
   rowStyle.Name := 'ro1';
-  rowStyle.RowHeight := Workbook.DefaultRowHeight;
+  rowStyle.RowHeight := 1; //Workbook.DefaultRowHeight;
   rowStyle.AutoRowHeight := true;
   FRowStyleList.Add(rowStyle);
 
