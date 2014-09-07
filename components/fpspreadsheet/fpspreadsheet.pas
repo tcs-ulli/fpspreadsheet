@@ -520,6 +520,8 @@ type
     FFirstColIndex: Cardinal;
     FLastRowIndex: Cardinal;
     FLastColIndex: Cardinal;
+    FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
+    FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
 
@@ -725,7 +727,9 @@ type
     function  GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColNumber: Cardinal; deprecated 'Use GetLastColIndex';
+    function  GetLastOccupiedColIndex: Cardinal;
     function  GetFirstRowIndex(AForceCalculation: Boolean = false): Cardinal;
+    function  GetLastOccupiedRowIndex: Cardinal;
     function  GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
 
@@ -743,6 +747,8 @@ type
     procedure InsertRow(ARow: Cardinal);
     procedure RemoveAllRows;
     procedure RemoveAllCols;
+    procedure RemoveCol(ACol: Cardinal);
+    procedure RemoveRow(ARow: Cardinal);
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
     procedure WriteRowHeight(ARow: Cardinal; AHeight: Single);
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
@@ -761,6 +767,12 @@ type
     property  Rows: TIndexedAVLTree read FRows;
     {@@ Workbook to which the worksheet belongs }
     property  Workbook: TsWorkbook read FWorkbook;
+    {@@ The default column width given in "character units" (width of the
+      character "0" in the default font) }
+    property DefaultColWidth: Single read FDefaultColWidth write FDefaultColWidth;
+    {@@ The default row height is given in "line count" (height of the
+      default font }
+    property DefaultRowHeight: Single read FDefaultRowHeight write FDefaultRowHeight;
 
     // These are properties to interface to TsWorksheetGrid
     {@@ Parameters controlling visibility of grid lines and row/column headers,
@@ -830,8 +842,6 @@ type
     FFontList: TFPList;
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
-    FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
-    FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FWriting: Boolean;
@@ -922,12 +932,6 @@ type
     procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
     procedure ClearErrorList;
 
-    {@@ The default column width given in "character units" (width of the
-      character "0" in the default font) }
-    property DefaultColWidth: Single read FDefaultColWidth;
-    {@@ The default row height is given in "line count" (height of the
-      default font }
-    property DefaultRowHeight: Single read FDefaultRowHeight;
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
@@ -1062,6 +1066,11 @@ type
     FVirtualCell: TCell;
     {@@ Stores if the reader is in virtual mode }
     FIsVirtualMode: Boolean;
+    { Helper methods }
+    {@@ Removes column records if all of them have the same column width }
+    procedure FixCols(AWorksheet: TsWorksheet);
+    {@@ Removes row records if all of them have the same row height }
+    procedure FixRows(AWorksheet: TsWorksheet);
     { Record reading methods }
     {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
     procedure ReadBlank(AStream: TStream); virtual; abstract;
@@ -1724,6 +1733,9 @@ begin
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
 
+  FDefaultColWidth := 12;
+  FDefaultRowHeight := 1;
+
   FFirstRowIndex := $FFFFFFFF;
   FFirstColIndex := $FFFFFFFF;
   FLastRowIndex := 0;
@@ -2292,9 +2304,11 @@ begin
 end;
 
 {@@
-  Returns the 0-based index of the last column with a cell with contents.
+  Returns the 0-based index of the last column with a cell with contents or
+  with a column record.
 
-  If no cells have contents, zero will be returned, which is also a valid value.
+  If no cells have contents or there are no column records, zero will be
+  returned, which is also a valid value.
 
   Use GetCellCount to verify if there is at least one cell with contents in the
   worksheet.
@@ -2304,6 +2318,7 @@ end;
                              is true all cells are scanned to determine the index
                              of the last column.
   @see GetCellCount
+  @see GetLastOccupiedColIndex
 }
 function TsWorksheet.GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
 var
@@ -2312,16 +2327,10 @@ var
 begin
   if AForceCalculation then
   begin
-    Result := 0;
     // Traverse the tree from lowest to highest.
-    // Since tree primary sort order is on Row
-    // highest Col could exist anywhere.
-    AVLNode := FCells.FindLowest;
-    While Assigned(AVLNode) do
-    begin
-      Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
-      AVLNode := FCells.FindSuccessor(AVLNode);
-    end;
+    // Since tree primary sort order is on row
+    // highest col could exist anywhere.
+    Result := GetLastOccupiedColIndex;
    // In addition, there may be column records defining the column width even
     // without content
     for i:=0 to FCols.Count-1 do
@@ -2343,6 +2352,35 @@ function TsWorksheet.GetLastColNumber: Cardinal;
 begin
   Result := GetLastColIndex;
 end;
+
+{@@
+  Returns the 0-based index of the last column with a cell with contents.
+  If no cells have contents, zero will be returned, which is also a valid value.
+
+  Use GetCellCount to verify if there is at least one cell with contents in the
+  worksheet.
+
+  @see GetCellCount
+  @see GetLastColIndex
+}
+function TsWorksheet.GetLastOccupiedColIndex: Cardinal;
+var
+  AVLNode: TAVLTreeNode;
+  i: Integer;
+  c: Cardinal;
+  w: Single;
+begin
+  Result := 0;
+  // Traverse the tree from lowest to highest.
+  // Since tree's primary sort order is on row, highest col could exist anywhere.
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do
+  begin
+    Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
+    AVLNode := FCells.FindSuccessor(AVLNode);
+  end;
+end;
+
 
 {@@
   Finds the first cell with contents in a given row
@@ -2437,6 +2475,7 @@ end;
                              is true all cells are scanned to determine the index
                              of the last row.
   @see GetCellCount
+  @see GetLastOccupiedRowIndex
 }
 function TsWorksheet.GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
 var
@@ -2445,10 +2484,8 @@ var
 begin
   if AForceCalculation then
   begin
-    Result := 0;
-    AVLNode := FCells.FindHighest;
-    if Assigned(AVLNode) then
-      Result := PCell(AVLNode.Data).Row;
+    // Index of highest row with at least one existing cell
+    Result := GetLastOccupiedRowIndex;
     // In addition, there may be row records even for empty rows.
     for i:=0 to FRows.Count-1 do
       if FRows[i] <> nil then
@@ -2458,6 +2495,27 @@ begin
   end
   else
     Result := FLastRowIndex
+end;
+
+{@@
+  Returns the 0-based index of the last row with a cell with contents.
+  If no cells have contents, zero will be returned, which is also a valid value.
+
+  Use GetCellCount to verify if there is at least one cell with contents in the
+  worksheet.
+
+  @see GetCellCount
+  @see GetLastRowIndex
+}
+function TsWorksheet.GetLastOccupiedRowIndex: Cardinal;
+var
+  AVLNode: TAVLTreeNode;
+  i: Integer;
+begin
+  Result := 0;
+  AVLNode := FCells.FindHighest;
+  if Assigned(AVLNode) then
+    Result := PCell(AVLNode.Data).Row;
 end;
 
 {@@
@@ -4654,7 +4712,7 @@ begin
   if col <> nil then
     Result := col^.Width
   else
-    Result := FWorkbook.DefaultColWidth;
+    Result := FDefaultColWidth;
 end;
 
 {@@
@@ -4673,7 +4731,7 @@ begin
     Result := row^.Height
   else
     //Result := CalcAutoRowHeight(ARow);
-    Result := FWorkbook.DefaultRowHeight;
+    Result := FDefaultRowHeight;
 end;
 
 procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
@@ -4845,6 +4903,44 @@ begin
 end;
 
 {@@
+  Removes a specified column record from the worksheet and frees the occupied memory.
+  This resets the its column width to default.
+  Note: Cells in that column are retained.
+}
+procedure TsWorksheet.RemoveCol(ACol: Cardinal);
+var
+  AVLNode: TAVGLVLTreeNode;
+  lCol: TCol;
+begin
+  lCol.Col := ACol;
+  AVLNode := FCols.Find(@lCol);
+  if Assigned(AVLNode) then
+  begin
+    FreeMem(PCol(AVLNode.Data), SizeOf(TCol));
+    FCols.Delete(AVLNode);
+  end;
+end;
+
+{@@
+  Removes a specified row record from the worksheet and frees the occupied memory.
+  This resets the its row height to default.
+  Note: Cells in that row are retained.
+}
+procedure TsWorksheet.RemoveRow(ARow: Cardinal);
+var
+  AVLNode: TAVGLVLTreeNode;
+  lRow: TRow;
+begin
+  lRow.Row := ARow;
+  AVLNode := FRows.Find(@lRow);
+  if Assigned(AVLNode) then
+  begin
+    FreeMem(PRow(AVLNode.Data), SizeOf(TRow));
+    FRows.Delete(AVLNode);
+  end;
+end;
+
+{@@
   Writes a row record for the row at a given index to the spreadsheet.
   Currently the row record contains only the row height (and the row index, of course).
 
@@ -4986,8 +5082,6 @@ begin
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
   FFormat := sfExcel8;
-  FDefaultColWidth := 12;
-  FDefaultRowHeight := 1;
   FormatSettings := DefaultFormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
   FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
@@ -6485,6 +6579,91 @@ begin
   inherited Create(AWorkbook);
   FIsVirtualMode := (boVirtualMode in FWorkbook.Options) and
     Assigned(FWorkbook.OnReadCellData);
+end;
+
+{@@
+  Deletes unnecessary column records as they are written by Office applications
+  when converting a file to another format.
+
+  @param  AWorksheet  The columns in this worksheet are processed.
+}
+procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsWorksheet);
+const
+  EPS = 1E-3;
+var
+  c: Cardinal;
+  w: Single;
+  cLast: Cardinal;
+begin
+  if AWorksheet.Cols.Count = 0 then
+    exit;
+
+  (*  Better to avoid this...
+
+  // Delete all column records after the last column containing an existing cell.
+  cLast := AWorksheet.GetLastOccupiedColIndex;
+  for c := AWorksheet.Cols.Count-1 downto 0 do
+    if PCol(AWorksheet.Cols[c])^.Col > cLast then
+      AWorksheet.RemoveCol(c);
+  *)
+
+  // Check whether all columns have the same column width
+  w := PCol(AWorksheet.Cols[0])^.Width;
+  for c := 1 to AWorksheet.Cols.Count-1 do
+    if not SameValue(PCol(AWorksheet.Cols[c])^.Width, w, EPS) then
+      exit;
+
+  // At this point we know that all columns have the same width. We pass this
+  // to the DefaultColWidth and delete all column records.
+  AWorksheet.DefaultColWidth := w;
+  AWorksheet.RemoveAllCols;
+
+  // To do:
+  // There's probably more to be done here, such as:
+  // - if all columns have the same width except for a few use their width as
+  //   DefaultColWidth and delete these records.
+end;
+
+{@@
+  This procedure checks whether all rows have the same height and removes the
+  row records if they do. Such unnecessary row records are often written
+  when an Office application converts a file to another format.
+}
+procedure TsCustomSpreadReader.FixRows(AWorkSheet: TsWorksheet);
+const
+  EPS = 1E-3;
+var
+  r: Cardinal;
+  rLast: Cardinal;
+  h: Single;
+begin
+  if AWorksheet.Rows.Count = 0 then
+    exit;
+
+  (*  Better to avoid this...
+
+  // Delete all row records after the last row containing an existing cell.
+  rLast := AWorksheet.GetLastOccupiedRowIndex;
+  for r := AWorksheet.Rows.Count-1 downto 0 do
+    if PRow(AWorksheet.Rows[r])^.Row > rLast then
+      AWorksheet.RemoveRow(r);
+  *)
+
+  // Check whether all rows have the same height
+  h := PRow(AWorksheet.Rows[0])^.Height;
+  for r := 1 to AWorksheet.Rows.Count-1 do
+    if not SameValue(PRow(AWorksheet.Rows[r])^.Height, h, EPS) then
+      exit;
+
+  // At this point we know that all rows have the same height. We pass this
+  // to the DefaultRowHeight and delete all row records.
+  AWorksheet.DefaultRowHeight := h;
+  AWorksheet.RemoveAllRows;
+
+  // To do:
+  // There's probably more to be done here, such as:
+  // - if all rows have the same height except for a few use their height as
+  //   DefaultRowHeight and delete these records.
 end;
 
 {@@

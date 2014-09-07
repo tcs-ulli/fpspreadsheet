@@ -1340,6 +1340,8 @@ begin
     end;
     rownode := rownode.NextSibling;
   end;
+  FixRows(AWorksheet);
+  FixCols(AWorksheet);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFromFile(AFileName: string; AData: TsWorkbook);

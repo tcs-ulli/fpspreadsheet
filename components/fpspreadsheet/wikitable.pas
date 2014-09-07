@@ -382,6 +382,7 @@ var
 begin
   AStrings.Add('{| border="1" cellpadding="2" class="wikitable sortable"');
   FWorksheet := Workbook.GetFirstWorksheet();
+  FWorksheet.UpdateCaches;
   for i := 0 to FWorksheet.GetLastRowIndex() do
   begin
     AStrings.Add('|-');

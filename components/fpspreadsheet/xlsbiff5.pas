@@ -1223,6 +1223,9 @@ begin
     // Check for the end of the file
     if AStream.Position >= AStream.Size then SectionEOF := True;
   end;
+
+  FixCols(FWorksheet);
+  FixRows(FWorksheet);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
