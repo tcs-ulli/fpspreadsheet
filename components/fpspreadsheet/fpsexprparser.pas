@@ -1552,6 +1552,10 @@ begin
     Result := TsUPlusExprNode.Create(self, Result);
   if isMinus then
     Result := TsUMinusExprNode.Create(self, Result);
+  if TokenType = ttPercent then begin
+    Result := TsPercentExprNode.Create(self, Result);
+    GetToken;
+  end;
 end;
 
 function TsExpressionParser.Level6: TsExprNode;
@@ -1740,10 +1744,6 @@ begin
     end;
   end;
   GetToken;
-  if TokenType = ttPercent then begin
-    Result := TsPercentExprNode.Create(self, Result);
-    GetToken;
-  end;
 end;
 
 function TsExpressionParser.ResultType: TsResultType;
