@@ -815,6 +815,8 @@ function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
 procedure ArgsToFloatArray(const Args: TsExprParameterArray; out AData: TsExprFloatArray);
 function BooleanResult(AValue: Boolean): TsExpressionResult;
+function CellResult(AValue: String): TsExpressionResult; overload;
+function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult; overload;
 function DateTimeResult(AValue: TDateTime): TsExpressionResult;
 function EmptyResult: TsExpressionResult;
 function ErrorResult(const AValue: TsErrorValue): TsExpressionResult;
@@ -4118,6 +4120,19 @@ function BooleanResult(AValue: Boolean): TsExpressionResult;
 begin
   Result.ResultType := rtBoolean;
   Result.ResBoolean := AValue;
+end;
+
+function CellResult(AValue: String): TsExpressionResult;
+begin
+  Result.ResultType := rtCell;
+  ParseCellString(AValue, Result.ResRow, Result.ResCol);
+end;
+
+function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult;
+begin
+  Result.ResultType := rtCell;
+  Result.ResRow := ACellRow;
+  Result.ResCol := ACellCol;
 end;
 
 function DateTimeResult(AValue: TDateTime): TsExpressionResult;
