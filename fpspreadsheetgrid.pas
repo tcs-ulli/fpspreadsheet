@@ -188,6 +188,9 @@ type
       AOverwriteExisting: Boolean = true); overload;
     procedure SelectSheetByIndex(AIndex: Integer);
 
+    procedure MergeCells;
+    procedure UnmergeCells;
+
     { Utilities related to Workbooks }
     procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
     procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
@@ -3145,6 +3148,22 @@ begin
   finally
     EndUpdate;
   end;
+end;
+
+{@@
+  Merges the selected cells to a single large cell
+}
+procedure TsCustomWorksheetGrid.MergeCells;
+begin
+  FWorksheet.MergeCells(Selection.Top, Selection.Left, Selection.Bottom, Selection.Right);
+end;
+
+{@@
+  Merges the selected cells to a single large cell
+}
+procedure TsCustomWorksheetGrid.UnmergeCells;
+begin
+  FWorksheet.UnmergeCells(Selection.Top, Selection.Left, Selection.Bottom, Selection.Right);
 end;
 
 {@@
