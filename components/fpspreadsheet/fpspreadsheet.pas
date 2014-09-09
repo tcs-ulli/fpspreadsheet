@@ -1066,11 +1066,13 @@ type
     FVirtualCell: TCell;
     {@@ Stores if the reader is in virtual mode }
     FIsVirtualMode: Boolean;
+
     { Helper methods }
     {@@ Removes column records if all of them have the same column width }
     procedure FixCols(AWorksheet: TsWorksheet);
     {@@ Removes row records if all of them have the same row height }
     procedure FixRows(AWorksheet: TsWorksheet);
+
     { Record reading methods }
     {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
     procedure ReadBlank(AStream: TStream); virtual; abstract;
@@ -6583,9 +6585,9 @@ end;
 
 {@@
   Deletes unnecessary column records as they are written by Office applications
-  when converting a file to another format.
+  when they convert a file to another format.
 
-  @param  AWorksheet  The columns in this worksheet are processed.
+  @param   AWorksheet   The columns in this worksheet are processed.
 }
 procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsWorksheet);
 const
@@ -6593,19 +6595,9 @@ const
 var
   c: Cardinal;
   w: Single;
-  cLast: Cardinal;
 begin
-  if AWorksheet.Cols.Count = 0 then
+  if AWorksheet.Cols.Count <= 1 then
     exit;
-
-  (*  Better to avoid this...
-
-  // Delete all column records after the last column containing an existing cell.
-  cLast := AWorksheet.GetLastOccupiedColIndex;
-  for c := AWorksheet.Cols.Count-1 downto 0 do
-    if PCol(AWorksheet.Cols[c])^.Col > cLast then
-      AWorksheet.RemoveCol(c);
-  *)
 
   // Check whether all columns have the same column width
   w := PCol(AWorksheet.Cols[0])^.Width;
@@ -6617,11 +6609,6 @@ begin
   // to the DefaultColWidth and delete all column records.
   AWorksheet.DefaultColWidth := w;
   AWorksheet.RemoveAllCols;
-
-  // To do:
-  // There's probably more to be done here, such as:
-  // - if all columns have the same width except for a few use their width as
-  //   DefaultColWidth and delete these records.
 end;
 
 {@@
@@ -6637,17 +6624,8 @@ var
   rLast: Cardinal;
   h: Single;
 begin
-  if AWorksheet.Rows.Count = 0 then
+  if AWorksheet.Rows.Count <= 1 then
     exit;
-
-  (*  Better to avoid this...
-
-  // Delete all row records after the last row containing an existing cell.
-  rLast := AWorksheet.GetLastOccupiedRowIndex;
-  for r := AWorksheet.Rows.Count-1 downto 0 do
-    if PRow(AWorksheet.Rows[r])^.Row > rLast then
-      AWorksheet.RemoveRow(r);
-  *)
 
   // Check whether all rows have the same height
   h := PRow(AWorksheet.Rows[0])^.Height;
@@ -6659,11 +6637,6 @@ begin
   // to the DefaultRowHeight and delete all row records.
   AWorksheet.DefaultRowHeight := h;
   AWorksheet.RemoveAllRows;
-
-  // To do:
-  // There's probably more to be done here, such as:
-  // - if all rows have the same height except for a few use their height as
-  //   DefaultRowHeight and delete these records.
 end;
 
 {@@

@@ -82,13 +82,14 @@ type
     FCurrentWorksheet: Integer;
   protected
     { Record writing methods }
+    procedure ReadBoundsheet(AStream: TStream);
     procedure ReadFont(const AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
-    procedure ReadBoundsheet(AStream: TStream);
     procedure ReadRichString(AStream: TStream);
+    procedure ReadStandardWidth(AStream: TStream; ASheet: TsWorksheet);
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
@@ -221,38 +222,39 @@ const
      // see: in xlscommon
 
    { BOF record constants }
-     INT_BOF_BIFF5_VER       = $0500;
-     INT_BOF_WORKBOOK_GLOBALS= $0005;
-{%H-}INT_BOF_VB_MODULE       = $0006;
-     INT_BOF_SHEET           = $0010;
-{%H-}INT_BOF_CHART           = $0020;
-{%H-}INT_BOF_MACRO_SHEET     = $0040;
-{%H-}INT_BOF_WORKSPACE       = $0100;
-     INT_BOF_BUILD_ID        = $1FD2;
-     INT_BOF_BUILD_YEAR      = $07CD;
+     INT_BOF_BIFF5_VER          = $0500;
+     INT_BOF_WORKBOOK_GLOBALS   = $0005;
+{%H-}INT_BOF_VB_MODULE          = $0006;
+     INT_BOF_SHEET              = $0010;
+{%H-}INT_BOF_CHART              = $0020;
+{%H-}INT_BOF_MACRO_SHEET        = $0040;
+{%H-}INT_BOF_WORKSPACE          = $0100;
+     INT_BOF_BUILD_ID           = $1FD2;
+     INT_BOF_BUILD_YEAR         = $07CD;
+
+   { Record IDs }
+     INT_EXCEL_ID_STANDARDWIDTH = $0099;
 
    { FONT record constants }
-     INT_FONT_WEIGHT_NORMAL  = $0190;
-
-{%H-}BYTE_ANSILatin1         = $00;
-{%H-}BYTE_SYSTEM_DEFAULT     = $01;
-{%H-}BYTE_SYMBOL             = $02;
-{%H-}BYTE_Apple_Roman        = $4D;
+{%H-}BYTE_ANSILatin1            = $00;
+{%H-}BYTE_SYSTEM_DEFAULT        = $01;
+{%H-}BYTE_SYMBOL                = $02;
+{%H-}BYTE_Apple_Roman           = $4D;
 {%H-}BYTE_ANSI_Japanese_Shift_JIS = $80;
-{%H-}BYTE_ANSI_Korean_Hangul = $81;
-{%H-}BYTE_ANSI_Korean_Johab  = $81;
+{%H-}BYTE_ANSI_Korean_Hangul    = $81;
+{%H-}BYTE_ANSI_Korean_Johab     = $81;
 {%H-}BYTE_ANSI_Chinese_Simplified_GBK = $86;
 {%H-}BYTE_ANSI_Chinese_Traditional_BIG5 = $88;
-{%H-}BYTE_ANSI_Greek         = $A1;
-{%H-}BYTE_ANSI_Turkish       = $A2;
-{%H-}BYTE_ANSI_Vietnamese    = $A3;
-{%H-}BYTE_ANSI_Hebrew        = $B1;
-{%H-}BYTE_ANSI_Arabic        = $B2;
-{%H-}BYTE_ANSI_Baltic        = $BA;
-{%H-}BYTE_ANSI_Cyrillic      = $CC;
-{%H-}BYTE_ANSI_Thai          = $DE;
-{%H-}BYTE_ANSI_Latin2        = $EE;
-{%H-}BYTE_OEM_Latin1         = $FF;
+{%H-}BYTE_ANSI_Greek            = $A1;
+{%H-}BYTE_ANSI_Turkish          = $A2;
+{%H-}BYTE_ANSI_Vietnamese       = $A3;
+{%H-}BYTE_ANSI_Hebrew           = $B1;
+{%H-}BYTE_ANSI_Arabic           = $B2;
+{%H-}BYTE_ANSI_Baltic           = $BA;
+{%H-}BYTE_ANSI_Cyrillic         = $CC;
+{%H-}BYTE_ANSI_Thai             = $DE;
+{%H-}BYTE_ANSI_Latin2           = $EE;
+{%H-}BYTE_OEM_Latin1            = $FF;
 
    { FORMULA record constants }
 {%H-}MASK_FORMULA_RECALCULATE_ALWAYS  = $0001;
@@ -1160,22 +1162,24 @@ begin
 
     case RecordType of
 
-    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
-    INT_EXCEL_ID_MULBLANK  : ReadMulBlank(AStream);
-    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
-    INT_EXCEL_ID_RSTRING   : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RK        : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
-    INT_EXCEL_ID_MULRK     : ReadMulRKValues(AStream);
-    INT_EXCEL_ID_COLINFO   : ReadColInfo(AStream);
-    INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
-    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
-    INT_EXCEL_ID_SHAREDFMLA: ReadSharedFormula(AStream);
-    INT_EXCEL_ID_STRING    : ReadStringRecord(AStream);
-    INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
-    INT_EXCEL_ID_PANE      : ReadPane(AStream);
-    INT_EXCEL_ID_BOF       : ;
-    INT_EXCEL_ID_EOF       : SectionEOF := True;
+    INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
+    INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
+    INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
+    INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+    INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+    INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
+    INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
+    INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
+    INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
+    INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
+    INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+    INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+    INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
+    INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
+    INT_EXCEL_ID_PANE          : ReadPane(AStream);
+    INT_EXCEL_ID_BOF           : ;
+    INT_EXCEL_ID_EOF           : SectionEOF := True;
 
 {$IFDEF FPSPREADDEBUG} // Only write out if debugging
     else
@@ -1289,6 +1293,20 @@ begin
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+end;
+
+{ Reads the default column width that is used when a bit in the GCW bit structure
+  is set for the corresponding column. The GCW is ignored here. The column
+  width read from the STANDARDWIDTH record overrides the one from the
+  DEFCOLWIDTH record. }
+procedure TsSpreadBIFF5Reader.ReadStandardWidth(AStream: TStream; ASheet: TsWorksheet);
+var
+  w: Word;
+begin
+  // read width in 1/256 of the width of "0" character
+  w := WordLEToN(AStream.ReadWord);
+  // calculate width in units of "characters" and use it as DefaultColWidth
+  ASheet.DefaultColWidth := w / 256;
 end;
 
 { Reads a STRING record which contains the result of string formula. }

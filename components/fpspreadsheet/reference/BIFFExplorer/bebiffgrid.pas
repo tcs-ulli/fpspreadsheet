@@ -957,7 +957,8 @@ begin
 
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numbytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
+  w := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d (%f characters)', [w, w/256]),
     'Width of the columns in 1/256 of the width of the zero character, using default font (first FONT record in the file)');
 
   numBytes := 2;

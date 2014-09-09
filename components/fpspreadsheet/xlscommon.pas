@@ -22,50 +22,52 @@ uses
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
-  INT_EXCEL_ID_EOF        = $000A;
-  INT_EXCEL_ID_SELECTION  = $001D;
-  INT_EXCEL_ID_CONTINUE   = $003C;
-  INT_EXCEL_ID_PANE       = $0041;
-  INT_EXCEL_ID_CODEPAGE   = $0042;
-  INT_EXCEL_ID_DATEMODE   = $0022;
-  INT_EXCEL_ID_WINDOW1    = $003D;
+  INT_EXCEL_ID_EOF         = $000A;
+  INT_EXCEL_ID_SELECTION   = $001D;
+  INT_EXCEL_ID_CONTINUE    = $003C;
+  INT_EXCEL_ID_DATEMODE    = $0022;
+  INT_EXCEL_ID_WINDOW1     = $003D;
+  INT_EXCEL_ID_PANE        = $0041;
+  INT_EXCEL_ID_CODEPAGE    = $0042;
+  INT_EXCEL_ID_DEFCOLWIDTH = $0055;
 
   { RECORD IDs which did not change across versions 2, 5, 8}
-  INT_EXCEL_ID_FORMULA    = $0006;    // BIFF3: $0206, BIFF4: $0406
-  INT_EXCEL_ID_FONT       = $0031;    // BIFF3-4: $0231
+  INT_EXCEL_ID_FORMULA     = $0006;    // BIFF3: $0206, BIFF4: $0406
+  INT_EXCEL_ID_FONT        = $0031;    // BIFF3-4: $0231
 
   { RECORD IDs which did not change across version 3-8}
-  INT_EXCEL_ID_COLINFO    = $007D;    // does not exist in BIFF2
-  INT_EXCEL_ID_SHEETPR    = $0081;    // does not exist in BIFF2
-  INT_EXCEL_ID_COUNTRY    = $008C;    // does not exist in BIFF2
-  INT_EXCEL_ID_PALETTE    = $0092;    // does not exist in BIFF2
-  INT_EXCEL_ID_DIMENSIONS = $0200;    // BIFF2: $0000
-  INT_EXCEL_ID_BLANK      = $0201;    // BIFF2: $0001
-  INT_EXCEL_ID_NUMBER     = $0203;    // BIFF2: $0003
-  INT_EXCEL_ID_LABEL      = $0204;    // BIFF2: $0004
-  INT_EXCEL_ID_STRING     = $0207;    // BIFF2: $0007
-  INT_EXCEL_ID_ROW        = $0208;    // BIFF2: $0008
-  INT_EXCEL_ID_INDEX      = $020B;    // BIFF2: $000B
-  INT_EXCEL_ID_WINDOW2    = $023E;    // BIFF2: $003E
-  INT_EXCEL_ID_RK         = $027E;    // does not exist in BIFF2
-  INT_EXCEL_ID_STYLE      = $0293;    // does not exist in BIFF2
+  INT_EXCEL_ID_COLINFO     = $007D;    // does not exist in BIFF2
+  INT_EXCEL_ID_SHEETPR     = $0081;    // does not exist in BIFF2
+  INT_EXCEL_ID_COUNTRY     = $008C;    // does not exist in BIFF2
+  INT_EXCEL_ID_PALETTE     = $0092;    // does not exist in BIFF2
+  INT_EXCEL_ID_DIMENSIONS  = $0200;    // BIFF2: $0000
+  INT_EXCEL_ID_BLANK       = $0201;    // BIFF2: $0001
+  INT_EXCEL_ID_NUMBER      = $0203;    // BIFF2: $0003
+  INT_EXCEL_ID_LABEL       = $0204;    // BIFF2: $0004
+  INT_EXCEL_ID_STRING      = $0207;    // BIFF2: $0007
+  INT_EXCEL_ID_ROW         = $0208;    // BIFF2: $0008
+  INT_EXCEL_ID_INDEX       = $020B;    // BIFF2: $000B
+  INT_EXCEL_ID_DEFROWHEIGHT= $0225;    // BIFF2: $0025
+  INT_EXCEL_ID_WINDOW2     = $023E;    // BIFF2: $003E
+  INT_EXCEL_ID_RK          = $027E;    // does not exist in BIFF2
+  INT_EXCEL_ID_STYLE       = $0293;    // does not exist in BIFF2
 
   { RECORD IDs which did not change across version 4-8 }
-  INT_EXCEL_ID_PAGESETUP  = $00A1;    // does not exist before BIFF4
-  INT_EXCEL_ID_FORMAT     = $041E;    // BIFF2-3: $001E
+  INT_EXCEL_ID_PAGESETUP   = $00A1;    // does not exist before BIFF4
+  INT_EXCEL_ID_FORMAT      = $041E;    // BIFF2-3: $001E
 
   { RECORD IDs which did not change across versions 5-8 }
-  INT_EXCEL_ID_BOUNDSHEET = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
-  INT_EXCEL_ID_MULRK      = $00BD;    // does not exist before BIFF5
-  INT_EXCEL_ID_MULBLANK   = $00BE;    // does not exist before BIFF5
-  INT_EXCEL_ID_XF         = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
-  INT_EXCEL_ID_RSTRING    = $00D6;    // does not exist before BIFF5
-  INT_EXCEL_ID_SHAREDFMLA = $04BC;    // does not exist before BIFF5
-  INT_EXCEL_ID_BOF        = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
+  INT_EXCEL_ID_BOUNDSHEET  = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
+  INT_EXCEL_ID_MULRK       = $00BD;    // does not exist before BIFF5
+  INT_EXCEL_ID_MULBLANK    = $00BE;    // does not exist before BIFF5
+  INT_EXCEL_ID_XF          = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
+  INT_EXCEL_ID_RSTRING     = $00D6;    // does not exist before BIFF5
+  INT_EXCEL_ID_SHAREDFMLA  = $04BC;    // does not exist before BIFF5
+  INT_EXCEL_ID_BOF         = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
 
   { FONT record constants }
-  INT_FONT_WEIGHT_NORMAL  = $0190;
-  INT_FONT_WEIGHT_BOLD    = $02BC;
+  INT_FONT_WEIGHT_NORMAL   = $0190;
+  INT_FONT_WEIGHT_BOLD     = $02BC;
 
   { CODEPAGE record constants }
   WORD_ASCII = 367;
@@ -82,8 +84,8 @@ const
   WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
 
   { DATEMODE record, 5.28 }
-  DATEMODE_1900_BASE=1; //1/1/1900 minus 1 day in FPC TDateTime
-  DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
+  DATEMODE_1900_BASE = 1; //1/1/1900 minus 1 day in FPC TDateTime
+  DATEMODE_1904_BASE = 1462; //1/1/1904 in FPC TDateTime
 
   { WINDOW1 record constants - BIFF5-BIFF8 }
   MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
@@ -245,6 +247,10 @@ type
     procedure ReadColInfo(const AStream: TStream);
     // Figures out what the base year for dates is for this file
     procedure ReadDateMode(AStream: TStream);
+    // Reads the default column width
+    procedure ReadDefColWidth(AStream: TStream);
+    // Reas the default row height
+    procedure ReadDefRowHeight(AStream: TStream);
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
     // Read FORMULA record
@@ -963,6 +969,8 @@ end;
   Valid for BIFF3-BIFF8.
   For BIFF2 use the records COLWIDTH and COLUMNDEFAULT. }
 procedure TsSpreadBiffReader.ReadColInfo(const AStream: TStream);
+const
+  EPS = 1E-2;  // allow for large epsilon because col width calculation is not very well-defined...
 var
   c, c1, c2: Cardinal;
   w: Word;
@@ -975,9 +983,10 @@ begin
   w := WordLEToN(AStream.ReadWord);
   // calculate width in units of "characters"
   col.Width := w / 256;
-  // assign width to columns
-  for c := c1 to c2 do
-    FWorksheet.WriteColInfo(c, col);
+  // assign width to columns, but only if different from default column width
+  if not SameValue(col.Width, FWorksheet.DefaultColWidth, EPS) then
+    for c := c1 to c2 do
+      FWorksheet.WriteColInfo(c, col);
 end;
 
 procedure TsSpreadBIFFReader.ReadDateMode(AStream: TStream);
@@ -1000,6 +1009,30 @@ begin
     1: FDateMode := dm1904;
     else raise Exception.CreateFmt('Error reading file. Got unknown date mode number %d.',[lBaseMode]);
   end;
+end;
+
+// Reads the default column width
+procedure TsSpreadBIFFReader.ReadDefColWidth(AStream: TStream);
+begin
+  // The file contains the column width in characters
+  FWorksheet.DefaultColWidth := WordLEToN(AStream.ReadWord);
+end;
+
+// Reads the default row height
+// Valid for BIFF3 - BIFF8 (override for BIFF2)
+procedure TsSpreadBIFFReader.ReadDefRowHeight(AStream: TStream);
+var
+  options, hw: Word;
+  h: Single;
+begin
+  // Options
+  AStream.ReadWord;
+
+  // Height, in Twips (1/20 pt).
+  hw := WordLEToN(AStream.ReadWord);
+  h := TwipsToPts(hw) / FWorkbook.GetDefaultFontSize;
+  if h > ROW_HEIGHT_CORRECTION then
+    FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
 end;
 
 // Read the FORMAT record for formatting numerical data
