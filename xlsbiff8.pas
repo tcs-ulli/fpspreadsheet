@@ -1430,30 +1430,31 @@ begin
 
     case RecordType of
 
-    INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
-    INT_EXCEL_ID_MULBLANK  : ReadMulBlank(AStream);
-    INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
-    INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
-    INT_EXCEL_ID_SHAREDFMLA: ReadSharedFormula(AStream);
-    INT_EXCEL_ID_STRING    : ReadStringRecord(AStream);
+    INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
+    INT_EXCEL_ID_MULBLANK    : ReadMulBlank(AStream);
+    INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
+    INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
+    INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
+    INT_EXCEL_ID_SHAREDFMLA  : ReadSharedFormula(AStream);
+    INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
     // In BIFF8 it is usually replaced by the LABELSST record. Excel still
     // uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RSTRING   : ReadRichString(AStream);
+    INT_EXCEL_ID_RSTRING     : ReadRichString(AStream);
     // (RK) This record represents a cell that contains an RK value
     // (encoded integer or floating-point value). If a floating-point
     // value cannot be encoded to an RK value, a NUMBER record will be written.
     // This record replaces the record INTEGER written in BIFF2.
-    INT_EXCEL_ID_RK        : ReadRKValue(AStream);
-    INT_EXCEL_ID_MULRK     : ReadMulRKValues(AStream);
-    INT_EXCEL_ID_LABELSST  : ReadLabelSST(AStream); //BIFF8 only
-    INT_EXCEL_ID_COLINFO   : ReadColInfo(AStream);
-    INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
-    INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
-    INT_EXCEL_ID_PANE      : ReadPane(AStream);
-    INT_EXCEL_ID_BOF       : ;
-    INT_EXCEL_ID_EOF       : SectionEOF := True;
+    INT_EXCEL_ID_RK          : ReadRKValue(AStream);
+    INT_EXCEL_ID_MULRK       : ReadMulRKValues(AStream);
+    INT_EXCEL_ID_LABELSST    : ReadLabelSST(AStream); //BIFF8 only
+    INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
+    INT_EXCEL_ID_COLINFO     : ReadColInfo(AStream);
+    INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
+    INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
+    INT_EXCEL_ID_PANE        : ReadPane(AStream);
+    INT_EXCEL_ID_BOF         : ;
+    INT_EXCEL_ID_EOF         : SectionEOF := True;
     else
       // nothing
     end;

@@ -80,6 +80,7 @@ type
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
+    procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
     procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadThemeElements(ANode: TDOMNode);
@@ -866,6 +867,8 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
+const
+  EPS = 1e-2;
 var
   colNode: TDOMNode;
   col, col1, col2: Cardinal;
@@ -884,11 +887,10 @@ begin
       s := GetAttrValue(colNode, 'max');
       if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
       s := GetAttrValue(colNode, 'width');
-      if s <> '' then begin
-        w := StrToFloat(s, FPointSeparatorSettings);
-        for col := col1 to col2 do
-          AWorksheet.WriteColWidth(col, w);
-      end;
+      if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
+        if not SameValue(w, AWorksheet.DefaultColWidth, EPS) then
+          for col := col1 to col2 do
+            AWorksheet.WriteColWidth(col, w);
     end;
     colNode := colNode.NextSibling;
   end;
@@ -1189,6 +1191,29 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadSheetFormatPr(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  w, h: Single;
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'defaultColWidth');   // is in characters
+  if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
+    AWorksheet.DefaultColWidth := w;
+
+  s := GetAttrValue(ANode, 'defaultRowHeight');  // in in points
+  if (s <> '') and TryStrToFloat(s, h, FPointSeparatorSettings) then begin
+    h := h / Workbook.GetDefaultFontSize;
+    if h > ROW_HEIGHT_CORRECTION then begin
+      h := h - ROW_HEIGHT_CORRECTION;
+      AWorksheet.DefaultRowHeight := h;
+    end;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
 var
   node: TDOMNode;
@@ -1340,8 +1365,8 @@ begin
     end;
     rownode := rownode.NextSibling;
   end;
-  FixRows(AWorksheet);
   FixCols(AWorksheet);
+  FixRows(AWorksheet);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
@@ -1440,6 +1465,7 @@ begin
       FWorksheet := AData.AddWorksheet(SheetList[i]);
 
       ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
+      ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
 

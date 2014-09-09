@@ -66,6 +66,7 @@ type
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); override;
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
+    procedure ReadDefRowHeight(AStream: TStream);
     procedure ReadFont(AStream: TStream);
     procedure ReadFontColor(AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
@@ -161,25 +162,26 @@ uses
 
 const
   { Excel record IDs }
-  INT_EXCEL_ID_DIMENSIONS = $0000;
-  INT_EXCEL_ID_BLANK      = $0001;
-  INT_EXCEL_ID_INTEGER    = $0002;
-  INT_EXCEL_ID_NUMBER     = $0003;
-  INT_EXCEL_ID_LABEL      = $0004;
-  INT_EXCEL_ID_ROW        = $0008;
-  INT_EXCEL_ID_BOF        = $0009;
-  {%H-}INT_EXCEL_ID_INDEX = $000B;
-  INT_EXCEL_ID_FORMAT     = $001E;
-  INT_EXCEL_ID_FORMATCOUNT= $001F;
-  INT_EXCEL_ID_COLWIDTH   = $0024;
-  INT_EXCEL_ID_WINDOW2    = $003E;
-  INT_EXCEL_ID_XF         = $0043;
-  INT_EXCEL_ID_IXFE       = $0044;
-  INT_EXCEL_ID_FONTCOLOR  = $0045;
+  INT_EXCEL_ID_DIMENSIONS    = $0000;
+  INT_EXCEL_ID_BLANK         = $0001;
+  INT_EXCEL_ID_INTEGER       = $0002;
+  INT_EXCEL_ID_NUMBER        = $0003;
+  INT_EXCEL_ID_LABEL         = $0004;
+  INT_EXCEL_ID_ROW           = $0008;
+  INT_EXCEL_ID_BOF           = $0009;
+  {%H-}INT_EXCEL_ID_INDEX    = $000B;
+  INT_EXCEL_ID_FORMAT        = $001E;
+  INT_EXCEL_ID_FORMATCOUNT   = $001F;
+  INT_EXCEL_ID_COLWIDTH      = $0024;
+  INT_EXCEL_ID_DEFROWHEIGHT  = 00025;
+  INT_EXCEL_ID_WINDOW2       = $003E;
+  INT_EXCEL_ID_XF            = $0043;
+  INT_EXCEL_ID_IXFE          = $0044;
+  INT_EXCEL_ID_FONTCOLOR     = $0045;
 
   { BOF record constants }
-  INT_EXCEL_SHEET         = $0010;
-  {%H-}INT_EXCEL_CHART    = $0020;
+  INT_EXCEL_SHEET            = $0010;
+  {%H-}INT_EXCEL_CHART       = $0020;
   {%H-}INT_EXCEL_MACRO_SHEET = $0040;
 
 type
@@ -423,9 +425,7 @@ var
   c, c1, c2: Cardinal;
   w: Word;
   col: TCol;
-  sheet: TsWorksheet;
 begin
-  sheet := Workbook.GetFirstWorksheet;
   // read column start and end index of column range
   c1 := AStream.ReadByte;
   c2 := AStream.ReadByte;
@@ -433,9 +433,21 @@ begin
   w := WordLEToN(AStream.ReadWord);
   // calculate width in units of "characters"
   col.Width := w / 256;
-  // assign width to columns
-  for c := c1 to c2 do
-    sheet.WriteColInfo(c, col);
+  // assign width to columns, but only if different from default column width.
+  if not SameValue(col.Width, FWorksheet.DefaultColWidth) then
+    for c := c1 to c2 do
+      FWorksheet.WriteColInfo(c, col);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadDefRowHeight(AStream: TStream);
+var
+  hw: word;
+  h : Single;
+begin
+  hw := WordLEToN(AStream.ReadWord);
+  h := TwipsToPts(hw and $8000) / FWorkbook.GetDefaultFontSize;
+  if h > ROW_HEIGHT_CORRECTION then
+    FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFont(AStream: TStream);
@@ -509,22 +521,24 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
-      INT_EXCEL_ID_BLANK     : ReadBlank(AStream);
-      INT_EXCEL_ID_FONT      : ReadFont(AStream);
-      INT_EXCEL_ID_FONTCOLOR : ReadFontColor(AStream);
-      INT_EXCEL_ID_FORMAT    : ReadFormat(AStream);
-      INT_EXCEL_ID_INTEGER   : ReadInteger(AStream);
-      INT_EXCEL_ID_NUMBER    : ReadNumber(AStream);
-      INT_EXCEL_ID_LABEL     : ReadLabel(AStream);
-      INT_EXCEL_ID_FORMULA   : ReadFormula(AStream);
-      INT_EXCEL_ID_STRING    : ReadStringRecord(AStream);
-      INT_EXCEL_ID_COLWIDTH  : ReadColWidth(AStream);
-      INT_EXCEL_ID_ROW       : ReadRowInfo(AStream);
-      INT_EXCEL_ID_WINDOW2   : ReadWindow2(AStream);
-      INT_EXCEL_ID_PANE      : ReadPane(AStream);
-      INT_EXCEL_ID_XF        : ReadXF(AStream);
-      INT_EXCEL_ID_BOF       : ;
-      INT_EXCEL_ID_EOF       : BIFF2EOF := True;
+      INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
+      INT_EXCEL_ID_FONT        : ReadFont(AStream);
+      INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
+      INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
+      INT_EXCEL_ID_INTEGER     : ReadInteger(AStream);
+      INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
+      INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
+      INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
+      INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
+      INT_EXCEL_ID_COLWIDTH    : ReadColWidth(AStream);
+      INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
+      INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
+      INT_EXCEL_ID_DEFROWHEIGHT: ReadDefRowHeight(AStream);
+      INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
+      INT_EXCEL_ID_PANE        : ReadPane(AStream);
+      INT_EXCEL_ID_XF          : ReadXF(AStream);
+      INT_EXCEL_ID_BOF         : ;
+      INT_EXCEL_ID_EOF         : BIFF2EOF := True;
     else
       // nothing
     end;

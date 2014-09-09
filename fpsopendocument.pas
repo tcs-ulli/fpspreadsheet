@@ -251,7 +251,7 @@ const
 
   FALSE_TRUE: Array[boolean] of String = ('false', 'true');
 
-  COLWIDTH_EPS = 1e-2;   // for mm
+  COLWIDTH_EPS  = 1e-2;    // for mm
   ROWHEIGHT_EPS = 1e-2;    // for lines
 
 type
