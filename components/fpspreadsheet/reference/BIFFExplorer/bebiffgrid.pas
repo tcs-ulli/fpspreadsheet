@@ -59,6 +59,7 @@ type
     procedure ShowFormatCount;
     procedure ShowFormula;
     procedure ShowFormulaTokens(ATokenBytes: Integer);
+    procedure ShowGCW;
     procedure ShowHeader;
     procedure ShowHideObj;
     procedure ShowInteger;
@@ -96,6 +97,7 @@ type
     procedure ShowSheet;
     procedure ShowSheetPR;
     procedure ShowSST;
+    procedure ShowStandardWidth;
     procedure ShowString;
     procedure ShowStyle;
     procedure ShowStyleExt;
@@ -113,6 +115,8 @@ type
   protected
     procedure Click; override;
     procedure DoExtractDetails;
+    function DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean; override;
+    function DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
     procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
       out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
     procedure PopulateGrid;
@@ -180,6 +184,19 @@ begin
   end;
 end;
 
+function TBIFFGrid.DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint
+  ): Boolean;
+begin
+  Result := inherited;
+  Click;
+end;
+
+function TBIFFGrid.DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint
+  ): Boolean;
+begin
+  Result := inherited;
+  Click;
+end;
 
 procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
   out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
@@ -356,8 +373,12 @@ begin
       ShowHideObj;
     $0092:
       ShowPalette;
+    $099:
+      ShowStandardWidth;
     $00A1:
       ShowPageSetup;
+    $00AB:
+      ShowGCW;
     $00C1:
       ShowMMS;
     $009C:
@@ -2148,223 +2169,7 @@ begin
     'Size of formula data (in Bytes)');
 
   ShowFormulaTokens(tokenBytes);
-(*
-  // Tokens and parameters
-  firstTokenBufIdx := FBufferIndex;
-  while FBufferIndex < firstTokenBufIdx + tokenBytes do begin
-    token := FBuffer[FBufferIndex];
-    numBytes := 1;
-    case token of
-      $01: begin
-             ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
-               'Token for "Cell is part of shared formula"');
-             numbytes := 2;
-             Move(FBuffer[FBufferIndex], w, numBytes);
-             ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
-               'Index to row of first FORMULA record in the formula range');
-             if FFormat = sfExcel2 then begin
-               numbytes := 1;
-               b := FBuffer[FBufferIndex];
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
-                 'Index to column of first FORMULA record in the formula range');
-             end else begin
-               numbytes := 2;
-               Move(FBuffer[FBufferIndex], w, numbytes);
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
-                 'Index to column of first FORMULA record in the formula range');
-             end;
-           end;
-      $02: begin
-             ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
-               'Token for "Cell is part of a multiple operations table"');
-             numbytes := 2;
-             Move(FBuffer[FBufferIndex], w, numBytes);
-             ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
-               'Index to first row of the table range');
-             if FFormat = sfExcel2 then begin
-               numbytes := 1;
-               b := FBuffer[FBufferIndex];
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(b),
-                 'Index to first column of the table range');
-             end else begin
-               numbytes := 2;
-               Move(FBuffer[FBufferIndex], w, numbytes);
-               ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
-                 'Index to first column of the table range');
-             end;
-           end;
-      $03: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "+" (add)');
-      $04: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "-" (subtract)');
-      $05: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "*" (multiply)');
-      $06: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "/" (divide)');
-      $07: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "^" (power)');
-      $08: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "&" (concat)');
-      $09: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "<" (less than)');
-      $0A: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "<=" (less equal)');
-      $0B: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "=" (equal)');
-      $0C: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token ">=" (greater equal)');
-      $0D: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token ">" (greater than)');
-      $0E: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "<>" (not equal)');
-      $0F: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token " " (intersect)');
-      $10: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "list character"');
-      $11: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token ":" (range)');
-      $12: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "+" (unary plus)');
-      $13: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "-" (unary minus)');
-      $14: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "%" (percent)');
-      $15: ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]),
-             'Token "()" (operator in parenthesis)');
-      $16: ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             'Token "missing argument"');
-      $17: begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tSTR (Label)');
-             ExtractString(FBufferIndex, 1, (FFormat = sfExcel8), s, numBytes);
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'String value');
-           end;
-      $1C: begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tERR (Error)');
-             numBytes := 1;
-             b := FBuffer[FBufferIndex];
-             if FCurrRow = Row then begin
-               FDetails.Add('Error code:'#13);
-               FDetails.Add(Format('Code $%.2x --> "%s"', [b, b]));
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]), 'Error code');
-           end;
-      $1D: begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tBOOL');
-             numBytes := 1;
-             b := FBuffer[FBufferIndex];
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b),
-               '0=FALSE, 1=TRUE');
-           end;
-      $1E: begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tINT (Integer)');
-             numBytes := 2;
-             Move(FBuffer[FBufferIndex], w, numBytes);
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-               'Integer value');
-           end;
-      $1F: begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tNUM (Number)');
-             numBytes := 8;
-             Move(FBuffer[FBufferIndex], dbl, numBytes);
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%g', [dbl]), //FloatToStr(dbl),
-               'IEEE 754 floating-point value');
-           end;
-      $20, $40, $60:
-           begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tARRAY');
-             if FFormat = sfExcel2 then numBytes := 6 else numBytes := 7;
-             ShowInRow(FCurrRow, FBufferIndex, numbytes, '', '(not used)');
-           end;
-      $21, $41, $61:
-           begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tFUNC (Function with fixed argument count)');
-             if FFormat = sfExcel2 then begin
-               numBytes := 1;
-               b := FBuffer[FBufferIndex];
-               s := Format('Index of function (%s)', [SheetFuncName(b)]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), s);
-             end else begin
-               numBytes := 2;
-               Move(FBuffer[FBufferIndex], w, numBytes);
-               w := WordLEToN(w);
-               s := Format('Index of function (%s)', [SheetFuncName(w)]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), s);
-             end;
-           end;
-      $22, $42, $62:
-           begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tFUNCVAR (Function with variable argument count)');
-             numBytes := 1;
-             b := FBuffer[FBufferIndex];
-             ShowInRow(FCurrRow, FBufferIndex, numBytes,  IntToStr(b),
-               'Number of arguments');
-             if FFormat = sfExcel2 then begin
-               numBytes := 1;
-               s := Format('Index of built-in function (%s)', [SheetFuncName(b)]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(b), s);
-             end else begin
-               numBytes := 2;
-               Move(FBuffer[FBufferIndex], w, numbytes);
-               w := WordLEToN(w);
-               s := Format('Index of built-in function (%s)', [SheetFuncName(w)]);
-               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), s);
-             end;
-           end;
-      $23, $43, $63:
-           begin
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               'Token tNAME');
-             numBytes := 2;
-             Move(FBuffer[FBufferIndex], w, numBytes);
-             case FFormat of
-               sfExcel2: s := 'DEFINEDNAME or EXTERNALNAME record';
-               sfExcel5: s := 'DEFINEDNAME record in Global Link Table';
-               sfExcel8: s := 'DEFINEDNAME record in Link Table';
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-               '1-based index to '+s);
-             case FFormat of
-               sfExcel2: numBytes := 5;
-               sfExcel5: numBytes := 12;
-               sfExcel8: numBytes := 2;
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, '', '(not used)');
-           end;
-      $24, $44, $64:
-           begin
-             case token of
-               $24: s := 'reference';
-               $44: s := 'value';
-               $64: s := 'array';
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               Format('Token tREF (Cell %s)', [s]));
-             ShowCellAddress;
-           end;
-      $25, $45, $65:
-           begin
-             case token of
-               $25: s := 'reference';
-               $45: s := 'value';
-               $65: s := 'array';
-             end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-               Format('Token tAREA (Cell range %s)', [s]));
-             ShowCellAddressRange;
-           end;
-    else   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
-             '(unknown)');
-    end;
-  end;
-*)
+
   RowCount := FCurrRow;
   EndUpdate(true);
 end;
@@ -2701,6 +2506,41 @@ begin
   end;  // while
 
 end;
+
+procedure TBIFFGrid.ShowGCW;
+var
+  numBytes: Integer;
+  b: Byte;
+  w: Word;
+  i,j: Integer;
+  bit: Byte;
+begin
+  RowCount := FixedRows + 33;
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+    'Size of Global Column Width bit field (1 bit per column), must be 32');
+
+  numBytes := 1;
+  for i:= 0 to w-1 do begin
+    b := FBuffer[FBufferIndex];
+    if FCurrRow = Row then begin
+      FDetails.Add(Format('GCW (Global column width) record, byte #%d:'#13, [i]));
+      bit := 1;
+      for j:=0 to 7 do begin
+        if b and bit = 0
+          then FDetails.Add(Format('Bit $%.2x=0: Column %d uses width of COLWIDTH record.', [bit, j+i*8]))
+          else FDetails.Add(Format('Bit $%.2x=1: Column %d uses width of STANDARDWIDTH record '+
+                                   '(or, if not available, DEFCOLWIDTH record)', [bit, j+i*8]));
+        bit := bit * 2;
+      end;
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]),
+      Format('Widths of columns %d-%d', [i*8, i*8+7]));
+  end;
+end;
+
 
 procedure TBIFFGrid.ShowHeader;
 var
@@ -4174,6 +4014,20 @@ begin
     ExtractString(FBufferIndex, 2, true, s, numBytes);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]));
   end;
+end;
+
+
+procedure TBIFFGrid.ShowStandardWidth;
+var
+  w: Word;
+  numBytes: Integer;
+begin
+  RowCount := FixedRows + 1;
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d (%f characters)', [w, w/256]),
+    'Default column width (overrides DFCOLWIDTH, in 1/256 of "0" width)');
 end;
 
 
