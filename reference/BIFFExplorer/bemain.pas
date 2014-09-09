@@ -13,7 +13,7 @@ uses
   fpolestorage,
   {$endif}
   fpSpreadsheet,
-  mrumanager, beBIFFGrid;
+  mrumanager, beBIFFGrid, types;
 
 type
   { Virtual tree node data }
@@ -69,6 +69,7 @@ type
     FindPanel: TPanel;
     SaveDialog: TSaveDialog;
     SpeedButton3: TSpeedButton;
+    StringGrid1: TStringGrid;
     TreePopupMenu: TPopupMenu;
     TreePanel: TPanel;
     BtnFindNext: TSpeedButton;
