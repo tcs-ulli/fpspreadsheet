@@ -426,13 +426,13 @@ type
     ContentType: TCellContentType;
     { Possible values for the cells }
     FormulaValue: string;
-//    RPNFormulaValue: TsRPNFormula;
     NumberValue: double;
     UTF8StringValue: ansistring;
     DateTimeValue: TDateTime;
     BoolValue: Boolean;
     ErrorValue: TsErrorValue;
     SharedFormulaBase: PCell;     // Cell containing the shared formula
+    MergedNeighbors: TsCellBorders;
     { Formatting fields }
     { When adding/deleting formatting fields don't forget to update CopyFormat! }
     UsedFormattingFields: TsUsedFormattingFields;
@@ -570,6 +570,14 @@ type
       out ACurrencySymbol: String): Boolean;
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
+
+    { Merging of cells }
+    procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
+    procedure MergeCells(ARange: String); overload;
+    procedure UnmergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
+    procedure UnmergeCells(ARange: String); overload;
+    function FindMergeBase(ACell: PCell): PCell;
+    function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
 
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
@@ -2879,6 +2887,216 @@ begin
   end;
 
   Result := ACell^.BackgroundColor;
+end;
+
+{@@
+  Merges adjacent individual cells to a larger single cell
+
+  @param  ARow1   Row index of the upper left corner of the cell range
+  @param  ACol1   Column index of the upper left corner of the cell range
+  @param  ARow2   Row index of the lower right corner of the cell range
+  @param  ACol2   Column index of the lower right corner of the cell range
+}
+procedure TsWorksheet.MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
+var
+  cell: PCell;
+  base: PCell;
+  r, c: Cardinal;
+begin
+  // Case 1: single cell
+  if (ARow1 = ARow2) and (ACol1 = ACol2) then
+    exit;
+
+  // Case 2: single row
+  if (ARow1 = ARow2) and (ACol1 <> ACol2) then begin
+    cell := GetCell(ARow1, ACol1);
+    cell^.MergedNeighbors := [cbEast];
+    cell := GetCell(ARow2, ACol2);
+    cell^.MergedNeighbors := [cbWest];
+    for c := ACol1+1 to ACol2-1 do begin
+      cell := GetCell(ARow1, c);
+      cell^.MergedNeighbors := [cbEast, cbWest];
+    end;
+  end else
+  // Case 3: single column
+  if (ARow1 <> ARow2) and (ACol1 = ACol2) then begin
+    cell := GetCell(ARow1, ACol1);
+    cell^.MergedNeighbors := [cbSouth];
+    cell := GetCell(ARow2, ACol2);
+    cell^.MergedNeighbors := [cbNorth];
+    for r := ARow1+1 to ARow2-1 do begin
+      cell := GetCell(r, ACol1);
+      cell^.MergedNeighbors := [cbNorth, cbSouth];
+    end;
+  end else
+  // case 4: general case
+  begin
+    // left/top corner
+    cell := GetCell(ARow1, ACol1);
+    cell^.MergedNeighbors := [cbEast, cbSouth];
+    // right/top corner
+    cell := GetCell(ARow1, ACol2);
+    cell^.MergedNeighbors := [cbWest, cbSouth];
+    // left/bottom corner
+    cell := GetCell(ARow2, ACol1);
+    cell^.MergedNeighbors := [cbEast, cbNorth];
+    // right/bottom corner
+    cell := GetCell(ARow2, ACol2);
+    cell^.MergedNeighbors := [cbWest, cbNorth];
+    // top row
+    for c := ACol1+1 to ACol2-1 do begin
+      cell := GetCell(ARow1, c);
+      cell^.MergedNeighbors := [cbSouth, cbEast, cbWest];
+    end;
+    // bottom row
+    for c := ACol1+1 to ACol2-1 do begin
+      cell := GetCell(ARow2, c);
+      cell^.MergedNeighbors := [cbNorth, cbEast, cbWest];
+    end;
+    // left column
+    for r := ARow1+1 to ARow2-1 do begin
+      cell := GetCell(r, ACol1);
+      cell^.MergedNeighbors := [cbEast, cbNorth, cbSouth];
+    end;
+    // right column
+    for r := ARow1+1 to ARow2-1 do begin
+      cell := GetCell(r, ACol2);
+      cell^.MergedNeighbors := [cbWest, cbNorth, cbSouth];
+    end;
+    // inner
+    for r := ARow1+1 to ARow2-1 do
+      for c := ACol1+1 to ACol2-1 do begin
+        cell := GetCell(r, c);
+        cell^.MergedNeighbors := [cbEast, cbWest, cbNorth, cbSouth];
+      end;
+  end;
+  ChangedCell(ARow1, ACol1);
+end;
+
+{@@
+  Merges adjacent individual cells to a larger single cell
+
+  @param  ARange  Cell range string given in Excel notation (e.g: A1:D5)
+}
+
+procedure TsWorksheet.MergeCells(ARange: String);
+var
+  r1, r2, c1, c2: Cardinal;
+begin
+  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
+    MergeCells(r1, c1, r2, c2);
+end;
+
+{@@
+  Disconnects merged cells to make them individual cells again.
+
+  @param  ARow1   Row index of the upper left corner of the merged cell range
+  @param  ACol1   Column index of the upper left corner of the mergec cell range
+  @param  ARow2   Row index of the lower right corner of the merged cell range
+  @param  ACol2   Column index of the lower right corner of the merged cell range
+}
+procedure TsWorksheet.UnmergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
+var
+  cell: PCell;
+  r, c: Cardinal;
+begin
+  for r := ARow1 to ARow2 do
+    for c := ACol1 to ACol2 do
+    begin
+      cell := FindCell(r, c);
+      if cell <> nil then
+        cell^.MergedNeighbors := [];
+    end;
+  ChangedCell(ARow1, ACol1);
+end;
+
+{@@
+  Disconnects merged cells to make them individual cells again.
+
+  @param  ARange  Cell range string given in Excel notation (e.g: A1:D5)
+}
+
+procedure TsWorksheet.UnmergeCells(ARange: String);
+var
+  r1, r2, c1, c2: Cardinal;
+begin
+  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
+    UnmergeCells(r1, c1, r2, c2);
+end;
+
+{@@
+  Finds the upper left cell of a merged block to which a specified cell belongs.
+  This is the "merge base". Returns nil if the cell is not merged.
+
+  @param  ACell  Cell under investigation
+  @return A pointer to the cell in the upper left corner of the merged block
+          to which ACell belongs, If ACell is isolated then the function returns
+          nil.
+}
+function TsWorksheet.FindMergeBase(ACell: PCell): PCell;
+var
+  r, c: Cardinal;
+begin
+  Result := ACell;
+  if (ACell = nil) or (ACell^.MergedNeighbors = []) then
+    exit;
+
+  r := Result^.Row;
+  c := Result^.Col;
+  while (cbNorth in Result^.MergedNeighbors) do begin
+    dec(r);
+    Result := FindCell(r, c);
+  end;
+  while (cbWest in Result^.MergedNeighbors) do begin
+    dec(c);
+    Result := FindCell(r, c);
+  end;
+end;
+
+{@@
+  Determines the merged cell block to which a given cell belongs
+
+  @param   ACell  Pointer to the cell being investigated
+  @param   ARow1  (output) Top row index of the merged block
+  @param   ACol1  (outout) Left column index of the merged block
+  @param   ARow2  (output) Bottom row index of the merged block
+  @param   ACol2  (output) Right column index of the merged block
+
+  @return  True if the cell belongs to a merged block, False if not, or if the
+           cell does not exist at all.
+}
+function TsWorksheet.FindMergedRange(ACell: PCell;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
+var
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  cell := FindMergeBase(ACell);
+  if cell = nil then begin
+    Result := false;
+    exit;
+  end;
+  ARow1 := cell^.Row;
+  ACol1 := cell^.Col;
+  ARow2 := ARow1;
+  while (cell <> nil) and (cbSouth in cell^.MergedNeighbors) do begin
+    inc(ARow2);
+    cell := FindCell(ARow2, ACol1);
+  end;
+  if cell = nil then begin
+    Result := false;
+    exit;
+  end;
+  ACol2 := ACol1;
+  while (cell <> nil) and (cbEast in cell^.MergedNeighbors) do begin
+    inc(ACol2);
+    cell := FindCell(ARow2, ACol2);
+  end;
+  if cell = nil then begin
+    Result := false;
+    exit;
+  end;
+  Result := true;
 end;
 
 {@@

@@ -71,6 +71,8 @@ type
     AcNew: TAction;
     AcAddColumn: TAction;
     AcAddRow: TAction;
+    AcMergeCells: TAction;
+    AcUnmergeCells: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -153,6 +155,9 @@ type
     MenuItem64: TMenuItem;
     MenuItem65: TMenuItem;
     MenuItem66: TMenuItem;
+    MenuItem67: TMenuItem;
+    MenuItem68: TMenuItem;
+    MenuItem69: TMenuItem;
     mnuInspector: TMenuItem;
     mnuView: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
@@ -253,12 +258,14 @@ type
     procedure AcFontStyleExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
     procedure AcIncDecDecimalsExecute(Sender: TObject);
+    procedure AcMergeCellsExecute(Sender: TObject);
     procedure AcNewExecute(Sender: TObject);
     procedure AcNumFormatExecute(Sender: TObject);
     procedure AcOpenExecute(Sender: TObject);
     procedure AcQuitExecute(Sender: TObject);
     procedure AcSaveAsExecute(Sender: TObject);
     procedure AcTextRotationExecute(Sender: TObject);
+    procedure AcUnmergeCellsExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
@@ -528,6 +535,11 @@ begin
   end;
 end;
 
+procedure TForm1.AcMergeCellsExecute(Sender: TObject);
+begin
+  WorksheetGrid.MergeCells;
+end;
+
 procedure TForm1.AcNewExecute(Sender: TObject);
 begin
   WorksheetGrid.NewWorkbook(26, 100);
@@ -607,6 +619,11 @@ begin
     text_rot := trHorizontal;
   with WorksheetGrid do TextRotations[Selection] := text_rot;
   UpdateTextRotationActions;
+end;
+
+procedure TForm1.AcUnmergeCellsExecute(Sender: TObject);
+begin
+  WorksheetGrid.UnmergeCells;
 end;
 
 procedure TForm1.AcVertAlignmentExecute(Sender: TObject);
@@ -968,6 +985,7 @@ var
   i: Integer;
   s: String;
   cb: TsCellBorder;
+  r1,r2,c1,c2: Cardinal;
 begin
   with CellInspector do begin
     TitleCaptions[0] := 'Properties';
@@ -1060,6 +1078,13 @@ begin
       if (ACell=nil) or not (uffNumberFormat in ACell^.UsedFormattingFields)
         then Strings.Add('NumberFormatStr=')
         else Strings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
+      if (ACell=nil) or (ACell^.MergedNeighbors = []) then
+        Strings.Add('Not merged=')
+      else begin
+        WorksheetGrid.Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+        Strings.Add('Belongs to merged range=' + GetCellRangeString(r1, c1, r2, c2));
+      end;
+
     end;
   end;
 end;

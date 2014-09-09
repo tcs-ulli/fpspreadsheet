@@ -454,9 +454,9 @@ object Form1: TForm1
     Height = 457
     Top = 79
     Width = 231
-    ActivePage = PgCellValue
+    ActivePage = PgProperties
     Align = alRight
-    TabIndex = 0
+    TabIndex = 1
     TabOrder = 6
     OnChange = InspectorPageControlChange
     object PgCellValue: TTabSheet
@@ -1223,6 +1223,15 @@ object Form1: TForm1
       object MnuWordwrap: TMenuItem
         Action = AcWordwrap
         AutoCheck = True
+      end
+      object MenuItem67: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem68: TMenuItem
+        Action = AcMergeCells
+      end
+      object MenuItem69: TMenuItem
+        Action = AcUnmergeCells
       end
     end
     object mnuView: TMenuItem
@@ -2868,10 +2877,23 @@ object Form1: TForm1
       OnExecute = AcAddRowExecute
     end
     object AcViewInspector: TAction
+      Category = 'View'
       AutoCheck = True
       Caption = 'Inspector'
       Checked = True
       OnExecute = AcViewInspectorExecute
+    end
+    object AcMergeCells: TAction
+      Category = 'Format'
+      Caption = 'Merge cells'
+      Hint = 'Merge selected cells'
+      OnExecute = AcMergeCellsExecute
+    end
+    object AcUnmergeCells: TAction
+      Category = 'Format'
+      Caption = 'Un-merge cells'
+      Hint = 'Disconnect merged cells'
+      OnExecute = AcUnmergeCellsExecute
     end
   end
   object FontDialog: TFontDialog
