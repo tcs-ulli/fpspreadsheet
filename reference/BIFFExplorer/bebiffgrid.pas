@@ -70,6 +70,7 @@ type
     procedure ShowLabelCell;
     procedure ShowLabelSSTCell;
     procedure ShowLeftMargin;
+    procedure ShowMergedCells;
     procedure ShowMMS;
     procedure ShowMulBlank;
     procedure ShowMulRK;
@@ -397,6 +398,8 @@ begin
       ShowInterfaceHdr;
     $00E2:
       ShowInterfaceEnd;
+    $00E5:
+      ShowMergedCells;
     $00FC:
       ShowSST;
     $00FD:
@@ -2843,6 +2846,40 @@ begin
   Move(FBuffer[FBufferIndex], dbl, numBytes);
   ShowInRow(FCurrRow, FBufferIndex, numBytes, FloatToStr(dbl),
     'Left page margin in inches (IEEE 754 floating-point value, 64-bit double precision)');
+end;
+
+
+procedure TBIFFGrid.ShowMergedCells;
+var
+  w: Word;
+  numBytes: Integer;
+  i, n: Integer;
+begin
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  n := WordLEToN(w);  // count of merged ranges in this record
+
+  RowCount := FixedRows + 1 + n*4;
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(n),
+    'Count of merged ranges in this record');
+
+  for i:=1 to n do begin
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+      Format('Merged range #%d: First row = %d', [i, w]));
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+      Format('Merged range #%d: Last row = %d', [i, w]));
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+      Format('Merged range #%d: First column = %d', [i, w]));
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+      Format('Merged range #%d: Last column = %d', [i, w]));
+  end;
 end;
 
 
