@@ -322,7 +322,7 @@ begin
     $00E1: Result := 'INTERFACEHDR: Beginning of user interface records';
     $00E2: Result := 'INTERFACEEND: End of user interface records';
     $00E3: Result := 'SXVS: View source';
-    $00E5: Result := 'MEGECELLS: Merged cells';
+    $00E5: Result := 'MERGEDCELLS: List of merged cells';
     $00E9: Result := 'Bitmap';
     $00EA: Result := 'TABIDCONF: Sheet Tab ID of conflict history';
     $00EB: Result := 'MSODRAWINGGROUP: Microsoft Office drawing group';
