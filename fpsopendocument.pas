@@ -1780,10 +1780,14 @@ procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
 var
   row: Integer;
   col: Integer;
+  cell: PCell;
   cellNode, rowNode: TDOMNode;
   paramValueType, paramFormula, tableStyleName: String;
+  paramColsSpanned, paramRowsSpanned: String;
   paramColsRepeated, paramRowsRepeated: String;
   rowsRepeated: Integer;
+  rowsSpanned: Integer;
+  colsSpanned: Integer;
   rowStyleName: String;
   rowStyleIndex: Integer;
   rowStyle: TRowStyleData;
@@ -1847,7 +1851,21 @@ begin
 
       if ParamFormula <> '' then
         ReadFormula(row, col, cellNode);
-//        ReadLabel(row, col, cellNode);
+
+      paramColsSpanned := GetAttrValue(cellNode, 'table:number-columns-spanned');
+      if paramColsSpanned <> '' then
+        colsSpanned := StrToInt(paramColsSpanned) - 1
+      else
+        colsSpanned := 0;
+
+      paramRowsSpanned := GetAttrValue(cellNode, 'table:number-rows-spanned');
+      if paramRowsSpanned <> '' then
+        rowsSpanned := StrToInt(paramRowsSpanned) - 1
+      else
+        rowsSpanned := 0;
+
+      if (colsSpanned <> 0) or (rowsSpanned <> 0) then
+        FWorksheet.MergeCells(row, col, row+rowsSpanned, col+colsSpanned);
 
       paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
       if paramColsRepeated = '' then paramColsRepeated := '1';
@@ -2926,29 +2944,24 @@ var
   h1: Single;
   colsRepeated: Cardinal;
   rowsRepeated: Cardinal;
+  colsSpanned: Cardinal;
+  rowsSpanned: Cardinal;
   colsRepeatedStr: String;
   rowsRepeatedStr: String;
+  colsSpannedStr: String;
+  rowsSpannedStr: String;
   firstCol, firstRow, lastCol, lastRow: Cardinal;
   rowStyleData: TRowStyleData;
   defFontSize: Single;
   emptyRowsAbove: Boolean;
+  r1,c1,r2,c2: Cardinal;
 begin
   // some abbreviations...
   defFontSize := Workbook.GetFont(0).Size;
   GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
-  {
-  firstCol := ASheet.GetFirstColIndex;
-  firstRow := ASheet.GetFirstRowIndex;
-  lastCol := ASheet.GetLastColIndex;
-  lastRow := ASheet.GetLastRowIndex;
-  // avoid arithmetic overflow in case of empty worksheet
-  if (firstCol = $FFFFFFFF) and (lastCol = 0) then firstCol := 0;
-  if (FirstRow = $FFFFFFFF) and (lastRow = 0) then firstRow := 0;
-  }
   emptyRowsAbove := firstRow > 0;
 
   // Now loop through all rows
-//  r := 0;
   r := firstRow;
   while (r <= lastRow) do begin
     // Look for the row style of the current row (r)
@@ -3027,6 +3040,16 @@ begin
     while c <= lastCol do begin
       // Get the cell from the sheet
       cell := ASheet.FindCell(r, c);
+
+      // Belongs to merged block?
+      if (cell <> nil) and not FWorksheet.IsMergeBase(cell) and (cell^.MergedNeighbors <> []) then
+      begin
+        AppendToStream(AStream,
+          '<table:covered-table-cell />');
+        inc(c);
+        continue;
+      end;
+
       // Empty cell? Need to count how many to add "table:number-columns-repeated"
       colsRepeated := 1;
       if cell = nil then begin
@@ -3216,18 +3239,31 @@ procedure TsSpreadOpenDocWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
   lIndex: Integer;
+  colsSpannedStr: String;
+  rowsSpannedStr: String;
+  spannedStr: String;
+  r1,c1,r2,c2: Cardinal;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
 
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+  end else
+    spannedStr := '';
+
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     AppendToStream(AStream, Format(
-      '<table:table-cell table:style-name="ce%d">', [lIndex]),
+      '<table:table-cell table:style-name="ce%d" %s>', [lIndex, spannedStr]),
       '</table:table-cell>');
   end else
     AppendToStream(AStream,
-      '<table:table-cell />');
+      '<table:table-cell ' + spannedStr + '/>');
 end;
 
 { Creates an XML string for inclusion of the background color into the
@@ -3612,14 +3648,28 @@ var
   valuetype: String;
   value: string;
   valueStr: String;
+  colsSpannedStr: String;
+  rowsSpannedStr: String;
+  spannedStr: String;
+  r1,c1,r2,c2: Cardinal;
 begin
   Unused(AStream, ARow, ACol);
 
+  // Style
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
   end else
     lStyle := '';
+
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+  end else
+    spannedStr := '';
 
   // Convert string formula to the format needed by ods: semicolon list separators!
   parser := TsSpreadsheetParser.Create(FWorksheet);
@@ -3683,15 +3733,15 @@ begin
     data type. Seems to work... }
   if ACell^.CalcState=csCalculated then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s>' +
+      '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s %s>' +
       valueStr +
       '</table:table-cell>', [
-      formula, valuetype, value, lStyle
+      formula, valuetype, value, lStyle, spannedStr
     ]))
   else
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" %s/>', [
-      formula, lStyle
+      '<table:table-cell table:formula="=%s" %s %s/>', [
+      formula, lStyle, spannedStr
     ]));
 end;
 
@@ -3707,21 +3757,43 @@ procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
 var
   lStyle: string = '';
   lIndex: Integer;
+  colsSpannedStr: String;
+  rowsSpannedStr: String;
+  spannedStr: String;
+  r1,c1,r2,c2: Cardinal;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
 
+  // Style
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
   end else
     lStyle := '';
 
-  // The row should already be the correct one
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+  end else
+    spannedStr := '';
+
+  AppendToStream(AStream, Format(
+    '<table:table-cell office:value-type="string" %s %s>' +
+      '<text:p>%s</text:p>'+
+    '</table:table-cell>', [
+    lStyle, spannedStr,
+    UTF8TextToXMLText(AValue)
+  ]));
+      {
   AppendToStream(AStream,
     '<table:table-cell office:value-type="string"' + lStyle + '>' +
       '<text:p>' + UTF8TextToXMLText(AValue) + '</text:p>' +
     '</table:table-cell>');
+    }
 end;
 
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,
@@ -3732,6 +3804,10 @@ var
   lStyle: string = '';
   lIndex: Integer;
   valType: String;
+  colsSpannedStr: String;
+  rowsSpannedStr: String;
+  spannedStr: String;
+  r1,c1,r2,c2: Cardinal;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
@@ -3747,7 +3823,16 @@ begin
   end else
     lStyle := '';
 
-  // The row should already be the correct one
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+  end else
+    spannedStr := '';
+
+  // Displayed value
   if IsInfinite(AValue) then begin
     StrValue := '1.#INF';
     DisplayStr := '1.#INF';
@@ -3756,10 +3841,20 @@ begin
     DisplayStr := FloatToStr(AValue); // Uses locale decimal separator
   end;
 
-  AppendToStream(AStream,
+  AppendToStream(AStream, Format(
+    '<table:table-cell office:value-type="%s" office:value="%s" %s %s >' +
+      '<text:p>%s</text:p>' +
+    '</table:table-cell>', [
+    valType, StrValue, lStyle, spannedStr,
+    DisplayStr
+  ]));
+  {
+
+
     '<table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>' +
       '<text:p>' + DisplayStr + '</text:p>' +
     '</table:table-cell>');
+    }
 end;
 
 {*******************************************************************
@@ -3781,9 +3876,22 @@ var
   displayStr: String;
   lIndex: Integer;
   isTimeOnly: Boolean;
+  colsSpannedStr: String;
+  rowsSpannedStr: String;
+  spannedStr: String;
+  r1,c1,r2,c2: Cardinal;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
+
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+  end else
+    spannedStr := '';
 
   if ACell^.UsedFormattingFields <> [] then begin
     lIndex := FindFormattingInList(ACell);
@@ -3791,26 +3899,29 @@ begin
   end else
     lStyle := '';
 
-  // The row should already be the correct one
-
   // nfTimeInterval is a special case - let's handle it first:
   if (ACell^.NumberFormat = nfTimeInterval) then begin
-    //lcfmt := Lowercase(Copy(ACell^.NumberFormatStr, 1, 2));
     strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
     displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
-      '<table:table-cell office:value-type="time" office:time-value="%s" %s>' +
+      '<table:table-cell office:value-type="time" office:time-value="%s" %s %s>' +
         '<text:p>%s</text:p>' +
-      '</table:table-cell>', [strValue, lStyle, displayStr]));
+      '</table:table-cell>', [
+      strValue, lStyle, spannedStr,
+      displayStr
+    ]));
   end else begin
     // We have to distinguish between time-only values and values that contain date parts.
     isTimeOnly := IsTimeFormat(ACell^.NumberFormat) or IsTimeFormat(ACell^.NumberFormatStr);
     strValue := FormatDateTime(FMT[isTimeOnly], AValue);
     displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue);
     AppendToStream(AStream, Format(
-      '<table:table-cell office:value-type="%s" office:%s-value="%s" %s>' +
+      '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +
         '<text:p>%s</text:p> ' +
-      '</table:table-cell>', [DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, displayStr]));
+      '</table:table-cell>', [
+      DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, spannedStr,
+      displayStr
+    ]));
   end;
 end;
 
