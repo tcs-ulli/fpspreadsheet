@@ -48,6 +48,7 @@ type
     FCellFont: TFont;
     FAutoCalc: Boolean;
     FReadFormulas: Boolean;
+    FDrawingCell: PCell;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
@@ -123,6 +124,7 @@ type
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawFrozenPaneBorders(ARect: TRect);
+    procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetCellHeight(ACol, ARow: Integer): Integer;
@@ -1269,7 +1271,8 @@ end;
 }
 procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
 begin
-  if FWorkSheet = nil then exit;
+  if FWorkSheet = nil then
+    exit;
   if (soHasFrozenPanes in FWorksheet.Options) then begin
     Canvas.Pen.Style := psSolid;
     Canvas.Pen.Color := clBlack;
@@ -1278,6 +1281,143 @@ begin
       Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Top);
     if FFrozenCols > 0 then
       Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom);
+  end;
+end;
+
+{@@
+  Draws a complete row of cells. Is mostly duplicated from Grids.pas in order
+  to be able to add code for merged cells and overflow text.
+}
+procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
+var
+  gds: TGridDrawState;
+  r, c, cNext: Integer;
+  Rs: Boolean;
+  rct, saved_rct: TRect;
+  clipArea: Trect;
+  cell: PCell;
+  r1,c1,r2,c2: Cardinal;
+  tmp: Integer;
+
+  function IsPushCellActive: boolean;
+  begin
+    with GCache do
+      result := (PushedCell.X<>-1) and (PushedCell.Y<>-1);
+  end;
+
+  function VerticalIntersect(const aRect,bRect: TRect): boolean;
+  begin
+    result := (aRect.Top < bRect.Bottom) and (aRect.Bottom > bRect.Top);
+  end;
+
+  function HorizontalIntersect(const aRect,bRect: TRect): boolean;
+  begin
+    result := (aRect.Left < bRect.Right) and (aRect.Right > bRect.Left);
+  end;
+
+  procedure DoDrawCell(_col, _row: Integer);
+  var
+    Rgn: HRGN;
+  begin
+    with GCache do begin
+      if (_col = HotCell.x) and (_row = HotCell.y) and not IsPushCellActive() then begin
+        Include(gds, gdHot);
+        HotCellPainted := True;
+      end;
+      if ClickCellPushed and (_col = PushedCell.x) and (_row = PushedCell.y) then begin
+        Include(gds, gdPushed);
+      end;
+    end;
+
+    Canvas.SaveHandleState;
+    try
+      Rgn := CreateRectRgn(rct.Left, rct.Top, rct.Right, rct.Bottom);
+      SelectClipRgn(Canvas.Handle, Rgn);
+      DrawCell(_col, _row, rct, gds);
+      DeleteObject(Rgn);
+    finally
+      Canvas.RestoreHandleState;
+    end;
+  end;
+
+begin
+  // Upper and Lower bounds for this row
+  ColRowToOffSet(False, True, ARow, rct.Top, rct.Bottom);
+  saved_rct := rct;
+
+  // is this row within the ClipRect?
+  clipArea := Canvas.ClipRect;
+  if (rct.Top >= rct.Bottom) or not VerticalIntersect(rct, clipArea) then begin
+    {$IFDEF DbgVisualChange}
+    DebugLn('Drawrow: Skipped row: ', IntToStr(aRow));
+    {$ENDIF}
+    exit;
+  end;
+
+  // Draw columns in this row
+  with GCache.VisibleGrid do begin
+    c := Left;
+    while c <= Right do begin
+      r := ARow;
+      rct := saved_rct;
+      // FDrawingCell is the cell which is currently being painted. We store
+      // it to avoid excessive calls to "FindCell".
+      FDrawingCell := nil;
+      cNext := c + 1;
+      if (FWorksheet <> nil) and (r >= FixedRows) and (c >= FixedCols) then
+      begin
+        cell := FWorksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
+        if (cell = nil) or (cell^.MergedNeighbors = []) then
+          // single cell
+          FDrawingCell := cell
+        else
+        begin
+          // merged cells
+          FDrawingCell := FWorksheet.FindMergeBase(cell);
+          FWorksheet.FindMergedRange(FDrawingCell, r1, c1, r2, c2);
+          r := GetGridRow(r1);
+          ColRowToOffSet(False, True, r, rct.Top, tmp);
+          ColRowToOffSet(False, True, r + r2 - r1, tmp, rct.Bottom);
+          cNext := c + (c2-c1) + 1;
+        end;
+      end;
+
+      ColRowToOffset(true, true, c, rct.Left, tmp);
+      ColRowToOffset(true, true, cNext-1, tmp, rct.Right);
+
+      if (rct.Left >= rct.Right) or not HorizontalIntersect(rct, clipArea) then
+        continue;
+      Rs := (goRowSelect in Options);
+      gds := GetGridDrawState(c, r);
+      DoDrawCell(c, r);
+
+      c := cNext;
+    end;
+
+    // Draw the focus Rect
+    if FocusRectVisible and (ARow = Row) and
+       ((Rs and (ARow >= Top) and (ARow <= Bottom)) or IsCellVisible(Col, ARow))
+    then begin
+      if EditorMode then begin
+      //if EditorAlwaysShown and (FEditor<>nil) and FEditor.Visible then begin
+        //DebugLn('No Draw Focus Rect');
+      end else begin
+        ColRowToOffset(true, true, Col, rct.Left, rct.Right);
+        // is this column within the ClipRect?
+        if HorizontalIntersect(rct, clipArea) then
+          DrawFocusRect(Col, Row, rct);
+      end;
+    end;
+  end;
+
+  // Draw Fixed Columns
+  r := ARow;
+  for c := 0 to FixedCols-1 do begin
+    gds := [gdFixed];
+    ColRowToOffset(True, True, c, rct.Left, rct.Right);
+    // is this column within the ClipRect?
+    if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
+      DoDrawCell(c, r);
   end;
 end;
 
@@ -1336,13 +1476,15 @@ begin
   if (FWorksheet = nil) then
     exit;
 
+  lCell := FDrawingCell;
+  {
   c := ACol - FHeaderCount;
   r := ARow - FHeaderCount;
   if (r >= 0) and (c >= 0) then
     lCell := FWorksheet.FindCell(r, c)
   else
     lCell := nil;
-
+   }
   // Header
   if lCell = nil then begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then begin
@@ -2004,11 +2146,14 @@ begin
   end;
 
   if FWorksheet <> nil then begin
+    lCell := FDrawingCell;
+    {
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
     lCell := FWorksheet.FindCell(r, c);
+     }
     if lCell <> nil then begin
-      Result := FWorksheet.ReadAsUTF8Text(r, c);
+      Result := FWorksheet.ReadAsUTF8Text(lCell);
       if lCell^.TextRotation = rtStacked then begin
         s := Result;
         Result := '';
