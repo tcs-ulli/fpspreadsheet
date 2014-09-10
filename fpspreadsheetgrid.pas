@@ -2146,12 +2146,9 @@ begin
   end;
 
   if FWorksheet <> nil then begin
-    lCell := FDrawingCell;
-    {
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
     lCell := FWorksheet.FindCell(r, c);
-     }
     if lCell <> nil then begin
       Result := FWorksheet.ReadAsUTF8Text(lCell);
       if lCell^.TextRotation = rtStacked then begin
