@@ -407,6 +407,9 @@ type
     Row1, Col1, Row2, Col2: Cardinal;
   end;
 
+  {@@ Array with cell ranges }
+  TsCellRangeArray = array of TsCellRange;
+
   {@@ Pointer to a TCell record }
   PCell = ^TCell;
 
@@ -571,13 +574,15 @@ type
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
 
-    { Merging of cells }
+    { Merged cells }
     procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
     procedure MergeCells(ARange: String); overload;
     procedure UnmergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
     procedure UnmergeCells(ARange: String); overload;
     function FindMergeBase(ACell: PCell): PCell;
     function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
+    procedure GetMergedCellRanges(out AList: TsCellRangeArray);
+    function IsMergeBase(ACell: PCell): Boolean;
 
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
@@ -3097,6 +3102,48 @@ begin
     exit;
   end;
   Result := true;
+end;
+
+{@@
+  Collects all ranges of merged cells that can be found in the worksheet
+
+  @param  AList  Array containing TsCellRange records of the merged cells
+}
+procedure TsWorksheet.GetMergedCellRanges(out AList: TsCellRangeArray);
+var
+  r, c: Cardinal;
+  cell: PCell;
+  rng: TsCellRange;
+  n: Integer;
+begin
+  n := 0;
+  SetLength(AList, n);
+  for r := 0 to GetLastOccupiedRowIndex do
+    for c := 0 to GetLastOccupiedColIndex do
+    begin
+      cell := FindCell(r, c);
+      if IsMergeBase(cell) then begin
+        FindMergedRange(cell, rng.Row1, rng.Col1, rng.Row2, rng.Col2);
+        SetLength(AList, n+1);
+        AList[n] := rng;
+      end;
+    end;
+end;
+
+{@@ Returns true if the specified cell is the base of a merged cell range, i.e.
+  it is the upper left corner of that range.
+
+  @param   ACell  Pointer to the cell being considered
+  @return  True if the cell is the upper left corner of a merged range
+           False if not
+}
+function TsWorksheet.IsMergeBase(ACell: PCell): Boolean;
+begin
+  Result := (ACell <> nil) and (
+    (ACell^.MergedNeighbors = [cbEast]) or        // single row
+    (ACell^.MergedNeighbors = [cbSouth]) or       // single column
+    (ACell^.MergedNeighbors = [cbEast, cbSouth])  // 2d
+  );
 end;
 
 {@@
