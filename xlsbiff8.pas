@@ -84,6 +84,7 @@ type
     procedure ReadFormat(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadLabelSST(const AStream: TStream);
+    procedure ReadMergedCells(const AStream: TStream);
     procedure ReadRichString(const AStream: TStream);
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); override;
@@ -124,6 +125,7 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
+    procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): word; override;
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
@@ -224,32 +226,33 @@ var
 implementation
 
 uses
-  fpsStreams, fpsExprParser;
+  Math, fpsStreams, fpsExprParser;
 
 const
    { Excel record IDs }
-     INT_EXCEL_ID_SST        = $00FC; //BIFF8 only
-     INT_EXCEL_ID_LABELSST   = $00FD; //BIFF8 only
-{%H-}INT_EXCEL_ID_FORCEFULLCALCULATION = $08A3;
+     INT_EXCEL_ID_MERGEDCELLS            = $00E5;  // BIFF8 only
+     INT_EXCEL_ID_SST                    = $00FC; //BIFF8 only
+     INT_EXCEL_ID_LABELSST               = $00FD; //BIFF8 only
+{%H-}INT_EXCEL_ID_FORCEFULLCALCULATION   = $08A3;
 
    { Cell Addresses constants }
-     MASK_EXCEL_COL_BITS_BIFF8     = $00FF;
-     MASK_EXCEL_RELATIVE_COL_BIFF8 = $4000;  // This is according to Microsoft documentation,
-     MASK_EXCEL_RELATIVE_ROW_BIFF8 = $8000;  // but opposite to OpenOffice documentation!
+     MASK_EXCEL_COL_BITS_BIFF8           = $00FF;
+     MASK_EXCEL_RELATIVE_COL_BIFF8       = $4000;  // This is according to Microsoft documentation,
+     MASK_EXCEL_RELATIVE_ROW_BIFF8       = $8000;  // but opposite to OpenOffice documentation!
 
    { BOF record constants }
-     INT_BOF_BIFF8_VER       = $0600;
-     INT_BOF_WORKBOOK_GLOBALS= $0005;
-{%H-}INT_BOF_VB_MODULE       = $0006;
-     INT_BOF_SHEET           = $0010;
-{%H-}INT_BOF_CHART           = $0020;
-{%H-}INT_BOF_MACRO_SHEET     = $0040;
-{%H-}INT_BOF_WORKSPACE       = $0100;
-     INT_BOF_BUILD_ID        = $1FD2;
-     INT_BOF_BUILD_YEAR      = $07CD;
+     INT_BOF_BIFF8_VER                   = $0600;
+     INT_BOF_WORKBOOK_GLOBALS            = $0005;
+{%H-}INT_BOF_VB_MODULE                   = $0006;
+     INT_BOF_SHEET                       = $0010;
+{%H-}INT_BOF_CHART                       = $0020;
+{%H-}INT_BOF_MACRO_SHEET                 = $0040;
+{%H-}INT_BOF_WORKSPACE                   = $0100;
+     INT_BOF_BUILD_ID                    = $1FD2;
+     INT_BOF_BUILD_YEAR                  = $07CD;
 
    { STYLE record constants }
-     MASK_STYLE_BUILT_IN     = $8000;
+     MASK_STYLE_BUILT_IN                 = $8000;
 
    { XF substructures }
 
@@ -490,9 +493,13 @@ begin
         WriteCellsToStream(AStream, FWorksheet.Cells);
       end;
 
+      // View settings block
       WriteWindow2(AStream, FWorksheet);
       WritePane(AStream, FWorksheet, isBIFF8, pane);
       WriteSelection(AStream, FWorksheet, pane);
+
+      WriteMergedCells(AStream, FWorksheet);
+
     WriteEOF(AStream);
   end;
   
@@ -761,23 +768,6 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
-
-(*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
-  AStream.WriteWord(WordToLE(2 + 2 + 1 + len * SizeOf(WideChar)));
-
-  { Format index }
-  AStream.WriteWord(WordToLE(AFormatData.Index));
-
-  { Format string }
-  { - Unicodestring, char count in 2 bytes  }
-  AStream.WriteWord(WordToLE(len));
-  { - Widestring flags, 1=regular unicode LE string }
-  AStream.WriteByte(1);
-  { - String data }
-  AStream.WriteBuffer(WideStringToLE(s)[1], len * Sizeof(WideChar));
-  *)
 end;
 
 { Writes the address of a cell as used in an RPN formula and returns the
@@ -999,6 +989,43 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
+end;
+
+procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
+  AWorksheet: TsWorksheet);
+const
+  MAX_PER_RECORD = 1026;
+var
+  i, n0, n: Integer;
+  rngList: TsCellRangeArray;
+begin
+  AWorksheet.GetMergedCellRanges(rngList);
+  n0 := Length(rngList);
+  i := 0;
+
+  while n0 > 0 do begin
+    n := Min(n0, MAX_PER_RECORD);
+    // at most 1026 merged ranges per BIFF record, the rest goes into a new record
+
+    { BIFF record header }
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_MERGEDCELLS));
+    AStream.WriteWord(WordToLE(4 + 2 + n*8));
+
+    // Count of cell ranges in this record
+    AStream.WriteWord(WordToLE(n));
+
+    // Loop writing the merged cell ranges
+    while (n > 0) and (i < Length(rngList)) do begin
+      AStream.WriteWord(WordToLE(Lo(rngList[i].Row1)));
+      AStream.WriteWord(WordToLE(Lo(rngList[i].Row2)));
+      AStream.WriteWord(WordToLE(Lo(rngList[i].Col1)));
+      AStream.WriteWord(WordToLE(Lo(rngList[i].Col2)));
+      inc(i);
+      dec(n);
+    end;
+
+    dec(n0, MAX_PER_RECORD);
+  end;
 end;
 
 {*******************************************************************
@@ -1450,6 +1477,7 @@ begin
     INT_EXCEL_ID_LABELSST    : ReadLabelSST(AStream); //BIFF8 only
     INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
     INT_EXCEL_ID_COLINFO     : ReadColInfo(AStream);
+    INT_EXCEL_ID_MERGEDCELLS : ReadMergedCells(AStream);
     INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
     INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
     INT_EXCEL_ID_PANE        : ReadPane(AStream);
@@ -1604,6 +1632,25 @@ begin
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadMergedCells(const AStream: TStream);
+var
+  rng: packed record Row1, Row2, Col1, Col2: Word; end;
+  i, n: word;
+begin
+  // Count of merged ranges
+  n := WordLEToN(AStream.ReadWord);
+
+  for i:=1 to n do begin
+    // Read range
+    AStream.ReadBuffer(rng, SizeOf(rng));
+    // Transfer cell range to worksheet
+    FWorksheet.MergeCells(
+      WordLEToN(rng.Row1), WordLEToN(rng.Col1),
+      WordLEToN(rng.Row2), WordLEToN(rng.Col2)
+    );
+  end;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
