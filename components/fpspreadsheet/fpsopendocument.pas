@@ -1161,9 +1161,11 @@ begin
     Include(fntStyles, fssItalic);
   if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
     Include(fntStyles, fssBold);
-  if GetAttrValue(ANode, 'style:text-underline-style') <> '' then
+  s := GetAttrValue(ANode, 'style:text-underline-style');
+  if not ((s = '') or (s = 'none')) then
     Include(fntStyles, fssUnderline);
-  if GetAttrValue(ANode, 'style:text-strike-through-style') <> '' then
+  s := GetAttrValue(ANode, 'style:text-strike-through-style');
+  if not ((s = '') or (s = 'none')) then
     Include(fntStyles, fssStrikeout);
 
   s := GetAttrValue(ANode, 'fo:color');
@@ -1782,6 +1784,7 @@ var
   col: Integer;
   cell: PCell;
   cellNode, rowNode: TDOMNode;
+  nodeName: String;
   paramValueType, paramFormula, tableStyleName: String;
   paramColsSpanned, paramRowsSpanned: String;
   paramColsRepeated, paramRowsRepeated: String;
@@ -1800,10 +1803,15 @@ begin
 
   rowNode := ATableNode.FindNode('table:table-row');
   while Assigned(rowNode) do begin
-    // These nodes occur due to indentation spaces which are not skipped
+    nodename := rowNode.NodeName;
+
+    // Skip all non table-row nodes:
+    // Nodes '#text' occur due to indentation spaces which are not skipped
     // automatically any more due to PreserveWhiteSpace option applied
     // to ReadXMLFile
-    if rowNode.NodeName = '#text' then begin
+    // And there are other nodes like 'table:named-expression' which we don't
+    // need (at the moment)
+    if nodeName <> 'table:table-row' then begin
       rowNode := rowNode.NextSibling;
       Continue;
     end;
@@ -1811,23 +1819,27 @@ begin
     // Read rowstyle
     rowStyleName := GetAttrValue(rowNode, 'table:style-name');
     rowStyleIndex := FindRowStyleByName(rowStyleName);
-    rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
-    rowHeight := rowStyle.RowHeight;           // in mm (see ReadRowStyles)
-    rowHeight := mmToPts(rowHeight) / Workbook.GetDefaultFontSize;
-    if rowHeight > ROW_HEIGHT_CORRECTION
-      then rowHeight := rowHeight - ROW_HEIGHT_CORRECTION  // in "lines"
-      else rowHeight := 0;
-    autoRowHeight := rowStyle.AutoRowHeight;
+    if rowStyleIndex > -1 then begin    // just for safety
+      rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
+      rowHeight := rowStyle.RowHeight;           // in mm (see ReadRowStyles)
+      rowHeight := mmToPts(rowHeight) / Workbook.GetDefaultFontSize;
+      if rowHeight > ROW_HEIGHT_CORRECTION
+        then rowHeight := rowHeight - ROW_HEIGHT_CORRECTION  // in "lines"
+        else rowHeight := 0;
+      autoRowHeight := rowStyle.AutoRowHeight;
+    end else
+      autoRowHeight := true;
 
     col := 0;
 
     //process each cell of the row
     cellNode := rowNode.FindNode('table:table-cell');
     while Assigned(cellNode) do begin
+      nodeName := cellNode.NodeName;
       // These nodes occur due to indentation spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
       // to ReadXMLFile
-      if cellNode.NodeName = '#text' then begin
+      if nodeName = '#text' then begin
         cellNode := cellNode.NextSibling;
         Continue;
       end;
