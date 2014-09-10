@@ -3155,15 +3155,25 @@ end;
 }
 procedure TsCustomWorksheetGrid.MergeCells;
 begin
-  FWorksheet.MergeCells(Selection.Top, Selection.Left, Selection.Bottom, Selection.Right);
+  FWorksheet.MergeCells(
+    GetWorksheetRow(Selection.Top),
+    GetWorksheetCol(Selection.Left),
+    GetWorksheetRow(Selection.Bottom),
+    GetWorksheetCol(Selection.Right)
+  );
 end;
 
 {@@
-  Merges the selected cells to a single large cell
+  Splits a merged cell block into single cells
 }
 procedure TsCustomWorksheetGrid.UnmergeCells;
 begin
-  FWorksheet.UnmergeCells(Selection.Top, Selection.Left, Selection.Bottom, Selection.Right);
+  FWorksheet.UnmergeCells(
+    GetWorksheetRow(Selection.Top),
+    GetWorksheetCol(Selection.Left),
+    GetWorksheetRow(Selection.Bottom),
+    GetWorksheetCol(Selection.Right)
+  );
 end;
 
 {@@
