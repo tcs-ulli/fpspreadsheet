@@ -76,6 +76,7 @@ type
     procedure ReadFills(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
+    procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -121,6 +122,7 @@ type
     procedure WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
+    procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
     procedure WriteSheetData(AStream: TStream; AWorksheet: TsWorksheet);
@@ -1071,6 +1073,29 @@ begin
     FWorkbook.DeleteFont(4);
 end;
 
+procedure TsSpreadOOXMLReader.ReadMergedCells(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  node: TDOMNode;
+  nodename: String;
+  s: String;
+begin
+  if Assigned(ANode) then begin
+    node := ANode.FirstChild;
+    while Assigned(node) do
+    begin
+      nodename := node.NodeName;
+      if nodename = 'mergeCell' then begin
+        s := GetAttrValue(node, 'ref');
+        if s <> '' then
+          AWorksheet.MergeCells(s);
+      end;
+      node := node.NextSibling;
+    end;
+  end;
+end;
+
+
 procedure TsSpreadOOXMLReader.ReadNumFormats(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -1468,6 +1493,7 @@ begin
       ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
+      ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
 
       FreeAndNil(Doc);
     end;
@@ -1847,6 +1873,25 @@ begin
   end;
   AppendToStream(AStream,
       '</fonts>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteMergedCells(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  rng: TsCellRangeArray;
+  i: Integer;
+begin
+  AWorksheet.GetMergedCellRanges(rng);
+  if Length(rng) = 0 then
+    exit;
+  AppendToStream(AStream, Format(
+    '<mergeCells count="%d">', [Length(rng)]) );
+  for i:=0 to Length(rng)-1 do begin
+    AppendToStream(AStream, Format(
+      '<mergeCell ref="%s" />', [GetCellRangeString(rng[i].Row1, rng[i].Col1, rng[i].Row2, rng[i].Col2)]));
+  end;
+  AppendToStream(AStream,
+    '</mergeCells>');
 end;
 
 { Writes all number formats to the stream. Saving starts at the item with the
@@ -2341,6 +2386,7 @@ begin
   WriteSheetViews(FSSheets[FCurSheetNum], AWorksheet);
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
+  WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
   AppendToStream(FSSheets[FCurSheetNum],
