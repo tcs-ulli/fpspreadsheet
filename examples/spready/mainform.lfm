@@ -393,7 +393,7 @@ object MainFrm: TMainFrm
     ActivePage = PgCellValue
     Align = alRight
     TabIndex = 0
-    TabOrder = 5
+    TabOrder = 4
     OnChange = InspectorPageControlChange
     object PgCellValue: TTabSheet
       Caption = 'Cell value'

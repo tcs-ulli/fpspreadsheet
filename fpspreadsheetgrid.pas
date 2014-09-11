@@ -1341,7 +1341,7 @@ var
 
 begin
   // Upper and Lower bounds for this row
-  rct := BoundsRect;
+  rct := Rect(0,0,0,0);
   ColRowToOffSet(False, True, ARow, rct.Top, rct.Bottom);
   saved_rct := rct;
 
@@ -1378,6 +1378,7 @@ begin
           r := GetGridRow(r1);
           ColRowToOffSet(False, True, r, rct.Top, tmp);
           ColRowToOffSet(False, True, r + r2 - r1, tmp, rct.Bottom);
+          c := GetGridCol(c1);
           cNext := c + (c2-c1) + 1;
         end;
       end;
@@ -1387,6 +1388,8 @@ begin
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
+ //       IntersectRect(rct, rct, clipArea);
+//        if rct.Left < clipArea.Left then rct.Left := clipArea.Left;
         Rs := (goRowSelect in Options);
         gds := GetGridDrawState(c, r);
         DoDrawCell(c, r);

@@ -824,6 +824,8 @@ begin
 
   // Initialize Inspector
   UpdateCellInfo(nil);
+
+  ActiveControl := WorksheetGrid;
 end;
 
 procedure TMainFrm.InspectorPageControlChange(Sender: TObject);
