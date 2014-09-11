@@ -11,9 +11,9 @@ uses
 
 type
 
-  { TForm1 }
+  { TMainFrm }
 
-  TForm1 = class(TForm)
+  TMainFrm = class(TForm)
     AcOpen: TAction;
     AcSaveAs: TAction;
     AcQuit: TAction;
@@ -203,7 +203,6 @@ type
     mnuQuit: TMenuItem;
     mnuSaveAs: TMenuItem;
     OpenDialog: TOpenDialog;
-    PageControl1: TPageControl;
     InspectorPageControl: TPageControl;
     Panel1: TPanel;
     BordersPopupMenu: TPopupMenu;
@@ -215,12 +214,12 @@ type
     InspectorSplitter: TSplitter;
     PgCellValue: TTabSheet;
     PgProperties: TTabSheet;
+    TabControl: TTabControl;
     ToolButton22: TToolButton;
     ToolButton23: TToolButton;
     ToolButton27: TToolButton;
     CellInspector: TValueListEditor;
     WorksheetGrid: TsWorksheetGrid;
-    TabSheet1: TTabSheet;
     ToolBar1: TToolBar;
     FormatToolBar: TToolBar;
     ToolButton1: TToolButton;
@@ -282,14 +281,13 @@ type
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
     procedure FontSizeComboBoxSelect(Sender: TObject);
-    procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure InspectorPageControlChange(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
+    procedure TabControlChange(Sender: TObject);
     procedure WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
 
   private
-    { private declarations }
     FCopiedFormat: TCell;
     procedure LoadFile(const AFileName: String);
     procedure SetupBackgroundColorBox;
@@ -299,16 +297,19 @@ type
     procedure UpdateFontSizeIndex;
     procedure UpdateFontStyleActions;
     procedure UpdateHorAlignmentActions;
+    procedure UpdateInspector;
     procedure UpdateNumFormatActions;
     procedure UpdateTextRotationActions;
     procedure UpdateVertAlignmentActions;
     procedure UpdateWordwraps;
+
   public
-    { public declarations }
-  end; 
+    procedure BeforeRun;
+
+  end;
 
 var
-  Form1: TForm1; 
+  MainFrm: TMainFrm;
 
 implementation
 
@@ -344,9 +345,9 @@ const
   // Use a combination of these bits for the "Tag" of the Border actions - see FormCreate.
 
 
-{ TForm1 }
+{ TMainFrm }
 
-procedure TForm1.AcEditExecute(Sender: TObject);
+procedure TMainFrm.AcEditExecute(Sender: TObject);
 begin
   if AcEdit.Checked then
     WorksheetGrid.Options := WorksheetGrid.Options + [goEditing]
@@ -354,7 +355,7 @@ begin
     WorksheetGrid.Options := WorksheetGrid.Options - [goEditing];
 end;
 
-procedure TForm1.AcBorderExecute(Sender: TObject);
+procedure TMainFrm.AcBorderExecute(Sender: TObject);
 const
   LINESTYLES: Array[1..3] of TsLinestyle = (lsThin, lsMedium, lsDouble);
 var
@@ -438,19 +439,19 @@ begin
   end;
 end;
 
-procedure TForm1.AcAddColumnExecute(Sender: TObject);
+procedure TMainFrm.AcAddColumnExecute(Sender: TObject);
 begin
   WorksheetGrid.InsertCol(WorksheetGrid.Col);
   WorksheetGrid.Col := WorksheetGrid.Col + 1;
 end;
 
-procedure TForm1.AcAddRowExecute(Sender: TObject);
+procedure TMainFrm.AcAddRowExecute(Sender: TObject);
 begin
   WorksheetGrid.InsertRow(WorksheetGrid.Row);
   WorksheetGrid.Row := WorksheetGrid.Row + 1;
 end;
 
-procedure TForm1.AcCopyFormatExecute(Sender: TObject);
+procedure TMainFrm.AcCopyFormatExecute(Sender: TObject);
 var
   cell: PCell;
   r, c: Cardinal;
@@ -470,7 +471,7 @@ begin
 end;
 
 { Changes the font of the selected cell by calling a standard font dialog. }
-procedure TForm1.AcFontExecute(Sender: TObject);
+procedure TMainFrm.AcFontExecute(Sender: TObject);
 begin
   with WorksheetGrid do begin
     if Workbook = nil then
@@ -481,7 +482,7 @@ begin
   end;
 end;
 
-procedure TForm1.AcFontStyleExecute(Sender: TObject);
+procedure TMainFrm.AcFontStyleExecute(Sender: TObject);
 var
   style: TsFontstyles;
 begin
@@ -497,7 +498,7 @@ begin
   end;
 end;
 
-procedure TForm1.AcHorAlignmentExecute(Sender: TObject);
+procedure TMainFrm.AcHorAlignmentExecute(Sender: TObject);
 var
   hor_align: TsHorAlignment;
 begin
@@ -509,7 +510,7 @@ begin
   UpdateHorAlignmentActions;
 end;
 
-procedure TForm1.AcIncDecDecimalsExecute(Sender: TObject);
+procedure TMainFrm.AcIncDecDecimalsExecute(Sender: TObject);
 var
   cell: PCell;
   decs: Byte;
@@ -535,12 +536,12 @@ begin
   end;
 end;
 
-procedure TForm1.AcMergeCellsExecute(Sender: TObject);
+procedure TMainFrm.AcMergeCellsExecute(Sender: TObject);
 begin
   WorksheetGrid.MergeCells;
 end;
 
-procedure TForm1.AcNewExecute(Sender: TObject);
+procedure TMainFrm.AcNewExecute(Sender: TObject);
 begin
   WorksheetGrid.NewWorkbook(26, 100);
 
@@ -553,7 +554,7 @@ begin
   end;
 end;
 
-procedure TForm1.AcNumFormatExecute(Sender: TObject);
+procedure TMainFrm.AcNumFormatExecute(Sender: TObject);
 const
   DATETIME_CUSTOM: array[0..4] of string = ('', 'dd/mmm', 'mmm/yy', 'nn:ss', 'nn:ss.zzz');
 var
@@ -609,7 +610,7 @@ begin
   UpdateNumFormatActions;
 end;
 
-procedure TForm1.AcTextRotationExecute(Sender: TObject);
+procedure TMainFrm.AcTextRotationExecute(Sender: TObject);
 var
   text_rot: TsTextRotation;
 begin
@@ -621,12 +622,12 @@ begin
   UpdateTextRotationActions;
 end;
 
-procedure TForm1.AcUnmergeCellsExecute(Sender: TObject);
+procedure TMainFrm.AcUnmergeCellsExecute(Sender: TObject);
 begin
   WorksheetGrid.UnmergeCells;
 end;
 
-procedure TForm1.AcVertAlignmentExecute(Sender: TObject);
+procedure TMainFrm.AcVertAlignmentExecute(Sender: TObject);
 var
   vert_align: TsVertAlignment;
 begin
@@ -638,60 +639,66 @@ begin
   UpdateVertAlignmentActions;
 end;
 
-procedure TForm1.AcViewInspectorExecute(Sender: TObject);
+procedure TMainFrm.AcViewInspectorExecute(Sender: TObject);
 begin
   InspectorPageControl.Visible := AcViewInspector.Checked;
   InspectorSplitter.Visible := AcViewInspector.Checked;
   InspectorSplitter.Left := 0;
 end;
 
-procedure TForm1.AcWordwrapExecute(Sender: TObject);
+procedure TMainFrm.AcWordwrapExecute(Sender: TObject);
 begin
   with WorksheetGrid do Wordwraps[Selection] := TAction(Sender).Checked;
 end;
 
-procedure TForm1.CbAutoCalcFormulasChange(Sender: TObject);
+procedure TMainFrm.BeforeRun;
+begin
+  if ParamCount > 0 then
+    LoadFile(ParamStr(1));
+end;
+
+procedure TMainFrm.CbAutoCalcFormulasChange(Sender: TObject);
 begin
   WorksheetGrid.AutoCalc := CbAutoCalcFormulas.Checked;;
 end;
 
-procedure TForm1.CbBackgroundColorSelect(Sender: TObject);
+procedure TMainFrm.CbBackgroundColorSelect(Sender: TObject);
 begin
   with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
 end;
 
-procedure TForm1.CbHeaderStyleChange(Sender: TObject);
+procedure TMainFrm.CbHeaderStyleChange(Sender: TObject);
 begin
   WorksheetGrid.TitleStyle := TTitleStyle(CbHeaderStyle.ItemIndex);
 end;
 
-procedure TForm1.CbReadFormulasChange(Sender: TObject);
+procedure TMainFrm.CbReadFormulasChange(Sender: TObject);
 begin
   WorksheetGrid.ReadFormulas := CbReadFormulas.Checked;
 end;
 
-procedure TForm1.CbShowHeadersClick(Sender: TObject);
+procedure TMainFrm.CbShowHeadersClick(Sender: TObject);
 begin
   WorksheetGrid.ShowHeaders := CbShowHeaders.Checked;
 end;
 
-procedure TForm1.CbShowGridLinesClick(Sender: TObject);
+procedure TMainFrm.CbShowGridLinesClick(Sender: TObject);
 begin
   WorksheetGrid.ShowGridLines := CbShowGridLines.Checked;
 end;
 
-procedure TForm1.acOpenExecute(Sender: TObject);
+procedure TMainFrm.acOpenExecute(Sender: TObject);
 begin
   if OpenDialog.Execute then
     LoadFile(OpenDialog.FileName);
 end;
 
-procedure TForm1.acQuitExecute(Sender: TObject);
+procedure TMainFrm.acQuitExecute(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TForm1.acSaveAsExecute(Sender: TObject);
+procedure TMainFrm.acSaveAsExecute(Sender: TObject);
 // Saves sheet in grid to file, overwriting existing file
 var
   err: String = '';
@@ -713,7 +720,7 @@ begin
   end;
 end;
 
-procedure TForm1.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
+procedure TMainFrm.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
 type
   TRGB = packed record R,G,B: byte end;
 var
@@ -731,7 +738,7 @@ begin
   end;
 end;
 
-procedure TForm1.EdCellAddressEditingDone(Sender: TObject);
+procedure TMainFrm.EdCellAddressEditingDone(Sender: TObject);
 var
   c, r: cardinal;
 begin
@@ -741,7 +748,7 @@ begin
   end;
 end;
 
-procedure TForm1.EdFormulaEditingDone(Sender: TObject);
+procedure TMainFrm.EdFormulaEditingDone(Sender: TObject);
 var
   r, c: Cardinal;
   s: String;
@@ -755,17 +762,17 @@ begin
     WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, EdFormula.Text);
 end;
 
-procedure TForm1.EdFrozenColsChange(Sender: TObject);
+procedure TMainFrm.EdFrozenColsChange(Sender: TObject);
 begin
   WorksheetGrid.FrozenCols := EdFrozenCols.Value;
 end;
 
-procedure TForm1.EdFrozenRowsChange(Sender: TObject);
+procedure TMainFrm.EdFrozenRowsChange(Sender: TObject);
 begin
   WorksheetGrid.FrozenRows := EdFrozenRows.Value;
 end;
 
-procedure TForm1.FontComboBoxSelect(Sender: TObject);
+procedure TMainFrm.FontComboBoxSelect(Sender: TObject);
 var
   fname: String;
 begin
@@ -774,7 +781,7 @@ begin
     with WorksheetGrid do CellFontNames[Selection] := fName;
 end;
 
-procedure TForm1.FontSizeComboBoxSelect(Sender: TObject);
+procedure TMainFrm.FontSizeComboBoxSelect(Sender: TObject);
 var
   sz: Integer;
 begin
@@ -783,13 +790,7 @@ begin
     with WorksheetGrid do CellFontSizes[Selection] := sz;
 end;
 
-procedure TForm1.FormActivate(Sender: TObject);
-begin
-  if ParamCount > 0 then
-    LoadFile(ParamStr(1));
-end;
-
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TMainFrm.FormCreate(Sender: TObject);
 begin
   // Adjust format toolbar height, looks strange at 120 dpi
   FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
@@ -820,22 +821,18 @@ begin
   FontCombobox.DropDownCount := DROPDOWN_COUNT;
   FontSizeCombobox.DropDownCount := DROPDOWN_COUNT;
   CbBackgroundColor.DropDownCount := DROPDOWN_COUNT;
+
+  // Initialize Inspector
+  UpdateCellInfo(nil);
 end;
 
-procedure TForm1.InspectorPageControlChange(Sender: TObject);
-var
-  r,c: Cardinal;
-  cell: PCell;
+procedure TMainFrm.InspectorPageControlChange(Sender: TObject);
 begin
   CellInspector.Parent := InspectorPageControl.ActivePage;
-
-  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
-  c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
-  cell := WorksheetGrid.Worksheet.FindCell(r, c);
-  UpdateCellInfo(cell);
+  UpdateInspector;
 end;
 
-procedure TForm1.LoadFile(const AFileName: String);
+procedure TMainFrm.LoadFile(const AFileName: String);
 // Loads first worksheet from file into grid
 var
   pages: TStrings;
@@ -845,7 +842,15 @@ begin
   // Load file
   Screen.Cursor := crHourglass;
   try
-    WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
+    try
+      WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
+    except
+      on E: Exception do begin
+        AcNewExecute(nil);
+        MessageDlg(E.Message, mtError, [mbOk], 0);
+        exit;
+      end;
+    end;
 
     // Update user interface
     Caption := Format('spready - %s (%s)', [
@@ -858,6 +863,9 @@ begin
     EdFrozenRows.Value := WorksheetGrid.FrozenRows;
     SetupBackgroundColorBox;
 
+    WorksheetGrid.GetSheets(TabControl.Tabs);
+    TabControl.TabIndex := 0;
+                             {
     // Create a tab in the pagecontrol for each worksheet contained in the workbook
     // This would be easier with a TTabControl. This has display issues, though.
     pages := TStringList.Create;
@@ -871,7 +879,7 @@ begin
     finally
       pages.Free;
     end;
-
+                              }
     WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
 
   finally
@@ -883,13 +891,20 @@ begin
   end;
 end;
 
-procedure TForm1.PageControl1Change(Sender: TObject);
+procedure TMainFrm.PageControl1Change(Sender: TObject);
 begin
+  {
   WorksheetGrid.Parent := PageControl1.Pages[PageControl1.ActivePageIndex];
   WorksheetGrid.SelectSheetByIndex(PageControl1.ActivePageIndex);
+  }
 end;
 
-procedure TForm1.SetupBackgroundColorBox;
+procedure TMainFrm.TabControlChange(Sender: TObject);
+begin
+  WorksheetGrid.SelectSheetByIndex(TabControl.TabIndex);
+end;
+
+procedure TMainFrm.SetupBackgroundColorBox;
 begin
   // This change triggers re-reading of the workbooks palette by the OnGetColors
   // event of the ColorBox.
@@ -897,7 +912,7 @@ begin
   CbBackgroundColor.Style := CbBackgroundColor.Style + [cbCustomColors];
 end;
 
-procedure TForm1.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
+procedure TMainFrm.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
 var
   r, c: Cardinal;
   cell: PCell;
@@ -955,7 +970,7 @@ begin
 
 end;
 
-procedure TForm1.UpdateBackgroundColorIndex;
+procedure TMainFrm.UpdateBackgroundColorIndex;
 var
   sClr: TsColor;
 begin
@@ -966,7 +981,7 @@ begin
     CbBackgroundColor.ItemIndex := sClr;
 end;
 
-procedure TForm1.UpdateHorAlignmentActions;
+procedure TMainFrm.UpdateHorAlignmentActions;
 var
   i: Integer;
   ac: TAction;
@@ -980,7 +995,7 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateCellInfo(ACell: PCell);
+procedure TMainFrm.UpdateCellInfo(ACell: PCell);
 var
   i: Integer;
   s: String;
@@ -1089,7 +1104,7 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateFontNameIndex;
+procedure TMainFrm.UpdateFontNameIndex;
 var
   fname: String;
 begin
@@ -1100,7 +1115,7 @@ begin
     FontCombobox.ItemIndex := FontCombobox.Items.IndexOf(fname);
 end;
 
-procedure TForm1.UpdateFontSizeIndex;
+procedure TMainFrm.UpdateFontSizeIndex;
 var
   sz: Single;
 begin
@@ -1111,7 +1126,7 @@ begin
     FontSizeCombobox.ItemIndex := FontSizeCombobox.Items.IndexOf(IntToStr(Round(sz)));
 end;
 
-procedure TForm1.UpdateFontStyleActions;
+procedure TMainFrm.UpdateFontStyleActions;
 var
   style: TsFontStyles;
 begin
@@ -1122,7 +1137,18 @@ begin
   AcFontStrikeout.Checked := fssStrikeOut in style;
 end;
 
-procedure TForm1.UpdateNumFormatActions;
+procedure TMainFrm.UpdateInspector;
+var
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
+  c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
+  cell := WorksheetGrid.Worksheet.FindCell(r, c);
+  UpdateCellInfo(cell);
+end;
+
+procedure TMainFrm.UpdateNumFormatActions;
 var
   i: Integer;
   ac: TAction;
@@ -1157,7 +1183,7 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateTextRotationActions;
+procedure TMainFrm.UpdateTextRotationActions;
 var
   i: Integer;
   ac: TAction;
@@ -1171,7 +1197,7 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateVertAlignmentActions;
+procedure TMainFrm.UpdateVertAlignmentActions;
 var
   i: Integer;
   ac: TAction;
@@ -1185,7 +1211,7 @@ begin
   end;
 end;
 
-procedure TForm1.UpdateWordwraps;
+procedure TMainFrm.UpdateWordwraps;
 var
   wrapped: Boolean;
 begin

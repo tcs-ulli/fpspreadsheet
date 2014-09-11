@@ -1272,6 +1272,7 @@ resourcestring
   lpErrOverflow = '#NUM!';
   lpErrArgError = '#N/A';
   lpErrFormulaNotSupported = '<FORMULA?>';
+  lpFileNotFound = 'File "%s" not found.';
 
 {%H-}lpNoValidDateTimeFormatString = 'No valid date/time format string.';
 {%H-}lpIllegalNumberFormat = 'Illegal number format.';
@@ -2078,6 +2079,8 @@ var
   AVLNode: TAVLTreeNode;
 begin
   Result := nil;
+  if FCells.Count = 0 then
+    exit;
 
   LCell.Row := ARow;
   LCell.Col := ACol;
@@ -5482,6 +5485,9 @@ procedure TsWorkbook.ReadFromFile(AFileName: string;
 var
   AReader: TsCustomSpreadReader;
 begin
+  if not FileExists(AFileName) then
+    raise Exception.CreateFmt(lpFileNotFound, [AFileName]);
+
   AReader := CreateSpreadReader(AFormat);
   try
     FFileName := AFileName;
@@ -5507,6 +5513,9 @@ var
   valid: Boolean;
   lException: Exception = nil;
 begin
+  if not FileExists(AFileName) then
+    raise Exception.CreateFmt(lpFileNotFound, [AFileName]);
+
   valid := GetFormatFromFileName(AFileName, SheetType);
   if valid then
   begin
