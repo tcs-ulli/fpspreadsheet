@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
-  ColorBox, ValEdit, fpspreadsheetgrid, fpspreadsheet, fpsallformats;
+  ColorBox, ValEdit,
+  fpspreadsheetgrid, fpspreadsheet, fpsallformats;
 
 type
 
@@ -281,6 +282,7 @@ type
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
     procedure FontSizeComboBoxSelect(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure InspectorPageControlChange(Sender: TObject);
     procedure PageControl1Change(Sender: TObject);
@@ -314,7 +316,7 @@ var
 implementation
 
 uses
-  StrUtils, TypInfo,
+  StrUtils, TypInfo, LCLIntf, LCLType,
   fpcanvas, fpsutils, fpsnumformatparser;
 
 const
@@ -343,6 +345,19 @@ const
   LR_INNER_BORDER        = $0008;
   TB_INNER_BORDER        = $0800;
   // Use a combination of these bits for the "Tag" of the Border actions - see FormCreate.
+
+
+{ Utilities }
+
+{ Determines the "real" size of font. Default font usually reports font size 0...
+  http://comments.gmane.org/gmane.comp.ide.lazarus.general/70758 }
+function RealFontSize(AFont: TFont): Integer;
+var
+  logFont: TLogFont;
+begin
+  LCLIntf.GetObject(AFont.Reference.Handle, SizeOf(TLogFont), @logFont);
+  Result := abs(logFont.lfHeight);
+end;
 
 
 { TMainFrm }
@@ -549,6 +564,8 @@ begin
   try
     WorksheetGrid.Col := WorksheetGrid.FixedCols;
     WorksheetGrid.Row := WorksheetGrid.FixedRows;
+    SetupBackgroundColorBox;
+    WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
   finally
     WorksheetGrid.EndUpdate;
   end;
@@ -724,11 +741,9 @@ begin
 end;
 
 procedure TMainFrm.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
-type
-  TRGB = packed record R,G,B: byte end;
 var
   clr: TColor;
-  rgb: TRGB absolute clr;
+  clrName: String;
   i: Integer;
 begin
   if WorksheetGrid.Workbook <> nil then begin
@@ -736,8 +751,8 @@ begin
     Items.AddObject('no fill', TObject(PtrInt(clNone)));
     for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
       clr := WorksheetGrid.Workbook.GetPaletteColor(i);
-      Items.AddObject(Format('Color %d: %.2x%.2x%.2x', [i, rgb.R, rgb.G, rgb.B]),
-        TObject(PtrInt(clr)));
+      clrName := WorksheetGrid.Workbook.GetColorName(i);
+      Items.AddObject(Format('%d: %s', [i, clrName]), TObject(PtrInt(clr)));
     end;
   end;
 end;
@@ -794,6 +809,11 @@ begin
     with WorksheetGrid do CellFontSizes[Selection] := sz;
 end;
 
+procedure TMainFrm.FormActivate(Sender: TObject);
+begin
+  WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
+end;
+
 procedure TMainFrm.FormCreate(Sender: TObject);
 begin
   // Adjust format toolbar height, looks strange at 120 dpi
@@ -801,6 +821,7 @@ begin
   FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
   CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
+  //CbBackgroundColor.ColorRectWidth := RealFontSize(CbBackgroundColor.Font);
 
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);
@@ -826,8 +847,11 @@ begin
   FontSizeCombobox.DropDownCount := DROPDOWN_COUNT;
   CbBackgroundColor.DropDownCount := DROPDOWN_COUNT;
 
+  // Initialize a new empty workbook
+  AcNewExecute(nil);
+
   // Initialize Inspector
-  UpdateCellInfo(nil);
+  //UpdateCellInfo(nil);
 
   ActiveControl := WorksheetGrid;
 end;
@@ -916,6 +940,7 @@ begin
   // event of the ColorBox.
   CbBackgroundColor.Style := CbBackgroundColor.Style - [cbCustomColors];
   CbBackgroundColor.Style := CbBackgroundColor.Style + [cbCustomColors];
+  Application.ProcessMessages;
 end;
 
 procedure TMainFrm.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
@@ -982,7 +1007,7 @@ var
 begin
   with WorksheetGrid do sClr := BackgroundColors[Selection];
   if sClr = scNotDefined then
-    CbBackgroundColor.ItemIndex := 0 //-1
+    CbBackgroundColor.ItemIndex := 0 // no fill
   else
     CbBackgroundColor.ItemIndex := sClr + 1;
 end;

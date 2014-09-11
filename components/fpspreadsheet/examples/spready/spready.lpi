@@ -25,7 +25,6 @@
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="../.."/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
           <Parsing>
@@ -87,7 +86,6 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="&quot;C:\Users\Pamler\Prog_Lazarus\svn\lazarus-ccr\components\fpspreadsheet\examples\opendocdemo\test.ods&quot;"/>
       </local>
     </RunParams>
     <RequiredPackages Count="2">

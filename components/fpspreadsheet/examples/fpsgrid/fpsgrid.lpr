@@ -1,4 +1,4 @@
-program fpsvisual;
+program fpsgrid;
 
 {$mode objfpc}{$H+}
 

@@ -3152,9 +3152,9 @@ begin
       ColWidths[0] := Canvas.TextWidth(' 999999 ');
       RowHeights[0] := DefaultRowHeight;
     end;
-    UpdateColWidths;
-    UpdateRowHeights;
   end;
+  UpdateColWidths;
+  UpdateRowHeights;
   Invalidate;
 end;
 
@@ -3206,14 +3206,18 @@ procedure TsCustomWorksheetGrid.UpdateColWidths(AStartIndex: Integer = 0);
 var
   i: Integer;
   lCol: PCol;
+  w: Integer;
 begin
   if AStartIndex = 0 then AStartIndex := FHeaderCount;
   for i := AStartIndex to ColCount-1 do begin
-    lCol := FWorksheet.FindCol(i - FHeaderCount);
-    if lCol <> nil then
-      ColWidths[i] := CalcColWidth(lCol^.Width)
-    else
-      ColWidths[i] := DefaultColWidth;
+    w := DefaultColWidth;
+    if FWorksheet <> nil then
+    begin
+      lCol := FWorksheet.FindCol(i - FHeaderCount);
+      if lCol <> nil then
+        w := CalcColWidth(lCol^.Width)
+    end;
+    ColWidths[i] := w;
   end;
 end;
 
@@ -3221,14 +3225,18 @@ procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartIndex: Integer = 0);
 var
   i: Integer;
   lRow: PRow;
+  h: Integer;
 begin
   if AStartIndex <= 0 then AStartIndex := FHeaderCount;
   for i := AStartIndex to RowCount-1 do begin
-    lRow := FWorksheet.FindRow(i - FHeaderCount);
-    if (lRow = nil) then
-      RowHeights[i] := CalcAutoRowHeight(i)
-    else
-      RowHeights[i] := CalcRowHeight(lRow^.Height);
+    h := CalcAutoRowHeight(i);
+    if FWorksheet <> nil then
+    begin
+      lRow := FWorksheet.FindRow(i - FHeaderCount);
+      if (lRow <> nil) then
+        RowHeights[i] := CalcRowHeight(lRow^.Height);
+    end;
+    RowHeights[i] := h;
   end;
 end;
 

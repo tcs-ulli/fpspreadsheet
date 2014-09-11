@@ -27,7 +27,6 @@
     <RunParams>
       <local>
         <FormatVersion Value="1"/>
-        <CommandLineParams Value="D:\Prog_Lazarus\svn\lazarus-ccr\components\fpspreadsheet\examples\opendocumentdemo\test.ods"/>
       </local>
     </RunParams>
     <RequiredPackages Count="2">

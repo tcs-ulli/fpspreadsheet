@@ -930,7 +930,8 @@ type
     function FindClosestColor(AColorValue: TsColorValue;
       AMaxPaletteCount: Integer): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
-    function GetColorName(AColorIndex: TsColor): string;
+    function GetColorName(AColorIndex: TsColor): string; overload;
+    procedure GetColorName(AColorValue: TsColorValue; out AName: String); overload;
     function GetPaletteColor(AColorIndex: TsColor): TsColorValue;
     function GetPaletteColorAsHTMLStr(AColorIndex: TsColor): String;
     procedure SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
@@ -5355,6 +5356,7 @@ begin
   FormatSettings := DefaultFormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
   FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
+  UseDefaultPalette;
   FFontList := TFPList.Create;
   SetDefaultFont('Arial', 10.0);
   InitFonts;
@@ -6220,23 +6222,37 @@ end;
   @return  String identifying the color (a color name or, if unknown, a string showing the rgb components
 }
 function TsWorkbook.GetColorName(AColorIndex: TsColor): string;
+begin
+  GetColorName(GetPaletteColor(AColorIndex), Result);
+end;
+
+{@@
+  Returns the name of an rgb color value.
+  If the name is not known the hex string is returned as RRGGBB.
+
+  @param   AColorValue  rgb value of the color considered
+  @param   AName        String identifying the color (a color name or, if
+                        unknown, a string showing the rgb components
+}
+procedure TsWorkbook.GetColorName(AColorValue: TsColorValue; out AName: String);
+type
+  TRgba = packed record R,G,B,A: Byte; end;
 var
   i: Integer;
-  c: TsColorValue;
+  c: TsColorvalue;
 begin
-  // Get color rgb value
-  c := GetPaletteColor(AColorIndex);
-
   // Find color value in default palette
   for i:=0 to High(DEFAULT_PALETTE) do
-    if DEFAULT_PALETTE[i] = c then begin
-      // if found: get the color name from the default color names array
-      Result := DEFAULT_COLORNAMES[i];
+    // if found: get the color name from the default color names array
+    if DEFAULT_PALETTE[i] = AColorValue then
+    begin
+      AName := DEFAULT_COLORNAMES[i];
       exit;
     end;
 
   // if not found: construct a string from rgb byte values.
-  Result := FPSColorToHexString(AColorIndex, colBlack);
+  with TRgba(AColorValue) do
+    AName := Format('%.2x%.2x%.2x', [R, G, B]);
 end;
 
 {@@
