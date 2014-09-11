@@ -664,7 +664,10 @@ end;
 
 procedure TMainFrm.CbBackgroundColorSelect(Sender: TObject);
 begin
-  with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex;
+  if CbBackgroundColor.ItemIndex <= 0 then
+    with WorksheetGrid do BackgroundColors[Selection] := scNotDefined
+  else
+    with WorksheetGrid do BackgroundColors[Selection] := CbBackgroundColor.ItemIndex - 1;
 end;
 
 procedure TMainFrm.CbHeaderStyleChange(Sender: TObject);
@@ -730,6 +733,7 @@ var
 begin
   if WorksheetGrid.Workbook <> nil then begin
     Items.Clear;
+    Items.AddObject('no fill', TObject(PtrInt(clNone)));
     for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
       clr := WorksheetGrid.Workbook.GetPaletteColor(i);
       Items.AddObject(Format('Color %d: %.2x%.2x%.2x', [i, rgb.R, rgb.G, rgb.B]),
@@ -978,9 +982,9 @@ var
 begin
   with WorksheetGrid do sClr := BackgroundColors[Selection];
   if sClr = scNotDefined then
-    CbBackgroundColor.ItemIndex := -1
+    CbBackgroundColor.ItemIndex := 0 //-1
   else
-    CbBackgroundColor.ItemIndex := sClr;
+    CbBackgroundColor.ItemIndex := sClr + 1;
 end;
 
 procedure TMainFrm.UpdateHorAlignmentActions;

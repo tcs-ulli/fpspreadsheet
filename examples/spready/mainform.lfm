@@ -300,6 +300,7 @@ object MainFrm: TMainFrm
       Height = 26
       Top = 2
       Width = 149
+      NoneColorColor = clDefault
       Style = [cbPrettyNames, cbCustomColors]
       OnGetColors = CbBackgroundColorGetColors
       ItemHeight = 20
