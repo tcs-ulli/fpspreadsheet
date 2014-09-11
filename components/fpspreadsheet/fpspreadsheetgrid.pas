@@ -1328,7 +1328,6 @@ var
         Include(gds, gdPushed);
       end;
     end;
-
     Canvas.SaveHandleState;
     try
       Rgn := CreateRectRgn(rct.Left, rct.Top, rct.Right, rct.Bottom);
@@ -1342,6 +1341,7 @@ var
 
 begin
   // Upper and Lower bounds for this row
+  rct := BoundsRect;
   ColRowToOffSet(False, True, ARow, rct.Top, rct.Bottom);
   saved_rct := rct;
 
@@ -1385,11 +1385,12 @@ begin
       ColRowToOffset(true, true, c, rct.Left, tmp);
       ColRowToOffset(true, true, cNext-1, tmp, rct.Right);
 
-      if (rct.Left >= rct.Right) or not HorizontalIntersect(rct, clipArea) then
-        continue;
-      Rs := (goRowSelect in Options);
-      gds := GetGridDrawState(c, r);
-      DoDrawCell(c, r);
+      if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
+      begin
+        Rs := (goRowSelect in Options);
+        gds := GetGridDrawState(c, r);
+        DoDrawCell(c, r);
+      end;
 
       c := cNext;
     end;
@@ -1475,16 +1476,19 @@ var
 begin
   if (FWorksheet = nil) then
     exit;
-
-  lCell := FDrawingCell;
-  {
+                         {
+  if (ACol < FHeaderCount) or (ARow < FHeaderCount) then
+    lCell := nil
+  else
+    lCell := FDrawingCell;
+    }
   c := ACol - FHeaderCount;
   r := ARow - FHeaderCount;
   if (r >= 0) and (c >= 0) then
     lCell := FWorksheet.FindCell(r, c)
   else
     lCell := nil;
-   }
+
   // Header
   if lCell = nil then begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then begin
@@ -3328,8 +3332,7 @@ procedure TsCustomWorksheetGrid.NewWorkbook(AColCount, ARowCount: Integer);
 begin
   BeginUpdate;
   try
-    FreeAndNil(FWorkbook);
-    FWorkbook := TsWorkbook.Create;
+    CreateNewWorkbook;
     FWorksheet := FWorkbook.AddWorksheet('Sheet1');
     FWorksheet.OnChangeCell := @ChangedCellHandler;
     FWorksheet.OnChangeFont := @ChangedFontHandler;

@@ -1,4 +1,4 @@
-object Form1: TForm1
+object MainFrm: TMainFrm
   Left = 409
   Height = 639
   Top = 258
@@ -7,7 +7,6 @@ object Form1: TForm1
   ClientHeight = 614
   ClientWidth = 884
   Menu = MainMenu
-  OnActivate = FormActivate
   OnCreate = FormCreate
   ShowHint = True
   LCLVersion = '1.3'
@@ -20,7 +19,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     ClientHeight = 78
     ClientWidth = 884
-    TabOrder = 0
+    TabOrder = 6
     object CbShowHeaders: TCheckBox
       Left = 8
       Height = 24
@@ -113,69 +112,6 @@ object Form1: TForm1
       TabOrder = 3
     end
   end
-  object PageControl1: TPageControl
-    Left = 0
-    Height = 457
-    Top = 79
-    Width = 648
-    ActivePage = TabSheet1
-    Align = alClient
-    TabIndex = 0
-    TabOrder = 1
-    OnChange = PageControl1Change
-    object TabSheet1: TTabSheet
-      Caption = 'Sheet1'
-      ClientHeight = 424
-      ClientWidth = 640
-      object WorksheetGrid: TsWorksheetGrid
-        Left = 0
-        Height = 424
-        Top = 0
-        Width = 640
-        FrozenCols = 0
-        FrozenRows = 0
-        ReadFormulas = False
-        Align = alClient
-        ColCount = 27
-        ExtendedSelect = False
-        MouseWheelOption = mwGrid
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll, goFixedColSizing]
-        RowCount = 101
-        TabOrder = 0
-        TitleStyle = tsNative
-        OnSelection = WorksheetGridSelection
-        ColWidths = (
-          56
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-          64
-        )
-      end
-    end
-  end
   object ToolBar1: TToolBar
     Left = 0
     Height = 26
@@ -185,7 +121,7 @@ object Form1: TForm1
     Caption = 'ToolBar1'
     EdgeBorders = []
     Images = ImageList
-    TabOrder = 2
+    TabOrder = 0
     object ToolButton1: TToolButton
       Left = 24
       Top = 0
@@ -244,7 +180,7 @@ object Form1: TForm1
     ButtonHeight = 23
     Caption = 'FormatToolBar'
     Images = ImageList
-    TabOrder = 3
+    TabOrder = 1
     object ToolButton10: TToolButton
       Left = 324
       Top = 2
@@ -414,7 +350,7 @@ object Form1: TForm1
     Top = 53
     Width = 884
     Caption = 'FormulaToolBar'
-    TabOrder = 4
+    TabOrder = 2
     object EdFormula: TEdit
       Left = 129
       Height = 24
@@ -422,7 +358,7 @@ object Form1: TForm1
       Width = 755
       Align = alClient
       OnEditingDone = EdFormulaEditingDone
-      TabOrder = 0
+      TabOrder = 1
     end
     object EdCellAddress: TEdit
       Left = 1
@@ -432,7 +368,7 @@ object Form1: TForm1
       Align = alLeft
       Alignment = taCenter
       OnEditingDone = EdCellAddressEditingDone
-      TabOrder = 1
+      TabOrder = 0
     end
     object FormulaToolbarSplitter: TSplitter
       Left = 124
@@ -454,10 +390,10 @@ object Form1: TForm1
     Height = 457
     Top = 79
     Width = 231
-    ActivePage = PgProperties
+    ActivePage = PgCellValue
     Align = alRight
-    TabIndex = 1
-    TabOrder = 6
+    TabIndex = 0
+    TabOrder = 5
     OnChange = InspectorPageControlChange
     object PgCellValue: TTabSheet
       Caption = 'Cell value'
@@ -502,6 +438,63 @@ object Form1: TForm1
     end
     object PgProperties: TTabSheet
       Caption = 'Properties'
+    end
+  end
+  object TabControl: TTabControl
+    Left = 0
+    Height = 457
+    Top = 79
+    Width = 648
+    OnChange = TabControlChange
+    Align = alClient
+    TabOrder = 3
+    object WorksheetGrid: TsWorksheetGrid
+      Left = 2
+      Height = 452
+      Top = 3
+      Width = 644
+      FrozenCols = 0
+      FrozenRows = 0
+      ReadFormulas = False
+      Align = alClient
+      BorderStyle = bsNone
+      ColCount = 27
+      ExtendedSelect = False
+      MouseWheelOption = mwGrid
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll, goFixedColSizing]
+      RowCount = 101
+      TabOrder = 1
+      TitleStyle = tsNative
+      OnSelection = WorksheetGridSelection
+      ColWidths = (
+        56
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+      )
     end
   end
   object OpenDialog: TOpenDialog
