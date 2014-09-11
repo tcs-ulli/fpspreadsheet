@@ -2167,6 +2167,7 @@ begin
   TRGBA(Result).a := 0;
 end;
 
+
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }
 procedure Unused(const A1);

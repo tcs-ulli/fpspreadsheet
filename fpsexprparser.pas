@@ -833,9 +833,6 @@ const
   AllBuiltIns = [bcMath, bcStatistics, bcStrings, bcLogical, bcDateTime, bcLookup,
     bcInfo, bcUser];
 
-var
-  ExprFormatSettings: TFormatSettings;     // MUST BE REMOVED
-
 
 implementation
 
@@ -1227,6 +1224,7 @@ end;
   decimal and list separator from the formatsettings provided. }
 function TsExpressionParser.BuildStringFormula(AFormatSettings: TFormatSettings): String;
 begin
+  ExprFormatSettings := AFormatSettings;
   if FExprNode = nil then
     Result := ''
   else
@@ -1773,6 +1771,7 @@ end;
 
 function TsExpressionParser.GetLocalizedExpression(const AFormatSettings: TFormatSettings): String;
 begin
+  ExprFormatSettings := AFormatSettings;
   Result := BuildStringFormula(AFormatSettings);
 end;
 
@@ -1792,6 +1791,7 @@ begin
   if FExpression = AValue then
     exit;
   FFormatSettings := AFormatSettings;
+  ExprFormatSettings := AFormatSettings;
   FExpression := AValue;
   if (AValue <> '') and (AValue[1] = '=') then
     FScanner.Source := Copy(AValue, 2, Length(AValue))

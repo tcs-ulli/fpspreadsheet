@@ -11,7 +11,11 @@ interface
 uses
   Classes, SysUtils, fpspreadsheet, fpsExprParser;
 
+var
+  ExprFormatSettings: TFormatSettings;
+
 procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
+
 
 implementation
 
