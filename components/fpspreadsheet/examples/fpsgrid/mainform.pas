@@ -103,8 +103,13 @@ end;
 
 procedure TForm1.BtnOpenClick(Sender: TObject);
 begin
-  if OpenDialog.Execute then
+  if OpenDialog.FileName <> '' then begin
+    OpenDialog.InitialDir := ExtractFileDir(OpenDialog.FileName);
+    OpenDialog.FileName := ChangeFileExt(ExtractFileName(OpenDialog.FileName), '');
+  end;
+  if OpenDialog.Execute then begin
     LoadFile(OpenDialog.FileName);
+  end;
 end;
 
 // Saves sheet in grid to file, overwriting existing file
@@ -114,6 +119,11 @@ var
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
+
+  if WorksheetGrid.Workbook.Filename <>'' then begin
+    SaveDialog.InitialDir := ExtractFileDir(WorksheetGrid.Workbook.FileName);
+    SaveDialog.FileName := ChangeFileExt(ExtractFileName(WorksheetGrid.Workbook.FileName), '');
+  end;
 
   if SaveDialog.Execute then
   begin
@@ -143,17 +153,28 @@ begin
   // Load file
   Screen.Cursor := crHourglass;
   try
-    WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
+    try
+      WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
 
-    // Update user interface
-    Caption := Format('fpsGrid - %s (%s)', [
-      AFilename,
-      GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
-    ]);
+      // Update user interface
+      Caption := Format('fpsGrid - %s (%s)', [
+        AFilename,
+        GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
+      ]);
 
-    // Collect the sheet names in the combobox for switching sheets.
-    WorksheetGrid.GetSheets(SheetsCombo.Items);
-    SheetsCombo.ItemIndex := 0;
+      // Collect the sheet names in the combobox for switching sheets.
+      WorksheetGrid.GetSheets(SheetsCombo.Items);
+      SheetsCombo.ItemIndex := 0;
+    except
+      on E:Exception do begin
+        // Empty worksheet instead of the loaded one
+        WorksheetGrid.NewWorkbook(26, 100);
+        Caption := 'fpsGrid - no name';
+        SheetsCombo.Items.Clear;
+        // Grab the error message
+        WorksheetGrid.Workbook.AddErrorMsg(E.Message);
+      end;
+    end;
 
   finally
     Screen.Cursor := crDefault;
