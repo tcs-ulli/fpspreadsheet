@@ -4714,6 +4714,9 @@ begin
         if b and $10 = 0
           then FDetails.Add('Bit $10 = 0: Don''t shrink content to fit into cell')
           else FDetails.Add('Bit $10 = 1: Shrink content to fit into cell');
+        if b and $20 = 0
+          then FDetails.Add('Bit $20 = 0: Merge Cell option is OFF')
+          else FDetails.Add('Bit $20 = 1: Merge Cell option is ON');
         case (b and $C0) shr 6 of
           0: FDetails.Add('Bits 6-7 = 0: Text direction according to context');
           1: FDetails.Add('Bits 6-7 = 1: Text direction left-to-right');

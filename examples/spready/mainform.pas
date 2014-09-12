@@ -322,10 +322,10 @@ uses
 const
   DROPDOWN_COUNT = 24;
 
-  HORALIGN_TAG = 100;
-  VERTALIGN_TAG = 110;
-  TEXTROT_TAG = 130;
-  NUMFMT_TAG = 1000;  // differnce 10 per format item
+  HORALIGN_TAG   = 100;
+  VERTALIGN_TAG  = 110;
+  TEXTROT_TAG    = 130;
+  NUMFMT_TAG     = 1000;  // difference 10 per format item
 
   LEFT_BORDER_THIN       = $0001;
   LEFT_BORDER_THICK      = $0002;
@@ -345,19 +345,6 @@ const
   LR_INNER_BORDER        = $0008;
   TB_INNER_BORDER        = $0800;
   // Use a combination of these bits for the "Tag" of the Border actions - see FormCreate.
-
-
-{ Utilities }
-
-{ Determines the "real" size of font. Default font usually reports font size 0...
-  http://comments.gmane.org/gmane.comp.ide.lazarus.general/70758 }
-function RealFontSize(AFont: TFont): Integer;
-var
-  logFont: TLogFont;
-begin
-  LCLIntf.GetObject(AFont.Reference.Handle, SizeOf(TLogFont), @logFont);
-  Result := abs(logFont.lfHeight);
-end;
 
 
 { TMainFrm }
@@ -821,7 +808,7 @@ begin
   FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
   CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
-  //CbBackgroundColor.ColorRectWidth := RealFontSize(CbBackgroundColor.Font);
+  CbBackgroundColor.ColorRectWidth := round(screen.PixelsPerInch/120*CbBackgroundColor.ColorRectWidth);
 
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);

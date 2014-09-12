@@ -3327,9 +3327,7 @@ procedure TsCustomWorksheetGrid.UnmergeCells;
 begin
   FWorksheet.UnmergeCells(
     GetWorksheetRow(Selection.Top),
-    GetWorksheetCol(Selection.Left),
-    GetWorksheetRow(Selection.Bottom),
-    GetWorksheetCol(Selection.Right)
+    GetWorksheetCol(Selection.Left)
   );
 end;
 
