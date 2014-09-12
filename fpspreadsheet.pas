@@ -577,7 +577,7 @@ type
     { Merged cells }
     procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
     procedure MergeCells(ARange: String); overload;
-    procedure UnmergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
+    procedure UnmergeCells(ARow, ACol: Cardinal); overload;
     procedure UnmergeCells(ARange: String); overload;
     function FindMergeBase(ACell: PCell): PCell;
     function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
@@ -2987,9 +2987,9 @@ end;
 {@@
   Merges adjacent individual cells to a larger single cell
 
-  @param  ARange  Cell range string given in Excel notation (e.g: A1:D5)
+  @param  ARange  Cell range string given in Excel notation (e.g: A1:D5).
+                  A non-range string (e.g. A1) is not allowed.
 }
-
 procedure TsWorksheet.MergeCells(ARange: String);
 var
   r1, r2, c1, c2: Cardinal;
@@ -3001,38 +3001,47 @@ end;
 {@@
   Disconnects merged cells to make them individual cells again.
 
-  @param  ARow1   Row index of the upper left corner of the merged cell range
-  @param  ACol1   Column index of the upper left corner of the mergec cell range
-  @param  ARow2   Row index of the lower right corner of the merged cell range
-  @param  ACol2   Column index of the lower right corner of the merged cell range
+  Input parameter is a cell which belongs to the range to be unmerged.
+
+  @param  ARow   Row index of a cell considered to belong to the cell block
+  @param  ACol   Column index of a cell considered to belong to the cell block
 }
-procedure TsWorksheet.UnmergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
+procedure TsWorksheet.UnmergeCells(ARow, ACol: Cardinal);
 var
   cell: PCell;
   r, c: Cardinal;
+  r1, c1, r2, c2: Cardinal;
 begin
-  for r := ARow1 to ARow2 do
-    for c := ACol1 to ACol2 do
+  cell := FindCell(ARow, ACol);
+  if not FindMergedRange(cell, r1, c1, r2, c2) then
+    exit;
+  for r := r1 to r2 do
+    for c := c1 to c2 do
     begin
       cell := FindCell(r, c);
       if cell <> nil then
         cell^.MergedNeighbors := [];
     end;
-  ChangedCell(ARow1, ACol1);
+  ChangedCell(ARow, ACol);
 end;
 
 {@@
   Disconnects merged cells to make them individual cells again.
 
-  @param  ARange  Cell range string given in Excel notation (e.g: A1:D5)
+  @param  ARange  Cell (range) string given in Excel notation (e.g: A1, or A1:D5)
+                  In case of a range string, only the upper left corner cell is
+                  considered. It must belong to the merged range of cells to be
+                  unmerged.
 }
-
 procedure TsWorksheet.UnmergeCells(ARange: String);
 var
   r1, r2, c1, c2: Cardinal;
 begin
+  if (pos(':', ARange) = 0) and ParseCellString(ARange, r1, c1) then
+    UnmergeCells(r1, c1)
+  else
   if ParseCellRangeString(ARange, r1, c1, r2, c2) then
-    UnmergeCells(r1, c1, r2, c2);
+    UnmergeCells(r1, c1);
 end;
 
 {@@
@@ -5755,7 +5764,7 @@ end;
   @param  AName    The name of the worksheet
 
   @return A TsWorksheet instance if one is found with that name,
-          nil otherwise.
+          nil otherwise. Case is ignored.
 
   @see    TsWorkbook.GetFirstWorksheet
   @see    TsWorkbook.GetWorksheetByIndex
@@ -5768,7 +5777,7 @@ begin
   Result := nil;
   for i:=0 to FWorksheets.Count-1 do
   begin
-    if TsWorkSheet(FWorkSheets.Items[i]).Name=AName then
+    if UTF8CompareText(TsWorkSheet(FWorkSheets.Items[i]).Name, AName) = 0 then
     begin
       Result := TsWorksheet(FWorksheets.Items[i]);
       exit;

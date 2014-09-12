@@ -101,15 +101,17 @@ type
     SheetName: String;
   end;
 const
-  TestCases: array[0..7] of TSheetNameCheck = (
+  TestCases: array[0..9] of TSheetNameCheck = (
     (Valid: true;  SheetName:'Sheet'),
-    (Valid: true;  SheetName:'äöü'),
+    (Valid: true;  SheetName:'äöü'),    // UFt8-characters are ok
     (Valid: false; SheetName:'Test'),   // duplicate
+    (Valid: false; SheetName:'TEST'),   // duplicate since case is ignored
     (Valid: false; SheetName:''),       // empty string
     (Valid: false; SheetName:'Very very very very very very very very long'),  // too long
-    (Valid: false; SheetName:'[sheet]'), // fobidden chars in following cases
+    (Valid: false; SheetName:'[sheet]'), // forbidden characters in following cases
     (Valid: false; SheetName:'/sheet/'),
-    (Valid: false; SheetName:'\sheet\')
+    (Valid: false; SheetName:'\sheet\'),
+    (Valid: false; SheetName:'***sheet***')
   );
 var
   i: Integer;
