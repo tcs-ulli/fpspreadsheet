@@ -73,7 +73,6 @@ type
     AcAddColumn: TAction;
     AcAddRow: TAction;
     AcMergeCells: TAction;
-    AcUnmergeCells: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -158,7 +157,6 @@ type
     MenuItem66: TMenuItem;
     MenuItem67: TMenuItem;
     MenuItem68: TMenuItem;
-    MenuItem69: TMenuItem;
     mnuInspector: TMenuItem;
     mnuView: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
@@ -220,6 +218,7 @@ type
     ToolButton23: TToolButton;
     ToolButton27: TToolButton;
     CellInspector: TValueListEditor;
+    ToolButton28: TToolButton;
     WorksheetGrid: TsWorksheetGrid;
     ToolBar1: TToolBar;
     FormatToolBar: TToolBar;
@@ -540,7 +539,11 @@ end;
 
 procedure TMainFrm.AcMergeCellsExecute(Sender: TObject);
 begin
-  WorksheetGrid.MergeCells;
+  AcMergeCells.Checked := not AcMergeCells.Checked;
+  if AcMergeCells.Checked then
+    WorksheetGrid.MergeCells
+  else
+    WorksheetGrid.UnmergeCells;
 end;
 
 procedure TMainFrm.AcNewExecute(Sender: TObject);
@@ -808,7 +811,7 @@ begin
   FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
   CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
-  CbBackgroundColor.ColorRectWidth := round(screen.PixelsPerInch/120*CbBackgroundColor.ColorRectWidth);
+  CbBackgroundColor.ColorRectWidth := CbBackgroundColor.ItemHeight - 6; // to get a square box...
 
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);
@@ -972,6 +975,7 @@ begin
     EdFormula.Text := '';
 
   EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
+  AcMergeCells.Checked := (cell <> nil) and (cell^.MergedNeighbors <> []);
 
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;
