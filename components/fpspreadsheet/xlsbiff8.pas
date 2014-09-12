@@ -1009,7 +1009,7 @@ begin
 
     { BIFF record header }
     AStream.WriteWord(WordToLE(INT_EXCEL_ID_MERGEDCELLS));
-    AStream.WriteWord(WordToLE(4 + 2 + n*8));
+    AStream.WriteWord(WordToLE(2 + n*8));
 
     // Count of cell ranges in this record
     AStream.WriteWord(WordToLE(n));
