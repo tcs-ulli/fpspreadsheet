@@ -51,23 +51,25 @@ type
     procedure TearDown; override;
 
     // Test alignments
-    procedure TestWriteReadAlignment(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_Alignment(AFormat: TsSpreadsheetFormat);
     // Test border
-    procedure TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_Border(AFormat: TsSpreadsheetFormat);
     // Test border styles
-    procedure TestWriteReadBorderStyles(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_BorderStyles(AFormat: TsSpreadsheetFormat);
     // Test column widths
-    procedure TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_ColWidths(AFormat: TsSpreadsheetFormat);
     // Test row heights
-    procedure TestWriteReadRowHeights(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_RowHeights(AFormat: TsSpreadsheetFormat);
     // Test text rotation
-    procedure TestWriteReadTextRotation(AFormat:TsSpreadsheetFormat);
+    procedure TestWriteRead_TextRotation(AFormat:TsSpreadsheetFormat);
     // Test word wrapping
-    procedure TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_WordWrap(AFormat: TsSpreadsheetFormat);
     // Test number formats
-    procedure TestWriteReadNumberFormats(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat);
     // Repeat with date/times
-    procedure TestWriteReadDateTimeFormats(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_DateTimeFormats(AFormat: TsSpreadsheetFormat);
+    // Test merged cells
+    procedure TestWriteRead_MergedCells(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out numbers & reads back.
@@ -79,6 +81,7 @@ type
     procedure TestWriteRead_BIFF2_ColWidths;
     procedure TestWriteRead_BIFF2_RowHeights;
     procedure TestWriteRead_BIFF2_DateTimeFormats;
+    procedure TestWriteRead_BIFF2_MergedCells;
     procedure TestWriteRead_BIFF2_NumberFormats;
     // These features are not supported by Excel2 --> no test cases required!
     // - BorderStyle
@@ -92,6 +95,7 @@ type
     procedure TestWriteRead_BIFF5_ColWidths;
     procedure TestWriteRead_BIFF5_RowHeights;
     procedure TestWriteRead_BIFF5_DateTimeFormats;
+    procedure TestWriteRead_BIFF5_MergedCells;
     procedure TestWriteRead_BIFF5_NumberFormats;
     procedure TestWriteRead_BIFF5_TextRotation;
     procedure TestWriteRead_BIFF5_WordWrap;
@@ -103,6 +107,7 @@ type
     procedure TestWriteRead_BIFF8_ColWidths;
     procedure TestWriteRead_BIFF8_RowHeights;
     procedure TestWriteRead_BIFF8_DateTimeFormats;
+    procedure TestWriteRead_BIFF8_MergedCells;
     procedure TestWriteRead_BIFF8_NumberFormats;
     procedure TestWriteRead_BIFF8_TextRotation;
     procedure TestWriteRead_BIFF8_WordWrap;
@@ -114,6 +119,7 @@ type
     procedure TestWriteRead_ODS_ColWidths;
     procedure TestWriteRead_ODS_RowHeights;
     procedure TestWriteRead_ODS_DateTimeFormats;
+    procedure TestWriteRead_ODS_MergedCells;
     procedure TestWriteRead_ODS_NumberFormats;
     procedure TestWriteRead_ODS_TextRotation;
     procedure TestWriteRead_ODS_WordWrap;
@@ -125,6 +131,7 @@ type
     procedure TestWriteRead_OOXML_ColWidths;
     procedure TestWriteRead_OOXML_RowHeights;
     procedure TestWriteRead_OOXML_DateTimeFormats;
+    procedure TestWriteRead_OOXML_MergedCells;
     procedure TestWriteRead_OOXML_NumberFormats;
     procedure TestWriteRead_OOXML_TextRotation;
     procedure TestWriteRead_OOXML_WordWrap;
@@ -290,7 +297,7 @@ end;
 
 { --- Number format tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadNumberFormats(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -345,33 +352,33 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_NumberFormats;
 begin
-  TestWriteReadNumberFormats(sfExcel2);
+  TestWriteRead_NumberFormats(sfExcel2);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_NumberFormats;
 begin
-  TestWriteReadNumberFormats(sfExcel5);
+  TestWriteRead_NumberFormats(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_NumberFormats;
 begin
-  TestWriteReadNumberFormats(sfExcel8);
+  TestWriteRead_NumberFormats(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_NumberFormats;
 begin
-  TestWriteReadNumberFormats(sfOpenDocument);
+  TestWriteRead_NumberFormats(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_NumberFormats;
 begin
-  TestWriteReadNumberFormats(sfOOXML);
+  TestWriteRead_NumberFormats(sfOOXML);
 end;
 
 
 { --- Date/time formats --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadDateTimeFormats(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_DateTimeFormats(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -432,32 +439,32 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_DateTimeFormats;
 begin
-  TestWriteReadDateTimeFormats(sfExcel2);
+  TestWriteRead_DateTimeFormats(sfExcel2);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_DateTimeFormats;
 begin
-  TestWriteReadDateTimeFormats(sfExcel5);
+  TestWriteRead_DateTimeFormats(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_DateTimeFormats;
 begin
-  TestWriteReadDateTimeFormats(sfExcel8);
+  TestWriteRead_DateTimeFormats(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_DateTimeFormats;
 begin
-  TestWriteReadDateTimeFormats(sfOpenDocument);
+  TestWriteRead_DateTimeFormats(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_DateTimeFormats;
 begin
-  TestWriteReadDateTimeFormats(sfOOXML);
+  TestWriteRead_DateTimeFormats(sfOOXML);
 end;
 
 { --- Alignment tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadAlignment(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_Alignment(AFormat: TsSpreadsheetFormat);
 const
   HORALIGN_TEXT: Array[TsHorAlignment] of String = ('haDefault', 'haLeft', 'haCenter', 'haRight');
   VERTALIGN_TEXT: Array[TsVertAlignment] of String = ('vaDefault', 'vaTop', 'vaCenter', 'vaBottom');
@@ -582,33 +589,33 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_Alignment;
 begin
-  TestWriteReadAlignment(sfExcel2);
+  TestWriteRead_Alignment(sfExcel2);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Alignment;
 begin
-  TestWriteReadAlignment(sfExcel5);
+  TestWriteRead_Alignment(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Alignment;
 begin
-  TestWriteReadAlignment(sfExcel8);
+  TestWriteRead_Alignment(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Alignment;
 begin
-  TestWriteReadAlignment(sfOpenDocument);
+  TestWriteRead_Alignment(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Alignment;
 begin
-  TestWriteReadAlignment(sfOOXML);
+  TestWriteRead_Alignment(sfOOXML);
 end;
 
 
 { --- Border on/off tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBorder(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_Border(AFormat: TsSpreadsheetFormat);
 const
   row = 0;
 var
@@ -686,33 +693,33 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_Border;
 begin
-  TestWriteReadBorder(sfExcel2);
+  TestWriteRead_Border(sfExcel2);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Border;
 begin
-  TestWriteReadBorder(sfExcel5);
+  TestWriteRead_Border(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Border;
 begin
-  TestWriteReadBorder(sfExcel8);
+  TestWriteRead_Border(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Border;
 begin
-  TestWriteReadBorder(sfOpenDocument);
+  TestWriteRead_Border(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Border;
 begin
-  TestWriteReadBorder(sfOOXML);
+  TestWriteRead_Border(sfOOXML);
 end;
 
 
 { --- BorderStyle tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadBorderStyles(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BorderStyles(AFormat: TsSpreadsheetFormat);
 { This test paints 10x10 cells with all borders, each separated by an empty
   column and an empty row. The border style varies from border to border
   according to the line styles defined in SollBorderStyles. At first, all border
@@ -837,28 +844,28 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_BorderStyles;
 begin
-  TestWriteReadBorderStyles(sfExcel5);
+  TestWriteRead_BorderStyles(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_BorderStyles;
 begin
-  TestWriteReadBorderStyles(sfExcel8);
+  TestWriteRead_BorderStyles(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_BorderStyles;
 begin
-  TestWriteReadBorderStyles(sfOpenDocument);
+  TestWriteRead_BorderStyles(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_BorderStyles;
 begin
-  TestWriteReadBorderStyles(sfOOXML);
+  TestWriteRead_BorderStyles(sfOOXML);
 end;
 
 
 { --- Column widths tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadColWidths(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ColWidths(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -916,33 +923,33 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_ColWidths;
 begin
-  TestWriteReadColWidths(sfExcel2);
+  TestWriteRead_ColWidths(sfExcel2);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_ColWidths;
 begin
-  TestWriteReadColWidths(sfExcel5);
+  TestWriteRead_ColWidths(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_ColWidths;
 begin
-  TestWriteReadColWidths(sfExcel8);
+  TestWriteRead_ColWidths(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_ColWidths;
 begin
-  TestWriteReadColWidths(sfOpenDocument);
+  TestWriteRead_ColWidths(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_ColWidths;
 begin
-  TestWriteReadColWidths(sfOOXML);
+  TestWriteRead_ColWidths(sfOOXML);
 end;
 
 
 { --- Row height tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadRowHeights(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_RowHeights(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -993,33 +1000,33 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_RowHeights;
 begin
-  TestWriteReadRowHeights(sfExcel2);
+  TestWriteRead_RowHeights(sfExcel2);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_RowHeights;
 begin
-  TestWriteReadRowHeights(sfExcel5);
+  TestWriteRead_RowHeights(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_RowHeights;
 begin
-  TestWriteReadRowHeights(sfExcel8);
+  TestWriteRead_RowHeights(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_RowHeights;
 begin
-  TestWriteReadRowHeights(sfOpenDocument);
+  TestWriteRead_RowHeights(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_RowHeights;
 begin
-  TestWriteReadRowHeights(sfOOXML);
+  TestWriteRead_RowHeights(sfOOXML);
 end;
 
 
 { --- Text rotation tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadTextRotation(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_TextRotation(AFormat: TsSpreadsheetFormat);
 const
   col = 0;
 var
@@ -1083,28 +1090,28 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_TextRotation;
 begin
-  TestWriteReadTextRotation(sfExcel5);
+  TestWriteRead_TextRotation(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_TextRotation;
 begin
-  TestWriteReadTextRotation(sfExcel8);
+  TestWriteRead_TextRotation(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_TextRotation;
 begin
-  TestWriteReadTextRotation(sfOpenDocument);
+  TestWriteRead_TextRotation(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_TextRotation;
 begin
-  TestWriteReadTextRotation(sfOOXML);
+  TestWriteRead_TextRotation(sfOOXML);
 end;
 
 
 { --- Wordwrap tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteReadWordWrap(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_WordWrap(AFormat: TsSpreadsheetFormat);
 const
   LONGTEXT = 'This is a very, very, very, very long text.';
 var
@@ -1168,23 +1175,178 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Wordwrap;
 begin
-  TestWriteReadWordwrap(sfExcel5);
+  TestWriteRead_Wordwrap(sfExcel5);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Wordwrap;
 begin
-  TestWriteReadWordwrap(sfExcel8);
+  TestWriteRead_Wordwrap(sfExcel8);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_Wordwrap;
 begin
-  TestWriteReadWordwrap(sfOpenDocument);
+  TestWriteRead_Wordwrap(sfOpenDocument);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Wordwrap;
 begin
-  TestWriteReadWordwrap(sfOOXML);
+  TestWriteRead_Wordwrap(sfOOXML);
 end;
+
+
+{ --- Merged tests --- }
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_MergedCells(AFormat: TsSpreadsheetFormat);
+const
+  TEST_RANGES: Array[0..3] of string = ('A1:B1', 'E1:G5', 'H1:H5', 'L2:M4');
+  SHEETNAME1 = 'Sheet1';
+  SHEETNAME2 = 'Sheet2';
+  SHEETNAME3 = 'Sheet3';
+  CELL_TEXT = 'Lazarus';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  cell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+  r1, c1, r2, c2: Cardinal;
+  r, c: Cardinal;
+  actual, expected: String;
+  i: Integer;
+begin
+  MyWorkbook := TsWorkbook.Create;
+  try
+    // 1st sheet: merged ranges with text
+    MyWorksheet:= MyWorkBook.AddWorksheet(SHEETNAME1);
+    for i:=0 to High(TEST_RANGES) do
+    begin
+      ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
+      Myworksheet.WriteUTF8Text(r1, c1, CELL_TEXT);
+      Myworksheet.MergeCells(r1, c1, r2, c2);
+    end;
+
+    // 2nd sheet: merged ranges, empty
+    Myworksheet := MyWorkbook.AddWorksheet(SHEETNAME2);
+    for i:=0 to High(TEST_RANGES) do
+    begin
+      ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
+      Myworksheet.MergeCells(r1, c1, r2, c2);
+    end;
+
+    // 3rd sheet: merged ranges, with text, then unmerge all
+    MyWorksheet:= MyWorkBook.AddWorksheet(SHEETNAME3);
+    for i:=0 to High(TEST_RANGES) do
+    begin
+      ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
+      Myworksheet.WriteUTF8Text(r1, c1, CELL_TEXT);
+      Myworksheet.MergeCells(r1, c1, r2, c2);
+      Myworksheet.UnmergeCells(r1, c1);
+    end;
+
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+
+    // 1st sheet: merged cells with text
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SHEETNAME1);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet ' + SHEETNAME1);
+    for i:=0 to High(TEST_RANGES) do begin
+      ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
+      cell := MyWorksheet.FindCell(r1, c1);
+      if MyWorksheet.IsMergeBase(cell) then begin
+        MyWorksheet.FindMergedRange(cell, r1, c1, r2, c2);
+        actual := GetCellRangeString(r1, c1, r2, c2);
+        expected := TEST_RANGES[i];
+        if AFormat in [sfExcel2, sfExcel5] then
+          CheckNotEquals(expected, actual, 'No merged cells expected, ' + expected)
+        else
+          CheckEquals(expected, actual, 'Merged cell range mismatch, ' + expected);
+      end else
+      if not (AFormat in [sfExcel2, sfExcel5]) then
+        fail('Unmerged cell found, ' + CellNotation(MyWorksheet, r1, c1));
+      CheckEquals(CELL_TEXT, MyWorksheet.ReadAsUTF8Text(cell),
+        'Merged cell content mismatch, cell '+ CellNotation(MyWorksheet, r1, c1));
+    end;
+
+    if AFormat = sfExcel2 then
+      exit;  // only 1 page in Excel2
+
+    // 2nd sheet: merged empty cells
+    MyWorksheet := GetWorksheetByName(MyWorkBook, SHEETNAME2);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet' + SHEETNAME2);
+    for i:=0 to High(TEST_RANGES) do begin
+      ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
+      cell := MyWorksheet.FindCell(r1, c1);
+      if MyWorksheet.IsMergeBase(cell) then begin
+        MyWorksheet.FindMergedRange(cell, r1, c1, r2, c2);
+        actual := GetCellRangeString(r1, c1, r2, c2);
+        expected := TEST_RANGES[i];
+        if AFormat = sfExcel5 then
+          CheckNotEquals(expected, actual, 'Merged cells found in Excel5, ' + expected)
+        else
+          CheckEquals(expected, actual, 'Merged cell range mismatch, ' + expected);
+      end else
+      if AFormat <> sfExcel5 then
+        fail('Unmerged cell found, ' + CellNotation(MyWorksheet, r1, c1));
+      CheckEquals('', MyWorksheet.ReadAsUTF8Text(cell),
+        'Merged cell content mismatch, cell '+CellNotation(MyWorksheet, r1, c1));
+    end;
+
+    // 3rd sheet: merged & unmerged cells
+    MyWorksheet := GetWorksheetByName(MyWorkBook, SHEETNAME3);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet' + SHEETNAME3);
+    for i:=0 to High(TEST_RANGES) do begin
+      ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
+      cell := MyWorksheet.FindCell(r1, c1);
+      if MyWorksheet.IsMergeBase(cell) then
+        fail('Unmerged cell expected, cell ' + CellNotation(MyWorksheet, r1, c1));
+      CheckEquals(CELL_TEXT, MyWorksheet.ReadAsUTF8Text(cell),
+        'Merged/unmerged cell content mismatch, cell '+CellNotation(MyWorksheet, r1, c1));
+    end;
+
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_MergedCells;
+begin
+  TestWriteRead_MergedCells(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_MergedCells;
+begin
+  TestWriteRead_MergedCells(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_MergedCells;
+begin
+  TestWriteRead_MergedCells(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_MergedCells;
+begin
+  TestWriteRead_MergedCells(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_MergedCells;
+begin
+  TestWriteRead_MergedCells(sfOOXML);
+end;
+
 
 
 initialization

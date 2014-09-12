@@ -11,6 +11,7 @@ uses
 procedure WriteRPNFormulaSamples(Worksheet: TsWorksheet;
   AFormat: TsSpreadsheetFormat; IncludeErrors: Boolean);
 
+
 implementation
 
 uses
