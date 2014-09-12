@@ -42,6 +42,8 @@ type
     // Verify GetSheetByName returns the correct sheet number
     // GetSheetByName was implemented in SVN revision 2857
     procedure GetSheetByName;
+    // Test for invalid sheet names
+    procedure InvalidSheetName;
     // Tests whether overwriting existing file works
     procedure OverwriteExistingFile;
     // Write out date cell and try to read as UTF8; verify if contents the same
@@ -87,6 +89,41 @@ begin
     MyWorkSheet:=MyWorkBook.GetWorksheetByName(InternalSheet);
     CheckFalse((MyWorksheet=nil),'GetWorksheetByName should return a valid index');
     CheckEquals(MyWorksheet.Name,InternalSheet,'GetWorksheetByName should return correct name.');
+  finally
+    MyWorkbook.Free;
+  end;
+end;
+
+procedure TSpreadInternalTests.InvalidSheetName;
+type
+  TSheetNameCheck = record
+    Valid: Boolean;
+    SheetName: String;
+  end;
+const
+  TestCases: array[0..7] of TSheetNameCheck = (
+    (Valid: true;  SheetName:'Sheet'),
+    (Valid: true;  SheetName:'äöü'),
+    (Valid: false; SheetName:'Test'),   // duplicate
+    (Valid: false; SheetName:''),       // empty string
+    (Valid: false; SheetName:'Very very very very very very very very long'),  // too long
+    (Valid: false; SheetName:'[sheet]'), // fobidden chars in following cases
+    (Valid: false; SheetName:'/sheet/'),
+    (Valid: false; SheetName:'\sheet\')
+  );
+var
+  i: Integer;
+  MyWorkbook: TsWorkbook;
+  ok: Boolean;
+begin
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.AddWorksheet('Test');
+    for i:=0 to High(TestCases) do
+    begin
+      ok := MyWorkbook.ValidWorksheetName(TestCases[i].SheetName);
+      CheckEquals(TestCases[i].Valid, ok, 'Sheet name validity check mismatch: ' + TestCases[i].SheetName);
+    end;
   finally
     MyWorkbook.Free;
   end;

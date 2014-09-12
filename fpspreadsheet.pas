@@ -901,12 +901,13 @@ type
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
 
     { Worksheet list handling methods }
-    function  AddWorksheet(AName: string): TsWorksheet;
+    function  AddWorksheet(AName: string; AcceptEmptyName: boolean = false): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
     function  GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Cardinal;
     procedure RemoveAllWorksheets;
+    function  ValidWorksheetName(AName: String; AcceptEmptyName: Boolean = false): Boolean;
 
     { Font handling }
     function AddFont(const AFontName: String; ASize: Single;
@@ -1237,7 +1238,7 @@ function HasFormula(ACell: PCell): Boolean;
 implementation
 
 uses
-  Math, StrUtils, TypInfo,
+  Math, StrUtils, TypInfo, lazutf8,
   fpsStreams, fpsUtils, fpsNumFormatParser, fpsExprParser;
 
 { Translatable strings }
@@ -1245,6 +1246,7 @@ resourcestring
   lpUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   lpUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   lpNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
+  lpInvalidWorksheetName = '"%s" is not a valid worksheet name.';
   lpUnknownSpreadsheetFormat = 'unknown format';
   lpMaxRowsExceeded = 'This workbook contains %d rows, but the selected ' +
     'file format does not support more than %d rows.';
@@ -3123,15 +3125,22 @@ begin
   n := 0;
   SetLength(AList, n);
   for r := 0 to GetLastOccupiedRowIndex do
-    for c := 0 to GetLastOccupiedColIndex do
+  begin
+    c := 0;
+    while (c <= GetLastOccupiedColIndex) do
     begin
       cell := FindCell(r, c);
-      if IsMergeBase(cell) then begin
+      if IsMergeBase(cell) then
+      begin
         FindMergedRange(cell, rng.Row1, rng.Col1, rng.Row2, rng.Col2);
         SetLength(AList, n+1);
         AList[n] := rng;
+        inc(n);
+        c := rng.Col2;   // jump to next cell not belonging to this block
       end;
+      inc(c);
     end;
+  end;
 end;
 
 {@@ Returns true if the specified cell is the base of a merged cell range, i.e.
@@ -5683,12 +5692,17 @@ end;
 
   It is added to the end of the list of worksheets
 
-  @param  AName     The name of the new worksheet
+  @param  AName            The name of the new worksheet
+  @param  AcceptEmptyName  Allow an empty worksheet name (for Excel2)
   @return The instance of the newly created worksheet
   @see    TsWorksheet
 }
-function TsWorkbook.AddWorksheet(AName: string): TsWorksheet;
+function TsWorkbook.AddWorksheet(AName: string;
+  AcceptEmptyName: Boolean = false): TsWorksheet;
 begin
+  if not ValidWorksheetName(AName, AcceptEmptyName) then
+    raise Exception.CreateFmt(lpInvalidWorksheetName, [AName]);
+
   Result := TsWorksheet.Create;
 
   Result.Name := AName;
@@ -5779,6 +5793,46 @@ procedure TsWorkbook.RemoveAllWorksheets;
 begin
   FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
 end;
+
+{@@
+  Checks whether the passed string is a valid worksheet name according to Excel
+  (ODS seems to be a bit less restrictive, but if we follow Excel's convention
+  we always have valid sheet names independent of the format.
+
+  @param   AName             Name to be checked
+  @param   AcceptEmptyName   Accepts an empty name (for Excel2)
+  @return  TRUE if it is a valid worksheet name, FALSE otherwise
+}
+function TsWorkbook.ValidWorksheetName(AName: String;
+  AcceptEmptyName: Boolean = false): Boolean;
+// see: http://stackoverflow.com/questions/451452/valid-characters-for-excel-sheet-names
+var
+  INVALID_CHARS: array [0..6] of char = ('[', ']', ':', '*', '?', '/', '\');
+var
+  i: Integer;
+begin
+  Result := false;
+
+  // Name must not be empty
+  if (AName = '') and (not AcceptEmptyName) then
+    exit;
+
+  // Length must be less than 31 characters
+  if UTF8Length(AName) > 31 then
+    exit;
+
+  // Name must not contain any of the INVALID_CHARS
+  for i:=0 to High(INVALID_CHARS) do
+    if UTF8Pos(INVALID_CHARS[i], AName) > 0 then
+      exit;
+
+  // Name must be unique
+  if GetWorksheetByName(AName) <> nil then
+    exit;
+
+  Result := true;
+end;
+
                             (*
 {@@
   Sets the selected flag for the sheet with the given index.
