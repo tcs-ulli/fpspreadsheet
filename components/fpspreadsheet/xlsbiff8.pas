@@ -1129,7 +1129,7 @@ procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream; AFontIndex: Word;
  AddBackground: Boolean = false; ABackgroundColor: TsColor = scSilver);
 var
   XFOptions: Word;
-  XFAlignment, XFOrientationAttrib: Byte;
+  XFAlignment, XFIndentShrinkMerge, XFOrientationAttrib: Byte;
   XFBorderDWord1, XFBorderDWord2: DWord;
 begin
   { BIFF Record header }
@@ -1137,10 +1137,10 @@ begin
   AStream.WriteWord(WordToLE(20));
 
   { Index to FONT record }
-  AStream.WriteWord(WordToLE(AFontIndex));
+  AStream.WriteWord(WordToLE(AFontIndex));          // Offset 4
 
   { Index to FORMAT record }
-  AStream.WriteWord(WordToLE(AFormatIndex));
+  AStream.WriteWord(WordToLE(AFormatIndex));        // Offset 6
 
   { XF type, cell protection and parent style XF }
   XFOptions := AXF_TYPE_PROT and MASK_XF_TYPE_PROT;
@@ -1148,7 +1148,7 @@ begin
   if AXF_TYPE_PROT and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then
    XFOptions := XFOptions or MASK_XF_TYPE_PROT_PARENT;
    
-  AStream.WriteWord(WordToLE(XFOptions));
+  AStream.WriteWord(WordToLE(XFOptions));          // Offset 8
 
   { Alignment and text break }
   XFAlignment := 0;
@@ -1166,13 +1166,19 @@ begin
   if AWordWrap then
     XFAlignment := XFAlignment or MASK_XF_TEXTWRAP;
 
-  AStream.WriteByte(XFAlignment);
+  AStream.WriteByte(XFAlignment);                // Offset 10
 
   { Text rotation }
-  AStream.WriteByte(ATextRotation); // 0 is horizontal / normal
+  AStream.WriteByte(ATextRotation); // 0 is horizontal / normal    // Offset 11
 
-  { Indentation, shrink and text direction }
-  AStream.WriteByte(0);
+  { Indentation, shrink, merge and text direction:
+    see "Excel97-2007BinaryFileFormat(xls)Specification.pdf", p281 ff
+    Bits 0-3: Indent value
+    Bit 4: Shrink to fit
+    Bit 5: MergeCell
+    Bits 6-7: Reading direction  }
+  XFIndentShrinkMerge := 0;
+  AStream.WriteByte(XFIndentShrinkMerge);        // Offset 12
 
   { Used attributes }
   XFOrientationAttrib :=
