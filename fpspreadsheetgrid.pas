@@ -710,6 +710,8 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  AutoAdvance := aaDown;
+  ExtendedSelect := true;
   FHeaderCount := 1;
   FInitColCount := 26;
   FInitRowCount := 100;
@@ -2069,6 +2071,7 @@ var
   txtR: TRect;
   cellR: TRect;
   flags: Cardinal;
+  r1,c1,r2,c2: Cardinal;
 begin
   Result := 0;
   if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
@@ -2078,6 +2081,14 @@ begin
 
   lCell := FWorksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then begin
+    if lCell^.MergedNeighbors <> [] then begin
+      FWorksheet.FindMergedRange(lCell, r1, c1, r2, c2);
+      if r1 <> r2 then
+        // If the merged range encloses several rows we skip automatic row height
+        // determination since only the height of the first row of the block
+        // (containing the merge base cell) would change which is very confusing.
+        exit;
+    end;
     s := GetCellText(ACol, ARow);
     if s = '' then
       exit;

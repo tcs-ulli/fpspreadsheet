@@ -21,46 +21,24 @@ object MainFrm: TMainFrm
     ClientHeight = 78
     ClientWidth = 884
     TabOrder = 6
-    object CbShowHeaders: TCheckBox
-      Left = 8
-      Height = 19
-      Top = 8
-      Width = 93
-      Caption = 'Show headers'
-      Checked = True
-      OnClick = CbShowHeadersClick
-      State = cbChecked
-      TabOrder = 0
-    end
-    object CbShowGridLines: TCheckBox
-      Left = 8
-      Height = 19
-      Top = 39
-      Width = 100
-      Caption = 'Show grid lines'
-      Checked = True
-      OnClick = CbShowGridLinesClick
-      State = cbChecked
-      TabOrder = 1
-    end
     object EdFrozenCols: TSpinEdit
-      Left = 645
+      Left = 429
       Height = 23
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
-      TabOrder = 5
+      TabOrder = 3
     end
     object EdFrozenRows: TSpinEdit
-      Left = 645
+      Left = 429
       Height = 23
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
-      TabOrder = 6
+      TabOrder = 4
     end
     object Label1: TLabel
-      Left = 560
+      Left = 344
       Height = 15
       Top = 13
       Width = 62
@@ -69,7 +47,7 @@ object MainFrm: TMainFrm
       ParentColor = False
     end
     object Label2: TLabel
-      Left = 560
+      Left = 344
       Height = 15
       Top = 40
       Width = 66
@@ -78,16 +56,16 @@ object MainFrm: TMainFrm
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
-      Left = 160
+      Left = 8
       Height = 19
       Top = 8
       Width = 96
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
-      TabOrder = 2
+      TabOrder = 0
     end
     object CbHeaderStyle: TComboBox
-      Left = 408
+      Left = 200
       Height = 23
       Top = 8
       Width = 116
@@ -100,17 +78,17 @@ object MainFrm: TMainFrm
       )
       OnChange = CbHeaderStyleChange
       Style = csDropDownList
-      TabOrder = 4
+      TabOrder = 2
       Text = 'Native'
     end
     object CbAutoCalcFormulas: TCheckBox
-      Left = 160
+      Left = 8
       Height = 19
       Top = 39
       Width = 128
       Caption = 'Calculate on change'
       OnChange = CbAutoCalcFormulasChange
-      TabOrder = 3
+      TabOrder = 1
     end
   end
   object ToolBar1: TToolBar
@@ -1229,12 +1207,59 @@ object MainFrm: TMainFrm
       end
       object MenuItem68: TMenuItem
         Action = AcMergeCells
+        Bitmap.Data = {
+          36040000424D3604000000000000360000002800000010000000100000000100
+          2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+          FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+          FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00D69E
+          72C4D3996EF4D19668FFCE9263FFCB8E5EFFC98A5BFFC78756FFC38452FFC384
+          52FFC38452FFC38452FFC38452FFC38452FFBB7742B0FFFFFF00FFFFFF00D7A1
+          75FFF8F2EDFFF7F0EAFFF6EDE6FFF4EAE2FFF3E7DEFFF1E4DBFFF0E2D8FFF0E2
+          D8FFF0E2D8FFF0E2D8FFF0E2D8FFF0E2D8FFC58A5DFDFFFFFF00FFFFFF00D9A4
+          7AFFF9F3EEFFEBD2BEFFFFFFFFFFEBD3BFFFFFFFFFFFFFFFFFFFFFFFFFFFEAC7
+          ADFFFFFFFFFFFFFFFFFFFFFFFFFFF0E2D8FFC68C5FFFFFFFFF00FFFFFF00DDA8
+          7EFFF9F3EFFFEBD0BAFFEBD0BBFFC68A5CFFC38452FFC38452FFC38452FFCA92
+          66FFEACDB5FFEACDB5FFEACDB5FFF0E2D8FFC68A5CFFFFFFFF00FFFFFF00DFAA
+          82FFF9F3EFFFEACEB7FFFFFFFFFFC88D5FFFFFFFFFFFFFFFFFFFFFFFFFFFC58B
+          5EFFFBF6F2FFFFFFFFFFFFFFFFFFF0E2D8FFC88D5FFFFFFFFF00FFFFFF00E1AE
+          87FFFAF4F0FFEACBB2FFEACCB3FFC48654FFE9C7ADFFE9C9AEFFE9C9B0FFC68C
+          5FFFE8C7ACFFE8C8B0FFE8C8AEFFF0E2D8FFC48654FFFFFFFF00FFFFFF00E3B1
+          8CFFFAF6F1FFEAC9AEFFFFFFFFFFC68655FFFFFFFFFFFFFFFFFFFFFFFFFFC68A
+          5CFFFFFFFFFFFFFFFFFFFFFFFFFFF1E5DBFFC68655FFFFFFFF00FFFFFF00E5B4
+          8FFFFAF6F2FFE9C6AAFFE9C6ACFFC98A5BFFC98A5BFFC78756FFC38452FFC384
+          52FFE9C9B0FFE8C8B0FFE8CCB5FFF2E7DEFFC88A59FFFFFFFF00FFFFFF00E7B7
+          94FFFBF7F4FFE9C3A6FFFFFFFFFFE8C4A9FFFFFFFFFFFFFFFFFFFFFFFFFFE8C7
+          ACFFFFFFFFFFFFFFFFFFFFFFFFFFF7F1EBFFCB8F5FFFFFFFFF00FFFFFF00E9BA
+          98FFFBF7F4FFE9C3A6FFE9C3A6FFE9C3A6FFE9C3A6FFE9C3A6FFE9C3A6FFE9C3
+          A6FFE9C3A6FFE9C3A6FFE9C3A6FFFBF7F4FFCE9364FFFFFFFF00FFFFFF00EBBD
+          9BFFFBF7F4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+          FFFFFFFFFFFFFFFFFFFFFFFFFFFFFBF7F4FFD1976AFFFFFFFF00FFFFFF00ECBF
+          9EFFFBF7F4FF9CD5A5FF98D3A1FF94D09DFF90CE98FF8BCB93FF87C98EFF82C6
+          89FF7EC384FF7AC180FF76BE7CFFFBF7F4FFD49B6FFFFFFFFF00FFFFFF00EEC1
+          A1EBFBF7F4FFFBF7F4FFFBF7F4FFFBF7F4FFFBF7F4FFFBF7F4FFFBF7F4FFFBF7
+          F4FFFBF7F4FFFBF7F4FFFBF7F4FFFBF7F4FFD7A074F8FFFFFF00FFFFFF00EFC2
+          A37EEFC1A2E3EDC09FFFEBBE9DFFEBBC9AFFE9BA96FFE7B793FFE6B590FFE4B2
+          8CFFE2AF88FFE0AC84FFDDA980FFDCA57DFFDAA37ACAFFFFFF00FFFFFF00FFFF
+          FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+          FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+        }
       end
     end
     object mnuView: TMenuItem
       Caption = 'View'
       object mnuInspector: TMenuItem
         Action = AcViewInspector
+        AutoCheck = True
+      end
+      object MenuItem71: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem70: TMenuItem
+        Action = AcShowGridlines
+        AutoCheck = True
+      end
+      object MenuItem69: TMenuItem
+        Action = AcShowHeaders
         AutoCheck = True
       end
     end
@@ -2982,6 +3007,22 @@ object MainFrm: TMainFrm
       Hint = 'Merge/unmerge selected cells'
       ImageIndex = 39
       OnExecute = AcMergeCellsExecute
+    end
+    object AcShowHeaders: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Headers'
+      Checked = True
+      Hint = 'Show/hide column and row headers'
+      OnExecute = AcShowHeadersExecute
+    end
+    object AcShowGridlines: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Grid lines'
+      Checked = True
+      Hint = 'Show/hide grid lines'
+      OnExecute = AcShowGridlinesExecute
     end
   end
   object FontDialog: TFontDialog
