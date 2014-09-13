@@ -73,6 +73,8 @@ type
     AcAddColumn: TAction;
     AcAddRow: TAction;
     AcMergeCells: TAction;
+    AcShowHeaders: TAction;
+    AcShowGridlines: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -80,8 +82,6 @@ type
     AcVAlignCenter: TAction;
     AcVAlignBottom: TAction;
     ActionList: TActionList;
-    CbShowHeaders: TCheckBox;
-    CbShowGridLines: TCheckBox;
     CbBackgroundColor: TColorBox;
     CbReadFormulas: TCheckBox;
     CbHeaderStyle: TComboBox;
@@ -157,6 +157,9 @@ type
     MenuItem66: TMenuItem;
     MenuItem67: TMenuItem;
     MenuItem68: TMenuItem;
+    MenuItem69: TMenuItem;
+    MenuItem70: TMenuItem;
+    MenuItem71: TMenuItem;
     mnuInspector: TMenuItem;
     mnuView: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
@@ -263,8 +266,9 @@ type
     procedure AcOpenExecute(Sender: TObject);
     procedure AcQuitExecute(Sender: TObject);
     procedure AcSaveAsExecute(Sender: TObject);
+    procedure AcShowGridlinesExecute(Sender: TObject);
+    procedure AcShowHeadersExecute(Sender: TObject);
     procedure AcTextRotationExecute(Sender: TObject);
-    procedure AcUnmergeCellsExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure AcWordwrapExecute(Sender: TObject);
@@ -272,8 +276,6 @@ type
     procedure CbBackgroundColorSelect(Sender: TObject);
     procedure CbHeaderStyleChange(Sender: TObject);
     procedure CbReadFormulasChange(Sender: TObject);
-    procedure CbShowHeadersClick(Sender: TObject);
-    procedure CbShowGridLinesClick(Sender: TObject);
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
     procedure EdCellAddressEditingDone(Sender: TObject);
     procedure EdFormulaEditingDone(Sender: TObject);
@@ -284,10 +286,8 @@ type
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure InspectorPageControlChange(Sender: TObject);
-    procedure PageControl1Change(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
     procedure WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
-
   private
     FCopiedFormat: TCell;
     procedure LoadFile(const AFileName: String);
@@ -617,6 +617,50 @@ begin
   UpdateNumFormatActions;
 end;
 
+
+procedure TMainFrm.acOpenExecute(Sender: TObject);
+begin
+  if OpenDialog.Execute then
+    LoadFile(OpenDialog.FileName);
+end;
+
+procedure TMainFrm.acQuitExecute(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TMainFrm.acSaveAsExecute(Sender: TObject);
+// Saves sheet in grid to file, overwriting existing file
+var
+  err: String = '';
+begin
+  if WorksheetGrid.Workbook = nil then
+    exit;
+
+  if SaveDialog.Execute then
+  begin
+    Screen.Cursor := crHourglass;
+    try
+      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
+    finally
+      Screen.Cursor := crDefault;
+      err := WorksheetGrid.Workbook.ErrorMsg;
+      if err <> '' then
+        MessageDlg(err, mtError, [mbOK], 0);
+    end;
+  end;
+end;
+
+procedure TMainFrm.AcShowGridlinesExecute(Sender: TObject);
+begin
+  WorksheetGrid.ShowGridLines := AcShowGridLines.Checked;
+end;
+
+procedure TMainFrm.AcShowHeadersExecute(Sender: TObject);
+begin
+  WorksheetGrid.ShowHeaders := AcShowHeaders.Checked;
+end;
+
 procedure TMainFrm.AcTextRotationExecute(Sender: TObject);
 var
   text_rot: TsTextRotation;
@@ -627,11 +671,6 @@ begin
     text_rot := trHorizontal;
   with WorksheetGrid do TextRotations[Selection] := text_rot;
   UpdateTextRotationActions;
-end;
-
-procedure TMainFrm.AcUnmergeCellsExecute(Sender: TObject);
-begin
-  WorksheetGrid.UnmergeCells;
 end;
 
 procedure TMainFrm.AcVertAlignmentExecute(Sender: TObject);
@@ -669,6 +708,23 @@ begin
   WorksheetGrid.AutoCalc := CbAutoCalcFormulas.Checked;;
 end;
 
+procedure TMainFrm.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
+var
+  clr: TColor;
+  clrName: String;
+  i: Integer;
+begin
+  if WorksheetGrid.Workbook <> nil then begin
+    Items.Clear;
+    Items.AddObject('no fill', TObject(PtrInt(clNone)));
+    for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
+      clr := WorksheetGrid.Workbook.GetPaletteColor(i);
+      clrName := WorksheetGrid.Workbook.GetColorName(i);
+      Items.AddObject(Format('%d: %s', [i, clrName]), TObject(PtrInt(clr)));
+    end;
+  end;
+end;
+
 procedure TMainFrm.CbBackgroundColorSelect(Sender: TObject);
 begin
   if CbBackgroundColor.ItemIndex <= 0 then
@@ -685,66 +741,6 @@ end;
 procedure TMainFrm.CbReadFormulasChange(Sender: TObject);
 begin
   WorksheetGrid.ReadFormulas := CbReadFormulas.Checked;
-end;
-
-procedure TMainFrm.CbShowHeadersClick(Sender: TObject);
-begin
-  WorksheetGrid.ShowHeaders := CbShowHeaders.Checked;
-end;
-
-procedure TMainFrm.CbShowGridLinesClick(Sender: TObject);
-begin
-  WorksheetGrid.ShowGridLines := CbShowGridLines.Checked;
-end;
-
-procedure TMainFrm.acOpenExecute(Sender: TObject);
-begin
-  if OpenDialog.Execute then
-    LoadFile(OpenDialog.FileName);
-end;
-
-procedure TMainFrm.acQuitExecute(Sender: TObject);
-begin
-  Close;
-end;
-
-procedure TMainFrm.acSaveAsExecute(Sender: TObject);
-// Saves sheet in grid to file, overwriting existing file
-var
-  err: String = '';
-begin
-  if WorksheetGrid.Workbook = nil then
-    exit;
-
-  if SaveDialog.Execute then
-  begin
-    Screen.Cursor := crHourglass;
-    try
-      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
-    finally
-      Screen.Cursor := crDefault;
-      err := WorksheetGrid.Workbook.ErrorMsg;
-      if err <> '' then
-        MessageDlg(err, mtError, [mbOK], 0);
-    end;
-  end;
-end;
-
-procedure TMainFrm.CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
-var
-  clr: TColor;
-  clrName: String;
-  i: Integer;
-begin
-  if WorksheetGrid.Workbook <> nil then begin
-    Items.Clear;
-    Items.AddObject('no fill', TObject(PtrInt(clNone)));
-    for i:=0 to WorksheetGrid.Workbook.GetPaletteSize-1 do begin
-      clr := WorksheetGrid.Workbook.GetPaletteColor(i);
-      clrName := WorksheetGrid.Workbook.GetColorName(i);
-      Items.AddObject(Format('%d: %s', [i, clrName]), TObject(PtrInt(clr)));
-    end;
-  end;
 end;
 
 procedure TMainFrm.EdCellAddressEditingDone(Sender: TObject);
@@ -866,6 +862,7 @@ begin
       WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
     except
       on E: Exception do begin
+        // In an error occurs show at least an empty valid worksheet
         AcNewExecute(nil);
         MessageDlg(E.Message, mtError, [mbOk], 0);
         exit;
@@ -877,29 +874,16 @@ begin
       AFilename,
       GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
     ]);
-    CbShowGridLines.Checked := (soShowGridLines in WorksheetGrid.Worksheet.Options);
-    CbShowHeaders.Checked := (soShowHeaders in WorksheetGrid.Worksheet.Options);
+    AcShowGridLines.Checked := WorksheetGrid.ShowGridLines;
+    AcShowHeaders.Checked := WorksheetGrid.ShowHeaders;
     EdFrozenCols.Value := WorksheetGrid.FrozenCols;
     EdFrozenRows.Value := WorksheetGrid.FrozenRows;
     SetupBackgroundColorBox;
 
+    // Load names of worksheets into tabcontrol and show first sheet
     WorksheetGrid.GetSheets(TabControl.Tabs);
     TabControl.TabIndex := 0;
-                             {
-    // Create a tab in the pagecontrol for each worksheet contained in the workbook
-    // This would be easier with a TTabControl. This has display issues, though.
-    pages := TStringList.Create;
-    try
-      WorksheetGrid.GetSheets(pages);
-      WorksheetGrid.Parent := PageControl1.Pages[0];
-      while PageControl1.PageCount > pages.Count do PageControl1.Pages[1].Free;
-      while PageControl1.PageCount < pages.Count do PageControl1.AddTabSheet;
-      for i:=0 to PageControl1.PageCount-1 do
-        PageControl1.Pages[i].Caption := pages[i];
-    finally
-      pages.Free;
-    end;
-                              }
+    // Update display
     WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
 
   finally
@@ -911,19 +895,6 @@ begin
   end;
 end;
 
-procedure TMainFrm.PageControl1Change(Sender: TObject);
-begin
-  {
-  WorksheetGrid.Parent := PageControl1.Pages[PageControl1.ActivePageIndex];
-  WorksheetGrid.SelectSheetByIndex(PageControl1.ActivePageIndex);
-  }
-end;
-
-procedure TMainFrm.TabControlChange(Sender: TObject);
-begin
-  WorksheetGrid.SelectSheetByIndex(TabControl.TabIndex);
-end;
-
 procedure TMainFrm.SetupBackgroundColorBox;
 begin
   // This change triggers re-reading of the workbooks palette by the OnGetColors
@@ -933,63 +904,9 @@ begin
   Application.ProcessMessages;
 end;
 
-procedure TMainFrm.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
-var
-  r, c: Cardinal;
-  cell: PCell;
-  s: String;
+procedure TMainFrm.TabControlChange(Sender: TObject);
 begin
-  if WorksheetGrid.Workbook = nil then
-    exit;
-
-  r := WorksheetGrid.GetWorksheetRow(ARow);
-  c := WorksheetGrid.GetWorksheetCol(ACol);
-
-  if AcCopyFormat.Checked then begin
-    WorksheetGrid.Worksheet.CopyFormat(@FCopiedFormat, r, c);
-    AcCopyFormat.Checked := false;
-  end;
-
-  cell := WorksheetGrid.Worksheet.FindCell(r, c);
-  if cell <> nil then begin
-    s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell, true);
-    if s <> '' then begin
-      if s[1] <> '=' then s := '=' + s;
-      EdFormula.Text := s;
-    end
-    else
-      case cell^.ContentType of
-        cctNumber:
-          EdFormula.Text := FloatToStr(cell^.NumberValue);
-        cctDateTime:
-          if cell^.DateTimeValue < 1.0 then
-            EdFormula.Text := FormatDateTime('tt', cell^.DateTimeValue)
-          else
-            EdFormula.Text := FormatDateTime('c', cell^.DateTimeValue);
-        cctUTF8String:
-          EdFormula.Text := cell^.UTF8StringValue;
-        else
-          EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
-      end;
-  end else
-    EdFormula.Text := '';
-
-  EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
-  AcMergeCells.Checked := (cell <> nil) and (cell^.MergedNeighbors <> []);
-
-  UpdateHorAlignmentActions;
-  UpdateVertAlignmentActions;
-  UpdateWordwraps;
-  UpdateBackgroundColorIndex;
-//  UpdateFontActions;
-  UpdateFontNameIndex;
-  UpdateFontSizeIndex;
-  UpdateFontStyleActions;
-  UpdateTextRotationActions;
-  UpdateNumFormatActions;
-
-  UpdateCellInfo(cell);
-
+  WorksheetGrid.SelectSheetByIndex(TabControl.TabIndex);
 end;
 
 procedure TMainFrm.UpdateBackgroundColorIndex;
@@ -1240,6 +1157,65 @@ begin
   with WorksheetGrid do wrapped := Wordwraps[Selection];
   AcWordwrap.Checked := wrapped;
 end;
+
+procedure TMainFrm.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
+var
+  r, c: Cardinal;
+  cell: PCell;
+  s: String;
+begin
+  if WorksheetGrid.Workbook = nil then
+    exit;
+
+  r := WorksheetGrid.GetWorksheetRow(ARow);
+  c := WorksheetGrid.GetWorksheetCol(ACol);
+
+  if AcCopyFormat.Checked then begin
+    WorksheetGrid.Worksheet.CopyFormat(@FCopiedFormat, r, c);
+    AcCopyFormat.Checked := false;
+  end;
+
+  cell := WorksheetGrid.Worksheet.FindCell(r, c);
+  if cell <> nil then begin
+    s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell, true);
+    if s <> '' then begin
+      if s[1] <> '=' then s := '=' + s;
+      EdFormula.Text := s;
+    end
+    else
+      case cell^.ContentType of
+        cctNumber:
+          EdFormula.Text := FloatToStr(cell^.NumberValue);
+        cctDateTime:
+          if cell^.DateTimeValue < 1.0 then
+            EdFormula.Text := FormatDateTime('tt', cell^.DateTimeValue)
+          else
+            EdFormula.Text := FormatDateTime('c', cell^.DateTimeValue);
+        cctUTF8String:
+          EdFormula.Text := cell^.UTF8StringValue;
+        else
+          EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
+      end;
+  end else
+    EdFormula.Text := '';
+
+  EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
+  AcMergeCells.Checked := (cell <> nil) and (cell^.MergedNeighbors <> []);
+
+  UpdateHorAlignmentActions;
+  UpdateVertAlignmentActions;
+  UpdateWordwraps;
+  UpdateBackgroundColorIndex;
+//  UpdateFontActions;
+  UpdateFontNameIndex;
+  UpdateFontSizeIndex;
+  UpdateFontStyleActions;
+  UpdateTextRotationActions;
+  UpdateNumFormatActions;
+
+  UpdateCellInfo(cell);
+end;
+
 
 initialization
   {$I mainform.lrs}
