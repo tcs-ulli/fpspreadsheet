@@ -86,6 +86,7 @@ type
     CbReadFormulas: TCheckBox;
     CbHeaderStyle: TComboBox;
     CbAutoCalcFormulas: TCheckBox;
+    CbTextOverflow: TCheckBox;
     EdFormula: TEdit;
     EdCellAddress: TEdit;
     FontComboBox: TComboBox;
@@ -277,6 +278,7 @@ type
     procedure CbHeaderStyleChange(Sender: TObject);
     procedure CbReadFormulasChange(Sender: TObject);
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
+    procedure CbTextOverflowChange(Sender: TObject);
     procedure EdCellAddressEditingDone(Sender: TObject);
     procedure EdFormulaEditingDone(Sender: TObject);
     procedure EdFrozenColsChange(Sender: TObject);
@@ -725,6 +727,12 @@ begin
   end;
 end;
 
+procedure TMainFrm.CbTextOverflowChange(Sender: TObject);
+begin
+  WorksheetGrid.TextOverflow := CbTextOverflow.Checked;
+  WorksheetGrid.Invalidate;
+end;
+
 procedure TMainFrm.CbBackgroundColorSelect(Sender: TObject);
 begin
   if CbBackgroundColor.ItemIndex <= 0 then
@@ -878,6 +886,7 @@ begin
     AcShowHeaders.Checked := WorksheetGrid.ShowHeaders;
     EdFrozenCols.Value := WorksheetGrid.FrozenCols;
     EdFrozenRows.Value := WorksheetGrid.FrozenRows;
+    WorksheetGrid.TextOverflow := CbTextOverflow.Checked;
     SetupBackgroundColorBox;
 
     // Load names of worksheets into tabcontrol and show first sheet
