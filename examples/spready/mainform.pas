@@ -1033,10 +1033,10 @@ begin
         then Strings.Add('NumberFormatStr=')
         else Strings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
       if (ACell=nil) or (ACell^.MergedNeighbors = []) then
-        Strings.Add('Not merged=')
+        Strings.Add('Merged neighbors=')
       else begin
         WorksheetGrid.Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-        Strings.Add('Belongs to merged range=' + GetCellRangeString(r1, c1, r2, c2));
+        Strings.Add('Merged neighbors=' + GetCellRangeString(r1, c1, r2, c2));
       end;
 
     end;

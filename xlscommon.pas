@@ -747,7 +747,16 @@ begin
     ACell^.FontIndex := XFData.FontIndex;
 
     // Alignment
+    if XFData.HorAlignment <> haDefault then
+      Include(ACell^.UsedFormattingFields, uffHorAlign)
+    else
+      Exclude(ACell^.UsedFormattingFields, uffHorAlign);
     ACell^.HorAlignment := XFData.HorAlignment;
+
+    if XFData.VertAlignment <> vaDefault then
+      Include(ACell^.UsedFormattingFields, uffVertAlign)
+    else
+      Exclude(ACell^.UsedFormattingFields, uffVertAlign);
     ACell^.VertAlignment := XFData.VertAlignment;
 
     // Word wrap

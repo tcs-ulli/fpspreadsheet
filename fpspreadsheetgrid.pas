@@ -117,6 +117,8 @@ type
 
   protected
     { Protected declarations }
+    function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
+      out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
     procedure CreateNewWorkbook;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
@@ -743,7 +745,7 @@ end;
   All chars are assumed to have the same width defined by the width of the
   "0" character. Therefore, this calculation is only approximate.
 
-  @param   AWidth  Width of a column given as "character count".
+  @param   AWidth   Width of a column given as "character count".
   @return  Column width in pixels.
 }
 function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
@@ -792,6 +794,110 @@ var
 begin
   h_pts := AHeight * (Workbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
   Result := PtsToPX(h_pts, Screen.PixelsPerInch) + 4;
+end;
+
+{@@ Looks for overflowing cells: if the text of the given cell is longer than
+  the cell width the function calculates the column indexes and the rectangle
+  to show the complete text.
+  Ony for non-wordwrapped label cells and for horizontal orientation.
+  Function returns false if text overflow needs not to be considered.
+}
+function TsCustomWorksheetGrid.CellOverflow(ACol, ARow: Integer;
+  AState: TGridDrawState; out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
+var
+  txt: String;
+  len: Integer;
+  cell: PCell;
+  txtalign: TsHorAlignment;
+  r: Cardinal;
+  w, w0: Integer;
+begin
+  Result := false;
+  cell := FDrawingCell;
+  if (cell = nil) or (cell^.ContentType <> cctUTF8String) then
+    exit;
+  if (uffWordWrap in cell^.UsedFormattingFields) then
+    exit;
+  if (uffTextRotation in cell^.UsedFormattingFields) and
+     (cell^.TextRotation <> trHorizontal)
+  then
+    exit;
+
+  txt := cell^.UTF8Stringvalue;
+  if (uffHorAlign in cell^.UsedFormattingFields) then
+    txtalign := cell^.HorAlignment
+  else
+    txtalign := haDefault;
+  PrepareCanvas(ACol, ARow, AState);
+  len := Canvas.TextWidth(txt);
+  ACol1 := ACol;
+  ACol2 := ACol;
+  r := GetWorksheetRow(ARow);
+  case txtalign of
+    haLeft, haDefault:
+      // overflow to the right
+      while (len > ARect.Right - ARect.Left) and (ACol2 < ColCount-1) do
+      begin
+        result := true;
+        inc(ACol2);
+        cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol2));
+        if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
+        begin
+          dec(ACol2);
+          break;
+        end;
+        ARect.Right := ARect.Right + ColWidths[ACol2];
+      end;
+    haRight:
+      // overflow to the left
+      while (len > ARect.Right - ARect.Left) and (ACol1 > FixedCols) do
+      begin
+        result := true;
+        dec(ACol1);
+        cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol1));
+        if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
+        begin
+          inc(ACol1);
+          break;
+        end;
+        ARect.Left := ARect.Left - ColWidths[ACol1];
+      end;
+    haCenter:
+      begin
+        len := len div 2;
+        w0 := (ARect.Right - ARect.Left) div 2;
+        w := w0;
+        // right part
+        while (len > w) and (ACol2 < ColCount-1) do
+        begin
+          Result := true;
+          inc(ACol2);
+          cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol2));
+          if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
+          begin
+            dec(ACol2);
+            break;
+          end;
+          ARect.Right := ARect.Right + ColWidths[ACol2];
+          inc(w, ColWidths[ACol2]);
+        end;
+        // left part
+        w := w0;
+        while (len > w) and (ACol1 > FixedCols) do
+        begin
+          Result := true;
+          dec(ACol1);
+          cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol1));
+          if (cell <> nil) and (cell^.Contenttype <> cctEmpty) then
+          begin
+            inc(ACol1);
+            break;
+          end;
+          ARect.Left := ARect.left - ColWidths[ACol1];
+          inc(w, ColWidths[ACol1]);
+        end;
+      end;
+  end;
 end;
 
 {@@
@@ -977,7 +1083,8 @@ begin
   then begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
-    lCell := FWorksheet.FindCell(r, c);
+    lCell := FDrawingCell;
+//    lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
       // Background color
       if (uffBackgroundColor in lCell^.UsedFormattingFields) then begin
@@ -1293,18 +1400,18 @@ end;
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gds: TGridDrawState;
-  r, c, cNext: Integer;
+  sr, sc, sr1,sc1,sr2,sc2: Cardinal;            // sheet row/column
+  gr, gc, gcNext, gcLast, gc1, gc2: Integer;    // grid row/column
   Rs: Boolean;
   rct, saved_rct: TRect;
   clipArea: Trect;
   cell: PCell;
-  r1,c1,r2,c2: Cardinal;
   tmp: Integer;
 
   function IsPushCellActive: boolean;
   begin
     with GCache do
-      result := (PushedCell.X<>-1) and (PushedCell.Y<>-1);
+      result := (PushedCell.X <> -1) and (PushedCell.Y <> -1);
   end;
 
   function VerticalIntersect(const aRect,bRect: TRect): boolean;
@@ -1343,7 +1450,7 @@ var
 
 begin
   // Upper and Lower bounds for this row
-  rct := Rect(0,0,0,0);
+  rct := Rect(0, 0, 0, 0);
   ColRowToOffSet(False, True, ARow, rct.Top, rct.Bottom);
   saved_rct := rct;
 
@@ -1356,53 +1463,111 @@ begin
     exit;
   end;
 
+  sr := GetWorksheetRow(ARow);
+
   // Draw columns in this row
-  with GCache.VisibleGrid do begin
-    c := Left;
-    while c <= Right do begin
-      r := ARow;
+  with GCache.VisibleGrid do
+  begin
+    gc := Left;
+
+    // Because of possible cell overflow from cells left of the visible range
+    // we have to seek to the left for the first occupied text cell
+    // and start painting from here.
+    if sr <> Cardinal(-1) then
+      while (gc > FixedCols) do
+      begin
+        dec(gc);
+        cell := FWorksheet.FindCell(sr, GetWorksheetCol(gc));
+        // Empty cell --> proceed with next cell to the left
+        if (cell = nil) or (cell^.ContentType = cctEmpty) or
+           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
+        then
+          Continue;
+        // Overflow possible from non-merged, non-right-aligned, horizontal label cells
+        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
+           not (uffTextRotation in cell^.UsedFormattingFields) and
+           (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haRight)
+        then
+          Break;
+        // All other cases --> no overflow --> return to initial left cell
+        gc := Left;
+        break;
+      end;
+
+    // Now find the last column. Again text can overflow into the visible area
+    // from cells to the right.
+    gcLast := Right;
+    if sr <> Cardinal(-1) then
+      while gcLast < ColCount-1 do begin
+        inc(gcLast);
+        cell := FWorksheet.FindCell(sr, GetWorksheetCol(gcLast));
+        // Empty cell --> proceed with next cell to the right
+        if (cell = nil) or (cell^.ContentType = cctEmpty) or
+           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
+        then
+          continue;
+        // Overflow possible from non-merged, horizontal, non-left-aligned label cells
+        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
+           not (uffTextRotation in cell^.UsedFormattingFields) and
+           (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haLeft)
+        then
+          Break;
+        // All other cases --> no overflow --> return to initial right column
+        gcLast := Right;
+      end;
+
+    while gc <= gcLast do begin
+      gr := ARow;
       rct := saved_rct;
       // FDrawingCell is the cell which is currently being painted. We store
       // it to avoid excessive calls to "FindCell".
       FDrawingCell := nil;
-      cNext := c + 1;
-      if (FWorksheet <> nil) and (r >= FixedRows) and (c >= FixedCols) then
+      gcNext := gc + 1;
+      if (FWorksheet <> nil) and (gr >= FixedRows) and (gc >= FixedCols) then
       begin
-        cell := FWorksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
-        if (cell = nil) or (cell^.MergedNeighbors = []) then
+        cell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
+        if (cell = nil) or (cell^.MergedNeighbors = []) then begin
           // single cell
-          FDrawingCell := cell
+          FDrawingCell := cell;
+          gds := GetGridDrawState(gc, gr);
+          ColRowToOffset(true, true, gc, rct.Left, rct.Right);
+          if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
+          begin
+            gc := gc1;
+            gcNext := gc + (gc2 - gc1) + 1;
+          end;
+        end
         else
         begin
           // merged cells
           FDrawingCell := FWorksheet.FindMergeBase(cell);
-          FWorksheet.FindMergedRange(FDrawingCell, r1, c1, r2, c2);
-          r := GetGridRow(r1);
-          ColRowToOffSet(False, True, r, rct.Top, tmp);
-          ColRowToOffSet(False, True, r + r2 - r1, tmp, rct.Bottom);
-          c := GetGridCol(c1);
-          cNext := c + (c2-c1) + 1;
+          FWorksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
+          gr := GetGridRow(sr1);
+          ColRowToOffSet(False, True, gr, rct.Top, tmp);
+          ColRowToOffSet(False, True, gr + sr2 - sr1, tmp, rct.Bottom);
+          gc := GetGridCol(sc1);
+          gcNext := gc + (sc2 - sc1) + 1;
         end;
       end;
 
-      ColRowToOffset(true, true, c, rct.Left, tmp);
-      ColRowToOffset(true, true, cNext-1, tmp, rct.Right);
+      ColRowToOffset(true, true, gc, rct.Left, tmp);
+      ColRowToOffset(true, true, gcNext-1, tmp, rct.Right);
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
  //       IntersectRect(rct, rct, clipArea);
 //        if rct.Left < clipArea.Left then rct.Left := clipArea.Left;
         Rs := (goRowSelect in Options);
-        gds := GetGridDrawState(c, r);
-        DoDrawCell(c, r);
+        gds := GetGridDrawState(gc, gr);
+        DoDrawCell(gc, gr);
       end;
 
-      c := cNext;
+      gc := gcNext;
     end;
 
     // Draw the focus Rect
     if FocusRectVisible and (ARow = Row) and
-       ((Rs and (ARow >= Top) and (ARow <= Bottom)) or IsCellVisible(Col, ARow))
+      (( Rs and (ARow >= Top) and (ARow <= Bottom)) or IsCellVisible(Col, ARow))
     then begin
       if EditorMode then begin
       //if EditorAlwaysShown and (FEditor<>nil) and FEditor.Visible then begin
@@ -1417,13 +1582,13 @@ begin
   end;
 
   // Draw Fixed Columns
-  r := ARow;
-  for c := 0 to FixedCols-1 do begin
+  gr := ARow;
+  for gc := 0 to FixedCols-1 do begin
     gds := [gdFixed];
-    ColRowToOffset(True, True, c, rct.Left, rct.Right);
+    ColRowToOffset(True, True, gc, rct.Left, rct.Right);
     // is this column within the ClipRect?
     if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
-      DoDrawCell(c, r);
+      DoDrawCell(gc, gr);
   end;
 end;
 
@@ -1481,19 +1646,19 @@ var
 begin
   if (FWorksheet = nil) then
     exit;
-                         {
+
   if (ACol < FHeaderCount) or (ARow < FHeaderCount) then
     lCell := nil
   else
     lCell := FDrawingCell;
-    }
+    {
   c := ACol - FHeaderCount;
   r := ARow - FHeaderCount;
   if (r >= 0) and (c >= 0) then
     lCell := FWorksheet.FindCell(r, c)
   else
     lCell := nil;
-
+     }
   // Header
   if lCell = nil then begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then begin
@@ -1522,7 +1687,8 @@ begin
 
   InflateRect(ARect, -constCellPadding, -constCellPadding);
 
-  txt := GetCellText(ACol, ARow);
+//  txt := GetCellText(ACol, ARow);
+  txt := GetCellText(GetGridRow(lCell^.Col), GetGridCol(lCell^.Row));
   if txt = '' then
     exit;
 
@@ -2442,7 +2608,10 @@ end;
 }
 function TsCustomWorksheetGrid.GetWorksheetCol(AGridCol: Integer): cardinal;
 begin
-  Result := AGridCol - FHeaderCount;
+  if (FHeaderCount > 0) and (AGridCol = 0) then
+    Result := Cardinal(-1)
+  else
+    Result := AGridCol - FHeaderCount;
 end;
 
 {@@
@@ -2455,7 +2624,10 @@ end;
 }
 function TsCustomWorksheetGrid.GetWorksheetRow(AGridRow: Integer): Cardinal;
 begin
-  Result := AGridRow - FHeaderCount;
+  if (FHeaderCount > 0) and (AGridRow = 0) then
+    Result := Cardinal(-1)
+  else
+    Result := AGridRow - FHeaderCount;
 end;
 
 {@@ Returns true if the cell has the given border.
@@ -2574,6 +2746,7 @@ var
   i: Integer;
   L: TStrings;
   wrapped: Boolean;
+  pLeft, pRight: Integer;
 begin
   wrapped := ATextWrap or (ATextRot = rtStacked);
   if AMeasureText = '' then txt := AText else txt := AMeasureText;
@@ -2625,6 +2798,37 @@ begin
         ts.Layout := tlTop
       else
         ts.Layout := VERT_ALIGNMENTS[ACellVertAlign];
+
+      // too long text
+      if w > ARect.Right - ARect.Left then
+        if ReplaceTooLong then
+        begin
+          txt := '';
+          repeat
+            txt := txt + '#';
+            LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
+          until txtRect.Right - txtRect.Left > ARect.Right - ARect.Left;
+          AText := Copy(txt, 1, Length(txt)-1);
+          w := Canvas.TextWidth(AText);
+        end;
+
+      P := ARect.TopLeft;
+      case AJustification of
+        0: ts.Alignment := taLeftJustify;
+        1: if FDrawingCell <> nil then
+           begin
+             // Special treatment for overflowing cells: they must be centered
+             // at their original column, not in the total enclosing rectangle.
+             ColRowToOffset(true, true, FDrawingCell^.Col + FHeaderCount, pLeft, pRight);
+             P.X := (pLeft + pRight - w) div 2;
+             P.y := ARect.Top;
+             ts.Alignment := taLeftJustify;
+           end
+           else
+             ts.Alignment := taCenter;
+        2: ts.Alignment := taRightJustify;
+      end;
+      (*
       if w > ARect.Right - ARect.Left then begin
         if ReplaceTooLong then begin
           txt := '';
@@ -2634,15 +2838,16 @@ begin
           until txtRect.Right - txtRect.Left > ARect.Right - ARect.Left;
           AText := Copy(txt, 1, Length(txt)-1);
         end;
-        ts.Alignment := taLeftJustify;
+        //ts.Alignment := taLeftJustify;
       end else
         case AJustification of
           0: ts.Alignment := taLeftJustify;
           1: ts.Alignment := taCenter;
           2: ts.Alignment := taRightJustify;
         end;
+        *)
       Canvas.TextStyle := ts;
-      Canvas.TextRect(ARect,ARect.Left, ARect.Top, AText);
+      Canvas.TextRect(ARect, P.X, P.Y, AText);
     end;
   end
   else
