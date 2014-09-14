@@ -2828,7 +2828,7 @@ begin
       P := ARect.TopLeft;
       case AJustification of
         0: ts.Alignment := taLeftJustify;
-        1: if FDrawingCell <> nil then
+        1: if (FDrawingCell <> nil) and (FDrawingCell^.MergedNeighbors = []) then
            begin
              // Special treatment for overflowing cells: they must be centered
              // at their original column, not in the total enclosing rectangle.

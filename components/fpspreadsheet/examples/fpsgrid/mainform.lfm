@@ -55,15 +55,15 @@ object Form1: TForm1
     FrozenRows = 0
     ReadFormulas = False
     Align = alClient
+    AutoAdvance = aaDown
     ColCount = 27
-    ExtendedSelect = False
     MouseWheelOption = mwGrid
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goSmoothScroll, goFixedColSizing]
     RowCount = 101
     TabOrder = 1
     TitleStyle = tsNative
     ColWidths = (
-      56
+      42
       64
       64
       64
@@ -104,19 +104,19 @@ object Form1: TForm1
     TabOrder = 2
     object Label1: TLabel
       Left = 8
-      Height = 20
+      Height = 15
       Top = 9
-      Width = 46
+      Width = 37
       Caption = 'Sheets:'
       ParentColor = False
     end
     object SheetsCombo: TComboBox
       Left = 72
-      Height = 28
+      Height = 23
       Top = 4
       Width = 808
       Anchors = [akTop, akLeft, akRight]
-      ItemHeight = 20
+      ItemHeight = 15
       ItemIndex = 0
       Items.Strings = (
         'Sheet 1'
