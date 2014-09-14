@@ -47,6 +47,7 @@ type
     FEditing: Boolean;
     FCellFont: TFont;
     FAutoCalc: Boolean;
+    FTextOverflow: Boolean;
     FReadFormulas: Boolean;
     FDrawingCell: PCell;
     function CalcAutoRowHeight(ARow: Integer): Integer;
@@ -165,6 +166,8 @@ type
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
+    {@@ Activates text overflow (cells reaching into neighbors) }
+    property TextOverflow: Boolean read FTextOverflow write FTextOverflow default false;
 
   public
     { public methods }
@@ -328,6 +331,8 @@ type
     property ShowGridLines;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders;
+    {@@ Activates text overflow (cells reaching into neighbors) }
+    property TextOverflow;
 
     {@@ inherited from ancestors}
     property Align;
@@ -368,7 +373,7 @@ type
     {@@ inherited from ancestors}
     property Enabled;
     {@@ inherited from ancestors}
-    property ExtendedSelect;
+    property ExtendedSelect default true;
     {@@ inherited from ancestors}
     property FixedColor;
     {@@ inherited from ancestors}
@@ -1083,8 +1088,8 @@ begin
   then begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
-    lCell := FDrawingCell;
-//    lCell := FWorksheet.FindCell(r, c);
+    //lCell := FDrawingCell;
+    lCell := FWorksheet.FindCell(r, c);
     if lCell <> nil then begin
       // Background color
       if (uffBackgroundColor in lCell^.UsedFormattingFields) then begin
@@ -1400,8 +1405,8 @@ end;
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gds: TGridDrawState;
-  sr, sc, sr1,sc1,sr2,sc2: Cardinal;            // sheet row/column
-  gr, gc, gcNext, gcLast, gc1, gc2: Integer;    // grid row/column
+  sr, sc, sr1,sc1,sr2,sc2: Cardinal;                       // sheet row/column
+  gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
   Rs: Boolean;
   rct, saved_rct: TRect;
   clipArea: Trect;
@@ -1464,6 +1469,7 @@ begin
   end;
 
   sr := GetWorksheetRow(ARow);
+  gcLastUsed := GetGridCol(FWorksheet.GetLastOccupiedColIndex);
 
   // Draw columns in this row
   with GCache.VisibleGrid do
@@ -1473,7 +1479,7 @@ begin
     // Because of possible cell overflow from cells left of the visible range
     // we have to seek to the left for the first occupied text cell
     // and start painting from here.
-    if sr <> Cardinal(-1) then
+    if FTextOverflow and (sr <> Cardinal(-1)) then
       while (gc > FixedCols) do
       begin
         dec(gc);
@@ -1497,8 +1503,8 @@ begin
     // Now find the last column. Again text can overflow into the visible area
     // from cells to the right.
     gcLast := Right;
-    if sr <> Cardinal(-1) then
-      while gcLast < ColCount-1 do begin
+    if FTextOverflow and (sr <> Cardinal(-1)) then
+      while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
         inc(gcLast);
         cell := FWorksheet.FindCell(sr, GetWorksheetCol(gcLast));
         // Empty cell --> proceed with next cell to the right
@@ -1514,9 +1520,10 @@ begin
           Break;
         // All other cases --> no overflow --> return to initial right column
         gcLast := Right;
+        Break;
       end;
 
-    while gc <= gcLast do begin
+    while (gc <= gcLast) do begin
       gr := ARow;
       rct := saved_rct;
       // FDrawingCell is the cell which is currently being painted. We store
@@ -1529,12 +1536,15 @@ begin
         if (cell = nil) or (cell^.MergedNeighbors = []) then begin
           // single cell
           FDrawingCell := cell;
-          gds := GetGridDrawState(gc, gr);
-          ColRowToOffset(true, true, gc, rct.Left, rct.Right);
-          if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
+          if FTextOverflow then
           begin
-            gc := gc1;
-            gcNext := gc + (gc2 - gc1) + 1;
+            gds := GetGridDrawState(gc, gr);
+            ColRowToOffset(true, true, gc, rct.Left, rct.Right);
+            if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
+            begin
+              gc := gc1;
+              gcNext := gc + (gc2 - gc1) + 1;
+            end;
           end;
         end
         else
@@ -1588,7 +1598,10 @@ begin
     ColRowToOffset(True, True, gc, rct.Left, rct.Right);
     // is this column within the ClipRect?
     if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
+    begin
+      FDrawingCell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
       DoDrawCell(gc, gr);
+    end;
   end;
 end;
 
@@ -3450,7 +3463,7 @@ begin
     begin
       lRow := FWorksheet.FindRow(i - FHeaderCount);
       if (lRow <> nil) then
-        RowHeights[i] := CalcRowHeight(lRow^.Height);
+        h := CalcRowHeight(lRow^.Height);
     end;
     RowHeights[i] := h;
   end;

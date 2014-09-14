@@ -1287,6 +1287,7 @@ var
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
   StylesNode: TDOMNode;
   OfficeSettingsNode: TDOMNode;
+  nodename: String;
 begin
   //unzip files into AFileName path
   FilePath := GetTempDir(false);
@@ -1334,10 +1335,11 @@ begin
     //process each table (sheet)
     TableNode := SpreadSheetNode.FindNode('table:table');
     while Assigned(TableNode) do begin
+      nodename := TableNode.Nodename;
       // These nodes occur due to leading spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
       // to ReadXMLFile
-      if TableNode.NodeName = '#text' then begin
+      if nodeName <> 'table:table' then begin // '#text' then begin
         TableNode := TableNode.NextSibling;
         continue;
       end;
@@ -1839,7 +1841,7 @@ begin
       // These nodes occur due to indentation spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
       // to ReadXMLFile
-      if nodeName = '#text' then begin
+      if nodeName <> 'table:table-cell' then begin //= '#text' then begin
         cellNode := cellNode.NextSibling;
         Continue;
       end;
@@ -1963,7 +1965,7 @@ begin
             cfgEntryItemNode := cfgItemMapEntryNode.FirstChild;
             while Assigned(cfgEntryItemNode) do begin
               nodeName := cfgEntryItemNode.NodeName;
-              if (nodeName <> '#text') and (nodeName = 'config:config-item')
+              if (nodeName = 'config:config-item')
               then begin
                 cfgName := lowercase(GetAttrValue(cfgEntryItemNode, 'config:name'));
                 if cfgName = 'showgrid' then begin
@@ -1975,7 +1977,7 @@ begin
                   if cfgValue = 'false' then showHeaders := false;
                 end;
               end else
-              if (nodeName <> '#text') and (nodeName = 'config:config-item-map-named') and
+              if (nodeName = 'config:config-item-map-named') and
                  (GetAttrValue(cfgEntryItemNode, 'config:name') = 'Tables')
               then begin
                 cfgTableItemNode := cfgEntryItemNode.FirstChild;

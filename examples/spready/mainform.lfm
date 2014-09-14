@@ -84,11 +84,22 @@ object MainFrm: TMainFrm
     object CbAutoCalcFormulas: TCheckBox
       Left = 8
       Height = 19
-      Top = 39
+      Top = 32
       Width = 128
       Caption = 'Calculate on change'
       OnChange = CbAutoCalcFormulasChange
       TabOrder = 1
+    end
+    object CbTextOverflow: TCheckBox
+      Left = 8
+      Height = 19
+      Top = 56
+      Width = 91
+      Caption = 'Text overflow'
+      Checked = True
+      OnChange = CbTextOverflowChange
+      State = cbChecked
+      TabOrder = 5
     end
   end
   object ToolBar1: TToolBar
@@ -442,9 +453,9 @@ object MainFrm: TMainFrm
       FrozenRows = 0
       ReadFormulas = False
       Align = alClient
+      AutoAdvance = aaDown
       BorderStyle = bsNone
       ColCount = 27
-      ExtendedSelect = False
       MouseWheelOption = mwGrid
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll, goFixedColSizing]
       RowCount = 101
