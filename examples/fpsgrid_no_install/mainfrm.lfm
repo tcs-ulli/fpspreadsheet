@@ -1,0 +1,72 @@
+object Form1: TForm1
+  Left = 340
+  Height = 413
+  Top = 154
+  Width = 676
+  Caption = 'Form1'
+  ClientHeight = 413
+  ClientWidth = 676
+  OnCreate = FormCreate
+  LCLVersion = '1.3'
+  object ButtonPanel: TPanel
+    Left = 0
+    Height = 38
+    Top = 375
+    Width = 676
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 38
+    ClientWidth = 676
+    TabOrder = 0
+    object BtnNew: TButton
+      Left = 8
+      Height = 25
+      Top = 6
+      Width = 75
+      Caption = 'New'
+      OnClick = BtnNewClick
+      TabOrder = 0
+    end
+    object BtnLoad: TButton
+      Left = 94
+      Height = 25
+      Top = 6
+      Width = 75
+      Caption = 'Load'
+      OnClick = BtnLoadClick
+      TabOrder = 1
+    end
+    object BtnSave: TButton
+      Left = 180
+      Height = 25
+      Top = 6
+      Width = 75
+      Caption = 'Save'
+      OnClick = BtnSaveClick
+      TabOrder = 2
+    end
+  end
+  object TabControl: TTabControl
+    Left = 0
+    Height = 375
+    Top = 0
+    Width = 676
+    OnChange = TabControlChange
+    Align = alClient
+    TabOrder = 1
+  end
+  object OpenDialog: TOpenDialog
+    DefaultExt = '.xls'
+    Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (pipes) (.wikitable_pipes)|.wikitable_pipes|All files (*.*)|*.*'
+    Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
+    left = 192
+    top = 96
+  end
+  object SaveDialog: TSaveDialog
+    DefaultExt = '.xls'
+    Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (wikimedia) (.wikitable_wikimedia)|*.wikitable_wikimedia'
+    Options = [ofOverwritePrompt, ofExtensionDifferent, ofEnableSizing, ofViewDetail]
+    left = 192
+    top = 184
+  end
+end

@@ -1282,14 +1282,6 @@ begin
   inherited;
 end;
 
-
-var
-
-
-    counter: Integer = 0;
-
-
-
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const ALength: WORD): WideString;
 var
@@ -1332,11 +1324,6 @@ begin
   end else begin
     //String is 1 byte per char, this is UTF-16 with the high byte ommited because it is zero
     //so decompress and then convert
-
-
-    inc(Counter);
-
-
     lLen:=ALength;
     SetLength(DecomprStrValue, lLen);
     for i := 1 to lLen do
