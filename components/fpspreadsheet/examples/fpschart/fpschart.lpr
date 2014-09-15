@@ -7,7 +7,8 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, tachartlazaruspkg, mainform, laz_fpspreadsheet_visual;
+  Forms, tachartlazaruspkg, mainform, laz_fpspreadsheet_visual,
+  laz_fpspreadsheet;
 
 {$R *.res}
 

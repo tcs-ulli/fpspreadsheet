@@ -11,7 +11,7 @@ program wikitableread;
 
 uses
   Classes, SysUtils, fpspreadsheet, wikitable,
-  laz_fpspreadsheet, fpsutils;
+  fpsutils;
 
 var
   MyWorkbook: TsWorkbook;
@@ -54,8 +54,8 @@ begin
      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
        CurCell^.Col))
      );
-    if Length(CurCell^.RPNFormulaValue) > 0 then
-      WriteLn(' Formula: ', MyWorkSheet.ReadRPNFormulaAsString(CurCell))
+    if HasFormula(CurCell) then
+      WriteLn(' Formula: ', CurCell^.FormulaValue)
     else
       WriteLn;
     CurCell := MyWorkSheet.GetNextCell();

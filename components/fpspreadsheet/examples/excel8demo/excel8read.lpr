@@ -36,7 +36,7 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.ReadFormulas := true;
+  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
 
   MyWorkbook.ReadFromFile(InputFilename, sfExcel8);
 
