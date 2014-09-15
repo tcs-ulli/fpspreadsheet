@@ -47,15 +47,19 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
   Grid := TsWorksheetGrid.Create(self);
 
-  // Put the grid into the TabControl
+  // Put the grid into the TabControl and align it to fill the tabcontrol.
   Grid.Parent := TabControl;
   Grid.Align := alClient;
 
   // Useful options
-  Grid.Options := Grid.Options + [goColSizing, goRowSizing, goEditing, goThumbTracking];
-  Grid.AutoAdvance := aaDown;
-  Grid.MouseWheelOption := mwGrid;
-  Grid.TextOverflow := true;
+  Grid.Options := Grid.Options + [goColSizing, goRowSizing,
+    goFixedColSizing,  // useful if the spreadsheet contains frozen columns
+    goEditing,         // needed for modifying cell content
+    goThumbTracking    // see the grid scroll while you drag the scrollbar
+  ];
+  Grid.AutoAdvance := aaDown;       // move active cell down on ENTER
+  Grid.MouseWheelOption := mwGrid;  // mouse wheel scrolls the grid, not the active cell
+  Grid.TextOverflow := true;        // too long text extends into neighbor cells
 
   // Create an empty worksheet
   Grid.NewWorkbook(26, 100);

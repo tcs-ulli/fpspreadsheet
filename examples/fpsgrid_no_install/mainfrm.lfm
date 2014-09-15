@@ -32,7 +32,7 @@ object Form1: TForm1
       Height = 25
       Top = 6
       Width = 75
-      Caption = 'Load'
+      Caption = 'Load...'
       OnClick = BtnLoadClick
       TabOrder = 1
     end
@@ -41,7 +41,7 @@ object Form1: TForm1
       Height = 25
       Top = 6
       Width = 75
-      Caption = 'Save'
+      Caption = 'Save...'
       OnClick = BtnSaveClick
       TabOrder = 2
     end
