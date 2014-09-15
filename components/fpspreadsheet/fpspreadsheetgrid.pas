@@ -1469,7 +1469,6 @@ begin
   end;
 
   sr := GetWorksheetRow(ARow);
-  gcLastUsed := GetGridCol(FWorksheet.GetLastOccupiedColIndex);
 
   // Draw columns in this row
   with GCache.VisibleGrid do
@@ -1479,7 +1478,7 @@ begin
     // Because of possible cell overflow from cells left of the visible range
     // we have to seek to the left for the first occupied text cell
     // and start painting from here.
-    if FTextOverflow and (sr <> Cardinal(-1)) then
+    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(FWorksheet) then
       while (gc > FixedCols) do
       begin
         dec(gc);
@@ -1503,7 +1502,9 @@ begin
     // Now find the last column. Again text can overflow into the visible area
     // from cells to the right.
     gcLast := Right;
-    if FTextOverflow and (sr <> Cardinal(-1)) then
+    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(FWorksheet) then
+    begin
+      gcLastUsed := GetGridCol(FWorksheet.GetLastOccupiedColIndex);
       while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
         inc(gcLast);
         cell := FWorksheet.FindCell(sr, GetWorksheetCol(gcLast));
@@ -1522,6 +1523,7 @@ begin
         gcLast := Right;
         Break;
       end;
+    end;
 
     while (gc <= gcLast) do begin
       gr := ARow;
@@ -1530,7 +1532,7 @@ begin
       // it to avoid excessive calls to "FindCell".
       FDrawingCell := nil;
       gcNext := gc + 1;
-      if (FWorksheet <> nil) and (gr >= FixedRows) and (gc >= FixedCols) then
+      if Assigned(FWorksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
       begin
         cell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
         if (cell = nil) or (cell^.MergedNeighbors = []) then begin
@@ -1599,7 +1601,10 @@ begin
     // is this column within the ClipRect?
     if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
     begin
-      FDrawingCell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
+      if Assigned(FWorksheet) then
+        FDrawingCell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc))
+      else
+        FDrawingCell := nil;
       DoDrawCell(gc, gr);
     end;
   end;
