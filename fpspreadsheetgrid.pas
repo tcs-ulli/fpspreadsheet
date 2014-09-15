@@ -1489,7 +1489,8 @@ begin
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
-        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
+//        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
+        if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in cell^.UsedFormattingFields) and
            (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haRight)
         then
@@ -1514,7 +1515,8 @@ begin
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
-        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
+//        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
+        if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in cell^.UsedFormattingFields) and
            (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haLeft)
         then
@@ -1535,7 +1537,9 @@ begin
       if Assigned(FWorksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
       begin
         cell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
-        if (cell = nil) or (cell^.MergedNeighbors = []) then begin
+        //if (cell = nil) or (cell^.MergedNeighbors = []) then begin
+        if (cell = nil) or (cell^.Mergebase = nil) then
+        begin
           // single cell
           FDrawingCell := cell;
           if FTextOverflow then
@@ -2265,7 +2269,9 @@ begin
 
   lCell := FWorksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then begin
-    if lCell^.MergedNeighbors <> [] then begin
+    //if lCell^.MergedNeighbors <> [] then begin
+    if (lCell^.Mergebase <> nil) then
+    begin
       FWorksheet.FindMergedRange(lCell, r1, c1, r2, c2);
       if r1 <> r2 then
         // If the merged range encloses several rows we skip automatic row height
@@ -2323,7 +2329,7 @@ end;
   @param   ACol   Grid column index of the cell
   @param   ARow   Grid row index of the cell
   @return  Text to be displayed in the cell.
-  }
+}
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
   lCell: PCell;
@@ -2362,7 +2368,6 @@ begin
         end;
       end;
     end;
-//    else Result := 'NIL';
   end;
 end;
 
@@ -2374,7 +2379,7 @@ end;
   @param   ACol   Grid column index of the cell being edited
   @param   ARow   Grid row index of the grid cell being edited
   @return  Text to be passed to the cell editor.
-  }
+}
 function TsCustomWorksheetGrid.GetEditText(aCol, aRow: Integer): string;
 begin
   Result := GetCellText(aCol, aRow);
@@ -2383,7 +2388,9 @@ end;
 
 { Determines the style of the border between a cell and its neighbor given by
   ADeltaCol and ADeltaRow (one of them must be 0, the other one can only be +/-1).
-  ACol and ARow are in grid units. }
+  ACol and ARow are in grid units.
+  Result is FALSE if there is no border line.
+}
 function TsCustomWorksheetGrid.GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
   out ABorderStyle: TsCellBorderStyle): Boolean;
 var
@@ -2408,37 +2415,46 @@ begin
     border := cbSouth;
     neighborBorder := cbNorth;
   end else
-    raise Exception.Create('TsCustomWorksheetGrid: incorrect col/row for GetBorderStyle.');
+    raise Exception.Create('[TsCustomWorksheetGrid] Incorrect col/row for GetBorderStyle.');
+
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
   cell := FWorksheet.FindCell(r, c);
-  if (r+ADeltaRow < 0) or (c + ADeltaCol < 0) then
+  if (ARow - FHeaderCount + ADeltaRow < 0) or (ACol - FHeaderCount + ADeltaCol < 0) then
     neighborcell := nil
   else
-    neighborcell := FWorksheet.FindCell(r+ADeltaRow, c+ADeltaCol);
+    neighborcell := FWorksheet.FindCell(ARow - FHeaderCount + ADeltaRow, ACol - FHeaderCount + ADeltaCol);
+
   // Only cell has border, but neighbor has not
   if HasBorder(cell, border) and not HasBorder(neighborCell, neighborBorder) then
-{  if ((cell <> nil) and (border in cell^.Border)) and
-     ((neighborcell = nil) or (neighborborder in neighborcell^.Border))
-  then               }
-    ABorderStyle := cell^.BorderStyles[border]
+  begin
+    if FWorksheet.IsMerged(cell) and FWorksheet.IsMerged(neighborcell) and
+       (cell^.MergeBase = neighborcell^.Mergebase)
+    then
+      result := false
+    else
+      ABorderStyle := cell^.BorderStyles[border]
+  end
   else
   // Only neighbor has border, cell has not
   if not HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
-{
-if ((cell = nil) or not (border in cell^.Border)) and
-     (neighborcell <> nil) and (neighborborder in neighborcell^.Border)
-  then
-}
-    ABorderStyle := neighborcell^.BorderStyles[neighborborder]
+  begin
+    if FWorksheet.IsMerged(cell) and FWorksheet.IsMerged(neighborcell) and
+       (cell^.MergeBase = neighborcell^.Mergebase)
+    then
+      result := false
+    else
+      ABorderStyle := neighborcell^.BorderStyles[neighborborder]
+  end
   else
   // Both cells have shared border -> use top or left border
-  if HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then begin
-    {
-  if (cell <> nil) and (border in cell^.Border) and
-     (neighborcell <> nil) and (neighborborder in neighborcell^.Border)
-  then begin
-  }
+  if HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
+  begin
+    if FWorksheet.IsMerged(cell) and FWorksheet.IsMerged(neighborcell) and
+       (cell^.MergeBase = neighborcell^.Mergebase)
+    then
+      result := false
+    else
     if (border in [cbNorth, cbWest]) then
       ABorderStyle := neighborcell^.BorderStyles[neighborborder]
     else
@@ -2457,7 +2473,7 @@ end;
 }
 function TsCustomWorksheetGrid.GetGridCol(ASheetCol: Cardinal): Integer;
 begin
-  Result := ASheetCol + FHeaderCount
+  Result := Integer(ASheetCol) + FHeaderCount
 end;
 
 {@@
@@ -2470,7 +2486,7 @@ end;
 }
 function TsCustomWorksheetGrid.GetGridRow(ASheetRow: Cardinal): Integer;
 begin
-  Result := ASheetRow + FHeaderCount;
+  Result := Integer(ASheetRow) + FHeaderCount;
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
@@ -2700,7 +2716,7 @@ begin
   if AGridCol < FHeaderCount then
     exit;
 
-  if FWorksheet.GetLastColIndex+1 + FHeaderCount >= FInitColCount then
+  if FWorksheet.GetLastColIndex + 1 + FHeaderCount >= FInitColCount then
     ColCount := ColCount + 1;
   c := AGridCol - FHeaderCount;
   FWorksheet.InsertCol(c);
@@ -2833,7 +2849,7 @@ begin
       P := ARect.TopLeft;
       case AJustification of
         0: ts.Alignment := taLeftJustify;
-        1: if (FDrawingCell <> nil) and (FDrawingCell^.MergedNeighbors = []) then
+        1: if (FDrawingCell <> nil) and (FDrawingCell^.MergeBase = nil) then //(FDrawingCell^.MergedNeighbors = []) then
            begin
              // Special treatment for overflowing cells: they must be centered
              // at their original column, not in the total enclosing rectangle.

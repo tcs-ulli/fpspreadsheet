@@ -1841,50 +1841,60 @@ begin
       // These nodes occur due to indentation spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
       // to ReadXMLFile
+      {
       if nodeName <> 'table:table-cell' then begin //= '#text' then begin
         cellNode := cellNode.NextSibling;
         Continue;
       end;
+      }
+      if nodeName = 'table:table-cell' then begin
+        // select this cell value's type
+        paramValueType := GetAttrValue(CellNode, 'office:value-type');
+        paramFormula := GetAttrValue(CellNode, 'table:formula');
+        tableStyleName := GetAttrValue(CellNode, 'table:style-name');
 
-      // select this cell value's type
-      paramValueType := GetAttrValue(CellNode, 'office:value-type');
-      paramFormula := GetAttrValue(CellNode, 'table:formula');
-      tableStyleName := GetAttrValue(CellNode, 'table:style-name');
+        if paramValueType = 'string' then
+          ReadLabel(row, col, cellNode)
+        else
+        if (paramValueType = 'float') or (paramValueType = 'percentage') or
+           (paramValueType = 'currency')
+        then
+          ReadNumber(row, col, cellNode)
+        else if (paramValueType = 'date') or (paramValueType = 'time') then
+          ReadDateTime(row, col, cellNode)
+        else if (paramValueType = '') and (tableStyleName <> '') then
+          ReadBlank(row, col, cellNode);
 
-      if paramValueType = 'string' then
-        ReadLabel(row, col, cellNode)
+        if ParamFormula <> '' then
+          ReadFormula(row, col, cellNode);
+
+        paramColsSpanned := GetAttrValue(cellNode, 'table:number-columns-spanned');
+        if paramColsSpanned <> '' then
+          colsSpanned := StrToInt(paramColsSpanned) - 1
+        else
+          colsSpanned := 0;
+
+        paramRowsSpanned := GetAttrValue(cellNode, 'table:number-rows-spanned');
+        if paramRowsSpanned <> '' then
+          rowsSpanned := StrToInt(paramRowsSpanned) - 1
+        else
+          rowsSpanned := 0;
+
+        if (colsSpanned <> 0) or (rowsSpanned <> 0) then
+          FWorksheet.MergeCells(row, col, row+rowsSpanned, col+colsSpanned);
+
+        paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
+        if paramColsRepeated = '' then paramColsRepeated := '1';
+      end
       else
-      if (paramValueType = 'float') or (paramValueType = 'percentage') or
-         (paramValueType = 'currency')
-      then
-        ReadNumber(row, col, cellNode)
-      else if (paramValueType = 'date') or (paramValueType = 'time') then
-        ReadDateTime(row, col, cellNode)
-      else if (paramValueType = '') and (tableStyleName <> '') then
-        ReadBlank(row, col, cellNode);
+      if nodeName = 'table:covered-table-cell' then
+      begin
+        paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
+        if paramColsRepeated = '' then paramColsRepeated := '1';
+      end else
+        paramColsRepeated := '0';
 
-      if ParamFormula <> '' then
-        ReadFormula(row, col, cellNode);
-
-      paramColsSpanned := GetAttrValue(cellNode, 'table:number-columns-spanned');
-      if paramColsSpanned <> '' then
-        colsSpanned := StrToInt(paramColsSpanned) - 1
-      else
-        colsSpanned := 0;
-
-      paramRowsSpanned := GetAttrValue(cellNode, 'table:number-rows-spanned');
-      if paramRowsSpanned <> '' then
-        rowsSpanned := StrToInt(paramRowsSpanned) - 1
-      else
-        rowsSpanned := 0;
-
-      if (colsSpanned <> 0) or (rowsSpanned <> 0) then
-        FWorksheet.MergeCells(row, col, row+rowsSpanned, col+colsSpanned);
-
-      paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
-      if paramColsRepeated = '' then paramColsRepeated := '1';
       col := col + StrToInt(paramColsRepeated);
-
       cellNode := cellNode.NextSibling;
     end; //while Assigned(cellNode)
 
@@ -3056,7 +3066,8 @@ begin
       cell := ASheet.FindCell(r, c);
 
       // Belongs to merged block?
-      if (cell <> nil) and not FWorksheet.IsMergeBase(cell) and (cell^.MergedNeighbors <> []) then
+//      if (cell <> nil) and not FWorksheet.IsMergeBase(cell) and (cell^.MergedNeighbors <> []) then
+      if (cell <> nil) and not FWorksheet.IsMergeBase(cell) and (cell^.MergeBase <> nil) then
       begin
         AppendToStream(AStream,
           '<table:covered-table-cell />');

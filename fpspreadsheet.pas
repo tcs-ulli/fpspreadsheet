@@ -435,7 +435,8 @@ type
     BoolValue: Boolean;
     ErrorValue: TsErrorValue;
     SharedFormulaBase: PCell;     // Cell containing the shared formula
-    MergedNeighbors: TsCellBorders;
+    MergeBase: PCell;   // Upper left cell if a merged range
+    //MergedNeighbors: TsCellBorders;
     { Formatting fields }
     { When adding/deleting formatting fields don't forget to update CopyFormat! }
     UsedFormattingFields: TsUsedFormattingFields;
@@ -583,6 +584,7 @@ type
     function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
     procedure GetMergedCellRanges(out AList: TsCellRangeArray);
     function IsMergeBase(ACell: PCell): Boolean;
+    function IsMerged(ACell: PCell): Boolean;
 
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
@@ -2918,69 +2920,13 @@ begin
   if (ARow1 = ARow2) and (ACol1 = ACol2) then
     exit;
 
-  // Case 2: single row
-  if (ARow1 = ARow2) and (ACol1 <> ACol2) then begin
-    cell := GetCell(ARow1, ACol1);
-    cell^.MergedNeighbors := [cbEast];
-    cell := GetCell(ARow2, ACol2);
-    cell^.MergedNeighbors := [cbWest];
-    for c := ACol1+1 to ACol2-1 do begin
-      cell := GetCell(ARow1, c);
-      cell^.MergedNeighbors := [cbEast, cbWest];
+  base := GetCell(ARow1, ACol1);
+  for r := ARow1 to ARow2 do
+    for c := ACol1 to ACol2 do
+    begin
+      cell := GetCell(r, c);
+      cell^.MergeBase := base;
     end;
-  end else
-  // Case 3: single column
-  if (ARow1 <> ARow2) and (ACol1 = ACol2) then begin
-    cell := GetCell(ARow1, ACol1);
-    cell^.MergedNeighbors := [cbSouth];
-    cell := GetCell(ARow2, ACol2);
-    cell^.MergedNeighbors := [cbNorth];
-    for r := ARow1+1 to ARow2-1 do begin
-      cell := GetCell(r, ACol1);
-      cell^.MergedNeighbors := [cbNorth, cbSouth];
-    end;
-  end else
-  // case 4: general case
-  begin
-    // left/top corner
-    cell := GetCell(ARow1, ACol1);
-    cell^.MergedNeighbors := [cbEast, cbSouth];
-    // right/top corner
-    cell := GetCell(ARow1, ACol2);
-    cell^.MergedNeighbors := [cbWest, cbSouth];
-    // left/bottom corner
-    cell := GetCell(ARow2, ACol1);
-    cell^.MergedNeighbors := [cbEast, cbNorth];
-    // right/bottom corner
-    cell := GetCell(ARow2, ACol2);
-    cell^.MergedNeighbors := [cbWest, cbNorth];
-    // top row
-    for c := ACol1+1 to ACol2-1 do begin
-      cell := GetCell(ARow1, c);
-      cell^.MergedNeighbors := [cbSouth, cbEast, cbWest];
-    end;
-    // bottom row
-    for c := ACol1+1 to ACol2-1 do begin
-      cell := GetCell(ARow2, c);
-      cell^.MergedNeighbors := [cbNorth, cbEast, cbWest];
-    end;
-    // left column
-    for r := ARow1+1 to ARow2-1 do begin
-      cell := GetCell(r, ACol1);
-      cell^.MergedNeighbors := [cbEast, cbNorth, cbSouth];
-    end;
-    // right column
-    for r := ARow1+1 to ARow2-1 do begin
-      cell := GetCell(r, ACol2);
-      cell^.MergedNeighbors := [cbWest, cbNorth, cbSouth];
-    end;
-    // inner
-    for r := ARow1+1 to ARow2-1 do
-      for c := ACol1+1 to ACol2-1 do begin
-        cell := GetCell(r, c);
-        cell^.MergedNeighbors := [cbEast, cbWest, cbNorth, cbSouth];
-      end;
-  end;
   ChangedCell(ARow1, ACol1);
 end;
 
@@ -3008,9 +2954,9 @@ end;
 }
 procedure TsWorksheet.UnmergeCells(ARow, ACol: Cardinal);
 var
-  cell: PCell;
   r, c: Cardinal;
   r1, c1, r2, c2: Cardinal;
+  cell: PCell;
 begin
   cell := FindCell(ARow, ACol);
   if not FindMergedRange(cell, r1, c1, r2, c2) then
@@ -3020,7 +2966,8 @@ begin
     begin
       cell := FindCell(r, c);
       if cell <> nil then
-        cell^.MergedNeighbors := [];
+        cell^.MergeBase := nil;
+//        cell^.MergedNeighbors := [];
     end;
   ChangedCell(ARow, ACol);
 end;
@@ -3054,6 +3001,13 @@ end;
           nil.
 }
 function TsWorksheet.FindMergeBase(ACell: PCell): PCell;
+begin
+  if ACell = nil then
+    Result := nil
+  else
+    Result := ACell^.MergeBase;
+end;
+                               (*
 var
   r, c: Cardinal;
 begin
@@ -3072,7 +3026,7 @@ begin
     Result := FindCell(r, c);
   end;
 end;
-
+       *)
 {@@
   Determines the merged cell block to which a given cell belongs
 
@@ -3090,15 +3044,38 @@ function TsWorksheet.FindMergedRange(ACell: PCell;
 var
   r, c: Cardinal;
   cell: PCell;
+  base: PCell;
 begin
-  cell := FindMergeBase(ACell);
-  if cell = nil then begin
+  base := FindMergeBase(ACell);
+  if base = nil then begin
     Result := false;
     exit;
   end;
-  ARow1 := cell^.Row;
-  ACol1 := cell^.Col;
+  // Assuming that the merged block is rectangular, we start at merge base...
+  ARow1 := base^.Row;
   ARow2 := ARow1;
+  ACol1 := base^.Col;
+  ACol2 := ACol1;
+  // ... and go along first COLUMN to find the end of the merged block, ...
+  for c := ACol1+1 to GetLastColIndex do
+  begin
+    cell := FindCell(ARow1, c);
+    if (cell = nil) or (cell^.MergeBase <> base) then
+      break
+    else
+      ACol2 := c;
+  end;
+  // ... and go along first ROW to find the end of the merged block
+  for r := ARow1 + 1 to GetLastRowIndex do
+  begin
+    cell := FindCell(r, ACol1);
+    if (cell = nil) or (cell^.MergeBase <> base) then
+      break
+    else
+      ARow2 := r;
+  end;
+
+{
   while (cell <> nil) and (cbSouth in cell^.MergedNeighbors) do begin
     inc(ARow2);
     cell := FindCell(ARow2, ACol1);
@@ -3116,6 +3093,7 @@ begin
     Result := false;
     exit;
   end;
+  }
   Result := true;
 end;
 
@@ -3145,9 +3123,9 @@ begin
         SetLength(AList, n+1);
         AList[n] := rng;
         inc(n);
-        c := rng.Col2;   // jump to next cell not belonging to this block
+        c := rng.Col2;   // jump to last cell of block
       end;
-      inc(c);
+      inc(c);   // go to next cell
     end;
   end;
 end;
@@ -3161,11 +3139,24 @@ end;
 }
 function TsWorksheet.IsMergeBase(ACell: PCell): Boolean;
 begin
+  Result := (ACell <> nil) and (ACell = ACell^.MergeBase);
+  {
   Result := (ACell <> nil) and (
     (ACell^.MergedNeighbors = [cbEast]) or        // single row
     (ACell^.MergedNeighbors = [cbSouth]) or       // single column
     (ACell^.MergedNeighbors = [cbEast, cbSouth])  // 2d
   );
+  }
+end;
+
+{@@ Returns TRUE if the specified cell belongs to a merged block
+
+  @param   ACell  Pointer to the cell of interest
+  @return  TRUE if the cell belongs to a merged block, FALSE if not.
+}
+function TsWorksheet.IsMerged(ACell: PCell): Boolean;
+begin
+  Result := (ACell <> nil) and (ACell^.MergeBase <> nil);
 end;
 
 {@@
@@ -5033,36 +5024,50 @@ var
 begin
   col := PtrInt(arg);
   cell := PCell(data);
+  if cell = nil then   // This should not happen. Just to make sure...
+    exit;
 
-  // Update column index of moved cells
-  if cell^.Col >= col then
+  if (cell^.Col >= col) then
+    // Update column index of moved cell
     inc(cell^.Col);
 
   // Update formulas
-  // (1) create an rpn formula
-  formula := BuildRPNFormula(cell);
-  // (2) update cell addresses affected by the insertion of a column
-  for i:=0 to Length(formula)-1 do begin
-    fe := Formula[i];   // "fe" means "formula element"
-    case fe.ElementKind of
-      fekCell, fekCellRef:
-        if fe.Col >= col then inc(fe.Col);
-      fekCellRange:
-        begin
-          if fe.Col >= col then inc(fe.Col);
-          if fe.Col2 >= col then inc(fe.Col2);
+  if HasFormula(cell) then
+  begin
+    {
+    if cell^.SharedFormulaBase <> cell then
+    begin
+      newCell := GetCell(cell^.Row, col);
+      newCell^.SharedFormulaBase := cell^.SharedFormulaBasse;
+    end else
+    }
+    begin
+      // (1) create an rpn formula
+      formula := BuildRPNFormula(cell);
+      // (2) update cell addresses affected by the insertion of a column
+      for i:=0 to Length(formula)-1 do
+      begin
+        fe := Formula[i];   // "fe" means "formula element"
+        case fe.ElementKind of
+          fekCell, fekCellRef:
+            if fe.Col >= col then inc(fe.Col);
+          fekCellRange:
+            begin
+              if fe.Col >= col then inc(fe.Col);
+              if fe.Col2 >= col then inc(fe.Col2);
+            end;
         end;
+      end;
+      // (3) convert rpn formula back to string formula
+      cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
     end;
   end;
-  // (3) convert rpn formula back to string formula
-  cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
 end;
 
 {@@
   Inserts a column BEFORE the index specified. Cells with greater column indexes are
-  moved one column up. Cell references in rpn formulas are considered as well.
-  However, lacking a parser for string formulas, references in string formulas
-  are not changed which may lead to incorrect operation!
+  moved one column to the right. Merged cell blocks and cell references in formulas
+  are considered as well.
 
   @param   ACol   Index of the column before which a new column is inserted.
 }
@@ -5071,6 +5076,9 @@ var
   cellnode: TAVLTreeNode;
   col: PCol;
   i: Integer;
+  r, c: Cardinal;
+  r1, c1, r2, c2: Cardinal;
+  cell, nextcell, gapcell: PCell;
 begin
   // Update column index of cell records
   cellnode := FCells.FindLowest;
@@ -5078,6 +5086,26 @@ begin
     InsertColCallback(cellnode.Data, pointer(PtrInt(ACol)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
+
+  // Fix merged cells: If the inserted column runs through a block of merged
+  // cells the block is cut into two pieces. Here we fill the gap with dummy
+  // cells and set their MergeBase correctly.
+  for r := 0 to GetLastRowIndex do
+    for c := 0 to GetLastColIndex do
+    begin
+      cell := FindCell(r, c);
+      if IsMergeBase(cell) then begin
+        FindMergedRange(cell, r1, c1, r2, c2);
+        if ACol = c2 + 1 then begin
+          nextcell := FindCell(r, ACol + 1);
+          if Assigned(nextcell) and (nextcell^.MergeBase = cell) then
+          begin
+            gapcell := GetCell(r, ACol);
+            gapcell^.MergeBase := cell;
+          end;
+        end;
+      end;
+    end;
 
   // Update column index of column records
   for i:=0 to FCols.Count-1 do begin
@@ -5106,31 +5134,33 @@ begin
   if cell^.Row >= row then
     inc(cell^.Row);
 
-  // Update rpn formulas
-  // (1) create an rpn formula
-  formula := BuildRPNFormula(cell);
-  // (2) update cell addresses affected by the insertion of a column
-  for i:=0 to Length(formula)-1 do begin
-    fe := formula[i];   // "fe" means "formula element"
-    case fe.ElementKind of
-      fekCell, fekCellRef:
-        if fe.Row >= row then inc(fe.Row);
-      fekCellRange:
-        begin
+  // Update formulas
+  if HasFormula(cell) then
+  begin
+    // (1) create an rpn formula
+    formula := BuildRPNFormula(cell);
+    // (2) update cell addresses affected by the insertion of a column
+    for i:=0 to Length(formula)-1 do begin
+      fe := formula[i];   // "fe" means "formula element"
+      case fe.ElementKind of
+        fekCell, fekCellRef:
           if fe.Row >= row then inc(fe.Row);
-          if fe.Row2 >= row then inc(fe.Row2);
-        end;
+        fekCellRange:
+          begin
+            if fe.Row >= row then inc(fe.Row);
+            if fe.Row2 >= row then inc(fe.Row2);
+          end;
+      end;
     end;
+    // (3) convert rpn formula back to string formula
+    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
   end;
-  // (3) convert rpn formula back to string formula
-  cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
 end;
 
 {@@
   Inserts a row BEFORE the row specified. Cells with greater row indexes are
-  moved one row up. Cell references in rpn formulas are considered as well.
-  However, lacking a parser for string formulas, references in string formulas
-  are not changed which may lead to incorrect operation!
+  moved one row down. Merged cell blocks and cell references in formulas are
+  considered as well.
 
   @param   ARow   Index of the row before which a new row is inserted.
 }
@@ -5139,6 +5169,8 @@ var
   row: PRow;
   cellnode: TAVLTreeNode;
   i: Integer;
+  r, c, r1, c1, r2, c2: Cardinal;
+  cell, nextcell, gapcell: PCell;
 begin
   // Update row index of cell records
   cellnode := FCells.FindLowest;
@@ -5146,6 +5178,26 @@ begin
     InsertRowCallback(cellnode.Data, pointer(PtrInt(ARow)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
+
+  // Fix merged cells: If the inserted row runs through a block of merged
+  // cells the block is cut into two pieces. Here we fill the gap with dummy
+  // cells and set their MergeBase correctly.
+  for r := 0 to GetLastRowIndex do
+    for c := 0 to GetLastColIndex do
+    begin
+      cell := FindCell(r, c);
+      if IsMergeBase(cell) then begin
+        FindMergedRange(cell, r1, c1, r2, c2);
+        if ARow = r2 + 1 then begin
+          nextcell := FindCell(ARow + 1, c);
+          if Assigned(nextcell) and (nextcell^.MergeBase = cell) then
+          begin
+            gapcell := GetCell(ARow, c);
+            gapcell^.MergeBase := cell;
+          end;
+        end;
+      end;
+    end;
 
   // Update row index of row records
   for i:=0 to FRows.Count-1 do begin

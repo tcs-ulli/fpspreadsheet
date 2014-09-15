@@ -546,6 +546,7 @@ begin
     WorksheetGrid.MergeCells
   else
     WorksheetGrid.UnmergeCells;
+  WorksheetGridSelection(nil, WorksheetGrid.Col, WorksheetGrid.Row);
 end;
 
 procedure TMainFrm.AcNewExecute(Sender: TObject);
@@ -1041,11 +1042,11 @@ begin
       if (ACell=nil) or not (uffNumberFormat in ACell^.UsedFormattingFields)
         then Strings.Add('NumberFormatStr=')
         else Strings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
-      if (ACell=nil) or (ACell^.MergedNeighbors = []) then
-        Strings.Add('Merged neighbors=')
+      if not WorksheetGrid.Worksheet.IsMerged(ACell) then
+        Strings.Add('Merged range=')
       else begin
         WorksheetGrid.Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-        Strings.Add('Merged neighbors=' + GetCellRangeString(r1, c1, r2, c2));
+        Strings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
       end;
 
     end;
@@ -1167,7 +1168,7 @@ begin
   AcWordwrap.Checked := wrapped;
 end;
 
-procedure TMainFrm.WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
+procedure TMainFrm.WorksheetGridSelection(Sender: TObject; ACol, ARow: Integer);
 var
   r, c: Cardinal;
   cell: PCell;
@@ -1209,7 +1210,7 @@ begin
     EdFormula.Text := '';
 
   EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
-  AcMergeCells.Checked := (cell <> nil) and (cell^.MergedNeighbors <> []);
+  AcMergeCells.Checked := WorksheetGrid.Worksheet.IsMerged(cell);
 
   UpdateHorAlignmentActions;
   UpdateVertAlignmentActions;
