@@ -175,6 +175,8 @@ type
     destructor Destroy; override;
     procedure BeginUpdate;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
+    procedure DeleteCol(AGridCol: Integer);
+    procedure DeleteRow(AGridRow: Integer);
     procedure EditingDone; override;
     procedure EndUpdate;
     procedure GetSheets(const ASheets: TStrings);
@@ -1032,6 +1034,31 @@ begin
     AState := AState + [gdFixed];
   end;
 end;
+
+{@@
+  Deletes the column specified.
+}
+procedure TsCustomWorksheetGrid.DeleteCol(AGridCol: Integer);
+begin
+  if AGridCol < FHeaderCount then
+    exit;
+
+  FWorksheet.DeleteCol(GetWorksheetCol(AGridCol));
+  UpdateColWidths(AGridCol);
+end;
+
+{@@
+  Deletes the row specified.
+}
+procedure TsCustomWorksheetGrid.DeleteRow(AGridRow: Integer);
+begin
+  if AGridRow < FHeaderCount then
+    exit;
+
+  FWorksheet.DeleteRow(GetWorksheetRow(AGridRow));
+  UpdateRowHeights(AGridRow);
+end;
+
 
 {@@
   Creates a new empty workbook into which a file will be loaded. Destroys the

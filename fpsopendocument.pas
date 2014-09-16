@@ -3066,8 +3066,8 @@ begin
       cell := ASheet.FindCell(r, c);
 
       // Belongs to merged block?
-//      if (cell <> nil) and not FWorksheet.IsMergeBase(cell) and (cell^.MergedNeighbors <> []) then
       if (cell <> nil) and not FWorksheet.IsMergeBase(cell) and (cell^.MergeBase <> nil) then
+      // this means: all cells of a merged block except for the merge base
       begin
         AppendToStream(AStream,
           '<table:covered-table-cell />');

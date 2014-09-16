@@ -93,58 +93,12 @@ type
     { Functions - they are identified by their name }
     fekFunc
   );
-  (*
-  TFEKind = (
-    { Basic operands }
-    fekCell, fekCellRef, fekCellRange, fekCellOffset, fekNum, fekInteger,
-    fekString, fekBool, fekErr, fekMissingArg,
-    { Basic operations }
-    fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
-    fekConcat,  // string concatenation
-    fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual, fekNotEqual,
-    fekParen,
-    { Built-in/Worksheet Functions}
-    // math
-    fekABS, fekACOS, fekACOSH, fekASIN, fekASINH, fekATAN, fekATANH,
-    fekCOS, fekCOSH, fekDEGREES, fekEXP, fekINT, fekLN, fekLOG,
-    fekLOG10, fekPI, fekRADIANS, fekRAND, fekROUND,
-    fekSIGN, fekSIN, fekSINH, fekSQRT,
-    fekTAN, fekTANH,
-    // date/time
-    fekDATE, fekDATEDIF, fekDATEVALUE, fekDAY, fekHOUR, fekMINUTE, fekMONTH,
-    fekNOW, fekSECOND, fekTIME, fekTIMEVALUE, fekTODAY, fekWEEKDAY, fekYEAR,
-    // statistical
-    fekAVEDEV, fekAVERAGE, fekBETADIST, fekBETAINV, fekBINOMDIST, fekCHIDIST,
-    fekCHIINV, fekCOUNT, fekCOUNTA, fekCOUNTBLANK, fekCOUNTIF,
-    fekMAX, fekMEDIAN, fekMIN, fekPERMUT, fekPOISSON, fekPRODUCT,
-    fekSTDEV, fekSTDEVP, fekSUM, fekSUMIF, fekSUMSQ, fekVAR, fekVARP,
-    // financial
-    fekFV, fekNPER, fekPMT, fekPV, fekRATE,
-    // logical
-    fekAND, fekFALSE, fekIF, fekNOT, fekOR, fekTRUE,
-    // string
-    fekCHAR, fekCODE, fekLEFT, fekLOWER, fekMID, fekPROPER, fekREPLACE, fekRIGHT,
-    fekSUBSTITUTE, fekTRIM, fekUPPER,
-    // lookup/reference
-    fekCOLUMN, fekCOLUMNS, fekROW, fekROWS,
-    // info
-    fekCELLINFO, fekINFO, fekIsBLANK, fekIsERR, fekIsERROR,
-    fekIsLOGICAL, fekIsNA, fekIsNONTEXT, fekIsNUMBER, fekIsRef, fekIsTEXT,
-    fekValue,
-    { Other operations }
-    fekOpSUM {Unary sum operation. Note: CANNOT be used for summing sell contents; use fekSUM}
-    );
-    *)
+
   {@@ These tokens identify operands in RPN formulas. }
   TOperandTokens = fekCell..fekMissingArg;
 
   {@@ These tokens identify basic operations in RPN formulas. }
   TBasicOperationTokens = fekAdd..fekParen;
-
-  (*
-  {@@ These tokens identify spreadsheet functions in RPN formulas. }
-  TFuncTokens = fekAbs..fekOpSum;
-    *)
 
   {@@ Flags to mark the address or a cell or a range of cells to be absolute
       or relative. They are used in the set TsRelFlags. }
@@ -535,6 +489,8 @@ type
     { Callback procedures called when iterating through all cells }
     procedure CalcFormulaCallback(data, arg: Pointer);
     procedure CalcStateCallback(data, arg: Pointer);
+    procedure DeleteColCallback(data, arg: Pointer);
+    procedure DeleteRowCallback(data, arg: Pointer);
     procedure InsertColCallback(data, arg: Pointer);
     procedure InsertRowCallback(data, arg: Pointer);
     procedure RemoveCallback(data, arg: pointer);
@@ -544,6 +500,8 @@ type
 
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
+
+    procedure RemoveCell(ARow, ACol: Cardinal);
 
   public
     {@@ Name of the sheet. In the popular spreadsheet applications this is
@@ -758,6 +716,8 @@ type
     function  GetRowHeight(ARow: Cardinal): Single;
     function  GetCol(ACol: Cardinal): PCol;
     function  GetColWidth(ACol: Cardinal): Single;
+    procedure DeleteCol(ACol: Cardinal);
+    procedure DeleteRow(ARow: Cardinal);
     procedure InsertCol(ACol: Cardinal);
     procedure InsertRow(ARow: Cardinal);
     procedure RemoveAllRows;
@@ -2070,6 +2030,116 @@ begin
   CopyFormat(AFormat, GetCell(AToRow, AToCol));
 end;
 
+{@@ Internal call-back procedure for looping through all cells when deleting
+  a specified column. Deletion happens in DeleteCol BEFORE this callback! }
+procedure TsWorksheet.DeleteColCallback(data, arg: Pointer);
+var
+  cell: PCell;
+  col: PtrInt;
+  fe: TsFormulaElement;
+  formula: TsRPNFormula;
+  i: Integer;
+begin
+  col := PtrInt(arg);
+  cell := PCell(data);
+  if cell = nil then   // This should not happen. Just to make sure...
+    exit;
+
+  // Update column index of moved cell
+  if (cell^.Col > col) then
+    dec(cell^.Col);
+
+  // Update formulas
+  if HasFormula(cell) then
+  begin
+    // (1) create an rpn formula
+    formula := BuildRPNFormula(cell);
+    // (2) update cell addresses affected by the deletion of the column
+    for i:=0 to High(formula) do
+    begin
+      fe := formula[i];   // "fe" means "formula element"
+      if (fe.ElementKind in [fekCell, fekCellRef, fekCellRange]) then
+      begin
+        if fe.Col = col then
+        begin
+          fe.ElementKind := fekErr;
+          fe.IntValue := ord(errIllegalRef);
+        end else
+        if fe.Col > col then
+          dec(fe.Col);
+        if (fe.ElementKind = fekCellRange) then
+        begin
+          if (fe.Col2 = col) then
+          begin
+            fe.ElementKind := fekErr;
+            fe.IntValue := ord(errIllegalRef);
+          end
+          else
+          if (fe.Col2 > col) then
+            dec(fe.Col2);
+        end;
+      end;
+    end;
+    // (3) convert rpn formula back to string formula
+    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end;
+end;
+
+{@@ Internal call-back procedure for looping through all cells when deleting
+  a specified row. Deletion happens in DeleteRow BEFORE this callback! }
+procedure TsWorksheet.DeleteRowCallback(data, arg: Pointer);
+var
+  cell: PCell;
+  row: PtrInt;
+  fe: TsFormulaElement;
+  formula: TsRPNFormula;
+  i: Integer;
+begin
+  row := PtrInt(arg);
+  cell := PCell(data);
+  if cell = nil then   // This should not happen. Just to make sure...
+    exit;
+
+  // Update row index of moved cell
+  if (cell^.Row > row) then
+    dec(cell^.Row);
+
+  // Update formulas
+  if HasFormula(cell) then
+  begin
+    // (1) create an rpn formula
+    formula := BuildRPNFormula(cell);
+    // (2) update cell addresses affected by the deletion of the column
+    for i:=0 to High(formula) do
+    begin
+      fe := formula[i];   // "fe" means "formula element"
+      if (fe.ElementKind in [fekCell, fekCellRef, fekCellRange]) then
+      begin
+        if fe.Row = row then
+        begin
+          fe.ElementKind := fekErr;
+          fe.IntValue := ord(errIllegalRef);
+        end else
+        if fe.Row > row then
+          dec(fe.Row);
+        if (fe.ElementKind = fekCellRange) then
+        begin
+          if (fe.Row2 = row) then
+          begin
+            fe.ElementKind := fekErr;
+            fe.IntValue := ord(errIllegalRef);
+          end
+          else
+          if (fe.Row2 > row) then
+            dec(fe.Row2);
+        end;
+      end;
+    end;
+    // (3) convert rpn formula back to string formula
+    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end;
+end;
+
 {@@
   Tries to locate a Cell in the list of already written Cells
 
@@ -3173,6 +3243,24 @@ begin
     Node:=FCells.FindSuccessor(Node);
   end;
   FCells.Clear;
+end;
+
+{@@
+  Removes a cell and releases its memory.
+  Just for internal usage since it does not modify the other cells affects
+}
+procedure TsWorksheet.RemoveCell(ARow, ACol: Cardinal);
+var
+  cellnode: TAVLTreeNode;
+  cell: TCell;
+begin
+  cell.Row := ARow;
+  cell.Col := ACol;
+  cellnode := FCells.Find(@cell);
+  if cellnode <> nil then begin
+    Dispose(PCell(cellnode.Data));
+    FCells.Delete(cellnode);
+  end;
 end;
 
 {@@
@@ -5062,6 +5150,106 @@ begin
       cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
     end;
   end;
+end;
+
+{@@
+  Deletes the column at the index specified. Cells with greader column indexes are
+  moved one column to the left. Merged cell blocks and cell references in formulas
+  are considered as well.
+
+  @param   ACol   Index of the column to be deleted
+}
+procedure TsWorksheet.DeleteCol(ACol: Cardinal);
+var
+  cellnode: TAVLTreeNode;
+  col: PCol;
+  i: Integer;
+  r, c, rr, cc: Cardinal;
+  r1, c1, r2, c2: Cardinal;
+  cell, nextcell: PCell;
+begin
+  // Fix merged cells: If the deleted column is the first column of a merged
+  // block the merge base has to be set to the second cell.
+  for r := 0 to GetLastRowIndex do
+  begin
+    cell := FindCell(r, ACol);
+    if IsMergeBase(cell) then begin
+      FindMergedRange(cell, r1, c1, r2, c2);
+      nextCell := FindCell(r, c1 + 1);
+      for rr := r1 to r2 do
+        for cc := c1+1 to c2 do
+        begin
+          cell := FindCell(rr, cc);
+          cell^.MergeBase := nextcell;
+        end;
+    end;
+  end;
+
+  // Delete cells
+  for r := GetLastRowIndex downto 0 do
+    RemoveCell(r, ACol);
+
+  // Update column index of cell reocrds
+  cellnode := FCells.FindLowest;
+  while Assigned(cellnode) do begin
+    DeleteColCallback(cellnode.Data, pointer(PtrInt(ACol)));
+    cellnode := FCells.FindSuccessor(cellnode);
+  end;
+
+  // Update last column index
+  dec(FLastColIndex);
+
+  ChangedCell(0, ACol);
+end;
+
+{@@
+  Deletes the row at the index specified. Cells with greader row indexes are
+  moved one row up. Merged cell blocks and cell references in formulas
+  are considered as well.
+
+  @param   ARow   Index of the row to be deleted
+}
+procedure TsWorksheet.DeleteRow(ARow: Cardinal);
+var
+  cellnode: TAVLTreeNode;
+  row: PRow;
+  i: Integer;
+  r, c, rr, cc: Cardinal;
+  r1, c1, r2, c2: Cardinal;
+  cell, nextcell: PCell;
+begin
+  // Fix merged cells: If the deleted row is the first row of a merged
+  // block the merge base has to be set to the begin of the second row.
+  for c := 0 to GetLastRowIndex do
+  begin
+    cell := FindCell(ARow, c);
+    if IsMergeBase(cell) then begin
+      FindMergedRange(cell, r1, c1, r2, c2);
+      nextCell := FindCell(r1 + 1, c1);
+      for rr := r1+1 to r2 do
+        for cc := c1 to c2 do
+        begin
+          cell := FindCell(rr, cc);
+          cell^.MergeBase := nextcell;
+        end;
+    end;
+  end;
+
+  // Delete cells
+  for c := GetLastColIndex downto 0 do
+    RemoveCell(ARow, c);
+
+  // Update row index of cell reocrds
+  cellnode := FCells.FindLowest;
+  while Assigned(cellnode) do begin
+    DeleteRowCallback(cellnode.Data, pointer(PtrInt(ARow)));
+    cellnode := FCells.FindSuccessor(cellnode);
+  end;
+
+  // Update last row index
+  dec(FLastRowIndex);
+
+  ChangedCell(ARow, 0);
 end;
 
 {@@
