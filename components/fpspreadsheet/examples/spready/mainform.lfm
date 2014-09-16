@@ -123,7 +123,7 @@ object MainFrm: TMainFrm
       Action = AcSaveAs
     end
     object ToolButton3: TToolButton
-      Left = 149
+      Left = 200
       Top = 0
       Action = AcQuit
     end
@@ -140,7 +140,7 @@ object MainFrm: TMainFrm
       Action = AcEdit
     end
     object ToolButton6: TToolButton
-      Left = 144
+      Left = 98
       Top = 0
       Width = 5
       Caption = 'ToolButton6'
@@ -152,14 +152,31 @@ object MainFrm: TMainFrm
       Action = AcNew
     end
     object ToolButton23: TToolButton
-      Left = 98
+      Left = 103
       Top = 0
       Action = AcAddColumn
     end
     object ToolButton27: TToolButton
-      Left = 121
+      Left = 126
       Top = 0
       Action = AcAddRow
+    end
+    object ToolButton29: TToolButton
+      Left = 149
+      Top = 0
+      Action = AcDeleteColumn
+    end
+    object ToolButton30: TToolButton
+      Left = 172
+      Top = 0
+      Action = AcDeleteRow
+    end
+    object ToolButton31: TToolButton
+      Left = 195
+      Top = 0
+      Width = 5
+      Caption = 'ToolButton31'
+      Style = tbsDivider
     end
   end
   object FormatToolBar: TToolBar
@@ -456,7 +473,6 @@ object MainFrm: TMainFrm
       AutoAdvance = aaDown
       BorderStyle = bsNone
       ColCount = 27
-      ExtendedSelect = False
       MouseWheelOption = mwGrid
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goSmoothScroll, goFixedColSizing]
       RowCount = 101
@@ -799,6 +815,15 @@ object MainFrm: TMainFrm
           FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
           FF00A2AE8EFF5F9771FF4F8E66FF49895FFFA2AE8EFFFFFFFF00
         }
+      end
+      object MenuItem72: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem73: TMenuItem
+        Action = AcDeleteColumn
+      end
+      object MenuItem74: TMenuItem
+        Action = AcDeleteRow
       end
     end
     object mnuFormat: TMenuItem
@@ -3035,6 +3060,20 @@ object MainFrm: TMainFrm
       Checked = True
       Hint = 'Show/hide grid lines'
       OnExecute = AcShowGridlinesExecute
+    end
+    object AcDeleteColumn: TAction
+      Category = 'Edit'
+      Caption = 'Delete column'
+      Hint = 'Delete column'
+      ImageIndex = 38
+      OnExecute = AcDeleteColumnExecute
+    end
+    object AcDeleteRow: TAction
+      Category = 'Edit'
+      Caption = 'Delete row'
+      Hint = 'Delete row'
+      ImageIndex = 37
+      OnExecute = AcDeleteRowExecute
     end
   end
   object FontDialog: TFontDialog

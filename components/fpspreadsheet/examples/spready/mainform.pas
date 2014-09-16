@@ -75,6 +75,8 @@ type
     AcMergeCells: TAction;
     AcShowHeaders: TAction;
     AcShowGridlines: TAction;
+    AcDeleteColumn: TAction;
+    AcDeleteRow: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -161,6 +163,9 @@ type
     MenuItem69: TMenuItem;
     MenuItem70: TMenuItem;
     MenuItem71: TMenuItem;
+    MenuItem72: TMenuItem;
+    MenuItem73: TMenuItem;
+    MenuItem74: TMenuItem;
     mnuInspector: TMenuItem;
     mnuView: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
@@ -223,6 +228,9 @@ type
     ToolButton27: TToolButton;
     CellInspector: TValueListEditor;
     ToolButton28: TToolButton;
+    ToolButton29: TToolButton;
+    ToolButton30: TToolButton;
+    ToolButton31: TToolButton;
     WorksheetGrid: TsWorksheetGrid;
     ToolBar1: TToolBar;
     FormatToolBar: TToolBar;
@@ -256,6 +264,8 @@ type
     procedure AcAddRowExecute(Sender: TObject);
     procedure AcBorderExecute(Sender: TObject);
     procedure AcCopyFormatExecute(Sender: TObject);
+    procedure AcDeleteColumnExecute(Sender: TObject);
+    procedure AcDeleteRowExecute(Sender: TObject);
     procedure AcEditExecute(Sender: TObject);
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
@@ -471,6 +481,24 @@ begin
         FCopiedFormat := cell^;
     end;
   end;
+end;
+
+procedure TMainFrm.AcDeleteColumnExecute(Sender: TObject);
+var
+  c: Integer;
+begin
+  c := WorksheetGrid.Col;
+  WorksheetGrid.DeleteCol(c);
+  WorksheetGrid.Col := c;
+end;
+
+procedure TMainFrm.AcDeleteRowExecute(Sender: TObject);
+var
+  r: Integer;
+begin
+  r := WorksheetGrid.Row;
+  WorksheetGrid.DeleteRow(r);
+  WorksheetGrid.Row := r;
 end;
 
 { Changes the font of the selected cell by calling a standard font dialog. }
