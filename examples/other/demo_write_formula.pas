@@ -11,7 +11,7 @@ program demo_write_formula;
 
 uses
   Classes, SysUtils,
-  fpspreadsheet, xlsbiff5, xlsbiff8, fpsopendocument;
+  fpspreadsheet, xlsbiff5, xlsbiff8, fpsopendocument, fpsRPN;
 
 var
   MyWorkbook: TsWorkbook;

@@ -394,7 +394,8 @@ type
 implementation
 
 uses
-  AVL_Tree, Math, Variants, xlsConst, fpsNumFormatParser, fpsExprParser;
+  AVL_Tree, Math, Variants,
+  xlsConst, fpsNumFormatParser, fpsrpn, fpsExprParser;
 
 const
   { Helper table for rpn formulas:
@@ -431,129 +432,7 @@ const
     INT_EXCEL_TOKEN_TPAREN,         {Operator in parenthesis}
     Word(-1)                        {fekFunc}
   );
-  (*
 
-    // Math functions
-    INT_EXCEL_SHEET_FUNC_ABS,       {fekABS}
-    INT_EXCEL_SHEET_FUNC_ACOS,      {fekACOS}
-    INT_EXCEL_SHEET_FUNC_ACOSH,     {fekACOSH}
-    INT_EXCEL_SHEET_FUNC_ASIN,      {fekASIN}
-    INT_EXCEL_SHEET_FUNC_ASINH,     {fekASINH}
-    INT_EXCEL_SHEET_FUNC_ATAN,      {fekATAN}
-    INT_EXCEL_SHEET_FUNC_ATANH,     {fekATANH}
-    INT_EXCEL_SHEET_FUNC_COS,       {fekCOS}
-    INT_EXCEL_SHEET_FUNC_COSH,      {fekCOSH}
-    INT_EXCEL_SHEET_FUNC_DEGREES,   {fekDEGREES}
-    INT_EXCEL_SHEET_FUNC_EXP,       {fekEXP}
-    INT_EXCEL_SHEET_FUNC_INT,       {fekINT}
-    INT_EXCEL_SHEET_FUNC_LN,        {fekLN}
-    INT_EXCEL_SHEET_FUNC_LOG,       {fekLOG}
-    INT_EXCEL_SHEET_FUNC_LOG10,     {fekLOG10}
-    INT_EXCEL_SHEET_FUNC_PI,        {fekPI}
-    INT_EXCEL_SHEET_FUNC_RADIANS,   {fekRADIANS}
-    INT_EXCEL_SHEET_FUNC_RAND,      {fekRAND}
-    INT_EXCEL_SHEET_FUNC_ROUND,     {fekROUND}
-    INT_EXCEL_SHEET_FUNC_SIGN,      {fekSIGN}
-    INT_EXCEL_SHEET_FUNC_SIN,       {fekSIN}
-    INT_EXCEL_SHEET_FUNC_SINH,      {fekSINH}
-    INT_EXCEL_SHEET_FUNC_SQRT,      {fekSQRT}
-    INT_EXCEL_SHEET_FUNC_TAN,       {fekTAN}
-    INT_EXCEL_SHEET_FUNC_TANH,      {fekTANH}
-
-    // Date/time functions
-    INT_EXCEL_SHEET_FUNC_DATE,      {fekDATE}
-    INT_EXCEL_SHEET_FUNC_DATEDIF,   {fekDATEDIF}
-    INT_EXCEL_SHEET_FUNC_DATEVALUE, {fekDATEVALUE}
-    INT_EXCEL_SHEET_FUNC_DAY,       {fekDAY}
-    INT_EXCEL_SHEET_FUNC_HOUR,      {fekHOUR}
-    INT_EXCEL_SHEET_FUNC_MINUTE,    {fekMINUTE}
-    INT_EXCEL_SHEET_FUNC_MONTH,     {fekMONTH}
-    INT_EXCEL_SHEET_FUNC_NOW,       {fekNOW}
-    INT_EXCEL_SHEET_FUNC_SECOND,    {fekSECOND}
-    INT_EXCEL_SHEET_FUNC_TIME,      {fekTIME}
-    INT_EXCEL_SHEET_FUNC_TIMEVALUE, {fekTIMEVALUE}
-    INT_EXCEL_SHEET_FUNC_TODAY,     {fekTODAY}
-    INT_EXCEL_SHEET_FUNC_WEEKDAY,   {fekWEEKDAY}
-    INT_EXCEL_SHEET_FUNC_YEAR,      {fekYEAR}
-
-    // Statistical functions
-    INT_EXCEL_SHEET_FUNC_AVEDEV,    {fekAVEDEV}
-    INT_EXCEL_SHEET_FUNC_AVERAGE,   {fekAVERAGE}
-    INT_EXCEL_SHEET_FUNC_BETADIST,  {fekBETADIST}
-    INT_EXCEL_SHEET_FUNC_BETAINV,   {fekBETAINV}
-    INT_EXCEL_SHEET_FUNC_BINOMDIST, {fekBINOMDIST}
-    INT_EXCEL_SHEET_FUNC_CHIDIST,   {fekCHIDIST}
-    INT_EXCEL_SHEET_FUNC_CHIINV,    {fekCHIINV}
-    INT_EXCEL_SHEET_FUNC_COUNT,     {fekCOUNT}
-    INT_EXCEL_SHEET_FUNC_COUNTA,    {fekCOUNTA}
-    INT_EXCEL_SHEET_FUNC_COUNTBLANK,{fekCOUNTBLANK}
-    INT_EXCEL_SHEET_FUNC_COUNTIF,   {fekCOUNTIF}
-    INT_EXCEL_SHEET_FUNC_MAX,       {fekMAX}
-    INT_EXCEL_SHEET_FUNC_MEDIAN,    {fekMEDIAN}
-    INT_EXCEL_SHEET_FUNC_MIN,       {fekMIN}
-    INT_EXCEL_SHEET_FUNC_PERMUT,    {fekPERMUT}
-    INT_EXCEL_SHEET_FUNC_POISSON,   {fekPOISSON}
-    INT_EXCEL_SHEET_FUNC_PRODUCT,   {fekPRODUCT}
-    INT_EXCEL_SHEET_FUNC_STDEV,     {fekSTDEV}
-    INT_EXCEL_SHEET_FUNC_STDEVP,    {fekSTDEVP}
-    INT_EXCEL_SHEET_FUNC_SUM,       {fekSUM}
-    INT_EXCEL_SHEET_FUNC_SUMIF,     {fekSUMIF}
-    INT_EXCEL_SHEET_FUNC_SUMSQ,     {fekSUMSQ}
-    INT_EXCEL_SHEET_FUNC_VAR,       {fekVAR}
-    INT_EXCEL_SHEET_FUNC_VARP,      {fekVARP}
-
-    // Financial functions
-    INT_EXCEL_SHEET_FUNC_FV,        {fekFV}
-    INT_EXCEL_SHEET_FUNC_NPER,      {fekNPER}
-    INT_EXCEL_SHEET_FUNC_PMT,       {fekPMT}
-    INT_EXCEL_SHEET_FUNC_PV,        {fekPV}
-    INT_EXCEL_SHEET_FUNC_RATE,      {fekRATE}
-
-    // Logical functions
-    INT_EXCEL_SHEET_FUNC_AND,       {fekAND}
-    INT_EXCEL_SHEET_FUNC_FALSE,     {fekFALSE}
-    INT_EXCEL_SHEET_FUNC_IF,        {fekIF}
-    INT_EXCEL_SHEET_FUNC_NOT,       {fekNOT}
-    INT_EXCEL_SHEET_FUNC_OR,        {fekOR}
-    INT_EXCEL_SHEET_FUNC_TRUE,      {fekTRUE}
-
-    // String functions
-    INT_EXCEL_SHEET_FUNC_CHAR,      {fekCHAR}
-    INT_EXCEL_SHEET_FUNC_CODE,      {fekCODE}
-    INT_EXCEL_SHEET_FUNC_LEFT,      {fekLEFT}
-    INT_EXCEL_SHEET_FUNC_LOWER,     {fekLOWER}
-    INT_EXCEL_SHEET_FUNC_MID,       {fekMID}
-    INT_EXCEL_SHEET_FUNC_PROPER,    {fekPROPER}
-    INT_EXCEL_SHEET_FUNC_REPLACE,   {fekREPLACE}
-    INT_EXCEL_SHEET_FUNC_RIGHT,     {fekRIGHT}
-    INT_EXCEL_SHEET_FUNC_SUBSTITUTE,{fekSUBSTITUTE}
-    INT_EXCEL_SHEET_FUNC_TRIM,      {fekTRIM}
-    INT_EXCEL_SHEET_FUNC_UPPER,     {fekUPPER}
-
-    // lookup/reference functions
-    INT_EXCEL_SHEET_FUNC_COLUMN,    {fekCOLUMN}
-    INT_EXCEL_SHEET_FUNC_COLUMNS,   {fekCOLUMNS}
-    INT_EXCEL_SHEET_FUNC_ROW,       {fekROW}
-    INT_EXCEL_SHEET_FUNC_ROWS,      {fekROWS}
-
-    // Info functions
-    INT_EXCEL_SHEET_FUNC_CELL,      {fekCELLINFO}
-    INT_EXCEL_SHEET_FUNC_INFO,      {fekINFO}
-    INT_EXCEL_SHEET_FUNC_ISBLANK,   {fekIsBLANK}
-    INT_EXCEL_SHEET_FUNC_ISERR,     {fekIsERR}
-    INT_EXCEL_SHEET_FUNC_ISERROR,   {fekIsERROR}
-    INT_EXCEL_SHEET_FUNC_ISLOGICAL, {fekIsLOGICAL}
-    INT_EXCEL_SHEET_FUNC_ISNA,      {fekIsNA}
-    INT_EXCEL_SHEET_FUNC_ISNONTEXT, {fekIsNONTEXT}
-    INT_EXCEL_SHEET_FUNC_ISNUMBER,  {fekIsNUMBER}
-    INT_EXCEL_SHEET_FUNC_ISREF,     {fekIsREF}
-    INT_EXCEL_SHEET_FUNC_ISTEXT,    {fekIsTEXT}
-    INT_EXCEL_SHEET_FUNC_VALUE,     {fekValue}
-
-    // Other operations
-    INT_EXCEL_TOKEN_TATTR           {fekOpSum}
-  );
-    *)
 type
   TBIFF58BlankRecord = packed record
     RecordID: Word;
@@ -572,8 +451,8 @@ type
     Value: Double;
   end;
 
-function ConvertExcelDateTimeToDateTime(
-  const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
+function ConvertExcelDateTimeToDateTime(const AExcelDateNum: Double;
+  ADateMode: TDateMode): TDateTime;
 begin
   // Time only:
   if (AExcelDateNum<1) and (AExcelDateNum>=0)  then

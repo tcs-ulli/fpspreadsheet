@@ -10,7 +10,7 @@ program excel8write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8;
+  Classes, SysUtils, fpspreadsheet, fpsRPN, xlsbiff8;
 
 const
   Str_First = 'First';

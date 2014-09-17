@@ -15,7 +15,7 @@ procedure WriteRPNFormulaSamples(Worksheet: TsWorksheet;
 implementation
 
 uses
-  Math, StrUtils;
+  Math, StrUtils, fpsRPN;
 
 const
   FALSE_TRUE: array[Boolean] of String = ('FALSE', 'TRUE');

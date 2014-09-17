@@ -35,7 +35,7 @@ type
 implementation
 
 uses
-  StrUtils, xlsbiff5;
+  StrUtils, fpsRPN, xlsbiff5;
 
 const
   ERROR_SHEET = 'ErrorTest'; //worksheet name

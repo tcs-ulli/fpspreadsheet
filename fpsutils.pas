@@ -499,6 +499,9 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     end;
     if AStartPos = 1 then Include(AFlags, rfRelCol);
 
+    if i > Length(AStr) then
+      exit;
+
     isAbs := (AStr[i] = '$');
     if isAbs then inc(i);
 
