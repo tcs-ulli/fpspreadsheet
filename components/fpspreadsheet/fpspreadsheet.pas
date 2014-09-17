@@ -2416,7 +2416,7 @@ begin
 end;
 
 {@@
-  Finds the last cell with contents in a given row
+  Finds the last cell with data or formatting in a given row
 
   @param  ARow  Index of the row considered
   @return       Pointer to the last cell in this row, or nil if the row is empty.
@@ -2436,12 +2436,8 @@ begin
 end;
 
 {@@
-  Returns the 0-based index of the first row with a cell with contents.
-
-  If no cells have contents, zero will be returned, which is also a valid value.
-
-  Use GetCellCount to verify if there is at least one cell with contents in the
-  worksheet.
+  Returns the 0-based index of the first row with a cell with data or formatting.
+  If no cells have contents, -1 will be returned.
 
   @param  AForceCalculation  The index of the first row is continuously updated
                              whenever a new cell is created. If AForceCalculation
@@ -5086,13 +5082,15 @@ var
   i: Integer;
   r, c, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
-  cell, nextcell: PCell;
+  cell, nextcell, basecell: PCell;
 begin
-  // Fix merged cells: If the deleted column is the first column of a merged
-  // block the merge base has to be set to the second cell.
+  // Loop along the column to be deleted and fix merged cells and shared formulas
   for r := 0 to GetLastRowIndex do
   begin
     cell := FindCell(r, ACol);
+
+    // Fix merged cells: If the deleted column is the first column of a merged
+    // block the merge base has to be set to the second cell.
     if IsMergeBase(cell) then begin
       FindMergedRange(cell, r1, c1, r2, c2);
       nextCell := FindCell(r, c1 + 1);
@@ -5103,21 +5101,53 @@ begin
           cell^.MergeBase := nextcell;
         end;
     end;
+
+    // Fix shared formulas: if the deleted column contains the shared formula base
+    // of a shared formula block then the shared formula has to be moved to the
+    // next column
+    if (cell <> nil) and (cell^.SharedFormulaBase = cell) then begin
+      basecell := cell;
+      nextcell := FindCell(r, ACol+1);   // cell in next column and same row
+      // Next cell in col at the right does not share this formula --> done with this formula
+      if (nextcell = nil) or (nextcell^.SharedFormulaBase <> cell) then
+        continue;
+      // Write adapted formula to the cell below.
+      WriteFormula(nextcell, basecell^.Formulavalue); //ReadFormulaAsString(nextcell));
+      // Have all cells sharing the formula use the new formula base
+      for rr := r to GetLastOccupiedRowIndex do
+        for cc := ACol+1 to GetLastOccupiedColIndex do
+        begin
+          cell := FindCell(rr, cc);
+          if (cell <> nil) and (cell^.SharedFormulaBase = basecell) then
+            cell^.SharedFormulaBase := nextcell
+          else
+            break;
+        end;
+    end;
   end;
 
   // Delete cells
   for r := GetLastRowIndex downto 0 do
     RemoveCell(r, ACol);
 
-  // Update column index of cell reocrds
+  // Update column index of cell records
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
     DeleteColCallback(cellnode.Data, pointer(PtrInt(ACol)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
-  // Update last column index
-  dec(FLastColIndex);
+  // Update column index of col records
+  for i:=FCols.Count-1 downto 0 do begin
+    col := PCol(FCols.Items[i]);
+    if col^.Col > ACol then
+      dec(col^.Col)
+    else
+      break;
+  end;
+
+  // Update first and last column index
+  UpDateCaches;
 
   ChangedCell(0, ACol);
 end;
@@ -5136,13 +5166,15 @@ var
   i: Integer;
   r, c, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
-  cell, nextcell: PCell;
+  cell, nextcell, basecell: PCell;
 begin
-  // Fix merged cells: If the deleted row is the first row of a merged
-  // block the merge base has to be set to the begin of the second row.
-  for c := 0 to GetLastRowIndex do
+  // Loop along the row to be deleted and fix merged cells and shared formulas
+  for c := 0 to GetLastOccupiedColIndex do
   begin
     cell := FindCell(ARow, c);
+
+    // Fix merged cells: If the deleted row is the first row of a merged
+    // block the merge base has to be set to the begin of the second row.
     if IsMergeBase(cell) then begin
       FindMergedRange(cell, r1, c1, r2, c2);
       nextCell := FindCell(r1 + 1, c1);
@@ -5151,6 +5183,29 @@ begin
         begin
           cell := FindCell(rr, cc);
           cell^.MergeBase := nextcell;
+        end;
+    end;
+
+    // Fix shared formulas: if the deleted row contains the shared formula base
+    // of a shared formula block then the shared formula has to be moved to the
+    // next row
+    if (cell <> nil) and (cell^.SharedFormulaBase = cell) then begin
+      basecell := cell;
+      nextcell := FindCell(ARow+1, c);   // cell in next row at same column
+      // Next cell in row below does not share this formula --> done with this formula
+      if (nextcell = nil) or (nextcell^.SharedFormulaBase <> cell) then
+        continue;
+      // Write adapted formula to the cell below.
+      WriteFormula(nextcell, basecell^.FormulaValue); //ReadFormulaAsString(nextcell));
+      // Have all cells sharing the formula use the new formula base
+      for rr := ARow+1 to GetLastOccupiedRowIndex do
+        for cc := c to GetLastOccupiedColIndex do
+        begin
+          cell := FindCell(rr, cc);
+          if (cell <> nil) and (cell^.SharedFormulaBase = basecell) then
+            cell^.SharedFormulaBase := nextcell
+          else
+            break;
         end;
     end;
   end;
@@ -5166,8 +5221,19 @@ begin
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
-  // Update last row index
-  dec(FLastRowIndex);
+  // Update row index of row records
+  for i:=FRows.Count-1 downto 0 do
+  begin
+    row := PRow(FRows.Items[i]);
+    if row^.Row > ARow then
+      dec(row^.Row)
+    else
+      break;
+  end;
+
+  // Update first and last row index
+  UpdateCaches;
+    // true = enforce calculation because an unoccupied row could have been deleted
 
   ChangedCell(ARow, 0);
 end;
@@ -5221,8 +5287,8 @@ begin
     if col^.Col >= ACol then inc(col^.Col);
   end;
 
-  // Update last column index
-  inc(FLastColIndex);
+  // Update first and last column index
+  UpdateCaches;
 
   ChangedCell(0, ACol);
 end;
@@ -5313,8 +5379,8 @@ begin
     if row^.Row >= ARow then inc(row^.Row);
   end;
 
-  // Update last row index
-  inc(FLastRowIndex);
+  // Update first and last row index
+  UpdateCaches;
 
   ChangedCell(ARow, 0);
 end;
