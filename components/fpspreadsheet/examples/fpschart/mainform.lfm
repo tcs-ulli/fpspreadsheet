@@ -1,7 +1,7 @@
 object FPSChartForm: TFPSChartForm
-  Left = 239
+  Left = 259
   Height = 382
-  Top = 154
+  Top = 146
   Width = 700
   Caption = 'FPSpreadsheet Chart Example'
   ClientHeight = 382
@@ -43,13 +43,14 @@ object FPSChartForm: TFPSChartForm
     FrozenCols = 0
     FrozenRows = 0
     ReadFormulas = False
+    AutoAdvance = aaDown
     ColCount = 27
     ExtendedSelect = False
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
     RowCount = 101
     TabOrder = 1
     ColWidths = (
-      42
+      56
       64
       64
       64
@@ -88,9 +89,9 @@ object FPSChartForm: TFPSChartForm
     TabOrder = 2
   end
   object Label1: TLabel
-    Left = 16
-    Height = 34
-    Top = 8
+    Left = 14
+    Height = 42
+    Top = 4
     Width = 676
     AutoSize = False
     Caption = 'Please add data to the grid or load it from a file, then choose the location of the data for the X and Y axises and click on the button "Create Graphic" to generate a chart.'
@@ -99,7 +100,7 @@ object FPSChartForm: TFPSChartForm
   end
   object editSourceFile: TFileNameEdit
     Left = 152
-    Height = 23
+    Height = 28
     Top = 48
     Width = 136
     DialogOptions = []
@@ -112,9 +113,9 @@ object FPSChartForm: TFPSChartForm
   end
   object Label2: TLabel
     Left = 14
-    Height = 15
+    Height = 20
     Top = 51
-    Width = 106
+    Width = 134
     Caption = 'Source Spreadsheet:'
     ParentColor = False
   end
@@ -129,7 +130,7 @@ object FPSChartForm: TFPSChartForm
   end
   object editXAxis: TLabeledEdit
     Left = 64
-    Height = 23
+    Height = 28
     Top = 80
     Width = 80
     EditLabel.AnchorSideTop.Control = editXAxis
@@ -137,10 +138,10 @@ object FPSChartForm: TFPSChartForm
     EditLabel.AnchorSideRight.Control = editXAxis
     EditLabel.AnchorSideBottom.Control = editXAxis
     EditLabel.AnchorSideBottom.Side = asrBottom
-    EditLabel.Left = 25
-    EditLabel.Height = 15
+    EditLabel.Left = 16
+    EditLabel.Height = 20
     EditLabel.Top = 84
-    EditLabel.Width = 36
+    EditLabel.Width = 45
     EditLabel.Caption = 'X-Axis:'
     EditLabel.ParentColor = False
     LabelPosition = lpLeft
@@ -149,7 +150,7 @@ object FPSChartForm: TFPSChartForm
   end
   object EditYAxis: TLabeledEdit
     Left = 208
-    Height = 23
+    Height = 28
     Top = 80
     Width = 80
     EditLabel.AnchorSideTop.Control = EditYAxis
@@ -157,10 +158,10 @@ object FPSChartForm: TFPSChartForm
     EditLabel.AnchorSideRight.Control = EditYAxis
     EditLabel.AnchorSideBottom.Control = EditYAxis
     EditLabel.AnchorSideBottom.Side = asrBottom
-    EditLabel.Left = 169
-    EditLabel.Height = 15
+    EditLabel.Left = 161
+    EditLabel.Height = 20
     EditLabel.Top = 84
-    EditLabel.Width = 36
+    EditLabel.Width = 44
     EditLabel.Caption = 'Y-Axis:'
     EditLabel.ParentColor = False
     LabelPosition = lpLeft

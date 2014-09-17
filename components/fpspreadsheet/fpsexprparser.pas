@@ -52,7 +52,7 @@ unit fpsExprParser;
 interface
 
 uses
-  Classes, SysUtils, contnrs, fpspreadsheet;
+  Classes, SysUtils, contnrs, fpspreadsheet, fpsrpn;
 
 type
   { Tokens }

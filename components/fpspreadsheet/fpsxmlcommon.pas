@@ -1,3 +1,6 @@
+{ fpsxmlcommon.pas
+  Unit shared by all xml-type reader/writer classes }
+
 unit fpsxmlcommon;
 
 {$mode objfpc}

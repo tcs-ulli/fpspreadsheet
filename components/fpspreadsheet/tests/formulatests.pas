@@ -107,7 +107,7 @@ type
 implementation
 
 uses
-  math, typinfo, lazUTF8, fpsUtils, rpnFormulaUnit;
+  math, typinfo, lazUTF8, fpsUtils, fpsRPN, rpnFormulaUnit;
 
 var
   // Array containing the "true" results of the formulas, for comparison
