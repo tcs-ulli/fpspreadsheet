@@ -1956,7 +1956,6 @@ procedure TsWorksheet.DeleteColCallback(data, arg: Pointer);
 var
   cell: PCell;
   col: PtrInt;
-  fe: TsFormulaElement;
   formula: TsRPNFormula;
   i: Integer;
 begin
@@ -1977,26 +1976,25 @@ begin
     // (2) update cell addresses affected by the deletion of the column
     for i:=0 to High(formula) do
     begin
-      fe := formula[i];   // "fe" means "formula element"
-      if (fe.ElementKind in [fekCell, fekCellRef, fekCellRange]) then
+      if (formula[i].ElementKind in [fekCell, fekCellRef, fekCellRange]) then
       begin
-        if fe.Col = col then
+        if formula[i].Col = col then
         begin
-          fe.ElementKind := fekErr;
-          fe.IntValue := ord(errIllegalRef);
+          formula[i].ElementKind := fekErr;
+          formula[i].IntValue := ord(errIllegalRef);
         end else
-        if fe.Col > col then
-          dec(fe.Col);
-        if (fe.ElementKind = fekCellRange) then
+        if formula[i].Col > col then
+          dec(formula[i].Col);
+        if (formula[i].ElementKind = fekCellRange) then
         begin
-          if (fe.Col2 = col) then
+          if (formula[i].Col2 = col) then
           begin
-            fe.ElementKind := fekErr;
-            fe.IntValue := ord(errIllegalRef);
+            formula[i].ElementKind := fekErr;
+            formula[i].IntValue := ord(errIllegalRef);
           end
           else
-          if (fe.Col2 > col) then
-            dec(fe.Col2);
+          if (formula[i].Col2 > col) then
+            dec(formula[i].Col2);
         end;
       end;
     end;
@@ -2011,7 +2009,6 @@ procedure TsWorksheet.DeleteRowCallback(data, arg: Pointer);
 var
   cell: PCell;
   row: PtrInt;
-  fe: TsFormulaElement;
   formula: TsRPNFormula;
   i: Integer;
 begin
@@ -2032,26 +2029,25 @@ begin
     // (2) update cell addresses affected by the deletion of the column
     for i:=0 to High(formula) do
     begin
-      fe := formula[i];   // "fe" means "formula element"
-      if (fe.ElementKind in [fekCell, fekCellRef, fekCellRange]) then
+      if (formula[i].ElementKind in [fekCell, fekCellRef, fekCellRange]) then
       begin
-        if fe.Row = row then
+        if formula[i].Row = row then
         begin
-          fe.ElementKind := fekErr;
-          fe.IntValue := ord(errIllegalRef);
+          formula[i].ElementKind := fekErr;
+          formula[i].IntValue := ord(errIllegalRef);
         end else
-        if fe.Row > row then
-          dec(fe.Row);
-        if (fe.ElementKind = fekCellRange) then
+        if formula[i].Row > row then
+          dec(formula[i].Row);
+        if (formula[i].ElementKind = fekCellRange) then
         begin
-          if (fe.Row2 = row) then
+          if (formula[i].Row2 = row) then
           begin
-            fe.ElementKind := fekErr;
-            fe.IntValue := ord(errIllegalRef);
+            formula[i].ElementKind := fekErr;
+            formula[i].IntValue := ord(errIllegalRef);
           end
           else
-          if (fe.Row2 > row) then
-            dec(fe.Row2);
+          if (formula[i].Row2 > row) then
+            dec(formula[i].Row2);
         end;
       end;
     end;
@@ -5022,7 +5018,6 @@ procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
 var
   cell: PCell;
   col: PtrInt;
-  fe: TsFormulaElement;
   formula: TsRPNFormula;
   i: Integer;
 begin
@@ -5038,33 +5033,23 @@ begin
   // Update formulas
   if HasFormula(cell) then
   begin
-    {
-    if cell^.SharedFormulaBase <> cell then
+    // (1) create an rpn formula
+    formula := BuildRPNFormula(cell);
+    // (2) update cell addresses affected by the insertion of a column
+    for i:=0 to Length(formula)-1 do
     begin
-      newCell := GetCell(cell^.Row, col);
-      newCell^.SharedFormulaBase := cell^.SharedFormulaBasse;
-    end else
-    }
-    begin
-      // (1) create an rpn formula
-      formula := BuildRPNFormula(cell);
-      // (2) update cell addresses affected by the insertion of a column
-      for i:=0 to Length(formula)-1 do
-      begin
-        fe := Formula[i];   // "fe" means "formula element"
-        case fe.ElementKind of
-          fekCell, fekCellRef:
-            if fe.Col >= col then inc(fe.Col);
-          fekCellRange:
-            begin
-              if fe.Col >= col then inc(fe.Col);
-              if fe.Col2 >= col then inc(fe.Col2);
-            end;
-        end;
+      case formula[i].ElementKind of
+        fekCell, fekCellRef:
+          if formula[i].Col >= col then inc(formula[i].Col);
+        fekCellRange:
+          begin
+            if formula[i].Col >= col then inc(formula[i].Col);
+            if formula[i].Col2 >= col then inc(formula[i].Col2);
+          end;
       end;
-      // (3) convert rpn formula back to string formula
-      cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
     end;
+    // (3) convert rpn formula back to string formula
+    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
   end;
 end;
 
@@ -5261,6 +5246,46 @@ begin
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
+  // Fix merged cells and shared formulas: If the inserted column runs through a
+  // block of merged cells or a shared formula the block is cut into two pieces.
+  // Here we fill the gap with dummy cells and set their MergeBase / SharedFormulaBase
+  // correctly.
+  if ACol > 0 then
+  begin
+    c := ACol - 1;
+    // Seek along the column immediately to the left of the inserted column
+    for r := 0 to GetLastOccupiedRowIndex do
+    begin
+      cell := FindCell(r, c);
+      if not Assigned(cell) then
+        continue;
+      // A merged cell block is found
+      if IsMerged(cell) then
+      begin
+        // Does it extend beyond the newly inserted column?
+        nextcell := FindCell(r, ACol+1);
+        if Assigned(nextcell) and (nextcell^.MergeBase = cell^.MergeBase) then
+        begin
+          // Yes: we add a cell into the gap row and merge it with the others.
+          gapcell := GetCell(r, ACol);
+          gapcell^.Mergebase := cell^.MergeBase;
+        end;
+      end else
+      // A shared formula block is found
+      if cell^.SharedFormulaBase <> nil then begin
+        // Does it extend beyond the newly inserted column?
+        nextcell := FindCell(r, ACol+1);
+        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
+        begin
+          // Yes - we add a cell into the gap and share the formula of the base
+          gapcell := GetCell(r, ACol);
+          gapcell^.SharedFormulaBase := cell^.SharedFormulaBase;
+        end;
+      end;
+    end;
+  end;
+
+                                      (*
   // Fix merged cells: If the inserted column runs through a block of merged
   // cells the block is cut into two pieces. Here we fill the gap with dummy
   // cells and set their MergeBase correctly.
@@ -5280,6 +5305,7 @@ begin
         end;
       end;
     end;
+                                        *)
 
   // Update column index of column records
   for i:=0 to FCols.Count-1 do begin
@@ -5298,7 +5324,6 @@ var
   cell: PCell;
   row: PtrInt;
   i: Integer;
-  fe: TsFormulaElement;
   formula: TsRPNFormula;
 begin
   row := PtrInt(arg);
@@ -5315,14 +5340,13 @@ begin
     formula := BuildRPNFormula(cell);
     // (2) update cell addresses affected by the insertion of a column
     for i:=0 to Length(formula)-1 do begin
-      fe := formula[i];   // "fe" means "formula element"
-      case fe.ElementKind of
+      case formula[i].ElementKind of
         fekCell, fekCellRef:
-          if fe.Row >= row then inc(fe.Row);
+          if formula[i].Row >= row then inc(formula[i].Row);
         fekCellRange:
           begin
-            if fe.Row >= row then inc(fe.Row);
-            if fe.Row2 >= row then inc(fe.Row2);
+            if formula[i].Row >= row then inc(formula[i].Row);
+            if formula[i].Row2 >= row then inc(formula[i].Row2);
           end;
       end;
     end;
@@ -5343,7 +5367,7 @@ var
   row: PRow;
   cellnode: TAVLTreeNode;
   i: Integer;
-  r, c, r1, c1, r2, c2: Cardinal;
+  r, c, cc, r1, c1, r2, c2: Cardinal;
   cell, nextcell, gapcell: PCell;
 begin
   // Update row index of cell records
@@ -5353,25 +5377,44 @@ begin
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
-  // Fix merged cells: If the inserted row runs through a block of merged
-  // cells the block is cut into two pieces. Here we fill the gap with dummy
-  // cells and set their MergeBase correctly.
-  for r := 0 to GetLastRowIndex do
-    for c := 0 to GetLastColIndex do
+  // Fix merged cells and shared formulas: If the inserted row runs through a
+  // block of merged cells or a shared formula the block is cut into two pieces.
+  // Here we fill the gap with dummy cells and set their MergeBase / SharedFormulaBase
+  // correctly.
+  if ARow > 0 then
+  begin
+    r := ARow - 1;
+    // Seek along the row immediately above the inserted row
+    for c := 0 to GetLastOccupiedColIndex do
     begin
       cell := FindCell(r, c);
-      if IsMergeBase(cell) then begin
-        FindMergedRange(cell, r1, c1, r2, c2);
-        if ARow = r2 + 1 then begin
-          nextcell := FindCell(ARow + 1, c);
-          if Assigned(nextcell) and (nextcell^.MergeBase = cell) then
-          begin
-            gapcell := GetCell(ARow, c);
-            gapcell^.MergeBase := cell;
-          end;
+      if not Assigned(cell) then
+        continue;
+      // A merged cell block is found
+      if IsMerged(cell) then
+      begin
+        // Does it extend beyond the newly inserted row?
+        nextcell := FindCell(ARow+1, c);
+        if Assigned(nextcell) and (nextcell^.MergeBase = cell^.MergeBase) then
+        begin
+          // Yes: we add a cell into the gap row and merge it with the others.
+          gapcell := GetCell(ARow, c);
+          gapcell^.Mergebase := cell^.MergeBase;
+        end;
+      end else
+      // A shared formula block is found
+      if cell^.SharedFormulaBase <> nil then begin
+        // Does it extend beyond the newly inserted row?
+        nextcell := FindCell(ARow+1, c);
+        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
+        begin
+          // Yes - we add a cell into the gap and share the formula of the base
+          gapcell := GetCell(ARow, c);
+          gapcell^.SharedFormulaBase := cell^.SharedFormulaBase;
         end;
       end;
     end;
+  end;
 
   // Update row index of row records
   for i:=0 to FRows.Count-1 do begin
