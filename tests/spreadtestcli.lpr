@@ -9,8 +9,12 @@ uses
   xmltestreport {used to get results into XML format},
   testregistry,
   testdbwriter {used to get results into db},
+
+  {the actual tests}
   datetests, manualtests, numberstests, stringtests, internaltests,
-  testsutility, testutils, formattests {the actual tests};
+  testsutility, testutils, formattests,
+  colortests, fonttests, optiontests, numformatparsertests, formulatests,
+  emptycelltests, errortests, virtualmodetests;
 
 const
   ShortOpts = 'ac:dhlpr:x';
