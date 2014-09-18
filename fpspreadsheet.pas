@@ -3502,7 +3502,7 @@ begin
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
 
-  if TryStrToFloat(AValue, number) then begin
+  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then begin
     if isPercent then
       WriteNumber(ACell, number/100, nfPercentage)
     else begin
@@ -3515,7 +3515,7 @@ begin
     exit;
   end;
 
-  if TryStrToDateTime(AValue, number) then begin
+  if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then begin
     if number < 1.0 then begin    // this is a time alone
       if not IsTimeFormat(ACell^.NumberFormat) then begin
         ACell^.NumberFormat := nfLongTime;
