@@ -11,7 +11,7 @@ uses
   Interfaces, Forms, GuiTestRunner, datetests, stringtests, numberstests,
   manualtests, testsutility, internaltests, formattests, colortests, fonttests,
   optiontests, numformatparsertests, formulatests, rpnFormulaUnit,
-  emptycelltests, errortests, virtualmodetests;
+  emptycelltests, errortests, virtualmodetests, insertdeletetests;
 
 begin
  {$IFDEF HEAPTRC}

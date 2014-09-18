@@ -69,7 +69,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="9">
+    <Units Count="10">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -105,8 +105,12 @@
       <Unit8>
         <Filename Value="colortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="colortests"/>
       </Unit8>
+      <Unit9>
+        <Filename Value="insertdeletetests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="insertdeletetests"/>
+      </Unit9>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
