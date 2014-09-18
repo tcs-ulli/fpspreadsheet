@@ -40,7 +40,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="17">
+    <Units Count="18">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -106,6 +106,7 @@
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="emptycelltests"/>
       </Unit14>
       <Unit15>
         <Filename Value="errortests.pas"/>
@@ -115,6 +116,11 @@
         <Filename Value="virtualmodetests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit16>
+      <Unit17>
+        <Filename Value="insertdeletetests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="insertdeletetests"/>
+      </Unit17>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
