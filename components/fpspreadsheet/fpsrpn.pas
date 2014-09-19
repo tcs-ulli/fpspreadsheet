@@ -38,7 +38,7 @@ function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem; overload;
 function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
-function RPNErr(AErrCode: Byte; ANext: PRPNItem): PRPNItem;
+function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
 function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
 function RPNMissingArg(ANext: PRPNItem): PRPNItem;
 function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
@@ -245,11 +245,11 @@ end;
   @param  ANext     Pointer to the next RPN item in the list
   @see TsErrorValue
 }
-function RPNErr(AErrCode: Byte; ANext: PRPNItem): PRPNItem;
+function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
   Result^.FE.ElementKind := fekErr;
-  Result^.FE.IntValue := AErrCode;
+  Result^.FE.IntValue := ord(AErrCode);
   Result^.Next := ANext;
 end;
 

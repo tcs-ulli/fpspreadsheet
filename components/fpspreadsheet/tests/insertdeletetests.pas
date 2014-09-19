@@ -483,7 +483,7 @@ begin
     SollFormula := '#REF!';
     SollLayout := '12345678|'+
                   '23456789|'+
-                  '34568890|'+
+                  '3456E890|'+    // "E" = error
 //                  '45678901|'+
                   '56789012|'+
                   '67890123';
@@ -585,19 +585,19 @@ begin
           MyCell := MyWorksheet.FindCell(row, col);
           if MyCell = nil then
             actual := actual + ' '
-          else begin
+          else
             case MyCell^.ContentType of
               cctEmpty : actual := actual + ' ';
               cctNumber: actual := actual + IntToStr(Round(Mycell^.NumberValue));
               cctError : actual := actual + 'E';
             end;
-            if HasFormula(MyCell) then begin
-              CheckEquals(
-                MyWorksheet.ReadFormulaAsString(MyCell),
-                InsDelTestData[ATestIndex].SollFormula,
-                'Formula mismatch, cell '+CellNotation(MyWorksheet, Row, Col)
-              );
-            end;
+          if HasFormula(MyCell) then
+          begin
+            CheckEquals(
+              MyWorksheet.ReadFormulaAsString(MyCell),
+              InsDelTestData[ATestIndex].SollFormula,
+              'Formula mismatch, cell '+CellNotation(MyWorksheet, Row, Col)
+            );
           end;
         end;
         CheckEquals(actual, expected,

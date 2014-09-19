@@ -190,6 +190,11 @@ type
   function ConvertDateTimeToExcelDateTime
     (const ADateTime: TDateTime; ADateMode: TDateMode): Double;
 
+  // Converts the error byte read from cells or formulas to fps error value
+  function ConvertFromExcelError(AValue: Byte): TsErrorValue;
+  // Converts an fps error value to the byte code needed in xls files
+  function ConvertToExcelError(AValue: TsErrorValue): byte;
+
 type
   { Contents of the XF record to be stored in the XFList of the reader }
   TXFListData = class
@@ -501,6 +506,31 @@ begin
   end;
 end;
 
+function ConvertFromExcelError(AValue: Byte): TsErrorValue;
+begin
+  case AValue of
+    ERR_INTERSECTION_EMPTY    : Result := errEmptyIntersection;  // #NULL!
+    ERR_DIVIDE_BY_ZERO        : Result := errDivideByZero;       // #DIV/0!
+    ERR_WRONG_TYPE_OF_OPERAND : Result := errWrongType;          // #VALUE!
+    ERR_ILLEGAL_REFERENCE     : Result := errIllegalRef;         // #REF!
+    ERR_WRONG_NAME            : Result := errWrongName;          // #NAME?
+    ERR_OVERFLOW              : Result := errOverflow;           // #NUM!
+    ERR_ARG_ERROR             : Result := errArgError;           // #N/A!
+  end;
+end;
+
+function ConvertToExcelError(AValue: TsErrorValue): byte;
+begin
+  case AValue of
+    errEmptyIntersection : Result := ERR_INTERSECTION_EMPTY;     // #NULL!
+    errDivideByZero      : Result := ERR_DIVIDE_BY_ZERO;         // #DIV/0!
+    errWrongType         : Result := ERR_WRONG_TYPE_OF_OPERAND;  // #VALUE!
+    errIllegalRef        : Result := ERR_ILLEGAL_REFERENCE;      // #REF!
+    errWrongName         : Result := ERR_WRONG_NAME;             // #NAME?
+    errOverflow          : Result := ERR_OVERFLOW;               // #NUM!
+    errArgError          : Result := ERR_ARG_ERROR;              // #N/A;
+  end;
+end;
 
 { TsBIFFNumFormatList }
 
@@ -959,7 +989,8 @@ begin
   AStream.ReadDWord;
 
   { Create cell }
-  if FIsVirtualMode then begin                 // "Virtual" cell
+  if FIsVirtualMode then                       // "Virtual" cell
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -975,21 +1006,14 @@ begin
          FWorksheet.WriteBoolValue(cell, Data[2] = 1);
 
       2: begin  // Error value
-           case Data[2] of
-             ERR_INTERSECTION_EMPTY   : err := errEmptyIntersection;
-             ERR_DIVIDE_BY_ZERO       : err := errDivideByZero;
-             ERR_WRONG_TYPE_OF_OPERAND: err := errWrongType;
-             ERR_ILLEGAL_REFERENCE    : err := errIllegalRef;
-             ERR_WRONG_NAME           : err := errWrongName;
-             ERR_OVERFLOW             : err := errOverflow;
-             ERR_ARG_ERROR            : err := errArgError;
-           end;
+           err := ConvertFromExcelError(Data[2]);
            FWorksheet.WriteErrorValue(cell, err);
          end;
 
       3: FWorksheet.WriteBlank(cell);
     end
-  else begin
+  else
+  begin
     {
     if SizeOf(Double) <> 8 then
       raise Exception.Create('Double is not 8 bytes');
@@ -1007,7 +1031,8 @@ begin
   end;
 
   { Formula token array }
-  if boReadFormulas in FWorkbook.Options then begin
+  if boReadFormulas in FWorkbook.Options then
+  begin
     ok := ReadRPNTokenArray(AStream, cell);
     if not ok then
       FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
@@ -1506,7 +1531,7 @@ begin
       INT_EXCEL_TOKEN_TSTR:
         rpnItem := RPNString(ReadString_8BitLen(AStream), rpnItem);
       INT_EXCEL_TOKEN_TERR:
-        rpnItem := RPNErr(AStream.ReadByte, rpnItem);
+        rpnItem := RPNErr(ConvertFromExcelError(AStream.ReadByte), rpnItem);
       INT_EXCEL_TOKEN_TBOOL:
         rpnItem := RPNBool(AStream.ReadByte=1, rpnItem);
       INT_EXCEL_TOKEN_TINT:
@@ -2361,15 +2386,7 @@ begin
     cctError:
       begin
         Data[0] := 2;
-        case ACell^.ErrorValue of
-          errEmptyIntersection: Data[1] := ERR_INTERSECTION_EMPTY;// #NULL!
-          errDivideByZero     : Data[1] := ERR_DIVIDE_BY_ZERO;    // #DIV/0!
-          errWrongType        : Data[1] := ERR_WRONG_TYPE_OF_OPERAND; // #VALUE!
-          errIllegalRef       : Data[1] := ERR_ILLEGAL_REFERENCE; // #REF!
-          errWrongName        : Data[1] := ERR_WRONG_NAME;        // #NAME?
-          errOverflow         : Data[1] := ERR_OVERFLOW;          // #NUM!
-          errArgError         : Data[1] := ERR_ARG_ERROR;         // #N/A;
-        end;
+        Data[1] := ConvertToExcelError(ACell^.ErrorValue);
         Data[3] := $FFFF;
       end;
   end;
@@ -2410,7 +2427,7 @@ procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
   var RPNLength: Word);
 var
   i: Integer;
-  n: Word;
+  w, n: Word;
   dr, dc: Integer;
   TokenArraySizePos: Int64;
   FinalPos: Int64;
@@ -2500,7 +2517,7 @@ begin
 
       INT_EXCEL_TOKEN_TINT:  { fekNum, but integer }
         begin
-          AStream.WriteBuffer(AFormula[i].IntValue, 2);
+          AStream.WriteWord(WordToLE(AFormula[i].IntValue));
           inc(RPNLength, 2);
         end;
 
@@ -2514,6 +2531,12 @@ begin
       INT_EXCEL_TOKEN_TBOOL:  { fekBool }
         begin
           AStream.WriteByte(ord(AFormula[i].DoubleValue <> 0.0));
+          inc(RPNLength, 1);
+        end;
+
+      INT_EXCEL_TOKEN_TERR: { fekErr }
+        begin
+          AStream.WriteByte(ConvertToExcelError(TsErrorValue(AFormula[i].IntValue)));
           inc(RPNLength, 1);
         end;
 
