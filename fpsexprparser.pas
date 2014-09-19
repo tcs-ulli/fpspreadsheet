@@ -2718,7 +2718,7 @@ begin
     rtDateTime : Result := RPNNumber(FValue.ResDateTime, ANext);
     rtBoolean  : Result := RPNBool(FValue.ResBoolean, ANext);
     rtFloat    : Result := RPNNumber(FValue.ResFloat, ANext);
-    rtError    : Result := RPNErr(ord(FValue.ResError), ANext);
+    rtError    : Result := RPNErr(FValue.ResError, ANext);
   end;
 end;
 

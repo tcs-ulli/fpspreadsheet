@@ -31,19 +31,6 @@
             <OtherUnitFiles Value="mrumenu"/>
             <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
-          <Parsing>
-            <SyntaxOptions>
-              <IncludeAssertionCode Value="True"/>
-            </SyntaxOptions>
-          </Parsing>
-          <CodeGeneration>
-            <Checks>
-              <IOChecks Value="True"/>
-              <RangeChecks Value="True"/>
-              <OverflowChecks Value="True"/>
-              <StackChecks Value="True"/>
-            </Checks>
-          </CodeGeneration>
           <Linking>
             <Debugging>
               <DebugInfoType Value="dsDwarf2Set"/>
@@ -144,6 +131,7 @@
       <Unit3>
         <Filename Value="bebiffutils.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="beBIFFUtils"/>
       </Unit3>
       <Unit4>
         <Filename Value="behtml.pas"/>

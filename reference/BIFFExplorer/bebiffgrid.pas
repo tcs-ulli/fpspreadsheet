@@ -2286,7 +2286,7 @@ begin
              b := FBuffer[FBufferIndex];
              if FCurrRow = Row then begin
                FDetails.Add('Error code:'#13);
-               FDetails.Add(Format('Code $%.2x --> "%s"', [b, b]));
+               FDetails.Add(Format('Code $%.2x --> "%s"', [b, GetErrorValueStr(TsErrorValue(b))]));
              end;
              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]), 'Error code');
            end;
