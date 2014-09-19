@@ -5068,9 +5068,13 @@ var
   r, c, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
   cell, nextcell, basecell: PCell;
+  lastCol, lastRow: Cardinal;
 begin
+  lastCol := GetLastColIndex;
+  lastRow := GetLastOccupiedRowIndex;
+
   // Loop along the column to be deleted and fix merged cells and shared formulas
-  for r := 0 to GetLastRowIndex do
+  for r := 0 to lastRow do
   begin
     cell := FindCell(r, ACol);
 
@@ -5099,8 +5103,8 @@ begin
       // Write adapted formula to the cell below.
       WriteFormula(nextcell, basecell^.Formulavalue); //ReadFormulaAsString(nextcell));
       // Have all cells sharing the formula use the new formula base
-      for rr := r to GetLastOccupiedRowIndex do
-        for cc := ACol+1 to GetLastOccupiedColIndex do
+      for rr := r to lastRow do
+        for cc := ACol+1 to lastCol do
         begin
           cell := FindCell(rr, cc);
           if (cell <> nil) and (cell^.SharedFormulaBase = basecell) then
@@ -5112,7 +5116,7 @@ begin
   end;
 
   // Delete cells
-  for r := GetLastRowIndex downto 0 do
+  for r := lastRow downto 0 do
     RemoveCell(r, ACol);
 
   // Update column index of cell records

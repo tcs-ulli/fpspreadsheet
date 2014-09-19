@@ -57,20 +57,11 @@ uses
 type
   { Tokens }
 
-(*  { Basic operands }
-  fekCell, fekCellRef, fekCellRange, fekCellOffset, fekNum, fekInteger,
-  fekString, fekBool, fekErr, fekMissingArg,
-  { Basic operations }
-  fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
-  fekConcat,  // string concatenation
-  fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual, fekNotEqual,
-  fekParen,
-*)
   TsTokenType = (
     ttCell, ttCellRange, ttNumber, ttString, ttIdentifier,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
-    ttListSep, ttTrue, ttFalse, ttEOF
+    ttListSep, ttTrue, ttFalse, ttError, ttEOF
   );
 
   TsExprFloat = Double;
@@ -409,7 +400,8 @@ type
     constructor CreateDateTime(AParser: TsExpressionParser; AValue: TDateTime);
     constructor CreateFloat(AParser: TsExpressionParser; AValue: TsExprFloat);
     constructor CreateBoolean(AParser: TsExpressionParser; AValue: Boolean);
-    constructor CreateError(AParser: TsExpressionParser; AValue: TsErrorValue);
+    constructor CreateError(AParser: TsExpressionParser; AValue: TsErrorValue); overload;
+    constructor CreateError(AParser: TsExpressionParser; AValue: String); overload;
     function AsString: string; override;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function NodeType : TsResultType; override;
@@ -653,6 +645,7 @@ type
     procedure ScanError(Msg: String);
   protected
     procedure SetSource(const AValue: String); virtual;
+    function DoError: TsTokenType;
     function DoIdentifier: TsTokenType;
     function DoNumber: TsTokenType;
     function DoDelimiter: TsTokenType;
@@ -842,6 +835,7 @@ uses
 const
   cNull = #0;
   cDoubleQuote = '"';
+  cError = '#';
 
   Digits         = ['0'..'9'];   // + decimalseparator
   WhiteSpace     = [' ', #13, #10, #9];
@@ -998,6 +992,21 @@ begin
     end;
 end;
 
+function TsExpressionScanner.DoError: TsTokenType;
+var
+  C: Char;
+  s: String;
+begin
+  C := CurrentChar;
+  while (not IsWordDelim(C)) and (C <> cNull) do
+  begin
+    FToken := FToken + C;
+    C := NextPos;
+  end;
+  S := UpperCase(Token);
+  Result := ttError;
+end;
+
 function TsExpressionScanner.DoIdentifier: TsTokenType;
 var
   C: Char;
@@ -1137,6 +1146,8 @@ begin
     Result := DoString
   else if IsDigit(C) then
     Result := DoNumber
+  else if (C = cError) then
+    Result := DoError
   else if IsAlpha(C) or (C = '$') then
     Result := DoIdentifier
   else
@@ -1662,6 +1673,8 @@ begin
     Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken)
   else if (TokenType = ttCellRange) then
     Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
+  else if (TokenType = ttError) then
+    Result := tsConstExprNode.CreateError(self, CurrentToken)
   else if not (TokenType in [ttIdentifier]) then
     ParserError(Format(SerrUnknownTokenAtPos, [Scanner.Pos, CurrentToken]))
   else
@@ -2648,6 +2661,28 @@ begin
   FValue.ResError := AValue;
 end;
 
+constructor TsConstExprNode.CreateError(AParser: TsExpressionParser;
+  AValue: String);
+var
+  err: TsErrorValue;
+begin
+  if AValue = '#NULL!' then
+    err := errEmptyIntersection
+  else if AValue = '#DIV/0!' then
+    err := errDivideByZero
+  else if AValue = '#VALUE!' then
+    err := errWrongType
+  else if AVAlue = '#REF!' then
+    err := errIllegalRef
+  else if AVAlue = '#NAME?' then
+    err := errWrongName
+  else if AValue = '#FORMULA?' then
+    err := errFormulaNotSupported
+  else
+    AParser.ParserError('Unknown error type.');
+  CreateError(AParser, err);
+end;
+
 procedure TsConstExprNode.Check;
 begin
   // Nothing to check;
@@ -2671,6 +2706,7 @@ begin
     rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime, Parser.FFormatSettings) + '''';    // Probably wrong !!!
     rtBoolean  : if FValue.ResBoolean then Result := 'TRUE' else Result := 'FALSE';
     rtFloat    : Result := FloatToStr(FValue.ResFloat, Parser.FFormatSettings);
+    rtError    : Result := GetErrorValueStr(FValue.ResError);
   end;
 end;
 
@@ -2682,6 +2718,7 @@ begin
     rtDateTime : Result := RPNNumber(FValue.ResDateTime, ANext);
     rtBoolean  : Result := RPNBool(FValue.ResBoolean, ANext);
     rtFloat    : Result := RPNNumber(FValue.ResFloat, ANext);
+    rtError    : Result := RPNErr(ord(FValue.ResError), ANext);
   end;
 end;
 
