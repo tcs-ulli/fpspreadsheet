@@ -32,7 +32,7 @@ type
   end;
 
 var
-  InsDelTestData: array[0..21] of TInsDelTestDataItem;
+  InsDelTestData: array[0..25] of TInsDelTestDataItem;
 
   procedure InitTestData;
 
@@ -79,6 +79,12 @@ type
     procedure TestWriteRead_InsDelColRow_20;    // after formula cell
     procedure TestWriteRead_InsDelColRow_21;    // cell in formula
 
+    // Writes out cell layout with shared formula
+    procedure TestWriteRead_InsDelColRow_22;    // no insert/delete; just test shared formula
+    // ... and inserts columns
+    procedure TestWriteRead_InsDelColRow_23;    // column before shared formula cells
+    procedure TestWriteRead_InsDelColRow_24;    // column after shared formula cells
+    procedure TestWriteRead_InsDelColRow_25;    // column through cells addressed by shared formula
   end;
 
 implementation
@@ -87,7 +93,7 @@ uses
   StrUtils;
 
 const
-  InsertColRowSheet = 'Insert_Columns_Rows';
+  InsertColRowSheet = 'InsertDelete_ColumnsRows';
 
 procedure InitTestData;
 var
@@ -489,6 +495,103 @@ begin
                   '67890123';
   end;
 
+  { ---------------------------------------------------------------------------}
+  {  Layouts with shared formula                                                      }
+  { ---------------------------------------------------------------------------}
+
+  // No insert/delete, just to test the shared formula
+  with InsDelTestData[22] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    Formula := 'A3-$B$2';
+    SharedFormulaColCount := 2;
+    SharedFormulaRowCount := 3;
+    SollFormula := 'A3-$B$2,B3-$B$2;'+
+                   'A4-$B$2,B4-$B$2;'+
+                   'A5-$B$2,B5-$B$2';
+      // comma-separated --> cells along row; semicolon separates rows
+    SollLayout := '12345678|'+
+                  '23456789|'+
+                  '34501890|'+
+                  '45612901|'+
+                  '56723012|'+
+                  '67890123';
+  end;
+
+  // Insert column before any cell referred to by the shared formula (col = 0)
+  with InsDelTestData[23] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertCol := 0;
+    Formula := 'A3-$B$2';
+    SharedFormulaColCount := 2;
+    SharedFormulaRowCount := 3;
+    SollFormula := 'B3-$C$2,C3-$C$2;'+   // all column indexes increase by 1 due to added col in front
+                   'B4-$C$2,C4-$C$2;'+
+                   'B5-$C$2,C5-$C$2';
+      // comma-separated --> cells along row; semicolon separates rows
+    SollLayout := ' 12345678|'+
+                  ' 23456789|'+
+                  ' 34501890|'+
+                  ' 45612901|'+
+                  ' 56723012|'+
+                  ' 67890123';
+  end;
+
+  // Insert column after last cell addressed by the shared formula
+  with InsDelTestData[24] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertCol := 7;
+    Formula := 'A3-$B$2';
+    SharedFormulaColCount := 2;
+    SharedFormulaRowCount := 3;
+    SollFormula := 'A3-$B$2,B3-$B$2;'+    // formulas unchanged by insert
+                   'A4-$B$2,B4-$B$2;'+
+                   'A5-$B$2,B5-$B$2';
+      // comma-separated --> cells along row; semicolon separates rows
+    SollLayout := '1234567 8|'+
+                  '2345678 9|'+
+                  '3450189 0|'+
+                  '4561290 1|'+
+                  '5672301 2|'+
+                  '6789012 3';
+  end;
+
+  // Insert column between cells referred to by the shared formula (col = 1)
+  with InsDelTestData[25] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertCol := 1;
+    Formula := 'A3-$B$2';
+    SharedFormulaColCount := 2;
+    SharedFormulaRowCount := 3;
+    SollFormula := 'A3-$C$2,C3-$C$2;'+   // some column indexes increase by 1, some unchanged
+                   'A4-$C$2,C4-$C$2;'+
+                   'A5-$C$2,C5-$C$2';
+    SollLayout := '1 2345678|'+
+                  '2 3456789|'+
+                  '3 4501890|'+
+                  '4 5612901|'+
+                  '5 6723012|'+
+                  '6 7890123';
+  end;
 end;
 
 
@@ -515,16 +618,40 @@ var
   row, col: Integer;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
-  L: TStringList;
+  L, LL: TStringList;
   s: String;
   expected: String;
   actual: String;
+  expectedFormulas: array of array of String;
 
 begin
   TempFile := GetTempFileName;
 
   L := TStringList.Create;
   try
+    // Extract soll formulas into a 2D array in case of shared formulas
+    if (InsDelTestData[ATestIndex].SharedFormulaRowCount > 0) or
+       (InsDelTestData[ATestIndex].SharedFormulaColCount > 0) then
+    begin
+      with InsDelTestData[ATestIndex] do
+        SetLength(expectedFormulas, SharedFormulaRowCount, SharedFormulaColCount);
+      L.Delimiter := ';';
+      L.DelimitedText := InsDelTestData[ATestIndex].SollFormula;
+      LL := TStringList.Create;
+      try
+        LL.Delimiter := ',';
+        for row := 0 to InsDelTestData[ATestIndex].SharedFormulaRowCount-1 do
+        begin
+          s := L[row];
+          LL.DelimitedText := L[row];
+          for col := 0 to InsDelTestData[ATestIndex].SharedFormulaColCount-1 do
+            expectedFormulas[row, col] := LL[col];
+        end;
+      finally
+        LL.Free;
+      end;
+    end;
+
     L.Delimiter := '|';
     L.StrictDelimiter := true;
     L.DelimitedText := InsDelTestData[ATestIndex].Layout;
@@ -539,9 +666,16 @@ begin
         s := L[row];
         for col := 0 to Length(s)-1 do
           case s[col+1] of
+            ' '     : ; // Leave cell empty
             '0'..'9': MyWorksheet.WriteNumber(row, col, StrToInt(s[col+1]));
             'F'     : MyWorksheet.WriteFormula(row, col, InsDelTestData[ATestIndex].Formula);
-            ' '     : ;
+            'S'     : MyWorksheet.WriteSharedFormula(
+                        row,
+                        col,
+                        row + InsDelTestData[ATestIndex].SharedFormulaRowCount-1,
+                        col + InsDelTestData[ATestIndex].SharedFormulaColCount-1,
+                        InsDelTestData[ATestIndex].Formula
+                      );
           end;
       end;
 
@@ -593,14 +727,21 @@ begin
             end;
           if HasFormula(MyCell) then
           begin
-            CheckEquals(
-              MyWorksheet.ReadFormulaAsString(MyCell),
-              InsDelTestData[ATestIndex].SollFormula,
-              'Formula mismatch, cell '+CellNotation(MyWorksheet, Row, Col)
-            );
+            if MyCell^.SharedFormulaBase <> nil then
+              CheckEquals(
+                expectedFormulas[row-MyCell^.SharedFormulaBase^.Row, col-MyCell^.SharedFormulaBase^.Col],
+                MyWorksheet.ReadFormulaAsString(MyCell),
+                'Shared formula mismatch, cell ' + CellNotation(MyWorksheet, Row, Col)
+              )
+            else
+              CheckEquals(
+                InsDelTestData[ATestIndex].SollFormula,
+                MyWorksheet.ReadFormulaAsString(MyCell),
+                'Formula mismatch, cell '+CellNotation(MyWorksheet, Row, Col)
+              );
           end;
         end;
-        CheckEquals(actual, expected,
+        CheckEquals(expected, actual,
           'Test empty cell layout mismatch, cell '+CellNotation(MyWorksheet, Row, Col));
       end;
     finally
@@ -745,6 +886,31 @@ procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_21;
 begin
   TestWriteRead_InsDelColRow(21);
 end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22;
+// no insert/delete; just test shared formula
+begin
+  TestWriteRead_InsDelColRow(22);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23;
+// insert column before any cell addressed by the shared formula
+begin
+  TestWriteRead_InsDelColRow(23);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24;
+// insert column after any cell addressed by the shared formula
+begin
+  TestWriteRead_InsDelColRow(24);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25;
+// column through cells addressed by shared formula
+begin
+  TestWriteRead_InsDelColRow(25);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteRead_InsDelColRow_Tests);

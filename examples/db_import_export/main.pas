@@ -209,7 +209,7 @@ begin
     worksheet.WriteColWidth(0, 20);
     worksheet.WriteColWidth(1, 20);
     worksheet.WriteColWidth(2, 20);
-    worksheet.WriteCOlWidth(3, 15);
+    worksheet.WriteColWidth(3, 15);
 
     // Setup virtual mode to save memory
 //    FWorkbook.Options := FWorkbook.Options + [boVirtualMode, boBufStream];

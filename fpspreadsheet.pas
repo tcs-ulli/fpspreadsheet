@@ -682,6 +682,9 @@ type
     procedure CalcFormula(ACell: PCell);
     procedure CalcFormulas;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
+    function FindSharedFormulaBase(ACell: PCell): PCell;
+    function FindSharedFormulaRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
+    procedure FixSharedFormulas;
     function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
 
     { Data manipulation methods - For Cells }
@@ -833,6 +836,7 @@ type
     procedure SetVirtualRowCount(AValue: Cardinal);
 
     { Internal methods }
+    procedure FixSharedFormulas;
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
@@ -1252,9 +1256,9 @@ var
   );
 
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Registers a new reader/writer pair for a given spreadsheet file format
-}
+-------------------------------------------------------------------------------}
 procedure RegisterSpreadFormat(
   AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass;
@@ -1412,27 +1416,6 @@ begin
   );
 end;
 
-
-
-{ TsWorksheet }
-
-{@@
-  Helper method for clearing the records in a spreadsheet.
-}
-procedure TsWorksheet.RemoveCallback(data, arg: pointer);
-begin
-  Unused(arg);
-  (*
-  { The strings and dyn arrays must be reset to nil content manually, because
-    FreeMem only frees the record mem, without checking its content }
-  PCell(data).UTF8StringValue := '';
-  PCell(data).NumberFormatStr := '';
-  SetLength(PCell(data).RPNFormulaValue, 0);
-//  FreeMem(data);
-*)
-  Dispose(PCell(data));
-end;
-
 function CompareCells(Item1, Item2: Pointer): Integer;
 begin
   result := PCell(Item1).Row - PCell(Item2).Row;
@@ -1450,9 +1433,14 @@ begin
   result := PCol(Item1).Col - PCol(Item2).Col;
 end;
 
-{@@
+
+{*******************************************************************************
+*                           TsWorksheet                                        *
+*******************************************************************************}
+
+{@@ ----------------------------------------------------------------------------
   Constructor of the TsWorksheet class.
-}
+-------------------------------------------------------------------------------}
 constructor TsWorksheet.Create;
 begin
   inherited Create;
@@ -1472,9 +1460,9 @@ begin
   FOptions := [soShowGridLines, soShowHeaders];
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Destructor of the TsWorksheet class.
-}
+-------------------------------------------------------------------------------}
 destructor TsWorksheet.Destroy;
 begin
   RemoveAllCells;
@@ -1488,13 +1476,13 @@ begin
   inherited Destroy;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper function which constructs an rpn formula from the cell's string
   formula. This is needed, for example, when writing a formula to xls biff
   file format.
   If the cell belongs to a shared formula the formula is taken from the
   shared formula base cell, cell references used are adapted accordingly.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.BuildRPNFormula(ACell: PCell): TsRPNFormula;
 var
   parser: TsSpreadsheetParser;
@@ -1516,9 +1504,9 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method for calculation of the formulas in a spreadsheet.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcFormulaCallback(data, arg: pointer);
 var
   cell: PCell;
@@ -1534,14 +1522,14 @@ begin
     CalcFormula(cell);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Calculates the formula in a cell
   Should not be called by itself because the result may depend on other cells
   which may have not yet been calculated. It is better to call CalcFormulas
   instead.
 
   @param  ACell  Cell containing the formula.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcFormula(ACell: PCell);
 var
   parser: TsSpreadsheetParser;
@@ -1595,9 +1583,9 @@ begin
   ACell^.CalcState := csCalculated;
 end;
 
-{@@
-  Calculates all rpn formulas of the worksheet.
-}
+{@@ ----------------------------------------------------------------------------
+  Calculates all formulas of the worksheet.
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcFormulas;
 var
   node: TAVLTreeNode;
@@ -1625,10 +1613,10 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method marking all cells with formulas as "not calculated". This flag
   is needed for recursive calculation of the entire worksheet.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcStateCallback(data, arg: Pointer);
 var
   cell: PCell;
@@ -1640,22 +1628,23 @@ begin
     cell^.CalcState := csNotCalculated;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a FPSpreadsheet cell position, which is Row, Col in numbers
   and zero based - e.g. 0,0 - to a textual representation which is [Col][Row],
-  where the Col is in letters and the row is in 1-based numbers - e.g. A1 }
+  where the Col is in letters and the row is in 1-based numbers - e.g. A1
+-------------------------------------------------------------------------------}
 class function TsWorksheet.CellPosToText(ARow, ACol: Cardinal): string;
 begin
   Result := GetCellString(ARow, ACol, [rfRelCol, rfRelRow]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks entire workbook, whether this cell is used in any formula.
 
   @param   ARow  Row index of the cell considered
   @param   ACol  Column index of the cell considered
   @return  TRUE if the cell is used in a formula, FALSE if not
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 var
   cell: PCell;
@@ -1694,13 +1683,13 @@ begin
   SetLength(rpnFormula, 0);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Is called whenever a cell value or formatting has changed. Fires an event
   "OnChangeCell". This is handled by TsWorksheetGrid to update the grid cell.
 
   @param  ARow   Row index of the cell which has been changed
   @param  ACol   Column index of the cell which has been changed
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
 begin
   if (FWorkbook.FCalculationLock = 0) and (boAutoCalc in FWorkbook.Options) then
@@ -1712,19 +1701,19 @@ begin
     FOnChangeCell(Self, ARow, ACol);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Is called whenever a font height changes. Fires an even "OnChangeFont"
   which is handled by TsWorksheetGrid to update the row heights.
 
   @param  ARow  Row index of the cell for which the font height has changed
   @param  ACol  Column index of the cell for which the font height has changed.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedFont(ARow, ACol: Cardinal);
 begin
   if Assigned(FonChangeFont) then FOnChangeFont(Self, ARow, ACol);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Copies a cell. The source cell can be located in a different worksheet, while
   the destination cell must be in the same worksheet which calls the methode.
 
@@ -1733,7 +1722,7 @@ end;
   @param AToRow    Row index of the destination cell
   @param AToCol    Column index of the destination cell
   @param AFromWorksheet  Worksheet containing the source cell.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
   AFromWorksheet: TsWorksheet);
 var
@@ -1748,12 +1737,12 @@ begin
   ChangedFont(AToRow, AToCol);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Copies all format parameters from the format cell to another cell.
 
   @param AFromCell  Pointer to source cell
   @param AToCell    Pointer to destination cell
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyFormat(AFromCell, AToCell: PCell);
 begin
   if (AFromCell = nil) or (AToCell = nil) then
@@ -1764,21 +1753,23 @@ begin
   ChangedFont(AToCell^.Row, AToCell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Copies all format parameters from a given cell to another cell identified
   by its row/column indexes.
 
   @param  AFormat  Pointer to the source cell from which the format is copied.
   @param  AToRow   Row index of the destination cell
   @param  AToCol   Column index of the destination cell
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
 begin
   CopyFormat(AFormat, GetCell(AToRow, AToCol));
 end;
 
-{@@ Internal call-back procedure for looping through all cells when deleting
-  a specified column. Deletion happens in DeleteCol BEFORE this callback! }
+{@@ ----------------------------------------------------------------------------
+  Internal call-back procedure for looping through all cells when deleting
+  a specified column. Deletion happens in DeleteCol BEFORE this callback!
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteColCallback(data, arg: Pointer);
 var
   cell: PCell;
@@ -1830,8 +1821,10 @@ begin
   end;
 end;
 
-{@@ Internal call-back procedure for looping through all cells when deleting
-  a specified row. Deletion happens in DeleteRow BEFORE this callback! }
+{@@ ----------------------------------------------------------------------------
+  Internal call-back procedure for looping through all cells when deleting
+  a specified row. Deletion happens in DeleteRow BEFORE this callback!
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteRowCallback(data, arg: Pointer);
 var
   cell: PCell;
@@ -1883,14 +1876,14 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Tries to locate a Cell in the list of already written Cells
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @return Pointer to the cell if found, or nil if not found
   @see    TCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.FindCell(ARow, ACol: Cardinal): PCell;
 var
   LCell: TCell;
@@ -1907,13 +1900,13 @@ begin
     result := PCell(AVLNode.Data);
 end;
 
-{@@
-  Tries to locate a Cell in the list of already written Cells
+{@@ ----------------------------------------------------------------------------
+  Tries to locate a cell in the list of already written cells
 
   @param  AddressStr  Address of the cell in Excel A1 notation
   @return Pointer to the cell if found, or nil if not found
   @see    TCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.FindCell(AddressStr: String): PCell;
 var
   r, c: Cardinal;
@@ -1924,10 +1917,10 @@ begin
     Result := nil;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Obtains an allocated cell at the desired location.
 
-  If the Cell already exists, a pointer to it will be returned.
+  If the cell already exists, a pointer to it will be returned.
 
   If not, then new memory for the cell will be allocated, a pointer to it
   will be returned and it will be added to the list of cells.
@@ -1938,7 +1931,7 @@ end;
   @return A pointer to the cell at the desired location.
 
   @see    TCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetCell(ARow, ACol: Cardinal): PCell;
 begin
   Result := FindCell(ARow, ACol);
@@ -1965,7 +1958,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Obtains an allocated cell at the desired location.
 
   If the Cell already exists, a pointer to it will be returned.
@@ -1978,7 +1971,7 @@ end;
   @return A pointer to the cell at the desired location.
 
   @see    TCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetCell(AddressStr: String): PCell;
 var
   r, c: Cardinal;
@@ -1989,7 +1982,7 @@ begin
     raise Exception.CreateFmt(rsNoValidCellAddress, [AddressStr]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the number of cells in the worksheet with contents.
 
   This routine is used together with GetFirstCell and GetNextCell
@@ -2000,13 +1993,13 @@ end;
   @see    TCell
   @see    GetFirstCell
   @see    GetNextCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetCellCount: Cardinal;
 begin
   Result := FCells.Count;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Determines some number format attributes (decimal places, currency symbol) of
   a cell
 
@@ -2018,7 +2011,7 @@ end;
                            the formatting string.
 
   @return true if the the format string could be analyzed successfully, false if not
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetNumberFormatAttributes(ACell: PCell; out ADecimals: byte;
   out ACurrencySymbol: String): Boolean;
 var
@@ -2050,8 +2043,8 @@ begin
   end;
 end;
 
-{@@
-  Returns the first Cell.
+{@@ ----------------------------------------------------------------------------
+  Returns the first cell.
 
   Use together with GetCellCount and GetNextCell
   to iterate througth all cells in a worksheet efficiently.
@@ -2061,7 +2054,7 @@ end;
   @see    TCell
   @see    GetCellCount
   @see    GetNextCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstCell(): PCell;
 begin
   FCurrentNode := FCells.FindLowest();
@@ -2070,8 +2063,8 @@ begin
   else Result := nil;
 end;
 
-{@@
-  Returns the next Cell.
+{@@ ----------------------------------------------------------------------------
+  Returns the next cell.
 
   Should always be used either after GetFirstCell or
   after GetNextCell.
@@ -2084,7 +2077,7 @@ end;
   @see    TCell
   @see    GetCellCount
   @see    GetFirstCell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetNextCell(): PCell;
 begin
   FCurrentNode := FCells.FindSuccessor(FCurrentNode);
@@ -2093,7 +2086,7 @@ begin
   else Result := nil;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the first column with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
@@ -2106,7 +2099,7 @@ end;
                              is true all cells are scanned to determine the index
                              of the first column.
   @see GetCellCount
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
 var
   AVLNode: TAVLTreeNode;
@@ -2139,7 +2132,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the last column with a cell with contents or
   with a column record.
 
@@ -2155,7 +2148,7 @@ end;
                              of the last column.
   @see GetCellCount
   @see GetLastOccupiedColIndex
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
 var
   AVLNode: TAVLTreeNode;
@@ -2179,17 +2172,17 @@ begin
     Result := FLastColIndex;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Deprecated, use GetLastColIndex instead
 
   @see GetLastColIndex
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastColNumber: Cardinal;
 begin
   Result := GetLastColIndex;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the last column with a cell with contents.
   If no cells have contents, zero will be returned, which is also a valid value.
 
@@ -2198,7 +2191,7 @@ end;
 
   @see GetCellCount
   @see GetLastColIndex
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastOccupiedColIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
@@ -2217,13 +2210,12 @@ begin
   end;
 end;
 
-
-{@@
+{@@ ----------------------------------------------------------------------------
   Finds the first cell with contents in a given row
 
   @param  ARow  Index of the row considered
   @return       Pointer to the first cell in this row, or nil if the row is empty.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstCellOfRow(ARow: Cardinal): PCell;
 var
   c, n: Cardinal;
@@ -2238,12 +2230,12 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Finds the last cell with data or formatting in a given row
 
   @param  ARow  Index of the row considered
   @return       Pointer to the last cell in this row, or nil if the row is empty.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastCellOfRow(ARow: Cardinal): PCell;
 var
   c, n: Cardinal;
@@ -2258,7 +2250,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the first row with a cell with data or formatting.
   If no cells have contents, -1 will be returned.
 
@@ -2267,7 +2259,7 @@ end;
                              is true all cells are scanned to determine the index
                              of the first row.
   @see GetCellCount
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstRowIndex(AForceCalculation: Boolean = false): Cardinal;
 var
   AVLNode: TAVLTreeNode;
@@ -2294,7 +2286,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the last row with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
@@ -2308,7 +2300,7 @@ end;
                              of the last row.
   @see GetCellCount
   @see GetLastOccupiedRowIndex
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
 var
   AVLNode: TAVLTreeNode;
@@ -2329,7 +2321,7 @@ begin
     Result := FLastRowIndex
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the last row with a cell with contents.
   If no cells have contents, zero will be returned, which is also a valid value.
 
@@ -2338,7 +2330,7 @@ end;
 
   @see GetCellCount
   @see GetLastRowIndex
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastOccupiedRowIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
@@ -2350,17 +2342,17 @@ begin
     Result := PCell(AVLNode.Data).Row;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Deprecated, use GetLastColIndex instead
 
   @see GetLastColIndex
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetLastRowNumber: Cardinal;
 begin
   Result := GetLastRowIndex;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the contents of a cell and returns an user readable text
   representing the contents of the cell.
 
@@ -2369,13 +2361,13 @@ end;
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @return The text representation of the cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
 begin
   Result := ReadAsUTF8Text(GetCell(ARow, ACol));
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the contents of a cell and returns an user readable text
   representing the contents of the cell.
 
@@ -2383,7 +2375,7 @@ end;
 
   @param  ACell     Pointer to the cell
   @return The text representation of the cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
 
   function FloatToStrNoNaN(const Value: Double;
@@ -2470,7 +2462,7 @@ begin
     end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the value of a cell as a number.
 
   If the cell contains a date/time value its serial value is returned
@@ -2485,13 +2477,13 @@ end;
   @param  ACol      The column of the cell
   @return Floating-point value representing the cell contents, or 0.0 if cell
           does not exist or its contents cannot be converted to a number.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsNumber(ARow, ACol: Cardinal): Double;
 begin
   Result := ReadAsNumber(FindCell(ARow, ACol));
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the value of a cell as a number.
 
   If the cell contains a date/time value its serial value is returned
@@ -2505,7 +2497,7 @@ end;
   @param  ACell     Pointer to the cell
   @return Floating-point value representing the cell contents, or 0.0 if cell
           does not exist or its contents cannot be converted to a number.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsNumber(ACell: PCell): Double;
 begin
   Result := 0.0;
@@ -2513,34 +2505,41 @@ begin
     exit;
 
   case ACell^.ContentType of
-    cctDateTime   : Result := ACell^.DateTimeValue; //this is in FPC TDateTime format, not Excel
-    cctNumber     : Result := ACell^.NumberValue;
-    cctUTF8String : if not TryStrToFloat(ACell^.UTF8StringValue, Result) then Result := 0.0;
-    cctBool       : if ACell^.BoolValue then Result := 1.0 else Result := 0.0;
+    cctDateTime:
+      Result := ACell^.DateTimeValue; //this is in FPC TDateTime format, not Excel
+    cctNumber:
+      Result := ACell^.NumberValue;
+    cctUTF8String:
+      if not TryStrToFloat(ACell^.UTF8StringValue, Result, FWorkbook.FormatSettings)
+        then Result := 0.0;
+    cctBool:
+      if ACell^.BoolValue then Result := 1.0 else Result := 0.0;
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the contents of a cell and returns the date/time value of the cell.
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @param  AResult   Date/time value of the cell (or 0.0, if no date/time cell)
   @return True if the cell is a datetime value, false otherwise
-}
-function TsWorksheet.ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean;
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadAsDateTime(ARow, ACol: Cardinal;
+  out AResult: TDateTime): Boolean;
 begin
   Result := ReadAsDateTime(FindCell(ARow, ACol), AResult);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the contents of a cell and returns the date/time value of the cell.
 
   @param  ACell     Pointer to the cell
   @param  AResult   Date/time value of the cell (or 0.0, if no date/time cell)
   @return True if the cell is a datetime value, false otherwise
-}
-function TsWorksheet.ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean;
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadAsDateTime(ACell: PCell;
+  out AResult: TDateTime): Boolean;
 begin
   if (ACell = nil) or (ACell^.ContentType <> cctDateTime) then
   begin
@@ -2553,7 +2552,8 @@ begin
   Result := True;
 end;
 
-{@@ If a cell contains a formula (string formula or RPN formula) the formula
+{@@ ----------------------------------------------------------------------------
+  If a cell contains a formula (string formula or RPN formula) the formula
   is returned as a string in Excel syntax.
   If the cell belongs to a shared formula the adapted shared formula is returned.
 
@@ -2562,7 +2562,7 @@ end;
                       separators accoding to the workbook's FormatSettings.
                       Otherwise it uses dot and comma, respectively.
   @return  Formula string in Excel syntax (does not contain a leading "=")
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadFormulaAsString(ACell: PCell;
   ALocalized: Boolean = false): String;
 var
@@ -2610,7 +2610,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns to numeric equivalent of the cell contents. This is the NumberValue
   of a number cell, the DateTimeValue of a date/time cell, the ordinal BoolValue
   of a boolean cell, or the string converted to a number of a string cell.
@@ -2618,7 +2618,8 @@ end;
 
   @param   ACell   Cell to be considered
   @param   AValue  (output) extracted numeric value
-  @return  True if conversion to number is successful, otherwise false }
+  @return  True if conversion to number is successful, otherwise false
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
 begin
   AValue := NaN;
@@ -2642,13 +2643,13 @@ begin
     Result := False;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts an RPN formula (as read from an xls biff file, for example) to a
   string formula.
 
   @param    AFormula  Array of rpn formula tokens
   @return   Formula string in Excel syntax (without leading "=")
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
 var
   parser: TsSpreadsheetParser;
@@ -2664,7 +2665,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the set of used formatting fields of a cell.
 
   Each cell contains a set of "used formatting fields". Formatting is applied
@@ -2673,7 +2674,7 @@ end;
   @param  ARow    Row index of the considered cell
   @param  ACol    Column index of the considered cell
   @return Set of elements used in formatting the cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
 var
   ACell: PCell;
@@ -2689,13 +2690,13 @@ begin
   Result := ACell^.UsedFormattingFields;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the background color of a cell as index into the workbook's color palette.
 
   @param ARow  Row index of the cell
   @param ACol  Column index of the cell
   @return Index of the cell background color into the workbook's color palette
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
 var
   ACell: PCell;
@@ -2711,14 +2712,14 @@ begin
   Result := ACell^.BackgroundColor;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Merges adjacent individual cells to a larger single cell
 
   @param  ARow1   Row index of the upper left corner of the cell range
   @param  ACol1   Column index of the upper left corner of the cell range
   @param  ARow2   Row index of the lower right corner of the cell range
   @param  ACol2   Column index of the lower right corner of the cell range
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
 var
   cell: PCell;
@@ -2739,12 +2740,12 @@ begin
   ChangedCell(ARow1, ACol1);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Merges adjacent individual cells to a larger single cell
 
   @param  ARange  Cell range string given in Excel notation (e.g: A1:D5).
                   A non-range string (e.g. A1) is not allowed.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.MergeCells(ARange: String);
 var
   r1, r2, c1, c2: Cardinal;
@@ -2753,14 +2754,14 @@ begin
     MergeCells(r1, c1, r2, c2);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Disconnects merged cells to make them individual cells again.
 
   Input parameter is a cell which belongs to the range to be unmerged.
 
   @param  ARow   Row index of a cell considered to belong to the cell block
   @param  ACol   Column index of a cell considered to belong to the cell block
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.UnmergeCells(ARow, ACol: Cardinal);
 var
   r, c: Cardinal;
@@ -2781,14 +2782,14 @@ begin
   ChangedCell(ARow, ACol);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Disconnects merged cells to make them individual cells again.
 
   @param  ARange  Cell (range) string given in Excel notation (e.g: A1, or A1:D5)
                   In case of a range string, only the upper left corner cell is
                   considered. It must belong to the merged range of cells to be
                   unmerged.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.UnmergeCells(ARange: String);
 var
   r1, r2, c1, c2: Cardinal;
@@ -2800,7 +2801,7 @@ begin
     UnmergeCells(r1, c1);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Finds the upper left cell of a merged block to which a specified cell belongs.
   This is the "merge base". Returns nil if the cell is not merged.
 
@@ -2808,7 +2809,7 @@ end;
   @return A pointer to the cell in the upper left corner of the merged block
           to which ACell belongs, If ACell is isolated then the function returns
           nil.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.FindMergeBase(ACell: PCell): PCell;
 begin
   if ACell = nil then
@@ -2816,27 +2817,25 @@ begin
   else
     Result := ACell^.MergeBase;
 end;
-                               (*
-var
-  r, c: Cardinal;
-begin
-  Result := ACell;
-  if (ACell = nil) or (ACell^.MergedNeighbors = []) then
-    exit;
 
-  r := Result^.Row;
-  c := Result^.Col;
-  while (cbNorth in Result^.MergedNeighbors) do begin
-    dec(r);
-    Result := FindCell(r, c);
-  end;
-  while (cbWest in Result^.MergedNeighbors) do begin
-    dec(c);
-    Result := FindCell(r, c);
-  end;
+{@@ ----------------------------------------------------------------------------
+  Finds the upper left cell of a shared formula block to which the specified
+  cell belongs. This is the "shared formula base".
+
+  @param   ACell   Cell under investigation
+  @return  A pointer to the cell in the upper left corner of the shared formula
+           block to which ACell belongs. If ACell is not part of a shared formula
+           block then the function returns NIL.
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindSharedFormulaBase(ACell: PCell): PCell;
+begin
+  if ACell = nil then
+    Result := nil
+  else
+    Result := ACell^.SharedFormulaBase;
 end;
-       *)
-{@@
+
+{@@ ----------------------------------------------------------------------------
   Determines the merged cell block to which a given cell belongs
 
   @param   ACell  Pointer to the cell being investigated
@@ -2847,7 +2846,7 @@ end;
 
   @return  True if the cell belongs to a merged block, False if not, or if the
            cell does not exist at all.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.FindMergedRange(ACell: PCell;
   out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
 var
@@ -2884,33 +2883,84 @@ begin
       ARow2 := r;
   end;
 
-{
-  while (cell <> nil) and (cbSouth in cell^.MergedNeighbors) do begin
-    inc(ARow2);
-    cell := FindCell(ARow2, ACol1);
-  end;
-  if cell = nil then begin
-    Result := false;
-    exit;
-  end;
-  ACol2 := ACol1;
-  while (cell <> nil) and (cbEast in cell^.MergedNeighbors) do begin
-    inc(ACol2);
-    cell := FindCell(ARow2, ACol2);
-  end;
-  if cell = nil then begin
-    Result := false;
-    exit;
-  end;
-  }
   Result := true;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
+  Determines the cell block sharing the same formula which is used by a given cell
+
+  @param   ACell  Pointer to the cell being investigated
+  @param   ARow1  (output) Top row index of the shared formula block
+  @param   ACol1  (outout) Left column index of the shared formula block
+  @param   ARow2  (output) Bottom row index of the shared formula block
+  @param   ACol2  (output) Right column index of the shared formula block
+
+  @return  True if the cell belongs to a shared formula block, False if not or
+           if the cell does not exist at all.
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindSharedFormulaRange(ACell: PCell;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
+var
+  r, c: Cardinal;
+  cell: PCell;
+  base: PCell;
+begin
+  base := FindSharedFormulaBase(ACell);
+  if base = nil then begin
+    Result := false;
+    exit;
+  end;
+  // Assuming that the shared formula block is rectangular, we start at the base...
+  ARow1 := base^.Row;
+  ARow2 := ARow1;
+  ACol1 := base^.Col;
+  ACol2 := ACol1;
+  // ... and go along first COLUMN to find the end of the shared formula block, ...
+  for c := ACol1+1 to GetLastColIndex do
+  begin
+    cell := FindCell(ARow1, c);
+    if (cell = nil) or (cell^.SharedFormulaBase <> base) then
+      break
+    else
+      ACol2 := c;
+  end;
+  // ... and go along first ROW to find the end of the shared formula block
+  for r := ARow1 + 1 to GetLastRowIndex do
+  begin
+    cell := FindCell(r, ACol1);
+    if (cell = nil) or (cell^.SharedFormulaBase <> base) then
+      break
+    else
+      ARow2 := r;
+  end;
+
+  Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  A shared formula must contain at least two cells. If there is only a single
+  cell then the shared formula is converted to a regular one.
+  Is called before writing to stream.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.FixSharedFormulas;
+var
+  r,c, r1,c1, r2,c2: Cardinal;
+  cell: PCell;
+begin
+  for r := 0 to GetLastOccupiedRowIndex do
+    for c := 0 to GetlastOccupiedColIndex do
+    begin
+      cell := FindCell(r, c);
+      if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
+        cell^.SharedFormulaBase := nil;
+    end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Collects all ranges of merged cells that can be found in the worksheet
 
   @param  AList  Array containing TsCellRange records of the merged cells
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.GetMergedCellRanges(out AList: TsCellRangeArray);
 var
   r, c: Cardinal;
@@ -2939,38 +2989,50 @@ begin
   end;
 end;
 
-{@@ Returns true if the specified cell is the base of a merged cell range, i.e.
-  it is the upper left corner of that range.
+{@@ ----------------------------------------------------------------------------
+  Returns true if the specified cell is the base of a merged cell range, i.e.
+  the upper left corner of that range.
 
   @param   ACell  Pointer to the cell being considered
   @return  True if the cell is the upper left corner of a merged range
            False if not
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.IsMergeBase(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (ACell = ACell^.MergeBase);
-  {
-  Result := (ACell <> nil) and (
-    (ACell^.MergedNeighbors = [cbEast]) or        // single row
-    (ACell^.MergedNeighbors = [cbSouth]) or       // single column
-    (ACell^.MergedNeighbors = [cbEast, cbSouth])  // 2d
-  );
-  }
 end;
 
-{@@ Returns TRUE if the specified cell belongs to a merged block
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the specified cell belongs to a merged block
 
   @param   ACell  Pointer to the cell of interest
   @return  TRUE if the cell belongs to a merged block, FALSE if not.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.IsMerged(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (ACell^.MergeBase <> nil);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
+  Helper method for clearing the records in a spreadsheet.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveCallback(data, arg: pointer);
+begin
+  Unused(arg);
+  (*
+  { The strings and dyn arrays must be reset to nil content manually, because
+    FreeMem only frees the record mem, without checking its content }
+  PCell(data).UTF8StringValue := '';
+  PCell(data).NumberFormatStr := '';
+  SetLength(PCell(data).RPNFormulaValue, 0);
+//  FreeMem(data);
+*)
+  Dispose(PCell(data));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Clears the list of cells and releases their memory.
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllCells;
 var
   Node: TAVLTreeNode;
@@ -2984,10 +3046,13 @@ begin
   FCells.Clear;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Removes a cell and releases its memory.
   Just for internal usage since it does not modify the other cells affects
-}
+
+  @param  ARow   Row index of the cell to be removed
+  @param  ACol   Column index of the cell to be removed
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveCell(ARow, ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
@@ -3002,9 +3067,9 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.UpdateCaches;
 begin
   FFirstColIndex := GetFirstColIndex(true);
@@ -3013,16 +3078,17 @@ begin
   FLastRowIndex := GetLastRowIndex(true);
 end;
 
-{@@
-  Creates a link to a shared formula
+{@@ ----------------------------------------------------------------------------
+  Defines a cell range sharing the "same" formula. Note that relative cell
+  references are updated for each cell in the range.
 
   @param  ARow                Row of the cell
   @param  ACol                Column index of the cell
-  @param  ASharedFormulaBase  Cell containing the shared formula token array
+  @param  ASharedFormulaBase  Cell containing the shared formula
 
   Note:   An exception is raised if the cell already contains a formula (and is
           different from the ASharedFormulaBase cell).
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.UseSharedFormula(ARow, ACol: Cardinal;
   ASharedFormulaBase: PCell): PCell;
 begin
@@ -3032,14 +3098,14 @@ begin
   end;
   Result := GetCell(ARow, ACol);
   Result.SharedFormulaBase := ASharedFormulaBase;
-  if HasFormula(Result) and
+  if (Result^.FormulaValue <> '') and
      ((ASharedFormulaBase.Row <> ARow) and (ASharedFormulaBase.Col <> ACol))
   then
     raise Exception.CreateFmt('[TsWorksheet.UseSharedFormula] Cell %s uses a shared formula, but contains an own formula.',
       [GetCellString(ARow, ACol)]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.
 
   On formats that don't support unicode, the text will be converted
@@ -3049,14 +3115,14 @@ end;
   @param  ACol      The column of the cell
   @param  AText     The text to be written encoded in utf-8
   @return Pointer to cell created or used
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteUTF8Text(Result, AText);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.
 
   On formats that don't support unicode, the text will be converted
@@ -3064,7 +3130,7 @@ end;
 
   @param  ACell     Poiner to the cell
   @param  AText     The text to be written encoded in utf-8
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: ansistring);
 begin
   if ACell = nil then
@@ -3074,27 +3140,27 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a floating-point number to a cell. Does not change number format.
 
   @param  ARow      Cell row index
   @param  ACol      Cell column index
   @param  ANumber   Number to be written
   @return Pointer to cell created or used
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteNumber(Result, ANumber);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a floating-point number to a cell. Does not change number format.
 
   @param  ARow      Cell row index
   @param  ACol      Cell column index
   @param  ANumber   Number to be written
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: double);
 begin
   if ACell <> nil then begin
@@ -3104,7 +3170,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a floating-point number to a cell
 
   @param  ARow      Cell row index
@@ -3114,7 +3180,7 @@ end;
   @param  ADecimals Number of decimal places used for formatting (optional)
   @return Pointer to cell created or used
   @see    TsNumberFormat
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
   AFormat: TsNumberFormat; ADecimals: Byte = 2): PCell;
 begin
@@ -3122,15 +3188,15 @@ begin
   WriteNumber(Result, ANumber, AFormat, ADecimals);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a floating-point number to a cell
 
   @param  ACell     Pointer to the cell
   @param  ANumber   Number to be written
-  @param  AFormat   Identifier for a built-in number format, e.g. nfFixed (optional)
-  @param  ADecimals Number of decimal places used for formatting (optional)
+  @param  AFormat   Identifier for a built-in number format, e.g. nfFixed
+  @param  ADecimals Optional number of decimal places used for formatting
   @see TsNumberFormat
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
   AFormat: TsNumberFormat; ADecimals: Byte = 2);
 begin
@@ -3155,7 +3221,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a floating point number to the cell and uses a custom number format
   specified by the format string.
   Note that fpspreadsheet may not be able to detect the formatting when reading
@@ -3167,7 +3233,7 @@ end;
   @param  AFormat        Format identifier (nfCustom)
   @param  AFormatString  String of formatting codes (such as 'dd/mmm'
   @return Pointer to cell created or used
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double;
   AFormat: TsNumberFormat; AFormatString: String): PCell;
 begin
@@ -3175,7 +3241,7 @@ begin
   WriteNumber(Result, ANumber, AFormat, AFormatString);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a floating point number to the cell and uses a custom number format
   specified by the format string.
   Note that fpspreadsheet may not be able to detect the formatting when reading
@@ -3185,7 +3251,7 @@ end;
   @param  ANumber        Number to be written
   @param  AFormat        Format identifier (nfCustom)
   @param  AFormatString  String of formatting codes (such as 'dd/mmm'
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
   AFormat: TsNumberFormat; AFormatString: String);
 var
@@ -3221,28 +3287,28 @@ begin
   end;
 end;
 
-{@@
-  Writes as empty cell
+{@@ ----------------------------------------------------------------------------
+  Writes an empty cell
 
   @param  ARow       The row of the cell
   @param  ACol       The column of the cell
   @return Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteBlank(ARow, ACol: Cardinal): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteBlank(Result);
 end;
 
-{@@
-  Writes as empty cell
+{@@ ----------------------------------------------------------------------------
+  Writes an empty cell
 
   @param  ACel      Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBlank(ACell: PCell);
 begin
   if ACell <> nil then begin
@@ -3251,26 +3317,26 @@ begin
   end;
 end;
 
-{@@
-  Writes as boolean cell
+{@@ ----------------------------------------------------------------------------
+  Writes a boolean cell
 
   @param  ARow       The row of the cell
   @param  ACol       The column of the cell
   @param  AValue     The boolean value
   @return Pointer to the cell
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteBoolValue(Result, AValue);
 end;
 
-{@@
-  Writes as boolean cell
+{@@ ----------------------------------------------------------------------------
+  Writes a boolean cell
 
   @param  ACell      Pointer to the cell
   @param  AValue     The boolean value
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBoolValue(ACell: PCell; AValue: Boolean);
 begin
   if ACell <> nil then begin
@@ -3280,7 +3346,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes data defined as a string into a cell. Depending on the structure of the
   string, the worksheet tries to guess whether it is a number, a date/time or
   a text and calls the corresponding writing method.
@@ -3291,7 +3357,7 @@ end;
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
   @return Pointer to the cell
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
   AValue: String): PCell;
 begin
@@ -3299,7 +3365,7 @@ begin
   WriteCellValueAsString(Result, AValue);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes data defined as a string into a cell. Depending on the structure of the
   string, the worksheet tries to guess whether it is a number, a date/time or
   a text and calls the corresponding writing method.
@@ -3308,7 +3374,7 @@ end;
   @param  AValue  Value to be written into the cell given as a string. Depending
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
 var
   isPercent: Boolean;
@@ -3364,7 +3430,7 @@ begin
   WriteUTF8Text(ACell, AValue);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a currency value to a given cell. Its number format can be provided
   optionally by specifying various parameters.
 
@@ -3382,7 +3448,7 @@ end;
                          In case of '?' the currency symbol defined in the
                          workbook's FormatSettings is used.
   @return Pointer to the cell
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
   AFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
   ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
@@ -3393,7 +3459,7 @@ begin
     APosCurrFormat, ANegCurrFormat);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a currency value to a given cell. Its number format can be provided
   optionally by specifying various parameters.
 
@@ -3409,7 +3475,7 @@ end;
   @param ACurrencySymbol String to be shown as currency, such as '$', or 'EUR'.
                          In case of '?' the currency symbol defined in the
                          workbook's FormatSettings is used.
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCurrency(ACell: PCell; AValue: Double;
   AFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = -1;
   ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
@@ -3437,7 +3503,7 @@ begin
   WriteCurrency(ACell, AValue, AFormat, fmt);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a currency value to a given cell. Its number format is specified by
   means of a format string.
 
@@ -3447,9 +3513,10 @@ end;
   @param AFormat         Format identifier, must be nfCurrency or nfCurrencyRed.
   @param AFormatString   String of formatting codes, including currency symbol.
                          Can contain sections for different formatting of positive
-                         and negative number. Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
+                         and negative number.
+                         Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
   @return Pointer to the cell
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
   AFormat: TsNumberFormat; AFormatString: String): PCell;
 begin
@@ -3457,7 +3524,7 @@ begin
   WriteCurrency(Result, AValue, AFormat, AFormatString);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a currency value to a given cell. Its number format is specified by
   means of a format string.
 
@@ -3466,8 +3533,9 @@ end;
   @param AFormat         Format identifier, must be nfCurrency or nfCurrencyRed.
   @param AFormatString   String of formatting codes, including currency symbol.
                          Can contain sections for different formatting of positive
-                         and negative number. Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
-}
+                         and negative number.
+                         Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCurrency(ACell: PCell; AValue: Double;
   AFormat: TsNumberFormat; AFormatString: String);
 begin
@@ -3481,7 +3549,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a date/time value to a cell
 
   @param  ARow       The row of the cell
@@ -3495,7 +3563,7 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = ''): PCell;
 begin
@@ -3503,7 +3571,7 @@ begin
   WriteDateTime(Result, AValue, AFormat, AFormatStr);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a date/time value to a cell
 
   @param  ACell      Pointer to the cell considered
@@ -3515,7 +3583,7 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
   AFormat: TsNumberFormat = nfShortDateTime; AFormatStr: String = '');
 var
@@ -3567,19 +3635,20 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a date/time value to a cell
 
   @param  ARow       The row index of the cell
   @param  ACol       The column index of the cell
   @param  AValue     The date/time/datetime to be written
-  @param  AFormatStr Format string (the format identifier nfCustom is used to classify the format).
+  @param  AFormatStr Format string (the format identifier nfCustom is used to
+                     classify the format).
   @return Pointer to the cell
 
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   AFormatStr: String): PCell;
 begin
@@ -3587,35 +3656,36 @@ begin
   WriteDateTime(Result, AValue, AFormatStr);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a date/time value to a cell
 
   @param  ACell      Pointer to the cell considered
   @param  AValue     The date/time/datetime to be written
-  @param  AFormatStr Format string (the format identifier nfCustom is used to classify the format).
+  @param  AFormatStr Format string (the format identifier nfCustom is used to
+                     classify the format).
 
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
   AFormatStr: String);
 begin
   WriteDateTime(ACell, AValue, nfCustom, AFormatStr);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a date/time format to the formatting of a cell
 
   @param  ARow          The row of the cell
   @param  ACol          The column of the cell
   @param  ANumberFormat Identifier of the format to be applied (nfXXXX constant)
-  @param  AFormatString optional string of formatting codes. Is only considered
+  @param  AFormatString Optional string of formatting codes. Is only considered
                         if ANumberFormat is nfCustom.
   @return Pointer to the cell
 
   @see    TsNumberFormat
-}
+--------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTimeFormat(ARow, ACol: Cardinal;
   ANumberFormat: TsNumberFormat; const AFormatString: String = ''): PCell;
 begin
@@ -3623,7 +3693,7 @@ begin
   WriteDateTimeFormat(Result, ANumberFormat, AFormatString);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a date/time format to the formatting of a cell
 
   @param  ACell         Pointer to the cell considered
@@ -3632,7 +3702,7 @@ end;
                         if ANumberFormat is nfCustom.
 
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDateTimeFormat(ACell: PCell;
   ANumberFormat: TsNumberFormat; const AFormatString: String = '');
 begin
@@ -3643,20 +3713,23 @@ begin
     raise Exception.Create('WriteDateTimeFormat can only be called with date/time formats.');
 
   ACell^.NumberFormat := ANumberFormat;
-  if (ANumberFormat <> nfGeneral) then begin
+  if (ANumberFormat <> nfGeneral) then
+  begin
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
     if (AFormatString = '') then
       ACell^.NumberFormatStr := BuildDateTimeFormatString(ANumberFormat, Workbook.FormatSettings)
     else
       ACell^.NumberFormatStr := AFormatString;
-  end else begin
+  end
+  else
+  begin
     Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
     ACell^.NumberFormatStr := '';
   end;
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Formats the number in a cell to show a given count of decimal places.
   Is ignored for non-decimal formats (such as most date/time formats).
 
@@ -3665,27 +3738,28 @@ end;
   @param  ADecimals  Number of decimal places to be displayed
   @return Pointer to the cell
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteDecimals(ARow, ACol: Cardinal; ADecimals: Byte): PCell;
 begin
   Result := FindCell(ARow, ACol);
   WriteDecimals(Result, ADecimals);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Formats the number in a cell to show a given count of decimal places.
   Is ignored for non-decimal formats (such as most date/time formats).
 
   @param  ACell      Pointer to the cell considered
   @param  ADecimals  Number of decimal places to be displayed
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDecimals(ACell: PCell; ADecimals: Byte);
 var
   parser: TsNumFormatParser;
 begin
-  if (ACell <> nil) and (ACell^.ContentType = cctNumber) and (ACell^.NumberFormat <> nfCustom)
-  then begin
+  if (ACell <> nil) and (ACell^.ContentType = cctNumber) and
+     (ACell^.NumberFormat <> nfCustom) then
+  begin
     parser := TsNumFormatParser.Create(Workbook, ACell^.NumberFormatStr);
     try
       parser.Decimals := ADecimals;
@@ -3697,7 +3771,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes an error value to a cell.
 
   @param  ARow       The row of the cell
@@ -3706,21 +3780,21 @@ end;
   @return Pointer to the cell
 
   @see TsErrorValue
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteErrorValue(ARow, ACol: Cardinal; AValue: TsErrorValue): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteErrorValue(Result, AValue);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes an error value to a cell.
 
-  @param  ACol       Pointer to the cell considered
+  @param  ACol       Pointer to the cell to be written
   @param  AValue     The error code value
 
   @see TsErrorValue
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteErrorValue(ACell: PCell; AValue: TsErrorValue);
 begin
   if ACell <> nil then begin
@@ -3730,7 +3804,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a formula to a given cell
 
   @param  ARow      The row of the cell
@@ -3740,7 +3814,7 @@ end;
                      separators of the workbook's FormatSettings. Otherwise
                      uses dot and comma, respectively.
   @return Pointer to the cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: string;
   ALocalized: Boolean = false): PCell;
 begin
@@ -3748,7 +3822,7 @@ begin
   WriteFormula(Result, AFormula, ALocalized);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a formula to a given cell
 
   @param  ACell      Pointer to the cell
@@ -3756,7 +3830,7 @@ end;
   @param  ALocalized If true, the formula is expected to have decimal and list
                      separators of the workbook's FormatSettings. Otherwise
                      uses dot and comma, respectively.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string;
   ALocalized: Boolean = false);
 var
@@ -3786,7 +3860,7 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 
   @param  ARow            The row of the cell
@@ -3799,7 +3873,7 @@ end;
   @return Pointer to the cell
 
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumberFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
   APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1): PCell;
@@ -3809,7 +3883,7 @@ begin
     APosCurrFormat, ANegCurrFormat);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 
   @param  ARow            The row of the cell
@@ -3821,7 +3895,7 @@ end;
   @param  ANegCurrFormat  optional identifier for negative currencies
 
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
   ANumberFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
   APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1);
@@ -3846,7 +3920,7 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds number format to the formatting of a cell
 
   @param  ARow          The row of the cell
@@ -3857,7 +3931,7 @@ end;
   @return Pointer to the cell
 
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumberFormat: TsNumberFormat; const AFormatString: String = ''): PCell;
 begin
@@ -3865,7 +3939,7 @@ begin
   WriteNumberFormat(Result, ANumberFormat, AFormatString);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 
   @param  ACell         Pointer to the cell considered
@@ -3874,7 +3948,7 @@ end;
                         if ANumberFormat is nfCustom.
 
   @see    TsNumberFormat
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
   ANumberFormat: TsNumberFormat; const AFormatString: String = '');
 begin
@@ -3895,7 +3969,7 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes an RPN formula to a cell. An RPN formula is an array of tokens
   describing the calculation to be performed.
 
@@ -3908,7 +3982,7 @@ end;
   @see    TsNumberFormat
   @see    TsFormulaElements
   @see    CreateRPNFormula
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteRPNFormula(ARow, ACol: Cardinal;
   AFormula: TsRPNFormula): PCell;
 begin
@@ -3916,7 +3990,7 @@ begin
   WriteRPNFormula(Result, AFormula);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes an RPN formula to a cell. An RPN formula is an array of tokens
   describing the calculation to be performed. In addition,the RPN formula is
   converted to a string formula.
@@ -3928,7 +4002,7 @@ end;
   @see    TsNumberFormat
   @see    TsFormulaElements
   @see    CreateRPNFormula
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula);
 begin
   if ACell = nil then
@@ -3940,7 +4014,7 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a formula to a cell and shares it with other cells.
 
   @param ARow1, ACol1    Row and column index of the top left corner of
@@ -3949,7 +4023,7 @@ end;
   @param ARow2, ACol2    Row and column of the bottom right corner of the
                          range sharing the formula.
   @param AFormula        Formula in Excel notation
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteSharedFormula(ARow1, ACol1, ARow2, ACol2: Cardinal;
   const AFormula: String);
 var
@@ -3970,7 +4044,7 @@ begin
       UseSharedFormula(r, c, cell);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a formula to a cell and shares it with other cells.
 
   @param ACellRangeStr       Range of cells which will use the shared formula.
@@ -3979,7 +4053,7 @@ end;
   @param AFormula       Formula (in Excel notation) to be shared. The cell
                         addresses are relative to the top/left cell of the
                         range.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteSharedFormula(ACellRange: String;
   const AFormula: String);
 var
@@ -3991,7 +4065,7 @@ begin
     raise Exception.Create('[TsWorksheet.WriteSharedFormula] No valid cell range string.');
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds font specification to the formatting of a cell. Looks in the workbook's
   FontList and creates an new entry if the font is not used so far. Returns the
   index of the font in the font list.
@@ -4003,14 +4077,14 @@ end;
   @param  AFontStyle  Set with font style attributes
                       (don't use those of unit "graphics" !)
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ARow, ACol: Cardinal; const AFontName: String;
   AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
 begin
   Result := WriteFont(GetCell(ARow, ACol), AFontName, AFontSize, AFontStyle, AFontColor);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds font specification to the formatting of a cell. Looks in the workbook's
   FontList and creates an new entry if the font is not used so far. Returns the
   index of the font in the font list.
@@ -4021,11 +4095,12 @@ end;
   @param  AFontStyle  Set with font style attributes
                       (don't use those of unit "graphics" !)
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ACell: PCell; const AFontName: String;
   AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
 begin
-  if ACell = nil then begin
+  if ACell = nil then
+  begin
     Result := -1;
     Exit;
   end;
@@ -4038,7 +4113,7 @@ begin
   ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Applies a font to the formatting of a cell. The font is determined by its
   index in the workbook's font list:
 
@@ -4046,20 +4121,20 @@ end;
   @param  ACol        The column of the cell
   @param  AFontIndex  Index of the font in the workbook's font list
   @return Pointer to the cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteFont(Result, AFontIndex);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Applies a font to the formatting of a cell. The font is determined by its
   index in the workbook's font list:
 
   @param  ACell       Pointer to the cell considered
   @param  AFontIndex  Index of the font in the workbook's font list
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteFont(ACell: PCell; AFontIndex: Integer);
 begin
   if ACell = nil then
@@ -4074,7 +4149,7 @@ begin
   ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the text color used in formatting of a cell. Looks in the workbook's
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
@@ -4084,13 +4159,13 @@ end;
   @param  AFontColor  Index into the workbook's color palette identifying the
                       new text color.
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
 begin
   Result := WriteFontColor(GetCell(ARow, ACol), AFontColor);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the text color used in formatting of a cell. Looks in the workbook's
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
@@ -4099,7 +4174,7 @@ end;
   @param  AFontColor  Index into the workbook's color palette identifying the
                       new text color.
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer;
 var
   fnt: TsFont;
@@ -4285,8 +4360,8 @@ begin
   ChangedCell(ARow, ACol);
 end;
 
-{@@
-  Sets the color of a background color of a cell.
+{@@ ----------------------------------------------------------------------------
+  Sets the background color of a cell.
 
   @param  ARow       Row index of the cell
   @param  ACol       Column index of the cell
@@ -4294,7 +4369,7 @@ end;
                      color palette. Use the color index scTransparent to
                      erase an existing background color.
   @return Pointer to cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
   AColor: TsColor): PCell;
 begin
@@ -4302,14 +4377,14 @@ begin
   WriteBackgroundColor(Result, AColor);
 end;
 
-{@@
-  Sets the color of a background color of a cell.
+{@@ ----------------------------------------------------------------------------
+  Sets the background color of a cell.
 
   @param  ACell      Pointer to cell
   @param  AColor     Index of the new background color into the workbook's
                      color palette. Use the color index scTransparent to
                      erase an existing background color.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBackgroundColor(ACell: PCell; AColor: TsColor);
 begin
   if ACell <> nil then begin
@@ -4323,7 +4398,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the color of a cell border line.
   Note: the border must be included in Borders set in order to be shown!
 
@@ -4334,7 +4409,7 @@ end;
   @param  AColor     Index of the new border color into the workbook's
                      color palette.
   @return Pointer to cell
-  }
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; AColor: TsColor): PCell;
 begin
@@ -4342,7 +4417,7 @@ begin
   WriteBorderColor(Result, ABorder, AColor);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the color of a cell border line.
   Note: the border must be included in Borders set in order to be shown!
 
@@ -4351,7 +4426,7 @@ end;
                      to be applied
   @param  AColor     Index of the new border color into the workbook's
                      color palette.
-  }
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderColor(ACell: PCell; ABorder: TsCellBorder;
   AColor: TsColor);
 begin
@@ -4361,7 +4436,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the linestyle of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
@@ -4373,7 +4448,7 @@ end;
   @return Pointer to cell
 
   @see    TsLineStyle
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderLineStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; ALineStyle: TsLineStyle): PCell;
 begin
@@ -4381,7 +4456,7 @@ begin
   WriteBorderLineStyle(Result, ABorder, ALineStyle);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the linestyle of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
@@ -4391,7 +4466,7 @@ end;
   @param  ALineStyle Identifier of the new line style to be applied.
 
   @see    TsLineStyle
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderLineStyle(ACell: PCell;
   ABorder: TsCellBorder; ALineStyle: TsLineStyle);
 begin
@@ -4401,7 +4476,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Shows the cell borders included in the set ABorders. No border lines are drawn
   for those not included.
 
@@ -4412,14 +4487,14 @@ end;
   @param  ABorders  Set with elements to identify the border(s) to will be shown
   @return Pointer to cell
   @see    TsCellBorder
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteBorders(Result, ABorders);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Shows the cell borders included in the set ABorders. No border lines are drawn
   for those not included.
 
@@ -4428,7 +4503,7 @@ end;
   @param  ACell     Pointer to cell
   @param  ABorders  Set with elements to identify the border(s) to will be shown
   @see    TsCellBorder
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorders(ACell: PCell; ABorders: TsCellBorders);
 begin
   if ACell <> nil then begin
@@ -4438,7 +4513,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the style of a cell border, i.e. line style and line color.
   Note: the border must be included in the "Borders" set in order to be shown!
 
@@ -4448,7 +4523,7 @@ end;
   @param  AStyle     record of parameters controlling how the border line is drawn
                      (line style, line color)
   @result Pointer to cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; AStyle: TsCellBorderStyle): PCell;
 begin
@@ -4456,7 +4531,7 @@ begin
   WriteBorderStyle(Result, ABorder, AStyle);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the style of a cell border, i.e. line style and line color.
   Note: the border must be included in the "Borders" set in order to be shown!
 
@@ -4464,7 +4539,7 @@ end;
   @param  ABorder    Identifies the border to be modified (left/top/right/bottom)
   @param  AStyle     record of parameters controlling how the border line is drawn
                      (line style, line color)
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
   AStyle: TsCellBorderStyle);
 begin
@@ -4474,7 +4549,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets line style and line color of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
@@ -4486,7 +4561,7 @@ end;
   @return Pointer to cell
 
   @see WriteBorderStyles
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; ALineStyle: TsLinestyle; AColor: TsColor): PCell;
 begin
@@ -4494,7 +4569,7 @@ begin
   WriteBorderStyle(Result, ABorder, ALineStyle, AColor);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets line style and line color of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
@@ -4504,7 +4579,7 @@ end;
   @param  AColor     Palette index for the color of the border line
 
   @see WriteBorderStyles
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
   ALineStyle: TsLinestyle; AColor: TsColor);
 begin
@@ -4515,7 +4590,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the style of all cell border of a cell, i.e. line style and line color.
   Note: Only those borders included in the "Borders" set are shown!
 
@@ -4525,7 +4600,7 @@ end;
   @return Pointer to cell
 
   @see WriteBorderStyle
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyles(ARow, ACol: Cardinal;
   const AStyles: TsCellBorderStyles): PCell;
 begin
@@ -4533,7 +4608,7 @@ begin
   WriteBorderStyles(Result, AStyles);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the style of all cell border of a cell, i.e. line style and line color.
   Note: Only those borders included in the "Borders" set are shown!
 
@@ -4542,7 +4617,7 @@ end;
   @param  AStyles Array of CellBorderStyles for each cell border.
 
   @see WriteBorderStyle
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyles(ACell: PCell;
   const AStyles: TsCellBorderStyles);
 var
@@ -4554,7 +4629,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Defines the horizontal alignment of text in a cell.
 
   @param ARow    Row index of the cell considered
@@ -4562,20 +4637,20 @@ end;
   @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight)
                  By default, texts are left-aligned, numbers and dates are right-aligned.
   @return Pointer to cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteHorAlignment(Result, AValue);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Defines the horizontal alignment of text in a cell.
 
   @param ACell   Pointer to the cell considered
   @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight)
                  By default, texts are left-aligned, numbers and dates are right-aligned.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHorAlignment(ACell: PCell; AValue: TsHorAlignment);
 begin
   if ACell = nil then
@@ -4585,7 +4660,7 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Defines the vertical alignment of text in a cell.
 
   @param ARow    Row index of the cell considered
@@ -4593,20 +4668,20 @@ end;
   @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom)
                  By default, texts are bottom-aligned.
   @return Pointer to cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteVertAlignment(Result, AValue);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Defines the vertical alignment of text in a cell.
 
   @param ACell   Poiner to the cell considered
   @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom)
                  By default, texts are bottom-aligned.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteVertAlignment(ACell: PCell; AValue: TsVertAlignment);
 begin
   if ACell = nil then
@@ -4616,26 +4691,26 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Enables or disables the word-wrapping feature for a cell.
 
   @param  ARow    Row index of the cell considered
   @param  ACol    Column index of the cell considered
   @param  AValue  true = word-wrapping enabled, false = disabled.
   @return Pointer to cell
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteWordWrap(Result, AValue);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Enables or disables the word-wrapping feature for a cell.
 
   @param ACel    Pointer to the cell considered
   @param AValue  true = word-wrapping enabled, false = disabled.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteWordwrap(ACell: PCell; AValue: boolean);
 begin
   if ACell = nil then
@@ -4841,45 +4916,6 @@ begin
     Result := FDefaultRowHeight;
 end;
 
-procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
-var
-  cell: PCell;
-  col: PtrInt;
-  formula: TsRPNFormula;
-  i: Integer;
-begin
-  col := PtrInt(arg);
-  cell := PCell(data);
-  if cell = nil then   // This should not happen. Just to make sure...
-    exit;
-
-  if (cell^.Col >= col) then
-    // Update column index of moved cell
-    inc(cell^.Col);
-
-  // Update formulas
-  if HasFormula(cell) then
-  begin
-    // (1) create an rpn formula
-    formula := BuildRPNFormula(cell);
-    // (2) update cell addresses affected by the insertion of a column
-    for i:=0 to Length(formula)-1 do
-    begin
-      case formula[i].ElementKind of
-        fekCell, fekCellRef:
-          if formula[i].Col >= col then inc(formula[i].Col);
-        fekCellRange:
-          begin
-            if formula[i].Col >= col then inc(formula[i].Col);
-            if formula[i].Col2 >= col then inc(formula[i].Col2);
-          end;
-      end;
-    end;
-    // (3) convert rpn formula back to string formula
-    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
-  end;
-end;
-
 {@@
   Deletes the column at the index specified. Cells with greader column indexes are
   moved one column to the left. Merged cell blocks and cell references in formulas
@@ -5077,6 +5113,15 @@ begin
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
+  // Update column index of column records
+  for i:=0 to FCols.Count-1 do begin
+    col := PCol(FCols.Items[i]);
+    if col^.Col >= ACol then inc(col^.Col);
+  end;
+
+  // Update first and last column index
+  UpdateCaches;
+
   // Fix merged cells and shared formulas: If the inserted column runs through a
   // block of merged cells or a shared formula the block is cut into two pieces.
   // Here we fill the gap with dummy cells and set their MergeBase / SharedFormulaBase
@@ -5090,7 +5135,7 @@ begin
       cell := FindCell(r, c);
       if not Assigned(cell) then
         continue;
-      // A merged cell block is found
+      // A merged cell block is found immediately before the inserted column
       if IsMerged(cell) then
       begin
         // Does it extend beyond the newly inserted column?
@@ -5101,8 +5146,9 @@ begin
           gapcell := GetCell(r, ACol);
           gapcell^.Mergebase := cell^.MergeBase;
         end;
-      end else
-      // A shared formula block is found
+      end
+      else
+      // A shared formula block is found immediately before the inserted column
       if cell^.SharedFormulaBase <> nil then begin
         // Does it extend beyond the newly inserted column?
         nextcell := FindCell(r, ACol+1);
@@ -5116,68 +5162,40 @@ begin
     end;
   end;
 
-                                      (*
-  // Fix merged cells: If the inserted column runs through a block of merged
-  // cells the block is cut into two pieces. Here we fill the gap with dummy
-  // cells and set their MergeBase correctly.
-  for r := 0 to GetLastRowIndex do
-    for c := 0 to GetLastColIndex do
-    begin
-      cell := FindCell(r, c);
-      if IsMergeBase(cell) then begin
-        FindMergedRange(cell, r1, c1, r2, c2);
-        if ACol = c2 + 1 then begin
-          nextcell := FindCell(r, ACol + 1);
-          if Assigned(nextcell) and (nextcell^.MergeBase = cell) then
-          begin
-            gapcell := GetCell(r, ACol);
-            gapcell^.MergeBase := cell;
-          end;
-        end;
-      end;
-    end;
-                                        *)
-
-  // Update column index of column records
-  for i:=0 to FCols.Count-1 do begin
-    col := PCol(FCols.Items[i]);
-    if col^.Col >= ACol then inc(col^.Col);
-  end;
-
-  // Update first and last column index
-  UpdateCaches;
-
   ChangedCell(0, ACol);
 end;
 
-procedure TsWorksheet.InsertRowCallback(data, arg: Pointer);
+procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
 var
   cell: PCell;
-  row: PtrInt;
-  i: Integer;
+  col: PtrInt;
   formula: TsRPNFormula;
+  i: Integer;
 begin
-  row := PtrInt(arg);
+  col := PtrInt(arg);
   cell := PCell(data);
+  if cell = nil then   // This should not happen. Just to make sure...
+    exit;
 
-  // Update row index of moved cells
-  if cell^.Row >= row then
-    inc(cell^.Row);
+  if (cell^.Col >= col) then
+    // Update column index of moved cell
+    inc(cell^.Col);
 
   // Update formulas
-  if HasFormula(cell) then
+  if HasFormula(cell) and (cell^.FormulaValue <> '' ) then
   begin
     // (1) create an rpn formula
     formula := BuildRPNFormula(cell);
     // (2) update cell addresses affected by the insertion of a column
-    for i:=0 to Length(formula)-1 do begin
+    for i:=0 to Length(formula)-1 do
+    begin
       case formula[i].ElementKind of
         fekCell, fekCellRef:
-          if formula[i].Row >= row then inc(formula[i].Row);
+          if formula[i].Col >= col then inc(formula[i].Col);
         fekCellRange:
           begin
-            if formula[i].Row >= row then inc(formula[i].Row);
-            if formula[i].Row2 >= row then inc(formula[i].Row2);
+            if formula[i].Col >= col then inc(formula[i].Col);
+            if formula[i].Col2 >= col then inc(formula[i].Col2);
           end;
       end;
     end;
@@ -5207,6 +5225,15 @@ begin
     InsertRowCallback(cellnode.Data, pointer(PtrInt(ARow)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
+
+  // Update row index of row records
+  for i:=0 to FRows.Count-1 do begin
+    row := PRow(FRows.Items[i]);
+    if row^.Row >= ARow then inc(row^.Row);
+  end;
+
+  // Update first and last row index
+  UpdateCaches;
 
   // Fix merged cells and shared formulas: If the inserted row runs through a
   // block of merged cells or a shared formula the block is cut into two pieces.
@@ -5247,16 +5274,43 @@ begin
     end;
   end;
 
-  // Update row index of row records
-  for i:=0 to FRows.Count-1 do begin
-    row := PRow(FRows.Items[i]);
-    if row^.Row >= ARow then inc(row^.Row);
-  end;
-
-  // Update first and last row index
-  UpdateCaches;
-
   ChangedCell(ARow, 0);
+end;
+
+procedure TsWorksheet.InsertRowCallback(data, arg: Pointer);
+var
+  cell: PCell;
+  row: PtrInt;
+  i: Integer;
+  formula: TsRPNFormula;
+begin
+  row := PtrInt(arg);
+  cell := PCell(data);
+
+  // Update row index of moved cells
+  if cell^.Row >= row then
+    inc(cell^.Row);
+
+  // Update formulas
+  if HasFormula(cell) then
+  begin
+    // (1) create an rpn formula
+    formula := BuildRPNFormula(cell);
+    // (2) update cell addresses affected by the insertion of a column
+    for i:=0 to Length(formula)-1 do begin
+      case formula[i].ElementKind of
+        fekCell, fekCellRef:
+          if formula[i].Row >= row then inc(formula[i].Row);
+        fekCellRange:
+          begin
+            if formula[i].Row >= row then inc(formula[i].Row);
+            if formula[i].Row2 >= row then inc(formula[i].Row2);
+          end;
+      end;
+    end;
+    // (3) convert rpn formula back to string formula
+    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end;
 end;
 
 {@@
@@ -5275,10 +5329,10 @@ begin
   FRows.Clear;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Removes all column records from the worksheet and frees the occupied memory.
   Note: Cells are retained.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllCols;
 var
   Node: Pointer;
@@ -5291,11 +5345,11 @@ begin
   FCols.Clear;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Removes a specified column record from the worksheet and frees the occupied memory.
   This resets the its column width to default.
   Note: Cells in that column are retained.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveCol(ACol: Cardinal);
 var
   AVLNode: TAVGLVLTreeNode;
@@ -5310,11 +5364,11 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Removes a specified row record from the worksheet and frees the occupied memory.
   This resets the its row height to default.
   Note: Cells in that row are retained.
-}
+--------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveRow(ARow: Cardinal);
 var
   AVLNode: TAVGLVLTreeNode;
@@ -5329,7 +5383,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a row record for the row at a given index to the spreadsheet.
   Currently the row record contains only the row height (and the row index, of course).
 
@@ -5337,7 +5391,7 @@ end;
 
   @param  ARow   Index of the row record which will be created or modified
   @param  AData  Data to be written.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowInfo(ARow: Cardinal; AData: TRow);
 var
   AElement: PRow;
@@ -5346,14 +5400,14 @@ begin
   AElement^.Height := AData.Height;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the row height for a given row. Creates a new row record if it
   does not yet exist.
 
   @param  ARow     Index of the row to be considered
   @param  AHeight  Row height to be assigned to the row. The row height is
                    expressed as the line count of the default font size.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
 var
   AElement: PRow;
@@ -5362,7 +5416,7 @@ begin
   AElement^.Height := AHeight;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a column record for the column at a given index to the spreadsheet.
   Currently the column record contains only the column width (and the column
   index, of course).
@@ -5371,7 +5425,7 @@ end;
 
   @param  ACol   Index of the column record which will be created or modified
   @param  AData  Data to be written (essentially column width).
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteColInfo(ACol: Cardinal; AData: TCol);
 var
   AElement: PCol;
@@ -5380,14 +5434,14 @@ begin
   AElement^.Width := AData.Width;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Sets the column width for a given column. Creates a new column record if it
   does not yet exist.
 
   @param  ACol     Index of the column to be considered
   @param  AWidth   Width to be assigned to the column. The column width is
                    expressed as the count of "0" characters of the default font.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
 var
   AElement: PCol;
@@ -5397,22 +5451,24 @@ begin
 end;
 
 
-{ TsWorkbook }
+{*******************************************************************************
+*                              TsWorkbook                                      *
+*******************************************************************************}
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method called before reading the workbook. Clears the error log.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeReading;
 begin
   // Clear error log
   FLog.Clear;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method called before saving the workbook. Clears the error log, and
   calculates the formulas in all worksheets if workbook option soCalcBeforeSaving
   is set.
-}
+--------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeSaving;
 var
   sheet: TsWorksheet;
@@ -5423,15 +5479,18 @@ begin
   // Updates fist/last column/row index
   UpdateCaches;
 
+  // Shared formulas must contain at least two cells
+  FixSharedFormulas;
+
   // Calculated formulas (if requested)
   if (boCalcBeforeSaving in FOptions) then
     for sheet in FWorksheets do
       sheet.CalcFormulas;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Recalculates rpn formulas in all worksheets
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.Recalc;
 var
   sheet: TsWorksheet;
@@ -5440,18 +5499,18 @@ begin
     sheet.CalcFormulas;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method for clearing the spreadsheet list.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
 begin
   Unused(arg);
   TsWorksheet(data).Free;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.UpdateCaches;
 var
   sheet: TsWorksheet;
@@ -5460,11 +5519,11 @@ begin
     sheet.UpdateCaches;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Constructor of the workbook class. Among others, it initializes the built-in
   fonts, defines the default font, and sets up the FormatSettings for localization
   of some number formats.
-}
+-------------------------------------------------------------------------------}
 constructor TsWorkbook.Create;
 begin
   inherited Create;
@@ -5480,9 +5539,9 @@ begin
   InitFonts;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Destructor of the workbook class
-}
+-------------------------------------------------------------------------------}
 destructor TsWorkbook.Destroy;
 begin
   RemoveAllWorksheets;
@@ -5495,14 +5554,13 @@ begin
   inherited Destroy;
 end;
 
-
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper method for determining the spreadsheet type from the file type extension
 
   @param   AFileName   Name of the file to be considered
   @param   SheetType   File format found from analysis of the extension (output)
   @return  True if the file matches any of the known formats, false otherwise
-}
+-------------------------------------------------------------------------------}
 class function TsWorkbook.GetFormatFromFileName(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean;
 var
@@ -5519,7 +5577,7 @@ begin
   else Result := False;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Convenience method which creates the correct reader object for a given
   spreadsheet format.
 
@@ -5529,7 +5587,7 @@ end;
 
   @return An instance of a TsCustomSpreadReader descendent which is able to
           read the given file format.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
 var
   i: Integer;
@@ -5546,7 +5604,7 @@ begin
   if Result = nil then raise Exception.Create(rsUnsupportedReadFormat);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Convenience method which creates the correct writer object for a given
   spreadsheet format.
 
@@ -5554,7 +5612,7 @@ end;
 
   @return An instance of a TsCustomSpreadWriter descendent which is able to
           write the given file format.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
 var
   i: Integer;
@@ -5571,10 +5629,27 @@ begin
   if Result = nil then raise Exception.Create(rsUnsupportedWriteFormat);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
+  Shared formulas must contain at least two cells. If it's a single cell, then
+  the cell formula is converted to a standard one.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.FixSharedFormulas;
+var
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  for i := 0 to GetWorksheetCount-1 do
+  begin
+    sheet := GetWorksheetByIndex(i);
+    sheet.FixSharedFormulas
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Determines the maximum index of used columns and rows in all sheets of this
   workbook. Respects VirtualMode.
-  Is needed to disable saving when limitations of the format is exceeded. }
+  Is needed to disable saving when limitations of the format is exceeded.
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
 var
   i: Integer;
@@ -5594,12 +5669,12 @@ begin
   end;
 end;
 
-{@@
-  Reads the document from a file. It is assumed to have a given file format.
+{@@ ----------------------------------------------------------------------------
+  Reads the document from a file. It is assumed to have the given file format.
 
   @param  AFileName  Name of the file to be read
   @param  AFormat    File format assumed
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFile(AFileName: string;
   AFormat: TsSpreadsheetFormat);
 var
@@ -5622,11 +5697,11 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the document from a file. This method will try to guess the format from
   the extension. In the case of the ambiguous xls extension, it will simply
   assume that it is BIFF8. Note that it could be BIFF2 or 5 as well.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFile(AFileName: string); overload;
 var
   SheetType: TsSpreadsheetFormat;
@@ -5668,9 +5743,9 @@ begin
     raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the document from a file, but ignores the extension.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string);
 var
   SheetType: TsSpreadsheetFormat;
@@ -5691,12 +5766,12 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the document from a seekable stream.
 
   @param  AStream  Stream being read
   @param  AFormat  File format assumed.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat);
 var
@@ -5726,7 +5801,7 @@ begin
   FVirtualRowCount := AValue;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes the document to a file. If the file doesn't exist, it will be created.
 
   @param  AFileName  Name of the file to be written
@@ -5734,7 +5809,7 @@ end;
   @param  AOverwriteExisting  If the file is already existing it will be
                      overwritten in case of AOverwriteExisting = true.
                      If false an exception will be raised.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: string;
  const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False);
 var
@@ -5753,7 +5828,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes the document to file based on the extension.
   If this was an earlier sfExcel type file, it will be upgraded to sfExcel8.
 
@@ -5761,7 +5836,7 @@ end;
   @param  AOverwriteExisting  If the file already exists it will be overwritten
                      of AOverwriteExisting is true. In case of false, an
                      exception will be raised.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: String;
   const AOverwriteExisting: Boolean);
 var
@@ -5774,12 +5849,12 @@ begin
     '[TsWorkbook.WriteToFile] Attempted to save a spreadsheet by extension, but the extension %s is invalid.', [ExtractFileExt(AFileName)]));
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes the document to a stream
 
   @param  AStream   Instance of the stream being written to
-  @param  AFormat   File format being written.
-}
+  @param  AFormat   File format to be written.
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
 var
   AWriter: TsCustomSpreadWriter;
@@ -5796,7 +5871,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a new worksheet to the workbook
 
   It is added to the end of the list of worksheets
@@ -5805,7 +5880,7 @@ end;
   @param  AcceptEmptyName  Allow an empty worksheet name (for Excel2)
   @return The instance of the newly created worksheet
   @see    TsWorksheet
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.AddWorksheet(AName: string;
   AcceptEmptyName: Boolean = false): TsWorksheet;
 begin
@@ -5820,7 +5895,7 @@ begin
   FWorksheets.Add(Pointer(Result));
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Quick helper routine which returns the first worksheet
 
   @return A TsWorksheet instance if at least one is present.
@@ -5829,13 +5904,13 @@ end;
   @see    TsWorkbook.GetWorksheetByIndex
   @see    TsWorkbook.GetWorksheetByName
   @see    TsWorksheet
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetFirstWorksheet: TsWorksheet;
 begin
   Result := TsWorksheet(FWorksheets.First);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Gets the worksheet with a given index
 
   The index is zero-based, so the first worksheet
@@ -5849,7 +5924,7 @@ end;
   @see    TsWorkbook.GetFirstWorksheet
   @see    TsWorkbook.GetWorksheetByName
   @see    TsWorksheet
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
 begin
   if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then
@@ -5858,7 +5933,7 @@ begin
     Result := nil;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Gets the worksheet with a given worksheet name
 
   @param  AName    The name of the worksheet
@@ -5869,7 +5944,7 @@ end;
   @see    TsWorkbook.GetFirstWorksheet
   @see    TsWorkbook.GetWorksheetByIndex
   @see    TsWorksheet
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetWorksheetByName(AName: String): TsWorksheet;
 var
   i:integer;
@@ -5885,25 +5960,25 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   The number of worksheets on the workbook
 
   @see    TsWorksheet
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetWorksheetCount: Cardinal;
 begin
   Result := FWorksheets.Count;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Clears the list of Worksheets and releases their memory.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.RemoveAllWorksheets;
 begin
   FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the passed string is a valid worksheet name according to Excel
   (ODS seems to be a bit less restrictive, but if we follow Excel's convention
   we always have valid sheet names independent of the format.
@@ -5911,7 +5986,7 @@ end;
   @param   AName             Name to be checked
   @param   AcceptEmptyName   Accepts an empty name (for Excel2)
   @return  TRUE if it is a valid worksheet name, FALSE otherwise
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.ValidWorksheetName(AName: String;
   AcceptEmptyName: Boolean = false): Boolean;
 // see: http://stackoverflow.com/questions/451452/valid-characters-for-excel-sheet-names
@@ -5968,7 +6043,7 @@ end;
 
 { Font handling }
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a font to the font list. Returns the index in the font list.
 
   @param AFontName  Name of the font (like 'Arial')
@@ -5976,7 +6051,7 @@ end;
   @param AStyle     Style of the font, a combination of TsFontStyle elements
   @param AColor     Color of the font, given by its index into the workbook's palette.
   @return           Index of the font in the workbook's font list
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor): Integer;
 var
@@ -5990,12 +6065,12 @@ begin
   Result := AddFont(fnt);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a font to the font list. Returns the index in the font list.
 
   @param AFont      TsFont record containing all font parameters
   @return           Index of the font in the workbook's font list
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFont: TsFont): Integer;
 begin
   // Font index 4 does not exist in BIFF. Avoid that a real font gets this index.
@@ -6004,11 +6079,11 @@ begin
   result := FFontList.Add(AFont);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Copies a font list to the workbook's font list
 
   @param   ASource   Font list to be copied
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.CopyFontList(ASource: TFPList);
 var
   fnt: TsFont;
@@ -6021,12 +6096,12 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Deletes a font.
   Use with caution because this will screw up the font assignment to cells.
   The only legal reason to call this method is from a reader of a file format
   in which the missing font #4 of BIFF does exist.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.DeleteFont(AFontIndex: Integer);
 var
   fnt: TsFont;
@@ -6038,7 +6113,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the font with the given specification is already contained in
   the font list. Returns the index, or -1 if not found.
 
@@ -6047,7 +6122,7 @@ end;
   @param AStyle     Style of the font, a combination of TsFontStyle elements
   @param AColor     Color of the font, given by its index into the workbook's palette.
   @return           Index of the font in the font list, or -1 if not found.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor): Integer;
 var
@@ -6066,7 +6141,7 @@ begin
   Result := -1;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Initializes the font list. In case of BIFF format, adds 5 fonts:
 
     0: default font
@@ -6075,7 +6150,7 @@ end;
     3: like default font, but underlined
     4: empty (due to a restriction of Excel)
     5: like default font, but bold and italic
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.InitFonts;
 var
   fntName: String;
@@ -6102,9 +6177,9 @@ begin
   FBuiltinFontCount := FFontList.Count;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Clears the list of fonts and releases their memory.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.RemoveAllFonts;
 var
   i: Integer;
@@ -6118,10 +6193,10 @@ begin
   FBuiltinFontCount := 0;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Defines the default font. This is the font with index 0 in the FontList.
   The next built-in fonts will have the same font name and size
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.SetDefaultFont(const AFontName: String; ASize: Single);
 var
   i: Integer;
@@ -6138,28 +6213,28 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the default font. This is the first font (index 0) in the font list
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetDefaultFont: TsFont;
 begin
   Result := GetFont(0);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the point size of the default font
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetDefaultFontSize: Single;
 begin
   Result := GetFont(0).Size;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the font with the given index.
 
   @param  AIndex   Index of the font to be considered
   @return Record containing all parameters of the font (or nil if not found).
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetFont(AIndex: Integer): TsFont;
 begin
   if (AIndex >= 0) and (AIndex < FFontList.Count) then
@@ -6168,12 +6243,12 @@ begin
     Result := nil;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns a string which identifies the font with a given index.
 
   @param  AIndex    Index of the font
   @return String with font name, font size etc.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetFontAsString(AIndex: Integer): String;
 var
   fnt: TsFont;
@@ -6190,23 +6265,23 @@ begin
     Result := '';
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the count of registered fonts
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetFontCount: Integer;
 begin
   Result := FFontList.Count;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a color to the palette and returns its palette index, but only if the
   color does not already exist - in this case, it returns the index of the
   existing color entry.
   The color must in little-endian notation (like TColor of the graphics units)
 
-  @param  AColorValue    Number containing the rgb code of the color to be added
+  @param   AColorValue   Number containing the rgb code of the color to be added
   @return  Index of the new (or already existing) color item
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.AddColorToPalette(AColorValue: TsColorValue): TsColor;
 var
   n: Integer;
@@ -6278,44 +6353,44 @@ begin
   Result := Length(FPalette) - 1;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds a (simple) error message to an internal list
 
   @param   AMsg   Error text to be stored in the list
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.AddErrorMsg(const AMsg: String);
 begin
   FLog.Add(AMsg);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds an error message composed by means of format codes to an internal list
 
   @param   AMsg   Error text to be stored in the list
   @param   Args   Array of arguments to be used by the Format() function
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.AddErrorMsg(const AMsg: String; const Args: Array of const);
 begin
   FLog.Add(Format(AMsg, Args));
 end;
 
-{@@
-  Clears the internal list with error messages
-}
+{@@ ----------------------------------------------------------------------------
+  Clears the internal error message list
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.ClearErrorList;
 begin
   FLog.Clear;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Getter to retrieve the error messages collected during reading/writing
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetErrorMsg: String;
 begin
   Result := FLog.Text;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Finds the palette color index which points to a color that is closest to a
   given color. "Close" means here smallest length of the rgb-difference vector.
 
@@ -6324,7 +6399,7 @@ end;
                              BIFF5/BIFF8 can write only 64 colors, i.e
                              AMaxPaletteCount = 64
   @return  Palette index of the color closest to AColorValue
-}
+--------------------------------------------------------------------------------}
 function TsWorkbook.FindClosestColor(AColorValue: TsColorValue;
   AMaxPaletteCount: Integer): TsColor;
 type
@@ -6350,12 +6425,12 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a fpspreadsheet color into into a string RRGGBB.
   Note that colors are written to xls files as ABGR (where A is 0).
   if the color is scRGBColor the color value is taken from the argument
   ARGBColor, otherwise from the palette entry for the color index.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.FPSColorToHexString(AColor: TsColor;
   ARGBColor: TFPColor): string;
 type
@@ -6377,26 +6452,27 @@ begin
   Result := Format('%.2x%.2x%.2x', [r, g, b]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the name of the color pointed to by the given color index.
   If the name is not known the hex string is returned as RRGGBB.
 
   @param   AColorIndex   Palette index of the color considered
-  @return  String identifying the color (a color name or, if unknown, a string showing the rgb components
-}
+  @return  String identifying the color (a color name or, if unknown, a
+           string showing the rgb components
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetColorName(AColorIndex: TsColor): string;
 begin
   GetColorName(GetPaletteColor(AColorIndex), Result);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the name of an rgb color value.
   If the name is not known the hex string is returned as RRGGBB.
 
   @param   AColorValue  rgb value of the color considered
   @param   AName        String identifying the color (a color name or, if
                         unknown, a string showing the rgb components
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.GetColorName(AColorValue: TsColorValue; out AName: String);
 type
   TRgba = packed record R,G,B,A: Byte; end;
@@ -6418,13 +6494,13 @@ begin
     AName := Format('%.2x%.2x%.2x', [R, G, B]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads the rgb color for the given index from the current palette. Can be
   type-cast to TColor for usage in GUI applications.
 
   @param  AColorIndex  Index of the color considered
   @return A number containing the rgb components in little-endian notation.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetPaletteColor(AColorIndex: TsColor): TsColorValue;
 begin
   if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
@@ -6459,25 +6535,26 @@ begin
   }
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts the palette color of the given index to a string that can be used
   in HTML code. For ODS.
 
   @param  AColorIndex Index of the color considered
-  @return A HTML-compatible string identifying the color. "Red", for example, is returned as '#FF0000';
-}
+  @return A HTML-compatible string identifying the color.
+          "Red", for example, is returned as '#FF0000';
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetPaletteColorAsHTMLStr(AColorIndex: TsColor): String;
 begin
   Result := ColorToHTMLColorStr(GetPaletteColor(AColorIndex));
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces a color value of the current palette by a new value. The color must
   be given as ABGR (little-endian), with A=0).
 
   @param  AColorIndex   Palette index of the color to be replaced
   @param  AColorValue   Number containing the rgb components of the new color
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
 begin
   if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then begin
@@ -6488,9 +6565,9 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the count of palette colors
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.GetPaletteSize: Integer;
 begin
   if (FPalette = nil) or (Length(FPalette) = 0) then
@@ -6499,18 +6576,19 @@ begin
     Result := Length(FPalette);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Instructs the workbook to take colors from the default palette. Is called
   from ODS reader because ODS does not have a palette. Without a palette the
   color constants (scRed etc.) would not be correct any more.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.UseDefaultPalette;
 begin
   UsePalette(@DEFAULT_PALETTE, Length(DEFAULT_PALETTE), false);
 end;
 
-{@@
-  Instructs the Workbook to take colors from the palette pointed to by the parameter APalette
+{@@ ----------------------------------------------------------------------------
+  Instructs the Workbook to take colors from the palette pointed to by the
+  parameter APalette
   This palette is only used for writing. When reading the palette found in the
   file is used.
 
@@ -6521,7 +6599,7 @@ end;
                         big-endian notation. The methods inverts the rgb
                         components to little-endian which is used by fpspreadsheet
                         internally.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.UsePalette(APalette: PsPalette; APaletteCount: Word;
   ABigEndian: Boolean);
 var
@@ -6554,12 +6632,12 @@ begin
      {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether a given color is used somewhere within the entire workbook
 
   @param  AColorIndex   Palette index of the color
   @result True if the color is used by at least one cell, false if not.
-}
+-------------------------------------------------------------------------------}
 function TsWorkbook.UsesColor(AColorIndex: TsColor): Boolean;
 var
   Node: TAVLTreeNode;
@@ -6594,11 +6672,17 @@ begin
   Result := false;
 end;
 
-{ TsCustomNumFormatList }
 
-{@@ Constructor of the number format list.
+{*******************************************************************************
+*                       TsCustomNumFormatList                                  *
+*******************************************************************************}
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the number format list.
+
   @param AWorkbook The workbook is needed to get access to its "FormatSettings"
-                   for localization of some formatting strings. }
+                   for localization of some formatting strings.
+-------------------------------------------------------------------------------}
 constructor TsCustomNumFormatList.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
@@ -6606,22 +6690,27 @@ begin
   AddBuiltinFormats;
 end;
 
-{@@ Destructor of the number format list: clears the list and destroys the
-    format items }
+{@@ ----------------------------------------------------------------------------
+  Destructor of the number format list: clears the list and destroys the
+  format items
+-------------------------------------------------------------------------------}
 destructor TsCustomNumFormatList.Destroy;
 begin
   Clear;
   inherited Destroy;
 end;
 
-{@@ Adds a number format described by the Excel format index, the ODF format
-    name, the format string, and the built-in format identifier to the list
-    and returns the index of the new item.
+{@@ ----------------------------------------------------------------------------
+  Adds a number format described by the Excel format index, the ODF format
+  name, the format string, and the built-in format identifier to the list
+  and returns the index of the new item.
+
   @param AFormatIndex  Format index to be used by Excel
   @param AFormatName   Format name to be used by OpenDocument
   @param AFormatString String of formatting codes
   @param ANumFormat    Identifier for built-in number format
-  @return              List index of the new item }
+  @return              List index of the new item
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
   AFormatName, AFormatString: String; ANumFormat: TsNumberFormat): Integer;
 var
@@ -6635,26 +6724,32 @@ begin
   Result := inherited Add(item);
 end;
 
-{@@ Adds a number format described by the Excel format index, the format string,
-    and the built-in format identifier to the list and returns the index of
-    the new item in the format list. To be used when writing an Excel file.
+{@@ ----------------------------------------------------------------------------
+  Adds a number format described by the Excel format index, the format string,
+  and the built-in format identifier to the list and returns the index of
+  the new item in the format list. To be used when writing an Excel file.
+
   @param AFormatIndex  Format index to be used by Excel
   @param AFormatString String of formatting codes
   @param ANumFormat    Identifier for built-in number format
-  @return              Index of the new item in the format list }
+  @return              Index of the new item in the format list
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
   AFormatString: String; ANumFormat: TsNumberFormat): integer;
 begin
   Result := AddFormat(AFormatIndex, '', AFormatString, ANumFormat);
 end;
 
-{@@ Adds a number format described by the ODF format name, the format string,
-    and the built-in format identifier to the list and returns the index of
-    the new item in the format list. To be used when writing an ODS file.
+{@@ ----------------------------------------------------------------------------
+  Adds a number format described by the ODF format name, the format string,
+  and the built-in format identifier to the list and returns the index of
+  the new item in the format list. To be used when writing an ODS file.
+
   @param AFormatName   Format name to be used by OpenDocument
   @param AFormatString String of formatting codes
   @param ANumFormat    Identifier for built-in number format
-  @return              Index of the new item in the format list }
+  @return              Index of the new item in the format list
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.AddFormat(AFormatName, AFormatString: String;
   ANumFormat: TsNumberFormat): Integer;
 begin
@@ -6666,20 +6761,27 @@ begin
   inc(FNextFormatIndex);
 end;
 
-{@@ Adds a number format described by the format string, and the built-in
-    format identifier to the format list and returns the index of the new
-    item in the list. The Excel format index and ODS format name are auto-generated.
+{@@ ----------------------------------------------------------------------------
+  Adds a number format described by the format string, and the built-in
+  format identifier to the format list and returns the index of the new
+  item in the list. The Excel format index and ODS format name are auto-generated.
+
   @param AFormatString String of formatting codes
   @param ANumFormat    Identifier for built-in number format
-  @return              Index of the new item in the list }
+  @return              Index of the new item in the list
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.AddFormat(AFormatString: String;
   ANumFormat: TsNumberFormat): Integer;
 begin
   Result := AddFormat('', AFormatString, ANumFormat);
 end;
 
-{@@ Adds the number format used by a given cell to the list.
-  @param AFormatCell Pointer to a cell providing the format to be stored in the list }
+{@@ ----------------------------------------------------------------------------
+  Adds the number format used by a given cell to the list.
+
+  @param AFormatCell Pointer to a cell providing the format to be stored
+                     in the list
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.AddFormat(AFormatCell: PCell): Integer;
 begin
   if AFormatCell = nil then
@@ -6696,7 +6798,7 @@ begin
   inc(FNextFormatIndex);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds the builtin format items to the list. The formats must be specified in
   a way that is compatible with fpc syntax.
 
@@ -6708,17 +6810,21 @@ end;
   and must initialize the index of the first user format (FNextFormatIndex)
   which is automatically incremented when adding user formats.
 
-  In TsCustomNumFormatList nothing is added. }
+  In TsCustomNumFormatList nothing is added.
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.AddBuiltinFormats;
 begin
   // must be overridden - see xlscommon as an example.
 end;
 
-{@@ Called from the reader when a format item has been read from an Excel file.
+{@@ ----------------------------------------------------------------------------
+  Called from the reader when a format item has been read from an Excel file.
   Determines the number format type, format string etc and converts the
   format string to fpc syntax which is used directly for getting the cell text.
- @param AFormatIndex Excel index of the number format read from the file
- @param AFormatString String of formatting codes as read fromt the file. }
+
+  @param AFormatIndex Excel index of the number format read from the file
+  @param AFormatString String of formatting codes as read fromt the file.
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.AnalyzeAndAdd(AFormatIndex: Integer;
   AFormatString: String);
 var
@@ -6734,7 +6840,9 @@ begin
   AddFormat(AFormatIndex, AFormatString, nf);
 end;
 
-{@@ Clears the number format list and frees memory occupied by the format items. }
+{@@ ----------------------------------------------------------------------------
+  Clears the number format list and frees memory occupied by the format items.
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.Clear;
 var
   i: Integer;
@@ -6743,7 +6851,7 @@ begin
   inherited Clear;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Takes the format string as it is read from the file and extracts the
   built-in number format identifier out of it for use by fpc.
   The method also converts the format string to a form that can be used
@@ -6755,7 +6863,8 @@ end;
   @param AFormatIndex   Excel index of the number format read
   @param AFormatString  string of formatting codes extracted from the file data
   @param ANumFormat     identifier for built-in fpspreadsheet format extracted
-                        from the file data }
+                        from the file data
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.ConvertAfterReading(AFormatIndex: Integer;
   var AFormatString: String; var ANumFormat: TsNumberFormat);
 var
@@ -6785,7 +6894,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Is called before collecting all number formats of the spreadsheet and before
   writing them to file. Its purpose is to convert the format string as used by fpc
   to a format compatible with the spreadsheet file format.
@@ -6799,7 +6908,8 @@ end;
   @param AFormatString String of formatting codes. On input in fpc syntax. Is
                        overwritten on output by format string compatible with
                        the destination file.
-  @param ANumFormat    Identifier for built-in fpspreadsheet number format }
+  @param ANumFormat    Identifier for built-in fpspreadsheet number format
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.ConvertBeforeWriting(var AFormatString: String;
   var ANumFormat: TsNumberFormat);
 begin
@@ -6808,22 +6918,27 @@ begin
 end;
 
 
-{@@ Deletes a format item from the list, and makes sure that its memory is
-    released.
+{@@ ----------------------------------------------------------------------------
+  Deletes a format item from the list, and makes sure that its memory is
+  released.
 
-    @param  AIndex   List index of the item to be deleted. }
+  @param  AIndex   List index of the item to be deleted.
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.Delete(AIndex: Integer);
 begin
   RemoveFormat(AIndex);
   Delete(AIndex);
 end;
 
-{@@ Seeks a format item with the given properties and returns its list index,
+{@@ ----------------------------------------------------------------------------
+  Seeks a format item with the given properties and returns its list index,
   or -1 if not found.
 
- @param ANumFormat    Built-in format identifier
- @param AFormatString String of formatting codes
- @return              Index of the format item in the format list, or -1 if not found. }
+  @param ANumFormat    Built-in format identifier
+  @param AFormatString String of formatting codes
+  @return              Index of the format item in the format list,
+                       or -1 if not found.
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.Find(ANumFormat: TsNumberFormat;
   AFormatString: String): Integer;
 var
@@ -6837,11 +6952,13 @@ begin
   Result := -1;
 end;
 
-{@@ Finds the item with the given format string and returns its index in the
+{@@ ----------------------------------------------------------------------------
+  Finds the item with the given format string and returns its index in the
   format list, or -1 if not found.
 
   @param  AFormatString  string of formatting codes to be searched in the list.
-  @return Index of the format item in the format list, or -1 if not found. }
+  @return Index of the format item in the format list, or -1 if not found.
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.Find(AFormatString: String): integer;
 var
   item: TsNumFormatData;
@@ -6856,12 +6973,14 @@ begin
   Result := -1;
 end;
 
-{@@ Finds the item with the given Excel format index and returns its index in
+{@@ ----------------------------------------------------------------------------
+  Finds the item with the given Excel format index and returns its index in
   the format list, or -1 if not found.
   Is used by BIFF file formats.
 
   @param  AFormatIndex  Excel format index to the searched
-  @return Index of the format item in the format list, or -1 if not found. }
+  @return Index of the format item in the format list, or -1 if not found.
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.FindByIndex(AFormatIndex: Integer): integer;
 var
   item: TsNumFormatData;
@@ -6874,13 +6993,14 @@ begin
   Result := -1;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Finds the item with the given ODS format name and returns its index in
   the format list (or -1, if not found)
   To be used by OpenDocument file format.
 
   @param  AFormatName  Format name as used by OpenDocument to identify a number format
-  @return Index of the format item in the list, or -1 if not found }
+  @return Index of the format item in the list, or -1 if not found
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.FindByName(AFormatName: String): integer;
 var
   item: TsNumFormatData;
@@ -6893,12 +7013,14 @@ begin
   Result := -1;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Determines whether the format attributed to the given cell is already
   contained in the list and returns its list index, or -1 if not found
 
-  @param  AFormatCell Pointer to a spreadsheet cell having the number format that is looked for.
-  @return Index of the format item in the list, or -1 if not found. }
+  @param  AFormatCell Pointer to a spreadsheet cell having the number format
+                      that is looked for.
+  @return Index of the format item in the list, or -1 if not found.
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.FindFormatOf(AFormatCell: PCell): integer;
 begin
   if AFormatCell = nil then
@@ -6907,13 +7029,14 @@ begin
     Result := Find(AFormatCell^.NumberFormat, AFormatCell^.NumberFormatStr);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Determines the format string to be written into the spreadsheet file. Calls
   ConvertBeforeWriting in order to convert the fpc format strings to the dialect
   used in the file.
 
   @param AIndex  Index of the format item under consideration.
-  @return        String of formatting codes that will be written to the file. }
+  @return        String of formatting codes that will be written to the file.
+-------------------------------------------------------------------------------}
 function TsCustomNumFormatList.FormatStringForWriting(AIndex: Integer): String;
 var
   item: TsNumFormatdata;
@@ -6933,11 +7056,12 @@ begin
   Result := TsNumFormatData(inherited Items[AIndex]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Deletes the memory occupied by the formatting data, but keeps an empty item in
   the list to retain the indexes of following items.
 
-  @param AIndex The number format item at this index will be removed. }
+  @param AIndex The number format item at this index will be removed.
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.RemoveFormat(AIndex: Integer);
 var
   item: TsNumFormatData;
@@ -6959,16 +7083,20 @@ begin
   Result := CompareValue(TsNumFormatData(Item1).Index, TsNumFormatData(Item2).Index);
 end;
 
-{@@ Sorts the format data items in ascending order of the Excel format indexes. }
+{@@ ----------------------------------------------------------------------------
+  Sorts the format data items in ascending order of the Excel format indexes.
+-------------------------------------------------------------------------------}
 procedure TsCustomNumFormatList.Sort;
 begin
   inherited Sort(@CompareNumFormatData);
 end;
 
 
-{ TsCustomSpreadReaderWriter }
+{*******************************************************************************
+*                          TsCustomSpreadReaderWriter                          *
+*******************************************************************************}
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Constructor of the reader/writer. Has the workbook to be read/written as a
   parameter to apply the localization information found in its FormatSettings.
   Creates an internal instance of the number format list according to the
@@ -6976,7 +7104,8 @@ end;
 
   @param AWorkbook  Workbook into which the file is being read or from with the
                     file is written. This parameter is passed from the workbook
-                    which creates the reader/writer. }
+                    which creates the reader/writer.
+-------------------------------------------------------------------------------}
 constructor TsCustomSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
@@ -6989,46 +7118,52 @@ begin
   CreateNumFormatList;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Destructor of the reader. Destroys the internal number format list and the
-  error log list. }
+  error log list.
+-------------------------------------------------------------------------------}
 destructor TsCustomSpreadReaderWriter.Destroy;
 begin
   FNumFormatList.Free;
   inherited Destroy;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an instance of the number format list which contains prototypes of
   all number formats found in the workbook (when writing) or in the file (when
   reading).
 
   The method has to be overridden because the descendants know the special
-  requirements of the file format. }
+  requirements of the file format.
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadReaderWriter.CreateNumFormatList;
 begin
   // nothing to do here
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns a record containing limitations of the specific file format of the
   writer.
-}
+-------------------------------------------------------------------------------}
 function TsCustomSpreadReaderWriter.Limitations: TsSpreadsheetFormatLimitations;
 begin
   Result := FLimitations;
 end;
 
-{ TsCustomSpreadReader }
 
-{@@
+{*******************************************************************************
+*                             TsCustomSpreadReader                             *
+*******************************************************************************}
+
+{@@ ----------------------------------------------------------------------------
   Constructor of the reader. Has the workbook to be read as a parameter to
   apply the localization information found in its FormatSettings.
   Creates an internal instance of the number format list according to the
   file format being read.
 
   @param AWorkbook  Workbook into which the file is being read. This parameter
-                    is passed from the workbook which creates the reader. }
+                    is passed from the workbook which creates the reader.
+-------------------------------------------------------------------------------}
 constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
@@ -7036,12 +7171,12 @@ begin
     Assigned(FWorkbook.OnReadCellData);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Deletes unnecessary column records as they are written by Office applications
   when they convert a file to another format.
 
   @param   AWorksheet   The columns in this worksheet are processed.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsWorksheet);
 const
   EPS = 1E-3;
@@ -7064,11 +7199,11 @@ begin
   AWorksheet.RemoveAllCols;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   This procedure checks whether all rows have the same height and removes the
   row records if they do. Such unnecessary row records are often written
   when an Office application converts a file to another format.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.FixRows(AWorkSheet: TsWorksheet);
 const
   EPS = 1E-3;
@@ -7092,7 +7227,7 @@ begin
   AWorksheet.RemoveAllRows;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Default file reading method.
 
   Opens the file and calls ReadFromStream
@@ -7100,24 +7235,8 @@ end;
   @param  AFileName The input file name.
   @param  AData     The Workbook to be filled with information from the file.
   @see    TsWorkbook
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
-{
-var
-  fs, ms: TStream;
-begin
-  fs := TFileStream.Create(AFileName, fmOpenRead);
-  ms := TMemoryStream.Create;
-  try
-    ms.CopyFrom(fs, fs.Size);
-    ms.Position := 0;
-    ReadFromStream(ms, AData);
-  finally
-    ms.Free;
-    fs.Free;
-  end;
-end;
- }
 var
   InputFile: TStream;
 begin
@@ -7132,7 +7251,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   This routine has the purpose to read the workbook data from the stream.
   It should be overriden in descendent classes.
 
@@ -7142,7 +7261,7 @@ end;
 
   @param  AStream   Stream containing the workbook data
   @param  AData     Workbook which is filled by the data from the stream.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   AStringStream: TStringStream;
@@ -7161,10 +7280,10 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Reads workbook data from a string list. This abstract implementation does
   nothing and raises an exception. Must be overridden, like for wikitables.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
   AData: TsWorkbook);
 begin
@@ -7172,9 +7291,13 @@ begin
   raise Exception.Create(rsUnsupportedReadFormat);
 end;
 
-{ TsCustomSpreadWriter }
 
-{@@ Constructor of the writer. Has the workbook to be written as a parameter to
+{*******************************************************************************
+*                           TsCustomSpreadWriter                               *
+*******************************************************************************}
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the writer. Has the workbook to be written as a parameter to
   apply the localization information found in its FormatSettings.
   Creates an internal number format list to collect unique samples of all the
   number formats found in the workbook.
@@ -7182,19 +7305,19 @@ end;
   @param AWorkbook  Workbook which is to be written to file/stream.
                     This parameter is passed from the workbook which creates the
                     writer.
-}
+-------------------------------------------------------------------------------}
 constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks if the formatting style of a cell is in the list of manually added
   FFormattingStyles and returns its index, or -1 if it isn't
 
   @param  AFormat  Cell containing the formatting styles which are seeked in the
                    FFormattingStyles array.
-}
+-------------------------------------------------------------------------------}
 function TsCustomSpreadWriter.FindFormattingInList(AFormat: PCell): Integer;
 var
   i, n: Integer;
@@ -7250,10 +7373,10 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Makes sure that all colors used in a given cell belong to the workbook's
   color palette.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.FixCellColors(ACell: PCell);
 var
   b: TsCellBorder;
@@ -7270,7 +7393,7 @@ begin
   // Font color is handled immediately before writing.
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   If a color index is greater then the maximum palette color count this
   color is replaced by the closest palette color.
 
@@ -7279,13 +7402,14 @@ end;
 
   @param  AColor   Color palette index to be checked
   @return Closest color to AColor. If AColor belongs to the palette it must
-          be returned unchanged. }
+          be returned unchanged.
+-------------------------------------------------------------------------------}
 function TsCustomSpreadWriter.FixColor(AColor: TsColor): TsColor;
 begin
   Result := AColor;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   If formatting features of a cell are not supported by the destination file
   format of the writer, here is the place to apply replacements.
   Must be overridden by descendants, nothin happens here. See BIFF2.
@@ -7293,14 +7417,14 @@ end;
   @param  ACell  Pointer to the cell being investigated. Note that this cell
                  does not belong to the workbook, but is a cell of the
                  FFormattingStyles array.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
 begin
   Unused(ACell);
   // to be overridden
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Determines the size of the worksheet to be written. VirtualMode is respected.
   Is called when the writer needs the size for output. Column and row count
   limitations are repsected as well.
@@ -7310,7 +7434,7 @@ end;
   @param   ALastRow    Index of last row
   @param   AFirstCol   Index of first column to be written
   @param   ALastCol    Index of last column to be written
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
   out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal);
 begin
@@ -7336,21 +7460,21 @@ begin
     ALastRow := Limitations.MaxRowCount-1;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Each descendent should define its own default formats, if any.
   Always add the normal, unformatted style first to speed things up.
 
   To be overridden by descendants.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.AddDefaultFormats();
 begin
   SetLength(FFormattingStyles, 0);
   NextXFIndex := 0;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks limitations of the writer, e.g max row/column count
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.CheckLimitations;
 var
   lastCol, lastRow: Cardinal;
@@ -7377,14 +7501,15 @@ begin
       end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Callback function for collecting all formatting styles found in the worksheet.
 
   @param  ACell    Pointer to the worksheet cell being tested whether its format
                    already has been found in the array FFormattingStyles.
   @param  AStream  Stream to which the workbook is written
-}
-procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
+-------------------------------------------------------------------------------}
+procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell;
+  AStream: TStream);
 var
   Len: Integer;
 begin
@@ -7409,10 +7534,10 @@ begin
   Inc(NextXFIndex);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   This method collects all formatting styles found in the worksheet and
   stores unique prototypes in the array FFormattingStyles.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.ListAllFormattingStyles;
 var
   i: Integer;
@@ -7427,10 +7552,10 @@ begin
     IterateThroughCells(nil, Workbook.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds the number format of the given cell to the NumFormatList, but only if
   it does not yet exist in the list.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.ListAllNumFormatsCallback(ACell: PCell; AStream: TStream);
 var
   fmt: string;
@@ -7451,11 +7576,12 @@ begin
     FNumFormatList.AddFormat(fmt, nf);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Iterates through all cells and collects the number formats in
   FNumFormatList (without duplicates).
   The index of the list item is needed for the field FormatIndex of the XF record.
-  At the time when the method is called the formats are still in fpc dialect. }
+  At the time when the method is called the formats are still in fpc dialect.
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.ListAllNumFormats;
 var
   i: Integer;
@@ -7465,7 +7591,7 @@ begin
   NumFormatList.Sort;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper function for the spreadsheet writers. Writes the cell value to the
   stream. Calls the WriteNumber method of the worksheet for writing a number,
   the WriteDateTime method for writing a date/time etc.
@@ -7474,44 +7600,39 @@ end;
   @param  AStream Stream to which data are written
 
   @see    TsCustomSpreadWriter.WriteCellsToStream
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
 begin
   if HasFormula(ACell) then
     WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell)
   else
-  {
-  if Length(ACell^.RPNFormulaValue) > 0 then
-    // A non-calculated RPN formula has ContentType cctUTF8Formula, but after
-    // calculation it has the content type of the result. Both cases have in
-    // common that there is a non-vanishing array of rpn tokens which has to
-    // be written to file.
-    WriteRPNFormula(AStream, ACell^.Row, ACell^.Col, ACell^.RPNFormulaValue, ACell)
-  else
-  }
-  case ACell.ContentType of
-    cctEmpty      : WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
-    cctDateTime   : WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
-    cctNumber     : WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
-    cctUTF8String : WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
-   // cctFormula    : WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell^.FormulaValue, ACell);
-  end;
+    case ACell.ContentType of
+      cctEmpty:
+        WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
+      cctDateTime:
+        WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
+      cctNumber:
+        WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
+      cctUTF8String:
+        WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
+    end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper function for the spreadsheet writers.
 
   Iterates all cells on a list, calling the appropriate write method for them.
 
   @param  AStream The output stream.
   @param  ACells  List of cells to be writeen
-}
-procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
+-------------------------------------------------------------------------------}
+procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream;
+  ACells: TAVLTree);
 begin
   IterateThroughCells(AStream, ACells, WriteCellCallback);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   A generic method to iterate through all cells in a worksheet and call a callback
   routine for each cell.
 
@@ -7519,8 +7640,9 @@ end;
   @param  ACells     List of cells to be iterated
   @param  ACallback  Callback routine; it requires as arguments a pointer to the
                      cell as well as the destination stream.
-}
-procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
+-------------------------------------------------------------------------------}
+procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream;
+  ACells: TAVLTree; ACallback: TCellsCallback);
 var
   AVLNode: TAVLTreeNode;
 begin
@@ -7532,8 +7654,8 @@ begin
   end;
 end;
 
-{@@
-  Default file writting method.
+{@@ ----------------------------------------------------------------------------
+  Default file writing method.
 
   Opens the file and calls WriteToStream
   The workbook written is the one specified in the constructor of the writer.
@@ -7542,7 +7664,7 @@ end;
   @param  AOverwriteExisting  If the file already exists it will be replaced.
 
   @see    TsWorkbook
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean = False);
 var
@@ -7563,14 +7685,14 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   This routine has the purpose to write the workbook to a stream.
   Present implementation writes to a stringlists by means of WriteToStrings;
   this behavior is required for wikitables.
   Must be overriden in descendent classes for all other cases.
 
   @param  AStream   Stream to which the workbook is written
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream);
 var
   lStringList: TStringList;
@@ -7584,17 +7706,17 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes the worksheet to a list of strings. Not implemented here, needs to
   be overridden by descendants. See wikitables.
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings);
 begin
   Unused(AStrings);
   raise Exception.Create(rsUnsupportedWriteFormat);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Basic method which is called when writing a formula to a stream. The formula
   is already stored in the cell fields.
   Present implementation does nothing. Needs to be overridden by descendants.
@@ -7604,35 +7726,13 @@ end;
   @param   ACol      Column index of the cell containing the formula
   @param   ACell     Pointer to the cell containing the formula and being written
                      to the stream
-}
+-------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 begin
   Unused(AStream);
   Unused(ARow, ACol, ACell);
 end;
-(*
-{@@
-  Basic method which is called when writing an RPN formula to a stream.
-  Present implementation does nothing. Needs to be overridden by descendants.
-
-  RPN formula are used by the BIFF file format.
-
-  @param   AStream   Stream to be written
-  @param   ARow      Row index of the cell containing the formula
-  @param   ACol      Column index of the cell containing the formula
-  @param   AFormula  RPN formula given as an array of RPN tokens
-  @param   ACell     Pointer to the cell containing the formula and being written
-                     to the stream
-}
-procedure TsCustomSpreadWriter.WriteRPNFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
-begin
-  Unused(AStream, ARow, ACol);
-  Unused(AFormula, ACell);
-  // Silently dump the formula; child classes should implement their own support
-end;
-*)
 
 
 initialization
