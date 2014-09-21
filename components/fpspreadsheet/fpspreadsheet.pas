@@ -501,6 +501,8 @@ type
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
 
+    function InsertColToFormula(ACol: Cardinal; ACell: PCell): String;
+
     procedure RemoveCell(ARow, ACol: Cardinal);
 
   public
@@ -1109,11 +1111,6 @@ type
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a formula to a cell. Must be overridden by descendent classes. }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual;
-    (*
-    {@@ Abstract method for writing an RPN formula to a cell. Must be overridden by descendent classes. }
-    procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      const AFormula: TsRPNFormula; ACell: PCell); virtual;
-      *)
     {@@ Abstract method for writing a string to a cell. Must be overridden by descendent classes. }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
@@ -1145,9 +1142,7 @@ type
 var
   GsSpreadFormats: array of TsSpreadFormatData;
 
-//procedure RegisterFormulaFunc(AFormulaKind: TFEKind; AFunc: pointer);
-
-procedure RegisterSpreadFormat( AReaderClass: TsSpreadReaderClass;
+procedure RegisterSpreadFormat(AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat);
 
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
@@ -5118,9 +5113,10 @@ var
   cellnode: TAVLTreeNode;
   col: PCol;
   i: Integer;
-  r, c: Cardinal;
+  r, c, ic: Cardinal;
   r1, c1, r2, c2: Cardinal;
-  cell, nextcell, gapcell: PCell;
+  rLast, cLast: Cardinal;
+  cell, nextcell, gapcell, oldbase, newbase: PCell;
 begin
   // Update column index of cell records
   cellnode := FCells.FindLowest;
@@ -5144,9 +5140,11 @@ begin
   // correctly.
   if ACol > 0 then
   begin
+    rLast := GetLastOccupiedRowIndex;
+    cLast := GetlastOccupiedColIndex;
     c := ACol - 1;
     // Seek along the column immediately to the left of the inserted column
-    for r := 0 to GetLastOccupiedRowIndex do
+    for r := 0 to rLast do
     begin
       cell := FindCell(r, c);
       if not Assigned(cell) then
@@ -5162,7 +5160,8 @@ begin
           gapcell := GetCell(r, ACol);
           gapcell^.Mergebase := cell^.MergeBase;
         end;
-      end
+      end;
+      (*
       else
       // A shared formula block is found immediately before the inserted column
       if cell^.SharedFormulaBase <> nil then begin
@@ -5170,9 +5169,72 @@ begin
         nextcell := FindCell(r, ACol+1);
         if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
         begin
-          // Yes - we add a cell into the gap and share the formula of the base
+          // Yes - we add a cell into the gap
           gapcell := GetCell(r, ACol);
-          gapcell^.SharedFormulaBase := cell^.SharedFormulaBase;
+          // If this is the first row of the shared formula block we must define
+          // a new shared formula because cell references may differ by 1 on both
+          // sides of the inserted column!
+          if r = cell^.SharedFormulaBase^.Row then
+          begin
+            gapcell^.SharedFormulaBase := gapcell;
+            gapcell^.FormulaValue := cell^.SharedFormulaBase.FormulaValue;
+            gapcell^.FormulaValue := InsertColToFormula(ACol, gapcell);
+            newbase := gapcell;
+          end
+          else
+            // Link to the new base
+            gapcell^.SharedFormulaBase := newbase;
+          // Link all cells to the right of the inserted column to the new base
+          for ic := ACol+1 to cLast do
+          begin
+            cell := FindCell(r, ic);
+            if cell^.SharedFormulaBase = nextcell^.SharedFormulaBase then
+              cell^.SharedFormulaBase := newbase
+            else
+              break;
+          end;
+        end;
+      end;
+      *)
+    end;
+
+    // Seek along the column immediately to the left of the inserted column
+    c := ACol - 1;
+    for r := 0 to rLast do
+    begin
+      cell := FindCell(r, c);
+      if not Assigned(cell) then
+        Continue;
+      // A shared formula block is found immediately to the left of the inserted column.
+      // If it extends beyond the new column we have to redefine the shared
+      // formula in the right split-off part because column offsets to the left
+      // part are greater by 1 now.
+      // Excel does not extend the shared formula into the new column, though.
+      if cell^.SharedFormulaBase <> nil then
+      begin
+        oldbase := cell^.SharedFormulaBase;
+        // Does it extend beyond the newly inserted column?
+        nextcell := FindCell(r, ACol+1);
+        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
+        begin
+          // Yes. If we are at the first row of the old shared formula block we
+          // have to define a new base in nextcell. But the formula must be
+          // corrected for the inserted column!
+          if r = cell^.SharedFormulaBase^.Row then begin
+            nextcell^.SharedFormulaBase := nextcell;
+            nextcell^.FormulaValue := cell^.SharedFormulaBase^.FormulaValue;
+            nextcell^.FormulaValue := InsertColToFormula(ACol, nextcell);
+            newbase := nextcell;
+          end;
+          // Now link all cells to the right of the new column (which still
+          // use the old base) to the new base
+          for ic := ACol+1 to cLast do
+          begin
+            cell := FindCell(r, ic);
+            if (cell = nil) or (cell^.SharedFormulaBase <> oldbase) then
+              break;
+            cell^.SharedFormulaBase := newbase;
+          end;
         end;
       end;
     end;
@@ -5199,6 +5261,8 @@ begin
 
   // Update formulas
   if HasFormula(cell) and (cell^.FormulaValue <> '' ) then
+    cell^.FormulaValue := InsertColToFormula(col, cell);
+  {
   begin
     // (1) create an rpn formula
     formula := BuildRPNFormula(cell);
@@ -5218,6 +5282,35 @@ begin
     // (3) convert rpn formula back to string formula
     cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
   end;
+  }
+end;
+
+{@@ ----------------------------------------------------------------------------
+  The formula of the specified cell must be modified because a column is
+  inserted: Cell references pointing to the left of the inserted column remain
+  unchanged, but cell references pointing to the inserted column or its right
+  must have a higher column index by 1.
+  Returns the modified string formula.
+-------------------------------------------------------------------------------}
+function TsWorksheet.InsertColToFormula(ACol: Cardinal; ACell: PCell): String;
+var
+  rpnFormula: TsRPNFormula;
+  i: Integer;
+begin
+  rpnFormula := BuildRPNFormula(ACell);
+  for i:=0 to Length(rpnFormula) - 1 do
+  begin
+    case rpnFormula[i].ElementKind of
+      fekCell, fekCellRef:
+        if rpnFormula[i].Col >= ACol then inc(rpnFormula[i].Col);
+      fekCellRange:
+        begin
+          if rpnFormula[i].Col >= ACol then inc(rpnFormula[i].Col);
+          if rpnFormula[i].Col2 >= ACol then inc(rpnFormula[i].Col2);
+        end;
+    end;
+  end;
+  Result := ConvertRPNFormulaToStringFormula(rpnFormula);
 end;
 
 {@@ ----------------------------------------------------------------------------

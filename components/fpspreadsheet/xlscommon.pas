@@ -2911,7 +2911,7 @@ begin
       end else
       if VarType(value) = varDate then begin
         lCell.ContentType := cctDateTime;
-        lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
+        lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);
       end else
       if VarIsStr(value) then begin
         lCell.ContentType := cctUTF8String;
