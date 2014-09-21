@@ -1274,13 +1274,13 @@ begin
   GsSpreadFormats[len].Format := AFormat;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the name of the given spreadsheet file format.
 
   @param   AFormat  Identifier of the file format
   @return  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
            'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
-}
+-------------------------------------------------------------------------------}
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 begin
   case AFormat of
@@ -1301,7 +1301,7 @@ begin
 end;
 
 
-{@@
+{@@ ----------------------------------------------------------------------------
   If a palette is coded as big-endian (e.g. by copying the rgb values from
   the OpenOffice doc) the palette values can be converted by means of this
   procedure to little-endian which is required internally by TsWorkbook.
@@ -1309,7 +1309,7 @@ end;
   @param APalette     Pointer to the palette to be converted. After conversion,
                       its color values are replaced.
   @param APaletteSize Number of colors contained in the palette
-}
+-------------------------------------------------------------------------------}
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 var
   i: Integer;
@@ -1320,12 +1320,12 @@ begin
  {$POP}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Copies the format of a cell to another one.
 
   @param  AFromCell   cell from which the format is to be copied
   @param  AToCell     cell to which the format is to be copied
-}
+-------------------------------------------------------------------------------}
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
 begin
   Assert(AFromCell <> nil);
@@ -1343,8 +1343,9 @@ begin
   AToCell^.NumberFormatStr := AFromCell^.NumberFormatStr;
 end;
 
-{@@
-  Checks whether two cells have same border attributes }
+{@@ ----------------------------------------------------------------------------
+  Checks whether two cells have same border attributes
+-------------------------------------------------------------------------------}
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
   function NoBorder(ACell: PCell): Boolean;
@@ -1379,10 +1380,10 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Initalizes a new cell
   @return  New cell record
-}
+-------------------------------------------------------------------------------}
 procedure InitCell(out ACell: TCell);
 begin
   ACell.FormulaValue := '';
@@ -1391,14 +1392,14 @@ begin
   FillChar(ACell, SizeOf(ACell), 0);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Initalizes a new cell and presets the row and column fields of the cell record
   to the parameters passesd to the procedure.
 
   @param  ARow   Row index of the new cell
   @param  ACol   Column index of the new cell
   @return New cell record with row and column fields preset to passed parameters.
-}
+-------------------------------------------------------------------------------}
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
 begin
   InitCell(ACell);
@@ -1406,9 +1407,9 @@ begin
   ACell.Col := ACol;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns TRUE if the cell contains a formula (direct or shared, does not matter).
-}
+-------------------------------------------------------------------------------}
 function HasFormula(ACell: PCell): Boolean;
 begin
   Result := Assigned(ACell) and (
@@ -4187,7 +4188,7 @@ begin
   Result := WriteFont(ACell, fnt.FontName, fnt.Size, fnt.Style, AFontColor);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the font used in formatting of a cell considering only the font face
   and leaving font size, style and color unchanged. Looks in the workbook's
   font list if this modified font has already been used. If not a new font entry
@@ -4197,13 +4198,13 @@ end;
   @param  ACol        The column of the cell
   @param  AFontName   Name of the new font to be used
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
 begin
   result := WriteFontName(GetCell(ARow, ACol), AFontName);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the font used in formatting of a cell considering only the font face
   and leaving font size, style and color unchanged. Looks in the workbook's
   font list if this modified font has already been used. If not a new font entry
@@ -4212,7 +4213,7 @@ end;
   @param  ACell       Pointer to the cell
   @param  AFontName   Name of the new font to be used
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontName(ACell: PCell; AFontName: String): Integer;
 var
   fnt: TsFont;
@@ -4225,7 +4226,7 @@ begin
   result := WriteFont(ACell, AFontName, fnt.Size, fnt.Style, fnt.Color);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the font size in formatting of a cell. Looks in the workbook's
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
@@ -4234,13 +4235,13 @@ end;
   @param  ACol        The column of the cell
   @param  ASize       Size of the font to be used (in points).
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
 begin
   Result := WriteFontSize(GetCell(ARow, ACol), ASize);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the font size in formatting of a cell. Looks in the workbook's
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
@@ -4248,7 +4249,7 @@ end;
   @param  ACell       Pointer to the cell
   @param  ASize       Size of the font to be used (in points).
   @return Index of the font in the workbook's font list.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontSize(ACell: PCell; ASize: Single): Integer;
 var
   fnt: TsFont;
@@ -4261,7 +4262,7 @@ begin
   Result := WriteFont(ACell, fnt.FontName, ASize, fnt.Style, fnt.Color);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the font style (bold, italic, etc) in formatting of a cell.
   Looks in the workbook's font list if this modified font has already been used.
   If not a new font entry is created.
@@ -4273,14 +4274,14 @@ end;
   @return Index of the font in the workbook's font list.
 
   @see TsFontStyle
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontStyle(ARow, ACol: Cardinal;
   AStyle: TsFontStyles): Integer;
 begin
   Result := WriteFontStyle(GetCell(ARow, ACol), AStyle);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Replaces the font style (bold, italic, etc) in formatting of a cell.
   Looks in the workbook's font list if this modified font has already been used.
   If not a new font entry is created.
@@ -4291,7 +4292,7 @@ end;
   @return Index of the font in the workbook's font list.
 
   @see TsFontStyle
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer;
 var
   fnt: TsFont;
@@ -4305,7 +4306,7 @@ begin
   Result := WriteFont(ACell, fnt.FontName, fnt.Size, AStyle, fnt.Color);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds text rotation to the formatting of a cell
 
   @param  ARow      The row of the cell
@@ -4314,7 +4315,7 @@ end;
   @return Pointer to cell
 
   @see    TsTextRotation
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteTextRotation(ARow, ACol: Cardinal;
   ARotation: TsTextRotation): PCell;
 begin
@@ -4322,14 +4323,14 @@ begin
   WriteTextRotation(Result, ARotation);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds text rotation to the formatting of a cell
 
   @param  ACell      Pointer to the cell
   @param  ARotation  How to rotate the text
 
   @see    TsTextRotation
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteTextRotation(ACell: PCell; ARotation: TsTextRotation);
 begin
   if ACell = nil then
@@ -4339,7 +4340,7 @@ begin
   ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Directly modifies the used formatting fields of a cell.
   Only formatting corresponding to items included in this set is executed.
 
@@ -4349,7 +4350,7 @@ end;
 
   @see    TsUsedFormattingFields
   @see    TCell
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUsedFormatting(ARow, ACol: Cardinal;
   AUsedFormatting: TsUsedFormattingFields);
 var
@@ -4634,8 +4635,10 @@ end;
 
   @param ARow    Row index of the cell considered
   @param ACol    Column index of the cell considered
-  @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight)
-                 By default, texts are left-aligned, numbers and dates are right-aligned.
+  @param AValue  Parameter for horizontal text alignment
+                 (haDefault, vaLeft, haCenter, haRight)
+                 By default, texts are left-aligned, numbers and dates are
+                 right-aligned.
   @return Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment): PCell;
@@ -4648,8 +4651,10 @@ end;
   Defines the horizontal alignment of text in a cell.
 
   @param ACell   Pointer to the cell considered
-  @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight)
-                 By default, texts are left-aligned, numbers and dates are right-aligned.
+  @param AValue  Parameter for horizontal text alignment
+                 (haDefault, vaLeft, haCenter, haRight)
+                 By default, texts are left-aligned, numbers and dates are
+                 right-aligned.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHorAlignment(ACell: PCell; AValue: TsHorAlignment);
 begin
@@ -4665,11 +4670,13 @@ end;
 
   @param ARow    Row index of the cell considered
   @param ACol    Column index of the cell considered
-  @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom)
+  @param AValue  Parameter for vertical text alignment
+                 (vaDefault, vaTop, vaCenter, vaBottom)
                  By default, texts are bottom-aligned.
   @return Pointer to cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal; AValue: TsVertAlignment): PCell;
+function TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal;
+  AValue: TsVertAlignment): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteVertAlignment(Result, AValue);
@@ -4679,7 +4686,8 @@ end;
   Defines the vertical alignment of text in a cell.
 
   @param ACell   Poiner to the cell considered
-  @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom)
+  @param AValue  Parameter for vertical text alignment
+                 (vaDefault, vaTop, vaCenter, vaBottom)
                  By default, texts are bottom-aligned.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteVertAlignment(ACell: PCell; AValue: TsVertAlignment);
@@ -4727,13 +4735,13 @@ begin
   Result := FWorkbook.FormatSettings;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Calculates the optimum height of a given row. Depends on the font size
   of the individual cells in the row.
 
   @param  ARow   Index of the row to be considered
   @return Row height in line count of the default font.
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.CalcAutoRowHeight(ARow: Cardinal): Single;
 var
   cell: PCell;
@@ -4749,12 +4757,14 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
  Checks if a row record exists for the given row index and returns a pointer
  to the row record, or nil if not found
 
  @param  ARow   Index of the row looked for
- @return        Pointer to the row record with this row index, or nil if not found }
+ @return        Pointer to the row record with this row index, or nil if not
+                found
+-------------------------------------------------------------------------------}
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
 var
   LElement: TRow;
@@ -4767,12 +4777,14 @@ begin
     result := PRow(AVLNode.Data);
 end;
 
-{@@
- Checks if a column record exists for the given column index and returns a pointer
- to the TCol record, or nil if not found
+{@@ ----------------------------------------------------------------------------
+ Checks if a column record exists for the given column index and returns a
+ pointer to the TCol record, or nil if not found
 
  @param  ACol   Index of the column looked for
- @return        Pointer to the column record with this column index, or nil if not found }
+ @return        Pointer to the column record with this column index, or
+                nil if not found
+-------------------------------------------------------------------------------}
 function TsWorksheet.FindCol(ACol: Cardinal): PCol;
 var
   LElement: TCol;
@@ -4785,12 +4797,14 @@ begin
     result := PCol(AVLNode.Data);
 end;
 
-{@@
- Checks if a row record exists for the given row index and creates it if not found.
+{@@ ----------------------------------------------------------------------------
+ Checks if a row record exists for the given row index and creates it if not
+ found.
 
  @param  ARow   Index of the row looked for
  @return        Pointer to the row record with this row index. It can safely be
-                assumed that this row record exists. }
+                assumed that this row record exists.
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetRow(ARow: Cardinal): PRow;
 begin
   Result := FindRow(ARow);
@@ -4806,13 +4820,14 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
  Checks if a column record exists for the given column index and creates it
  if not found.
 
  @param  ACol   Index of the column looked for
- @return        Pointer to the TCol record with this column index. It can safely be
-                assumed that this column record exists. }
+ @return        Pointer to the TCol record with this column index. It can
+                safely be assumed that this column record exists.
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetCol(ACol: Cardinal): PCol;
 begin
   Result := FindCol(ACol);
@@ -4830,12 +4845,13 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Counts how many cells exist in the given column. Blank cells do contribute
   to the sum, as well as formatted cells.
 
   @param  ACol  Index of the column considered
-  @return Count of cells with value or format in this column }
+  @return Count of cells with value or format in this column
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetCellCountInCol(ACol: Cardinal): Cardinal;
 var
   cell: PCell;
@@ -4854,13 +4870,13 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Counts how many cells exist in the given row. Blank cells do contribute
   to the sum, as well as formatted cell.s
 
   @param  ARow  Index of the row considered
   @return Count of cells with value or format in this row
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetCellCountInRow(ARow: Cardinal): Cardinal;
 var
   cell: PCell;
@@ -4879,13 +4895,13 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the width of the given column. If there is no column record then
   the default column width is returned.
 
   @param  ACol  Index of the column considered
   @return Width of the column (in count of "0" characters of the default font)
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
 var
   col: PCol;
@@ -4897,13 +4913,13 @@ begin
     Result := FDefaultColWidth;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the height of the given row. If there is no row record then the
   default row height is returned
 
   @param  ARow  Index of the row considered
   @return Height of the row (in line count of the default font).
-}
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
 var
   row: PRow;
@@ -4916,13 +4932,13 @@ begin
     Result := FDefaultRowHeight;
 end;
 
-{@@
-  Deletes the column at the index specified. Cells with greader column indexes are
-  moved one column to the left. Merged cell blocks and cell references in formulas
-  are considered as well.
+{@@ ----------------------------------------------------------------------------
+  Deletes the column at the index specified. Cells with greader column indexes
+  are moved one column to the left. Merged cell blocks and cell references in
+  formulas are considered as well.
 
   @param   ACol   Index of the column to be deleted
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCol(ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
@@ -5004,13 +5020,13 @@ begin
   ChangedCell(0, ACol);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Deletes the row at the index specified. Cells with greader row indexes are
   moved one row up. Merged cell blocks and cell references in formulas
   are considered as well.
 
   @param   ARow   Index of the row to be deleted
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteRow(ARow: Cardinal);
 var
   cellnode: TAVLTreeNode;
@@ -5090,13 +5106,13 @@ begin
   ChangedCell(ARow, 0);
 end;
 
-{@@
-  Inserts a column BEFORE the index specified. Cells with greater column indexes are
-  moved one column to the right. Merged cell blocks and cell references in formulas
-  are considered as well.
+{@@ ----------------------------------------------------------------------------
+  Inserts a column BEFORE the index specified. Cells with greater column indexes
+  are moved one column to the right. Merged cell blocks and cell references in
+  formulas are considered as well.
 
   @param   ACol   Index of the column before which a new column is inserted.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.InsertCol(ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
@@ -5204,13 +5220,13 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Inserts a row BEFORE the row specified. Cells with greater row indexes are
   moved one row down. Merged cell blocks and cell references in formulas are
   considered as well.
 
   @param   ARow   Index of the row before which a new row is inserted.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.InsertRow(ARow: Cardinal);
 var
   row: PRow;
@@ -5313,10 +5329,10 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Removes all row records from the worksheet and frees the occupied memory.
   Note: Cells are retained.
-}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllRows;
 var
   Node: Pointer;
@@ -5346,8 +5362,9 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Removes a specified column record from the worksheet and frees the occupied memory.
-  This resets the its column width to default.
+  Removes a specified column record from the worksheet and frees the occupied
+  memory. This resets its column width to default.
+
   Note: Cells in that column are retained.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveCol(ACol: Cardinal);
@@ -5385,7 +5402,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes a row record for the row at a given index to the spreadsheet.
-  Currently the row record contains only the row height (and the row index, of course).
+  Currently the row record contains only the row height (and the row index,
+  of course).
 
   Creates a new row record if it does not yet exist.
 
@@ -5521,8 +5539,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the workbook class. Among others, it initializes the built-in
-  fonts, defines the default font, and sets up the FormatSettings for localization
-  of some number formats.
+  fonts, defines the default font, and sets up the FormatSettings for
+  localization of some number formats.
 -------------------------------------------------------------------------------}
 constructor TsWorkbook.Create;
 begin
@@ -5846,7 +5864,8 @@ begin
   valid := GetFormatFromFileName(AFileName, SheetType);
   if valid then WriteToFile(AFileName, SheetType, AOverwriteExisting)
   else raise Exception.Create(Format(
-    '[TsWorkbook.WriteToFile] Attempted to save a spreadsheet by extension, but the extension %s is invalid.', [ExtractFileExt(AFileName)]));
+    '[TsWorkbook.WriteToFile] Attempt to save a spreadsheet by extension, ' +
+    'but the extension %s is not valid.', [ExtractFileExt(AFileName)]));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6512,27 +6531,6 @@ begin
   end
   else
     Result := $000000;  // "black" as default
-  {
-
-  case AColorIndex of
-    $0040: Result := DEF_FOREGROUND_COLORVALUE;
-    $0041: Result := DEF_BACKGROUND_COLORVALUE;
-    $004D: Result := DEF_CHART_FOREGROUND_COLORVALUE;
-    $004E: Result := DEF_CHART_BACKGROUND_COLORVALUE;
-    $004F: Result := DEF_CHART_NEUTRAL_COLORVALUE;
-    $0051: Result := DEF_TOOLTIP_TEXT_COLORVALUE;
-    $7FFF: Result := DEF_FONT_AUTOMATIC_COLORVALUE;
-    else   if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
-           begin
-             if ((FPalette = nil) or (Length(FPalette) = 0)) then
-               Result := DEFAULT_PALETTE[AColorIndex]
-             else
-               Result := FPalette[AColorIndex];
-           end
-           else
-             Result := $000000;  // "black" as default
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6597,8 +6595,8 @@ end;
   @param  APaletteCount Count of numbers in the source palette
   @param  ABigEnding    If true, indicates that the source palette is in
                         big-endian notation. The methods inverts the rgb
-                        components to little-endian which is used by fpspreadsheet
-                        internally.
+                        components to little-endian which is used by
+                        fpspreadsheet internally.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.UsePalette(APalette: PsPalette; APaletteCount: Word;
   ABigEndian: Boolean);
@@ -6998,7 +6996,9 @@ end;
   the format list (or -1, if not found)
   To be used by OpenDocument file format.
 
-  @param  AFormatName  Format name as used by OpenDocument to identify a number format
+  @param  AFormatName  Format name as used by OpenDocument to identify a
+                       number format
+
   @return Index of the format item in the list, or -1 if not found
 -------------------------------------------------------------------------------}
 function TsCustomNumFormatList.FindByName(AFormatName: String): integer;

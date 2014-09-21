@@ -58,12 +58,12 @@ uses
 {                   Simplified creation of RPN formulas                        }
 {******************************************************************************}
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates a pointer to a new RPN item. This represents an element in the array
   of token of an RPN formula.
 
   @return  Pointer to the RPN item
-}
+-------------------------------------------------------------------------------}
 function NewRPNItem: PRPNItem;
 begin
   New(Result);
@@ -71,21 +71,21 @@ begin
   Result^.FE.StringValue := '';
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Destroys an RPN item
-}
+-------------------------------------------------------------------------------}
 procedure DisposeRPNItem(AItem: PRPNItem);
 begin
   if AItem <> nil then
     Dispose(AItem);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates a boolean value entry in the RPN array.
 
   @param  AValue   Boolean value to be stored in the RPN item
   @next   ANext    Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNBool(AValue: Boolean; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -94,13 +94,13 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a cell value, specifed by its
   address, e.g. 'A1'. Takes care of absolute and relative cell addresses.
 
   @param  ACellAddress   Adress of the cell given in Excel A1 notation
   @param  ANext          Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellValue(ACellAddress: String; ANext: PRPNItem): PRPNItem;
 var
   r,c: Cardinal;
@@ -111,7 +111,7 @@ begin
   Result := RPNCellValue(r,c, flags, ANext);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a cell value, specifed by its
   row and column index and a flag containing information on relative addresses.
 
@@ -119,7 +119,7 @@ end;
   @param  ACol     Column index of the cell
   @param  AFlags   Flags specifying absolute or relative cell addresses
   @param  ANext    Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellValue(ARow, ACol: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 begin
@@ -131,7 +131,7 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a cell reference, specifed by its
   address, e.g. 'A1'. Takes care of absolute and relative cell addresses.
   "Cell reference" means that all properties of the cell can be handled.
@@ -140,7 +140,7 @@ end;
 
   @param  ACellAddress   Adress of the cell given in Excel A1 notation
   @param  ANext          Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellRef(ACellAddress: String; ANext: PRPNItem): PRPNItem;
 var
   r,c: Cardinal;
@@ -151,7 +151,7 @@ begin
   Result := RPNCellRef(r,c, flags, ANext);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a cell reference, specifed by its
   row and column index and flags containing information on relative addresses.
   "Cell reference" means that all properties of the cell can be handled.
@@ -162,7 +162,7 @@ end;
   @param  ACol     Column index of the cell
   @param  AFlags   Flags specifying absolute or relative cell addresses
   @param  ANext    Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellRef(ARow, ACol: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 begin
@@ -174,14 +174,15 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a range of cells, specified by an
   Excel-style address, e.g. A1:G5. As in Excel, use a $ sign to indicate
   absolute addresses.
 
-  @param  ACellRangeAddress   Adress of the cell range given in Excel notation, such as A1:G5
+  @param  ACellRangeAddress   Adress of the cell range given in Excel notation,
+                              such as A1:G5
   @param  ANext               Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellRange(ACellRangeAddress: String; ANext: PRPNItem): PRPNItem;
 var
   r1,c1, r2,c2: Cardinal;
@@ -192,7 +193,7 @@ begin
   Result := RPNCellRange(r1,c1, r2,c2, flags, ANext);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a range of cells, specified by the
   row/column indexes of the top/left and bottom/right corners of the block.
   The flags indicate relative indexes.
@@ -203,7 +204,7 @@ end;
   @param  ACol2    Column index of the bottom/right cell
   @param  AFlags   Flags specifying absolute or relative cell addresses
   @param  ANext    Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 begin
@@ -217,7 +218,7 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a relative cell reference as used in
   shared formulas. The given parameters indicate the relativ offset between
   the current cell coordinates and a reference rell.
@@ -226,7 +227,7 @@ end;
   @param  AColOffset  Offset between current column and the column of a reference cell
   @param  AFlags      Flags specifying absolute or relative cell addresses
   @param  ANext       Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 begin
@@ -238,13 +239,13 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array with an error value.
 
   @param  AErrCode  Error code to be inserted (see TsErrorValue
   @param  ANext     Pointer to the next RPN item in the list
   @see TsErrorValue
-}
+-------------------------------------------------------------------------------}
 function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -253,12 +254,12 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a 2-byte unsigned integer
 
   @param  AValue  Integer value to be inserted into the formula
   @param  ANext   Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -267,12 +268,12 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a missing argument in of function call.
   Use this in a formula to indicate a missing argument
 
   @param ANext  Pointer to the next RPN item in the list.
-}
+-------------------------------------------------------------------------------}
 function RPNMissingArg(ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -280,12 +281,12 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a floating point number.
 
   @param  AValue  Number value to be inserted into the formula
   @param  ANext   Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -294,12 +295,12 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array which puts the current operator in parenthesis.
   For display purposes only, does not affect calculation.
 
   @param  ANext   Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNParenthesis(ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -307,12 +308,12 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for a string.
 
   @param  AValue  String to be inserted into the formula
   @param  ANext   Pointer to the next RPN item in the list
-}
+-------------------------------------------------------------------------------}
 function RPNString(AValue: String; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -321,92 +322,57 @@ begin
   Result^.Next := ANext;
 end;
 
-{@@
-  Creates an entry in the RPN array for an Excel function or operation
-  specified by its TokenID (--> TFEKind). Note that array elements for all
-  needed parameters must have been created before.
+{@@ ----------------------------------------------------------------------------
+  Creates an entry in the RPN array for an operation specified by its TokenID
+  (--> TFEKind). Note that array elements for all needed parameters must have
+  been created before.
 
   @param  AToken  Formula element indicating the function to be executed,
                   see the TFEKind enumeration for possible values.
   @param  ANext   Pointer to the next RPN item in the list
 
   @see TFEKind
-}
+-------------------------------------------------------------------------------}
 function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem;
 begin
-  {
-  if FEProps[AToken].MinParams <> FEProps[AToken].MaxParams then
-    raise Exception.CreateFmt(lpSpecifyNumberOfParams, [FEProps[AToken].Symbol]);
-   }
   Result := NewRPNItem;
   Result^.FE.ElementKind := AToken;
   Result^.Fe.FuncName := '';
   Result^.Next := ANext;
 end;
 
-
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array for an Excel function or operation
-  specified by its TokenID (--> TFEKind). Note that array elements for all
-  needed parameters must have been created before.
+  specified by its name. Note that array elements for all needed parameters
+  must have been created before.
 
-  @param  AToken  Formula element indicating the function to be executed,
-                  see the TFEKind enumeration for possible values.
-  @param  ANext   Pointer to the next RPN item in the list
-
-  @see TFEKind
-}
+  @param  AFuncName  Name of the spreadsheet function (as used by Excel)
+  @param  ANext      Pointer to the next RPN item in the list
+-------------------------------------------------------------------------------}
 function RPNFunc(AFuncName: String; ANext: PRPNItem): PRPNItem;
 begin
-  {
-  if FEProps[AToken].MinParams <> FEProps[AToken].MaxParams then
-    raise Exception.CreateFmt(lpSpecifyNumberOfParams, [FEProps[AToken].Symbol]);
-   }
-  Result := RPNFunc(AFuncName, 255, ANext); //FEProps[AToken].MinParams, ANext);
+  Result := RPNFunc(AFuncName, 255, ANext);
 end;
 
-{@@
-  Creates an entry in the RPN array for an Excel function or operation
-  specified by its TokenID (--> TFEKind). Specify the number of parameters used.
+{@@ ----------------------------------------------------------------------------
+  Creates an entry in the RPN array for an Excel spreadsheet function
+  specified by its name. Specify the number of parameters used.
   They must have been created before.
 
-  @param  AToken     Formula element indicating the function to be executed,
-                     see the TFEKind enumeration for possible values.
-  @param  ANumParams Number of arguments used in the formula. If -1 then the
-                     fixed number of arguments known from the function definiton
-                     is used.
+  @param  AFuncName  Name of the spreadsheet function (as used by Excel).
+  @param  ANumParams Number of arguments used in the formula.
   @param  ANext      Pointer to the next RPN item in the list
-
-  @see TFEKind
-}
+-------------------------------------------------------------------------------}
 function RPNFunc(AFuncName: String; ANumParams: Byte; ANext: PRPNItem): PRPNItem;
 begin
-   {
-  if (ANumParams > -1) then
-    if (ANumParams < FEProps[AToken].MinParams) or (ANumParams > FEProps[AToken].MaxParams) then
-      raise Exception.CreateFmt(lpIncorrectParamCount, [
-        FEProps[AToken].Symbol, FEProps[AToken].MinParams, FEProps[AToken].MaxParams
-      ]);
-  }
   Result := NewRPNItem;
   Result^.FE.ElementKind := fekFunc;
   Result^.Fe.FuncName := AFuncName;
   Result^.FE.ParamsNum := ANumParams;
   Result^.Next := ANext;
 end;
-             (*
-{@@
-  Returns if the function defined by the token requires a fixed number of parameter.
 
-  @param AElementKind  Identifier of the formula function considered
-}
-function FixedParamCount(AElementKind: TFEKind): Boolean;
-begin
-  Result := (FEProps[AElementKind].MinParams = FEProps[AElementKind].MaxParams)
-        and (FEProps[AElementKind].MinParams >= 0);
-end;
-               *)
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates an RPN formula by a single call using nested RPN items.
 
   For each formula element, use one of the RPNxxxx functions implemented here.
@@ -431,7 +397,7 @@ end;
           RPNFunc(fekAdd,
           nil))));
     </pre>
-}
+-------------------------------------------------------------------------------}
 function CreateRPNFormula(AItem: PRPNItem; AReverse: Boolean = false): TsRPNFormula;
 var
   item: PRPNItem;
@@ -461,13 +427,13 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Destroys the RPN formula starting with the given RPN item.
 
   @param  AItem  Pointer to the first RPN items representing the formula.
                  Each item contains a pointer to the next item in the list.
                  The list is terminated by nil.
-}
+-------------------------------------------------------------------------------}
 procedure DestroyRPNFormula(AItem: PRPNItem);
 var
   nextitem: PRPNItem;

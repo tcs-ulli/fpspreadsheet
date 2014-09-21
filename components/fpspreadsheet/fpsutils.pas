@@ -179,12 +179,12 @@ type
   big-endian isn't support, because Delphi doesn't support it.
 }
 
-{@@
+{@@ ----------------------------------------------------------------------------
   WordLEToLE converts a word value from big-endian to little-endian byte order.
 
   @param   AValue  Big-endian word value
   @return          Little-endian word value
-}
+-------------------------------------------------------------------------------}
 function WordToLE(AValue: Word): Word;
 begin
   {$IFDEF FPC}
@@ -194,12 +194,12 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   DWordLEToLE converts a DWord value from big-endian to little-endian byte-order.
 
   @param   AValue  Big-endian DWord value
   @return          Little-endian DWord value
-}
+-------------------------------------------------------------------------------}
 function DWordToLE(AValue: Cardinal): Cardinal;
 begin
   {$IFDEF FPC}
@@ -209,12 +209,12 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts an integer value from big-endian to little-endian byte-order.
 
   @param   AValue  Big-endian integer value
   @return          Little-endian integer value
-}
+-------------------------------------------------------------------------------}
 function IntegerToLE(AValue: Integer): Integer;
 begin
   {$IFDEF FPC}
@@ -224,12 +224,12 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a word value from little-endian to big-endian byte-order.
 
   @param   AValue  Little-endian word value
   @return          Big-endian word value
-}
+-------------------------------------------------------------------------------}
 function WordLEtoN(AValue: Word): Word;
 begin
   {$IFDEF FPC}
@@ -239,12 +239,12 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a DWord value from little-endian to big-endian byte-order.
 
   @param   AValue  Little-endian DWord value
   @return          Big-endian DWord value
-}
+-------------------------------------------------------------------------------}
 function DWordLEtoN(AValue: Cardinal): Cardinal;
 begin
   {$IFDEF FPC}
@@ -254,12 +254,12 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a widestring from big-endian to little-endian byte-order.
 
   @param   AValue  Big-endian widestring
   @return          Little-endian widestring
-}
+-------------------------------------------------------------------------------}
 function WideStringToLE(const AValue: WideString): WideString;
 {$IFNDEF FPC}
 var
@@ -280,12 +280,12 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a widestring from little-endian to big-endian byte-order.
 
   @param   AValue  Little-endian widestring
   @return          Big-endian widestring
-}
+-------------------------------------------------------------------------------}
 function WideStringLEToN(const AValue: WideString): WideString;
 {$IFNDEF FPC}
 var
@@ -306,12 +306,14 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts the RGB part of a LongRGB logical structure to its physical representation.
   In other words: RGBA (where A is 0 and omitted in the function call) => ABGR
   Needed for conversion of palette colors.
+
   @param  RGB  DWord value containing RGBA bytes in big endian byte-order
-  @return      DWord containing RGB bytes in little-endian byte-order (A = 0) }
+  @return      DWord containing RGB bytes in little-endian byte-order (A = 0)
+-------------------------------------------------------------------------------}
 function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 begin
   {$IFDEF FPC}
@@ -327,7 +329,7 @@ begin
   {$ENDIF}
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses strings like A5:A10 into an selection interval information
 
   @param  AStr           Cell range string, such as A5:A10
@@ -336,8 +338,9 @@ end;
   @param  ACount         Number of cells included in the range (output)
   @param  ADirection     fpsVerticalSelection if the range is along a column,
                          fpsHorizontalSelection if the range is along a row
+
   @return                false if the string is not a valid cell range
-}
+-------------------------------------------------------------------------------}
 function ParseIntervalString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ACount: Cardinal;
   out ADirection: TsSelectionDirection): Boolean;
@@ -389,7 +392,7 @@ begin
   else Exit(False);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses strings like A5:C10 into a range selection information.
   Returns in AFlags also information on relative/absolute cells.
 
@@ -401,8 +404,9 @@ end;
   @param  AFlags         a set containing an element for AFirstCellRow, AFirstCellCol,
                          ALastCellRow, ALastCellCol if they represent relative
                          cell addresses.
+
   @return                false if the string is not a valid cell range
-}
+-------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
@@ -432,7 +436,7 @@ begin
 end;
 
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses strings like A5:C10 into a range selection information.
   Information on relative/absolute cells is ignored.
 
@@ -442,17 +446,20 @@ end;
   @param  ALastCellRow   Row index of the bottom/right cell of the range (output)
   @param  ALastCellCol   Column index of the bottom/right cell of the range (output)
   @return                false if the string is not a valid cell range
-}
+--------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal): Boolean;
 var
   flags: TsRelFlags;
 begin
-  Result := ParseCellRangeString(AStr, AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol, flags);
+  Result := ParseCellRangeString(AStr,
+    AFirstCellRow, AFirstCellCol,
+    ALastCellRow, ALastCellCol,
+    flags
+  );
 end;
 
-
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses a cell string, like 'A1' into zero-based column and row numbers
   Note that there can be several letters to address for more than 26 columns.
   'AFlags' indicates relative addresses.
@@ -466,7 +473,7 @@ end;
 
   @example "AMP$200" --> (rel) column 1029 (= 26*26*1 + 26*16 + 26 - 1)
                          (abs) row = 199 (abs)
-}
+-------------------------------------------------------------------------------}
 function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
 
@@ -485,7 +492,9 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     while (i <= Length(AStr)) do begin
       if (UpCase(AStr[i]) in LETTERS) then begin
         ACellCol := Cardinal(ord(UpCase(AStr[i])) - ord('A')) + 1 + ACellCol * 26;
-        if ACellCol >= MAX_COL_COUNT then  // too many columns (dropping this limitation could cause overflow if a too long string is passed
+        if ACellCol >= MAX_COL_COUNT then
+          // too many columns (dropping this limitation could cause overflow
+          // if a too long string is passed
           exit;
         inc(i);
       end
@@ -543,7 +552,7 @@ begin
     Result := Scan(1);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses a cell string, like 'A1' into zero-based column and row numbers
   Note that there can be several letters to address for more than 26 columns.
 
@@ -554,7 +563,7 @@ end;
   @param  ACellRow  Row index of the top/left cell of the range (output)
   @param  ACellCol  Column index of the top/left cell of the range (output)
   @return           False if the string is not a valid cell range
-}
+-------------------------------------------------------------------------------}
 function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal): Boolean;
 var
@@ -563,13 +572,13 @@ begin
   Result := ParseCellString(AStr, ACellRow, ACellCol, flags);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses a cell row string to a zero-based row number.
 
   @param  AStr      Cell row string, such as '1', 1-based!
   @param  AResult   Index of the row (zero-based!) (putput)
   @return           False if the string is not a valid cell row string
-}
+-------------------------------------------------------------------------------}
 function ParseCellRowString(const AStr: string; out AResult: Cardinal): Boolean;
 begin
   try
@@ -580,14 +589,14 @@ begin
   Result := True;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Parses a cell column string, like 'A' or 'CZ', into a zero-based column number.
   Note that there can be several letters to address more than 26 columns.
 
   @param  AStr      Cell range string, such as A1
   @param  AResult   Zero-based index of the column (output)
   @return           False if the string is not a valid cell column string
-}
+-------------------------------------------------------------------------------}
 function ParseCellColString(const AStr: string; out AResult: Cardinal): Boolean;
 const
   INT_NUM_LETTERS = 26;
@@ -617,15 +626,16 @@ begin
   Result := Char(AValue + ord('A'));
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Calculates an Excel column name ('A', 'B' etc) from the zero-based column index
 
   @param  AColIndex   Zero-based column index
   @return  Letter-based column name string. Can contain several letter in case of
            more than 26 columns
-}
+-------------------------------------------------------------------------------}
 function GetColString(AColIndex: Integer): String;
-{ Code adapted from: http://stackoverflow.com/questions/12796973/vba-function-to-convert-column-number-to-letter }
+{ Code adapted from:
+  http://stackoverflow.com/questions/12796973/vba-function-to-convert-column-number-to-letter }
 var
   n: Integer;
   c: byte;
@@ -642,7 +652,7 @@ end;
 const
   RELCHAR: Array[boolean] of String = ('$', '');
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Calculates a cell address string from zero-based column and row indexes and
   the relative address state flags.
 
@@ -654,7 +664,7 @@ const
   @return  Excel type of cell address containing $ characters for absolute
            address parts.
   @example ARowIndex = 0, AColIndex = 0, AFlags = [rfRelRow] --> $A1
-}
+-------------------------------------------------------------------------------}
 function GetCellString(ARow, ACol: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 begin
@@ -664,7 +674,7 @@ begin
   ]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Calculates a cell range address string from zero-based column and row indexes
   and the relative address state flags.
 
@@ -679,7 +689,7 @@ end;
            range
   @example ARow1 = 0, ACol1 = 0, ARow = 2, ACol = 1, AFlags = [rfRelRow, rfRelRow2]
            --> $A1:$B3
-}
+-------------------------------------------------------------------------------}
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2]): String;
 begin
@@ -691,13 +701,12 @@ begin
   ]);
 end;
 
-
-{@@
+{@@ ----------------------------------------------------------------------------
   Returns the message text assigned to an error value
 
   @param   AErrorValue  Error code as defined by TsErrorvalue
   @return  Text corresponding to the error code.
-}
+-------------------------------------------------------------------------------}
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 begin
   case AErrorValue of
@@ -715,7 +724,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Helper function to reduce typing: "if a conditions is true return the first
   number format, otherwise return the second format"
 
@@ -723,40 +732,45 @@ end;
   @param   AValue1      First built-in number format code
   @param   AValue2      Second built-in number format code
   @return  AValue1 if ACondition is true, AValue2 otherwise.
-}
-function IfThen(ACondition: Boolean; AValue1, AValue2: TsNumberFormat): TsNumberFormat;
+-------------------------------------------------------------------------------}
+function IfThen(ACondition: Boolean;
+  AValue1, AValue2: TsNumberFormat): TsNumberFormat;
 begin
   if ACondition then Result := AValue1 else Result := AValue2;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the given number format code is for currency,
   i.e. requires currency symbol.
 
   @param  AFormat   Built-in number format identifier to be checked
-  @return True if AFormat is nfCurrency or nfCurrencyRed, false otherwise. }
+  @return True if AFormat is nfCurrency or nfCurrencyRed, false otherwise.
+-------------------------------------------------------------------------------}
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 begin
   Result := AFormat in [nfCurrency, nfCurrencyRed];
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the given number format code is for date/time values.
 
   @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat is a date/time format (such as nfShortTime), false otherwise }
+  @return  True if AFormat is a date/time format (such as nfShortTime),
+           false otherwise
+-------------------------------------------------------------------------------}
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
   Result := AFormat in [{nfFmtDateTime, }nfShortDateTime, nfShortDate, nfLongDate,
     nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the given string with formatting codes is for date/time values.
 
   @param   AFormatStr   String with formatting codes to be checked.
   @return  True if AFormatStr is a date/time format string (such as 'hh:nn'),
-           false otherwise }
+           false otherwise
+-------------------------------------------------------------------------------}
 function IsDateTimeFormat(AFormatStr: string): Boolean;
 var
   parser: TsNumFormatParser;
@@ -769,22 +783,24 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the given built-in number format code is for time values.
 
   @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat represents to a time-format, false otherwise }
+  @return  True if AFormat represents to a time-format, false otherwise
+-------------------------------------------------------------------------------}
 function IsTimeFormat(AFormat: TsNumberFormat): boolean;
 begin
   Result := AFormat in [nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM,
     nfTimeInterval];
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Checks whether the given string with formatting codes is for time values.
 
   @param   AFormatStr   String with formatting codes to be checked
-  @return  True if AFormatStr represents a time-format, false otherwise }
+  @return  True if AFormatStr represents a time-format, false otherwise
+-------------------------------------------------------------------------------}
 function IsTimeFormat(AFormatStr: String): Boolean;
 var
   parser: TsNumFormatParser;
@@ -797,7 +813,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Builds a date/time format string from the number format code.
 
   @param   ANumberFormat    built-in number format identifier
@@ -808,7 +824,7 @@ end;
                             are added to the first time code field.
   @return  String of date/time formatting code constructed from the built-in
            format information.
-}
+-------------------------------------------------------------------------------}
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
 begin
@@ -844,7 +860,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Builds a currency format string. The presentation of negative values (brackets,
   or minus signs) is taken from the provided format settings. The format string
   consists of three sections, separated by semicolons.
@@ -869,7 +885,7 @@ end;
                           If ? the CurrencyString of the FormatSettings is used.
 
   @return String of formatting codes, such as '"$"#,##0.00;("$"#,##0.00);"EUR"0.00'
-}
+-------------------------------------------------------------------------------}
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
   ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
@@ -947,7 +963,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Builds a number format string from the number format code and the count of
   decimal places.
 
@@ -958,7 +974,7 @@ end;
                           value of the FormatSettings is used.
 
   @return String of formatting codes, such as '#,##0.00' for nfFixedTh and 2 decimals
-}
+-------------------------------------------------------------------------------}
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
 var
@@ -988,7 +1004,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Adds an AM/PM format code to a pre-built time formatting string. The strings
   replacing "AM" or "PM" in the final formatted number are taken from the
   TimeAMString or TimePMString of the given FormatSettings.
@@ -998,7 +1014,7 @@ end;
   @result  Formatting string with AM/PM option activated.
 
   Example:  ATimeFormatString = 'hh:nn' ==> 'hh:nn AM/PM'
-}
+-------------------------------------------------------------------------------}
 function AddAMPM(const ATimeFormatString: String;
   const AFormatSettings: TFormatSettings): String;
 var
@@ -1009,14 +1025,14 @@ begin
   Result := Format('%s %s/%s', [StripAMPM(ATimeFormatString), am, pm]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Removes an AM/PM formatting code from a given time formatting string. Variants
   of "AM/PM" are considered as well. The string is left unchanged if it does not
   contain AM/PM codes.
 
   @param   ATimeFormatString  String of time formatting codes (such as 'hh:nn AM/PM')
   @return  Formatting string with AM/PM being removed (--> 'hh:nn')
-}
+-------------------------------------------------------------------------------}
 function StripAMPM(const ATimeFormatString: String): String;
 var
   i: Integer;
@@ -1034,7 +1050,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Counts how many decimal places are coded into a given formatting string.
 
   @param   AFormatString   String with number format codes, such as '0.000'
@@ -1042,7 +1058,7 @@ end;
                            For the fixed decimals, this is the '0'. Optional
                            decimals are encoced as '#'.
   @return  Count of decimal places found (3 in above example).
-}
+-------------------------------------------------------------------------------}
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 var
   i: Integer;
@@ -1062,8 +1078,8 @@ begin
   end;
 end;
 
-{@@
-  The given format string is assumed to represent for time intervals, i.e. its
+{@@ ----------------------------------------------------------------------------
+  The given format string is assumed to represent a time interval, i.e. its
   first time symbol must be enclosed by square brackets. Checks if this is true,
   and adds the brackes if not.
 
@@ -1071,7 +1087,7 @@ end;
   @return  Unchanged format string if its first time code is in square brackets
            (as in '[h]:nn:ss'), if not, the first time code is enclosed in
            square brackets.
-  }
+-------------------------------------------------------------------------------}
 function AddIntervalBrackets(AFormatString: String): String;
 var
   p: Integer;
@@ -1090,7 +1106,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates a long date format string out of a short date format string.
   Retains the order of year-month-day and the separators, but uses 4 digits
   for year and 3 digits of month.
@@ -1098,7 +1114,7 @@ end;
   @param  ADateFormat   String with date formatting code representing a
                         "short" date, such as 'dd/mm/yy'
   @return Format string modified to represent a "long" date, such as 'dd/mmm/yyyy'
-}
+-------------------------------------------------------------------------------}
 function MakeLongDateFormat(ADateFormat: String): String;
 var
   i: Integer;
@@ -1126,14 +1142,14 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Modifies the short date format such that it has a two-digit year and a two-digit
   month. Retains the order of year-month-day and the separators.
 
   @param   ADateFormat   String with date formatting codes representing a
                          "long" date, such as 'dd/mmm/yyyy'
   @return  Format string modified to represent a "short" date, such as 'dd/mm/yy'
-}
+-------------------------------------------------------------------------------}
 function MakeShortDateFormat(ADateFormat: String): String;
 var
   i: Integer;
@@ -1161,7 +1177,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates the formatstrings for the date/time codes "dm", "my", "ms" and "msz"
   out of the formatsettings.
 
@@ -1171,7 +1187,7 @@ end;
                      "ms" = minutes + seconds
                      "msz" = minutes + seconds + fractions of a second
   @return  String of formatting codes according to the parameter ACode
-}
+-------------------------------------------------------------------------------}
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
 var
@@ -1206,7 +1222,7 @@ begin
     Result := ACode;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Currency formatting strings consist of three parts, separated by
   semicolons, which are valid for positive, negative or zero values.
   Splits such a formatting string at the positions of the semicolons and
@@ -1222,8 +1238,7 @@ end;
   @param   ANegativePart  Second section of the formatting string which is valid
                           for negative numbers
   @param   AZeroPart      Third section of the formatting string for zero.
-}
-
+-------------------------------------------------------------------------------}
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
@@ -1281,14 +1296,14 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Creates a "time interval" format string having the first time code identifier
   in square brackets.
 
   @param  Src   Source format string, must be a time format string, like 'hh:nn'
   @param  Dest  Destination format string, will have the first time code element
                 of the src format string in square brackets, like '[hh]:nn'.
-}
+-------------------------------------------------------------------------------}
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 var
   L: TStrings;
@@ -1306,108 +1321,108 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Excel's unit of row heights is "twips", i.e. 1/20 point.
   Converts Twips to points.
 
   @param   AValue   Length value in twips
   @return  Value converted to points
-}
+-------------------------------------------------------------------------------}
 function TwipsToPts(AValue: Integer): Single;
 begin
   Result := AValue / 20;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts points to twips (1 twip = 1/20 point)
 
   @param   AValue   Length value in points
   @return  Value converted to twips
-}
+-------------------------------------------------------------------------------}
 function PtsToTwips(AValue: Single): Integer;
 begin
   Result := round(AValue * 20);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts centimeters to points (72 pts = 1 inch)
 
   @param   AValue  Length value in centimeters
   @return  Value converted to points
-}
+-------------------------------------------------------------------------------}
 function cmToPts(AValue: Double): Double;
 begin
   Result := AValue * 72 / 2.54;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts points to centimeters
 
   @param   AValue   Length value in points
   @return  Value converted to centimeters
-}
+-------------------------------------------------------------------------------}
 function PtsToCm(AValue: Double): Double;
 begin
   Result := AValue / 72 * 2.54;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts inches to points (72 pts = 1 inch)
 
   @param   AValue   Length value in inches
   @return  Value converted to points
-}
+-------------------------------------------------------------------------------}
 function InToPts(AValue: Double): Double;
 begin
   Result := AValue * 72;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts millimeters to points (72 pts = 1 inch)
 
   @param   AValue   Length value in millimeters
   @return  Value converted to points
-}
+-------------------------------------------------------------------------------}
 function mmToPts(AValue: Double): Double;
 begin
   Result := AValue * 72 / 25.4;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts points to millimeters
 
   @param    AValue   Length value in points
   @return   Value converted to millimeters
-}
+-------------------------------------------------------------------------------}
 function PtsToMM(AValue: Double): Double;
 begin
   Result := AValue / 72 * 25.4;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts pixels to points.
 
   @param   AValue                Length value given in pixels
   @param   AScreenPixelsPerInch  Pixels per inch of the screen
   @return  Value converted to points
-}
+-------------------------------------------------------------------------------}
 function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
 begin
   Result := (AValue / AScreenPixelsPerInch) * 72;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts points to pixels
   @param   AValue                Length value given in points
   @param   AScreenPixelsPerInch  Pixels per inch of the screen
   @return  Value converted to pixels
-}
+-------------------------------------------------------------------------------}
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer;
 begin
   Result := Round(AValue / 72 * AScreenPixelsPerInch);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a HTML length string to points. The units are assumed to be the last
   two digits of the string, such as '1.25in'
 
@@ -1416,7 +1431,7 @@ end;
                     'px' (pixels), 'pt' (points), 'in' (inches), 'mm' (millimeters),
                     'cm' (centimeters).
   @return  Extracted length in points
-}
+-------------------------------------------------------------------------------}
 function HTMLLengthStrToPts(AValue: String): Double;
 var
   units: String;
@@ -1449,13 +1464,13 @@ begin
     raise Exception.Create('Unknown length units');
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a HTML color string to a TsColorValue. Need for the ODS file format.
 
   @param   AValue         HTML color string, such as '#FF0000'
   @return  rgb color value in little endian byte-sequence. This value is
            compatible with the TColor data type of the graphics unit.
-}
+-------------------------------------------------------------------------------}
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 begin
   if AValue = '' then
@@ -1495,7 +1510,7 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts an rgb color value to a string as used in HTML code (for ods)
 
   @param   AValue          RGB color value (compatible with the TColor data type
@@ -1503,7 +1518,7 @@ end;
   @param   AExcelDialect   If TRUE, returned string is in Excels format for xlsx,
                            i.e. in AARRGGBB notation, like '00FF0000' for "red"
   @return  HTML-compatible string, like '#FF0000' (AExcelDialect = false)
-}
+-------------------------------------------------------------------------------}
 function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 type
   TRGB = record r,g,b,a: Byte end;
@@ -1517,13 +1532,13 @@ begin
     Result := Format('#%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Converts a string encoded in UTF8 to a string usable in XML. For this purpose,
   some characters must be translated.
 
   @param   AText  input string encoded as UTF8
   @return  String usable in XML with some characters replaced by the HTML codes.
-}
+-------------------------------------------------------------------------------}
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 var
   Idx:Integer;
