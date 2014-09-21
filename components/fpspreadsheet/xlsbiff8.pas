@@ -828,21 +828,6 @@ begin
 
   Result := 8;
 end;
-                 (*
-{ Writes the borders of the cell range covered by a shared formula.
-  Needs to be overridden to write the column data (2 bytes in case of BIFF8). }
-procedure TsSpreadBIFF8Writer.WriteSharedFormulaRange(AStream: TStream;
-  const ARange: TRect);
-begin
-  inherited WriteSharedFormulaRange(AStream, ARange);
-  {
-  // Index to first column
-  AStream.WriteWord(WordToLE(ARange.Left));
-  // Index to last rcolumn
-  AStream.WriteWord(WordToLE(ARange.Right));
-  }
-end;
-*)
 
 { Helper function for writing a string with 8-bit length. Overridden version
   for BIFF8. Called for writing rpn formula string tokens.

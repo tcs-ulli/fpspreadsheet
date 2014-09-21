@@ -1499,10 +1499,10 @@ begin
           // For compatibility with other formats, convert offsets back to regular indexes.
           if (rfRelRow in flags)
             then r := ACell^.Row + dr
-            else r := dr; //ACell^.SharedFormulaBase^.Row + dr;
+            else r := dr;
           if (rfRelCol in flags)
             then c := ACell^.Col + dc
-            else c := dc; //ACell^.SharedFormulaBase^.Col + dc;
+            else c := dc;
           case token of
             INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
             INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
@@ -2286,6 +2286,7 @@ procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
 var
   RPNLength: Word = 0;
   RecordSizePos, StartPos, FinalPos: Int64;
+  r1,c1,r2,c2: Cardinal;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
@@ -2459,13 +2460,13 @@ begin
 
     if UseRelAddr then
       case primaryExcelCode of
-        INT_EXCEL_TOKEN_TREFR : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_R;
-        INT_EXCEL_TOKEN_TREFV : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_V;
-        INT_EXCEL_TOKEN_TREFA : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_A;
+        INT_EXCEL_TOKEN_TREFR   : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_R;
+        INT_EXCEL_TOKEN_TREFV   : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_V;
+        INT_EXCEL_TOKEN_TREFA   : primaryExcelCode := INT_EXCEL_TOKEN_TREFN_A;
 
-        INT_EXCEL_TOKEN_TAREA_R: primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_R;
-        INT_EXCEL_TOKEN_TAREA_V: primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_V;
-        INT_EXCEL_TOKEN_TAREA_A: primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_A;
+        INT_EXCEL_TOKEN_TAREA_R : primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_R;
+        INT_EXCEL_TOKEN_TAREA_V : primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_V;
+        INT_EXCEL_TOKEN_TAREA_A : primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_A;
       end;
 
     AStream.WriteByte(primaryExcelCode);
