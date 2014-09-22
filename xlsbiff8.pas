@@ -1024,7 +1024,7 @@ end;
 *******************************************************************}
 procedure TsSpreadBIFF8Writer.WriteStyle(AStream: TStream);
 begin
-  { BIFF Record header }
+  { BIFF record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_STYLE));
   AStream.WriteWord(WordToLE(4));
 

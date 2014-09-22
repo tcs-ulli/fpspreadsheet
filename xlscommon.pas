@@ -2769,37 +2769,15 @@ var
 begin
   RPNLength := 0;
 
-  // Determine cell range covered by the shared formula in ACell.
-  // Find range of cells using this shared formula
-  r1 := ACell^.Row;   r2 := r1;
-  c1 := ACell^.Col;   c2 := c1;
-  r := r1;
-  c := c1;
-  while c <= FWorksheet.GetLastColIndex do
-  begin
-    cell := FWorksheet.FindCell(r, c);
-    if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
-      c2 := c
-    else
-      break;
-    inc(c);
-  end;
-  c := c1;
-  while r <= FWorksheet.GetLastRowIndex do
-  begin
-    cell := FWorksheet.FindCell(r, c);
-    if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
-      r2 := r
-    else
-      break;
-    inc(r);
-  end;
-
   // Write BIFF record ID and size
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_SHAREDFMLA));
   recordSizePos := AStream.Position;
   AStream.WriteWord(0); // This is the record size which is not yet known here
   startPos := AStream.Position;
+
+  // Determine (maximum) cell range covered by the shared formula in ACell.
+  // Note: it is possible that the range is not contiguous.
+  FWorksheet.FindSharedFormulaRange(ACell, r1, c1, r2, c2);
 
   // Write borders of cell range covered by the formula
   WriteSharedFormulaRange(AStream, r1, c1, r2, c2);
