@@ -2885,6 +2885,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Determines the cell block sharing the same formula which is used by a given cell
 
+  Note: the block may not be contiguous. The function returns the outer edges
+  of the range.
+
   @param   ACell  Pointer to the cell being investigated
   @param   ARow1  (output) Top row index of the shared formula block
   @param   ACol1  (outout) Left column index of the shared formula block
@@ -2912,21 +2915,17 @@ begin
   ACol1 := base^.Col;
   ACol2 := ACol1;
   // ... and go along first COLUMN to find the end of the shared formula block, ...
-  for c := ACol1+1 to GetLastColIndex do
+  for c := ACol1+1 to GetLastOccupiedColIndex do
   begin
     cell := FindCell(ARow1, c);
-    if (cell = nil) or (cell^.SharedFormulaBase <> base) then
-      break
-    else
+    if (cell <> nil) and (cell^.SharedFormulaBase = base) then
       ACol2 := c;
   end;
   // ... and go along first ROW to find the end of the shared formula block
-  for r := ARow1 + 1 to GetLastRowIndex do
+  for r := ARow1 + 1 to GetLastOccupiedRowIndex do
   begin
     cell := FindCell(r, ACol1);
-    if (cell = nil) or (cell^.SharedFormulaBase <> base) then
-      break
-    else
+    if (cell <> nil) and (cell^.SharedFormulaBase = base) then
       ARow2 := r;
   end;
 
