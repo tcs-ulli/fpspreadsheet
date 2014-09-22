@@ -5113,7 +5113,7 @@ var
   cellnode: TAVLTreeNode;
   col: PCol;
   i: Integer;
-  r, c, ic: Cardinal;
+  r, c, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
   rLast, cLast: Cardinal;
   cell, nextcell, gapcell, oldbase, newbase: PCell;
@@ -5160,7 +5160,38 @@ begin
           gapcell := GetCell(r, ACol);
           gapcell^.Mergebase := cell^.MergeBase;
         end;
+      end
+      else
+      // A shared formula block is found immediately to the left of the
+      // inserted column. If it extends to the right we have to create a new
+      // shared formula base in the upper left cell. Note: Excel does not
+      // extend the shared formula to the inserted column.
+      if cell^.SharedFormulaBase <> nil then begin
+        oldbase := cell^.SharedFormulaBase;
+        // Does it extend to the right of the new column?
+        nextcell := FindCell(r, ACol+1);
+        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = oldbase) then
+        begin
+          // Yes.
+          // It next cell is in the top row of the block we make it a shared formula base
+          if r = oldbase^.Row then
+          begin
+            newbase := nextcell;
+            nextcell^.SharedFormulaBase := nextcell;
+            nextcell^.FormulaValue := InsertColToFormula(ACol, oldbase);      // ??
+            // Note: the references are not correct here - we fix that later!
+          end;
+          // Use the new shared formulabase in all cells of the old block at the right
+          for cc := ACol+1 to cLast do
+          begin
+            cell := FindCell(r, cc);
+            if (cell = nil) or (cell^.SharedFormulaBase <> oldbase) then
+              break;
+            cell^.SharedFormulaBase := newbase;
+          end;
+        end;
       end;
+
       (*
       else
       // A shared formula block is found immediately before the inserted column
@@ -5198,6 +5229,8 @@ begin
       *)
     end;
 
+    // Fix shared formulas:
+    // A shared formula block may break into two pieces if cell references Cell references to the left and to the right of
     // Seek along the column immediately to the left of the inserted column
     c := ACol - 1;
     for r := 0 to rLast do
@@ -5228,9 +5261,9 @@ begin
           end;
           // Now link all cells to the right of the new column (which still
           // use the old base) to the new base
-          for ic := ACol+1 to cLast do
+          for cc := ACol+1 to cLast do
           begin
-            cell := FindCell(r, ic);
+            cell := FindCell(r, cc);
             if (cell = nil) or (cell^.SharedFormulaBase <> oldbase) then
               break;
             cell^.SharedFormulaBase := newbase;
