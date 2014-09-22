@@ -65,6 +65,7 @@ type
     FFillList: TFPList;
     FBorderList: TFPList;
     FThemeColors: array of TsColorValue;
+    FSharedFormulas: TStringList;
     FWrittenByFPS: Boolean;
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -395,6 +396,8 @@ begin
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
 
+  FSharedFormulas := TStringList.Create;
+
   FSharedStrings := TStringList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
@@ -418,6 +421,7 @@ begin
   FBorderList.Free;
 
   FSharedStrings.Free;
+  FSharedFormulas.Free;
 
   inherited Destroy;
 end;
@@ -610,7 +614,7 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
-  s: String;
+  addr, s: String;
   rowIndex, colIndex: Cardinal;
   cell: PCell;
   datanode: TDOMNode;
@@ -623,8 +627,8 @@ begin
     exit;
 
   // get row and column address
-  s := GetAttrValue(ANode, 'r');       // cell address, like 'A1'
-  ParseCellString(s, rowIndex, colIndex);
+  addr := GetAttrValue(ANode, 'r');       // cell address, like 'A1'
+  ParseCellString(addr, rowIndex, colIndex);
 
   // create cell
   if FIsVirtualMode then
@@ -656,11 +660,28 @@ begin
       s := GetAttrValue(datanode, 't');
       if s = 'shared' then
       begin
+        // Shared formula
         s := GetAttrValue(datanode, 'ref');
-        if (s <> '') then
-          AWorksheet.WriteSharedFormula(s, formulaStr);
+        if (s <> '') then      // This is the shared formula base
+        begin
+          s := GetAttrValue(datanode, 'si');
+          if s <> '' then
+            FSharedFormulas.AddObject(addr, Pointer(PtrInt(StrToInt(s))));
+          FWorksheet.WriteFormula(cell, formulaStr);
+          cell^.SharedFormulaBase := cell;
+          //AWorksheet.WriteSharedFormula(s, formulaStr);
+        end else
+        begin
+          s := GetAttrValue(datanode, 'si');
+          if s <> '' then
+          begin
+            s := FSharedFormulas[FSharedFormulas.IndexOfObject(Pointer(PtrInt(StrToInt(s))))];
+            cell^.SharedFormulaBase := FWorksheet.FindCell(s);
+          end;
+        end;
       end
       else
+        // "Normal" formula
         AWorksheet.WriteFormula(cell, formulaStr);
     end;
     datanode := datanode.NextSibling;
