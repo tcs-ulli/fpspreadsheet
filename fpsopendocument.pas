@@ -2185,7 +2185,7 @@ begin
               bkClr := HTMLColorStrToColor(s);
             // Borders
             s := GetAttrValue(styleChildNode, 'fo:border');
-            if (s <>'') then begin
+            if (s <>'') and (s <> 'none') then begin
               borders := borders + [cbNorth, cbSouth, cbEast, cbWest];
               SetBorderStyle(cbNorth, s);
               SetBorderStyle(cbSouth, s);
