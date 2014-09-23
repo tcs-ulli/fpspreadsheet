@@ -5508,6 +5508,10 @@ procedure TsWorkbook.PrepareBeforeReading;
 begin
   // Clear error log
   FLog.Clear;
+
+  // Abort if virtual mode is active without an event handler
+  if (boVirtualMode in FOptions) and not Assigned(FOnReadCellData) then
+    raise Exception.Create('[TsWorkbook.PrepareBeforeReading] Event handler "OnReadCellData" required for virtual mode.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5532,6 +5536,10 @@ begin
   if (boCalcBeforeSaving in FOptions) then
     for sheet in FWorksheets do
       sheet.CalcFormulas;
+
+  // Abort if virtual mode is active without an event handler
+  if (boVirtualMode in FOptions) and not Assigned(FOnWriteCellData) then
+    raise Exception.Create('[TsWorkbook.PrepareBeforeWriting] Event handler "OnWriteCellData" required for virtual mode.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5701,13 +5709,16 @@ var
   i: Integer;
   sheet: TsWorksheet;
 begin
-  if (boVirtualMode in Options) then begin
+  if (boVirtualMode in Options) then
+  begin
     ALastRow := FVirtualRowCount - 1;
     ALastCol := FVirtualColCount - 1;
-  end else begin
+  end else
+  begin
     ALastRow := 0;
     ALastCol := 0;
-    for i:=0 to GetWorksheetCount-1 do begin
+    for i:=0 to GetWorksheetCount-1 do
+    begin
       sheet := GetWorksheetByIndex(i);
       ALastRow := Max(ALastRow, sheet.GetLastRowIndex);
       ALastCol := Max(ALastCol, sheet.GetLastColIndex);
@@ -5890,10 +5901,12 @@ var
   valid: Boolean;
 begin
   valid := GetFormatFromFileName(AFileName, SheetType);
-  if valid then WriteToFile(AFileName, SheetType, AOverwriteExisting)
-  else raise Exception.Create(Format(
-    '[TsWorkbook.WriteToFile] Attempt to save a spreadsheet by extension, ' +
-    'but the extension %s is not valid.', [ExtractFileExt(AFileName)]));
+  if valid then
+    WriteToFile(AFileName, SheetType, AOverwriteExisting)
+  else
+    raise Exception.Create(Format(
+      '[TsWorkbook.WriteToFile] Attempt to save a spreadsheet by extension, ' +
+      'but the extension %s is not valid.', [ExtractFileExt(AFileName)]));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6137,7 +6150,8 @@ var
   i: Integer;
 begin
   RemoveAllFonts;
-  for i:=0 to ASource.Count-1 do begin
+  for i:=0 to ASource.Count-1 do
+  begin
     fnt := TsFont(ASource.Items[i]);
     AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   end;
@@ -6153,7 +6167,8 @@ procedure TsWorkbook.DeleteFont(AFontIndex: Integer);
 var
   fnt: TsFont;
 begin
-  if AFontIndex < FFontList.Count then begin
+  if AFontIndex < FFontList.Count then
+  begin
     fnt := TsFont(FFontList.Items[AFontIndex]);
     if fnt <> nil then fnt.Free;
     FFontList.Delete(AFontIndex);
@@ -6175,7 +6190,8 @@ function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
 var
   fnt: TsFont;
 begin
-  for Result := 0 to FFontList.Count-1 do begin
+  for Result := 0 to FFontList.Count-1 do
+  begin
     fnt := TsFont(FFontList.Items[Result]);
     if (fnt <> nil) and
        SameText(AFontName, fnt.FontName) and
@@ -6204,7 +6220,8 @@ var
   fntSize: Single;
 begin
   // Memorize old default font
-  with TsFont(FFontList.Items[0]) do begin
+  with TsFont(FFontList.Items[0]) do
+  begin
     fntName := FontName;
     fntSize := Size;
   end;
@@ -6232,7 +6249,8 @@ var
   i: Integer;
   fnt: TsFont;
 begin
-  for i:=FFontList.Count-1 downto 0 do begin
+  for i:=FFontList.Count-1 downto 0 do
+  begin
     fnt := TsFont(FFontList.Items[i]);
     fnt.Free;
     FFontList.Delete(i);
@@ -6251,13 +6269,13 @@ begin
   if FFontList.Count = 0 then
     AddFont(AFontName, ASize, [], scBlack)
   else
-  for i:=0 to FBuiltinFontCount-1 do begin
+  for i:=0 to FBuiltinFontCount-1 do
     if (i <> 4) and (i < FFontList.Count) then
-      with TsFont(FFontList[i]) do begin
+      with TsFont(FFontList[i]) do
+      begin
         FontName := AFontName;
         Size := ASize;
       end;
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6462,10 +6480,12 @@ begin
   Result := scNotDefined;
   minDist := 1E108;
   n := Min(Length(FPalette), AMaxPaletteCount);
-  for i:=0 to n-1 do begin
+  for i:=0 to n-1 do
+  begin
     rgb := TRGBA(GetPaletteColor(i));
     dist := sqr(rgb.r - rgb0.r) + sqr(rgb.g - rgb0.g) + sqr(rgb.b - rgb0.b);
-    if dist < minDist then begin
+    if dist < minDist then
+    begin
       Result := i;
       minDist := dist;
     end;
@@ -6486,11 +6506,13 @@ var
   colorvalue: TsColorValue;
   r,g,b: Byte;
 begin
-  if AColor = scRGBColor then begin
+  if AColor = scRGBColor then
+  begin
     r := ARGBColor.Red div $100;
     g := ARGBColor.Green div $100;
     b := ARGBColor.Blue div $100;
-  end else begin
+  end else
+  begin
     colorvalue := GetPaletteColor(AColor);
     r := TRgba(colorvalue).Red;
     g := TRgba(colorvalue).Green;
@@ -6583,7 +6605,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
 begin
-  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then begin
+  if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
+  begin
     if ((FPalette = nil) or (Length(FPalette) = 0)) then
       DEFAULT_PALETTE[AColorIndex] := AColorValue
     else
@@ -6674,7 +6697,8 @@ var
   b: TsCellBorder;
 begin
   Result := true;
-  for i:=0 to GetWorksheetCount-1 do begin
+  for i:=0 to GetWorksheetCount-1 do
+  begin
     sheet := GetWorksheetByIndex(i);
     Node := sheet.Cells.FindLowest;
     while Assigned(Node) do
@@ -6779,7 +6803,8 @@ end;
 function TsCustomNumFormatList.AddFormat(AFormatName, AFormatString: String;
   ANumFormat: TsNumberFormat): Integer;
 begin
-  if (AFormatString = '') and (ANumFormat <> nfGeneral) then begin
+  if (AFormatString = '') and (ANumFormat <> nfGeneral) then
+  begin
     Result := 0;
     exit;
   end;
@@ -6900,7 +6925,8 @@ var
   i: Integer;
 begin
   i := FindByIndex(AFormatIndex);
-  if i > 0 then begin
+  if i > 0 then
+  begin
     lFormatData := Items[i];
     fmt := lFormatData.FormatString;
   end else
@@ -6909,10 +6935,12 @@ begin
   // Analyzes the format string and tries to convert it to fpSpreadsheet format.
   parser := TsNumFormatParser.Create(Workbook, fmt);
   try
-    if parser.Status = psOK then begin
+    if parser.Status = psOK then
+    begin
       ANumFormat := parser.NumFormat;
       AFormatString := parser.FormatString[nfdDefault];
-    end else begin
+    end else
+    begin
       //  Show an error here?
     end;
   finally
@@ -6970,7 +6998,8 @@ function TsCustomNumFormatList.Find(ANumFormat: TsNumberFormat;
 var
   item: TsNumFormatData;
 begin
-  for Result := Count-1 downto 0 do begin
+  for Result := Count-1 downto 0 do
+  begin
     item := Items[Result];
     if (item <> nil) and (item.NumFormat = ANumFormat) and (item.FormatString = AFormatString)
       then exit;
@@ -6991,7 +7020,8 @@ var
 begin
   { We search backwards to find user-defined items first. They usually are
     more appropriate than built-in items. }
-  for Result := Count-1 downto 0 do begin
+  for Result := Count-1 downto 0 do
+  begin
     item := Items[Result];
     if item.FormatString = AFormatString then
       exit;
@@ -7011,7 +7041,8 @@ function TsCustomNumFormatList.FindByIndex(AFormatIndex: Integer): integer;
 var
   item: TsNumFormatData;
 begin
-  for Result := 0 to Count-1 do begin
+  for Result := 0 to Count-1 do
+  begin
     item := Items[Result];
     if item.Index = AFormatIndex then
       exit;
@@ -7033,7 +7064,8 @@ function TsCustomNumFormatList.FindByName(AFormatName: String): integer;
 var
   item: TsNumFormatData;
 begin
-  for Result := 0 to Count-1 do begin
+  for Result := 0 to Count-1 do
+  begin
     item := Items[Result];
     if item.Name = AFormatName then
       exit;
@@ -7071,7 +7103,8 @@ var
   nf: TsNumberFormat;
 begin
   item := Items[AIndex];
-  if item <> nil then begin
+  if item <> nil then
+  begin
     Result := item.FormatString;
     nf := item.NumFormat;
     ConvertBeforeWriting(Result, nf);
@@ -7095,7 +7128,8 @@ var
   item: TsNumFormatData;
 begin
   item := GetItem(AIndex);
-  if item <> nil then begin
+  if item <> nil then
+  begin
     item.Free;
     SetItem(AIndex, nil);
   end;
@@ -7355,7 +7389,8 @@ begin
   Result := -1;
 
   n := Length(FFormattingStyles);
-  for i := n - 1 downto 0 do begin
+  for i := n - 1 downto 0 do
+  begin
     if (FFormattingStyles[i].UsedFormattingFields <> AFormat^.UsedFormattingFields) then Continue;
 
     if uffHorAlign in AFormat^.UsedFormattingFields then
@@ -7370,7 +7405,8 @@ begin
     if uffBorder in AFormat^.UsedFormattingFields then begin
       if (FFormattingStyles[i].Border <> AFormat^.Border) then Continue;
       equ := true;
-      for b in TsCellBorder do begin
+      for b in TsCellBorder do
+      begin
         if FFormattingStyles[i].BorderStyles[b].LineStyle <> AFormat^.BorderStyles[b].LineStyle
         then begin
           equ := false;
@@ -7388,7 +7424,8 @@ begin
     if uffBackgroundColor in AFormat^.UsedFormattingFields then
       if (FFormattingStyles[i].BackgroundColor <> FixColor(AFormat^.BackgroundColor)) then Continue;
 
-    if uffNumberFormat in AFormat^.UsedFormattingFields then begin
+    if uffNumberFormat in AFormat^.UsedFormattingFields then
+    begin
       if (FFormattingStyles[i].NumberFormat <> AFormat^.NumberFormat) then Continue;
       if (FFormattingStyles[i].NumberFormatStr <> AFormat^.NumberFormatStr) then Continue;
     end;
@@ -7466,12 +7503,14 @@ end;
 procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
   out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal);
 begin
-  if (boVirtualMode in AWorksheet.Workbook.Options) then begin
+  if (boVirtualMode in AWorksheet.Workbook.Options) then
+  begin
     AFirstRow := 0;
     AFirstCol := 0;
     ALastRow := AWorksheet.Workbook.VirtualRowCount-1;
     ALastCol := AWorksheet.Workbook.VirtualColCount-1;
-  end else begin
+  end else
+  begin
     Workbook.UpdateCaches;
     AFirstRow := AWorksheet.GetFirstRowIndex;
     AFirstCol := AWorksheet.GetFirstColIndex;
@@ -7675,7 +7714,7 @@ var
   AVLNode: TAVLTreeNode;
 begin
   AVLNode := ACells.FindLowest;
-  While Assigned(AVLNode) do
+  while Assigned(AVLNode) do
   begin
     ACallback(PCell(AVLNode.Data), AStream);
     AVLNode := ACells.FindSuccessor(AVLNode);
@@ -7699,13 +7738,16 @@ var
   OutputFile: TStream;
   lMode: Word;
 begin
-  if AOverwriteExisting then lMode := fmCreate or fmOpenWrite
-  else lMode := fmCreate;
+  if AOverwriteExisting then
+    lMode := fmCreate or fmOpenWrite
+  else
+    lMode := fmCreate;
 
   if (boBufStream in Workbook.Options) then
     OutputFile := TBufStream.Create(AFileName, lMode)
   else
     OutputFile := TFileStream.Create(AFileName, lMode);
+
   try
     WriteToStream(OutputFile);
   finally
