@@ -32,11 +32,13 @@ type
     SharedFormulaColCount_After: Integer;
     MergedColCount: Integer;      // size of merged block before insert/delete
     MergedRowCount: Integer;
+    MergedColCount_After: Integer;  // size of merged block after insert/delete
+    MergedRowCount_After: Integer;
     SollLayout: String;
   end;
 
 var
-  InsDelTestData: array[0..39] of TInsDelTestDataItem;
+  InsDelTestData: array[0..52] of TInsDelTestDataItem;
 
   procedure InitTestData;
 
@@ -111,6 +113,25 @@ type
     procedure TestWriteRead_InsDelColRow_38_BIFF8;    // row through shared formula block
     procedure TestWriteRead_InsDelColRow_39_BIFF8;    // row with cell used in shared formula
 
+    // Writes out cell layout with merged cells
+    procedure TestWriteRead_InsDelColRow_40_BIFF8;    // no insert/delete; just test merged block
+    // ... and inserts columns
+    procedure TestWriteRead_InsDelColRow_41_BIFF8;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_42_BIFF8;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_43_BIFF8;    // column after merged block
+    // ... and inserts rows
+    procedure TestWriteRead_InsDelColRow_44_BIFF8;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_45_BIFF8;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_46_BIFF8;    // row after merged block
+    // ... and deletes columns
+    procedure TestWriteRead_InsDelColRow_47_BIFF8;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_48_BIFF8;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_49_BIFF8;    // column after merged block
+    // ... and deletes rows
+    procedure TestWriteRead_InsDelColRow_50_BIFF8;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_51_BIFF8;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_52_BIFF8;    // row after merged block
+
     // *** OOXML tests ***
 
     // Writes out simple cell layout and inserts columns
@@ -168,6 +189,25 @@ type
     procedure TestWriteRead_InsDelColRow_37_OOXML;    // row below shared formula cells
     procedure TestWriteRead_InsDelColRow_38_OOXML;    // row through shared formula block
     procedure TestWriteRead_InsDelColRow_39_OOXML;    // row with cell used in shared formula
+
+    // Writes out cell layout with merged cells
+    procedure TestWriteRead_InsDelColRow_40_OOXML;    // no insert/delete; just test merged block
+    // ... and inserts columns
+    procedure TestWriteRead_InsDelColRow_41_OOXML;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_42_OOXML;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_43_OOXML;    // column after merged block
+    // ... and inserts rows
+    procedure TestWriteRead_InsDelColRow_44_OOXML;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_45_OOXML;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_46_OOXML;    // row after merged block
+    // ... and deletes columns
+    procedure TestWriteRead_InsDelColRow_47_OOXML;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_48_OOXML;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_49_OOXML;    // column after merged block
+    // ... and deletes rows
+    procedure TestWriteRead_InsDelColRow_50_OOXML;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_51_OOXML;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_52_OOXML;    // row after merged block
 
   end;
 
@@ -1090,6 +1130,283 @@ begin
                   '67890123';;
   end;
 
+  { ---------------------------------------------------------------------------}
+  {  Layouts with merged cells                                                 }
+  { ---------------------------------------------------------------------------}
+
+  // No insert/delete, just to test the merged block
+  with InsDelTestData[40] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '12345678|'+
+                  '23456789|'+
+                  '345M 890|'+
+                  '456  901|'+
+                  '567  012|'+
+                  '67890123';
+  end;
+
+  // Insert column before merged block
+  with InsDelTestData[41] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertCol := 1;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '1 2345678|'+
+                  '2 3456789|'+
+                  '3 45M 890|'+
+                  '4 56  901|'+
+                  '5 67  012|'+
+                  '6 7890123';
+  end;
+
+  // Insert column through merged block
+  with InsDelTestData[42] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertCol := 4;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 3;
+    SollLayout := '1234 5678|'+
+                  '2345 6789|'+
+                  '345M  890|'+
+                  '456   901|'+
+                  '567   012|'+
+                  '6789 0123';
+  end;
+
+  // Insert column behind merged block
+  with InsDelTestData[43] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertCol := 7;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '1234567 8|'+
+                  '2345678 9|'+
+                  '345M 89 0|'+
+                  '456  90 1|'+
+                  '567  01 2|'+
+                  '6789012 3';
+  end;
+
+  // Insert row above merged block
+  with InsDelTestData[44] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertRow := 0;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '        |'+
+                  '12345678|'+
+                  '23456789|'+
+                  '345M 890|'+
+                  '456  901|'+
+                  '567  012|'+
+                  '67890123';
+  end;
+
+  // Insert row through merged block
+  with InsDelTestData[45] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertRow := 3;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 4;
+    MergedColCount_After := 2;
+    SollLayout := '12345678|'+
+                  '23456789|'+
+                  '345M 890|'+
+                  '        |'+
+                  '456  901|'+
+                  '567  012|'+
+                  '67890123';
+  end;
+
+  // Insert row below merged block
+  with InsDelTestData[46] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    InsertRow := 5;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '12345678|'+
+                  '23456789|'+
+                  '345M 890|'+
+                  '456  901|'+
+                  '567  012|'+
+                  '        |'+
+                  '67890123';
+  end;
+
+  // Delete column before merged block
+  with InsDelTestData[47] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    DeleteCol := 1;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '1345678|'+
+                  '2456789|'+
+                  '35M 890|'+
+                  '46  901|'+
+                  '57  012|'+
+                  '6890123';
+  end;
+
+  // Delete column through merged block
+  with InsDelTestData[48] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    DeleteCol := 4;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 1;
+    SollLayout := '1234678|'+
+                  '2345789|'+
+                  '345M890|'+
+                  '456 901|'+
+                  '567 012|'+
+                  '6789123';
+  end;
+
+  // Delete column behind merged block
+  with InsDelTestData[49] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    DeleteCol := 7;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '1234567|'+
+                  '2345678|'+
+                  '345M 89|'+
+                  '456  90|'+
+                  '567  01|'+
+                  '6789012';
+  end;
+
+  // Delete row above merged block
+  with InsDelTestData[50] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    DeleteRow := 1;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '12345678|'+
+                 // '23456789|'+
+                  '345M 890|'+
+                  '456  901|'+
+                  '567  012|'+
+                  '67890123';
+  end;
+
+  // Delete row through merged block
+  with InsDelTestData[51] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    DeleteRow := 4;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 2;
+    MergedColCount_After := 2;
+    SollLayout := '12345678|'+
+                  '23456789|'+
+                  '345M 890|'+
+                  '456  901|'+
+                //  '567  012|'+
+                  '67890123';
+  end;
+
+  // Delete row behind merged block
+  with InsDelTestData[52] do begin
+    Layout := '12345678|'+
+              '23456789|'+
+              '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
+              '456  901|'+
+              '567  012|'+
+              '67890123';
+    DeleteRow := 5;
+    MergedRowCount := 3;
+    MergedColCount := 2;
+    MergedRowCount_After := 3;
+    MergedColCount_After := 2;
+    SollLayout := '12345678|'+
+                  '23456789|'+
+                  '345M 890|'+
+                  '456  901|'+
+                  '567  012';
+  end;
 end;
 
 
@@ -1112,6 +1429,7 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   row, col: Integer;
+  r1,c1,r2,c2: Cardinal;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
   L, LL: TStringList;
@@ -1171,6 +1489,15 @@ begin
                         col + InsDelTestData[ATestIndex].SharedFormulaColCount - 1,
                         InsDelTestData[ATestIndex].Formula
                       );
+            'M'     : begin
+                        MyWorksheet.WriteUTF8Text(row, col, 'M');
+                        MyWorksheet.MergeCells(
+                          row,
+                          col,
+                          row + InsDelTestData[ATestIndex].MergedRowCount - 1,
+                          col + InsDelTestData[ATestIndex].MergedColCount - 1
+                        );
+                      end;
           end;
       end;
 
@@ -1217,9 +1544,10 @@ begin
             actual := actual + ' '
           else
             case MyCell^.ContentType of
-              cctEmpty : actual := actual + ' ';
-              cctNumber: actual := actual + IntToStr(Round(Mycell^.NumberValue));
-              cctError : actual := actual + 'E';
+              cctEmpty     : actual := actual + ' ';
+              cctNumber    : actual := actual + IntToStr(Round(Mycell^.NumberValue));
+              cctUTF8String: actual := actual + MyCell^.UTF8StringValue;
+              cctError     : actual := actual + 'E';
             end;
           if HasFormula(MyCell) then
           begin
@@ -1238,6 +1566,20 @@ begin
                 MyWorksheet.ReadFormulaAsString(MyCell),
                 'Formula mismatch, cell '+CellNotation(MyWorksheet, Row, Col)
               );
+          end;
+          if MyWorksheet.IsMerged(MyCell) then
+          begin
+            MyWorksheet.FindMergedRange(MyCell, r1, c1, r2, c2);
+            CheckEquals(
+              InsDelTestData[ATestIndex].MergedRowCount_After,
+              r2 - r1 + 1,
+              'Merged row count mismatch, cell ' + CellNotation(MyWorksheet, Row, Col)
+            );
+            CheckEquals(
+              InsDelTestData[ATestIndex].MergedColCount_After,
+              c2 - c1 + 1,
+              'Merged column count mismatch, cell '+CellNotation(MyWorksheet, Row, Col)
+            );
           end;
         end;
         CheckEquals(expected, actual,
@@ -1498,6 +1840,85 @@ begin
   TestWriteRead_InsDelColRow(39, sfExcel8);
 end;
 
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_40_BIFF8;
+// no insert/delete, just test merged cell block
+begin
+  TestWriteRead_InsDelColRow(40, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_41_BIFF8;
+// insert column before merged block
+begin
+  TestWriteRead_InsDelColRow(41, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_42_BIFF8;
+// insert column through merged block
+begin
+  TestWriteRead_InsDelColRow(42, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_43_BIFF8;
+// insert column behind merged block
+begin
+  TestWriteRead_InsDelColRow(43, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_44_BIFF8;
+// insert row above merged block
+begin
+  TestWriteRead_InsDelColRow(44, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_45_BIFF8;
+// insert row through merged block
+begin
+  TestWriteRead_InsDelColRow(45, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_46_BIFF8;
+// insert row below merged block
+begin
+  TestWriteRead_InsDelColRow(46, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_47_BIFF8;
+// delete column before merged block
+begin
+  TestWriteRead_InsDelColRow(47, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_48_BIFF8;
+// delete column through merged block
+begin
+  TestWriteRead_InsDelColRow(48, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_49_BIFF8;
+// delete column behind merged block
+begin
+  TestWriteRead_InsDelColRow(49, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_50_BIFF8;
+// delete row above merged block
+begin
+  TestWriteRead_InsDelColRow(50, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_51_BIFF8;
+// delete row through merged block
+begin
+  TestWriteRead_InsDelColRow(51, sfExcel8);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_BIFF8;
+// delete row below merged block
+begin
+  TestWriteRead_InsDelColRow(52, sfExcel8);
+end;
+
+
 
 { -----------------------------------------------------------------------------}
 {                              OOXML Tests                                     }
@@ -1741,6 +2162,84 @@ procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_39_OOXM
 // delete row with cell used in shared formula block
 begin
   TestWriteRead_InsDelColRow(39, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_40_OOXML;
+// no insert/delete, just test merged cell block
+begin
+  TestWriteRead_InsDelColRow(40, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_41_OOXML;
+// insert column before merged block
+begin
+  TestWriteRead_InsDelColRow(41, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_42_OOXML;
+// insert column through merged block
+begin
+  TestWriteRead_InsDelColRow(42, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_43_OOXML;
+// insert column behind merged block
+begin
+  TestWriteRead_InsDelColRow(43, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_44_OOXML;
+// insert row above merged block
+begin
+  TestWriteRead_InsDelColRow(44, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_45_OOXML;
+// insert row through merged block
+begin
+  TestWriteRead_InsDelColRow(45, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_46_OOXML;
+// insert row below merged block
+begin
+  TestWriteRead_InsDelColRow(46, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_47_OOXML;
+// delete column before merged block
+begin
+  TestWriteRead_InsDelColRow(47, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_48_OOXML;
+// delete column through merged block
+begin
+  TestWriteRead_InsDelColRow(48, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_49_OOXML;
+// delete column behind merged block
+begin
+  TestWriteRead_InsDelColRow(49, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_50_OOXML;
+// delete row above merged block
+begin
+  TestWriteRead_InsDelColRow(50, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_51_OOXML;
+// delete row through merged block
+begin
+  TestWriteRead_InsDelColRow(51, sfOOXML);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_OOXML;
+// delete row below merged block
+begin
+  TestWriteRead_InsDelColRow(52, sfOOXML);
 end;
 
 
