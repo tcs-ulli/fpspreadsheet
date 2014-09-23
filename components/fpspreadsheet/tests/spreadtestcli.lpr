@@ -11,10 +11,10 @@ uses
   testdbwriter {used to get results into db},
 
   {the actual tests}
-  datetests, manualtests, numberstests, stringtests, internaltests,
-  testsutility, testutils, formattests,
-  colortests, fonttests, optiontests, numformatparsertests, formulatests,
-  emptycelltests, errortests, virtualmodetests, insertdeletetests;
+  datetests, manualtests, stringtests, internaltests, testsutility, testutils,
+  formattests, colortests, emptycelltests, insertdeletetests,
+  errortests, numberstests, fonttests, formulatests, numformatparsertests,
+  optiontests, virtualmodetests;
 
 const
   ShortOpts = 'ac:dhlpr:x';

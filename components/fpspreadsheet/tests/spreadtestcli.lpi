@@ -69,7 +69,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="10">
+    <Units Count="17">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -109,8 +109,42 @@
       <Unit9>
         <Filename Value="insertdeletetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="insertdeletetests"/>
       </Unit9>
+      <Unit10>
+        <Filename Value="errortests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="errortests"/>
+      </Unit10>
+      <Unit11>
+        <Filename Value="numberstests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="numberstests"/>
+      </Unit11>
+      <Unit12>
+        <Filename Value="fonttests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="fonttests"/>
+      </Unit12>
+      <Unit13>
+        <Filename Value="formulatests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="formulatests"/>
+      </Unit13>
+      <Unit14>
+        <Filename Value="numformatparsertests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="numformatparsertests"/>
+      </Unit14>
+      <Unit15>
+        <Filename Value="optiontests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="optiontests"/>
+      </Unit15>
+      <Unit16>
+        <Filename Value="virtualmodetests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="virtualmodetests"/>
+      </Unit16>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
