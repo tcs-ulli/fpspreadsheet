@@ -501,8 +501,6 @@ type
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
 
-    function InsertColToFormula(ACol: Cardinal; ACell: PCell): String;
-
     procedure RemoveCell(ARow, ACol: Cardinal);
 
   public
@@ -687,6 +685,7 @@ type
     function FindSharedFormulaBase(ACell: PCell): PCell;
     function FindSharedFormulaRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
     procedure FixSharedFormulas;
+    procedure SplitSharedFormula(ACell: PCell);
     function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
 
     { Data manipulation methods - For Cells }
@@ -3074,6 +3073,45 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Splits a shared formula range to which the specified cell belongs into
+  individual cells. Each cell gets same the formula as it had in the block.
+  This is required because insertion and deletion of columns/rows make shared
+  formulas very complicated.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SplitSharedFormula(ACell: PCell);
+var
+  r, c: Cardinal;
+  baseRow, baseCol: Cardinal;
+  lastRow, lastCol: Cardinal;
+  cell: PCell;
+  rpnFormula: TsRPNFormula;
+begin
+  if (ACell = nil) or (ACell^.SharedFormulaBase = nil) then
+    exit;
+  lastRow := GetLastOccupiedRowIndex;
+  lastCol := GetLastOccupiedColIndex;
+  baseRow := ACell^.SharedFormulaBase^.Row;
+  baseCol := ACell^.SharedFormulaBase^.Col;
+  for r := baseRow to lastRow do
+    for c := baseCol to lastCol do
+    begin
+      cell := FindCell(r, c);
+      if (cell = nil) or (cell^.SharedFormulaBase = nil) then
+        continue;
+      if (cell^.SharedFormulaBase^.Row = baseRow) and
+         (cell^.SharedFormulaBase^.Col = baseCol) then
+      begin
+        // This method converts the shared formula to an rpn formula as seen from cell...
+        rpnFormula := BuildRPNFormula(cell);
+        // ... and this reconstructs the string formula, again as seen from cell.
+        cell^.FormulaValue := ConvertRPNFormulaToStringFormula(rpnFormula);
+        // Remove the SharedFormulaBase information --> cell is isolated.
+        cell^.SharedFormulaBase := nil;
+      end;
+    end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Defines a cell range sharing the "same" formula. Note that relative cell
   references are updated for each cell in the range.
 
@@ -5117,6 +5155,15 @@ var
   rLast, cLast: Cardinal;
   cell, nextcell, gapcell, oldbase, newbase: PCell;
 begin
+  // Handling of shared formula references is too complicated for me...
+  // Splits them into isolated cell formulas
+  cellNode := FCells.FindLowest;
+  while Assigned(cellnode) do begin
+    cell := PCell(cellNode.Data);
+    SplitSharedFormula(cell);
+    cellNode := FCells.FindSuccessor(cellnode);
+  end;
+
   // Update column index of cell records
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
@@ -5133,10 +5180,9 @@ begin
   // Update first and last column index
   UpdateCaches;
 
-  // Fix merged cells and shared formulas: If the inserted column runs through a
-  // block of merged cells or a shared formula the block is cut into two pieces.
-  // Here we fill the gap with dummy cells and set their MergeBase / SharedFormulaBase
-  // correctly.
+  // Fix merged cells: If the inserted column runs through a block of
+  // merged cells the block is cut into two pieces. Here we fill the gap
+  // with dummy cells and set their MergeBase correctly.
   if ACol > 0 then
   begin
     rLast := GetLastOccupiedRowIndex;
@@ -5158,115 +5204,6 @@ begin
           // Yes: we add a cell into the gap row and merge it with the others.
           gapcell := GetCell(r, ACol);
           gapcell^.Mergebase := cell^.MergeBase;
-        end;
-      end
-      else
-      // A shared formula block is found immediately to the left of the
-      // inserted column. If it extends to the right we have to create a new
-      // shared formula base in the upper left cell. Note: Excel does not
-      // extend the shared formula to the inserted column.
-      if cell^.SharedFormulaBase <> nil then begin
-        oldbase := cell^.SharedFormulaBase;
-        // Does it extend to the right of the new column?
-        nextcell := FindCell(r, ACol+1);
-        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = oldbase) then
-        begin
-          // Yes.
-          // It next cell is in the top row of the block we make it a shared formula base
-          if r = oldbase^.Row then
-          begin
-            newbase := nextcell;
-            nextcell^.SharedFormulaBase := nextcell;
-            nextcell^.FormulaValue := InsertColToFormula(ACol, oldbase);      // ??
-            // Note: the references are not correct here - we fix that later!
-          end;
-          // Use the new shared formulabase in all cells of the old block at the right
-          for cc := ACol+1 to cLast do
-          begin
-            cell := FindCell(r, cc);
-            if (cell = nil) or (cell^.SharedFormulaBase <> oldbase) then
-              break;
-            cell^.SharedFormulaBase := newbase;
-          end;
-        end;
-      end;
-
-      (*
-      else
-      // A shared formula block is found immediately before the inserted column
-      if cell^.SharedFormulaBase <> nil then begin
-        // Does it extend beyond the newly inserted column?
-        nextcell := FindCell(r, ACol+1);
-        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
-        begin
-          // Yes - we add a cell into the gap
-          gapcell := GetCell(r, ACol);
-          // If this is the first row of the shared formula block we must define
-          // a new shared formula because cell references may differ by 1 on both
-          // sides of the inserted column!
-          if r = cell^.SharedFormulaBase^.Row then
-          begin
-            gapcell^.SharedFormulaBase := gapcell;
-            gapcell^.FormulaValue := cell^.SharedFormulaBase.FormulaValue;
-            gapcell^.FormulaValue := InsertColToFormula(ACol, gapcell);
-            newbase := gapcell;
-          end
-          else
-            // Link to the new base
-            gapcell^.SharedFormulaBase := newbase;
-          // Link all cells to the right of the inserted column to the new base
-          for ic := ACol+1 to cLast do
-          begin
-            cell := FindCell(r, ic);
-            if cell^.SharedFormulaBase = nextcell^.SharedFormulaBase then
-              cell^.SharedFormulaBase := newbase
-            else
-              break;
-          end;
-        end;
-      end;
-      *)
-    end;
-
-    // Fix shared formulas:
-    // A shared formula block may break into two pieces if cell references Cell references to the left and to the right of
-    // Seek along the column immediately to the left of the inserted column
-    c := ACol - 1;
-    for r := 0 to rLast do
-    begin
-      cell := FindCell(r, c);
-      if not Assigned(cell) then
-        Continue;
-      // A shared formula block is found immediately to the left of the inserted column.
-      // If it extends beyond the new column we have to redefine the shared
-      // formula in the right split-off part because column offsets to the left
-      // part are greater by 1 now.
-      // Excel does not extend the shared formula into the new column, though.
-      if cell^.SharedFormulaBase <> nil then
-      begin
-        oldbase := cell^.SharedFormulaBase;
-        // Does it extend beyond the newly inserted column?
-        nextcell := FindCell(r, ACol+1);
-        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
-        begin
-          // Yes. If we are at the first row of the old shared formula block we
-          // have to define a new base in nextcell. But the formula must be
-          // corrected for the inserted column!
-          if r = cell^.SharedFormulaBase^.Row then begin
-            nextcell^.SharedFormulaBase := nextcell;
-            nextcell^.FormulaValue := cell^.SharedFormulaBase^.FormulaValue;
-            nextcell^.FormulaValue := InsertColToFormula(ACol, nextcell);
-            newbase := nextcell;
-          end;
-          // Now link all cells to the right of the new column (which still
-          // use the old base) to the new base
-          for cc := ACol+1 to cLast do
-          begin
-            cell := FindCell(r, cc);
-            if (cell = nil) or (cell^.SharedFormulaBase <> oldbase) then
-              break;
-            cell^.SharedFormulaBase := newbase;
-          end;
         end;
       end;
     end;
@@ -5293,8 +5230,6 @@ begin
 
   // Update formulas
   if HasFormula(cell) and (cell^.FormulaValue <> '' ) then
-    cell^.FormulaValue := InsertColToFormula(col, cell);
-  {
   begin
     // (1) create an rpn formula
     formula := BuildRPNFormula(cell);
@@ -5314,35 +5249,6 @@ begin
     // (3) convert rpn formula back to string formula
     cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
   end;
-  }
-end;
-
-{@@ ----------------------------------------------------------------------------
-  The formula of the specified cell must be modified because a column is
-  inserted: Cell references pointing to the left of the inserted column remain
-  unchanged, but cell references pointing to the inserted column or its right
-  must have a higher column index by 1.
-  Returns the modified string formula.
--------------------------------------------------------------------------------}
-function TsWorksheet.InsertColToFormula(ACol: Cardinal; ACell: PCell): String;
-var
-  rpnFormula: TsRPNFormula;
-  i: Integer;
-begin
-  rpnFormula := BuildRPNFormula(ACell);
-  for i:=0 to Length(rpnFormula) - 1 do
-  begin
-    case rpnFormula[i].ElementKind of
-      fekCell, fekCellRef:
-        if rpnFormula[i].Col >= ACol then inc(rpnFormula[i].Col);
-      fekCellRange:
-        begin
-          if rpnFormula[i].Col >= ACol then inc(rpnFormula[i].Col);
-          if rpnFormula[i].Col2 >= ACol then inc(rpnFormula[i].Col2);
-        end;
-    end;
-  end;
-  Result := ConvertRPNFormulaToStringFormula(rpnFormula);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5360,6 +5266,15 @@ var
   r, c, cc, r1, c1, r2, c2: Cardinal;
   cell, nextcell, gapcell: PCell;
 begin
+  // Handling of shared formula references is too complicated for me...
+  // Splits them into isolated cell formulas
+  cellNode := FCells.FindLowest;
+  while Assigned(cellnode) do begin
+    cell := PCell(cellNode.Data);
+    SplitSharedFormula(cell);
+    cellNode := FCells.FindSuccessor(cellnode);
+  end;
+
   // Update row index of cell records
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
@@ -5376,10 +5291,9 @@ begin
   // Update first and last row index
   UpdateCaches;
 
-  // Fix merged cells and shared formulas: If the inserted row runs through a
-  // block of merged cells or a shared formula the block is cut into two pieces.
-  // Here we fill the gap with dummy cells and set their MergeBase / SharedFormulaBase
-  // correctly.
+  // Fix merged cells: If the inserted row runs through a block of merged
+  // cells the block is cut into two pieces. Here we fill the gap with
+  // dummy cells and set their MergeBase correctly.
   if ARow > 0 then
   begin
     r := ARow - 1;
@@ -5399,17 +5313,6 @@ begin
           // Yes: we add a cell into the gap row and merge it with the others.
           gapcell := GetCell(ARow, c);
           gapcell^.Mergebase := cell^.MergeBase;
-        end;
-      end else
-      // A shared formula block is found
-      if cell^.SharedFormulaBase <> nil then begin
-        // Does it extend beyond the newly inserted row?
-        nextcell := FindCell(ARow+1, c);
-        if Assigned(nextcell) and (nextcell^.SharedFormulaBase = cell^.SharedFormulaBase) then
-        begin
-          // Yes - we add a cell into the gap and share the formula of the base
-          gapcell := GetCell(ARow, c);
-          gapcell^.SharedFormulaBase := cell^.SharedFormulaBase;
         end;
       end;
     end;
