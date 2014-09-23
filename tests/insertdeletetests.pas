@@ -209,6 +209,82 @@ type
     procedure TestWriteRead_InsDelColRow_51_OOXML;    // row through merged block
     procedure TestWriteRead_InsDelColRow_52_OOXML;    // row after merged block
 
+    // *** OpenDocument tests ***
+
+    // Writes out simple cell layout and inserts columns
+    procedure TestWriteRead_InsDelColRow_0_ODS;     // before first
+    procedure TestWriteRead_InsDelColRow_1_ODS;     // middle
+    procedure TestWriteRead_InsDelColRow_2_ODS;     // before last
+    // Writes out simple cell layout and deletes columns
+    procedure TestWriteRead_InsDelColRow_3_ODS;     // first
+    procedure TestWriteRead_InsDelColRow_4_ODS;     // middle
+    procedure TestWriteRead_InsDelColRow_5_ODS;     // last
+    // Writes out simple cell layout and inserts rows
+    procedure TestWriteRead_InsDelColRow_6_ODS;     // before first
+    procedure TestWriteRead_InsDelColRow_7_ODS;     // middle
+    procedure TestWriteRead_InsDelColRow_8_ODS;     // before last
+    // Writes out simple cell layout and deletes rows
+    procedure TestWriteRead_InsDelColRow_9_ODS;     // first
+    procedure TestWriteRead_InsDelColRow_10_ODS;    // middle
+    procedure TestWriteRead_InsDelColRow_11_ODS;    // last
+
+    // Writes out cell layout with formula and inserts columns
+    procedure TestWriteRead_InsDelColRow_12_ODS;    // before formula cell
+    procedure TestWriteRead_InsDelColRow_13_ODS;    // after formula cell
+    // Writes out cell layout with formula and inserts rows
+    procedure TestWriteRead_InsDelColRow_14_ODS;    // before formula cell
+    procedure TestWriteRead_InsDelColRow_15_ODS;    // after formula cell
+    // Writes out cell layout with formula and deletes columns
+    procedure TestWriteRead_InsDelColRow_16_ODS;    // before formula cell
+    procedure TestWriteRead_InsDelColRow_17_ODS;    // after formula cell
+    procedure TestWriteRead_InsDelColRow_18_ODS;    // cell in formula
+    // Writes out cell layout with formula and deletes rows
+    procedure TestWriteRead_InsDelColRow_19_ODS;    // before formula cell
+    procedure TestWriteRead_InsDelColRow_20_ODS;    // after formula cell
+    procedure TestWriteRead_InsDelColRow_21_ODS;    // cell in formula
+
+    // Writes out cell layout with shared formula
+    procedure TestWriteRead_InsDelColRow_22_ODS;    // no insert/delete; just test shared formula
+    // ... and inserts columns
+    procedure TestWriteRead_InsDelColRow_23_ODS;    // column before shared formula cells
+    procedure TestWriteRead_InsDelColRow_24_ODS;    // column after shared formula cells
+    procedure TestWriteRead_InsDelColRow_25_ODS;    // column through cells addressed by shared formula
+    procedure TestWriteRead_InsDelColRow_26_ODS;    // column through shared formula block
+    procedure TestWriteRead_InsDelColRow_27_ODS;    // column behind shared formula block
+    // ... and inserts rows
+    procedure TestWriteRead_InsDelColRow_28_ODS;    // row before shared formula
+    procedure TestWriteRead_InsDelColRow_29_ODS;    // row after shared formula cells
+    procedure TestWriteRead_InsDelColRow_30_ODS;    // row through shared formula block
+    procedure TestWriteRead_InsDelColRow_31_ODS;    // row below shared formula block
+    // ... and deletes columns
+    procedure TestWriteRead_InsDelColRow_32_ODS;    // column before shared formula cells
+    procedure TestWriteRead_InsDelColRow_33_ODS;    // column after shared formula cells
+    procedure TestWriteRead_InsDelColRow_34_ODS;    // column in shared formula block, no formula cell
+    procedure TestWriteRead_InsDelColRow_35_ODS;    // column used in shared formula
+    // ... and deletes rows
+    procedure TestWriteRead_InsDelColRow_36_ODS;    // row above shared formula cells
+    procedure TestWriteRead_InsDelColRow_37_ODS;    // row below shared formula cells
+    procedure TestWriteRead_InsDelColRow_38_ODS;    // row through shared formula block
+    procedure TestWriteRead_InsDelColRow_39_ODS;    // row with cell used in shared formula
+
+    // Writes out cell layout with merged cells
+    procedure TestWriteRead_InsDelColRow_40_ODS;    // no insert/delete; just test merged block
+    // ... and inserts columns
+    procedure TestWriteRead_InsDelColRow_41_ODS;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_42_ODS;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_43_ODS;    // column after merged block
+    // ... and inserts rows
+    procedure TestWriteRead_InsDelColRow_44_ODS;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_45_ODS;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_46_ODS;    // row after merged block
+    // ... and deletes columns
+    procedure TestWriteRead_InsDelColRow_47_ODS;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_48_ODS;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_49_ODS;    // column after merged block
+    // ... and deletes rows
+    procedure TestWriteRead_InsDelColRow_50_ODS;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_51_ODS;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_52_ODS;    // row after merged block
   end;
 
 implementation
@@ -1919,7 +1995,6 @@ begin
 end;
 
 
-
 { -----------------------------------------------------------------------------}
 {                              OOXML Tests                                     }
 { -----------------------------------------------------------------------------}
@@ -2240,6 +2315,329 @@ procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_OOXM
 // delete row below merged block
 begin
   TestWriteRead_InsDelColRow(52, sfOOXML);
+end;
+
+
+{ -----------------------------------------------------------------------------}
+{                            OpenDocument Tests                                }
+{ -----------------------------------------------------------------------------}
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_0_ODS;
+// insert a column before the first one
+begin
+  TestWriteRead_InsDelColRow(0, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_1_ODS;
+// insert a column before column 2
+begin
+  TestWriteRead_InsDelColRow(1, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_2_ODS;
+// insert a column before the last one
+begin
+  TestWriteRead_InsDelColRow(2, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_3_ODS;
+// delete column 0
+begin
+  TestWriteRead_InsDelColRow(3, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_4_ODS;
+// delete column 2
+begin
+  TestWriteRead_InsDelColRow(4, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_5_ODS;
+// delete last column
+begin
+  TestWriteRead_InsDelColRow(5, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_6_ODS;
+// insert row before first one
+begin
+  TestWriteRead_InsDelColRow(6, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_7_ODS;
+// insert row before #2
+begin
+  TestWriteRead_InsDelColRow(7, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_8_ODS;
+// insert row before last one
+begin
+  TestWriteRead_InsDelColRow(8, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_9_ODS;
+// delete first row
+begin
+  TestWriteRead_InsDelColRow(9, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_10_ODS;
+// delete row #2
+begin
+  TestWriteRead_InsDelColRow(10, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_11_ODS;
+// delete last row
+begin
+  TestWriteRead_InsDelColRow(11, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_12_ODS;
+// insert column before formula cell
+begin
+  TestWriteRead_InsDelColRow(12, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_13_ODS;
+// insert column after formula cell
+begin
+  TestWriteRead_InsDelColRow(13, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_14_ODS;
+// insert row before formula cell
+begin
+  TestWriteRead_InsDelColRow(14, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_15_ODS;
+// insert row after formula cell
+begin
+  TestWriteRead_InsDelColRow(15, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_16_ODS;
+// delete column before formula cell
+begin
+  TestWriteRead_InsDelColRow(16, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_17_ODS;
+// delete column after formula cell
+begin
+  TestWriteRead_InsDelColRow(17, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_18_ODS;
+// delete column containing a cell used in formula
+begin
+  TestWriteRead_InsDelColRow(18, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_19_ODS;
+// delete row before formula cell
+begin
+  TestWriteRead_InsDelColRow(19, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_20_ODS;
+// delete row after formula cell
+begin
+  TestWriteRead_InsDelColRow(20, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_21_ODS;
+// delete row containing a cell used in formula
+begin
+  TestWriteRead_InsDelColRow(21, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_ODS;
+// no insert/delete; just test shared formula
+begin
+  TestWriteRead_InsDelColRow(22, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_ODS;
+// insert column before any cell addressed by the shared formula
+begin
+  TestWriteRead_InsDelColRow(23, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_ODS;
+// insert column after any cell addressed by the shared formula
+begin
+  TestWriteRead_InsDelColRow(24, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_ODS;
+// insert column through cells addressed by shared formula
+begin
+  TestWriteRead_InsDelColRow(25, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_ODS;
+// insert column through shared formula block
+begin
+  TestWriteRead_InsDelColRow(26, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_ODS;
+// insert column behind shared formula block
+begin
+  TestWriteRead_InsDelColRow(27, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_ODS;
+// insert row before anything affected by the shared formula
+begin
+  TestWriteRead_InsDelColRow(28, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_29_ODS;
+// insert row after shared formula cells
+begin
+  TestWriteRead_InsDelColRow(29, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_30_ODS;
+// insert row through shared formula block
+begin
+  TestWriteRead_InsDelColRow(30, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_31_ODS;
+// insert row below shared formula block
+begin
+  TestWriteRead_InsDelColRow(31, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_ODS;
+// delete column before any cell referenced by the shared formula(s)
+begin
+  TestWriteRead_InsDelColRow(32, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_ODS;
+// delete column after any cell referenced by the shared formula(s)
+begin
+  TestWriteRead_InsDelColRow(33, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_ODS;
+// delete column in shared formula block, but no formula cell affected
+begin
+  TestWriteRead_InsDelColRow(34, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_35_ODS;
+// delete column used in shared formula
+begin
+  TestWriteRead_InsDelColRow(35, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_36_ODS;
+// delete row above shared formula and the used cells
+begin
+  TestWriteRead_InsDelColRow(36, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_37_ODS;
+// delete row below shared formula and the used cells
+begin
+  TestWriteRead_InsDelColRow(37, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_38_ODS;
+// delete row through shared formula block
+begin
+  TestWriteRead_InsDelColRow(38, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_39_ODS;
+// delete row with cell used in shared formula block
+begin
+  TestWriteRead_InsDelColRow(39, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_40_ODS;
+// no insert/delete, just test merged cell block
+begin
+  TestWriteRead_InsDelColRow(40, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_41_ODS;
+// insert column before merged block
+begin
+  TestWriteRead_InsDelColRow(41, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_42_ODS;
+// insert column through merged block
+begin
+  TestWriteRead_InsDelColRow(42, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_43_ODS;
+// insert column behind merged block
+begin
+  TestWriteRead_InsDelColRow(43, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_44_ODS;
+// insert row above merged block
+begin
+  TestWriteRead_InsDelColRow(44, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_45_ODS;
+// insert row through merged block
+begin
+  TestWriteRead_InsDelColRow(45, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_46_ODS;
+// insert row below merged block
+begin
+  TestWriteRead_InsDelColRow(46, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_47_ODS;
+// delete column before merged block
+begin
+  TestWriteRead_InsDelColRow(47, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_48_ODS;
+// delete column through merged block
+begin
+  TestWriteRead_InsDelColRow(48, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_49_ODS;
+// delete column behind merged block
+begin
+  TestWriteRead_InsDelColRow(49, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_50_ODS;
+// delete row above merged block
+begin
+  TestWriteRead_InsDelColRow(50, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_51_ODS;
+// delete row through merged block
+begin
+  TestWriteRead_InsDelColRow(51, sfOpenDocument);
+end;
+
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_ODS;
+// delete row below merged block
+begin
+  TestWriteRead_InsDelColRow(52, sfOpenDocument);
 end;
 
 
