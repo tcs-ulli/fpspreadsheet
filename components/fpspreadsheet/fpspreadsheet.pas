@@ -2941,8 +2941,8 @@ var
   r,c, r1,c1, r2,c2: Cardinal;
   cell: PCell;
 begin
-  for r := 0 to GetLastOccupiedRowIndex do
-    for c := 0 to GetlastOccupiedColIndex do
+  for r := GetFirstRowIndex to GetLastOccupiedRowIndex do
+    for c := GetFirstColIndex to GetlastOccupiedColIndex do
     begin
       cell := FindCell(r, c);
       if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
@@ -2964,9 +2964,9 @@ var
 begin
   n := 0;
   SetLength(AList, n);
-  for r := 0 to GetLastOccupiedRowIndex do
+  for r := GetFirstRowIndex to GetLastOccupiedRowIndex do
   begin
-    c := 0;
+    c := GetFirstColIndex;
     while (c <= GetLastOccupiedColIndex) do
     begin
       cell := FindCell(r, c);
@@ -4891,7 +4891,7 @@ var
   row: PRow;
 begin
   Result := 0;
-  for r := 0 to GetLastRowIndex do begin
+  for r := GetFirstRowIndex to GetLastRowIndex do begin
     cell := FindCell(r, ACol);
     if cell <> nil then
       inc(Result)
@@ -4979,13 +4979,14 @@ var
   r, c, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
   cell, nextcell, basecell: PCell;
-  lastCol, lastRow: Cardinal;
+  firstRow, lastCol, lastRow: Cardinal;
 begin
   lastCol := GetLastColIndex;
   lastRow := GetLastOccupiedRowIndex;
+  firstRow := GetFirstRowIndex;
 
   // Loop along the column to be deleted and fix merged cells and shared formulas
-  for r := 0 to lastRow do
+  for r := firstRow to lastRow do
   begin
     cell := FindCell(r, ACol);
 
@@ -5027,7 +5028,7 @@ begin
   end;
 
   // Delete cells
-  for r := lastRow downto 0 do
+  for r := lastRow downto firstRow do
     RemoveCell(r, ACol);
 
   // Update column index of cell records
@@ -5066,10 +5067,15 @@ var
   i: Integer;
   r, c, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
+  firstCol, lastCol, lastRow: Cardinal;
   cell, nextcell, basecell: PCell;
 begin
+  firstCol := GetFirstColIndex;
+  lastCol := GetLastOccupiedColIndex;
+  lastRow := GetLastOccupiedRowIndex;
+
   // Loop along the row to be deleted and fix merged cells and shared formulas
-  for c := 0 to GetLastOccupiedColIndex do
+  for c := firstCol to lastCol do
   begin
     cell := FindCell(ARow, c);
 
@@ -5098,8 +5104,8 @@ begin
       // Write adapted formula to the cell below.
       WriteFormula(nextcell, basecell^.FormulaValue); //ReadFormulaAsString(nextcell));
       // Have all cells sharing the formula use the new formula base
-      for rr := ARow+1 to GetLastOccupiedRowIndex do
-        for cc := c to GetLastOccupiedColIndex do
+      for rr := ARow+1 to lastRow do
+        for cc := c to lastCol do
         begin
           cell := FindCell(rr, cc);
           if (cell <> nil) and (cell^.SharedFormulaBase = basecell) then
@@ -5111,7 +5117,7 @@ begin
   end;
 
   // Delete cells
-  for c := GetLastColIndex downto 0 do
+  for c := lastCol downto 0 do
     RemoveCell(ARow, c);
 
   // Update row index of cell reocrds
@@ -5152,7 +5158,7 @@ var
   i: Integer;
   r, c, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
-  rLast, cLast: Cardinal;
+  rFirst, rLast, cLast: Cardinal;
   cell, nextcell, gapcell, oldbase, newbase: PCell;
 begin
   // Handling of shared formula references is too complicated for me...
@@ -5185,11 +5191,12 @@ begin
   // with dummy cells and set their MergeBase correctly.
   if ACol > 0 then
   begin
+    rFirst := GetFirstRowIndex;
     rLast := GetLastOccupiedRowIndex;
     cLast := GetlastOccupiedColIndex;
     c := ACol - 1;
     // Seek along the column immediately to the left of the inserted column
-    for r := 0 to rLast do
+    for r := rFirst to rLast do
     begin
       cell := FindCell(r, c);
       if not Assigned(cell) then
@@ -5298,7 +5305,7 @@ begin
   begin
     r := ARow - 1;
     // Seek along the row immediately above the inserted row
-    for c := 0 to GetLastOccupiedColIndex do
+    for c := GetFirstColIndex to GetLastOccupiedColIndex do
     begin
       cell := FindCell(r, c);
       if not Assigned(cell) then

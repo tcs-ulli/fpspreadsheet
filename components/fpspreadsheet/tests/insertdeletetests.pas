@@ -1505,6 +1505,7 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   row, col: Integer;
+  lastCol, lastRow: Cardinal;
   r1,c1,r2,c2: Cardinal;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
@@ -1609,10 +1610,14 @@ begin
       if MyWorksheet=nil then
         fail('Error in test code. Failed to get named worksheet');
 
-      for row := 0 to MyWorksheet.GetLastRowIndex do begin
+      lastRow := MyWorksheet.GetLastOccupiedRowIndex;
+      lastCol := MyWorksheet.GetLastOccupiedColIndex;
+
+      for row := 0 to lastRow do
+      begin
         expected := L[row];
         actual := '';
-        for col := 0 to MyWorksheet.GetLastColIndex do
+        for col := 0 to lastcol do
         begin
           MyCell := MyWorksheet.FindCell(row, col);
 
