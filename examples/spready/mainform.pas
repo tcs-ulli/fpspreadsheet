@@ -223,6 +223,7 @@ type
     PgCellValue: TTabSheet;
     PgProperties: TTabSheet;
     TabControl: TTabControl;
+    PgSheet: TTabSheet;
     ToolButton22: TToolButton;
     ToolButton23: TToolButton;
     ToolButton27: TToolButton;
@@ -873,9 +874,6 @@ begin
   // Initialize a new empty workbook
   AcNewExecute(nil);
 
-  // Initialize Inspector
-  //UpdateCellInfo(nil);
-
   ActiveControl := WorksheetGrid;
 end;
 
@@ -945,6 +943,7 @@ end;
 procedure TMainFrm.TabControlChange(Sender: TObject);
 begin
   WorksheetGrid.SelectSheetByIndex(TabControl.TabIndex);
+  WorksheetGridSelection(self, WorksheetGrid.Col, WorksheetGrid.Row);
 end;
 
 procedure TMainFrm.UpdateBackgroundColorIndex;
@@ -1017,6 +1016,23 @@ begin
         then Strings.Add('SharedFormulaBase=')
         else Strings.Add(Format('SharedFormulaBase=%s', [GetCellString(
                ACell^.SharedFormulaBase^.Row, ACell^.SharedFormulaBase^.Col)]));
+    end
+    else
+    if InspectorPageControl.ActivePage = PgSheet then
+    begin
+      if WorksheetGrid.Worksheet = nil then
+      begin
+        Strings.Add('First row=');
+        Strings.Add('Last row=');
+        Strings.Add('First column=');
+        Strings.Add('Last column=');
+      end else
+      begin
+        Strings.Add(Format('First row=%d', [WorksheetGrid.Worksheet.GetFirstRowIndex]));
+        Strings.Add(Format('Last row=%d', [WorksheetGrid.Worksheet.GetLastRowIndex]));
+        Strings.Add(Format('First column=%d', [WorksheetGrid.Worksheet.GetFirstColIndex]));
+        Strings.Add(Format('Last column=%d', [WorksheetGrid.Worksheet.GetLastColIndex]));
+      end;
     end
     else
     begin
