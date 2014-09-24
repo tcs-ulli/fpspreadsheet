@@ -829,7 +829,7 @@ var
 begin
   Result := false;
   cell := FDrawingCell;
-  if (cell = nil) or (cell^.ContentType <> cctUTF8String) then
+  if (cell = nil) or (cell^.ContentType <> cctUTF8String) then  // non-label cells do not overflow!
     exit;
   if (uffWordWrap in cell^.UsedFormattingFields) then
     exit;
@@ -844,7 +844,7 @@ begin
   else
     txtalign := haDefault;
   PrepareCanvas(ACol, ARow, AState);
-  len := Canvas.TextWidth(txt);
+  len := Canvas.TextWidth(txt) + 2*constCellPadding;
   ACol1 := ACol;
   ACol2 := ACol;
   r := GetWorksheetRow(ARow);
@@ -1546,7 +1546,6 @@ begin
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
-//        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
         if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in cell^.UsedFormattingFields) and
            (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haRight)
@@ -1572,7 +1571,6 @@ begin
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
-//        if (cell^.MergedNeighbors = []) and (cell^.ContentType = cctUTF8String) and
         if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in cell^.UsedFormattingFields) and
            (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haLeft)
@@ -1584,6 +1582,7 @@ begin
       end;
     end;
 
+    // Here begins the drawing loop of all cells in the row
     while (gc <= gcLast) do begin
       gr := ARow;
       rct := saved_rct;
@@ -1594,7 +1593,6 @@ begin
       if Assigned(FWorksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
       begin
         cell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
-        //if (cell = nil) or (cell^.MergedNeighbors = []) then begin
         if (cell = nil) or (cell^.Mergebase = nil) then
         begin
           // single cell
@@ -1628,8 +1626,6 @@ begin
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
- //       IntersectRect(rct, rct, clipArea);
-//        if rct.Left < clipArea.Left then rct.Left := clipArea.Left;
         Rs := (goRowSelect in Options);
         gds := GetGridDrawState(gc, gr);
         DoDrawCell(gc, gr);
