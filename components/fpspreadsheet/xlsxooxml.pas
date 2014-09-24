@@ -2010,21 +2010,29 @@ begin
         lCell.Row := r;
         lCell.Col := c;
         if VarIsNull(value) then
-          lCell.ContentType := cctEmpty
-        else
-        if VarIsNumeric(value) then begin
+        begin
+          if styleCell <> nil then
+            lCell.ContentType := cctEmpty
+          else
+            Continue;
+        end else
+        if VarIsNumeric(value) then
+        begin
           lCell.ContentType := cctNumber;
           lCell.NumberValue := value;
         end else
-        if VarType(value) = varDate then begin
+        if VarType(value) = varDate then
+        begin
           lCell.ContentType := cctDateTime;
           lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
         end else
-        if VarIsStr(value) then begin
+        if VarIsStr(value) then
+        begin
           lCell.ContentType := cctUTF8String;
           lCell.UTF8StringValue := VarToStrDef(value, '');
         end else
-        if VarIsBool(value) then begin
+        if VarIsBool(value) then
+        begin
           lCell.ContentType := cctBool;
           lCell.BoolValue := value <> 0;
         end;
