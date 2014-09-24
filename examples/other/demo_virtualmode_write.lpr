@@ -44,6 +44,9 @@ var
       // formatting of all virtual cells in row 0.
       // Important: The template cell must be an existing cell in the worksheet.
     end else
+    if (ACol = 0) then
+      AData := NULL     // Let's skip the column #0
+    else
     if odd(random(10)) then begin
       AData := Format('R=%d-C=%d', [ARow, ACol]);
     end else

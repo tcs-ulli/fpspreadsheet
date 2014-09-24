@@ -2869,10 +2869,10 @@ var
   lCell: TCell;
   value: variant;
   styleCell: PCell;
-
 begin
-  for r := 0 to Workbook.VirtualRowCount-1 do begin
-    for c := 0 to Workbook.VirtualColCount-1 do begin
+  for r := 0 to Workbook.VirtualRowCount-1 do
+    for c := 0 to Workbook.VirtualColCount-1 do
+    begin
       InitCell(lCell);
       value := varNull;
       styleCell := nil;
@@ -2881,21 +2881,29 @@ begin
       lCell.Row := r;
       lCell.Col := c;
       if VarIsNull(value) then
-        lCell.ContentType := cctEmpty
-      else
-      if VarIsNumeric(value) then begin
+      begin         // ignore empty cells that don't have a format
+        if styleCell <> nil then
+          lCell.ContentType := cctEmpty
+        else
+          Continue;
+      end else
+      if VarIsNumeric(value) then
+      begin
         lCell.ContentType := cctNumber;
         lCell.NumberValue := value;
       end else
-      if VarType(value) = varDate then begin
+      if VarType(value) = varDate then
+      begin
         lCell.ContentType := cctDateTime;
         lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);
       end else
-      if VarIsStr(value) then begin
+      if VarIsStr(value) then
+      begin
         lCell.ContentType := cctUTF8String;
         lCell.UTF8StringValue := VarToStrDef(value, '');
       end else
-      if VarIsBool(value) then begin
+      if VarIsBool(value) then
+      begin
         lCell.ContentType := cctBool;
         lCell.BoolValue := value <> 0;
       end else
@@ -2903,7 +2911,6 @@ begin
       WriteCellCallback(@lCell, AStream);
       value := varNULL;
     end;
-  end;
 end;
 
 { Writes an Excel 5/8 WINDOW1 record
