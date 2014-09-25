@@ -373,55 +373,162 @@ Format mediawiki:
 |}
 *)
 procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
+
+  function DoBorder(ABorder: TsCellBorder; ACell: PCell): String;
+  const
+    // (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown)
+    BORDERNAMES: array[TsCellBorder] of string =
+      ('top', 'left', 'right', 'south', '', '');
+    // (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair)
+    LINESTYLES: array[TsLineStyle] of string =
+      ('1pt solid', 'medium', 'dahsed', 'dotted', 'thick', 'double', 'dashed');
+  var
+    ls: TsLineStyle;
+    clr: TsColor;
+  begin
+    ls := ACell^.BorderStyles[ABorder].LineStyle;
+    clr := ACell^.BorderStyles[ABorder].Color;
+    Result := Format('border-%s:%s', [BORDERNAMES[ABorder], LINESTYLES[ls]]);
+    if clr <> scBlack then
+      Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr);
+  end;
+
+const
+  PIPE_CHAR: array[boolean] of String = ('|', '!');
 var
   i, j: Integer;
   lCurStr: string = '';
   lCurUsedFormatting: TsUsedFormattingFields;
   lCurColor: TsColor;
-  lColorStr: String;
+  lStyleStr: String;
+  lColSpanStr: String;
+  lRowSpanStr: String;
+  lCell: PCell;
+  lFont: TsFont;
+  horalign: TsHorAlignment;
+  vertalign: TsVertAlignment;
+  r1,c1,r2,c2: Cardinal;
+  isBold: Boolean;
 begin
   AStrings.Add('{| border="1" cellpadding="2" class="wikitable sortable"');
   FWorksheet := Workbook.GetFirstWorksheet();
   FWorksheet.UpdateCaches;
+
+  r1 := 0;
+  c1 := 0;
+  r2 := 0;
+  c2 := 0;
+
   for i := 0 to FWorksheet.GetLastRowIndex() do
   begin
     AStrings.Add('|-');
-    for j := 0 to FWorksheet.GetLastColIndex() do
+    for j := 0 to FWorksheet.GetLastColIndex do
     begin
-      lCurStr := FWorksheet.ReadAsUTF8Text(i, j);
-      lCurUsedFormatting := FWorksheet.ReadUsedFormatting(i, j);
+      lCell := FWorksheet.FindCell(i, j);
+      lCurStr := FWorksheet.ReadAsUTF8Text(lCell);
+      lStyleStr := '';
+      lColSpanStr := '';
+      lRowSpanStr := '';
+      lCurUsedFormatting := FWorksheet.ReadUsedFormatting(lCell);
 
-      if uffBackgroundColor in lCurUsedFormatting then
+      // Font
+      if (uffFont in lCurUsedFormatting) then
       begin
-        lCurColor := FWorksheet.ReadBackgroundColor(i, j);
-        case lCurColor of
-        scBlack:    lColorStr := 'style="background-color:black;color:white;"';
-        scWhite:    lColorStr := 'style="background-color:white;color:black;"';
-        scRed:      lColorStr := 'style="background-color:red;color:white;"';
-        scGREEN:    lColorStr := 'style="background-color:green;color:white;"';
-        scBLUE:     lColorStr := 'style="background-color:blue;color:white;"';
-        scYELLOW:   lColorStr := 'style="background-color:yellow;color:black;"';
-        {scMAGENTA,  // FF00FFH
-        scCYAN,     // 00FFFFH
-        scDarkRed,  // 800000H
-        scDarkGreen,// 008000H
-        scDarkBlue, // 000080H
-        scOLIVE,    // 808000H
-        scPURPLE,   // 800080H
-        scTEAL,     // 008080H
-        scSilver,   // C0C0C0H
-        scGrey,     // 808080H
-        //
-        scGrey10pct,// E6E6E6H
-        scGrey20pct // CCCCCCH  }
-        scOrange:   lColorStr := 'style="background-color:orange;color:white;"';
-        end;
-        lCurStr := lColorStr + ' |' + lCurStr;
+        lFont := FWorkbook.GetFont(lCell^.FontIndex);
+        isBold := fssBold in lFont.Style;
+      end else
+      begin
+        lFont := FWorkbook.GetDefaultFont;
+        isBold := (uffBold in lCurUsedFormatting);
       end;
 
-      if uffBold in lCurUsedFormatting then lCurStr := '!' + lCurStr
-      else lCurStr := '|' + lCurStr;
+      // Background color
+      if uffBackgroundColor in lCurUsedFormatting then
+      begin
+        lCurColor := FWorksheet.ReadBackgroundColor(lCell);
+        lStyleStr := Format('background-color:%s;color:%s;', [
+          FWorkbook.GetPaletteColorAsHTMLStr(lCurColor),
+          FWorkbook.GetPaletteColorAsHTMLStr(lFont.Color)
+        ]);
+      end;
 
+      // Horizontal alignment
+      if uffHorAlign in lCurUsedFormatting then
+      begin
+        horAlign := lCell^.HorAlignment;
+        if horAlign = haDefault then
+          case lCell^.ContentType of
+            cctNumber,
+            cctDateTime : horAlign := haRight;
+            cctBool     : horAlign := haCenter;
+            else          horAlign := haLeft;
+          end;
+        case horAlign of
+          haLeft   : ;   // cells are left-aligned by default
+          haCenter : lStyleStr := lStyleStr + 'text-align:center;';
+          haRight  : lStyleStr := lStyleStr + 'text-align:right';
+        end;
+      end;
+
+      // vertical alignment
+      if uffVertAlign in lCurUsedFormatting then
+      begin
+        vertAlign := lCell^.VertAlignment;
+        case vertAlign of
+          vaTop    : lStyleStr := lStyleStr + 'vertical-align:top;';
+          //vaCenter : lStyleStr := lStyleStr + 'vertical-align:center;';  default is center
+          vaBottom : lStyleStr := lStyleStr + 'vertical-align:bottom;';
+        end;
+      end;
+
+      // borders
+      if uffBorder in lCurUsedFormatting then
+      begin
+        if (cbWest in lCell^.Border) then
+          lStyleStr := lStyleStr + DoBorder(cbWest,lCell);
+        if (cbEast in lCell^.Border) then
+          lStyleStr := lStyleStr + DoBorder(cbEast,lCell);
+        if (cbNorth in lCell^.Border) then
+          lStyleStr := lStyleStr + DoBorder(cbNorth,lCell);
+        if (cbSouth in lCell^.Border) then
+          lStyleStr := lStyleStr + DoBorder(cbSouth,lCell);
+      end;
+
+      // Merged cells
+      if FWorksheet.IsMerged(lCell) then
+      begin
+        FWorksheet.FindMergedRange(lCell, r1, c1, r2, c2);
+        if (i = r1) and (j = c1) then
+        begin
+          if r1 < r2 then
+            lRowSpanStr := Format(' rowspan="%d"', [r2-r1+1]);
+          if c1 < c2 then
+            lColSpanStr := Format(' colspan="%d"', [c2-c1+1]);
+        end
+        else
+        if (i > r1) or (j > c1) then
+          Continue;
+      end;
+
+      // Put everything together...
+      if lStyleStr <> '' then
+        lStyleStr := Format(' style="%s"', [lStyleStr]);
+
+      if lRowSpanStr <> '' then
+        lStyleStr := lRowSpanStr + lStyleStr;
+
+      if lColSpanStr <> '' then
+        lStyleStr := lColSpanStr + lStyleStr;
+
+      if lCurStr <> '' then
+        lCurStr := ' ' + lCurStr;
+
+      if lStyleStr <> '' then
+        lCurStr := lStyleStr + ' |' + lCurStr;
+
+      lCurStr := PIPE_CHAR[isBold] + lCurStr;
+
+      // Add to list
       AStrings.Add(lCurStr);
     end;
   end;

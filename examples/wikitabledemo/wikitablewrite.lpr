@@ -42,10 +42,51 @@ begin
   // Write some cells
   MyWorksheet.WriteUTF8Text(0, 0, 'This is a text:');
   MyWorksheet.WriteUTF8Text(0, 1, 'Hello world!');
-  MyWorksheet.WriteUTF8Text(1, 0, 'This is a number:');
-  MyWorksheet.WriteNumber(1, 1, 3.141592);
-  MyWorksheet.WriteUTF8Text(2, 0, 'This is a date:');
-  Myworksheet.WriteDateTime(2, 1, date());
+
+  MyWorksheet.WriteUTF8Text(1, 0, 'This is bold text:');
+  Myworksheet.WriteUTF8Text(1, 1, 'Hello world!');
+  Myworksheet.WriteFontStyle(1, 1, [fssBold]);
+
+  MyWorksheet.WriteUTF8Text(2, 0, 'This is a number:');
+  MyWorksheet.WriteNumber(2, 1, 3.141592);
+  MyWorksheet.WriteBackgroundColor(2, 1, scMagenta);
+  Myworksheet.WriteHorAlignment(2, 1, haRight);
+
+  MyWorksheet.WriteUTF8Text(3, 0, 'This is a date:');
+  Myworksheet.WriteDateTime(3, 1, date());
+
+  MyWorksheet.WriteUTF8Text(4, 0, 'This is a long text:');
+  MyWorksheet.WriteUTF8Text(4, 1, 'A very, very, very, very long text, indeed');
+
+  MyWorksheet.WriteUTF8Text(5, 0, 'This is long text with line break:');
+  Myworksheet.WriteVertAlignment(5, 0, vaTop);
+
+  MyWorksheet.WriteUTF8Text(5, 1, 'A very, very, very, very long text,<br /> indeed');
+
+  MyWorksheet.WriteUTF8Text(6, 0, 'Merged rows');
+  Myworksheet.MergeCells(6, 0, 7, 0);
+  MyWorksheet.WriteUTF8Text(6, 1, 'A');
+  MyWorksheet.WriteUTF8Text(7, 1, 'B');
+
+  MyWorksheet.WriteUTF8Text(8, 0, 'Merged columns');
+  MyWorksheet.WriteHorAlignment(8, 0, haCenter);
+  MyWorksheet.MergeCells(8, 0, 8, 1);
+
+  MyWorksheet.WriteUTF8Text(10, 0, 'Right borders:');
+  MyWorksheet.WriteBorders(10, 0, [cbEast]);
+
+  MyWorksheet.WriteUTF8Text(10, 1, 'medium / blue');
+  MyWorksheet.WriteBorders(10, 1, [cbEast]);
+  MyWorksheet.WriteBorderLineStyle(10, 1, cbEast, lsMedium);
+  MyWorksheet.WriteBorderColor(10, 1, cbEast, scBlue);
+
+  MyWorksheet.WriteUTF8Text(11, 0, 'Top borders:');
+  MyWorksheet.WriteBorders(11, 0, [cbNorth]);
+  MyWorksheet.WriteBorderLineStyle(11, 0, cbNorth, lsDashed);
+
+  MyWorksheet.WriteUTF8Text(11, 1, '(dotted)');
+  MyWorksheet.WriteBorders(11, 1, [cbNorth]);
+  MyWorksheet.WriteBorderLineStyle(11, 1, cbNorth, lsDotted);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.wikitable_wikimedia', sfWikitable_wikimedia);

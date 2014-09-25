@@ -530,8 +530,10 @@ type
     { Reading of cell attributes }
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
       out ACurrencySymbol: String): Boolean;
-    function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
-    function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
+    function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields; overload;
+    function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields; overload;
+    function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor; overload;
+    function  ReadBackgroundColor(ACell: PCell): TsColor; overload;
 
     { Merged cells }
     procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
@@ -2671,17 +2673,26 @@ end;
   @return Set of elements used in formatting the cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
-var
-  ACell: PCell;
 begin
-  ACell := FindCell(ARow, ACol);
+  Result := ReadUsedFormatting(FindCell(ARow, ACol));
+end;
 
+{@@ ----------------------------------------------------------------------------
+  Reads the set of used formatting fields of a cell.
+
+  Each cell contains a set of "used formatting fields". Formatting is applied
+  only if the corresponding element is contained in the set.
+
+  @param  ACell   Pointer to the cell
+  @return Set of elements used in formatting the cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
+begin
   if ACell = nil then
   begin
     Result := [];
     Exit;
   end;
-
   Result := ACell^.UsedFormattingFields;
 end;
 
@@ -2693,14 +2704,21 @@ end;
   @return Index of the cell background color into the workbook's color palette
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
-var
-  ACell: PCell;
 begin
-  ACell := FindCell(ARow, ACol);
+  Result := ReadBackgroundColor(FindCell(ARow, ACol));
+end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the background color of a cell as index into the workbook's color palette.
+
+  @param  ACell  Pointer to the cell
+  @return Index of the cell background color into the workbook's color palette
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBackgroundColor(ACell: PCell): TsColor;
+begin
   if ACell = nil then
   begin
-    Result := scWhite;
+    Result := scNotDefined;
     Exit;
   end;
 
