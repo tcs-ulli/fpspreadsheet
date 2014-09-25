@@ -50,6 +50,7 @@ type
     FTextOverflow: Boolean;
     FReadFormulas: Boolean;
     FDrawingCell: PCell;
+    FTextOverflowing: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
@@ -816,6 +817,16 @@ end;
   to show the complete text.
   Ony for non-wordwrapped label cells and for horizontal orientation.
   Function returns false if text overflow needs not to be considered.
+
+  @param ACol, ARow   Column and row indexes (in grid coordinates) of the cell
+                      to be drawn
+  @param AState       GridDrawState of the cell (normal, fixed, selected etc)
+  @param ACol1,ACol2  (output) Index of the first and last column covered by the
+                      overflowing text
+  @param ARect        (output) Pixel rectangle enclosing the cell and its neighbors
+                      affected
+  @return TRUE if text overflow into neighbor cells is to be considered,
+          FALSE if not.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CellOverflow(ACol, ARow: Integer;
   AState: TGridDrawState; out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
@@ -829,11 +840,13 @@ var
 begin
   Result := false;
   cell := FDrawingCell;
-  if (cell = nil) or (cell^.ContentType <> cctUTF8String) then  // non-label cells do not overflow!
+
+  // Nothing to do in these cases (like in Excel):
+  if (cell = nil) or (cell^.ContentType <> cctUTF8String) then  // ... non-label cells
     exit;
-  if (uffWordWrap in cell^.UsedFormattingFields) then
+  if (uffWordWrap in cell^.UsedFormattingFields) then           // ... word-wrap
     exit;
-  if (uffTextRotation in cell^.UsedFormattingFields) and
+  if (uffTextRotation in cell^.UsedFormattingFields) and        // ... vertical text
      (cell^.TextRotation <> trHorizontal)
   then
     exit;
@@ -1418,9 +1431,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   This procedure is responsible for painting the focus rectangle. We don't want
   the red dashed rectangle here, but prefer the thick Excel-like black border
-  line.
-  This new focus rectangle is drawn by the method DrawSelection. To turn off the
-  red dashed rectangle DrawFocusRect is just empty.
+  line. This new focus rectangle is drawn by the method DrawSelection.
 
   @param   ACol   Grid column index of the focused cell
   @param   ARow   Grid row index of the focused cell
@@ -1457,15 +1468,18 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Draws a complete row of cells. Is mostly duplicated from Grids.pas, but adds
-  code for merged cells and overflow text.
+  code for merged cells and overflow text, the section on drawing the default
+  focus rectangle is removed.
+
+  @param  ARow  Index of the row to be drawn (index in grid coordinates)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gds: TGridDrawState;
   sr, sc, sr1,sc1,sr2,sc2: Cardinal;                        // sheet row/column
   gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
-  Rs: Boolean;
-  rct, saved_rct: TRect;
+  i: Integer;
+  rct, saved_rct, temp_rct: TRect;
   clipArea: Trect;
   cell: PCell;
   tmp: Integer;
@@ -1486,7 +1500,7 @@ var
     result := (aRect.Left < bRect.Right) and (aRect.Right > bRect.Left);
   end;
 
-  procedure DoDrawCell(_col, _row: Integer);
+  procedure DoDrawCell(_col, _row: Integer; _clipRect, _cellRect: TRect);
   var
     Rgn: HRGN;
   begin
@@ -1501,9 +1515,9 @@ var
     end;
     Canvas.SaveHandleState;
     try
-      Rgn := CreateRectRgn(rct.Left, rct.Top, rct.Right, rct.Bottom);
+      Rgn := CreateRectRgn(_clipRect.Left, _clipRect.Top, _clipRect.Right, _clipRect.Bottom);
       SelectClipRgn(Canvas.Handle, Rgn);
-      DrawCell(_col, _row, rct, gds);
+      DrawCell(_col, _row, _cellRect, gds);
       DeleteObject(Rgn);
     finally
       Canvas.RestoreHandleState;
@@ -1597,14 +1611,40 @@ begin
         begin
           // single cell
           FDrawingCell := cell;
+          // Special treatment of overflowing cells
           if FTextOverflow then
           begin
             gds := GetGridDrawState(gc, gr);
             ColRowToOffset(true, true, gc, rct.Left, rct.Right);
             if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
             begin
-              gc := gc1;
-              gcNext := gc + (gc2 - gc1) + 1;
+              // Draw individual cells of the overflown range
+              ColRowToOffset(true, true, gc1, rct.Left, tmp);    // rct is the clip rect
+              ColRowToOffset(true, true, gc2, tmp, rct.Right);
+              FDrawingCell := nil;
+              temp_rct := rct;
+              for i := gc1 to gc2 do begin
+                ColRowToOffset(true, true, i, temp_rct.Left, temp_rct.Right);
+                if HorizontalIntersect(temp_rct, clipArea) and (i <> gc) then
+                begin
+                  gds := GetGridDrawState(i, gr);
+                  DoDrawCell(i, gr, rct, temp_rct);
+                end;
+              end;
+              // Repaint the base cell text (it was partly overwritten before)
+              FDrawingCell := cell;
+              FTextOverflowing := true;
+              ColRowToOffset(true, true, gc, temp_rct.Left, temp_rct.Right);
+              if HorizontalIntersect(temp_rct, clipArea) then
+              begin
+                gds := GetGridDrawState(gc, gr);
+                DoDrawCell(gc, gr, rct, temp_rct);
+              end;
+              FTextOverflowing := false;
+
+              gcNext := gc2 + 1;
+              gc := gcNext;
+              continue;
             end;
           end;
         end
@@ -1626,29 +1666,13 @@ begin
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
-        Rs := (goRowSelect in Options);
         gds := GetGridDrawState(gc, gr);
-        DoDrawCell(gc, gr);
+        DoDrawCell(gc, gr, rct, rct);
       end;
 
       gc := gcNext;
     end;
-
-    // Draw the focus Rect
-    if FocusRectVisible and (ARow = Row) and
-      (( Rs and (ARow >= Top) and (ARow <= Bottom)) or IsCellVisible(Col, ARow))
-    then begin
-      if EditorMode then begin
-      //if EditorAlwaysShown and (FEditor<>nil) and FEditor.Visible then begin
-        //DebugLn('No Draw Focus Rect');
-      end else begin
-        ColRowToOffset(true, true, Col, rct.Left, rct.Right);
-        // is this column within the ClipRect?
-        if HorizontalIntersect(rct, clipArea) then
-          DrawFocusRect(Col, Row, rct);
-      end;
-    end;
-  end;
+  end;    // with GCache.VisibleGrid ...
 
   // Draw Fixed Columns
   gr := ARow;
@@ -1662,7 +1686,7 @@ begin
         FDrawingCell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc))
       else
         FDrawingCell := nil;
-      DoDrawCell(gc, gr);
+      DoDrawCell(gc, gr, rct, rct);
     end;
   end;
 end;
@@ -1726,14 +1750,7 @@ begin
     lCell := nil
   else
     lCell := FDrawingCell;
-    {
-  c := ACol - FHeaderCount;
-  r := ARow - FHeaderCount;
-  if (r >= 0) and (c >= 0) then
-    lCell := FWorksheet.FindCell(r, c)
-  else
-    lCell := nil;
-     }
+
   // Header
   if lCell = nil then
   begin
@@ -2631,6 +2648,7 @@ begin
     Canvas.Font.Orientation := 0;
     ts := Canvas.TextStyle;
     ts.Opaque := false;
+    ts.Clipping := not FTextOverflowing;
     if wrapped then begin
       ts.Wordbreak := true;
       ts.SingleLine := false;
