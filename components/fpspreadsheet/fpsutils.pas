@@ -136,6 +136,7 @@ function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
+function HighContrastColor(AColorValue: TsColorValue): TsColor;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
@@ -2185,6 +2186,16 @@ begin
   TRGBA(Result).a := 0;
 end;
 
+
+{@@ Returns the color index for black or white depending on a color belng "bright"
+  or "dark". }
+function HighContrastColor(AColorValue: TsColorvalue): TsColor;
+begin
+  if TRGBA(AColorValue).r + TRGBA(AColorValue).g + TRGBA(AColorValue).b < 3*128 then
+    Result := scWhite
+  else
+    Result := scBlack;
+end;
 
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }
