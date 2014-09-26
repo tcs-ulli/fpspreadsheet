@@ -112,7 +112,7 @@ type
     procedure CheckNodeType(ANode: TsExprNode; Allowed: TsResultTypes);
     // A procedure with var saves an implicit try/finally in each node
     // A marked difference in execution speed.
-    procedure GetNodeValue(var Result: TsExpressionResult); virtual; abstract;
+    procedure GetNodeValue(out Result: TsExpressionResult); virtual; abstract;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; virtual; abstract;
     function AsString: string; virtual; abstract;
@@ -160,7 +160,7 @@ type
   { TsEqualExprNode }
   TsEqualExprNode = class(TsBooleanResultExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -169,7 +169,7 @@ type
   { TsNotEqualExprNode }
   TsNotEqualExprNode = class(TsEqualExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -184,7 +184,7 @@ type
   { TsLessExprNode }
   TsLessExprNode = class(TsOrderingExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -193,7 +193,7 @@ type
   { TsGreaterExprNode }
   TsGreaterExprNode = class(TsOrderingExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -202,7 +202,7 @@ type
   { TsLessEqualExprNode }
   TsLessEqualExprNode = class(TsGreaterExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -211,7 +211,7 @@ type
   { TsGreaterEqualExprNode }
   TsGreaterEqualExprNode = class(TsLessExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -221,7 +221,7 @@ type
   TsConcatExprNode = class(TsBinaryOperationExprNode)
   protected
     procedure CheckSameNodeTypes; override;
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -241,7 +241,7 @@ type
   { TsAddExprNode }
   TsAddExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -250,7 +250,7 @@ type
   { TsSubtractExprNode }
   TsSubtractExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -259,7 +259,7 @@ type
   { TsMultiplyExprNode }
   TsMultiplyExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -268,7 +268,7 @@ type
   { TsDivideExprNode }
   TsDivideExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -278,7 +278,7 @@ type
   { TsPowerExprNode }
   TsPowerExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -305,7 +305,7 @@ type
   { TsNotExprNode }
   TsNotExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
@@ -322,7 +322,7 @@ type
   { TsIntToFloatExprNode }
   TsIntToFloatExprNode = class(TsConvertToIntExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function NodeType: TsResultType; override;
   end;
@@ -330,7 +330,7 @@ type
   { TsIntToDateTimeExprNode }
   TsIntToDateTimeExprNode = class(TsConvertToIntExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function NodeType: TsResultType; override;
   end;
@@ -338,7 +338,7 @@ type
   { TsFloatToDateTimeExprNode }
   TsFloatToDateTimeExprNode = class(TsConvertExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     procedure Check; override;
     function NodeType: TsResultType; override;
@@ -347,7 +347,7 @@ type
   { TsUPlusExprNode }
   TsUPlusExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
@@ -358,7 +358,7 @@ type
   { TsUMinusExprNode }
   TsUMinusExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
@@ -369,7 +369,7 @@ type
   { TsPercentExprNode }
   TsPercentExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
@@ -380,7 +380,7 @@ type
   { TsParenthesisExprNode }
   TsParenthesisExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
@@ -392,7 +392,7 @@ type
   private
     FValue: TsExpressionResult;
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     procedure Check; override;
     constructor CreateString(AParser: TsExpressionParser; AValue: String);
@@ -529,7 +529,7 @@ type
     PResult: PsExpressionResult;
     FResultType: TsResultType;
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor CreateIdentifier(AParser: TsExpressionParser; AID: TsExprIdentifierDef);
     function NodeType: TsResultType; override;
@@ -567,7 +567,7 @@ type
   private
     FCallBack: TsExprFunctionCallBack;
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor CreateFunction(AParser: TsExpressionParser;
       AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); override;
@@ -579,7 +579,7 @@ type
   private
     FCallBack: TsExprFunctionEvent;
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor CreateFunction(AParser: TsExpressionParser;
       AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); override;
@@ -597,7 +597,7 @@ type
   protected
     function GetCol: Cardinal;
     function GetRow: Cardinal;
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
       ACellString: String); overload;
@@ -618,7 +618,7 @@ type
     FCol1, FCol2: Cardinal;
     FFlags: TsRelFlags;
   protected
-    procedure GetNodeValue(var Result: TsExpressionResult); override;
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
       ACellRangeString: String); overload;
@@ -730,7 +730,7 @@ type
     function IdentifierByName(AName: ShortString): TsExprIdentifierDef; virtual;
     procedure Clear;
     function Evaluate: TsExpressionResult;
-    procedure EvaluateExpression(var Result: TsExpressionResult);
+    procedure EvaluateExpression(out Result: TsExpressionResult);
     function ResultType: TsResultType;
     function SharedFormulaMode: Boolean;
 
@@ -995,7 +995,6 @@ end;
 function TsExpressionScanner.DoError: TsTokenType;
 var
   C: Char;
-  s: String;
 begin
   C := CurrentChar;
   while (not IsWordDelim(C)) and (C <> cNull) do
@@ -1003,7 +1002,6 @@ begin
     FToken := FToken + C;
     C := NextPos;
   end;
-  S := UpperCase(Token);
   Result := ttError;
 end;
 
@@ -1338,7 +1336,7 @@ begin
   EvaluateExpression(Result);
 end;
 
-procedure TsExpressionParser.EvaluateExpression(var Result: TsExpressionResult);
+procedure TsExpressionParser.EvaluateExpression(out Result: TsExpressionResult);
 begin
   if (FExpression = '') then
     ParserError(SErrInExpressionEmpty);
@@ -1403,14 +1401,9 @@ begin
 end;
 
 function TsExpressionParser.IdentifierByName(AName: ShortString): TsExprIdentifierDef;
-var
-  s: String;
 begin
   if FDirty then
     CreateHashList;
-  s := FHashList.NameOfIndex(0);
-  s := FHashList.NameOfIndex(25);
-  s := FHashList.NameOfIndex(36);
   Result := TsExprIdentifierDef(FHashList.Find(UpperCase(AName)));
 end;
 
@@ -1545,7 +1538,6 @@ end;
 function TsExpressionParser.Level5: TsExprNode;
 var
   isPlus, isMinus: Boolean;
-  tt: TsTokenType;
 begin
 {$ifdef debugexpr} Writeln('Level 5 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
   isPlus := false;
@@ -2693,7 +2685,7 @@ begin
   Result := FValue.ResultType;
 end;
 
-procedure TsConstExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsConstExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Result := FValue;
 end;
@@ -2747,7 +2739,7 @@ begin
     RaiseParserError(SErrNoUPlus, [ResultTypeName(Operand.NodeType), Operand.AsString])
 end;
 
-procedure TsUPlusExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsUPlusExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
 begin
@@ -2806,7 +2798,7 @@ begin
     RaiseParserError(SErrNoNegation, [ResultTypeName(Operand.NodeType), Operand.AsString])
 end;
 
-procedure TsUMinusExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsUMinusExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
 begin
@@ -2867,7 +2859,7 @@ begin
     RaiseParserError(SErrNoPercentOperation, [ResultTypeName(Operand.NodeType), Operand.AsString])
 end;
 
-procedure TsPercentExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsPercentExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Operand.GetNodeValue(Result);
   case Result.ResultType of
@@ -2906,7 +2898,7 @@ begin
   Result := Operand.NodeType;
 end;
 
-procedure TsParenthesisExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsParenthesisExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Result := Operand.NodeValue;
 end;
@@ -2935,7 +2927,7 @@ begin
     RaiseParserError(SErrNoNotOperation, [ResultTypeName(Operand.NodeType), Operand.AsString])
 end;
 
-procedure TsNotExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsNotExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Operand.GetNodeValue(Result);
   case Result.ResultType of
@@ -2985,7 +2977,7 @@ begin
   Result := Left.AsString + '=' + Right.AsString;
 end;
 
-procedure TsEqualExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3038,7 +3030,7 @@ begin
   Result := Left.AsString + '<>' + Right.AsString;
 end;
 
-procedure TsNotEqualExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsNotEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   inherited GetNodeValue(Result);
   Result.ResBoolean := not Result.ResBoolean;
@@ -3074,7 +3066,7 @@ begin
   Result := Left.AsString + '<' + Right.AsString;
 end;
 
-procedure TsLessExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsLessExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3121,7 +3113,7 @@ begin
   Result := Left.AsString + '>' + Right.AsString;
 end;
 
-procedure TsGreaterExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsGreaterExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3168,7 +3160,7 @@ begin
   Result := Left.AsString + '>=' + Right.AsString;
 end;
 
-procedure TsGreaterEqualExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsGreaterEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   inherited GetNodeValue(Result);
   Result.ResBoolean := not Result.ResBoolean;
@@ -3191,7 +3183,7 @@ begin
   Result := Left.AsString + '<=' + Right.AsString;
 end;
 
-procedure TsLessEqualExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsLessEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   inherited GetNodeValue(Result);
   Result.ResBoolean := not Result.ResBoolean;
@@ -3225,7 +3217,7 @@ begin
   // Same node types are checked in GetNodevalue
 end;
 
-procedure TsConcatExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsConcatExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes : TsExpressionResult;
 begin
@@ -3287,7 +3279,7 @@ begin
   Result := Left.AsString + '+' + Right.AsString;
 end;
 
-procedure TsAddExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsAddExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3330,7 +3322,7 @@ begin
   Result := Left.AsString + '-' + Right.asString;
 end;
 
-procedure TsSubtractExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsSubtractExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3373,7 +3365,7 @@ begin
   Result := Left.AsString + '*' + Right.AsString;
 end;
 
-procedure TsMultiplyExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsMultiplyExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3416,7 +3408,7 @@ begin
   Result := Left.AsString + '/' + Right.asString;
 end;
 
-procedure TsDivideExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsDivideExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
   y: TsExprFloat;
@@ -3465,7 +3457,7 @@ begin
   Result := Left.AsString + '^' + Right.AsString;
 end;
 
-procedure TsPowerExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsPowerExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   RRes: TsExpressionResult;
 begin
@@ -3517,7 +3509,7 @@ begin
   CheckNodeType(Operand, [rtInteger, rtCell])
 end;
 
-procedure TsIntToFloatExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsIntToFloatExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Operand.GetNodeValue(Result);
   if Result.ResultType in [rtInteger, rtCell] then
@@ -3537,7 +3529,7 @@ begin
   Result := rtDatetime;
 end;
 
-procedure TsIntToDateTimeExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsIntToDateTimeExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Operand.GetnodeValue(Result);
   if Result.ResultType in [rtInteger, rtCell] then
@@ -3558,7 +3550,7 @@ begin
   Result := rtDateTime;
 end;
 
-procedure TsFloatToDateTimeExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsFloatToDateTimeExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Operand.GetNodeValue(Result);
   if Result.ResultType in [rtFloat, rtCell] then
@@ -3582,7 +3574,7 @@ begin
   Result := FResultType;
 end;
 
-procedure TsIdentifierExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsIdentifierExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Result := PResult^;
   Result.ResultType := FResultType;
@@ -3735,7 +3727,7 @@ begin
   FCallBack := AID.OnGetFunctionValueCallBack;
 end;
 
-procedure TsFunctionCallBackExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsFunctionCallBackExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Result.ResultType := NodeType;     // was at end!
   if Length(FArgumentParams) > 0 then
@@ -3753,7 +3745,7 @@ begin
   FCallBack := AID.OnGetFunctionValue;
 end;
 
-procedure TFPFunctionEventHandlerExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TFPFunctionEventHandlerExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
   Result.ResultType := NodeType;    // was at end
   if Length(FArgumentParams) > 0 then
@@ -3832,7 +3824,7 @@ begin
     Result := FCol;
 end;
 
-procedure TsCellExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsCellExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
 begin
@@ -3931,7 +3923,7 @@ begin
   // Nothing to check;
 end;
 
-procedure TsCellRangeExprNode.GetNodeValue(var Result: TsExpressionResult);
+procedure TsCellRangeExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   r,c: Cardinal;
   cell: PCell;
