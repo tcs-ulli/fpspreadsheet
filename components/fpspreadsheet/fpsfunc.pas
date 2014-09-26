@@ -1033,7 +1033,6 @@ var
   n: Integer;
   r, c: Cardinal;
   cell: PCell;
-  arg: TsExpressionResult;
 begin
   n := 0;
   case Args[0].ResultType of

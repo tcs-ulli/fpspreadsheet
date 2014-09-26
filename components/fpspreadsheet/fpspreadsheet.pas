@@ -28,7 +28,7 @@ type
   TsSpreadsheetFormatLimitations = record
     MaxRowCount: Cardinal;
     MaxColCount: Cardinal;
-    MaxPaletteSize: Cardinal;
+    MaxPaletteSize: Integer;
   end;
 
 const
@@ -41,6 +41,9 @@ const
   STR_WIKITABLE_WIKIMEDIA = '.wikitable_wikimedia';
 
   MAX_COL_COUNT = 65535;
+
+  DEFAULTFONTNAME = 'Arial';
+  DEFAULTFONTSIZE = 10;
 
 type
 
@@ -1770,11 +1773,11 @@ end;
 procedure TsWorksheet.DeleteColCallback(data, arg: Pointer);
 var
   cell: PCell;
-  col: PtrInt;
+  col: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
 begin
-  col := PtrInt(arg);
+  col := Cardinal(PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -1825,11 +1828,11 @@ end;
 procedure TsWorksheet.DeleteRowCallback(data, arg: Pointer);
 var
   cell: PCell;
-  row: PtrInt;
+  row: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
 begin
-  row := PtrInt(arg);
+  row := Cardinal(PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -2148,7 +2151,6 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
 var
-  AVLNode: TAVLTreeNode;
   i: Integer;
 begin
   if AForceCalculation then
@@ -2192,9 +2194,6 @@ end;
 function TsWorksheet.GetLastOccupiedColIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
-  i: Integer;
-  c: Cardinal;
-  w: Single;
 begin
   Result := 0;
   // Traverse the tree from lowest to highest.
@@ -2300,7 +2299,6 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetLastRowIndex(AForceCalculation: Boolean = false): Cardinal;
 var
-  AVLNode: TAVLTreeNode;
   i: Integer;
 begin
   if AForceCalculation then
@@ -2331,7 +2329,6 @@ end;
 function TsWorksheet.GetLastOccupiedRowIndex: Cardinal;
 var
   AVLNode: TAVLTreeNode;
-  i: Integer;
 begin
   Result := 0;
   AVLNode := FCells.FindHighest;
@@ -4994,7 +4991,7 @@ var
   cellnode: TAVLTreeNode;
   col: PCol;
   i: Integer;
-  r, c, rr, cc: Cardinal;
+  r, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
   cell, nextcell, basecell: PCell;
   firstRow, lastCol, lastRow: Cardinal;
@@ -5083,7 +5080,7 @@ var
   cellnode: TAVLTreeNode;
   row: PRow;
   i: Integer;
-  r, c, rr, cc: Cardinal;
+  c, rr, cc: Cardinal;
   r1, c1, r2, c2: Cardinal;
   firstCol, lastCol, lastRow: Cardinal;
   cell, nextcell, basecell: PCell;
@@ -5174,10 +5171,9 @@ var
   cellnode: TAVLTreeNode;
   col: PCol;
   i: Integer;
-  r, c, cc: Cardinal;
-  r1, c1, r2, c2: Cardinal;
-  rFirst, rLast, cLast: Cardinal;
-  cell, nextcell, gapcell, oldbase, newbase: PCell;
+  r, c: Cardinal;
+  rFirst, rLast: Cardinal;
+  cell, nextcell, gapcell: PCell;
 begin
   // Handling of shared formula references is too complicated for me...
   // Splits them into isolated cell formulas
@@ -5211,7 +5207,6 @@ begin
   begin
     rFirst := GetFirstRowIndex;
     rLast := GetLastOccupiedRowIndex;
-    cLast := GetlastOccupiedColIndex;
     c := ACol - 1;
     // Seek along the column immediately to the left of the inserted column
     for r := rFirst to rLast do
@@ -5240,11 +5235,11 @@ end;
 procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
 var
   cell: PCell;
-  col: PtrInt;
+  col: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
 begin
-  col := PtrInt(arg);
+  col := Cardinal(PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -5288,7 +5283,7 @@ var
   row: PRow;
   cellnode: TAVLTreeNode;
   i: Integer;
-  r, c, cc, r1, c1, r2, c2: Cardinal;
+  r, c: Cardinal;
   cell, nextcell, gapcell: PCell;
 begin
   // Handling of shared formula references is too complicated for me...
@@ -5349,11 +5344,11 @@ end;
 procedure TsWorksheet.InsertRowCallback(data, arg: Pointer);
 var
   cell: PCell;
-  row: PtrInt;
+  row: Cardinal;
   i: Integer;
   formula: TsRPNFormula;
 begin
-  row := PtrInt(arg);
+  row := Cardinal(PtrInt(arg));
   cell := PCell(data);
 
   // Update row index of moved cells
@@ -5614,7 +5609,7 @@ begin
   FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
   UseDefaultPalette;
   FFontList := TFPList.Create;
-  SetDefaultFont('Arial', 10.0);
+  SetDefaultFont(DEFAULTFONTNAME, DEFAULTFONTSIZE);
   InitFonts;
 end;
 
@@ -6572,7 +6567,6 @@ type
   TRgba = packed record R,G,B,A: Byte; end;
 var
   i: Integer;
-  c: TsColorvalue;
 begin
   // Find color value in default palette
   for i:=0 to High(DEFAULT_PALETTE) do
@@ -7200,7 +7194,7 @@ begin
   { A good starting point valid for many formats ... }
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
-  FLimitations.MaxPaletteSize := $FFFFFFFF;
+  FLimitations.MaxPaletteSize := MaxInt;
   // Number formats
   CreateNumFormatList;
 end;
@@ -7296,7 +7290,6 @@ const
   EPS = 1E-3;
 var
   r: Cardinal;
-  rLast: Cardinal;
   h: Single;
 begin
   if AWorksheet.Rows.Count <= 1 then
