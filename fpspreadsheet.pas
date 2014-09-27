@@ -3427,12 +3427,20 @@ procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
 var
   isPercent: Boolean;
   number: Double;
+  r, c: Cardinal;
 begin
   if ACell = nil then
     exit;
 
   if AValue = '' then begin
-    WriteBlank(ACell^.Row, ACell^.Col);
+    if ACell^.UsedFormattingFields = [] then
+    begin
+      r := ACell^.Row;
+      c := ACell^.Col;
+      RemoveCell(r, c);
+    end
+    else
+      WriteBlank(ACell);
     exit;
   end;
 

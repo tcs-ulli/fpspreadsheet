@@ -428,6 +428,8 @@ begin
   // Default font
   lStyleStr := '';
   lFont := FWorkbook.GetDefaultFont;
+  if lFont.FontName <> DEFAULTFONTNAME then
+    lStyleStr := lStyleStr + Format('font-family:%s;', [lFont.FontName]);
   if fssBold in lFont.Style then
     lStyleStr := lStyleStr + 'font-weight:bold;';
   if fssItalic in lFont.Style then

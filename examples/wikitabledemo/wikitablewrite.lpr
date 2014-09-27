@@ -22,11 +22,9 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.SetDefaultFont('Times New Roman', 9);
-
   MyWorksheet := MyWorkbook.AddWorksheet('Sheet');
 
-  // Use first row and column as a header
+  // Use first row and column as headers
   Myworksheet.Options := MyWorksheet.Options + [soHasFrozenPanes];
   Myworksheet.TopPaneHeight := 1;
   Myworksheet.LeftPaneWidth := 1;
