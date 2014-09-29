@@ -397,7 +397,7 @@ const
   PIPE_CHAR: array[boolean] of String = ('|', '!');
 var
   i, j: cardinal;
-  lCurStr: string = '';
+  lCurStr: ansistring = '';
   lCurUsedFormatting: TsUsedFormattingFields;
   lCurColor: TsColor;
   lStyleStr: String;
@@ -451,7 +451,15 @@ begin
     begin
       lCell := FWorksheet.FindCell(i, j);
       lCurStr := FWorksheet.ReadAsUTF8Text(lCell);
-      if lCurStr = '' then lCurStr := '&nbsp;';
+//      if lCurStr = '' then lCurStr := '&nbsp;';
+
+      // Check for invalid characters
+      if not ValidXMLText(lCurStr, false) then
+        Workbook.AddErrorMsg(
+          'Invalid character(s) in cell %s.', [
+          GetCellString(i, j)
+        ]);
+
       lStyleStr := '';
       lColSpanStr := '';
       lRowSpanStr := '';

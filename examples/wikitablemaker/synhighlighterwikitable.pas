@@ -44,11 +44,11 @@ type
     FNumberAttri: TSynHighlighterAttributes;
     FSpaceAttri: TSynHighlighterAttributes;
     FSymbolAttri: TSynHighlighterAttributes;
-    (*
     FIdentifierAttri: TSynHighlighterAttributes;
+    FStringAttri: TSynHighlighterAttributes;
+    (*
     FKeyAttri: TSynHighlighterAttributes;
     FNumberAttri: TSynHighlighterAttributes;
-    FStringAttri: TSynHighlighterAttributes;
     *)
     procedure InitIdent;
     function IdentKind(MayBe: PChar): TtkTokenKind;
@@ -59,13 +59,13 @@ type
     procedure AmpersandProc;
     procedure BarProc;
     procedure BeginProc;
-    procedure CommentProc;
     procedure CRProc;
     procedure ExclamProc;
     procedure LFProc;
     procedure IdentProc;
     procedure NullProc;
     procedure NumberProc;
+    procedure OpenBraceProc;
     procedure SpaceProc;
     procedure StringProc;
     procedure TextProc;
@@ -86,10 +86,14 @@ type
   published
     property CommentAttri: TSynHighlighterAttributes
       read FCommentAttri write FCommentAttri;
+    property IdentifierAttri: TSynHighlighterAttributes
+      read FIdentifierAttri write FIdentifierAttri;
     property NumberAttri: TSynHighlighterAttributes
       read FNumberAttri write FNumberAttri;
     property SpaceAttri: TSynHighlighterAttributes
       read FSpaceAttri write FSpaceAttri;
+    property StringAttri: TSynHighlighterAttributes
+      read FStringAttri write FStringAttri;
     property SymbolAttri: TSynHighlighterAttributes
       read FSymbolAttri write FSymbolAttri;
 
@@ -312,16 +316,19 @@ begin
   FSymbolAttri.Foreground := clPurple;
   AddAttribute(fSymbolAttri);
 
-  (*
-  fIdentifierAttri := TSynHighlighterAttributes.Create(@SYNS_AttrIdentifier, SYNS_XML_AttrIdentifier);
+  FIdentifierAttri := TSynHighlighterAttributes.Create(@SYNS_AttrIdentifier, SYNS_XML_AttrIdentifier);
+  FIdentifierAttri.Foreground := clNavy;
+  FIdentifierAttri.Style := [fsBold];
   AddAttribute(fIdentifierAttri);
 
+  FStringAttri := TSynHighlighterAttributes.Create(@SYNS_AttrString, SYNS_XML_AttrString);
+  FStringAttri.Foreground := clOlive;
+  AddAttribute(FStringAttri);
+   (*
   fKeyAttri := TSynHighlighterAttributes.Create(@SYNS_AttrKey, SYNS_XML_AttrKey);
   fKeyAttri.Style := [fsBold];
   AddAttribute(fKeyAttri);
 
-  fStringAttri := TSynHighlighterAttributes.Create(@SYNS_AttrString, SYNS_XML_AttrString);
-  AddAttribute(fStringAttri);
   *)
 
   SetAttributesOnChange(@DefHighlightChange);
@@ -362,30 +369,6 @@ begin
   end;
 end;
 
-procedure TSynWikitableSyn.CommentProc;
-begin
-  FTokenID := tkComment;
-
-  if (FLine[Run] in [#0, #10, #13]) then begin
-    FProcTable[FLine[Run]];
-    Exit;
-  end;
-
-  while not (FLine[Run] in [#0, #10, #13]) do begin
-    if (FLine[Run] = '>') and (FLine[Run - 1] = '-') and (FLine[Run - 2] = '-')
-    then begin
-      FRange := rsText;
-      inc(Run);
-      {
-      if TopHtmlCodeFoldBlockType = cfbtHtmlComment then
-        EndHtmlNodeCodeFoldBlock;
-        }
-      break;
-    end;
-    inc(Run);
-  end;
-end;
-
 procedure TSynWikiTableSyn.CRProc;
 begin
   FTokenID := tkSpace;
@@ -407,10 +390,10 @@ begin
     SYN_ATTR_SYMBOL     : Result := FSymbolAttri;
     SYN_ATTR_NUMBER     : Result := FNumberAttri;
     SYN_ATTR_WHITESPACE : Result := FSpaceAttri;
-    (*
     SYN_ATTR_IDENTIFIER : Result := FIdentifierAttri;
-    SYN_ATTR_KEYWORD    : Result := FKeyAttri;
     SYN_ATTR_STRING     : Result := FStringAttri;
+    (*
+    SYN_ATTR_KEYWORD    : Result := FKeyAttri;
     *)
   else
     Result := nil;
@@ -434,16 +417,16 @@ end;
 function TSynWikiTableSyn.GetTokenAttribute: TSynHighlighterAttributes;
 begin
   case GetTokenID of
-    tkComment   : Result := FCommentAttri;
-    tkSymbol    : Result := FSymbolAttri;
-    tkNumber    : Result := FNumberAttri;
-    tkSpace     : Result := FSpaceAttri;
+    tkComment    : Result := FCommentAttri;
+    tkSymbol     : Result := FSymbolAttri;
+    tkNumber     : Result := FNumberAttri;
+    tkSpace      : Result := FSpaceAttri;
+    tkIdentifier : Result := FIdentifierAttri;
+    tkString     : Result := FStringAttri;
     {
-    tkIdentifier: Result := FIdentifierAttri;
-    tkKey       : Result := FKeyAttri;
-    tkNumber    : Result := FNumberAttri;
-    tkString    : Result := FStringAttri;
-    tkUnknown   : Result := FIdentifierAttri;
+    tkKey        : Result := FKeyAttri;
+    tkNumber     : Result := FNumberAttri;
+    tkUnknown    : Result := FIdentifierAttri;
     }
   else
     Result := nil;
@@ -479,7 +462,7 @@ begin
   FToIdent := MayBe;
   HashKey := KeyHash(MayBe);
   if (HashKey >= 16) and (HashKey <= 275) then
-    Result := fIdentFuncTable[HashKey]()
+    Result := FIdentFuncTable[HashKey]()
   else
     Result := tkIdentifier;
 end;
@@ -574,7 +557,7 @@ begin
       '0'..'9'                    : FProcTable[ch] := @NumberProc;
       'A'..'Z', 'a'..'z', '_','@' : FProcTable[ch] := @IdentProc;
       '&'                         : FProcTable[ch] := @AmpersandProc;
-      '<'                         : FProcTable[ch] := @CommentProc;
+      '<'                         : FProcTable[ch] := @OpenBraceProc;
       '{'                         : FProcTable[ch] := @BeginProc;
       '|'                         : FProcTable[ch] := @BarProc;
       '!'                         : FProcTable[ch] := @ExclamProc;
@@ -621,7 +604,7 @@ begin
   FTokenPos := Run;
   case FRange of
     rsText    : TextProc;
-    rsComment : CommentProc;
+    rsComment : OpenBraceProc;
     else        FProcTable[FLine[Run]];
   end;
 
@@ -649,6 +632,58 @@ begin
       Break;
     Inc(Run);
   end;
+end;
+
+procedure TSynWikitableSyn.OpenBraceProc;
+begin
+  if (FLine[Run+1] = '!') and (FLine[Run+2] = '-') and (FLine[Run+3] = '-') then
+  begin
+    FTokenID := tkComment;
+    while not (FLine[Run] in [#0, #10, #13]) do begin
+      if (FLine[Run] = '>') and (FLine[Run - 1] = '-') and (FLine[Run - 2] = '-')
+      then begin
+        FRange := rsText;
+        inc(Run);
+        {
+        if TopHtmlCodeFoldBlockType = cfbtHtmlComment then
+          EndHtmlNodeCodeFoldBlock;
+          }
+        break;
+      end;
+      inc(Run);
+    end;
+  end else begin
+    FTokenID := tkSymbol;
+    while not (FLine[Run] in [#0, #10, #13]) do begin
+      if FLine[Run] = '>' then begin
+        FRange := rsText;
+        inc(Run);
+        break;
+      end;
+      inc(Run);
+    end;
+  end;
+
+(*
+  if (FLine[Run] in [#0, #10, #13]) then begin
+    FProcTable[FLine[Run]];
+    Exit;
+  end;
+
+  while not (FLine[Run] in [#0, #10, #13]) do begin
+    if (FLine[Run] = '>') and (FLine[Run - 1] = '-') and (FLine[Run - 2] = '-')
+    then begin
+      FRange := rsText;
+      inc(Run);
+      {
+      if TopHtmlCodeFoldBlockType = cfbtHtmlComment then
+        EndHtmlNodeCodeFoldBlock;
+        }
+      break;
+    end;
+    inc(Run);
+  end;
+  *)
 end;
 
 procedure TSynWikiTableSyn.SetLine(const NewValue: String; LineNumber: Integer);
