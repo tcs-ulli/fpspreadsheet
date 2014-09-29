@@ -717,7 +717,6 @@ object MainFrm: TMainFrm
           ''
         )
         VisibleSpecialChars = [vscSpace, vscTabAtLast]
-        ReadOnly = True
         SelectedColor.FrameEdges = sfeAround
         SelectedColor.BackPriority = 50
         SelectedColor.ForePriority = 50
@@ -3794,7 +3793,9 @@ object MainFrm: TMainFrm
     DefaultFilter = 'Cascading Stylesheets (*.css)|*.css'
     Enabled = False
     CommentAttri.FrameEdges = sfeAround
+    IdentifierAttri.Foreground = clOlive
     IdentifierAttri.FrameEdges = sfeAround
+    IdentifierAttri.Style = [fsBold]
     KeyAttri.FrameEdges = sfeAround
     NumberAttri.Foreground = clFuchsia
     NumberAttri.FrameEdges = sfeAround

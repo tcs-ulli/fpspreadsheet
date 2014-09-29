@@ -135,6 +135,8 @@ function HTMLLengthStrToPts(AValue: String): Double;
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
 function UTF8TextToXMLText(AText: ansistring): ansistring;
+function ValidXMLText(var AText: ansistring; ReplaceSpecialChars: Boolean = true): Boolean;
+
 function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
 function HighContrastColor(AColorValue: TsColorValue): TsColor;
 
@@ -1574,6 +1576,39 @@ begin
   end;
 
   Result:=WrkStr;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks a string for characters that are not permitted in XML strings.
+  The function returns FALSE if a character <#32 is contained (except for
+  #9, #10, #13), TRUE otherwise. Invalid characters are replaced by a box symbol.
+
+  If ReplaceSpecialChars is TRUE, some other characters are converted
+  to valid HTML codes by calling UTF8TextToXMLText
+
+  @param  AText                String to be checked. Is replaced by valid string.
+  @param  ReplaceSpecialChars  Special characters are replaced by their HTML
+                               codes (e.g. '>' --> '&gt;')
+  @return FALSE if characters < #32 were replaced, TRUE otherwise.
+-------------------------------------------------------------------------------}
+function ValidXMLText(var AText: ansistring;
+  ReplaceSpecialChars: Boolean = true): Boolean;
+const
+  BOX = #$E2#$8E#$95;
+var
+  i: Integer;
+begin
+  Result := true;
+  for i := Length(AText) downto 1 do
+    if (AText[i] < #32) and not (AText[i] in [#9, #10, #13]) then begin
+      // Replace invalid character by box symbol
+      Delete(AText, i, 1);
+      Insert(BOX, AText, i);
+//      AText[i] := '?';
+      Result := false;
+    end;
+  if ReplaceSpecialChars then
+    AText := UTF8TextToXMLText(AText);
 end;
 
 

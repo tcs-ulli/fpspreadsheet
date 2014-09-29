@@ -163,6 +163,24 @@ begin
       end;
     end;
 
+    // Test 5: cell text contains forbidden XML character
+    if (TTestFormat(AFormat) in [sfOOXML, sfOpenDocument]) then begin
+      s := #19'Standard';
+      MyWorkbook := TsWorkbook.Create;
+      try
+        MyWorksheet := MyWorkbook.AddWorksheet(ERROR_SHEET);
+        Myworksheet.WriteUTF8Text(0, 0, s);
+        TempFile := NewTempFile;
+        Myworkbook.WriteToFile(TempFile, AFormat, true);
+        ErrList.Text := MyWorkbook.ErrorMsg;
+        CheckEquals(1, ErrList.Count, 'Error count mismatch in test 5');
+      finally
+        MyWorkbook.Free;
+        DeleteFile(TempFile);
+      end;
+    end else
+      Ignore('Test 5 is no error condition for this format');
+
   finally
     ErrList.Free;
   end;

@@ -3786,6 +3786,7 @@ var
   rowsSpannedStr: String;
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
+  str: ansistring;
 begin
   Unused(AStream, ACell);
   Unused(ARow, ACol);
@@ -3806,19 +3807,22 @@ begin
   end else
     spannedStr := '';
 
+  // Check for invalid characters
+  str := AValue;
+  if not ValidXMLText(str) then
+    Workbook.AddErrorMsg(
+      'Invalid character(s) in cell %s.', [
+      GetCellString(ARow, ACol)
+    ]);
+
+  // Write it ...
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="string" %s %s>' +
       '<text:p>%s</text:p>'+
     '</table:table-cell>', [
     lStyle, spannedStr,
-    UTF8TextToXMLText(AValue)
+    str
   ]));
-      {
-  AppendToStream(AStream,
-    '<table:table-cell office:value-type="string"' + lStyle + '>' +
-      '<text:p>' + UTF8TextToXMLText(AValue) + '</text:p>' +
-    '</table:table-cell>');
-    }
 end;
 
 procedure TsSpreadOpenDocWriter.WriteNumber(AStream: TStream; const ARow,

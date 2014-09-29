@@ -170,7 +170,7 @@ type
 implementation
 
 uses
-  variants, fileutil, strutils, math, fpsStreams, fpsNumFormatParser;
+  variants, fileutil, strutils, math, lazutf8, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -2769,9 +2769,15 @@ begin
   else
     ResultingValue:=AValue;
 
+  if not ValidXMLText(ResultingValue) then
+    Workbook.AddErrorMsg(
+      'Invalid character(s) in cell %s.', [
+      GetCellString(ARow, ACol)
+    ]);
+
   AppendToStream(FSSharedStrings,
     '<si>' +
-      '<t>' + UTF8TextToXMLText(ResultingValue) + '</t>' +
+      '<t>' + ResultingValue + '</t>' +
     '</si>');
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);

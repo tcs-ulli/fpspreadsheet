@@ -593,7 +593,7 @@ begin
   // Create the syntax highlighter
   FHighlighter := TSynWikitableSyn.Create(self);
   SynEdit.Highlighter := FHighlighter;
-//  SynEdit.Highlighter := SynCSSSyn1;
+  //SynEdit.Highlighter := SynCSSSyn1;
 
   // Adjust format toolbar height, looks strange at 120 dpi
   //FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
