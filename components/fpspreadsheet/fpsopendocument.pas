@@ -2988,6 +2988,7 @@ begin
   // Now loop through all rows
   r := firstRow;
   while (r <= lastRow) do begin
+    rowsRepeated := 1;
     // Look for the row style of the current row (r)
     row := ASheet.FindRow(r);
     if row = nil then
@@ -3100,7 +3101,7 @@ begin
 
     // Next row
     inc(r, rowsRepeated);
-    rowsRepeated := 1;
+//    rowsRepeated := 1;
   end;
 end;
 

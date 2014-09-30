@@ -2917,6 +2917,7 @@ var
   r, c: Cardinal;
   cell: PCell;
   base: PCell;
+  lastCol, lastRow: Cardinal;
 begin
   base := FindSharedFormulaBase(ACell);
   if base = nil then begin
@@ -2928,15 +2929,17 @@ begin
   ARow2 := ARow1;
   ACol1 := base^.Col;
   ACol2 := ACol1;
+  lastCol := GetLastOccupiedColIndex;
+  lastRow := GetLastOccupiedRowIndex;
   // ... and go along first COLUMN to find the end of the shared formula block, ...
-  for c := ACol1+1 to GetLastOccupiedColIndex do
+  for c := ACol1+1 to lastCol do
   begin
     cell := FindCell(ARow1, c);
     if (cell <> nil) and (cell^.SharedFormulaBase = base) then
       ACol2 := c;
   end;
   // ... and go along first ROW to find the end of the shared formula block
-  for r := ARow1 + 1 to GetLastOccupiedRowIndex do
+  for r := ARow1 + 1 to lastRow do
   begin
     cell := FindCell(r, ACol1);
     if (cell <> nil) and (cell^.SharedFormulaBase = base) then
@@ -2955,9 +2958,14 @@ procedure TsWorksheet.FixSharedFormulas;
 var
   r,c, r1,c1, r2,c2: Cardinal;
   cell: PCell;
+  firstRow, firstCol, lastRow, lastCol: Cardinal;
 begin
-  for r := GetFirstRowIndex to GetLastOccupiedRowIndex do
-    for c := GetFirstColIndex to GetlastOccupiedColIndex do
+  firstRow := GetFirstRowIndex;
+  firstCol := GetFirstColIndex;
+  lastRow := GetLastOccupiedRowIndex;
+  lastCol := GetLastOccupiedColIndex;
+  for r := firstRow to lastRow do
+    for c := firstCol to lastCol do
     begin
       cell := FindCell(r, c);
       if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
@@ -2976,13 +2984,18 @@ var
   cell: PCell;
   rng: TsCellRange;
   n: Integer;
+  firstRow, firstCol, lastRow, lastCol: Cardinal;
 begin
+  firstRow := GetFirstRowIndex;
+  lastRow := GetLastOccupiedRowIndex;
+  firstCol := GetFirstColIndex;
+  lastCol := GetLastOccupiedColIndex;
   n := 0;
   SetLength(AList, n);
-  for r := GetFirstRowIndex to GetLastOccupiedRowIndex do
+  for r := firstRow to lastRow do
   begin
-    c := GetFirstColIndex;
-    while (c <= GetLastOccupiedColIndex) do
+    c := firstCol;
+    while (c <= lastCol) do
     begin
       cell := FindCell(r, c);
       if IsMergeBase(cell) then
