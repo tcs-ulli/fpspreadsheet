@@ -20,7 +20,7 @@ uses
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding;
 
 type
-  {@@ File formats suppored by fpspreadsheet }
+  {@@ File formats supported by fpspreadsheet }
   TsSpreadsheetFormat = (sfExcel2, {sfExcel3, sfExcel4,} sfExcel5, sfExcel8,
    sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
