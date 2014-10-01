@@ -69,7 +69,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="17">
+    <Units Count="18">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -85,6 +85,7 @@
       <Unit3>
         <Filename Value="testsutility.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="testsutility"/>
       </Unit3>
       <Unit4>
         <Filename Value="manualtests.pas"/>
@@ -113,17 +114,14 @@
       <Unit10>
         <Filename Value="errortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="errortests"/>
       </Unit10>
       <Unit11>
         <Filename Value="numberstests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="numberstests"/>
       </Unit11>
       <Unit12>
         <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fonttests"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
@@ -138,13 +136,16 @@
       <Unit15>
         <Filename Value="optiontests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="optiontests"/>
       </Unit15>
       <Unit16>
         <Filename Value="virtualmodetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="virtualmodetests"/>
       </Unit16>
+      <Unit17>
+        <Filename Value="dbexporttests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="dbexporttests"/>
+      </Unit17>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
