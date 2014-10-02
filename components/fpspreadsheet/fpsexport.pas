@@ -85,7 +85,6 @@ Const
   SPFSFilter = '*.xls'; //todo: add others?
   
 ResourceString
-  SErrFailedToDeleteFile = 'Failed to delete existing file: %s';
   SFPSDescription = 'Spreadsheet files';
 
 implementation
@@ -140,11 +139,12 @@ end;
 procedure TCustomFPSExport.DoAfterExecute;
 begin
   FRow:=0;
+  // Overwrite existing file similar to how dbf export does it
   case Formatsettings.ExportFormat of
-    efXLS: FSpreadSheet.WriteToFile(FFileName,sfExcel8);
-    efXLSX: FSpreadsheet.WriteToFile(FFilename,sfOOXML);
-    efODS: FSpreadSheet.WriteToFile(FFileName,sfOpenDocument);
-    efWikiTable: FSpreadSheet.WriteToFile(FFileName,sfWikitable_wikimedia);
+    efXLS: FSpreadSheet.WriteToFile(FFileName,sfExcel8,true);
+    efXLSX: FSpreadsheet.WriteToFile(FFilename,sfOOXML,true);
+    efODS: FSpreadSheet.WriteToFile(FFileName,sfOpenDocument,true);
+    efWikiTable: FSpreadSheet.WriteToFile(FFileName,sfWikitable_wikimedia,true);
     else
       ;// raise error?
   end;
