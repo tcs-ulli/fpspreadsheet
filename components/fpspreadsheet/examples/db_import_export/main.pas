@@ -293,7 +293,7 @@ begin
     FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
     FWorkbook.OnReadCellData := @ReadCellDataHandler;
     // Read the data from the spreadsheet file transparently into the dbf file
-    // The data are not permanently available in the worksheet and do occupy
+    // The data are not permanently available in the worksheet and do not occupy
     // memory there - this is virtual mode.
     FWorkbook.ReadFromFile(DataFilename, fmt);
     // We close the ImportDataset after import process has finished:
@@ -362,15 +362,15 @@ var
   fieldType: TFieldType;
 begin
   // The first row (index 0) holds the field names. We temporarily store the
-  // field names in a string list because we don't know the data types of the
-  // cell until we have not read the second row (index 1).
+  // field names in a stringlist because we don't know the data types of the
+  // cell until we have read the second row (index 1).
   if ARow = 0 then begin
     // We know that the first row contains string cells -> no further checks.
     FImportedFieldNames.Add(ADataCell^.UTF8StringValue);
   end
   else
   // We have to buffer the second row (index 1) as well. When it is fully read
-  // we can put everything together and create the dfb table.
+  // we can put everything together and create the dbf table.
   if ARow = 1 then begin
     if Length(FImportedRowCells) = 0 then
       SetLength(FImportedRowCells, FImportedFieldNames.Count);
