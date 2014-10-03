@@ -80,11 +80,11 @@ Type
 procedure RegisterFPSExportFormat;
 procedure UnRegisterFPSExportFormat;
 
-Const
+const
   SFPSExport = 'xls';
-  SPFSFilter = '*.xls'; //todo: add others?
+  SPFSExtension = '.xls'; //todo: add others?
   
-ResourceString
+resourcestring
   SFPSDescription = 'Spreadsheet files';
 
 implementation
@@ -199,12 +199,12 @@ end;
 
 procedure RegisterFPSExportFormat;
 begin
-  RegisterExportFormat(SFPSExport,SFPSDescription,SPFSFilter,TFPSExport);
+  ExportFormats.RegisterExportFormat(SFPSExport,SFPSDescription,SPFSExtension,TFPSExport);
 end;
 
 procedure UnRegisterFPSExportFormat;
 begin
-  UnregisterExportFormat(SFPSExport);
+  ExportFormats.UnregisterExportFormat(SFPSExport);
 end;
 
 { TFPSExportFormatSettings }
