@@ -599,12 +599,12 @@ const
   UNIX_XUSR = $0040;
 
   UNIX_RGRP = $0020;
-  UNIX_WGRP = $0010;
-  UNIX_XGRP = $0008;
+  {%H-}UNIX_WGRP = $0010;
+  {%H-}UNIX_XGRP = $0008;
 
   UNIX_ROTH = $0004;
-  UNIX_WOTH = $0002;
-  UNIX_XOTH = $0001;
+  {%H-}UNIX_WOTH = $0002;
+  {%H-}UNIX_XOTH = $0001;
 
   UNIX_DEFAULT = UNIX_RUSR or UNIX_WUSR or UNIX_XUSR or UNIX_RGRP or UNIX_ROTH;
 
@@ -1439,7 +1439,7 @@ procedure TZipper.SaveToFile(AFileName: string);
 var
   lStream: TFileStream;
 begin
-  lStream:=TFileStream.Create(FFileName,fmCreate);
+  lStream:=TFileStream.Create(AFileName,fmCreate);
   try
     SaveToStream(lStream);
   finally
@@ -1728,7 +1728,7 @@ Begin
         NewNode.Attributes := External_Attributes;
       ZipDateTimeToDateTime(Last_Mod_Date,Last_Mod_Time,D);
       NewNode.DateTime:=D;
-      FZipStream.Seek(Extra_Field_Length+File_Comment_Length,soCurrent);
+      FZipStream.Seek(Extra_Field_Length+File_Comment_Length, soCurrent);
       end;
    end;
 end;
@@ -1748,9 +1748,9 @@ Procedure TUnZipper.UnZipOneFile(Item : TFullZipFileEntry);
 Var
   Count, Attrs: Longint;
   ZMethod : Word;
-  LinkTargetStream: TStringStream;
+  //LinkTargetStream: TStringStream;
   OutputFileName: string;
-  FOutStream: TStream;
+  FOutStream: TStream = nil;
   IsLink: Boolean;
   IsCustomStream: Boolean;
 

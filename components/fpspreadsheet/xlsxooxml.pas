@@ -502,7 +502,7 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
 
-  function ReadBorderStyle(ANode: TDOMNode; var ABorderStyle: TsCellBorderStyle): Boolean;
+  function ReadBorderStyle(ANode: TDOMNode; out ABorderStyle: TsCellBorderStyle): Boolean;
   var
     s: String;
     colorNode: TDOMNode;

@@ -1784,7 +1784,6 @@ procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
 var
   row: Integer;
   col: Integer;
-  cell: PCell;
   cellNode, rowNode: TDOMNode;
   nodeName: String;
   paramValueType, paramFormula, tableStyleName: String;
@@ -2968,17 +2967,12 @@ var
   h1: Single;
   colsRepeated: Cardinal;
   rowsRepeated: Cardinal;
-  colsSpanned: Cardinal;
-  rowsSpanned: Cardinal;
   colsRepeatedStr: String;
   rowsRepeatedStr: String;
-  colsSpannedStr: String;
-  rowsSpannedStr: String;
   firstCol, firstRow, lastCol, lastRow: Cardinal;
   rowStyleData: TRowStyleData;
   defFontSize: Single;
   emptyRowsAbove: Boolean;
-  r1,c1,r2,c2: Cardinal;
 begin
   // some abbreviations...
   defFontSize := Workbook.GetFont(0).Size;

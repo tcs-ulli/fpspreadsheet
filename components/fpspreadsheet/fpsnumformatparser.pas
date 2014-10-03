@@ -956,7 +956,7 @@ end;
 function TsNumFormatParser.IsTimeAt(ASection,AIndex: Integer;
   out ANumberFormat: TsNumberFormat; out ANextIndex: Integer): Boolean;
 
-  function CheckFormat(AFmtStr: String; var idx: Integer;
+  function CheckFormat(AFmtStr: String; out idx: Integer;
     out AMPM, IsInterval: boolean): Boolean;
   var
     i: Integer;
@@ -1282,13 +1282,14 @@ end;
 procedure TsNumFormatParser.ScanCondition(AFirstChar: Char);
 var
   s: String;
-  op: TsCompareOperation;
+//  op: TsCompareOperation;
   value: Double;
   res: Integer;
 begin
   s := AFirstChar;
   FToken := NextToken;
   if FToken in ['>', '<', '='] then s := s + FToken else FToken := PrevToken;
+  {
   if s = '=' then op := coEqual else
   if s = '<>' then op := coNotEqual else
   if s = '<' then op := coLess else
@@ -1300,7 +1301,7 @@ begin
     FToken := #0;
     exit;
   end;
-
+    }
   while (FToken = ' ') and (FCurrent < FEnd) do
     FToken := NextToken;
 

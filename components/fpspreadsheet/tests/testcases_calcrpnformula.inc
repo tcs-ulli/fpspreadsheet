@@ -2954,20 +2954,23 @@
   Myworksheet.WriteNumber(Row, 2, sollValues[Row].ResInteger);
 
   // CONCATENATE
-  inc(Row);
-  formula := 'CONCATENATE("A","B","C")';
-  MyWorksheet.WriteUTF8Text(Row, 0, formula);
-  if UseRPNFormula then
-    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
-      RPNString('A',
-      RPNString('B',
-      RPNString('C',
-      RPNFunc('CONCATENATE', 3, nil))))))
-  else
-    Myworksheet.WriteFormula(Row, 1, formula);
-  SetLength(sollValues, Row+1);
-  sollValues[Row] := StringResult('ABC');
-  Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
+  if AFormat <> sfExcel2 then
+  begin
+    inc(Row);
+    formula := 'CONCATENATE("A","B","C")';
+    MyWorksheet.WriteUTF8Text(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNString('A',
+        RPNString('B',
+        RPNString('C',
+        RPNFunc('CONCATENATE', 3, nil))))))
+    else
+      Myworksheet.WriteFormula(Row, 1, formula);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := StringResult('ABC');
+    Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
+  end;
 
   // EXACT
   inc(Row);

@@ -2166,11 +2166,11 @@ begin
     // set up magic numbers
     if L < 128
     then begin
-      n2 := L + (L * S) div 255;
+      n2 := L + Integer(L * S) div 255;
       n1 := 2 * L - n2;
     end
     else begin
-      n2 := S + L - (L * S) div 255;
+      n2 := S + L - Integer(L * S) div 255;
       n1 := 2 * L - n2 - 1;
     end;
 
