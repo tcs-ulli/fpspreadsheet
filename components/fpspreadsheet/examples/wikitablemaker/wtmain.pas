@@ -585,7 +585,8 @@ begin
     MouseWheelOption := mwGrid;
     Options := [goEditing, goFixedVertLine, goFixedHorzLine, goVertLine,
       goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking,
-      goSmoothScroll, goFixedColSizing];
+      goSmoothScroll, goFixedColSizing, goHeaderHotTracking, goHeaderPushedLook,
+      goDblClickAutoSize];
     TitleStyle := tsNative;
     OnSelection := @WorksheetGridSelection;
   end;

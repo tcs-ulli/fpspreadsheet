@@ -1418,19 +1418,19 @@ end;
 
 function CompareCells(Item1, Item2: Pointer): Integer;
 begin
-  result := PCell(Item1).Row - PCell(Item2).Row;
+  result := LongInt(PCell(Item1).Row) - PCell(Item2).Row;
   if Result = 0 then
-    Result := PCell(Item1).Col - PCell(Item2).Col;
+    Result := LongInt(PCell(Item1).Col) - PCell(Item2).Col;
 end;
 
 function CompareRows(Item1, Item2: Pointer): Integer;
 begin
-  result := PRow(Item1).Row - PRow(Item2).Row;
+  result := LongInt(PRow(Item1).Row) - PRow(Item2).Row;
 end;
 
 function CompareCols(Item1, Item2: Pointer): Integer;
 begin
-  result := PCol(Item1).Col - PCol(Item2).Col;
+  result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
 end;
 
 

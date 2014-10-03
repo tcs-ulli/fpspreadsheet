@@ -119,9 +119,12 @@ type
 
   protected
     { Protected declarations }
+    procedure AutoAdjustColumn(ACol: Integer); override;
+    procedure AutoAdjustRow(ARow: Integer); virtual;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
     procedure CreateNewWorkbook;
+    procedure DblClick; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
@@ -135,7 +138,7 @@ type
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
-    procedure HeaderSized(IsColumn: Boolean; index: Integer); override;
+    procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
     procedure InternalDrawTextInCell(AText, AMeasureText: String; ARect: TRect;
       AJustification: Byte; ACellHorAlign: TsHorAlignment;
       ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
@@ -746,6 +749,57 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Is called when goDblClickAutoSize is in the grid's options and a double click
+  has occured at the border of a column header. Sets optimum column with.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.AutoAdjustColumn(ACol: Integer);
+var
+  gRow: Integer;  // row in grid coordinates
+  c: Cardinal;
+  r: Cardinal;
+  lastRow: Cardinal;
+  cell: PCell;
+  w, maxw: Integer;
+  fnt: TFont;
+  txt: String;
+begin
+  if FWorksheet = nil then
+    exit;
+
+  c := GetWorksheetCol(ACol);
+  lastRow := FWorksheet.GetLastOccupiedRowIndex;
+  maxw := -1;
+  for r := 0 to lastRow do
+  begin
+    gRow := GetGridRow(r);
+    fnt := GetCellFont(ACol, gRow);
+    txt := GetCellText(ACol, gRow);
+    PrepareCanvas(ACol, gRow, []);
+    w := Canvas.TextWidth(txt);
+    if (txt <> '') and (w > maxw) then maxw := w;
+  end;
+  if maxw > -1 then
+    maxw := maxw + 2*constCellPadding
+  else
+    maxw := DefaultColWidth;
+  ColWidths[ACol] := maxW;
+  HeaderSized(true, ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Is called when goDblClickAutoSize is in the grid's options and a double click
+  has occured at the border of a row header. Sets optimum row height.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.AutoAdjustRow(ARow: Integer);
+begin
+  if FWorksheet <> nil then
+    RowHeights[ARow] := CalcAutoRowHeight(ARow)
+  else
+    RowHeights[ARow] := DefaultRowHeight;
+  HeaderSized(false, ARow);
+end;
+
+{@@ ----------------------------------------------------------------------------
   The BeginUpdate/EndUpdate pair suppresses unnecessary painting of the grid.
   Call BeginUpdate to stop refreshing the grid, and call EndUpdate to release
   the lock and to repaint the grid again.
@@ -1101,6 +1155,35 @@ begin
     FWorkbook.Options := FWorkbook.Options - [boReadFormulas];
   SetAutoCalc(FAutoCalc);
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Is called when a Double-click occurs. Overrides the inherited method to
+  react on double click on cell border in row headers to auto-adjust the
+  row heights
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.DblClick;
+var
+  oldHeight: Integer;
+  gRow: Integer;
+begin
+  SelectActive := False;
+  FGridState := gsNormal;
+  if (goRowSizing in Options) and (Cursor = crVSplit) and (FHeaderCount > 0) then
+  begin
+    if (goDblClickAutoSize in Options) then
+    begin
+      gRow := GCache.MouseCell.y;
+      if CellRect(0, gRow).Bottom - GCache.ClickMouse.y > 0 then dec(gRow);
+      oldHeight := RowHeights[gRow];
+      AutoAdjustRow(gRow);
+      if oldHeight <> RowHeights[gRow] then
+        Cursor := crDefault; //ChangeCursor;
+    end
+  end
+  else
+    inherited DblClick;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Adjusts the grid's canvas before painting a given cell. Considers
@@ -1513,6 +1596,7 @@ var
         Include(gds, gdPushed);
       end;
     end;
+
     Canvas.SaveHandleState;
     try
       Rgn := CreateRectRgn(_clipRect.Left, _clipRect.Top, _clipRect.Right, _clipRect.Bottom);
@@ -2168,7 +2252,14 @@ begin
     cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then
     begin
-      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      if (uffBold in cell^.UsedFormattingFields) then
+        fnt := FWorkbook.GetFont(1)
+      else
+      if (uffFont in cell^.UsedFormattingFields) then
+        fnt := FWorkbook.GetFont(cell^.FontIndex)
+      else
+        fnt := FWorkbook.GetDefaultFont;
+//      fnt := FWorkbook.GetFont(cell^.FontIndex);
       Convert_sFont_to_Font(fnt, FCellFont);
       Result := FCellFont;
     end;
@@ -2539,7 +2630,7 @@ end;
                       (true) or a row height (false)
   @param   Index      Index of the changed column or row
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; index: Integer);
+procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; AIndex: Integer);
 var
   w0: Integer;
   h, h_pts: Single;
@@ -2552,13 +2643,13 @@ begin
     // The grid's column width is in "pixels", the worksheet's column width is
     // in "characters".
     w0 := Canvas.TextWidth('0');
-    FWorksheet.WriteColWidth(GetWorksheetCol(Index), ColWidths[Index] div w0);
+    FWorksheet.WriteColWidth(GetWorksheetCol(AIndex), ColWidths[AIndex] div w0);
   end else begin
     // The grid's row heights are in "pixels", the worksheet's row heights are
     // in "lines"
-    h_pts := PxToPts(RowHeights[Index] - 4, Screen.PixelsPerInch);  // in points
+    h_pts := PxToPts(RowHeights[AIndex] - 4, Screen.PixelsPerInch);  // in points
     h := h_pts / (FWorkbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
-    FWorksheet.WriteRowHeight(GetWorksheetRow(Index), h);
+    FWorksheet.WriteRowHeight(GetWorksheetRow(AIndex), h);
   end;
 end;
 

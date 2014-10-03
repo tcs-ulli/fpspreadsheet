@@ -53,9 +53,12 @@ begin
 
   // Useful options
   Grid.Options := Grid.Options + [goColSizing, goRowSizing,
-    goFixedColSizing,  // useful if the spreadsheet contains frozen columns
-    goEditing,         // needed for modifying cell content
-    goThumbTracking    // see the grid scroll while you drag the scrollbar
+    goFixedColSizing,    // useful if the spreadsheet contains frozen columns
+    goEditing,           // needed for modifying cell content
+    goThumbTracking,     // see the grid scroll while you drag the scrollbar
+    goHeaderHotTracking, // hot-tracking of header cells
+    goHeaderPushedLook,  // click at header cells --> pushed look
+    goDblClickAutoSize   // optimum col width/row height after dbl click at header border
   ];
   Grid.AutoAdvance := aaDown;       // move active cell down on ENTER
   Grid.MouseWheelOption := mwGrid;  // mouse wheel scrolls the grid, not the active cell
@@ -67,11 +70,13 @@ end;
 
 procedure TForm1.BtnLoadClick(Sender: TObject);
 begin
-  if OpenDialog.FileName <> '' then begin
+  if OpenDialog.FileName <> '' then
+  begin
     OpenDialog.InitialDir := ExtractFileDir(OpenDialog.FileName);
     OpenDialog.FileName := ChangeFileExt(ExtractFileName(OpenDialog.FileName), '');
   end;
-  if OpenDialog.Execute then begin
+  if OpenDialog.Execute then
+  begin
     LoadFile(OpenDialog.FileName);
   end;
 end;
@@ -90,7 +95,8 @@ begin
   if Grid.Workbook = nil then
     exit;
 
-  if Grid.Workbook.Filename <>'' then begin
+  if Grid.Workbook.Filename <>'' then
+  begin
     SaveDialog.InitialDir := ExtractFileDir(Grid.Workbook.FileName);
     SaveDialog.FileName := ChangeFileExt(ExtractFileName(Grid.Workbook.FileName), '');
   end;

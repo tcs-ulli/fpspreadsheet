@@ -58,7 +58,7 @@ object Form1: TForm1
     AutoAdvance = aaDown
     ColCount = 27
     MouseWheelOption = mwGrid
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goSmoothScroll, goFixedColSizing]
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goSmoothScroll, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing]
     RowCount = 101
     TabOrder = 1
     TitleStyle = tsNative

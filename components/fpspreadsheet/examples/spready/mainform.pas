@@ -300,6 +300,8 @@ type
     procedure FormCreate(Sender: TObject);
     procedure InspectorPageControlChange(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
+    procedure WorksheetGridHeaderClick(Sender: TObject; IsColumn: Boolean;
+      Index: Integer);
     procedure WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
   private
     FCopiedFormat: TCell;
@@ -946,6 +948,12 @@ begin
   WorksheetGridSelection(self, WorksheetGrid.Col, WorksheetGrid.Row);
 end;
 
+procedure TMainFrm.WorksheetGridHeaderClick(Sender: TObject; IsColumn: Boolean;
+  Index: Integer);
+begin
+  //ShowMessage('Header click');
+end;
+
 procedure TMainFrm.UpdateBackgroundColorIndex;
 var
   sClr: TsColor;
@@ -964,7 +972,8 @@ var
   hor_align: TsHorAlignment;
 begin
   with WorksheetGrid do hor_align := HorAlignments[Selection];
-  for i:=0 to ActionList.ActionCount-1 do begin
+  for i:=0 to ActionList.ActionCount-1 do
+  begin
     ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= HORALIGN_TAG) and (ac.Tag < HORALIGN_TAG+10) then
       ac.Checked := ((ac.Tag - HORALIGN_TAG) = ord(hor_align));
@@ -978,7 +987,8 @@ var
   cb: TsCellBorder;
   r1,r2,c1,c2: Cardinal;
 begin
-  with CellInspector do begin
+  with CellInspector do
+  begin
     TitleCaptions[0] := 'Properties';
     TitleCaptions[1] := 'Values';
     Strings.Clear;
@@ -1088,7 +1098,8 @@ begin
         else Strings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
       if not WorksheetGrid.Worksheet.IsMerged(ACell) then
         Strings.Add('Merged range=')
-      else begin
+      else
+      begin
         WorksheetGrid.Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
         Strings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
       end;
