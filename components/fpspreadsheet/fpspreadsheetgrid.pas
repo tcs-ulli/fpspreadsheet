@@ -2638,12 +2638,12 @@ begin
   if FWorksheet = nil then
     exit;
 
-  Convert_sFont_to_Font(FWorkbook.GetFont(0), Canvas.Font);
+  Convert_sFont_to_Font(FWorkbook.GetDefaultFont, Canvas.Font);
   if IsColumn then begin
     // The grid's column width is in "pixels", the worksheet's column width is
     // in "characters".
     w0 := Canvas.TextWidth('0');
-    FWorksheet.WriteColWidth(GetWorksheetCol(AIndex), ColWidths[AIndex] div w0);
+    FWorksheet.WriteColWidth(GetWorksheetCol(AIndex), ColWidths[AIndex] / w0);
   end else begin
     // The grid's row heights are in "pixels", the worksheet's row heights are
     // in "lines"
