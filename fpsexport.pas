@@ -117,6 +117,9 @@ procedure TCustomFPSExport.DoBeforeExecute;
 begin
   Inherited;
   FSpreadsheet:=TsWorkbook.Create;
+  // For extra performance. Note that virtual mode is not an option
+  // due to the data export determining flow of the program.
+  FSpreadsheet.Options:=FSpreadsheet.Options+[boBufStream];
   FSheet:=FSpreadsheet.AddWorksheet('1');
   FRow:=0;
 end;
@@ -166,8 +169,6 @@ procedure TCustomFPSExport.ExportField(EF: TExportFieldItem);
 var
   F : TFPSExportFieldItem;
 begin
-  // todo: look into virtual mode in case large exports are used, maybe also
-  // boBufStream
   F:=EF as TFPSExportFieldItem;
   with F do
   begin
