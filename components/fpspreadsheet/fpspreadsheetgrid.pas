@@ -3154,6 +3154,7 @@ begin
     end;
   end else
   if FWorksheet <> nil then begin
+    Convert_sFont_to_Font(FWorkbook.GetDefaultFont, Font);
     ColCount := Max(FWorksheet.GetLastColIndex + 1 + FHeaderCount, FInitColCount);
     RowCount := Max(FWorksheet.GetLastRowIndex + 1 + FHeaderCount, FInitRowCount);
     FixedCols := FFrozenCols + FHeaderCount;
