@@ -179,8 +179,8 @@ type
     destructor Destroy; override;
     procedure BeginUpdate;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
-    procedure DeleteCol(AGridCol: Integer);
-    procedure DeleteRow(AGridRow: Integer);
+    procedure DeleteCol(AGridCol: Integer); reintroduce;
+    procedure DeleteRow(AGridRow: Integer); reintroduce;
     procedure EditingDone; override;
     procedure EndUpdate;
     procedure GetSheets(const ASheets: TStrings);
@@ -755,24 +755,19 @@ end;
 procedure TsCustomWorksheetGrid.AutoAdjustColumn(ACol: Integer);
 var
   gRow: Integer;  // row in grid coordinates
-  c: Cardinal;
   r: Cardinal;
   lastRow: Cardinal;
-  cell: PCell;
   w, maxw: Integer;
-  fnt: TFont;
   txt: String;
 begin
   if FWorksheet = nil then
     exit;
 
-  c := GetWorksheetCol(ACol);
   lastRow := FWorksheet.GetLastOccupiedRowIndex;
   maxw := -1;
   for r := 0 to lastRow do
   begin
     gRow := GetGridRow(r);
-    fnt := GetCellFont(ACol, gRow);
     txt := GetCellText(ACol, gRow);
     PrepareCanvas(ACol, gRow, []);
     w := Canvas.TextWidth(txt);
@@ -1559,7 +1554,7 @@ end;
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gds: TGridDrawState;
-  sr, sc, sr1,sc1,sr2,sc2: Cardinal;                        // sheet row/column
+  sr, sr1,sc1,sr2,sc2: Cardinal;                        // sheet row/column
   gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
   i: Integer;
   rct, saved_rct, temp_rct: TRect;
@@ -1818,13 +1813,11 @@ procedure TsCustomWorksheetGrid.DrawTextInCell(ACol, ARow: Integer; ARect: TRect
 var
   ts: TTextStyle;
   txt: String;
-  c, r: Integer;
   wrapped: Boolean;
   horAlign: TsHorAlignment;
   vertAlign: TsVertAlignment;
   txtRot: TsTextRotation;
   lCell: PCell;
-  txtLeft, txtRight: String;
   justif: Byte;
 begin
   if (FWorksheet = nil) then

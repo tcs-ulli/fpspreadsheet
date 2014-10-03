@@ -940,7 +940,7 @@ end;
 // Valid for BIFF3 - BIFF8 (override for BIFF2)
 procedure TsSpreadBIFFReader.ReadDefRowHeight(AStream: TStream);
 var
-  options, hw: Word;
+  hw: Word;
   h: Single;
 begin
   // Options
@@ -1498,10 +1498,10 @@ begin
           ReadRPNCellAddressOffset(AStream, dr, dc, flags);
           // For compatibility with other formats, convert offsets back to regular indexes.
           if (rfRelRow in flags)
-            then r := ACell^.Row + dr
+            then r := LongInt(ACell^.Row) + dr
             else r := dr;
           if (rfRelCol in flags)
-            then c := ACell^.Col + dc
+            then c := LongInt(ACell^.Col) + dc
             else c := dc;
           case token of
             INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
@@ -1513,17 +1513,17 @@ begin
           ReadRPNCellRangeOffset(AStream, dr, dc, dr2, dc2, flags);
           // For compatibility with other formats, convert offsets back to regular indexes.
           if (rfRelRow in flags)
-            then r := ACell^.Row + dr
-            else r := ACell^.SharedFormulaBase^.Row + dr;
+            then r := LongInt(ACell^.Row) + dr
+            else r := LongInt(ACell^.SharedFormulaBase^.Row) + dr;
           if (rfRelRow2 in flags)
-            then r2 := ACell^.Row + dr2
-            else r2 := ACell^.SharedFormulaBase^.Row + dr2;
+            then r2 := LongInt(ACell^.Row) + dr2
+            else r2 := LongInt(ACell^.SharedFormulaBase^.Row) + dr2;
           if (rfRelCol in flags)
-            then c := ACell^.Col + dc
-            else c := ACell^.SharedFormulaBase^.Col + dc;
+            then c := LongInt(ACell^.Col) + dc
+            else c := LongInt(ACell^.SharedFormulaBase^.Col) + dc;
           if (rfRelCol2 in flags)
-            then c2 := ACell^.Col + dc2
-            else c2 := ACell^.SharedFormulaBase^.Col + dc2;
+            then c2 := LongInt(ACell^.Col) + dc2
+            else c2 := LongInt(ACell^.SharedFormulaBase^.Col) + dc2;
           rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
         end;
       INT_EXCEL_TOKEN_TMISSARG:
@@ -2286,7 +2286,6 @@ procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
 var
   RPNLength: Word = 0;
   RecordSizePos, StartPos, FinalPos: Int64;
-  r1,c1,r2,c2: Cardinal;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
@@ -2360,7 +2359,6 @@ var
   FormulaResult: double;
 begin
   { Determine encoded result bytes }
-  FillChar(Data, SizeOf(Data), 0);
   case ACell^.ContentType of
     cctNumber:
       begin
@@ -2413,7 +2411,6 @@ type
 var
   rec: TSharedFormulaLinkRecord;
 begin
-  FillChar(rec, SizeOf(rec), 0);
   rec.FormulaSize := WordToLE(5);
   rec.Token := INT_EXCEL_TOKEN_TEXP;  // Marks the cell for using a shared formula
   rec.Row := WordToLE(ACell^.SharedFormulaBase.Row);
@@ -2428,7 +2425,7 @@ procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
   var RPNLength: Word);
 var
   i: Integer;
-  w, n: Word;
+  n: Word;
   dr, dc: Integer;
   TokenArraySizePos: Int64;
   FinalPos: Int64;
@@ -2760,8 +2757,7 @@ end;
   WriteSharedFormula must not do anything. }
 procedure TsSpreadBIFFWriter.WriteSharedFormula(AStream: TStream; ACell: PCell);
 var
-  r, c, r1, r2, c1, c2: Cardinal;
-  cell: PCell;
+  r1, r2, c1, c2: Cardinal;
   RPNLength: word;
   recordSizePos: Int64;
   startPos, finalPos: Int64;

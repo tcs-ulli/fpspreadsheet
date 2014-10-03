@@ -86,9 +86,9 @@ type
     procedure ReadOLEHeader(AStream: TStream);
     procedure ReadSectorAllocationTable(AStream: TStream);
     procedure ReadDirectoryStream(AStream: TStream);
-    procedure ReadDirectoryEntry(AStream: TStream; var AName: widestring;
-      var EntryType, EntryColor: Byte; var AIsStorage: Boolean;
-      var AFirstSecID, AStreamSize: Cardinal);
+    procedure ReadDirectoryEntry(AStream: TStream; out AName: widestring;
+      out EntryType, EntryColor: Byte; out AIsStorage: Boolean;
+      out AFirstSecID, AStreamSize: Cardinal);
     procedure ReadShortSectorAllocationTable(AStream: TStream);
     procedure ReadUserStream(ADest, ASource: TStream);
   public
@@ -574,8 +574,8 @@ begin
 end;
 
 procedure TOLEStorage.ReadDirectoryEntry(AStream: TStream;
-  var AName: widestring; var EntryType, EntryColor: Byte;
-  var AIsStorage: Boolean; var AFirstSecID, AStreamSize: Cardinal);
+  out AName: widestring; out EntryType, EntryColor: Byte;
+  out AIsStorage: Boolean; out AFirstSecID, AStreamSize: Cardinal);
 var
   BaseAddr: Int64;
   EntryName: array[0..63] of WideChar;

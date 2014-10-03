@@ -77,7 +77,7 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
     function ReadRPNFunc(AStream: TStream): Word; override;
-    procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal);
+    procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); override;
     function ReadRPNTokenArraySize(AStream: TStream): Word; override;
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadWindow2(AStream: TStream); override;
@@ -853,8 +853,6 @@ end;
 { Reads the WINDOW2 record containing information like "show grid lines",
   "show sheet headers", "panes are frozen", etc. }
 procedure TsSpreadBIFF2Reader.ReadWindow2(AStream: TStream);
-var
-  rgb: DWord;
 begin
   // Show formulas, not results
   AStream.ReadByte;
@@ -890,7 +888,7 @@ begin
   AStream.ReadByte;
 
   // Manual grid line line color (rgb)
-  rgb := DWordToLE(AStream.ReadDWord);
+  DWordToLE(AStream.ReadDWord);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
@@ -1587,7 +1585,7 @@ procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
   RPNLength: Word;
-  RecordSizePos, StartPos, FinalPos: Cardinal;
+  RecordSizePos, FinalPos: Cardinal;
   xf: Word;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
@@ -1603,7 +1601,6 @@ begin
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
   RecordSizePos := AStream.Position;
   AStream.WriteWord(0); // We don't know the record size yet. It will be replaced at end.
-  StartPos := AStream.Position;
 
   { Row and column }
   AStream.WriteWord(WordToLE(ARow));
@@ -1652,7 +1649,6 @@ end;
 procedure TsSpreadBIFF2Writer.WriteRPNSharedFormulaLink(AStream: TStream;
   ACell: PCell; var RPNLength: Word);
 var
-  i: Integer;
   formula: TsRPNFormula;
 begin
   // Create RPN formula from the shared formula base's string formula
@@ -1682,6 +1678,7 @@ end;
   anything. }
 procedure TsSpreadBIFF2Writer.WriteSharedFormula(AStream: TStream; ACell: PCell);
 begin
+  Unused(AStream, ACell);
 end;
 
 { Writes an Excel 2 STRING record which immediately follows a FORMULA record

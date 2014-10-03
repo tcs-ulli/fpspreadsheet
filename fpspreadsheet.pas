@@ -1777,7 +1777,7 @@ var
   formula: TsRPNFormula;
   i: Integer;
 begin
-  col := Cardinal(PtrInt(arg));
+  col := LongInt(PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -1832,7 +1832,7 @@ var
   formula: TsRPNFormula;
   i: Integer;
 begin
-  row := Cardinal(PtrInt(arg));
+  row := LongInt(PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -5260,7 +5260,7 @@ var
   formula: TsRPNFormula;
   i: Integer;
 begin
-  col := Cardinal(PtrInt(arg));
+  col := LongInt(PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -5369,7 +5369,7 @@ var
   i: Integer;
   formula: TsRPNFormula;
 begin
-  row := Cardinal(PtrInt(arg));
+  row := LongInt(PtrInt(arg));
   cell := PCell(data);
 
   // Update row index of moved cells
