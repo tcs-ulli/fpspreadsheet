@@ -86,6 +86,7 @@ const
   
 resourcestring
   SFPSDescription = 'Spreadsheet files';
+  SFPSFileMustExist = 'Empty file names are not allowed.';
 
 implementation
 
@@ -116,11 +117,16 @@ end;
 procedure TCustomFPSExport.DoBeforeExecute;
 begin
   Inherited;
+  if FFileName='' then
+    Raise EDataExporter.Create(SFPSFileMustExist);
   FSpreadsheet:=TsWorkbook.Create;
   // For extra performance. Note that virtual mode is not an option
   // due to the data export determining flow of the program.
   FSpreadsheet.Options:=FSpreadsheet.Options+[boBufStream];
   FSheet:=FSpreadsheet.AddWorksheet('1');
+  // todo: look into restoring position after done
+  if not(Dataset.IsUniDirectional) then
+    Dataset.First; // needed to export all items
   FRow:=0;
 end;
 
