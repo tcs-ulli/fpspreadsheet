@@ -17,7 +17,6 @@ var
   MyWorksheet: TsWorksheet;
   MyDir: string;
   i: Integer;
-  a: TStringList;
   MyCell: PCell;
 
 begin

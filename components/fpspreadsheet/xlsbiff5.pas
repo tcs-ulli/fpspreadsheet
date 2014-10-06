@@ -1250,6 +1250,7 @@ begin
 
   { Sheet name: Byte string, 8-bit length }
   Len := AStream.ReadByte();
+  Str[0] := #0;  // to silence the compiler...
   AStream.ReadBuffer(Str, Len);
   Str[Len] := #0;
 
@@ -1376,6 +1377,9 @@ var
   dw: DWord;
   fill: Word;
 begin
+  xf.FontIndex := 0;  // to silence the compiler...
+
+  // Read the complete xf record into a buffer
   AStream.ReadBuffer(xf, SizeOf(xf));
 
   lData := TXFListData.Create;
@@ -1499,7 +1503,7 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadFont(const AStream: TStream);
 var
-  lCodePage: Word;
+  {%H-}lCodePage: Word;
   lHeight: Word;
   lOptions: Word;
   lColor: Word;
@@ -1593,6 +1597,8 @@ var
   cell: PCell;
   AValue: ansistring;
 begin
+  rec.Row := 0;  // to silence the compiler...
+
   { Read entire record, starting at Row, except for string data }
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF5LabelRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);

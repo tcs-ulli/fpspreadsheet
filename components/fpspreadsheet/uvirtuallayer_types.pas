@@ -74,7 +74,7 @@ protected
 public
   procedure AddInheritedPath(const APath: UTF8String);
   function Extract(index: integer): TVirtualLayer_Item;
-  procedure Sort(const Ascending: Boolean=true;const FoldersFirst: Boolean=true);
+  procedure Sort(const {%H-}Ascending: Boolean=true;const {%H-}FoldersFirst: Boolean=true);
   procedure Delete(const Index: integer);
   property Path: UTF8String read FPath;
   property Items[index: integer]:TVirtualLayer_Item read GetItems write SetItems; default;

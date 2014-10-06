@@ -35,16 +35,11 @@
         <PackageName Value="LazUtils"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="1">
       <Unit0>
         <Filename Value="ooxmlread.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
-      <Unit1>
-        <Filename Value="..\..\fpsxmlcommon.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="fpsxmlcommon"/>
-      </Unit1>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -808,6 +808,9 @@ var
   rec: TBIFF58BlankRecord;
   cell: PCell;
 begin
+  rec.Row := 0;  // to silence the compiler...
+
+  // Read entire record into a buffer
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF58BlankRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
@@ -980,6 +983,7 @@ begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Result of the formula result in IEEE 754 floating-point value }
+  Data[0] := 0;  // to silence the compiler...
   AStream.ReadBuffer(Data, Sizeof(Data));
 
   { Options flags }
@@ -1145,6 +1149,7 @@ var
   cell: PCell;
 begin
   { Read entire record, starting at Row }
+  rec.Row := 0;   // to silence the compiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF58NumberRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
@@ -1287,6 +1292,7 @@ var
   lRow: PRow;
   h: word;
 begin
+  rowrec.RowIndex := 0;   // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
 
   // if bit 6 is set in the flags row height does not match the font size.
@@ -1618,7 +1624,7 @@ end;
   stored only in the top/left cell of the range. }
 procedure TsSpreadBIFFReader.ReadSharedFormula(AStream: TStream);
 var
-  r1, r2, c1, c2: Cardinal;
+  r1, {%H-}r2, c1, {%H-}c2: Cardinal;
   cell: PCell;
 begin
   // Cell range in which the formula is valid
@@ -2358,6 +2364,8 @@ var
   Data: array[0..3] of word;
   FormulaResult: double;
 begin
+  Data[0] := 0;  // to silence the compiler...
+
   { Determine encoded result bytes }
   case ACell^.ContentType of
     cctNumber:
@@ -2811,10 +2819,10 @@ begin
   // Index to last row
   AStream.WriteWord(WordToLE(ALastRow));
   // Index to first column
-  c := Lo(AFirstCol);
+  c := {%H-}Lo(AFirstCol);
   AStream.WriteByte(Lo(c));
   // Index to last rcolumn
-  c := Lo(ALastCol);
+  c := {%H-}Lo(ALastCol);
   AStream.WriteByte(Lo(c));
 end;
 

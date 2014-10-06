@@ -336,7 +336,8 @@ Type
   Protected
     Procedure CloseInput(Item : TZipFileEntry);
     Procedure StartZipFile(Item : TZipFileEntry);
-    Function  UpdateZipHeader(Item : TZipFileEntry; FZip : TStream; ACRC : LongWord;AMethod : Word) : Boolean;
+    Function  UpdateZipHeader(Item : TZipFileEntry; FZip : TStream;
+      ACRC : LongWord;AMethod : Word) : Boolean;
     Procedure BuildZipDirectory;
     Procedure DoEndOfFile;
     Procedure ZipOneFile(Item : TZipFileEntry); virtual;
@@ -344,7 +345,8 @@ Type
     Procedure GetFileInfo;
     Procedure SetBufSize(Value : LongWord);
     Procedure SetFileName(Value : String);
-    Function CreateCompressor(Item : TZipFileEntry; AinFile,AZipStream : TStream) : TCompressor; virtual;
+    Function CreateCompressor({%H-}Item : TZipFileEntry;
+      AinFile,AZipStream : TStream) : TCompressor; virtual;
   Public
     Constructor Create;
     Destructor Destroy;override;
@@ -430,7 +432,7 @@ Type
     Procedure SetBufSize(Value : LongWord);
     Procedure SetFileName(Value : String);
     Procedure SetOutputPath(Value:String);
-    Function CreateDeCompressor(Item : TZipFileEntry; AMethod : Word;AZipFile,AOutFile : TStream) : TDeCompressor; virtual;
+    Function CreateDeCompressor({%H-}Item : TZipFileEntry; AMethod : Word;AZipFile,AOutFile : TStream) : TDeCompressor; virtual;
   Public
     Constructor Create;
     Destructor Destroy;override;
@@ -649,7 +651,8 @@ end;
 Procedure TDeCompressor.UpdC32(Octet: Byte);
 
 Begin
-  FCrc32Val := Crc_32_Tab[Byte(FCrc32Val XOR LongInt(Octet))] XOR ((FCrc32Val SHR 8) AND $00FFFFFF);
+  FCrc32Val := Crc_32_Tab[Byte(FCrc32Val XOR LongWord(Octet))] XOR
+              ((FCrc32Val SHR 8) AND $00FFFFFF);
 end;
 
 constructor TDeCompressor.Create(AInFile, AOutFile: TStream; ABufSize: LongWord);
@@ -669,7 +672,8 @@ end;
 Procedure TCompressor.UpdC32(Octet: Byte);
 
 Begin
-  FCrc32Val := Crc_32_Tab[Byte(FCrc32Val XOR LongInt(Octet))] XOR ((FCrc32Val SHR 8) AND $00FFFFFF);
+  FCrc32Val := Crc_32_Tab[Byte(FCrc32Val XOR LongWord(Octet))] XOR
+               ((FCrc32Val SHR 8) AND $00FFFFFF);
 end;
 
 constructor TCompressor.Create(AInFile, AOutFile: TStream; ABufSize: LongWord);
@@ -1728,7 +1732,7 @@ Begin
         NewNode.Attributes := External_Attributes;
       ZipDateTimeToDateTime(Last_Mod_Date,Last_Mod_Time,D);
       NewNode.DateTime:=D;
-      FZipStream.Seek(Extra_Field_Length+File_Comment_Length, soCurrent);
+      FZipStream.Seek(Int64(Extra_Field_Length)+File_Comment_Length, soCurrent);
       end;
    end;
 end;
@@ -1746,7 +1750,7 @@ end;
 Procedure TUnZipper.UnZipOneFile(Item : TFullZipFileEntry);
 
 Var
-  Count, Attrs: Longint;
+  {%H-}Count, Attrs: Longint;
   ZMethod : Word;
   //LinkTargetStream: TStringStream;
   OutputFileName: string;

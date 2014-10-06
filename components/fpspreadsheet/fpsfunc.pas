@@ -1254,7 +1254,7 @@ procedure fpsCELL(var Result: TsExpressionResult; const Args: TsExprParameterArr
 }
 var
   stype: String;
-  r1,r2, c1,c2: Cardinal;
+  r1, c1: Cardinal;
   cell: PCell;
 begin
   if Length(Args)=1 then
@@ -1273,15 +1273,11 @@ begin
         cell := ArgToCell(Args[1]);
         r1 := Args[1].ResRow;
         c1 := Args[1].ResCol;
-        r2 := r1;
-        c2 := c1;
       end;
     rtCellRange:
       begin
         r1 := Args[1].ResCellRange.Row1;
-        r2 := Args[1].ResCellRange.Row2;
         c1 := Args[1].ResCellRange.Col1;
-        c2 := Args[1].ResCellRange.Col2;
         cell := Args[1].Worksheet.FindCell(r1, c1);
       end;
     else
