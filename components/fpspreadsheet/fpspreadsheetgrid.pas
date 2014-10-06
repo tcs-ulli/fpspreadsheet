@@ -146,6 +146,7 @@ type
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MoveSelection; override;
     procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
@@ -3004,6 +3005,25 @@ begin
     GetWorksheetRow(Selection.Bottom),
     GetWorksheetCol(Selection.Right)
   );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Standard mouse move handler. Is overridden because, if TextOverflow is active,
+  overflown cell may be erased when the mouse leaves them; repaints entire
+  grid instead.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  R: TRect;
+  tmp: Integer;
+  prevMouseCell: TPoint;
+begin
+  prevMouseCell := GCache.MouseCell;
+  inherited;
+  if FTextOverflow and
+     ((prevMouseCell.X <> GCache.MouseCell.X) or (prevMouseCell.Y <> GCache.MouseCell.Y))
+  then
+    InvalidateGrid;
 end;
 
 {@@ ----------------------------------------------------------------------------
