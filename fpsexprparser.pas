@@ -3672,7 +3672,7 @@ end;
 procedure TsFunctionExprNode.Check;
 var
   i: Integer;
-  rta,                  // parameter types passed to the function
+  rta,                  // Parameter types passed to the function
   rtp: TsResultType;    // Parameter types expected from the parameter symbol
   lastrtp: TsResultType;
 begin
@@ -3700,7 +3700,7 @@ begin
 
     if rta = rtCell then
       Continue;
-
+                    (*
     if (rtp <> rta) and not (rta in [rtCellRange, rtError, rtEmpty]) then
     begin
       // Automatically convert integers to floats in functions that return a float
@@ -3714,6 +3714,7 @@ begin
         exit;
       RaiseParserError(SErrInvalidArgumentType, [i+1, ResultTypeName(rtp), ResultTypeName(rta)])
     end;
+    *)
   end;
 end;
 

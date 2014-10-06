@@ -70,7 +70,7 @@ type
     { Fields for both }
     FOLEDocument: TOLEDocument;
     FUseShortSectors: Boolean;
-    FNumSATSectors, FNumStreamSectors, FNumTotalSectors: Cardinal;
+    FNumSATSectors, FNumStreamSectors: Cardinal;
     FNumStreamShortSectors: Cardinal;
     { Writer Helper routines }
     procedure WriteOLEHeader(AStream: TStream);
@@ -84,19 +84,19 @@ type
     procedure WriteUserStream(ADest, ASource: TStream);
     { Reader helper routines }
     procedure ReadOLEHeader(AStream: TStream);
-    procedure ReadSectorAllocationTable(AStream: TStream);
+    procedure ReadSectorAllocationTable({%H-}AStream: TStream);
     procedure ReadDirectoryStream(AStream: TStream);
     procedure ReadDirectoryEntry(AStream: TStream; out AName: widestring;
       out EntryType, EntryColor: Byte; out AIsStorage: Boolean;
       out AFirstSecID, AStreamSize: Cardinal);
-    procedure ReadShortSectorAllocationTable(AStream: TStream);
+    procedure ReadShortSectorAllocationTable({%H-}AStream: TStream);
     procedure ReadUserStream(ADest, ASource: TStream);
   public
     constructor Create;
     destructor Destroy; override;
     procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument;
      const AOverwriteExisting: Boolean = False; const AStreamName: UTF8String='Book');
-    procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
+    procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const {%H-}AStreamName: UTF8String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
 
@@ -104,7 +104,7 @@ implementation
 
 const
   INT_OLE_SECTOR_SIZE = 512; // in bytes
-  INT_OLE_SECTOR_DWORD_SIZE = 512 div 4; // in dwords
+  {%H-}INT_OLE_SECTOR_DWORD_SIZE = 512 div 4; // in dwords
   INT_OLE_SHORT_SECTOR_SIZE = 64; // in bytes
   INT_OLE_MIN_SIZE_FOR_STANDARD_STREAMS = 4096;
 
@@ -492,7 +492,7 @@ end;
 
 procedure TOLEStorage.ReadOLEHeader(AStream: TStream);
 var
-  BaseAddr: Int64;
+  {%H-}BaseAddr: Int64;
 begin
   BaseAddr := AStream.Position;
 
@@ -589,6 +589,7 @@ begin
 
    00000400H  52 00 6F 00 6F 00 74 00 20 00 45 00 6E 00 74 00 }
 
+  EntryName[0] := #0;  // silence the compilere...
   AStream.ReadBuffer(EntryName, 64);
 
   AName := EntryName;
@@ -694,7 +695,7 @@ procedure TOLEStorage.WriteOLEFile(AFileName: string;
   const AStreamName: UTF8String);
 var
   cbWritten: Cardinal;
-  lMode: Word;
+  {%H-}lMode: Word;
  {$IFNDEF FPOLESTORAGE_USE_COM}
   AFileStream: TStream;
  {$ENDIF}

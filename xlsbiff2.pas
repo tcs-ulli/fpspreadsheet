@@ -1678,7 +1678,8 @@ end;
 procedure TsSpreadBIFF2Writer.WriteRPNTokenArraySize(AStream: TStream;
   ASize: Word);
 begin
-  AStream.WriteByte(Lo(ASize));
+  AStream.WriteByte(ASize);
+//  AStream.WriteByte(Lo(ASize));
 end;
 
 { Is intended to write the token array of a shared formula stored in ACell.

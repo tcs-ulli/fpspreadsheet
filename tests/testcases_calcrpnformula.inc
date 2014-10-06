@@ -600,8 +600,8 @@
       RPNFunc(fekGreater, nil)))))
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
-  Myworksheet.WriteBoolvalue(Row, 2, SollValues[Row].ResBoolean);
   SetLength(sollValues, Row+1);
+  Myworksheet.WriteBoolvalue(Row, 2, SollValues[Row].ResBoolean);
   Myworksheet.WriteUTF8Text(Row, 2, BoolToStr(SollValues[Row].ResBoolean, 'TRUE','FALSE'));
 
   inc(Row);
