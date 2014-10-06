@@ -1001,10 +1001,16 @@ begin
 
     // Loop writing the merged cell ranges
     while (n > 0) and (i < Length(rngList)) do begin
+      AStream.WriteWord(WordToLE(rngList[i].Row1));
+      AStream.WriteWord(WordToLE(rngList[i].Row2));
+      AStream.WriteWord(WordToLE(rngList[i].Col1));
+      AStream.WriteWord(WordToLE(rngList[i].Col2));
+      (*
       AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Row1)));
       AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Row2)));
       AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Col1)));
       AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Col2)));
+      *)
       inc(i);
       dec(n);
     end;

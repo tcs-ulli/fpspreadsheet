@@ -2811,19 +2811,27 @@ end;
   No need for BIFF2 which does not support shared formulas. }
 procedure TsSpreadBIFFWriter.WriteSharedFormulaRange(AStream: TStream;
   AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal);
+{
 var
   c: Word;
+}
 begin
   // Index to first row
   AStream.WriteWord(WordToLE(AFirstRow));
   // Index to last row
   AStream.WriteWord(WordToLE(ALastRow));
   // Index to first column
+  AStream.WriteByte(AFirstCol);
+  (*
   c := {%H-}Lo(AFirstCol);
   AStream.WriteByte(Lo(c));
+  *)
   // Index to last rcolumn
+  AStream.WriteByte(ALastCol);
+  (*
   c := {%H-}Lo(ALastCol);
   AStream.WriteByte(Lo(c));
+  *)
 end;
 
 

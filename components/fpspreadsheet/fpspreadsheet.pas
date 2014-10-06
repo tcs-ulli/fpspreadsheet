@@ -7552,7 +7552,11 @@ begin
   begin
     Workbook.UpdateCaches;
     AFirstRow := AWorksheet.GetFirstRowIndex;
+    if AFirstRow = Cardinal(-1) then
+      AFirstRow := 0;  // this happens if the sheet is empty and does not contain row records
     AFirstCol := AWorksheet.GetFirstColIndex;
+    if AFirstCol = Cardinal(-1) then
+      AFirstCol := 0;  // this happens if the sheet is empty and does not contain col records
     ALastRow := AWorksheet.GetLastRowIndex;
     ALastCol := AWorksheet.GetLastColIndex;
   end;
