@@ -148,6 +148,7 @@ procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: S
 
 function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
 
+{ For silencing the compiler... }
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
 procedure Unused(const A1, A2, A3);
@@ -2166,11 +2167,11 @@ begin
     // set up magic numbers
     if L < 128
     then begin
-      n2 := L + Integer(L * S) div 255;
+      n2 := Integer(L) + Integer(L) * S div 255;
       n1 := 2 * L - n2;
     end
     else begin
-      n2 := S + L - Integer(L * S) div 255;
+      n2 := Integer(S) + L - Integer(L) * S div 255;
       n1 := 2 * L - n2 - 1;
     end;
 

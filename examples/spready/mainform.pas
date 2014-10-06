@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
   ColorBox, ValEdit,
-  fpspreadsheetgrid, fpspreadsheet, fpsallformats;
+  fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
 
 type
 
@@ -330,8 +330,8 @@ var
 implementation
 
 uses
-  StrUtils, TypInfo, LCLIntf, LCLType,
-  fpcanvas, fpsutils, fpsnumformatparser;
+  TypInfo, LCLIntf, LCLType,
+  fpcanvas, fpsutils;
 
 const
   DROPDOWN_COUNT = 24;
@@ -888,8 +888,6 @@ end;
 procedure TMainFrm.LoadFile(const AFileName: String);
 // Loads first worksheet from file into grid
 var
-  pages: TStrings;
-  i: Integer;
   err: String;
 begin
   // Load file
@@ -951,6 +949,8 @@ end;
 procedure TMainFrm.WorksheetGridHeaderClick(Sender: TObject; IsColumn: Boolean;
   Index: Integer);
 begin
+  Unused(Sender);
+  Unused(IsColumn, Index);
   //ShowMessage('Header click');
 end;
 
@@ -982,7 +982,6 @@ end;
 
 procedure TMainFrm.UpdateCellInfo(ACell: PCell);
 var
-  i: Integer;
   s: String;
   cb: TsCellBorder;
   r1,r2,c1,c2: Cardinal;

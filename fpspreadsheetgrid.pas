@@ -184,10 +184,10 @@ type
     procedure EditingDone; override;
     procedure EndUpdate;
     procedure GetSheets(const ASheets: TStrings);
-    function GetGridCol(ASheetCol: Cardinal): Integer;
-    function GetGridRow(ASheetRow: Cardinal): Integer;
-    function GetWorksheetCol(AGridCol: Integer): Cardinal;
-    function GetWorksheetRow(AGridRow: Integer): Cardinal;
+    function GetGridCol(ASheetCol: Cardinal): Integer; inline;
+    function GetGridRow(ASheetRow: Cardinal): Integer; inline;
+    function GetWorksheetCol(AGridCol: Integer): Cardinal; inline;
+    function GetWorksheetRow(AGridRow: Integer): Cardinal; inline;
     procedure InsertCol(AGridCol: Integer);
     procedure InsertRow(AGridRow: Integer);
     procedure LoadFromSpreadsheetFile(AFileName: string;
@@ -619,7 +619,7 @@ end;
 function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): string;
 var
   DC: HDC;
-  textExtent: TSize;
+  textExtent: TSize = (cx:0; cy:0);
   S, P, E: PChar;
   line: string;
   isFirstLine: boolean;
@@ -1007,6 +1007,7 @@ procedure TsCustomWorksheetGrid.ChangedFontHandler(ASender: TObject;
   ARow, ACol: Cardinal);
 var
   lRow: PRow;
+  gr: Integer; // row index in grid units
 begin
   Unused(ASender, ACol);
   if (FWorksheet <> nil) then begin
@@ -1014,8 +1015,8 @@ begin
     if lRow = nil then begin
       // There is no row record --> row height changes according to font height
       // Otherwise the row height would be fixed according to the value in the row record.
-      ARow := ARow + FHeaderCount;  // convert row index to grid units
-      RowHeights[ARow] := CalcAutoRowHeight(ARow);
+      gr := GetGridRow(ARow);  // convert row index to grid units
+      RowHeights[gr] := CalcAutoRowHeight(gr);
     end;
     Invalidate;
   end;
@@ -1337,8 +1338,8 @@ begin
   begin
     if (uffBorder in cell^.UsedFormattingFields) then
     begin
-      c := cell^.Col + FHeaderCount;
-      r := cell^.Row + FHeaderCount;
+      c := GetGridCol(cell^.Col);
+      r := GetGridRow(cell^.Row);
       rect := CellRect(c, r);
       DrawCellBorders(c, r, rect);
     end;
@@ -1560,7 +1561,7 @@ var
   rct, saved_rct, temp_rct: TRect;
   clipArea: Trect;
   cell: PCell;
-  tmp: Integer;
+  tmp: Integer = 0;
 
   function IsPushCellActive: boolean;
   begin
@@ -1734,7 +1735,7 @@ begin
           FWorksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
           gr := GetGridRow(sr1);
           ColRowToOffSet(False, True, gr, rct.Top, tmp);
-          ColRowToOffSet(False, True, gr + sr2 - sr1, tmp, rct.Bottom);
+          ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
           gc := GetGridCol(sc1);
           gcNext := gc + (sc2 - sc1) + 1;
         end;
@@ -2656,7 +2657,7 @@ begin
   if AGridCol < FHeaderCount then
     exit;
 
-  if FWorksheet.GetLastColIndex + 1 + FHeaderCount >= FInitColCount then
+  if LongInt(FWorksheet.GetLastColIndex) + 1 + FHeaderCount >= FInitColCount then
     ColCount := ColCount + 1;
   c := AGridCol - FHeaderCount;
   FWorksheet.InsertCol(c);
@@ -2674,7 +2675,7 @@ begin
   if AGridRow < FHeaderCount then
     exit;
 
-  if FWorksheet.GetlastRowIndex+1 + FHeaderCount >= FInitRowCount then
+  if LongInt(FWorksheet.GetlastRowIndex) + 1 + FHeaderCount >= FInitRowCount then
     RowCount := RowCount + 1;
   r := AGridRow - FHeaderCount;
   FWorksheet.InsertRow(r);
@@ -2720,7 +2721,8 @@ var
   i: Integer;
   L: TStrings;
   wrapped: Boolean;
-  pLeft, pRight: Integer;
+  pLeft: Integer = 0;
+  pRight: Integer = 0;
 begin
   wrapped := ATextWrap or (ATextRot = rtStacked);
   if AMeasureText = '' then txt := AText else txt := AMeasureText;
@@ -2794,7 +2796,7 @@ begin
            begin
              // Special treatment for overflowing cells: they must be centered
              // at their original column, not in the total enclosing rectangle.
-             ColRowToOffset(true, true, FDrawingCell^.Col + FHeaderCount, pLeft, pRight);
+             ColRowToOffset(true, true, integer(FDrawingCell^.Col) + FHeaderCount, pLeft, pRight);
              P.X := (pLeft + pRight - w) div 2;
              P.y := ARect.Top;
              ts.Alignment := taLeftJustify;
@@ -3148,8 +3150,8 @@ begin
   end else
   if FWorksheet <> nil then begin
     Convert_sFont_to_Font(FWorkbook.GetDefaultFont, Font);
-    ColCount := Max(FWorksheet.GetLastColIndex + 1 + FHeaderCount, FInitColCount);
-    RowCount := Max(FWorksheet.GetLastRowIndex + 1 + FHeaderCount, FInitRowCount);
+    ColCount := Max(integer(FWorksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
+    RowCount := Max(integer(FWorksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin

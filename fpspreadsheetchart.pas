@@ -152,24 +152,24 @@ begin
   // First calculate the cell position
   if XSelectionDirection = fpsVerticalSelection then
   begin
-    XRow := FXFirstCellRow + AIndex;
+    XRow := Integer(FXFirstCellRow) + AIndex;
     XCol := FXFirstCellCol;
   end
   else
   begin
     XRow := FXFirstCellRow;
-    XCol := FXFirstCellCol + AIndex;
+    XCol := Integer(FXFirstCellCol) + AIndex;
   end;
 
   if YSelectionDirection = fpsVerticalSelection then
   begin
-    YRow := FYFirstCellRow + AIndex;
+    YRow := Integer(FYFirstCellRow) + AIndex;
     YCol := FYFirstCellCol;
   end
   else
   begin
     YRow := FYFirstCellRow;
-    YCol := FYFirstCellCol + AIndex;
+    YCol := Integer(FYFirstCellCol) + AIndex;
   end;
 
   // Check the corresponding cell, if it is empty, use zero

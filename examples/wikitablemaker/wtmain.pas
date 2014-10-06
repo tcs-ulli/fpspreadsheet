@@ -9,7 +9,7 @@ uses
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Grids, ColorBox,
   SynEdit, SynEditHighlighter,
   SynHighlighterHTML, SynHighlighterMulti, SynHighlighterCss,
-  fpspreadsheetgrid, fpspreadsheet, fpsallformats;
+  fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
 
 type
 
@@ -661,8 +661,6 @@ end;
 procedure TMainFrm.LoadFile(const AFileName: String);
 // Loads first worksheet from file into grid
 var
-  pages: TStrings;
-  i: Integer;
   err: String;
 begin
   // Load file

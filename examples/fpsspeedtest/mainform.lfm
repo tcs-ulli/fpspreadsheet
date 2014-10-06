@@ -88,7 +88,7 @@ object Form1: TForm1
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 66
+      ClientHeight = 63
       ClientWidth = 156
       ItemIndex = 0
       Items.Strings = (
@@ -113,7 +113,7 @@ object Form1: TForm1
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 115
+      ClientHeight = 112
       ClientWidth = 156
       Items.Strings = (
         'ods'
@@ -142,7 +142,7 @@ object Form1: TForm1
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 155
+      ClientHeight = 152
       ClientWidth = 156
       Items.Strings = (
         '10k'

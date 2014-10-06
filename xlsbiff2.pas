@@ -571,6 +571,7 @@ begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Result of the formula result in IEEE 754 floating-point value }
+  Data[0] := 0;   // to silence the compiler...
   AStream.ReadBuffer(Data, Sizeof(Data));
 
   { Recalculation byte - currently not used }
@@ -644,6 +645,7 @@ var
   cell: PCell;
 begin
   { Read entire record, starting at Row, except for string data }
+  rec.Row := 0;  // to silence the compiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2LabelRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
@@ -694,6 +696,7 @@ var
   cell: PCell;
 begin
   { Read entire record, starting at Row }
+  rec.Row := 0;  // to silence the compiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
@@ -729,6 +732,8 @@ var
   cell: PCell;
   rec: TBIFF2IntegerRecord;
 begin
+  { Read record into buffer }
+  rec.Row := 0;   // to silence the comiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
@@ -781,6 +786,7 @@ var
   lRow: PRow;
   h: word;
 begin
+  rowRec.RowIndex := 0;  // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
   h := WordLEToN(rowrec.Height);
   if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
@@ -921,6 +927,8 @@ var
   xf: TXFRecord;
   b: Byte;
 begin
+  // Read entire xf record into buffer
+  xf.FontIndex := 0;  // to silence the compiler...
   AStream.ReadBuffer(xf, SizeOf(xf));
 
   lData := TXFListData.Create;

@@ -60,7 +60,7 @@ var
 implementation
 
 uses
-  LclIntf, StrUtils;
+  LclIntf, StrUtils, fpsUtils;
 
 {$R *.lfm}
 
@@ -92,6 +92,7 @@ const
 procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
   const ADataCell: PCell);
 begin
+  Unused(ACol, ADataCell);
   // nothing to do here. Just do a progress display
   if ARow mod 1000 = 0 then
     StatusMsg(Format('Virtual mode reading %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
@@ -102,6 +103,7 @@ procedure TForm1.WriteCellStringHandler(Sender: TObject; ARow, ACol: cardinal;
 var
   S: string;
 begin
+  Unused(AStyleCell);
   S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
   AValue := S;
   if ARow mod 1000 = 0 then
@@ -111,6 +113,7 @@ end;
 procedure TForm1.WriteCellNumberHandler(Sender: TObject; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
 begin
+  UnUsed(AStyleCell);
   AValue := ARow * 1E5 + ACol;
   if ARow mod 1000 = 0 then
     StatusMsg(Format('Virtual mode writing %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
@@ -129,13 +132,14 @@ procedure TForm1.RunReadTest(Idx: Integer; Log: String;
   Options: TsWorkbookOptions);
 var
   MyWorkbook: TsWorkbook;
-  MyWorksheet: TsWorksheet;
   Tm: DWord;
   fName, s: String;
   i, j: Integer;
   F: File;
   ok: Boolean;
 begin
+  Unused(idx);
+
   s := Trim(Log);
   Log := Log + '         ';
   try
@@ -324,10 +328,9 @@ end;
 
 procedure TForm1.BtnReadClick(Sender: TObject);
 var
-  i, j, k, len: Integer;
-  s, fname: String;
+  i, len: Integer;
+  s: String;
   rows: Integer;
-  ext: String;
 begin
   WriteToIni;
 

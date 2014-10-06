@@ -666,7 +666,7 @@ begin
         begin
           s := GetAttrValue(datanode, 'si');
           if s <> '' then
-            FSharedFormulas.AddObject(addr, Pointer(PtrInt(StrToInt(s))));
+            FSharedFormulas.AddObject(addr, {%H-}Pointer(PtrInt(StrToInt(s))));
           FWorksheet.WriteFormula(cell, formulaStr);
           cell^.SharedFormulaBase := cell;
           //AWorksheet.WriteSharedFormula(s, formulaStr);
@@ -675,7 +675,7 @@ begin
           s := GetAttrValue(datanode, 'si');
           if s <> '' then
           begin
-            s := FSharedFormulas[FSharedFormulas.IndexOfObject(Pointer(PtrInt(StrToInt(s))))];
+            s := FSharedFormulas[FSharedFormulas.IndexOfObject({%H-}Pointer(PtrInt(StrToInt(s))))];
             cell^.SharedFormulaBase := FWorksheet.FindCell(s);
           end;
         end;
@@ -2705,7 +2705,7 @@ begin
         '</c>', [
         CellPosText, lStyleIndex, t,
         GetCellRangeString(ACell^.Row, ACell^.Col, r2, c2),
-        PtrInt(ACell),       // Use the cell pointer as ID of the shared formula
+        {%H-}PtrInt(ACell),       // Use the cell pointer as ID of the shared formula
         PrepareFormula(ACell^.FormulaValue),
         v
       ]));
@@ -2717,7 +2717,7 @@ begin
           '%s' +
         '</c>', [
         CellPosText, lStyleIndex, t,
-        PtrInt(ACell^.SharedFormulaBase),   // ID of the shared formula
+        {%H-}PtrInt(ACell^.SharedFormulaBase),   // ID of the shared formula
         v
       ]));
   end else begin

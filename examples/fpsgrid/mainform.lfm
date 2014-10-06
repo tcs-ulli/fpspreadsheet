@@ -63,7 +63,7 @@ object Form1: TForm1
     TabOrder = 1
     TitleStyle = tsNative
     ColWidths = (
-      42
+      56
       64
       64
       64
@@ -104,19 +104,19 @@ object Form1: TForm1
     TabOrder = 2
     object Label1: TLabel
       Left = 8
-      Height = 15
+      Height = 20
       Top = 9
-      Width = 37
+      Width = 46
       Caption = 'Sheets:'
       ParentColor = False
     end
     object SheetsCombo: TComboBox
       Left = 72
-      Height = 23
+      Height = 28
       Top = 4
       Width = 808
       Anchors = [akTop, akLeft, akRight]
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 0
       Items.Strings = (
         'Sheet 1'

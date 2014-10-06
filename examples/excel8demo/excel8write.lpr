@@ -23,7 +23,6 @@ const
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  MyRPNFormula: TsRPNFormula;
   MyDir: string;
   number: Double;
   lCell: PCell;

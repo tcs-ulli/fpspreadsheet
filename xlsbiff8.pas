@@ -1001,10 +1001,10 @@ begin
 
     // Loop writing the merged cell ranges
     while (n > 0) and (i < Length(rngList)) do begin
-      AStream.WriteWord(WordToLE(Lo(rngList[i].Row1)));
-      AStream.WriteWord(WordToLE(Lo(rngList[i].Row2)));
-      AStream.WriteWord(WordToLE(Lo(rngList[i].Col1)));
-      AStream.WriteWord(WordToLE(Lo(rngList[i].Col2)));
+      AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Row1)));
+      AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Row2)));
+      AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Col1)));
+      AStream.WriteWord(WordToLE({%H-}Lo(rngList[i].Col2)));
       inc(i);
       dec(n);
     end;
@@ -1617,6 +1617,8 @@ var
   rng: packed record Row1, Row2, Col1, Col2: Word; end;
   i, n: word;
 begin
+  rng.Row1 := 0;  // to silence the compiler...
+
   // Count of merged ranges
   n := WordLEToN(AStream.ReadWord);
 
@@ -1848,6 +1850,8 @@ var
   rec: TBIFF8LabelSSTRecord;
   cell: PCell;
 begin
+  rec.Row := 0;  // to silence the compiler...
+
   { Read entire record, starting at Row }
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF8LabelSSTRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
@@ -1930,6 +1934,9 @@ var
   dw: DWord;
   fill: Integer;
 begin
+  xf.FontIndex := 0;  // to silence the compiler...
+
+  // Read entire xf record into a buffer
   AStream.ReadBuffer(xf, SizeOf(xf));
 
   lData := TXFListData.Create;
@@ -2025,7 +2032,7 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadFont(const AStream: TStream);
 var
-  lCodePage: Word;
+  {%H-}lCodePage: Word;
   lHeight: Word;
   lOptions: Word;
   lColor: Word;

@@ -1777,7 +1777,7 @@ var
   formula: TsRPNFormula;
   i: Integer;
 begin
-  col := LongInt(PtrInt(arg));
+  col := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -1832,7 +1832,7 @@ var
   formula: TsRPNFormula;
   i: Integer;
 begin
-  row := LongInt(PtrInt(arg));
+  row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -5070,7 +5070,7 @@ begin
   // Update column index of cell records
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
-    DeleteColCallback(cellnode.Data, pointer(PtrInt(ACol)));
+    DeleteColCallback(cellnode.Data, {%H-}pointer(PtrInt(ACol)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
@@ -5159,7 +5159,7 @@ begin
   // Update row index of cell reocrds
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
-    DeleteRowCallback(cellnode.Data, pointer(PtrInt(ARow)));
+    DeleteRowCallback(cellnode.Data, {%H-}pointer(PtrInt(ARow)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
@@ -5208,7 +5208,7 @@ begin
   // Update column index of cell records
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
-    InsertColCallback(cellnode.Data, pointer(PtrInt(ACol)));
+    InsertColCallback(cellnode.Data, {%H-}pointer(PtrInt(ACol)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
@@ -5260,7 +5260,7 @@ var
   formula: TsRPNFormula;
   i: Integer;
 begin
-  col := LongInt(PtrInt(arg));
+  col := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
@@ -5319,7 +5319,7 @@ begin
   // Update row index of cell records
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
-    InsertRowCallback(cellnode.Data, pointer(PtrInt(ARow)));
+    InsertRowCallback(cellnode.Data, {%H-}pointer(PtrInt(ARow)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
@@ -5369,7 +5369,7 @@ var
   i: Integer;
   formula: TsRPNFormula;
 begin
-  row := LongInt(PtrInt(arg));
+  row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
 
   // Update row index of moved cells
