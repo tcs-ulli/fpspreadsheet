@@ -3,7 +3,7 @@
 unit fpsRPN;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 interface

@@ -45,7 +45,7 @@ AUTHORS:  Felipe Monteiro de Carvalho
 unit xlsbiff8;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 // The new OLE code is much better, so always use it

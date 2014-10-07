@@ -53,7 +53,7 @@ AUTHORS: Felipe Monteiro de Carvalho
 unit xlsbiff5;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 {$define USE_NEW_OLE}

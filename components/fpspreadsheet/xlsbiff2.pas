@@ -27,7 +27,7 @@ AUTHORS: Felipe Monteiro de Carvalho
 unit xlsbiff2;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 interface

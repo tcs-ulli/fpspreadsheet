@@ -21,6 +21,7 @@ Format mediawiki:
 
 AUTHORS: Felipe Monteiro de Carvalho
 *)
+
 unit wikitable;
 
 {$mode objfpc}{$H+}

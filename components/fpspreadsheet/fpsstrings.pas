@@ -3,7 +3,7 @@
 unit fpsStrings;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 

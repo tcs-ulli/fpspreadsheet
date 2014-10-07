@@ -3,7 +3,7 @@
 
 unit fpsxmlcommon;
 
-{$mode objfpc}
+{$mode objfpc}{$H+}
 
 interface
 

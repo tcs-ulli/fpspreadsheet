@@ -3,6 +3,10 @@
 
 unit xlsconst;
 
+{$ifdef fpc}
+  {$mode delphi}{$H+}
+{$endif}
+
 interface
 
 const
