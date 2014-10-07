@@ -23,7 +23,7 @@ AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon
 unit fpsopendocument;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 {.$define FPSPREADDEBUG} //used to be XLSDEBUG

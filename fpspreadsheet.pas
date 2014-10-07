@@ -8,7 +8,7 @@ AUTHORS: Felipe Monteiro de Carvalho
 unit fpspreadsheet;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 interface

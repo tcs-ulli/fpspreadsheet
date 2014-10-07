@@ -4,7 +4,7 @@
 
 unit fpsfunc;
 
-{$mode objfpc}
+{$mode objfpc}{$H+}
 
 interface
 

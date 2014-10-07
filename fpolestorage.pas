@@ -30,7 +30,7 @@ but should work for most documents. Some limitations are:
 unit fpolestorage;
 
 {$ifdef fpc}
-{$mode delphi}
+{$mode delphi}{$H+}
 {$endif}
 
 interface

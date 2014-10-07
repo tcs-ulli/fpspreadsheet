@@ -4,7 +4,7 @@ unit xlscommon;
 OpenOffice Microsoft Excel File Format document }
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode delphi}{$H+}
 {$endif}
 
 interface

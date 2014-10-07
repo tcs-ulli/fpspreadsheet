@@ -1,5 +1,9 @@
 unit fpsStreams;
 
+{$ifdef fpc}
+  {$mode delphi}{$H+}
+{$endif}
+
 interface
 
 uses
