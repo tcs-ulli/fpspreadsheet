@@ -95,7 +95,7 @@ begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
   try
     RealFile:=nil;
-    RealFile:=TFileStream.Create(AFileName,fmOpenRead or fmShareDenyWrite);
+    RealFile:=TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
       fsOLE:=nil;
       fsOLE:=TVirtualLayer_OLE.Create(RealFile);

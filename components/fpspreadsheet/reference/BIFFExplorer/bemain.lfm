@@ -178,22 +178,22 @@ object MainForm: TMainForm
             OnSelection = HexGridSelection
             ColWidths = (
               28
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              26
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
             )
             Cells = (
               16
@@ -263,22 +263,22 @@ object MainForm: TMainForm
             OnClick = GridClick
             OnSelection = AlphaGridSelection
             ColWidths = (
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              18
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              15
+              27
             )
             Cells = (
               16
