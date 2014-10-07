@@ -818,6 +818,7 @@ procedure TMainForm.LoadFile(const AFileName: String; AFormat: TsSpreadsheetForm
 var
   OLEDocument: TOLEDocument;
   streamname: UTF8String;
+  filestream: TFileStream;
 begin
   if MemStream <> nil then
     FreeAndNil(MemStream);
@@ -828,7 +829,14 @@ begin
   MemStream := TMemoryStream.Create;
 
   if AFormat = sfExcel2 then begin
-    MemStream.LoadFromFile(UTF8ToSys(AFileName));
+    fileStream := TFileStream.Create(UTF8ToSys(AFileName), fmOpenRead + fmShareDenyNone);
+    try
+      MemStream.CopyFrom(fileStream, fileStream.Size);
+      MemStream.Position := 0;
+//    MemStream.LoadFromFile(UTF8ToSys(AFileName));
+    finally
+      filestream.Free;
+    end;
   end else begin
     OLEStorage := TOLEStorage.Create;
 

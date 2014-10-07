@@ -1666,7 +1666,7 @@ begin
 
   // Write adapted copy of shared formula to stream.
   WriteRPNTokenArray(AStream, ACell, formula, false, RPNLength);
-  // false --> "do not convert cess addresses to relative offsets", because
+  // false --> "do not convert cell addresses to relative offsets", because
   // biff2 does not support shared formulas!
 
   // Clean up

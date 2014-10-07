@@ -7342,9 +7342,9 @@ var
   InputFile: TStream;
 begin
   if (boBufStream in Workbook.Options) then
-    InputFile := TBufStream.Create(AFileName, fmOpenRead)
+    InputFile := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyNone)
   else
-    InputFile := TFileStream.Create(AFileName, fmOpenRead);
+    InputFile := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
     ReadFromStream(InputFile, AData);
   finally
