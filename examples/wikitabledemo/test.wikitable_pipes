@@ -1,0 +1,3 @@
+|| || title1 || title2 || title3
+| [link_to_something|http://google.com]| {color:red}FAILED| {color:red}FAILED| {color:green}PASS
+   
