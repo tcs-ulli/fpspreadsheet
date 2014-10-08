@@ -158,7 +158,7 @@ var
 implementation
 
 uses
-  Math, fpsNumFormatParser;
+  Math, fpsStrings, fpsNumFormatParser;
 
 const
   { Excel record IDs }
@@ -559,7 +559,6 @@ var
   XF: Word;
   ok: Boolean;
   formulaResult: Double = 0.0;
-//  rpnFormula: TsRPNFormula;
   Data: array [0..7] of byte;
   dt: TDateTime;
   nf: TsNumberFormat;
@@ -1010,7 +1009,7 @@ begin
 
     // Carefully check the index
     if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
-      raise Exception.Create('[TsSpreadBIFF2Writer.WriteXFIndex] Invalid Index, this should not happen!');
+      raise Exception.Create('[TsSpreadBIFF2Writer.WriteXFIndex] Invalid index, this should not happen!');
     Result := FFormattingStyles[lIndex].Row;
   end;
 end;
@@ -1155,17 +1154,6 @@ begin
 
     { Write out }
     AStream.WriteBuffer(rec, SizeOf(rec));
-
-    (*
-    { BIFF Record header }
-    AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLWIDTH));  // BIFF record header
-    AStream.WriteWord(WordToLE(4));                      // Record size
-    AStream.WriteByte(ACol^.Col);                        // start column
-    AStream.WriteByte(ACol^.Col);                        // end column
-    { calculate width to be in units of 1/256 of pixel width of character "0" }
-    w := round(ACol^.Width * 256);
-    AStream.WriteWord(WordToLE(w));                     // write width
-    *)
   end;
 end;
 
@@ -1210,7 +1198,6 @@ begin
   { Write BIFF record to stream }
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
-
 
 {
   Writes an Excel 2 IXFE record
@@ -1554,16 +1541,6 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
-
-                                  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMAT));
-  AStream.WriteWord(WordToLE(1 + len));
-
-  { Format string }
-  AStream.WriteByte(len);          // AnsiString, char count in 1 byte
-  AStream.WriteBuffer(s[1], len);  // String data
-  *)
 end;
 
 procedure TsSpreadBIFF2Writer.WriteFormatCount(AStream: TStream);
@@ -1639,7 +1616,6 @@ begin
   { Write following STRING record if formula result is a non-empty string }
   if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
     WriteStringRecord(AStream, ACell^.UTF8StringValue);
-
 end;
 
 { Writes the identifier for an RPN function with fixed argument count and
@@ -1756,19 +1732,6 @@ begin
 
   { Write out }
   AStream.WriteBuffer(rec, Sizeof(rec));
-
-  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
-  AStream.WriteWord(WordToLE(7));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { BIFF2 Attributes }
-  WriteCellFormatting(AStream, ACell, xf);
-  *)
 end;
 
 {*******************************************************************
@@ -1807,9 +1770,7 @@ begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     AnsiText := Copy(AnsiText, 1, MAXBYTES);
-    Workbook.AddErrorMsg(
-      'Text value exceeds %d character limit in cell %s. ' +
-      'Text has been truncated.', [
+    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end;

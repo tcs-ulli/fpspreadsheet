@@ -107,8 +107,12 @@ type
 
 implementation
 
-{ TsWikiTableNumFormatList }
+uses
+  fpsStrings;
 
+
+{ TsWikiTableNumFormatList }
+//...
 
 { TWikiTableTokenizer }
 
@@ -456,8 +460,7 @@ begin
 
       // Check for invalid characters
       if not ValidXMLText(lCurStr, false) then
-        Workbook.AddErrorMsg(
-          'Invalid character(s) in cell %s.', [
+        Workbook.AddErrorMsg(rsInvalidCharacterInCell, [
           GetCellString(i, j)
         ]);
 

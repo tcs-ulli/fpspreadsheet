@@ -215,7 +215,7 @@ var
 implementation
 
 uses
-  fpsStreams;
+  fpsStrings, fpsStreams;
 
 const
    { Excel record IDs }
@@ -448,28 +448,7 @@ begin
   
   SetLength(Boundsheets, 0);
 end;
-  (*
-{*******************************************************************
-*  TsSpreadBIFF5Writer.WriteBlank
-*
-*  DESCRIPTION:    Writes the record for an empty cell
-*
-*******************************************************************}
-procedure TsSpreadBIFF5Writer.WriteBlank(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
-begin
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
-  AStream.WriteWord(WordToLE(6));
 
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF record }
-  WriteXFIndex(AStream, ACell);
-end;
-    *)
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteBOF ()
 *
@@ -795,7 +774,9 @@ begin
     // Bad formatted UTF8String (maybe ANSI?)
     if Length(AValue) <> 0 then begin
       //It was an ANSI string written as UTF8 quite sure, so raise exception.
-      Raise Exception.CreateFmt('Expected UTF8 text but probably ANSI text found in cell [%d,%d]',[ARow,ACol]);
+      Raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [
+        GetCellString(ARow, ACol)
+      ]);
     end;
     Exit;
   end;
@@ -804,9 +785,7 @@ begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     AnsiValue := Copy(AnsiValue, 1, MAXBYTES);
-    Workbook.AddErrorMsg(
-      'Text value exceeds %d character limit in cell %s. ' +
-      'Text has been truncated.', [
+    Workbook.AddErrorMsg(rsInvalidCharacterInCell, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end;
@@ -1345,7 +1324,7 @@ begin
     OLEStorage.ReadOLEFile(AFileName, OLEDocument);
 
     // Check if the operation succeded
-    if MemStream.Size = 0 then raise Exception.Create('FPSpreadsheet: Reading the OLE document failed');
+    if MemStream.Size = 0 then raise Exception.Create('[TsSpreadBIFF5Reader.ReadFromFile] Reading of OLE document failed');
 
     // Rewind the stream and read from it
     MemStream.Position := 0;

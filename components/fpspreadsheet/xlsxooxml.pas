@@ -171,7 +171,8 @@ type
 implementation
 
 uses
-  variants, fileutil, strutils, math, lazutf8, fpsStreams, fpsNumFormatParser;
+  variants, fileutil, strutils, math, lazutf8,
+  fpsStrings, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }
@@ -735,9 +736,9 @@ begin
     else if dataStr = '#N/A' then
       AWorksheet.WriteErrorValue(cell, errArgError)
     else
-      raise Exception.Create('unknown error type');
+      raise Exception.Create(rsUnknownErrorType);
   end else
-    raise Exception.Create('Unknown data type');
+    raise Exception.Create(rsUnknownDataType);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, rowIndex, colIndex, cell);
@@ -960,33 +961,11 @@ begin
         colorNode := patternNode.FirstChild;
         while Assigned(colorNode) do begin
           nodeName := colorNode.NodeName;
-          if nodeName = 'fgColor' then begin
-            fgclr := ReadColor(colorNode);
-            {
-            s := GetAttrValue(colorNode, 'rgb');
-            if s <> '' then
-              fgclr := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
-            else begin
-              s := GetAttrValue(colorNode, 'indexed');
-              if s <> '' then
-                fgclr := StrToInt(s);
-            end;
-            }
-          end
+          if nodeName = 'fgColor' then
+            fgclr := ReadColor(colorNode)
           else
-          if nodeName = 'bgColor' then begin
+          if nodeName = 'bgColor' then
             bgclr := ReadColor(colorNode);
-            {
-            s := GetAttrValue(colorNode, 'rgb');
-            if s <> '' then
-              bgclr := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
-            else begin
-              s := GetAttrValue(colorNode, 'indexed');
-              if s <> '' then
-                bgclr := StrToInt(s);
-            end;
-            }
-          end;
           colorNode := colorNode.NextSibling;
         end;
 
@@ -1022,8 +1001,8 @@ begin
     fntStyles := fnt.Style;
     fntColor := fnt.Color;
   end else begin
-    fntName := 'Arial';
-    fntSize := 10;
+    fntName := DEFAULTFONTNAME;
+    fntSize := DEFAULTFONTSIZE;
     fntStyles := [];
     fntColor := scBlack;
   end;
@@ -1272,7 +1251,6 @@ begin
     sheetName := GetAttrValue(node, 'name');
     //sheetId := GetAttrValue(node, 'sheetId');
     AList.Add(sheetName);
-//    AList.AddObject(sheetName, pointer(PtrInt(StrToInt(sheetId))));
     node := node.NextSibling;
   end;
 end;
@@ -1465,7 +1443,7 @@ begin
 
     // process the workbook.xml file
     if not FileExists(FilePath + OOXML_PATH_XL_WORKBOOK) then
-      raise Exception.Create('Defective internal structure of xlsx file');
+      raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
     ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
     DeleteFile(FilePath + OOXML_PATH_XL_WORKBOOK);
     ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
@@ -2047,7 +2025,6 @@ begin
     AppendToStream(AStream, Format(
       '<sheetViews>' +
         '<sheetView workbookViewId="0" %s%s/>' +
-//       <sheetView workbookViewID="0" />
       '</sheetViews>', [
       showGridLines, showHeaders
     ]))
@@ -2714,14 +2691,12 @@ begin
   if Length(AValue) > MAXBYTES then
   begin
     ResultingValue := Copy(AValue, 1, MAXBYTES); //may chop off multicodepoint UTF8 characters but well...
-    Workbook.AddErrorMsg(
-      'Text value exceeds %d character limit in cell %s. ' +
-      'Text has been truncated.', [
+    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end
   else
-    ResultingValue:=AValue;
+    ResultingValue := AValue;
 
   if not ValidXMLText(ResultingValue) then
     Workbook.AddErrorMsg(
@@ -2740,15 +2715,6 @@ begin
     '<c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]));
 
   inc(FSharedStringsCount);
-
-  {
-  //todo: keep a log of errors and show with an exception after writing file or something.
-  We can't just do the following
-
-  if TextTooLong then
-    Raise Exception.CreateFmt('Text value exceeds %d character limit in cell [%d,%d]. Text has been truncated.',[MaxBytes,ARow,ACol]);
-  because the file wouldn't be written.
-  }
 end;
 
 {
