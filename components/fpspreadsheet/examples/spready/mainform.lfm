@@ -516,7 +516,7 @@ object MainFrm: TMainFrm
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
-    Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (pipes) (.wikitable_pipes)|.wikitable_pipes|All files (*.*)|*.*'
+    Filter = 'Excel spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Wikitable (pipes) (.wikitable_pipes)|*.wikitable_pipes|All files (*.*)|*.*'
     Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
     left = 184
     top = 200
