@@ -194,7 +194,7 @@ type
 implementation
 
 uses
-  StrUtils, Variants, fpsStreams, fpsExprParser;
+  StrUtils, Variants, fpsStrings, fpsStreams, fpsExprParser;
 
 const
   { OpenDocument general XML constants }
@@ -2680,82 +2680,6 @@ begin
       '</office:body>' +
     '</office:document-content>'
   );
-
-
-
-                           (*
-  lNumFmtCode := WriteNumFormatsXMLAsString;
-
-  lColStylesCode := WriteColStylesXMLAsString;
-  if lColStylesCode = '' then lColStylesCode :=
-  '    <style:style style:name="co1" style:family="table-column">' + LineEnding +
-  '      <style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>' + LineEnding +
-  '    </style:style>' + LineEnding;
-
-  lRowStylesCode := WriteRowStylesXMLAsString;
-  if lRowStylesCode = '' then lRowStylesCode :=
-  '    <style:style style:name="ro1" style:family="table-row">' + LineEnding +
-  '      <style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' + LineEnding +
-  '    </style:style>' + LineEnding;
-
-  lCellStylesCode := WriteCellStylesXMLAsString;
-
-  FContent :=
-   XML_HEADER + LineEnding +
-   '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
-     '" xmlns:fo="'     + SCHEMAS_XMLNS_FO +
-     '" xmlns:style="'  + SCHEMAS_XMLNS_STYLE +
-     '" xmlns:text="'   + SCHEMAS_XMLNS_TEXT +
-     '" xmlns:table="'  + SCHEMAS_XMLNS_TABLE +
-     '" xmlns:svg="'    + SCHEMAS_XMLNS_SVG +
-     '" xmlns:number="' + SCHEMAS_XMLNS_NUMBER +
-     '" xmlns:meta="'   + SCHEMAS_XMLNS_META +
-     '" xmlns:chart="'  + SCHEMAS_XMLNS_CHART +
-     '" xmlns:dr3d="'   + SCHEMAS_XMLNS_DR3D +
-     '" xmlns:math="'   + SCHEMAS_XMLNS_MATH +
-     '" xmlns:form="'   + SCHEMAS_XMLNS_FORM +
-     '" xmlns:script="' + SCHEMAS_XMLNS_SCRIPT +
-     '" xmlns:ooo="'    + SCHEMAS_XMLNS_OOO +
-     '" xmlns:ooow="'   + SCHEMAS_XMLNS_OOOW +
-     '" xmlns:oooc="'   + SCHEMAS_XMLNS_OOOC +
-     '" xmlns:dom="'    + SCHEMAS_XMLNS_DOM +
-     '" xmlns:xforms="' + SCHEMAS_XMLNS_XFORMS +
-     '" xmlns:xsd="'    + SCHEMAS_XMLNS_XSD +
-     '" xmlns:xsi="'    + SCHEMAS_XMLNS_XSI + '">' + LineEnding +
-   '  <office:scripts />' + LineEnding +
-
-   // Fonts
-   '  <office:font-face-decls>' + LineEnding +
-   '    ' + WriteFontNamesXMLAsString + LineEnding +
-//   '    <style:font-face style:name="Arial" svg:font-family="Arial" xmlns:v="urn:schemas-microsoft-com:vml" />' + LineEnding +
-   '  </office:font-face-decls>' + LineEnding +
-
-   // Automatic styles
-  '  <office:automatic-styles>' + LineEnding +
-  lNumFmtCode +
-  lColStylesCode +
-  lRowStylesCode +
-  '    <style:style style:name="ta1" style:family="table" style:master-page-name="Default">' + LineEnding +
-  '      <style:table-properties table:display="true" style:writing-mode="lr-tb"/>' + LineEnding +
-  '    </style:style>' + LineEnding +
-
-  // Automatically Generated Styles
-  lCellStylesCode +
-  '  </office:automatic-styles>' + LineEnding +
-
-  // Body
-  '  <office:body>' + LineEnding +
-  '    <office:spreadsheet>' + LineEnding;
-
-  // Write all worksheets
-  for i := 0 to Workbook.GetWorksheetCount - 1 do
-    WriteWorksheet(Workbook.GetWorksheetByIndex(i));
-
-  FContent :=  FContent +
-   '    </office:spreadsheet>' + LineEnding +
-   '  </office:body>' + LineEnding +
-   '</office:document-content>';
-   *)
 end;
 
 procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
@@ -2892,7 +2816,7 @@ begin
         break;
       end;
     if stylename = '' then
-      raise Exception.Create('Column style not found.');
+      raise Exception.Create(rsColumnStyleNotFound);
 
     // Determine value for "number-columns-repeated"
     colsRepeated := 1;
@@ -3008,7 +2932,7 @@ begin
         end;
       end;
       if styleName = '' then
-        raise Exception.Create('Row style not found.');
+        raise Exception.Create(rsRowStyleNotFound);
     end;
 
     // Take care of empty rows above the first row
@@ -3250,15 +3174,6 @@ begin
   end;
 end;
 
-                 (*
-procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
-begin
-  Unused(AStream);
-  // Not supported at the moment
-  raise Exception.Create('TsSpreadOpenDocWriter.WriteToStream not supported');
-end;
-                   *)
-
 {
   Writes an empty cell
 }
@@ -3381,8 +3296,6 @@ begin
       Workbook.GetPaletteColorAsHTMLStr(AFormat.BorderStyles[cbDiagDown].Color)
     ]);
   end;
-
-
 end;
 
 function TsSpreadOpenDocWriter.WriteDefaultFontXMLAsString: String;
@@ -3582,7 +3495,7 @@ begin
         end;
       end;
       if styleName = '' then
-        raise Exception.Create('Row style not found.');
+        raise Exception.Create(rsRowStyleNotFound);
     end;
 
     // No empty rows allowed here for the moment!
@@ -3761,7 +3674,7 @@ begin
   if ACell^.CalcState=csCalculated then
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s %s>' +
-      valueStr +
+        valueStr +
       '</table:table-cell>', [
       formula, valuetype, value, lStyle, spannedStr
     ]))
@@ -3813,7 +3726,7 @@ begin
   str := AValue;
   if not ValidXMLText(str) then
     Workbook.AddErrorMsg(
-      'Invalid character(s) in cell %s.', [
+      rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
     ]);
 
@@ -3879,13 +3792,6 @@ begin
     valType, StrValue, lStyle, spannedStr,
     DisplayStr
   ]));
-  {
-
-
-    '<table:table-cell office:value-type="' + valType + '" office:value="' + StrValue + '"' + lStyle + '>' +
-      '<text:p>' + DisplayStr + '</text:p>' +
-    '</table:table-cell>');
-    }
 end;
 
 {*******************************************************************

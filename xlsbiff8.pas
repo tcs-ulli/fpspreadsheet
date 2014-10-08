@@ -226,7 +226,7 @@ var
 implementation
 
 uses
-  Math, fpsStreams, fpsExprParser;
+  Math, fpsStrings, fpsStreams, fpsExprParser;
 
 const
    { Excel record IDs }
@@ -930,7 +930,7 @@ begin
     // Badly formatted UTF8String (maybe ANSI?)
     if Length(AValue)<>0 then begin
       //Quite sure it was an ANSI string written as UTF8, so raise exception.
-      Raise Exception.CreateFmt('Expected UTF8 text but probably ANSI text found in cell [%d,%d]',[ARow,ACol]);
+      raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow,ACol)]);
     end;
     Exit;
   end;
@@ -939,9 +939,7 @@ begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     SetLength(WideValue, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
-    Workbook.AddErrorMsg(
-      'Text value exceeds %d character limit in cell %s. ' +
-      'Text has been truncated.', [
+    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end;
@@ -1528,7 +1526,7 @@ begin
       // Can't be shared with BIFF5 because of the parameter "Workbook" !!!)
 
     // Check if the operation succeded
-    if MemStream.Size = 0 then raise Exception.Create('FPSpreadsheet: Reading the OLE document failed');
+    if MemStream.Size = 0 then raise Exception.Create('[TsSpreadBIFF8Reader.ReadFromFile] Reading of OLE document failed');
 
     // Rewind the stream and read from it
     MemStream.Position := 0;
@@ -1604,7 +1602,7 @@ begin
 
   { Save the data }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);         // "virtual" cell
+    InitCell(ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(ARow, ACol);    // "real" cell
@@ -1866,7 +1864,9 @@ begin
   SSTIndex := DWordLEToN(rec.SSTIndex);
 
   if SizeInt(SSTIndex) >= FSharedStringTable.Count then begin
-    Raise Exception.CreateFmt('Index %d in SST out of range (0-%d)',[Integer(SSTIndex),FSharedStringTable.Count-1]);
+    raise Exception.CreateFmt(rsIndexInSSTOutOfRange, [
+      Integer(SSTIndex),FSharedStringTable.Count-1
+    ]);
   end;
 
   { Create cell }

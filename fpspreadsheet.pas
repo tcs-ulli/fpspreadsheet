@@ -5945,9 +5945,9 @@ begin
   if valid then
     WriteToFile(AFileName, SheetType, AOverwriteExisting)
   else
-    raise Exception.Create(Format(
-      '[TsWorkbook.WriteToFile] Attempt to save a spreadsheet by extension, ' +
-      'but the extension %s is not valid.', [ExtractFileExt(AFileName)]));
+    raise Exception.Create(Format(rsInvalidExtension, [
+      ExtractFileExt(AFileName)
+    ]));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6643,7 +6643,8 @@ end;
   @param  AColorIndex   Palette index of the color to be replaced
   @param  AColorValue   Number containing the rgb components of the new color
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.SetPaletteColor(AColorIndex: TsColor; AColorValue: TsColorValue);
+procedure TsWorkbook.SetPaletteColor(AColorIndex: TsColor;
+  AColorValue: TsColorValue);
 begin
   if (AColorIndex >= 0) and (AColorIndex < GetPaletteSize) then
   begin

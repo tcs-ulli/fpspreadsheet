@@ -21,6 +21,8 @@ resourcestring
   rsTooManyPaletteColors = 'This workbook contains more colors (%d) than ' +
     'supported by the file format (%d). The additional colors are replaced by '+
     'the best-matching palette colors.';
+  rsInvalidExtension = 'Attempting to save a spreadsheet by extension, ' +
+    'but the extension %s is not valid.';
   rsInvalidFontIndex = 'Invalid font index';
   rsInvalidNumberFormat = 'Trying to use an incompatible number format.';
   rsInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
@@ -33,8 +35,21 @@ resourcestring
   rsCircularReference = 'Circular reference found when calculating worksheet formulas';
   rsFileNotFound = 'File "%s" not found.';
   rsInvalidWorksheetName = '"%s" is not a valid worksheet name.';
+  rsDefectiveInternalStructure = 'Defective internal structure of %s file.';
+  rsUnknownDataType = 'Unknown data type.';
+  rsUnknownErrorType = 'Unknown error type.';
+  rsTruncateTooLongCellText = 'Text value exceeds %d character limit in cell %s '+
+    'and has been truncated.';
+  rsColumnStyleNotFound = 'Column style not found.';
+  rsRowStyleNotFound = 'Row style not found.';
+  rsInvalidCharacterInCell = 'Invalid character(s) in cell %s.';
+  rsUTF8TextExpectedButANSIFoundInCell = 'Expected UTF8 text but probably ANSI '+
+      'text found in cell %s.';
+  rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
 
-  rsTRUE = 'TRUE';
+
+
+  rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?
   rsFALSE = 'FALSE';
   rsErrEmptyIntersection = '#NULL!';
   rsErrDivideByZero = '#DIV/0!';

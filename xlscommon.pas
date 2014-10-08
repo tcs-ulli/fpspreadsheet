@@ -70,22 +70,22 @@ const
   INT_FONT_WEIGHT_BOLD     = $02BC;
 
   { CODEPAGE record constants }
-  WORD_ASCII = 367;
-  WORD_UTF_16 = 1200; // BIFF 8
-  WORD_CP_1250_Latin2 = 1250;
-  WORD_CP_1251_Cyrillic = 1251;
-  WORD_CP_1252_Latin1 = 1252; // BIFF4-BIFF5
-  WORD_CP_1253_Greek = 1253;
-  WORD_CP_1254_Turkish = 1254;
-  WORD_CP_1255_Hebrew = 1255;
-  WORD_CP_1256_Arabic = 1256;
-  WORD_CP_1257_Baltic = 1257;
-  WORD_CP_1258_Vietnamese = 1258;
+  WORD_ASCII               = 367;
+  WORD_UTF_16              = 1200; // BIFF 8
+  WORD_CP_1250_Latin2      = 1250;
+  WORD_CP_1251_Cyrillic    = 1251;
+  WORD_CP_1252_Latin1      = 1252; // BIFF4-BIFF5
+  WORD_CP_1253_Greek       = 1253;
+  WORD_CP_1254_Turkish     = 1254;
+  WORD_CP_1255_Hebrew      = 1255;
+  WORD_CP_1256_Arabic      = 1256;
+  WORD_CP_1257_Baltic      = 1257;
+  WORD_CP_1258_Vietnamese  = 1258;
   WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
 
   { DATEMODE record, 5.28 }
-  DATEMODE_1900_BASE = 1; //1/1/1900 minus 1 day in FPC TDateTime
-  DATEMODE_1904_BASE = 1462; //1/1/1904 in FPC TDateTime
+  DATEMODE_1900_BASE       = 1; //1/1/1900 minus 1 day in FPC TDateTime
+  DATEMODE_1904_BASE       = 1462; //1/1/1904 in FPC TDateTime
 
   { WINDOW1 record constants - BIFF5-BIFF8 }
   MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
@@ -1786,25 +1786,7 @@ begin
   end else
     Result := AColor;
 end;
-                          (*
-function TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID(
-  AElementKind: TFEKind; out ASecondaryID: Word): Word;
-begin
-  if AElementKind = fekFunc then
-  if (AElementKind >= Low(TFuncTokens)) and (AElementKind <= High(TFuncTokens))
-  then begin
-    if FixedParamCount(AElementKind) then
-      Result := INT_EXCEL_TOKEN_FUNC_V
-    else
-      Result := INT_EXCEL_TOKEN_FUNCVAR_V;
-    ASecondaryID := TokenIDs[AElementKind];
-  end
-  else begin
-    Result := TokenIDs[AElementKind];
-    ASecondaryID := 0;
-  end;
-end;
-                            *)
+
 procedure TsSpreadBIFFWriter.GetLastRowCallback(ACell: PCell; AStream: TStream);
 begin
   Unused(AStream);
@@ -1855,18 +1837,6 @@ begin
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
-  (*
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BLANK));
-  AStream.WriteWord(WordToLE(6));
-
-  { Row and column index }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF record, according to formatting }
-  WriteXFIndex(AStream, ACell);
-  *)
 end;
 
 procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
@@ -1933,20 +1903,6 @@ begin
 
     { Write out }
     AStream.WriteBuffer(rec, SizeOf(rec));
-
-    (*
-    { BIFF Record header }
-    AStream.WriteWord(WordToLE(INT_EXCEL_ID_COLINFO));  // BIFF record header
-    AStream.WriteWord(WordToLE(12));                    // Record size
-    AStream.WriteWord(WordToLE(ACol^.Col));             // start column
-    AStream.WriteWord(WordToLE(ACol^.Col));             // end column
-    { calculate width to be in units of 1/256 of pixel width of character "0" }
-    w := round(ACol^.Width * 256);
-    AStream.WriteWord(WordToLE(w));                     // write width
-    AStream.WriteWord(15);                              // XF record, ignored
-    AStream.WriteWord(0);                               // option flags, ignored
-    AStream.WriteWord(0);                               // "not used"
-    *)
   end;
 end;
 
@@ -2062,22 +2018,6 @@ begin
 
   AStream.WriteBuffer(rec, sizeof(Rec));
 end;
-      (*
-
-  { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NUMBER));
-  AStream.WriteWord(WordToLE(14));
-
-  { BIFF Record data }
-  AStream.WriteWord(WordToLE(ARow));
-  AStream.WriteWord(WordToLE(ACol));
-
-  { Index to XF record }
-  WriteXFIndex(AStream, ACell);
-
-  { IEE 754 floating-point value }
-  AStream.WriteBuffer(AValue, 8);
-end;         *)
 
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 var
