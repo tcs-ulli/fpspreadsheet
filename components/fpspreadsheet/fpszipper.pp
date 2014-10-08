@@ -17,7 +17,24 @@
   Remove it after a new FPC with the fixes from this unit is released - 
 	definitely any version based on FPC 2.7.1, but probably works with FPC
 	2.6.4+ as well.
+
+  TODO: Make sure that the following adjustments are contained in the new official
+        version:
+      - TUnzipper.OpenInput: use fmOpenRead + fmShareDenyNone
+      - const declarations: Add directive {%H-} to unused items UNIX_WRGP,
+        UNIX_XRGP, UNIT_WOTH, UNIX_XOTH
+      - TUnzipper.UnzipOneFile: Remove unused variable LinkTargetStream
+      - TUnzipper.UnzipOneFile: Initialize FOutStream with nil.
+      - TZipper.CreateCompressor: Use directive {%H-} for unused parameter
+        "Item : TZipFileEntry"
+      - TUnzipper.CreateDeCompressor: Use directive {%H-} for unused
+        parameter "Item : TZipFileEntry"
+      - TCompressor.UpdC32(Octet: Byte); cast "Octet" to LongWord instead of LongInt
+      - TDecompressor.UpdC32: dto.
+      - TUnZipper.ReadZipDirectory: in "FZipStream.Seek()", at end, cast
+        "Extra_field_length" to Int64 to avoid compiler warning.
 }
+
 {$mode objfpc}
 {$h+}
 unit fpszipper;
