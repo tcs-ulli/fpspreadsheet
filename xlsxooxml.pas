@@ -95,6 +95,7 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
   { TsSpreadOOXMLWriter }
@@ -1454,7 +1455,7 @@ begin
       FreeAndNil(Doc);
     end;
 
-    // process the sharedStrings.xml file
+    // process the sharedstrings.xml file
     if FileExists(FilePath + OOXML_PATH_XL_STRINGS) then begin
       ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
       DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
@@ -1519,64 +1520,17 @@ begin
       FreeAndNil(Doc);
     end;
 
-
-
-
-
-        (*
-    //process the content.xml file
-    ReadXMLFile(Doc, FilePath+'content.xml');
-    DeleteFile(FilePath+'content.xml');
-
-    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
-    ReadNumFormats(StylesNode);
-    ReadStyles(StylesNode);
-
-    BodyNode := Doc.DocumentElement.FindNode('office:body');
-    if not Assigned(BodyNode) then Exit;
-
-    SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
-    if not Assigned(SpreadSheetNode) then Exit;
-
-    ReadDateMode(SpreadSheetNode);
-
-    //process each table (sheet)
-    TableNode := SpreadSheetNode.FindNode('table:table');
-    while Assigned(TableNode) do begin
-      // These nodes occur due to leading spaces which are not skipped
-      // automatically any more due to PreserveWhiteSpace option applied
-      // to ReadXMLFile
-      if TableNode.NodeName = '#text' then begin
-        TableNode := TableNode.NextSibling;
-        continue;
-      end;
-      FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
-      // Collect column styles used
-      ReadColumns(TableNode);
-      // Process each row inside the sheet and process each cell of the row
-      ReadRowsAndCells(TableNode);
-      ApplyColWidths;
-      // Continue with next table
-      TableNode := TableNode.NextSibling;
-    end; //while Assigned(TableNode)
-
-    Doc.Free;
-
-    // process the settings.xml file (Note: it does not always exist!)
-    if FileExists(FilePath + 'settings.xml') then begin
-      ReadXMLFile(Doc, FilePath+'settings.xml');
-      DeleteFile(FilePath+'settings.xml');
-
-      OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
-      ReadSettings(OfficeSettingsNode);
-    end;
-               *)
   finally
     SheetList.Free;
     FreeAndNil(Doc);
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+begin
+  raise Exception.Create('[TsSpreadOOXMLReader.ReadFromStream] '+
+                         'Method not implemented. Use "ReadFromFile" instead.');
+end;
 
 
 { TsSpreadOOXMLWriter }

@@ -120,6 +120,7 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
+    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
   end;
 
   { TsSpreadOpenDocWriter }
@@ -1370,6 +1371,12 @@ begin
   finally
     if Assigned(Doc) then Doc.Free;
   end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+begin
+  raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] '+
+                         'Method not implemented. Use "ReadFromFile" instead.');
 end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
