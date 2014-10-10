@@ -10,7 +10,7 @@ unit fpsallformats;
 interface
 
 uses
-  xlsbiff2, xlsbiff5, xlsbiff8, fpsopendocument, xlsxooxml, wikitable;
+  xlsbiff2, xlsbiff5, xlsbiff8, fpsopendocument, xlsxooxml, wikitable, fpscsv;
 
 implementation
 
