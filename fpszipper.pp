@@ -1767,9 +1767,11 @@ end;
 Procedure TUnZipper.UnZipOneFile(Item : TFullZipFileEntry);
 
 Var
+ {$IFDEF UNIX}
+  LinkTargetStream: TStringStream;
+ {$ENDIF}
   {%H-}Count, Attrs: Longint;
   ZMethod : Word;
-  //LinkTargetStream: TStringStream;
   OutputFileName: string;
   FOutStream: TStream = nil;
   IsLink: Boolean;
