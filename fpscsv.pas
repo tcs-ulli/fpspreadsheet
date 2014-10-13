@@ -11,12 +11,12 @@ uses
 type
   TsCSVReader = class(TsCustomSpreadReader)
   private
-    FFormatSettings: TFormatSettings;
-    FRow, FCol: Cardinal;
-    FCellValue: String;
     FWorksheetName: String;
+    function IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
+    function IsNumber(AText: String; out ANumber: Double): Boolean;
+    function IsQuotedText(var AText: String): Boolean;
+    procedure ReadCellValue(ARow, ACol: Cardinal; AText: String);
   protected
-    procedure ProcessCellValue(AStream: TStream);
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadLabel(AStream: TStream); override;
@@ -30,8 +30,7 @@ type
 
   TsCSVWriter = class(TsCustomSpreadWriter)
   private
-    FFormatSettings: TFormatSettings;
-
+    FLineEnding: String;
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -43,7 +42,6 @@ type
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
-
     procedure WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
 
   public
@@ -52,70 +50,195 @@ type
     procedure WriteToStrings(AStrings: TStrings); override;
   end;
 
+  TsCSVLineEnding = (leSystem, leCRLF, leCR, leLF);
+
   TsCSVParams = record
-    LineDelimiter: String;        // LineEnding
-    ColDelimiter: Char;           // ';', ',', TAB (#9)
-    QuoteChar: Char;              // use #0 if strings are not quoted
-    NumberFormat: String;         // if empty, numbers are formatted as in sheet
-    DateTimeFormat: String;       // if empty, date/times are formatted as in sheet
-    DecimalSeparator: Char;       // '.', ',', #0 if using workbook's formatsetting
-    SheetIndex: Integer;          // -1 for all sheets
+    SheetIndex: Integer;
+    LineEnding: TsCSVLineEnding;
+    Delimiter: Char;
+    QuoteChar: Char;
+    NumberFormat: String;
+    FormatSettings: TFormatSettings;
   end;
 
 var
   CSVParams: TsCSVParams = (
-    LineDelimiter: '';            // is replaced by LineEnding at runtime
-    ColDelimiter: ';';
-    QuoteChar: '"';
-    NumberFormat: '';             // Use number format of worksheet
-    DateTimeFormat: '';           // Use DateTime format of worksheet
-    DecimalSeparator: '.';
-    SheetIndex: 0;                // Store sheet #0
+    SheetIndex: 0;              // Store sheet #0 by default
+    LineEnding: leSystem;       // Write system lineending, read any
+    Delimiter: ';';             // Column delimiter
+    QuoteChar: '"';             // for quoted strings
+    NumberFormat: '';           // if empty write numbers like in sheet, otherwise use this format
   );
+
 
 implementation
 
 uses
   StrUtils, DateUtils, fpsutils;
 
+{ Initializes the FormatSettings of the CSVParams to default values which
+  can be replaced by the FormatSettings of the workbook's FormatSettings }
+procedure InitCSVFormatSettings;
+var
+  i: Integer;
+begin
+  with CSVParams.FormatSettings do
+  begin
+    CurrencyFormat := Byte(-1);
+    NegCurrFormat := Byte(-1);
+    ThousandSeparator := #0;
+    DecimalSeparator := #0;
+    CurrencyDecimals := Byte(-1);
+    DateSeparator := #0;
+    TimeSeparator := #0;
+    ListSeparator := #0;
+    CurrencyString := '';
+    ShortDateFormat := '';
+    LongDateFormat := '';
+    TimeAMString := '';
+    TimePMString := '';
+    ShortTimeFormat := '';
+    LongTimeFormat := '';
+    for i:=1 to 12 do
+    begin
+      ShortMonthNames[i] := '';
+      LongMonthNames[i] := '';
+    end;
+    for i:=1 to 7 do
+    begin
+      ShortDayNames[i] := '';
+      LongDayNames[i] := '';
+    end;
+    TwoDigitYearCenturyWindow := Word(-1);
+  end;
+end;
+
+procedure ReplaceFormatSettings(var AFormatSettings: TFormatSettings;
+  const ADefaultFormats: TFormatSettings);
+var
+  i: Integer;
+begin
+  if AFormatSettings.CurrencyFormat = Byte(-1) then
+    AFormatSettings.CurrencyFormat := ADefaultFormats.CurrencyFormat;
+  if AFormatSettings.NegCurrFormat = Byte(-1) then
+    AFormatSettings.NegCurrFormat := ADefaultFormats.NegCurrFormat;
+  if AFormatSettings.ThousandSeparator = #0 then
+    AFormatSettings.ThousandSeparator := ADefaultFormats.ThousandSeparator;
+  if AFormatSettings.DecimalSeparator = #0 then
+    AFormatSettings.DecimalSeparator := ADefaultFormats.DecimalSeparator;
+  if AFormatSettings.CurrencyDecimals = Byte(-1) then
+    AFormatSettings.CurrencyDecimals := ADefaultFormats.CurrencyDecimals;
+  if AFormatSettings.DateSeparator = #0 then
+    AFormatSettings.DateSeparator := ADefaultFormats.DateSeparator;
+  if AFormatSettings.TimeSeparator = #0 then
+    AFormatSettings.TimeSeparator := ADefaultFormats.TimeSeparator;
+  if AFormatSettings.ListSeparator = #0 then
+    AFormatSettings.ListSeparator := ADefaultFormats.ListSeparator;
+  if AFormatSettings.CurrencyString = '' then
+    AFormatSettings.CurrencyString := ADefaultFormats.CurrencyString;
+  if AFormatSettings.ShortDateFormat = '' then
+    AFormatSettings.ShortDateFormat := ADefaultFormats.ShortDateFormat;
+  if AFormatSettings.LongDateFormat = '' then
+    AFormatSettings.LongDateFormat := ADefaultFormats.LongDateFormat;
+  if AFormatSettings.ShortTimeFormat = '' then
+    AFormatSettings.ShortTimeFormat := ADefaultFormats.ShortTimeFormat;
+  if AFormatSettings.LongTimeFormat = '' then
+    AFormatSettings.LongTimeFormat := ADefaultFormats.LongTimeFormat;
+  for i:=1 to 12 do
+  begin
+    if AFormatSettings.ShortMonthNames[i] = '' then
+      AFormatSettings.ShortMonthNames[i] := ADefaultFormats.ShortMonthNames[i];
+    if AFormatSettings.LongMonthNames[i] = '' then
+      AFormatSettings.LongMonthNames[i] := ADefaultFormats.LongMonthNames[i];
+  end;
+  for i:=1 to 7 do
+  begin
+    if AFormatSettings.ShortDayNames[i] = '' then
+      AFormatSettings.ShortDayNames[i] := ADefaultFormats.ShortDayNames[i];
+    if AFormatSettings.LongDayNames[i] = '' then
+      AFormatSettings.LongDayNames[i] := ADefaultFormats.LongDayNames[i];
+  end;
+  if AFormatSettings.TwoDigitYearCenturyWindow = Word(-1) then
+    AFormatSettings.TwoDigitYearCenturyWindow := ADefaultFormats.TwoDigitYearCenturyWindow;
+end;
+
+
 { -----------------------------------------------------------------------------}
 {                              TsCSVReader                                     }
 {------------------------------------------------------------------------------}
+
 constructor TsCSVReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FFormatSettings := AWorkbook.FormatSettings;
-  FWorksheetName := 'Sheet1';
+  ReplaceFormatSettings(CSVParams.FormatSettings, AWorkbook.FormatSettings);
+  FWorksheetName := 'Sheet1';  // will be replaced by filename
 end;
 
-procedure TsCSVReader.ProcessCellValue(AStream: TStream);
+function TsCSVReader.IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
 begin
-  if FCellValue = '' then
-    ReadBlank(AStream)
-  else
-  if (Length(FCellValue) > 1) and (
-     ((FCellValue[1] = '"') and (FCellValue[Length(FCellValue)] = '"'))
-       or
-     (not (CSVParams.QuoteChar in [#0, '"']) and (FCellValue[1] = CSVParams.QuoteChar)
-       and (FCellValue[Length(FCellValue)] = CSVParams.QuoteChar))
-     ) then
+  Result := TryStrToDateTime(AText, ADateTime, CSVParams.FormatSettings);
+end;
+
+function TsCSVReader.IsNumber(AText: String; out ANumber: Double): Boolean;
+begin
+  Result := TryStrToFloat(AText, ANumber, CSVParams.FormatSettings);
+end;
+
+function TsCSVReader.IsQuotedText(var AText: String): Boolean;
+begin
+  if (Length(AText) > 1) and (CSVParams.QuoteChar <> #0) and
+   (AText[1] = CSVParams.QuoteChar) and
+   (AText[Length(AText)] = CSVParams.QuoteChar) then
   begin
-    Delete(FCellValue, Length(FCellValue), 1);
-    Delete(FCellValue, 1, 1);
-    ReadLabel(AStream);
+    Delete(AText, 1, 1);
+    Delete(AText, Length(AText), 1);
+    Result := true;
   end else
-    ReadNumber(AStream);
+    Result := false;
 end;
 
 procedure TsCSVReader.ReadBlank(AStream: TStream);
 begin
-  // We could write a blank cell, but since CSV does not support formatting
-  // this would be a waste of memory. --> Just do nothing
+  Unused(AStream);
+end;
+
+procedure TsCSVReader.ReadCellValue(ARow, ACol: Cardinal; AText: String);
+var
+  dbl: Double;
+  dt: TDateTime;
+begin
+  // Empty strings are blank cells -- nothing to do
+  if AText = '' then
+    exit;
+
+  // Quoted text is a TEXT cell
+  if IsQuotedText(AText) then
+  begin
+    FWorksheet.WriteUTF8Text(ARow, ACol, AText);
+    exit;
+  end;
+
+  // Check for a NUMBER cell
+  if IsNumber(AText, dbl) then
+  begin
+    FWorksheet.WriteNumber(ARow, ACol, dbl);
+    exit;
+  end;
+
+  // Check for a DATE/TIME cell
+  if IsDateTime(AText, dt) then
+  begin
+    FWorksheet.WriteDateTime(ARow, ACol, dt);
+    exit;
+  end;
+
+  // What is left is handled as a TEXT cell
+  FWorksheet.WriteUTF8Text(ARow, ACol, AText);
 end;
 
 procedure TsCSVReader.ReadFormula(AStream: TStream);
 begin
-  // Nothing to do - CSV does not support formulas
+  Unused(AStream);
 end;
 
 procedure TsCSVReader.ReadFromFile(AFileName: String; AData: TsWorkbook);
@@ -129,27 +252,29 @@ var
   n: Int64;
   ch: Char;
   nextch: Char;
+  cellValue: String;
+  r, c: Cardinal;
 begin
   FWorkbook := AData;
   FWorksheet := AData.AddWorksheet(FWorksheetName);
   n := AStream.Size;
-  FCellValue := '';
-  FRow := 0;
-  FCol := 0;
+  cellValue := '';
+  r := 0;
+  c := 0;
   while AStream.Position < n do begin
     ch := char(AStream.ReadByte);
-    if ch = CSVParams.ColDelimiter then begin
+    if ch = CSVParams.Delimiter then begin
       // End of column reached
-      ProcessCellValue(AStream);
-      inc(FCol);
-      FCellValue := '';
+      ReadCellValue(r, c, cellValue);
+      inc(c);
+      cellValue := '';
     end else
     if (ch = #13) or (ch = #10) then begin
       // End of row reached
-      ProcessCellValue(AStream);
-      inc(FRow);
-      FCol := 0;
-      FCellValue := '';
+      ReadCellValue(r, c, cellValue);
+      inc(r);
+      c := 0;
+      cellValue := '';
 
       // look for CR+LF: if true, skip next byte
       if AStream.Position+1 < n then begin
@@ -158,7 +283,7 @@ begin
           AStream.Position := AStream.Position - 1;  // re-read nextchar in next loop
       end;
     end else
-      FCellValue := FCellValue + ch;
+      cellValue := cellValue + ch;
   end;
 end;
 
@@ -177,47 +302,11 @@ end;
 procedure TsCSVReader.ReadLabel(AStream: TStream);
 begin
   Unused(AStream);
-  FWorksheet.WriteUTF8Text(FRow, FCol, FCellValue);
 end;
 
 procedure TsCSVReader.ReadNumber(AStream: TStream);
-var
-  dbl: Double;
-  dt: TDateTime;
-  fs: TFormatSettings;
 begin
   Unused(AStream);
-
-  // Try as float
-  fs := FFormatSettings;
-  if CSVParams.DecimalSeparator <> #0 then
-    fs.DecimalSeparator := CSVParams.DecimalSeparator;
-  if TryStrToFloat(FCellValue, dbl, fs) then
-  begin
-    FWorksheet.WriteNumber(FRow, FCol, dbl);
-    FWorkbook.FormatSettings.DecimalSeparator := fs.DecimalSeparator;
-    exit;
-  end;
-  if fs.DecimalSeparator = '.'
-    then fs.DecimalSeparator := ','
-    else fs.DecimalSeparator := '.';
-  if TryStrToFloat(FCellValue, dbl, fs) then
-  begin
-    FWorksheet.WriteNumber(FRow, FCol, dbl);
-    FWorkbook.FormatSettings.DecimalSeparator := fs.DecimalSeparator;
-    exit;
-  end;
-
-  // Try as date/time
-  fs := FFormatSettings;
-  if TryStrToDateTime(FCellValue, dt, fs) then
-  begin
-    FWorksheet.WriteDateTime(FRow, FCol, dt);
-    exit;
-  end;
-
-  // Could not convert to float or date/time. Show at least as label.
-  FWorksheet.WriteUTF8Text(FRow, FCol, FCellValue);
 end;
 
 
@@ -227,11 +316,13 @@ end;
 constructor TsCSVWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FFormatSettings := AWorkbook.FormatSettings;
-  if CSVParams.DecimalSeparator <> #0 then
-    FFormatSettings.DecimalSeparator := CSVParams.DecimalSeparator;
-  if CSVParams.LineDelimiter = '' then
-    CSVParams.LineDelimiter := LineEnding;
+  ReplaceFormatSettings(CSVParams.FormatSettings, FWorkbook.FormatSettings);
+  case CSVParams.LineEnding of
+    leSystem : FLineEnding := LineEnding;
+    leCRLF   : FLineEnding := #13#10;
+    leCR     : FLineEnding := #13;
+    leLF     : FLineEnding := #10;
+  end;
 end;
 
 procedure TsCSVWriter.WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -242,17 +333,12 @@ begin
   // nothing to do
 end;
 
+{ Write date/time values in the same way they are displayed in the sheet }
 procedure TsCSVWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: TDateTime; ACell: PCell);
-var
-  s: String;
 begin
   Unused(ARow, ACol);
-  if CSVParams.DateTimeFormat <> '' then
-    s := FormatDateTime(CSVParams.DateTimeFormat, AValue, FFormatSettings)
-  else
-    s := FWorksheet.ReadAsUTF8Text(ACell);
-  AppendToStream(AStream, s);
+  AppendToStream(AStream, FWorksheet.ReadAsUTF8Text(ACell));
 end;
 
 procedure TsCSVWriter.WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -287,7 +373,7 @@ begin
   if ACell = nil then
     exit;
   if CSVParams.NumberFormat <> '' then
-    s := Format(CSVParams.NumberFormat, [AValue], FFormatSettings)
+    s := Format(CSVParams.NumberFormat, [AValue], CSVParams.FormatSettings)
   else
     s := FWorksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream, s);
@@ -308,9 +394,9 @@ begin
       if cell <> nil then
         WriteCellCallback(cell, AStream);
       if c = lastCol then
-        AppendToStream(AStream, CSVParams.LineDelimiter)
+        AppendToStream(AStream, FLineEnding)
       else
-        AppendToStream(AStream, CSVParams.ColDelimiter);
+        AppendToStream(AStream, CSVParams.Delimiter);
     end;
 end;
 
@@ -340,6 +426,7 @@ end;
 
 
 initialization
+  InitCSVFormatSettings;
   RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV);
 
 end.

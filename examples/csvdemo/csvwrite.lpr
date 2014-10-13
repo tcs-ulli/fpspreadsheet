@@ -309,9 +309,8 @@ begin
   lRow.Height := 2;                    // 2 lines
   MyWorksheet.WriteRowInfo(6, lRow);
 
-  CSVParams.ColDelimiter := #9;
-  CSVParams.DecimalSeparator := '.';
-  CSVParams.DateTimeFormat := 'YYYYMMDD-HHNNSS';
+  CSVParams.Delimiter := #9;
+  CSVParams.FormatSettings.DecimalSeparator := '.';
   CSVParams.NumberFormat := '%.9f';
   CSVParams.QuoteChar := '''';
 
