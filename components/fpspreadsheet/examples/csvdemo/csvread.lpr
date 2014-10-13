@@ -29,7 +29,8 @@ begin
 
   WriteLn('Opening input file ', InputFilename);
 
-  CSVParams.ColDelimiter := #9;
+  CSVParams.Delimiter := #9;
+  CSVParams.QuoteChar := '''';
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
