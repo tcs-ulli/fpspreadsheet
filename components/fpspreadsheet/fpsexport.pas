@@ -11,7 +11,7 @@ unit fpsexport;
 interface
 
 uses
-  Classes, SysUtils, db, fpsallformats, fpspreadsheet, fpdbexport;
+  Classes, SysUtils, db, fpsallformats, fpspreadsheet, fpsstrings, fpdbexport;
   
 Type
 
@@ -24,10 +24,10 @@ Type
     property DestField : TField read FDestField;
   end;
 
-  { TFPSExportFormatSettings }
-
   TExportFormat = (efXLS {BIFF8},efXLSX,efODS,efWikiTable);
-  
+
+  { TFPSExportFormatSettings }
+  {@@ Specific export settings that apply to spreadsheet export}
   TFPSExportFormatSettings = class(TExportFormatSettings)
   private
     FExportFormat: TExportFormat;
@@ -36,9 +36,10 @@ Type
     procedure Assign(Source : TPersistent); override;
     procedure InitSettings; override;
   published
-    // File format for the export
+    {@@ File format for the export }
     property ExportFormat: TExportFormat read FExportFormat write FExportFormat;
-    // Write the field list to the first row of the spreadsheet or not
+    {@@ Flag that determines whethe to write the field list to the first
+        row of the spreadsheet }
     property HeaderRow: boolean read FHeaderRow write FHeaderRow default false;
   end;
 
@@ -63,31 +64,39 @@ Type
     property FileName: String read FFileName write FFileName;
     property Workbook: TsWorkbook read FSpreadsheet;
   public
+    {@@ Settings for the export. Note: a lot of generic settings are preent
+        that are not relevant for this export, e.g. decimal point settings }
     property FormatSettings: TFPSExportFormatSettings read GetSettings write SetSettings;
   end;
 
+  { TFPSExport }
+  {@@ Export class allowing dataset export to spreadsheet(like) file }
   TFPSExport = Class(TCustomFPSExport)
   published
+    {@@ Destination filename }
     property FileName;
+    {@@ Source dataset }
     property Dataset;
+    {@@ Fields to be exported }
     property ExportFields;
+    {@@ Export starting from current record or beginning. }
     property FromCurrent;
+    {@@ Flag indicating whether to return to current dataset position after export }
     property RestorePosition;
     property FormatSettings;
+    {@@ Procedure to run when exporting a row }
     property OnExportRow;
   end;
-  
+
+{@@ Register export format with fpsdbexport so it can be dynamically used }
 procedure RegisterFPSExportFormat;
+{@@ Remove registration. Opposite to RegisterFPSExportFormat }
 procedure UnRegisterFPSExportFormat;
 
 const
   SFPSExport = 'xls';
-  SPFSExtension = '.xls'; //todo: add others?
+  SPFSExtension = '.xls'; //Add others? Doesn't seem to fit other dxport units
   
-resourcestring
-  SFPSDescription = 'Spreadsheet files';
-  SFPSFileMustExist = 'Empty file names are not allowed.';
-
 implementation
 
 
@@ -118,15 +127,12 @@ procedure TCustomFPSExport.DoBeforeExecute;
 begin
   Inherited;
   if FFileName='' then
-    Raise EDataExporter.Create(SFPSFileMustExist);
+    Raise EDataExporter.Create(rsExportFileIsRequired);
   FSpreadsheet:=TsWorkbook.Create;
   // For extra performance. Note that virtual mode is not an option
   // due to the data export determining flow of the program.
   FSpreadsheet.Options:=FSpreadsheet.Options+[boBufStream];
   FSheet:=FSpreadsheet.AddWorksheet('1');
-  // todo: look into restoring position after done
-  if not(Dataset.IsUniDirectional) then
-    Dataset.First; // needed to export all items
   FRow:=0;
 end;
 
@@ -205,7 +211,7 @@ end;
 
 procedure RegisterFPSExportFormat;
 begin
-  ExportFormats.RegisterExportFormat(SFPSExport,SFPSDescription,SPFSExtension,TFPSExport);
+  ExportFormats.RegisterExportFormat(SFPSExport,rsFPSExportDescription,SPFSExtension,TFPSExport);
 end;
 
 procedure UnRegisterFPSExportFormat;

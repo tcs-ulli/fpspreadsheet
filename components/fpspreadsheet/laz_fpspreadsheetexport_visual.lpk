@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <PathDelim Value="\"/>
+    <Name Value="laz_fpspreadsheetexport_visual"/>
+    <Author Value="Reinier Olislagers and others"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <UseAnsiStrings Value="False"/>
+        </SyntaxOptions>
+      </Parsing>
+      <Other>
+        <CustomOptions Value="$(IDEBuildOptions)"/>
+      </Other>
+    </CompilerOptions>
+    <Description Value="laz_fpspreadsheetexport_visual is a visual component for exporting datasets to spreadsheet (.xls/.xlsx/.ods/wikitable formats).
+
+It provides a graphical export component on the Data Export tab."/>
+    <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
+    <Version Major="1" Minor="2"/>
+    <Files Count="2">
+      <Item1>
+        <Filename Value="fpsexport.pas"/>
+        <UnitName Value="fpsexport"/>
+      </Item1>
+      <Item2>
+        <Filename Value="fpsexportreg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="fpsexportreg"/>
+      </Item2>
+    </Files>
+    <Type Value="RunAndDesignTime"/>
+    <RequiredPkgs Count="4">
+      <Item1>
+        <PackageName Value="lazdbexport"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="laz_fpspreadsheet"/>
+      </Item2>
+      <Item3>
+        <PackageName Value="LCL"/>
+      </Item3>
+      <Item4>
+        <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item4>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
