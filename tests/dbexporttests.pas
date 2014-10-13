@@ -121,7 +121,6 @@ var
   TempFile: string;
   TheDate: TDateTime;
 begin
-  FDataset.First;
   Exp := TFPSExport.Create(nil);
   ExpSettings := TFPSExportFormatSettings.Create(true);
   try
@@ -129,6 +128,7 @@ begin
     ExpSettings.HeaderRow := true;
     Exp.FormatSettings := ExpSettings;
     Exp.Dataset:=FDataset;
+    Exp.FromCurrent:=false; //export from beginning
     TempFile := NewTempFile;
     Exp.FileName := TempFile;
     CheckEquals(length(ExportTestData),Exp.Execute,'Number of exported records');

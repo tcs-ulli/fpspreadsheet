@@ -10,6 +10,8 @@ unit fpsStrings;
 interface
 
 resourcestring
+  rsExportFileIsRequired = 'Export file name is required';
+  rsFPSExportDescription = 'Spreadsheet file';
   rsUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   rsUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   rsNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
