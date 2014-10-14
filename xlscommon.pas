@@ -248,6 +248,7 @@ type
     // Here we can add reading of records which didn't change across BIFF5-8 versions
     // Read a blank cell
     procedure ReadBlank(AStream: TStream); override;
+    procedure ReadBool(AStream: TStream); override;
     procedure ReadCodePage(AStream: TStream);
     // Read column info
     procedure ReadColInfo(const AStream: TStream);
@@ -846,6 +847,43 @@ begin
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+end;
+
+{ The name of this method is misleading - it reads a BOOLEAN cell value,
+  but also an ERROR value; BIFF stores them in the same record. }
+procedure TsSpreadBIFFReader.ReadBool(AStream: TStream);
+var
+  rec: TBIFF38BoolErrRecord;
+  r, c: Cardinal;
+  XF: Word;
+  cell: PCell;
+begin
+  rec.Row := 0;  // to silence the compiler
+
+  { Read entire record into a buffer }
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF38BoolErrRecord) - 2*SizeOf(Word));
+
+  r := WordLEToN(rec.Row);
+  c := WordLEToN(rec.Col);
+  XF := WordLEToN(rec.XFIndex);
+
+  if FIsVirtualMode then begin
+    InitCell(r, c, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(r, c);
+
+  { Retrieve boolean or error value depending on the "ValueType" }
+  case rec.ValueType of
+    0: FWorksheet.WriteBoolValue(cell, boolean(rec.BoolErrValue));
+    1: FWorksheet.WriteErrorValue(cell, ConvertFromExcelError(rec.BoolErrValue));
+  end;
+
+  { Add attributes to cell}
+  ApplyCellFormatting(cell, XF);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, r, c, cell);
 end;
 
 // In BIFF8 it seams to always use the UTF-16 codepage
@@ -2016,16 +2054,7 @@ begin
   rec.XFIndex := WordToLE(FindXFIndex(ACell));
 
   { Cell value }
-  case AValue of
-    errEmptyIntersection : rec.BoolErrValue := $00;  // #NULL!
-    errDivideByZero      : rec.BoolErrValue := $07;  // #DIV/0!
-    errWrongType         : rec.BoolErrValue := $0F;  // #VALUE!
-    errIllegalRef        : rec.BoolErrValue := $17;  // #REF!
-    errWrongName         : rec.BoolErrValue := $1D;  // #NAME?
-    errOverflow          : rec.BoolErrValue := $24;  // #NUM!
-    errArgError          : rec.BoolErrValue := $2A;  // #N/A
-    else                   exit;
-  end;
+  rec.BoolErrValue := ConvertToExcelError(AValue);
   rec.ValueType := 1;  // 0 = boolean value, 1 = error value
 
   { Write out }

@@ -40,7 +40,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="18">
+    <Units Count="19">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -48,7 +48,6 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>
@@ -57,6 +56,7 @@
       <Unit3>
         <Filename Value="numberstests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="numberstests"/>
       </Unit3>
       <Unit4>
         <Filename Value="manualtests.pas"/>
@@ -76,14 +76,17 @@
       <Unit7>
         <Filename Value="formattests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="formattests"/>
       </Unit7>
       <Unit8>
         <Filename Value="colortests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="colortests"/>
       </Unit8>
       <Unit9>
         <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="fonttests"/>
       </Unit9>
       <Unit10>
         <Filename Value="optiontests.pas"/>
@@ -96,6 +99,7 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
@@ -105,6 +109,7 @@
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="emptycelltests"/>
       </Unit14>
       <Unit15>
         <Filename Value="errortests.pas"/>
@@ -120,6 +125,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="insertdeletetests"/>
       </Unit17>
+      <Unit18>
+        <Filename Value="celltypetests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="celltypetests"/>
+      </Unit18>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

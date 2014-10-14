@@ -1063,6 +1063,8 @@ type
     { Record reading methods }
     {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
     procedure ReadBlank(AStream: TStream); virtual; abstract;
+    {@@ Abstract method for reading a BOOLEAN cell. Must be overridden by descendent classes. }
+    procedure ReadBool(AStream: TSTream); virtual; abstract;
     {@@ Abstract method for reading a formula cell. Must be overridden by descendent classes. }
     procedure ReadFormula(AStream: TStream); virtual; abstract;
     {@@ Abstract method for reading a text cell. Must be overridden by descendent classes. }
@@ -1110,19 +1112,26 @@ type
     procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
     { Record writing methods }
     {@@ Abstract method for writing a blank cell. Must be overridden by descendent classes. }
-    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual; abstract;
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a boolean cell. Must be overridden by descendent classes. }
-    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell); virtual; abstract;
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Boolean; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a date/time value to a cell. Must be overridden by descendent classes. }
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing an Excel error value to a cell. Must be overridden by descendent classes. }
-    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell); virtual; abstract;
+    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TsErrorValue; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a formula to a cell. Must be overridden by descendent classes. }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); virtual;
     {@@ Abstract method for writing a string to a cell. Must be overridden by descendent classes. }
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal; const AValue: string; ACell: PCell); virtual; abstract;
+    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: string; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal; const AValue: double; ACell: PCell); virtual; abstract;
+    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: double; ACell: PCell); virtual; abstract;
 
   public
     {@@ An array with cells which are models for the used styles

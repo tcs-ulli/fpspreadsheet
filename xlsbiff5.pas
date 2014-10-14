@@ -1142,6 +1142,7 @@ begin
     case RecordType of
 
     INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
+    INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
     INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
     INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
     INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
