@@ -89,7 +89,6 @@ type
     CbHeaderStyle: TComboBox;
     CbAutoCalcFormulas: TCheckBox;
     CbTextOverflow: TCheckBox;
-    EdFormula: TEdit;
     EdCellAddress: TEdit;
     FontComboBox: TComboBox;
     EdFrozenRows: TSpinEdit;
@@ -99,6 +98,7 @@ type
     Label1: TLabel;
     Label2: TLabel;
     MainMenu: TMainMenu;
+    FormulaMemo: TMemo;
     MenuItem1: TMenuItem;
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
@@ -215,6 +215,7 @@ type
     Panel1: TPanel;
     BordersPopupMenu: TPopupMenu;
     NumFormatPopupMenu: TPopupMenu;
+    AddressPanel: TPanel;
     SaveDialog: TSaveDialog;
     EdFrozenCols: TSpinEdit;
     FormulaToolBar: TToolBar;
@@ -222,6 +223,7 @@ type
     InspectorSplitter: TSplitter;
     PgCellValue: TTabSheet;
     PgProperties: TTabSheet;
+    Splitter1: TSplitter;
     TabControl: TTabControl;
     PgSheet: TTabSheet;
     ToolButton22: TToolButton;
@@ -291,7 +293,6 @@ type
     procedure CbBackgroundColorGetColors(Sender: TCustomColorBox; Items: TStrings);
     procedure CbTextOverflowChange(Sender: TObject);
     procedure EdCellAddressEditingDone(Sender: TObject);
-    procedure EdFormulaEditingDone(Sender: TObject);
     procedure EdFrozenColsChange(Sender: TObject);
     procedure EdFrozenRowsChange(Sender: TObject);
     procedure FontComboBoxSelect(Sender: TObject);
@@ -299,6 +300,7 @@ type
     procedure FormActivate(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure InspectorPageControlChange(Sender: TObject);
+    procedure MemoFormulaEditingDone(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
     procedure WorksheetGridHeaderClick(Sender: TObject; IsColumn: Boolean;
       Index: Integer);
@@ -793,20 +795,6 @@ begin
   end;
 end;
 
-procedure TMainFrm.EdFormulaEditingDone(Sender: TObject);
-var
-  r, c: Cardinal;
-  s: String;
-begin
-  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
-  c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
-  s := EdFormula.Text;
-  if (s <> '') and (s[1] = '=') then
-    WorksheetGrid.Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
-  else
-    WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, EdFormula.Text);
-end;
-
 procedure TMainFrm.EdFrozenColsChange(Sender: TObject);
 begin
   WorksheetGrid.FrozenCols := EdFrozenCols.Value;
@@ -929,6 +917,20 @@ begin
     if err <> '' then
       MessageDlg(err, mtError, [mbOK], 0);
   end;
+end;
+
+procedure TMainFrm.MemoFormulaEditingDone(Sender: TObject);
+var
+  r, c: Cardinal;
+  s: String;
+begin
+  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
+  c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
+  s := FormulaMemo.Lines.Text;
+  if (s <> '') and (s[1] = '=') then
+    WorksheetGrid.Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
+  else
+    WorksheetGrid.Worksheet.WriteCellValueAsString(r, c, s);
 end;
 
 procedure TMainFrm.SetupBackgroundColorBox;
@@ -1244,24 +1246,26 @@ begin
     s := WorksheetGrid.Worksheet.ReadFormulaAsString(cell, true);
     if s <> '' then begin
       if s[1] <> '=' then s := '=' + s;
-      EdFormula.Text := s;
-    end
-    else
+      FormulaMemo.Lines.Text := s;
+    end else
+    begin
       case cell^.ContentType of
         cctNumber:
-          EdFormula.Text := FloatToStr(cell^.NumberValue);
+          s := FloatToStr(cell^.NumberValue);
         cctDateTime:
           if cell^.DateTimeValue < 1.0 then
-            EdFormula.Text := FormatDateTime('tt', cell^.DateTimeValue)
+            s := FormatDateTime('tt', cell^.DateTimeValue)
           else
-            EdFormula.Text := FormatDateTime('c', cell^.DateTimeValue);
+            s := FormatDateTime('c', cell^.DateTimeValue);
         cctUTF8String:
-          EdFormula.Text := cell^.UTF8StringValue;
+          s := cell^.UTF8StringValue;
         else
-          EdFormula.Text := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
+          s := WorksheetGrid.Worksheet.ReadAsUTF8Text(cell);
       end;
+      FormulaMemo.Lines.Text := s;
+    end;
   end else
-    EdFormula.Text := '';
+    FormulaMemo.Text := '';
 
   EdCellAddress.Text := GetCellString(r, c, [rfRelRow, rfRelCol]);
   AcMergeCells.Checked := WorksheetGrid.Worksheet.IsMerged(cell);
