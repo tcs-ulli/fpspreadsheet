@@ -12,6 +12,7 @@ type
   TsCSVReader = class(TsCustomSpreadReader)
   private
     FWorksheetName: String;
+    function IsBool(AText: String; out AValue: Boolean): Boolean;
     function IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
     function IsNumber(AText: String; out ANumber: Double): Boolean;
     function IsQuotedText(var AText: String): Boolean;
@@ -34,6 +35,8 @@ type
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Boolean; ACell: PCell); override;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -52,22 +55,30 @@ type
 
   TsCSVLineEnding = (leSystem, leCRLF, leCR, leLF);
 
-  TsCSVParams = record
-    SheetIndex: Integer;
-    LineEnding: TsCSVLineEnding;
-    Delimiter: Char;
-    QuoteChar: Char;
-    NumberFormat: String;
-    FormatSettings: TFormatSettings;
+  TsCSVParams = record   // W = writing, R = reading, RW = reading/writing
+    SheetIndex: Integer;             // W: Index of the sheet to be written
+    LineEnding: TsCSVLineEnding;     // W: Specification for line ending to be written
+    Delimiter: Char;                 // RW: Column delimiter
+    QuoteChar: Char;                 // RW: Character for quoting texts
+    NumberFormat: String;            // W: if empty write numbers like in sheet, otherwise use this format
+    DateTimeAsText: Boolean;         // R: if false tries to convert text to date/time values
+    BoolAsText: Boolean;             // R: if false tries to convert text to boolean values
+    TrueText: String;                // RW: String for boolean TRUE
+    FalseText: String;               // RW: String for boolean FALSE
+    FormatSettings: TFormatSettings; // RW: add'l parameters for conversion
   end;
 
 var
   CSVParams: TsCSVParams = (
-    SheetIndex: 0;              // Store sheet #0 by default
-    LineEnding: leSystem;       // Write system lineending, read any
-    Delimiter: ';';             // Column delimiter
-    QuoteChar: '"';             // for quoted strings
-    NumberFormat: '';           // if empty write numbers like in sheet, otherwise use this format
+    SheetIndex: 0;
+    LineEnding: leSystem;
+    Delimiter: ';';
+    QuoteChar: '"';
+    NumberFormat: '';
+    DateTimeAsText: false;
+    BoolAsText: false;
+    TrueText: 'TRUE';
+    FalseText: 'FALSE';
   );
 
 
@@ -174,6 +185,21 @@ begin
   FWorksheetName := 'Sheet1';  // will be replaced by filename
 end;
 
+function TsCSVReader.IsBool(AText: String; out AValue: Boolean): Boolean;
+begin
+  if SameText(AText, CSVParams.TrueText) then
+  begin
+    AValue := true;
+    Result := true;
+  end else
+  if SameText(AText, CSVParams.FalseText) then
+  begin
+    AValue := false;
+    Result := true;
+  end else
+    Result := false;
+end;
+
 function TsCSVReader.IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
 begin
   Result := TryStrToDateTime(AText, ADateTime, CSVParams.FormatSettings);
@@ -204,8 +230,9 @@ end;
 
 procedure TsCSVReader.ReadCellValue(ARow, ACol: Cardinal; AText: String);
 var
-  dbl: Double;
-  dt: TDateTime;
+  dblValue: Double;
+  dtValue: TDateTime;
+  boolValue: Boolean;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
@@ -219,16 +246,23 @@ begin
   end;
 
   // Check for a NUMBER cell
-  if IsNumber(AText, dbl) then
+  if IsNumber(AText, dblValue) then
   begin
-    FWorksheet.WriteNumber(ARow, ACol, dbl);
+    FWorksheet.WriteNumber(ARow, ACol, dblValue);
     exit;
   end;
 
   // Check for a DATE/TIME cell
-  if IsDateTime(AText, dt) then
+  if not CSVParams.DateTimeAsText and IsDateTime(AText, dtValue) then
   begin
-    FWorksheet.WriteDateTime(ARow, ACol, dt);
+    FWorksheet.WriteDateTime(ARow, ACol, dtValue);
+    exit;
+  end;
+
+  // Check for a BOOLEAN cell
+  if not CSVParams.BoolAsText and IsBool(AText, boolValue) then
+  begin
+    FWorksheet.WriteBoolValue(ARow, aCol, boolValue);
     exit;
   end;
 
@@ -323,6 +357,7 @@ end;
 { -----------------------------------------------------------------------------}
 {                              TsCSVWriter                                     }
 {------------------------------------------------------------------------------}
+
 constructor TsCSVWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
@@ -343,6 +378,16 @@ begin
   // nothing to do
 end;
 
+procedure TsCSVWriter.WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+  const AValue: Boolean; ACell: PCell);
+begin
+  Unused(ARow, ACol, ACell);
+  if AValue then
+    AppendToStream(AStream, CSVParams.TrueText)
+  else
+    AppendToStream(AStream, CSVParams.FalseText);
+end;
+
 { Write date/time values in the same way they are displayed in the sheet }
 procedure TsCSVWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: TDateTime; ACell: PCell);
@@ -351,14 +396,24 @@ begin
   AppendToStream(AStream, FWorksheet.ReadAsUTF8Text(ACell));
 end;
 
+{ CSV does not support formulas, but we have to write the formula results to
+  to stream. }
 procedure TsCSVWriter.WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
   ACell: PCell);
 begin
-  // no formulas in CSV
-  Unused(AStream);
-  Unused(ARow, ACol, AStream);
+  if ACell = nil then
+    exit;
+  case ACell^.ContentType of
+    cctBool      : WriteBool(AStream, ARow, ACol, ACell^.BoolValue, ACell);
+    cctEmpty     : ;
+    cctDateTime  : WriteDateTime(AStream, ARow, ACol, ACell^.DateTimeValue, ACell);
+    cctNumber    : WriteNumber(AStream, ARow, ACol, ACell^.NumberValue, ACell);
+    cctUTF8String: WriteLabel(AStream, ARow, ACol, ACell^.UTF8StringValue, ACell);
+    cctError     : ;
+  end;
 end;
 
+{ Writes a LABEL cell to the stream. }
 procedure TsCSVWriter.WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: string; ACell: PCell);
 var

@@ -114,7 +114,12 @@ type
   protected
     procedure CreateNumFormatList; override;
     procedure ListAllNumFormats; override;
-    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); override;
+    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Boolean; ACell: PCell); override;
+    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TsErrorValue; ACell: PCell);
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
       AListIndex: Integer); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
@@ -167,6 +172,7 @@ const
   INT_EXCEL_ID_INTEGER       = $0002;
   INT_EXCEL_ID_NUMBER        = $0003;
   INT_EXCEL_ID_LABEL         = $0004;
+  INT_EXCEL_ID_BOOLERROR     = $0005;
   INT_EXCEL_ID_ROW           = $0008;
   INT_EXCEL_ID_BOF           = $0009;
   {%H-}INT_EXCEL_ID_INDEX    = $000B;
@@ -185,6 +191,18 @@ const
   {%H-}INT_EXCEL_MACRO_SHEET = $0040;
 
 type
+  TBIFF2BoolErrRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    Attrib1: Byte;
+    Attrib2: Byte;
+    Attrib3: Byte;
+    BoolErrValue: Byte;
+    ValueType: Byte;
+  end;
+
   TBIFF2DimensionsRecord = packed record
     RecordID: Word;
     RecordSize: Word;
@@ -1686,6 +1704,81 @@ begin
   AStream.WriteByte(len);
   { Write characters }
   AStream.WriteBuffer(s[1], len * SizeOf(Char));
+end;
+
+{ Writes a BOOLEAN cell record. }
+procedure TsSpreadBIFF2Writer.WriteBool(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
+var
+  rec: TBIFF2BoolErrRecord;
+  xf: Integer;
+begin
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
+    exit;
+
+  xf := FindXFIndex(ACell);
+  if xf >= 63 then
+    WriteIXFE(AStream, xf);
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_BOOLERROR);
+  rec.RecordSize := WordToLE(9);
+
+  { Row and column index }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { BIFF2 attributes }
+  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+
+  { Cell value }
+  rec.BoolErrValue := ord(AValue);
+  rec.ValueType := 1;  // 0 = boolean value, 1 = error value
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
+{ Writes an ERROR cell record. }
+procedure TsSpreadBIFF2Writer.WriteError(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
+var
+  rec: TBIFF2BoolErrRecord;
+  xf: Integer;
+begin
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
+    exit;
+
+  xf := FindXFIndex(ACell);
+  if xf >= 63 then
+    WriteIXFE(AStream, xf);
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_BOOLERROR);
+  rec.RecordSize := WordToLE(9);
+
+  { Row and column index }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { BIFF2 attributes }
+  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+
+  { Cell value }
+  case AValue of
+    errEmptyIntersection : rec.BoolErrValue := $00;  // #NULL!
+    errDivideByZero      : rec.BoolErrValue := $07;  // #DIV/0!
+    errWrongType         : rec.BoolErrValue := $0F;  // #VALUE!
+    errIllegalRef        : rec.BoolErrValue := $17;  // #REF!
+    errWrongName         : rec.BoolErrValue := $1D;  // #NAME?
+    errOverflow          : rec.BoolErrValue := $24;  // #NUM!
+    errArgError          : rec.BoolErrValue := $2A;  // #N/A
+    else                   exit;
+  end;
+  rec.ValueType := 1;  // 0 = boolean value, 1 = error value
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
 
