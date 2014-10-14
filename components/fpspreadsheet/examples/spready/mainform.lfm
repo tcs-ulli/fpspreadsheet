@@ -359,49 +359,63 @@ object MainFrm: TMainFrm
   end
   object FormulaToolBar: TToolBar
     Left = 0
-    Height = 26
+    Height = 28
     Top = 53
     Width = 884
     Caption = 'FormulaToolBar'
+    Constraints.MinHeight = 26
     TabOrder = 2
-    object EdFormula: TEdit
-      Left = 129
-      Height = 24
+    object FormulaToolbarSplitter: TSplitter
+      Left = 171
+      Height = 26
       Top = 2
-      Width = 755
-      Align = alClient
-      OnEditingDone = EdFormulaEditingDone
-      TabOrder = 1
+      Width = 5
     end
-    object EdCellAddress: TEdit
+    object FormulaMemo: TMemo
+      Left = 176
+      Height = 26
+      Top = 2
+      Width = 708
+      Align = alClient
+      OnEditingDone = MemoFormulaEditingDone
+      TabOrder = 1
+      WantReturns = False
+    end
+    object AddressPanel: TPanel
       Left = 1
       Height = 24
       Top = 2
-      Width = 123
+      Width = 170
       Align = alLeft
-      Alignment = taCenter
-      OnEditingDone = EdCellAddressEditingDone
-      TabOrder = 0
-    end
-    object FormulaToolbarSplitter: TSplitter
-      Left = 124
-      Height = 24
-      Top = 2
-      Width = 5
+      BorderSpacing.Bottom = 2
+      BevelOuter = bvNone
+      ClientHeight = 24
+      ClientWidth = 170
+      TabOrder = 2
+      object EdCellAddress: TEdit
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 170
+        Align = alTop
+        Alignment = taCenter
+        OnEditingDone = EdCellAddressEditingDone
+        TabOrder = 0
+      end
     end
   end
   object InspectorSplitter: TSplitter
     Left = 648
-    Height = 453
-    Top = 79
+    Height = 446
+    Top = 86
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object InspectorPageControl: TPageControl
     Left = 653
-    Height = 453
-    Top = 79
+    Height = 446
+    Top = 86
     Width = 231
     ActivePage = PgCellValue
     Align = alRight
@@ -410,11 +424,11 @@ object MainFrm: TMainFrm
     OnChange = InspectorPageControlChange
     object PgCellValue: TTabSheet
       Caption = 'Cell value'
-      ClientHeight = 420
+      ClientHeight = 413
       ClientWidth = 223
       object CellInspector: TValueListEditor
         Left = 0
-        Height = 420
+        Height = 413
         Top = 0
         Width = 223
         Align = alClient
@@ -458,15 +472,15 @@ object MainFrm: TMainFrm
   end
   object TabControl: TTabControl
     Left = 0
-    Height = 453
-    Top = 79
+    Height = 446
+    Top = 86
     Width = 648
     OnChange = TabControlChange
     Align = alClient
     TabOrder = 3
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 448
+      Height = 441
       Top = 3
       Width = 644
       FrozenCols = 0
@@ -513,6 +527,15 @@ object MainFrm: TMainFrm
         64
       )
     end
+  end
+  object Splitter1: TSplitter
+    Cursor = crVSplit
+    Left = 0
+    Height = 5
+    Top = 81
+    Width = 884
+    Align = alTop
+    ResizeAnchor = akTop
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'

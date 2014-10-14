@@ -263,6 +263,16 @@ begin
   c := 0;
   while AStream.Position < n do begin
     ch := char(AStream.ReadByte);
+    if (CSVParams.QuoteChar <> #0) and (ch = CSVParams.QuoteChar) then
+    begin
+      // Begin of quoted string --> read until next quote; this allows line breaks
+      // and column separators in quoted string!
+      cellValue := cellValue + ch;
+      repeat
+        ch := char(AStream.ReadByte);
+        cellValue := cellValue + ch;
+      until (AStream.Position = n) or (ch = CSVParams.QuoteChar);
+    end else
     if ch = CSVParams.Delimiter then begin
       // End of column reached
       ReadCellValue(r, c, cellValue);
