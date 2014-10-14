@@ -27,6 +27,7 @@ type
     procedure ShowBlankCell;
     procedure ShowBOF;
     procedure ShowBookBool;
+    procedure ShowBoolCell;
     procedure ShowBottomMargin;
     procedure ShowCalcCount;
     procedure ShowCalcMode;
@@ -268,6 +269,8 @@ begin
       ShowNumberCell;
     $0004, $0204:
       ShowLabelCell;
+    $0005, $0205:
+      ShowBoolCell;
     $0006:
       ShowFormula;
     $0007, $0207:
@@ -676,6 +679,99 @@ begin
   end;
   ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]),
     'Specifies some properties assosciated with a workbook');
+end;
+
+procedure TBIFFGrid.ShowBoolCell;
+var
+  numBytes: Integer;
+  w: Word;
+  b: Byte;
+begin
+  RowCount := FixedRows + 5;
+
+  ShowRowColData(FBufferIndex);
+
+  if FFormat = sfExcel2 then begin
+    numBytes := 1;
+    b := FBuffer[FBufferIndex];
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell protection and XF index:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      case b and $40 of
+        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+      end;
+      case b and $80 of
+        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+      end;
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
+      'Cell protection and XF index');
+
+    b := FBuffer[FBufferIndex];
+    if Row = FCurrRow then begin
+      FDetails.Add('Indexes to format and font records:'#13);
+      FDetails.Add(Format('Bits 5-0 = %d: Index to FORMAT record', [b and $3f]));
+      FDetails.Add(Format('Bits 7-6 = %d: Index to FONT record', [(b and $C0) shr 6]));
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
+      'Indexes of format and font records');
+
+    b := FBuffer[FBufferIndex];
+    if Row = FCurrRow then begin
+      FDetails.Add('Cell style:'#13);
+      case b and $07 of
+        0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
+        1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
+        2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
+        3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
+        4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+      end;
+      if b and $08 = 0
+        then FDetails.Add('Bit 3 = 0: Cell has NO left border')
+        else FDetails.Add('Bit 3 = 1: Cell has left black border');
+      if b and $10 = 0
+        then FDetails.Add('Bit 4 = 0: Cell has NO right border')
+        else FDetails.Add('Bit 4 = 1: Cell has right black border');
+      if b and $20 = 0
+        then FDetails.Add('Bit 5 = 0: Cell has NO top border')
+        else FDetails.Add('Bit 5 = 1: Cell has top black border');
+      if b and $40 = 0
+        then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
+        else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+      if b and $80 = 0
+        then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
+        else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
+      'Cell style');
+  end else
+  begin  // BIFF3 - BIFF 8
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numBytes);
+    w := WordLEToN(w);
+    ShowInRow(FCurrROw, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+      'Index of XF record');
+  end;
+
+  // boolean value
+  numBytes := 1;
+  b := FBuffer[FBufferIndex];
+  ShowInRow(FCurrRow, FBufferIndex, numbytes,
+    Format('%d (%s)', [b, Uppercase(BoolToStr(Boolean(b), true))]),
+    'Boolean value (0=FALSE, 1=TRUE)'
+  );
+
+  // bool/error flag
+  numBytes := 1;
+  b := FBuffer[FBufferIndex];
+  if b = 0 then
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, '0 (boolean value)',
+      'Boolean/Error value flag (0=boolean, 1=error value)')
+  else
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, '1 (error value)',
+      'Boolean/Error value flag (0=boolean, 1=error value)');
 end;
 
 procedure TBIFFGrid.ShowBottomMargin;

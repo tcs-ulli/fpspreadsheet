@@ -1111,8 +1111,12 @@ type
     { Record writing methods }
     {@@ Abstract method for writing a blank cell. Must be overridden by descendent classes. }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual; abstract;
+    {@@ Abstract method for writing a boolean cell. Must be overridden by descendent classes. }
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a date/time value to a cell. Must be overridden by descendent classes. }
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell); virtual; abstract;
+    {@@ Abstract method for writing an Excel error value to a cell. Must be overridden by descendent classes. }
+    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell); virtual; abstract;
     {@@ Abstract method for writing a formula to a cell. Must be overridden by descendent classes. }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal; ACell: PCell); virtual;
     {@@ Abstract method for writing a string to a cell. Must be overridden by descendent classes. }
@@ -7718,10 +7722,14 @@ begin
     WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell)
   else
     case ACell.ContentType of
-      cctEmpty:
-        WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
+      cctBool:
+        WriteBool(AStream, ACell^.Row, ACell^.Col, ACell^.BoolValue, ACell);
       cctDateTime:
         WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
+      cctEmpty:
+        WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
+      cctError:
+        WriteError(AStream, ACell^.Row, ACell^.Col, ACell^.ErrorValue, ACell);
       cctNumber:
         WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
       cctUTF8String:

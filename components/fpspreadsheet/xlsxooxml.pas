@@ -151,6 +151,8 @@ type
     //todo: add WriteDate
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Boolean; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
@@ -448,6 +450,14 @@ begin
     ACell^.FontIndex := xf.FontIndex;
 
     // Alignment
+    if xf.HorAlignment <> haDefault then
+      Include(ACell^.UsedFormattingFields, uffHorAlign)
+    else
+      Exclude(ACell^.UsedFormattingFields, uffHorAlign);
+    if xf.VertAlignment <> vaDefault then
+      Include(ACell^.UsedFormattingFields, uffVertAlign)
+    else
+      Exclude(ACell^.UsedformattingFields, uffVertAlign);
     ACell^.HorAlignment := xf.HorAlignment;
     ACell^.VertAlignment := xf.VertAlignment;
 
@@ -469,7 +479,7 @@ begin
     if (borderData <> nil) then begin
       ACell^.BorderStyles := borderData.BorderStyles;
       if borderData.Borders <> [] then begin
-        Include(Acell^.UsedFormattingFields, uffBorder);
+        Include(ACell^.UsedFormattingFields, uffBorder);
         ACell^.Border := borderData.Borders;
       end else
         Exclude(ACell^.UsedFormattingFields, uffBorder);
@@ -485,7 +495,7 @@ begin
 
     if xf.NumFmtIndex > 0 then begin
       j := NumFormatList.FindByIndex(xf.NumFmtIndex);
-      if j > -1then begin
+      if j > -1 then begin
         numFmtData := NumFormatList[j];
         Include(ACell^.UsedFormattingFields, uffNumberFormat);
         ACell^.NumberFormat := numFmtData.NumFormat;
@@ -511,12 +521,13 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
     nodeName: String;
   begin
     Result := false;
+    ABorderStyle.LineStyle := lsThin;
+    ABorderStyle.Color := scBlack;
 
     s := GetAttrValue(ANode, 'style');
     if s = '' then
       exit;
 
-    ABorderStyle.LineStyle := lsThin;
     if s = 'thin' then
       ABorderStyle.LineStyle := lsThin
     else if s = 'medium' then
@@ -532,23 +543,11 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
     else if s = 'hair' then
       ABorderStyle.LineStyle := lsHair;
 
-    ABorderStyle.Color := scBlack;
     colorNode := ANode.FirstChild;
     while Assigned(colorNode) do begin
       nodeName := colorNode.NodeName;
-      if nodeName = 'color' then begin
+      if nodeName = 'color' then
         ABorderStyle.Color := ReadColor(colorNode);
-        {
-        s := GetAttrValue(colorNode, 'rgb');
-        if s <> '' then
-          ABorderStyle.Color := FWorkbook.AddColorToPalette(HTMLColorStrToColor('#' + s))
-        else begin
-          s := GetAttrValue(colorNode, 'indexed');
-          if s <> '' then
-            ABorderStyle.Color := StrToInt(s);
-        end;
-        }
-      end;
       colorNode := colorNode.NextSibling;
     end;
     Result := true;
@@ -567,6 +566,7 @@ begin
   if ANode = nil then
     exit;
 
+  borderStyles := DEFAULT_BORDERSTYLES;
   borderNode := ANode.FirstChild;
   while Assigned(borderNode) do begin
     nodeName := borderNode.NodeName;
@@ -2548,6 +2548,21 @@ begin
     '</c>');
 end;
 
+{ Writes a boolean value to the stream }
+procedure TsSpreadOOXMLWriter.WriteBool(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
+var
+  CellPosText: String;
+  CellValueText: String;
+  lStyleIndex: Integer;
+begin
+  CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  lStyleIndex := GetStyleIndex(ACell);
+  if AValue then CellValueText := '1' else CellValueText := '0';
+  AppendToStream(AStream, Format(
+    '<c r="%s" s="%d" t="b"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
+end;
+
 { Writes a string formula to the given cell. }
 procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
@@ -2684,9 +2699,6 @@ var
   ResultingValue: string;
   //S: string;
 begin
-  Unused(AStream);
-  Unused(ARow, ACol, ACell);
-
   // Office 2007-2010 (at least) support no more characters in a cell;
   if Length(AValue) > MAXBYTES then
   begin
@@ -2700,7 +2712,7 @@ begin
 
   if not ValidXMLText(ResultingValue) then
     Workbook.AddErrorMsg(
-      'Invalid character(s) in cell %s.', [
+      rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
     ]);
 
@@ -2727,7 +2739,6 @@ var
   CellValueText: String;
   lStyleIndex: Integer;
 begin
-  Unused(AStream, ACell);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
   CellValueText := FloatToStr(AValue, FPointSeparatorSettings);

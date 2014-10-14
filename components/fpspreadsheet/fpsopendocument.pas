@@ -85,6 +85,8 @@ type
     // Applies a style to a cell
     procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String); overload;
     procedure ApplyStyleToCell(ACell: PCell; AStyleName: String); overload;
+    // Extracts a boolean value from the xml node
+    function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     // Extracts the date/time value from the xml node
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
@@ -110,6 +112,7 @@ type
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
     procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
+    procedure ReadBoolean(ARow, ACol: Word; ACellNode: TDOMNode);
     procedure ReadDateTime(ARow, ACol: Word; ACellNode: TDOMNode);
     procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
     procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
@@ -173,6 +176,8 @@ type
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Boolean; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
@@ -856,6 +861,19 @@ begin
   FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
+{ Extracts a boolean value from a "boolean" cell node.
+  Is called from ReadBoolean }
+function TsSpreadOpenDocReader.ExtractBoolFromNode(ANode: TDOMNode): Boolean;
+var
+  value: String;
+begin
+  value := GetAttrValue(ANode, 'office:boolean-value');
+  if (lowercase(value) = 'true') then
+    Result := true
+  else
+    Result := false;
+end;
+
 { Extracts a date/time value from a "date-value" or "time-value" cell node.
   Requires the number format and format strings to optimize agreement with
   fpc date/time values.
@@ -990,6 +1008,28 @@ begin
   end else
     cell := FWorksheet.GetCell(ARow, ACol);
   FWorkSheet.WriteBlank(cell);
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(cell, stylename);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+end;
+
+procedure TsSpreadOpenDocReader.ReadBoolean(ARow, ACol: Word; ACellNode: TDOMNode);
+var
+  styleName: String;
+  cell: PCell;
+  boolValue: Boolean;
+begin
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(ARow, ACol);
+
+  boolValue := ExtractBoolFromNode(ACellNode);
+  FWorkSheet.WriteBoolValue(cell, boolValue);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -1192,6 +1232,7 @@ var
   formula: String;
   stylename: String;
   floatValue: Double;
+  boolValue: Boolean;
   valueType: String;
   valueStr: String;
   node: TDOMNode;
@@ -1271,6 +1312,11 @@ begin
       valueStr := node.FirstChild.Nodevalue;
       FWorksheet.WriteUTF8Text(cell, valueStr);
     end;
+  end else
+  // (d) boolean
+  if (valuetype = 'boolean') then begin
+    boolValue := ExtractBoolFromNode(ACellNode);
+    FWorksheet.WriteBoolValue(cell, boolValue);
   end else
   // (e) Text
     FWorksheet.WriteUTF8Text(cell, valueStr);
@@ -1868,6 +1914,8 @@ begin
           ReadNumber(row, col, cellNode)
         else if (paramValueType = 'date') or (paramValueType = 'time') then
           ReadDateTime(row, col, cellNode)
+        else if (paramValueType = 'boolean') then
+          ReadBoolean(row, col, cellNode)
         else if (paramValueType = '') and (tableStyleName <> '') then
           ReadBlank(row, col, cellNode);
 
@@ -3174,9 +3222,7 @@ begin
   end;
 end;
 
-{
-  Writes an empty cell
-}
+{ Writes an empty cell to the stream }
 procedure TsSpreadOpenDocWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
@@ -3186,7 +3232,6 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
 begin
-  Unused(AStream, ACell);
   Unused(ARow, ACol);
 
   // Merged?
@@ -3206,6 +3251,58 @@ begin
   end else
     AppendToStream(AStream,
       '<table:table-cell ' + spannedStr + '/>');
+end;
+
+{ Writes a boolean cell to the stream }
+procedure TsSpreadOpenDocWriter.WriteBool(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
+var
+  valType: String;
+  lIndex: Integer;
+  lStyle: String;
+  r1,c1,r2,c2: Cardinal;
+  rowsSpannedStr, colsSpannedStr, spannedStr: String;
+  strValue: String;
+  displayStr: String;
+begin
+  Unused(ARow, ACol);
+
+  valType := 'boolean';
+  if ACell^.UsedFormattingFields <> [] then
+  begin
+    lIndex := FindFormattingInList(ACell);
+    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
+  end else
+    lStyle := '';
+
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+  end else
+    spannedStr := '';
+
+  // Displayed value
+  if AValue then
+  begin
+    StrValue := 'true';
+    DisplayStr := rsTRUE;
+  end else
+  begin
+    strValue := 'false';
+    DisplayStr := rsFALSE;
+  end;
+
+  AppendToStream(AStream, Format(
+    '<table:table-cell office:value-type="%s" office:boolean-value="%s" %s %s >' +
+      '<text:p>%s</text:p>' +
+    '</table:table-cell>', [
+    valType, StrValue, lStyle, spannedStr,
+    DisplayStr
+  ]));
 end;
 
 { Creates an XML string for inclusion of the background color into the
@@ -3593,7 +3690,7 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
 begin
-  Unused(AStream, ARow, ACol);
+  Unused(ARow, ACol);
 
   // Style
   if ACell^.UsedFormattingFields <> [] then begin
@@ -3703,7 +3800,6 @@ var
   r1,c1,r2,c2: Cardinal;
   str: ansistring;
 begin
-  Unused(AStream, ACell);
   Unused(ARow, ACol);
 
   // Style
@@ -3753,7 +3849,6 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
 begin
-  Unused(AStream, ACell);
   Unused(ARow, ACol);
 
   valType := 'float';
@@ -3818,7 +3913,6 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
 begin
-  Unused(AStream, ACell);
   Unused(ARow, ACol);
 
   // Merged?

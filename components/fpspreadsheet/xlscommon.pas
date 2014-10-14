@@ -44,6 +44,7 @@ const
   INT_EXCEL_ID_BLANK       = $0201;    // BIFF2: $0001
   INT_EXCEL_ID_NUMBER      = $0203;    // BIFF2: $0003
   INT_EXCEL_ID_LABEL       = $0204;    // BIFF2: $0004
+  INT_EXCEL_ID_BOOLERROR   = $0205;    // BIFF2: $0005
   INT_EXCEL_ID_STRING      = $0207;    // BIFF2: $0007
   INT_EXCEL_ID_ROW         = $0208;    // BIFF2: $0008
   INT_EXCEL_ID_INDEX       = $020B;    // BIFF2: $000B
@@ -326,7 +327,10 @@ type
     // Write out BLANK cell record
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
-    // Write out used codepage for character encoding
+    // Write out BOOLEAN cell record
+    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: Boolean; ACell: PCell); override;
+    // Writes out used codepage for character encoding
     procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
     // Writes out column info(s)
     procedure WriteColInfo(AStream: TStream; ACol: PCol);
@@ -336,6 +340,9 @@ type
     // Writes out a TIME/DATE/TIMETIME
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
+    // Writes out ERROR cell record
+    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TsErrorValue; ACell: PCell); override;
     // Writes out a FORMAT record
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
       AListIndex: Integer); virtual;
@@ -445,6 +452,16 @@ type
     Row: Word;
     Col: Word;
     XFIndex: Word;
+  end;
+
+  TBIFF38BoolErrRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    XFIndex: Word;
+    BoolErrValue: Byte;
+    ValueType: Byte;
   end;
 
   TBIFF58NumberRecord = packed record
@@ -1839,6 +1856,35 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
+{ Writes a BOOLEAN cell record.
+  Valie for BIFF3-BIFF8. Override for BIFF2. }
+procedure TsSpreadBIFFWriter.WriteBool(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
+var
+  rec: TBIFF38BoolErrRecord;
+begin
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
+    exit;
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_BOOLERROR);
+  rec.RecordSize := WordToLE(8);
+
+  { Row and column index }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record, according to formatting }
+  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+
+  { Cell value }
+  rec.BoolErrValue := ord(AValue);
+  rec.ValueType := 0;  // 0 = boolean value, 1 = error value
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
 procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
   AEncoding: TsEncoding);
 var
@@ -1947,6 +1993,45 @@ begin
   // In the end, dates in xls are just numbers with a format. Pass it on to WriteNumber:
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
 end;
+
+{ Writes an ERROR cell record.
+  Valie for BIFF3-BIFF8. Override for BIFF2. }
+procedure TsSpreadBIFFWriter.WriteError(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
+var
+  rec: TBIFF38BoolErrRecord;
+begin
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
+    exit;
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_BOOLERROR);
+  rec.RecordSize := WordToLE(8);
+
+  { Row and column index }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record, according to formatting }
+  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+
+  { Cell value }
+  case AValue of
+    errEmptyIntersection : rec.BoolErrValue := $00;  // #NULL!
+    errDivideByZero      : rec.BoolErrValue := $07;  // #DIV/0!
+    errWrongType         : rec.BoolErrValue := $0F;  // #VALUE!
+    errIllegalRef        : rec.BoolErrValue := $17;  // #REF!
+    errWrongName         : rec.BoolErrValue := $1D;  // #NAME?
+    errOverflow          : rec.BoolErrValue := $24;  // #NUM!
+    errArgError          : rec.BoolErrValue := $2A;  // #N/A
+    else                   exit;
+  end;
+  rec.ValueType := 1;  // 0 = boolean value, 1 = error value
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
 
 { Writes a BIFF format record defined in AFormatData. AListIndex the index of
   the formatdata in the format list (not the FormatIndex!).
