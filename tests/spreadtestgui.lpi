@@ -109,6 +109,7 @@
       <Unit15>
         <Filename Value="errortests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="errortests"/>
       </Unit15>
       <Unit16>
         <Filename Value="virtualmodetests.pas"/>
