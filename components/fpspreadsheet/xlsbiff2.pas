@@ -65,6 +65,7 @@ type
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); override;
     procedure ReadBlank(AStream: TStream); override;
+    procedure ReadBool(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
     procedure ReadDefRowHeight(AStream: TStream);
     procedure ReadFont(AStream: TStream);
@@ -438,6 +439,42 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
+{ The name of this method is misleading - it reads a BOOLEAN cell value,
+  but also an ERROR value; BIFF stores them in the same record. }
+procedure TsSpreadBIFF2Reader.ReadBool(AStream: TStream);
+var
+  rec: TBIFF2BoolErrRecord;
+  r, c: Cardinal;
+  xf: Word;
+  cell: PCell;
+begin
+  { Read entire record, starting at Row }
+  rec.Row := 0;  // to silence the compiler...
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2BoolErrRecord) - 2*SizeOf(Word));
+  r := WordLEToN(rec.Row);
+  c := WordLEToN(rec.Col);
+  xf := rec.Attrib1 and $3F;
+
+  { Create cell }
+  if FIsVirtualMode then begin
+    InitCell(r, c, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.GetCell(r, c);
+
+  { Retrieve boolean or error value depending on the "ValueType" }
+  case rec.ValueType of
+    0: FWorksheet.WriteBoolValue(cell, boolean(rec.BoolErrValue));
+    1: FWorksheet.WriteErrorValue(cell, ConvertFromExcelError(rec.BoolErrValue));
+  end;
+
+  { Apply formatting }
+  ApplyCellFormatting(cell, xf);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, r, c, cell);
+end;
+
 procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
 var
   c, c1, c2: Cardinal;
@@ -540,6 +577,7 @@ begin
 
     case RecordType of
       INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
+      INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
       INT_EXCEL_ID_FONT        : ReadFont(AStream);
       INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
@@ -1733,7 +1771,7 @@ begin
 
   { Cell value }
   rec.BoolErrValue := ord(AValue);
-  rec.ValueType := 1;  // 0 = boolean value, 1 = error value
+  rec.ValueType := 0;  // 0 = boolean value, 1 = error value
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
@@ -1765,16 +1803,7 @@ begin
   GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
 
   { Cell value }
-  case AValue of
-    errEmptyIntersection : rec.BoolErrValue := $00;  // #NULL!
-    errDivideByZero      : rec.BoolErrValue := $07;  // #DIV/0!
-    errWrongType         : rec.BoolErrValue := $0F;  // #VALUE!
-    errIllegalRef        : rec.BoolErrValue := $17;  // #REF!
-    errWrongName         : rec.BoolErrValue := $1D;  // #NAME?
-    errOverflow          : rec.BoolErrValue := $24;  // #NUM!
-    errArgError          : rec.BoolErrValue := $2A;  // #N/A
-    else                   exit;
-  end;
+  rec.BoolErrValue := ConvertToExcelError(AValue);
   rec.ValueType := 1;  // 0 = boolean value, 1 = error value
 
   { Write out }

@@ -326,6 +326,7 @@ type
 
   end;
 
+//  Excel 97-2003 spreadsheet (*.xls)|*.xls|Excel 5.0 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheet (*.xls)|*.xls|Excel XML spreadsheet (*.xlsx)|*.xlsx|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited file (*.csv)|*.csv|Wikitable (wikimedia) (.wikitable_wikimedia)|*.wikitable_wikimedia
 var
   MainFrm: TMainFrm;
 
@@ -669,6 +670,7 @@ procedure TMainFrm.acSaveAsExecute(Sender: TObject);
 // Saves sheet in grid to file, overwriting existing file
 var
   err: String = '';
+  fmt: TsSpreadsheetFormat;
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
@@ -676,8 +678,17 @@ begin
   if SaveDialog.Execute then
   begin
     Screen.Cursor := crHourglass;
+    case SaveDialog.FilterIndex of
+      1: fmt := sfExcel8;
+      2: fmt := sfExcel5;
+      3: fmt := sfExcel2;
+      4: fmt := sfOOXML;
+      5: fmt := sfOpenDocument;
+      6: fmt := sfCSV;
+      7: fmt := sfWikiTable_wikimedia;
+    end;
     try
-      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
+      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName, fmt);
     finally
       Screen.Cursor := crDefault;
       err := WorksheetGrid.Workbook.ErrorMsg;

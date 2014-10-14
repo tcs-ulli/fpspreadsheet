@@ -687,7 +687,10 @@ var
   w: Word;
   b: Byte;
 begin
-  RowCount := FixedRows + 5;
+  if FFormat = sfExcel2 then
+    RowCount := FixedRows + 7
+  else
+    RowCount := FixedRows + 5;
 
   ShowRowColData(FBufferIndex);
 

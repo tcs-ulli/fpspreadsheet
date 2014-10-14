@@ -178,6 +178,8 @@ type
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
+    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
@@ -3404,6 +3406,12 @@ begin
     '<style:text-properties style:font-name="%s" fo:font-size="%.1f" />',
     [fnt.FontName, fnt.Size], FPointSeparatorSettings
   );
+end;
+
+procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
+begin
+  // ??
 end;
 
 function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(const AFormat: TCell): String;

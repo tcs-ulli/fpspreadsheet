@@ -153,6 +153,8 @@ type
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
+    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
@@ -2561,6 +2563,13 @@ begin
   if AValue then CellValueText := '1' else CellValueText := '0';
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="b"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
+end;
+
+{ Writes an error value to the specified cell. }
+procedure TsSpreadOOXMLWriter.WriteError(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
+begin
+  // ???
 end;
 
 { Writes a string formula to the given cell. }
