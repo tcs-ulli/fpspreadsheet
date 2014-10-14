@@ -228,21 +228,28 @@ var
   Splitted: TStringList;
   j: integer;
   SIDChild: SID;
+
   function FindSiblingWithName(const AName: WideString; const AStartSibling: integer): SID;
+  var
+    n, ab: WideString;
   begin
-    if (FDirectory[AStartSibling]._ab=AName) and (FDirectory[AStartSibling]._mse<>BYTE(STGTY_INVALID)) then begin
+    n := UpperCase(AName);
+    ab := UpperCase(FDirectory[AStartSibling]._ab);
+    if (n = ab) and (FDirectory[AStartSibling]._mse <> BYTE(STGTY_INVALID)) then
+    begin
       Result:=FDirectory[AStartSibling]._sidChild;
-    end else begin
+    end else
+    begin
       Result:=WINCOMPOUND_NOSID;
-      if FDirectory[AStartSibling]._sidLeftSib<>WINCOMPOUND_NOSID then begin
+      if FDirectory[AStartSibling]._sidLeftSib<>WINCOMPOUND_NOSID then
         Result:=FindSiblingWithName(AName,FDirectory[AStartSibling]._sidLeftSib);
-      end;
-      if Result<>WINCOMPOUND_NOSID then exit;
-      if FDirectory[AStartSibling]._sidRightSib<>WINCOMPOUND_NOSID then begin
+      if Result<>WINCOMPOUND_NOSID then
+        exit;
+      if FDirectory[AStartSibling]._sidRightSib<>WINCOMPOUND_NOSID then
         Result:=FindSiblingWithName(AName,FDirectory[AStartSibling]._sidRightSib);
-      end;
     end;
   end;
+
 begin
   Splitted:=TStringList.Create;
   SplitPath(APath,Splitted);
@@ -265,21 +272,26 @@ var
   Splitted: TStringList;
   j: integer;
   SIDChild: SID;
+
   function FindSiblingWithName(const AName: WideString; const AStartSibling: integer): SID;
+  var
+    n, ab: WideString;
   begin
-    if (FDirectory[AStartSibling]._ab=AName) and (FDirectory[AStartSibling]._mse<>BYTE(STGTY_INVALID)) then begin
-      Result:=AStartSibling;
-    end else begin
+    n := UpperCase(AName);
+    ab := UpperCase(FDirectory[AStartSibling]._ab);
+    if (n = ab) and (FDirectory[AStartSibling]._mse <> BYTE(STGTY_INVALID)) then
+      Result := AStartSibling
+    else begin
       Result:=WINCOMPOUND_NOSID;
-      if FDirectory[AStartSibling]._sidLeftSib<>WINCOMPOUND_NOSID then begin
+      if FDirectory[AStartSibling]._sidLeftSib<>WINCOMPOUND_NOSID then
         Result:=FindSiblingWithName(AName,FDirectory[AStartSibling]._sidLeftSib);
-      end;
-      if Result<>WINCOMPOUND_NOSID then exit;
-      if FDirectory[AStartSibling]._sidRightSib<>WINCOMPOUND_NOSID then begin
+      if Result<>WINCOMPOUND_NOSID then
+        exit;
+      if FDirectory[AStartSibling]._sidRightSib<>WINCOMPOUND_NOSID then
         Result:=FindSiblingWithName(AName,FDirectory[AStartSibling]._sidRightSib);
-      end;
     end;
   end;
+
 begin
   Splitted:=TStringList.Create;
   SplitPath(APath,Splitted);

@@ -785,7 +785,7 @@ begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
     AnsiValue := Copy(AnsiValue, 1, MAXBYTES);
-    Workbook.AddErrorMsg(rsInvalidCharacterInCell, [
+    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end;
