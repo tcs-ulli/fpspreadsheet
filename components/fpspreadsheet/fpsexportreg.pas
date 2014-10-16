@@ -11,7 +11,7 @@ interface
 uses
   Classes, SysUtils, LazarusPackageIntf, lresources, fpdataexporter;
 
-Procedure Register;
+procedure Register;
 
 implementation
 
@@ -21,14 +21,14 @@ implementation
 uses
   fpsexport;
 
-Procedure Register;
-
+{@@ ----------------------------------------------------------------------------
+  Registers the export component in the Lazarus component palette,
+  page "Data Export".
+-------------------------------------------------------------------------------}
+procedure Register;
 begin
   RegisterComponents('Data Export',[TFPSExport]);
 end;
-
-initialization
-  RegisterPackage('Data Export', @Register );
 
 end.
 
