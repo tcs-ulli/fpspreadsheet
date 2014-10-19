@@ -596,6 +596,9 @@ object MainFrm: TMainFrm
           0036000000360000002000000002FFFFFF00FFFFFF00FFFFFF00
         }
       end
+      object MenuItem76: TMenuItem
+        Caption = '-'
+      end
       object mnuOpen: TMenuItem
         Action = AcOpen
         Bitmap.Data = {
@@ -927,6 +930,12 @@ object MainFrm: TMainFrm
     end
     object mnuFormat: TMenuItem
       Caption = 'Format'
+      object MenuItem75: TMenuItem
+        Action = AcFormatSettings
+      end
+      object MenuItem77: TMenuItem
+        Caption = '-'
+      end
       object MnuFOnt: TMenuItem
         Action = AcFont
         Bitmap.Data = {
@@ -1397,6 +1406,12 @@ object MainFrm: TMainFrm
       object MenuItem69: TMenuItem
         Action = AcShowHeaders
         AutoCheck = True
+      end
+    end
+    object MnuSettings: TMenuItem
+      Caption = 'Settings'
+      object MnuCSVParams: TMenuItem
+        Action = AcCSVParams
       end
     end
   end
@@ -3173,6 +3188,20 @@ object MainFrm: TMainFrm
       Hint = 'Delete row'
       ImageIndex = 37
       OnExecute = AcDeleteRowExecute
+    end
+    object AcCSVParams: TAction
+      Category = 'Settings'
+      Caption = 'CSV parameters...'
+      OnExecute = AcCSVParamsExecute
+    end
+    object AcFormatSettings: TAction
+      Category = 'File'
+      Caption = 'Number format settings...'
+      Hint = 'Modify the global settings for number and date/time formatting'
+      OnExecute = AcFormatSettingsExecute
+    end
+    object Action1: TAction
+      Caption = 'Action1'
     end
   end
   object FontDialog: TFontDialog

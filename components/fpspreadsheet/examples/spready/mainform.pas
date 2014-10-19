@@ -77,6 +77,9 @@ type
     AcShowGridlines: TAction;
     AcDeleteColumn: TAction;
     AcDeleteRow: TAction;
+    AcCSVParams: TAction;
+    AcFormatSettings: TAction;
+    Action1: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -166,6 +169,11 @@ type
     MenuItem72: TMenuItem;
     MenuItem73: TMenuItem;
     MenuItem74: TMenuItem;
+    MenuItem75: TMenuItem;
+    MenuItem76: TMenuItem;
+    MenuItem77: TMenuItem;
+    MnuCSVParams: TMenuItem;
+    MnuSettings: TMenuItem;
     mnuInspector: TMenuItem;
     mnuView: TMenuItem;
     MnuFmtDateTimeMSZ: TMenuItem;
@@ -267,11 +275,13 @@ type
     procedure AcAddRowExecute(Sender: TObject);
     procedure AcBorderExecute(Sender: TObject);
     procedure AcCopyFormatExecute(Sender: TObject);
+    procedure AcCSVParamsExecute(Sender: TObject);
     procedure AcDeleteColumnExecute(Sender: TObject);
     procedure AcDeleteRowExecute(Sender: TObject);
     procedure AcEditExecute(Sender: TObject);
     procedure AcFontExecute(Sender: TObject);
     procedure AcFontStyleExecute(Sender: TObject);
+    procedure AcFormatSettingsExecute(Sender: TObject);
     procedure AcHorAlignmentExecute(Sender: TObject);
     procedure AcIncDecDecimalsExecute(Sender: TObject);
     procedure AcMergeCellsExecute(Sender: TObject);
@@ -334,7 +344,8 @@ implementation
 
 uses
   TypInfo, LCLIntf, LCLType,
-  fpcanvas, fpsutils;
+  fpcanvas, fpsutils, fpscsv,
+  sFormatSettingsForm, sCSVParamsForm;
 
 const
   DROPDOWN_COUNT = 24;
@@ -489,6 +500,20 @@ begin
   end;
 end;
 
+procedure TMainFrm.AcCSVParamsExecute(Sender: TObject);
+var
+  F: TCSVParamsForm;
+begin
+  F := TCSVParamsForm.Create(nil);
+  try
+    F.SetParams(fpscsv.CSVParams);
+    if F.ShowModal = mrOK then
+      F.GetParams(fpscsv.CSVParams);
+  finally
+    F.Free;
+  end;
+end;
+
 procedure TMainFrm.AcDeleteColumnExecute(Sender: TObject);
 var
   c: Integer;
@@ -532,6 +557,26 @@ begin
     if AcFontStrikeout.Checked then Include(style, fssStrikeout);
     if AcFontUnderline.Checked then Include(style, fssUnderline);
     CellFontStyles[Selection] := style;
+  end;
+end;
+
+procedure TMainFrm.AcFormatSettingsExecute(Sender: TObject);
+var
+  F: TFormatSettingsForm;
+begin
+  if WorksheetGrid.Workbook = nil then
+    exit;
+
+  F := TFormatSettingsForm.Create(nil);
+  try
+    F.FormatSettings := WorksheetGrid.Workbook.FormatSettings;
+    if F.ShowModal = mrOK then
+    begin
+      WorksheetGrid.Workbook.FormatSettings := F.FormatSettings;
+      WorksheetGrid.Invalidate;
+    end;
+  finally
+    F.Free;
   end;
 end;
 
@@ -847,6 +892,8 @@ begin
 
   CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
   CbBackgroundColor.ColorRectWidth := CbBackgroundColor.ItemHeight - 6; // to get a square box...
+
+  InspectorPageControl.ActivePageIndex := 0;
 
   // Populate font combobox
   FontCombobox.Items.Assign(Screen.Fonts);

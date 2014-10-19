@@ -48,7 +48,7 @@ resourcestring
   rsUTF8TextExpectedButANSIFoundInCell = 'Expected UTF8 text but probably ANSI '+
       'text found in cell %s.';
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
-
+  rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
 
 
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?

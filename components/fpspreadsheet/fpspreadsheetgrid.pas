@@ -315,7 +315,7 @@ type
     TsWorksheetGrid is a grid which displays spreadsheet data along with
     formatting. As it is linked to an instance of TsWorkbook, it provides
     methods for reading data from or writing to spreadsheet files. It has the
-    same funtionality as TsCustomWorksheetGrid, but publishes has all properties.
+    same funtionality as TsCustomWorksheetGrid, but has published all properties.
   }
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
@@ -2242,6 +2242,25 @@ var
   fnt: TsFont;
 begin
   Result := nil;
+  if (FWorkbook <> nil) then
+  begin
+    fnt := FWorkbook.GetDefaultFont;
+    if FWorksheet <> nil then
+    begin
+      cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+      if (cell <> nil) then
+      begin
+        if (uffBold in cell^.UsedFormattingFields) then
+          fnt := FWorkbook.GetFont(1)
+        else
+        if (uffFont in cell^.UsedFormattingFields) then
+          fnt := FWorkbook.GetFont(cell^.FontIndex);
+      end;
+    end;
+    Convert_sFont_to_Font(fnt, FCellFont);
+    Result := FCellFont;
+  end;
+  {
   if (FWorkbook <> nil) and (FWorksheet <> nil) then
   begin
     cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
@@ -2254,11 +2273,17 @@ begin
         fnt := FWorkbook.GetFont(cell^.FontIndex)
       else
         fnt := FWorkbook.GetDefaultFont;
-//      fnt := FWorkbook.GetFont(cell^.FontIndex);
       Convert_sFont_to_Font(fnt, FCellFont);
       Result := FCellFont;
     end;
   end;
+  if Result = nil then
+  begin
+    fnt := FWorkbook.GetDefaultFont;
+    Convert_sFont_to_Font(fnt, FCellFont);
+    Result := FCellFont;
+  end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2276,7 +2301,7 @@ var
   cell: PCell;
 begin
   Result := GetCellFont(ARect.Left, ARect.Top);
-  sDefFont := FWorkbook.GetFont(0);  // Default font
+  sDefFont := FWorkbook.GetDefaultFont;  // Default font
   for c := ARect.Left to ARect.Right do
     for r := ARect.Top to ARect.Bottom do
     begin
