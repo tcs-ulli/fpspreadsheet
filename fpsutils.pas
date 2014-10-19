@@ -93,6 +93,8 @@ function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 function IsTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsTimeFormat(AFormatStr: String): Boolean; overload;
 
+procedure BuildCurrencyFormatList(AList: TStrings;
+  APositive: Boolean; AValue: Double; const ACurrencySymbol: String);
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
   ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
@@ -106,12 +108,18 @@ function AddAMPM(const ATimeFormatString: String;
 function StripAMPM(const ATimeFormatString: String): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
+function DayNamesToString(const ADayNames: TWeekNameArray;
+  const AEmptyStr: String): String;
 function MakeLongDateFormat(ADateFormat: String): String;
 function MakeShortDateFormat(ADateFormat: String): String;
+function MonthNamesToString(const AMonthNames: TMonthNameArray;
+  const AEmptyStr: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
+
+
 
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
@@ -120,6 +128,9 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   Options : TFormatDateTimeOptions = []): string;
 function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
+
+function TryStrToFloatAuto(AText: String; out ANumber: Double;
+  out AWarning: String): Boolean;
 
 function TwipsToPts(AValue: Integer): Single;
 function PtsToTwips(AValue: Single): Integer;
@@ -162,10 +173,37 @@ var
 implementation
 
 uses
-  Math, lazutf8;
+  Math, lazutf8, fpsStrings;
 
 type
   TRGBA = record r, g, b, a: byte end;
+
+const
+  POS_CURR_FMT: array[0..3] of string = (
+    // Format parameter 0 is "value", parameter 1 is "currency symbol"
+    ('%1:s%0:s'),        // 0: $1
+    ('%0:s%1:s'),        // 1: 1$
+    ('%1:s %0:s'),       // 2: $ 1
+    ('%0:s %1:s')        // 3: 1 $
+  );
+  NEG_CURR_FMT: array[0..15] of string = (
+    ('(%1:s%0:s)'),      //  0: ($1)
+    ('-%1:s%0:s'),       //  1: -$1
+    ('%1:s-%0:s'),       //  2: $-1
+    ('%1:s%0:s-'),       //  3: $1-
+    ('(%0:s%1:s)'),      //  4: (1$)
+    ('-%0:s%1:s'),       //  5: -1$
+    ('%0:s-%1:s'),       //  6: 1-$
+    ('%0:s%1:s-'),       //  7: 1$-
+    ('-%0:s %1:s'),      //  8: -1 $
+    ('-%1:s %0:s'),      //  9: -$ 1
+    ('%0:s %1:s-'),      // 10: 1 $-
+    ('%1:s %0:s-'),      // 11: $ 1-
+    ('%1:s -%0:s'),      // 12: $ -1
+    ('%0:s- %1:s'),      // 13: 1- $
+    ('(%1:s %0:s)'),     // 14: ($ 1)
+    ('(%0:s %1:s)')      // 15: (1 $)
+  );
 
 {******************************************************************************}
 {                       Endianess helper functions                             }
@@ -865,6 +903,49 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Builds a string list with samples of the predefined currency formats
+
+  @param  AList            String list in which the format samples are stored
+  @param  APositive        If true, samples are built for positive currency
+                           values, otherwise for negative values
+  @param  AValue           Currency value to be used when calculating the sample
+                           strings
+  @param  ACurrencySymbol  Currency symbol string to be used in the samples
+-------------------------------------------------------------------------------}
+procedure BuildCurrencyFormatList(AList: TStrings;
+  APositive: Boolean; AValue: Double; const ACurrencySymbol: String);
+var
+  valueStr: String;
+  i: Integer;
+  sel: Integer;
+begin
+  valueStr := Format('%.0n', [AValue]);
+  AList.BeginUpdate;
+  try
+    if AList.Count = 0 then
+    begin
+      if APositive then
+        for i:=0 to High(POS_CURR_FMT) do
+          AList.Add(Format(POS_CURR_FMT[i], [valueStr, ACurrencySymbol]))
+      else
+        for i:=0 to High(NEG_CURR_FMT) do
+          AList.Add(Format(NEG_CURR_FMT[i], [valueStr, ACurrencySymbol]));
+    end else
+    begin
+      if APositive then
+        for i:=0 to High(POS_CURR_FMT) do
+          AList[i] := Format(POS_CURR_FMT[i], [valueStr, ACurrencySymbol])
+      else
+        for i:=0 to High(NEG_CURR_FMT) do
+          AList[i] := Format(NEG_CURR_FMT[i], [valueStr, ACurrencySymbol]);
+    end;
+  finally
+    AList.EndUpdate;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Builds a currency format string. The presentation of negative values (brackets,
   or minus signs) is taken from the provided format settings. The format string
   consists of three sections, separated by semicolons.
@@ -893,6 +974,7 @@ end;
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
   ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
+{
 const
   POS_FMT: array[0..3] of string = (
     // Format parameter 0 is "value", parameter 1 is "currency symbol"
@@ -919,6 +1001,7 @@ const
     ('("%1:s" %0:s)'),     // 14: ($ 1)
     ('(%0:s "%1:s")')      // 15: (1 $)
   );
+  }
 var
   decs: String;
   pcf, ncf: Byte;
@@ -930,13 +1013,15 @@ begin
   if (ADecimals < 0) then
     ADecimals := AFormatSettings.CurrencyDecimals;
   if ACurrencySymbol = '?' then
-    ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);
+    ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);   // is this correct? fpspreadsheet should be kept clean of string conversions!
+  if ACurrencySymbol <> '' then
+    ACurrencySymbol := '"' + ACurrencySymbol + '"';
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
 
   negRed := (ANumberFormat = nfCurrencyRed);
-  p := POS_FMT[pcf];   // Format mask for positive values
-  n := NEG_FMT[ncf];   // Format mask for negative values
+  p := POS_CURR_FMT[pcf];   // Format mask for positive values
+  n := NEG_CURR_FMT[ncf];   // Format mask for negative values
   // add extra space for the sign of the number for perfect alignment in Excel
   if ADialect = nfdExcel then
     case ncf of
@@ -1111,6 +1196,39 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Concatenates the day names specified in ADayNames to a single string. If all
+  daynames are empty AEmptyStr is returned
+
+  @param   ADayNames   Array[1..7] of day names as used in the Formatsettings
+  @param   AEmptyStr   Is returned if all day names are empty
+  @return  String having all day names concatenated and separated by the
+           DefaultFormatSettings.ListSeparator
+-------------------------------------------------------------------------------}
+function DayNamesToString(const ADayNames: TWeekNameArray;
+  const AEmptyStr: String): String;
+var
+  i: Integer;
+  isEmpty: Boolean;
+begin
+  isEmpty := true;
+  for i:=1 to 7 do
+    if ADayNames[i] <> '' then
+    begin
+      isEmpty := false;
+      break;
+    end;
+
+  if isEmpty then
+    Result := AEmptyStr
+  else
+  begin
+    Result := ADayNames[1];
+    for i:=2 to 7 do
+      Result := Result + DefaultFormatSettings.ListSeparator + ' ' + ADayNames[i];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Creates a long date format string out of a short date format string.
   Retains the order of year-month-day and the separators, but uses 4 digits
   for year and 3 digits of month.
@@ -1178,6 +1296,39 @@ begin
         Result := Result + ADateFormat[i];
         inc(i);
     end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Concatenates the month names specified in AMonthNames to a single string.
+  If all month names are empty AEmptyStr is returned
+
+  @param   AMonthNames  Array[1..12] of month names as used in the Formatsettings
+  @param   AEmptyStr    Is returned if all month names are empty
+  @return  String having all month names concatenated and separated by the
+           DefaultFormatSettings.ListSeparator
+-------------------------------------------------------------------------------}
+function MonthNamesToString(const AMonthNames: TMonthNameArray;
+  const AEmptyStr: String): String;
+var
+  i: Integer;
+  isEmpty: Boolean;
+begin
+  isEmpty := true;
+  for i:=1 to 12 do
+    if AMonthNames[i] <> '' then
+    begin
+      isEmpty := false;
+      break;
+    end;
+
+  if isEmpty then
+    Result := AEmptyStr
+  else
+  begin
+    Result := AMonthNames[1];
+    for i:=2 to 12 do
+      Result := Result + DefaultFormatSettings.ListSeparator + ' ' + AMonthNames[i];
   end;
 end;
 
@@ -1324,6 +1475,115 @@ begin
     L.Free;
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a string to a floating point number. No assumption on decimal and
+  thousand separator are made.
+  Is needed for reading CSV files.
+-------------------------------------------------------------------------------}
+function TryStrToFloatAuto(AText: String; out ANumber: Double;
+  out AWarning: String): Boolean;
+var
+  i, j: Integer;
+  testSep: Char;
+  testSepPos: Integer;
+  decsep: Char;
+  isPercent: Boolean;
+  fs: TFormatSettings;
+  done: Boolean;
+begin
+  Result := false;
+  AWarning := '';
+  if AText = '' then
+    exit;
+
+  fs := DefaultFormatSettings;
+
+  // We scan the string starting from its end. If we find a point or a comma,
+  // we have a candidate for the decimal or thousand separator. If we find
+  // the same character again it was a thousand separator, if not it was
+  // a decimal separator.
+
+  // There is one amgiguity: Using a thousand separator for number < 1.000.000,
+  // but no decimal separator misinterprets the thousand separator as a
+  // decimal separator.
+
+  done := false;   // Indicates that both decimal and thousand separators are found
+  testSep := #0;   // Separator candidate to be tested
+  testSepPos := 0; // Position of this separator chandidate in the string
+  i := Length(AText);    // Start at end...
+  while i >= 1 do        // ...and search towards start
+  begin
+    if AText[i] in ['.', ','] then
+    begin
+      if testSep = #0 then begin
+        testSep := AText[i];
+        testSepPos := i;
+      end;
+      // This is the right-most separator candidate in the text
+      // It can be a decimal or a thousand separator.
+      dec(i);
+      while i >= 1 do
+      begin
+        // If we find the testSep character again it must be a thousand separator.
+        if AText[i] = testSep then
+        begin
+          fs.ThousandSeparator := testSep;
+          // The decimal separator is the "other" character.
+          if testSep = '.' then
+            fs.DecimalSeparator := ','
+          else
+            fs.DecimalSeparator := '.';
+          done := true;
+          i := 0;
+        end
+        else
+        // If we find the "other" separator character, then testSep was a
+        // decimal separator and the current character is a thousand separator.
+        if AText[i] in ['.',','] then
+        begin
+          fs.DecimalSeparator := testSep;
+          fs.ThousandSeparator := AText[i];
+          done := true;
+          i := 0;
+        end;
+        dec(i);
+      end;
+    end;
+    dec(i);
+  end;
+
+  // Only one separator candicate found, we assume it is a decimal separator
+  if (testSep <> #0) and not done then
+  begin
+    // Warning in case of ambiguous detection of separator. If only one separator
+    // type is found and it is at the third position from the string's end it
+    // might by a thousand separator or a decimal separator. We assume the
+    // latter case, but create a warning.
+    if Length(AText) - testSepPos = 3 then
+      AWarning := Format(rsAmbiguousDecThouSeparator, [AText]);
+    fs.DecimalSeparator := testSep;
+    // Make sure that the thousand separator is different from the decimal sep.
+    if testSep = '.' then fs.ThousandSeparator := ',' else fs.ThousandSeparator := '.';
+  end;
+
+  // Delete all thousand separators from the string - StrToFloat does not like them...
+  AText := StringReplace(AText, fs.ThousandSeparator, '', [rfReplaceAll]);
+
+  // Is the last character a percent sign?
+  isPercent := AText[Length(AText)] = '%';
+  if isPercent then
+    while (Length(AText) > 0) and (AText[Length(AText)] in ['%', ' ']) do
+      Delete(AText, Length(AText), 1);
+
+  // Try string-to-number conversion
+  Result := TryStrToFloat(AText, ANumber, fs);
+
+  // If successful take care of the percentage sign
+  if Result and isPercent then
+    ANumber := ANumber * 0.01;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Excel's unit of row heights is "twips", i.e. 1/20 point.

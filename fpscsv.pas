@@ -14,7 +14,8 @@ type
     FWorksheetName: String;
     function IsBool(AText: String; out AValue: Boolean): Boolean;
     function IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
-    function IsNumber(AText: String; out ANumber: Double): Boolean;
+    function IsNumber(AText: String; out ANumber: Double;
+      out ACurrencySymbol, AWarning: String): Boolean;
     function IsQuotedText(var AText: String): Boolean;
     procedure ReadCellValue(ARow, ACol: Cardinal; AText: String);
   protected
@@ -60,9 +61,9 @@ type
     LineEnding: TsCSVLineEnding;     // W: Specification for line ending to be written
     Delimiter: Char;                 // RW: Column delimiter
     QuoteChar: Char;                 // RW: Character for quoting texts
+    DetectContentType: Boolean;      // R: try to convert strings to content types
     NumberFormat: String;            // W: if empty write numbers like in sheet, otherwise use this format
-    DateTimeAsText: Boolean;         // R: if false tries to convert text to date/time values
-    BoolAsText: Boolean;             // R: if false tries to convert text to boolean values
+    AutoDetectNumberFormat: Boolean; // R: automatically detects decimal/thousand separator used in numbers
     TrueText: String;                // RW: String for boolean TRUE
     FalseText: String;               // RW: String for boolean FALSE
     FormatSettings: TFormatSettings; // RW: add'l parameters for conversion
@@ -74,9 +75,9 @@ var
     LineEnding: leSystem;
     Delimiter: ';';
     QuoteChar: '"';
+    DetectContentType: true;
     NumberFormat: '';
-    DateTimeAsText: false;
-    BoolAsText: false;
+    AutoDetectNumberFormat: true;
     TrueText: 'TRUE';
     FalseText: 'FALSE';
   );
@@ -205,9 +206,40 @@ begin
   Result := TryStrToDateTime(AText, ADateTime, CSVParams.FormatSettings);
 end;
 
-function TsCSVReader.IsNumber(AText: String; out ANumber: Double): Boolean;
+function TsCSVReader.IsNumber(AText: String; out ANumber: Double;
+  out ACurrencySymbol, AWarning: String): Boolean;
+var
+  p: Integer;
 begin
-  Result := TryStrToFloat(AText, ANumber, CSVParams.FormatSettings);
+  AWarning := '';
+
+  // To detect whether the text is a currency value we look for the currency
+  // string. If we find it, we delete it and convert the remaining string to
+  // a number.
+  ACurrencySymbol := IfThen(CSVParams.FormatSettings.CurrencyString = '',
+    FWorkbook.FormatSettings.CurrencyString,
+    CSVParams.FormatSettings.CurrencyString);
+  p := pos(ACurrencySymbol, AText);
+  if p > 0 then begin
+    Delete(AText, p, Length(ACurrencySymbol));
+    AText := Trim(AText);
+    if AText = '' then begin
+      Result := false;
+      ACurrencySymbol := '';
+      exit;
+    end;
+    // Negative financial values are often enclosed by parenthesis
+    if ((AText[1] = '(') and (AText[Length(AText)] = ')')) then
+      AText := '-' + Trim(Copy(AText, 2, Length(AText)-2));
+  end else
+    ACurrencySymbol := '';
+
+  if CSVParams.AutoDetectNumberFormat then
+    Result := TryStrToFloatAuto(AText, ANumber, AWarning)
+  else
+    Result := TryStrToFloat(AText, ANumber, CSVParams.FormatSettings);
+
+  if not Result then ACurrencySymbol := '';
 end;
 
 function TsCSVReader.IsQuotedText(var AText: String): Boolean;
@@ -233,34 +265,54 @@ var
   dblValue: Double;
   dtValue: TDateTime;
   boolValue: Boolean;
+  currSym: string;
+  warning: String;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
     exit;
 
+  // Do not try to interpret the strings. --> everything is a LABEL cell.
+  if not CSVParams.DetectContentType then
+  begin
+    FWorksheet.WriteUTF8Text(ARow, aCol, AText);
+    exit;
+  end;
+
+  // Remove quotes
+  if (AText[1] = CSVParams.QuoteChar) and (AText[Length(AText)] = CSVParams.QuoteChar) then
+    Delete(AText, 2, Length(AText)-2);
+
+  {
   // Quoted text is a TEXT cell
   if IsQuotedText(AText) then
   begin
     FWorksheet.WriteUTF8Text(ARow, ACol, AText);
     exit;
   end;
+   }
 
-  // Check for a NUMBER cell
-  if IsNumber(AText, dblValue) then
+  // Check for a NUMBER or CURRENCY cell
+  if IsNumber(AText, dblValue, currSym, warning) then
   begin
-    FWorksheet.WriteNumber(ARow, ACol, dblValue);
+    if currSym <> '' then
+      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, 2, currSym)
+    else
+      FWorksheet.WriteNumber(ARow, ACol, dblValue);
+    if warning <> '' then
+      FWorkbook.AddErrorMsg('Cell %s: %s', [GetCellString(ARow, ACol), warning]);
     exit;
   end;
 
   // Check for a DATE/TIME cell
-  if not CSVParams.DateTimeAsText and IsDateTime(AText, dtValue) then
+  if IsDateTime(AText, dtValue) then
   begin
     FWorksheet.WriteDateTime(ARow, ACol, dtValue);
     exit;
   end;
 
   // Check for a BOOLEAN cell
-  if not CSVParams.BoolAsText and IsBool(AText, boolValue) then
+  if IsBool(AText, boolValue) then
   begin
     FWorksheet.WriteBoolValue(ARow, aCol, boolValue);
     exit;
