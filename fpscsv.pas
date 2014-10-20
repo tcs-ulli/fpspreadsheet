@@ -561,7 +561,7 @@ begin
   if CSVParams.NumberFormat <> '' then
     s := Format(CSVParams.NumberFormat, [AValue], CSVParams.FormatSettings)
   else
-    s := FWorksheet.ReadAsUTF8Text(ACell);
+    s := FWorksheet.ReadAsUTF8Text(ACell, CSVParams.FormatSettings);
   AppendToStream(AStream, s);
 end;
 

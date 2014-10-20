@@ -119,8 +119,6 @@ function SpecialDateTimeFormat(ACode: String;
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
-
-
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
 // These two functions are copies of fpc trunk until they are available in stable fpc.
@@ -1558,10 +1556,11 @@ begin
           dec(i);
           while i >= 1 do
           begin
-            if not (AText[i] in ['0'..'9', '+', '-']) then
+            if not (AText[i] in ['0'..'9', '+', '-', '.', ',']) then
               exit;
 
-            // If we find the testSep character again it must be a thousand separator.
+            // If we find the testSep character again it must be a thousand separator,
+            // and there are no decimals.
             if (AText[i] = testSep) then
             begin
               // ... but only if there are 3 numerical digits in between
@@ -1573,8 +1572,8 @@ begin
                   fs.DecimalSeparator := ','
                 else
                   fs.DecimalSeparator := '.';
-                ADecimalSeparator := fs.DecimalSeparator;
                 AThousandSeparator := fs.ThousandSeparator;
+                ADecimalSeparator := #0; // this indicates that there are no decimals
                 done := true;
                 i := 0;
               end else

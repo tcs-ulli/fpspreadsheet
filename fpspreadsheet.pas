@@ -523,6 +523,7 @@ type
     { Reading of values }
     function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring; overload;
     function  ReadAsUTF8Text(ACell: PCell): ansistring; overload;
+    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): ansistring; overload;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double; overload;
     function  ReadAsNumber(ACell: PCell): Double; overload;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean; overload;
@@ -2384,23 +2385,26 @@ end;
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
+begin
+  Result := ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
+end;
 
-  function FloatToStrNoNaN(const Value: Double;
+function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
+  AFormatSettings: TFormatSettings): ansistring;
+
+  function FloatToStrNoNaN(const AValue: Double;
     ANumberFormat: TsNumberFormat; ANumberFormatStr: string): ansistring;
-  var
-    fs: TFormatSettings;
   begin
-    fs := FWorkbook.FormatSettings;
-    if IsNan(Value) then
+    if IsNan(AValue) then
       Result := ''
     else
     if (ANumberFormat = nfGeneral) or (ANumberFormatStr = '') then
-      Result := FloatToStr(Value, fs)
+      Result := FloatToStr(AValue, AFormatSettings)
     else
     if (ANumberFormat = nfPercentage) then
-      Result := FormatFloat(ANumberFormatStr, Value*100, fs)
+      Result := FormatFloat(ANumberFormatStr, AValue*100, AFormatSettings)
     else
-      Result := FormatFloat(ANumberFormatStr, Value, fs)
+      Result := FormatFloat(ANumberFormatStr, AValue, AFormatSettings)
   end;
 
   function DateTimeToStrNoNaN(const Value: Double;
@@ -2414,15 +2418,15 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
       if (ANumberFormat = nfGeneral) then
       begin
         if frac(Value) = 0 then                 // date only
-          ANumberFormatStr := Workbook.FormatSettings.ShortDateFormat
+          ANumberFormatStr := AFormatSettings.ShortDateFormat
         else if trunc(Value) = 0 then           // time only
-          ANumberFormatStr := Workbook.FormatSettings.LongTimeFormat
+          ANumberFormatStr := AFormatSettings.LongTimeFormat
         else
           ANumberFormatStr := 'cc'
       end else
       if ANumberFormatStr = '' then
         ANumberFormatStr := BuildDateTimeFormatString(ANumberFormat,
-          Workbook.FormatSettings, ANumberFormatStr);
+          AFormatSettings, ANumberFormatStr);
 
       // Saw strange cases in ods where date/time formats contained pos/neg/zero parts.
       // Split to be on the safe side.
