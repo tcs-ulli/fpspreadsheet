@@ -65,7 +65,8 @@ type
     // Test word wrapping
     procedure TestWriteRead_WordWrap(AFormat: TsSpreadsheetFormat);
     // Test number formats
-    procedure TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat;
+      AVariant: Integer = 0);
     // Repeat with date/times
     procedure TestWriteRead_DateTimeFormats(AFormat: TsSpreadsheetFormat);
     // Test merged cells
@@ -137,13 +138,14 @@ type
     procedure TestWriteRead_OOXML_WordWrap;
 
     { CSV Tests }
-    procedure TestWriteRead_CSV_NumberFormats;
+    procedure TestWriteRead_CSV_NumberFormats_0;
+    procedure TestWriteRead_CSV_NumberFormats_1;
   end;
 
 implementation
 
 uses
-  TypInfo, fpsutils;
+  TypInfo, fpsutils, fpscsv;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
@@ -165,14 +167,18 @@ var
   i: Integer;
   fs: TFormatSettings;
   myworkbook: TsWorkbook;
+  ch: Char;
 begin
   // Set up norm - MUST match spreadsheet cells exactly
 
   // The workbook uses a slightly modified copy of the DefaultFormatSettings
   // We create a copy here in order to better define the predicted strings.
   myWorkbook := TsWorkbook.Create;
-  fs := MyWorkbook.FormatSettings;
-  myWorkbook.Free;
+  try
+    fs := MyWorkbook.FormatSettings;
+  finally
+    myWorkbook.Free;
+  end;
 
   // Numbers
   SollNumbers[0] := 0.0;
@@ -299,21 +305,33 @@ end;
 
 { --- Number format tests --- }
 
-procedure TSpreadWriteReadFormatTests.TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat);
+procedure TSpreadWriteReadFormatTests.TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat;
+  AVariant: Integer = 0);
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   ActualString: String;
+  ExpectedString: String;
   Row, Col: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
-  {// Not needed: use workbook.writetofile with overwrite=true
-  if fileexists(TempFile) then
-    DeleteFile(TempFile);
-  }
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   try
+    if (AFormat = sfCSV) then
+    begin
+      case AVariant of
+        0: begin
+             CSVParams.FormatSettings.DecimalSeparator := MyWorkbook.FormatSettings.DecimalSeparator;
+             CSVParams.FormatSettings.ThousandSeparator := MyWorkbook.FormatSettings.ThousandSeparator;
+           end;
+        1: begin  // interchanged decimal and thousand separators
+             CSVParams.FormatSettings.ThousandSeparator := MyWorkbook.FormatSettings.DecimalSeparator;
+             CSVParams.FormatSettings.DecimalSeparator := MyWorkbook.FormatSettings.ThousandSeparator;
+           end;
+      end;
+    end;
+
     MyWorkSheet:= MyWorkBook.AddWorksheet(FmtNumbersSheet);
     for Row := Low(SollNumbers) to High(SollNumbers) do
       for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do
@@ -343,17 +361,18 @@ begin
       for Col := Low(SollNumberFormats) to High(SollNumberFormats) do
       begin
         ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
-        if (SollNumberStrings[Row,Col] <> ActualString) then
+        ExpectedString := SollNumberStrings[Row, Col];
+        if (ExpectedString <> ActualString) then
         begin
           if (AFormat = sfCSV) and (Row=5) and (Col=0) then
             // CSV has an insignificant difference of tiny numbers in
             // general format
             ignore('Ignoring insignificant saved string mismatch, cell ' +
                    CellNotation(MyWorksheet,Row,Col) +
-                   ', expected: <' + SollNumberStrings[Row,Col] +
+                   ', expected: <' + ExpectedString +
                    '> but was: <' + ActualString + '>')
           else
-            CheckEquals(SollNumberStrings[Row,Col], ActualString,
+            CheckEquals(ExpectedString, ActualString,
               'Test saved string mismatch, cell '+CellNotation(MyWorkSheet,Row,Col));
         end;
       end;
@@ -388,9 +407,14 @@ begin
   TestWriteRead_NumberFormats(sfOOXML);
 end;
 
-procedure TSpreadWriteReadFormatTests.TestWriteRead_CSV_NumberFormats;
+procedure TSpreadWriteReadFormatTests.TestWriteRead_CSV_NumberFormats_0;
 begin
-  TestWriteRead_NumberFormats(sfCSV);
+  TestWriteRead_NumberFormats(sfCSV, 0);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_CSV_NumberFormats_1;
+begin
+  TestWriteRead_NumberFormats(sfCSV, 1);
 end;
 
 
