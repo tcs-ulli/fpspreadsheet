@@ -130,7 +130,7 @@ function FormatDateTime(const FormatStr: string; DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []): string;
 
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
-  out AWarning: String): Boolean;
+  out ADecimalSeparator, AThousandSeparator: Char; out AWarning: String): Boolean;
 
 function TwipsToPts(AValue: Integer): Single;
 function PtsToTwips(AValue: Single): Integer;
@@ -1481,17 +1481,21 @@ end;
   Is needed for reading CSV files.
 -------------------------------------------------------------------------------}
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
-  out AWarning: String): Boolean;
+  out ADecimalSeparator, AThousandSeparator: Char; out AWarning: String): Boolean;
 var
   i: Integer;
   testSep: Char;
   testSepPos: Integer;
+  lastDigitPos: Integer;
   isPercent: Boolean;
+  isExp: Boolean;
   fs: TFormatSettings;
   done: Boolean;
 begin
   Result := false;
   AWarning := '';
+  ADecimalSeparator := #0;
+  AThousandSeparator := #0;
   if AText = '' then
     exit;
 
@@ -1506,65 +1510,89 @@ begin
   // but no decimal separator misinterprets the thousand separator as a
   // decimal separator.
 
-  done := false;    // Indicates that both decimal and thousand separators are found
-  testSep := #0;    // Separator candidate to be tested
-  testSepPos := 0;  // Position of this separator chandidate in the string
+  done := false;      // Indicates that both decimal and thousand separators are found
+  testSep := #0;      // Separator candidate to be tested
+  testSepPos := 0;    // Position of this separator candidate in the string
+  lastDigitPos := 0;  // Position of the last numerical digit
+  isExp := false;     // Flag for exponential format
+  isPercent := false; // Flag for percentage format
+
   i := Length(AText);    // Start at end...
   while i >= 1 do        // ...and search towards start
   begin
-    if AText[i] in ['.', ','] then
-    begin
-      if testSep = #0 then begin
-        testSep := AText[i];
-        testSepPos := i;
-      end;
-      // This is the right-most separator candidate in the text
-      // It can be a decimal or a thousand separator.
-      dec(i);
-      while i >= 1 do
-      begin
-        if not (AText[i] in ['0'..'9']) then begin
-          Result := false;
-          exit;
-        end;
-        // If we find the testSep character again it must be a thousand separator.
-        if (AText[i] = testSep) then
+    case AText[i] of
+      '0'..'9':
+        if (lastDigitPos = 0) and (AText[i] in ['0'..'9']) then
+          lastDigitPos := i;
+
+      'e', 'E':
+        isExp := true;
+
+      '%':
+        isPercent := true;
+
+      '+', '-':
+        ;
+
+      '.', ',':
         begin
-          // ... but only if there are 3 numerical digits in between
-          if (testSepPos - i = 4) then
-          begin
-            fs.ThousandSeparator := testSep;
-            // The decimal separator is the "other" character.
-            if testSep = '.' then
-              fs.DecimalSeparator := ','
-            else
-              fs.DecimalSeparator := '.';
-            done := true;
-            i := 0;
-          end else
-          begin
-            Result := false;
-            exit;
+          if testSep = #0 then begin
+            testSep := AText[i];
+            testSepPos := i;
           end;
-        end
-        else
-        // If we find the "other" separator character, then testSep was a
-        // decimal separator and the current character is a thousand separator.
-        if AText[i] in ['.',','] then
-        begin
-          fs.DecimalSeparator := testSep;
-          fs.ThousandSeparator := AText[i];
-          done := true;
-          i := 0;
+          // This is the right-most separator candidate in the text
+          // It can be a decimal or a thousand separator.
+          // Therefore, we continue searching from here.
+          dec(i);
+          while i >= 1 do
+          begin
+            if not (AText[i] in ['0'..'9', '+', '-']) then
+              exit;
+
+            // If we find the testSep character again it must be a thousand separator.
+            if (AText[i] = testSep) then
+            begin
+              // ... but only if there are 3 numerical digits in between
+              if (testSepPos - i = 4) then
+              begin
+                fs.ThousandSeparator := testSep;
+                // The decimal separator is the "other" character.
+                if testSep = '.' then
+                  fs.DecimalSeparator := ','
+                else
+                  fs.DecimalSeparator := '.';
+                ADecimalSeparator := fs.DecimalSeparator;
+                AThousandSeparator := fs.ThousandSeparator;
+                done := true;
+                i := 0;
+              end else
+              begin
+                Result := false;
+                exit;
+              end;
+            end
+            else
+            // If we find the "other" separator character, then testSep was a
+            // decimal separator and the current character is a thousand separator.
+            // But there must be 3 digits in between.
+            if AText[i] in ['.', ','] then
+            begin
+              if testSepPos - i <> 4 then  // no 3 digits in between --> no number, maybe a date.
+                exit;
+              fs.DecimalSeparator := testSep;
+              fs.ThousandSeparator := AText[i];
+              ADecimalSeparator := fs.DecimalSeparator;
+              AThousandSeparator := fs.ThousandSeparator;
+              done := true;
+              i := 0;
+            end;
+            dec(i);
+          end;
         end;
-        dec(i);
-      end;
-    end else
-    if not (AText[i] in ['0'..'9', '+', '-', 'e', 'E', '%']) then
-    begin
-      Result := false;
-      AWarning := '';
-      exit;
+
+      else
+        exit;  // Non-numeric character found, no need to continue
+
     end;
     dec(i);
   end;
@@ -1576,9 +1604,10 @@ begin
     // type is found and it is at the third position from the string's end it
     // might by a thousand separator or a decimal separator. We assume the
     // latter case, but create a warning.
-    if Length(AText) - testSepPos = 3 then
+    if (lastDigitPos - testSepPos = 3) and not isPercent then
       AWarning := Format(rsAmbiguousDecThouSeparator, [AText]);
     fs.DecimalSeparator := testSep;
+    ADecimalSeparator := fs.DecimalSeparator;
     // Make sure that the thousand separator is different from the decimal sep.
     if testSep = '.' then fs.ThousandSeparator := ',' else fs.ThousandSeparator := '.';
   end;
@@ -1595,9 +1624,13 @@ begin
   // Try string-to-number conversion
   Result := TryStrToFloat(AText, ANumber, fs);
 
-  // If successful take care of the percentage sign
-  if Result and isPercent then
-    ANumber := ANumber * 0.01;
+  // If successful ...
+  if Result then
+  begin
+    // ... take care of the percentage sign
+    if isPercent then
+      ANumber := ANumber * 0.01;
+  end;
 end;
 
 

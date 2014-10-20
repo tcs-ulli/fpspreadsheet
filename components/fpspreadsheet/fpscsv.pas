@@ -14,8 +14,8 @@ type
     FWorksheetName: String;
     function IsBool(AText: String; out AValue: Boolean): Boolean;
     function IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
-    function IsNumber(AText: String; out ANumber: Double;
-      out ACurrencySymbol, AWarning: String): Boolean;
+    function IsNumber(AText: String; out ANumber: Double; out ANumFormat: TsNumberFormat;
+      out ADecimals: Integer; out ACurrencySymbol, AWarning: String): Boolean;
     function IsQuotedText(var AText: String): Boolean;
     procedure ReadCellValue(ARow, ACol: Cardinal; AText: String);
   protected
@@ -207,10 +207,13 @@ begin
 end;
 
 function TsCSVReader.IsNumber(AText: String; out ANumber: Double;
+  out ANumFormat: TsNumberFormat; out ADecimals: Integer;
   out ACurrencySymbol, AWarning: String): Boolean;
 var
   p: Integer;
+  decsep, thsep: Char;
 begin
+  Result := false;
   AWarning := '';
 
   // To detect whether the text is a currency value we look for the currency
@@ -223,11 +226,8 @@ begin
   if p > 0 then begin
     Delete(AText, p, Length(ACurrencySymbol));
     AText := Trim(AText);
-    if AText = '' then begin
-      Result := false;
-      ACurrencySymbol := '';
+    if AText = '' then
       exit;
-    end;
     // Negative financial values are often enclosed by parenthesis
     if ((AText[1] = '(') and (AText[Length(AText)] = ')')) then
       AText := '-' + Trim(Copy(AText, 2, Length(AText)-2));
@@ -235,11 +235,57 @@ begin
     ACurrencySymbol := '';
 
   if CSVParams.AutoDetectNumberFormat then
-    Result := TryStrToFloatAuto(AText, ANumber, AWarning)
-  else
+    Result := TryStrToFloatAuto(AText, ANumber, decsep, thsep, AWarning)
+  else begin
     Result := TryStrToFloat(AText, ANumber, CSVParams.FormatSettings);
+    if Result then
+    begin
+      if pos(CSVParams.FormatSettings.DecimalSeparator, AText) = 0
+        then decsep := #0
+        else decsep := CSVParams.FormatSettings.DecimalSeparator;
+      if pos(CSVParams.FormatSettings.ThousandSeparator, AText) = 0
+        then thsep := #0
+        else thsep := CSVParams.FormatSettings.ThousandSeparator;
+    end;
+  end;
 
-  if not Result then ACurrencySymbol := '';
+  // Try to determine the number format
+  if Result then
+  begin
+    if thsep <> #0 then
+      ANumFormat := nfFixedTh
+    else
+      ANumFormat := nfGeneral;
+    // count number of decimal places and try to catch special formats
+    ADecimals := 0;
+    if decsep <> #0 then
+    begin
+      // Go to the decimal separator and search towards the end of the string
+      p := pos(decsep, AText) + 1;
+      while (p <= Length(AText)) do begin
+        // exponential format
+        if AText[p] in ['+', '-', 'E', 'e'] then
+        begin
+          ANumFormat := nfExp;
+          break;
+        end else
+        // percent format
+        if AText[p] = '%' then
+        begin
+          ANumFormat := nfPercentage;
+          break;
+        end else
+        begin
+          inc(p);
+          inc(ADecimals);
+        end;
+      end;
+      if (ADecimals > 0) and (ADecimals < 9) and (ANumFormat = nfGeneral) then
+        // "no formatting" assumed if there are "many" decimals
+        ANumFormat := nfFixed;
+    end;
+  end else
+    ACurrencySymbol := '';
 end;
 
 function TsCSVReader.IsQuotedText(var AText: String): Boolean;
@@ -268,6 +314,7 @@ var
   currSym: string;
   warning: String;
   nf: TsNumberFormat;
+  decs: Integer;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
@@ -282,7 +329,10 @@ begin
 
   // Remove quotes
   if (AText[1] = CSVParams.QuoteChar) and (AText[Length(AText)] = CSVParams.QuoteChar) then
-    Delete(AText, 2, Length(AText)-2);
+  begin
+    Delete(AText, Length(AText), 1);
+    Delete(AText, 1, 1);
+  end;
 
   {
   // Quoted text is a TEXT cell
@@ -294,12 +344,12 @@ begin
    }
 
   // Check for a NUMBER or CURRENCY cell
-  if IsNumber(AText, dblValue, currSym, warning) then
+  if IsNumber(AText, dblValue, nf, decs, currSym, warning) then
   begin
     if currSym <> '' then
-      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, 2, currSym)
+      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, decs, currSym)
     else
-      FWorksheet.WriteNumber(ARow, ACol, dblValue);
+      FWorksheet.WriteNumber(ARow, ACol, dblValue, nf, decs);
     if warning <> '' then
       FWorkbook.AddErrorMsg('Cell %s: %s', [GetCellString(ARow, ACol), warning]);
     exit;
