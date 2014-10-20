@@ -1506,9 +1506,9 @@ begin
   // but no decimal separator misinterprets the thousand separator as a
   // decimal separator.
 
-  done := false;   // Indicates that both decimal and thousand separators are found
-  testSep := #0;   // Separator candidate to be tested
-  testSepPos := 0; // Position of this separator chandidate in the string
+  done := false;    // Indicates that both decimal and thousand separators are found
+  testSep := #0;    // Separator candidate to be tested
+  testSepPos := 0;  // Position of this separator chandidate in the string
   i := Length(AText);    // Start at end...
   while i >= 1 do        // ...and search towards start
   begin
@@ -1523,17 +1523,29 @@ begin
       dec(i);
       while i >= 1 do
       begin
+        if not (AText[i] in ['0'..'9']) then begin
+          Result := false;
+          exit;
+        end;
         // If we find the testSep character again it must be a thousand separator.
-        if AText[i] = testSep then
+        if (AText[i] = testSep) then
         begin
-          fs.ThousandSeparator := testSep;
-          // The decimal separator is the "other" character.
-          if testSep = '.' then
-            fs.DecimalSeparator := ','
-          else
-            fs.DecimalSeparator := '.';
-          done := true;
-          i := 0;
+          // ... but only if there are 3 numerical digits in between
+          if (testSepPos - i = 4) then
+          begin
+            fs.ThousandSeparator := testSep;
+            // The decimal separator is the "other" character.
+            if testSep = '.' then
+              fs.DecimalSeparator := ','
+            else
+              fs.DecimalSeparator := '.';
+            done := true;
+            i := 0;
+          end else
+          begin
+            Result := false;
+            exit;
+          end;
         end
         else
         // If we find the "other" separator character, then testSep was a
@@ -1547,6 +1559,12 @@ begin
         end;
         dec(i);
       end;
+    end else
+    if not (AText[i] in ['0'..'9', '+', '-', 'e', 'E', '%']) then
+    begin
+      Result := false;
+      AWarning := '';
+      exit;
     end;
     dec(i);
   end;
