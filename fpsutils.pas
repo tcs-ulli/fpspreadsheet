@@ -1529,7 +1529,19 @@ begin
         isExp := true;
 
       '%':
-        isPercent := true;
+        begin
+          isPercent := true;
+          // There may be spaces before the % sign which we don't want
+          dec(i);
+          while (i >= 1) do
+            if AText[i] = ' ' then
+              dec(i)
+            else
+            begin
+              inc(i);
+              break;
+            end;
+        end;
 
       '+', '-':
         ;
@@ -1616,7 +1628,6 @@ begin
   AText := StringReplace(AText, fs.ThousandSeparator, '', [rfReplaceAll]);
 
   // Is the last character a percent sign?
-  isPercent := AText[Length(AText)] = '%';
   if isPercent then
     while (Length(AText) > 0) and (AText[Length(AText)] in ['%', ' ']) do
       Delete(AText, Length(AText), 1);

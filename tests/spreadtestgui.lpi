@@ -81,7 +81,6 @@
       <Unit8>
         <Filename Value="colortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="colortests"/>
       </Unit8>
       <Unit9>
         <Filename Value="fonttests.pas"/>
