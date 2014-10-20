@@ -80,7 +80,7 @@ var
     AutoDetectNumberFormat: true;
     TrueText: 'TRUE';
     FalseText: 'FALSE';
-  );
+  {%H-});
 
 
 implementation
@@ -216,7 +216,7 @@ begin
   // To detect whether the text is a currency value we look for the currency
   // string. If we find it, we delete it and convert the remaining string to
   // a number.
-  ACurrencySymbol := IfThen(CSVParams.FormatSettings.CurrencyString = '',
+  ACurrencySymbol := StrUtils.IfThen(CSVParams.FormatSettings.CurrencyString = '',
     FWorkbook.FormatSettings.CurrencyString,
     CSVParams.FormatSettings.CurrencyString);
   p := pos(ACurrencySymbol, AText);
@@ -444,7 +444,7 @@ end;
 procedure TsCSVWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: TDateTime; ACell: PCell);
 begin
-  Unused(ARow, ACol);
+  Unused(ARow, ACol, AValue);
   AppendToStream(AStream, FWorksheet.ReadAsUTF8Text(ACell));
 end;
 
@@ -471,7 +471,7 @@ procedure TsCSVWriter.WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
 var
   s: String;
 begin
-  Unused(ARow, ACol);
+  Unused(ARow, ACol, AValue);
   if ACell = nil then
     exit;
   s := ACell^.UTF8StringValue;
@@ -484,7 +484,6 @@ procedure TsCSVWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: double; ACell: PCell);
 var
   s: String;
-  mask: String;
 begin
   Unused(ARow, ACol);
   if ACell = nil then

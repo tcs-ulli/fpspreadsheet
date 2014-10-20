@@ -97,8 +97,6 @@ var
   fs: TFormatSettings;
   ctrl: TWinControl;
   dt: TDateTime;
-  arr: Array[1..12] of String;
-  i: Integer;
   s: String;
 begin
   fs := GetFormatSettings;
@@ -175,6 +173,8 @@ end;
 procedure TFormatSettingsForm.FormCreate(Sender: TObject);
 const
   DROPDOWN_COUNT = 32;
+var
+  w: Integer;
 begin
   PageControl.ActivePageIndex := PageIndex;
 
@@ -185,13 +185,15 @@ begin
   CbPosCurrencyFormat.DropdownCount := DROPDOWN_COUNT;
   CbNegCurrencyFormat.DropdownCount := DROPDOWN_COUNT;
 
+  w := CbLongDateFormat.Width;
   FCbDecimalSeparator := TFormatSeparatorCombo.Create(self);
   with FCbDecimalSeparator do
   begin
     Parent := PgNumber;
     Left := CbLongDateFormat.Left;
-    Width := CbLongDateFormat.Width;
+    Width := w;
     Top := CbLongDateFormat.Top;
+    Anchors := Anchors + [akRight];
     TabOrder := 0;
     SeparatorKind := skDecimal;
   end;
@@ -202,8 +204,9 @@ begin
   begin
     Parent := PgNumber;
     Left := FCbDecimalSeparator.Left;
-    Width := FCbDecimalSeparator.Width;
+    Width := w;
     Top := FCBDecimalSeparator.Top + 32;
+    Anchors := Anchors + [akRight];
     TabOrder := FCbDecimalSeparator.TabOrder + 1;
     SeparatorKind := skThousand;
   end;
@@ -214,7 +217,7 @@ begin
   begin
     Parent := PgDateTime;
     Left := CbShortDateFormat.Left;
-    Width := CbShortDateFormat.Width;
+    Width := w;
     Top := CbShortDateFormat.Top + 32;
     TabOrder := CbShortDateFormat.TabOrder + 1;
     SeparatorKind := skDate;
@@ -228,7 +231,11 @@ begin
   begin
     Parent := PgDateTime;
     Left :=  CbShortDateFormat.Left;
-    Width := CbShortDateFormat.Width;
+   {$IFDEF LCL_FULLVERSION AND LCL_FULLVERSION > 1020600}
+    Width := w;
+   {$ELSE}
+    Width := w - Button.Width;
+   {$ENDIF}
     Top := CbShortDateFormat.Top + 32*2;
     OnChange := @DateTimeFormatChange;
     OnEnter := @DateTimeFormatChange;
@@ -241,7 +248,7 @@ begin
   begin
     Parent := PgDateTime;
     Left :=  CbShortDateFormat.Left;
-    Width := CbShortdateFormat.Width;
+    Width := FEdLongMonthNames.Width;
     Top := CbShortDateFormat.Top + 32*3;
     TabOrder := CbShortDateFormat.TabOrder + 3;
     OnChange := @DateTimeFormatChange;
@@ -254,7 +261,7 @@ begin
   begin
     Parent := PgDateTime;
     Left :=  CbShortDateformat.Left;
-    Width := CbShortDateFormat.Width;
+    Width := FEdLongMonthNames.Width;
     Top := CbShortDateFormat.Top + 32*4;
     TabOrder := CbShortDateFormat.TabOrder + 4;
     OnChange := @DateTimeFormatChange;
@@ -267,7 +274,7 @@ begin
   begin
     Parent := PgDateTime;
     Left :=  CbShortDateFormat.Left;
-    Width := CbShortDateFormat.Width;
+    Width := FEdLongMonthNames.Width;
     Top := CbShortDateFormat.Top + 32*5;
     TabOrder := CbShortDateFormat.TabOrder + 5;
     OnChange := @DateTimeFormatChange;
@@ -280,7 +287,7 @@ begin
   begin
     Parent := PgDateTime;
     Left := CbShortTimeFormat.Left;
-    Width := CbShortTimeFormat.Width;
+    Width := w;
     Top := CbShortTimeFormat.Top + 32;
     TabOrder := CbShortTimeFormat.TabOrder + 1;
     SeparatorKind := skTime;

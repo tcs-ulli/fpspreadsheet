@@ -1,20 +1,20 @@
 object CSVParamsForm: TCSVParamsForm
   Left = 638
-  Height = 528
+  Height = 555
   Top = 250
   Width = 470
   BorderStyle = bsDialog
   Caption = 'Parameters for comma-delimited files'
-  ClientHeight = 528
+  ClientHeight = 555
   ClientWidth = 470
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '1.3'
+  LCLVersion = '1.2.6.0'
   object ButtonPanel: TButtonPanel
     Left = 6
-    Height = 34
-    Top = 488
+    Height = 38
+    Top = 511
     Width = 458
     OKButton.Name = 'OKButton'
     OKButton.DefaultCaption = True
@@ -29,17 +29,19 @@ object CSVParamsForm: TCSVParamsForm
   end
   object PageControl: TPageControl
     Left = 8
-    Height = 472
+    Height = 495
     Top = 8
     Width = 454
-    ActivePage = PgNumberParams
+    ActivePage = PgDateTimeParams
     Align = alClient
     BorderSpacing.Around = 8
-    TabIndex = 1
+    MultiLine = True
+    TabIndex = 3
     TabOrder = 1
+    Options = [nboMultiLine]
     object PgGeneralParams: TTabSheet
       Caption = 'General'
-      ClientHeight = 454
+      ClientHeight = 410
       ClientWidth = 446
       object LblQuoteChar: TLabel
         Left = 16
@@ -52,10 +54,10 @@ object CSVParamsForm: TCSVParamsForm
       end
       object CbQuoteChar: TComboBox
         Left = 156
-        Height = 23
+        Height = 28
         Top = 80
         Width = 155
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'none'
@@ -68,10 +70,10 @@ object CSVParamsForm: TCSVParamsForm
       end
       object CbDelimiter: TComboBox
         Left = 156
-        Height = 23
+        Height = 28
         Top = 16
         Width = 155
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 4
         Items.Strings = (
           'Comma ( , )'
@@ -104,10 +106,10 @@ object CSVParamsForm: TCSVParamsForm
       end
       object CbLineEnding: TComboBox
         Left = 156
-        Height = 23
+        Height = 28
         Top = 48
         Width = 155
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'System'
@@ -133,7 +135,7 @@ object CSVParamsForm: TCSVParamsForm
         ChildSizing.ShrinkVertical = crsScaleChilds
         ChildSizing.Layout = cclLeftToRightThenTopToBottom
         ChildSizing.ControlsPerLine = 1
-        ClientHeight = 60
+        ClientHeight = 58
         ClientWidth = 288
         ItemIndex = 1
         Items.Strings = (
@@ -145,13 +147,13 @@ object CSVParamsForm: TCSVParamsForm
     end
     object PgNumberParams: TTabSheet
       Caption = 'Number cells'
-      ClientHeight = 444
+      ClientHeight = 410
       ClientWidth = 446
       object CbAutoDetectNumberFormat: TCheckBox
         Left = 16
-        Height = 19
+        Height = 24
         Top = 16
-        Width = 200
+        Width = 248
         Caption = 'Try to auto-detect number format'
         Checked = True
         State = cbChecked
@@ -159,16 +161,16 @@ object CSVParamsForm: TCSVParamsForm
       end
       object EdNumFormat: TEdit
         Left = 232
-        Height = 23
+        Height = 28
         Top = 140
         Width = 194
         TabOrder = 3
       end
       object LblNumFormat: TLabel
         Left = 17
-        Height = 15
+        Height = 20
         Top = 144
-        Width = 182
+        Width = 225
         Caption = 'Format string for writing numbers:'
         FocusControl = EdNumFormat
         ParentColor = False
@@ -189,19 +191,19 @@ object CSVParamsForm: TCSVParamsForm
       end
       object LblDecimalSeparator: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 59
-        Width = 98
+        Width = 125
         Caption = 'Decimal separator:'
         FocusControl = CbDecimalSeparator
         ParentColor = False
       end
       object CbDecimalSeparator: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 56
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -213,19 +215,19 @@ object CSVParamsForm: TCSVParamsForm
       end
       object LblThousandSeparator: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 91
-        Width = 108
+        Width = 134
         Caption = 'Thousand separator:'
         FocusControl = CbThousandSeparator
         ParentColor = False
       end
       object CbThousandSeparator: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 88
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -239,20 +241,20 @@ object CSVParamsForm: TCSVParamsForm
     end
     object PgCurrency: TTabSheet
       Caption = 'Currency cells'
-      ClientHeight = 444
+      ClientHeight = 410
       ClientWidth = 446
       object LblCurrencySymbol: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 20
-        Width = 93
+        Width = 112
         Caption = 'Currency symbol:'
         FocusControl = EdCurrencySymbol
         ParentColor = False
       end
       object EdCurrencySymbol: TEdit
         Left = 232
-        Height = 23
+        Height = 28
         Top = 16
         Width = 194
         OnEnter = DateTimeFormatChange
@@ -262,39 +264,39 @@ object CSVParamsForm: TCSVParamsForm
     end
     object PgDateTimeParams: TTabSheet
       Caption = 'Date/time cells'
-      ClientHeight = 444
+      ClientHeight = 437
       ClientWidth = 446
       object LblNumFormat1: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 20
-        Width = 128
+        Width = 160
         Caption = 'Long date format string:'
         ParentColor = False
       end
       object LblNumFormat2: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 52
-        Width = 129
+        Width = 162
         Caption = 'Short date format string:'
         ParentColor = False
       end
       object LblDecimalSeparator1: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 83
-        Width = 79
+        Width = 102
         Caption = 'Date separator:'
         FocusControl = CbDateSeparator
         ParentColor = False
       end
       object CbDateSeparator: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 80
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -309,35 +311,35 @@ object CSVParamsForm: TCSVParamsForm
       end
       object LblNumFormat3: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 268
-        Width = 129
+        Width = 160
         Caption = 'Long time format string:'
         ParentColor = False
       end
       object LblNumFormat4: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 300
-        Width = 130
+        Width = 162
         Caption = 'Short time format string:'
         ParentColor = False
       end
       object LblDecimalSeparator2: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 331
-        Width = 82
+        Width = 103
         Caption = 'Time separator:'
         FocusControl = CbTimeSeparator
         ParentColor = False
       end
       object CbTimeSeparator: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 328
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -353,42 +355,42 @@ object CSVParamsForm: TCSVParamsForm
       end
       object LblLongMonthNames: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 116
-        Width = 107
+        Width = 130
         Caption = 'Long month names:'
         ParentColor = False
       end
       object LblShortMonthNames: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 148
-        Width = 108
+        Width = 132
         Caption = 'Short month names:'
         ParentColor = False
       end
       object LblLongDayNames: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 180
-        Width = 90
+        Width = 111
         Caption = 'Long day names:'
         ParentColor = False
       end
       object LblShortDayNames: TLabel
         Left = 16
-        Height = 15
+        Height = 20
         Top = 212
-        Width = 91
+        Width = 113
         Caption = 'Short day names:'
         ParentColor = False
       end
       object CbLongDateFormat: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 16
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -414,10 +416,10 @@ object CSVParamsForm: TCSVParamsForm
       end
       object CbShortDateFormat: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 48
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -438,10 +440,10 @@ object CSVParamsForm: TCSVParamsForm
       end
       object CbLongTimeFormat: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 264
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -456,10 +458,10 @@ object CSVParamsForm: TCSVParamsForm
       end
       object CbShortTimeFormat: TComboBox
         Left = 232
-        Height = 23
+        Height = 28
         Top = 296
         Width = 194
-        ItemHeight = 15
+        ItemHeight = 20
         ItemIndex = 0
         Items.Strings = (
           'like spreadsheet'
@@ -478,7 +480,7 @@ object CSVParamsForm: TCSVParamsForm
         Top = 366
         Width = 409
         Caption = 'Sample'
-        ClientHeight = 38
+        ClientHeight = 36
         ClientWidth = 405
         TabOrder = 6
         object LblDateTimeSample: TLabel
@@ -496,7 +498,7 @@ object CSVParamsForm: TCSVParamsForm
     end
     object PgBoolParams: TTabSheet
       Caption = 'Boolean cells'
-      ClientHeight = 454
+      ClientHeight = 410
       ClientWidth = 446
       object EdTRUE: TEdit
         Left = 16

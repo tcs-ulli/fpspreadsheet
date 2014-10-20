@@ -1508,6 +1508,7 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 begin
+  Unused(AStream, AData);
   raise Exception.Create('[TsSpreadOOXMLReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;
@@ -2569,7 +2570,9 @@ end;
 procedure TsSpreadOOXMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 begin
-  // ???
+  Unused(AStream);
+  Unused(ARow, ACol);
+  Unused(AValue, ACell);
 end;
 
 { Writes a string formula to the given cell. }

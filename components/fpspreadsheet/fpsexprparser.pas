@@ -876,7 +876,6 @@ resourcestring
   SErrDuplicateIdentifier = 'An identifier with name "%s" already exists.';
   SErrInvalidResultCharacter = '"%s" is not a valid return type indicator';
   ErrInvalidArgumentCount = 'Invalid argument count for function %s';
-  SErrInvalidArgumentType = 'Invalid type for argument %d: Expected %s, got %s';
   SErrInvalidResultType = 'Invalid result type: %s';
   SErrNotVariable = 'Identifier %s is not a variable';
   SErrCircularReference = 'Circular reference found when calculating worksheet formulas';

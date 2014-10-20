@@ -3039,8 +3039,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  R: TRect;
-  tmp: Integer;
   prevMouseCell: TPoint;
 begin
   prevMouseCell := GCache.MouseCell;

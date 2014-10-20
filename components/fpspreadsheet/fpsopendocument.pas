@@ -1423,6 +1423,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 begin
+  Unused(AStream, AData);
   raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;
@@ -3411,6 +3412,9 @@ end;
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 begin
+  Unused(AStream);
+  Unused(ARow, ACol);
+  Unused(AValue, ACell);
   // ??
 end;
 

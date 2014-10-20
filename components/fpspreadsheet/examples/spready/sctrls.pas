@@ -57,12 +57,9 @@ end;
 
 procedure TMonthDayNamesEdit.ButtonClick(Sender: TObject);
 var
-  List: TStringList;
   F: TForm;
-  i, j: Integer;
-  s: String;
-  isEmpty: Boolean;
-  grid: TStringGrid;
+  i: Integer;
+  grid: TStringGrid = nil;
   names: TMonthNameArray;  // can hold day and month names as well
 begin
   F := CreateMonthDayNamesEditor(grid);
@@ -138,6 +135,7 @@ begin
       else
         Cells[1, 0] := 'Long day names';
     end;
+    names[1] := '';  // to silence the compiler...
     GetNames(names);
     w := 0;
     for i:=1 to FCount do

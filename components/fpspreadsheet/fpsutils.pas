@@ -917,7 +917,6 @@ procedure BuildCurrencyFormatList(AList: TStrings;
 var
   valueStr: String;
   i: Integer;
-  sel: Integer;
 begin
   valueStr := Format('%.0n', [AValue]);
   AList.BeginUpdate;
@@ -1484,10 +1483,9 @@ end;
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
   out AWarning: String): Boolean;
 var
-  i, j: Integer;
+  i: Integer;
   testSep: Char;
   testSepPos: Integer;
-  decsep: Char;
   isPercent: Boolean;
   fs: TFormatSettings;
   done: Boolean;

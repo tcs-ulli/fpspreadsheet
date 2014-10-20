@@ -255,7 +255,11 @@ begin
     Parent := PgDateTimeParams;
     Left :=  CbDateSeparator.Left;
     Top := CbDateSeparator.Top + 32;
+   {$IFDEF LCL_FULLVERSION AND LCL_FULLVERSION > 1020600}
     Width := CbDateSeparator.Width;
+   {$ELSE}
+    Width := CbDateSeparator.Width - Button.Width;
+   {$ENDIF}
     OnChange := @DateTimeFormatChange;
     OnEnter := @DateTimeFormatChange;
     TabOrder := CbDateSeparator.TabOrder + 1;
@@ -268,7 +272,7 @@ begin
     Parent := PgDateTimeParams;
     Left :=  CbDateSeparator.Left;
     Top := CbDateSeparator.Top + 32*2;
-    Width := CbDateSeparator.Width;
+    Width := FEdLongMonthNames.Width;
     TabOrder := CbDateSeparator.TabOrder + 2;
     OnChange := @DateTimeFormatChange;
     OnEnter := @DateTimeFormatChange;
@@ -281,7 +285,7 @@ begin
     Parent := PgDateTimeParams;
     Left :=  CbDateSeparator.Left;
     Top := CbDateSeparator.Top + 32*3;
-    Width := CbDateSeparator.Width;
+    Width := FEdLongMonthNames.Width;
     TabOrder := CbDateSeparator.TabOrder + 3;
     OnChange := @DateTimeFormatChange;
     OnEnter := @DateTimeFormatChange;
@@ -294,7 +298,7 @@ begin
     Parent := PgDateTimeParams;
     Left :=  CbDateSeparator.Left;
     Top := CbDateSeparator.Top + 32*4;
-    Width := CbDateSeparator.Width;
+    Width := FEdLongMonthNames.Width;
     TabOrder := CbDateSeparator.TabOrder + 4;
     OnChange := @DateTimeFormatChange;
     OnEnter := @DateTimeFormatChange;
@@ -305,15 +309,7 @@ begin
   FTimeFormatSample := DefaultFormatSettings.LongTimeFormat;
   FSampleDateTime := now();
 end;
-  {
-function TCSVParamsForm.GetCurrencySymbol: String;
-begin
-  if EdCurrencySymbol.Text = rsLikeSpreadsheet then
-    Result := AnsiToUTF8(DefaultFormatSettings.CurrencyString)
-  else
-    Result := EdCurrencySymbol.Text;
-end;
-   }
+
 procedure TCSVParamsForm.GetParams(var AParams: TsCSVParams);
 begin
   // Line endings
@@ -360,20 +356,6 @@ begin
     AParams.FormatSettings.CurrencyString := ''
   else
     AParams.FormatSettings.CurrencyString := UTF8ToAnsi(EdCurrencySymbol.Text);
-
-  {
-  // Pos currency format
-  if CbPosCurrencyFormat.ItemIndex = 0 then
-    AParams.FormatSettings.CurrencyFormat := byte(-1)
-  else
-    AParams.FormatSettings.CurrencyFormat := CbPosCurrencyFormat.ItemIndex-1;
-
-  // Neg currency format
-  if CbNegCurrencyFormat.ItemIndex = 0 then
-    AParams.FormatSettings.NegCurrFormat := byte(-1)
-  else
-    AParams.FormatSettings.NegCurrFormat := CbNegCurrencyFormat.ItemIndex-1;
-  }
 
   // Long date format string
   if (CbLongDateFormat.ItemIndex = 0) or (CbLongDateFormat.Text = '') then
@@ -481,23 +463,7 @@ begin
     EdCurrencySymbol.Text := rsLikeSpreadsheet
   else
     EdCurrencySymbol.Text := AnsiToUTF8(AParams.FormatSettings.CurrencyString);
-(*
-  // Positive currency format
-  BuildCurrencyFormatList(CbPosCurrencyFormat.Items, true, CURR_VALUE, GetCurrencySymbol);
-  CbPosCurrencyFormat.Items.Insert(0, rsLikeSpreadsheet);
-  if AParams.FormatSettings.CurrencyFormat = byte(-1) then
-    CbPosCurrencyformat.ItemIndex := 0
-  else
-    CbPoscurrencyFormat.ItemIndex := AParams.FormatSettings.CurrencyFormat+1;
 
-  // Negative currency format
-  BuildCurrencyFormatList(CbNegCurrencyFormat.Items, false, CURR_VALUE, GetCurrencySymbol);
-  CbNegCurrencyFormat.Items.Insert(0, rsLikeSpreadsheet);
-  if AParams.FormatSettings.NegCurrFormat = byte(-1) then
-    CbNegCurrencyformat.ItemIndex := 0
-  else
-    CbNegcurrencyFormat.ItemIndex := AParams.FormatSettings.NegCurrFormat+1;
-*)
   // Long date format
   if AParams.FormatSettings.LongDateFormat = '' then
     CbLongDateFormat.ItemIndex := 0

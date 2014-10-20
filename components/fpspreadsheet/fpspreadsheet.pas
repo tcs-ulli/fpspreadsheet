@@ -875,9 +875,9 @@ type
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string; AcceptEmptyName: boolean = false): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
-    function  GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
+    function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
-    function  GetWorksheetCount: Cardinal;
+    function  GetWorksheetCount: Integer;
     procedure RemoveAllWorksheets;
     function  ValidWorksheetName(AName: String; AcceptEmptyName: Boolean = false): Boolean;
 
@@ -6039,7 +6039,7 @@ end;
   @see    TsWorkbook.GetWorksheetByName
   @see    TsWorksheet
 -------------------------------------------------------------------------------}
-function TsWorkbook.GetWorksheetByIndex(AIndex: Cardinal): TsWorksheet;
+function TsWorkbook.GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
 begin
   if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then
     Result := TsWorksheet(FWorksheets.Items[AIndex])
@@ -6079,7 +6079,7 @@ end;
 
   @see    TsWorksheet
 -------------------------------------------------------------------------------}
-function TsWorkbook.GetWorksheetCount: Cardinal;
+function TsWorkbook.GetWorksheetCount: Integer;
 begin
   Result := FWorksheets.Count;
 end;
