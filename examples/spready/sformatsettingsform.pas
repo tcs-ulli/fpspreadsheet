@@ -193,7 +193,6 @@ begin
     Left := CbLongDateFormat.Left;
     Width := w;
     Top := CbLongDateFormat.Top;
-    Anchors := Anchors + [akRight];
     TabOrder := 0;
     SeparatorKind := skDecimal;
   end;
@@ -206,7 +205,6 @@ begin
     Left := FCbDecimalSeparator.Left;
     Width := w;
     Top := FCBDecimalSeparator.Top + 32;
-    Anchors := Anchors + [akRight];
     TabOrder := FCbDecimalSeparator.TabOrder + 1;
     SeparatorKind := skThousand;
   end;
