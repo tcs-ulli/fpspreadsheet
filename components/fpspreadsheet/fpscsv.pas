@@ -267,6 +267,7 @@ var
   boolValue: Boolean;
   currSym: string;
   warning: String;
+  nf: TsNumberFormat;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
@@ -305,9 +306,17 @@ begin
   end;
 
   // Check for a DATE/TIME cell
+  // No idea how to apply the date/time formatsettings here...
   if IsDateTime(AText, dtValue) then
   begin
-    FWorksheet.WriteDateTime(ARow, ACol, dtValue);
+    if dtValue < 1.0 then        // this is a time alone
+      nf := nfLongTime
+    else
+    if frac(dtValue) = 0.0 then   // this is a date alone
+      nf := nfShortDate
+    else                         // this is date + time
+      nf := nfShortDateTime;
+    FWorksheet.WriteDateTime(ARow, ACol, dtValue, nf);
     exit;
   end;
 
