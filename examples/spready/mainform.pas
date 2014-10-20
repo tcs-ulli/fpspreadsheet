@@ -171,7 +171,6 @@ type
     MenuItem74: TMenuItem;
     MenuItem75: TMenuItem;
     MenuItem76: TMenuItem;
-    MenuItem77: TMenuItem;
     MnuCSVParams: TMenuItem;
     MnuSettings: TMenuItem;
     mnuInspector: TMenuItem;

@@ -120,7 +120,7 @@ type
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TsErrorValue; ACell: PCell);
+      const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
       AListIndex: Integer); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
