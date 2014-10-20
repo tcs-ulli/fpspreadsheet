@@ -283,6 +283,17 @@ begin
       if (ADecimals > 0) and (ADecimals < 9) and (ANumFormat = nfGeneral) then
         // "no formatting" assumed if there are "many" decimals
         ANumFormat := nfFixed;
+    end else
+    begin
+      p := Length(AText);
+      while (p > 0) do begin
+        case AText[p] of
+          '%'     : ANumFormat := nfPercentage;
+          'e', 'E': ANumFormat := nfExp;
+          else      dec(p);
+        end;
+        break;
+      end;
     end;
   end else
     ACurrencySymbol := '';
