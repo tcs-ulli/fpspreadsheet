@@ -92,7 +92,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="5">
+    <Units Count="6">
       <Unit0>
         <Filename Value="spready.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -111,10 +111,12 @@
         <ComponentName Value="CSVParamsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sCSVParamsForm"/>
       </Unit2>
       <Unit3>
         <Filename Value="sctrls.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="sCtrls"/>
       </Unit3>
       <Unit4>
         <Filename Value="sformatsettingsform.pas"/>
@@ -122,7 +124,15 @@
         <ComponentName Value="FormatSettingsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sFormatsettingsForm"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="ssortparamsform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SortParamsForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sSortParamsForm"/>
+      </Unit5>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

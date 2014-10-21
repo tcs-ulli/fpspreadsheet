@@ -79,7 +79,8 @@ type
     AcDeleteRow: TAction;
     AcCSVParams: TAction;
     AcFormatSettings: TAction;
-    Action1: TAction;
+    AcSortColAsc: TAction;
+    AcSort: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -171,6 +172,9 @@ type
     MenuItem74: TMenuItem;
     MenuItem75: TMenuItem;
     MenuItem76: TMenuItem;
+    MenuItem77: TMenuItem;
+    MenuItem78: TMenuItem;
+    MenuItem79: TMenuItem;
     MnuCSVParams: TMenuItem;
     MnuSettings: TMenuItem;
     mnuInspector: TMenuItem;
@@ -291,6 +295,8 @@ type
     procedure AcSaveAsExecute(Sender: TObject);
     procedure AcShowGridlinesExecute(Sender: TObject);
     procedure AcShowHeadersExecute(Sender: TObject);
+    procedure AcSortColAscExecute(Sender: TObject);
+    procedure AcSortExecute(Sender: TObject);
     procedure AcTextRotationExecute(Sender: TObject);
     procedure AcVertAlignmentExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
@@ -344,7 +350,7 @@ implementation
 uses
   TypInfo, LCLIntf, LCLType,
   fpcanvas, fpsutils, fpscsv,
-  sFormatSettingsForm, sCSVParamsForm;
+  sFormatSettingsForm, sCSVParamsForm, sSortParamsForm;
 
 const
   DROPDOWN_COUNT = 24;
@@ -750,6 +756,54 @@ end;
 procedure TMainFrm.AcShowHeadersExecute(Sender: TObject);
 begin
   WorksheetGrid.ShowHeaders := AcShowHeaders.Checked;
+end;
+
+procedure TMainFrm.AcSortColAscExecute(Sender: TObject);
+var
+  c, r: Cardinal;
+  colIndexes: TsIndexArray;
+begin
+  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
+  c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
+  SetLength(colIndexes, 1);
+  colIndexes[0] := c;
+  with WorksheetGrid.Worksheet do
+    SortCols(ssoAscending, colIndexes, 0, c, GetLastOccupiedRowIndex, c);
+end;
+
+procedure TMainFrm.AcSortExecute(Sender: TObject);
+var
+  F: TSortParamsForm;
+  indexes: TsIndexArray;
+  r1,c1,r2,c2: Cardinal;
+begin
+  F := TSortParamsForm.Create(nil);
+  try
+    F.WorksheetGrid := WorksheetGrid;
+    if F.ShowModal = mrOK then
+    begin
+      indexes := F.SortIndex;
+      if Length(indexes) > 0 then
+      begin
+        // Limits of the range to be sorted
+        with WorksheetGrid do begin
+          r1 := GetWorksheetRow(Selection.Top);
+          c1 := GetWorksheetCol(Selection.Left);
+          r2 := GetWorksheetRow(Selection.Bottom);
+          c2 := GetWorksheetCol(Selection.Right);
+        end;
+        // Execute sorting. Use Begin/EndUpdate to avoid unnecessary redraws.
+        WorksheetGrid.BeginUpdate;
+        try
+          WorksheetGrid.Worksheet.Sort(F.SortByCols, ssoAscending, indexes, r1, c1, r2, c2)
+        finally
+          WorksheetGrid.EndUpdate;
+        end;
+      end;
+    end;
+  finally
+    F.Free;
+  end;
 end;
 
 procedure TMainFrm.AcTextRotationExecute(Sender: TObject);

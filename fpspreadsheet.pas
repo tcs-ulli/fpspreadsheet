@@ -442,7 +442,13 @@ type
   {@@ Pointer to a TCol record }
   PCol = ^TCol;
 
-  {@@ WSorksheet user interface options:
+  {@@ Row and column index array }
+  TsIndexArray = array of cardinal;
+
+  {@@ Sort order }
+  TsSortOrder = (ssoAscending, ssoDescending);
+
+  {@@ Worksheet user interface options:
     @param soShowGridLines  Show or hide the grid lines in the spreadsheet
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
     @param soHasFrozenPanes If set a number of rows and columns of the spreadsheet
@@ -466,6 +472,11 @@ type
     handled by TsWorksheetGrid to update the grid. }
   TsCellEvent = procedure (Sender: TObject; ARow, ACol: Cardinal) of object;
 
+  {@@ This event can be used to override the built-in comparing function which
+    is called when cells are sorted. }
+  TsCellCompareEvent = procedure (Sender: TObject; ACell1, ACell2: PCell;
+    AResult: Integer) of object;
+
   {@@ The worksheet contains a list of cells and provides a variety of methods
     to read or write data to the cells, or to change their formatting. }
   TsWorksheet = class
@@ -483,8 +494,11 @@ type
     FLastColIndex: Cardinal;
     FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
+    FSortOrder: TsSortOrder;
+    FSortIndexes: TsIndexArray;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
+    FOnCompareCells: TsCellCompareEvent;
 
     { Setter/Getter }
     function GetFormatSettings: TFormatSettings;
@@ -501,10 +515,18 @@ type
   protected
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 
+    // Notification of changed cells content and format
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
 
-    procedure RemoveCell(ARow, ACol: Cardinal);
+    // Remove and delete cells
+    function RemoveCell(ARow, ACol: Cardinal): PCell;
+    procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
+
+    // Sorting
+    function DoCompareCells(ACell1, ACell2: PCell): Integer;
+    procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
+      AFromIndex, AToIndex: Cardinal);
 
   public
     {@@ Name of the sheet. In the popular spreadsheet applications this is
@@ -698,6 +720,7 @@ type
     procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
     procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal); overload;
     procedure CopyFormat(AFromCell, AToCell: PCell); overload;
+    procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
     function  FindCell(ARow, ACol: Cardinal): PCell; overload;
     function  FindCell(AddressStr: String): PCell; overload;
     function  GetCell(ARow, ACol: Cardinal): PCell; overload;
@@ -739,6 +762,18 @@ type
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single);
 
+    // Sorting
+    procedure Sort(AColSorting: Boolean; ASortOrder: TsSortOrder;
+      ASortIndexes: TsIndexArray; ARowFrom, AColFrom, ARowTo, AColTo: Integer);
+    procedure SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
+      ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
+    procedure SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
+      const ARange: String); overload;
+    procedure SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
+      ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
+    procedure SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
+      const ARange: String); overload;
+
     { Properties }
 
     {@@ List of cells of the worksheet. Only cells with contents or with formatting
@@ -771,6 +806,8 @@ type
     property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
     {@@ Event fired when the font size in a cell changes }
     property  OnChangeFont: TsCellEvent read FOnChangeFont write FOnChangeFont;
+    {@@ Event to override cell comparison for sorting }
+    property  OnCompareCells: TsCellCompareEvent read FOnCompareCells write FOnCompareCells;
   end;
 
   {@@
@@ -1887,6 +1924,36 @@ begin
     end;
     // (3) convert rpn formula back to string formula
     cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Exchanges two cells
+
+  @param ARow1   Row index of the first cell
+  @param ACol1   Column index of the first cell
+  @param ARow2   Row index of the second cell
+  @param ACol2   Column index of the second cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
+var
+  cell1, cell2: PCell;
+begin
+  cell1 := RemoveCell(ARow1, ACol1);
+  cell2 := RemoveCell(ARow2, ACol2);
+  if cell1 <> nil then
+  begin
+    cell1^.Row := ARow2;
+    cell1^.Col := ACol2;
+    FCells.Add(cell1);
+    ChangedCell(ARow2, ACol2);
+  end;
+  if cell2 <> nil then
+  begin
+    cell2^.Row := ARow1;
+    cell2^.Col := ACol1;
+    FCells.Add(cell2);
+    ChangedCell(ARow1, ACol1);
   end;
 end;
 
@@ -3086,13 +3153,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Removes a cell from its tree container. DOES NOT RELEASE ITS MEMORY!
+
+  @param  ARow   Row index of the cell to be removed
+  @param  ACol   Column index of the cell to be removed
+  @return  Pointer to the cell removed
+-------------------------------------------------------------------------------}
+function TsWorksheet.RemoveCell(ARow, ACol: Cardinal): PCell;
+begin
+  Result := FindCell(ARow, ACol);
+  if Result <> nil then FCells.Remove(Result);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Removes a cell and releases its memory.
   Just for internal usage since it does not modify the other cells affects
 
   @param  ARow   Row index of the cell to be removed
   @param  ACol   Column index of the cell to be removed
 --------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveCell(ARow, ACol: Cardinal);
+procedure TsWorksheet.RemoveAndFreeCell(ARow, ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
   cell: TCell;
@@ -3107,8 +3187,254 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Compare function for sorting of rows and columns
+
+  @param    ACell1   Pointer to the first cell of the comparison
+  @param    ACell2   Pointer to the second cell of the comparison
+  @return   -1 if the first cell is "smaller"
+            +1 if the first cell is "larger",
+            0 if both cells are "equal"
+
+            Date/time and boolean cells are sorted like number cells according
+            to their number value
+            Label cells are sorted like UTF8 strings.
+
+            In case of different cell content types used in the comparison:
+            Empty cells are "smallest", Label cells are next, Numeric cells
+            are "largest"
+-------------------------------------------------------------------------------}
+function TsWorksheet.DoCompareCells(ACell1, ACell2: PCell): Integer;
+// Sort priority in Excel:
+//  blank < alpha < number, dates are sorted according to their number value
+var
+  number1, number2: Double;
+begin
+  result := 0;
+  if Assigned(OnCompareCells) then
+    OnCompareCells(Self, ACell1, ACell2, Result)
+  else
+  begin
+    if (ACell1 = nil) and (ACell2 = nil) then
+      Result := 0
+    else
+    if (ACell1 = nil) then
+      Result := -1
+    else
+    if (ACell2 = nil) then
+      Result := +1
+    else
+    if (ACell1^.ContentType = cctEmpty) and (ACell2^.ContentType = cctEmpty) then
+      Result := 0
+    else if (ACell1^.ContentType = cctEmpty) then
+      Result := -1
+    else if (ACell2^.ContentType = cctEmpty) then
+      Result := +1
+    else if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
+      Result := CompareText(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue)
+    else if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType <> cctUTF8String) then
+      Result := -1
+    else
+    if (ACell1^.ContentType <> cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
+      Result := +1
+    else
+    begin
+      ReadNumericValue(ACell1, number1);
+      ReadNumericValue(ACell2, number2);
+      Result := CompareValue(number1, number2);
+    end;
+  end;
+  if FSortOrder = ssoDescending then Result := -Result;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Exchanges columns or rows, depending on value of "AIsColumn"
+
+  @param  AIsColumn   if true the exchange is done for columns, otherwise for rows
+  @param  AIndex      Index of the column (if AIsColumn is true) or the row
+                      (if AIsColumn is false) which is to be exchanged with the
+                      one having index "WidthIndex"
+  @param  WithIndex   Index of the column (if AIsColumn is true) or the row
+                      (if AIsColumn is false) with which "AIndex" is to be
+                      replaced.
+  @param  AFromIndex  First row (if AIsColumn is true) or column (if AIsColumn
+                      is false) which is affected by the exchange
+  @param  AToIndex    Last row (if AIsColumn is true) or column (if AsColumn is
+                      false) which is affected by the exchange
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.DoExchangeColRow(AIsColumn: Boolean;
+  AIndex, WithIndex: Cardinal; AFromIndex, AToIndex: Cardinal);
+var
+  r, c: Cardinal;
+begin
+  if AIsColumn then
+    for r := AFromIndex to AToIndex do
+      ExchangeCells(r, AIndex, r, WithIndex)
+  else
+    for c := AFromIndex to AToIndex do
+      ExchangeCells(AIndex, c, WithIndex, c);
+end;
+
+{@@ ----------------------------------------------------------------------------
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.Sort(AColSorting: Boolean; ASortOrder: TsSortOrder;
+  ASortIndexes: TsIndexArray; ARowFrom, AColFrom, ARowTo, AColTo: Integer);
+
+  procedure QuickSort(L,R: Integer);
+  var
+    I,J,K: Integer;
+    P: Integer;
+    cell1, cell2: PCell;
+    compareResult: Integer;
+  begin
+    repeat
+      I := L;
+      J := R;
+      P := (L+R) div 2;
+      repeat
+        if AColSorting then
+        begin
+          K := 0;
+          repeat
+            cell1 := FindCell(P, ASortIndexes[K]);
+            cell2 := FindCell(I, ASortIndexes[K]);
+            compareResult := DoCompareCells(cell1, cell2);
+            case compareResult of
+             -1: break;
+              0: if K < High(ASortIndexes) then
+                   inc(K)
+                 else
+                   break;
+             +1: inc(I);
+            end;
+          until false;
+
+          K := 0;
+          repeat
+            cell1 := FindCell(P, ASortIndexes[K]);
+            cell2 := FindCell(J, ASortIndexes[K]);
+            compareResult := DoCompareCells(cell1, cell2);
+            case compareResult of
+             -1: dec(J);
+              0: if K < High(ASortIndexes) then
+                   inc(K)
+                 else
+                   break;
+             +1: break;
+            end;
+          until false;
+        end else
+        begin
+          K := 0;
+          repeat
+            cell1 := FindCell(ASortIndexes[K], P);
+            cell2 := FindCell(ASortIndexes[K], I);
+            compareResult := DoCompareCells(cell1, cell2);
+            case compareResult of
+              -1: break;
+               0: if K < High(ASortIndexes) then
+                    inc(K)
+                  else
+                    break;
+              +1: inc(I);
+            end;
+          until False;
+          K := 0;
+          repeat
+            cell1 := FindCell(ASortIndexes[K], P);
+            cell2 := FindCell(ASortIndexes[K], J);
+            compareResult := DoCompareCells(cell1, cell2);
+            case compareResult of
+             -1: dec(J);
+              0: if K < High(ASortIndexes) then
+                   inc(K)
+                 else
+                   break;
+             +1: break;
+            end;
+          until false;
+        end;
+
+        if I <= J then
+        begin
+          if I <> J then
+          begin
+            if AColSorting then
+            begin
+              cell1 := FindCell(I, ASortIndexes[0]);
+              cell2 := FIndCell(J, ASortIndexes[0]);
+              if DoCompareCells(cell1, cell2) <> 0 then
+                DoExchangeColRow(not AColSorting, J,I, AColFrom, AColTo);
+            end else
+            begin
+              cell1 := FindCell(ASortIndexes[0], I);
+              cell2 := FIndCell(ASortIndexes[0], J);
+              if DoCompareCells(cell1, cell2) <> 0 then
+                DoExchangeColRow(not AColSorting, J,I, ARowFrom, ARowTo);
+            end;
+          end;
+
+          if P = I then
+            P := J
+          else
+          if P = J then
+            P := I;
+
+          inc(I);
+          dec(J);
+        end;
+      until I > J;
+
+      if L < J then
+        QuickSort(L, J);
+
+      L := I;
+    until I >= R;
+  end;
+
+begin
+  FSortOrder := ASortOrder;
+  FSortIndexes := ASortIndexes;
+  if AColSorting then
+    QuickSort(ARowFrom, ARowTo)
+  else
+    QuickSort(AColFrom, AColTo);
+  ChangedCell(ARowFrom, AColFrom);
+end;
+
+procedure TsWorksheet.SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
+  const ARange: String);
+var
+  r1,c1, r2,c2: Cardinal;
+begin
+  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
+    SortCols(ASortOrder, ASortColumns, r1, c1, r2, c2);
+end;
+
+procedure TsWorksheet.SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
+  ARowFrom, AColFrom, ARowTo, AColTo: Cardinal);
+begin
+  Sort(true, ASortOrder, ASortColumns, ARowFrom, AColFrom, ARowTo, AColTo);
+end;
+
+procedure TsWorksheet.SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
+  const ARange: String);
+var
+  r1,c1, r2,c2: Cardinal;
+begin
+  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
+    SortRows(ASortOrder, ASortRows, r1, c1, r2, c2);
+end;
+
+procedure TsWorksheet.SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
+  ARowFrom, AColFrom, ARowTo, AColTo: Cardinal);
+begin
+  Sort(false, ASortOrder, ASortRows, ARowFrom, AColFrom, ARowTo, AColTo);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.UpdateCaches;
 begin
   FFirstColIndex := GetFirstColIndex(true);
@@ -3467,7 +3793,7 @@ begin
     begin
       r := ACell^.Row;
       c := ACell^.Col;
-      RemoveCell(r, c);
+      RemoveAndFreeCell(r, c);
     end
     else
       WriteBlank(ACell);
@@ -5082,7 +5408,7 @@ begin
 
   // Delete cells
   for r := lastRow downto firstRow do
-    RemoveCell(r, ACol);
+    RemoveAndFreeCell(r, ACol);
 
   // Update column index of cell records
   cellnode := FCells.FindLowest;
@@ -5171,7 +5497,7 @@ begin
 
   // Delete cells
   for c := lastCol downto 0 do
-    RemoveCell(ARow, c);
+    RemoveAndFreeCell(ARow, c);
 
   // Update row index of cell reocrds
   cellnode := FCells.FindLowest;
