@@ -10,7 +10,7 @@ object MainFrm: TMainFrm
   OnActivate = FormActivate
   OnCreate = FormCreate
   ShowHint = True
-  LCLVersion = '1.2.6.0'
+  LCLVersion = '1.3'
   object Panel1: TPanel
     Left = 0
     Height = 82
@@ -926,6 +926,15 @@ object MainFrm: TMainFrm
           FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
           FF007590C3FF2359BFFF0541BBFF1D55BFFF758FC1FFFFFFFF00
         }
+      end
+      object MenuItem77: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem79: TMenuItem
+        Action = AcSort
+      end
+      object MenuItem78: TMenuItem
+        Action = AcSortColAsc
       end
     end
     object mnuFormat: TMenuItem
@@ -3197,8 +3206,15 @@ object MainFrm: TMainFrm
       Hint = 'Modify the global settings for number and date/time formatting'
       OnExecute = AcFormatSettingsExecute
     end
-    object Action1: TAction
-      Caption = 'Action1'
+    object AcSortColAsc: TAction
+      Caption = 'Sort column only (ascending)'
+      Hint = 'Sort selected column (ascending)'
+      OnExecute = AcSortColAscExecute
+    end
+    object AcSort: TAction
+      Caption = 'Sort...'
+      Hint = 'Sort selected range'
+      OnExecute = AcSortExecute
     end
   end
   object FontDialog: TFontDialog
