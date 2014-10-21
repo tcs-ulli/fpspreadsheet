@@ -18,25 +18,25 @@ type
     BtnDelete: TBitBtn;
     ButtonPanel: TButtonPanel;
     CbSortColsRows: TComboBox;
-    Panel1: TPanel;
+    TopPanel: TPanel;
     Grid: TStringGrid;
     procedure BtnAddClick(Sender: TObject);
     procedure BtnDeleteClick(Sender: TObject);
     procedure CbSortColsRowsChange(Sender: TObject);
+    procedure GridSelectEditor(Sender: TObject; aCol, aRow: Integer;
+      var Editor: TWinControl);
     procedure OKButtonClick(Sender: TObject);
   private
     { private declarations }
     FWorksheetGrid: TsWorksheetGrid;
-    function GetSortByCols: Boolean;
-    function GetSortIndex: TsIndexArray;
+    function GetSortParams: TsSortParams;
     procedure SetWorksheetGrid(AValue: TsWorksheetGrid);
     procedure UpdateColRowList;
     procedure UpdateCmds;
     function ValidParams(out AMsg: String): Boolean;
   public
     { public declarations }
-    property SortByCols: Boolean read GetSortByCols;
-    property SortIndex: TsIndexArray read GetSortIndex;
+    property SortParams: TsSortParams read GetSortParams;
     property WorksheetGrid: TsWorksheetGrid read FWorksheetGrid write SetWorksheetGrid;
   end;
 
@@ -52,6 +52,13 @@ procedure TSortParamsForm.CbSortColsRowsChange(Sender: TObject);
 begin
   UpdateColRowList;
   UpdateCmds;
+end;
+
+procedure TSortParamsForm.GridSelectEditor(Sender: TObject;
+  aCol, aRow: Integer; var Editor: TWinControl);
+begin
+  if (Editor is TCustomComboBox) then
+    (Editor as TCustomComboBox).Style := csDropDownList;
 end;
 
 procedure TSortParamsForm.OKButtonClick(Sender: TObject);
@@ -88,35 +95,54 @@ begin
   UpdateCmds;
 end;
 
-function TSortParamsForm.GetSortByCols: Boolean;
-begin
-  Result := CbSortColsRows.ItemIndex = 0;
-end;
-
-function TSortParamsForm.GetSortIndex: TsIndexArray;
+function TSortParamsForm.GetSortParams: TsSortParams;
 var
   i, p: Integer;
-  s: String;
   n: Cardinal;
+  sortDir: TsSortOrder;
+  s: String;
 begin
-  SetLength(Result, 0);
-  s:= Grid.Cells[0, 0];
-  s := Grid.Cells[0, 1];
-  for i:= Grid.FixedRows to Grid.RowCount-1 do
+  Result.SortByCols := CbSortColsRows.ItemIndex = 0;
+  SetLength(Result.Keys, 0);
+  for i:=Grid.FixedRows to Grid.RowCount-1 do
   begin
-    s := Grid.Cells[1, i];
-    if s <> '' then
-    begin
-      p := pos(' ', s);
-      s := Copy(s, p+1, Length(s));
-      case CbSortColsRows.ItemIndex of
-        0: if not ParseCellColString(s, n) then continue;     // row index
-        1: if not TryStrToInt(s, LongInt(n)) then continue else dec(n);   // column index
-      end;
-      SetLength(Result, Length(Result)+1);
-      Result[Length(Result)-1] := n;
+    s := Grid.Cells[1, i];   // the cell text is "Column A" or "Row A"
+    if s = '' then
+      raise Exception.Create('[TSortParamsForm.GetSortParams] No sort index selected.');
+      // This case should have been detected already by the ValidParams method.
+
+    p := pos(' ', s);     // we look for the space and extract column/row index
+    if p = 0 then
+      raise Exception.Create('[TSortParamsForm.GetSortParams] Unexpected string in grid.');
+    s := copy(s, p+1, Length(s));
+    case CbSortColsRows.ItemIndex of
+      0: if not ParseCellColString(s, n) then
+           raise Exception.CreateFmt('[TSortParamsForm.GetSortParams] '+
+             'Unexpected column identifier in row %d', [i]);
+      1: if TryStrToInt(s, LongInt(n)) then
+           dec(n)
+         else
+           raise Exception.CreateFmt('[TSortParamsForm.GetSortParams] ' +
+             'Unexpected row identifier in row %s', [i]);
     end;
-  end;
+
+    s := Grid.Cells[2, i];
+    if s = '' then
+      raise Exception.Create('[TSortParamsForm.GetSortParams] No sort direction selected.');
+
+    // These strings are 'A to Z' or 'Z to A', so we look just for the first character.
+    case s[1] of
+      'A': sortDir := ssoAscending;
+      'Z': sortDir := ssoDescending;
+    end;
+
+    SetLength(Result.Keys, Length(Result.Keys) + 1);
+    with Result.Keys[Length(Result.Keys)-1] do
+    begin
+      Order := sortDir;
+      ColRowIndex := n;
+    end;
+  end; // for
 end;
 
 procedure TSortParamsForm.SetWorksheetGrid(AValue: TsWorksheetGrid);
@@ -124,12 +150,15 @@ begin
   FWorksheetGrid := AValue;
   UpdateColRowList;
   UpdateCmds;
+  Grid.Cells[1, 1] := Grid.Columns[0].PickList[0];
+  Grid.Cells[2, 1] := Grid.Columns[1].PickList[0];
 end;
 
 procedure TSortParamsForm.UpdateColRowList;
 var
-  r,c, r1,c1, r2,c2: Cardinal;
   L: TStrings;
+  r,c: Cardinal;
+  r1,c1, r2,c2: Cardinal;
 begin
   with FWorksheetGrid do begin
     r1 := GetWorksheetRow(Selection.Top);
@@ -184,13 +213,24 @@ begin
 end;
 
 function TSortParamsForm.ValidParams(out AMsg: String): Boolean;
+var
+  i: Integer;
 begin
   Result := false;
-  if Length(SortIndex) = 0 then
+  for i:=Grid.FixedRows to Grid.RowCount-1 do
   begin
-    AMsg := 'No sorting criteria selected.';
-    Grid.SetFocus;
-    exit;
+    if Grid.Cells[1, i] = '' then
+    begin
+       AMsg := Format('No sorting criteria selected in row %d.', [i]);
+       Grid.SetFocus;
+       exit;
+    end;
+    if Grid.Cells[2, i] = '' then
+    begin
+       AMsg := Format('No sort order specified in row %d.', [i]);
+       Grid.SetFocus;
+       exit;
+    end;
   end;
   Result := true;
 end;

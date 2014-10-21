@@ -442,11 +442,25 @@ type
   {@@ Pointer to a TCol record }
   PCol = ^TCol;
 
-  {@@ Row and column index array }
-  TsIndexArray = array of cardinal;
-
   {@@ Sort order }
   TsSortOrder = (ssoAscending, ssoDescending);
+
+  {@@ Sort key: sorted column or row index and sort direction }
+  TsSortKey = record
+    ColRowIndex: Integer;
+    Order: TsSortOrder;
+  end;
+
+  {@@ Array of sort keys for multiple sorting criteria }
+  TsSortKeys = array of TsSortKey;
+
+  {@@ Complete set of sorting parameters
+    @param SortByCols  If true sorting is top-down, otherwise left-right
+    @param SortKeys    Array of sorting indexes and sorting directions }
+  TsSortParams = record
+    SortByCols: Boolean;
+    Keys: TsSortKeys;
+  end;
 
   {@@ Worksheet user interface options:
     @param soShowGridLines  Show or hide the grid lines in the spreadsheet
@@ -494,8 +508,6 @@ type
     FLastColIndex: Cardinal;
     FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
-    FSortOrder: TsSortOrder;
-    FSortIndexes: TsIndexArray;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -524,7 +536,7 @@ type
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
 
     // Sorting
-    function DoCompareCells(ACell1, ACell2: PCell): Integer;
+    function DoCompareCells(ACell1, ACell2: PCell; ASortOrder: TsSortOrder): Integer;
     procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
       AFromIndex, AToIndex: Cardinal);
 
@@ -763,16 +775,9 @@ type
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single);
 
     // Sorting
-    procedure Sort(AColSorting: Boolean; ASortOrder: TsSortOrder;
-      ASortIndexes: TsIndexArray; ARowFrom, AColFrom, ARowTo, AColTo: Integer);
-    procedure SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
+    procedure Sort(const ASortParams: TsSortParams;
       ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
-    procedure SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
-      const ARange: String); overload;
-    procedure SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
-      ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
-    procedure SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
-      const ARange: String); overload;
+    procedure Sort(ASortParams: TsSortParams; ARange: String); overload;
 
     { Properties }
 
@@ -3189,8 +3194,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Compare function for sorting of rows and columns
 
-  @param    ACell1   Pointer to the first cell of the comparison
-  @param    ACell2   Pointer to the second cell of the comparison
+  @param    ACell1      Pointer to the first cell of the comparison
+  @param    ACell2      Pointer to the second cell of the comparison
+  @param    ASortOrder  Order of sorting, ascending or descending
   @return   -1 if the first cell is "smaller"
             +1 if the first cell is "larger",
             0 if both cells are "equal"
@@ -3203,7 +3209,8 @@ end;
             Empty cells are "smallest", Label cells are next, Numeric cells
             are "largest"
 -------------------------------------------------------------------------------}
-function TsWorksheet.DoCompareCells(ACell1, ACell2: PCell): Integer;
+function TsWorksheet.DoCompareCells(ACell1, ACell2: PCell;
+  ASortOrder: TsSortOrder): Integer;
 // Sort priority in Excel:
 //  blank < alpha < number, dates are sorted according to their number value
 var
@@ -3243,7 +3250,8 @@ begin
       Result := CompareValue(number1, number2);
     end;
   end;
-  if FSortOrder = ssoDescending then Result := -Result;
+  if ASortOrder = ssoDescending then
+    Result := -Result;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3275,9 +3283,38 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Sorts a range of cells defined by the cell rectangle from ARowFrom/AColFrom
+  to ARowTo/AColTo according to the parameters specified in ASortParams
+
+  @param  ASortParams   Set of parameters to define sorting along rows or colums,
+                        the sorting key column or row indexes, and the sorting
+                        directions
+  @param  ARange        Cell range to be sorted, in Excel notation, such as 'A1:C8'
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.Sort(AColSorting: Boolean; ASortOrder: TsSortOrder;
-  ASortIndexes: TsIndexArray; ARowFrom, AColFrom, ARowTo, AColTo: Integer);
+procedure TsWorksheet.Sort(ASortParams: TsSortParams; ARange: String);
+var
+  r1,c1, r2,c2: Cardinal;
+begin
+  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
+    Sort(ASortParams, r1, c1, r2, c2)
+  else
+    raise Exception.CreateFmt(rsNoValidCellRangeAddress, [ARange]);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sorts a range of cells defined by the cell rectangle from ARowFrom/AColFrom
+  to ARowTo/AColTo according to the parameters specified in ASortParams
+
+  @param  ASortParams   Set of parameters to define sorting along rows or colums,
+                        the sorting key column or row indexes, and the sorting
+                        directions
+  @param  ARowFrom      Top row of the range to be sorted
+  @param  AColFrom      Left column of the range to be sorted
+  @param  ARowTo        Last row of the range to be sorted
+  @param  AColTo        Right column of the range to be sorted
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
+  ARowFrom, AColFrom, ARowTo, AColTo: Cardinal);
 
   procedure QuickSort(L,R: Integer);
   var
@@ -3291,85 +3328,78 @@ procedure TsWorksheet.Sort(AColSorting: Boolean; ASortOrder: TsSortOrder;
       J := R;
       P := (L+R) div 2;
       repeat
-        if AColSorting then
+        if ASortParams.SortByCols then
         begin
+          // Sorting by columns
           K := 0;
-          repeat
-            cell1 := FindCell(P, ASortIndexes[K]);
-            cell2 := FindCell(I, ASortIndexes[K]);
-            compareResult := DoCompareCells(cell1, cell2);
-            case compareResult of
+          while true do
+          begin
+            cell1 := FindCell(P, ASortParams.Keys[K].ColRowIndex);
+            cell2 := FindCell(I, ASortParams.Keys[K].ColRowIndex);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+            case sign(compareResult) of
              -1: break;
-              0: if K < High(ASortIndexes) then
-                   inc(K)
-                 else
-                   break;
+              0: if K <= High(ASortParams.Keys) then inc(K) else break;
              +1: inc(I);
             end;
-          until false;
-
+          end;
           K := 0;
-          repeat
-            cell1 := FindCell(P, ASortIndexes[K]);
-            cell2 := FindCell(J, ASortIndexes[K]);
-            compareResult := DoCompareCells(cell1, cell2);
-            case compareResult of
+          while true do
+          begin
+            cell1 := FindCell(P, ASortParams.Keys[K].ColRowIndex);
+            cell2 := FindCell(J, ASortParams.Keys[K].ColRowIndex);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+            case sign(compareResult) of
              -1: dec(J);
-              0: if K < High(ASortIndexes) then
-                   inc(K)
-                 else
-                   break;
+              0: if K <= High(ASortParams.Keys) then inc(K) else break;
              +1: break;
             end;
-          until false;
+          end;
         end else
         begin
+          // Sorting by rows
           K := 0;
-          repeat
-            cell1 := FindCell(ASortIndexes[K], P);
-            cell2 := FindCell(ASortIndexes[K], I);
-            compareResult := DoCompareCells(cell1, cell2);
-            case compareResult of
+          while true do
+          begin
+            cell1 := FindCell(ASortParams.Keys[K].ColRowIndex, P);
+            cell2 := FindCell(ASortParams.Keys[K].ColRowIndex, I);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+            case sign(compareResult) of
               -1: break;
-               0: if K < High(ASortIndexes) then
-                    inc(K)
-                  else
-                    break;
+               0: if K <= High(ASortParams.Keys) then inc(K) else break;
               +1: inc(I);
             end;
-          until False;
+          end;
           K := 0;
-          repeat
-            cell1 := FindCell(ASortIndexes[K], P);
-            cell2 := FindCell(ASortIndexes[K], J);
-            compareResult := DoCompareCells(cell1, cell2);
-            case compareResult of
+          while true do
+          begin
+            cell1 := FindCell(ASortParams.Keys[K].ColRowIndex, P);
+            cell2 := FindCell(ASortParams.Keys[K].ColRowIndex, J);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+            case sign(compareResult) of
              -1: dec(J);
-              0: if K < High(ASortIndexes) then
-                   inc(K)
-                 else
-                   break;
+              0: if K <= High(ASortParams.Keys) then inc(K) else break;
              +1: break;
             end;
-          until false;
+          end;
         end;
 
         if I <= J then
         begin
           if I <> J then
           begin
-            if AColSorting then
+            if ASortParams.SortByCols then
             begin
-              cell1 := FindCell(I, ASortIndexes[0]);
-              cell2 := FIndCell(J, ASortIndexes[0]);
-              if DoCompareCells(cell1, cell2) <> 0 then
-                DoExchangeColRow(not AColSorting, J,I, AColFrom, AColTo);
+              cell1 := FindCell(I, ASortParams.Keys[0].ColRowIndex);
+              cell2 := FIndCell(J, ASortParams.Keys[0].ColRowIndex);
+              if DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order) <> 0 then
+                DoExchangeColRow(not ASortParams.SortByCols, J,I, AColFrom, AColTo);
             end else
             begin
-              cell1 := FindCell(ASortIndexes[0], I);
-              cell2 := FIndCell(ASortIndexes[0], J);
-              if DoCompareCells(cell1, cell2) <> 0 then
-                DoExchangeColRow(not AColSorting, J,I, ARowFrom, ARowTo);
+              cell1 := FindCell(ASortParams.Keys[0].ColRowIndex, I);
+              cell2 := FIndCell(ASortParams.Keys[0].ColRowIndex, J);
+              if DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order) <> 0 then
+                DoExchangeColRow(not ASortParams.SortByCols, J,I, ARowFrom, ARowTo);
             end;
           end;
 
@@ -3392,43 +3422,11 @@ procedure TsWorksheet.Sort(AColSorting: Boolean; ASortOrder: TsSortOrder;
   end;
 
 begin
-  FSortOrder := ASortOrder;
-  FSortIndexes := ASortIndexes;
-  if AColSorting then
+  if ASortParams.SortByCols then
     QuickSort(ARowFrom, ARowTo)
   else
     QuickSort(AColFrom, AColTo);
   ChangedCell(ARowFrom, AColFrom);
-end;
-
-procedure TsWorksheet.SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
-  const ARange: String);
-var
-  r1,c1, r2,c2: Cardinal;
-begin
-  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
-    SortCols(ASortOrder, ASortColumns, r1, c1, r2, c2);
-end;
-
-procedure TsWorksheet.SortCols(ASortOrder: TsSortOrder; ASortColumns: TsIndexArray;
-  ARowFrom, AColFrom, ARowTo, AColTo: Cardinal);
-begin
-  Sort(true, ASortOrder, ASortColumns, ARowFrom, AColFrom, ARowTo, AColTo);
-end;
-
-procedure TsWorksheet.SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
-  const ARange: String);
-var
-  r1,c1, r2,c2: Cardinal;
-begin
-  if ParseCellRangeString(ARange, r1, c1, r2, c2) then
-    SortRows(ASortOrder, ASortRows, r1, c1, r2, c2);
-end;
-
-procedure TsWorksheet.SortRows(ASortOrder: TsSortOrder; ASortRows: TsIndexArray;
-  ARowFrom, AColFrom, ARowTo, AColTo: Cardinal);
-begin
-  Sort(false, ASortOrder, ASortRows, ARowFrom, AColFrom, ARowTo, AColTo);
 end;
 
 

@@ -761,20 +761,26 @@ end;
 procedure TMainFrm.AcSortColAscExecute(Sender: TObject);
 var
   c, r: Cardinal;
-  colIndexes: TsIndexArray;
+  sortParams: TsSortParams;
 begin
   r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
   c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
-  SetLength(colIndexes, 1);
-  colIndexes[0] := c;
-  with WorksheetGrid.Worksheet do
-    SortCols(ssoAscending, colIndexes, 0, c, GetLastOccupiedRowIndex, c);
+  SetLength(sortParams.Keys, 1);
+  sortParams.Keys[0].ColRowIndex := c;
+  sortParams.Keys[0].Order := ssoAscending;
+  sortParams.SortByCols := true;
+  WorksheetGrid.BeginUpdate;
+  try
+    with WorksheetGrid.Worksheet do
+      Sort(sortParams, 0, c, GetLastOccupiedRowIndex, c);
+  finally
+    WorksheetGrid.EndUpdate;
+  end;
 end;
 
 procedure TMainFrm.AcSortExecute(Sender: TObject);
 var
   F: TSortParamsForm;
-  indexes: TsIndexArray;
   r1,c1,r2,c2: Cardinal;
 begin
   F := TSortParamsForm.Create(nil);
@@ -782,23 +788,19 @@ begin
     F.WorksheetGrid := WorksheetGrid;
     if F.ShowModal = mrOK then
     begin
-      indexes := F.SortIndex;
-      if Length(indexes) > 0 then
-      begin
-        // Limits of the range to be sorted
-        with WorksheetGrid do begin
-          r1 := GetWorksheetRow(Selection.Top);
-          c1 := GetWorksheetCol(Selection.Left);
-          r2 := GetWorksheetRow(Selection.Bottom);
-          c2 := GetWorksheetCol(Selection.Right);
-        end;
-        // Execute sorting. Use Begin/EndUpdate to avoid unnecessary redraws.
-        WorksheetGrid.BeginUpdate;
-        try
-          WorksheetGrid.Worksheet.Sort(F.SortByCols, ssoAscending, indexes, r1, c1, r2, c2)
-        finally
-          WorksheetGrid.EndUpdate;
-        end;
+      // Limits of the range to be sorted
+      with WorksheetGrid do begin
+        r1 := GetWorksheetRow(Selection.Top);
+        c1 := GetWorksheetCol(Selection.Left);
+        r2 := GetWorksheetRow(Selection.Bottom);
+        c2 := GetWorksheetCol(Selection.Right);
+      end;
+      // Execute sorting. Use Begin/EndUpdate to avoid unnecessary redraws.
+      WorksheetGrid.BeginUpdate;
+      try
+        WorksheetGrid.Worksheet.Sort(F.SortParams, r1, c1, r2, c2)
+      finally
+        WorksheetGrid.EndUpdate;
       end;
     end;
   finally
