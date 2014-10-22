@@ -151,6 +151,9 @@ function HighContrastColor(AColorValue: TsColorValue): TsColor;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
+function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
+  ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
+
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
@@ -2358,6 +2361,37 @@ begin
     end
   else
     RemoveChars(0, coEqual);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes a Sortparams record. This record sets paramaters used when cells
+  are sorted.
+
+  @param  ASortByCols     If true sorting occurs along columns, i.e. the
+                          ColRowIndex of the sorting keys refer to column indexes.
+                          If False, sorting occurs along rows, and the
+                          ColRowIndexes refer to row indexes
+                          Default: true
+  @param  ANumSortKeys    Determines how many columns or rows are used as sorting
+                          keys. (Default: 1)
+  @param  ASortPriority   Determines the order or text and numeric data in
+                          mixed content type cell ranges.
+                          Default: spNumAlpha, i.e. numbers before text (in
+                          ascending sort)
+  @return The initializaed TsSortParams record
+-------------------------------------------------------------------------------}
+function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
+  ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
+var
+  i: Integer;
+begin
+  Result.SortByCols := ASortByCols;
+  Result.Priority := spNumAlpha;  // numbers before text, like in Excel
+  SetLength(Result.Keys, ANumSortKeys);
+  for i:=0 to High(Result.Keys) do begin
+    Result.Keys[i].ColRowIndex := 0;
+    Result.Keys[i].Order := ssoAscending;
+  end;
 end;
 
 procedure AppendToStream(AStream: TStream; const AString: string);
