@@ -822,6 +822,9 @@ procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
 procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
   const AParamTypes: String; const AExcelCode: Integer; ACallBack: TsExprFunctionEvent); overload;
 
+var
+  ExprFormatSettings: TFormatSettings;
+
 const
   AllBuiltIns = [bcMath, bcStatistics, bcStrings, bcLogical, bcDateTime, bcLookup,
     bcInfo, bcUser];
@@ -830,7 +833,7 @@ const
 implementation
 
 uses
-  typinfo, math, lazutf8, dateutils, fpsutils, fpsfunc;
+  typinfo, math, lazutf8, dateutils, fpsutils; //, fpsfunc;
 
 const
   cNull = #0;
@@ -4255,7 +4258,7 @@ initialization
   ExprFormatSettings.DecimalSeparator := '.';
   ExprFormatSettings.ListSeparator := ',';
 
-  RegisterStdBuiltins(BuiltinIdentifiers);
+//  RegisterStdBuiltins(BuiltinIdentifiers);
 
 finalization
   FreeBuiltins;

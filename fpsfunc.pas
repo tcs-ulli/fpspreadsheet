@@ -9,10 +9,7 @@ unit fpsfunc;
 interface
 
 uses
-  Classes, SysUtils, fpspreadsheet, fpsExprParser;
-
-var
-  ExprFormatSettings: TFormatSettings;
+  Classes, SysUtils, fpspreadsheet, fpsexprparser;
 
 procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
 
@@ -1895,5 +1892,6 @@ end;
 *)
 
 initialization
+  RegisterStdBuiltins(BuiltinIdentifiers);
 
 end.
