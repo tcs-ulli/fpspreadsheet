@@ -3341,11 +3341,87 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
     repeat
       I := L;
       J := R;
-      P := (L+R) div 2;
+      P := (L + R) div 2;
       repeat
+        { original code from "grids.pas":
+
+        if ColSorting then begin
+          while DoCompareCells(index, P, index, I)>0 do I:=I+1;
+          while DoCompareCells(index, P, index, J)<0 do J:=J-1;
+        end else begin
+          while DoCompareCells(P, index, I, index)>0 do I:=I+1;
+          while DoCompareCells(P, index, J, index)<0 do J:=J-1;
+        end; }
+
         if ASortParams.SortByCols then
         begin
+          (*
           // Sorting by columns
+          // The next "while" loop corresponds to grid's:
+          //    while DoCompareCells(index, P, index, I) > 0 do I:=I+1;
+          while true do
+          begin
+            cell1 := FindCell(P, ASortParams.Keys[0].ColRowIndex);
+            cell2 := FindCell(I, ASortParams.Keys[0].ColRowIndex);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order);
+            if compareResult < 0 then
+              break
+            else
+            if compareResult > 0 then
+              inc(I)
+            else
+            begin
+              // equal --> check next condition
+              K := 1;
+              while (K <= High(ASortParams.Keys)) do
+              begin
+                cell1 := FindCell(P, ASortParams.Keys[K].ColRowIndex);
+                cell2 := FindCell(I, ASortParams.Keys[K].ColRowIndex);
+                compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+                if compareResult < 0 then
+                  break
+                else
+                if compareResult > 0 then begin
+                  inc(I);
+                  break;
+                end else
+                  inc(K);  // Still equal --> try next condition
+              end;
+              if compareResult <= 0 then
+                break;
+            end;
+          end;
+
+          // The next "while" loop corresponds to grid's:
+          //    while DoCompareCells(index, P, index, J)<0 do J:=J-1;
+          while true do
+          begin
+            cell1 := FindCell(P, ASortParams.Keys[0].ColRowIndex);
+            cell2 := FindCell(J, ASortParams.Keys[0].ColRowIndex);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order);
+            if compareResult < 0 then
+              dec(J)
+            else
+            if compareResult > 0 then
+              break
+            else begin  // equal --> check next condition
+              K := 1;
+              while (K <= High(ASortParams.Keys)) do
+              begin
+                cell1 := FindCell(P, ASortParams.Keys[K].ColRowIndex);
+                cell2 := FindCell(J, ASortParams.Keys[K].ColRowIndex);
+                compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+                case abs(compareResult) of
+                 -1: begin dec(J); break; end;
+                 +1: break;
+                  0: inc(K);
+                end;
+              end;
+              if compareResult >= 0 then
+                break;
+            end;
+          end;
+            *)
           K := 0;
           while true do
           begin
@@ -3355,9 +3431,10 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
             case sign(compareResult) of
              -1: break;
               0: if K <= High(ASortParams.Keys) then inc(K) else break;
-             +1: inc(I);
+             +1: begin inc(I); K:= 0; end;
             end;
           end;
+
           K := 0;
           while true do
           begin
@@ -3365,7 +3442,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
             cell2 := FindCell(J, ASortParams.Keys[K].ColRowIndex);
             compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
             case sign(compareResult) of
-             -1: dec(J);
+             -1: begin dec(J); K := 0; end;
               0: if K <= High(ASortParams.Keys) then inc(K) else break;
              +1: break;
             end;
@@ -3382,7 +3459,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
             case sign(compareResult) of
               -1: break;
                0: if K <= High(ASortParams.Keys) then inc(K) else break;
-              +1: inc(I);
+              +1: begin inc(I); if K > 0 then K := 0; end;
             end;
           end;
           K := 0;
@@ -3392,11 +3469,65 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
             cell2 := FindCell(ASortParams.Keys[K].ColRowIndex, J);
             compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
             case sign(compareResult) of
-             -1: dec(J);
+             -1: begin dec(J); if K > 0 then K := 0; end;
               0: if K <= High(ASortParams.Keys) then inc(K) else break;
              +1: break;
             end;
           end;
+          (*
+          while true do
+          begin
+            cell1 := FindCell(ASortParams.Keys[0].ColRowIndex, P);
+            cell2 := FindCell(ASortParams.Keys[0].ColRowIndex, I);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order);
+            case sign(compareresult) of
+             -1: break;
+             +1: inc(I);
+              0: begin
+                   K := 1;
+                   while (compareResult=0) and (K <= High(ASortParams.Keys)) do
+                   begin
+                     cell1 := FindCell(ASortParams.Keys[K].ColRowIndex, P);
+                     cell2 := FindCell(ASortParams.Keys[K].ColRowIndex, I);
+                     compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+                     if compareResult = 0 then
+                       continue
+                     else begin
+                       if compareresult > 0 then inc(I);
+                       break;
+                     end;
+                   end;
+                   if compareResult < 0 then break;
+                 end;
+            end;
+          end;
+          while true do
+          begin
+            cell1 := FindCell(ASortParams.Keys[0].ColRowIndex, P);
+            cell2 := FindCell(ASortParams.Keys[0].ColRowIndex, J);
+            compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order);
+            case sign(compareResult) of
+              -1: dec(J);
+              +1: break;
+               0: begin
+                    K := 1;
+                    while (compareResult=0) and (K <= High(ASortParams.Keys)) do
+                    begin
+                      cell1 := FindCell(ASortParams.Keys[0].ColRowIndex, P);
+                      cell2 := FindCell(ASortParams.Keys[0].ColRowIndex, J);
+                      compareResult := DoCompareCells(cell1, cell2, ASortParams.Keys[K].Order);
+                      if compareResult = 0 then
+                        continue
+                      else begin
+                        if compareResult < 0 then dec(J);
+                        break;
+                      end;
+                   end;
+                   if compareResult > 0 then break;
+                 end;
+            end;
+          end;
+          *)
         end;
 
         if I <= J then

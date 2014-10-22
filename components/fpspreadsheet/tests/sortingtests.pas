@@ -272,8 +272,10 @@ var
 
 begin
   sortParams := InitSortParams(ASortByCols, 2);
-  sortParams.Keys[0].ColRowIndex := 0;
-  sortParams.Keys[1].ColRowIndex := 1;
+  sortParams.Keys[0].ColRowIndex := 0;    // col/row 0 is primary key
+  sortParams.Keys[1].ColRowIndex := 1;    // col/row 1 is second key
+
+  iLast := High(SollSortNumbers);
 
   TempFile := GetTempFileName;
 
@@ -285,18 +287,22 @@ begin
     row := 0;
     if ASortByCols then
     begin
-      // Always 2 numbers in the first column are equal
-      for i:=0 to High(SollSortNumbers) do
-        MyWorksheet.WriteNumber(i, col, SollSortNumbers[(i mod 2)*2]);
-      // All strings in the second column are distinct
-      for i:=0 to High(SollSortStrings) do
-        MyWorksheet.WriteUTF8Text(i, col+1, SollSortStrings[i]);
+      // Write all randomized numbers to column B
+      for i:=0 to iLast do
+        MyWorksheet.WriteNumber(i, col+1, SollSortNumbers[i]);
+      // divide each number by 2 and calculate the character assigned to it
+      // and write it to column A
+      // We will sort primarily according to column A, and seconarily according
+      // to B. The construction allows us to determine if the sorting is correct.
+      for i:=0 to iLast do
+        MyWorksheet.WriteUTF8Text(i, col, char(ord('A')+round(SollSortNumbers[i div 2])));
     end else
     begin
-      for i:=0 to High(SollSortNumbers) do
-        MyWorksheet.WriteNumber(row, i, SollSortNumbers[(i mod 2)*2]);
-      for i:=0 to High(SollSortStrings) do
-        MyWorksheet.WriteUTF8Text(row+1, i, SollSortStrings[i]);
+      // The same with the rows...
+      for i:=0 to iLast do
+        MyWorksheet.WriteNumber(row+1, i+1, SollSortNumbers[i]);
+      for i:=0 to iLast do
+        MyWorksheet.WriteUTF8Text(row, i, char(ord('A')+round(SollSortNumbers[i div 2])));
     end;
 
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -319,7 +325,6 @@ begin
         fail('Error in test code. Failed to get named worksheet');
 
       // ... and sort it.
-      iLast := High(SollSortNumbers);  //must be the same as for SollSortStrings
       r1 := 0;  c1 := 0;
       if ASortByCols then begin
         c2 := 1;
@@ -338,31 +343,44 @@ begin
 
       for i:=0 to iLast do
       begin
-        row := 0;
-        col := 0;
         if ASortByCols then
+        begin
+          // Read the number first, they must be in order 0...9 (if ascending).
+          col := 1;
           case sortDir of
             ssoAscending : row := i;
             ssoDescending: row := iLast - i;
-          end
-        else
+          end;
+          actualNumber := MyWorksheet.ReadAsNumber(row, col);  // col B is the number, must be 0...9 here
+          expectedNumber := i;
+          CheckEquals(expectednumber, actualnumber,
+            'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
+
+          // Now read the string. It must be the character corresponding to the
+          // half of the number
+          col := 0;
+          actualString := MyWorksheet.ReadAsUTF8Text(row, col);
+          expectedString := char(ord('A') + round(expectedNumber) div 2);
+          CheckEquals(expectedstring, actualstring,
+            'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+        end else
+        begin
+          row := 1;
           case sortDir of
             ssoAscending : col := i;
             ssoDescending: col := iLast - i;
           end;
-        actualNumber := MyWorksheet.ReadAsNumber(row, col);
-        expectedNumber := (i mod 2) * 2;
-        CheckEquals(expectednumber, actualnumber,
-          'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
+          actualNumber := MyWorksheet.ReadAsNumber(row, col);
+          expectedNumber := i;
+          CheckEquals(expectednumber, actualnumber,
+            'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
 
-        if ASortByCols then
-          inc(col)
-        else
-          inc(row);
-        actualString := MyWorksheet.ReadAsUTF8Text(row, col);
-        expectedString := char(ord('A') + i);
-        CheckEquals(expectedstring, actualstring,
-          'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+          row := 0;
+          actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
+          expectedString := char(ord('A') + round(expectedNumber) div 2);
+          CheckEquals(expectedstring, actualstring,
+            'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+        end;
       end;
     finally
       MyWorkbook.Free;
