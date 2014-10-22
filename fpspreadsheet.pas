@@ -445,6 +445,9 @@ type
   {@@ Sort order }
   TsSortOrder = (ssoAscending, ssoDescending);
 
+  {@@ Sort priority }
+  TsSortPriority = (spNumAlpha, spAlphaNum);  // NumAlph = "number < alpha"
+
   {@@ Sort key: sorted column or row index and sort direction }
   TsSortKey = record
     ColRowIndex: Integer;
@@ -456,9 +459,11 @@ type
 
   {@@ Complete set of sorting parameters
     @param SortByCols  If true sorting is top-down, otherwise left-right
+    @param Priority    Determines whether numbers are before or after text.
     @param SortKeys    Array of sorting indexes and sorting directions }
   TsSortParams = record
     SortByCols: Boolean;
+    Priority: TsSortPriority;
     Keys: TsSortKeys;
   end;
 
@@ -508,6 +513,7 @@ type
     FLastColIndex: Cardinal;
     FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
+    FSortParams: TsSortParams;  // Parameters of the current sorting operation
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -3205,14 +3211,16 @@ end;
             to their number value
             Label cells are sorted like UTF8 strings.
 
-            In case of different cell content types used in the comparison:
-            Empty cells are "smallest", Label cells are next, Numeric cells
-            are "largest"
+            In case of mixed cell content types the order is determined by
+            the parameter Priority of the SortParams.
+            Empty cells are always at the end (in both ascending and descending
+            order)
 -------------------------------------------------------------------------------}
 function TsWorksheet.DoCompareCells(ACell1, ACell2: PCell;
   ASortOrder: TsSortOrder): Integer;
 // Sort priority in Excel:
-//  blank < alpha < number, dates are sorted according to their number value
+// numbers < alpha < blank (ascending)
+// alpha < numbers < blank (descending)
 var
   number1, number2: Double;
 begin
@@ -3224,25 +3232,32 @@ begin
     if (ACell1 = nil) and (ACell2 = nil) then
       Result := 0
     else
-    if (ACell1 = nil) then
-      Result := -1
-    else
-    if (ACell2 = nil) then
-      Result := +1
-    else
+    if (ACell1 = nil) or (ACell2 = nil) then
+    begin
+      Result := +1;  // Empty cells go to the end
+      exit;          // Avoid SortOrder to bring the empty cell to the top!
+    end else
     if (ACell1^.ContentType = cctEmpty) and (ACell2^.ContentType = cctEmpty) then
       Result := 0
-    else if (ACell1^.ContentType = cctEmpty) then
-      Result := -1
-    else if (ACell2^.ContentType = cctEmpty) then
-      Result := +1
-    else if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
+    else if (ACell1^.ContentType = cctEmpty) or (ACell2^.ContentType = cctEmpty) then
+    begin
+      Result := +1;  // Empty cells go to the end
+      exit;          // Avoid SortOrder to bring the empty cell back to the top
+    end else
+    if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
       Result := CompareText(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue)
-    else if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType <> cctUTF8String) then
-      Result := -1
+    else
+    if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType <> cctUTF8String) then
+      case FSortParams.Priority of
+        spNumAlpha: Result := +1;  // numbers before text
+        spAlphaNum: Result := -1;  // text before numbers
+      end
     else
     if (ACell1^.ContentType <> cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
-      Result := +1
+      case FSortParams.Priority of
+        spNumAlpha: Result := -1;
+        spAlphaNum: Result := +1;
+      end
     else
     begin
       ReadNumericValue(ACell1, number1);
@@ -3422,6 +3437,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
   end;
 
 begin
+  FSortParams := ASortParams;
   if ASortParams.SortByCols then
     QuickSort(ARowFrom, ARowTo)
   else
