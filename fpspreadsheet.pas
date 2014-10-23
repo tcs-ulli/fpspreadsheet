@@ -542,7 +542,10 @@ type
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
 
     // Sorting
-    function DoCompareCells(ACell1, ACell2: PCell; ASortOrder: TsSortOrder): Integer;
+    function DoCompareCells(ARow1, ACol1, ARow2, ACol2: Cardinal;
+      ASortOrder: TsSortOrder): Integer;
+    function DoInternalCompareCells(ACell1, ACell2: PCell;
+      ASortOrder: TsSortOrder): Integer;
     procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
       AFromIndex, AToIndex: Cardinal);
 
@@ -3198,7 +3201,50 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Compare function for sorting of rows and columns
+  Compare function for sorting of rows and columns called directly by Sort()
+  The compare algorithm starts with the first key parameters. If cells are
+  found to be "equal" the next parameter is set is used until a difference is
+  found, or all parameters are used.
+
+  @param   ARow1       Row index of the first cell to be compared
+  @param   ACol1       Column index of the first cell to be compared
+  @param   ARow2       Row index of the second cell to be compared
+  @parem   ACol2       Column index of the second cell to be compared
+  @return  -1 if the first cell is "smaller", i.e. is sorted in front of the
+              second one
+           +1 if the first cell is "larger", i.e. is behind the second one
+           0  if both cells are equal
+------------------------------------------------------------------------------- }
+function TsWorksheet.DoCompareCells(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  ASortOrder: TsSortOrder): Integer;
+var
+  cell1, cell2: PCell;  // Pointers to the cells to be compared
+  key: Integer;
+begin
+  cell1 := FindCell(ARow1, ACol1);
+  cell2 := FindCell(ARow2, ACol2);
+  Result := DoInternalCompareCells(cell1, cell2, ASortOrder);
+  if Result = 0 then begin
+    key := 1;
+    while (Result = 0) and (key <= High(FSortParams.Keys)) do
+    begin
+      if FSortParams.SortByCols then
+      begin
+        cell1 := FindCell(ARow1, FSortParams.Keys[key].ColRowIndex);
+        cell2 := FindCell(ARow2, FSortParams.Keys[key].ColRowIndex);
+      end else
+      begin
+        cell1 := FindCell(FSortParams.Keys[key].ColRowIndex, ACol1);
+        cell2 := FindCell(FSortParams.Keys[key].ColRowIndex, ACol2);
+      end;
+      Result := DoInternalCompareCells(cell1, cell2, ASortOrder);
+      inc(key);
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Compare function for sorting of rows and columns. Called by DoCompareCells.
 
   @param    ACell1      Pointer to the first cell of the comparison
   @param    ACell2      Pointer to the second cell of the comparison
@@ -3209,14 +3255,14 @@ end;
 
             Date/time and boolean cells are sorted like number cells according
             to their number value
-            Label cells are sorted like UTF8 strings.
+            Label cells are sorted as UTF8 strings.
 
             In case of mixed cell content types the order is determined by
             the parameter Priority of the SortParams.
             Empty cells are always at the end (in both ascending and descending
             order)
 -------------------------------------------------------------------------------}
-function TsWorksheet.DoCompareCells(ACell1, ACell2: PCell;
+function TsWorksheet.DoInternalCompareCells(ACell1, ACell2: PCell;
   ASortOrder: TsSortOrder): Integer;
 // Sort priority in Excel:
 // numbers < alpha < blank (ascending)
@@ -3335,14 +3381,31 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
   var
     I,J,K: Integer;
     P: Integer;
+    index: Integer;
+    order: TsSortOrder;
+    {
     cell1, cell2: PCell;
     compareResult: Integer;
+    }
   begin
+    index := ASortParams.Keys[0].ColRowIndex;   // less typing...
+    order := ASortParams.Keys[0].Order;
     repeat
       I := L;
       J := R;
       P := (L + R) div 2;
       repeat
+        if ASortParams.SortByCols then
+        begin
+          while DoCompareCells(P, index, I, index, order) > 0 do inc(I);
+          while DoCompareCells(P, index, J, index, order) < 0 do dec(J);
+        end else
+        begin
+          while DoCompareCells(index, P, index, I, order) > 0 do inc(I);
+          while DoCompareCells(index, P, index, J, order) < 0 do dec(J);
+        end;
+
+
         { original code from "grids.pas":
 
         if ColSorting then begin
@@ -3352,7 +3415,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
           while DoCompareCells(P, index, I, index)>0 do I:=I+1;
           while DoCompareCells(P, index, J, index)<0 do J:=J-1;
         end; }
-
+                        {
         if ASortParams.SortByCols then
         begin
           (*
@@ -3528,7 +3591,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
             end;
           end;
           *)
-        end;
+        end;     }
 
         if I <= J then
         begin
@@ -3536,15 +3599,21 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
           begin
             if ASortParams.SortByCols then
             begin
+              if DoCompareCells(I, index, J, index, order) <> 0 then
+              {
               cell1 := FindCell(I, ASortParams.Keys[0].ColRowIndex);
               cell2 := FIndCell(J, ASortParams.Keys[0].ColRowIndex);
               if DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order) <> 0 then
+              }
                 DoExchangeColRow(not ASortParams.SortByCols, J,I, AColFrom, AColTo);
             end else
             begin
+              if DoCompareCells(index, I, index, J, order) <> 0 then
+              {
               cell1 := FindCell(ASortParams.Keys[0].ColRowIndex, I);
               cell2 := FIndCell(ASortParams.Keys[0].ColRowIndex, J);
               if DoCompareCells(cell1, cell2, ASortParams.Keys[0].Order) <> 0 then
+              }
                 DoExchangeColRow(not ASortParams.SortByCols, J,I, ARowFrom, ARowTo);
             end;
           end;

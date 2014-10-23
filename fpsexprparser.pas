@@ -833,7 +833,7 @@ const
 implementation
 
 uses
-  typinfo, math, lazutf8, dateutils, fpsutils; //, fpsfunc;
+  typinfo, math, lazutf8, dateutils, fpsutils, fpsfunc;
 
 const
   cNull = #0;
@@ -4258,7 +4258,7 @@ initialization
   ExprFormatSettings.DecimalSeparator := '.';
   ExprFormatSettings.ListSeparator := ',';
 
-//  RegisterStdBuiltins(BuiltinIdentifiers);
+  RegisterStdBuiltins(BuiltinIdentifiers);
 
 finalization
   FreeBuiltins;
