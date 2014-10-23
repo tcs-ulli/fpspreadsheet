@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpspreadsheet;
+  fpspreadsheet, fpsCsvDocument;
 
 type
   TsCSVReader = class(TsCustomSpreadReader)
@@ -32,6 +32,7 @@ type
 
   TsCSVWriter = class(TsCustomSpreadWriter)
   private
+    FCSVBuilder: TCSVBuilder;
     FLineEnding: String;
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -81,6 +82,8 @@ var
     TrueText: 'TRUE';
     FalseText: 'FALSE';
   {%H-});
+
+function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 
 
 implementation
@@ -172,6 +175,16 @@ begin
   end;
   if AFormatSettings.TwoDigitYearCenturyWindow = Word(-1) then
     AFormatSettings.TwoDigitYearCenturyWindow := ADefaultFormats.TwoDigitYearCenturyWindow;
+end;
+
+function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
+begin
+  case ALineEnding of
+    leSystem: Result := LineEnding;
+    leCR    : Result := #13;
+    leLF    : Result := #10;
+    leCRLF  : Result := #13#10;
+  end;
 end;
 
 
@@ -317,6 +330,8 @@ begin
   Unused(AStream);
 end;
 
+{ Determines content types from/for the text read from the csv file and writes
+  the corresponding data to the worksheet. }
 procedure TsCSVReader.ReadCellValue(ARow, ACol: Cardinal; AText: String);
 var
   dblValue: Double;
@@ -337,22 +352,6 @@ begin
     FWorksheet.WriteUTF8Text(ARow, aCol, AText);
     exit;
   end;
-
-  // Remove quotes
-  if (AText[1] = CSVParams.QuoteChar) and (AText[Length(AText)] = CSVParams.QuoteChar) then
-  begin
-    Delete(AText, Length(AText), 1);
-    Delete(AText, 1, 1);
-  end;
-
-  {
-  // Quoted text is a TEXT cell
-  if IsQuotedText(AText) then
-  begin
-    FWorksheet.WriteUTF8Text(ARow, ACol, AText);
-    exit;
-  end;
-   }
 
   // Check for a NUMBER or CURRENCY cell
   if IsNumber(AText, dblValue, nf, decs, currSym, warning) then
@@ -405,6 +404,28 @@ end;
 
 procedure TsCSVReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
+  parser: TCSVParser;
+begin
+  FWorkbook := AData;
+  FWorksheet := AData.AddWorksheet(FWorksheetName);
+
+  parser := TCSVParser.Create;
+  try
+    parser.Delimiter := CSVParams.Delimiter;
+    parser.LineEnding := LineEndingAsString(CSVParams.LineEnding);
+    parser.QuoteChar := CSVParams.QuoteChar;
+    parser.EqualColCountPerRow := false;
+    parser.SetSource(AStream);
+    while parser.ParseNextCell do
+      ReadCellValue(parser.CurrentRow, parser.CurrentCol, parser.CurrentCellText);
+
+  finally
+    parser.Free;
+  end;
+end;
+{
+procedure TsCSVReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+var
   n: Int64;
   ch: Char;
   nextch: Char;
@@ -452,7 +473,7 @@ begin
       cellValue := cellValue + ch;
   end;
 end;
-
+ }
 procedure TsCSVReader.ReadFromStrings(AStrings: TStrings; AData: TsWorkbook);
 var
   stream: TStringStream;
@@ -503,19 +524,28 @@ end;
 procedure TsCSVWriter.WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: Boolean; ACell: PCell);
 begin
+  Unused(AStream);
   Unused(ARow, ACol, ACell);
+  if AValue then
+    FCSVBuilder.AppendCell(CSVParams.TrueText)
+  else
+    FCSVBuilder.AppendCell(CSVParams.FalseText);
+  {
   if AValue then
     AppendToStream(AStream, CSVParams.TrueText)
   else
     AppendToStream(AStream, CSVParams.FalseText);
+  }
 end;
 
 { Write date/time values in the same way they are displayed in the sheet }
 procedure TsCSVWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: TDateTime; ACell: PCell);
 begin
+  Unused(AStream);
   Unused(ARow, ACol, AValue);
-  AppendToStream(AStream, FWorksheet.ReadAsUTF8Text(ACell));
+  FCSVBuilder.AppendCell(FWorksheet.ReadAsUTF8Text(ACell));
+//  AppendToStream(AStream, FWorksheet.ReadAsUTF8Text(ACell));
 end;
 
 { CSV does not support formulas, but we have to write the formula results to
@@ -541,13 +571,15 @@ procedure TsCSVWriter.WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
 var
   s: String;
 begin
+  Unused(AStream);
   Unused(ARow, ACol, AValue);
   if ACell = nil then
     exit;
   s := ACell^.UTF8StringValue;
   if CSVParams.QuoteChar <> #0 then
     s := CSVParams.QuoteChar + s + CSVParams.QuoteChar;
-  AppendToStream(AStream, s);
+  FCSVBuilder.AppendCell(s);
+//  AppendToStream(AStream, s);
 end;
 
 procedure TsCSVWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -555,6 +587,7 @@ procedure TsCSVWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
 var
   s: String;
 begin
+  Unused(AStream);
   Unused(ARow, ACol);
   if ACell = nil then
     exit;
@@ -562,7 +595,8 @@ begin
     s := Format(CSVParams.NumberFormat, [AValue], CSVParams.FormatSettings)
   else
     s := FWorksheet.ReadAsUTF8Text(ACell, CSVParams.FormatSettings);
-  AppendToStream(AStream, s);
+  FCSVBuilder.AppendCell(s);
+//  AppendToStream(AStream, s);
 end;
 
 procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
@@ -572,8 +606,29 @@ var
   cell: PCell;
 begin
   FWorksheet := AWorksheet;
-  lastRow := FWorksheet.GetLastOccupiedRowIndex;
-  lastCol := FWorksheet.GetLastOccupiedColIndex;
+
+  FCSVBuilder := TCSVBuilder.Create;
+  try
+    FCSVBuilder.Delimiter := CSVParams.Delimiter;
+    FCSVBuilder.LineEnding := LineEndingAsString(CSVParams.LineEnding);
+    FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
+    FCSVBuilder.SetOutput(AStream);
+
+    lastRow := FWorksheet.GetLastOccupiedRowIndex;
+    lastCol := FWorksheet.GetLastOccupiedColIndex;
+    for r := 0 to lastRow do
+      for c := 0 to lastCol do
+      begin
+        cell := FWorksheet.FindCell(r, c);
+        if cell <> nil then
+          WriteCellCallback(cell, AStream);
+        if c = lastCol then
+          FCSVBuilder.AppendRow;
+      end;
+  finally
+    FreeAndNil(FCSVBuilder);
+  end;
+  {
   for r := 0 to lastRow do
     for c := 0 to lastCol do begin
       cell := FWorksheet.FindCell(r, c);
@@ -584,6 +639,7 @@ begin
       else
         AppendToStream(AStream, CSVParams.Delimiter);
     end;
+    }
 end;
 
 procedure TsCSVWriter.WriteToStream(AStream: TStream);
