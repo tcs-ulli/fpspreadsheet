@@ -151,6 +151,7 @@ type
     procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
+    procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeights(AStartIndex: Integer = 0);
     {@@ Automatically recalculate formulas whenever a cell value changes, }
@@ -445,8 +446,10 @@ type
     property OnColRowInserted;
     {@@ inherited from ancestors}
     property OnColRowMoved;
+    (*
     {@@ inherited from ancestors}
-    property OnCompareCells;
+    property OnCompareCells;     // apply userdefined sorting to worksheet directly!
+    *)
     {@@ inherited from ancestors}
     property OnDragDrop;
     {@@ inherited from ancestors}
@@ -3205,6 +3208,41 @@ begin
   UpdateColWidths;
   UpdateRowHeights;
   Invalidate;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sorts the grid by calling the corresponding method of the worksheet.
+  Sorting extends across the entire worksheet.
+  Sort direction is determined by the property "SortOrder". Other sorting
+  criteria are "case-sensitive" and "numbers first".
+
+  @param AColSorting If true the grid is sorted from top to bottom and the
+                     next parameter, "Index", refers to a column. Otherweise
+                     sorting goes from left to right and "Index" refers to a row.
+  @param AIndex      Index of the column (if ColSorting=true) or row (ColSorting = false)
+                     which is sorted.
+  @param AIndxFrom   Sorting starts at this row (ColSorting=true) / column (ColSorting=false)
+  @param AIndxTo     Sorting ends at this row (ColSorting=true) / column (ColSorting=false)
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.Sort(AColSorting: Boolean;
+  AIndex, AIndxFrom, AIndxTo:Integer);
+var
+  sortParams: TsSortParams;
+begin
+  sortParams := InitSortParams(AColSorting, 1);
+  sortParams.Keys[0].ColRowIndex := AIndex - HeaderCount;
+  if SortOrder = soDescending then
+    sortParams.Keys[0].Options := [ssoDescending];
+  if AColSorting then
+    FWorksheet.Sort(
+      sortParams,
+      AIndxFrom-HeaderCount, 0, AIndxTo-HeaderCount, FWorksheet.GetLastColIndex
+    )
+  else
+    FWorksheet.Sort(
+      sortParams,
+      0, AIndxFrom-HeaderCount, FWorksheet.GetLastRowIndex, AIndxTo-HeaderCount
+    );
 end;
 
 {@@ ----------------------------------------------------------------------------
