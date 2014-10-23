@@ -45,7 +45,6 @@
       <Unit1>
         <Filename Value="..\..\fpsexprparser.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fpsExprParser"/>
       </Unit1>
     </Units>
   </ProjectOptions>

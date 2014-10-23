@@ -295,14 +295,14 @@ begin
       // We will sort primarily according to column A, and seconarily according
       // to B. The construction allows us to determine if the sorting is correct.
       for i:=0 to iLast do
-        MyWorksheet.WriteUTF8Text(i, col, char(ord('A')+round(SollSortNumbers[i div 2])));
+        MyWorksheet.WriteUTF8Text(i, col, char(ord('A')+round(SollSortNumbers[i]) div 2));
     end else
     begin
       // The same with the rows...
       for i:=0 to iLast do
-        MyWorksheet.WriteNumber(row+1, i+1, SollSortNumbers[i]);
+        MyWorksheet.WriteNumber(row+1, i, SollSortNumbers[i]);
       for i:=0 to iLast do
-        MyWorksheet.WriteUTF8Text(row, i, char(ord('A')+round(SollSortNumbers[i div 2])));
+        MyWorksheet.WriteUTF8Text(row, i, char(ord('A')+round(SollSortNumbers[i]) div 2));
     end;
 
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -325,18 +325,12 @@ begin
         fail('Error in test code. Failed to get named worksheet');
 
       // ... and sort it.
-      r1 := 0;  c1 := 0;
-      if ASortByCols then begin
-        c2 := 1;
-        r2 := iLast;
-      end else
-      begin
-        c2 := iLast;
-        r2 := 1;
-      end;
       sortParams.Keys[0].Order := sortDir;
       sortParams.Keys[1].Order := sortDir;
-      MyWorksheet.Sort(sortParams, r1,c1, r2, c2);
+      if ASortByCols then
+        MyWorksheet.Sort(sortParams, 0, 0, iLast, 1)
+      else
+        MyWorksheet.Sort(sortParams, 0, 0, 1, iLast);
 
       // for debugging, to see the sorted data
       MyWorkbook.WriteToFile('sorted.xls', AFormat, true);

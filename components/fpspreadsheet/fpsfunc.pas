@@ -9,15 +9,15 @@ unit fpsfunc;
 interface
 
 uses
-  Classes, SysUtils, fpspreadsheet, fpsexprparser;
+  Classes, SysUtils, fpspreadsheet;
 
-procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
+procedure RegisterStdBuiltins(AManager: TComponent); //TsBuiltInExpressionManager);
 
 
 implementation
 
 uses
-  Math, lazutf8, StrUtils, DateUtils, xlsconst, fpsUtils;
+  Math, lazutf8, StrUtils, DateUtils, xlsconst, fpsUtils, fpsexprparser;
 
 
 {------------------------------------------------------------------------------}
@@ -1529,11 +1529,11 @@ end;
 {------------------------------------------------------------------------------}
 
 {@@ Registers the standard built-in functions. Called automatically. }
-procedure RegisterStdBuiltins(AManager : TsBuiltInExpressionManager);
+procedure RegisterStdBuiltins(AManager : TComponent);
 var
   cat: TsBuiltInExprCategory;
 begin
-  with AManager do
+  with AManager as TsBuiltInExpressionManager do
   begin
     // Math functions
     cat := bcMath;
@@ -1891,7 +1891,5 @@ end;
 
 *)
 
-initialization
-  RegisterStdBuiltins(BuiltinIdentifiers);
 
 end.
