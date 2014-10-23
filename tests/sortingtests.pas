@@ -32,23 +32,33 @@ type
 
     procedure Test_Sorting_1(     // one column or row
       ASortByCols: Boolean;
-      AMode: Integer  // AMode = 0: number, 1: strings, 2: mixed
+      ADescending: Boolean;       // true: desending order
+      AWhat: Integer  // What = 0: number, 1: strings, 2: mixed
     );
     procedure Test_Sorting_2(     // two columns/rows, primary keys equal
-      ASortByCols: Boolean
+      ASortByCols: Boolean;
+      ADescending: Boolean
     );
 
   published
-    procedure Test_SortingByCols1_Numbers;
-    procedure Test_SortingByCols1_Strings;
-    procedure Test_SortingByCols1_NumbersStrings;
+    procedure Test_SortingByCols1_Numbers_Asc;
+    procedure Test_SortingByCols1_Numbers_Desc;
+    procedure Test_SortingByCols1_Strings_Asc;
+    procedure Test_SortingByCols1_Strings_Desc;
+    procedure Test_SortingByCols1_NumbersStrings_Asc;
+    procedure Test_SortingByCols1_NumbersStrings_Desc;
 
-    procedure Test_SortingByRows1_Numbers;
-    procedure Test_SortingByRows1_Strings;
-    procedure Test_SortingByRows1_NumbersStrings;
+    procedure Test_SortingByRows1_Numbers_Asc;
+    procedure Test_SortingByRows1_Numbers_Desc;
+    procedure Test_SortingByRows1_Strings_Asc;
+    procedure Test_SortingByRows1_Strings_Desc;
+    procedure Test_SortingByRows1_NumbersStrings_Asc;
+    procedure Test_SortingByRows1_NumbersStrings_Desc;
 
-    procedure Test_SortingByCols2;
-    procedure Test_SortingByRows2;
+    procedure Test_SortingByCols2_Asc;
+    procedure Test_SortingByCols2_Desc;
+    procedure Test_SortingByRows2_Asc;
+    procedure Test_SortingByRows2_Desc;
 
   end;
 
@@ -103,7 +113,7 @@ begin
 end;
 
 procedure TSpreadSortingTests.Test_Sorting_1(ASortByCols: Boolean;
-  AMode: Integer);
+  ADescending: Boolean; AWhat: Integer);
 const
   AFormat = sfExcel8;
 var
@@ -115,7 +125,7 @@ var
   L: TStringList;
   s: String;
   sortParams: TsSortParams;
-  sortDir: TsSortOrder;
+  sortOptions: TsSortOptions;
   r1,r2,c1,c2: Cardinal;
   actualNumber: Double;
   actualString: String;
@@ -134,7 +144,7 @@ begin
     col := 0;
     row := 0;
     if ASortByCols then begin
-      case AMode of
+      case AWhat of
         0: for i :=0 to High(SollSortNumbers) do
              MyWorksheet.WriteNumber(i, col, SollSortNumbers[i]);
         1: for i := 0 to High(SollSortStrings) do
@@ -148,7 +158,7 @@ begin
       end
     end
     else begin
-      case AMode of
+      case AWhat of
         0: for i := 0 to High(SollSortNumbers) do
              MyWorksheet.WriteNumber(row, i, SollSortNumbers[i]);
         1: for i := 0 to High(SollSortStrings) do
@@ -166,92 +176,89 @@ begin
     MyWorkbook.Free;
   end;
 
-  // Test ascending and descending sort orders
-  for sortDir in TsSortOrder do
-  begin
-    MyWorkbook := TsWorkbook.Create;
-    try
-      // Read spreadsheet file...
-      MyWorkbook.ReadFromFile(TempFile, AFormat);
-      if AFormat = sfExcel2 then
-        MyWorksheet := MyWorkbook.GetFirstWorksheet
-      else
-        MyWorksheet := GetWorksheetByName(MyWorkBook, SortingTestSheet);
-      if MyWorksheet = nil then
-        fail('Error in test code. Failed to get named worksheet');
+  MyWorkbook := TsWorkbook.Create;
+  try
+    // Read spreadsheet file...
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SortingTestSheet);
+    if MyWorksheet = nil then
+      fail('Error in test code. Failed to get named worksheet');
 
-      // ... and sort it.
-      case AMode of
-        0: iLast:= High(SollSortNumbers);
-        1: iLast := High(SollSortStrings);
-        2: iLast := Length(SollSortNumbers) + Length(SollSortStrings) - 1;
-      end;
-      r1 := 0;
-      r2 := 0;
-      c1 := 0;
-      c2 := 0;
+    // ... set up sorting direction
+    case ADescending of
+      false: sortParams.Keys[0].Options := [];               // Ascending sort
+      true : sortParams.Keys[0].Options := [ssoDescending];  // Descending sort
+    end;
+
+    // ... and sort it.
+    case AWhat of
+      0: iLast:= High(SollSortNumbers);
+      1: iLast := High(SollSortStrings);
+      2: iLast := Length(SollSortNumbers) + Length(SollSortStrings) - 1;
+    end;
+    if ASortByCols then
+      MyWorksheet.Sort(sortParams, 0, 0, iLast, 0)
+    else
+      MyWorksheet.Sort(sortParams, 0, 0, 0, iLast);
+
+    // for debugging, to see the sorted data
+    // MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
+
+    row := 0;
+    col := 0;
+    for i:=0 to iLast do
+    begin
       if ASortByCols then
-        r2 := iLast
+        case ADescending of
+          false: row := i;            // ascending
+          true : row := iLast - i;    // descending
+        end
       else
-        c2 := iLast;
-      sortParams.Keys[0].Order := sortDir;
-      MyWorksheet.Sort(sortParams, r1,c1, r2, c2);
-
-      // for debugging, to see the sorted data
-      // MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
-
-      row := 0;
-      col := 0;
-      for i:=0 to iLast do
-      begin
-        if ASortByCols then
-          case sortDir of
-            ssoAscending : row := i;
-            ssoDescending: row := iLast - i;
-          end
-        else
-          case sortDir of
-            ssoAscending : col := i;
-            ssoDescending: col := iLast - i;
-          end;
-        case AMode of
-          0: begin
-               actualNumber := MyWorksheet.ReadAsNumber(row, col);
+        case ADescending of
+          false: col := i;            // ascending
+          true : col := iLast - i;    // descending
+        end;
+      case AWhat of
+        0: begin
+             actualNumber := MyWorksheet.ReadAsNumber(row, col);
+             expectedNumber := i;
+             CheckEquals(expectednumber, actualnumber,
+               'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
+           end;
+        1: begin
+             actualString := MyWorksheet.ReadAsUTF8Text(row, col);
+             expectedString := char(ord('A') + i);
+             CheckEquals(expectedstring, actualstring,
+               'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+           end;
+        2: begin  // with increasing i, we see first the numbers, then the strings
+             if i <= High(SollSortNumbers) then begin
+               actualnumber := MyWorksheet.ReadAsNumber(row, col);
                expectedNumber := i;
                CheckEquals(expectednumber, actualnumber,
                  'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
-             end;
-          1: begin
-               actualString := MyWorksheet.ReadAsUTF8Text(row, col);
-               expectedString := char(ord('A') + i);
+             end else begin
+               actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
+               expectedstring := char(ord('A') + i - Length(SollSortNumbers));
                CheckEquals(expectedstring, actualstring,
                  'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
              end;
-          2: begin  // with increasing i, we see first the numbers, then the strings
-               if i <= High(SollSortNumbers) then begin
-                 actualnumber := MyWorksheet.ReadAsNumber(row, col);
-                 expectedNumber := i;
-                 CheckEquals(expectednumber, actualnumber,
-                   'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
-               end else begin
-                 actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
-                 expectedstring := char(ord('A') + i - Length(SollSortNumbers));
-                 CheckEquals(expectedstring, actualstring,
-                   'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
-               end;
-             end;
-        end;
+           end;
       end;
-
-    finally
-      MyWorkbook.Free;
     end;
-  end;  // for sortDir
+
+  finally
+    MyWorkbook.Free;
+  end;
 
   DeleteFile(TempFile);
 end;
 
-procedure TSpreadSortingTests.Test_Sorting_2(ASortByCols: Boolean);
+procedure TSpreadSortingTests.Test_Sorting_2(ASortByCols: Boolean;
+  ADescending: Boolean);
 const
   AFormat = sfExcel8;
 var
@@ -263,7 +270,7 @@ var
   L: TStringList;
   s: String;
   sortParams: TsSortParams;
-  sortDir: TsSortOrder;
+  sortOptions: TsSortOptions;
   r1,r2,c1,c2: Cardinal;
   actualNumber: Double;
   actualString: String;
@@ -310,120 +317,168 @@ begin
     MyWorkbook.Free;
   end;
 
-  // Test ascending and descending sort orders
-  for sortDir in TsSortOrder do
-  begin
-    MyWorkbook := TsWorkbook.Create;
-    try
-      // Read spreadsheet file...
-      MyWorkbook.ReadFromFile(TempFile, AFormat);
-      if AFormat = sfExcel2 then
-        MyWorksheet := MyWorkbook.GetFirstWorksheet
-      else
-        MyWorksheet := GetWorksheetByName(MyWorkBook, SortingTestSheet);
-      if MyWorksheet = nil then
-        fail('Error in test code. Failed to get named worksheet');
+  MyWorkbook := TsWorkbook.Create;
+  try
+    // Read spreadsheet file...
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SortingTestSheet);
+    if MyWorksheet = nil then
+      fail('Error in test code. Failed to get named worksheet');
 
-      // ... and sort it.
-      sortParams.Keys[0].Order := sortDir;
-      sortParams.Keys[1].Order := sortDir;
-      if ASortByCols then
-        MyWorksheet.Sort(sortParams, 0, 0, iLast, 1)
-      else
-        MyWorksheet.Sort(sortParams, 0, 0, 1, iLast);
-
-      // for debugging, to see the sorted data
-      MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
-
-      for i:=0 to iLast do
-      begin
-        if ASortByCols then
-        begin
-          // Read the number first, they must be in order 0...9 (if ascending).
-          col := 1;
-          case sortDir of
-            ssoAscending : row := i;
-            ssoDescending: row := iLast - i;
-          end;
-          actualNumber := MyWorksheet.ReadAsNumber(row, col);  // col B is the number, must be 0...9 here
-          expectedNumber := i;
-          CheckEquals(expectednumber, actualnumber,
-            'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
-
-          // Now read the string. It must be the character corresponding to the
-          // half of the number
-          col := 0;
-          actualString := MyWorksheet.ReadAsUTF8Text(row, col);
-          expectedString := char(ord('A') + round(expectedNumber) div 2);
-          CheckEquals(expectedstring, actualstring,
-            'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
-        end else
-        begin
-          row := 1;
-          case sortDir of
-            ssoAscending : col := i;
-            ssoDescending: col := iLast - i;
-          end;
-          actualNumber := MyWorksheet.ReadAsNumber(row, col);
-          expectedNumber := i;
-          CheckEquals(expectednumber, actualnumber,
-            'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
-
-          row := 0;
-          actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
-          expectedString := char(ord('A') + round(expectedNumber) div 2);
-          CheckEquals(expectedstring, actualstring,
-            'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
-        end;
-      end;
-    finally
-      MyWorkbook.Free;
+    // ... set up sort direction
+    if ADescending then
+    begin
+      sortParams.Keys[0].Options := [ssoDescending];
+      sortParams.Keys[1].Options := [ssoDescending];
+    end else
+    begin
+      sortParams.Keys[0].Options := [];
+      sortParams.Keys[1].Options := [];
     end;
-  end;    // for sortDir
+
+    // ... and sort it.
+    if ASortByCols then
+      MyWorksheet.Sort(sortParams, 0, 0, iLast, 1)
+    else
+      MyWorksheet.Sort(sortParams, 0, 0, 1, iLast);
+
+    // for debugging, to see the sorted data
+    MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
+
+    for i:=0 to iLast do
+    begin
+      if ASortByCols then
+      begin
+        // Read the number first, they must be in order 0...9 (if ascending).
+        col := 1;
+        case ADescending of
+          false : row := i;
+          true  : row := iLast - i;
+        end;
+        actualNumber := MyWorksheet.ReadAsNumber(row, col);  // col B is the number, must be 0...9 here
+        expectedNumber := i;
+        CheckEquals(expectednumber, actualnumber,
+          'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
+
+        // Now read the string. It must be the character corresponding to the
+        // half of the number
+        col := 0;
+        actualString := MyWorksheet.ReadAsUTF8Text(row, col);
+        expectedString := char(ord('A') + round(expectedNumber) div 2);
+        CheckEquals(expectedstring, actualstring,
+          'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+      end else
+      begin
+        row := 1;
+        case ADescending of
+          false : col := i;
+          true  : col := iLast - i;
+        end;
+        actualNumber := MyWorksheet.ReadAsNumber(row, col);
+        expectedNumber := i;
+        CheckEquals(expectednumber, actualnumber,
+          'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
+
+        row := 0;
+        actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
+        expectedString := char(ord('A') + round(expectedNumber) div 2);
+        CheckEquals(expectedstring, actualstring,
+          'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+      end;
+    end;
+  finally
+    MyWorkbook.Free;
+  end;
 
   DeleteFile(TempFile);
 end;
 
-
-procedure TSpreadSortingTests.Test_SortingByCols1_Numbers;
+{ Sort 1 column }
+procedure TSpreadSortingTests.Test_SortingByCols1_Numbers_ASC;
 begin
-  Test_Sorting_1(true, 0);
+  Test_Sorting_1(true, false, 0);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByCols1_Strings;
+procedure TSpreadSortingTests.Test_SortingByCols1_Numbers_DESC;
 begin
-  Test_Sorting_1(true, 1);
+  Test_Sorting_1(true, true, 0);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByCols1_NumbersStrings;
+procedure TSpreadSortingTests.Test_SortingByCols1_Strings_ASC;
 begin
-  Test_Sorting_1(true, 2);
+  Test_Sorting_1(true, false, 1);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByRows1_Numbers;
+procedure TSpreadSortingTests.Test_SortingByCols1_Strings_DESC;
 begin
-  Test_Sorting_1(false, 0);
+  Test_Sorting_1(true, true, 1);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByRows1_Strings;
+procedure TSpreadSortingTests.Test_SortingByCols1_NumbersStrings_ASC;
 begin
-  Test_Sorting_1(false, 1);
+  Test_Sorting_1(true, false, 2);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByRows1_NumbersStrings;
+procedure TSpreadSortingTests.Test_SortingByCols1_NumbersStrings_DESC;
 begin
-  Test_Sorting_1(false, 2);
+  Test_Sorting_1(true, true, 2);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByCols2;
+{ Sort 1 row }
+procedure TSpreadSortingTests.Test_SortingByRows1_Numbers_asc;
 begin
-  Test_Sorting_2(true);
+  Test_Sorting_1(false, false, 0);
 end;
 
-procedure TSpreadSortingTests.Test_SortingByRows2;
+procedure TSpreadSortingTests.Test_SortingByRows1_Numbers_Desc;
 begin
-  Test_Sorting_2(false);
+  Test_Sorting_1(false, true, 0);
 end;
+
+procedure TSpreadSortingTests.Test_SortingByRows1_Strings_Asc;
+begin
+  Test_Sorting_1(false, false, 1);
+end;
+
+procedure TSpreadSortingTests.Test_SortingByRows1_Strings_Desc;
+begin
+  Test_Sorting_1(false, true, 1);
+end;
+
+procedure TSpreadSortingTests.Test_SortingByRows1_NumbersStrings_Asc;
+begin
+  Test_Sorting_1(false, false, 2);
+end;
+
+procedure TSpreadSortingTests.Test_SortingByRows1_NumbersStrings_Desc;
+begin
+  Test_Sorting_1(false, true, 2);
+end;
+
+{ two columns }
+procedure TSpreadSortingTests.Test_SortingByCols2_Asc;
+begin
+  Test_Sorting_2(true, false);
+end;
+
+procedure TSpreadSortingTests.Test_SortingByCols2_Desc;
+begin
+  Test_Sorting_2(true, true);
+end;
+
+procedure TSpreadSortingTests.Test_SortingByRows2_Asc;
+begin
+  Test_Sorting_2(false, false);
+end;
+
+procedure TSpreadSortingTests.Test_SortingByRows2_Desc;
+begin
+  Test_Sorting_2(false, true);
+end;
+
 
 initialization
   RegisterTest(TSpreadSortingTests);

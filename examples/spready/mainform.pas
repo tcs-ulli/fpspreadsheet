@@ -765,10 +765,7 @@ var
 begin
   r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
   c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
-  SetLength(sortParams.Keys, 1);
-  sortParams.Keys[0].ColRowIndex := c;
-  sortParams.Keys[0].Order := ssoAscending;
-  sortParams.SortByCols := true;
+  sortParams := InitSortParams;
   WorksheetGrid.BeginUpdate;
   try
     with WorksheetGrid.Worksheet do

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  ButtonPanel, Grids, ExtCtrls, Buttons, StdCtrls,
+  ButtonPanel, Grids, ExtCtrls, Buttons, StdCtrls, ComboEx,
   fpspreadsheet, fpspreadsheetgrid;
 
 type
@@ -18,6 +18,7 @@ type
     BtnDelete: TBitBtn;
     ButtonPanel: TButtonPanel;
     CbSortColsRows: TComboBox;
+    CbPriority: TComboBox;
     TopPanel: TPanel;
     Grid: TStringGrid;
     procedure BtnAddClick(Sender: TObject);
@@ -83,6 +84,9 @@ begin
     exit;  // there can't be more conditions than defined by the worksheetgrid selection
   Grid.RowCount := Grid.RowCount + 1;
   Grid.Cells[0, Grid.RowCount-1] := 'Then by';
+  Grid.Cells[1, Grid.RowCount-1] := '';
+  Grid.Cells[2, Grid.RowCount-1] := '0';
+  Grid.Cells[3, Grid.RowCount-1] := '0';
   UpdateCmds;
 end;
 
@@ -99,13 +103,20 @@ function TSortParamsForm.GetSortParams: TsSortParams;
 var
   i, p: Integer;
   n: Cardinal;
-  sortDir: TsSortOrder;
+  sortOptions: TsSortOptions;
   s: String;
 begin
-  Result.SortByCols := CbSortColsRows.ItemIndex = 0;
-  SetLength(Result.Keys, 0);
+  // Sort by column or rows?
+  Result := InitSortParams(CbSortColsRows.ItemIndex = 0, 0);
+
+  // Number before Text, or reversed?
+  Result.Priority := TsSortPriority(CbPriority.ItemIndex);
+
   for i:=Grid.FixedRows to Grid.RowCount-1 do
   begin
+    sortOptions := [];
+
+    // Sort index column
     s := Grid.Cells[1, i];   // the cell text is "Column A" or "Row A"
     if s = '' then
       raise Exception.Create('[TSortParamsForm.GetSortParams] No sort index selected.');
@@ -126,20 +137,22 @@ begin
              'Unexpected row identifier in row %s', [i]);
     end;
 
+    // Sort order column
     s := Grid.Cells[2, i];
     if s = '' then
       raise Exception.Create('[TSortParamsForm.GetSortParams] No sort direction selected.');
+    if s = '1' then
+      Include(sortOptions, ssoDescending);
 
-    // These strings are 'A to Z' or 'Z to A', so we look just for the first character.
-    case s[1] of
-      'A': sortDir := ssoAscending;
-      'Z': sortDir := ssoDescending;
-    end;
+    // Case sensitivity column
+    s := Grid.Cells[3, i];
+    if s = '1' then
+      Include(sortOptions, ssoCaseInsensitive);
 
     SetLength(Result.Keys, Length(Result.Keys) + 1);
     with Result.Keys[Length(Result.Keys)-1] do
     begin
-      Order := sortDir;
+      Options := sortOptions;
       ColRowIndex := n;
     end;
   end; // for
@@ -150,8 +163,9 @@ begin
   FWorksheetGrid := AValue;
   UpdateColRowList;
   UpdateCmds;
-  Grid.Cells[1, 1] := Grid.Columns[0].PickList[0];
-  Grid.Cells[2, 1] := Grid.Columns[1].PickList[0];
+  Grid.Cells[1, 1] := Grid.Columns[0].PickList[0];    // Sorting index
+  Grid.Cells[2, 1] := '0';  // Ascending sort order   Grid.Columns[1].CheckedPickList[0];
+  Grid.Cells[3, 1] := '0';  // case-sensitive comparisons
 end;
 
 procedure TSortParamsForm.UpdateColRowList;

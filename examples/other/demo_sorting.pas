@@ -33,7 +33,7 @@ var
 
       sortParams := InitSortParams(true, 1);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 3, 0);
 
@@ -67,7 +67,7 @@ var
 
       sortParams := InitSortParams(false, 1);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 0, 3);
 
@@ -111,7 +111,7 @@ var
 
       sortParams := InitSortParams(true, 1);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 3, 1);
 
@@ -152,7 +152,7 @@ var
 
       sortParams := InitSortParams(false, 1);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 1, 3);
 
@@ -204,9 +204,9 @@ var
 
       sortParams := InitSortParams(true, 2);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
       sortParams.Keys[1].ColRowIndex := 1;
-      sortParams.Keys[1].Order := ssoAscending;
+      sortParams.Keys[1].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 3, 1);
 
@@ -246,9 +246,9 @@ var
 
       sortParams := InitSortParams(false, 2);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
       sortParams.Keys[1].ColRowIndex := 1;
-      sortParams.Keys[1].Order := ssoAscending;
+      sortParams.Keys[1].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 1, 3);
 
@@ -314,9 +314,9 @@ var
 
       sortParams := InitSortParams(true, 2);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
       sortParams.Keys[1].ColRowIndex := 1;
-      sortParams.Keys[1].Order := ssoAscending;
+      sortParams.Keys[1].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 9, 1);
 
@@ -370,9 +370,9 @@ var
 
       sortParams := InitSortParams(false, 2);
       sortParams.Keys[0].ColRowIndex := 0;
-      sortParams.Keys[0].Order := ssoAscending;
+      sortParams.Keys[0].Options := [];
       sortParams.Keys[1].ColRowIndex := 1;
-      sortParams.Keys[1].Order := ssoAscending;
+      sortParams.Keys[1].Options := [];
 
       worksheet.Sort(sortParams, 0, 0, 1, 9);
 

@@ -2373,7 +2373,8 @@ end;
                           ColRowIndexes refer to row indexes
                           Default: true
   @param  ANumSortKeys    Determines how many columns or rows are used as sorting
-                          keys. (Default: 1)
+                          keys. (Default: 1). Every sort key is initialized for
+                          ascending sort direction and case-sensitive comparison.
   @param  ASortPriority   Determines the order or text and numeric data in
                           mixed content type cell ranges.
                           Default: spNumAlpha, i.e. numbers before text (in
@@ -2389,8 +2390,8 @@ begin
   Result.Priority := spNumAlpha;  // numbers before text, like in Excel
   SetLength(Result.Keys, ANumSortKeys);
   for i:=0 to High(Result.Keys) do begin
-    Result.Keys[i].ColRowIndex := 0;
-    Result.Keys[i].Order := ssoAscending;
+    Result.Keys[i].ColRowIndex := i;
+    Result.Keys[i].Options := [];  // Ascending & case-sensitive
   end;
 end;
 
