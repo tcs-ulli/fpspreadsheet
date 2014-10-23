@@ -499,7 +499,7 @@ type
   {@@ This event can be used to override the built-in comparing function which
     is called when cells are sorted. }
   TsCellCompareEvent = procedure (Sender: TObject; ACell1, ACell2: PCell;
-    AResult: Integer) of object;
+    var AResult: Integer) of object;
 
   {@@ The worksheet contains a list of cells and provides a variety of methods
     to read or write data to the cells, or to change their formatting. }
