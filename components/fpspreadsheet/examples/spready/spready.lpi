@@ -111,10 +111,12 @@
         <ComponentName Value="CSVParamsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sCSVParamsForm"/>
       </Unit2>
       <Unit3>
         <Filename Value="sctrls.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="sCtrls"/>
       </Unit3>
       <Unit4>
         <Filename Value="sformatsettingsform.pas"/>
@@ -122,6 +124,7 @@
         <ComponentName Value="FormatSettingsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sFormatsettingsForm"/>
       </Unit4>
       <Unit5>
         <Filename Value="ssortparamsform.pas"/>
