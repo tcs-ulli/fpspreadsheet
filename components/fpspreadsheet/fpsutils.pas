@@ -4,6 +4,8 @@
 
 // to do: Remove the patched FormatDateTime when the feature of square brackets
 //        in time format codes is in the rtl
+// to do: Remove the declaration UTF8FormatSettings and InitUTF8FormatSettings
+//        when this same modification is in LazUtils of Laz stable
 
 unit fpsutils;
 
@@ -170,6 +172,7 @@ procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 
 var
   ScreenPixelsPerInch: Integer = 96;
+  UTF8FormatSettings: TFormatSettings;
 
 implementation
 
@@ -1013,7 +1016,7 @@ begin
   if (ADecimals < 0) then
     ADecimals := AFormatSettings.CurrencyDecimals;
   if ACurrencySymbol = '?' then
-    ACurrencySymbol := AnsiToUTF8(AFormatSettings.CurrencyString);   // is this correct? fpspreadsheet should be kept clean of string conversions!
+    ACurrencySymbol := AFormatSettings.CurrencyString;
   if ACurrencySymbol <> '' then
     ACurrencySymbol := '"' + ACurrencySymbol + '"';
   decs := DupeString('0', ADecimals);
@@ -2641,6 +2644,25 @@ begin
   end;
 end;
 
+procedure InitUTF8FormatSettings;
+// remove when available in LazUtils
+var
+  i: Integer;
+begin
+  UTF8FormatSettings := DefaultFormatSettings;
+  UTF8FormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
+  for i:=1 to 12 do begin
+    UTF8FormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
+    UTF8FormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
+  end;
+  for i:=1 to 7 do begin
+    UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
+    UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
+  end;
+end;
+
+initialization
+  InitUTF8FormatSettings;
 
 end.
 

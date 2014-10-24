@@ -19,6 +19,7 @@ type
     CbAutoDetectNumberFormat: TCheckBox;
     CbLongDateFormat: TComboBox;
     CbLongTimeFormat: TComboBox;
+    CbEncoding: TComboBox;
     EdCurrencySymbol: TEdit;
     CbShortTimeFormat: TComboBox;
     CbShortDateFormat: TComboBox;
@@ -42,6 +43,7 @@ type
     LblDecimalSeparator1: TLabel;
     LblDecimalSeparator2: TLabel;
     LblCurrencySymbol: TLabel;
+    LbEncoding: TLabel;
     LblShortMonthNames: TLabel;
     LblLongDayNames: TLabel;
     LblShortDayNames: TLabel;
@@ -90,15 +92,10 @@ var
 implementation
 
 uses
-  fpsUtils;
+  LConvEncoding, fpsUtils;
 
 resourcestring
   rsLikeSpreadsheet = 'like spreadsheet';
-
-  {
-const
-  CURR_VALUE = 100.0;
-   }
 
 var
   CSVParamsPageIndex: Integer = 0;
@@ -135,7 +132,7 @@ var
   arr: Array[1..12] of String;
   i: Integer;
 begin
-  fs := DefaultFormatSettings;
+  fs := UTF8FormatSettings;
   if CbLongDateFormat.ItemIndex <> 0 then
     fs.LongDateFormat := CbLongDateFormat.Text;
   if CbShortDateFormat.ItemIndex <> 0 then
@@ -214,40 +211,44 @@ begin
   CSVParamsPageIndex := PageControl.ActivePageIndex;
 end;
 
-(*
-procedure TCSVParamsForm.EdCurrencySymbolChange(Sender: TObject);
-var
-  sel: Integer;
-begin
-  sel := CbPosCurrencyFormat.ItemIndex;
-  CbPosCurrencyFormat.Items.BeginUpdate;
-  try
-    CbPosCurrencyFormat.Items.Clear;
-    BuildCurrencyFormatList(CbPosCurrencyFormat.Items, true, CURR_VALUE, GetCurrencySymbol);
-    CbPosCurrencyFormat.Items.Insert(0, rsLikeSpreadsheet);
-    CbPosCurrencyFormat.ItemIndex := sel;
-  finally
-    CbPosCurrencyFormat.Items.EndUpdate;
-  end;
-
-  sel := CbNegCurrencyFormat.ItemIndex;
-  CbNegCurrencyFormat.Items.BeginUpdate;
-  try
-    CbNegCurrencyFormat.Items.Clear;
-    BuildCurrencyFormatList(CbNegCurrencyFormat.Items, false, CURR_VALUE, GetCurrencySymbol);
-    CbNegCurrencyFormat.Items.Insert(0, rsLikeSpreadsheet);
-    CbNegCurrencyFormat.ItemIndex := sel;
-  finally
-    CbNegCurrencyFormat.Items.EndUpdate;
-  end;
-end;
-*)
-
 procedure TCSVParamsForm.FormCreate(Sender: TObject);
 begin
   PageControl.ActivePageIndex := CSVParamsPageIndex;
 
-//  CbNegCurrencyFormat.DropdownCount := 32;
+  // Populate encoding combobox. Done in code because of the conditional define.
+  with CbEncoding.Items do begin
+    Add('automatic / UTF8');
+    Add('UTF8');
+    Add('UTF8 with BOM');
+    Add('ISO_8859_1 (Central Europe)');
+    Add('ISO_8859_15 (Western European languages)');
+    Add('ISO_8859_2 (Eastern Europe)');
+    Add('CP1250 (Central Europe)');
+    Add('CP1251 (Cyrillic)');
+    Add('CP1252 (Latin 1)');
+    Add('CP1253 (Greek)');
+    Add('CP1254 (Turkish)');
+    Add('CP1255 (Hebrew)');
+    Add('CP1256 (Arabic)');
+    Add('CP1257 (Baltic)');
+    Add('CP1258 (Vietnam)');
+    Add('CP437 (DOS central Europe)');
+    Add('CP850 (DOS western Europe)');
+    Add('CP852 (DOS central Europe)');
+    Add('CP866 (DOS and Windows console''s cyrillic)');
+    Add('CP874 (Thai)');
+    {$IFNDEF DisableAsianCodePages}
+    // Asian encodings
+    Add('CP932 (Japanese)');
+    Add('CP936 (Chinese)');
+    Add('CP949 (Korea)');
+    Add('CP950 (Chinese Complex)');
+    {$ENDIF}
+    Add('KOI8 (Russian cyrillic)');
+    Add('UCS2LE (UCS2-LE 2byte little endian)');
+    Add('UCS2BE (UCS2-BE 2byte big endian)');
+  end;
+  CbEncoding.ItemIndex := 0;
 
   FEdLongMonthNames := TMonthDayNamesEdit.Create(self);
   with FEdLongMonthNames do
@@ -305,12 +306,14 @@ begin
   end;
   LblShortDayNames.FocusControl := FEdShortDayNames;
 
-  FDateFormatSample := DefaultFormatSettings.LongDateFormat;
-  FTimeFormatSample := DefaultFormatSettings.LongTimeFormat;
+  FDateFormatSample := UTF8FormatSettings.LongDateFormat;
+  FTimeFormatSample := UTF8FormatSettings.LongTimeFormat;
   FSampleDateTime := now();
 end;
 
 procedure TCSVParamsForm.GetParams(var AParams: TsCSVParams);
+var
+  s: String;
 begin
   // Line endings
   case CbLineEnding.ItemIndex of
@@ -336,6 +339,17 @@ begin
     2: AParams.QuoteChar := '''';
   end;
 
+  // Encoding
+  if CbEncoding.ItemIndex = 0 then
+    AParams.Encoding := ''
+  else if CbEncoding.ItemIndex = 1 then
+    AParams.Encoding := EncodingUTF8BOM
+  else
+  begin
+    s := CbEncoding.Items[CbEncoding.ItemIndex];
+    AParams.Encoding := Copy(s, 1, Pos(' ', s)-1);
+  end;
+
   // Detect content type and convert
   AParams.DetectContentType := RgDetectContentType.ItemIndex <> 0;
 
@@ -355,7 +369,7 @@ begin
   if (EdCurrencySymbol.Text = '') or (EdCurrencySymbol.Text = rsLikeSpreadsheet) then
     AParams.FormatSettings.CurrencyString := ''
   else
-    AParams.FormatSettings.CurrencyString := UTF8ToAnsi(EdCurrencySymbol.Text);
+    AParams.FormatSettings.CurrencyString := EdCurrencySymbol.Text;
 
   // Long date format string
   if (CbLongDateFormat.ItemIndex = 0) or (CbLongDateFormat.Text = '') then
@@ -407,6 +421,9 @@ begin
 end;
 
 procedure TCSVParamsForm.SetParams(const AParams: TsCSVParams);
+var
+  s: String;
+  i: Integer;
 begin
   // Line endings
   case AParams.LineEnding of
@@ -431,6 +448,22 @@ begin
     '"'  : CbQuoteChar.ItemIndex := 1;
     '''' : CbQuoteChar.ItemIndex := 2;
   end;
+
+  // String encoding
+  if AParams.Encoding = '' then
+    CbEncoding.ItemIndex := 0
+  else if AParams.Encoding = EncodingUTF8BOM then
+    CbEncoding.ItemIndex := 1
+  else
+    for i:=1 to CbEncoding.Items.Count-1 do
+    begin
+      s := CbEncoding.Items[i];
+      if SameText(AParams.Encoding, Copy(s, 1, Pos(' ', s)-1)) then
+      begin
+        CbEncoding.ItemIndex := i;
+        break;
+      end;
+    end;
 
   // Detect content type
   RgDetectContentType.ItemIndex := ord(AParams.DetectContentType);
@@ -462,7 +495,7 @@ begin
   if AParams.FormatSettings.CurrencyString = '' then
     EdCurrencySymbol.Text := rsLikeSpreadsheet
   else
-    EdCurrencySymbol.Text := AnsiToUTF8(AParams.FormatSettings.CurrencyString);
+    EdCurrencySymbol.Text := AParams.FormatSettings.CurrencyString;
 
   // Long date format
   if AParams.FormatSettings.LongDateFormat = '' then
