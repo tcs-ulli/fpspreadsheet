@@ -1,8 +1,8 @@
 {
   CSV Parser, Builder and Document classes.
-  Version 0.5 2012-09-20
+  Version 0.5 2014-10-24
 
-  Copyright (C) 2010-2012 Vladimir Zhirov <vvzh.home@gmail.com>
+  Copyright (C) 2010-2014 Vladimir Zhirov <vvzh.home@gmail.com>
 
   Contributors:
     Luiz Americo Pereira Camara
@@ -33,17 +33,21 @@
   You should have received a copy of the GNU Library General Public License
   along with this library; if not, write to the Free Software Foundation,
   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
   
   ------------------------------------------------------------------------------
   
-  Notes by wp:
+  Notes for fpspreadsheet:
   
-  This is a nonmodified copy of the file CsvDocument.pas of the CSVDocument 
-  project on ccr. It is needed by fpspreadsheet to get the functionality of 
+  This is a copy of the file CsvDocument.pas of the CSVDocument 
+  project on Lazarus-CCR. Modifications:
+  - comments, copyright data in anticipation of new csvdocument release
+  - unit name
+  It is needed by fpspreadsheet to get the functionality of 
   CSVDocument without adding a dependency on CSVDocument.
   
   fpsCsvDocument will be removed from fpspreadsheet once CSVDocument has been
-  incorporated into fpc.
+  incorporated into FPC.  
 }
 
 unit fpsCsvDocument;
@@ -86,11 +90,20 @@ type
   public
     constructor Create;
     procedure AssignCSVProperties(ASource: TCSVHandler);
+    // Delimiter that separates the field, e.g. comma, semicolon, tab,..
     property Delimiter: TCSVChar read FDelimiter write SetDelimiter;
+    // Character used to quote "problematic" data
+    // (e.g. with delimiters or spaces in them)
+    // A common quotechar is "
     property QuoteChar: TCSVChar read FQuoteChar write SetQuoteChar;
+    // String at the end of the line of data (e.g. CRLF)
     property LineEnding: String read FLineEnding write FLineEnding;
+    // Ignore whitespace between delimiters and field data
     property IgnoreOuterWhitespace: Boolean read FIgnoreOuterWhitespace write FIgnoreOuterWhitespace;
+    // Use quotes when outer whitespace is found
     property QuoteOuterWhitespace: Boolean read FQuoteOuterWhitespace write FQuoteOuterWhitespace;
+    // When reading: assume every line has the same column count
+    // When writing: make sure every line has the same column count (silently discard excessive data)
     property EqualColCountPerRow: Boolean read FEqualColCountPerRow write FEqualColCountPerRow;
   end;
 
@@ -124,12 +137,19 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    // Source data stream
     procedure SetSource(AStream: TStream); overload;
+    // Source data string
     procedure SetSource(const AString: String); overload;
+    // Rewind to beginning of data
     procedure ResetParser;
+    // Read next cell data; return false if end of file reached
     function  ParseNextCell: Boolean;
+    // Current row (0 based)
     property CurrentRow: Integer read FCurrentRow;
+    // Current column (0 based); -1 if invalid/before beginning of file
     property CurrentCol: Integer read FCurrentCol;
+    // Data in current cell
     property CurrentCellText: String read FCellBuffer;
     // The maximum number of columns found in the stream:
     property MaxColCount: Integer read FMaxColCount;
@@ -148,11 +168,19 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    // Set output/destination stream.
+    // If not called, output is sent to DefaultOutput
     procedure SetOutput(AStream: TStream);
+    // If using default stream, reset output to beginning.
+    // If using user-defined stream, user should reposition stream himself
     procedure ResetBuilder;
+    // Add a cell to the output with data AValue
     procedure AppendCell(const AValue: String);
+    // Write end of row to the output, starting a new row
     procedure AppendRow;
+    // Default output as memorystream (if output not set using SetOutput)
     property DefaultOutput: TMemoryStream read FDefaultOutput;
+    // Default output in string format (if output not set using SetOutput)
     property DefaultOutputAsString: String read GetDefaultOutputAsString;
   end;
 
@@ -176,34 +204,68 @@ type
   public
     constructor Create;
     destructor  Destroy; override;
-    // input/output
+
+    // Input/output
+
+    // Load document from file AFileName
     procedure LoadFromFile(const AFilename: String);
+    // Load document from stream AStream
     procedure LoadFromStream(AStream: TStream);
+    // Save document to file AFilename
     procedure SaveToFile(const AFilename: String);
+    // Save document to stream AStream
     procedure SaveToStream(AStream: TStream);
-    // row and cell operations
+
+    // Row and cell operations
+
+    // Add a new row and a cell with content AFirstCell
     procedure AddRow(const AFirstCell: String = '');
+    // Add a cell at row ARow with data AValue
     procedure AddCell(ARow: Integer; const AValue: String = '');
+    // Insert a row at row ARow with first cell data AFirstCell
+    // If there is no row ARow, insert row at end
     procedure InsertRow(ARow: Integer; const AFirstCell: String = '');
+    // Insert a cell at specified position with data AValue
     procedure InsertCell(ACol, ARow: Integer; const AValue: String = '');
+    // Remove specified row
     procedure RemoveRow(ARow: Integer);
+    // Remove specified cell
     procedure RemoveCell(ACol, ARow: Integer);
+    // Indicates if there is a row at specified position
     function  HasRow(ARow: Integer): Boolean;
+    // Indicates if there is a cell at specified position
     function  HasCell(ACol, ARow: Integer): Boolean;
     // search
+    // Return column for cell data AString at row ARow
     function  IndexOfCol(const AString: String; ARow: Integer): Integer;
+    // Return row for cell data AsString at coloumn ACol
     function  IndexOfRow(const AString: String; ACol: Integer): Integer;
-    // utils
+
+    // Utils
+
+    // Remove all data
     procedure Clear;
+    // Copy entire row ARow to row position AInsertPos.
+    // Adds empty rows if necessary
     procedure CloneRow(ARow, AInsertPos: Integer);
+    // Exchange contents of the two specified rows
     procedure ExchangeRows(ARow1, ARow2: Integer);
+    // Rewrite all line endings within cell data to LineEnding
     procedure UnifyEmbeddedLineEndings;
+    // Remove empty cells from document
     procedure RemoveTrailingEmptyCells;
-    // properties
+
+    // Properties
+
+    // Cell data at column ACol, row ARow
     property Cells[ACol, ARow: Integer]: String read GetCell write SetCell; default;
+    // Number of rows
     property RowCount: Integer read GetRowCount;
+    // Number of columns for row ARow
     property ColCount[ARow: Integer]: Integer read GetColCount;
+    // Maximum number of columns found in all rows in document
     property MaxColCount: Integer read GetMaxColCount;
+    // Document formatted as CSV text
     property CSVText: String read GetCSVText write SetCSVText;
   end;
 
@@ -621,6 +683,7 @@ end;
 type
   TCSVCell = class
   public
+    // Value (contents) of cell in string form
     Value: String;
   end;
 
@@ -636,16 +699,25 @@ type
     constructor Create;
     destructor  Destroy; override;
     // cell operations
+    // Add cell with value AValue to row
     procedure AddCell(const AValue: String = '');
+    // Insert cell with value AValue at specified column
     procedure InsertCell(ACol: Integer; const AValue: String);
+    // Remove cell from specified column
     procedure RemoveCell(ACol: Integer);
+    // Indicates if specified column contains a cell/data
     function  HasCell(ACol: Integer): Boolean;
     // utilities
+    // Copy entire row
     function  Clone: TCSVRow;
+    // Remove all empty cells in row
     procedure TrimEmptyCells;
+    // Replace various line endings in data with ALineEnding
     procedure SetValuesLineEnding(const ALineEnding: String);
     // properties
+    // Value/data of cell at column ACol
     property CellValue[ACol: Integer]: String read GetCellValue write SetCellValue;
+    // Number of columns in row
     property ColCount: Integer read GetColCount;
   end;
 
