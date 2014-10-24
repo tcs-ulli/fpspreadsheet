@@ -908,9 +908,9 @@ type
     procedure UpdateCaches;
 
   public
-    {@@ A copy of SysUtil's DefaultFormatSettings to provide some kind of
-      localization to some formatting strings. Can be modified before
-      loading/writing files }
+    {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
+      some kind of localization to some formatting strings.
+      Can be modified before loading/writing files }
     FormatSettings: TFormatSettings;
 
     { Base methods }
@@ -5999,7 +5999,7 @@ begin
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
   FFormat := sfExcel8;
-  FormatSettings := DefaultFormatSettings;
+  FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
   FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
   UseDefaultPalette;

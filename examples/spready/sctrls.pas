@@ -171,7 +171,7 @@ begin
       L.DelimitedText := Text;
       for i:=0 to L.Count-1 do
         if i < L.Count then
-          TMonthNameArray(ANamesArray)[i+1] := UTF8ToAnsi(L[i]);
+          TMonthNameArray(ANamesArray)[i+1] := L[i];
     finally
       L.Free;
     end;
@@ -189,8 +189,8 @@ begin
   FShortNames := IsShortNames;
 
   case FCount of
-    7 : Text := AnsiToUTF8(DayNamesToString(TWeekNameArray(ANamesArray), AEmptyString));
-    12: Text := AnsiToUTF8(MonthNamesToString(TMonthNameArray(ANamesArray), AEmptyString));
+     7: Text := DayNamesToString(TWeekNameArray(ANamesArray), AEmptyString);
+    12: Text := MonthNamesToString(TMonthNameArray(ANamesArray), AEmptyString);
     else raise Exception.Create('[TMonthDayNameEdit] Array length can only be 7 or 12.');
   end;
 end;

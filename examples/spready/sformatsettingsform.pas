@@ -106,39 +106,39 @@ begin
   if (ctrl = CbLongDateFormat) then
   begin
     FDateFormatSample := fs.LongDateFormat;
-    s := AnsiToUTF8(FormatDateTime(FDateFormatSample, dt, fs));
+    s := FormatDateTime(FDateFormatSample, dt, fs);
     LblDateTimeSample.Caption := 'Sample date:'#13 + s;
   end
   else
   if (ctrl = CbShortDateFormat) then
   begin
     FDateFormatSample := fs.ShortDateFormat;
-    s := AnsiToUTF8(FormatDateTime(FDateFormatSample, dt, fs));
+    s := FormatDateTime(FDateFormatSample, dt, fs);
     LblDateTimeSample.Caption := 'Sample date:'#13 + s;
   end
   else
   if (ctrl = FCbDateSeparator) then begin
-    s := AnsiToUTF8(FormatDateTime(FDateFormatSample, dt, fs));
+    s := FormatDateTime(FDateFormatSample, dt, fs);
     LblDateTimeSample.Caption := 'Sample date:'#13 + s;
   end
   else
   if (ctrl = CbLongTimeFormat) then
   begin
     FTimeFormatSample := fs.LongTimeFormat;
-    s := AnsiToUTF8(FormatDateTime(FTimeFormatSample, dt, fs));
+    s := FormatDateTime(FTimeFormatSample, dt, fs);
     LblDateTimeSample.Caption := 'Sample time:'#13 + s;
   end
   else
   if (ctrl = CbShortTimeFormat) then
   begin
     FTimeFormatSample := fs.ShortTimeFormat;
-    s := AnsiToUTF8(FormatDateTime(FTimeFormatSample, dt, fs));
+    s := FormatDateTime(FTimeFormatSample, dt, fs);
     LblDateTimeSample.Caption := 'Sample time:'#13 + s;
   end
   else
   if (ctrl = FCbTimeSeparator) then
   begin
-    s := AnsiToUTF8(FormatDateTime(FTimeFormatSample, dt, fs));
+    s := FormatDateTime(FTimeFormatSample, dt, fs);
     LblDateTimeSample.Caption := 'Sample time:'#13 + s;
     {
   end
@@ -337,7 +337,7 @@ begin
 
   // --- Currency format parameters ---
   // Currency symbol
-  Result.CurrencyString := UTF8ToAnsi(EdCurrencySymbol.Text);
+  Result.CurrencyString := EdCurrencySymbol.Text;
   // Currency decimal places
   Result.CurrencyDecimals := EdCurrencyDecimals.Value;
   // Positive currency format
@@ -380,7 +380,7 @@ begin
 
   // --- Currency format parameters ---
   // Currency symbol
-  EdCurrencySymbol.Text := AnsiToUTF8(AValue.CurrencyString);
+  EdCurrencySymbol.Text := AValue.CurrencyString;
   // Currency decimal places
   EdCurrencyDecimals.Value := AValue.CurrencyDecimals;
   // Positive currency format
