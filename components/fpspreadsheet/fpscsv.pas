@@ -224,7 +224,7 @@ function TsCSVReader.IsNumber(AText: String; out ANumber: Double;
   out ACurrencySymbol, AWarning: String): Boolean;
 var
   p: Integer;
-  decsep, thsep: Char;
+  DecSep, ThousSep: Char;
 begin
   Result := false;
   AWarning := '';
@@ -248,33 +248,33 @@ begin
     ACurrencySymbol := '';
 
   if CSVParams.AutoDetectNumberFormat then
-    Result := TryStrToFloatAuto(AText, ANumber, decsep, thsep, AWarning)
+    Result := TryStrToFloatAuto(AText, ANumber, DecSep, ThousSep, AWarning)
   else begin
     Result := TryStrToFloat(AText, ANumber, CSVParams.FormatSettings);
     if Result then
     begin
       if pos(CSVParams.FormatSettings.DecimalSeparator, AText) = 0
-        then decsep := #0
-        else decsep := CSVParams.FormatSettings.DecimalSeparator;
+        then DecSep := #0
+        else DecSep := CSVParams.FormatSettings.DecimalSeparator;
       if pos(CSVParams.FormatSettings.ThousandSeparator, AText) = 0
-        then thsep := #0
-        else thsep := CSVParams.FormatSettings.ThousandSeparator;
+        then ThousSep := #0
+        else ThousSep := CSVParams.FormatSettings.ThousandSeparator;
     end;
   end;
 
   // Try to determine the number format
   if Result then
   begin
-    if thsep <> #0 then
+    if ThousSep <> #0 then
       ANumFormat := nfFixedTh
     else
       ANumFormat := nfGeneral;
     // count number of decimal places and try to catch special formats
     ADecimals := 0;
-    if decsep <> #0 then
+    if DecSep <> #0 then
     begin
       // Go to the decimal separator and search towards the end of the string
-      p := pos(decsep, AText) + 1;
+      p := pos(DecSep, AText) + 1;
       while (p <= Length(AText)) do begin
         // exponential format
         if AText[p] in ['+', '-', 'E', 'e'] then
@@ -312,6 +312,7 @@ begin
     ACurrencySymbol := '';
 end;
 
+{ Checks if text is quoted; strips starting and ending quotes }
 function TsCSVReader.IsQuotedText(var AText: String): Boolean;
 begin
   if (Length(AText) > 1) and (CSVParams.QuoteChar <> #0) and
@@ -404,23 +405,24 @@ end;
 
 procedure TsCSVReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
-  parser: TCSVParser;
+  Parser: TCSVParser;
 begin
   FWorkbook := AData;
   FWorksheet := AData.AddWorksheet(FWorksheetName);
 
-  parser := TCSVParser.Create;
+  Parser := TCSVParser.Create;
   try
-    parser.Delimiter := CSVParams.Delimiter;
-    parser.LineEnding := LineEndingAsString(CSVParams.LineEnding);
-    parser.QuoteChar := CSVParams.QuoteChar;
-    parser.EqualColCountPerRow := false;
-    parser.SetSource(AStream);
-    while parser.ParseNextCell do
-      ReadCellValue(parser.CurrentRow, parser.CurrentCol, parser.CurrentCellText);
+    Parser.Delimiter := CSVParams.Delimiter;
+    Parser.LineEnding := LineEndingAsString(CSVParams.LineEnding);
+    Parser.QuoteChar := CSVParams.QuoteChar;
+    // Indicate column counts between rows may differ:
+    Parser.EqualColCountPerRow := false;
+    Parser.SetSource(AStream);
+    while Parser.ParseNextCell do
+      ReadCellValue(Parser.CurrentRow, Parser.CurrentCol, Parser.CurrentCellText);
 
   finally
-    parser.Free;
+    Parser.Free;
   end;
 end;
 {
@@ -476,13 +478,13 @@ end;
  }
 procedure TsCSVReader.ReadFromStrings(AStrings: TStrings; AData: TsWorkbook);
 var
-  stream: TStringStream;
+  Stream: TStringStream;
 begin
-  stream := TStringStream.Create(AStrings.Text);
+  Stream := TStringStream.Create(AStrings.Text);
   try
-    ReadFromStream(stream, AData);
+    ReadFromStream(Stream, AData);
   finally
-    stream.Free;
+    Stream.Free;
   end;
 end;
 
@@ -521,6 +523,7 @@ begin
   // nothing to do
 end;
 
+{ Write boolean cell to stream formatted as string }
 procedure TsCSVWriter.WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: Boolean; ACell: PCell);
 begin
@@ -548,7 +551,7 @@ begin
 //  AppendToStream(AStream, FWorksheet.ReadAsUTF8Text(ACell));
 end;
 
-{ CSV does not support formulas, but we have to write the formula results to
+{ CSV does not support formulas, but we can write the formula results to
   to stream. }
 procedure TsCSVWriter.WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
   ACell: PCell);
@@ -582,6 +585,7 @@ begin
 //  AppendToStream(AStream, s);
 end;
 
+{ Writes a number cell to the stream. }
 procedure TsCSVWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: double; ACell: PCell);
 var
@@ -602,8 +606,8 @@ end;
 procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
 var
   r, c: Cardinal;
-  lastRow, lastCol: Cardinal;
-  cell: PCell;
+  LastRow, LastCol: Cardinal;
+  Cell: PCell;
 begin
   FWorksheet := AWorksheet;
 
@@ -614,27 +618,27 @@ begin
     FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
     FCSVBuilder.SetOutput(AStream);
 
-    lastRow := FWorksheet.GetLastOccupiedRowIndex;
-    lastCol := FWorksheet.GetLastOccupiedColIndex;
-    for r := 0 to lastRow do
-      for c := 0 to lastCol do
+    LastRow := FWorksheet.GetLastOccupiedRowIndex;
+    LastCol := FWorksheet.GetLastOccupiedColIndex;
+    for r := 0 to LastRow do
+      for c := 0 to LastCol do
       begin
-        cell := FWorksheet.FindCell(r, c);
-        if cell <> nil then
-          WriteCellCallback(cell, AStream);
-        if c = lastCol then
+        Cell := FWorksheet.FindCell(r, c);
+        if Cell <> nil then
+          WriteCellCallback(Cell, AStream);
+        if c = LastCol then
           FCSVBuilder.AppendRow;
       end;
   finally
     FreeAndNil(FCSVBuilder);
   end;
   {
-  for r := 0 to lastRow do
-    for c := 0 to lastCol do begin
-      cell := FWorksheet.FindCell(r, c);
-      if cell <> nil then
-        WriteCellCallback(cell, AStream);
-      if c = lastCol then
+  for r := 0 to LastRow do
+    for c := 0 to LastCol do begin
+      Cell := FWorksheet.FindCell(r, c);
+      if Cell <> nil then
+        WriteCellCallback(Cell, AStream);
+      if c = LastCol then
         AppendToStream(AStream, FLineEnding)
       else
         AppendToStream(AStream, CSVParams.Delimiter);
@@ -654,15 +658,15 @@ end;
 
 procedure TsCSVWriter.WriteToStrings(AStrings: TStrings);
 var
-  stream: TStream;
+  Stream: TStream;
 begin
-  stream := TStringStream.Create('');
+  Stream := TStringStream.Create('');
   try
-    WriteToStream(stream);
-    stream.Position := 0;
-    AStrings.LoadFromStream(stream);
+    WriteToStream(Stream);
+    Stream.Position := 0;
+    AStrings.LoadFromStream(Stream);
   finally
-    stream.Free;
+    Stream.Free;
   end;
 end;
 

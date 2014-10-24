@@ -3398,7 +3398,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
 
   procedure QuickSort(L,R: Integer);
   var
-    I,J,K: Integer;
+    I,J: Integer;
     P: Integer;
     index: Integer;
     options: TsSortOptions;
