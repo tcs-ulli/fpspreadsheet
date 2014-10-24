@@ -312,7 +312,7 @@ begin
     ACurrencySymbol := '';
 end;
 
-{ Checks if text is quoted; strips starting and ending quotes }
+{ Checks if text is quoted; strips any starting and ending quotes }
 function TsCSVReader.IsQuotedText(var AText: String): Boolean;
 begin
   if (Length(AText) > 1) and (CSVParams.QuoteChar <> #0) and
@@ -579,8 +579,7 @@ begin
   if ACell = nil then
     exit;
   s := ACell^.UTF8StringValue;
-  if CSVParams.QuoteChar <> #0 then
-    s := CSVParams.QuoteChar + s + CSVParams.QuoteChar;
+  // No need to quote; csvdocument will do that for us...
   FCSVBuilder.AppendCell(s);
 //  AppendToStream(AStream, s);
 end;
