@@ -29,6 +29,7 @@ begin
 
   WriteLn('Opening input file ', InputFilename);
 
+  // Tab-delimited
   CSVParams.Delimiter := #9;
   CSVParams.QuoteChar := '''';
 
