@@ -405,7 +405,6 @@ begin
     len := Length(Boundsheets);
     SetLength(Boundsheets, len + 1);
     Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
-    // BIFF8 does not support unicode  --> Need UTF8ToAnsi !
   end;
   
   WriteEOF(AStream);
@@ -677,7 +676,7 @@ begin
   if (AFormatData = nil) or (AFormatData.FormatString = '') then
     exit;
 
-  s := NumFormatList.FormatStringForWriting(AListIndex);
+  s := UTF8ToAnsi(NumFormatList.FormatStringForWriting(AListIndex));
   len := Length(s);
 
   { BIFF record header }
@@ -1215,7 +1214,8 @@ end;
 procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
 var
   Len: Byte;
-  Str: array[0..255] of Char;
+  s: AnsiString;
+  sheetName: String;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -1230,11 +1230,11 @@ begin
 
   { Sheet name: Byte string, 8-bit length }
   Len := AStream.ReadByte();
-  Str[0] := #0;  // to silence the compiler...
-  AStream.ReadBuffer(Str, Len);
-  Str[Len] := #0;
 
-  FWorksheetNames.Add(Str);
+  SetLength(s, Len);
+  AStream.ReadBuffer(s[1], Len*SizeOf(AnsiChar));
+  sheetName := AnsiToUTF8(s);
+  FWorksheetNames.Add(sheetName);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadRichString(AStream: TStream);
@@ -1565,7 +1565,7 @@ begin
   AStream.ReadBuffer(fmtString[1], len);
 
   // Add to the list
-  NumFormatList.AnalyzeAndAdd(fmtIndex, fmtString);
+  NumFormatList.AnalyzeAndAdd(fmtIndex, AnsiToUTF8(fmtString));
 end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);

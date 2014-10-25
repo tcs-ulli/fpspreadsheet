@@ -561,7 +561,7 @@ var
   cs: String;
 begin
   fs := Workbook.FormatSettings;
-  cs := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
+  cs := Workbook.FormatSettings.CurrencyString;
 
   AddFormat( 0, '', nfGeneral);
   AddFormat( 1, '0', nfFixed);

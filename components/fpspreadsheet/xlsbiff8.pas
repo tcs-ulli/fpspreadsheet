@@ -736,7 +736,8 @@ type
   end;
 var
   len: Integer;
-  s: widestring;
+  s: String;
+  ws: widestring;
   rec: TNumFormatRecord;
   buf: array of byte;
 begin
@@ -744,7 +745,8 @@ begin
     exit;
 
   s := NumFormatList.FormatStringForWriting(AListIndex);
-  len := Length(s);
+  ws := UTF8Decode(s);
+  len := Length(ws);
 
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
@@ -761,7 +763,7 @@ begin
   { - Copy the text characters into a buffer immediately after rec }
   SetLength(buf, SizeOf(rec) + SizeOf(WideChar)*len);
   Move(rec, buf[0], SizeOf(rec));
-  Move(s[1], buf[SizeOf(rec)], len*SizeOf(WideChar));
+  Move(ws[1], buf[SizeOf(rec)], len*SizeOf(WideChar));
 
   { Write out }
   AStream.WriteBuffer(buf[0], SizeOf(rec) + SizeOf(WideChar)*len);

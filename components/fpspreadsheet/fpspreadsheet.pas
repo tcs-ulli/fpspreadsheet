@@ -2490,6 +2490,9 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
     if (ANumberFormat = nfPercentage) then
       Result := FormatFloat(ANumberFormatStr, AValue*100, AFormatSettings)
     else
+    if IsCurrencyFormat(ANumberFormat) then
+      Result := FormatCurr(ANumberFormatStr, AValue, AFormatSettings)
+    else
       Result := FormatFloat(ANumberFormatStr, AValue, AFormatSettings)
   end;
 
@@ -3933,7 +3936,7 @@ begin
   if ANegCurrFormat = -1 then
     ANegCurrFormat := Workbook.FormatSettings.NegCurrFormat;
   if ACurrencySymbol = '?' then
-    ACurrencySymbol := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
+    ACurrencySymbol := Workbook.FormatSettings.CurrencyString;
 
   fmt := BuildCurrencyFormatString(
     nfdDefault,

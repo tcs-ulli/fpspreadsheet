@@ -22,10 +22,10 @@ uses
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
-  SollNumberStrings: array[0..6, 0..7] of string;
+  SollNumberStrings: array[0..6, 0..9] of string;
   SollNumbers: array[0..6] of Double;
-  SollNumberFormats: array[0..7] of TsNumberFormat;
-  SollNumberDecimals: array[0..7] of word;
+  SollNumberFormats: array[0..9] of TsNumberFormat;
+  SollNumberDecimals: array[0..9] of word;
 
   SollDateTimeStrings: array[0..4, 0..9] of string;
   SollDateTimes: array[0..4] of TDateTime;
@@ -197,6 +197,10 @@ begin
   SollNumberFormats[5] := nfExp;          SollNumberDecimals[5] := 2;
   SollNumberFormats[6] := nfPercentage;   SollNumberDecimals[6] := 0;
   SollNumberFormats[7] := nfPercentage;   SollNumberDecimals[7] := 2;
+  SollNumberFormats[8] := nfCurrency;     SollNumberDecimals[8] := 1; // This should be 0, but there is a bug in fpc, issue #0026944)
+  SollNumberFormats[9] := nfCurrency;     SollNumberDecimals[9] := 2;
+
+  SollNumberstrings[0, 0] := CurrToStrF(-1000.1, ffCurrency, 0, fs);
 
   for i:=Low(SollNumbers) to High(SollNumbers) do
   begin
@@ -208,6 +212,8 @@ begin
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
     SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
     SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
+    SollNumberStrings[i, 8] := CurrToStrF(SollNumbers[i], ffCurrency, SollNumberDecimals[8], fs);
+    SollNumberStrings[i, 9] := CurrToStrF(SollNumbers[i], ffCurrency, SollNumberDecimals[9], fs);
   end;
 
   // Date/time values
@@ -336,7 +342,10 @@ begin
     for Row := Low(SollNumbers) to High(SollNumbers) do
       for Col := ord(Low(SollNumberFormats)) to ord(High(SollNumberFormats)) do
       begin
-        MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
+        if IsCurrencyFormat(SollNumberFormats[Col]) then
+          MyWorksheet.WriteCurrency(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col])
+        else
+          MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
         ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
         CheckEquals(SollNumberStrings[Row, Col], ActualString,
           'Test unsaved string mismatch, cell ' + CellNotation(MyWorksheet,Row,Col));
