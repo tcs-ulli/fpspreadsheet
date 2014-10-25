@@ -1,6 +1,6 @@
 {
   CSV Parser, Builder and Document classes.
-  Version 0.5 2014-10-24
+  Version 0.5 2014-10-25
 
   Copyright (C) 2010-2014 Vladimir Zhirov <vvzh.home@gmail.com>
 
@@ -33,15 +33,12 @@
   You should have received a copy of the GNU Library General Public License
   along with this library; if not, write to the Free Software Foundation,
   Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-
-  
-  ------------------------------------------------------------------------------
-  
+}
+{
   Notes for fpspreadsheet:
   
   This is a copy of the file CsvDocument.pas of the CSVDocument 
   project on Lazarus-CCR. Modifications:
-  - comments, copyright data in anticipation of new csvdocument release
   - unit name
   It is needed by fpspreadsheet to get the functionality of 
   CSVDocument without adding a dependency on CSVDocument.
@@ -50,7 +47,7 @@
   incorporated into FPC.  
 }
 
-unit fpsCsvDocument;
+unit CsvDocument;
 
 {$IFDEF FPC}
   {$MODE DELPHI}
@@ -90,7 +87,7 @@ type
   public
     constructor Create;
     procedure AssignCSVProperties(ASource: TCSVHandler);
-    // Delimiter that separates the field, e.g. comma, semicolon, tab,..
+    // Delimiter that separates the field, e.g. comma, semicolon, tab
     property Delimiter: TCSVChar read FDelimiter write SetDelimiter;
     // Character used to quote "problematic" data
     // (e.g. with delimiters or spaces in them)
@@ -102,8 +99,7 @@ type
     property IgnoreOuterWhitespace: Boolean read FIgnoreOuterWhitespace write FIgnoreOuterWhitespace;
     // Use quotes when outer whitespace is found
     property QuoteOuterWhitespace: Boolean read FQuoteOuterWhitespace write FQuoteOuterWhitespace;
-    // When reading: assume every line has the same column count
-    // When writing: make sure every line has the same column count (silently discard excessive data)
+    // When reading and writing: make sure every line has the same column count, create empty cells in the end of row if required
     property EqualColCountPerRow: Boolean read FEqualColCountPerRow write FEqualColCountPerRow;
   end;
 
@@ -235,10 +231,12 @@ type
     function  HasRow(ARow: Integer): Boolean;
     // Indicates if there is a cell at specified position
     function  HasCell(ACol, ARow: Integer): Boolean;
-    // search
+    
+    // Search
+    
     // Return column for cell data AString at row ARow
     function  IndexOfCol(const AString: String; ARow: Integer): Integer;
-    // Return row for cell data AsString at coloumn ACol
+    // Return row for cell data AString at coloumn ACol
     function  IndexOfRow(const AString: String; ACol: Integer): Integer;
 
     // Utils
@@ -252,12 +250,12 @@ type
     procedure ExchangeRows(ARow1, ARow2: Integer);
     // Rewrite all line endings within cell data to LineEnding
     procedure UnifyEmbeddedLineEndings;
-    // Remove empty cells from document
+    // Remove empty cells at end of rows from entire document
     procedure RemoveTrailingEmptyCells;
 
     // Properties
 
-    // Cell data at column ACol, row ARow
+    // Cell data at column ACol, row ARow.
     property Cells[ACol, ARow: Integer]: String read GetCell write SetCell; default;
     // Number of rows
     property RowCount: Integer read GetRowCount;
@@ -710,7 +708,7 @@ type
     // utilities
     // Copy entire row
     function  Clone: TCSVRow;
-    // Remove all empty cells in row
+    // Remove all empty cells at the end of the row
     procedure TrimEmptyCells;
     // Replace various line endings in data with ALineEnding
     procedure SetValuesLineEnding(const ALineEnding: String);
@@ -803,8 +801,14 @@ var
 begin
   MaxCol := FCells.Count - 1;
   for I := MaxCol downto 0 do
-    if (TCSVCell(FCells[I]).Value = '') and (FCells.Count > 1) then
-      FCells.Delete(I);
+  begin
+    if (TCSVCell(FCells[I]).Value = '') then
+    begin
+      if (FCells.Count > 1) then
+        FCells.Delete(I);
+    end else
+      break; // We hit the first non-empty cell so stop
+  end;
 end;
 
 procedure TCSVRow.SetValuesLineEnding(const ALineEnding: String);
