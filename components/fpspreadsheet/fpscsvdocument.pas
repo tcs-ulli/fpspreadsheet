@@ -47,7 +47,7 @@
   incorporated into FPC.  
 }
 
-unit CsvDocument;
+unit fpsCsvDocument;
 
 {$IFDEF FPC}
   {$MODE DELPHI}
