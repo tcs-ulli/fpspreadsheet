@@ -341,7 +341,8 @@ begin
   Result := '';
   el := 0;
   with FSections[ASection] do
-    while el < Length(Elements) do begin
+    while el < Length(Elements) do
+    begin
       case Elements[el].Token of
         nftColor:
           begin
@@ -404,9 +405,11 @@ begin
   Result := '';
   AIsTimeOnly := true;
   AIsInterval := false;
-  with FSections[ASection] do begin
+  with FSections[ASection] do
+  begin
     el := 0;
-    while el < Length(Elements) do begin
+    while el < Length(Elements) do
+    begin
       case Elements[el].Token of
         nftYear:
           begin
@@ -469,9 +472,11 @@ begin
           begin
             if Elements[el].TextValue = ' ' then
               s := '<![CDATA[ ]]>'
-            else begin
+            else
+            begin
               s := Elements[el].TextValue;
-              if (s = '/') then begin
+              if (s = '/') then
+              begin
                 if prevToken in [nftYear, nftMonth, nftDay] then
                   s := FWorkbook.FormatSettings.DateSeparator
                 else
@@ -531,7 +536,8 @@ begin
   if (ns = 0) then
     exit;
 
-  if (ns > 1) then begin
+  if (ns > 1) then
+  begin
     // The file corresponding to the last section contains the styleMap.
     if (ASection = ns - 1) then
       case ns of
@@ -553,19 +559,23 @@ begin
       AFormatName := AFormatName + 'P' + IntToStr(ASection);
   end;
 
-  with FSections[ASection] do begin
+  with FSections[ASection] do
+  begin
     next := 0;
-    if IsTokenAt(nftColor, ASection, 0) then begin
+    if IsTokenAt(nftColor, ASection, 0) then
+    begin
       clr := FWorkbook.GetPaletteColor(Elements[0].IntValue);
       sColor := '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
       next := 1;
     end;
-    if IsNumberAt(ASection, next, nf, decs, next) then begin
+    if IsNumberAt(ASection, next, nf, decs, next) then
+    begin
       if nf = nfFixedTh then
         sGrouping := 'number:grouping="true" ';
 
       // nfFixed, nfFixedTh
-      if (next = Length(Elements)) then begin
+      if (next = Length(Elements)) then
+      begin
         Result :=
           '<number:number-style style:name="' + AFormatName + '">' +
           sColor +
@@ -579,8 +589,8 @@ begin
       end;
 
       // nfPercentage
-      if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements))
-      then begin
+      if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements)) then
+      begin
         Result :=
           '<number:percentage-style style:name="' + AFormatName + '">' +
           sColor +
@@ -594,7 +604,8 @@ begin
       end;
 
       // nfExp
-      if (nf = nfFixed) and IsTokenAt(nftExpChar, ASection, next) then begin
+      if (nf = nfFixed) and IsTokenAt(nftExpChar, ASection, next) then
+      begin
         if (next + 2 < Length(Elements)) and
            IsTokenAt(nftExpSign, ASection, next+1) and
            IsTokenAt(nftExpDigits, ASection, next+2)
@@ -619,11 +630,11 @@ begin
       end;
     end;
 
-    // If the program gets here the format can only be nfSci, nfCurrency/Accounting,
-    // or date/time.
+    // If the program gets here the format can only be nfSci, nfCurrency or date/time.
     el := 0;
     decs := 0;
-    while el < Length(Elements) do begin
+    while el < Length(Elements) do
+    begin
       case Elements[el].Token of
         nftDecs:
           decs := Elements[el].IntValue;        // ???
@@ -631,8 +642,10 @@ begin
         nftExpChar:
           // nfSci: not supported by ods, use nfExp instead.
           begin
-            while el < Length(Elements) do begin
-              if Elements[el].Token = nftExpDigits then begin
+            while el < Length(Elements) do
+            begin
+              if Elements[el].Token = nftExpDigits then
+              begin
                 expdig := Elements[el].IntValue;
                 Result :=
                   '<number:number-style style:name="' + AFormatName + '">' +
@@ -664,7 +677,8 @@ begin
         nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond:
           begin
             s := BuildDateTimeXMLAsString(ASection, isTimeOnly, isInterval);
-            if isTimeOnly then begin
+            if isTimeOnly then
+            begin
               Result := Result +
                 '<number:time-style style:name="' + AFormatName + '"';
               if isInterval then
@@ -744,7 +758,8 @@ var
   i: Integer;
 begin
   factor := FWorkbook.GetFont(0).Size/2;
-  for i:=0 to FColumnList.Count-1 do begin
+  for i:=0 to FColumnList.Count-1 do
+  begin
     colIndex := TColumnData(FColumnList[i]).Col;
     colStyleIndex := TColumnData(FColumnList[i]).ColStyleIndex;
     colStyle := TColumnStyleData(FColumnStyleList[colStyleIndex]);
@@ -755,7 +770,8 @@ begin
     colWidth := mmToPts(colStyle.ColWidth)/factor;
     { Add only column records to the worksheet if their width is different from
       the default column width. }
-    if not SameValue(colWidth, FWorksheet.DefaultColWidth, COLWIDTH_EPS) then begin
+    if not SameValue(colWidth, FWorksheet.DefaultColWidth, COLWIDTH_EPS) then
+    begin
       col := FWorksheet.GetCol(colIndex);
       col^.Width := colWidth;
     end;
@@ -784,7 +800,8 @@ begin
   styleIndex := -1;
   if AStyleName <> '' then
     styleIndex := FindCellStyleByName(AStyleName);
-  if (styleIndex = -1) then begin
+  if (styleIndex = -1) then
+  begin
     // No - look for the style attached to the column of the cell and
     // find the cell style by the DefaultCellStyleIndex stored in the column list.
     i := FindColumnByCol(ACell^.Col);
@@ -819,12 +836,14 @@ begin
   ACell^.TextRotation := styledata.TextRotation;
 
   // Text alignment
-  if styleData.HorAlignment <> haDefault then begin
+  if styleData.HorAlignment <> haDefault then
+  begin
     Include(ACell^.UsedFormattingFields, uffHorAlign);
     ACell^.HorAlignment := styleData.HorAlignment;
   end else
     Exclude(ACell^.UsedFormattingFields, uffHorAlign);
-  if styleData.VertAlignment <> vaDefault then begin
+  if styleData.VertAlignment <> vaDefault then
+  begin
     Include(ACell^.UsedFormattingFields, uffVertAlign);
     ACell^.VertAlignment := styleData.VertAlignment;
   end else
@@ -832,22 +851,26 @@ begin
 
   // Borders
   ACell^.BorderStyles := styleData.BorderStyles;
-  if styleData.Borders <> [] then begin
+  if styleData.Borders <> [] then
+  begin
     Include(ACell^.UsedFormattingFields, uffBorder);
     ACell^.Border := styleData.Borders;
   end else
     Exclude(ACell^.UsedFormattingFields, uffBorder);
 
   // Background color
-  if styleData.BackgroundColor <> scNotDefined then begin
+  if styleData.BackgroundColor <> scNotDefined then
+  begin
     Include(ACell^.UsedFormattingFields, uffBackgroundColor);
     ACell^.BackgroundColor := styleData.BackgroundColor;
   end;
 
   // Number format
-  if styleData.NumFormatIndex > -1 then begin
+  if styleData.NumFormatIndex > -1 then
+  begin
     numFmtData := NumFormatList[styleData.NumFormatIndex];
-    if numFmtData <> nil then begin
+    if numFmtData <> nil then
+    begin
       Include(ACell^.UsedFormattingFields, uffNumberFormat);
       ACell^.NumberFormat := numFmtData.NumFormat;
       ACell^.NumberFormatStr := numFmtData.FormatString;
@@ -902,7 +925,8 @@ begin
 
   Value := GetAttrValue(ANode, 'office:date-value');
 
-  if Value <> '' then begin
+  if Value <> '' then
+  begin
     // Date or date/time string
     Value := StringReplace(Value,'T',' ',[rfIgnoreCase,rfReplaceAll]);
     // Strip milliseconds?
@@ -925,7 +949,8 @@ begin
     // Try time only, e.g. PT23H59M59S
     //                     12345678901
     Value := GetAttrValue(ANode, 'office:time-value');
-    if (Value <> '') and (Pos('PT', Value) = 1) then begin
+    if (Value <> '') and (Pos('PT', Value) = 1) then
+    begin
       // Get hours
       HoursPos := Pos('H', Value);
       if (HoursPos > 0) then
@@ -955,7 +980,8 @@ begin
         nfTimeInterval formats are differences --> no date mode correction
         In all other case, we have a date part that needs to be corrected for
         the file's datemode. }
-      if (ANumFormat <> nfTimeInterval) and (abs(Days) > 0) then begin
+      if (ANumFormat <> nfTimeInterval) and (abs(Days) > 0) then
+      begin
         case FDateMode of
           dm1899: Result := Result + DATEMODE_1899_BASE;
           dm1900: Result := Result + DATEMODE_1900_BASE;
@@ -968,10 +994,9 @@ end;
 
 function TsSpreadOpenDocReader.FindCellStyleByName(AStyleName: String): Integer;
 begin
-  for Result:=0 to FCellStyleList.Count-1 do begin
+  for Result:=0 to FCellStyleList.Count-1 do
     if TCellStyleData(FCellStyleList[Result]).Name = AStyleName then
       exit;
-  end;
   Result := -1;
 end;
 
@@ -1004,7 +1029,8 @@ var
   styleName: String;
   cell: PCell;
 begin
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -1024,7 +1050,8 @@ var
   cell: PCell;
   boolValue: Boolean;
 begin
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -1059,14 +1086,18 @@ begin
 
   col := 0;
   colNode := ATableNode.FindNode('table:table-column');
-  while Assigned(colNode) do begin
-    if colNode.NodeName = 'table:table-column' then begin;
+  while Assigned(colNode) do
+  begin
+    if colNode.NodeName = 'table:table-column' then
+    begin;
       s := GetAttrValue(colNode, 'table:style-name');
       colStyleIndex := FindColStyleByName(s);
-      if colStyleIndex <> -1 then begin
+      if colStyleIndex <> -1 then
+      begin
         defCellStyleIndex := -1;
         s := GetAttrValue(ColNode, 'table:default-cell-style-name');
-        if s <> '' then begin
+        if s <> '' then
+        begin
           defCellStyleIndex := FindCellStyleByName(s);
           colData := TColumnData.Create;
           colData.Col := col;
@@ -1077,10 +1108,12 @@ begin
         s := GetAttrValue(ColNode, 'table:number-columns-repeated');
         if s = '' then
           inc(col)
-        else begin
+        else
+        begin
           colsRepeated := StrToInt(s);
           if defCellStyleIndex > -1 then
-            for j:=1 to colsRepeated-1 do begin
+            for j:=1 to colsRepeated-1 do
+            begin
               colData := TColumnData.Create;
               colData.Col := col + j;
               colData.ColStyleIndex := colStyleIndex;
@@ -1108,10 +1141,13 @@ begin
   styleChildNode := AStyleNode.FirstChild;
   colWidth := -1;
 
-  while Assigned(styleChildNode) do begin
-    if styleChildNode.NodeName = 'style:table-column-properties' then begin
+  while Assigned(styleChildNode) do
+  begin
+    if styleChildNode.NodeName = 'style:table-column-properties' then
+    begin
       s := GetAttrValue(styleChildNode, 'style:column-width');
-      if s <> '' then begin
+      if s <> '' then
+      begin
         colWidth := PtsToMM(HTMLLengthStrToPts(s));   // convert to mm
         break;
       end;
@@ -1132,7 +1168,8 @@ var
   styleName: String;
   cell: PCell;
 begin
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -1184,7 +1221,8 @@ var
   fntColor: TsColor;
   s: String;
 begin
-  if ANode = nil then begin
+  if ANode = nil then
+  begin
     Result := 0;
     exit;
   end;
@@ -1217,11 +1255,13 @@ begin
   else
     fntColor := FWorkbook.GetFont(0).Color;
 
-  if IsDefaultFont then begin
+  if IsDefaultFont then
+  begin
     FWorkbook.SetDefaultFont(fntName, fntSize);
     Result := 0;
   end
-  else begin
+  else
+  begin
     Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor);
     if Result = -1 then
       Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
@@ -1252,7 +1292,8 @@ begin
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
 
-  if (boReadFormulas in FWorkbook.Options) then begin
+  if (boReadFormulas in FWorkbook.Options) then
+  begin
     // Read formula, trim it, ...
     formula := GetAttrValue(ACellNode, 'table:formula');
     if formula <> '' then
@@ -1282,14 +1323,17 @@ begin
   // no error, this value will be corrected below.
   cell^.NumberValue := 0.0;
   // (a) number value
-  if (valueType = 'float') then begin
+  if (valueType = 'float') then
+  begin
     if UpperCase(valueStr) = '1.#INF' then
       FWorksheet.WriteNumber(cell, 1.0/0.0)
-    else begin
+    else
+    begin
       floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
       FWorksheet.WriteNumber(cell, floatValue);
     end;
-    if IsDateTimeFormat(cell^.NumberFormat) then begin
+    if IsDateTimeFormat(cell^.NumberFormat) then
+    begin
       cell^.ContentType := cctDateTime;
       // No datemode correction for intervals and for time-only values
       if (cell^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
@@ -1303,20 +1347,24 @@ begin
     end;
   end else
   // (b) Date/time value
-  if (valueType = 'date') or (valueType = 'time') then begin
+  if (valueType = 'date') or (valueType = 'time') then
+  begin
     floatValue := ExtractDateTimeFromNode(ACellNode, cell^.NumberFormat, cell^.NumberFormatStr);
     FWorkSheet.WriteDateTime(cell, floatValue);
   end else
   // (c) text
-  if (valueType = 'string') then begin
+  if (valueType = 'string') then
+  begin
     node := ACellNode.FindNode('text:p');
-    if (node <> nil) and (node.FirstChild <> nil) then begin
+    if (node <> nil) and (node.FirstChild <> nil) then
+    begin
       valueStr := node.FirstChild.Nodevalue;
       FWorksheet.WriteUTF8Text(cell, valueStr);
     end;
   end else
   // (d) boolean
-  if (valuetype = 'boolean') then begin
+  if (valuetype = 'boolean') then
+  begin
     boolValue := ExtractBoolFromNode(ACellNode);
     FWorksheet.WriteBoolValue(cell, boolValue);
   end else
@@ -1383,12 +1431,14 @@ begin
 
     //process each table (sheet)
     TableNode := SpreadSheetNode.FindNode('table:table');
-    while Assigned(TableNode) do begin
+    while Assigned(TableNode) do
+    begin
       nodename := TableNode.Nodename;
       // These nodes occur due to leading spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
       // to ReadXMLFile
-      if nodeName <> 'table:table' then begin // '#text' then begin
+      if nodeName <> 'table:table' then
+      begin
         TableNode := TableNode.NextSibling;
         continue;
       end;
@@ -1408,7 +1458,8 @@ begin
     Doc.Free;
 
     // process the settings.xml file (Note: it does not always exist!)
-    if FileExists(FilePath + 'settings.xml') then begin
+    if FileExists(FilePath + 'settings.xml') then
+    begin
       ReadXMLFile(Doc, FilePath+'settings.xml');
       DeleteFile(FilePath+'settings.xml');
 
@@ -1442,7 +1493,8 @@ begin
     like below is much better: }
   cellText := '';
   childnode := ACellNode.FirstChild;
-  while Assigned(childnode) do begin
+  while Assigned(childnode) do
+  begin
     case childnode.NodeType of
       TEXT_NODE, COMMENT_NODE, PROCESSING_INSTRUCTION_NODE: ; // ignored
     else
@@ -1451,7 +1503,8 @@ begin
     childnode := childnode.NextSibling;
   end;
 
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -1472,7 +1525,8 @@ var
   styleName: String;
   cell: PCell;
 begin
-  if FIsVirtualMode then begin
+  if FIsVirtualMode then
+  begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
@@ -1529,17 +1583,20 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     negfmt := '';
     zerofmt := '';
 
-    while ANode <> nil do begin
+    while ANode <> nil do
+    begin
       condition := ANode.NodeName;
 
-      if (ANode.NodeName = '#text') or not ANode.HasAttributes then begin
+      if (ANode.NodeName = '#text') or not ANode.HasAttributes then
+      begin
         ANode := ANode.NextSibling;
         Continue;
       end;
 
       condition := GetAttrValue(ANode, 'style:condition');
       stylename := GetAttrValue(ANode, 'style:apply-style-name');
-      if (condition = '') or (stylename = '') then begin
+      if (condition = '') or (stylename = '') then
+      begin
         ANode := ANode.NextSibling;
         continue;
       end;
@@ -1547,7 +1604,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       Delete(condition, 1, Length('value()'));
       styleindex := -1;
       styleindex := FNumFormatList.FindByName(stylename);
-      if (styleindex = -1) or (condition = '') then begin
+      if (styleindex = -1) or (condition = '') then
+      begin
         ANode := ANode.NextSibling;
         continue;
       end;
@@ -1600,13 +1658,16 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     cs := '';
     hasColor := false;
     node := ANumFormatNode.FirstChild;
-    while Assigned(node) do begin
+    while Assigned(node) do
+    begin
       nodeName := node.NodeName;
-      if nodeName = '#text' then begin
+      if nodeName = '#text' then
+      begin
         node := node.NextSibling;
         Continue;
       end else
-      if nodeName = 'number:number' then begin
+      if nodeName = 'number:number' then
+      begin
         if ANumFormatName = 'number:currency-style' then
           s := GetAttrValue(node, 'decimal-places')
         else
@@ -1616,7 +1677,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         nf := IfThen(grouping, nfFixedTh, nfFixed);
         fmt := fmt + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
       end else
-      if nodeName = 'number:scientific-number' then begin
+      if nodeName = 'number:scientific-number' then
+      begin
         nf := nfExp;
         s := GetAttrValue(node, 'number:decimal-places');
         if s <> '' then decs := StrToInt(s) else decs := 0;
@@ -1625,24 +1687,30 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         fmt := fmt + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
         fmt := fmt + 'E+' + DupeString('0', nex);
       end else
-      if nodeName = 'number:currency-symbol' then begin
+      if nodeName = 'number:currency-symbol' then
+      begin
         childnode := node.FirstChild;
-        while childnode <> nil do begin
+        while childnode <> nil do
+        begin
           cs := cs + childNode.NodeValue;
           fmt := fmt + childNode.NodeValue;
           childNode := childNode.NextSibling;
         end;
       end else
-      if nodeName = 'number:text' then begin
+      if nodeName = 'number:text' then
+      begin
         childNode := node.FirstChild;
-        while childNode <> nil do begin
+        while childNode <> nil do
+        begin
           fmt := fmt + childNode.NodeValue;
           childNode := childNode.NextSibling;
         end;
       end else
-      if nodeName = 'style:text-properties' then begin
+      if nodeName = 'style:text-properties' then
+      begin
         s := GetAttrValue(node, 'fo:color');
-        if s <> '' then begin
+        if s <> '' then
+        begin
           hasColor := true;
           {                        // currently not needed
           color := HTMLColorStrToColor(s);
@@ -1663,10 +1731,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 
     if ANumFormatNode.NodeName = 'number:percentage-style' then
       nf := nfPercentage
-    else if (ANumFormatNode.NodeName = 'number:currency-style') then begin
-      if not (nf in [nfCurrency, nfCurrencyRed]) then
-        nf := IfThen(hasColor, nfCurrencyred, nfCurrency);
-    end;
+    else
+    if (ANumFormatNode.NodeName = 'number:currency-style') then
+      nf := IfThen(hasColor, nfCurrencyRed, nfCurrency);
 
     NumFormatList.AddFormat(ANumFormatName, fmt, nf);
   end;
@@ -1686,17 +1753,21 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if (sovr = 'false') then
       isInterval := true;
     node := ANumFormatNode.FirstChild;
-    while Assigned(node) do begin
+    while Assigned(node) do
+    begin
       nodeName := node.NodeName;
-      if nodeName = '#text' then begin
+      if nodeName = '#text' then
+      begin
         node := node.NextSibling;
         Continue;
       end else
-      if nodeName = 'number:year' then begin
+      if nodeName = 'number:year' then
+      begin
         s := GetAttrValue(node, 'number:style');
         fmt := fmt + IfThen(s = 'long', 'yyyy', 'yy');
       end else
-      if nodeName = 'number:month' then begin
+      if nodeName = 'number:month' then
+      begin
         s := GetAttrValue(node, 'number:style');
         stxt := GetAttrValue(node, 'number:textual');
         if (stxt = 'true') then  // Month as text
@@ -1704,15 +1775,18 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         else                     // Month as number
           fmt := fmt + IfThen(s = 'long', 'mm', 'm');
       end else
-      if nodeName = 'number:day' then begin
+      if nodeName = 'number:day' then
+      begin
         s := GetAttrValue(node, 'number:style');
         fmt := fmt + IfThen(s = 'long', 'dd', 'd');
       end else
-      if nodeName = 'number:day-of-week' then begin
+      if nodeName = 'number:day-of-week' then
+      begin
         s := GetAttrValue(node, 'number:style');
         fmt := fmt + IfThen(s = 'long', 'dddd', 'ddd');
       end else
-      if nodeName = 'number:hours' then begin
+      if nodeName = 'number:hours' then
+      begin
         s := GetAttrValue(node, 'number:style');
         if (sovr = 'false') then
           fmt := fmt + IfThen(s = 'long', '[hh]', '[h]')
@@ -1720,7 +1794,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
           fmt := fmt + IfThen(s = 'long', 'hh', 'h');
         sovr := '';
       end else
-      if nodeName = 'number:minutes' then begin
+      if nodeName = 'number:minutes' then
+      begin
         s := GetAttrValue(node, 'number:style');
         if (sovr = 'false') then
           fmt := fmt + IfThen(s = 'long', '[nn]', '[n]')
@@ -1728,7 +1803,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
           fmt := fmt + IfThen(s = 'long', 'nn', 'n');
         sovr := '';
       end else
-      if nodeName = 'number:seconds' then begin
+      if nodeName = 'number:seconds' then
+      begin
         s := GetAttrValue(node, 'number:style');
         if (sovr = 'false') then
           fmt := fmt + IfThen(s = 'long', '[ss]', '[s]')
@@ -1742,9 +1818,11 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       if nodeName = 'number:am-pm' then
         fmt := fmt + 'AM/PM'
       else
-      if nodeName = 'number:text' then begin
+      if nodeName = 'number:text' then
+      begin
         childnode := node.FirstChild;
-        if childnode <> nil then begin
+        if childnode <> nil then
+        begin
           s := childNode.NodeValue;
           if pos(';', s) > 0 then
             fmt := fmt + '"' + s + '"'
@@ -1773,16 +1851,20 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
   begin
     fmt := '';
     node := ANumFormatNode.FirstChild;
-    while Assigned(node) do begin
+    while Assigned(node) do
+    begin
       nodeName := node.NodeName;
-      if nodeName = '#text' then begin
+      if nodeName = '#text' then
+      begin
         node := node.NextSibling;
         Continue;
       end else
-      if nodeName = 'number:text-content' then begin
+      if nodeName = 'number:text-content' then
+      begin
         // ???
       end else
-      if nodeName = 'number:text' then begin
+      if nodeName = 'number:text' then
+      begin
         childnode := node.FirstChild;
         if childnode <> nil then
           fmt := fmt + childnode.NodeValue;
@@ -1807,7 +1889,8 @@ begin
     exit;
 
   NumFormatNode := AStylesNode.FirstChild;
-  while Assigned(NumFormatNode) do begin
+  while Assigned(NumFormatNode) do
+  begin
     numfmt_nodename := NumFormatNode.NodeName;
 
     if NumFormatNode.HasAttributes then
@@ -1859,7 +1942,8 @@ begin
   row := 0;
 
   rowNode := ATableNode.FindNode('table:table-row');
-  while Assigned(rowNode) do begin
+  while Assigned(rowNode) do
+  begin
     nodename := rowNode.NodeName;
 
     // Skip all non table-row nodes:
@@ -1868,7 +1952,8 @@ begin
     // to ReadXMLFile
     // And there are other nodes like 'table:named-expression' which we don't
     // need (at the moment)
-    if nodeName <> 'table:table-row' then begin
+    if nodeName <> 'table:table-row' then
+    begin
       rowNode := rowNode.NextSibling;
       Continue;
     end;
@@ -1876,7 +1961,8 @@ begin
     // Read rowstyle
     rowStyleName := GetAttrValue(rowNode, 'table:style-name');
     rowStyleIndex := FindRowStyleByName(rowStyleName);
-    if rowStyleIndex > -1 then begin    // just for safety
+    if rowStyleIndex > -1 then        // just for safety
+    begin
       rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
       rowHeight := rowStyle.RowHeight;           // in mm (see ReadRowStyles)
       rowHeight := mmToPts(rowHeight) / Workbook.GetDefaultFontSize;
@@ -1891,7 +1977,8 @@ begin
 
     //process each cell of the row
     cellNode := rowNode.FindNode('table:table-cell');
-    while Assigned(cellNode) do begin
+    while Assigned(cellNode) do
+    begin
       nodeName := cellNode.NodeName;
       // These nodes occur due to indentation spaces which are not skipped
       // automatically any more due to PreserveWhiteSpace option applied
@@ -1902,7 +1989,8 @@ begin
         Continue;
       end;
       }
-      if nodeName = 'table:table-cell' then begin
+      if nodeName = 'table:table-cell' then
+      begin
         // select this cell value's type
         paramValueType := GetAttrValue(CellNode, 'office:value-type');
         paramFormula := GetAttrValue(CellNode, 'table:formula');
@@ -1986,8 +2074,10 @@ begin
   rowHeight := -1;
   auto := false;
 
-  while Assigned(styleChildNode) do begin
-    if styleChildNode.NodeName = 'style:table-row-properties' then begin
+  while Assigned(styleChildNode) do
+  begin
+    if styleChildNode.NodeName = 'style:table-row-properties' then
+    begin
       s := GetAttrValue(styleChildNode, 'style:row-height');
       if s <> '' then
         rowHeight := PtsToMm(HTMLLengthStrToPts(s));  // convert to mm
@@ -2017,49 +2107,60 @@ begin
   showGrid := true;
   showHeaders := true;
   cfgItemSetNode := AOfficeSettingsNode.FirstChild;
-  while Assigned(cfgItemSetNode) do begin
+  while Assigned(cfgItemSetNode) do
+  begin
     if (cfgItemSetNode.NodeName <> '#text') and
-       (GetAttrValue(cfgItemSetNode, 'config:name') = 'ooo:view-settings')
-    then begin
+       (GetAttrValue(cfgItemSetNode, 'config:name') = 'ooo:view-settings') then
+    begin
       cfgItemNode := cfgItemSetNode.FirstChild;
       while Assigned(cfgItemNode) do begin
         if (cfgItemNode.NodeName <> '#text') and
            (cfgItemNode.NodeName = 'config:config-item-map-indexed') and
-           (GetAttrValue(cfgItemNode, 'config:name') = 'Views')
-        then begin
+           (GetAttrValue(cfgItemNode, 'config:name') = 'Views') then
+        begin
           cfgItemMapEntryNode := cfgItemNode.FirstChild;
-          while Assigned(cfgItemMapEntryNode) do begin
+          while Assigned(cfgItemMapEntryNode) do
+          begin
             cfgEntryItemNode := cfgItemMapEntryNode.FirstChild;
-            while Assigned(cfgEntryItemNode) do begin
+            while Assigned(cfgEntryItemNode) do
+            begin
               nodeName := cfgEntryItemNode.NodeName;
-              if (nodeName = 'config:config-item')
-              then begin
+              if (nodeName = 'config:config-item') then
+              begin
                 cfgName := lowercase(GetAttrValue(cfgEntryItemNode, 'config:name'));
-                if cfgName = 'showgrid' then begin
+                if cfgName = 'showgrid' then
+                begin
                   cfgValue := GetNodeValue(cfgEntryItemNode);
                   if cfgValue = 'false' then showGrid := false;
                 end else
-                if cfgName = 'hascolumnrowheaders' then begin
+                if cfgName = 'hascolumnrowheaders' then
+                begin
                   cfgValue := GetNodeValue(cfgEntryItemNode);
                   if cfgValue = 'false' then showHeaders := false;
                 end;
               end else
               if (nodeName = 'config:config-item-map-named') and
-                 (GetAttrValue(cfgEntryItemNode, 'config:name') = 'Tables')
-              then begin
+                 (GetAttrValue(cfgEntryItemNode, 'config:name') = 'Tables') then
+              begin
                 cfgTableItemNode := cfgEntryItemNode.FirstChild;
-                while Assigned(cfgTableItemNode) do begin
+                while Assigned(cfgTableItemNode) do
+                begin
                   nodeName := cfgTableItemNode.NodeName;
-                  if nodeName <> '#text' then begin
+                  if nodeName <> '#text' then
+                  begin
                     tblName := GetAttrValue(cfgTableItemNode, 'config:name');
-                    if tblName <> '' then begin
+                    if tblName <> '' then
+                    begin
                       hsm := 0; vsm := 0;
                       sheet := Workbook.GetWorksheetByName(tblName);
-                      if sheet <> nil then begin
+                      if sheet <> nil then
+                      begin
                         node := cfgTableItemNode.FirstChild;
-                        while Assigned(node) do begin
+                        while Assigned(node) do
+                        begin
                           nodeName := node.NodeName;
-                          if nodeName <> '#text' then begin
+                          if nodeName <> '#text' then
+                          begin
                             cfgName := GetAttrValue(node, 'config:name');
                             cfgValue := GetNodeValue(node);
                             if cfgName = 'VerticalSplitMode' then
@@ -2073,7 +2174,8 @@ begin
                           end;
                           node := node.NextSibling;
                         end;
-                        if (hsm = 2) or (vsm = 2) then begin
+                        if (hsm = 2) or (vsm = 2) then
+                        begin
                           sheet.Options := sheet.Options + [soHasFrozenPanes];
                           sheet.LeftPaneWidth := hsp;
                           sheet.TopPaneHeight := vsp;
@@ -2098,7 +2200,8 @@ begin
 
   { Now let's apply the showGrid and showHeader values to all sheets - they
     are document-wide settings (although there is a ShowGrid in the Tables node) }
-  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+  for i:=0 to Workbook.GetWorksheetCount-1 do
+  begin
     sheet := Workbook.GetWorksheetByIndex(i);
     if not showGrid then sheet.Options := sheet.Options - [soShowGridLines];
     if not showHeaders then sheet.Options := sheet.Options - [soShowHeaders];
@@ -2145,7 +2248,8 @@ var
       wid := 0;
       rgb := TsColorValue(-1);
       linestyle := '';
-      for i:=0 to L.Count-1 do begin
+      for i:=0 to L.Count-1 do
+      begin
         s := L[i];
         if (s = 'solid') or (s = 'dashed') or (s = 'fine-dashed') or (s = 'dotted') or (s = 'double')
         then begin
@@ -2153,24 +2257,28 @@ var
           continue;
         end;
         p := pos('pt', s);
-        if p = Length(s)-1 then begin
+        if p = Length(s)-1 then
+        begin
           wid := StrToFloat(copy(s, 1, p-1), FPointSeparatorSettings);
           continue;
         end;
         p := pos('mm', s);
-        if p = Length(s)-1 then begin
+        if p = Length(s)-1 then
+        begin
           wid := mmToPts(StrToFloat(copy(s, 1, p-1), FPointSeparatorSettings));
           Continue;
         end;
         p := pos('cm', s);
-        if p = Length(s)-1 then begin
+        if p = Length(s)-1 then
+        begin
           wid := cmToPts(StrToFloat(copy(s, 1, p-1), FPointSeparatorSettings));
           Continue;
         end;
         rgb := HTMLColorStrToColor(s);
       end;
       borderStyles[ABorder].LineStyle := lsThin;
-      if (linestyle = 'solid') then begin
+      if (linestyle = 'solid') then
+      begin
         if (wid >= 3 - EPS) then borderStyles[ABorder].LineStyle := lsThick
         else if (wid >= 2 - EPS) then borderStyles[ABorder].LineStyle := lsMedium
       end else
@@ -2200,10 +2308,12 @@ begin
 
   styleNode := AStylesNode.FirstChild;
   while Assigned(styleNode) do begin
-    if styleNode.NodeName = 'style:default-style' then begin
+    if styleNode.NodeName = 'style:default-style' then
+    begin
       ReadFont(styleNode.FindNode('style:text-properties'), true);
     end else
-    if styleNode.NodeName = 'style:style' then begin
+    if styleNode.NodeName = 'style:style' then
+    begin
       family := GetAttrValue(styleNode, 'style:family');
 
       // Column styles
@@ -2215,7 +2325,8 @@ begin
         ReadRowStyle(styleNode);
 
       // Cell styles
-      if family = 'table-cell' then begin
+      if family = 'table-cell' then
+      begin
         styleName := GetAttrValue(styleNode, 'style:name');
         numFmtName := GetAttrValue(styleNode, 'style:data-style-name');
         numFmtIndex := -1;
@@ -2231,18 +2342,21 @@ begin
         fntIndex := 0;
 
         styleChildNode := styleNode.FirstChild;
-        while Assigned(styleChildNode) do begin
+        while Assigned(styleChildNode) do
+        begin
           if styleChildNode.NodeName = 'style:text-properties' then
             fntIndex := ReadFont(styleChildNode, false)
           else
-          if styleChildNode.NodeName = 'style:table-cell-properties' then begin
+          if styleChildNode.NodeName = 'style:table-cell-properties' then
+          begin
             // Background color
             s := GetAttrValue(styleChildNode, 'fo:background-color');
             if (s <> '') and (s <> 'transparent') then
               bkClr := HTMLColorStrToColor(s);
             // Borders
             s := GetAttrValue(styleChildNode, 'fo:border');
-            if (s <>'') and (s <> 'none') then begin
+            if (s <>'') and (s <> 'none') then
+            begin
               borders := borders + [cbNorth, cbSouth, cbEast, cbWest];
               SetBorderStyle(cbNorth, s);
               SetBorderStyle(cbSouth, s);
@@ -2250,32 +2364,38 @@ begin
               SetBorderStyle(cbWest, s);
             end;
             s := GetAttrValue(styleChildNode, 'fo:border-top');
-            if (s <> '') and (s <> 'none') then begin
+            if (s <> '') and (s <> 'none') then
+            begin
               Include(borders, cbNorth);
               SetBorderStyle(cbNorth, s);
             end;
             s := GetAttrValue(styleChildNode, 'fo:border-right');
-            if (s <> '') and (s <> 'none') then begin
+            if (s <> '') and (s <> 'none') then
+            begin
               Include(borders, cbEast);
               SetBorderStyle(cbEast, s);
             end;
             s := GetAttrValue(styleChildNode, 'fo:border-bottom');
-            if (s <> '') and (s <> 'none') then begin
+            if (s <> '') and (s <> 'none') then
+            begin
               Include(borders, cbSouth);
               SetBorderStyle(cbSouth, s);
             end;
             s := GetAttrValue(styleChildNode, 'fo:border-left');
-            if (s <> '') and (s <> 'none') then begin
+            if (s <> '') and (s <> 'none') then
+            begin
               Include(borders, cbWest);
               SetBorderStyle(cbWest, s);
             end;
             s := GetAttrValue(styleChildNode, 'style:diagonal-bl-tr');
-            if (s <> '') and (s <> 'none') then begin
+            if (s <> '') and (s <> 'none') then
+            begin
               Include(borders, cbDiagUp);
               SetBorderStyle(cbDiagUp, s);
             end;
             s := GetAttrValue(styleChildNode, 'style:diagonal-tl-br');
-            if (s <> '') and (s <>'none') then begin
+            if (s <> '') and (s <>'none') then
+            begin
               Include(borders, cbDiagDown);
               SetBorderStyle(cbDiagDown, s);
             end;
@@ -2304,7 +2424,8 @@ begin
               vertAlign := vaBottom;
 
           end else
-          if styleChildNode.NodeName = 'style:paragraph-properties' then begin
+          if styleChildNode.NodeName = 'style:paragraph-properties' then
+          begin
             // Horizontal text alignment
             s := GetAttrValue(styleChildNode, 'fo:text-align');
             if s = 'start' then
@@ -2350,14 +2471,16 @@ end;
   single xlsx file. }
 procedure TsSpreadOpenDocWriter.CreateStreams;
 begin
-  if (boBufStream in Workbook.Options) then begin
+  if (boBufStream in Workbook.Options) then
+  begin
     FSMeta := TBufStream.Create(GetTempFileName('', 'fpsM'));
     FSSettings := TBufStream.Create(GetTempFileName('', 'fpsS'));
     FSStyles := TBufStream.Create(GetTempFileName('', 'fpsSTY'));
     FSContent := TBufStream.Create(GetTempFileName('', 'fpsC'));
     FSMimeType := TBufStream.Create(GetTempFileName('', 'fpsMT'));
     FSMetaInfManifest := TBufStream.Create(GetTempFileName('', 'fpsMIM'));
-  end else begin
+  end else
+  begin
     FSMeta := TMemoryStream.Create;
     FSSettings := TMemoryStream.Create;
     FSStyles := TMemoryStream.Create;
@@ -2375,7 +2498,8 @@ procedure TsSpreadOpenDocWriter.DestroyStreams;
   var
     fn: String;
   begin
-    if AStream is TFileStream then begin
+    if AStream is TFileStream then
+    begin
       fn := TFileStream(AStream).Filename;
       DeleteFile(fn);
     end;
@@ -2406,10 +2530,12 @@ begin
   colStyle.ColWidth := 12; //Workbook.DefaultColWidth;
   FColumnStyleList.Add(colStyle);
 
-  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+  for i:=0 to Workbook.GetWorksheetCount-1 do
+  begin
     sheet := Workbook.GetWorksheetByIndex(i);
 //    colStyle.ColWidth := sheet.DefaultColWidth;
-    for c:=0 to sheet.GetLastColIndex do begin
+    for c:=0 to sheet.GetLastColIndex do
+    begin
       w := sheet.GetColWidth(c);
       // Look for this width in the current ColumnStyleList
       found := false;
@@ -2420,7 +2546,8 @@ begin
           break;
         end;
       // Not found? Then add the column as new column style
-      if not found then begin
+      if not found then
+      begin
         colStyle := TColumnStyleData.Create;
         colStyle.Name := Format('co%d', [FColumnStyleList.Count+1]);
         colStyle.ColWidth := w;
@@ -2434,7 +2561,8 @@ begin
     point size of the font. --> we can convert the fps col width to pts and
     then to millimeters. }
   multiplier := Workbook.GetFont(0).Size / 2;
-  for i:=0 to FColumnStyleList.Count-1 do begin
+  for i:=0 to FColumnStyleList.Count-1 do
+  begin
     w := TColumnStyleData(FColumnStyleList[i]).ColWidth * multiplier;
     TColumnStyleData(FColumnStyleList[i]).ColWidth := PtsToMM(w);
   end;
@@ -2452,7 +2580,8 @@ begin
   n := NumFormatList.Count;
   inherited ListAllNumFormats;
   j := 0;
-  for i:=n to NumFormatList.Count-1 do begin
+  for i:=n to NumFormatList.Count-1 do
+  begin
     NumFormatList.Items[i].Name := Format('N%d', [FMT_BASE + j]);
     inc(j);
   end;
@@ -2475,23 +2604,27 @@ begin
   rowStyle.AutoRowHeight := true;
   FRowStyleList.Add(rowStyle);
 
-  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+  for i:=0 to Workbook.GetWorksheetCount-1 do
+  begin
     sheet := Workbook.GetWorksheetByIndex(i);
-    for r:=0 to sheet.GetLastRowIndex do begin
+    for r:=0 to sheet.GetLastRowIndex do
+    begin
       row := sheet.FindRow(r);
-      if row <> nil then begin
+      if row <> nil then
+      begin
         h := sheet.GetRowHeight(r);
         // Look for this height in the current RowStyleList
         found := false;
         for j:=0 to FRowStyleList.Count-1 do
           if SameValue(TRowStyleData(FRowStyleList[j]).RowHeight, h, ROWHEIGHT_EPS) and
-             (not TRowStyleData(FRowStyleList[j]).AutoRowHeight)
-          then begin
+             (not TRowStyleData(FRowStyleList[j]).AutoRowHeight) then
+          begin
             found := true;
             break;
           end;
         // Not found? Then add the row as a new row style
-        if not found then begin
+        if not found then
+        begin
           rowStyle := TRowStyleData.Create;
           rowStyle.Name := Format('ro%d', [FRowStyleList.Count+1]);
           rowStyle.RowHeight := h;
@@ -2506,7 +2639,8 @@ begin
     Using the default font size (which is in points) we convert the line count
     to points and then to millimeters as needed by ods. }
   multiplier := Workbook.GetDefaultFontSize;;
-  for i:=0 to FRowStyleList.Count-1 do begin
+  for i:=0 to FRowStyleList.Count-1 do
+  begin
     h := (TRowStyleData(FRowStyleList[i]).RowHeight + ROW_HEIGHT_CORRECTION) * multiplier;
     TRowStyleData(FRowStyleList[i]).RowHeight := PtsToMM(h);
   end;
@@ -2578,7 +2712,8 @@ begin
   // settings off. Then we assume it to be valid also for the other sheets.
   showGrid := true;
   showHeaders := true;
-  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+  for i:=0 to Workbook.GetWorksheetCount-1 do
+  begin
     sheet := Workbook.GetWorksheetByIndex(i);
     if not (soShowGridLines in sheet.Options) then showGrid := false;
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
@@ -2747,7 +2882,8 @@ begin
 
   // rows and cells
   // The cells need to be written in order, row by row, cell by cell
-  if (boVirtualMode in Workbook.Options) then begin
+  if (boVirtualMode in Workbook.Options) then
+  begin
     if Assigned(Workbook.OnWriteCellData) then
       WriteVirtualCells(AStream, CurSheet)
   end else
@@ -2765,7 +2901,8 @@ var
   fmtIndex: Integer;
   fmt: String;
 begin
-  for i := 0 to Length(FFormattingStyles) - 1 do begin
+  for i := 0 to Length(FFormattingStyles) - 1 do
+  begin
     fmtIndex := NumFormatList.Find(FFormattingStyles[i].NumberFormatStr);
     if fmtIndex <> -1
       then fmt := 'style:data-style-name="' + NumFormatList[fmtIndex].Name +'"'
@@ -2813,7 +2950,8 @@ var
   i: Integer;
   colstyle: TColumnStyleData;
 begin
-  if FColumnStyleList.Count = 0 then begin
+  if FColumnStyleList.Count = 0 then
+  begin
     AppendToStream(AStream,
       '<style:style style:name="co1" style:family="table-column">',
         '<style:table-column-properties fo:break-before="auto" style:column-width="2.267cm"/>',
@@ -2821,7 +2959,8 @@ begin
     exit;
   end;
 
-  for i := 0 to FColumnStyleList.Count-1 do begin
+  for i := 0 to FColumnStyleList.Count-1 do
+  begin
     colStyle := TColumnStyleData(FColumnStyleList[i]);
 
     // Start and Name
@@ -2854,7 +2993,8 @@ begin
   lastCol := ASheet.GetLastColIndex;
 
   j := 0;
-  while (j <= lastCol) do begin
+  while (j <= lastCol) do
+  begin
     w := ASheet.GetColWidth(j);
     // Convert to mm
     w_mm := PtsToMM(w * widthMultiplier);
@@ -2872,7 +3012,8 @@ begin
     // Determine value for "number-columns-repeated"
     colsRepeated := 1;
     k := j+1;
-    while (k <= lastCol) do begin
+    while (k <= lastCol) do
+    begin
       if ASheet.GetColWidth(k) = w then
         inc(colsRepeated)
       else
@@ -2900,7 +3041,8 @@ begin
 
   L := TStringList.Create;
   try
-    for i:=0 to Workbook.GetFontCount-1 do begin
+    for i:=0 to Workbook.GetFontCount-1 do
+    begin
       fnt := Workbook.GetFont(i);
       if (fnt <> nil) and (L.IndexOf(fnt.FontName) = -1) then
         L.Add(fnt.FontName);
@@ -2923,7 +3065,8 @@ var
   fmtItem: TsNumFormatData;
   parser: TsSpreadOpenDocNumFormatParser;
 begin
-  for i:=0 to FNumFormatList.Count-1 do begin
+  for i:=0 to FNumFormatList.Count-1 do
+  begin
     fmtItem := FNumFormatList.Items[i];
     parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString,
       fmtItem.NumFormat);
@@ -2963,13 +3106,15 @@ begin
 
   // Now loop through all rows
   r := firstRow;
-  while (r <= lastRow) do begin
+  while (r <= lastRow) do
+  begin
     rowsRepeated := 1;
     // Look for the row style of the current row (r)
     row := ASheet.FindRow(r);
     if row = nil then
       styleName := 'ro1'
-    else begin
+    else
+    begin
       styleName := '';
 
       h := row^.Height;   // row height in "lines"
@@ -2977,7 +3122,8 @@ begin
       for k := 0 to FRowStyleList.Count-1 do begin
         rowStyleData := TRowStyleData(FRowStyleList[k]);
         // Compare row heights, but be aware of rounding errors
-        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then begin
+        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then
+        begin
           styleName := rowStyleData.Name;
           break;
         end;
@@ -2987,7 +3133,8 @@ begin
     end;
 
     // Take care of empty rows above the first row
-    if (r = firstRow) and emptyRowsAbove then begin
+    if (r = firstRow) and emptyRowsAbove then
+    begin
       rowsRepeated := r;
       rowsRepeatedStr := IfThen(rowsRepeated = 1, '',
         Format('table:number-rows-repeated="%d"', [rowsRepeated]));
@@ -3003,12 +3150,13 @@ begin
     end
     else
     // Look for empty rows with the same style, they need the "number-rows-repeated" element.
-    if (ASheet.GetFirstCellOfRow(r) = nil) then begin
+    if (ASheet.GetFirstCellOfRow(r) = nil) then
+    begin
       rr := r + 1;
-      while (rr <= lastRow) do begin
-        if ASheet.GetFirstCellOfRow(rr) <> nil then begin
+      while (rr <= lastRow) do
+      begin
+        if ASheet.GetFirstCellOfRow(rr) <> nil then
           break;
-        end;
         h1 := ASheet.GetRowHeight(rr);
         if not SameValue(h, h1, ROWHEIGHT_EPS) then
           break;
@@ -3038,7 +3186,8 @@ begin
 
     // Loop along the row and find the cells.
     c := 0;
-    while c <= lastCol do begin
+    while c <= lastCol do
+    begin
       // Get the cell from the sheet
       cell := ASheet.FindCell(r, c);
 
@@ -3054,9 +3203,11 @@ begin
 
       // Empty cell? Need to count how many to add "table:number-columns-repeated"
       colsRepeated := 1;
-      if cell = nil then begin
+      if cell = nil then
+      begin
         cc := c + 1;
-        while (cc <= lastCol) do begin
+        while (cc <= lastCol) do
+        begin
           cell := ASheet.FindCell(r, cc);
           if cell <> nil then
             break;
@@ -3086,7 +3237,8 @@ var
   i: Integer;
   rowstyle: TRowStyleData;
 begin
-  if FRowStyleList.Count = 0 then begin
+  if FRowStyleList.Count = 0 then
+  begin
     AppendToStream(AStream,
       '<style:style style:name="ro1" style:family="table-row">' +
         '<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' +
@@ -3094,7 +3246,8 @@ begin
     exit;
   end;
 
-  for i := 0 to FRowStyleList.Count-1 do begin
+  for i := 0 to FRowStyleList.Count-1 do
+  begin
     rowStyle := TRowStyleData(FRowStyleList[i]);
 
     // Start and Name
@@ -3175,6 +3328,7 @@ begin
     lStream := TBufStream.Create(AFileName, lMode)
   else
     lStream := TFileStream.Create(AFileName, lMode);
+
   try
     WriteToStream(lStream);
   finally
@@ -3238,7 +3392,8 @@ begin
   Unused(ARow, ACol);
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then begin
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
@@ -3246,7 +3401,8 @@ begin
   end else
     spannedStr := '';
 
-  if ACell^.UsedFormattingFields <> [] then begin
+  if ACell^.UsedFormattingFields <> [] then
+  begin
     lIndex := FindFormattingInList(ACell);
     AppendToStream(AStream, Format(
       '<table:table-cell table:style-name="ce%d" %s>', [lIndex, spannedStr]),
@@ -3334,7 +3490,8 @@ begin
   if not (uffBorder in AFormat.UsedFormattingFields) then
     exit;
 
-  if cbSouth in AFormat.Border then begin
+  if cbSouth in AFormat.Border then
+  begin
     Result := Result + Format('fo:border-bottom="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbSouth].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbSouth].LineStyle],
@@ -3346,7 +3503,8 @@ begin
   else
     Result := Result + 'fo:border-bottom="none" ';
 
-  if cbWest in AFormat.Border then begin
+  if cbWest in AFormat.Border then
+  begin
     Result := Result + Format('fo:border-left="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbWest].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbWest].LineStyle],
@@ -3358,7 +3516,8 @@ begin
   else
     Result := Result + 'fo:border-left="none" ';
 
-  if cbEast in AFormat.Border then begin
+  if cbEast in AFormat.Border then
+  begin
     Result := Result + Format('fo:border-right="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbEast].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbEast].LineStyle],
@@ -3370,7 +3529,8 @@ begin
   else
     Result := Result + 'fo:border-right="none" ';
 
-  if cbNorth in AFormat.Border then begin
+  if cbNorth in AFormat.Border then
+  begin
     Result := Result + Format('fo:border-top="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbNorth].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbNorth].LineStyle],
@@ -3381,7 +3541,8 @@ begin
   end else
     Result := Result + 'fo:border-top="none" ';
 
-  if cbDiagUp in AFormat.Border then begin
+  if cbDiagUp in AFormat.Border then
+  begin
     Result := Result + Format('style:diagonal-bl-tr="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbDiagUp].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbDiagUp].LineStyle],
@@ -3389,7 +3550,8 @@ begin
     ]);
   end;
 
-  if cbDiagDown in AFormat.Border then begin
+  if cbDiagDown in AFormat.Border then
+  begin
     Result := Result + Format('style:diagonal-tl-br="%s %s %s" ', [
       BORDER_LINEWIDTHS[AFormat.BorderStyles[cbDiagDown].LineStyle],
       BORDER_LINESTYLES[AFormat.BorderStyles[cbDiagDown].LineStyle],
@@ -3478,20 +3640,25 @@ var
   vsm: Integer;  // VerticalSplitMode
   asr: Integer;  // ActiveSplitRange
 begin
-  for i:=0 to Workbook.GetWorksheetCount-1 do begin
+  for i:=0 to Workbook.GetWorksheetCount-1 do
+  begin
     sheet := Workbook.GetWorksheetByIndex(i);
 
     AppendToStream(AStream,
       '<config:config-item-map-entry config:name="' + sheet.Name + '">');
 
     hsm := 0; vsm := 0; asr := 2;
-    if (soHasFrozenPanes in sheet.Options) then begin
-      if (sheet.LeftPaneWidth > 0) and (sheet.TopPaneHeight > 0) then begin
+    if (soHasFrozenPanes in sheet.Options) then
+    begin
+      if (sheet.LeftPaneWidth > 0) and (sheet.TopPaneHeight > 0) then
+      begin
         hsm := 2; vsm := 2; asr := 3;
       end else
-      if (sheet.LeftPaneWidth > 0) then begin
+      if (sheet.LeftPaneWidth > 0) then
+      begin
         hsm := 2; vsm := 0; asr := 3;
-      end else if (sheet.TopPaneHeight > 0) then begin
+      end else if (sheet.TopPaneHeight > 0) then
+      begin
         hsm := 0; vsm := 2; asr := 2;
       end;
     end;
@@ -3585,20 +3752,24 @@ begin
 
   rowsRepeated := 1;
   r := 0;
-  while (r <= lastRow) do begin
+  while (r <= lastRow) do
+  begin
     // Look for the row style of the current row (r)
     row := ASheet.FindRow(r);
     if row = nil then
       styleName := 'ro1'
-    else begin
+    else
+    begin
       styleName := '';
 
       h := row^.Height;   // row height in "lines"
       h_mm := PtsToMM((h + ROW_HEIGHT_CORRECTION) * defFontSize);  // in mm
-      for k := 0 to FRowStyleList.Count-1 do begin
+      for k := 0 to FRowStyleList.Count-1 do
+      begin
         rowStyleData := TRowStyleData(FRowStyleList[k]);
         // Compare row heights, but be aware of rounding errors
-        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then begin
+        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then
+        begin
           styleName := rowStyleData.Name;
           break;
         end;
@@ -3616,7 +3787,8 @@ begin
 
     // Loop along the row and write the cells.
     c := 0;
-    while c <= lastCol do begin
+    while c <= lastCol do
+    begin
       // Empty cell? Need to count how many "table:number-columns-repeated" to be added
       colsRepeated := 1;
 
@@ -3626,10 +3798,12 @@ begin
 
       Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
 
-      if VarIsNull(value) then begin
+      if VarIsNull(value) then
+      begin
         // Local loop to count empty cells
         cc := c + 1;
-        while (cc <= lastCol) do begin
+        while (cc <= lastCol) do
+        begin
           InitCell(r, cc, lCell);
           value := varNull;
           styleCell := nil;
@@ -3644,19 +3818,23 @@ begin
         AppendToStream(AStream, Format(
           '<table:table-cell %s />', [colsRepeatedStr]));
       end else begin
-        if VarIsNumeric(value) then begin
+        if VarIsNumeric(value) then
+        begin
           lCell.ContentType := cctNumber;
           lCell.NumberValue := value;
         end else
-        if VarType(value) = varDate then begin
+        if VarType(value) = varDate then
+        begin
           lCell.ContentType := cctDateTime;
           lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
         end else
-        if VarIsStr(value) then begin
+        if VarIsStr(value) then
+        begin
           lCell.ContentType := cctUTF8String;
           lCell.UTF8StringValue := VarToStrDef(value, '');
         end else
-        if VarIsBool(value) then begin
+        if VarIsBool(value) then
+        begin
           lCell.ContentType := cctBool;
           lCell.BoolValue := value <> 0;
         end else
@@ -3705,14 +3883,16 @@ begin
   Unused(ARow, ACol);
 
   // Style
-  if ACell^.UsedFormattingFields <> [] then begin
+  if ACell^.UsedFormattingFields <> [] then
+  begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
   end else
     lStyle := '';
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then begin
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
@@ -3724,7 +3904,8 @@ begin
   parser := TsSpreadsheetParser.Create(FWorksheet);
   try
     parser.Dialect := fdOpenDocument;
-    if ACell^.SharedFormulaBase <> nil then begin
+    if ACell^.SharedFormulaBase <> nil then
+    begin
       parser.ActiveCell := ACell;
       parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
     end else
@@ -3815,14 +3996,16 @@ begin
   Unused(ARow, ACol);
 
   // Style
-  if ACell^.UsedFormattingFields <> [] then begin
+  if ACell^.UsedFormattingFields <> [] then
+  begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
   end else
     lStyle := '';
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then begin
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
@@ -3864,7 +4047,8 @@ begin
   Unused(ARow, ACol);
 
   valType := 'float';
-  if ACell^.UsedFormattingFields <> [] then begin
+  if ACell^.UsedFormattingFields <> [] then
+  begin
     lIndex := FindFormattingInList(ACell);
     lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
     if pos('%', ACell^.NumberFormatStr) <> 0 then
@@ -3875,7 +4059,8 @@ begin
     lStyle := '';
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then begin
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
@@ -3884,7 +4069,8 @@ begin
     spannedStr := '';
 
   // Displayed value
-  if IsInfinite(AValue) then begin
+  if IsInfinite(AValue) then
+  begin
     StrValue := '1.#INF';
     DisplayStr := '1.#INF';
   end else begin
@@ -3928,7 +4114,8 @@ begin
   Unused(ARow, ACol);
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then begin
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
@@ -3936,14 +4123,16 @@ begin
   end else
     spannedStr := '';
 
-  if ACell^.UsedFormattingFields <> [] then begin
+  if ACell^.UsedFormattingFields <> [] then
+  begin
     lIndex := FindFormattingInList(ACell);
     lStyle := 'table:style-name="ce' + IntToStr(lIndex) + '" ';
   end else
     lStyle := '';
 
   // nfTimeInterval is a special case - let's handle it first:
-  if (ACell^.NumberFormat = nfTimeInterval) then begin
+  if (ACell^.NumberFormat = nfTimeInterval) then
+  begin
     strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
     displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
@@ -3953,7 +4142,8 @@ begin
       strValue, lStyle, spannedStr,
       displayStr
     ]));
-  end else begin
+  end else
+  begin
     // We have to distinguish between time-only values and values that contain date parts.
     isTimeOnly := IsTimeFormat(ACell^.NumberFormat) or IsTimeFormat(ACell^.NumberFormatStr);
     strValue := FormatDateTime(FMT[isTimeOnly], AValue);
