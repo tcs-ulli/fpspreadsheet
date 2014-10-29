@@ -91,7 +91,7 @@ function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 implementation
 
 uses
-  StrUtils, DateUtils, LConvEncoding, Math, fpsutils;
+  StrUtils, DateUtils, LConvEncoding, Math, fpsutils, fpscurrency;
 
 { Initializes the FormatSettings of the CSVParams to default values which
   can be replaced by the FormatSettings of the workbook's FormatSettings }
@@ -237,15 +237,14 @@ begin
   ACurrencySymbol := StrUtils.IfThen(CSVParams.FormatSettings.CurrencyString = '',
     FWorkbook.FormatSettings.CurrencyString,
     CSVParams.FormatSettings.CurrencyString);
-  p := pos(ACurrencySymbol, AText);
-  if p > 0 then begin
-    Delete(AText, p, Length(ACurrencySymbol));
-    AText := Trim(AText);
-    if AText = '' then
-      exit;
-    // Negative financial values are often enclosed by parenthesis
-    if ((AText[1] = '(') and (AText[Length(AText)] = ')')) then
-      AText := '-' + Trim(Copy(AText, 2, Length(AText)-2));
+  if RemoveCurrencySymbol(ACurrencySymbol, AText) then
+  begin
+    if IsNegative(AText) then
+    begin
+      if AText = '' then
+        exit;
+      AText := '-' + AText;
+    end;
   end else
     ACurrencySymbol := '';
 
@@ -360,7 +359,7 @@ begin
   if IsNumber(AText, dblValue, nf, decs, currSym, warning) then
   begin
     if currSym <> '' then
-      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, decs, currSym)
+      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, -1, currSym)
     else
       FWorksheet.WriteNumber(ARow, ACol, dblValue, nf, decs);
     if warning <> '' then
