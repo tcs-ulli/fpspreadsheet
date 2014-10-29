@@ -359,7 +359,7 @@ begin
   if IsNumber(AText, dblValue, nf, decs, currSym, warning) then
   begin
     if currSym <> '' then
-      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, -1, currSym)
+      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, decs, currSym)
     else
       FWorksheet.WriteNumber(ARow, ACol, dblValue, nf, decs);
     if warning <> '' then

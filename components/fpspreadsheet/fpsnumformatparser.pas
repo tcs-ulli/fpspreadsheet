@@ -261,21 +261,11 @@ begin
 end;
 
 function TsNumFormatParser.AnalyzeCurrency(const AValue: String): Boolean;
-var
-  uValue: String;
 begin
   if (FWorkbook = nil) or (FWorkbook.FormatSettings.CurrencyString = '') then
     Result := false
   else
     Result := CurrencyRegistered(AValue);
-    {
-    uValue := UTF8Uppercase(AValue);
-    Result := (uValue = UTF8Uppercase(FWorkbook.FormatSettings.CurrencyString)) or
-              (uValue = '$') or (uValue = 'USD') or
-              (uValue = '€') or (uValue = 'EUR') or
-              (uValue = '£') or (uValue = 'GBP') or
-              (uValue = '¥') or (uValue = 'JPY');
-              }
 end;
 
 { Creates a formatstring for all sections.
@@ -1112,7 +1102,7 @@ begin
             (FSections[ASection].Elements[AIndex].Token = AToken);
 end;
 
-{ Limits the decimals to 0 or 2, as required by Excel }
+{ Limits the decimals to 0 or 2, as required by Excel2. }
 procedure TsNumFormatParser.LimitDecimals;
 var
   i, j: Integer;
@@ -1126,7 +1116,7 @@ end;
 
 { Localizes the thousand- and decimal separator symbols by replacing them with
   the FormatSettings value of the workbook. A recreated format string will be
-  localized as required by Excel2 }
+  localized as required by Excel2. }
 procedure TsNumFormatParser.Localize;
 var
   i, j: Integer;
