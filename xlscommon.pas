@@ -568,10 +568,10 @@ begin
   AddFormat( 2, '0.00', nfFixed);
   AddFormat( 3, '#,##0', nfFixedTh);
   AddFormat( 4, '#,##0.00', nfFixedTh);
-  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency);
-  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed);
-  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency);
-  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrencyRed);
+  AddFormat( 5, '"'+cs+'"#,##0;("'+cs+'"#,##0)', nfCurrency);
+  AddFormat( 6, '"'+cs+'"#,##0;[Red]("'+cs+'"#,##0)', nfCurrencyRed);
+  AddFormat( 7, '"'+cs+'"#,##0.00;("'+cs+'"#,##0.00)', nfCurrency);
+  AddFormat( 8, '"'+cs+'"#,##0.00;[Red]("'+cs+'"#,##0.00)', nfCurrencyRed);
   AddFormat( 9, '0%', nfPercentage);
   AddFormat(10, '0.00%', nfPercentage);
   AddFormat(11, '0.00E+00', nfExp);

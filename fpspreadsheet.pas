@@ -198,7 +198,7 @@ const
   ncfCMV     = 2;    // $-1000
   ncfCVM     = 3;    // $1000-
   ncfBVCB    = 4;    // (1000$)
-  ccfMVC     = 5;    // -1000$
+  ncfMVC     = 5;    // -1000$
   ncfVMC     = 6;    // 1000-$
   ncfVCM     = 7;    // 1000$-
   ncfMVSC    = 8;    // -1000 $

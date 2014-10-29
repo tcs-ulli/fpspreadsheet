@@ -171,10 +171,16 @@ var
 begin
   // Set up norm - MUST match spreadsheet cells exactly
 
-  // The workbook uses a slightly modified copy of the DefaultFormatSettings
-  // We create a copy here in order to better define the predicted strings.
   myWorkbook := TsWorkbook.Create;
   try
+    // There are some inconsistencies in fpc number-to-string conversions regarding
+    // thousand separators and usage of - sign for very small numbers.
+    // Therefore, we force the currency format to a given specification and build
+    // the expected string accordingly.
+    MyWorkbook.FormatSettings.CurrencyString := '€';  // use € for checking UTF8 issues
+    // To get matching results also for Excel2 let't use its currency-value sequence.
+    MyWorkbook.FormatSettings.Currencyformat := pcfCV;  // €100
+    Myworkbook.FormatSettings.NegCurrFormat := ncfBCVB;  // (€100)
     fs := MyWorkbook.FormatSettings;
   finally
     myWorkbook.Free;
@@ -197,7 +203,7 @@ begin
   SollNumberFormats[5] := nfExp;          SollNumberDecimals[5] := 2;
   SollNumberFormats[6] := nfPercentage;   SollNumberDecimals[6] := 0;
   SollNumberFormats[7] := nfPercentage;   SollNumberDecimals[7] := 2;
-  SollNumberFormats[8] := nfCurrency;     SollNumberDecimals[8] := 1; // This should be 0, but there is a bug in fpc, issue #0026944)
+  SollNumberFormats[8] := nfCurrency;     SollNumberDecimals[8] := 0;
   SollNumberFormats[9] := nfCurrency;     SollNumberDecimals[9] := 2;
 
   SollNumberstrings[0, 0] := CurrToStrF(-1000.1, ffCurrency, 0, fs);
@@ -212,8 +218,8 @@ begin
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
     SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
     SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
-    SollNumberStrings[i, 8] := CurrToStrF(SollNumbers[i], ffCurrency, SollNumberDecimals[8], fs);
-    SollNumberStrings[i, 9] := CurrToStrF(SollNumbers[i], ffCurrency, SollNumberDecimals[9], fs);
+    SollNumberStrings[i, 8] := FormatCurr('"€"#,##0;("€"#,##0)', SollNumbers[i], fs);
+    SollNumberStrings[i, 9] := FormatCurr('"€"#,##0.00;("€"#,##0.00)', SollNumbers[i], fs);
   end;
 
   // Date/time values
@@ -324,6 +330,9 @@ begin
   // Write out all test values
   MyWorkbook := TsWorkbook.Create;
   try
+    MyWorkbook.FormatSettings.CurrencyString := '€';  // use € for checking UTF8 issues
+    MyWorkbook.FormatSettings.Currencyformat := pcfCV;  // €100
+    Myworkbook.FormatSettings.NegCurrFormat := ncfBCVB;  // (€100)
     if (AFormat = sfCSV) then
     begin
       case AVariant of
@@ -359,6 +368,9 @@ begin
   // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   try
+    MyWorkbook.FormatSettings.CurrencyString := '€';  // use € for checking UTF8 issues
+    MyWorkbook.FormatSettings.Currencyformat := pcfCV;  // €100
+    Myworkbook.FormatSettings.NegCurrFormat := ncfBCVB;  // (€100)
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     if AFormat in [sfExcel2, sfCSV] then
       MyWorksheet := MyWorkbook.GetFirstWorksheet
