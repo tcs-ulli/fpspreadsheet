@@ -157,7 +157,7 @@ type
 implementation
 
 uses
-  TypInfo, StrUtils, fpsutils;
+  TypInfo, StrUtils, LazUTF8, fpsutils, fpsCurrency;
 
 
 { TsNumFormatParser }
@@ -266,14 +266,16 @@ var
 begin
   if (FWorkbook = nil) or (FWorkbook.FormatSettings.CurrencyString = '') then
     Result := false
-  else begin
-    uValue := Uppercase(AValue);
-    Result := (uValue = Uppercase(AnsiToUTF8(FWorkbook.FormatSettings.CurrencyString))) or
+  else
+    Result := CurrencyRegistered(AValue);
+    {
+    uValue := UTF8Uppercase(AValue);
+    Result := (uValue = UTF8Uppercase(FWorkbook.FormatSettings.CurrencyString)) or
               (uValue = '$') or (uValue = 'USD') or
               (uValue = '€') or (uValue = 'EUR') or
               (uValue = '£') or (uValue = 'GBP') or
               (uValue = '¥') or (uValue = 'JPY');
-  end;
+              }
 end;
 
 { Creates a formatstring for all sections.

@@ -92,7 +92,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="6">
+    <Units Count="8">
       <Unit0>
         <Filename Value="spready.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -134,6 +134,18 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="sSortParamsForm"/>
       </Unit5>
+      <Unit6>
+        <Filename Value="sfcurrencyform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="CurrencyForm"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sfCurrencyForm"/>
+      </Unit6>
+      <Unit7>
+        <Filename Value="..\..\fpscurrency.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="fpsCurrency"/>
+      </Unit7>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

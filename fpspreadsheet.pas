@@ -1234,7 +1234,7 @@ implementation
 
 uses
   Math, StrUtils, TypInfo, lazutf8,
-  fpsStrings, fpsStreams, fpsUtils, fpsNumFormatParser, fpsExprParser;
+  fpsStrings, fpsStreams, fpsUtils, fpsCurrency, fpsNumFormatParser, fpsExprParser;
 
 const
   { These are reserved system colors by Microsoft
@@ -1323,7 +1323,6 @@ var
     'beige',      // $15
     'wheat'       // $16
   );
-
 
 {@@ ----------------------------------------------------------------------------
   Registers a new reader/writer pair for a given spreadsheet file format
@@ -3818,6 +3817,7 @@ var
   isPercent: Boolean;
   number: Double;
   r, c: Cardinal;
+  currSym: String;
 begin
   if ACell = nil then
     exit;
@@ -3837,11 +3837,20 @@ begin
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
 
-  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then begin
+  if TryStrToCurrency(AValue, number, currSym, FWorkbook.FormatSettings) then
+  begin
+    WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
+    exit;
+  end;
+
+  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then
+  begin
     if isPercent then
       WriteNumber(ACell, number/100, nfPercentage)
-    else begin
-      if IsDateTimeFormat(ACell^.NumberFormat) then begin
+    else
+    begin
+      if IsDateTimeFormat(ACell^.NumberFormat) then
+      begin
         ACell^.NumberFormat := nfGeneral;
         ACell^.NumberFormatStr := '';
       end;
@@ -3850,21 +3859,25 @@ begin
     exit;
   end;
 
-  if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then begin
+  if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then
+  begin
     if number < 1.0 then begin    // this is a time alone
-      if not IsTimeFormat(ACell^.NumberFormat) then begin
+      if not IsTimeFormat(ACell^.NumberFormat) then
+      begin
         ACell^.NumberFormat := nfLongTime;
         ACell^.NumberFormatStr := '';
       end;
     end else
     if frac(number) = 0.0 then begin  // this is a date alone
-      if not (ACell^.NumberFormat in [nfShortDate, nfLongDate, nfShortDateTime])
-      then begin
+      if not (ACell^.NumberFormat in [nfShortDate, nfLongDate, nfShortDateTime]) then
+      begin
         ACell^.NumberFormat := nfShortDate;
         ACell^.NumberFormatStr := '';
       end;
-    end else begin
-      if not IsDateTimeFormat(ACell^.NumberFormat) then begin
+    end else
+    begin
+      if not IsDateTimeFormat(ACell^.NumberFormat) then
+      begin
         ACell^.NumberFormat := nfShortDateTime;
         ACell^.NumberFormatStr := '';
       end;
@@ -3937,6 +3950,7 @@ begin
     ANegCurrFormat := Workbook.FormatSettings.NegCurrFormat;
   if ACurrencySymbol = '?' then
     ACurrencySymbol := Workbook.FormatSettings.CurrencyString;
+  RegisterCurrency(ACurrencySymbol);
 
   fmt := BuildCurrencyFormatString(
     nfdDefault,
@@ -4353,10 +4367,12 @@ begin
   if ANumberFormat <> nfGeneral then begin
     Include(ACell^.UsedFormattingFields, uffNumberFormat);
     if ANumberFormat in [nfCurrency, nfCurrencyRed] then
+    begin
       ACell^.NumberFormatStr := BuildCurrencyFormatString(nfdDefault, ANumberFormat,
         Workbook.FormatSettings, ADecimals,
-        APosCurrFormat, ANegCurrFormat, ACurrencySymbol)
-    else
+        APosCurrFormat, ANegCurrFormat, ACurrencySymbol);
+      RegisterCurrency(ACurrencySymbol);
+    end else
       ACell^.NumberFormatStr := BuildNumberFormatString(ANumberFormat,
         Workbook.FormatSettings, ADecimals);
   end else begin
@@ -8231,6 +8247,7 @@ end;
 
 
 initialization
+  // Default palette
   MakeLEPalette(@DEFAULT_PALETTE, Length(DEFAULT_PALETTE));
 
 finalization

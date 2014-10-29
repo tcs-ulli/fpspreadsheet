@@ -81,6 +81,7 @@ type
     AcFormatSettings: TAction;
     AcSortColAsc: TAction;
     AcSort: TAction;
+    AcCurrencySymbols: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -170,11 +171,12 @@ type
     MenuItem72: TMenuItem;
     MenuItem73: TMenuItem;
     MenuItem74: TMenuItem;
-    MenuItem75: TMenuItem;
+    MnuNumberFormatSettings: TMenuItem;
     MenuItem76: TMenuItem;
     MenuItem77: TMenuItem;
     MenuItem78: TMenuItem;
     MenuItem79: TMenuItem;
+    MnuCurrencySymbol: TMenuItem;
     MnuCSVParams: TMenuItem;
     MnuSettings: TMenuItem;
     mnuInspector: TMenuItem;
@@ -279,6 +281,7 @@ type
     procedure AcBorderExecute(Sender: TObject);
     procedure AcCopyFormatExecute(Sender: TObject);
     procedure AcCSVParamsExecute(Sender: TObject);
+    procedure AcCurrencySymbolsExecute(Sender: TObject);
     procedure AcDeleteColumnExecute(Sender: TObject);
     procedure AcDeleteRowExecute(Sender: TObject);
     procedure AcEditExecute(Sender: TObject);
@@ -350,7 +353,7 @@ implementation
 uses
   TypInfo, LCLIntf, LCLType,
   fpcanvas, fpsutils, fpscsv,
-  sFormatSettingsForm, sCSVParamsForm, sSortParamsForm;
+  sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sfCurrencyForm;
 
 const
   DROPDOWN_COUNT = 24;
@@ -514,6 +517,18 @@ begin
     F.SetParams(fpscsv.CSVParams);
     if F.ShowModal = mrOK then
       F.GetParams(fpscsv.CSVParams);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TMainFrm.AcCurrencySymbolsExecute(Sender: TObject);
+var
+  F: TCurrencyForm;
+begin
+  F := TCurrencyForm.Create(nil);
+  try
+    F.ShowModal;
   finally
     F.Free;
   end;

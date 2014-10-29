@@ -1413,11 +1413,14 @@ object MainFrm: TMainFrm
     end
     object MnuSettings: TMenuItem
       Caption = 'Settings'
-      object MenuItem75: TMenuItem
+      object MnuNumberFormatSettings: TMenuItem
         Action = AcFormatSettings
       end
       object MnuCSVParams: TMenuItem
         Action = AcCSVParams
+      end
+      object MnuCurrencySymbol: TMenuItem
+        Action = AcCurrencySymbols
       end
     end
   end
@@ -3215,6 +3218,12 @@ object MainFrm: TMainFrm
       Caption = 'Sort...'
       Hint = 'Sort selected range'
       OnExecute = AcSortExecute
+    end
+    object AcCurrencySymbols: TAction
+      Category = 'Settings'
+      Caption = 'Currency symbols...'
+      Hint = 'Names and symbols known as valid currencies'
+      OnExecute = AcCurrencySymbolsExecute
     end
   end
   object FontDialog: TFontDialog
