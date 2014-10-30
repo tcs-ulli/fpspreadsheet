@@ -138,6 +138,7 @@ type
     procedure TestWriteRead_OOXML_WordWrap;
 
     { CSV Tests }
+    procedure TestWriteRead_CSV_DateTimeFormats;
     procedure TestWriteRead_CSV_NumberFormats_0;
     procedure TestWriteRead_CSV_NumberFormats_1;
   end;
@@ -319,6 +320,9 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_NumberFormats(AFormat: TsSpreadsheetFormat;
   AVariant: Integer = 0);
+{ AVariant specifies variants for csv:
+  0 = decimal and thousand separator as in workbook's FormatSettings,
+  1 = intercanged }
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -476,7 +480,7 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkbook.ReadFromFile(TempFile, AFormat);
-    if AFormat = sfExcel2 then
+    if AFormat in [sfExcel2, sfCSV] then
       MyWorksheet := MyWorkbook.GetFirstWorksheet
     else
       MyWorksheet := GetWorksheetByName(MyWorkbook, FmtDateTimesSheet);
@@ -524,6 +528,12 @@ procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_DateTimeFormats;
 begin
   TestWriteRead_DateTimeFormats(sfOOXML);
 end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_CSV_DateTimeFormats;
+begin
+  TestWriteRead_DateTimeFormats(sfCSV);
+end;
+
 
 { --- Alignment tests --- }
 

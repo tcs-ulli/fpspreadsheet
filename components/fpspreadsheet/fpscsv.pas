@@ -12,8 +12,10 @@ type
   TsCSVReader = class(TsCustomSpreadReader)
   private
     FWorksheetName: String;
+    FFormatSettings: TFormatSettings;
     function IsBool(AText: String; out AValue: Boolean): Boolean;
-    function IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
+    function IsDateTime(AText: String; out ADateTime: TDateTime;
+      out ANumFormat: TsNumberFormat): Boolean;
     function IsNumber(AText: String; out ANumber: Double; out ANumFormat: TsNumberFormat;
       out ADecimals: Integer; out ACurrencySymbol, AWarning: String): Boolean;
     function IsQuotedText(var AText: String): Boolean;
@@ -34,6 +36,7 @@ type
   private
     FCSVBuilder: TCSVBuilder;
     FEncoding: String;
+    FFormatSettings: TFormatSettings;
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -197,7 +200,8 @@ end;
 constructor TsCSVReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  ReplaceFormatSettings(CSVParams.FormatSettings, AWorkbook.FormatSettings);
+  FFormatSettings := CSVParams.FormatSettings;
+  ReplaceFormatSettings(FFormatSettings, AWorkbook.FormatSettings);
   FWorksheetName := 'Sheet1';  // will be replaced by filename
 end;
 
@@ -216,9 +220,45 @@ begin
     Result := false;
 end;
 
-function TsCSVReader.IsDateTime(AText: String; out ADateTime: TDateTime): Boolean;
+function TsCSVReader.IsDateTime(AText: String; out ADateTime: TDateTime;
+  out ANumFormat: TsNumberFormat): Boolean;
+
+  { Test whether the text is formatted according to a built-in date/time format.
+    Converts the obtained date/time value back to a string and compares. }
+  function TestFormat(lNumFmt: TsNumberFormat): Boolean;
+  var
+    fmt: string;
+  begin
+    fmt := BuildDateTimeFormatString(lNumFmt, FFormatSettings);
+    Result := FormatDateTime(fmt, ADateTime, FFormatSettings) = AText;
+    if Result then ANumFormat := lNumFmt;
+  end;
+
 begin
-  Result := TryStrToDateTime(AText, ADateTime, CSVParams.FormatSettings);
+  Result := TryStrToDateTime(AText, ADateTime, FFormatSettings);
+  if Result then
+  begin
+    ANumFormat := nfCustom;
+    if abs(ADateTime) > 1 then       // this is most probably a date
+    begin
+      if TestFormat(nfShortDateTime) then
+        exit;
+      if TestFormat(nfLongDate) then
+        exit;
+      if TestFormat(nfShortDate) then
+        exit;
+    end else
+    begin          // this case is time-only
+      if TestFormat(nfLongTimeAM) then
+        exit;
+      if TestFormat(nfLongTime) then
+        exit;
+      if TestFormat(nfShortTimeAM) then
+        exit;
+      if TestFormat(nfShortTime) then
+        exit;
+    end;
+  end;
 end;
 
 function TsCSVReader.IsNumber(AText: String; out ANumber: Double;
@@ -234,9 +274,7 @@ begin
   // To detect whether the text is a currency value we look for the currency
   // string. If we find it, we delete it and convert the remaining string to
   // a number.
-  ACurrencySymbol := StrUtils.IfThen(CSVParams.FormatSettings.CurrencyString = '',
-    FWorkbook.FormatSettings.CurrencyString,
-    CSVParams.FormatSettings.CurrencyString);
+  ACurrencySymbol := FFormatSettings.CurrencyString;
   if RemoveCurrencySymbol(ACurrencySymbol, AText) then
   begin
     if IsNegative(AText) then
@@ -251,15 +289,15 @@ begin
   if CSVParams.AutoDetectNumberFormat then
     Result := TryStrToFloatAuto(AText, ANumber, DecSep, ThousSep, AWarning)
   else begin
-    Result := TryStrToFloat(AText, ANumber, CSVParams.FormatSettings);
+    Result := TryStrToFloat(AText, ANumber, FFormatSettings);
     if Result then
     begin
-      if pos(CSVParams.FormatSettings.DecimalSeparator, AText) = 0
+      if pos(FFormatSettings.DecimalSeparator, AText) = 0
         then DecSep := #0
-        else DecSep := CSVParams.FormatSettings.DecimalSeparator;
+        else DecSep := FFormatSettings.DecimalSeparator;
       if pos(CSVParams.FormatSettings.ThousandSeparator, AText) = 0
         then ThousSep := #0
-        else ThousSep := CSVParams.FormatSettings.ThousandSeparator;
+        else ThousSep := FFormatSettings.ThousandSeparator;
     end;
   end;
 
@@ -369,15 +407,8 @@ begin
 
   // Check for a DATE/TIME cell
   // No idea how to apply the date/time formatsettings here...
-  if IsDateTime(AText, dtValue) then
+  if IsDateTime(AText, dtValue, nf) then
   begin
-    if dtValue < 1.0 then         // this is a time alone
-      nf := nfLongTime
-    else
-    if frac(dtValue) = 0.0 then   // this is a date alone
-      nf := nfShortDate
-    else                          // this is date + time
-      nf := nfShortDateTime;
     FWorksheet.WriteDateTime(ARow, ACol, dtValue, nf);
     exit;
   end;
@@ -473,7 +504,8 @@ end;
 constructor TsCSVWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  ReplaceFormatSettings(CSVParams.FormatSettings, FWorkbook.FormatSettings);
+  FFormatSettings := CSVParams.FormatSettings;
+  ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
   if CSVParams.Encoding = '' then
     FEncoding := 'utf8'
   else
@@ -561,9 +593,9 @@ begin
   if ACell = nil then
     exit;
   if CSVParams.NumberFormat <> '' then
-    s := Format(CSVParams.NumberFormat, [AValue], CSVParams.FormatSettings)
+    s := Format(CSVParams.NumberFormat, [AValue], FFormatSettings)
   else
-    s := FWorksheet.ReadAsUTF8Text(ACell, CSVParams.FormatSettings);
+    s := FWorksheet.ReadAsUTF8Text(ACell, FFormatSettings);
   s := ConvertEncoding(s, EncodingUTF8, FEncoding);
   FCSVBuilder.AppendCell(s);
 end;
