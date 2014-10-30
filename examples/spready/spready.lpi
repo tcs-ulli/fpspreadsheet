@@ -116,6 +116,7 @@
       <Unit3>
         <Filename Value="sctrls.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="sCtrls"/>
       </Unit3>
       <Unit4>
         <Filename Value="sformatsettingsform.pas"/>
@@ -131,16 +132,20 @@
         <ComponentName Value="SortParamsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sSortParamsForm"/>
       </Unit5>
       <Unit6>
         <Filename Value="sfcurrencyform.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="CurrencyForm"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sfCurrencyForm"/>
       </Unit6>
       <Unit7>
         <Filename Value="..\..\fpscurrency.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="fpsCurrency"/>
       </Unit7>
     </Units>
   </ProjectOptions>
