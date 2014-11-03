@@ -309,7 +309,7 @@ var
   lLineSplitter: TWikiTableTokenizer;
   lCurToken: TWikiTableToken;
 begin
-  FWorksheet := AData.AddWorksheet('Table');
+  FWorksheet := AData.AddWorksheet('Table', true);
   lLineSplitter := TWikiTableTokenizer.Create(AData);
   try
     for i := 0 to AStrings.Count-1 do

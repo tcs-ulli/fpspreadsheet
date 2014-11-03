@@ -141,7 +141,7 @@ end;
 function TryStrToCurrency(AText: String; out ANumber: Double;
   out ACurrencySymbol:String; const AFormatSettings: TFormatSettings): boolean;
 var
-  i, p: Integer;
+  i: Integer;
   s: String;
   isNeg: Boolean;
 begin

@@ -1,0 +1,198 @@
+object Form1: TForm1
+  Left = 349
+  Height = 600
+  Top = 117
+  Width = 925
+  Caption = 'Form1'
+  ClientHeight = 600
+  ClientWidth = 925
+  LCLVersion = '1.3'
+  object Panel1: TPanel
+    Left = 0
+    Height = 42
+    Top = 0
+    Width = 925
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 42
+    ClientWidth = 925
+    TabOrder = 0
+    object Button1: TButton
+      Left = 8
+      Height = 25
+      Top = 8
+      Width = 75
+      Caption = 'Open...'
+      OnClick = Button1Click
+      TabOrder = 0
+    end
+    object CellIndicator: TsCellIndicator
+      Left = 95
+      Height = 28
+      Top = 9
+      Width = 80
+      TabOrder = 1
+      Text = 'A1'
+      WorkbookSource = WorkbookSource
+    end
+    object CellEdit: TsCellEdit
+      Left = 184
+      Height = 28
+      Top = 9
+      Width = 731
+      Anchors = [akTop, akLeft, akRight]
+      TabOrder = 2
+      WantReturns = False
+      WorkbookSource = WorkbookSource
+    end
+  end
+  object WorkbookTabControl: TsWorkbookTabControl
+    Left = 0
+    Height = 558
+    Top = 42
+    Width = 672
+    TabIndex = 0
+    Tabs.Strings = (
+      'Sheet1'
+    )
+    Align = alClient
+    TabOrder = 1
+    WorkbookSource = WorkbookSource
+    object WorksheetGrid: TsWorksheetGrid
+      Left = 2
+      Height = 528
+      Top = 28
+      Width = 668
+      FrozenCols = 0
+      FrozenRows = 0
+      ReadFormulas = False
+      WorkbookSource = WorkbookSource
+      Align = alClient
+      AutoAdvance = aaDown
+      ColCount = 27
+      Font.Color = clBlack
+      Font.Height = -13
+      Font.Name = 'Arial'
+      ParentFont = False
+      RowCount = 101
+      TabOrder = 1
+      TitleFont.Color = clBlack
+      TitleFont.Height = -13
+      TitleFont.Name = 'Arial'
+      ColWidths = (
+        50
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+        64
+      )
+    end
+  end
+  object InspectorTabControl: TTabControl
+    Left = 677
+    Height = 558
+    Top = 42
+    Width = 248
+    OnChange = InspectorTabControlChange
+    TabIndex = 0
+    Tabs.Strings = (
+      'Workbook'
+      'Worksheet'
+      'Cell values'
+      'Cell properties'
+    )
+    Align = alRight
+    TabOrder = 2
+    object Inspector: TsSpreadsheetInspector
+      Left = 2
+      Height = 528
+      Top = 28
+      Width = 244
+      Align = alClient
+      RowCount = 24
+      TabOrder = 1
+      Strings.Strings = (
+        'FileName='
+        'FileFormat=sfExcel8'
+        'Options='
+        'FormatSettings='
+        '  ThousandSeparator=.'
+        '  DecimalSeparator=,'
+        '  ListSeparator=;'
+        '  DateSeparator=.'
+        '  TimeSeparator=:'
+        '  ShortDateFormat=dd.MM.yy'
+        '  LongDateFormat=dd.MMM.yyyy'
+        '  ShortTimeFormat=hh:nn'
+        '  LongTimeFormat=hh:nn:ss'
+        '  TimeAMString='
+        '  TimePMString='
+        '  ShortMonthNames=Jan, Feb, Mrz, Apr, Mai, Jun, Jul, Aug, Sep, Okt, Nov, Dez'
+        '  LongMontNames=Januar, Februar, März, April, Mai, Juni, Juli, August, September, Oktober, November, Dezember'
+        '  ShortMonthNames=So, Mo, Di, Mi, Do, Fr, Sa'
+        '  LongMontNames=Sonntag, Montag, Dienstag, Mittwoch, Donnerstag, Freitag, Samstag'
+        '  CurrencyString=€'
+        '  PosCurrencyFormat=3'
+        '  NegCurrencyFormat=8'
+        '  TwoDigitYearCenturyWindow=50'
+      )
+      TitleCaptions.Strings = (
+        'Properties'
+        'Values'
+      )
+      WorkbookSource = WorkbookSource
+      Mode = imWorkbook
+      ColWidths = (
+        109
+        110
+      )
+    end
+  end
+  object Splitter1: TSplitter
+    Left = 672
+    Height = 558
+    Top = 42
+    Width = 5
+    Align = alRight
+    ResizeAnchor = akRight
+  end
+  object WorkbookSource: TsWorkbookSource
+    AutoDetectFormat = False
+    Options = [boAutoCalc, boCalcBeforeSaving, boReadFormulas]
+    left = 150
+    top = 234
+  end
+  object OpenDialog: TOpenDialog
+    DefaultExt = '.xls'
+    Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv'
+    Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
+    left = 312
+    top = 128
+  end
+  object ActionList1: TActionList
+    left = 434
+    top = 180
+  end
+end

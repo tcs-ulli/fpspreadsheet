@@ -1442,7 +1442,7 @@ begin
         TableNode := TableNode.NextSibling;
         continue;
       end;
-      FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'));
+      FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'), true);
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
@@ -2010,8 +2010,11 @@ begin
           ReadDateTime(row, col, cellNode)
         else if (paramValueType = 'boolean') then
           ReadBoolean(row, col, cellNode)
-        else if (paramValueType = '') and (tableStyleName <> '') then
+        else if (paramValueType = '') then //and (tableStyleName <> '') then
           ReadBlank(row, col, cellNode);
+        {$Warning TODO: Check if the removal of "tableStyleName" here does not
+           create unnecessary empty cells. The ReadBlank should only be executed
+           if the cell contains formatting! }
 
         if ParamFormula <> '' then
           ReadFormula(row, col, cellNode);

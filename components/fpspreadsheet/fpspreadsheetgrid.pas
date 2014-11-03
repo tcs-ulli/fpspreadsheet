@@ -21,7 +21,7 @@ interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
-  fpspreadsheet;
+  fpspreadsheet, fpspreadsheetctrls;
 
 type
 
@@ -34,8 +34,10 @@ type
   TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
     { Private declarations }
-    FWorkbook: TsWorkbook;
-    FWorksheet: TsWorksheet;
+    FWorkbookSource: TsWorkbookSource;
+    FOwnedWorkbook: TsWorkbook;
+    FOwnsWorkbook: Boolean;
+    FOwnedWorksheet: TsWorksheet;
     FHeaderCount: Integer;
     FInitColCount: Integer;
     FInitRowCount: Integer;
@@ -85,6 +87,8 @@ type
     function GetTextRotations(ARect: TGridRect): TsTextRotation;
     function GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
     function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
+    function GetWorkbook: TsWorkbook;
+    function GetWorksheet: TsWorksheet;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
     function GetWordwraps(ARect: TGridRect): Boolean;
     procedure SetAutoCalc(AValue: Boolean);
@@ -114,6 +118,7 @@ type
     procedure SetTextRotations(ARect: TGridRect; AValue: TsTextRotation);
     procedure SetVertAlignment(ACol, ARow: Integer; AValue: TsVertAlignment);
     procedure SetVertAlignments(ARect: TGridRect; AValue: TsVertAlignment);
+    procedure SetWorkbookSource(AValue: TsWorkbookSource);
     procedure SetWordwrap(ACol, ARow: Integer; AValue: boolean);
     procedure SetWordwraps(ARect: TGridRect; AValue: boolean);
 
@@ -148,6 +153,8 @@ type
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MoveSelection; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+//    function SelectCell(AGridCol, AGridRow: Integer): Boolean; override;
     procedure SelectEditor; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
@@ -211,11 +218,21 @@ type
     procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
     function FindNearestPaletteIndex(AColor: TColor): TsColor;
 
+    { Interfacing with WorkbookLink }
+    procedure ListenerNotification(AChangedItems: TsNotificationItems;
+      AData: Pointer = nil);
+//    procedure CellChanged(ACell: PCell);
+//    procedure CellSelected(ASheetRow, ASheetCol: Cardinal);
+//    procedure WorkbookChanged;
+//    procedure WorksheetChanged;
+
     { public properties }
+    {@@ Link to the workbook }
+    property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
     {@@ Currently selected worksheet of the workbook }
-    property Worksheet: TsWorksheet read FWorksheet;
+    property Worksheet: TsWorksheet read GetWorksheet;
     {@@ Workbook displayed in the grid }
-    property Workbook: TsWorkbook read FWorkbook;
+    property Workbook: TsWorkbook read GetWorkbook;
     {@@ Count of header lines - for conversion between grid- and workbook-based
      row and column indexes. Either 1 if row and column headers are shown or 0 if not}
     property HeaderCount: Integer read FHeaderCount;
@@ -341,6 +358,8 @@ type
     property ShowHeaders;
     {@@ Activates text overflow (cells reaching into neighbors) }
     property TextOverflow;
+    {@@ Link to the workbook }
+    property WorkbookSource; //: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
 
     {@@ inherited from ancestors}
     property Align;
@@ -712,11 +731,11 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Registers the worksheet grid in the Lazarus component palette,
-  page "Additional".
+  page "FPSpreadsheet".
 -------------------------------------------------------------------------------}
 procedure Register;
 begin
-  RegisterComponents('Additional',[TsWorksheetGrid]);
+  RegisterComponents('FPSpreadsheet', [TsWorksheetGrid]);
 end;
 
 
@@ -740,6 +759,7 @@ begin
   FInitColCount := 26;
   FInitRowCount := 100;
   FCellFont := TFont.Create;
+  FOwnsWorkbook := true;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -747,7 +767,8 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsCustomWorksheetGrid.Destroy;
 begin
-  FreeAndNil(FWorkbook);
+  if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
+  if FOwnsWorkbook then FreeAndNil(FOwnedWorkbook);
   FreeAndNil(FCellFont);
   inherited Destroy;
 end;
@@ -764,10 +785,10 @@ var
   w, maxw: Integer;
   txt: String;
 begin
-  if FWorksheet = nil then
+  if Worksheet = nil then
     exit;
 
-  lastRow := FWorksheet.GetLastOccupiedRowIndex;
+  lastRow := Worksheet.GetLastOccupiedRowIndex;
   maxw := -1;
   for r := 0 to lastRow do
   begin
@@ -791,7 +812,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.AutoAdjustRow(ARow: Integer);
 begin
-  if FWorksheet <> nil then
+  if Worksheet <> nil then
     RowHeights[ARow] := CalcAutoRowHeight(ARow)
   else
     RowHeights[ARow] := DefaultRowHeight;
@@ -820,7 +841,7 @@ function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
 var
   w0: Integer;
 begin
-  Convert_sFont_to_Font(FWorkbook.GetFont(0), Canvas.Font);
+  Convert_sFont_to_Font(Workbook.GetFont(0), Canvas.Font);
   w0 := Canvas.TextWidth('0');
   Result := Round(AWidth * w0);
 end;
@@ -921,7 +942,7 @@ begin
       begin
         result := true;
         inc(ACol2);
-        cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol2));
+        cell := Worksheet.FindCell(r, GetWorksheetCol(ACol2));
         if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
         begin
           dec(ACol2);
@@ -935,7 +956,7 @@ begin
       begin
         result := true;
         dec(ACol1);
-        cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol1));
+        cell := Worksheet.FindCell(r, GetWorksheetCol(ACol1));
         if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
         begin
           inc(ACol1);
@@ -953,7 +974,7 @@ begin
         begin
           Result := true;
           inc(ACol2);
-          cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol2));
+          cell := Worksheet.FindCell(r, GetWorksheetCol(ACol2));
           if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
           begin
             dec(ACol2);
@@ -968,7 +989,7 @@ begin
         begin
           Result := true;
           dec(ACol1);
-          cell := FWorksheet.FindCell(r, GetWorksheetCol(ACol1));
+          cell := Worksheet.FindCell(r, GetWorksheetCol(ACol1));
           if (cell <> nil) and (cell^.Contenttype <> cctEmpty) then
           begin
             inc(ACol1);
@@ -1014,8 +1035,8 @@ var
   gr: Integer; // row index in grid units
 begin
   Unused(ASender, ACol);
-  if (FWorksheet <> nil) then begin
-    lRow := FWorksheet.FindRow(ARow);
+  if (Worksheet <> nil) then begin
+    lRow := Worksheet.FindRow(ARow);
     if lRow = nil then begin
       // There is no row record --> row height changes according to font height
       // Otherwise the row height would be fixed according to the value in the row record.
@@ -1122,7 +1143,7 @@ begin
   if AGridCol < FHeaderCount then
     exit;
 
-  FWorksheet.DeleteCol(GetWorksheetCol(AGridCol));
+  Worksheet.DeleteCol(GetWorksheetCol(AGridCol));
   UpdateColWidths(AGridCol);
 end;
 
@@ -1136,7 +1157,7 @@ begin
   if AGridRow < FHeaderCount then
     exit;
 
-  FWorksheet.DeleteRow(GetWorksheetRow(AGridRow));
+  Worksheet.DeleteRow(GetWorksheetRow(AGridRow));
   UpdateRowHeights(AGridRow);
 end;
 
@@ -1147,13 +1168,21 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.CreateNewWorkbook;
 begin
-  FreeAndNil(FWorkbook);
-  FWorkbook := TsWorkbook.Create;
-  if FReadFormulas then
-    FWorkbook.Options := FWorkbook.Options + [boReadFormulas]
+  if FOwnsWorkbook then
+    FreeAndNil(FOwnedWorkbook);
+
+  if FWorkbookSource <> nil then
+    FWorkbookSource.CreateNewWorkbook
   else
-    FWorkbook.Options := FWorkbook.Options - [boReadFormulas];
-  SetAutoCalc(FAutoCalc);
+  begin
+    FOwnedWorkbook := TsWorkbook.Create;
+    FOwnsWorkbook := true;
+    if FReadFormulas then
+      FOwnedWorkbook.Options := FOwnedWorkbook.Options + [boReadFormulas]
+    else
+      FOwnedWorkbook.Options := FOwnedWorkbook.Options - [boReadFormulas];
+    SetAutoCalc(FAutoCalc);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1224,18 +1253,18 @@ begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
       Canvas.Brush.Color := FixedColor
   end;
-  if (FWorksheet <> nil) and (ARow >= FHeaderCount) and (ACol >= FHeaderCount) then
+  if (Worksheet <> nil) and (ARow >= FHeaderCount) and (ACol >= FHeaderCount) then
   begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
     //lCell := FDrawingCell;
-    lCell := FWorksheet.FindCell(r, c);
+    lCell := Worksheet.FindCell(r, c);
     if lCell <> nil then
     begin
       // Background color
       if (uffBackgroundColor in lCell^.UsedFormattingFields) then
       begin
-        if FWorkbook.FileFormat = sfExcel2 then
+        if Workbook.FileFormat = sfExcel2 then
         begin
           if (FillPattern_BIFF2 = nil) and (ComponentState = []) then
             Create_FillPattern_BIFF2(Color);
@@ -1244,8 +1273,8 @@ begin
         end else
         begin
           Canvas.Brush.Style := bsSolid;
-          if lCell^.BackgroundColor < FWorkbook.GetPaletteSize then
-            Canvas.Brush.Color := FWorkbook.GetPaletteColor(lCell^.BackgroundColor)
+          if lCell^.BackgroundColor < Workbook.GetPaletteSize then
+            Canvas.Brush.Color := Workbook.GetPaletteColor(lCell^.BackgroundColor)
           else
             Canvas.Brush.Color := Color;
         end;
@@ -1257,11 +1286,11 @@ begin
       // Font
       if (uffFont in lCell^.UsedFormattingFields) then
       begin
-        fnt := FWorkbook.GetFont(lCell^.FontIndex);
+        fnt := Workbook.GetFont(lCell^.FontIndex);
         if fnt <> nil then
         begin
           Canvas.Font.Name := fnt.FontName;
-          Canvas.Font.Color := FWorkbook.GetPaletteColor(fnt.Color);
+          Canvas.Font.Color := Workbook.GetPaletteColor(fnt.Color);
           style := [];
           if fssBold in fnt.Style then Include(style, fsBold);
           if fssItalic in fnt.Style then Include(style, fsItalic);
@@ -1274,7 +1303,7 @@ begin
       if (lCell^.NumberFormat = nfCurrencyRed) and
          not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
       then
-        Canvas.Font.Color := FWorkbook.GetPaletteColor(scRed);
+        Canvas.Font.Color := Workbook.GetPaletteColor(scRed);
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;
@@ -1334,10 +1363,10 @@ var
   c, r: Integer;
   rect: TRect;
 begin
-  if FWorksheet = nil then
+  if Worksheet = nil then
     exit;
 
-  cell := FWorksheet.GetFirstCell;
+  cell := Worksheet.GetFirstCell;
   while cell <> nil do
   begin
     if (uffBorder in cell^.UsedFormattingFields) then
@@ -1347,7 +1376,7 @@ begin
       rect := CellRect(c, r);
       DrawCellBorders(c, r, rect);
     end;
-    cell := FWorksheet.GetNextCell;
+    cell := Worksheet.GetNextCell;
   end;
 end;
 
@@ -1383,7 +1412,7 @@ const
   begin
     Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
     Canvas.Pen.Width := PEN_WIDTHS[ABorderStyle.LineStyle];
-    Canvas.Pen.Color := FWorkbook.GetPaletteColor(ABorderStyle.Color);
+    Canvas.Pen.Color := Workbook.GetPaletteColor(ABorderStyle.Color);
     Canvas.Pen.EndCap := pecSquare;
     width3 := (ABorderStyle.LineStyle in [lsThick, lsDouble]);
 
@@ -1481,7 +1510,7 @@ var
   bs: TsCellBorderStyle;
   cell: PCell;
 begin
-  if Assigned(FWorksheet) then begin
+  if Assigned(Worksheet) then begin
     // Left border
     if GetBorderStyle(ACol, ARow, -1, 0, bs) then
       DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
@@ -1495,7 +1524,7 @@ begin
     if GetBorderStyle(ACol, ARow, 0, +1, bs) then
       DrawBorderLine(ARect.Bottom-1, ARect, drawHor, bs);
 
-    cell := FWorksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
+    cell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
     if cell <> nil then begin
       // Diagonal up
       if cbDiagUp in cell^.Border then begin
@@ -1536,9 +1565,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
 begin
-  if FWorkSheet = nil then
+  if WorkSheet = nil then
     exit;
-  if (soHasFrozenPanes in FWorksheet.Options) then begin
+  if (soHasFrozenPanes in Worksheet.Options) then begin
     Canvas.Pen.Style := psSolid;
     Canvas.Pen.Color := clBlack;
     Canvas.Pen.Width := 1;
@@ -1633,11 +1662,11 @@ begin
     // Because of possible cell overflow from cells left of the visible range
     // we have to seek to the left for the first occupied text cell
     // and start painting from here.
-    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(FWorksheet) then
+    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(Worksheet) then
       while (gc > FixedCols) do
       begin
         dec(gc);
-        cell := FWorksheet.FindCell(sr, GetWorksheetCol(gc));
+        cell := Worksheet.FindCell(sr, GetWorksheetCol(gc));
         // Empty cell --> proceed with next cell to the left
         if (cell = nil) or (cell^.ContentType = cctEmpty) or
            ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
@@ -1657,12 +1686,12 @@ begin
     // Now find the last column. Again text can overflow into the visible area
     // from cells to the right.
     gcLast := Right;
-    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(FWorksheet) then
+    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(Worksheet) then
     begin
-      gcLastUsed := GetGridCol(FWorksheet.GetLastOccupiedColIndex);
+      gcLastUsed := GetGridCol(Worksheet.GetLastOccupiedColIndex);
       while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
         inc(gcLast);
-        cell := FWorksheet.FindCell(sr, GetWorksheetCol(gcLast));
+        cell := Worksheet.FindCell(sr, GetWorksheetCol(gcLast));
         // Empty cell --> proceed with next cell to the right
         if (cell = nil) or (cell^.ContentType = cctEmpty) or
            ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
@@ -1688,9 +1717,9 @@ begin
       // it to avoid excessive calls to "FindCell".
       FDrawingCell := nil;
       gcNext := gc + 1;
-      if Assigned(FWorksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
+      if Assigned(Worksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
       begin
-        cell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
+        cell := Worksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
         if (cell = nil) or (cell^.Mergebase = nil) then
         begin
           // single cell
@@ -1735,8 +1764,8 @@ begin
         else
         begin
           // merged cells
-          FDrawingCell := FWorksheet.FindMergeBase(cell);
-          FWorksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
+          FDrawingCell := Worksheet.FindMergeBase(cell);
+          Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
           gr := GetGridRow(sr1);
           ColRowToOffSet(False, True, gr, rct.Top, tmp);
           ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
@@ -1766,8 +1795,8 @@ begin
     // is this column within the ClipRect?
     if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
     begin
-      if Assigned(FWorksheet) then
-        FDrawingCell := FWorksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc))
+      if Assigned(Worksheet) then
+        FDrawingCell := Worksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc))
       else
         FDrawingCell := nil;
       DoDrawCell(gc, gr, rct, rct);
@@ -1825,7 +1854,7 @@ var
   lCell: PCell;
   justif: Byte;
 begin
-  if (FWorksheet = nil) then
+  if (Worksheet = nil) then
     exit;
 
   if (ACol < FHeaderCount) or (ARow < FHeaderCount) then
@@ -1910,10 +1939,8 @@ begin
     oldText := GetCellText(Col, Row);
     if oldText <> FEditText then
     begin
-      if FWorksheet = nil then
-        FWorksheet := TsWorksheet.Create;
-      cell := FWorksheet.GetCell(Row-FHeaderCount, Col-FHeaderCount);
-      FWorksheet.WriteCellValueAsString(cell, FEditText);
+      cell := Worksheet.GetCell(Row-FHeaderCount, Col-FHeaderCount);
+      Worksheet.WriteCellValueAsString(cell, FEditText);
       FEditText := '';
     end;
     inherited EditingDone;
@@ -1948,28 +1975,28 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
     neighbor: PCell;
     border: TsCellBorders;
   begin
-    neighbor := FWorksheet.FindCell(NewRow, NewCol);
+    neighbor := Worksheet.FindCell(NewRow, NewCol);
     if neighbor <> nil then
     begin
       border := neighbor^.Border;
       if AInclude then
       begin
         Include(border, ANewBorder);
-        FWorksheet.WriteBorderStyle(NewRow, NewCol, ANewBorder, ANewBorderStyle);
+        Worksheet.WriteBorderStyle(NewRow, NewCol, ANewBorder, ANewBorderStyle);
       end else
         Exclude(border, ANewBorder);
-      FWorksheet.WriteBorders(NewRow, NewCol, border);
+      Worksheet.WriteBorders(NewRow, NewCol, border);
     end;
   end;
 
 var
   cell: PCell;
 begin
-  if FWorksheet = nil then
+  if Worksheet = nil then
     exit;
 
-  cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-  if (FWorksheet <> nil) and (cell <> nil) then
+  cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if (Worksheet <> nil) and (cell <> nil) then
     with cell^ do
     begin
       SetNeighborBorder(Row, Col-1, cbEast, BorderStyles[cbWest], cbWest in Border);
@@ -2075,6 +2102,67 @@ begin
     end;
   end;
 end;
+                                          (*
+{@@ ----------------------------------------------------------------------------
+  Notification by the workbook link that a cell has been modified. --> Repaint.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.CellChanged(ACell: PCell);
+begin
+  Unused(ACell);
+  Invalidate;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Notification by the workbook link that another cell has been selected
+  --> select the cell in the grid
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.CellSelected(ASheetRow, ASheetCol: Cardinal);
+var
+  grow, gcol: Integer;
+begin
+  if (FWorkbookLink <> nil) then
+  begin
+    grow := GetGridRow(ASheetRow);
+    gcol := GetGridCol(ASheetCol);
+    if (grow <> Row) or (gcol <> Col) then begin
+      Row := grow;
+      Col := gcol;
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Notification by the workbook link that a new workbook is available.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.WorkbookChanged;
+begin
+  WorksheetChanged;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Notification by the workbook link that a new worksheet has been selected from
+  the current workbook. Is also called internally from WorkbookChanged.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.WorksheetChanged;
+begin
+  if Worksheet <> nil then begin
+    //Worksheet.OnChangeCell := @ChangedCellHandler;
+    //Worksheet.OnChangeFont := @ChangedFontHandler;
+    ShowHeaders := (soShowHeaders in Worksheet.Options);
+    ShowGridLines := (soShowGridLines in Worksheet.Options);
+    if (soHasFrozenPanes in Worksheet.Options) then begin
+      FrozenCols := Worksheet.LeftPaneWidth;
+      FrozenRows := Worksheet.TopPaneHeight;
+    end else begin
+      FrozenCols := 0;
+      FrozenRows := 0;
+    end;
+    Row := FrozenRows;
+    Col := FrozenCols;
+  end;
+  Setup;
+end;
+                                            *)
 
 {@@ ----------------------------------------------------------------------------
   Returns the background color of a cell. The color is given as an index into
@@ -2089,9 +2177,9 @@ var
   cell: PCell;
 begin
   Result := scNotDefined;
-  if Assigned(FWorksheet) then
+  if Assigned(Worksheet) then
   begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) and (uffBackgroundColor in cell^.UsedFormattingFields) then
       Result := cell^.BackgroundColor;
   end;
@@ -2139,9 +2227,9 @@ var
   cell: PCell;
 begin
   Result := [];
-  if Assigned(FWorksheet) then
+  if Assigned(Worksheet) then
   begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) and (uffBorder in cell^.UsedFormattingFields) then
       Result := cell^.Border;
   end;
@@ -2192,9 +2280,9 @@ var
   cell: PCell;
 begin
   Result := DEFAULT_BORDERSTYLES[ABorder];
-  if Assigned(FWorksheet) then
+  if Assigned(Worksheet) then
   begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then
       Result := cell^.BorderStyles[ABorder];
   end;
@@ -2245,44 +2333,44 @@ var
   fnt: TsFont;
 begin
   Result := nil;
-  if (FWorkbook <> nil) then
+  if (Workbook <> nil) then
   begin
-    fnt := FWorkbook.GetDefaultFont;
-    if FWorksheet <> nil then
+    fnt := Workbook.GetDefaultFont;
+    if Worksheet <> nil then
     begin
-      cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+      cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
       if (cell <> nil) then
       begin
         if (uffBold in cell^.UsedFormattingFields) then
-          fnt := FWorkbook.GetFont(1)
+          fnt := Workbook.GetFont(1)
         else
         if (uffFont in cell^.UsedFormattingFields) then
-          fnt := FWorkbook.GetFont(cell^.FontIndex);
+          fnt := Workbook.GetFont(cell^.FontIndex);
       end;
     end;
     Convert_sFont_to_Font(fnt, FCellFont);
     Result := FCellFont;
   end;
   {
-  if (FWorkbook <> nil) and (FWorksheet <> nil) then
+  if (Workbook <> nil) and (Worksheet <> nil) then
   begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then
     begin
       if (uffBold in cell^.UsedFormattingFields) then
-        fnt := FWorkbook.GetFont(1)
+        fnt := Workbook.GetFont(1)
       else
       if (uffFont in cell^.UsedFormattingFields) then
-        fnt := FWorkbook.GetFont(cell^.FontIndex)
+        fnt := Workbook.GetFont(cell^.FontIndex)
       else
-        fnt := FWorkbook.GetDefaultFont;
+        fnt := Workbook.GetDefaultFont;
       Convert_sFont_to_Font(fnt, FCellFont);
       Result := FCellFont;
     end;
   end;
   if Result = nil then
   begin
-    fnt := FWorkbook.GetDefaultFont;
+    fnt := Workbook.GetDefaultFont;
     Convert_sFont_to_Font(fnt, FCellFont);
     Result := FCellFont;
   end;
@@ -2304,14 +2392,14 @@ var
   cell: PCell;
 begin
   Result := GetCellFont(ARect.Left, ARect.Top);
-  sDefFont := FWorkbook.GetDefaultFont;  // Default font
+  sDefFont := Workbook.GetDefaultFont;  // Default font
   for c := ARect.Left to ARect.Right do
     for r := ARect.Top to ARect.Bottom do
     begin
-      cell := FWorksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
+      cell := Worksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
       if cell <> nil then
       begin
-        sFont := FWorkbook.GetFont(cell^.FontIndex);
+        sFont := Workbook.GetFont(cell^.FontIndex);
         if (sFont.FontName <> sDefFont.FontName) and (sFont.Size <> sDefFont.Size)
           and (sFont.Style <> sDefFont.Style) and (sFont.Color <> sDefFont.Color)
         then
@@ -2344,16 +2432,16 @@ begin
   Result := 0;
   if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
     exit;
-  if FWorksheet = nil then
+  if Worksheet = nil then
     exit;
 
-  lCell := FWorksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
+  lCell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then
   begin
     //if lCell^.MergedNeighbors <> [] then begin
     if (lCell^.Mergebase <> nil) then
     begin
-      FWorksheet.FindMergedRange(lCell, r1, c1, r2, c2);
+      Worksheet.FindMergedRange(lCell, r1, c1, r2, c2);
       if r1 <> r2 then
         // If the merged range encloses several rows we skip automatic row height
         // determination since only the height of the first row of the block
@@ -2439,14 +2527,14 @@ begin
     end;
   end;
 
-  if FWorksheet <> nil then
+  if Worksheet <> nil then
   begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
-    lCell := FWorksheet.FindCell(r, c);
+    lCell := Worksheet.FindCell(r, c);
     if lCell <> nil then
     begin
-      Result := FWorksheet.ReadAsUTF8Text(lCell);
+      Result := Worksheet.ReadAsUTF8Text(lCell);
       if lCell^.TextRotation = rtStacked then
       begin
         s := Result;
@@ -2514,16 +2602,16 @@ begin
 
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
-  cell := FWorksheet.FindCell(r, c);
+  cell := Worksheet.FindCell(r, c);
   if (ARow - FHeaderCount + ADeltaRow < 0) or (ACol - FHeaderCount + ADeltaCol < 0) then
     neighborcell := nil
   else
-    neighborcell := FWorksheet.FindCell(ARow - FHeaderCount + ADeltaRow, ACol - FHeaderCount + ADeltaCol);
+    neighborcell := Worksheet.FindCell(ARow - FHeaderCount + ADeltaRow, ACol - FHeaderCount + ADeltaCol);
 
   // Only cell has border, but neighbor has not
   if HasBorder(cell, border) and not HasBorder(neighborCell, neighborBorder) then
   begin
-    if FWorksheet.IsMerged(cell) and FWorksheet.IsMerged(neighborcell) and
+    if Worksheet.IsMerged(cell) and Worksheet.IsMerged(neighborcell) and
        (cell^.MergeBase = neighborcell^.Mergebase)
     then
       result := false
@@ -2534,7 +2622,7 @@ begin
   // Only neighbor has border, cell has not
   if not HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
   begin
-    if FWorksheet.IsMerged(cell) and FWorksheet.IsMerged(neighborcell) and
+    if Worksheet.IsMerged(cell) and Worksheet.IsMerged(neighborcell) and
        (cell^.MergeBase = neighborcell^.Mergebase)
     then
       result := false
@@ -2545,7 +2633,7 @@ begin
   // Both cells have shared border -> use top or left border
   if HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
   begin
-    if FWorksheet.IsMerged(cell) and FWorksheet.IsMerged(neighborcell) and
+    if Worksheet.IsMerged(cell) and Worksheet.IsMerged(neighborcell) and
        (cell^.MergeBase = neighborcell^.Mergebase)
     then
       result := false
@@ -2596,9 +2684,9 @@ var
   i: Integer;
 begin
   ASheets.Clear;
-  if Assigned(FWorkbook) then
-    for i:=0 to FWorkbook.GetWorksheetCount-1 do
-      ASheets.Add(FWorkbook.GetWorksheetByIndex(i).Name);
+  if Assigned(Workbook) then
+    for i:=0 to Workbook.GetWorksheetCount-1 do
+      ASheets.Add(Workbook.GetWorksheetByIndex(i).Name);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2658,21 +2746,21 @@ var
   w0: Integer;
   h, h_pts: Single;
 begin
-  if FWorksheet = nil then
+  if Worksheet = nil then
     exit;
 
-  Convert_sFont_to_Font(FWorkbook.GetDefaultFont, Canvas.Font);
+  Convert_sFont_to_Font(Workbook.GetDefaultFont, Canvas.Font);
   if IsColumn then begin
     // The grid's column width is in "pixels", the worksheet's column width is
     // in "characters".
     w0 := Canvas.TextWidth('0');
-    FWorksheet.WriteColWidth(GetWorksheetCol(AIndex), ColWidths[AIndex] / w0);
+    Worksheet.WriteColWidth(GetWorksheetCol(AIndex), ColWidths[AIndex] / w0);
   end else begin
     // The grid's row heights are in "pixels", the worksheet's row heights are
     // in "lines"
     h_pts := PxToPts(RowHeights[AIndex] - 4, Screen.PixelsPerInch);  // in points
-    h := h_pts / (FWorkbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
-    FWorksheet.WriteRowHeight(GetWorksheetRow(AIndex), h);
+    h := h_pts / (Workbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
+    Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h);
   end;
 end;
 
@@ -2686,10 +2774,10 @@ begin
   if AGridCol < FHeaderCount then
     exit;
 
-  if LongInt(FWorksheet.GetLastColIndex) + 1 + FHeaderCount >= FInitColCount then
+  if LongInt(Worksheet.GetLastColIndex) + 1 + FHeaderCount >= FInitColCount then
     ColCount := ColCount + 1;
   c := AGridCol - FHeaderCount;
-  FWorksheet.InsertCol(c);
+  Worksheet.InsertCol(c);
 
   UpdateColWidths(AGridCol);
 end;
@@ -2704,10 +2792,10 @@ begin
   if AGridRow < FHeaderCount then
     exit;
 
-  if LongInt(FWorksheet.GetlastRowIndex) + 1 + FHeaderCount >= FInitRowCount then
+  if LongInt(Worksheet.GetlastRowIndex) + 1 + FHeaderCount >= FInitRowCount then
     RowCount := RowCount + 1;
   r := AGridRow - FHeaderCount;
-  FWorksheet.InsertRow(r);
+  Worksheet.InsertRow(r);
 
   UpdateRowHeights(AGridRow);
 end;
@@ -2821,7 +2909,7 @@ begin
       P := ARect.TopLeft;
       case AJustification of
         0: ts.Alignment := taLeftJustify;
-        1: if (FDrawingCell <> nil) and (FDrawingCell^.MergeBase = nil) then //(FDrawingCell^.MergedNeighbors = []) then
+        1: if (FDrawingCell <> nil) and (FDrawingCell^.MergeBase = nil) then
            begin
              // Special treatment for overflowing cells: they must be centered
              // at their original column, not in the total enclosing rectangle.
@@ -2960,15 +3048,18 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
 begin
-  FWorksheet := AWorksheet;
-  if FWorksheet <> nil then begin
-    FWorksheet.OnChangeCell := @ChangedCellHandler;
-    FWorksheet.OnChangeFont := @ChangedFontHandler;
-    ShowHeaders := (soShowHeaders in FWorksheet.Options);
-    ShowGridLines := (soShowGridLines in FWorksheet.Options);
-    if (soHasFrozenPanes in FWorksheet.Options) then begin
-      FrozenCols := FWorksheet.LeftPaneWidth;
-      FrozenRows := FWorksheet.TopPaneHeight;
+  if FWorkbookSource <> nil then
+    exit;
+
+  FOwnedWorksheet := AWorksheet;
+  if FOwnedWorksheet <> nil then begin
+    FOwnedWorksheet.OnChangeCell := @ChangedCellHandler;
+    FOwnedWorksheet.OnChangeFont := @ChangedFontHandler;
+    ShowHeaders := (soShowHeaders in Worksheet.Options);
+    ShowGridLines := (soShowGridLines in Worksheet.Options);
+    if (soHasFrozenPanes in Worksheet.Options) then begin
+      FrozenCols := FOwnedWorksheet.LeftPaneWidth;
+      FrozenRows := FOwnedWorksheet.TopPaneHeight;
     end else begin
       FrozenCols := 0;
       FrozenRows := 0;
@@ -2990,13 +3081,21 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
-  BeginUpdate;
-  try
-    CreateNewWorkbook;
-    FWorkbook.ReadFromFile(AFileName, AFormat);
-    LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
-  finally
-    EndUpdate;
+  if FOwnsWorkbook then
+    FreeAndNil(FOwnedWorkbook);
+
+  if FWorkbookSource <> nil then
+    FWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex)
+  else
+  begin
+    BeginUpdate;
+    try
+      CreateNewWorkbook;
+      Workbook.ReadFromFile(AFileName, AFormat);
+      LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
+    finally
+      EndUpdate;
+    end;
   end;
 end;
 
@@ -3010,13 +3109,67 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
-  BeginUpdate;
-  try
-    CreateNewWorkbook;
-    FWorkbook.ReadFromFile(AFilename);
-    LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
-  finally
-    EndUpdate;
+  if FOwnsWorkbook then
+    FreeAndNil(FOwnedWorkbook);
+
+  if FWorkbookSource <> nil then
+    FWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex)
+  else
+  begin
+    BeginUpdate;
+    try
+      CreateNewWorkbook;
+      Workbook.ReadFromFile(AFilename);
+      LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
+    finally
+      EndUpdate;
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Notification message received from the WorkbookLink telling which item of the
+  spreadsheet has changed.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.ListenerNotification(AChangedItems: TsNotificationItems;
+  AData: Pointer = nil);
+var
+  grow, gcol: Integer;
+begin
+  Unused(AData);
+
+  // Nothing to do for  "workbook changed" because this is always combined with
+  // "worksheet changed".
+
+  // Worksheet changed
+  if (lniWorksheet in AChangedItems) then
+  begin
+    if (Worksheet <> nil) then
+    begin
+      ShowHeaders := (soShowHeaders in Worksheet.Options);
+      ShowGridLines := (soShowGridLines in Worksheet.Options);
+      if (soHasFrozenPanes in Worksheet.Options) then begin
+        FrozenCols := Worksheet.LeftPaneWidth;
+        FrozenRows := Worksheet.TopPaneHeight;
+      end else begin
+        FrozenCols := 0;
+        FrozenRows := 0;
+      end;
+    end;
+    Setup;
+  end;
+
+  // Cell value or format changed
+  if (lniCell in AChangedItems) then
+    Invalidate;
+
+  // Selection changed
+  if (lniSelection in AChangedItems) and (Worksheet <> nil) then
+  begin
+    grow := GetGridRow(Worksheet.SelectedCellRow);
+    gcol := GetGridCol(Worksheet.SelectedCellCol);
+    if (grow <> Row) or (gcol <> Col) then
+      MoveExtend(false, gcol, grow);
   end;
 end;
 
@@ -3027,7 +3180,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MergeCells;
 begin
-  FWorksheet.MergeCells(
+  Worksheet.MergeCells(
     GetWorksheetRow(Selection.Top),
     GetWorksheetCol(Selection.Left),
     GetWorksheetRow(Selection.Bottom),
@@ -3054,11 +3207,14 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Standard method inherited from TCustomGrid.
+  Notfies the WorkbookSource of the changed selected cell.
   Repaints the grid after moving selection to avoid spurious rests of the
   old thick selection border.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MoveSelection;
 begin
+  if (WorkbookSource <> nil) then
+    WorkbookSource.SelectCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
   //Refresh;
   inherited;
   Refresh;
@@ -3072,18 +3228,38 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.NewWorkbook(AColCount, ARowCount: Integer);
 begin
-  BeginUpdate;
-  try
-    CreateNewWorkbook;
-    FWorksheet := FWorkbook.AddWorksheet('Sheet1');
-    FWorksheet.OnChangeCell := @ChangedCellHandler;
-    FWorksheet.OnChangeFont := @ChangedFontHandler;
-    FInitColCount := AColCount;
-    FInitRowCount := ARowCount;
-    Setup;
-  finally
-    EndUpdate;
+  if FOwnsWorkbook then
+    FreeAndNil(FOwnedWorkbook);
+
+  if FWorkbookSource <> nil then
+    FWorkbookSource.CreateNewWorkbook
+  else
+  begin
+    BeginUpdate;
+    try
+      CreateNewWorkbook;
+      FOwnedWorksheet := FOwnedWorkbook.AddWorksheet('Sheet1');
+      FOwnedWorksheet.OnChangeCell := @ChangedCellHandler;
+      FOwnedWorksheet.OnChangeFont := @ChangedFontHandler;
+      FInitColCount := AColCount;
+      FInitRowCount := ARowCount;
+      Setup;
+    finally
+      EndUpdate;
+    end;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Standard component notification: The grid is notified that the WorkbookLink
+  is being removed.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FWorkbookSource) then
+    SetWorkbookSource(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3091,7 +3267,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.UnmergeCells;
 begin
-  FWorksheet.UnmergeCells(
+  Worksheet.UnmergeCells(
     GetWorksheetRow(Selection.Top),
     GetWorksheetCol(Selection.Left)
   );
@@ -3111,8 +3287,8 @@ end;
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
 begin
-  if FWorkbook <> nil then
-    FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+  if Workbook <> nil then
+    Workbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3130,10 +3306,21 @@ end;
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
 begin
-  if FWorkbook <> nil then
-    FWorkbook.WriteToFile(AFileName, AOverwriteExisting);
+  if Workbook <> nil then
+    Workbook.WriteToFile(AFileName, AOverwriteExisting);
 end;
-
+  (*
+{@@ ----------------------------------------------------------------------------
+  A different cell has been selected. Notifies the WorkbookLink of the change.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.SelectCell(AGridCol, AGridRow: Integer): Boolean;
+begin
+  Result := inherited SelectCell(AGridCol, AGridRow);
+  if Result and (WorkbookSource <> nil) and ((AGridRow <> Row) or (AGridCol <> Col))
+  then
+    WorkbookSource.SelectCell(GetWorksheetRow(AGridRow), GetWorksheetCol(AGridCol));
+end;
+    *)
 {@@ ----------------------------------------------------------------------------
   Standard method inherited from TCustomGrid: Is called when editing starts.
   Is overridden here to store the old text just in case that the user presses
@@ -3153,8 +3340,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
-  if FWorkbook <> nil then
-    LoadFromWorksheet(FWorkbook.GetWorksheetByIndex(AIndex));
+  if Workbook <> nil then
+    LoadFromWorksheet(Workbook.GetWorksheetByIndex(AIndex));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3180,7 +3367,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
 begin
-  if (FWorksheet = nil) or (FWorksheet.GetCellCount = 0) then begin
+  if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin
       ColCount := FInitColCount + 1; //2;
       RowCount := FInitRowCount + 1; //2;
@@ -3194,10 +3381,10 @@ begin
       RowCount := FInitRowCount; //0;
     end;
   end else
-  if FWorksheet <> nil then begin
-    Convert_sFont_to_Font(FWorkbook.GetDefaultFont, Font);
-    ColCount := Max(integer(FWorksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
-    RowCount := Max(integer(FWorksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
+  if Worksheet <> nil then begin
+    Convert_sFont_to_Font(Workbook.GetDefaultFont, Font);
+    ColCount := Max(integer(Worksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
+    RowCount := Max(integer(Worksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
@@ -3208,6 +3395,27 @@ begin
   UpdateColWidths;
   UpdateRowHeights;
   Invalidate;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter to define the link to the workbook.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.SetWorkbookSource(AValue: TsWorkbookSource);
+begin
+  if AValue = FWorkbookSource then
+    exit;
+
+  if FOwnsWorkbook then
+    FreeAndNil(FOwnedWorkbook);
+
+  if FWorkbookSource <> nil then
+    FWorkbookSource.RemoveListener(self);
+  FWorkbookSource := AValue;
+  if FWorkbookSource <> nil then
+    FWorkbookSource.AddListener(self);
+
+  FOwnsWorkbook := (FWorkbookSource = nil);
+  ListenerNotification([lniWorksheet, lniSelection]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3234,14 +3442,14 @@ begin
   if SortOrder = soDescending then
     sortParams.Keys[0].Options := [ssoDescending];
   if AColSorting then
-    FWorksheet.Sort(
+    Worksheet.Sort(
       sortParams,
-      AIndxFrom-HeaderCount, 0, AIndxTo-HeaderCount, FWorksheet.GetLastColIndex
+      AIndxFrom-HeaderCount, 0, AIndxTo-HeaderCount, Worksheet.GetLastColIndex
     )
   else
-    FWorksheet.Sort(
+    Worksheet.Sort(
       sortParams,
-      0, AIndxFrom-HeaderCount, FWorksheet.GetLastRowIndex, AIndxTo-HeaderCount
+      0, AIndxFrom-HeaderCount, Worksheet.GetLastRowIndex, AIndxTo-HeaderCount
     );
 end;
 
@@ -3257,9 +3465,9 @@ begin
   if AStartIndex = 0 then AStartIndex := FHeaderCount;
   for i := AStartIndex to ColCount-1 do begin
     w := DefaultColWidth;
-    if FWorksheet <> nil then
+    if Worksheet <> nil then
     begin
-      lCol := FWorksheet.FindCol(i - FHeaderCount);
+      lCol := Worksheet.FindCol(i - FHeaderCount);
       if lCol <> nil then
         w := CalcColWidth(lCol^.Width)
     end;
@@ -3280,9 +3488,9 @@ begin
   if AStartIndex <= 0 then AStartIndex := FHeaderCount;
   for i := AStartIndex to RowCount-1 do begin
     h := CalcAutoRowHeight(i);
-    if FWorksheet <> nil then
+    if Worksheet <> nil then
     begin
-      lRow := FWorksheet.FindRow(i - FHeaderCount);
+      lRow := Worksheet.FindRow(i - FHeaderCount);
       if (lRow <> nil) then
         h := CalcRowHeight(lRow^.Height);
     end;
@@ -3301,10 +3509,10 @@ var
   fnt: TsFont;
 begin
   Result := scNotDefined;
-  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if (Workbook <> nil) and (Worksheet <> nil) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then begin
-      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      fnt := Workbook.GetFont(cell^.FontIndex);
       if fnt <> nil then
         Result := fnt.Color;
     end;
@@ -3334,10 +3542,10 @@ var
   fnt: TsFont;
 begin
   Result := '';
-  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if (Workbook <> nil) and (Worksheet <> nil) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then begin
-      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      fnt := Workbook.GetFont(cell^.FontIndex);
       if fnt <> nil then
         Result := fnt.FontName;
     end;
@@ -3367,10 +3575,10 @@ var
   fnt: TsFont;
 begin
   Result := -1.0;
-  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if (Workbook <> nil) and (Worksheet <> nil) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then begin
-      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      fnt := Workbook.GetFont(cell^.FontIndex);
       if fnt <> nil then
         Result := fnt.Size;
     end;
@@ -3400,10 +3608,10 @@ var
   fnt: TsFont;
 begin
   Result := [];
-  if (FWorkbook <> nil) and (FWorksheet <> nil) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if (Workbook <> nil) and (Worksheet <> nil) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then begin
-      fnt := FWorkbook.GetFont(cell^.FontIndex);
+      fnt := Workbook.GetFont(cell^.FontIndex);
       if fnt <> nil then
         Result := fnt.Style;
     end;
@@ -3432,8 +3640,8 @@ var
   cell: PCell;
 begin
   Result := haDefault;
-  if Assigned(FWorksheet) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if Assigned(Worksheet) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if cell <> nil then
       Result := cell^.HorAlignment;
   end;
@@ -3471,8 +3679,8 @@ var
   cell: PCell;
 begin
   Result := trHorizontal;
-  if Assigned(FWorksheet) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if Assigned(Worksheet) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) then
       Result := cell^.TextRotation;
   end;
@@ -3500,8 +3708,8 @@ var
   cell: PCell;
 begin
   Result := vaDefault;
-  if Assigned(FWorksheet) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if Assigned(Worksheet) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if cell <> nil then
       Result := cell^.VertAlignment;
   end;
@@ -3524,13 +3732,29 @@ begin
     end;
 end;
 
+function TsCustomWorksheetGrid.GetWorkbook: TsWorkbook;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource.Workbook
+  else
+    Result := FOwnedWorkbook;
+end;
+
+function TsCustomWorksheetGrid.GetWorksheet: TsWorksheet;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbooksource.SelectedWorksheet
+  else
+    Result := FOwnedWorksheet;
+end;
+
 function TsCustomWorksheetGrid.GetWordwrap(ACol, ARow: Integer): Boolean;
 var
   cell: PCell;
 begin
   Result := false;
-  if Assigned(FWorksheet) then begin
-    cell := FWorksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if Assigned(Worksheet) then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     if (cell <> nil) and (uffWordwrap in cell^.UsedFormattingFields) then
       Result := true;
   end;
@@ -3556,12 +3780,21 @@ end;
 procedure TsCustomWorksheetGrid.SetAutoCalc(AValue: Boolean);
 begin
   FAutoCalc := AValue;
-  if Assigned(FWorkbook) then
+
+  if Assigned(FWorkbookSource) then
   begin
     if FAutoCalc then
-      FWorkbook.Options := FWorkbook.Options + [boAutoCalc]
+      FWorkbookSource.Options := FWorkbookSource.Options + [boAutoCalc]
     else
-      FWorkbook.Options := FWorkbook.Options - [boAutoCalc];
+      FWorkbookSource.Options := FWorkbookSource.Options - [boAUtoCalc];
+  end;
+
+  if Assigned(Workbook) then
+  begin
+    if FAutoCalc then
+      Workbook.Options := Workbook.Options + [boAutoCalc]
+    else
+      Workbook.Options := Workbook.Options - [boAutoCalc];
   end;
 end;
 
@@ -3570,12 +3803,12 @@ procedure TsCustomWorksheetGrid.SetBackgroundColor(ACol, ARow: Integer;
 var
   c, r: Cardinal;
 begin
-  if Assigned(FWorksheet) then begin
+  if Assigned(Worksheet) then begin
     BeginUpdate;
     try
       c := GetWorksheetCol(ACol);
       r := GetWorksheetRow(ARow);
-      FWorksheet.WriteBackgroundColor(r, c, AValue);
+      Worksheet.WriteBackgroundColor(r, c, AValue);
     finally
       EndUpdate;
     end;
@@ -3602,12 +3835,12 @@ procedure TsCustomWorksheetGrid.SetCellBorder(ACol, ARow: Integer;
 var
   c, r: Cardinal;
 begin
-  if Assigned(FWorksheet) then begin
+  if Assigned(Worksheet) then begin
     BeginUpdate;
     try
       c := GetWorksheetCol(ACol);
       r := GetWorksheetRow(ARow);
-      FWorksheet.WriteBorders(r, c, AValue);
+      Worksheet.WriteBorders(r, c, AValue);
       FixNeighborCellBorders(ACol, ARow);
     finally
       EndUpdate;
@@ -3633,10 +3866,10 @@ end;
 procedure TsCustomWorksheetGrid.SetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder; AValue: TsCellBorderStyle);
 begin
-  if Assigned(FWorksheet) then begin
+  if Assigned(Worksheet) then begin
     BeginUpdate;
     try
-      FWorksheet.WriteBorderStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), ABorder, AValue);
+      Worksheet.WriteBorderStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), ABorder, AValue);
       FixNeighborCellBorders(ACol, ARow);
     finally
       EndUpdate;
@@ -3664,11 +3897,11 @@ var
   fnt: TsFont;
 begin
   FCellFont.Assign(AValue);
-  if Assigned(FWorksheet) then begin
+  if Assigned(Worksheet) then begin
     fnt := TsFont.Create;
     try
       Convert_Font_To_sFont(FCellFont, fnt);
-      FWorksheet.WriteFont(GetWorksheetRow(ARow), GetWorksheetCol(ACol),
+      Worksheet.WriteFont(GetWorksheetRow(ARow), GetWorksheetCol(ACol),
         fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
     finally
       fnt.Free;
@@ -3693,8 +3926,8 @@ end;
 
 procedure TsCustomWorksheetGrid.SetCellFontColor(ACol, ARow: Integer; AValue: TsColor);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteFontColor(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteFontColor(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontColors(ARect: TGridRect; AValue: TsColor);
@@ -3713,8 +3946,8 @@ end;
 
 procedure TsCustomWorksheetGrid.SetCellFontName(ACol, ARow: Integer; AValue: String);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteFontName(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteFontName(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontNames(ARect: TGridRect; AValue: String);
@@ -3734,8 +3967,8 @@ end;
 procedure TsCustomWorksheetGrid.SetCellFontSize(ACol, ARow: Integer;
   AValue: Single);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteFontSize(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteFontSize(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontSizes(ARect: TGridRect;
@@ -3756,8 +3989,8 @@ end;
 procedure TsCustomWorksheetGrid.SetCellFontStyle(ACol, ARow: Integer;
   AValue: TsFontStyles);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteFontStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteFontStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontStyles(ARect: TGridRect;
@@ -3778,12 +4011,12 @@ end;
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
 begin
   FFrozenCols := AValue;
-  if FWorksheet <> nil then begin
-    FWorksheet.LeftPaneWidth := FFrozenCols;
+  if Worksheet <> nil then begin
+    Worksheet.LeftPaneWidth := FFrozenCols;
     if (FFrozenCols > 0) or (FFrozenRows > 0) then
-      FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
+      Worksheet.Options := Worksheet.Options + [soHasFrozenPanes]
     else
-      FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+      Worksheet.Options := Worksheet.Options - [soHasFrozenPanes];
   end;
   Setup;
 end;
@@ -3791,12 +4024,12 @@ end;
 procedure TsCustomWorksheetGrid.SetFrozenRows(AValue: Integer);
 begin
   FFrozenRows := AValue;
-  if FWorksheet <> nil then begin
-    FWorksheet.TopPaneHeight := FFrozenRows;
+  if Worksheet <> nil then begin
+    Worksheet.TopPaneHeight := FFrozenRows;
     if (FFrozenCols > 0) or (FFrozenRows > 0) then
-      FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
+      Worksheet.Options := Worksheet.Options + [soHasFrozenPanes]
     else
-      FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+      Worksheet.Options := Worksheet.Options - [soHasFrozenPanes];
   end;
   Setup;
 end;
@@ -3804,8 +4037,8 @@ end;
 procedure TsCustomWorksheetGrid.SetHorAlignment(ACol, ARow: Integer;
   AValue: TsHorAlignment);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteHorAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteHorAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetHorAlignments(ARect: TGridRect;
@@ -3834,11 +4067,11 @@ begin
   else
     Options := Options - [goHorzLine, goVertLine];
 
-  if FWorksheet <> nil then
+  if Worksheet <> nil then
     if AValue then
-      FWorksheet.Options := FWorksheet.Options + [soShowGridLines]
+      Worksheet.Options := Worksheet.Options + [soShowGridLines]
     else
-      FWorksheet.Options := FWorksheet.Options - [soShowGridLines];
+      Worksheet.Options := Worksheet.Options - [soShowGridLines];
 end;
 
 { Shows / hides the worksheet's row and column headers. }
@@ -3847,11 +4080,11 @@ begin
   if AValue = GetShowHeaders then Exit;
 
   FHeaderCount := ord(AValue);
-  if FWorksheet <> nil then
+  if Worksheet <> nil then
     if AValue then
-      FWorksheet.Options := FWorksheet.Options + [soShowHeaders]
+      Worksheet.Options := Worksheet.Options + [soShowHeaders]
     else
-      FWorksheet.Options := FWorksheet.Options - [soShowHeaders];
+      Worksheet.Options := Worksheet.Options - [soShowHeaders];
 
   Setup;
 end;
@@ -3859,8 +4092,8 @@ end;
 procedure TsCustomWorksheetGrid.SetTextRotation(ACol, ARow: Integer;
   AValue: TsTextRotation);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteTextRotation(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteTextRotation(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetTextRotations(ARect: TGridRect;
@@ -3881,8 +4114,8 @@ end;
 procedure TsCustomWorksheetGrid.SetVertAlignment(ACol, ARow: Integer;
   AValue: TsVertAlignment);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteVertAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteVertAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetVertAlignments(ARect: TGridRect;
@@ -3903,8 +4136,8 @@ end;
 procedure TsCustomWorksheetGrid.SetWordwrap(ACol, ARow: Integer;
   AValue: Boolean);
 begin
-  if Assigned(FWorksheet) then
-    FWorksheet.WriteWordwrap(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  if Assigned(Worksheet) then
+    Worksheet.WriteWordwrap(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetWordwraps(ARect: TGridRect;

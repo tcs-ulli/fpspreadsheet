@@ -2,21 +2,22 @@
   This source is only used to compile and install the package.
  }
 
-unit laz_fpspreadsheet_visual; 
+unit laz_fpspreadsheet_visual;
 
 interface
 
 uses
-  fpspreadsheetgrid, fpspreadsheetchart, LazarusPackageIntf;
+  fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, LazarusPackageIntf;
 
 implementation
 
-procedure Register; 
+procedure Register;
 begin
-  RegisterUnit('fpspreadsheetgrid', @fpspreadsheetgrid.Register); 
-  RegisterUnit('fpspreadsheetchart', @fpspreadsheetchart.Register); 
-end; 
+  RegisterUnit('fpspreadsheetctrls', @fpspreadsheetctrls.Register);
+  RegisterUnit('fpspreadsheetgrid', @fpspreadsheetgrid.Register);
+  RegisterUnit('fpspreadsheetchart', @fpspreadsheetchart.Register);
+end;
 
 initialization
-  RegisterPackage('laz_fpspreadsheet_visual', @Register); 
+  RegisterPackage('laz_fpspreadsheet_visual', @Register);
 end.

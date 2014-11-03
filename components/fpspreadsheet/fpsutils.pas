@@ -2390,7 +2390,7 @@ var
   i: Integer;
 begin
   Result.SortByCols := ASortByCols;
-  Result.Priority := spNumAlpha;  // numbers before text, like in Excel
+  Result.Priority := ASortPriority;
   SetLength(Result.Keys, ANumSortKeys);
   for i:=0 to High(Result.Keys) do begin
     Result.Keys[i].ColRowIndex := i;
