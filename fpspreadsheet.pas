@@ -493,7 +493,7 @@ type
   { TsWorksheet }
 
   {@@ This event fires whenever a cell value or cell formatting changes. It is
-    handled by TsWorksheetGrid to update the grid. }
+    handled by TsWorkbookLink to update the listening controls. }
   TsCellEvent = procedure (Sender: TObject; ARow, ACol: Cardinal) of object;
 
   {@@ This event can be used to override the built-in comparing function which
@@ -506,9 +506,12 @@ type
   TsWorksheet = class
   private
     FWorkbook: TsWorkbook;
+    FName: String;  // Name of the worksheet (displayed at the tab)
     FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
+    FSelectedCellRow: Cardinal;
+    FSelectedCellCol: Cardinal;
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
@@ -522,9 +525,11 @@ type
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
+    FOnSelectCell: TsCellEvent;
 
     { Setter/Getter }
     function GetFormatSettings: TFormatSettings;
+    procedure SetName(const AName: String);
 
     { Callback procedures called when iterating through all cells }
     procedure CalcFormulaCallback(data, arg: Pointer);
@@ -555,10 +560,6 @@ type
       AFromIndex, AToIndex: Cardinal);
 
   public
-    {@@ Name of the sheet. In the popular spreadsheet applications this is
-      displayed at the tab of the sheet. }
-    Name: string;
-
     { Base methods }
     constructor Create;
     destructor Destroy; override;
@@ -793,6 +794,9 @@ type
       ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
     procedure Sort(ASortParams: TsSortParams; ARange: String); overload;
 
+    // Selected cell
+    procedure SelectCell(ARow, ACol: Cardinal);
+
     { Properties }
 
     {@@ List of cells of the worksheet. Only cells with contents or with formatting
@@ -802,6 +806,9 @@ type
     property  Cols: TIndexedAVLTree read FCols;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
+    {@@ Name of the sheet. In the popular spreadsheet applications this is
+      displayed at the tab of the sheet. }
+    property Name: string read FName write SetName;
     {@@ List of all row records of the worksheet having a non-standard row height }
     property  Rows: TIndexedAVLTree read FRows;
     {@@ Workbook to which the worksheet belongs }
@@ -817,6 +824,10 @@ type
     {@@ Parameters controlling visibility of grid lines and row/column headers,
         usage of frozen panes etc. }
     property  Options: TsSheetOptions read FOptions write FOptions;
+    {@@ Column index of the selected cell of this worksheet }
+    property  SelectedCellCol: Cardinal read FSelectedCellCol;
+    {@@ Row index of the selected cell of this worksheet }
+    property  SelectedCellRow: Cardinal read FSelectedCellRow;
     {@@ Number of frozen columns which do not scroll }
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     {@@ Number of frozen rows which do not scroll }
@@ -827,6 +838,9 @@ type
     property  OnChangeFont: TsCellEvent read FOnChangeFont write FOnChangeFont;
     {@@ Event to override cell comparison for sorting }
     property  OnCompareCells: TsCellCompareEvent read FOnCompareCells write FOnCompareCells;
+    {@@ Event fired when a cell is "selected". }
+    property  OnSelectCell: TsCellEvent read FOnSelectCell write FOnSelectCell;
+
   end;
 
   {@@
@@ -853,8 +867,7 @@ type
   TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc, boCalcBeforeSaving,
     boReadFormulas);
 
-  {@@
-    Set of options flags for the workbook }
+  {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;
 
   {@@
@@ -869,6 +882,12 @@ type
     the "ADataCell" (which is not added to the worksheet in virtual mode). }
   TsWorkbookReadCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
     const ADataCell: PCell) of object;
+
+  {@@ Event procedure containing a specific worksheet }
+  TsWorksheetEvent = procedure (Sender: TObject; ASheet: TsWorksheet) of object;
+
+  {@@ Event procedure called when a worksheet is removed }
+  TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
   {@@
     The workbook contains the worksheets and provides methods for reading from
@@ -890,6 +909,9 @@ type
     FOptions: TsWorkbookOptions;
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
+    FOnChangeWorksheet: TsWorksheetEvent;
+    FOnAddWorksheet: TsWorksheetEvent;
+    FOnRemoveWorksheet: TsRemoveWorksheetEvent;
     FFileName: String;
     FLog: TStringList;
 
@@ -898,13 +920,16 @@ type
     procedure SetVirtualColCount(AValue: Cardinal);
     procedure SetVirtualRowCount(AValue: Cardinal);
 
+    { Callback procedures }
+    procedure RemoveWorksheetsCallback(data, arg: pointer);
+
+  protected
     { Internal methods }
     procedure FixSharedFormulas;
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
     procedure ReCalc;
-    procedure RemoveWorksheetsCallback(data, arg: pointer);
     procedure UpdateCaches;
 
   public
@@ -930,13 +955,17 @@ type
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
 
     { Worksheet list handling methods }
-    function  AddWorksheet(AName: string; AcceptEmptyName: boolean = false): TsWorksheet;
+    function  AddWorksheet(AName: string;
+      ReplaceDuplicateName: Boolean = false): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
     function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Integer;
+    function  GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
     procedure RemoveAllWorksheets;
-    function  ValidWorksheetName(AName: String; AcceptEmptyName: Boolean = false): Boolean;
+    procedure RemoveWorksheet(AWorksheet: TsWorksheet);
+    function  ValidWorksheetName(var AName: String;
+      ReplaceDuplicateName: Boolean = false): Boolean;
 
     { Font handling }
     function AddFont(const AFontName: String; ASize: Single;
@@ -988,6 +1017,12 @@ type
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
     property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
     property Options: TsWorkbookOptions read FOptions write FOptions;
+    {@@ This event fires whenever a new worksheet is added }
+    property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
+    {@@ This event fires whenever a worksheet is changed }
+    property OnChangeWorksheet: TsWorksheetEvent read FOnChangeWorksheet write FOnChangeWorksheet;
+    {@@ This event fires when a worksheet is deleted }
+    property OnRemoveWorksheet: TsRemoveWorksheetEvent read FOnRemoveWorksheet write FOnRemoveWorksheet;
     {@@ This event allows to provide external cell data for writing to file,
       standard cells are ignored. Intended for converting large database files
       to a spreadsheet format. Requires Option boVirtualMode to be set. }
@@ -1494,12 +1529,12 @@ end;
 
 function CompareRows(Item1, Item2: Pointer): Integer;
 begin
-  result := LongInt(PRow(Item1).Row) - PRow(Item2).Row;
+  Result := LongInt(PRow(Item1).Row) - PRow(Item2).Row;
 end;
 
 function CompareCols(Item1, Item2: Pointer): Integer;
 begin
-  result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
+  Result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
 end;
 
 
@@ -1531,6 +1566,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Destructor of the TsWorksheet class.
+  Releases all memory, but does not delete from the workbook's worksheetList !!!
+  NOTE: Don't call directly. Always use Workbook.RemoveWorksheet to remove a
+  worksheet from a workbook.
 -------------------------------------------------------------------------------}
 destructor TsWorksheet.Destroy;
 begin
@@ -3208,6 +3246,22 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Setter for the worksheet name property. Checks if the name is valid, and
+  exits without any change if not. Creates an event OnChangeWorksheet.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetName(const AName: String);
+begin
+  if AName = FName then
+    exit;
+  if (FWorkbook <> nil) then //and FWorkbook.ValidWorksheetName(AName) then
+  begin
+    FName := AName;
+    if Assigned(FWorkbook.FOnChangeWorksheet) then
+      FWorkbook.FOnChangeWorksheet(FWorkbook, self);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Compare function for sorting of rows and columns called directly by Sort()
   The compare algorithm starts with the first key parameters. If cells are
   found to be "equal" the next parameter is set is used until a difference is
@@ -3464,6 +3518,19 @@ begin
   ChangedCell(ARowFrom, AColFrom);
 end;
 
+
+{@@ ----------------------------------------------------------------------------
+  Marks a specified cell as "selected". Only needed by the visual controls.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
+begin
+  if (ARow <> FSelectedCellRow) or (ACol <> FSelectedCellCol) then
+  begin
+    FSelectedCellRow := ARow;
+    FSelectedCellCol := ACol;
+    if Assigned(FOnSelectCell) then FOnSelectCell(Self, ARow, ACol);
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
@@ -6366,27 +6433,29 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Adds a new worksheet to the workbook
+  Adds a new worksheet to the workbook.
+  It is put to the end of the worksheet list.
 
-  It is added to the end of the list of worksheets
-
-  @param  AName            The name of the new worksheet
-  @param  AcceptEmptyName  Allow an empty worksheet name (for Excel2)
+  @param  AName                The name of the new worksheet
+  @param  ReplaceDupliateName  If true and the sheet name already exists then
+                               a number is added to the sheet name to make it
+                               unique.
   @return The instance of the newly created worksheet
   @see    TsWorksheet
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddWorksheet(AName: string;
-  AcceptEmptyName: Boolean = false): TsWorksheet;
+  ReplaceDuplicateName: Boolean = false): TsWorksheet;
 begin
-  if not ValidWorksheetName(AName, AcceptEmptyName) then
+  if not ValidWorksheetName(AName, ReplaceDuplicateName) then
     raise Exception.CreateFmt(rsInvalidWorksheetName, [AName]);
 
   Result := TsWorksheet.Create;
 
+  Result.FWorkbook := Self; // Must be before "SetName" needing the workbook
   Result.Name := AName;
-  Result.FWorkbook := Self;
-
   FWorksheets.Add(Pointer(Result));
+
+  if Assigned(FOnAddWorksheet) then FOnAddWorksheet(self, Result);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6431,7 +6500,6 @@ end;
   Gets the worksheet with a given worksheet name
 
   @param  AName    The name of the worksheet
-
   @return A TsWorksheet instance if one is found with that name,
           nil otherwise. Case is ignored.
 
@@ -6465,7 +6533,18 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the index of a worksheet in the worksheet list
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
+begin
+  Result := FWorksheets.IndexOf(AWorksheet);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Clears the list of Worksheets and releases their memory.
+
+  NOTE: This procedure conflicts with the WorkbookLink mechanism which requires
+  at least 1 worksheet per workbook!
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.RemoveAllWorksheets;
 begin
@@ -6473,26 +6552,54 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Removes the specified worksheet: Removes the sheet from the internal sheet
+  list, generates an event OnRemoveWorksheet, and releases all memory.
+  The event handler specifies the index of the deleted worksheet; the worksheet
+  itself does no longer exist.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RemoveWorksheet(AWorksheet: TsWorksheet);
+var
+  i: Integer;
+begin
+  if GetWorksheetCount > 1 then     // There must be at least 1 worksheet!
+  begin
+    i := GetWorksheetIndex(AWorksheet);
+    if (i <> -1) and (AWorksheet <> nil) then
+    begin
+      FWorksheets.Delete(i);
+      AWorksheet.Free;
+      if Assigned(FOnRemoveWorksheet) then
+        FOnRemoveWorksheet(self, i);
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Checks whether the passed string is a valid worksheet name according to Excel
   (ODS seems to be a bit less restrictive, but if we follow Excel's convention
   we always have valid sheet names independent of the format.
 
-  @param   AName             Name to be checked
-  @param   AcceptEmptyName   Accepts an empty name (for Excel2)
+  @param   AName                Name to be checked. If the input name is already
+                                used AName will be modified such that the sheet
+                                name is unique.
+  @param   ReplaceDuplicateName If there exists already a sheet name equal to
+                                AName then a number is added to AName such that
+                                the name is unique.
   @return  TRUE if it is a valid worksheet name, FALSE otherwise
 -------------------------------------------------------------------------------}
-function TsWorkbook.ValidWorksheetName(AName: String;
-  AcceptEmptyName: Boolean = false): Boolean;
+function TsWorkbook.ValidWorksheetName(var AName: String;
+  ReplaceDuplicateName: Boolean = false): Boolean;
 // see: http://stackoverflow.com/questions/451452/valid-characters-for-excel-sheet-names
 var
   INVALID_CHARS: array [0..6] of char = ('[', ']', ':', '*', '?', '/', '\');
 var
   i: Integer;
+  unique: Boolean;
 begin
   Result := false;
 
   // Name must not be empty
-  if (AName = '') and (not AcceptEmptyName) then
+  if (AName = '') then
     exit;
 
   // Length must be less than 31 characters
@@ -6505,8 +6612,20 @@ begin
       exit;
 
   // Name must be unique
-  if GetWorksheetByName(AName) <> nil then
-    exit;
+  unique := (GetWorksheetByName(AName) = nil);
+  if not unique then
+  begin
+    if ReplaceDuplicateName then
+    begin
+      i := 0;
+      repeat
+        inc(i);
+        unique := (GetWorksheetByName(AName + IntToStr(i)) = nil);
+      until unique;
+      AName := AName + IntToStr(i);
+    end else
+      exit;
+  end;
 
   Result := true;
 end;

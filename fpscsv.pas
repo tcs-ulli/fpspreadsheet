@@ -94,7 +94,8 @@ function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 implementation
 
 uses
-  StrUtils, DateUtils, LConvEncoding, Math, fpsutils, fpscurrency;
+  //StrUtils,
+  DateUtils, LConvEncoding, Math, fpsutils, fpscurrency;
 
 { Initializes the FormatSettings of the CSVParams to default values which
   can be replaced by the FormatSettings of the workbook's FormatSettings }
@@ -439,7 +440,6 @@ procedure TsCSVReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   Parser: TCSVParser;
   s: String;
-  i: Integer;
   encoding: String;
 begin
   // Try to determine encoding of the input file
@@ -452,7 +452,7 @@ begin
 
   // Store workbook for internal use, and create worksheet
   FWorkbook := AData;
-  FWorksheet := AData.AddWorksheet(FWorksheetName);
+  FWorksheet := AData.AddWorksheet(FWorksheetName, true);
 
   // Create csv parser, read file and store in worksheet
   Parser := TCSVParser.Create;

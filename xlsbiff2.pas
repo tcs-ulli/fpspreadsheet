@@ -564,7 +564,7 @@ begin
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
-  FWorksheet := AData.AddWorksheet('', true);  // true --> accept empty sheet name
+  FWorksheet := AData.AddWorksheet('Sheet', true);
 
   { Read all records in a loop }
   while not BIFF2EOF do

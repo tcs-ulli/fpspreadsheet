@@ -1489,7 +1489,7 @@ begin
       ReadXMLFile(Doc, FilePath + fn);
       DeleteFile(FilePath + fn);
 
-      FWorksheet := AData.AddWorksheet(SheetList[i]);
+      FWorksheet := AData.AddWorksheet(SheetList[i], true);
 
       ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
       ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);

@@ -1428,7 +1428,7 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  FWorksheet := AData.AddWorksheet(FWorksheetNames.Strings[FCurrentWorksheet]);
+  FWorksheet := AData.AddWorksheet(FWorksheetNames[FCurrentWorksheet], true);
 
   while (not SectionEOF) do
   begin

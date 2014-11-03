@@ -8,11 +8,11 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
+        <OtherUnitFiles Value="."/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
         <CustomOptions Value="$(IDEBuildOptions)"/>
-        <CompilerPath Value="$(CompPath)"/>
       </Other>
     </CompilerOptions>
     <Description Value="laz_fpspreadsheet_visual is a visual component that allows you to use the fpspreadsheet package to read/write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
@@ -20,17 +20,22 @@
 It provides graphical components like a grid and chart."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="2"/>
-    <Files Count="2">
+    <Files Count="3">
       <Item1>
-        <Filename Value="fpspreadsheetgrid.pas"/>
+        <Filename Value="fpspreadsheetctrls.pas"/>
         <HasRegisterProc Value="True"/>
-        <UnitName Value="FPSpreadsheetGrid"/>
+        <UnitName Value="fpspreadsheetctrls"/>
       </Item1>
       <Item2>
+        <Filename Value="fpspreadsheetgrid.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="fpspreadsheetgrid"/>
+      </Item2>
+      <Item3>
         <Filename Value="fpspreadsheetchart.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="fpspreadsheetchart"/>
-      </Item2>
+      </Item3>
     </Files>
     <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="4">

@@ -77,7 +77,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('Chart',[TsWorksheetChartSource]);
+  RegisterComponents('Chart', [TsWorksheetChartSource]);
 end;
 
 { TsWorksheetChartSource }
