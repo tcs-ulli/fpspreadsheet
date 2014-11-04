@@ -21,7 +21,7 @@ type
   TsWorkbookSource = class(TComponent)
   private
     FWorkbook: TsWorkbook;
-    FSelectedWorksheet: TsWorksheet;
+    FWorksheet: TsWorksheet;
     FListeners: TFPList;
     FAutoDetectFormat: Boolean;
     FFileName: TFileName;
@@ -67,7 +67,7 @@ type
 
   public
     property Workbook: TsWorkbook read FWorkbook;
-    property SelectedWorksheet: TsWorksheet read FSelectedWorksheet;
+    property SelectedWorksheet: TsWorksheet read FWorksheet;
 
   published
     property AutoDetectFormat: Boolean read FAutoDetectFormat write FAutoDetectFormat;
@@ -263,8 +263,8 @@ end;
 procedure TsWorkbookSource.CellChangedHandler(Sender: TObject;
   ARow, ACol: Cardinal);
 begin
-  if FSelectedWorksheet <> nil then
-    NotifyListeners([lniCell], FSelectedWorksheet.FindCell(ARow, ACol));
+  if FWorksheet <> nil then
+    NotifyListeners([lniCell], FWorksheet.FindCell(ARow, ACol));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -289,8 +289,8 @@ end;
 procedure TsWorkbookSource.CreateNewWorkbook;
 begin
   InternalCreateNewWorkbook;
-  FSelectedWorksheet := FWorkbook.AddWorksheet('Sheet1');
-  SelectWorksheet(FSelectedWorksheet);
+  FWorksheet := FWorkbook.AddWorksheet('Sheet1');
+  SelectWorksheet(FWorksheet);
 
   // notify dependent controls
   NotifyListeners([lniWorkbook, lniWorksheet, lniSelection]);
@@ -313,7 +313,7 @@ end;
 procedure TsWorkbookSource.InternalCreateNewWorkbook;
 begin
   FreeAndNil(FWorkbook);
-  FSelectedWorksheet := nil;
+  FWorksheet := nil;
   FWorkbook := TsWorkbook.Create;
   FWorkbook.OnAddWorksheet := @WorksheetAddedHandler;
   FWorkbook.OnChangeWorksheet := @WorksheetChangedHandler;
@@ -522,7 +522,7 @@ end;
 procedure TsWorkbookSource.SelectCell(ASheetRow, ASheetCol: Cardinal);
 begin
   if SelectedWorksheet <> nil then
-    FSelectedWorksheet.SelectCell(ASheetRow, ASheetCol);
+    FWorksheet.SelectCell(ASheetRow, ASheetCol);
   NotifyListeners([lniSelection]);
 end;
 
@@ -536,11 +536,11 @@ procedure TsWorkbookSource.SelectWorksheet(AWorkSheet: TsWorksheet);
 begin
   if AWorksheet = nil then
     exit;
-  FSelectedWorksheet := AWorkSheet;
-  FSelectedWorksheet.OnChangeCell := @CellChangedHandler;
-  FSelectedWorksheet.OnSelectCell := @CellSelectedHandler;
+  FWorksheet := AWorkSheet;
+  FWorksheet.OnChangeCell := @CellChangedHandler;
+  FWorksheet.OnSelectCell := @CellSelectedHandler;
   NotifyListeners([lniWorksheet]);
-  SelectCell(FSelectedWorksheet.SelectedCellRow, FSelectedWorksheet.SelectedCellCol);
+  SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -617,7 +617,7 @@ var
 begin
   // It is very possible that the currently selected worksheet has been deleted.
   // Look for the selected worksheet in the workbook. Does it still exist? ...
-  i := Workbook.GetWorksheetIndex(FSelectedWorksheet);
+  i := Workbook.GetWorksheetIndex(FWorksheet);
   if i = -1 then
   begin
     // ... no - it must have been the sheet deleted.
@@ -628,7 +628,7 @@ begin
     else
       sheet := Workbook.GetWorksheetbyIndex(ASheetIndex);
   end else
-    sheet := FSelectedWorksheet;
+    sheet := FWorksheet;
   NotifyListeners([lniWorkbook]);
   SelectWorksheet(sheet);
 end;
@@ -799,8 +799,8 @@ var
 begin
   if Worksheet = nil then
     exit;
-  r := Worksheet.SelectedCellRow;
-  c := Worksheet.SelectedCellCol;
+  r := Worksheet.ActiveCellRow;
+  c := Worksheet.ActiveCellCol;
   s := Lines.Text;
   if (s <> '') and (s[1] = '=') then
     Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
@@ -816,7 +816,7 @@ function TsCellEdit.GetSelectedCell: PCell;
 begin
   if (Worksheet <> nil) then
     with Worksheet do
-      Result := FindCell(SelectedCellRow, SelectedCellCol)
+      Result := FindCell(ActiveCellRow, ActiveCellCol)
   else
     Result := nil;
 end;
@@ -977,7 +977,7 @@ procedure TsCellIndicator.ListenerNotification(AChangedItems: TsNotificationItem
 begin
   Unused(AData);
   if (lniSelection in AChangedItems) and (Worksheet <> nil) then
-    Text := GetCellString(Worksheet.SelectedCellRow, Worksheet.SelectedCellCol)
+    Text := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol)
   else
     Text := '';
 end;
@@ -1053,7 +1053,7 @@ begin
     book := FWorkbookSource.Workbook;
     sheet := FWorkbookSource.SelectedWorksheet;
     if sheet <> nil then
-      cell := sheet.FindCell(sheet.SelectedCellRow, sheet.SelectedCellCol);
+      cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
   end;
 
   case FMode of
@@ -1208,8 +1208,8 @@ begin
   begin
     if Worksheet <> nil then
     begin
-      Strings.Add(Format('Row=%d', [Worksheet.SelectedCellRow]));
-      Strings.Add(Format('Col=%d', [Worksheet.SelectedCellCol]));
+      Strings.Add(Format('Row=%d', [Worksheet.ActiveCellRow]));
+      Strings.Add(Format('Col=%d', [Worksheet.ActiveCellCol]));
     end else
     begin
       Strings.Add('Row=');

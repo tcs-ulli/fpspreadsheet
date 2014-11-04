@@ -3166,8 +3166,8 @@ begin
   // Selection changed
   if (lniSelection in AChangedItems) and (Worksheet <> nil) then
   begin
-    grow := GetGridRow(Worksheet.SelectedCellRow);
-    gcol := GetGridCol(Worksheet.SelectedCellCol);
+    grow := GetGridRow(Worksheet.ActiveCellRow);
+    gcol := GetGridCol(Worksheet.ActiveCellCol);
     if (grow <> Row) or (gcol <> Col) then
       MoveExtend(false, gcol, grow);
   end;
