@@ -510,8 +510,8 @@ type
     FCells: TAvlTree; // Items are TCell
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
-    FSelectedCellRow: Cardinal;
-    FSelectedCellCol: Cardinal;
+    FActiveCellRow: Cardinal;
+    FActiveCellCol: Cardinal;
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
@@ -825,9 +825,9 @@ type
         usage of frozen panes etc. }
     property  Options: TsSheetOptions read FOptions write FOptions;
     {@@ Column index of the selected cell of this worksheet }
-    property  SelectedCellCol: Cardinal read FSelectedCellCol;
+    property  ActiveCellCol: Cardinal read FActiveCellCol;
     {@@ Row index of the selected cell of this worksheet }
-    property  SelectedCellRow: Cardinal read FSelectedCellRow;
+    property  ActiveCellRow: Cardinal read FActiveCellRow;
     {@@ Number of frozen columns which do not scroll }
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     {@@ Number of frozen rows which do not scroll }
@@ -3524,10 +3524,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
 begin
-  if (ARow <> FSelectedCellRow) or (ACol <> FSelectedCellCol) then
+  if (ARow <> FActiveCellRow) or (ACol <> FActiveCellCol) then
   begin
-    FSelectedCellRow := ARow;
-    FSelectedCellCol := ACol;
+    FActiveCellRow := ARow;
+    FActiveCellCol := ACol;
     if Assigned(FOnSelectCell) then FOnSelectCell(Self, ARow, ACol);
   end;
 end;
