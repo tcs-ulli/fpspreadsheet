@@ -125,11 +125,11 @@ object Form1: TForm1
     end
     object CbLoader: TComboBox
       Left = 104
-      Height = 28
+      Height = 23
       Top = 8
       Width = 148
-      ItemHeight = 20
-      ItemIndex = 0
+      ItemHeight = 15
+      ItemIndex = 1
       Items.Strings = (
         'Workbook'
         'WorkbookSource'
@@ -137,13 +137,13 @@ object Form1: TForm1
       )
       Style = csDropDownList
       TabOrder = 1
-      Text = 'Workbook'
+      Text = 'WorkbookSource'
     end
     object Label1: TLabel
       Left = 13
-      Height = 20
+      Height = 15
       Top = 11
-      Width = 73
+      Width = 58
       Caption = 'Loaded by:'
       ParentColor = False
     end

@@ -28,7 +28,7 @@ object Form1: TForm1
     end
     object CellIndicator: TsCellIndicator
       Left = 95
-      Height = 28
+      Height = 23
       Top = 9
       Width = 80
       TabOrder = 1
@@ -37,7 +37,7 @@ object Form1: TForm1
     end
     object CellEdit: TsCellEdit
       Left = 184
-      Height = 28
+      Height = 23
       Top = 9
       Width = 731
       Anchors = [akTop, akLeft, akRight]
@@ -60,12 +60,13 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 528
-      Top = 28
+      Height = 533
+      Top = 23
       Width = 668
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
+      TextOverflow = True
       WorkbookSource = WorkbookSource
       Align = alClient
       AutoAdvance = aaDown
@@ -127,8 +128,8 @@ object Form1: TForm1
     TabOrder = 2
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 528
-      Top = 28
+      Height = 533
+      Top = 23
       Width = 244
       Align = alClient
       RowCount = 24
@@ -136,10 +137,10 @@ object Form1: TForm1
       Strings.Strings = (
         'FileName='
         'FileFormat=sfExcel8'
-        'Options='
+        'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         'FormatSettings='
         '  ThousandSeparator=.'
-        '  DecimalSeparator=,'
+        '  DecimalSeparator=.'
         '  ListSeparator=;'
         '  DateSeparator=.'
         '  TimeSeparator=:'
@@ -165,8 +166,8 @@ object Form1: TForm1
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
       ColWidths = (
-        109
-        110
+        120
+        120
       )
     end
   end

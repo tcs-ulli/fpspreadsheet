@@ -17,6 +17,8 @@ unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
 
+{.$DEFINE ENABLE_MULTI_SELECT}  // requires Laz trunk younger than r...??? (containing grid multisel patch)
+
 interface
 
 uses
@@ -325,6 +327,12 @@ type
         by the rectangle is activated. }
     property Wordwraps[ARect: TGridRect]: Boolean
         read GetWordwraps write SetWordwraps;
+
+    // inherited
+   {$IFDEF ENABLE_MULTI_SELECT}
+    {@@ Allow multiple selections}
+    property RangeSelectMode default rsmMulti;
+   {$ENDIF}
   end;
 
   { TsWorksheetGrid }
@@ -760,6 +768,9 @@ begin
   FInitRowCount := 100;
   FCellFont := TFont.Create;
   FOwnsWorkbook := true;
+ {$IFDEF ENABLE_MULTI_SELECT}
+  RangeSelectMode := rsmMulti;
+ {$ENDIF}
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3212,9 +3223,45 @@ end;
   old thick selection border.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MoveSelection;
+var
+  sel: TsCellRangeArray;
+  {$IFDEF ENABLE_MULTI_SELECT}
+  i: Integer;
+  {$ENDIF}
 begin
-  if (WorkbookSource <> nil) then
-    WorkbookSource.SelectCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+  if Worksheet <> nil then
+  begin
+    {$IFDEF ENABLE_MULTI_SELECT}
+    if HasMultiSelection then
+    begin
+      SetLength(sel, SelectedRangeCount);
+      for i:=0 to High(sel) do
+        with SelectedRange[i] do
+        begin
+          sel[i].Row1 := GetWorksheetRow(Top);
+          sel[i].Col1 := GetWorksheetCol(Left);
+          sel[i].Row2 := GetWorksheetRow(Bottom);
+          sel[i].Col2 := GetWorksheetCol(Right);
+        end;
+    end else
+    begin
+      SetLength(sel, 1);
+      sel[0].Row1 := GetWorksheetRow(Selection.Top);
+      sel[0].Col1 := GetWorksheetCol(Selection.Left);
+      sel[0].Row2 := GetWorksheetRow(Selection.Bottom);
+      sel[0].Col2 := GetWorksheetRow(Selection.Right);
+    end;
+    {$ELSE}
+    SetLength(sel, 1);
+    sel[0].Row1 := GetWorksheetRow(Selection.Top);
+    sel[0].Col1 := GetWorksheetCol(Selection.Left);
+    sel[0].Row2 := GetWorksheetRow(Selection.Bottom);
+    sel[0].Col2 := GetWorksheetRow(Selection.Right);
+    {$ENDIF}
+    Worksheet.SetSelection(sel);
+
+    Worksheet.SelectCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+  end;
   //Refresh;
   inherited;
   Refresh;
@@ -3743,7 +3790,7 @@ end;
 function TsCustomWorksheetGrid.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
-    Result := FWorkbooksource.SelectedWorksheet
+    Result := FWorkbooksource.Worksheet
   else
     Result := FOwnedWorksheet;
 end;

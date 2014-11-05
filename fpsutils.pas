@@ -83,7 +83,8 @@ function ParseCellColString(const AStr: string;
 function GetColString(AColIndex: Integer): String;
 function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2]): String;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
+  Compact: Boolean = false): String;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
@@ -737,14 +738,18 @@ end;
            --> $A1:$B3
 -------------------------------------------------------------------------------}
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2]): String;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
+  Compact: Boolean = false): String;
 begin
-  Result := Format('%s%s%s%d:%s%s%s%d', [
-    RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
-    RELCHAR[rfRelRow in AFlags], ARow1 + 1,
-    RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
-    RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
-  ]);
+  if Compact and (ARow1 = ARow2) and (ACol1 = ACol2) then
+    Result := GetCellString(ARow1, ACol1, AFlags)
+  else
+    Result := Format('%s%s%s%d:%s%s%s%d', [
+      RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
+      RELCHAR[rfRelRow in AFlags], ARow1 + 1,
+      RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
+      RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
+    ]);
 end;
 
 {@@ ----------------------------------------------------------------------------
