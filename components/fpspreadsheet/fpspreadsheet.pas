@@ -512,6 +512,7 @@ type
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
+    FSelection: TsCellRangeArray;
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
@@ -794,8 +795,13 @@ type
       ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
     procedure Sort(ASortParams: TsSortParams; ARange: String); overload;
 
-    // Selected cell
+    // Selected cell and ranges
     procedure SelectCell(ARow, ACol: Cardinal);
+    procedure ClearSelection;
+    function GetSelection: TsCellRangeArray;
+    function GetSelectionAsString: String;
+    function GetSelectionCount: Integer;
+    procedure SetSelection(const ASelection: TsCellRangeArray);
 
     { Properties }
 
@@ -907,11 +913,13 @@ type
     FWriting: Boolean;
     FCalculationLock: Integer;
     FOptions: TsWorkbookOptions;
+    FActiveWorksheet: TsWorksheet;
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
     FOnAddWorksheet: TsWorksheetEvent;
     FOnRemoveWorksheet: TsRemoveWorksheetEvent;
+    FOnSelectWorksheet: TsWorksheetEvent;
     FFileName: String;
     FLog: TStringList;
 
@@ -964,6 +972,7 @@ type
     function  GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
     procedure RemoveAllWorksheets;
     procedure RemoveWorksheet(AWorksheet: TsWorksheet);
+    procedure SelectWorksheet(AWorksheet: TsWorksheet);
     function  ValidWorksheetName(var AName: String;
       ReplaceDuplicateName: Boolean = false): Boolean;
 
@@ -1005,6 +1014,8 @@ type
     procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
     procedure ClearErrorList;
 
+    {@@ Identifies the "active" worksheet (only for visual controls)}
+    property ActiveWorksheet: TsWorksheet read FActiveWorksheet;
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property Encoding: TsEncoding read FEncoding write FEncoding;
@@ -1023,6 +1034,8 @@ type
     property OnChangeWorksheet: TsWorksheetEvent read FOnChangeWorksheet write FOnChangeWorksheet;
     {@@ This event fires when a worksheet is deleted }
     property OnRemoveWorksheet: TsRemoveWorksheetEvent read FOnRemoveWorksheet write FOnRemoveWorksheet;
+    {@@ This event fires when a worksheet is made "active"}
+    property OnSelectWorksheet: TsWorksheetEvent read FOnSelectWorksheet write FOnSelectWorksheet;
     {@@ This event allows to provide external cell data for writing to file,
       standard cells are ignored. Intended for converting large database files
       to a spreadsheet format. Requires Option boVirtualMode to be set. }
@@ -3530,6 +3543,70 @@ begin
     FActiveCellCol := ACol;
     if Assigned(FOnSelectCell) then FOnSelectCell(Self, ARow, ACol);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Clears the list of seleccted cell ranges
+  Only needed by the visual controls.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ClearSelection;
+begin
+SetLength(FSelection, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the list of selected cell ranges
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetSelection: TsCellRangeArray;
+var
+  i: Integer;
+begin
+  SetLength(Result, Length(FSelection));
+  for i:=0 to High(FSelection) do
+    Result[i] := FSelection[i];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns all selection ranges as an Excel string
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetSelectionAsString: String;
+const
+  RELATIVE = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
+var
+  i: Integer;
+  L: TStringList;
+begin
+  L := TStringList.Create;
+  try
+    for i:=0 to Length(FSelection)-1 do
+      with FSelection[i] do
+        L.Add(GetCellRangeString(Row1, Col1, Row2, Col2, RELATIVE, true));
+    L.Delimiter := DefaultFormatSettings.ListSeparator;
+    L.StrictDelimiter := true;
+    Result := L.DelimitedText;
+  finally
+    L.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the number of selected cell ranges
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetSelectionCount: Integer;
+begin
+  Result := Length(FSelection);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Marks an array of cell ranges as "selected". Only needed for visual controls
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetSelection(const ASelection: TsCellRangeArray);
+var
+  i: Integer;
+begin
+  SetLength(FSelection, Length(ASelection));
+  for i:=0 to High(FSelection) do
+    FSelection[i] := ASelection[i];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6572,6 +6649,19 @@ begin
         FOnRemoveWorksheet(self, i);
     end;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Makes the specified worksheet "active". Only needed for visual controls.
+  The active worksheet is displayed in a TsWorksheetGrid and in the selected
+  tab of a TsWorkbookTabControl.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.SelectWorksheet(AWorksheet: TsWorksheet);
+begin
+  if (AWorksheet <> nil) and (FWorksheets.IndexOf(AWorksheet) = -1) then
+    raise Exception.Create('[TsWorkbook.SelectSheet] Worksheet does not belong to the workbook');
+  FActiveWorksheet := AWorksheet;
+  if Assigned(FOnSelectWorksheet) then FOnSelectWorksheet(self, AWorksheet);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -38,6 +38,7 @@ type
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetChangedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetRemovedHandler(Sender: TObject; ASheetIndex: Integer);
+    procedure WorksheetSelectedHandler(Sender: TObject; AWorksheet: TsWorksheet);
 
   protected
     procedure DoShowError(const AErrorMsg: String);
@@ -67,7 +68,7 @@ type
 
   public
     property Workbook: TsWorkbook read FWorkbook;
-    property SelectedWorksheet: TsWorksheet read FWorksheet;
+    property Worksheet: TsWorksheet read FWorksheet;
 
   published
     property AutoDetectFormat: Boolean read FAutoDetectFormat write FAutoDetectFormat;
@@ -165,10 +166,10 @@ type
   protected
     procedure DoUpdate; virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure UpdateCellValue(ACell: PCell); virtual;
-    procedure UpdateCellProperties(ACell: PCell); virtual;
-    procedure UpdateWorkbook(AWorkbook: TsWorkbook); virtual;
-    procedure UpdateWorksheet(ASheet: TsWorksheet); virtual;
+    procedure UpdateCellValue(ACell: PCell; AStrings: TStrings); virtual;
+    procedure UpdateCellProperties(ACell: PCell; AStrings: TStrings); virtual;
+    procedure UpdateWorkbook(AWorkbook: TsWorkbook; AStrings: TStrings); virtual;
+    procedure UpdateWorksheet(ASheet: TsWorksheet; AStrings: TStrings); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -292,7 +293,7 @@ begin
   FWorksheet := FWorkbook.AddWorksheet('Sheet1');
   SelectWorksheet(FWorksheet);
 
-  // notify dependent controls
+  // notify listeners
   NotifyListeners([lniWorkbook, lniWorksheet, lniSelection]);
 end;
 
@@ -318,6 +319,7 @@ begin
   FWorkbook.OnAddWorksheet := @WorksheetAddedHandler;
   FWorkbook.OnChangeWorksheet := @WorksheetChangedHandler;
   FWorkbook.OnRemoveWorksheet := @WorksheetRemovedHandler;
+  FWorkbook.OnSelectWorksheet := @WorksheetSelectedHandler;
   // Pass options to workbook
   SetOptions(FOptions);
 end;
@@ -521,7 +523,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SelectCell(ASheetRow, ASheetCol: Cardinal);
 begin
-  if SelectedWorksheet <> nil then
+  if FWorksheet <> nil then
     FWorksheet.SelectCell(ASheetRow, ASheetCol);
   NotifyListeners([lniSelection]);
 end;
@@ -534,6 +536,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SelectWorksheet(AWorkSheet: TsWorksheet);
 begin
+  FWorksheet := AWorksheet;
+  if (FWorkbook <> nil) then
+    FWorkbook.SelectWorksheet(AWorksheet);
+{
   if AWorksheet = nil then
     exit;
   FWorksheet := AWorkSheet;
@@ -541,6 +547,7 @@ begin
   FWorksheet.OnSelectCell := @CellSelectedHandler;
   NotifyListeners([lniWorksheet]);
   SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -633,6 +640,23 @@ begin
   SelectWorksheet(sheet);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Event handler called whenever a the workbook makes a worksheet "active".
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.WorksheetSelectedHandler(Sender: TObject;
+  AWorksheet: TsWorksheet);
+begin
+  FWorksheet := AWorksheet;
+  if FWorksheet <> nil then
+  begin
+    FWorksheet.OnChangeCell := @CellChangedHandler;
+    FWorksheet.OnSelectCell := @CellSelectedHandler;
+    NotifyListeners([lniWorksheet]);
+    SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
+  end else
+    NotifyListeners([lniWorksheet]);
+end;
+
 
 {------------------------------------------------------------------------------}
 {                            TsWorkbookTabControl                              }
@@ -665,6 +689,16 @@ end;
 procedure TsWorkbookTabControl.GetSheetList(AList: TStrings);
 var
   i: Integer;
+begin
+  AList.Clear;
+  if Workbook <> nil then
+    for i:=0 to Workbook.GetWorksheetCount-1 do
+      AList.Add(Workbook.GetWorksheetByIndex(i).Name);
+end;
+{
+procedure TsWorkbookTabControl.GetSheetList(AList: TStrings);
+var
+  i: Integer;
   oldTabIndex: Integer;
 begin
   oldTabIndex := TabIndex;
@@ -680,7 +714,7 @@ begin
       TabIndex := oldTabIndex;
   end;
 end;
-
+ }
 {@@ ----------------------------------------------------------------------------
   Getter method for property "Workbook"
 -------------------------------------------------------------------------------}
@@ -698,7 +732,7 @@ end;
 function TsWorkbookTabControl.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
-    Result := FWorkbookSource.SelectedWorksheet
+    Result := FWorkbookSource.Worksheet
   else
     Result := nil;
 end;
@@ -714,9 +748,39 @@ procedure TsWorkbookTabControl.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 var
   i: Integer;
+  oldTabIndex: Integer;
+  list: TStringList;
 begin
   Unused(AData);
 
+  // Workbook changed
+  if (lniWorkbook in AChangedItems) then
+  begin
+    oldTabIndex := TabIndex;
+    list := TStringList.Create;
+    Tabs.BeginUpdate;
+    try
+      GetSheetList(list);
+      Tabs.Assign(list);
+      if (oldTabIndex = -1) and (Tabs.Count > 0) then
+        TabIndex := 0
+      else
+      if oldTabIndex < Tabs.Count then
+        TabIndex := oldTabIndex;
+    finally
+      list.Free;
+      Tabs.EndUpdate;
+    end;
+  end;
+
+  // Worksheet changed
+  if (lniWorksheet in AChangedItems) and (Worksheet <> nil) then
+  begin
+    i := Tabs.IndexOf(Worksheet.Name);
+    if i <> TabIndex then
+      TabIndex := i;
+  end;
+{
   // Workbook changed
   if (lniWorkbook in AChangedItems) then
     GetSheetList(Tabs);
@@ -728,6 +792,7 @@ begin
     if i <> TabIndex then
       TabIndex := i;
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -840,7 +905,7 @@ end;
 function TsCellEdit.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
-    Result := FWorkbookSource.SelectedWorksheet
+    Result := FWorkbookSource.Worksheet
   else
     Result := nil;
 end;
@@ -963,7 +1028,7 @@ end;
 function TsCellIndicator.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
-    Result := FWorkbookSource.SelectedWorksheet
+    Result := FWorkbookSource.Worksheet
   else
     Result := nil;
 end;
@@ -1042,6 +1107,38 @@ var
   cell: PCell;
   sheet: TsWorksheet;
   book: TsWorkbook;
+  list: TStringList;
+begin
+  cell := nil;
+  sheet := nil;
+  book := nil;
+  if FWorkbookSource <> nil then
+  begin
+    book := FWorkbookSource.Workbook;
+    sheet := FWorkbookSource.Worksheet;
+    if sheet <> nil then
+      cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
+  end;
+
+  list := TStringList.Create;
+  try
+    case FMode of
+      imCellValue      : UpdateCellValue(cell, list);
+      imCellProperties : UpdateCellProperties(cell, list);
+      imWorksheet      : UpdateWorksheet(sheet, list);
+      imWorkbook       : UpdateWorkbook(book, list);
+    end;
+    Strings.Assign(list);
+  finally
+    list.Free;
+  end;
+end;
+(*
+procedure TsSpreadsheetInspector.DoUpdate;
+var
+  cell: PCell;
+  sheet: TsWorksheet;
+  book: TsWorkbook;
 begin
   Strings.Clear;
 
@@ -1051,7 +1148,7 @@ begin
   if FWorkbookSource <> nil then
   begin
     book := FWorkbookSource.Workbook;
-    sheet := FWorkbookSource.SelectedWorksheet;
+    sheet := FWorkbookSource.Worksheet;
     if sheet <> nil then
       cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
   end;
@@ -1063,6 +1160,7 @@ begin
     imWorkbook       : UpdateWorkbook(book);
   end;
 end;
+  *)
 
 function TsSpreadsheetInspector.GetWorkbook: TsWorkbook;
 begin
@@ -1075,7 +1173,7 @@ end;
 function TsSpreadsheetInspector.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
-    Result := FWorkbookSource.SelectedWorksheet
+    Result := FWorkbookSource.Worksheet
   else
     Result := nil;
 end;
@@ -1086,6 +1184,15 @@ begin
   Unused(AData);
   case FMode of
     imWorkbook:
+      if ([lniWorkbook, lniWorksheet]*AChangedItems <> []) then DoUpdate;
+    imWorksheet:
+      if ([lniWorksheet, lniSelection]*AChangedItems <> []) then DoUpdate;
+    imCellValue, imCellProperties:
+      if ([lniCell, lniSelection]*AChangedItems <> []) then DoUpdate;
+  end;
+{
+  case FMode of
+    imWorkbook:
       if lniWorkbook in AChangedItems then DoUpdate;
     imWorksheet:
       if lniWorksheet in AChangedItems then DoUpdate;
@@ -1093,6 +1200,7 @@ begin
     imCellProperties:
       if ([lniCell, lniSelection]*AChangedItems <> []) then DoUpdate;
   end;
+  }
 end;
 
 procedure TsSpreadsheetInspector.Notification(AComponent: TComponent;
@@ -1123,39 +1231,40 @@ begin
   ListenerNotification([lniWorkbook, lniWorksheet, lniSelection]);
 end;
 
-procedure TsSpreadsheetInspector.UpdateCellProperties(ACell: PCell);
+procedure TsSpreadsheetInspector.UpdateCellProperties(ACell: PCell;
+  AStrings: TStrings);
 var
   s: String;
   cb: TsCellBorder;
   r1, r2, c1, c2: Cardinal;
 begin
   if (ACell = nil) or not (uffFont in ACell^.UsedFormattingFields)
-    then Strings.Add('FontIndex=')
-    else Strings.Add(Format('FontIndex=%d (%s)', [
+    then AStrings.Add('FontIndex=')
+    else AStrings.Add(Format('FontIndex=%d (%s)', [
            ACell^.FontIndex,
            Workbook.GetFontAsString(ACell^.FontIndex)
          ]));
 
   if (ACell=nil) or not (uffTextRotation in ACell^.UsedFormattingFields)
-    then Strings.Add('TextRotation=')
-    else Strings.Add(Format('TextRotation=%s', [
+    then AStrings.Add('TextRotation=')
+    else AStrings.Add(Format('TextRotation=%s', [
            GetEnumName(TypeInfo(TsTextRotation), ord(ACell^.TextRotation))
          ]));
 
   if (ACell=nil) or not (uffHorAlign in ACell^.UsedFormattingFields)
-    then Strings.Add('HorAlignment=')
-    else Strings.Add(Format('HorAlignment=%s', [
+    then AStrings.Add('HorAlignment=')
+    else AStrings.Add(Format('HorAlignment=%s', [
            GetEnumName(TypeInfo(TsHorAlignment), ord(ACell^.HorAlignment))
          ]));
 
   if (ACell=nil) or not (uffVertAlign in ACell^.UsedFormattingFields)
-    then Strings.Add('VertAlignment=')
-    else Strings.Add(Format('VertAlignment=%s', [
+    then AStrings.Add('VertAlignment=')
+    else AStrings.Add(Format('VertAlignment=%s', [
            GetEnumName(TypeInfo(TsVertAlignment), ord(ACell^.VertAlignment))
          ]));
 
   if (ACell=nil) or not (uffBorder in ACell^.UsedFormattingFields) then
-    Strings.Add('Borders=')
+    AStrings.Add('Borders=')
   else
   begin
     s := '';
@@ -1163,84 +1272,85 @@ begin
       if cb in ACell^.Border then
         s := s + ', ' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
     if s <> '' then Delete(s, 1, 2);
-    Strings.Add('Borders='+s);
+    AStrings.Add('Borders='+s);
   end;
 
   for cb in TsCellBorder do
     if ACell = nil then
-      Strings.Add(Format('BorderStyles[%s]=', [
+      AStrings.Add(Format('BorderStyles[%s]=', [
         GetEnumName(TypeInfo(TsCellBorder), ord(cb))]))
     else
-      Strings.Add(Format('BorderStyles[%s]=%s, %s', [
+      AStrings.Add(Format('BorderStyles[%s]=%s, %s', [
         GetEnumName(TypeInfo(TsCellBorder), ord(cb)),
         GetEnumName(TypeInfo(TsLineStyle), ord(ACell^.BorderStyles[cbEast].LineStyle)),
         Workbook.GetColorName(ACell^.BorderStyles[cbEast].Color)]));
 
   if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedformattingFields)
-    then Strings.Add('BackgroundColor=')
-    else Strings.Add(Format('BackgroundColor=%d (%s)', [
+    then AStrings.Add('BackgroundColor=')
+    else AStrings.Add(Format('BackgroundColor=%d (%s)', [
            ACell^.BackgroundColor,
            Workbook.GetColorName(ACell^.BackgroundColor)]));
 
   if (ACell = nil) or not (uffNumberFormat in ACell^.UsedFormattingFields) then
   begin
-    Strings.Add('NumberFormat=');
-    Strings.Add('NumberFormatStr=');
+    AStrings.Add('NumberFormat=');
+    AStrings.Add('NumberFormatStr=');
   end else
   begin
-    Strings.Add(Format('NumberFormat=%s', [
+    AStrings.Add(Format('NumberFormat=%s', [
       GetEnumName(TypeInfo(TsNumberFormat), ord(ACell^.NumberFormat))]));
-    Strings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
+    AStrings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
   end;
 
   if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then
-    Strings.Add('Merged range=')
+    AStrings.Add('Merged range=')
   else
   begin
     Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    Strings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
+    AStrings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
   end;
 end;
 
-procedure TsSpreadsheetInspector.UpdateCellValue(ACell: PCell);
+procedure TsSpreadsheetInspector.UpdateCellValue(ACell: PCell; AStrings: TStrings);
 begin
   if ACell = nil then
   begin
     if Worksheet <> nil then
     begin
-      Strings.Add(Format('Row=%d', [Worksheet.ActiveCellRow]));
-      Strings.Add(Format('Col=%d', [Worksheet.ActiveCellCol]));
+      AStrings.Add(Format('Row=%d', [Worksheet.ActiveCellRow]));
+      AStrings.Add(Format('Col=%d', [Worksheet.ActiveCellCol]));
     end else
     begin
-      Strings.Add('Row=');
-      Strings.Add('Col=');
+      AStrings.Add('Row=');
+      AStrings.Add('Col=');
     end;
-    Strings.Add('ContentType=(none)');
+    AStrings.Add('ContentType=(none)');
   end else
   begin
-    Strings.Add(Format('Row=%d', [ACell^.Row]));
-    Strings.Add(Format('Col=%d', [ACell^.Col]));
-    Strings.Add(Format('ContentType=%s', [
+    AStrings.Add(Format('Row=%d', [ACell^.Row]));
+    AStrings.Add(Format('Col=%d', [ACell^.Col]));
+    AStrings.Add(Format('ContentType=%s', [
       GetEnumName(TypeInfo(TCellContentType), ord(ACell^.ContentType))
     ]));
-    Strings.Add(Format('NumberValue=%g', [ACell^.NumberValue]));
-    Strings.Add(Format('DateTimeValue=%g', [ACell^.DateTimeValue]));
-    Strings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
-    Strings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
-    Strings.Add(Format('ErrorValue=%s', [
+    AStrings.Add(Format('NumberValue=%g', [ACell^.NumberValue]));
+    AStrings.Add(Format('DateTimeValue=%g', [ACell^.DateTimeValue]));
+    AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
+    AStrings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
+    AStrings.Add(Format('ErrorValue=%s', [
       GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue))
     ]));
-    Strings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)])); //^.FormulaValue]));
+    AStrings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)])); //^.FormulaValue]));
     if ACell^.SharedFormulaBase = nil then
-      Strings.Add('SharedFormulaBase=')
+      AStrings.Add('SharedFormulaBase=')
     else
-      Strings.Add(Format('SharedFormulaBase=%s', [GetCellString(
+      AStrings.Add(Format('SharedFormulaBase=%s', [GetCellString(
         ACell^.SharedFormulaBase^.Row, ACell^.SharedFormulaBase^.Col)
       ]));
   end;
 end;
 
-procedure TsSpreadsheetInspector.UpdateWorkbook(AWorkbook: TsWorkbook);
+procedure TsSpreadsheetInspector.UpdateWorkbook(AWorkbook: TsWorkbook;
+  AStrings: TStrings);
 var
   bo: TsWorkbookOption;
   s: String;
@@ -1248,75 +1358,87 @@ var
 begin
   if AWorkbook = nil then
   begin
-    Strings.Add('FileName=');
-    Strings.Add('FileFormat=');
-    Strings.Add('Options=');
-    Strings.Add('FormatSettings=');
+    AStrings.Add('FileName=');
+    AStrings.Add('FileFormat=');
+    AStrings.Add('Options=');
+    AStrings.Add('ActiveWorksheet=');
+    AStrings.Add('FormatSettings=');
   end else
   begin
-    Strings.Add(Format('FileName=%s', [AWorkbook.FileName]));
-    Strings.Add(Format('FileFormat=%s', [
+    AStrings.Add(Format('FileName=%s', [AWorkbook.FileName]));
+    AStrings.Add(Format('FileFormat=%s', [
       GetEnumName(TypeInfo(TsSpreadsheetFormat), ord(AWorkbook.FileFormat))
     ]));
+
+    if AWorkbook.ActiveWorksheet <> nil then
+      AStrings.Add('ActiveWorksheet=' + AWorkbook.ActiveWorksheet.Name)
+    else
+      AStrings.Add('ActiveWorksheet=');
 
     s := '';
     for bo in TsWorkbookOption do
       if bo in AWorkbook.Options then
         s := s + ', ' + GetEnumName(TypeInfo(TsWorkbookOption), ord(bo));
     if s <> '' then Delete(s, 1, 2);
-    Strings.Add('Options='+s);
+    AStrings.Add('Options='+s);
 
-    Strings.Add('FormatSettings=');
-    Strings.Add('  ThousandSeparator='+AWorkbook.FormatSettings.ThousandSeparator);
-    Strings.Add('  DecimalSeparator='+AWorkbook.FormatSettings.DecimalSeparator);
-    Strings.Add('  ListSeparator='+AWorkbook.FormatSettings.ListSeparator);
-    Strings.Add('  DateSeparator='+AWorkbook.FormatSettings.DateSeparator);
-    Strings.Add('  TimeSeparator='+AWorkbook.FormatSettings.TimeSeparator);
-    Strings.Add('  ShortDateFormat='+AWorkbook.FormatSettings.ShortDateFormat);
-    Strings.Add('  LongDateFormat='+AWorkbook.FormatSettings.LongDateFormat);
-    Strings.Add('  ShortTimeFormat='+AWorkbook.FormatSettings.ShortTimeFormat);
-    Strings.Add('  LongTimeFormat='+AWorkbook.FormatSettings.LongTimeFormat);
-    Strings.Add('  TimeAMString='+AWorkbook.FormatSettings.TimeAMString);
-    Strings.Add('  TimePMString='+AWorkbook.FormatSettings.TimePMString);
+    AStrings.Add('FormatSettings=');
+    AStrings.Add('  ThousandSeparator='+AWorkbook.FormatSettings.ThousandSeparator);
+    AStrings.Add('  DecimalSeparator='+AWorkbook.FormatSettings.DecimalSeparator);
+    AStrings.Add('  ListSeparator='+AWorkbook.FormatSettings.ListSeparator);
+    AStrings.Add('  DateSeparator='+AWorkbook.FormatSettings.DateSeparator);
+    AStrings.Add('  TimeSeparator='+AWorkbook.FormatSettings.TimeSeparator);
+    AStrings.Add('  ShortDateFormat='+AWorkbook.FormatSettings.ShortDateFormat);
+    AStrings.Add('  LongDateFormat='+AWorkbook.FormatSettings.LongDateFormat);
+    AStrings.Add('  ShortTimeFormat='+AWorkbook.FormatSettings.ShortTimeFormat);
+    AStrings.Add('  LongTimeFormat='+AWorkbook.FormatSettings.LongTimeFormat);
+    AStrings.Add('  TimeAMString='+AWorkbook.FormatSettings.TimeAMString);
+    AStrings.Add('  TimePMString='+AWorkbook.FormatSettings.TimePMString);
     s := AWorkbook.FormatSettings.ShortMonthNames[1];
     for i:=2 to 12 do
       s := s + ', ' + AWorkbook.FormatSettings.ShortMonthNames[i];
-    Strings.Add('  ShortMonthNames='+s);
+    AStrings.Add('  ShortMonthNames='+s);
     s := AWorkbook.FormatSettings.LongMonthnames[1];
     for i:=2 to 12 do
       s := s +', ' + AWorkbook.FormatSettings.LongMonthNames[i];
-    Strings.Add('  LongMontNames='+s);
+    AStrings.Add('  LongMontNames='+s);
     s := AWorkbook.FormatSettings.ShortDayNames[1];
     for i:=2 to 7 do
       s := s + ', ' + AWorkbook.FormatSettings.ShortDayNames[i];
-    Strings.Add('  ShortMonthNames='+s);
+    AStrings.Add('  ShortMonthNames='+s);
     s := AWorkbook.FormatSettings.LongDayNames[1];
     for i:=2 to 7 do
       s := s +', ' + AWorkbook.FormatSettings.LongDayNames[i];
-    Strings.Add('  LongMontNames='+s);
-    Strings.Add('  CurrencyString='+AWorkbook.FormatSettings.CurrencyString);
-    Strings.Add('  PosCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.CurrencyFormat));
-    Strings.Add('  NegCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.NegCurrFormat));
-    Strings.Add('  TwoDigitYearCenturyWindow='+IntToStr(AWorkbook.FormatSettings.TwoDigitYearCenturyWindow));
+    AStrings.Add('  LongMontNames='+s);
+    AStrings.Add('  CurrencyString='+AWorkbook.FormatSettings.CurrencyString);
+    AStrings.Add('  PosCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.CurrencyFormat));
+    AStrings.Add('  NegCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.NegCurrFormat));
+    AStrings.Add('  TwoDigitYearCenturyWindow='+IntToStr(AWorkbook.FormatSettings.TwoDigitYearCenturyWindow));
   end;
 end;
 
-procedure TsSpreadsheetInspector.UpdateWorksheet(ASheet: TsWorksheet);
+procedure TsSpreadsheetInspector.UpdateWorksheet(ASheet: TsWorksheet;
+  AStrings: TStrings);
 begin
   if ASheet = nil then
   begin
-    Strings.Add('First row=');
-    Strings.Add('Last row=');
-    Strings.Add('First column=');
-    Strings.Add('Last column=');
+    AStrings.Add('Name=');
+    AStrings.Add('First row=');
+    AStrings.Add('Last row=');
+    AStrings.Add('First column=');
+    AStrings.Add('Last column=');
+    AStrings.Add('Active cell=');
+    AStrings.Add('Selection=');
   end else
   begin
-    Strings.Add(Format('First row=%d', [Integer(ASheet.GetFirstRowIndex)]));
-    Strings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex]));
-    Strings.Add(Format('First column=%d', [Integer(ASheet.GetFirstColIndex)]));
-    Strings.Add(Format('Last column=%d', [ASheet.GetLastColIndex]));
+    AStrings.Add(Format('Name=%s', [ASheet.Name]));
+    AStrings.Add(Format('First row=%d', [Integer(ASheet.GetFirstRowIndex)]));
+    AStrings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex]));
+    AStrings.Add(Format('First column=%d', [Integer(ASheet.GetFirstColIndex)]));
+    AStrings.Add(Format('Last column=%d', [ASheet.GetLastColIndex]));
+    AStrings.Add(Format('Active cell=%s', [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]));
+    AStrings.Add(Format('Selection=%s', [ASheet.GetSelectionAsString]));
   end;
 end;
-
 
 end.

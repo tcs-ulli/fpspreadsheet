@@ -157,18 +157,18 @@ begin
   if MessageDlg('Do you really want to delete this worksheet?', mtConfirmation,
     [mbYes, mbNo], 0) = mrYes
   then
-    WorkbookSource.Workbook.RemoveWorksheet(WorkbookSource.SelectedWorksheet);
+    WorkbookSource.Workbook.RemoveWorksheet(WorkbookSource.Worksheet);
 end;
 
 procedure TForm1.SpeedButton3Click(Sender: TObject);
 var
   s: String;
 begin
-  s := WorkbookSource.SelectedWorksheet.Name;
+  s := WorkbookSource.Worksheet.Name;
   if InputQuery('Edit worksheet name', 'New name', s) then
   begin
     if WorkbookSource.Workbook.ValidWorksheetName(s) then
-      WorkbookSource.SelectedWorksheet.Name := s
+      WorkbookSource.Worksheet.Name := s
     else
       MessageDlg('Invalid worksheet name.', mtError, [mbOK], 0);
   end;
