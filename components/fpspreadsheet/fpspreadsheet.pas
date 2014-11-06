@@ -745,7 +745,9 @@ type
     function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
 
     { Data manipulation methods - For Cells }
-    procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal; AFromWorksheet: TsWorksheet);
+    procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
+      AFromWorksheet: TsWorksheet); overload;
+    procedure CopyCell(AFromCell, AToCell: PCell); overload;
     procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal); overload;
     procedure CopyFormat(AFromCell, AToCell: PCell); overload;
     procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
@@ -1830,7 +1832,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedFont(ARow, ACol: Cardinal);
 begin
-  if Assigned(FonChangeFont) then FOnChangeFont(Self, ARow, ACol);
+  if Assigned(FOnChangeFont) then FOnChangeFont(Self, ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1849,12 +1851,32 @@ var
   lSrcCell, lDestCell: PCell;
 begin
   lSrcCell := AFromWorksheet.FindCell(AFromRow, AFromCol);
+  if lSrcCell = nil then
+    exit;
+
   lDestCell := GetCell(AToRow, AToCol);
   lDestCell^ := lSrcCell^;
   lDestCell^.Row := AToRow;
   lDestCell^.Col := AToCol;
   ChangedCell(AToRow, AToCol);
   ChangedFont(AToRow, AToCol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies a cell
+
+  @param   FromCell   Pointer to the source cell which will be copied
+  @param   ToCell     Pointer to the destination cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyCell(AFromCell, AToCell: PCell);
+begin
+  if (AFromCell = nil) or (AToCell = nil) then
+    exit;
+  AToCell^ := AFromCell^;
+  AToCell^.Row := AFromCell^.Row;
+  AToCell^.Col := AFromCell^.Col;
+  ChangedCell(AToCell^.Row, AToCell^.Col);
+  ChangedFont(AToCell^.Row, AToCell^.Col);
 end;
 
 {@@ ----------------------------------------------------------------------------

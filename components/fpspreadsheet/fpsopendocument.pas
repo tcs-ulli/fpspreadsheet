@@ -83,8 +83,10 @@ type
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
-    procedure ApplyStyleToCell(ARow, ACol: Cardinal; AStyleName: String); overload;
-    procedure ApplyStyleToCell(ACell: PCell; AStyleName: String); overload;
+    function ApplyStyleToCell(ARow, ACol: Cardinal;
+      AStyleName: String): Boolean; overload;
+    function ApplyStyleToCell(ACell: PCell;
+      AStyleName: String): Boolean; overload;
     // Extracts a boolean value from the xml node
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     // Extracts the date/time value from the xml node
@@ -778,24 +780,26 @@ begin
   end;
 end;
 
-{ Applies the style data referred to by the style name to the specified cell }
-procedure TsSpreadOpenDocReader.ApplyStyleToCell(ARow, ACol: Cardinal;
-  AStyleName: String);
+{ Applies the style data referred to by the style name to the specified cell
+  The function result is false if a style with the given name could not be found }
+function TsSpreadOpenDocReader.ApplyStyleToCell(ARow, ACol: Cardinal;
+  AStyleName: String): Boolean;
 var
   cell: PCell;
 begin
   cell := FWorksheet.GetCell(ARow, ACol);
-  if Assigned(cell) then
-    ApplyStyleToCell(cell, AStyleName);
+  Result := ApplyStyleToCell(cell, AStyleName)
 end;
 
-procedure TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleName: String);
+function TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
 var
   styleData: TCellStyleData;
   styleIndex: Integer;
   numFmtData: TsNumFormatData;
   i: Integer;
 begin
+  Result := false;
+
   // Is there a style attached to the cell?
   styleIndex := -1;
   if AStyleName <> '' then
@@ -876,6 +880,8 @@ begin
       ACell^.NumberFormatStr := numFmtData.FormatString;
     end;
   end;
+
+  Result := true;
 end;
 
 { Creates the correct version of the number format list
@@ -1028,7 +1034,17 @@ procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode)
 var
   styleName: String;
   cell: PCell;
+  lCell: TCell;
 begin
+  // a temporary cell record to store the formatting if there is any
+  InitCell(ARow, ACol, lCell);
+  lCell.ContentType := cctEmpty;
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  if not ApplyStyleToCell(@lCell, stylename) then
+    exit;
+    // No need to store a record for an empty, unformatted cell
+
   if FIsVirtualMode then
   begin
     InitCell(ARow, ACol, FVirtualCell);
@@ -1036,10 +1052,12 @@ begin
   end else
     cell := FWorksheet.GetCell(ARow, ACol);
   FWorkSheet.WriteBlank(cell);
+  FWorksheet.CopyFormat(@lCell, cell);
 
+{
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
-
+  }
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
@@ -1983,15 +2001,6 @@ begin
     while Assigned(cellNode) do
     begin
       nodeName := cellNode.NodeName;
-      // These nodes occur due to indentation spaces which are not skipped
-      // automatically any more due to PreserveWhiteSpace option applied
-      // to ReadXMLFile
-      {
-      if nodeName <> 'table:table-cell' then begin //= '#text' then begin
-        cellNode := cellNode.NextSibling;
-        Continue;
-      end;
-      }
       if nodeName = 'table:table-cell' then
       begin
         // select this cell value's type
@@ -2010,11 +2019,17 @@ begin
           ReadDateTime(row, col, cellNode)
         else if (paramValueType = 'boolean') then
           ReadBoolean(row, col, cellNode)
-        else if (paramValueType = '') then //and (tableStyleName <> '') then
+        else if (paramValueType = '') and (tableStyleName <> '') then
           ReadBlank(row, col, cellNode);
-        {$Warning TODO: Check if the removal of "tableStyleName" here does not
-           create unnecessary empty cells. The ReadBlank should only be executed
-           if the cell contains formatting! }
+        { NOTE: Empty cells having no cell format, but a column format only,
+          are skipped here. --> Currently the reader does not detect the format
+          of empty cells correctly.
+          It would work if the "(tableStyleName <> '')" would be omitted, but
+          then the reader would create a record for all 1E9 cells prepared by
+          the Excel2007 export --> crash!
+          The column format is available in the FColumnList, but since the usage
+          of colsSpanned in the row it is possible to miss the correct column format.
+          Pretty nasty situation! }
 
         if ParamFormula <> '' then
           ReadFormula(row, col, cellNode);
