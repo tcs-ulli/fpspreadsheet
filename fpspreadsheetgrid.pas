@@ -17,12 +17,12 @@ unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
 
-{.$DEFINE ENABLE_MULTI_SELECT}  // requires Laz trunk younger than r...??? (containing grid multisel patch)
 
 interface
 
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
+  LCLVersion,
   fpspreadsheet, fpspreadsheetctrls;
 
 type
@@ -572,6 +572,12 @@ const
     tlBottom, tlTop, tlCenter, tlBottom
   );
 
+ {$IF (lcl_fullversion >= 1030000)}
+  ENABLE_MULTI_SELECT = 1;  // requires Laz trunk after r46767
+ {$ELSE}
+  ENABLE_MULTI_SELECT = 0;
+ {$ENDIF}
+
 var
   {@@ Auxiliary bitmap containing the fill pattern used by biff2 cell backgrounds. }
   FillPattern_BIFF2: TBitmap = nil;
@@ -768,7 +774,7 @@ begin
   FInitRowCount := 100;
   FCellFont := TFont.Create;
   FOwnsWorkbook := true;
- {$IFDEF ENABLE_MULTI_SELECT}
+ {$IF (ENABLE_MULTI_SELECT=1)}
   RangeSelectMode := rsmMulti;
  {$ENDIF}
 end;
@@ -3225,13 +3231,13 @@ end;
 procedure TsCustomWorksheetGrid.MoveSelection;
 var
   sel: TsCellRangeArray;
-  {$IFDEF ENABLE_MULTI_SELECT}
+  {$IF (ENABLE_MULTI_SELECT=1)}
   i: Integer;
   {$ENDIF}
 begin
   if Worksheet <> nil then
   begin
-    {$IFDEF ENABLE_MULTI_SELECT}
+    {$IF (ENABLE_MULTI_SELECT=1)}
     if HasMultiSelection then
     begin
       SetLength(sel, SelectedRangeCount);
