@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
-  fpspreadsheet, fpsAllFormats;
+  fpspreadsheet, {%H-}fpsAllFormats;
 
 type
   TsWorkbookSourceErrorEvent = procedure (Sender: TObject;
