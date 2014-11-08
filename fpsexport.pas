@@ -79,11 +79,12 @@ Type
     property Dataset;
     {@@ Fields to be exported }
     property ExportFields;
+    {@@ Settings - e.g. export format - to be used }
+    property FormatSettings;
     {@@ Export starting from current record or beginning. }
     property FromCurrent;
     {@@ Flag indicating whether to return to current dataset position after export }
     property RestorePosition;
-    property FormatSettings;
     {@@ Procedure to run when exporting a row }
     property OnExportRow;
   end;
@@ -237,7 +238,7 @@ end;
 procedure TFPSExportFormatSettings.InitSettings;
 begin
   inherited InitSettings;
-  FExportFormat:=efXLS; //often used
+  FExportFormat:=efXLS; //often used format
 end;
 
 end.

@@ -22,11 +22,11 @@ object Form1: TForm1
     OnChange = PageControlChange
     object TabDataGenerator: TTabSheet
       Caption = '1 - Create database'
-      ClientHeight = 274
+      ClientHeight = 276
       ClientWidth = 623
       object Label2: TLabel
         Left = 4
-        Height = 15
+        Height = 13
         Top = 4
         Width = 615
         Align = alTop
@@ -38,25 +38,25 @@ object Form1: TForm1
       end
       object Panel1: TPanel
         Left = 0
-        Height = 251
-        Top = 23
+        Height = 255
+        Top = 21
         Width = 623
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 251
+        ClientHeight = 255
         ClientWidth = 623
         TabOrder = 0
         object HeaderLabel1: TLabel
           Left = 8
-          Height = 15
+          Height = 13
           Top = 11
-          Width = 71
+          Width = 64
           Caption = 'Record count'
           ParentColor = False
         end
         object EdRecordCount: TEdit
           Left = 107
-          Height = 23
+          Height = 21
           Top = 8
           Width = 64
           Alignment = taRightJustify
@@ -66,7 +66,7 @@ object Form1: TForm1
         object BtnCreateDbf: TButton
           Left = 515
           Height = 28
-          Top = 218
+          Top = 222
           Width = 99
           Anchors = [akRight, akBottom]
           Caption = 'Run'
@@ -83,8 +83,8 @@ object Form1: TForm1
         end
         object InfoLabel1: TLabel
           Left = 8
-          Height = 15
-          Top = 231
+          Height = 13
+          Top = 237
           Width = 496
           Anchors = [akLeft, akRight, akBottom]
           BorderSpacing.Around = 4
@@ -93,9 +93,9 @@ object Form1: TForm1
         end
         object Label1: TLabel
           Left = 8
-          Height = 15
+          Height = 13
           Top = 40
-          Width = 324
+          Width = 304
           Caption = 'Please note: the binary xls files can handle only 65536 records.'
           ParentColor = False
         end
@@ -103,11 +103,11 @@ object Form1: TForm1
     end
     object TabExport: TTabSheet
       Caption = '2 - Export to spreadsheet'
-      ClientHeight = 269
+      ClientHeight = 276
       ClientWidth = 623
       object HeaderLabel2: TLabel
         Left = 4
-        Height = 20
+        Height = 13
         Top = 4
         Width = 615
         Align = alTop
@@ -120,15 +120,15 @@ object Form1: TForm1
       object Bevel2: TBevel
         Left = 0
         Height = 3
-        Top = 28
+        Top = 21
         Width = 623
         Align = alTop
         Shape = bsTopLine
       end
       object InfoLabel2: TLabel
         Left = 8
-        Height = 20
-        Top = 244
+        Height = 13
+        Top = 258
         Width = 504
         Anchors = [akLeft, akRight, akBottom]
         BorderSpacing.Around = 4
@@ -149,7 +149,7 @@ object Form1: TForm1
         ChildSizing.ShrinkVertical = crsScaleChilds
         ChildSizing.Layout = cclLeftToRightThenTopToBottom
         ChildSizing.ControlsPerLine = 1
-        ClientHeight = 138
+        ClientHeight = 140
         ClientWidth = 228
         ItemIndex = 2
         Items.Strings = (
@@ -164,21 +164,44 @@ object Form1: TForm1
       object BtnExport: TButton
         Left = 515
         Height = 28
-        Top = 236
+        Top = 243
         Width = 99
         Anchors = [akRight, akBottom]
         Caption = 'Run'
         OnClick = BtnExportClick
         TabOrder = 1
       end
+      object RgExportMode: TRadioGroup
+        Left = 256
+        Height = 158
+        Top = 32
+        Width = 232
+        AutoFill = True
+        Caption = 'Export method'
+        ChildSizing.LeftRightSpacing = 6
+        ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+        ChildSizing.EnlargeVertical = crsHomogenousChildResize
+        ChildSizing.ShrinkHorizontal = crsScaleChilds
+        ChildSizing.ShrinkVertical = crsScaleChilds
+        ChildSizing.Layout = cclLeftToRightThenTopToBottom
+        ChildSizing.ControlsPerLine = 1
+        ClientHeight = 140
+        ClientWidth = 228
+        ItemIndex = 0
+        Items.Strings = (
+          'Virtual mode (memory saving)'
+          'FPSExport'
+        )
+        TabOrder = 2
+      end
     end
     object TabImport: TTabSheet
       Caption = '3 - Import from spreadsheet'
-      ClientHeight = 269
+      ClientHeight = 276
       ClientWidth = 623
       object HeaderLabel3: TLabel
         Left = 4
-        Height = 20
+        Height = 13
         Top = 4
         Width = 615
         Align = alTop
@@ -191,16 +214,16 @@ object Form1: TForm1
       object Bevel3: TBevel
         Left = 0
         Height = 3
-        Top = 28
+        Top = 21
         Width = 623
         Align = alTop
         Shape = bsTopLine
       end
       object InfoLabel3: TLabel
         Left = 8
-        Height = 20
-        Top = 244
-        Width = 70
+        Height = 13
+        Top = 258
+        Width = 51
         Anchors = [akLeft, akBottom]
         BorderSpacing.Around = 4
         Caption = 'InfoLabel3'
@@ -209,7 +232,7 @@ object Form1: TForm1
       object BtnImport: TButton
         Left = 515
         Height = 28
-        Top = 236
+        Top = 243
         Width = 99
         Anchors = [akRight, akBottom]
         Caption = 'Run'
@@ -219,7 +242,7 @@ object Form1: TForm1
       end
       object FileList: TListBox
         Left = 8
-        Height = 181
+        Height = 188
         Top = 56
         Width = 292
         Anchors = [akTop, akLeft, akBottom]
@@ -229,9 +252,9 @@ object Form1: TForm1
       end
       object Label3: TLabel
         Left = 8
-        Height = 20
+        Height = 13
         Top = 33
-        Width = 282
+        Width = 205
         Caption = 'Select the spreadsheet file to be imported:'
         ParentColor = False
       end
