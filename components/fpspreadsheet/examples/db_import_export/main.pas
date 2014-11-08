@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, db, dbf, fpspreadsheet, fpsallformats;
+  ComCtrls, ExtCtrls, db, dbf, fpspreadsheet, fpsallformats, fpsexport;
 
 type
 
@@ -33,6 +33,7 @@ type
     PageControl: TPageControl;
     Panel1: TPanel;
     RgFileFormat: TRadioGroup;
+    RgExportMode: TRadioGroup;
     TabDataGenerator: TTabSheet;
     TabExport: TTabSheet;
     TabImport: TTabSheet;
@@ -52,10 +53,18 @@ type
     FDateTemplateCell: PCell;
     FImportedFieldNames: TStringList;
     FImportedRowCells: Array of TCell;
-    // For reading: all data for the database is generated here out of the spreadsheet file
+    // Actual export code when using FPSpreadsheet's fpsexport:
+    // reads dbf and writes to spreadsheet
+    // Expects FExportDataset to be available
+    procedure ExportUsingFPSExport(var DataFileName: string);
+    // Actual export code when using virtual mode:
+    // reads dbf and writes to spreadsheet
+    // Expects FExportDataset to be available
+    procedure ExportUsingVirtualMode(var DataFileName: string);
+    // Virtual mode: for reading: all data for the database is generated here out of the spreadsheet file
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       const ADataCell: PCell);
-    // For writing: all data for the cells is generated here (out of the .dbf file)
+    // Virtual mode: for writing: all data for the cells is generated here (out of the .dbf file)
     procedure WriteCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       var AValue: variant; var AStyleCell: PCell);
   public
@@ -68,6 +77,12 @@ var
 implementation
 
 {$R *.lfm}
+
+type
+  // Ways to export dbf/dataset. Corresponds to the items
+  // of the RgExportMode radiogroup
+  TsExportModes=(seVirtual {manual coding using Virtual Mode},
+    seFPSExport {uses FpSpreadsheet's fpsexport - takes more memory});
 
 const
   // Parameters for generating dbf file contents
@@ -88,6 +103,7 @@ const
   DATADIR = 'data'; //subdirectory where .dbf is stored
 
   // File formats corresponding to the items of the RgFileFormat radiogroup
+  // Items in RadioGroup in Export tab match this order
   FILE_FORMATS: array[0..4] of TsSpreadsheetFormat = (
     sfExcel2, sfExcel5, sfExcel8, sfOOXML, sfOpenDocument
   );
@@ -155,17 +171,10 @@ end;
   memory load of this process }
 procedure TForm1.BtnExportClick(Sender: TObject);
 var
-  DataFileName: String;
-  worksheet: TsWorksheet;
+  DataFileName: string; //export file name
 begin
   InfoLabel2.Caption := '';
   Application.ProcessMessages;
-
-  if RgFileFormat.ItemIndex = 4 then
-  begin
-    MessageDlg('Virtual mode is not yet implemented for .ods files.', mtError, [mbOK], 0);
-    exit;
-  end;
 
   if FExportDataset = nil then
   begin
@@ -177,52 +186,27 @@ begin
   DataFileName := FExportDataset.FilePathFull + FExportDataset.TableName;
   if not FileExists(DataFileName) then
   begin
-    MessageDlg(Format('Database file "%s" not found. Please run "Create database" first.',
+    MessageDlg(Format('Database file "%s" not found. Please run "Create '
+      +'database" first.',
       [DataFileName]), mtError, [mbOK], 0);
     exit;
   end;
 
-  FExportDataset.Open;
-
-  FWorkbook := TsWorkbook.Create;
+  // Make user aware export may take some time by changing cursor
+  Screen.Cursor := crHourGlass;
   try
-    worksheet := FWorkbook.AddWorksheet(FExportDataset.TableName);
-
-    // Make header line frozen - but not in Excel2 where frozen panes do not yet work properly
-    if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then begin
-      worksheet.Options := worksheet.Options + [soHasFrozenPanes];
-      worksheet.TopPaneHeight := 1;
+    InfoLabel1.Caption := ('Starting database export.');
+    case TsExportModes(RgExportMode.ItemIndex) of
+      seVirtual: ExportUsingVirtualMode(DataFileName);
+      seFPSExport: ExportUsingFPSExport(DataFileName);
+      else
+      begin
+        ShowMessageFmt('Unknown export mode number %d. Please correct source code.',[RgExportMode.ItemIndex]);
+        exit;
+      end;
     end;
-
-    // Use cell A1 as format template of header line
-    FHeaderTemplateCell := worksheet.GetCell(0, 0);
-    worksheet.WriteFontStyle(FHeaderTemplateCell, [fssBold]);
-    worksheet.WriteBackgroundColor(FHeaderTemplateCell, scGray);
-    if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then
-      worksheet.WriteFontColor(FHeaderTemplateCell, scWhite);  // Does not look nice in the limited Excel2 format
-
-    // Use cell B1 as format template of date column
-    FDateTemplateCell := worksheet.GetCell(0, 1);
-    worksheet.WriteDateTimeFormat(FDateTemplateCell, nfShortDate);
-
-    // Make rows a bit wider
-    worksheet.WriteColWidth(0, 20);
-    worksheet.WriteColWidth(1, 20);
-    worksheet.WriteColWidth(2, 20);
-    worksheet.WriteColWidth(3, 15);
-
-    // Setup virtual mode to save memory
-//    FWorkbook.Options := FWorkbook.Options + [boVirtualMode, boBufStream];
-    FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
-    FWorkbook.OnWriteCellData := @WriteCellDataHandler;
-    FWorkbook.VirtualRowCount := FExportDataset.RecordCount + 1;  // +1 for the header line
-    FWorkbook.VirtualColCount := FExportDataset.FieldCount;
-
-    // Write
-    DataFileName := ChangeFileExt(DataFileName, FILE_EXT[RgFileFormat.ItemIndex]);
-    FWorkbook.WriteToFile(DataFileName, FILE_FORMATS[RgFileFormat.ItemIndex], true);
   finally
-    FreeAndNil(FWorkbook);
+    Screen.Cursor := crDefault;
   end;
 
   InfoLabel2.Caption := Format('Done. Database exported to file "%s" in folder "%s"', [
@@ -248,60 +232,113 @@ begin
   // exceptions that occur for Excel2 and Excel5.
   DataFileName := FileList.Items[FileList.ItemIndex];
   ext := lowercase(ExtractFileExt(DataFileName));
-  if ext = '.xls' then begin
-    if pos(FILE_EXT[0], DataFileName) > 0 then
-      fmt := sfExcel2
+  case ext of
+    '.xls':
+    begin
+      if pos(FILE_EXT[0], DataFileName) > 0 then
+        fmt := sfExcel2
+      else
+      if pos(FILE_EXT[1], DataFileName) > 0 then
+        fmt := sfExcel5
+      else
+        fmt := sfExcel8;
+    end;
+    '.xlsx':
+      fmt := sfOOXML;
+    '.ods':
+      fmt := sfOpenDocument;
     else
-    if pos(FILE_EXT[1], DataFileName) > 0 then
-      fmt := sfExcel5
-    else
-      fmt := sfExcel8;
-  end else
-  if ext = '.xlsx' then
-    fmt := sfOOXML
-  else
-  if ext = '.ods' then
-    fmt := sfOpenDocument
-  else begin
-    MessageDlg('Unknown spreadsheet file format.', mtError, [mbOK], 0);
-    exit;
+    begin
+      MessageDlg('Unknown spreadsheet file format.', mtError, [mbOK], 0);
+      exit;
+    end;
   end;
 
-  DataFileName := DATADIR + DirectorySeparator + DataFileName;
-
-  // Prepare dbf table for the spreadsheet data to be imported
-  if FImportDataset <> nil then
-    FImportDataset.Free;
-  FImportDataset := TDbf.Create(self);
-  FImportDataset.FilePathFull := DATADIR + DirectorySeparator;
-  FImportDataset.TableName := 'imported_' + TABLENAME;
-  FImportDataset.TableLevel := 4; //DBase IV; most widely used.
-  DeleteFile(FImportDataset.FilePathFull + FImportDataset.TableName);
-
-  // The stringlist will temporarily store the field names ...
-  if FImportedFieldNames = nil then
-    FImportedFieldNames := TStringList.Create;
-  FImportedFieldNames.Clear;
-
-  // ... and this array will temporarily store the cells of the second row
-  // until we have all information to create the dbf table.
-  SetLength(FImportedRowCells, 0);
-
-  // Create the workbook and activate virtual mode
-  FWorkbook := TsWorkbook.Create;
+  // Make user aware import may take some time by changing cursor
+  Screen.Cursor := crHourglass;
   try
-    FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
-    FWorkbook.OnReadCellData := @ReadCellDataHandler;
-    // Read the data from the spreadsheet file transparently into the dbf file
-    // The data are not permanently available in the worksheet and do not occupy
-    // memory there - this is virtual mode.
-    FWorkbook.ReadFromFile(DataFilename, fmt);
-    // We close the ImportDataset after import process has finished:
-    FImportDataset.Close;
-    InfoLabel3.Caption := Format('Done. File "%s" imported in database "%s".',
-      [ExtractFileName(DataFileName), FImportDataset.TableName]);
+    DataFileName := DATADIR + DirectorySeparator + DataFileName;
+
+    // Prepare dbf table for the spreadsheet data to be imported
+    if FImportDataset <> nil then
+      FImportDataset.Free;
+    FImportDataset := TDbf.Create(self);
+    FImportDataset.FilePathFull := DATADIR + DirectorySeparator;
+    FImportDataset.TableName := 'imported_' + TABLENAME;
+    FImportDataset.TableLevel := 4; //DBase IV; most widely used.
+    DeleteFile(FImportDataset.FilePathFull + FImportDataset.TableName);
+
+    // The stringlist will temporarily store the field names ...
+    if FImportedFieldNames = nil then
+      FImportedFieldNames := TStringList.Create;
+    FImportedFieldNames.Clear;
+
+    // ... and this array will temporarily store the cells of the second row
+    // until we have all information to create the dbf table.
+    SetLength(FImportedRowCells, 0);
+
+    // Create the workbook and activate virtual mode
+    FWorkbook := TsWorkbook.Create;
+    try
+      FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
+      FWorkbook.OnReadCellData := @ReadCellDataHandler;
+      // Read the data from the spreadsheet file transparently into the dbf file
+      // The data are not permanently available in the worksheet and do not occupy
+      // memory there - this is virtual mode.
+      FWorkbook.ReadFromFile(DataFilename, fmt);
+      // We close the ImportDataset after import process has finished:
+      FImportDataset.Close;
+      InfoLabel3.Caption := Format('Done. File "%s" imported in database "%s".',
+        [ExtractFileName(DataFileName), FImportDataset.TableName]);
+    finally
+      FWorkbook.Free;
+    end;
   finally
-    FWorkbook.Free;
+    Screen.Cursor := crDefault;
+  end;
+end;
+
+procedure TForm1.ExportUsingFPSExport(var DataFileName: string);
+var
+  Exporter: TFPSExport;
+  ExportSettings: TFPSExportFormatSettings;
+begin
+  FExportDataset.Open;
+  // TCustomDatasetExporter dsecendants like TFPSExport will start to export
+  // from current record so make sure we get everything
+  FExportDataset.First;
+
+  Exporter := TFPSExport.Create(nil);
+  ExportSettings := TFPSExportFormatSettings.Create(true);
+  try
+    // Write header row with field names
+    ExportSettings.HeaderRow := true;
+    case FILE_FORMATS[RgFileFormat.ItemIndex] of
+      sfExcel2, sfExcel5:
+      begin
+        ShowMessage('Format not supported using this mode.');
+        exit;
+      end;
+      sfExcel8: ExportSettings.ExportFormat := efXLS;
+      sfOOXML: ExportSettings.ExportFormat := efXLSX;
+      sfOpenDocument: ExportSettings.ExportFormat := efODS;
+      else
+      begin
+        ShowMessage('Unknown export format. Please correct the source code.');
+        exit;
+      end;
+    end;
+    // Actually apply settings
+    Exporter.FormatSettings := ExportSettings;
+
+    // Write
+    Exporter.Dataset := FExportDataset;
+    Exporter.FileName := ChangeFileExt(DataFileName, FILE_EXT[
+      RgFileFormat.ItemIndex]);
+    Exporter.Execute;
+  finally
+    Exporter.Free;
+    ExportSettings.Free;
   end;
 end;
 
@@ -348,6 +385,62 @@ begin
   end;
 end;
 
+procedure TForm1.ExportUsingVirtualMode(var DataFileName: string);
+var
+  worksheet: TsWorksheet;
+begin
+  if FILE_FORMATS[RgFileFormat.ItemIndex] = sfOpenDocument then
+  begin
+    MessageDlg('Virtual mode is not yet implemented for .ods files.', mtError, [mbOK], 0);
+    exit;
+  end;
+
+  FExportDataset.Open;
+
+  FWorkbook := TsWorkbook.Create;
+  try
+    worksheet := FWorkbook.AddWorksheet(FExportDataset.TableName);
+
+    // Make header line frozen - but not in Excel2 where frozen panes do not yet work properly
+    if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then begin
+      worksheet.Options := worksheet.Options + [soHasFrozenPanes];
+      worksheet.TopPaneHeight := 1;
+    end;
+
+    // Use cell A1 as format template of header line
+    FHeaderTemplateCell := worksheet.GetCell(0, 0);
+    worksheet.WriteFontStyle(FHeaderTemplateCell, [fssBold]);
+    worksheet.WriteBackgroundColor(FHeaderTemplateCell, scGray);
+    if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then
+      worksheet.WriteFontColor(FHeaderTemplateCell, scWhite);  // Does not look nice in the limited Excel2 format
+
+    // Use cell B1 as format template of date column
+    FDateTemplateCell := worksheet.GetCell(0, 1);
+    worksheet.WriteDateTimeFormat(FDateTemplateCell, nfShortDate);
+
+    // Make rows a bit wider
+    worksheet.WriteColWidth(0, 20);
+    worksheet.WriteColWidth(1, 20);
+    worksheet.WriteColWidth(2, 20);
+    worksheet.WriteColWidth(3, 15);
+
+    // Setup virtual mode to save memory
+//    FWorkbook.Options := FWorkbook.Options + [boVirtualMode, boBufStream];
+    FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
+    FWorkbook.OnWriteCellData := @WriteCellDataHandler;
+    FWorkbook.VirtualRowCount := FExportDataset.RecordCount + 1;  // +1 for the header line
+    FWorkbook.VirtualColCount := FExportDataset.FieldCount;
+
+    // Write
+    DataFileName := ChangeFileExt(DataFileName, FILE_EXT[
+      RgFileFormat.ItemIndex]);
+    FWorkbook.WriteToFile(DataFileName, FILE_FORMATS[RgFileFormat.ItemIndex],
+      true);
+  finally
+    FreeAndNil(FWorkbook);
+  end;
+end;
+
 { This is the event handler for reading a spreadsheet file in virtual mode.
   ADataCell has just been read from the spreadsheet file, but will not be added
   to the workbook and will be discarded. The event handler, however, can pick
@@ -355,7 +448,7 @@ end;
   Note that we do not make too many assumptions on the data structure here.
   Therefore we have to buffer the first two rows of the spreadsheet file until
   the structure of the table is clear. }
-procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, Acol: Cardinal;
+procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
   const ADataCell: PCell);
 var
   i: Integer;
@@ -375,7 +468,8 @@ begin
     if Length(FImportedRowCells) = 0 then
       SetLength(FImportedRowCells, FImportedFieldNames.Count);
     FImportedRowCells[ACol] := ADataCell^;
-    // The row is read completely, all field types are known --> we create the table
+    // The row is read completely, all field types are known --> we create the
+    // table
     if ACol = High(FImportedRowCells) then begin
       // Add fields - the required information is stored in FImportedFieldNames
       // and FImportedFieldTypes
@@ -440,8 +534,8 @@ begin
     FExportDataset.First;
   end
   else
-  // After the header line we write the record data. Note that we are responsible
-  // for advancing the dataset cursor whenever a row is complete.
+  // After the header line we write the record data. Note that we are
+  // responsible for advancing the dataset cursor whenever a row is complete.
   begin
     AValue := FExportDataset.Fields[ACol].Value;
     if FExportDataset.Fields[ACol].DataType = ftDate then
