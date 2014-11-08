@@ -1,3 +1,24 @@
+{ fpspreadsheetctrls }
+
+{@@ ----------------------------------------------------------------------------
+  Unit fpspreadsheetctrls implements some visual controls which help to create
+  a spreadsheet application without writing too much code.
+
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+
+  EXAMPLE
+  * Add a WorkbookSource component to the form.
+  * Add a WorksheetTabControl
+  * Add a WorksheetGrid (from unit fpspreadsheetgrid)
+  * Link their WorkbookSource properties to the added WorkbookSource component
+  * Set the property FileName of the WorkbookSource to a spreadsheet file.
+
+  --> The WorksheetTabControl displays tabs for each worksheet in the file, and
+      the WorksheetGrid displays the worksheet according to the selected tab.
+-------------------------------------------------------------------------------}
 unit fpspreadsheetctrls;
 
 {$mode objfpc}{$H+}
@@ -9,15 +30,24 @@ uses
   fpspreadsheet, {%H-}fpsAllFormats;
 
 type
+  {@@ Event handler procedure for displaying a message if an error or
+    warning occurs during reading of a workbook. }
   TsWorkbookSourceErrorEvent = procedure (Sender: TObject;
     const AMsg: String) of object;
 
+  {@@ Describes during communication between WorkbookSource and visual controls
+    which kind of item has changed: the workbook, the worksheet, a cell value,
+    or a cell formatting }
   TsNotificationItem = (lniWorkbook, lniWorksheet, lniCell, lniSelection);
+  {@@ This set accompanies the notification between WorkbookSource and visual
+    controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
 
 
   { TsWorkbookSource }
 
+  {@@ TsWorkbookSource links a workbook to the visual spreadsheet controls and
+    help to display or edit the workbook without written code. }
   TsWorkbookSource = class(TComponent)
   private
     FWorkbook: TsWorkbook;
@@ -67,20 +97,36 @@ type
     procedure SelectWorksheet(AWorkSheet: TsWorksheet);
 
   public
+    {@@ Workbook linked to the WorkbookSource }
     property Workbook: TsWorkbook read FWorkbook;
+    {@@ Currently selected worksheet of the workbook }
     property Worksheet: TsWorksheet read FWorksheet;
 
   published
+    {@@ Automatically detects the fileformat when loading the spreadsheet file
+      specified by FileName }
     property AutoDetectFormat: Boolean read FAutoDetectFormat write FAutoDetectFormat;
+    {@@ File format of the next spreadsheet file to be loaded by means of the
+      Filename property. Not used when AutoDetecteFormat is TRUE. }
     property FileFormat: TsSpreadsheetFormat read FFileFormat write FFileFormat default sfExcel8;
+    {@@ Name of the loaded spreadsheet file which is loaded by assigning a file name
+      to this property. Format detection is determined by the properties
+      AutoDetectFormat and FileFormat. }
     property FileName: TFileName read FFileName write SetFileName;  // using this property loads the file at design-time!
+    {@@ A set of options to be transferred to the workbook, for e.g. formula
+      calculation etc. }
     property Options: TsWorkbookOptions read FOptions write SetOptions;
+    {@@ A message box is displayey if an error occurs during loading of a
+      spreadsheet. This behavior can be replaced by means of the event OnError. }
     property OnError: TsWorkbookSourceErrorEvent read FOnError write FOnError;
   end;
 
 
   { TsWorkbookTabControl }
 
+  {@@ TsWorkbookTabControl is a tab control which displays the sheets of the
+    workbook currently loaded by the WorkbookSource in tabs. Selecting another
+    tab is communicated to other spreadsheet controls via the WorkbookSource. }
   TsWorkbookTabControl = class(TTabControl)
   private
     FWorkbookSource: TsWorkbookSource;
@@ -95,15 +141,20 @@ type
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    {@@ The worksheet names of this workbook are currently displayed as tabs of the TabControl. }
     property Workbook: TsWorkbook read GetWorkbook;
+    {@@ Identifies the worksheet which corresponds to the selected tab }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    {@@ Link to the WorkbookSource which provides the data. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
   end;
 
 
   { TsCellEdit }
 
+  {@@ TsCellEdit allows to edit the content or formula of the active cell of a
+    worksheet, simular to Excel's cell editor above the cell grid. }
   TsCellEdit = class(TMemo)
   private
     FWorkbookSource: TsWorkbookSource;
@@ -120,16 +171,24 @@ type
     procedure EditingDone; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    {@@ Pointer to the currently active cell in the workbook. This cell is
+      displayed in the control and can be edited. }
     property SelectedCell: PCell read GetSelectedCell;
+    {@@ Refers to the underlying workbook to which the edited cell belongs. }
     property Workbook: TsWorkbook read GetWorkbook;
+    {@@ Refers to the underlying worksheet to which the edited cell belongs. }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
   end;
 
 
   { TsCellIndicator }
 
+  {@@ TsCellIndicator displays the address of the currently active cell of the
+    worksheet and workbook. Editing the address allows to jump to the corresponding
+    cell. }
   TsCellIndicator = class(TEdit)
   private
     FWorkbookSource: TsWorkbookSource;
@@ -144,17 +203,27 @@ type
     procedure EditingDone; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    {@@ Refers to the underlying worksheet to which the edited cell belongs. }
     property Workbook: TsWorkbook read GetWorkbook;
+    {@@ Refers to the underlying worksheet to which the edited cell belongs. }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    {@@ Inherited from TEdit, overridden to center the text in the control by default }
     property Alignment default taCenter;
   end;
 
 
   { TsSpreadsheetInspector }
+
+  {@@ Classification of data displayed by the SpreadsheetInspector. Each item
+    can be assigned to a tab of a TabControl. }
   TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties);
 
+  {@@ TsSpreadsheetInspector displays all properties of a workbook, worksheet,
+    cell content and cell formatting in a way similar to the Object Inspector
+    of Lazarus. }
   TsSpreadsheetInspector = class(TValueListEditor)
   private
     FWorkbookSource: TsWorkbookSource;
@@ -175,12 +244,20 @@ type
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    {@@ Refers to the underlying workbook which is displayed by the inspector. }
     property Workbook: TsWorkbook read GetWorkbook;
+    {@@ Refers to the underlying worksheet which is displayed by the inspector. }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    {@@ Refers to the underlying worksheet from which the active cell is taken }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    {@@ Classification of data displayed by the SpreadsheetInspector. Each mode
+      can be assigned to a tab of a TabControl. }
     property Mode: TsInspectorMode read FMode write SetMode;
+    {@@ inherited from TValueListEditor, activates column titles and automatic
+      column width adjustment by default }
     property DisplayOptions default [doColumnTitles, doAutoColResize];
+    {@@ inherited from TValueListEditor. Turns of the fixed column by default}
     property FixedCols default 0;
   end;
 
@@ -211,8 +288,11 @@ end;
 {------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
-  Constructor of the workbook source class. Creates the internal list for the
+  Constructor of the WorkbookSource class. Creates the internal list for the
   notified ("listening") components, and creates an empty workbook.
+
+  @param  AOwner  Component which is responsibile for destroying the
+                  WorkbookSource.
 -------------------------------------------------------------------------------}
 constructor TsWorkbookSource.Create(AOwner: TComponent);
 begin
@@ -223,8 +303,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Destructor of the workbook source. Cleans up the of listening component list
-  and destroys the linked workbook.
+  Destructor of the WorkbookSource class.
+  Cleans up the of listening component list and destroys the linked workbook.
 -------------------------------------------------------------------------------}
 destructor TsWorkbookSource.Destroy;
 var
@@ -241,10 +321,10 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Adds a component to the list of listeners. All these components are
-  notified of changes in the workbook.
+  Adds a component to the listener list. All these components are notified of
+  changes in the workbook.
 
-  @param  AListener  Component to be added to the listener list notified for
+  @param  AListener  Component to be added to the listener list notified of
                      changes
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.AddListener(AListener: TComponent);
@@ -254,7 +334,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Event handler for the OnChange event of TsWorksheet which is fired whenver
+  Event handler for the OnChangeCell event of TsWorksheet which is fired whenver
   cell content or formatting changes.
 
   @param   Sender   Pointer to the worksheet
@@ -274,8 +354,8 @@ end;
   of the changed selection.
 
   @param  Sender   Pointer to the worksheet
-  @param  ARow     Row index (in sheet notation) of the cell selected
-  @param  ACol     Column index (in sheet notation) of the cell selected
+  @param  ARow     Row index (in sheet notation) of the newly selected cell
+  @param  ACol     Column index (in sheet notation) of the newly selected cell
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.CellSelectedHandler(Sender: TObject;
   ARow, ACol: Cardinal);
@@ -297,9 +377,15 @@ begin
   NotifyListeners([lniWorkbook, lniWorksheet, lniSelection]);
 end;
 
-{ An error has occured during loading of the workbook. Shows a message box by
+{@@ ----------------------------------------------------------------------------
+  An error has occured during loading of the workbook. Shows a message box by
   default. But a different behavior can be obtained by means of the OnError
-  event. }
+  event.
+
+  @param  AErrorMsg  Error message text created by the workbook reader and to be
+                     displayed in a messagebox or by means of the OnError
+                     handler.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookSource.DoShowError(const AErrorMsg: String);
 begin
   if Assigned(FOnError) then
@@ -309,7 +395,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method which creates a new workbook without sheets
+  Internal helper method which creates a new workbook without sheets
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalCreateNewWorkbook;
 begin
@@ -330,12 +416,13 @@ end;
 
   @param  AFilename        Name of the spreadsheet file to be loaded
   @param  AAutoDetect      Instructs the loader to automatically detect the
-                           file format from the extension or by temporarily
+                           file format from the file extension or by temporarily
                            opening the file in all available formats. Note that
                            an exception is raised in the IDE when an incorrect
                            format is tested.
-  @param  AFormat          Spreadsheet file format assumed
-  @param  AWorksheetIndex  Index of the worksheet to be loaded from the file
+  @param  AFormat          Spreadsheet file format assumed for the loadeder.
+                           Is ignored when AAutoDetect is false.
+  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
   AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
@@ -359,8 +446,10 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Inherited method which is called after loading from the lfm file.
-  Is overridden here to open a spreadsheet file specified at design-time.
+  Inherited method which is called after reading the WorkbookSource from the lfm
+  file.
+  Is overridden here to open a spreadsheet file if a file name has been assigned
+  to the FileName property at design-time.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.Loaded;
 begin
@@ -374,7 +463,7 @@ end;
 
   @param  AFilename        Name of the spreadsheet file to be loaded
   @param  AFormat          Spreadsheet file format assumed for the file
-  @param  AWorksheetIndex  Index of the worksheet to be loaded from the file
+  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
@@ -382,15 +471,15 @@ begin
   InternalLoadFromFile(AFileName, false, AFormat, AWorksheetIndex);
 end;
 
-{ ------------------------------------------------------------------------------
+{@@ ------------------------------------------------------------------------------
   Public spreadsheet loader to be used if file format is not known. The file
-  format is determined from the file extension, or - if this is valid for
+  format is determined from the file extension, or - if this is holds for
   several formats (such as .xls) - by assuming a format. Note that exceptions
   are raised in the IDE if in incorrect format is tested. This does not occur
-  outside the IDE:
+  outside the IDE.
 
   @param  AFilename        Name of the spreadsheet file to be loaded
-  @param  AWorksheetIndex  Index of the worksheet to be loaded from the file
+  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer = 0);
@@ -406,12 +495,12 @@ end;
   Notifies listeners of workbook, worksheet, cell, or selection changes.
   The changed item is identified by the parameter AChangedItems.
 
-  @param  AChangedItems  A set containing elements lniWorkbook, lniWorksheet,
+  @param  AChangedItems  A set of elements lniWorkbook, lniWorksheet,
                          lniCell, lniSelection which indicate which item has
                          changed.
-  @param  AData          Additional data on the change. Is used only for
-                         lniCell and points to the cell with changed value or
-                         formatting.
+  @param  AData          Additional information on the change. Is used only for
+                         lniCell and points to the cell having a changed value
+                         or formatting.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.NotifyListeners(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
@@ -445,7 +534,7 @@ end;
   Removes a component from the listener list. The component is no longer
   notified of changes in workbook, worksheet or cells
 
-  @param  AComponent  Component to be removed
+  @param  AListener  Listening component to be removed
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.RemoveListener(AListener: TComponent);
 var
@@ -479,8 +568,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes the workbook loaded into the WorkbookSource component to a
-  spreadsheet file.
+  Writes the workbook of the WorkbookSource component to a spreadsheet file.
 
   @param   AFileName          Name of the file to which the workbook is to be
                               saved.
@@ -498,8 +586,10 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Saves the workbook into a file with the specified file name. If this file
-  name already exists the file is overwritten if AOverwriteExisting is true.
+  Saves the workbook into a file with the specified file name.
+  The file format is determined automatically from the extension.
+  If this file name already exists the file is overwritten
+  if AOverwriteExisting is true.
 
   @param   AFileName          Name of the file to which the workbook is to be
                               saved
@@ -518,8 +608,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Usually called by code or from the spreadsheet grid component. The
-  method identifies a cell as "selected". Stores its coordinates in the
-  worksheet and notifies the controls
+  method identifies a cell to be "selected".
+  Stores its coordinates in the worksheet ("active cell") and notifies the
+  listening controls
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SelectCell(ASheetRow, ASheetCol: Cardinal);
 begin
@@ -532,30 +623,23 @@ end;
   Selects a worksheet and notifies the controls. This method is usually called
   by code or from the worksheet tabcontrol.
 
-  @param  AWorksheet  Instsance of the newly selected worksheet.
+  @param  AWorksheet  Instance of the newly selected worksheet.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SelectWorksheet(AWorkSheet: TsWorksheet);
 begin
   FWorksheet := AWorksheet;
   if (FWorkbook <> nil) then
     FWorkbook.SelectWorksheet(AWorksheet);
-{
-  if AWorksheet = nil then
-    exit;
-  FWorksheet := AWorkSheet;
-  FWorksheet.OnChangeCell := @CellChangedHandler;
-  FWorksheet.OnSelectCell := @CellSelectedHandler;
-  NotifyListeners([lniWorksheet]);
-  SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
   Setter for the file name property. Loads the spreadsheet file and uses the
-  values of the properties AutoDetectFormat and FileFormat.
-  Useful if the spreadsheet is to be loaded at design time.
+  values of the properties AutoDetectFormat or FileFormat.
+  Useful if the spreadsheet is to be loaded already at design time.
   But note that an exception can be raised if the file format cannot be
   determined from the file extension alone.
+
+  @param  AFileName  Name of the spreadsheet file to be loaded.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SetFileName(const AFileName: TFileName);
 begin
@@ -590,6 +674,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Event handler called whenever a new worksheet is added to the workbook
+
+  @param  Sender   Pointer to the workbook to which a new worksheet has been added
+  @param  ASheet   Worksheet which is added to the workbook.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.WorksheetAddedHandler(Sender: TObject;
   ASheet: TsWorksheet);
@@ -599,8 +686,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Event handler canned whenever worksheet properties changed. Currently only
-  for changing the workbook name.
+  Event handler canned whenever worksheet properties have changed.
+  Currently only used for changing the workbook name.
+
+  @param  Sender  Workbook containing the modified worksheet
+  @param  ASheet  Worksheet which has been modified
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.WorksheetChangedHandler(Sender: TObject;
   ASheet: TsWorksheet);
@@ -613,6 +703,8 @@ end;
   Event handler called AFTER a worksheet has been removed (deleted) from
   the workbook
 
+  @param  Sender       Points to the workbook from which the sheet has been
+                       deleted
   @param  ASheetIndex  Index of the sheet that was deleted. The sheet itself
                        does not exist any more.
 -------------------------------------------------------------------------------}
@@ -642,6 +734,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Event handler called whenever a the workbook makes a worksheet "active".
+
+  @param  Sender      Workbook containing the worksheet
+  @param  AWorksheet  Worksheet which has been activated
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.WorksheetSelectedHandler(Sender: TObject;
   AWorksheet: TsWorksheet);
@@ -663,8 +758,8 @@ end;
 {------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
-  Destructor of the WorkbookTabControl. Removes itself from the
-  WorkbookSource's listener list.
+  Destructor of the WorkbookTabControl.
+  Removes itself from the WorkbookSource's listener list.
 -------------------------------------------------------------------------------}
 destructor TsWorkbookTabControl.Destroy;
 begin
@@ -684,7 +779,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a (string) list containing the names of the workbook's sheet names
+  Creates a (string) list containing the names of the workbook's sheet names.
+  Is called whenever the workbook changes.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.GetSheetList(AList: TStrings);
 var
@@ -695,26 +791,7 @@ begin
     for i:=0 to Workbook.GetWorksheetCount-1 do
       AList.Add(Workbook.GetWorksheetByIndex(i).Name);
 end;
-{
-procedure TsWorkbookTabControl.GetSheetList(AList: TStrings);
-var
-  i: Integer;
-  oldTabIndex: Integer;
-begin
-  oldTabIndex := TabIndex;
-  AList.BeginUpdate;
-  try
-    AList.Clear;
-    if Workbook <> nil then
-      for i:=0 to Workbook.GetWorksheetCount-1 do
-        AList.Add(Workbook.GetWorksheetByIndex(i).Name);
-  finally
-    AList.EndUpdate;
-    if oldtabIndex < AList.Count then
-      TabIndex := oldTabIndex;
-  end;
-end;
- }
+
 {@@ ----------------------------------------------------------------------------
   Getter method for property "Workbook"
 -------------------------------------------------------------------------------}
@@ -743,6 +820,10 @@ end;
   Responds to workbook changes by reading the worksheet names into the tabs,
   and to worksheet changes by selecting the tab corresponding to the selected
   worksheet.
+
+  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
+                         cell content or cell formatting has changed
+  @param  AData          Additional data, not used here
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -780,19 +861,6 @@ begin
     if i <> TabIndex then
       TabIndex := i;
   end;
-{
-  // Workbook changed
-  if (lniWorkbook in AChangedItems) then
-    GetSheetList(Tabs);
-
-  // Worksheet changed
-  if (lniWorksheet in AChangedItems) and (Worksheet <> nil) then
-  begin
-    i := Tabs.IndexOf(Worksheet.Name);
-    if i <> TabIndex then
-      TabIndex := i;
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -831,6 +899,8 @@ end;
   Constructor of the spreadsheet edit control. Disables RETURN and TAB keys.
   RETURN characters can still be entered into the edited text by pressing
   CTRL+RETURN
+
+  @param   AOwner   Component which is responsible to destroy the CellEdit
 -------------------------------------------------------------------------------}
 constructor TsCellEdit.Create(AOwner: TComponent);
 begin
@@ -854,8 +924,8 @@ end;
   EditingDone is called when the user presses the RETURN key to finish editing,
   or the TAB key which removes focus from the control, or clicks somewhere else
   The edited text is written to the worksheet which tries to figure out the
-  data type. In particular, if the text begins with an "=" sign then the text
-  is written as a formula.
+  data type. In particular, if the text begins with an equal sign ("=") then
+  the text is assumed to be a formula.
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.EditingDone;
 var
@@ -875,7 +945,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Getter method for the property SelectedCell which points to the currently
-  selected cell in the selected worksheet
+  active cell in the selected worksheet
 -------------------------------------------------------------------------------}
 function TsCellEdit.GetSelectedCell: PCell;
 begin
@@ -887,7 +957,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Getter method for the property Workbook which is currently loaded into the
+  Getter method for the property Workbook which is currently loaded by the
   WorkbookSource
 -------------------------------------------------------------------------------}
 function TsCellEdit.GetWorkbook: TsWorkbook;
@@ -911,9 +981,14 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Notification message received from the WorkbookSource telling which item of the
-  spreadsheet has changed.
+  Notification message received from the WorkbookSource telling which item
+  of the spreadsheet has changed.
   Responds to selection and cell changes by updating the cell content.
+
+  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
+                         cell content or cell formatting has changed
+  @param  AData          If AChangedItems contains nliCell then AData points to
+                         the modified cell.
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -927,7 +1002,9 @@ begin
     ShowCell(SelectedCell);
 end;
 
-{ Standard component notification when the workbook link is deleted. }
+{@@ ----------------------------------------------------------------------------
+  Standard component notification. Called when the WorkbookSource is deleted.
+-------------------------------------------------------------------------------}
 procedure TsCellEdit.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
@@ -954,8 +1031,11 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Loads the contents of a cell into the editor.
-  Shows the formula if available. Numbers are displayed in full precision.
+  Shows the formula if available, but not the calculation result.
+  Numbers are displayed in full precision.
   Date and time values are shown in the long formats.
+
+  @param  ACell  Pointer to the cell loaded into the cell editor.
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.ShowCell(ACell: PCell);
 var
@@ -983,10 +1063,15 @@ begin
     Clear;
 end;
 
+
 {------------------------------------------------------------------------------}
 {                              TsCellIndicator                                 }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsCellIndicator class. Is overridden to set the default
+  value of the Alignment property to taCenter.
+-------------------------------------------------------------------------------}
 constructor TsCellIndicator.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -1017,6 +1102,10 @@ begin
     WorkbookSource.SelectCell(r, c);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Getter method for the property Workbook which is currently loaded by the
+  WorkbookSource
+-------------------------------------------------------------------------------}
 function TsCellIndicator.GetWorkbook: TsWorkbook;
 begin
   if FWorkbookSource <> nil then
@@ -1025,6 +1114,10 @@ begin
     Result := nil;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Getter method for the property Worksheet which is currently loaded by the
+  WorkbookSource
+-------------------------------------------------------------------------------}
 function TsCellIndicator.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
@@ -1034,8 +1127,14 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  The cell indicator responds to notification that the selection has changed
-  and displays the address of the selected cell as editable text.
+  The cell indicator reacts to notification that the selection has changed
+  and displays the address of the newly selected cell as editable text.
+
+  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
+                         cell or selection has changed. Only the latter element
+                         is considered by the cell indicator.
+  @param  AData          If AChangedItems contains nliCell then AData points to
+                         the modified cell.
 -------------------------------------------------------------------------------}
 procedure TsCellIndicator.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
@@ -1079,6 +1178,11 @@ end;
 {                          TsSpreadsheetInspector                              }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the TsSpreadsheetInspector class.
+  Is overridden to set the default values of DisplayOptions and FixedCols, and
+  to define the column captions.
+-------------------------------------------------------------------------------}
 constructor TsSpreadsheetInspector.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -1133,35 +1237,11 @@ begin
     list.Free;
   end;
 end;
-(*
-procedure TsSpreadsheetInspector.DoUpdate;
-var
-  cell: PCell;
-  sheet: TsWorksheet;
-  book: TsWorkbook;
-begin
-  Strings.Clear;
 
-  cell := nil;
-  sheet := nil;
-  book := nil;
-  if FWorkbookSource <> nil then
-  begin
-    book := FWorkbookSource.Workbook;
-    sheet := FWorkbookSource.Worksheet;
-    if sheet <> nil then
-      cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
-  end;
-
-  case FMode of
-    imCellValue      : UpdateCellValue(cell);
-    imCellProperties : UpdateCellProperties(cell);
-    imWorksheet      : UpdateWorksheet(sheet);
-    imWorkbook       : UpdateWorkbook(book);
-  end;
-end;
-  *)
-
+{@@ ----------------------------------------------------------------------------
+  Getter method for the property Workbook which is currently loaded by the
+  WorkbookSource
+-------------------------------------------------------------------------------}
 function TsSpreadsheetInspector.GetWorkbook: TsWorkbook;
 begin
   if FWorkbookSource <> nil then
@@ -1170,6 +1250,10 @@ begin
     Result := nil;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Getter method for the property Worksheet which is currently loaded by the
+  WorkbookSource
+-------------------------------------------------------------------------------}
 function TsSpreadsheetInspector.GetWorksheet: TsWorksheet;
 begin
   if FWorkbookSource <> nil then
@@ -1178,6 +1262,15 @@ begin
     Result := nil;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Notification procedure received whenver "something" changes in the workbook.
+  Reacts on all events.
+
+  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
+                         cell or selection has changed.
+  @param  AData          If AChangedItems contains nliCell then AData points to
+                         the modified cell.
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 begin
@@ -1190,19 +1283,12 @@ begin
     imCellValue, imCellProperties:
       if ([lniCell, lniSelection]*AChangedItems <> []) then DoUpdate;
   end;
-{
-  case FMode of
-    imWorkbook:
-      if lniWorkbook in AChangedItems then DoUpdate;
-    imWorksheet:
-      if lniWorksheet in AChangedItems then DoUpdate;
-    imCellValue,
-    imCellProperties:
-      if ([lniCell, lniSelection]*AChangedItems <> []) then DoUpdate;
-  end;
-  }
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Standard component notification method called when the WorkbookSource
+  is deleted.
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
@@ -1211,6 +1297,11 @@ begin
     SetWorkbookSource(nil);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Setter method for the Mode property. This property filters groups of properties
+  for display (workbook-, worksheet-, cell value- or cell formatting-related
+  data).
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.SetMode(AValue: TsInspectorMode);
 begin
   if AValue = FMode then
@@ -1219,6 +1310,9 @@ begin
   DoUpdate;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Setter method for the WorkbookSource
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.SetWorkbookSource(AValue: TsWorkbookSource);
 begin
   if AValue = FWorkbookSource then
@@ -1231,6 +1325,13 @@ begin
   ListenerNotification([lniWorkbook, lniWorksheet, lniSelection]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a string list containing the formatting properties of a specific cell.
+  The string list items are name-value pairs in the format "name=value".
+  The string list is displayed in the inspector's grid.
+
+  @param   ACell   Cell under investigation
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateCellProperties(ACell: PCell;
   AStrings: TStrings);
 var
@@ -1311,6 +1412,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a string list containing the value data of a specific cell.
+  The string list items are name-value pairs in the format "name=value".
+  The string list is displayed in the inspector's grid.
+
+  @param   ACell   Cell under investigation
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateCellValue(ACell: PCell; AStrings: TStrings);
 begin
   if ACell = nil then
@@ -1349,6 +1457,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a string list containing the properties of the workbook.
+  The string list items are name-value pairs in the format "name=value".
+  The string list is displayed in the inspector's grid.
+
+  @param   ACell   Cell under investigation
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateWorkbook(AWorkbook: TsWorkbook;
   AStrings: TStrings);
 var
@@ -1417,6 +1532,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a string list containing the properties of a worksheet.
+  The string list items are name-value pairs in the format "name=value".
+  The string list is displayed in the inspector's grid.
+
+  @param   ACell   Cell under investigation
+-------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateWorksheet(ASheet: TsWorksheet;
   AStrings: TStrings);
 begin

@@ -1,13 +1,16 @@
-{
-  Utility functions and constants from FPSpreadsheet
-}
+{@@ ----------------------------------------------------------------------------
+  Utility functions and declarations for FPSpreadsheet
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+-------------------------------------------------------------------------------}
+unit fpsutils;
 
 // to do: Remove the patched FormatDateTime when the feature of square brackets
 //        in time format codes is in the rtl
 // to do: Remove the declaration UTF8FormatSettings and InitUTF8FormatSettings
 //        when this same modification is in LazUtils of Laz stable
 
-unit fpsutils;
 
 {$mode objfpc}{$H+}
 
@@ -27,14 +30,12 @@ type
 
   {@@ Options for the FormatDateTime function to activate time interval strings
       with more than 24 hours.
-      Will be removed when this feature is in the stable release of FPC
-  }
+      Will be removed when this feature is in the stable release of FPC }
   TFormatDateTimeOption = (fdoInterval);
 
   {@@ Options for the FormatDateTime function to activate time interval strings
       with more than 24 hours.
-      Will be removed when this feature is in the stable release of FPC
-  }
+      Will be removed when this feature is in the stable release of FPC }
   TFormatDateTimeOptions =  set of TFormatDateTimeOption;
 
 const
@@ -161,8 +162,6 @@ procedure AppendToStream(AStream: TStream; const AString: String); inline; overl
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
 
-function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
-
 { For silencing the compiler... }
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
@@ -172,7 +171,10 @@ procedure Unused(const A1, A2, A3);
 procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 
 var
+  {@@ Default value for the screen pixel density (pixels per inch). Is needed
+  for conversion of distances to pixels}
   ScreenPixelsPerInch: Integer = 96;
+  {@@ FPC format settings for which all strings have been converted to UTF8 }
   UTF8FormatSettings: TFormatSettings;
 
 implementation
@@ -977,7 +979,7 @@ end;
   @param  ACurrencySymbol Name of the currency, like $ or USD.
                           If ? the CurrencyString of the FormatSettings is used.
 
-  @return String of formatting codes, such as '"$"#,##0.00;("$"#,##0.00);"EUR"0.00'
+  @return String of formatting codes, such as '"$"#,##0.00;("$"#,##0.00);"$"0.00'
 -------------------------------------------------------------------------------}
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
@@ -1653,7 +1655,6 @@ begin
       ANumber := ANumber * 0.01;
   end;
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Excel's unit of row heights is "twips", i.e. 1/20 point.
@@ -2332,15 +2333,16 @@ begin
   DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Extracts compare information from an input string such as "<2.4".
   Is needed for some Excel-strings.
 
   @param  AString     Input string starting with "<", "<=", ">", ">=", "<>" or "="
                       If this start code is missing a "=" is assumed.
-  @param  ACompareOp  Identifier for the comparing operation extracted - see TsCompareOperation
+  @param  ACompareOp  Identifier for the comparing operation extracted
+                      - see TsCompareOperation
   @return Input string with the comparing characters stripped.
-}
+-------------------------------------------------------------------------------}
 function AnalyzeComparestr(AString: String; out ACompareOp: TsCompareOperation): String;
 
   procedure RemoveChars(ACount: Integer; ACompare: TsCompareOperation);
@@ -2403,18 +2405,39 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Appends a string to a stream
+
+  @param  AStream   Stream to which the string will be added
+  @param  AString   String to be written to the stream
+-------------------------------------------------------------------------------}
 procedure AppendToStream(AStream: TStream; const AString: string);
 begin
   if Length(AString) > 0 then
     AStream.WriteBuffer(AString[1], Length(AString));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Appends two strings to a stream
+
+  @param  AStream   Stream to which the strings will be added
+  @param  AString1  First string to be written to the stream
+  @param  AString2  Second string to be written to the stream
+-------------------------------------------------------------------------------}
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String);
 begin
   AppendToStream(AStream, AString1);
   AppendToStream(AStream, AString2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Appends three strings to a stream
+
+  @param  AStream   Stream to which the strings will be added
+  @param  AString1  First string to be written to the stream
+  @param  AString2  Second string to be written to the stream
+  @param  AString3  Third string to be written to the stream
+-------------------------------------------------------------------------------}
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String);
 begin
   AppendToStream(AStream, AString1);
@@ -2422,28 +2445,6 @@ begin
   AppendToStream(AStream, AString3);
 end;
 
-function PosInMemory(AMagic: QWord; ABuffer: PByteArray; ABufSize: Integer): Integer;
-var
-  i, j: Integer;
-  MagicBytes: Array[0..7] of byte absolute AMagic;
-  found: Boolean;
-begin
-  Result := -1;
-  for i:=0 to ABufSize - SizeOf(QWord) do begin
-    if (ABuffer^[i] = MagicBytes[0]) then begin
-      found := true;
-      for j:=1 to 7 do
-        if ABuffer^[i+j] <> MagicBytes[j] then begin
-          found := false;
-          break;
-        end;
-      if found then begin
-        Result := i;
-        exit;
-      end;
-    end;
-  end;
-end;
 
 { Modifying colors }
 { Next function are copies of GraphUtils to avoid a dependence on the Graphics unit. }
@@ -2537,7 +2538,6 @@ begin
       n1 := 2 * L - n2 - 1;
     end;
 
-
     // get RGB
     R := HueToRGB(n1, n2, H + HUE_120);
     G := HueToRGB(n1, n2, H);
@@ -2545,12 +2545,19 @@ begin
   end;
 end;
 
-{ Excel defines theme colors and applies a "tint" factor (-1...+1) to darken
+{@@ ----------------------------------------------------------------------------
+  Excel defines theme colors and applies a "tint" factor (-1...+1) to darken
   or brighten them.
+
+  This method "tints" a given color with a factor
+
   The algorithm is described in
   http://msdn.microsoft.com/en-us/library/documentformat.openxml.spreadsheet.backgroundcolor.aspx
-  (with the exception that max hue is 240, nur 255!)
-}
+
+  @param   AColor   rgb color to be modified
+  @param   tint     Factor (-1...+1) to be used for the operation
+  @return  Modified color
+-------------------------------------------------------------------------------}
 function TintedColor(AColor: TsColorValue; tint: Double): TsColorValue;
 const
   HLSMAX = 255;
@@ -2584,9 +2591,14 @@ begin
   TRGBA(Result).a := 0;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the color index for black or white depending on a color being "bright"
+  or "dark".
 
-{@@ Returns the color index for black or white depending on a color belng "bright"
-  or "dark". }
+  @param   AColorValue    rgb color to be analyzed
+  @return  The color index for black (scBlack) if AColorValue is a "bright" color,
+           or white (scWhite) if AColorValue is a "dark" color.
+-------------------------------------------------------------------------------}
 function HighContrastColor(AColorValue: TsColorvalue): TsColor;
 begin
   if TRGBA(AColorValue).r + TRGBA(AColorValue).g + TRGBA(AColorValue).b < 3*128 then
@@ -2616,9 +2628,33 @@ end;
 {$POP}
 
 
+{@@ ----------------------------------------------------------------------------
+  Creates a FPC format settings record in which all strings are encoded as
+  UTF8.
+-------------------------------------------------------------------------------}
+procedure InitUTF8FormatSettings;
+// remove when available in LazUtils
+var
+  i: Integer;
+begin
+  UTF8FormatSettings := DefaultFormatSettings;
+  UTF8FormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
+  for i:=1 to 12 do begin
+    UTF8FormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
+    UTF8FormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
+  end;
+  for i:=1 to 7 do begin
+    UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
+    UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
+  end;
+end;
+
+
 { For debugging only }
 
-{@@ Write the fonts stored for a given workbook to a file. }
+{@@ ----------------------------------------------------------------------------
+  Write the fonts stored for a given workbook to a file.
+-------------------------------------------------------------------------------}
 procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 var
   L: TStringList;
@@ -2649,22 +2685,6 @@ begin
   end;
 end;
 
-procedure InitUTF8FormatSettings;
-// remove when available in LazUtils
-var
-  i: Integer;
-begin
-  UTF8FormatSettings := DefaultFormatSettings;
-  UTF8FormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
-  for i:=1 to 12 do begin
-    UTF8FormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
-    UTF8FormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
-  end;
-  for i:=1 to 7 do begin
-    UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
-    UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
-  end;
-end;
 
 initialization
   InitUTF8FormatSettings;

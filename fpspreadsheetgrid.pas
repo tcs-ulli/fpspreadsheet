@@ -1,21 +1,24 @@
-{
-fpspreadsheetgrid.pas
+{ fpspreadsheetgrid }
 
-Grid component which can load and write data from / to FPSpreadsheet documents
+{@@ ----------------------------------------------------------------------------
+  Grid component which can load and write data from / to FPSpreadsheet documents.
+  Can either be used alone or in combination with a TsWorkbookSource component.
+  The latter case requires less written code.
 
 AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
-}
+
+LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+         distribution, for details about the license.
+-------------------------------------------------------------------------------}
+unit fpspreadsheetgrid;
+
+{$mode objfpc}{$H+}
 
 { To do:
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
    FindNearestPaletteIndex.
  - Arial bold is not shown as such if loaded from ods
- - Background color of first cell is ignored.
-}
-
-unit fpspreadsheetgrid;
-
-{$mode objfpc}{$H+}
+ - Background color of first cell is ignored.                                  }
 
 
 interface
