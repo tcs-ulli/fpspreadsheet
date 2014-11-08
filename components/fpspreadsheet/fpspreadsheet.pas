@@ -1,10 +1,13 @@
-{
-fpspreadsheet.pas
+{ fpspreadsheet }
 
-Writes a spreadsheet document
+{@@ ----------------------------------------------------------------------------
+  Unit fpspreadsheet reads and writes spreadsheet documents.
 
-AUTHORS: Felipe Monteiro de Carvalho
-}
+  AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpspreadsheet;
 
 {$ifdef fpc}
@@ -33,16 +36,26 @@ type
 
 const
   { Default extensions }
+
+  {@@ Default binary <b>Excel</b> file extension}
   STR_EXCEL_EXTENSION = '.xls';
+  {@@ Default xml <b>Excel</b> file extension (>= Excel 2007) }
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
+  {@@ Default <b>OpenDocument</b> spreadsheet file extension }
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
+  {@@ Default extension of <b>comma-separated-values</b> file }
   STR_COMMA_SEPARATED_EXTENSION = '.csv';
+  {@@ Default extension of <b>wikitable files</b> in <b>pipes</b> format}
   STR_WIKITABLE_PIPES = '.wikitable_pipes';
+  {@@ Default extension of <b>wikitable files</b> in <b>wikimedia</b> format }
   STR_WIKITABLE_WIKIMEDIA = '.wikitable_wikimedia';
 
+  {@@ Maximum count of worksheet columns}
   MAX_COL_COUNT = 65535;
 
+  {@@ Name of the default font}
   DEFAULTFONTNAME = 'Arial';
+  {@@ Size of the default font}
   DEFAULTFONTSIZE = 10;
 
 type
@@ -57,32 +70,13 @@ type
     seHebrew,
     seArabic
     );
-        (*
-  {@@ Describes a formula
 
-    Supported syntax:
-    <pre>
-    =A1+B1+C1/D2...  - Array with simple mathematical operations
-    =SUM(A1:D1)      - SUM operation in a interval
-    </pre>
-  }
-  TsFormula = record
-    FormulaStr: string;
-    DoubleValue: double;
-  end;
-          *)
-  {@@ Tokens to identify the elements in an expanded formula.
+  {@@ Tokens to identify the <b>elements in an expanded formula</b>.
 
-   See http://www.techonthenet.com/excel/formulas/ for an explanation of
-   meaning and parameters of each formula
-
-   NOTE: When adding or rearranging items:
-   - make sure that the subtypes TOperandTokens, TBasicOperationTokens and TFuncTokens
+   NOTE: When adding or rearranging items
+   * make sure that the subtypes TOperandTokens and TBasicOperationTokens
      are complete
-   - make sure to keep the FEProps table in sync
-   - make sure to keep the TokenID table
-     in TsSpreadBIFFWriter.FormulaElementKindToExcelTokenID, unit xlscommon,
-     in sync
+   * make sure to keep the table "TokenIDs" in unit xlscommon in sync
   }
   TFEKind = (
     { Basic operands }
@@ -103,12 +97,12 @@ type
   {@@ These tokens identify basic operations in RPN formulas. }
   TBasicOperationTokens = fekAdd..fekParen;
 
-  {@@ Flags to mark the address or a cell or a range of cells to be absolute
-      or relative. They are used in the set TsRelFlags. }
+  {@@ Flags to mark the address or a cell or a range of cells to be <b>absolute</b>
+      or <b>relative</b>. They are used in the set TsRelFlags. }
   TsRelFlag = (rfRelRow, rfRelCol, rfRelRow2, rfRelCol2);
 
-  {@@ Flags to mark the address of a cell or a range of cells to be absolute
-      or relative. It is a set consisting of TsRelFlag elements. }
+  {@@ Flags to mark the address of a cell or a range of cells to be <b>absolute</b>
+      or <b>relative</b>. It is a set consisting of TsRelFlag elements. }
   TsRelFlags = set of TsRelFlag;
 
   {@@ Elements of an expanded formula.
@@ -116,9 +110,9 @@ type
           to signed integers! }
   TsFormulaElement = record
     ElementKind: TFEKind;
-    Row, Row2: Cardinal; // zero-based
-    Col, Col2: Cardinal; // zero-based
-    Param1, Param2: Word; // Extra parameters
+    Row, Row2: Cardinal;   // zero-based
+    Col, Col2: Cardinal;   // zero-based
+    Param1, Param2: Word;  // Extra parameters
     DoubleValue: double;
     IntValue: Word;
     StringValue: String;
@@ -131,7 +125,7 @@ type
       Simplifies the task of format writers which need RPN }
   TsRPNFormula = array of TsFormulaElement;
 
-  {@@ Describes the type of content in a cell of a TsWorksheet }
+  {@@ Describes the <b>type of content</b> in a cell of a TsWorksheet }
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
     cctDateTime, cctBool, cctError);
 
@@ -255,35 +249,68 @@ type
   and the names of the color constants may no longer be correct.
 }
 const
+  {@@ Index of <b>black</b> color in the standard color palettes }
   scBlack = $00;
+  {@@ Index of <b>white</b> color in the standard color palettes }
   scWhite = $01;
+  {@@ Index of <b>red</b> color in the standard color palettes }
   scRed = $02;
+  {@@ Index of <b>green</b> color in the standard color palettes }
   scGreen = $03;
+  {@@ Index of <b>blue</b> color in the standard color palettes }
   scBlue = $04;
+  {@@ Index of <b>yellow</b> color in the standard color palettes }
   scYellow = $05;
+  {@@ Index of <b>magenta</b> color in the standard color palettes }
   scMagenta = $06;
+  {@@ Index of <b>cyan</b> color in the standard color palettes }
   scCyan = $07;
+  {@@ Index of <b>dark red</b> color in the standard color palettes }
   scDarkRed = $08;
+  {@@ Index of <b>dark green</b> color in the standard color palettes }
   scDarkGreen = $09;
-  scDarkBlue = $0A;    scNavy = $0A;
+  {@@ Index of <b>dark blue</b> color in the standard color palettes }
+  scDarkBlue = $0A;
+  {@@ Index of <b>"navy"</b> color (dark blue) in the standard color palettes }
+  scNavy = $0A;
+  {@@ Index of <b>olive</b> color in the standard color palettes }
   scOlive = $0B;
+  {@@ Index of <b>purple</b> color in the standard color palettes }
   scPurple = $0C;
+  {@@ Index of <b>teal</b> color in the standard color palettes }
   scTeal = $0D;
+  {@@ Index of <b>silver</b> color in the standard color palettes }
   scSilver = $0E;
-  scGrey = $0F;        scGray = $0F;       // redefine to allow different spelling
-  scGrey10pct = $10;   scGray10pct = $10;
-  scGrey20pct = $11;   scGray20pct = $11;
+  {@@ Index of <b>grey</b> color in the standard color palettes }
+  scGrey = $0F;
+  {@@ Index of <b>gray</b> color in the standard color palettes }
+  scGray = $0F;       // redefine to allow different spelling
+  {@@ Index of a <b>10% grey</b> color in the standard color palettes }
+  scGrey10pct = $10;
+  {@@ Index of a <b>10% gray</b> color in the standard color palettes }
+  scGray10pct = $10;
+  {@@ Index of a <b>20% grey</b> color in the standard color palettes }
+  scGrey20pct = $11;
+  {@@ Index of a <b>20% gray</b> color in the standard color palettes }
+  scGray20pct = $11;
+  {@@ Index of <b>orange</b> color in the standard color palettes }
   scOrange = $12;
+  {@@ Index of <b>dark brown</b> color in the standard color palettes }
   scDarkbrown = $13;
+  {@@ Index of <b>brown</b> color in the standard color palettes }
   scBrown = $14;
+  {@@ Index of <b>beige</b> color in the standard color palettes }
   scBeige = $15;
+  {@@ Index of <b>"wheat"</b> color (yellow-orange) in the standard color palettes }
   scWheat = $16;
 
   // not sure - but I think the mechanism with scRGBColor is not working...
   // Will be removed sooner or later...
   scRGBColor = $FFFF;
 
+  {@@ Identifier for transparent color }
   scTransparent = $FFFE;
+  {@@ Identifier for not-defined color }
   scNotDefined = $FFFF;
 
 type
@@ -442,15 +469,13 @@ type
   {@@ Pointer to a TCol record }
   PCol = ^TCol;
 
-  {@@ Sort options }
+  {@@ Options for sorting }
   TsSortOption = (ssoDescending, ssoCaseInsensitive);
+  {@@ Set of options for sorting }
   TsSortOptions = set of TsSortOption;
 
-//  {@@ Sort order }
-//  TsSortOrder = (ssoAscending, ssoDescending);
-
   {@@ Sort priority }
-  TsSortPriority = (spNumAlpha, spAlphaNum);  // NumAlph = "number < alpha"
+  TsSortPriority = (spNumAlpha, spAlphaNum);   // spNumAlpha: Number < Text
 
   {@@ Sort key: sorted column or row index and sort direction }
   TsSortKey = record
@@ -1421,8 +1446,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   If a palette is coded as big-endian (e.g. by copying the rgb values from
-  the OpenOffice doc) the palette values can be converted by means of this
-  procedure to little-endian which is required internally by TsWorkbook.
+  the OpenOffice documentation) the palette values can be converted by means
+  of this procedure to little-endian which is required internally by TsWorkbook.
 
   @param APalette     Pointer to the palette to be converted. After conversion,
                       its color values are replaced.
@@ -1441,8 +1466,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Copies the format of a cell to another one.
 
-  @param  AFromCell   cell from which the format is to be copied
-  @param  AToCell     cell to which the format is to be copied
+  @param  AFromCell   Cell from which the format is to be copied
+  @param  AToCell     Cell to which the format is to be copied
 -------------------------------------------------------------------------------}
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
 begin
@@ -1463,6 +1488,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether two cells have same border attributes
+
+  @param  ACell1  Pointer to the first one of the two cells to be compared
+  @param  ACell2  Pointer to the second one of the two cells to be compared
 -------------------------------------------------------------------------------}
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
@@ -1499,7 +1527,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Initalizes a new cell
+  Initalizes a new cell.
   @return  New cell record
 -------------------------------------------------------------------------------}
 procedure InitCell(out ACell: TCell);
@@ -1512,11 +1540,11 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Initalizes a new cell and presets the row and column fields of the cell record
-  to the parameters passesd to the procedure.
+  to the parameters passed to the procedure.
 
   @param  ARow   Row index of the new cell
   @param  ACol   Column index of the new cell
-  @return New cell record with row and column fields preset to passed parameters.
+  @return New cell record with row and column fields preset to passed values.
 -------------------------------------------------------------------------------}
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
 begin
@@ -1527,6 +1555,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Returns TRUE if the cell contains a formula (direct or shared, does not matter).
+
+  @param   ACell   Pointer to the cell checked
 -------------------------------------------------------------------------------}
 function HasFormula(ACell: PCell): Boolean;
 begin
@@ -1603,7 +1633,8 @@ end;
   formula. This is needed, for example, when writing a formula to xls biff
   file format.
   If the cell belongs to a shared formula the formula is taken from the
-  shared formula base cell, cell references used are adapted accordingly.
+  shared formula base cell, cell references are adapted accordingly to the
+  location of the cell.
 -------------------------------------------------------------------------------}
 function TsWorksheet.BuildRPNFormula(ACell: PCell): TsRPNFormula;
 var
@@ -1707,6 +1738,14 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Calculates all formulas of the worksheet.
+
+  Since formulas may reference not-yet-calculated cells, this occurs in
+  two steps:
+  1. All formula cells are marked as "not calculated".
+  2. Cells are calculated. If referenced cells are found as being
+     "not calculated" they are calculated and then tagged as "calculated".
+  This results in an iterative calculation procedure. In the end, all cells
+  are calculated.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcFormulas;
 var

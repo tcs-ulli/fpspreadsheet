@@ -1,5 +1,12 @@
-{ Simple creation an RPNFormula array to be used in fpspreadsheet. }
+{@@ ----------------------------------------------------------------------------
+  The unit fpsRPN contains methods for simple creation of an RPNFormula array
+  to be used in fpspreadsheet.
 
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpsRPN;
 
 {$ifdef fpc}
@@ -11,9 +18,15 @@ interface
 uses
   SysUtils, fpspreadsheet;
 
-{@@ Helper record for simplification of RPN formula creation }
 type
+  {@@ Pointer to a TPRNItem record
+      @see    TRPNItem }
   PRPNItem = ^TRPNItem;
+
+  {@@ Helper record for simplification of RPN formula creation
+      @param  FE     Formula element record stored in the RPN item
+      @param  Next   Pointer to the next RPN item of the formula
+      @see    TsFormulaElement }
   TRPNItem = record
     FE: TsFormulaElement;
     Next: PRPNItem;
@@ -73,6 +86,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Destroys an RPN item
+
+  @param  AItem  Pointer to the RPN item to be disposed.
 -------------------------------------------------------------------------------}
 procedure DisposeRPNItem(AItem: PRPNItem);
 begin
@@ -83,8 +98,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Creates a boolean value entry in the RPN array.
 
-  @param  AValue   Boolean value to be stored in the RPN item
-  @next   ANext    Pointer to the next RPN item in the list
+  @param   AValue   Boolean value to be stored in the RPN item
+  @param   ANext    Pointer to the next RPN item in the list
 -------------------------------------------------------------------------------}
 function RPNBool(AValue: Boolean; ANext: PRPNItem): PRPNItem;
 begin
@@ -107,7 +122,7 @@ var
   flags: TsRelFlags;
 begin
   if not ParseCellString(ACellAddress, r, c, flags) then
-    raise Exception.CreateFmt('"%s" is not a valid cell address.', [ACellAddress]);
+    raise Exception.CreateFmt(rsNoValidCellAddress, [ACellAddress]);
   Result := RPNCellValue(r,c, flags, ANext);
 end;
 
