@@ -33,10 +33,14 @@ type
     property Worksheet;
   end;
 
+  TsWorksheetNameEvent = procedure (Sender: TObject; AWorksheet: TsWorksheet;
+    var ASheetName: String) of object;
+
   { Action for adding a worksheet }
   TsWorksheetAddAction = class(TsWorksheetAction)
   private
     FNameMask: String;
+    FOnGetWorksheetName: TsWorksheetNameEvent;
     procedure SetNameMask(const AValue: String);
   protected
     function GetUniqueSheetName: String;
@@ -45,6 +49,8 @@ type
     procedure ExecuteTarget(Target: TObject); override;
   published
     property NameMask: String read FNameMask write SetNameMask;
+    property OnGetWorksheetName: TsWorksheetNameEvent
+      read FOnGetWorksheetName write FOnGetWorksheetName;
   end;
 
   { Action for deleting selected worksheet }
@@ -56,9 +62,14 @@ type
 
   { Action for renaming selected worksheet }
   TsWorksheetRenameAction = class(TsWorksheetAction)
+  private
+    FOnGetWorksheetName: TsWorksheetNameEvent;
   public
     constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
+  published
+    property OnGetWorksheetName: TsWorksheetNameEvent
+      read FOnGetWorksheetName write FOnGetWorksheetName;
   end;
 
   procedure Register;
@@ -128,7 +139,7 @@ end;
 
 { TsWorksheetAddAction }
 
-constructor TsWOrksheetAddAction.Create(AOwner: TComponent);
+constructor TsWorksheetAddAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Caption := 'Add';
@@ -136,6 +147,8 @@ begin
   FNameMask := 'Sheet%d';
 end;
 
+{ Helper procedure which creates a default worksheetname by counting a number
+  up until it provides in the NameMask a unique worksheet name. }
 function TsWorksheetAddAction.GetUniqueSheetName: String;
 var
   i: Integer;
@@ -157,7 +170,18 @@ var
 begin
   if HandlesTarget(Target) then
   begin
+    // Get default name of the new worksheet
     sheetName := GetUniqueSheetName;
+    // If available use own procedure to specify new worksheet name
+    if Assigned(FOnGetWorksheetName) then
+      FOnGetWorksheetName(self, Worksheet, sheetName);
+    // Check validity of worksheet name
+    if not Workbook.ValidWorksheetName(sheetName) then
+    begin
+      MessageDlg(Format('"5s" is not a valid worksheet name.', [sheetName]), mtError, [mbOK], 0);
+      exit;
+    end;
+    // Add new worksheet using the worksheet name.
     Workbook.AddWorksheet(sheetName);
   end;
 end;
@@ -179,7 +203,7 @@ end;
 constructor TsWorksheetDeleteAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Caption := 'Delete';
+  Caption := 'Delete...';
   Hint := 'Delete worksheet';
 end;
 
@@ -187,20 +211,24 @@ procedure TsWorksheetDeleteAction.ExecuteTarget(Target: TObject);
 begin
   if HandlesTarget(Target) then
   begin
+    // Make sure that the last worksheet is not deleted - there must always be
+    // at least 1 worksheet.
     if Workbook.GetWorksheetCount = 1 then
     begin
       MessageDlg('The workbook must contain at least 1 worksheet', mtError, [mbOK], 0);
       exit;
     end;
 
+    // Confirmation dialog
     if MessageDlg(
       Format('Do you really want to delete worksheet "%s"?', [Worksheet.Name]),
       mtConfirmation, [mbYes, mbNo], 0) <> mrYes
     then
       exit;
 
+    // Remove the worksheet; the workbookSource takes care of selecting the
+    // next worksheet after deletion.
     Workbook.RemoveWorksheet(Worksheet);
-    // The workbooksource takes care of selecting the next worksheet
   end;
 end;
 
@@ -221,8 +249,19 @@ begin
   if HandlesTarget(Target) then
   begin
     s := Worksheet.Name;
-    if InputQuery('Rename worksheet', 'New worksheet name', s) then
-      Worksheet.Name := s;
+    // If requested, override input box by own input
+    if Assigned(FOnGetWorksheetName) then
+      FOnGetWorksheetName(self, Worksheet, s)
+    else
+      s := InputBox('Rename worksheet', 'New worksheet name', s);
+    // No change
+    if s = WorksheetName then
+      exit;
+    // Check validity of new worksheet name
+    if Workbook.ValidWorksheetName(s) then
+      Worksheet.Name := s
+    else
+      MessageDlg(Format('"%s" is not a valid worksheet name.', [s]), mtError, [mbOK], 0);
   end;
 end;
 
