@@ -7,7 +7,8 @@ unit laz_fpspreadsheet_visual;
 interface
 
 uses
-  fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, LazarusPackageIntf;
+  fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsActions, 
+  LazarusPackageIntf;
 
 implementation
 
@@ -16,6 +17,7 @@ begin
   RegisterUnit('fpspreadsheetctrls', @fpspreadsheetctrls.Register);
   RegisterUnit('fpspreadsheetgrid', @fpspreadsheetgrid.Register);
   RegisterUnit('fpspreadsheetchart', @fpspreadsheetchart.Register);
+  RegisterUnit('fpsactions', @fpsactions.Register);
 end;
 
 initialization

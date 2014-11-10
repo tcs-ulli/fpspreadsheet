@@ -6,17 +6,24 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ComCtrls, ExtCtrls, Grids, Buttons,
-  fpspreadsheet, fpspreadsheetctrls, fpSpreadsheetGrid;
+  StdCtrls, ComCtrls, ExtCtrls, Grids, Buttons, Menus, ActnList,
+  fpspreadsheet, fpspreadsheetctrls, fpSpreadsheetGrid, fpsActions;
 
 type
 
   { TForm1 }
 
   TForm1 = class(TForm)
+    ActionList: TActionList;
     BtnLoad: TButton;
     CbLoader: TComboBox;
     Label1: TLabel;
+    MainMenu: TMainMenu;
+    MnuDeleteWorksheet: TMenuItem;
+    MnuAddWorksheet: TMenuItem;
+    MnuWorksheets: TMenuItem;
+    MnuEdit: TMenuItem;
+    MnuFile: TMenuItem;
     OpenDialog: TOpenDialog;
     Panel1: TPanel;
     SpeedButton1: TSpeedButton;
@@ -83,6 +90,8 @@ begin
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
+var
+  actn: TAction;
 begin
   WorkbookSource := TsWorkbookSource.Create(self);
   with WorkbookSource do begin
@@ -129,6 +138,21 @@ begin
     Align := alClient;
     WorkbookSource := Self.WorkbookSource;
   end;
+
+  actn := TsWorksheetAddAction.Create(self);
+  with TsWorksheetAddAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+  end;
+  MnuAddWorksheet.Action := actn;
+
+  actn := TsWorksheetDeleteAction.Create(self);
+  with TsWorksheetDeleteAction(actn) do begin
+    ActionList := self.ActionList;
+    WOrkbookSource := Self.WorkbookSource;
+  end;
+  MnuDeleteWorksheet.Action := actn;
+
 end;
 
 procedure TForm1.InspectorTabControlChange(Sender: TObject);
