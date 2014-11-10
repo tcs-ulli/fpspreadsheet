@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, ComCtrls, ActnList, 
-  fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid;
+  StdCtrls, ComCtrls, ActnList, Menus, 
+  fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
 
 type
 
@@ -16,6 +16,16 @@ type
   TForm1 = class(TForm)
     ActionList1: TActionList;
     Button1: TButton;
+    ImageList1: TImageList;
+    MainMenu: TMainMenu;
+    MenuItem1: TMenuItem;
+    MenuItem2: TMenuItem;
+    MenuItem3: TMenuItem;
+    MenuItem4: TMenuItem;
+    MnuFile: TMenuItem;
+    MnuWorksheet: TMenuItem;
+    MnuAddSheet: TMenuItem;
+    MnuEdit: TMenuItem;
     OpenDialog: TOpenDialog;
     OpenDialog1: TOpenDialog;
     Panel1: TPanel;
@@ -24,6 +34,9 @@ type
     Splitter1: TSplitter;
     Inspector: TsSpreadsheetInspector;
     InspectorTabControl: TTabControl;
+    AddWorksheetAction: TsWorksheetAddAction;
+    DeleteWorksheetAction: TsWorksheetDeleteAction;
+    RenameWorksheetAction: TsWorksheetRenameAction;
     WorkbookSource: TsWorkbookSource;
     WorkbookTabControl: TsWorkbookTabControl;
     WorksheetGrid: TsWorksheetGrid;
