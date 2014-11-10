@@ -185,6 +185,9 @@ object Form1: TForm1
     top = 80
     object MnuFile: TMenuItem
       Caption = 'File'
+      object MnuFileExit: TMenuItem
+        Action = AcFileExit
+      end
     end
     object MnuEdit: TMenuItem
       Caption = 'Edit'
@@ -196,11 +199,19 @@ object Form1: TForm1
         object MnuDeleteWorksheet: TMenuItem
           Caption = 'New Item5'
         end
+        object MnuRenameWorksheet: TMenuItem
+          Caption = 'New Item6'
+        end
       end
     end
   end
   object ActionList: TActionList
     left = 203
     top = 144
+    object AcFileExit: TFileExit
+      Category = 'File'
+      Caption = 'E&xit'
+      Hint = 'Exit'
+    end
   end
 end

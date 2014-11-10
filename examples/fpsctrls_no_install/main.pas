@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ComCtrls, ExtCtrls, Grids, Buttons, Menus, ActnList,
+  StdCtrls, ComCtrls, ExtCtrls, Grids, Buttons, Menus, ActnList, StdActns,
   fpspreadsheet, fpspreadsheetctrls, fpSpreadsheetGrid, fpsActions;
 
 type
@@ -17,8 +17,11 @@ type
     ActionList: TActionList;
     BtnLoad: TButton;
     CbLoader: TComboBox;
+    AcFileExit: TFileExit;
     Label1: TLabel;
     MainMenu: TMainMenu;
+    MnuFileExit: TMenuItem;
+    MnuRenameWorksheet: TMenuItem;
     MnuDeleteWorksheet: TMenuItem;
     MnuAddWorksheet: TMenuItem;
     MnuWorksheets: TMenuItem;
@@ -149,9 +152,16 @@ begin
   actn := TsWorksheetDeleteAction.Create(self);
   with TsWorksheetDeleteAction(actn) do begin
     ActionList := self.ActionList;
-    WOrkbookSource := Self.WorkbookSource;
+    WorkbookSource := Self.WorkbookSource;
   end;
   MnuDeleteWorksheet.Action := actn;
+
+  actn := TsWorksheetRenameAction.Create(self);
+  with TsWorksheetRenameAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+  end;
+  MnuRenameWorksheet.Action := actn;
 
 end;
 
@@ -161,6 +171,7 @@ begin
 end;
 
 procedure TForm1.SpeedButton1Click(Sender: TObject);
+// The same effect is obtained by using the built-in TsWorksheetAddAction.
 var
   sheetname: String;
   i: Integer;
@@ -174,6 +185,7 @@ begin
 end;
 
 procedure TForm1.SpeedButton2Click(Sender: TObject);
+// The same effect is obtained by using the built-in TsWorksheetDeleteAction.
 begin
   if WorkbookSource.Workbook.GetWorksheetCount = 1 then
     MessageDlg('There must be a least 1 worksheet.', mtError, [mbOK], 0)
@@ -185,6 +197,7 @@ begin
 end;
 
 procedure TForm1.SpeedButton3Click(Sender: TObject);
+// The same effect can be obtained by using the built-in TsWorksheetRenameAction
 var
   s: String;
 begin

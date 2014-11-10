@@ -11,7 +11,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 42
-    Top = 0
+    Top = 26
     Width = 925
     Align = alTop
     BevelOuter = bvNone
@@ -49,8 +49,8 @@ object Form1: TForm1
   end
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 533
-    Top = 42
+    Height = 507
+    Top = 68
     Width = 672
     TabIndex = 0
     Tabs.Strings = (
@@ -61,7 +61,7 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 503
+      Height = 477
       Top = 28
       Width = 668
       FrozenCols = 0
@@ -114,8 +114,8 @@ object Form1: TForm1
   end
   object InspectorTabControl: TTabControl
     Left = 677
-    Height = 533
-    Top = 42
+    Height = 507
+    Top = 68
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -129,7 +129,7 @@ object Form1: TForm1
     TabOrder = 2
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 503
+      Height = 477
       Top = 28
       Width = 244
       Align = alClient
@@ -175,11 +175,47 @@ object Form1: TForm1
   end
   object Splitter1: TSplitter
     Left = 672
-    Height = 533
-    Top = 42
+    Height = 507
+    Top = 68
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
+  end
+  object ToolBar1: TToolBar
+    Left = 0
+    Height = 26
+    Top = 0
+    Width = 925
+    Caption = 'ToolBar1'
+    Images = ImageList
+    TabOrder = 4
+    object ToolButton1: TToolButton
+      Left = 1
+      Top = 2
+      Action = AddWorksheetAction
+    end
+    object ToolButton2: TToolButton
+      Left = 24
+      Top = 2
+      Action = RenameWorksheetAction
+    end
+    object ToolButton3: TToolButton
+      Left = 47
+      Top = 2
+      Action = RenameWorksheetAction
+    end
+    object ToolButton4: TToolButton
+      Left = 70
+      Top = 2
+      Width = 3
+      Caption = 'ToolButton4'
+      Style = tbsDivider
+    end
+    object ToolButton5: TToolButton
+      Left = 73
+      Top = 2
+      Action = AcFileExit
+    end
   end
   object WorkbookSource: TsWorkbookSource
     AutoDetectFormat = False
@@ -194,13 +230,15 @@ object Form1: TForm1
     left = 312
     top = 128
   end
-  object ActionList1: TActionList
+  object ActionList: TActionList
+    Images = ImageList
     left = 434
     top = 180
     object AddWorksheetAction: TsWorksheetAddAction
       Category = 'FPSpreadsheet'
       Caption = 'Add'
       Hint = 'Add empty worksheet'
+      ImageIndex = 1
       WorkbookSource = WorkbookSource
       NameMask = 'Sheet%d'
     end
@@ -208,20 +246,60 @@ object Form1: TForm1
       Category = 'FPSpreadsheet'
       Caption = 'Delete'
       Hint = 'Delete worksheet'
+      ImageIndex = 2
       WorkbookSource = WorkbookSource
     end
     object RenameWorksheetAction: TsWorksheetRenameAction
       Category = 'FPSpreadsheet'
       Caption = 'Rename...'
       Hint = 'Rename worksheet'
+      ImageIndex = 3
       WorkbookSource = WorkbookSource
     end
+    object AcFileExit: TFileExit
+      Category = 'File'
+      Caption = 'E&xit'
+      Hint = 'Exit'
+      ImageIndex = 0
+    end
   end
-  object ImageList1: TImageList
+  object ImageList: TImageList
     left = 434
     top = 249
     Bitmap = {
-      4C690300000010000000100000007E7E7E007E7E7E007F7F7F00808080008080
+      4C69040000001000000010000000003F9300003F9300003F9300003F9424003F
+      948A003E93CC004095CC004095CC004095CC004095CC004095CC004095CC0040
+      95CC004095CC00409599003F9400003F9300003F9324003F938A0E4B9CD33F76
+      C0EC5D90D4FF3365A9FFA0A0A0FFA9A9A9FFA9A9A9FFAAAAAAFFACACACFFAEAE
+      AEFFB0B0B0FF003E93CC003E9300003F938A0E4A9CD33E75BFEC5487CBFF3669
+      ADFF23569AFF3363A6FFA9A9A9FFBCBCBCFFBDBDBDFFBFBFBFFFC1C1C1FFC4C4
+      C4FFC7C7C7FF003C90CC003C9000003D91CC5D90D4FF3568ACFF285B9FFF1A4D
+      91FF4477BBFF3361A4FFA9A9A9FFBDBDBDFFBFBFBFFFC1C1C1FFC4C4C4FFC7C7
+      C7FFC9C9C9FF003A8DCC003A8D00003B8ECC588BCFFF1A4D91FF4376BAFF3265
+      A9FF4376BAFF335FA1FFAAAAAAFFBFBFBFFFC1C1C1FFC4C4C4FFB1B1B1FFBBBB
+      BBFFCCCCCCFF003789CC0037890000398BCC5588CCFF275A9EFF4174B8FF3164
+      A8FF4174B8FF335D9EFFACACACFFC1C1C1FFC4C4C4FFC7C7C7FFA8A8A8FFA8A8
+      A8FFBEBEBEFF003485CC00348500003688CC5386CAFF295CA0FF3F72B6FF3063
+      A7FF3F72B6FF335A9AFFAEAEAEFFACACACFFA5A5A5FFA5A5A5FFA5A5A5FFFDFD
+      FDFFA5A5A5FF122F609510295100003485CC5083C7FF1D5094FF3265A9FF2D60
+      A4FF3D70B4FF335897FFB0B0B0FFA2A2A2FFF2F2F2FFF2F2F2FFF2F2F2FFF2F2
+      F2FFF2F2F2FF1A1A1A661A1A1A1A003181CC4C7FC3FFBBBBBBFF22518CFF2C5F
+      A3FF3B6EB2FF335593FFB3B3B3FFAAAAAAFFA0A0A0FFA0A0A0FFA0A0A0FFE4E4
+      E4FFA0A0A0FF051E4D950B204600002E7DCC497CC0FF09336FFF215090FF2B5E
+      A2FF396CB0FF335290FFB5B5B5FFCCCCCCFFD0D0D0FFD3D3D3FF9D9D9DFF9D9D
+      9DFFBFBFBFFF002774CC00277400002B79CC477ABEFF2C5FA3FF376AAEFF2B5E
+      A2FF376AAEFF33508CFFB8B8B8FFD0D0D0FFD3D3D3FFD5D5D5FFAAAAAAFFBEBE
+      BEFFDCDCDCFF00246FCC00246F00002875CC4477BBFF2C5FA3FF3568ACFF2B5E
+      A2FF2E61A5FF334B87FFBBBBBBFFD3D3D3FFD5D5D5FFD8D8D8FFDBDBDBFFDCDC
+      DCFFDDDDDDFF001F68CC001F6800002571CC4174B8FF2C5FA3FF2D60A4FF2356
+      9AFF3D70B4FF334179FFBEBEBEFFD5D5D5FFD8D8D8FFDBDBDBFFDCDCDCFFDDDD
+      DDFFDDDDDDFF001258CC0012580000226DCC3F72B6FF225599FF3B6EB2FF2C51
+      96EC0A1C60D3000749A4000648CC000648CC000648CC000648CC000648CC0006
+      48CC000648CC00074A9900084B00001B64CC4174B8FF2A5094EC0A1A5ED30008
+      4A8A000648240006470000044500000445000004450000044500000445000004
+      4500000445000006480000084B0000105500000B4FCC0007498A000546240005
+      4700000648000006470000044500000445000004450000044500000445000004
+      4500000445000006480000084B007E7E7E007E7E7E007F7F7F00808080008080
       800080808000808080008080800080808000129D000014A8000015A9009915A9
       00CC15A9009914A80000129D00007E7E7E007E7E7E007F7F7F00808080008080
       800080808000808080008080800080808000129D000013A1000014A400CC75EE
@@ -326,7 +404,7 @@ object Form1: TForm1
     object MnuFile: TMenuItem
       Caption = 'File'
       object MenuItem1: TMenuItem
-        Caption = 'New Item5'
+        Action = AcFileExit
       end
     end
     object MnuEdit: TMenuItem
