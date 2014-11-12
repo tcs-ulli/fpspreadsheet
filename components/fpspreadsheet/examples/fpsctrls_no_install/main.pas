@@ -18,8 +18,23 @@ type
     BtnLoad: TButton;
     CbLoader: TComboBox;
     AcFileExit: TFileExit;
+    ImageList1: TImageList;
     Label1: TLabel;
     MainMenu: TMainMenu;
+    MnuVertAlignTop: TMenuItem;
+    MnuVertAlignCenter: TMenuItem;
+    MnuVertAlignBottom: TMenuItem;
+    MnuVertAlignment: TMenuItem;
+    MnuBOld: TMenuItem;
+    MnuItalic: TMenuItem;
+    MnuUnderline: TMenuItem;
+    MnuStrikeout: TMenuItem;
+    MnuFontStyle: TMenuItem;
+    MnuHorAlignRight: TMenuItem;
+    MnuHorAlignCenter: TMenuItem;
+    MnuHorAlignLeft: TMenuItem;
+    MnuCells: TMenuItem;
+    MnuHorAlignment: TMenuItem;
     MnuFileExit: TMenuItem;
     MnuRenameWorksheet: TMenuItem;
     MnuDeleteWorksheet: TMenuItem;
@@ -34,6 +49,20 @@ type
     SpeedButton3: TSpeedButton;
     Splitter1: TSplitter;
     InspectorTabControl: TTabControl;
+    ToolBar1: TToolBar;
+    TbBold: TToolButton;
+    TbItalic: TToolButton;
+    TbUnderline: TToolButton;
+    TbStrikeout: TToolButton;
+    ToolButton1: TToolButton;
+    TbHorAlignLeft: TToolButton;
+    TbHorAlignCenter: TToolButton;
+    TbHorAlignRight: TToolButton;
+    ToolButton2: TToolButton;
+    TbVertAlignTop: TToolButton;
+    TbVertAlignCenter: TToolButton;
+    TbVertAlignBottom: TToolButton;
+    ToolButton6: TToolButton;
     procedure BtnLoadClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure InspectorTabControlChange(Sender: TObject);
@@ -94,7 +123,7 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 var
-  actn: TAction;
+  actn: TCustomAction;
 begin
   WorkbookSource := TsWorkbookSource.Create(self);
   with WorkbookSource do begin
@@ -114,7 +143,7 @@ begin
   begin
     Parent := WorkbookTabControl;
     Align := alClient;
-    Options := Options + [goEditing];
+    Options := Options + [goEditing, goRowSizing, goColSizing];
     TextOverflow := true;
     WorkbookSource := Self.WorkbookSource;
   end;
@@ -162,6 +191,109 @@ begin
     WorkbookSource := Self.WorkbookSource;
   end;
   MnuRenameWorksheet.Action := actn;
+
+  { Font styles }
+  actn := TsFontStyleAction.Create(self);
+  with TsFontStyleAction(actn) do begin
+    ActionList := Self.ActionList;
+    ImageIndex := 0;
+    WorkbookSource := Self.WorkbookSource;
+    FontStyle := fssBold;
+  end;
+  MnuBold.Action := actn;
+  tbBold.Action := actn;
+
+  actn := TsFontStyleAction.Create(self);
+  with TsFontStyleAction(actn) do begin
+    ActionList := Self.ActionList;
+    ImageIndex := 1;
+    WorkbookSource := Self.WorkbookSource;
+    FontStyle := fssItalic;
+  end;
+  MnuItalic.Action := actn;
+  TbItalic.Action := actn;
+
+  actn := TsFontStyleAction.Create(self);
+  with TsFontStyleAction(actn) do begin
+    ActionList := Self.ActionList;
+    ImageIndex := 2;
+    WorkbookSource := Self.WorkbookSource;
+    FontStyle := fssUnderline;
+  end;
+  MnuUnderline.Action := actn;
+  TbUnderline.Action := actn;
+
+  actn := TsFontStyleAction.Create(self);
+  with TsFontStyleAction(actn) do begin
+    ActionList := Self.ActionList;
+    ImageIndex := 3;
+    WorkbookSource := Self.WorkbookSource;
+    FontStyle := fssStrikeout;
+  end;
+  MnuStrikeout.Action := actn;
+  TbStrikeout.Action := actn;
+
+  { Horizontal alignments }
+  actn := TsHorAlignmentAction.Create(self);
+  with TsHorAlignmentAction(actn) do begin
+    ActionList := self.ActionList;
+    ImageIndex := 4;
+    WorkbookSource := Self.WorkbookSource;
+    HorAlignment := haLeft;
+  end;
+  MnuHorAlignLeft.Action := actn;
+  TbHorAlignLeft.Action := actn;
+
+  actn := TsHorAlignmentAction.Create(self);
+  with TsHorAlignmentAction(actn) do begin
+    ActionList := self.ActionList;
+    ImageIndex := 5;
+    WorkbookSource := Self.WorkbookSource;
+    HorAlignment := haCenter;
+  end;
+  MnuHorAlignCenter.Action := actn;
+  TbHorAlignCenter.Action := actn;
+
+  actn := TsHorAlignmentAction.Create(self);
+  with TsHorAlignmentAction(actn) do begin
+    ActionList := self.ActionList;
+    ImageIndex := 6;
+    WorkbookSource := Self.WorkbookSource;
+    HorAlignment := haRight;
+  end;
+  MnuHorAlignRight.Action := actn;
+  TbHorAlignRight.Action := Actn;
+
+  { Vertical alignments }
+  actn := TsVertAlignmentAction.Create(self);
+  with TsVertAlignmentAction(actn) do begin
+    ActionList := self.ActionList;
+    ImageIndex := 7;
+    WorkbookSource := Self.WorkbookSource;
+    VertAlignment := vaTop;
+  end;
+  MnuVertAlignTop.Action := actn;
+  TbVertAlignTop.Action := actn;
+
+  actn := TsVertAlignmentAction.Create(self);
+  with TsVertAlignmentAction(actn) do begin
+    ActionList := self.ActionList;
+    ImageIndex := 8;
+    WorkbookSource := Self.WorkbookSource;
+    VertAlignment := vaCenter;
+  end;
+  MnuVertAlignCenter.Action := actn;
+  TbVertAlignCenter.Action := actn;
+
+  actn := TsVertAlignmentAction.Create(self);
+  with TsVertAlignmentAction(actn) do begin
+    ActionList := self.ActionList;
+    ImageIndex := 9;
+    WorkbookSource := Self.WorkbookSource;
+    VertAlignment := vaBottom;
+  end;
+  MnuVertAlignBottom.Action := actn;
+  TbVertAlignBottom.Action := Actn;
 
 end;
 
