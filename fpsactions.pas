@@ -255,7 +255,7 @@ begin
     else
       s := InputBox('Rename worksheet', 'New worksheet name', s);
     // No change
-    if s = WorksheetName then
+    if s = Worksheet.Name then
       exit;
     // Check validity of new worksheet name
     if Workbook.ValidWorksheetName(s) then
