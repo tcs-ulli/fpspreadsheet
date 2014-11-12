@@ -746,6 +746,7 @@ begin
   begin
     FWorksheet.OnChangeCell := @CellChangedHandler;
     FWorksheet.OnSelectCell := @CellSelectedHandler;
+    FWorksheet.OnChangeFont := @CellChangedHandler;
     NotifyListeners([lniWorksheet]);
     SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
   end else
