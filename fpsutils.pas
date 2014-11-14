@@ -1094,8 +1094,11 @@ begin
     nfPercentage:
       Result := '0' + decs + '%';
     nfCurrency, nfCurrencyRed:
-      raise Exception.Create('BuildNumberFormatString: Use BuildCurrencyFormatString '+
-        'to create a format string for currency values.');
+      Result := BuildCurrencyFormatString(nfdDefault, ANumberFormat, AFormatSettings,
+        ADecimals, AFormatSettings.CurrencyFormat, AFormatSettings.NegCurrFormat,
+        AFormatSettings.CurrencyString);
+//      raise Exception.Create('BuildNumberFormatString: Use BuildCurrencyFormatString '+
+//        'to create a format string for currency values.');
     nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
     nfShortTimeAM, nfLongTimeAM, nfTimeInterval:
       raise Exception.Create('BuildNumberFormatString: Use BuildDateTimeFormatSstring '+

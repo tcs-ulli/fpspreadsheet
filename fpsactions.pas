@@ -133,7 +133,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property FontStyle: TsFontStyle read FFontStyle write SetFontStyle;
+    property FontStyle: TsFontStyle
+      read FFontStyle write SetFontStyle;
   end;
 
 
@@ -149,7 +150,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property HorAlignment: TsHorAlignment read FHorAlign write SetHorAlign;
+    property HorAlignment: TsHorAlignment
+      read FHorAlign write SetHorAlign default haDefault;
   end;
 
 
@@ -165,9 +167,64 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property VertAlignment: TsVertAlignment read FVertAlign write SetVertAlign;
+    property VertAlignment: TsVertAlignment
+      read FVertAlign write SetVertAlign default vaDefault;
   end;
 
+
+  { TsTextRotationAction }
+
+  TsTextRotationAction = class(TsCellFormatAction)
+  private
+    FTextRotation: TsTextRotation;
+    procedure SetTextRotation(AValue: TsTextRotation);
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property TextRotation: TsTextRotation
+      read FTextRotation write SetTextRotation default trHorizontal;
+  end;
+
+
+  { TsWordwrapAction }
+
+  TsWordwrapAction = class(TsCellFormatAction)
+  private
+    function GetWordwrap: Boolean;
+    procedure SetWordwrap(AValue: Boolean);
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Wordwrap: boolean
+      read GetWordwrap write SetWordwrap default false;
+  end;
+
+
+  { TsNumberFormatAction }
+
+  TsNumberFormatAction = class(TsCellFormatAction)
+  private
+    FNumberFormat: TsNumberFormat;
+    FNumberFormatStr: string;
+    procedure SetNumberFormat(AValue: TsNumberFormat);
+    procedure SetNumberFormatStr(AValue: String);
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property NumberFormat: TsNumberFormat
+      read FNumberFormat write SetNumberFormat default nfGeneral;
+    property NumberFormatString: string
+      read FNumberFormatStr write SetNumberFormatStr;
+  end;
 
 procedure Register;
 
@@ -175,14 +232,18 @@ procedure Register;
 implementation
 
 uses
-  Dialogs;
+  Dialogs,
+  fpsutils;
 
 procedure Register;
 begin
   RegisterActions('FPSpreadsheet', [
+    // Worksheet-releated actions
     TsWorksheetAddAction, TsWorksheetDeleteAction, TsWorksheetRenameAction,
+    // Cell or cell range formatting actions
     TsFontStyleAction,
-    TsHorAlignmentAction, TsVertAlignmentAction
+    TsHorAlignmentAction, TsVertAlignmentAction,
+    TsTextRotationAction, TsWordWrapAction, TsNumberFormatAction
   ], nil);
 end;
 
@@ -547,6 +608,163 @@ begin
     vaBottom : begin Caption := 'Bottom'; Hint := 'Bottom-aligned text'; end;
     vaDefault: begin Caption := 'Default'; Hint := 'Default vertical text alignment'; end;
   end;
+end;
+
+
+{ TsTextRotationAction }
+
+constructor TsTextRotationAction.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  GroupIndex := 1411141108;    // Date/time when this was written
+  AutoCheck := true;
+end;
+
+procedure TsTextRotationAction.ApplyFormatToCell(ACell: PCell);
+begin
+  if Checked then
+    Worksheet.WriteTextRotation(ACell, FTextRotation)
+  else
+    Worksheet.WriteTextRotation(ACell, trHorizontal);
+end;
+
+procedure TsTextRotationAction.ExtractFromCell(ACell: PCell);
+begin
+  if (ACell = nil) or not (uffTextRotation in ACell^.UsedFormattingFields) then
+    Checked := false
+  else
+    Checked := ACell^.TextRotation = FTextRotation;
+end;
+
+procedure TsTextRotationAction.SetTextRotation(AValue: TsTextRotation);
+begin
+  FTextRotation := AValue;
+  case FTextRotation of
+    trHorizontal:
+      begin Caption := 'Horizontal'; Hint := 'Horizontal text'; end;
+    rt90DegreeClockwiseRotation:
+      begin Caption := '90° clockwise'; Hint := '90° clockwise rotated text'; end;
+    rt90DegreeCounterClockwiseRotation:
+      begin Caption := '90° counter-clockwise'; Hint := '90° counter-clockwise rotated text'; end;
+    rtStacked:
+      begin Caption := 'Stacked'; Hint := 'Vertically stacked horizontal letters'; end;
+  end;
+end;
+
+
+{ TsWordwrapAction }
+
+constructor TsWordwrapAction.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  AutoCheck := true;
+  Caption := 'Word-wrap';
+  Hint := 'Word-wrapped text';
+end;
+
+procedure TsWordwrapAction.ApplyFormatToCell(ACell: PCell);
+begin
+  Worksheet.WriteWordwrap(ACell, Checked);
+end;
+
+procedure TsWordwrapAction.ExtractFromCell(ACell: PCell);
+begin
+  Checked := (ACell <> nil) and (uffWordwrap in ACell^.UsedFormattingFields);
+end;
+
+function TsWordwrapAction.GetWordwrap: Boolean;
+begin
+  Result := Checked;
+end;
+
+procedure TsWordwrapAction.SetWordwrap(AValue: Boolean);
+begin
+  Checked := AValue;
+end;
+
+
+{ TsNumberFormatAction }
+
+constructor TsNumberFormatAction.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  GroupIndex := 1411141258;    // Date/time when this was written
+  AutoCheck := true;
+  Caption := 'Number format';
+  Hint := 'Number format';
+end;
+
+procedure TsNumberFormatAction.ApplyFormatToCell(ACell: PCell);
+var
+  nf: TsNumberFormat;
+  nfstr: String;
+begin
+  if Checked then
+  begin
+    nf := FNumberFormat;
+    nfstr := FNumberFormatStr;
+  end else
+  begin
+    nf := nfGeneral;
+    nfstr := '';
+  end;
+  if IsDateTimeFormat(nf) then
+    Worksheet.WriteDateTimeFormat(ACell, nf, nfstr)
+  else
+    Worksheet.WriteNumberFormat(ACell, nf, nfstr);
+end;
+
+procedure TsNumberFormatAction.ExtractFromCell(ACell: PCell);
+begin
+  if (ACell = nil) or not (uffNumberFormat in ACell^.UsedFormattingFields) then
+    Checked := false
+  else
+    Checked := (ACell^.NumberFormat = FNumberFormat)
+      and (ACell^.NumberFormatStr = FNumberFormatStr);
+end;
+
+procedure TsNumberFormatAction.SetNumberFormat(AValue: TsNumberFormat);
+begin
+  FNumberFormat := AValue;
+  case FNumberFormat of
+    nfGeneral:
+      begin Caption := 'General'; Hint := 'General format'; end;
+    nfFixed:
+      begin Caption := 'Fixed'; Hint := 'Fixed decimals format'; end;
+    nfFixedTh:
+      begin Caption := 'Fixed w/thousand separator'; Hint := 'Fixed decimal count with thousand separator'; end;
+    nfExp:
+      begin Caption := 'Exponential'; Hint := 'Exponential format'; end;
+    nfPercentage:
+      begin Caption := 'Percent'; Hint := 'Percent format'; end;
+    nfCurrency:
+      begin Caption := 'Currency'; Hint := 'Currency format'; end;
+    nfCurrencyRed:
+      begin Caption := 'Currency (red)'; Hint := 'Currency format (negative values in red)'; end;
+    nfShortDateTime:
+      begin Caption := 'Date/time'; Hint := 'Date and time'; end;
+    nfShortDate:
+      begin Caption := 'Short date'; Hint := 'Short date format'; end;
+    nfLongDate:
+      begin Caption := 'Long date'; Hint := 'Long date format'; end;
+    nfShortTime:
+      begin Caption := 'Short time'; Hint := 'Short time format'; end;
+    nfLongTime:
+      begin Caption := 'Long time'; Hint := 'Long time foramt'; end;
+    nfShortTimeAM:
+      begin Caption := 'Short time AM/PM'; Hint := 'Short 12-hour time format'; end;
+    nfLongTimeAM:
+      begin Caption := 'Long time AM/PM'; Hint := 'Long 12-hour time format'; end;
+    nfTimeInterval:
+      begin Caption := 'Time interval'; Hint := 'Time interval format'; end;
+    nfCustom:
+      begin Caption := 'Custom'; Hint := 'User-defined custom format'; end;
+  end;
+end;
+
+procedure TsNumberFormatAction.SetNumberFormatStr(AValue: String);
+begin
+  FNumberFormatStr := AValue;
 end;
 
 

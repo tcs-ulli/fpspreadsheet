@@ -21,6 +21,35 @@ type
     ImageList1: TImageList;
     Label1: TLabel;
     MainMenu: TMainMenu;
+    MenuItem1: TMenuItem;
+    MenuItem5: TMenuItem;
+    MenuItem6: TMenuItem;
+    MnuNumFormatTimeInterval: TMenuItem;
+    MnuNumFormatLongTimeAM: TMenuItem;
+    MnuNumFormatShortTimeAM: TMenuItem;
+    MnuNumFormatLongTime: TMenuItem;
+    MnuNumFormatShortTime: TMenuItem;
+    MnuNumFormatShortDateTime: TMenuItem;
+    MenuItem2: TMenuItem;
+    MnuNumFormatLongDate: TMenuItem;
+    MnuNumFormatShortDate: TMenuItem;
+    MnuNumFormatCurrency: TMenuItem;
+    MnuNumFormatCurrencyRed: TMenuItem;
+    MenuItem4: TMenuItem;
+    MnuNumberFormat: TMenuItem;
+    MnuNumFormatGeneral: TMenuItem;
+    MenuItem3: TMenuItem;
+    MnuNumFormatFixed: TMenuItem;
+    MnuNumFormatFixedTh: TMenuItem;
+    MnuNumFormatExp: TMenuItem;
+    MnuNumFormatPercentage: TMenuItem;
+    MenuItem8: TMenuItem;
+    MnuTextRotHor: TMenuItem;
+    MnuTextRot90CW: TMenuItem;
+    MnuTextRot90CCW: TMenuItem;
+    MnuTextRotStacked: TMenuItem;
+    MnuTextRotation: TMenuItem;
+    MnuWordwrap: TMenuItem;
     MnuVertAlignTop: TMenuItem;
     MnuVertAlignCenter: TMenuItem;
     MnuVertAlignBottom: TMenuItem;
@@ -295,6 +324,168 @@ begin
   MnuVertAlignBottom.Action := actn;
   TbVertAlignBottom.Action := Actn;
 
+  { Text rotation }
+  actn := TsTextRotationAction.Create(self);
+  with TsTextRotationAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    TextRotation := trHorizontal;
+  end;
+  MnuTextRotHor.Action := actn;
+
+  actn := TsTextRotationAction.Create(self);
+  with TsTextRotationAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    TextRotation := rt90DegreeClockwiseRotation;
+  end;
+  MnuTextRot90CW.Action := actn;
+
+  actn := TsTextRotationAction.Create(self);
+  with TsTextRotationAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    TextRotation := rt90DegreeCounterClockwiseRotation;
+  end;
+  MnuTextRot90CCW.Action := actn;
+
+  actn := TsTextRotationAction.Create(self);
+  with TsTextRotationAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    TextRotation := rtStacked;
+  end;
+  MnuTextRotStacked.Action := actn;
+
+  { Word wrap }
+  actn := TsWordwrapAction.Create(self);
+  with TsWordwrapAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    Wordwrap := false;
+  end;
+  MnuWordwrap.Action := actn;
+
+  { Number format }
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfGeneral;
+  end;
+  MnuNumFormatGeneral.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfFixed;
+  end;
+  MnuNumFormatFixed.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfFixedTh;
+  end;
+  MnuNumFormatFixedTh.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfExp;
+  end;
+  MnuNumFormatExp.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfPercentage;
+  end;
+  MnuNumFormatPercentage.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfCurrency;
+  end;
+  MnuNumFormatCurrency.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfCurrencyRed;
+  end;
+  MnuNumFormatCurrencyRed.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfShortDateTime;
+  end;
+  MnuNumFormatShortDateTime.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfLongDate;
+  end;
+  MnuNumFormatLongDate.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfShortDate;
+  end;
+  MnuNumFormatShortDate.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfLongTime;
+  end;
+  MnuNumFormatLongTime.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfShortTime;
+  end;
+  MnuNumFormatShortTime.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfLongTimeAM;
+  end;
+  MnuNumFormatLongTimeAM.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfShortTimeAM;
+  end;
+  MnuNumFormatShortTimeAM.Action := actn;
+
+  actn := TsNumberFormatAction.Create(self);
+  with TsNumberFormatAction(actn) do begin
+    ActionList := self.ActionList;
+    WorkbookSource := Self.WorkbookSource;
+    NumberFormat := nfTimeInterval;
+  end;
+  MnuNumFormatTimeInterval.Action := actn;
 end;
 
 procedure TForm1.InspectorTabControlChange(Sender: TObject);

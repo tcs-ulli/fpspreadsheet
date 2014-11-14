@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 177
   Width = 874
   Caption = 'Form1'
-  ClientHeight = 508
+  ClientHeight = 503
   ClientWidth = 874
   Menu = MainMenu
   OnCreate = FormCreate
@@ -126,10 +126,10 @@ object Form1: TForm1
     end
     object CbLoader: TComboBox
       Left = 104
-      Height = 23
+      Height = 28
       Top = 8
       Width = 148
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 1
       Items.Strings = (
         'Workbook'
@@ -142,16 +142,16 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 13
-      Height = 15
+      Height = 20
       Top = 11
-      Width = 58
+      Width = 73
       Caption = 'Loaded by:'
       ParentColor = False
     end
   end
   object InspectorTabControl: TTabControl
     Left = 577
-    Height = 408
+    Height = 403
     Top = 100
     Width = 297
     OnChange = InspectorTabControlChange
@@ -167,7 +167,7 @@ object Form1: TForm1
   end
   object Splitter1: TSplitter
     Left = 572
-    Height = 408
+    Height = 403
     Top = 100
     Width = 5
     Align = alRight
@@ -327,6 +327,93 @@ object Form1: TForm1
           object MnuVertAlignBottom: TMenuItem
             Caption = 'New Item21'
           end
+        end
+        object MnuTextRotation: TMenuItem
+          Caption = 'Text rotation'
+          object MnuTextRotHor: TMenuItem
+            Caption = 'New Item24'
+          end
+          object MnuTextRot90CW: TMenuItem
+            Caption = 'New Item25'
+          end
+          object MnuTextRot90CCW: TMenuItem
+            Caption = 'New Item26'
+          end
+          object MnuTextRotStacked: TMenuItem
+            Caption = 'New Item27'
+          end
+        end
+        object MnuNumberFormat: TMenuItem
+          Caption = 'Number format'
+          object MnuNumFormatGeneral: TMenuItem
+            Caption = 'New Item29'
+          end
+          object MenuItem3: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatFixed: TMenuItem
+            Caption = 'New Item31'
+          end
+          object MnuNumFormatFixedTh: TMenuItem
+            Caption = 'New Item32'
+          end
+          object MnuNumFormatExp: TMenuItem
+            Caption = 'New Item33'
+          end
+          object MnuNumFormatPercentage: TMenuItem
+            Caption = 'New Item34'
+          end
+          object MenuItem8: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatCurrency: TMenuItem
+            Caption = 'New Item36'
+          end
+          object MnuNumFormatCurrencyRed: TMenuItem
+            Caption = 'New Item37'
+          end
+          object MenuItem4: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatShortDateTime: TMenuItem
+            Caption = 'New Item39'
+          end
+          object MenuItem2: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatLongDate: TMenuItem
+            Caption = 'New Item41'
+          end
+          object MnuNumFormatShortDate: TMenuItem
+            Caption = 'New Item42'
+          end
+          object MenuItem1: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatLongTime: TMenuItem
+            Caption = 'New Item44'
+          end
+          object MnuNumFormatShortTime: TMenuItem
+            Caption = 'New Item45'
+          end
+          object MenuItem5: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatLongTimeAM: TMenuItem
+            Caption = 'New Item47'
+          end
+          object MnuNumFormatShortTimeAM: TMenuItem
+            Caption = 'New Item48'
+          end
+          object MenuItem6: TMenuItem
+            Caption = '-'
+          end
+          object MnuNumFormatTimeInterval: TMenuItem
+            Caption = 'New Item50'
+          end
+        end
+        object MnuWordwrap: TMenuItem
+          Caption = 'New Item23'
         end
       end
     end
