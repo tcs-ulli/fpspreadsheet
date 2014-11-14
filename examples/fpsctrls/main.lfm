@@ -638,14 +638,12 @@ object Form1: TForm1
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Decimals'
-      Hint = 'Decimal places'
       ImageIndex = 21
     end
     object AcDecDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Decimals'
-      Hint = 'Decimal places'
       ImageIndex = 20
       Delta = -1
     end
