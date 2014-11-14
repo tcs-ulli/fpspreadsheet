@@ -90,6 +90,8 @@ type
     AcNumFormatLongTimeAM: TsNumberFormatAction;
     AcNumFormatShortTimeAM: TsNumberFormatAction;
     AcNumFormatTimeInterval: TsNumberFormatAction;
+    AcIncDecimals: TsDecimalsAction;
+    AcDecDecimals: TsDecimalsAction;
     ToolButton11: TToolButton;
     ToolButton12: TToolButton;
     ToolButton13: TToolButton;
@@ -117,6 +119,9 @@ type
     ToolButton23: TToolButton;
     ToolButton24: TToolButton;
     ToolButton25: TToolButton;
+    ToolButton26: TToolButton;
+    ToolButton27: TToolButton;
+    ToolButton28: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
