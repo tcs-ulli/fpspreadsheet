@@ -8,7 +8,7 @@ interface
 
 uses
   fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsActions, 
-  LazarusPackageIntf;
+  fpsvisualutils, LazarusPackageIntf;
 
 implementation
 
@@ -17,7 +17,7 @@ begin
   RegisterUnit('fpspreadsheetctrls', @fpspreadsheetctrls.Register);
   RegisterUnit('fpspreadsheetgrid', @fpspreadsheetgrid.Register);
   RegisterUnit('fpspreadsheetchart', @fpspreadsheetchart.Register);
-  RegisterUnit('fpsactions', @fpsactions.Register);
+  RegisterUnit('fpsActions', @fpsActions.Register);
 end;
 
 initialization

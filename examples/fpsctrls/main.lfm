@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 243
   Width = 925
   Caption = 'Form1'
-  ClientHeight = 575
+  ClientHeight = 580
   ClientWidth = 925
   Menu = MainMenu
   ShowHint = True
@@ -12,7 +12,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 36
-    Top = 28
+    Top = 26
     Width = 925
     Align = alTop
     BevelOuter = bvNone
@@ -30,7 +30,7 @@ object Form1: TForm1
     end
     object CellIndicator: TsCellIndicator
       Left = 95
-      Height = 28
+      Height = 23
       Top = 4
       Width = 80
       TabOrder = 1
@@ -39,7 +39,7 @@ object Form1: TForm1
     end
     object CellEdit: TsCellEdit
       Left = 184
-      Height = 28
+      Height = 23
       Top = 4
       Width = 731
       Anchors = [akTop, akLeft, akRight]
@@ -50,8 +50,8 @@ object Form1: TForm1
   end
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 511
-    Top = 64
+    Height = 518
+    Top = 62
     Width = 672
     TabIndex = 0
     Tabs.Strings = (
@@ -62,8 +62,8 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 481
-      Top = 28
+      Height = 493
+      Top = 23
       Width = 668
       FrozenCols = 0
       FrozenRows = 0
@@ -116,8 +116,8 @@ object Form1: TForm1
   end
   object InspectorTabControl: TTabControl
     Left = 677
-    Height = 511
-    Top = 64
+    Height = 518
+    Top = 62
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -131,8 +131,8 @@ object Form1: TForm1
     TabOrder = 2
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 481
-      Top = 28
+      Height = 493
+      Top = 23
       Width = 244
       Align = alClient
       RowCount = 25
@@ -144,7 +144,7 @@ object Form1: TForm1
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         'FormatSettings='
         '  ThousandSeparator=.'
-        '  DecimalSeparator=,'
+        '  DecimalSeparator=.'
         '  ListSeparator=;'
         '  DateSeparator=.'
         '  TimeSeparator=:'
@@ -170,22 +170,22 @@ object Form1: TForm1
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
       ColWidths = (
-        109
-        110
+        111
+        112
       )
     end
   end
   object Splitter1: TSplitter
     Left = 672
-    Height = 511
-    Top = 64
+    Height = 518
+    Top = 62
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 28
+    Height = 26
     Top = 0
     Width = 925
     AutoSize = True
@@ -196,179 +196,197 @@ object Form1: TForm1
     TabOrder = 4
     object ToolButton1: TToolButton
       Left = 1
-      Top = 2
+      Top = 0
       Action = AcAddWorksheet
     end
     object ToolButton2: TToolButton
       Left = 24
-      Top = 2
+      Top = 0
       Action = AcDeleteWorksheet
     end
     object ToolButton3: TToolButton
       Left = 47
-      Top = 2
+      Top = 0
       Action = acRenameWorksheet
     end
     object ToolButton4: TToolButton
       Left = 75
       Height = 24
-      Top = 2
+      Top = 0
       Width = 3
       Caption = 'ToolButton4'
       Style = tbsDivider
     end
     object ToolButton5: TToolButton
-      Left = 537
-      Top = 2
+      Left = 593
+      Top = 0
       Action = AcFileExit
     end
     object ToolButton6: TToolButton
-      Left = 78
-      Top = 2
+      Left = 101
+      Top = 0
       Action = AcFontBold
     end
     object ToolButton7: TToolButton
-      Left = 101
-      Top = 2
+      Left = 124
+      Top = 0
       Action = AcFontItalic
     end
     object ToolButton8: TToolButton
-      Left = 124
-      Top = 2
+      Left = 147
+      Top = 0
       Action = AcFontUnderline
     end
     object ToolButton9: TToolButton
       Left = 70
       Height = 24
-      Top = 2
+      Top = 0
       Width = 5
       Caption = 'ToolButton9'
       Style = tbsDivider
     end
     object ToolButton10: TToolButton
-      Left = 170
+      Left = 193
       Height = 24
-      Top = 2
+      Top = 0
       Width = 5
       Caption = 'ToolButton10'
       Style = tbsDivider
     end
     object ToolButton11: TToolButton
-      Left = 147
-      Top = 2
+      Left = 170
+      Top = 0
       Action = AcFontStrikeout
     end
     object ToolButton12: TToolButton
-      Left = 175
-      Top = 2
+      Left = 198
+      Top = 0
       Action = AcHorAlignLeft
     end
     object ToolButton13: TToolButton
-      Left = 198
-      Top = 2
+      Left = 221
+      Top = 0
       Action = AcHorAlignCenter
     end
     object ToolButton14: TToolButton
-      Left = 221
-      Top = 2
+      Left = 244
+      Top = 0
       Action = AcHorAlignRight
     end
     object ToolButton15: TToolButton
-      Left = 244
+      Left = 267
       Height = 24
-      Top = 2
+      Top = 0
       Width = 5
       Caption = 'ToolButton15'
       Style = tbsDivider
     end
     object ToolButton16: TToolButton
-      Left = 249
-      Top = 2
+      Left = 272
+      Top = 0
       Action = AcVertAlignTop
     end
     object ToolButton17: TToolButton
-      Left = 272
-      Top = 2
+      Left = 295
+      Top = 0
       Action = AcVertAlignCenter
     end
     object ToolButton18: TToolButton
-      Left = 295
-      Top = 2
+      Left = 318
+      Top = 0
       Action = AcVertAlignBottom
     end
     object ToolButton19: TToolButton
-      Left = 318
+      Left = 341
       Height = 24
-      Top = 2
+      Top = 0
       Width = 5
       Caption = 'ToolButton19'
       Style = tbsDivider
     end
     object ToolButton20: TToolButton
-      Left = 323
+      Left = 374
       Hint = 'Number format'
-      Top = 2
+      Top = 0
       Caption = 'ToolButton20'
       DropdownMenu = PuNumFormat
       ImageIndex = 15
       Style = tbsDropDown
     end
     object ToolButton21: TToolButton
-      Left = 381
+      Left = 432
       Hint = 'Currency format'
-      Top = 2
+      Top = 0
       Caption = 'ToolButton21'
       DropdownMenu = PuCurrencyFormat
       ImageIndex = 17
       Style = tbsDropDown
     end
     object ToolButton22: TToolButton
-      Left = 358
-      Top = 2
+      Left = 409
+      Top = 0
       Action = AcNumFormatPercentage
     end
     object ToolButton23: TToolButton
-      Left = 486
+      Left = 537
       Height = 24
-      Top = 2
+      Top = 0
       Width = 5
       Caption = 'ToolButton23'
       Style = tbsDivider
     end
     object ToolButton24: TToolButton
-      Left = 416
+      Left = 467
       Hint = 'Date format'
-      Top = 2
+      Top = 0
       Caption = 'ToolButton24'
       DropdownMenu = PuDateFormat
       ImageIndex = 18
       Style = tbsDropDown
     end
     object ToolButton25: TToolButton
-      Left = 451
+      Left = 502
       Hint = 'Time format'
-      Top = 2
+      Top = 0
       Caption = 'ToolButton25'
       DropdownMenu = PuTimeFormat
       ImageIndex = 19
       Style = tbsDropDown
     end
     object ToolButton26: TToolButton
-      Left = 491
-      Top = 2
+      Left = 542
+      Top = 0
       Action = AcDecDecimals
     end
     object ToolButton27: TToolButton
-      Left = 514
-      Top = 2
+      Left = 565
+      Top = 0
       Action = AcIncDecimals
     end
     object ToolButton28: TToolButton
-      Left = 560
+      Left = 588
       Height = 24
-      Top = 2
+      Top = 0
       Width = 5
       Caption = 'ToolButton28'
+      Style = tbsDivider
+    end
+    object ToolButton29: TToolButton
+      Left = 78
+      Top = 0
+      Action = AcCellFont
+    end
+    object ToolButton30: TToolButton
+      Left = 346
+      Top = 0
+      Action = AcBackgroundColor
+    end
+    object ToolButton31: TToolButton
+      Left = 369
+      Height = 24
+      Top = 0
+      Width = 5
+      Caption = 'ToolButton31'
       Style = tbsDivider
     end
   end
@@ -637,22 +655,57 @@ object Form1: TForm1
     object AcIncDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'Decimals'
       ImageIndex = 21
     end
     object AcDecDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'Decimals'
       ImageIndex = 20
       Delta = -1
+    end
+    object AcCellFont: TsFontAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'AcCellFont'
+      ImageIndex = 14
+      Dialog.MinFontSize = 0
+      Dialog.MaxFontSize = 0
+    end
+    object AcBackgroundColor: TsBackgroundColorAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'AcBackgroundColor'
+      ImageIndex = 22
+      Dialog.Color = clBlack
+      Dialog.CustomColors.Strings = (
+        'ColorA=000000'
+        'ColorB=000080'
+        'ColorC=008000'
+        'ColorD=008080'
+        'ColorE=800000'
+        'ColorF=800080'
+        'ColorG=808000'
+        'ColorH=808080'
+        'ColorI=C0C0C0'
+        'ColorJ=0000FF'
+        'ColorK=00FF00'
+        'ColorL=00FFFF'
+        'ColorM=FF0000'
+        'ColorN=FF00FF'
+        'ColorO=FFFF00'
+        'ColorP=FFFFFF'
+        'ColorQ=C0DCC0'
+        'ColorR=F0CAA6'
+        'ColorS=F0FBFF'
+        'ColorT=A4A0A0'
+      )
     end
   end
   object ImageList: TImageList
     left = 432
     top = 249
     Bitmap = {
-      4C69340000001000000010000000003F9300003F9300003F9300003F9424003F
+      4C69350000001000000010000000003F9300003F9300003F9300003F9424003F
       948A003E93CC004095CC004095CC004095CC004095CC004095CC004095CC0040
       95CC004095CC00409599003F9400003F9300003F9324003F938A0E4B9CD33F76
       C0EC5D90D4FF3365A9FFA0A0A0FFA9A9A9FFA9A9A9FFAAAAAAFFACACACFFAEAE
@@ -1355,6 +1408,38 @@ object Form1: TForm1
       0045000000E6FFFFFF00FFFFFF00FFFFFF00FFFFFF00010101C4010101630101
       010001010146010101CB010101CC00000048000000000000004E000000E40000
       00E900000053FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF006B6FFEFF6B6FFEFF6B6F
+      FEFFFFFFFF0073AAFFFF73AAFFFF73AAFFFFFFFFFF0067D5F0FF67D5F0FF67D5
+      F0FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF006B6FFEFF6B6FFEFF6B6F
+      FEFFFFFFFF0073AAFFFF73AAFFFF73AAFFFFFFFFFF0067D5F0FF67D5F0FF67D5
+      F0FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF006B6FFEFF6B6FFEFF6B6F
+      FEFFFFFFFF0073AAFFFF73AAFFFF73AAFFFFFFFFFF0067D5F0FF67D5F0FF67D5
+      F0FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B2EBD0FFB2EBD0FFB2EB
+      D0FFFFFFFF006DCC50FF6DCC50FF6DCC50FFFFFFFF00EBB060FFEBB060FFEBB0
+      60FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B2EBD0FFB2EBD0FFB2EB
+      D0FFFFFFFF006DCC50FF6DCC50FF6DCC50FFFFFFFF00EBB060FFEBB060FFEBB0
+      60FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B2EBD0FFB2EBD0FFB2EB
+      D0FFFFFFFF006DCC50FF6DCC50FF6DCC50FFFFFFFF00EBB060FFEBB060FFEBB0
+      60FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B07A58FFB07A58FFB07A
+      58FFFFFFFF00DD9BD9FFDD9BD9FFDD9BD9FFFFFFFF00B177FFFFB177FFFFB177
+      FFFFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B07A58FFB07A58FFB07A
+      58FFFFFFFF00DD9BD9FFDD9BD9FFDD9BD9FFFFFFFF00B177FFFFB177FFFFB177
+      FFFFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B07A58FFB07A58FFB07A
+      58FFFFFFFF00DD9BD9FFDD9BD9FFDD9BD9FFFFFFFF00B177FFFFB177FFFFB177
+      FFFFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF007F7F554D7F7F55667F7F55667F7F55667F7F
       55667F7F55667F7F55667F7F55667F7F55667F7F55667F7F55667F7F55667F7F
