@@ -607,6 +607,7 @@ type
     function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
 
     { Reading of cell attributes }
+    function GetDisplayedDecimals(ACell: PCell): Byte;
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
       out ACurrencySymbol: String): Boolean;
     function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields; overload;
@@ -2211,6 +2212,32 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Determines the number of decimals displayed for the number in the cell
+
+  @param  ACell            Pointer to the cell under investigation
+  @return Number of decimals places used in the string display of the cell.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetDisplayedDecimals(ACell: PCell): Byte;
+var
+  i, p: Integer;
+  s: String;
+begin
+  Result := 0;
+  if (ACell <> nil) and (ACell^.ContentType = cctNumber) then
+  begin
+    s := ReadAsUTF8Text(ACell);
+    p := pos(Workbook.FormatSettings.DecimalSeparator, s);
+    if p > 0 then
+    begin
+      i := p+1;
+      while (i <= Length(s)) and (s[i] in ['0'..'9']) do inc(i);
+      Result := i - (p+1);
+    end;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Determines some number format attributes (decimal places, currency symbol) of
   a cell
 
@@ -2234,9 +2261,15 @@ begin
   begin
     parser := TsNumFormatParser.Create(FWorkbook, ACell^.NumberFormatStr);
     try
-      if parser.Status = psOK then begin
+      if parser.Status = psOK then
+      begin
         nf := parser.NumFormat;
-        if (nf = nfGeneral) or IsDateTimeFormat(nf) then
+        if (nf = nfGeneral) and (ACell^.ContentType = cctNumber) then
+        begin
+          ADecimals := GetDisplayedDecimals(ACell);
+          ACurrencySymbol := '';
+        end else
+        if IsDateTimeFormat(nf) then
         begin
           ADecimals := 2;
           ACurrencySymbol := '?';
@@ -4422,8 +4455,15 @@ procedure TsWorksheet.WriteDecimals(ACell: PCell; ADecimals: Byte);
 var
   parser: TsNumFormatParser;
 begin
-  if (ACell <> nil) and (ACell^.ContentType = cctNumber) and
-     (ACell^.NumberFormat <> nfCustom) then
+  if (ACell = nil) then //or (ACell^.ContentType <> cctNumber) then
+    exit;
+
+  if (uffNumberFormat in ACell^.UsedFormattingFields) or (ACell^.NumberFormat = nfGeneral)
+  then begin
+    WriteNumberFormat(ACell, nfFixed, ADecimals);
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end else
+  if (ACell^.NumberFormat <> nfCustom) then
   begin
     parser := TsNumFormatParser.Create(Workbook, ACell^.NumberFormatStr);
     try

@@ -232,18 +232,17 @@ type
   private
     FDecimals: Integer;
     FDelta: Integer;
-    procedure SetDecimals(AValue: Integer);
     procedure SetDelta(AValue: Integer);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
-    property Decimals: Integer
-      read FDecimals write SetDecimals default 2;
   public
     constructor Create(AOwner: TComponent); override;
   published
+    property Caption stored false;
     property Delta: Integer
       read FDelta write SetDelta default +1;
+    property Hint stored false;
   end;
 
 
@@ -321,6 +320,7 @@ end;
 
 procedure TsWorksheetAction.UpdateTarget(Target: TObject);
 begin
+  Unused(Target);
   Enabled := inherited Enabled and (Worksheet <> nil);
 end;
 
@@ -460,6 +460,7 @@ end;
   specified cell. Must be overridden by descendants. }
 procedure TsCellFormatAction.ApplyFormatToCell(ACell: PCell);
 begin
+  Unused(ACell);
 end;
 
 procedure TsCellFormatAction.ExecuteTarget(Target: TObject);
@@ -486,6 +487,7 @@ end;
   specified cell. Must be overridden by descendants. }
 procedure TsCellFormatAction.ExtractFromCell(ACell: PCell);
 begin
+  Unused(ACell);
 end;
 
 function TsCellFormatAction.HandlesTarget(Target: TObject): Boolean;
@@ -497,6 +499,8 @@ procedure TsCellFormatAction.UpdateTarget(Target: TObject);
 var
   cell: PCell;
 begin
+  Unused(Target);
+
   Enabled := inherited Enabled and (Worksheet <> nil) and (Length(GetSelection) > 0);
   if not Enabled then
     exit;
@@ -531,7 +535,6 @@ end;
 procedure TsFontStyleAction.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
-  fs: TsFontStyles;
 begin
   if (ACell = nil) then
     Checked := false
@@ -796,28 +799,26 @@ constructor TsDecimalsAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Caption := 'Decimals';
-  Hint := 'Decimal places';
-  FDelta := +1;
+  Delta := +1;
 end;
 
 procedure TsDecimalsAction.ApplyFormatToCell(ACell: PCell);
 var
   decs: Integer;
-  currSym: String;
 begin
-  if not (uffNumberFormat in ACell^.UsedFormattingFields) or
-         (ACell^.NumberFormat = nfGeneral)
-  then
-    Worksheet.WriteNumberFormat(ACell, nfFixed, '0')
-  else
   if IsDateTimeFormat(ACell^.NumberFormat) then
-    exit
+    exit;
+
+  if (ACell^.ContentType in [cctEmpty, cctNumber]) and (
+     (not (uffNumberFormat in ACell^.UsedFormattingFields)) or
+     (ACell^.NumberFormat = nfGeneral)
+  ) then
+    decs := Worksheet.GetDisplayedDecimals(ACell)
   else
-  begin
-    decs := Decimals + FDelta;
-    if decs < 0 then decs := 0;
-    Worksheet.WriteDecimals(ACell, decs);
-  end;
+    decs := FDecimals;
+  inc(decs, FDelta);
+  if decs < 0 then decs := 0;
+  Worksheet.WriteDecimals(ACell, decs);
 end;
 
 procedure TsDecimalsAction.ExtractFromCell(ACell: PCell);
@@ -825,16 +826,19 @@ var
   csym: String;
   decs: Byte;
 begin
-  decs := 2;
-  if (ACell <> nil) and (uffNumberFormat in ACell^.UsedFormattingFields) then
-    Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
-  Decimals := decs
-end;
+  if ACell = nil then begin
+    FDecimals := 2;
+    exit;
+  end;
 
-procedure TsDecimalsAction.SetDecimals(AValue: Integer);
-begin
-  FDecimals := AValue;
-  if FDecimals < 0 then FDecimals := 0;
+  if (ACell^.ContentType in [cctEmpty, cctNumber]) and (
+     (not (uffNumberFormat in ACell^.UsedFormattingFields)) or
+     (ACell^.NumberFormat = nfGeneral)
+  ) then
+    decs := Worksheet.GetDisplayedDecimals(ACell)
+  else
+    Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
+  FDecimals := decs;
 end;
 
 procedure TsDecimalsAction.SetDelta(AValue: Integer);
