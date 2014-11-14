@@ -1,27 +1,28 @@
 object Form1: TForm1
-  Left = 342
+  Left = 397
   Height = 600
-  Top = 242
+  Top = 243
   Width = 925
   Caption = 'Form1'
   ClientHeight = 575
   ClientWidth = 925
   Menu = MainMenu
+  ShowHint = True
   LCLVersion = '1.3'
   object Panel1: TPanel
     Left = 0
-    Height = 42
-    Top = 26
+    Height = 36
+    Top = 28
     Width = 925
     Align = alTop
     BevelOuter = bvNone
-    ClientHeight = 42
+    ClientHeight = 36
     ClientWidth = 925
     TabOrder = 0
     object Button1: TButton
       Left = 8
       Height = 25
-      Top = 8
+      Top = 6
       Width = 75
       Caption = 'Open...'
       OnClick = Button1Click
@@ -30,7 +31,7 @@ object Form1: TForm1
     object CellIndicator: TsCellIndicator
       Left = 95
       Height = 28
-      Top = 9
+      Top = 4
       Width = 80
       TabOrder = 1
       Text = 'A1'
@@ -39,7 +40,7 @@ object Form1: TForm1
     object CellEdit: TsCellEdit
       Left = 184
       Height = 28
-      Top = 9
+      Top = 4
       Width = 731
       Anchors = [akTop, akLeft, akRight]
       TabOrder = 2
@@ -49,8 +50,8 @@ object Form1: TForm1
   end
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 507
-    Top = 68
+    Height = 511
+    Top = 64
     Width = 672
     TabIndex = 0
     Tabs.Strings = (
@@ -61,7 +62,7 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 477
+      Height = 481
       Top = 28
       Width = 668
       FrozenCols = 0
@@ -115,8 +116,8 @@ object Form1: TForm1
   end
   object InspectorTabControl: TTabControl
     Left = 677
-    Height = 507
-    Top = 68
+    Height = 511
+    Top = 64
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -130,7 +131,7 @@ object Form1: TForm1
     TabOrder = 2
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 477
+      Height = 481
       Top = 28
       Width = 244
       Align = alClient
@@ -176,18 +177,21 @@ object Form1: TForm1
   end
   object Splitter1: TSplitter
     Left = 672
-    Height = 507
-    Top = 68
+    Height = 511
+    Top = 64
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 26
+    Height = 28
     Top = 0
     Width = 925
+    AutoSize = True
+    ButtonHeight = 24
     Caption = 'ToolBar1'
+    EdgeBorders = [ebBottom]
     Images = ImageList
     TabOrder = 4
     object ToolButton1: TToolButton
@@ -207,14 +211,14 @@ object Form1: TForm1
     end
     object ToolButton4: TToolButton
       Left = 75
-      Height = 22
+      Height = 24
       Top = 2
       Width = 3
       Caption = 'ToolButton4'
       Style = tbsDivider
     end
     object ToolButton5: TToolButton
-      Left = 491
+      Left = 537
       Top = 2
       Action = AcFileExit
     end
@@ -235,7 +239,7 @@ object Form1: TForm1
     end
     object ToolButton9: TToolButton
       Left = 70
-      Height = 22
+      Height = 24
       Top = 2
       Width = 5
       Caption = 'ToolButton9'
@@ -243,7 +247,7 @@ object Form1: TForm1
     end
     object ToolButton10: TToolButton
       Left = 170
-      Height = 22
+      Height = 24
       Top = 2
       Width = 5
       Caption = 'ToolButton10'
@@ -271,7 +275,7 @@ object Form1: TForm1
     end
     object ToolButton15: TToolButton
       Left = 244
-      Height = 22
+      Height = 24
       Top = 2
       Width = 5
       Caption = 'ToolButton15'
@@ -294,7 +298,7 @@ object Form1: TForm1
     end
     object ToolButton19: TToolButton
       Left = 318
-      Height = 22
+      Height = 24
       Top = 2
       Width = 5
       Caption = 'ToolButton19'
@@ -302,6 +306,7 @@ object Form1: TForm1
     end
     object ToolButton20: TToolButton
       Left = 323
+      Hint = 'Number format'
       Top = 2
       Caption = 'ToolButton20'
       DropdownMenu = PuNumFormat
@@ -310,6 +315,7 @@ object Form1: TForm1
     end
     object ToolButton21: TToolButton
       Left = 381
+      Hint = 'Currency format'
       Top = 2
       Caption = 'ToolButton21'
       DropdownMenu = PuCurrencyFormat
@@ -323,7 +329,7 @@ object Form1: TForm1
     end
     object ToolButton23: TToolButton
       Left = 486
-      Height = 22
+      Height = 24
       Top = 2
       Width = 5
       Caption = 'ToolButton23'
@@ -331,6 +337,7 @@ object Form1: TForm1
     end
     object ToolButton24: TToolButton
       Left = 416
+      Hint = 'Date format'
       Top = 2
       Caption = 'ToolButton24'
       DropdownMenu = PuDateFormat
@@ -339,11 +346,30 @@ object Form1: TForm1
     end
     object ToolButton25: TToolButton
       Left = 451
+      Hint = 'Time format'
       Top = 2
       Caption = 'ToolButton25'
       DropdownMenu = PuTimeFormat
       ImageIndex = 19
       Style = tbsDropDown
+    end
+    object ToolButton26: TToolButton
+      Left = 491
+      Top = 2
+      Action = AcDecDecimals
+    end
+    object ToolButton27: TToolButton
+      Left = 514
+      Top = 2
+      Action = AcIncDecimals
+    end
+    object ToolButton28: TToolButton
+      Left = 560
+      Height = 24
+      Top = 2
+      Width = 5
+      Caption = 'ToolButton28'
+      Style = tbsDivider
     end
   end
   object WorkbookSource: TsWorkbookSource
@@ -506,8 +532,8 @@ object Form1: TForm1
     object AcNumFormatGeneral: TsNumberFormatAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'Number format'
-      Hint = 'Number format'
+      Caption = 'General'
+      Hint = 'General format'
     end
     object AcNumFormatFixed: TsNumberFormatAction
       Category = 'FPSpreadsheet'
@@ -608,12 +634,27 @@ object Form1: TForm1
       Hint = 'Time interval format'
       NumberFormat = nfTimeInterval
     end
+    object AcIncDecimals: TsDecimalsAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Decimals'
+      Hint = 'Decimal places'
+      ImageIndex = 21
+    end
+    object AcDecDecimals: TsDecimalsAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Decimals'
+      Hint = 'Decimal places'
+      ImageIndex = 20
+      Delta = -1
+    end
   end
   object ImageList: TImageList
     left = 432
     top = 249
     Bitmap = {
-      4C69320000001000000010000000003F9300003F9300003F9300003F9424003F
+      4C69340000001000000010000000003F9300003F9300003F9300003F9424003F
       948A003E93CC004095CC004095CC004095CC004095CC004095CC004095CC0040
       95CC004095CC00409599003F9400003F9300003F9324003F938A0E4B9CD33F76
       C0EC5D90D4FF3365A9FFA0A0A0FFA9A9A9FFA9A9A9FFAAAAAAFFACACACFFAEAE
@@ -1252,6 +1293,70 @@ object Form1: TForm1
       1C322A2A2A0030303000FFFFFF00FFFFFF00303030002A2A2A001A1A1A000F0F
       0F120C0C0C4A0C0C0C720C0C0C860C0C0C860C0C0C720C0C0C4A0F0F0F121A1A
       1A002A2A2A0030303000FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      01000101013E010101AF010101B00101013E010101000101013F010101B40101
+      01B601010140FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0112010101AF0101012C01010135010101B301010112010101B50101012E0101
+      0138010101B9FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0112010101B10101010001010112010101B401010112010101B7010101000101
+      0113010101BBFFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0112010101B20101010001010112010101B601010113010101B9010101000101
+      0113010101BEFFFFFF00FFFFFF00FFFFFF00FFFFFF00010101B1010101590101
+      0112010101B40101012E01010137010101B801010113010101BB0101012F0101
+      013A010101C0FFFFFF00FFFFFF00FFFFFF00FFFFFF00010101B20101015A0101
+      010001010140010101B8010101B9010101410101010001010143010101BF0101
+      01C101010144FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0100010101000101010001010100010101000101010001010100010101000101
+      010001010100FFFFFF00FFFFFF00FFFFFF00FFFFFF00010101002C120A00AF45
+      230033150D000101010001010100010101000101010001010100010101000101
+      010001010100FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00B9543200AF45
+      2300D4573500A8462D0039181000010101000101010001010145010101C60101
+      01C801010147FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00BC573500AF45
+      23FFD4573540DF5D3B00702F1E000101010001010114010101C7010101320101
+      013D010101CDFFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815FFFBE5A38FFAF45
+      23E0D45735FFDF5D3B00391810000101010001010114010101CA010101000000
+      0015000000D5FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00BC573500AF45
+      23FFD457354039181000010101000101010001010115010101CC010101000000
+      0016000000DEFFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00B9543200AF45
+      23009D40270001010100010101CA0101016600000015000000D5000000370000
+      0045000000E6FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00B9543200AF45
+      230033150D0001010100010101CC00000068000000000000004E000000E40000
+      00E900000053FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00BE5A3800B34B
+      2900D4573500DF5D3B00702F1E0001010100010101000101013F010101B40101
+      01B601010140FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F40BE5A38FFB148
+      2600D4573500DF5D3B00702F1E000101010001010112010101B50101012E0101
+      0138010101B9FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815FFFBE5A38E0AF45
+      23FFD45735FFDF5D3B00391810000101010001010112010101B7010101000101
+      0113010101BBFFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F40BE5A38FFB148
+      2600D457350039181000010101000101010001010113010101B9010101000101
+      0113010101BEFFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00BE5A3800B34B
+      29009D40270001010100010101B70101015C01010113010101BB0101012F0101
+      013A010101C0FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00BE5A3800873A
+      21000101010001010100010101B90101015D0101010001010143010101BF0101
+      01C101010144FFFFFF00FFFFFF00FFFFFF00FFFFFF00E7815F00BE5A38002E15
+      0D00010101000101010001010100010101000101010001010100010101000101
+      010001010100FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0100010101000101010001010100010101000101010001010100010101000101
+      010001010100FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      010001010143010101BE010101C0010101440101010001010145010101C60101
+      01C801010147FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0113010101BF010101300101013B010101C401010114010101C7010101320101
+      013D010101CDFFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0113010101C10101010001010114010101C601010114010101CA010101000000
+      0015000000D5FFFFFF00FFFFFF00FFFFFF00FFFFFF0001010100010101000101
+      0114010101C40101010001010114010101C901010115010101CC010101000000
+      0016000000DEFFFFFF00FFFFFF00FFFFFF00FFFFFF00010101C1010101610101
+      0114010101C6010101320101013D010101CB00000015000000D5000000370000
+      0045000000E6FFFFFF00FFFFFF00FFFFFF00FFFFFF00010101C4010101630101
+      010001010146010101CB010101CC00000048000000000000004E000000E40000
+      00E900000053FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF007F7F554D7F7F55667F7F55667F7F55667F7F
       55667F7F55667F7F55667F7F55667F7F55667F7F55667F7F55667F7F55667F7F

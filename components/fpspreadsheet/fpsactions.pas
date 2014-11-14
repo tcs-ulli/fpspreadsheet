@@ -226,6 +226,27 @@ type
       read FNumberFormatStr write SetNumberFormatStr;
   end;
 
+
+  { TsDecimalsAction }
+  TsDecimalsAction = class(TsCellFormatAction)
+  private
+    FDecimals: Integer;
+    FDelta: Integer;
+    procedure SetDecimals(AValue: Integer);
+    procedure SetDelta(AValue: Integer);
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+    property Decimals: Integer
+      read FDecimals write SetDecimals default 2;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Delta: Integer
+      read FDelta write SetDelta default +1;
+  end;
+
+
 procedure Register;
 
 
@@ -243,7 +264,8 @@ begin
     // Cell or cell range formatting actions
     TsFontStyleAction,
     TsHorAlignmentAction, TsVertAlignmentAction,
-    TsTextRotationAction, TsWordWrapAction, TsNumberFormatAction
+    TsTextRotationAction, TsWordWrapAction,
+    TsNumberFormatAction, TsDecimalsAction
   ], nil);
 end;
 
@@ -767,5 +789,61 @@ begin
   FNumberFormatStr := AValue;
 end;
 
+
+{ TsDecimalsAction }
+
+constructor TsDecimalsAction.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Caption := 'Decimals';
+  Hint := 'Decimal places';
+  FDelta := +1;
+end;
+
+procedure TsDecimalsAction.ApplyFormatToCell(ACell: PCell);
+var
+  decs: Integer;
+  currSym: String;
+begin
+  if not (uffNumberFormat in ACell^.UsedFormattingFields) or
+         (ACell^.NumberFormat = nfGeneral)
+  then
+    Worksheet.WriteNumberFormat(ACell, nfFixed, '0')
+  else
+  if IsDateTimeFormat(ACell^.NumberFormat) then
+    exit
+  else
+  begin
+    decs := Decimals + FDelta;
+    if decs < 0 then decs := 0;
+    Worksheet.WriteDecimals(ACell, decs);
+  end;
+end;
+
+procedure TsDecimalsAction.ExtractFromCell(ACell: PCell);
+var
+  csym: String;
+  decs: Byte;
+begin
+  decs := 2;
+  if (ACell <> nil) and (uffNumberFormat in ACell^.UsedFormattingFields) then
+    Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
+  Decimals := decs
+end;
+
+procedure TsDecimalsAction.SetDecimals(AValue: Integer);
+begin
+  FDecimals := AValue;
+  if FDecimals < 0 then FDecimals := 0;
+end;
+
+procedure TsDecimalsAction.SetDelta(AValue: Integer);
+begin
+  FDelta := AValue;
+  if FDelta > 0 then
+    Hint := 'More decimal places'
+  else
+    Hint := 'Less decimal places';
+end;
 
 end.
