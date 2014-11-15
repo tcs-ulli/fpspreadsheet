@@ -1,3 +1,14 @@
+{ fpActions }
+
+{@@ ----------------------------------------------------------------------------
+  A collection of standard actions to simplify creation of menu and toolbar
+  for spreadsheet applications.
+
+AUTHORS: Werner Pamler
+
+LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+         distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpsActions;
 
 interface
@@ -30,6 +41,7 @@ type
   published
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write FWorkbookSource;
   end;
+
 
   { --- Actions related to worksheets --- }
 
@@ -125,9 +137,7 @@ type
     property Visible;
   end;
 
-
   { TsFontStyleAction }
-
   TsFontStyleAction = class(TsAutoFormatAction)
   private
     FFontStyle: TsFontStyle;
@@ -142,9 +152,7 @@ type
       read FFontStyle write SetFontStyle;
   end;
 
-
   { TsHorAlignmentAction }
-
   TsHorAlignmentAction = class(TsAutoFormatAction)
   private
     FHorAlign: TsHorAlignment;
@@ -159,9 +167,7 @@ type
       read FHorAlign write SetHorAlign default haDefault;
   end;
 
-
   { TsVertAlignmentAction }
-
   TsVertAlignmentAction = class(TsAutoFormatAction)
   private
     FVertAlign: TsVertAlignment;
@@ -176,9 +182,7 @@ type
       read FVertAlign write SetVertAlign default vaDefault;
   end;
 
-
   { TsTextRotationAction }
-
   TsTextRotationAction = class(TsAutoFormatAction)
   private
     FTextRotation: TsTextRotation;
@@ -193,9 +197,7 @@ type
       read FTextRotation write SetTextRotation default trHorizontal;
   end;
 
-
   { TsWordwrapAction }
-
   TsWordwrapAction = class(TsAutoFormatAction)
   private
     function GetWordwrap: Boolean;
@@ -210,9 +212,7 @@ type
       read GetWordwrap write SetWordwrap default false;
   end;
 
-
   { TsNumberFormatAction }
-
   TsNumberFormatAction = class(TsAutoFormatAction)
   private
     FNumberFormat: TsNumberFormat;
@@ -231,9 +231,7 @@ type
       read FNumberFormatStr write SetNumberFormatStr;
   end;
 
-
   { TsDecimalsAction }
-
   TsDecimalsAction = class(TsAutoFormatAction)
   private
     FDecimals: Integer;
@@ -251,8 +249,95 @@ type
     property Hint stored false;
   end;
 
+  { TsCellBorderAction }
+  TsActionBorder = class(TPersistent)
+  private
+    FLineStyle: TsLineStyle;
+    FColor: TColor;
+    FVisible: Boolean;
+  public
+    procedure ApplyStyle(AWorkbook: TsWorkbook; out ABorderStyle: TsCellBorderStyle);
+    procedure ExtractStyle(AWorkbook: TsWorkbook; ABorderStyle: TsCellBorderStyle);
+  published
+    property LineStyle: TsLineStyle read FLineStyle write FLineStyle;
+    property Color: TColor read FColor write FColor;
+    property Visible: Boolean read FVisible write FVisible;
+  end;
 
-  { --- Actions like from TCommonDialogAction --- }
+  TsActionBorders = class(TPersistent)
+  private
+    FBorders: Array[TsCellBorder] of TsActionBorder;
+    function GetBorder(AIndex: TsCellBorder): TsActionBorder;
+    procedure SetBorder(AIndex: TsCellBorder; AValue: TsActionBorder);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure ExtractFromCell(AWorkbook: TsWorkbook; ACell: PCell);
+  published
+    property East: TsActionBorder index cbEast
+      read GetBorder write SetBorder;
+    property North: TsActionBorder index cbNorth
+      read GetBorder write SetBorder;
+    property South: TsActionBorder index cbSouth
+      read GetBorder write SetBorder;
+    property West: TsActionBorder index cbWest
+      read GetBorder write SetBorder;
+    property InnerHor: TsActionBorder index cbDiagUp  // NOTE: "abusing" cbDiagUp here!
+      read GetBorder write SetBorder;
+    property InnerVert: TsActionBorder index cbDiagDown  // NOTE: "abusing" cbDiagDown here"
+      read GetBorder write SetBorder;
+  end;
+
+  TsCellBorderAction = class(TsCellAction)
+  private
+    FBorders: TsActionBorders;
+  protected
+    procedure ApplyFormatToRange(ARange: TsCellRange); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ExecuteTarget(Target: TObject); override;
+  published
+    property Borders: TsActionBorders read FBorders write FBorders;
+    property Caption;
+    property Enabled;
+    property HelpContext;
+    property HelpKeyword;
+    property HelpType;
+    property Hint;
+    property ImageIndex;
+    property OnExecute;
+    property OnHint;
+    property OnUpdate;
+    property SecondaryShortCuts;
+    property ShortCut;
+    property Visible;
+  end;
+
+  TsNoCellBordersAction = class(TsCellAction)
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+  public
+    procedure ExecuteTarget(Target: TObject); override;
+  published
+    property Caption;
+    property Enabled;
+    property HelpContext;
+    property HelpKeyword;
+    property HelpType;
+    property Hint;
+    property ImageIndex;
+    property OnExecute;
+    property OnHint;
+    property OnUpdate;
+    property SecondaryShortCuts;
+    property ShortCut;
+    property Visible;
+  end;
+
+
+  { --- Actions like those derived from TCommonDialogAction --- }
 
   TsCommonDialogSpreadsheetAction = class(TsSpreadsheetAction)
   private
@@ -276,9 +361,7 @@ type
     property OnCancel: TNotifyEvent read FOnCancel write FOnCancel;
   end;
 
-
   { TsCommondDialogCellAction }
-
   TsCommonDialogCellAction = class(TsCommondialogSpreadsheetAction)
   protected
     procedure DoAccept; override;
@@ -305,9 +388,7 @@ type
     property OnHint;
   end;
 
-
   { TsFontAction }
-
   TsFontAction = class(TsCommonDialogCellAction)
   private
     function GetDialog: TFontDialog;
@@ -322,7 +403,6 @@ type
   end;
 
   { TsBackgroundColorAction }
-
   TsBackgroundColorAction = class(TsCommonDialogCellAction)
   private
     FBackgroundColor: TsColor;
@@ -356,7 +436,8 @@ begin
     TsFontAction, TsFontStyleAction, TsBackgroundColorAction,
     TsHorAlignmentAction, TsVertAlignmentAction,
     TsTextRotationAction, TsWordWrapAction,
-    TsNumberFormatAction, TsDecimalsAction
+    TsNumberFormatAction, TsDecimalsAction,
+    TsCellBorderAction, TsNoCellBordersAction
   ], nil);
 end;
 
@@ -955,6 +1036,175 @@ begin
     Hint := 'More decimal places'
   else
     Hint := 'Less decimal places';
+end;
+
+
+{ TsCellBorderAction }
+
+procedure TsActionBorder.ApplyStyle(AWorkbook: TsWorkbook;
+  out ABorderStyle: TsCellBorderStyle);
+begin
+  ABorderStyle.LineStyle := FLineStyle;
+  ABorderStyle.Color := AWorkbook.GetPaletteColor(ABorderStyle.Color);
+end;
+
+procedure TsActionBorder.ExtractStyle(AWorkbook: TsWorkbook;
+  ABorderStyle: TsCellBorderStyle);
+begin
+  FLineStyle := ABorderStyle.LineStyle;
+  Color := AWorkbook.AddColorToPalette(ABorderStyle.Color);
+end;
+
+constructor TsActionBorders.Create;
+var
+  cb: TsCellBorder;
+begin
+  inherited Create;
+  for cb in TsCellBorder do
+    FBorders[cb] := TsActionBorder.Create;
+end;
+
+destructor TsActionBorders.Destroy;
+var
+  cb: TsCellBorder;
+begin
+  for cb in TsCellBorder do FBorders[cb].Free;
+  inherited Destroy;
+end;
+
+procedure TsActionBorders.ExtractFromCell(AWorkbook: TsWorkbook; ACell: PCell);
+var
+  cb: TsCellBorder;
+begin
+  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+    for cb in TsCellBorder do
+    begin
+      FBorders[cb].ExtractStyle(AWorkbook, DEFAULT_BORDERSTYLES[cb]);
+      FBorders[cb].Visible := false;
+    end
+  else
+    for cb in TsCellBorder do
+    begin
+      FBorders[cb].ExtractStyle(AWorkbook, ACell^.BorderStyles[cb]);
+      FBorders[cb].Visible := cb in ACell^.Border;
+    end;
+end;
+
+function TsActionBorders.GetBorder(AIndex: TsCellBorder): TsActionBorder;
+begin
+  Result := FBorders[AIndex];
+end;
+
+procedure TsActionBorders.SetBorder(AIndex: TsCellBorder;
+  AValue: TsActionBorder);
+begin
+  FBorders[AIndex] := AValue;
+end;
+
+constructor TsCellBorderAction.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FBorders := TsActionBorders.Create;
+end;
+
+destructor TsCellBorderAction.Destroy;
+begin
+  FBorders.Free;
+  inherited;
+end;
+
+procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
+
+  procedure ShowBorder(ABorder: TsCellBorder; ACell: PCell;
+    ABorderStyle: TsCellBorderStyle; AEnable: boolean);
+  var
+    brdr: TsCellBorders;
+  begin
+    brdr := ACell^.Border;
+    if AEnable then
+    begin
+      Include(brdr, ABorder);
+      Worksheet.WriteBorderStyle(ACell, ABorder, ABorderStyle);
+      Worksheet.WriteBorders(ACell, brdr);
+      // Don't modify the cell directly, this will miss the OnChange event.
+    end;
+  end;
+
+var
+  r, c: LongInt;
+  ls: TsLineStyle;
+  bs: TsCellBorderStyle;
+  cell: PCell;
+begin
+  // Top edges
+  Borders.North.ApplyStyle(Workbook, bs);
+  for c := ARange.Col1 to ARange.Col2 do
+    ShowBorder(cbNorth, Worksheet.GetCell(ARange.Row1, c), bs, Borders.North.Visible);
+
+  // Bottom edges
+  Borders.South.ApplyStyle(Workbook, bs);
+  for c := ARange.Col1 to ARange.Col2 do
+    ShowBorder(cbSouth, Worksheet.GetCell(ARange.Row2, c), bs, Borders.South.Visible);
+
+  // Inner horizontal edges
+  Borders.InnerHor.ApplyStyle(Workbook, bs);
+  for c := ARange.Col1 to ARange.Col2 do
+  begin
+    for r := ARange.Row1 to LongInt(ARange.Row2)-1 do
+      ShowBorder(cbSouth, Worksheet.GetCell(r, c), bs, Borders.InnerHor.Visible);
+    for r := ARange.Row1+1 to ARange.Row2 do
+      ShowBorder(cbNorth, Worksheet.GetCell(r, c), bs, Borders.InnerHor.Visible);
+  end;
+
+  // Left edges
+  Borders.West.ApplyStyle(Workbook, bs);
+  for r := ARange.Row1 to ARange.Row2 do
+    ShowBorder(cbWest, Worksheet.GetCell(r, ARange.Col1), bs, Borders.West.Visible);
+
+  // Right edges
+  Borders.East.ApplyStyle(Workbook, bs);
+  for r := ARange.Row1 to ARange.Row2 do
+    ShowBorder(cbEast, Worksheet.GetCell(r, ARange.Col2), bs, Borders.East.Visible);
+
+  // Inner vertical lines
+  Borders.InnerVert.ApplyStyle(Workbook, bs);
+  for r := ARange.Row1 to ARange.Row2 do
+  begin
+    for c := ARange.Col1 to LongInt(ARange.Col2)-1 do
+      ShowBorder(cbEast, Worksheet.GetCell(r, c), bs, Borders.InnerVert.Visible);
+    for c := ARange.Col1+1 to ARange.Col2 do
+      ShowBorder(cbWest, Worksheet.GetCell(r, c), bs, Borders.InnerVert.Visible);
+  end;
+end;
+
+procedure TsCellBorderAction.ExecuteTarget(Target: TObject);
+begin
+  ApplyFormatToSelection;
+end;
+
+procedure TsCellBorderAction.ExtractFromCell(ACell: PCell);
+var
+  EmptyCell: TCell;
+begin
+  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+  begin
+    InitCell(EmptyCell);
+    FBorders.ExtractFromCell(Workbook, @EmptyCell);
+  end else
+    FBorders.ExtractFromCell(Workbook, ACell);
+end;
+
+
+{ TsNoCellBordersAction }
+
+procedure TsNoCellBordersAction.ApplyFormatToCell(ACell: PCell);
+begin
+  Worksheet.WriteBorders(ACell, []);
+end;
+
+procedure TsNoCellBordersAction.ExecuteTarget(Target: TObject);
+begin
+  ApplyFormatToSelection;
 end;
 
 
