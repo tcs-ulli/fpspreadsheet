@@ -10,11 +10,17 @@ type
   TsSpreadsheetAction = class(TCustomAction)
   private
     FWorkbookSource: TsWorkbookSource;
+    function GetActiveCell: PCell;
     function GetSelection: TsCellRangeArray;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
   protected
+    procedure ApplyFormatToCell(ACell: PCell); virtual;
+    procedure ApplyFormatToRange(ARange: TsCellrange); virtual;
+    procedure ApplyFormatToSelection; virtual;
+    procedure ExtractFromCell(ACell: PCell); virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    property ActiveCell: PCell read GetActiveCell;
     property Selection: TsCellRangeArray read GetSelection;
     property Worksheet: TsWorksheet read GetWorksheet;
   public
@@ -91,20 +97,18 @@ type
 
   { --- Actions related to cell and cell selection formatting--- }
 
-  TsCellFormatAction = class(TsSpreadsheetAction)
-  private
-    //
-  protected
-    procedure ApplyFormatToCell(ACell: PCell); virtual;
-    procedure ApplyFormatToRange(ARange: TsCellrange); virtual;
-    procedure ApplyFormatToSelection; virtual;
-    procedure ExtractFromCell(ACell: PCell); virtual;
+  TsCellAction = class(TsSpreadsheetAction)
   public
-    procedure ExecuteTarget(Target: TObject); override;
     function HandlesTarget(Target: TObject): Boolean; override;
-    procedure UpdateTarget(Target: TObject); override;
+    property ActiveCell;
     property Selection;
     property Worksheet;
+  end;
+
+  TsAutoFormatAction = class(TsCellAction)
+  public
+    procedure ExecuteTarget(Target: TObject); override;
+    procedure UpdateTarget(Target: TObject); override;
   published
     property Caption;
     property Enabled;
@@ -124,7 +128,7 @@ type
 
   { TsFontStyleAction }
 
-  TsFontStyleAction = class(TsCellFormatAction)
+  TsFontStyleAction = class(TsAutoFormatAction)
   private
     FFontStyle: TsFontStyle;
     procedure SetFontStyle(AValue: TsFontStyle);
@@ -141,7 +145,7 @@ type
 
   { TsHorAlignmentAction }
 
-  TsHorAlignmentAction = class(TsCellFormatAction)
+  TsHorAlignmentAction = class(TsAutoFormatAction)
   private
     FHorAlign: TsHorAlignment;
     procedure SetHorAlign(AValue: TsHorAlignment);
@@ -158,7 +162,7 @@ type
 
   { TsVertAlignmentAction }
 
-  TsVertAlignmentAction = class(TsCellFormatAction)
+  TsVertAlignmentAction = class(TsAutoFormatAction)
   private
     FVertAlign: TsVertAlignment;
     procedure SetVertAlign(AValue: TsVertAlignment);
@@ -175,7 +179,7 @@ type
 
   { TsTextRotationAction }
 
-  TsTextRotationAction = class(TsCellFormatAction)
+  TsTextRotationAction = class(TsAutoFormatAction)
   private
     FTextRotation: TsTextRotation;
     procedure SetTextRotation(AValue: TsTextRotation);
@@ -192,7 +196,7 @@ type
 
   { TsWordwrapAction }
 
-  TsWordwrapAction = class(TsCellFormatAction)
+  TsWordwrapAction = class(TsAutoFormatAction)
   private
     function GetWordwrap: Boolean;
     procedure SetWordwrap(AValue: Boolean);
@@ -209,7 +213,7 @@ type
 
   { TsNumberFormatAction }
 
-  TsNumberFormatAction = class(TsCellFormatAction)
+  TsNumberFormatAction = class(TsAutoFormatAction)
   private
     FNumberFormat: TsNumberFormat;
     FNumberFormatStr: string;
@@ -229,7 +233,8 @@ type
 
 
   { TsDecimalsAction }
-  TsDecimalsAction = class(TsCellFormatAction)
+
+  TsDecimalsAction = class(TsAutoFormatAction)
   private
     FDecimals: Integer;
     FDelta: Integer;
@@ -249,7 +254,7 @@ type
 
   { --- Actions like from TCommonDialogAction --- }
 
-  TsCommonDialogSpreadsheetAction = class(TsCellFormatAction)
+  TsCommonDialogSpreadsheetAction = class(TsSpreadsheetAction)
   private
     FBeforeExecute: TNotifyEvent;
     FExecuteResult: Boolean;
@@ -271,20 +276,20 @@ type
     property OnCancel: TNotifyEvent read FOnCancel write FOnCancel;
   end;
 
-  { TsFontAction }
-  TsFontAction = class(TsCommonDialogSpreadsheetAction)
-  private
-    function GetDialog: TFontDialog;
+
+  { TsCommondDialogCellAction }
+
+  TsCommonDialogCellAction = class(TsCommondialogSpreadsheetAction)
   protected
-    procedure ApplyFormatToCell(ACell: PCell); override;
     procedure DoAccept; override;
-    procedure ExtractFromCell(ACell: PCell); override;
-    function GetDialogClass: TCommonDialogClass; override;
+    procedure DoBeforeExecute; override;
   public
-    constructor Create(AOwner: TComponent); override;
+    property ActiveCell;
+    property Selection;
+    property Workbook;
+    property Worksheet;
   published
     property Caption;
-    property Dialog: TFontDialog read GetDialog;
     property Enabled;
     property HelpContext;
     property HelpKeyword;
@@ -294,14 +299,31 @@ type
     property ShortCut;
     property SecondaryShortCuts;
     property Visible;
-//    property BeforeExecute;
-//    property OnAccept;
-//    property OnCancel;
+    property BeforeExecute;
+    property OnAccept;
+    property OnCancel;
     property OnHint;
   end;
 
+
+  { TsFontAction }
+
+  TsFontAction = class(TsCommonDialogCellAction)
+  private
+    function GetDialog: TFontDialog;
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+    function GetDialogClass: TCommonDialogClass; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Dialog: TFontDialog read GetDialog;
+  end;
+
   { TsBackgroundColorAction }
-  TsBackgroundColorAction = class(TsCommonDialogSpreadsheetAction)
+
+  TsBackgroundColorAction = class(TsCommonDialogCellAction)
   private
     FBackgroundColor: TsColor;
     function GetDialog: TColorDialog;
@@ -314,21 +336,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property Caption;
     property Dialog: TColorDialog read GetDialog;
-    property Enabled;
-    property HelpContext;
-    property HelpKeyword;
-    property HelpType;
-    property Hint;
-    property ImageIndex;
-    property ShortCut;
-    property SecondaryShortCuts;
-    property Visible;
-//    property BeforeExecute;
-//    property OnAccept;
-//    property OnCancel;
-    property OnHint;
   end;
 
 procedure Register;
@@ -354,6 +362,51 @@ end;
 
 
 { TsSpreadsheetAction }
+
+{ Copies the format item for which the action is responsible to the
+  specified cell. Must be overridden by descendants. }
+procedure TsSpreadsheetAction.ApplyFormatToCell(ACell: PCell);
+begin
+  Unused(ACell);
+end;
+
+procedure TsSpreadsheetAction.ApplyFormatToRange(ARange: TsCellRange);
+var
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  for r := ARange.Row1 to ARange.Row2 do
+    for c := ARange.Col1 to ARange.Col2 do
+    begin
+      cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
+      ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
+    end;
+end;
+
+procedure TsSpreadsheetAction.ApplyFormatToSelection;
+var
+  sel: TsCellRangeArray;
+  range: Integer;
+begin
+  sel := GetSelection;
+  for range := 0 to High(sel) do
+    ApplyFormatToRange(sel[range]);
+end;
+
+{ Extracts the format item for which the action is responsible from the
+  specified cell. Must be overridden by descendants. }
+procedure TsSpreadsheetAction.ExtractFromCell(ACell: PCell);
+begin
+  Unused(ACell);
+end;
+
+function TsSpreadsheetAction.GetActiveCell: PCell;
+begin
+  if Worksheet <> nil then
+    Result := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol)
+  else
+    Result := nil;
+end;
 
 function TsSpreadsheetAction.GetSelection: TsCellRangeArray;
 begin
@@ -538,67 +591,29 @@ begin
 end;
 
 
-{ TsCellFormatAction }
+{ TsCellAction }
 
-{ Copies the format item for which the action is responsible to the
-  specified cell. Must be overridden by descendants. }
-procedure TsCellFormatAction.ApplyFormatToCell(ACell: PCell);
-begin
-  Unused(ACell);
-end;
-
-procedure TsCellFormatAction.ApplyFormatToRange(ARange: TsCellRange);
-var
-  r, c: Cardinal;
-  cell: PCell;
-begin
-  for r := ARange.Row1 to ARange.Row2 do
-    for c := ARange.Col1 to ARange.Col2 do
-    begin
-      cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
-      ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
-    end;
-end;
-
-procedure TsCellFormatAction.ApplyFormatToSelection;
-var
-  sel: TsCellRangeArray;
-  range: Integer;
-begin
-  sel := GetSelection;
-  for range := 0 to High(sel) do
-    ApplyFormatToRange(sel[range]);
-end;
-
-procedure TsCellFormatAction.ExecuteTarget(Target: TObject);
-begin
-  ApplyFormatToSelection;
-end;
-
-{ Extracts the format item for which the action is responsible from the
-  specified cell. Must be overridden by descendants. }
-procedure TsCellFormatAction.ExtractFromCell(ACell: PCell);
-begin
-  Unused(ACell);
-end;
-
-function TsCellFormatAction.HandlesTarget(Target: TObject): Boolean;
+function TsCellAction.HandlesTarget(Target: TObject): Boolean;
 begin
   Result := inherited HandlesTarget(Target) and (Worksheet <> nil) and (Length(GetSelection) > 0);
 end;
 
-procedure TsCellFormatAction.UpdateTarget(Target: TObject);
-var
-  cell: PCell;
+
+{ TsAutoFormatAction - action for cell formatting which is automatically
+  updated according to the current selection }
+
+procedure TsAutoFormatAction.ExecuteTarget(Target: TObject);
+begin
+  ApplyFormatToSelection;
+end;
+
+procedure TsAutoFormatAction.UpdateTarget(Target: TObject);
 begin
   Unused(Target);
 
   Enabled := inherited Enabled and (Worksheet <> nil) and (Length(GetSelection) > 0);
-  if not Enabled then
-    exit;
-
-  cell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
-  ExtractFromCell(cell);
+  if Enabled then
+    ExtractFromCell(ActiveCell);
 end;
 
 
@@ -974,9 +989,13 @@ begin
 end;
 
 procedure TsCommonDialogSpreadsheetAction.DoBeforeExecute;
+var
+  cell: PCell;
 begin
   if Assigned(FBeforeExecute) then
     FBeforeExecute(Self);
+  cell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  ExtractFromCell(cell);
 end;
 
 procedure TsCommonDialogSpreadsheetAction.DoCancel;
@@ -1001,6 +1020,21 @@ begin
 end;
 
 
+{ TsCommonDialogCellAction }
+
+procedure TsCommonDialogCellAction.DoAccept;
+begin
+  ApplyFormatToSelection;
+  inherited;
+end;
+
+procedure TsCommonDialogCellAction.DoBeforeExecute;
+begin
+  inherited;
+  ExtractFromCell(ActiveCell);
+end;
+
+
 { TsFontAction }
 
 constructor TsFontAction.Create(AOwner: TComponent);
@@ -1017,11 +1051,6 @@ begin
   sfnt := TsFont.Create;
   Convert_Font_to_sFont(Workbook, GetDialog.Font, sfnt);
   Worksheet.WriteFont(ACell, Workbook.AddFont(sfnt));
-end;
-
-procedure TsFontAction.DoAccept;
-begin
-  ApplyFormatToSelection;
 end;
 
 procedure TsFontAction.ExtractFromCell(ACell: PCell);
@@ -1076,24 +1105,21 @@ end;
 procedure TsBackgroundColorAction.DoAccept;
 begin
   FBackgroundColor := Workbook.AddColorToPalette(TsColorValue(Dialog.Color));
-  ApplyFormatToSelection;
+  inherited;
 end;
 
 procedure TsBackgroundColorAction.DoBeforeExecute;
-var
-  cell: PCell;
 begin
-  cell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
-  if (cell = nil) or not (uffBackgroundColor in cell^.UsedFormattingFields) then
-    FBackgroundColor := scNotDefined
-  else
-    FBackgroundColor := cell^.BackgroundColor;
+  inherited;
   Dialog.Color := Workbook.GetPaletteColor(FBackgroundColor);
 end;
 
 procedure TsBackgroundColorAction.ExtractFromCell(ACell: PCell);
 begin
-  //
+  if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedFormattingFields) then
+    FBackgroundColor := scNotDefined
+  else
+    FBackgroundColor := ACell^.BackgroundColor;
 end;
 
 function TsBackgroundColorAction.GetDialog: TColorDialog;
