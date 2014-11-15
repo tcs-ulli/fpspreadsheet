@@ -65,7 +65,9 @@ begin
   with ExportTestData[3] do
   begin
     id:=4;
-    name:='Hagen Dit';
+    //> may give problems with character encoding
+    //http://forum.lazarus.freepascal.org/index.php/topic,26471.0.html
+    name:='Hagen > Dit';
     dob:=encodedate(1944,2,24);
   end;
 
