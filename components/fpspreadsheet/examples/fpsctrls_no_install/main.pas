@@ -221,6 +221,12 @@ begin
   end;
   MnuRenameWorksheet.Action := actn;
 
+  { Font names }
+  with TsFontnameCombobox.Create(self) do begin
+    Parent := Toolbar1;
+    WorkbookSource := Self.WorkbookSource;
+  end;
+
   { Font styles }
   actn := TsFontStyleAction.Create(self);
   with TsFontStyleAction(actn) do begin

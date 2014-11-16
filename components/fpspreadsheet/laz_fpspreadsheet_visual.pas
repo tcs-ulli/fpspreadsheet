@@ -15,7 +15,6 @@ implementation
 procedure Register;
 begin
   RegisterUnit('fpspreadsheetctrls', @fpspreadsheetctrls.Register);
-  RegisterUnit('fpspreadsheetgrid', @fpspreadsheetgrid.Register);
   RegisterUnit('fpspreadsheetchart', @fpspreadsheetchart.Register);
   RegisterUnit('fpsActions', @fpsActions.Register);
 end;

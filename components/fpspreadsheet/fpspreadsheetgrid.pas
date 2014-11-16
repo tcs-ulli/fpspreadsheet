@@ -32,10 +32,8 @@ type
 
   { TsCustomWorksheetGrid }
 
-  {@@
-    TsCustomWorksheetGrid is the ancestor of TsWorkseetGrid and is able to
-    display spreadsheet data along with their formatting.
-  }
+  {@@ TsCustomWorksheetGrid is the ancestor of TsWorkseetGrid and is able to
+    display spreadsheet data along with their formatting. }
   TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
     { Private declarations }
@@ -556,7 +554,7 @@ type
     property OnContextPopup;
   end;
 
-procedure Register;
+//procedure Register;
 
 implementation
 
@@ -669,7 +667,7 @@ begin
     then TRGBA(Result).B := TRGBA(c).B + ADelta
     else TRGBA(Result).B := TRGBA(c).B - ADelta;
 end;
-
+          (*
 {@@ ----------------------------------------------------------------------------
   Registers the worksheet grid in the Lazarus component palette,
   page "FPSpreadsheet".
@@ -678,7 +676,7 @@ procedure Register;
 begin
   RegisterComponents('FPSpreadsheet', [TsWorksheetGrid]);
 end;
-
+            *)
 
 {*******************************************************************************
 *                              TsCustomWorksheetGrid                           *

@@ -215,6 +215,65 @@ type
   end;
 
 
+  { TsCellCombobox }
+
+  TsCellCombobox = class(TCombobox)
+  private
+    FWorkbookSource: TsWorkbookSource;
+    function GetWorkbook: TsWorkbook;
+    function GetWorksheet: TsWorksheet;
+    procedure SetWorkbookSource(AValue: TsWorkbookSource);
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); virtual;
+    procedure ExtractFromCell(ACell: PCell); virtual;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure Populate; virtual;
+    procedure Select; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ListenerNotification(AChangedItems: TsNotificationItems;
+      AData: Pointer = nil);
+    property Workbook: TsWorkbook read GetWorkbook;
+    property Worksheet: TsWorksheet read GetWorksheet;
+  published
+    {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
+    property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+  end;
+
+
+  { TsCellFontCombobox }
+
+  TsCellFontCombobox = class(TsCellCombobox)
+  protected
+    function GetCellFont(ACell: PCell): TsFont;
+  end;
+
+
+  {TsFontNameCombobox }
+
+  TsFontNameCombobox = class(TsCellFontCombobox)
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+    procedure Populate; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  end;
+
+
+  {TsFontSizeCombobox }
+
+  TsFontSizeCombobox = class(TsCellFontCombobox)
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+    procedure Populate; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  end;
+
+
   { TsSpreadsheetInspector }
 
   {@@ Classification of data displayed by the SpreadsheetInspector. Each item
@@ -268,7 +327,7 @@ procedure Register;
 implementation
 
 uses
-  Dialogs, TypInfo,
+  Dialogs, Forms, TypInfo,
   fpsStrings, fpsUtils, fpSpreadsheetGrid;
 
 
@@ -278,8 +337,11 @@ uses
 -------------------------------------------------------------------------------}
 procedure Register;
 begin
-  RegisterComponents('FPSpreadsheet', [TsWorkbookSource, TsWorkbookTabControl,
-    TsCellEdit, TsCellIndicator, TsSpreadsheetInspector]);
+  RegisterComponents('FPSpreadsheet', [
+    TsWorkbookSource, TsWorkbookTabControl, TsWorksheetGrid,
+    TsCellEdit, TsCellIndicator, TsFontNameCombobox, TsFontSizeCombobox,
+    TsSpreadsheetInspector
+  ]);
 end;
 
 
@@ -508,6 +570,9 @@ var
   i: Integer;
 begin
   for i:=0 to FListeners.Count-1 do
+    if TObject(FListeners[i]) is TsCellCombobox then
+      TsCellCombobox(FListeners[i]).ListenerNotification(AChangedItems, AData)
+    else
     if TObject(FListeners[i]) is TsCellIndicator then
       TsCellIndicator(FListeners[i]).ListenerNotification(AChangedItems, AData)
     else
@@ -544,6 +609,9 @@ begin
     if TComponent(FListeners[i]) = AListener then
     begin
       FListeners.Delete(i);
+      if (AListener is TsCellCombobox) then
+        TsCellCombobox(AListener).WorkbookSource := nil
+      else
       if (AListener is TsCellIndicator) then
         TsCellIndicator(AListener).WorkbookSource := nil
       else
@@ -1172,6 +1240,264 @@ begin
     FWorkbookSource.AddListener(self);
   Text := '';
   ListenerNotification([lniSelection]);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                               TsCellCombobox                                 }
+{------------------------------------------------------------------------------}
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the Cell Combobox. Populates the items list
+-------------------------------------------------------------------------------}
+constructor TsCellCombobox.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Populate;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Destructor of the WorkbookTabControl.
+  Removes itself from the WorkbookSource's listener list.
+-------------------------------------------------------------------------------}
+destructor TsCellCombobox.Destroy;
+begin
+  if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
+  inherited Destroy;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Applies the format to a cell. Override according to the format item for
+  which the combobox is responsible.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.ApplyFormatToCell(ACell: PCell);
+begin
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Extracts the format item the combobox is responsible for from the cell and
+  selectes the corresponding combobox item.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
+begin
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Getter method for the property Workbook which is currently loaded by the
+  WorkbookSource
+-------------------------------------------------------------------------------}
+function TsCellCombobox.GetWorkbook: TsWorkbook;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource.Workbook
+  else
+    Result := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Getter method for the property Worksheet which is currently loaded by the
+  WorkbookSource
+-------------------------------------------------------------------------------}
+function TsCellCombobox.GetWorksheet: TsWorksheet;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource.Worksheet
+  else
+    Result := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Notification procedure received whenver "something" changes in the workbook.
+  Reacts on all events.
+
+  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
+                         cell or selection has changed.
+  @param  AData          If AChangedItems contains nliCell then AData points to
+                         the modified cell.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.ListenerNotification(
+  AChangedItems: TsNotificationItems; AData: Pointer = nil);
+var
+  activeCell: PCell;
+begin
+  Unused(AData);
+  if worksheet = nil then
+    exit;
+  activeCell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  if ((lniCell in AChangedItems) and (PCell(AData) = activeCell)) or
+     (lniSelection in AChangedItems)
+  then
+    ExtractFromCell(activeCell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Standard component notification method called when the WorkbookSource
+  is deleted.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FWorkbookSource) then
+    SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Descendants override this method to populate the items of the combobox.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.Populate;
+begin
+end;
+
+{@@ ----------------------------------------------------------------------------
+  A new item in the combobox is selected. Changes the selected cells according
+  to the Mode property by calling ApplyFormatToCell.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.Select;
+var
+  r, c: Cardinal;
+  range: Integer;
+  sel: TsCellRangeArray;
+  cell: PCell;
+begin
+  inherited Select;
+  if Worksheet = nil then
+    exit;
+  sel := Worksheet.GetSelection;
+  for range := 0 to High(sel) do
+    for r := sel[range].Row1 to sel[range].Row2 do
+      for c := sel[range].Col1 to sel[range].Col2 do
+      begin
+        cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
+        ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
+      end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the WorkbookSource
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.SetWorkbookSource(AValue: TsWorkbookSource);
+begin
+  if AValue = FWorkbookSource then
+    exit;
+  if FWorkbookSource <> nil then
+    FWorkbookSource.RemoveListener(self);
+  FWorkbookSource := AValue;
+  if FWorkbookSource <> nil then
+    FWorkbookSource.AddListener(self);
+  Text := '';
+  ListenerNotification([lniSelection]);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                             TsCellFontCombobox                               }
+{------------------------------------------------------------------------------}
+
+function TsCellFontCombobox.GetCellFont(ACell: PCell): TsFont;
+begin
+  if ACell = nil then
+    Result := Workbook.GetDefaultFont
+  else
+  if (uffBold in ACell^.UsedFormattingFields) then
+    Result := Workbook.GetFont(1)
+  else
+  if (uffFont in ACell^.UsedFormattingFields) then
+    Result := Workbook.GetFont(ACell^.FontIndex)
+  else
+    Result := Workbook.GetDefaultFont;
+end;
+
+
+{------------------------------------------------------------------------------}
+{                             TsFontNameCombobox                               }
+{------------------------------------------------------------------------------}
+
+constructor TsFontNameCombobox.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Width := 150;
+end;
+
+procedure TsFontNameCombobox.ApplyFormatToCell(ACell: PCell);
+var
+  fnt: TsFont;
+begin
+  if ItemIndex > -1 then
+  begin
+    fnt := GetCellFont(ACell);
+    Worksheet.WriteFont(ACell, Items[ItemIndex], fnt.Size, fnt.Style, fnt.Color);
+  end;
+end;
+
+procedure TsFontNameCombobox.ExtractFromCell(ACell: PCell);
+var
+  fnt: TsFont;
+begin
+  fnt := GetCellFont(ACell);
+  ItemIndex := Items.IndexOf(fnt.FontName);
+end;
+
+procedure TsFontNameCombobox.Populate;
+begin
+  Items.Assign(Screen.Fonts);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                             TsFontSizeCombobox                               }
+{------------------------------------------------------------------------------}
+
+constructor TsFontSizeCombobox.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Width := 60;
+end;
+
+procedure TsFontSizeCombobox.ApplyFormatToCell(ACell: PCell);
+var
+  fnt: TsFont;
+  fs: Double;
+begin
+  if ItemIndex > -1 then
+  begin
+    fs := StrToFloat(Items[ItemIndex]);
+    fnt := GetCellFont(ACell);
+    Worksheet.WriteFont(ACell, fnt.FontName, fs, fnt.Style, fnt.Color);
+  end;
+end;
+
+procedure TsFontSizeCombobox.ExtractFromCell(ACell: PCell);
+var
+  fnt: TsFont;
+begin
+  fnt := GetCellFont(ACell);
+  ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+end;
+
+procedure TsFontSizeCombobox.Populate;
+begin
+  with Items do
+  begin
+    Clear;
+    Add('8');
+    Add('9');
+    Add('10');
+    Add('11');
+    Add('12');
+    Add('14');
+    Add('16');
+    Add('18');
+    Add('20');
+    Add('22');
+    Add('24');
+    Add('26');
+    Add('28');
+    Add('32');
+    Add('36');
+    Add('48');
+    Add('72');
+  end;
 end;
 
 
