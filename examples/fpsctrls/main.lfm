@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 415
+  Left = 414
   Height = 600
-  Top = 122
+  Top = 118
   Width = 925
   Caption = 'Form1'
   ClientHeight = 580
@@ -12,7 +12,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 36
-    Top = 26
+    Top = 50
     Width = 925
     Align = alTop
     BevelOuter = bvNone
@@ -50,8 +50,8 @@ object Form1: TForm1
   end
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 518
-    Top = 62
+    Height = 494
+    Top = 86
     Width = 672
     TabIndex = 0
     Tabs.Strings = (
@@ -62,7 +62,7 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 493
+      Height = 469
       Top = 23
       Width = 668
       FrozenCols = 0
@@ -116,8 +116,8 @@ object Form1: TForm1
   end
   object InspectorTabControl: TTabControl
     Left = 677
-    Height = 518
-    Top = 62
+    Height = 494
+    Top = 86
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -131,7 +131,7 @@ object Form1: TForm1
     TabOrder = 2
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 493
+      Height = 469
       Top = 23
       Width = 244
       Align = alClient
@@ -177,8 +177,8 @@ object Form1: TForm1
   end
   object Splitter1: TSplitter
     Left = 672
-    Height = 518
-    Top = 62
+    Height = 494
+    Top = 86
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
@@ -186,7 +186,7 @@ object Form1: TForm1
   object ToolBar1: TToolBar
     Left = 0
     Height = 26
-    Top = 0
+    Top = 24
     Width = 925
     AutoSize = True
     ButtonHeight = 24
@@ -194,59 +194,31 @@ object Form1: TForm1
     EdgeBorders = [ebBottom]
     Images = ImageList
     TabOrder = 4
-    object ToolButton1: TToolButton
-      Left = 1
-      Top = 0
-      Action = AcAddWorksheet
-    end
-    object ToolButton2: TToolButton
-      Left = 24
-      Top = 0
-      Action = AcDeleteWorksheet
-    end
-    object ToolButton3: TToolButton
-      Left = 47
-      Top = 0
-      Action = acRenameWorksheet
-    end
     object ToolButton4: TToolButton
-      Left = 75
+      Left = 235
       Height = 24
       Top = 0
       Width = 3
       Caption = 'ToolButton4'
       Style = tbsDivider
     end
-    object ToolButton5: TToolButton
-      Left = 628
-      Top = 0
-      Action = AcFileExit
-    end
     object ToolButton6: TToolButton
-      Left = 101
+      Left = 238
       Top = 0
       Action = AcFontBold
     end
     object ToolButton7: TToolButton
-      Left = 124
+      Left = 261
       Top = 0
       Action = AcFontItalic
     end
     object ToolButton8: TToolButton
-      Left = 147
+      Left = 284
       Top = 0
       Action = AcFontUnderline
     end
-    object ToolButton9: TToolButton
-      Left = 70
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton9'
-      Style = tbsDivider
-    end
     object ToolButton10: TToolButton
-      Left = 193
+      Left = 330
       Height = 24
       Top = 0
       Width = 5
@@ -254,27 +226,27 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton11: TToolButton
-      Left = 170
+      Left = 307
       Top = 0
       Action = AcFontStrikeout
     end
     object ToolButton12: TToolButton
-      Left = 198
+      Left = 335
       Top = 0
       Action = AcHorAlignLeft
     end
     object ToolButton13: TToolButton
-      Left = 221
+      Left = 358
       Top = 0
       Action = AcHorAlignCenter
     end
     object ToolButton14: TToolButton
-      Left = 244
+      Left = 381
       Top = 0
       Action = AcHorAlignRight
     end
     object ToolButton15: TToolButton
-      Left = 267
+      Left = 404
       Height = 24
       Top = 0
       Width = 5
@@ -282,22 +254,22 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton16: TToolButton
-      Left = 272
+      Left = 409
       Top = 0
       Action = AcVertAlignTop
     end
     object ToolButton17: TToolButton
-      Left = 295
+      Left = 432
       Top = 0
       Action = AcVertAlignCenter
     end
     object ToolButton18: TToolButton
-      Left = 318
+      Left = 455
       Top = 0
       Action = AcVertAlignBottom
     end
     object ToolButton19: TToolButton
-      Left = 341
+      Left = 478
       Height = 24
       Top = 0
       Width = 5
@@ -305,7 +277,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton20: TToolButton
-      Left = 374
+      Left = 546
       Hint = 'Number format'
       Top = 0
       Caption = 'ToolButton20'
@@ -314,7 +286,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton21: TToolButton
-      Left = 432
+      Left = 604
       Hint = 'Currency format'
       Top = 0
       Caption = 'ToolButton21'
@@ -323,12 +295,12 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton22: TToolButton
-      Left = 409
+      Left = 581
       Top = 0
       Action = AcNumFormatPercentage
     end
     object ToolButton23: TToolButton
-      Left = 537
+      Left = 709
       Height = 24
       Top = 0
       Width = 5
@@ -336,7 +308,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton24: TToolButton
-      Left = 467
+      Left = 639
       Hint = 'Date format'
       Top = 0
       Caption = 'ToolButton24'
@@ -345,7 +317,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton25: TToolButton
-      Left = 502
+      Left = 674
       Hint = 'Time format'
       Top = 0
       Caption = 'ToolButton25'
@@ -354,35 +326,27 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton26: TToolButton
-      Left = 542
+      Left = 714
       Top = 0
       Action = AcDecDecimals
     end
     object ToolButton27: TToolButton
-      Left = 565
+      Left = 737
       Top = 0
       Action = AcIncDecimals
     end
-    object ToolButton28: TToolButton
-      Left = 588
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton28'
-      Style = tbsDivider
-    end
     object ToolButton29: TToolButton
-      Left = 78
+      Left = 1
       Top = 0
-      Action = AcCellFont
+      Action = AcCellFontDialog
     end
     object ToolButton30: TToolButton
-      Left = 346
+      Left = 518
       Top = 0
-      Action = AcBackgroundColor
+      Action = AcBackgroundColorDialog
     end
     object ToolButton31: TToolButton
-      Left = 369
+      Left = 541
       Height = 24
       Top = 0
       Width = 5
@@ -390,20 +354,903 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object TbBorders: TToolButton
-      Left = 593
+      Left = 483
       Hint = 'Top border'
       Top = 0
       Caption = 'Top'
       DropdownMenu = PuBorders
-      ImageIndex = 36
+      ImageIndex = 26
       Style = tbsDropDown
+    end
+    object FontnameCombo: TsFontNameCombobox
+      Left = 24
+      Height = 23
+      Top = 0
+      Width = 151
+      ItemHeight = 15
+      ItemIndex = 62
+      Items.Strings = (
+        '@Arial Unicode MS'
+        '@Batang'
+        '@BatangChe'
+        '@DFKai-SB'
+        '@Dotum'
+        '@DotumChe'
+        '@FangSong'
+        '@Gulim'
+        '@GulimChe'
+        '@Gungsuh'
+        '@GungsuhChe'
+        '@KaiTi'
+        '@Malgun Gothic'
+        '@Meiryo'
+        '@Meiryo UI'
+        '@Microsoft JhengHei'
+        '@Microsoft YaHei'
+        '@MingLiU'
+        '@MingLiU_HKSCS'
+        '@MingLiU_HKSCS-ExtB'
+        '@MingLiU-ExtB'
+        '@MS Gothic'
+        '@MS Mincho'
+        '@MS PGothic'
+        '@MS PMincho'
+        '@MS UI Gothic'
+        '@NSimSun'
+        '@PMingLiU'
+        '@PMingLiU-ExtB'
+        '@SimHei'
+        '@SimSun'
+        '@SimSun-ExtB'
+        '18thCentury'
+        'Aachen BT'
+        'AcmeFont'
+        'AdLib BT'
+        'Aharoni'
+        'Aldine401 BT'
+        'Aldine721 BdCn BT'
+        'Aldine721 BT'
+        'Aldine721 Lt BT'
+        'Alfredo'
+        'Alien Encounters'
+        'Allegro BT'
+        'Almonte Snow'
+        'Amelia BT'
+        'Americana XBdCn BT'
+        'AmericanText BT'
+        'AmeriGarmnd BT'
+        'Amerigo BT'
+        'Amerigo Md BT'
+        'AmerType Md BT'
+        'Amethyst'
+        'Andalus'
+        'Angsana New'
+        'AngsanaUPC'
+        'Animals 1'
+        'Animals 2'
+        'AnticFont'
+        'Aparajita'
+        'Arabic Typesetting'
+        'Architects Daughter'
+        'Arial'
+        'Arial Black'
+        'Arial Narrow'
+        'Arial Unicode MS'
+        'Arimo'
+        'Arrows1'
+        'Arrows2'
+        'Asimov'
+        'Aurora BdCn BT'
+        'Aurora Cn BT'
+        'Autumn'
+        'AvantGarde Bk BT'
+        'AvantGarde Md BT'
+        'Awards'
+        'Baby Kruffy'
+        'BakerSignet BT'
+        'Balloons'
+        'Balthazar'
+        'BankGothic Lt BT'
+        'BankGothic Md BT'
+        'Bastion'
+        'Batang'
+        'BatangChe'
+        'BauerBodni BdCn BT'
+        'BauerBodni Blk BT'
+        'BauerBodni BlkCn BT'
+        'Bauhaus Hv BT'
+        'Bauhaus Lt BT'
+        'Bauhaus Md BT'
+        'BellCent NamNum BT'
+        'BellGothic Blk BT'
+        'Belwe Bd BT'
+        'Belwe Cn BT'
+        'Belwe Lt BT'
+        'Benguiat Bk BT'
+        'BenguiatGot Bk BT'
+        'Bernhard BdCn BT'
+        'BernhardFashion BT'
+        'BernhardMod BT'
+        'BernhardTango BT'
+        'Blackout'
+        'BN Jinx'
+        'BN Machine'
+        'Bobcat'
+        'BolsterBold'
+        'Bolt Bd BT'
+        'Book Antiqua'
+        'Bookman Old Style'
+        'BookmanITC Lt BT'
+        'Bookshelf Symbol 7'
+        'Borders1'
+        'Borders2'
+        'Borealis'
+        'BOUTON International Symbols'
+        'Boxes'
+        'Bradley Hand ITC'
+        'Brandish'
+        'Bremen Bd BT'
+        'Bremen Blk BT'
+        'Broadway BT'
+        'BroadwayEngraved BT'
+        'Browallia New'
+        'BrowalliaUPC'
+        'Brush455 BT'
+        'Brush738 BT'
+        'BrushScript BT'
+        'Brussels'
+        'Buildings'
+        'Bullets 4(Japanese)'
+        'Bullets 5(Korean)'
+        'Bullets1'
+        'Bullets2'
+        'Bullets3'
+        'Bulmer BT'
+        'Business&Government'
+        'Busorama Md BT'
+        'CabinSketch'
+        'Calibri'
+        'Calibri Light'
+        'Calligraph421 BT'
+        'Calligraph810 BT'
+        'Calligraphic'
+        'Calvin'
+        'Cambria'
+        'Cambria Math'
+        'Candara'
+        'Candida BT'
+        'Candles'
+        'Caslon Bd BT'
+        'Caslon224 Bk BT'
+        'Caslon540 BT'
+        'CaslonOldFace BT'
+        'CaslonOldFace Hv BT'
+        'CaslonOpnface BT'
+        'Cataneo BT'
+        'Cataneo Lt BT'
+        'Cataneo Swash BT'
+        'CCLarge'
+        'CCSmall'
+        'CentSchbook BdCn BT'
+        'CentSchbook BT'
+        'CentSchbook Mono BT'
+        'Century'
+        'Century Gothic'
+        'Century725 BdCn BT'
+        'Century725 Blk BT'
+        'Century725 BT'
+        'Century725 Cn BT'
+        'Century731 BT'
+        'Century751 BT'
+        'CenturyExpd BT'
+        'CenturyOldst BT'
+        'Charlesworth'
+        'Charter Bd BT'
+        'Charting'
+        'ChelthmITC Bk BT'
+        'Chinese Generic1'
+        'Chinyen'
+        'ChunkFive Roman'
+        'Clarendon'
+        'Clarendon Blk BT'
+        'Clarendon BT'
+        'Clarendon Cn BT'
+        'Clarendon Hv BT'
+        'Clarendon Lt BT'
+        'ClassGarmnd BT'
+        'Clocks'
+        'CloisterBlack BT'
+        'CloisterOpenFace BT'
+        'Colbert'
+        'Comfortaa'
+        'Comic Sans MS'
+        'CommercialScript BT'
+        'CommonBullets'
+        'Commons'
+        'Compacta Bd BT'
+        'Compacta Blk BT'
+        'Compacta BT'
+        'Compacta Lt BT'
+        'Computers'
+        'Consolas'
+        'Constantia'
+        'Coolsville'
+        'Cooper Blk BT'
+        'Cooper BlkHd BT'
+        'Cooper BlkIt BT'
+        'Cooper BlkItHd BT'
+        'Cooper BlkOul BT'
+        'Cooper Lt BT'
+        'Cooper Md BT'
+        'CopprplGoth Bd BT'
+        'CopprplGoth BdCn BT'
+        'CopprplGoth BT'
+        'CopprplGoth Cn BT'
+        'CopprplGoth Hv BT'
+        'Corbel'
+        'Cordia New'
+        'CordiaUPC'
+        'Corporate'
+        'Courier'
+        'Courier New'
+        'Courier10 BT'
+        'Cracked Johnnie'
+        'Creepygirl'
+        'DaunPenh'
+        'Dauphin'
+        'David'
+        'Davida Bd BT'
+        'Dayton'
+        'Decorated035 BT'
+        'DejaVu Sans'
+        'DejaVu Sans Condensed'
+        'DejaVu Sans Light'
+        'DejaVu Sans Mono'
+        'DejaVu Serif'
+        'DejaVu Serif Condensed'
+        'Deneane'
+        'Detente'
+        'DeVinne BT'
+        'DeVinne Txt BT'
+        'DF Calligraphic Ornaments LET'
+        'DF Diversions LET'
+        'DF Diversities LET'
+        'DFKai-SB'
+        'Digifit'
+        'DilleniaUPC'
+        'Distant Galaxy'
+        'DokChampa'
+        'DomBold BT'
+        'DomCasual BT'
+        'DomDiagonal Bd BT'
+        'DomDiagonal BT'
+        'Dominican'
+        'Dotum'
+        'DotumChe'
+        'Dutch766 BT'
+        'Dutch801 Rm BT'
+        'Ebrima'
+        'Electronics'
+        'ElegaGarmnd BT'
+        'Embassy BT'
+        'Emmett'
+        'Empire BT'
+        'English111 Adagio BT'
+        'English111 Presto BT'
+        'English111 Vivace BT'
+        'English157 BT'
+        'EngraversGothic BT'
+        'EngravrsRoman Bd BT'
+        'EngravrsRoman BT'
+        'EngrvrsOldEng Bd BT'
+        'EngrvrsOldEng BT'
+        'Enliven'
+        'Eras Bd BT'
+        'Eras Bk BT'
+        'Eras Lt BT'
+        'Eras Md BT'
+        'Eras Ult BT'
+        'Estrangelo Edessa'
+        'Ethnocentric'
+        'EucrosiaUPC'
+        'Euphemia'
+        'Euro Sign'
+        'FangSong'
+        'Festive'
+        'Fingerpop'
+        'Fixedsys'
+        'Flareserif821 BT'
+        'Flareserif821 Lt BT'
+        'FlemishScript BT'
+        'Flubber'
+        'Folio BdCn BT'
+        'Folio Bk BT'
+        'Folio Lt BT'
+        'Folio Md BT'
+        'Folio XBd BT'
+        'Food'
+        'Formal436 BT'
+        'Fraktur BT'
+        'Frankfurter Venetian TT'
+        'Franklin Gothic Medium'
+        'FrankRuehl'
+        'Freefrm710 BT'
+        'Freefrm721 Blk BT'
+        'Freefrm721 BT'
+        'Freehand471 BT'
+        'Freehand521 BT'
+        'Freehand575 BT'
+        'Freehand591 BT'
+        'FreesiaUPC'
+        'Freestyle Script'
+        'French Script MT'
+        'French111 BT'
+        'FrizQuadrata BT'
+        'FrysBaskerville BT'
+        'Furniture'
+        'Futura BdCn BT'
+        'Futura Bk BT'
+        'Futura Hv BT'
+        'Futura Lt BT'
+        'Futura LtCn BT'
+        'Futura Md BT'
+        'Futura MdCn BT'
+        'Futura XBlk BT'
+        'Futura XBlkCn BT'
+        'Futura XBlkCnIt BT'
+        'Futura XBlkIt BT'
+        'FuturaBlack BT'
+        'Gabriola'
+        'Galliard BT'
+        'Garamond'
+        'GarmdITC Bk BT'
+        'GarmdITC BkCn BT'
+        'Gautami'
+        'Gazzarelli'
+        'Gentium Basic'
+        'Gentium Book Basic'
+        'GeographicSymbols'
+        'Georgia'
+        'Geotype TT'
+        'Gisha'
+        'Glockenspiel'
+        'Good Times'
+        'Gorilla BT'
+        'Gothic720 BT'
+        'Gothic720 Lt BT'
+        'Gothic725 Bd BT'
+        'Gothic725 Blk BT'
+        'Gothic821 Cn BT'
+        'GothicNo13 BT'
+        'GoudyCatalog BT'
+        'GoudyHandtooled BT'
+        'GoudyHvyface BT'
+        'GoudyHvyface Cn BT'
+        'GoudyOlSt BT'
+        'GoudyOlSt XBd BT'
+        'GoudySans Blk BT'
+        'GoudySans BlkIt BT'
+        'GoudySans Lt BT'
+        'GoudySans Md BT'
+        'Greek Diner Inline TT'
+        'Grizzly BT'
+        'Grouch BT'
+        'Gulim'
+        'GulimChe'
+        'Gungsuh'
+        'GungsuhChe'
+        'Hand Me Down S (BRK)'
+        'HandelGothic BT'
+        'Hansen'
+        'Harvest'
+        'HarvestItal'
+        'Haxton Logos TT'
+        'Heavy Heap'
+        'Hobo BT'
+        'Hollywood Hills'
+        'Hombre'
+        'HomePlanning'
+        'HomePlanning2'
+        'Household'
+        'Humanst521 BT'
+        'Humanst521 Cn BT'
+        'Humanst521 Lt BT'
+        'Humanst521 UBd BT'
+        'Humanst521 XBd BT'
+        'Humanst521 XBdCn BT'
+        'Humanst531 Blk BT'
+        'Humanst531 BT'
+        'Humanst531 UBlk BT'
+        'Humanst970 BT'
+        'HumstSlab712 Blk BT'
+        'HumstSlab712 BT'
+        'Huxley Titling'
+        'HuxleyVertical BT'
+        'Hygiene'
+        'Impact'
+        'Imperial BT'
+        'Impress BT'
+        'Impuls BT'
+        'Incised901 Bd BT'
+        'Incised901 BdCn BT'
+        'Incised901 BT'
+        'Incised901 Ct BT'
+        'Incised901 Lt BT'
+        'Incised901 Nd BT'
+        'Incised901 NdIt BT'
+        'Induction'
+        'Industrial736 BT'
+        'Informal011 Blk BT'
+        'Informal011 BT'
+        'IowanOldSt Blk BT'
+        'IrisUPC'
+        'Iskoola Pota'
+        'Italianate'
+        'Japanese Generic1'
+        'JasmineUPC'
+        'Josefin Slab'
+        'Juice ITC'
+        'Kabel Bk BT'
+        'Kabel Ult BT'
+        'KaiTi'
+        'Kalinga'
+        'Kartika'
+        'Kaufmann Bd BT'
+        'Kaufmann BT'
+        'Khmer UI'
+        'Kidnap'
+        'Kis BT'
+        'KodchiangUPC'
+        'Kokila'
+        'Korean Generic1'
+        'Korinna BT'
+        'Kristen ITC'
+        'Landmarks'
+        'LandscapePlanning'
+        'Lao UI'
+        'Lapidary333 Blk BT'
+        'Lapidary333 BT'
+        'Latha'
+        'Latin XCn BT'
+        'Latin725 BT'
+        'Latin725 Md BT'
+        'Lato'
+        'Lato Black'
+        'Lato Hairline'
+        'Lato Light'
+        'Leelawadee'
+        'LetterOMatic!'
+        'Levenim MT'
+        'Liberation Mono'
+        'Liberation Sans'
+        'Liberation Sans Narrow'
+        'Liberation Serif'
+        'Liberty BT'
+        'Libra BT'
+        'Life BT'
+        'Lihong7SegFont'
+        'LilyUPC'
+        'Limousine'
+        'Linux Biolinum G'
+        'Linux Libertine Display G'
+        'Linux Libertine G'
+        'Lithograph'
+        'LithographLight'
+        'LittleLordFontleroy'
+        'LubalGraph Bk BT'
+        'LubalGraph XLt BT'
+        'Lucia BT'
+        'Lucian BT'
+        'Lucida Console'
+        'Lucida Handwriting'
+        'Lucida Sans Unicode'
+        'Lydian BT'
+        'Lydian Csv BT'
+        'Machine BT'
+        'Mael'
+        'Malgun Gothic'
+        'Mangal'
+        'Manorly'
+        'Marlett'
+        'Martina'
+        'Medicine'
+        'Meiryo'
+        'Meiryo UI'
+        'MelodBold'
+        'Miama'
+        'Microsoft Himalaya'
+        'Microsoft JhengHei'
+        'Microsoft New Tai Lue'
+        'Microsoft PhagsPa'
+        'Microsoft Sans Serif'
+        'Microsoft Tai Le'
+        'Microsoft Uighur'
+        'Microsoft YaHei'
+        'Microsoft Yi Baiti'
+        'Military'
+        'MilitaryID'
+        'Millenium BdEx BT'
+        'Minerva'
+        'MingLiU'
+        'MingLiU_HKSCS'
+        'MingLiU_HKSCS-ExtB'
+        'MingLiU-ExtB'
+        'Mirarae BT'
+        'Miriam'
+        'Miriam Fixed'
+        'MisterEarl BT'
+        'Mistral'
+        'Mixage Bk BT'
+        'Modern'
+        'Mongolian Baiti'
+        'Monotype Corsiva'
+        'MoolBoran'
+        'Moonbeam'
+        'MorseCode'
+        'MS Gothic'
+        'MS Mincho'
+        'MS PGothic'
+        'MS PMincho'
+        'MS Reference Sans Serif'
+        'MS Reference Specialty'
+        'MS Sans Serif'
+        'MS Serif'
+        'MS UI Gothic'
+        'MT Extra'
+        'MurrayHill Bd BT'
+        'Music'
+        'MusicalSymbols'
+        'MV Boli'
+        'Mycalc'
+        'Myriad Web Pro'
+        'Myriad Web Pro Condensed'
+        'Narkisim'
+        'Nasalization'
+        'NauticalFlags'
+        'Neon Lights'
+        'News701 BT'
+        'News702 BT'
+        'NewsGoth BdXCn BT'
+        'NewsGoth BT'
+        'NewsGoth Cn BT'
+        'NewsGoth Dm BT'
+        'NewsGoth Lt BT'
+        'NewsGoth XCn BT'
+        'Newtext Rg BT'
+        'Nobile'
+        'Normande BT'
+        'Normande It BT'
+        'Notram'
+        'Novarese Bk BT'
+        'November'
+        'NSimSun'
+        'Nunito'
+        'Nuptial BT'
+        'Nyala'
+        'OfficePlanning'
+        'Onyx BT'
+        'Open Sans'
+        'OpenSymbol'
+        'OpineHeavy'
+        'Orator10 BT'
+        'Orator15 BT'
+        'Orbit-B BT'
+        'OrigGarmnd BT'
+        'Ostrich Sans'
+        'Ostrich Sans Dashed'
+        'Ostrich Sans Rounded'
+        'OzHandicraft BT'
+        'Pacifico'
+        'Palatino Linotype'
+        'Papyrus'
+        'Parisian BT'
+        'ParkAvenue BT'
+        'Parry Hotter'
+        'Penultimate'
+        'PenultimateLight'
+        'PenultimateLightItal'
+        'Permanent Marker'
+        'PhrasticMedium'
+        'Pica10 BT'
+        'Pioneer BT'
+        'Piranesi It BT'
+        'Pirate'
+        'Plantagenet Cherokee'
+        'Plants'
+        'Playbill BT'
+        'PMingLiU'
+        'PMingLiU-ExtB'
+        'PosterBodoni BT'
+        'PosterBodoni It BT'
+        'PR Celtic Narrow'
+        'Pristina'
+        'PT Serif'
+        'PTBarnum BT'
+        'QuiverItal'
+        'Raavi'
+        'Revue BT'
+        'Ribbon131 Bd BT'
+        'Ribbon131 BT'
+        'Rod'
+        'Roland'
+        'Roman'
+        'Romana BT'
+        'Rondalo'
+        'Roundhand Blk BT'
+        'RowdyHeavy'
+        'Russel Write TT'
+        'Sakkal Majalla'
+        'Salina'
+        'Schadow Blk BT'
+        'Schadow BlkCn BT'
+        'Schadow BT'
+        'Schadow Lt BT'
+        'Schneidler Blk BT'
+        'Science'
+        'Script'
+        'Script12 BT'
+        'Segoe Print'
+        'Segoe Script'
+        'Segoe UI'
+        'Segoe UI Light'
+        'Segoe UI Semibold'
+        'Segoe UI Symbol'
+        'Semaphore'
+        'Serifa BdCn BT'
+        'Serifa Blk BT'
+        'Serifa BT'
+        'Serifa Lt BT'
+        'Serifa Th BT'
+        'SF Movie Poster'
+        'Shapes1'
+        'Shapes2'
+        'Shonar Bangla'
+        'Shotgun BT'
+        'ShotgunBlanks BT'
+        'Shruti'
+        'Sign Language'
+        'Signs'
+        'SimHei'
+        'Simplified Arabic'
+        'Simplified Arabic Fixed'
+        'SimSun'
+        'SimSun-ExtB'
+        'Skinny'
+        'Small Fonts'
+        'Snowdrift'
+        'Source Code Pro'
+        'Source Code Pro Black'
+        'Source Code Pro ExtraLight'
+        'Source Code Pro Light'
+        'Source Code Pro Semibold'
+        'Source Sans Pro'
+        'Souvenir Lt BT'
+        'Space'
+        'Splash'
+        'Sports&Hobbies'
+        'SportsFigures'
+        'Staccato222 BT'
+        'Staccato555 BT'
+        'Stars1'
+        'Stars2'
+        'Stencil BT'
+        'Stephen'
+        'Steppes TT'
+        'STIX'
+        'STIX Math'
+        'STIXGeneral'
+        'STIXIntegralsD'
+        'STIXIntegralsSm'
+        'STIXIntegralsUp'
+        'STIXIntegralsUpD'
+        'STIXIntegralsUpSm'
+        'STIXNonUnicode'
+        'STIXSizeFiveSym'
+        'STIXSizeFourSym'
+        'STIXSizeOneSym'
+        'STIXSizeThreeSym'
+        'STIXSizeTwoSym'
+        'STIXVariants'
+        'Stuyvesant BT'
+        'Stymie Lt BT'
+        'Stymie Md BT'
+        'Stymie XBd BT'
+        'Stymie XBdCn BT'
+        'Swis721 BT'
+        'Swiss911 XCm BT'
+        'Sylfaen'
+        'Symbol'
+        'SymbolITC Bk BT'
+        'SymbolProp BT'
+        'System'
+        'Tahoma'
+        'Tangerine'
+        'Tango BT'
+        'Tarzan'
+        'Technology'
+        'Tempus Sans ITC'
+        'Terminal'
+        'Terminator Two'
+        'Thunderbird BT'
+        'Times New Roman'
+        'Toledo'
+        'Tools'
+        'Tracks'
+        'Traditional Arabic'
+        'Transportation'
+        'Trebuchet MS'
+        'Tunga'
+        'TypoUpright BT'
+        'Umbra BT'
+        'unit_a3'
+        'UNIT-A2'
+        'UNIT-A3'
+        'UnivrstyRoman Bd BT'
+        'UnivrstyRoman BT'
+        'ut-372'
+        'Utsaah'
+        'VAGRounded BT'
+        'VAGRounded Lt'
+        'Valken'
+        'Vani'
+        'Venetian301 BT'
+        'Venetian301 Dm BT'
+        'Verdana'
+        'Vijaya'
+        'Vineta BT'
+        'Vivian'
+        'Vollkorn Bold'
+        'Vollkorn Bold Italic'
+        'Vollkorn Italic'
+        'Vollkorn Regular'
+        'Vrinda'
+        'Waverly'
+        'Weather'
+        'Webdings'
+        'WeddingText BT'
+        'Weidemann Bk BT'
+        'Whimsy TT'
+        'Windsor BT'
+        'Windsor El BT'
+        'Windsor Lt BT'
+        'Windsor LtCn BT'
+        'Windsor Oul BT'
+        'Wingdings'
+        'Wingdings 2'
+        'Wingdings 3'
+        'Woodcut'
+        'WP Arabic Sihafa'
+        'WP ArabicScript Sihafa'
+        'WP BoxDrawing'
+        'WP CyrillicA'
+        'WP CyrillicB'
+        'WP Greek Century'
+        'WP Greek Courier'
+        'WP Greek Helve'
+        'WP Hebrew David'
+        'WP IconicSymbolsA'
+        'WP IconicSymbolsB'
+        'WP Japanese'
+        'WP MathA'
+        'WP MathB'
+        'WP MathExtendedA'
+        'WP MathExtendedB'
+        'WP MultinationalA Courier'
+        'WP MultinationalA Helve'
+        'WP MultinationalA Roman'
+        'WP MultinationalB Courier'
+        'WP MultinationalB Helve'
+        'WP MultinationalB Roman'
+        'WP Phonetic'
+        'WP TypographicSymbols'
+        'X-Files'
+        'xpchen7SegFont'
+        'Year supply of fairy cakes'
+        'ZapfChan Bd BT'
+        'ZapfChan Dm BT'
+        'ZapfChan Md BT'
+        'ZapfChan MdIt BT'
+        'ZapfDingbats BT'
+        'ZapfEllipt BT'
+        'Zurich BdEx BT'
+        'Zurich BdXCn BT'
+        'Zurich Cn BT'
+        'Zurich Ex BT'
+        'ZWAdobeF'
+      )
+      TabOrder = 0
+      Text = 'Arial'
+      WorkbookSource = WorkbookSource
+    end
+    object sFontSizeCombobox1: TsFontSizeCombobox
+      Left = 175
+      Height = 23
+      Top = 0
+      Width = 60
+      ItemHeight = 15
+      ItemIndex = 2
+      Items.Strings = (
+        '8'
+        '9'
+        '10'
+        '11'
+        '12'
+        '14'
+        '16'
+        '18'
+        '20'
+        '22'
+        '24'
+        '26'
+        '28'
+        '32'
+        '36'
+        '48'
+        '72'
+      )
+      TabOrder = 1
+      Text = '10'
+      WorkbookSource = WorkbookSource
+    end
+    object ToolButton3: TToolButton
+      Left = 760
+      Height = 24
+      Top = 0
+      Width = 5
+      Caption = 'ToolButton3'
+      Style = tbsDivider
+    end
+    object ToolButton5: TToolButton
+      Left = 765
+      Top = 0
+      Action = AcMergeCells
+    end
+  end
+  object ToolBar2: TToolBar
+    Left = 0
+    Height = 24
+    Top = 0
+    Width = 925
+    AutoSize = True
+    ButtonHeight = 24
+    Caption = 'ToolBar2'
+    EdgeBorders = []
+    Images = ImageList
+    TabOrder = 5
+    object ToolButton32: TToolButton
+      Left = 1
+      Top = 0
+      Action = AcAddWorksheet
+    end
+    object ToolButton33: TToolButton
+      Left = 24
+      Top = 0
+      Action = AcDeleteWorksheet
+    end
+    object ToolButton34: TToolButton
+      Left = 47
+      Top = 0
+      Action = acRenameWorksheet
+    end
+    object ToolButton1: TToolButton
+      Left = 70
+      Height = 24
+      Top = 0
+      Width = 5
+      Caption = 'ToolButton1'
+      Style = tbsDivider
+    end
+    object ToolButton2: TToolButton
+      Left = 75
+      Top = 0
+      Action = AcFileExit
     end
   end
   object WorkbookSource: TsWorkbookSource
     AutoDetectFormat = False
     Options = [boAutoCalc, boCalcBeforeSaving, boReadFormulas]
-    left = 150
-    top = 234
+    left = 176
+    top = 128
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
@@ -414,8 +1261,8 @@ object Form1: TForm1
   end
   object ActionList: TActionList
     Images = ImageList
-    left = 432
-    top = 180
+    left = 176
+    top = 248
     object AcAddWorksheet: TsWorksheetAddAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
@@ -672,7 +1519,7 @@ object Form1: TForm1
       ImageIndex = 20
       Delta = -1
     end
-    object AcCellFont: TsFontAction
+    object AcCellFontDialog: TsFontDialogAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'AcCellFont'
@@ -681,7 +1528,7 @@ object Form1: TForm1
       Dialog.MinFontSize = 0
       Dialog.MaxFontSize = 0
     end
-    object AcBackgroundColor: TsBackgroundColorAction
+    object AcBackgroundColorDialog: TsBackgroundColorDialogAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'AcBackgroundColor'
@@ -1092,10 +1939,17 @@ object Form1: TForm1
       Hint = 'All borders (thin)'
       ImageIndex = 29
     end
+    object AcMergeCells: TsMergeAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Merge'
+      Hint = 'Merge cells'
+      ImageIndex = 23
+    end
   end
   object ImageList: TImageList
-    left = 432
-    top = 249
+    left = 176
+    top = 312
     Bitmap = {
       4C69350000001000000010000000003F9300003F9300003F9300003F9424003F
       948A003E93CC004095CC004095CC004095CC004095CC004095CC004095CC0040
@@ -2797,8 +3651,8 @@ object Form1: TForm1
     }
   end
   object MainMenu: TMainMenu
-    left = 434
-    top = 320
+    left = 176
+    top = 376
     object MnuFile: TMenuItem
       Caption = 'File'
       object MenuItem1: TMenuItem
@@ -2857,8 +3711,8 @@ object Form1: TForm1
     end
   end
   object PuNumFormat: TPopupMenu
-    left = 141
-    top = 402
+    left = 504
+    top = 184
     object MenuItem19: TMenuItem
       Action = AcNumFormatGeneral
       AutoCheck = True
@@ -2883,8 +3737,8 @@ object Form1: TForm1
     end
   end
   object PuCurrencyFormat: TPopupMenu
-    left = 141
-    top = 464
+    left = 504
+    top = 248
     object MenuItem7: TMenuItem
       Action = AcNumFormatCurrency
       AutoCheck = True
@@ -2895,8 +3749,8 @@ object Form1: TForm1
     end
   end
   object PuDateFormat: TPopupMenu
-    left = 300
-    top = 402
+    left = 504
+    top = 312
     object MenuItem22: TMenuItem
       Action = AcNumFormatDateTime
       AutoCheck = True
@@ -2914,8 +3768,8 @@ object Form1: TForm1
     end
   end
   object PuTimeFormat: TPopupMenu
-    left = 300
-    top = 464
+    left = 504
+    top = 376
     object MenuItem26: TMenuItem
       Action = AcNumFormatLongTime
       AutoCheck = True
@@ -2938,8 +3792,8 @@ object Form1: TForm1
   end
   object PuBorders: TPopupMenu
     Images = ImageList
-    left = 448
-    top = 402
+    left = 504
+    top = 128
     object MenuItem41: TMenuItem
       Action = AcCellBorderNone
       Bitmap.Data = {
@@ -3101,12 +3955,120 @@ object Form1: TForm1
     end
     object MenuItem43: TMenuItem
       Action = AcCellBorderBottomThick
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000
+        00AC000000E6000000E6000000E6000000E6000000E6000000E6000000E60000
+        00E6000000E6000000E6000000E6000000ACFFFFFF00FFFFFF00FFFFFF000000
+        00D9000000D9000000D9000000D9000000D9000000D9000000D9000000D90000
+        00D9000000D9000000D9000000D9000000D9FFFFFF00FFFFFF00FFFFFF000101
+        0189000000000000000000000000000000000000000001010189000000000000
+        000000000000000000000000000001010189FFFFFF00FFFFFF00FFFFFF000000
+        0011000000000000000000000000000000000000000000000011000000000000
+        000000000000000000000000000000000011FFFFFF00FFFFFF00FFFFFF000000
+        0080000000000000000000000000000000000000000000000080000000000000
+        000000000000000000000000000000000080FFFFFF00FFFFFF00FFFFFF000000
+        0010000000000000000000000000000000000000000000000010000000000000
+        000000000000000000000000000000000010FFFFFF00FFFFFF00FFFFFF000000
+        00780000000F000000780000000F000000780000000F000000780000000F0000
+        00780000000F000000780000000F00000078FFFFFF00FFFFFF00FFFFFF000000
+        000F00000000000000000000000000000000000000000000000F000000000000
+        00000000000000000000000000000000000FFFFFFF00FFFFFF00FFFFFF000000
+        0071000000000000000000000000000000000000000000000071000000000000
+        000000000000000000000000000000000071FFFFFF00FFFFFF00FFFFFF000000
+        000E00000000000000000000000000000000000000000000000E000000000000
+        00000000000000000000000000000000000EFFFFFF00FFFFFF00FFFFFF000000
+        006B00000000000000000000000000000000000000000000006B000000000000
+        00000000000000000000000000000000006BFFFFFF00FFFFFF00FFFFFF000000
+        000E00000000000000000000000000000000000000000000000D000000000000
+        00000000000000000000000000000000000DFFFFFF00FFFFFF00FFFFFF000000
+        004D0000000D000000670000000D000000670000000D000000670000000D0000
+        00670000000D000000670000000D0000004DFFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+      }
     end
     object MenuItem44: TMenuItem
       Action = AcCellBorderBottomDbl
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000
+        00AC000000E6000000E6000000E6000000E6000000E6000000E6000000E60000
+        00E6000000E6000000E6000000E6000000ACFFFFFF00FFFFFF00FFFFFF000000
+        0000000000000000000000000000000000000000000000000000000000000000
+        000000000000000000000000000000000000FFFFFF00FFFFFF00FFFFFF000101
+        01CC010101CC010101CC010101CC010101CC010101CC010101CC010101CC0101
+        01CC010101CC010101CC010101CC010101CCFFFFFF00FFFFFF00FFFFFF000101
+        0111010101000101010001010100010101000101010001010111010101000101
+        010001010100010101000101010001010111FFFFFF00FFFFFF00FFFFFF000000
+        0080000000000101010001010100010101000000000000000080000000000101
+        010001010100010101000000000000000080FFFFFF00FFFFFF00FFFFFF000000
+        0010000000000000000000000000000000000000000000000010000000000000
+        000000000000000000000000000000000010FFFFFF00FFFFFF00FFFFFF000000
+        00780000000F000000780000000F000000780000000F000000780000000F0000
+        00780000000F000000780000000F00000078FFFFFF00FFFFFF00FFFFFF000000
+        000F00000000000000000000000000000000000000000000000F000000000000
+        00000000000000000000000000000000000FFFFFFF00FFFFFF00FFFFFF000000
+        0071000000000000000000000000000000000000000000000071000000000000
+        000000000000000000000000000000000071FFFFFF00FFFFFF00FFFFFF000000
+        000E00000000000000000000000000000000000000000000000E000000000000
+        00000000000000000000000000000000000EFFFFFF00FFFFFF00FFFFFF000000
+        006B00000000000000000000000000000000000000000000006B000000000000
+        00000000000000000000000000000000006BFFFFFF00FFFFFF00FFFFFF000000
+        000E00000000000000000000000000000000000000000000000D000000000000
+        00000000000000000000000000000000000DFFFFFF00FFFFFF00FFFFFF000000
+        004D0000000D000000670000000D000000670000000D000000670000000D0000
+        00670000000D000000670000000D0000004DFFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+      }
     end
     object MenuItem48: TMenuItem
       Action = AcCellBorderAllHor
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000
+        00AC000000E6000000E6000000E6000000E6000000E6000000E6000000E60000
+        00E6000000E6000000E6000000E6000000ACFFFFFF00FFFFFF00FFFFFF000101
+        0114000000000000000000000000000000000000000001010113010101000000
+        000000000000000000000000000001010113FFFFFF00FFFFFF00FFFFFF000101
+        0189010101000000000000000000000000000101010001010189010101000000
+        000000000000000000000101010001010189FFFFFF00FFFFFF00FFFFFF000000
+        0011000000000101010001010100010101000000000000000011000000000000
+        000001010100010101000000000000000011FFFFFF00FFFFFF00FFFFFF000000
+        0080000000000101010001010100010101000000000000000080000000000101
+        010001010100010101000000000000000080FFFFFF00FFFFFF00FFFFFF000101
+        0110010101000101010001010100010101000101010001010110010101000101
+        010001010100010101000101010001010110FFFFFF00FFFFFF00FFFFFF000101
+        01BC010101BC010101BC010101BC010101BC010101BC010101BC010101BC0101
+        01BC010101BC010101BC010101BC010101BCFFFFFF00FFFFFF00FFFFFF000101
+        010F01010100010101000101010001010100010101000101010F010101000101
+        01000101010001010100010101000101010FFFFFFF00FFFFFF00FFFFFF000000
+        0071000000000101010001010100010101000000000000000071000000000101
+        010001010100010101000000000000000071FFFFFF00FFFFFF00FFFFFF000000
+        000E00000000010101000101010001010100000000000000000E000000000101
+        01000101010001010100000000000000000EFFFFFF00FFFFFF00FFFFFF000000
+        006B00000000010101000101010001010100000000000000006B000000000101
+        01000101010001010100000000000000006BFFFFFF00FFFFFF00FFFFFF000101
+        010E01010100010101000101010001010100010101000101010D010101000101
+        01000101010001010100010101000101010DFFFFFF00FFFFFF00FFFFFF000101
+        0181010101AC010101AC010101AC010101AC010101AC010101AC010101AC0101
+        01AC010101AC010101AC010101AC01010181FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+      }
     end
     object MenuItem36: TMenuItem
       Caption = '-'
@@ -3230,6 +4192,42 @@ object Form1: TForm1
     end
     object MenuItem47: TMenuItem
       Action = AcCellBorderAllVert
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000
+        00AC01010115010101A401010115010101A401010115000000E6010101150101
+        01A401010115010101A401010115000000ACFFFFFF00FFFFFF00FFFFFF000000
+        00D90101010001010100010101000101010001010100000000D9010101000101
+        0100010101000101010001010100000000D9FFFFFF00FFFFFF00FFFFFF000101
+        01CC0101010001010100010101000101010001010100010101CC010101000101
+        0100010101000101010001010100010101CCFFFFFF00FFFFFF00FFFFFF000101
+        01C70101010001010100010101000101010001010100010101C7010101000101
+        0100010101000101010001010100010101C7FFFFFF00FFFFFF00FFFFFF000101
+        01C40101010001010100000000000101010001010100010101C4010101000101
+        0100000000000101010001010100010101C4FFFFFF00FFFFFF00FFFFFF000101
+        01C00101010000000000000000000000000001010100010101C0010101000000
+        0000000000000000000001010100010101C0FFFFFF00FFFFFF00FFFFFF000101
+        01BC0000000F000000780000000F000000780101010F010101BC0000000F0000
+        00780000000F000000780101010F010101BCFFFFFF00FFFFFF00FFFFFF000101
+        01B90101010000000000000000000000000001010100010101B9010101000000
+        0000000000000000000001010100010101B9FFFFFF00FFFFFF00FFFFFF000101
+        01B60101010001010100000000000101010001010100010101B6010101000101
+        0100000000000101010001010100010101B6FFFFFF00FFFFFF00FFFFFF000101
+        01B30101010001010100010101000101010001010100010101B3010101000101
+        0100010101000101010001010100010101B3FFFFFF00FFFFFF00FFFFFF000101
+        01B00101010001010100000000000101010001010100010101B0010101000101
+        0100000000000101010001010100010101B0FFFFFF00FFFFFF00FFFFFF000101
+        01AE0101010000000000000000000000000001010100010101AE010101000000
+        0000000000000000000001010100010101AEFFFFFF00FFFFFF00FFFFFF000101
+        01810000000D000000670000000D000000670101010D010101AC0000000D0000
+        00670000000D000000670101010D01010181FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+      }
     end
     object MenuItem38: TMenuItem
       Caption = '-'
@@ -3275,12 +4273,84 @@ object Form1: TForm1
     end
     object MenuItem42: TMenuItem
       Action = AcCellBorderAllOuterThick
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000
+        00AC000000E6000000E6000000E6000000E6000000E6000000E6000000E60000
+        00E6000000E6000000E6000000E6000000ACFFFFFF00FFFFFF00FFFFFF000000
+        00D9000000D9000000D9000000D9000000D9000000D9000000D9000000D90000
+        00D9000000D9000000D9000000D9000000D9FFFFFF00FFFFFF00FFFFFF000101
+        01CC010101CC0101010000000000000000000000000001010189000000000000
+        00000000000001010100010101CC010101CCFFFFFF00FFFFFF00FFFFFF000101
+        01C7010101C70101010001010100000000000000000000000011000000000000
+        00000101010001010100010101C7010101C7FFFFFF00FFFFFF00FFFFFF000101
+        01C4010101C40101010001010100000000000000000000000080000000000000
+        00000101010001010100010101C4010101C4FFFFFF00FFFFFF00FFFFFF000101
+        01C0010101C00101010000000000000000000000000000000010000000000000
+        00000000000001010100010101C0010101C0FFFFFF00FFFFFF00FFFFFF000101
+        01BC010101BC000000780000000F000000780000000F000000780000000F0000
+        00780000000F00000078010101BC010101BCFFFFFF00FFFFFF00FFFFFF000101
+        01B9010101B9010101000000000000000000000000000000000F000000000000
+        00000000000001010100010101B9010101B9FFFFFF00FFFFFF00FFFFFF000101
+        01B6010101B60101010001010100000000000000000000000071000000000000
+        00000101010001010100010101B6010101B6FFFFFF00FFFFFF00FFFFFF000101
+        01B3010101B3010101000101010001010100010101000000000E000000000101
+        01000101010001010100010101B3010101B3FFFFFF00FFFFFF00FFFFFF000101
+        01B0010101B0010101000101010001010100010101000000006B010101000101
+        01000101010001010100010101B0010101B0FFFFFF00FFFFFF00FFFFFF000101
+        01AE010101AE010101AE010101AE010101AE010101AE010101AE010101AE0101
+        01AE010101AE010101AE010101AE010101AEFFFFFF00FFFFFF00FFFFFF000101
+        0181010101AC010101AC010101AC010101AC010101AC010101AC010101AC0101
+        01AC010101AC010101AC010101AC01010181FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+      }
     end
     object MenuItem45: TMenuItem
       Caption = '-'
     end
     object MenuItem46: TMenuItem
       Action = AcCellBorderAll
+      Bitmap.Data = {
+        36040000424D3604000000000000360000002800000010000000100000000100
+        2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF000000
+        00AC000000E6000000E6000000E6000000E6000000E6000000E6000000E60000
+        00E6000000E6000000E6000000E6000000ACFFFFFF00FFFFFF00FFFFFF000000
+        00D90000000000000000000000000000000000000000000000D9000000000000
+        0000000000000000000000000000000000D9FFFFFF00FFFFFF00FFFFFF000101
+        01CC0101010001010100000000000101010001010100010101CC010101000101
+        0100000000000101010001010100010101CCFFFFFF00FFFFFF00FFFFFF000101
+        01C70101010001010100010101000101010001010100010101C7010101000101
+        0100010101000101010001010100010101C7FFFFFF00FFFFFF00FFFFFF000101
+        01C40101010001010100010101000101010001010100010101C4010101000101
+        0100010101000101010001010100010101C4FFFFFF00FFFFFF00FFFFFF000101
+        01C00101010001010100010101000101010001010100010101C0010101000101
+        0100010101000101010001010100010101C0FFFFFF00FFFFFF00FFFFFF000101
+        01BC010101BC010101BC010101BC010101BC010101BC0101018E010101BC0101
+        01BC010101BC010101BC010101BC010101BCFFFFFF00FFFFFF00FFFFFF000101
+        01B90101010001010100010101000101010001010100010101B9010101000101
+        0100010101000101010001010100010101B9FFFFFF00FFFFFF00FFFFFF000101
+        01B60101010001010100010101000101010001010100010101B6010101000101
+        0100010101000101010001010100010101B6FFFFFF00FFFFFF00FFFFFF000101
+        01B30101010001010100010101000101010001010100010101B3010101000101
+        0100010101000101010001010100010101B3FFFFFF00FFFFFF00FFFFFF000101
+        01B00101010001010100010101000101010001010100010101B0010101000101
+        0100010101000101010001010100010101B0FFFFFF00FFFFFF00FFFFFF000101
+        01AE0101010001010100010101000101010001010100010101AE010101000101
+        0100010101000101010001010100010101AEFFFFFF00FFFFFF00FFFFFF000101
+        0181010101AC010101AC010101AC010101AC010101AC010101AC010101AC0101
+        01AC010101AC010101AC010101AC01010181FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+        FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
+      }
     end
   end
 end

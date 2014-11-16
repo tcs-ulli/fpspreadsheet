@@ -336,6 +336,19 @@ type
     property Visible;
   end;
 
+  { TsMergeAction }
+  TsMergeAction = class(TsAutoFormatAction)
+  private
+    function GetMerged: Boolean;
+    procedure SetMerged(AValue: Boolean);
+  protected
+    procedure ApplyFormatToRange(ARange: TsCellRange); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Merged: Boolean read GetMerged write SetMerged default false;
+  end;
 
   { --- Actions like those derived from TCommonDialogAction --- }
 
@@ -388,22 +401,20 @@ type
     property OnHint;
   end;
 
-  { TsFontAction }
-  TsFontAction = class(TsCommonDialogCellAction)
+  { TsFontDialogAction }
+  TsFontDialogAction = class(TsCommonDialogCellAction)
   private
     function GetDialog: TFontDialog;
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
     function GetDialogClass: TCommonDialogClass; override;
-  public
-    constructor Create(AOwner: TComponent); override;
   published
     property Dialog: TFontDialog read GetDialog;
   end;
 
-  { TsBackgroundColorAction }
-  TsBackgroundColorAction = class(TsCommonDialogCellAction)
+  { TsBackgroundColorDialogAction }
+  TsBackgroundColorDialogAction = class(TsCommonDialogCellAction)
   private
     FBackgroundColor: TsColor;
     function GetDialog: TColorDialog;
@@ -413,8 +424,6 @@ type
     procedure DoBeforeExecute; override;
     procedure ExtractFromCell(ACell: PCell); override;
     function GetDialogClass: TCommonDialogClass; override;
-  public
-    constructor Create(AOwner: TComponent); override;
   published
     property Dialog: TColorDialog read GetDialog;
   end;
@@ -433,11 +442,12 @@ begin
     // Worksheet-releated actions
     TsWorksheetAddAction, TsWorksheetDeleteAction, TsWorksheetRenameAction,
     // Cell or cell range formatting actions
-    TsFontAction, TsFontStyleAction, TsBackgroundColorAction,
+    TsFontStyleAction, TsFontDialogAction, TsBackgroundColorDialogAction,
     TsHorAlignmentAction, TsVertAlignmentAction,
     TsTextRotationAction, TsWordWrapAction,
     TsNumberFormatAction, TsDecimalsAction,
-    TsCellBorderAction, TsNoCellBordersAction
+    TsCellBorderAction, TsNoCellBordersAction,
+    TsMergeAction
   ], nil);
 end;
 
@@ -1208,6 +1218,38 @@ begin
 end;
 
 
+{ TsMergeAction }
+
+constructor TsMergeAction.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  AutoCheck := true;
+end;
+
+procedure TsMergeAction.ApplyFormatToRange(ARange: TsCellRange);
+begin
+  if Merged then
+    Worksheet.MergeCells(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2)
+  else
+    Worksheet.UnmergeCells(ARange.Row1, ARange.Col1);
+end;
+
+procedure TsMergeAction.ExtractFromCell(ACell: PCell);
+begin
+  Checked := (ACell <> nil) and Worksheet.IsMerged(ACell);
+end;
+
+function TsMergeAction.GetMerged: Boolean;
+begin
+  Result := Checked;
+end;
+
+procedure TsMergeAction.SetMerged(AValue: Boolean);
+begin
+  Checked := AValue;
+end;
+
+
 { TsCommonDialogSpreadsheetAction }
 
 constructor TsCommonDialogSpreadsheetAction.Create(AOwner: TComponent);
@@ -1285,16 +1327,9 @@ begin
 end;
 
 
-{ TsFontAction }
+{ TsFontDialogAction }
 
-constructor TsFontAction.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Caption := 'Font';
-  Hint := 'Select cell font';
-end;
-
-procedure TsFontAction.ApplyFormatToCell(ACell: PCell);
+procedure TsFontDialogAction.ApplyFormatToCell(ACell: PCell);
 var
   sfnt: TsFont;
 begin
@@ -1303,7 +1338,7 @@ begin
   Worksheet.WriteFont(ACell, Workbook.AddFont(sfnt));
 end;
 
-procedure TsFontAction.ExtractFromCell(ACell: PCell);
+procedure TsFontDialogAction.ExtractFromCell(ACell: PCell);
 var
   sfnt: TsFont;
   fnt: TFont;
@@ -1327,44 +1362,37 @@ begin
   end;
 end;
 
-function TsFontAction.GetDialog: TFontDialog;
+function TsFontDialogAction.GetDialog: TFontDialog;
 begin
   Result := TFontDialog(FDialog);
 end;
 
-function TsFontAction.GetDialogClass: TCommonDialogClass;
+function TsFontDialogAction.GetDialogClass: TCommonDialogClass;
 begin
   Result := TFontDialog;
 end;
 
 
-{ TsBackgroundColorAction }
+{ TsBackgroundColorDialogAction }
 
-constructor TsBackgroundColorAction.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Caption := 'Backgroundcolor';
-  Hint := 'Modify background color';
-end;
-
-procedure TsBackgroundColorAction.ApplyFormatToCell(ACell: PCell);
+procedure TsBackgroundColorDialogAction.ApplyFormatToCell(ACell: PCell);
 begin
   Worksheet.WritebackgroundColor(ACell, FBackgroundColor);
 end;
 
-procedure TsBackgroundColorAction.DoAccept;
+procedure TsBackgroundColorDialogAction.DoAccept;
 begin
   FBackgroundColor := Workbook.AddColorToPalette(TsColorValue(Dialog.Color));
   inherited;
 end;
 
-procedure TsBackgroundColorAction.DoBeforeExecute;
+procedure TsBackgroundColorDialogAction.DoBeforeExecute;
 begin
   inherited;
   Dialog.Color := Workbook.GetPaletteColor(FBackgroundColor);
 end;
 
-procedure TsBackgroundColorAction.ExtractFromCell(ACell: PCell);
+procedure TsBackgroundColorDialogAction.ExtractFromCell(ACell: PCell);
 begin
   if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedFormattingFields) then
     FBackgroundColor := scNotDefined
@@ -1372,12 +1400,12 @@ begin
     FBackgroundColor := ACell^.BackgroundColor;
 end;
 
-function TsBackgroundColorAction.GetDialog: TColorDialog;
+function TsBackgroundColorDialogAction.GetDialog: TColorDialog;
 begin
   Result := TColorDialog(FDialog);
 end;
 
-function TsBackgroundColorAction.GetDialogClass: TCommonDialogClass;
+function TsBackgroundColorDialogAction.GetDialogClass: TCommonDialogClass;
 begin
   Result := TColorDialog;
 end;

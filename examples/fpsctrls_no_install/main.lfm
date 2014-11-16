@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 177
   Width = 874
   Caption = 'Form1'
-  ClientHeight = 503
+  ClientHeight = 508
   ClientWidth = 874
   Menu = MainMenu
   OnCreate = FormCreate
@@ -126,10 +126,10 @@ object Form1: TForm1
     end
     object CbLoader: TComboBox
       Left = 104
-      Height = 28
+      Height = 23
       Top = 8
       Width = 148
-      ItemHeight = 20
+      ItemHeight = 15
       ItemIndex = 1
       Items.Strings = (
         'Workbook'
@@ -142,16 +142,16 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 13
-      Height = 20
+      Height = 15
       Top = 11
-      Width = 73
+      Width = 58
       Caption = 'Loaded by:'
       ParentColor = False
     end
   end
   object InspectorTabControl: TTabControl
     Left = 577
-    Height = 403
+    Height = 408
     Top = 100
     Width = 297
     OnChange = InspectorTabControlChange
@@ -167,7 +167,7 @@ object Form1: TForm1
   end
   object Splitter1: TSplitter
     Left = 572
-    Height = 403
+    Height = 408
     Top = 100
     Width = 5
     Align = alRight
