@@ -117,6 +117,28 @@ type
     property Worksheet;
   end;
 
+  TsCopyFormatAction = class(TsSpreadsheetAction)
+  private
+    FSource: TsCellRange;
+  public
+    procedure ExecuteTarget(Target: TObject); override;
+    procedure UpdateTarget(Target: TObject); override;
+  published
+    property Caption;
+    property Enabled;
+    property HelpContext;
+    property HelpKeyword;
+    property HelpType;
+    property Hint;
+    property ImageIndex;
+    property OnExecute;
+    property OnHint;
+    property OnUpdate;
+    property SecondaryShortCuts;
+    property ShortCut;
+    property Visible;
+  end;
+
   TsAutoFormatAction = class(TsCellAction)
   public
     procedure ExecuteTarget(Target: TObject); override;
@@ -442,6 +464,7 @@ begin
     // Worksheet-releated actions
     TsWorksheetAddAction, TsWorksheetDeleteAction, TsWorksheetRenameAction,
     // Cell or cell range formatting actions
+    TsCopyFormatAction,
     TsFontStyleAction, TsFontDialogAction, TsBackgroundColorDialogAction,
     TsHorAlignmentAction, TsVertAlignmentAction,
     TsTextRotationAction, TsWordWrapAction,
@@ -687,6 +710,41 @@ end;
 function TsCellAction.HandlesTarget(Target: TObject): Boolean;
 begin
   Result := inherited HandlesTarget(Target) and (Worksheet <> nil) and (Length(GetSelection) > 0);
+end;
+
+
+{ TsCopyFormatAction }
+
+procedure TsCopyFormatAction.ExecuteTarget(Target: TObject);
+var
+  srcRow, srcCol: Cardinal;    // Row and column index of source cell
+  destRow, destCol: Cardinal;  // Row and column index of destination cell
+  srcCell, destCell: PCell;    // Pointers to source and destination cells
+begin
+  if (FSource.Row1 = Cardinal(-1)) or (FSource.Row2 = Cardinal(-1)) or
+     (FSource.Col1 = Cardinal(-1)) or (FSource.Col2 = Cardinal(-1))
+  then
+    exit;
+
+  for srcRow := FSource.Row1 to FSource.Row2 do
+  begin
+    destRow := Worksheet.ActiveCellRow + srcRow - FSource.Row1;
+    for srcCol := FSource.Col1 to FSource.Col2 do begin
+      destCol := Worksheet.ActiveCellCol + srcCol - FSource.Col1;
+      srcCell := Worksheet.FindCell(srcRow, srcCol);
+      destCell := Worksheet.FindCell(destRow, destCol);
+      Worksheet.CopyFormat(srcCell, destCell);
+    end;
+  end;
+end;
+
+procedure TsCopyFormatAction.UpdateTarget(Target: TObject);
+begin
+  if (Worksheet = nil) or (Worksheet.GetSelectionCount = 0) then
+    FSource := TsCellRange(Rect(-1, -1, -1,-1))
+  else
+    FSource := Worksheet.GetSelection[0];
+    // Memorize current selection - it will be the source of the copy format operation.
 end;
 
 
