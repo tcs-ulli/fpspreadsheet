@@ -38,11 +38,14 @@ type
   {@@ Describes during communication between WorkbookSource and visual controls
     which kind of item has changed: the workbook, the worksheet, a cell value,
     or a cell formatting }
-  TsNotificationItem = (lniWorkbook, lniWorksheet, lniCell, lniSelection);
+  TsNotificationItem = (lniWorkbook, lniWorksheet, lniCell, lniSelection,
+    lniAbortSelection);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
 
+  {@@ Identifier for an operation that will be executed at next cell select }
+  TsPendingOperation = (poNone, poCopyFormat);
 
   { TsWorkbookSource }
 
@@ -56,8 +59,12 @@ type
     FAutoDetectFormat: Boolean;
     FFileName: TFileName;
     FFileFormat: TsSpreadsheetFormat;
+    FPendingSelection: TsCellRangeArray;
+    FPendingOperation: TsPendingOperation;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
+
+    procedure AbortSelection;
     procedure CellChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure CellSelectedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure InternalCreateNewWorkbook;
@@ -85,22 +92,31 @@ type
 
   public
     procedure CreateNewWorkbook;
+
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = 0); overload;
+
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
       AOverwriteExisting: Boolean = true); overload;
+
     procedure SelectCell(ASheetRow, ASheetCol: Cardinal);
     procedure SelectWorksheet(AWorkSheet: TsWorksheet);
+
+    procedure ExecutePendingOperation;
+    procedure SetPendingOperation(AOperation: TsPendingOperation;
+      const ASelection: TsCellRangeArray);
 
   public
     {@@ Workbook linked to the WorkbookSource }
     property Workbook: TsWorkbook read FWorkbook;
     {@@ Currently selected worksheet of the workbook }
     property Worksheet: TsWorksheet read FWorksheet;
+    {@@ Indicates that which operation is waiting to be executed at next cell select }
+    property PendingOperation: TsPendingOperation read FPendingOperation;
 
   published
     {@@ Automatically detects the fileformat when loading the spreadsheet file
@@ -327,7 +343,7 @@ procedure Register;
 implementation
 
 uses
-  Dialogs, Forms, TypInfo,
+  Types, TypInfo, Dialogs, Forms,
   fpsStrings, fpsUtils, fpSpreadsheetGrid;
 
 
@@ -383,6 +399,16 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Generates a message to the grid to abort the selection process.
+  Needed when copying a format (e.g.) cannot be executed due to overlapping
+  ranges. Without the message, the grid would still be in selection mode.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.AbortSelection;
+begin
+  NotifyListeners([lniAbortSelection], nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Adds a component to the listener list. All these components are notified of
   changes in the workbook.
 
@@ -424,6 +450,12 @@ procedure TsWorkbookSource.CellSelectedHandler(Sender: TObject;
 begin
   Unused(ARow, ACol);
   NotifyListeners([lniSelection]);
+
+  if FPendingOperation <> poNone then
+  begin
+    ExecutePendingOperation;
+    FPendingOperation := poNone;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -454,6 +486,60 @@ begin
     FOnError(self, AErrorMsg)
   else
     MessageDlg(AErrorMsg, mtError, [mbOK], 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Executes a "pending operation"
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.ExecutePendingOperation;
+var
+  destSelection: TsCellRangeArray;
+  srcCell, destCell: PCell;    // Pointers to source and destination cells
+  i, j, k: Integer;
+  ofsRow, ofsCol: LongInt;
+
+  function DistinctRanges(R1, R2: TsCellRange): Boolean;
+  begin
+    Result := (R2.Col1 > R1.Col2) or (R1.Col1 > R2.Col2) or
+              (R2.Row1 > R1.Row2) or (R1.Row1 > R2.Row2);
+  end;
+
+begin
+  ofsRow := Worksheet.ActiveCellRow - FPendingSelection[0].Row1;
+  ofsCol := Worksheet.ActiveCellCol - FPendingSelection[0].Col1;
+
+  // Calculate destination ranges which begin at the active cell
+  SetLength(destSelection, Length(FPendingSelection));
+  for i := 0 to High(FPendingSelection) do
+    destSelection[i] := TsCellRange(Rect(
+      FPendingSelection[i].Row1 + ofsRow,
+      FPendingSelection[i].Col1 + ofsCol,
+      FPendingSelection[i].Row2 + ofsRow,
+      FPendingSelection[i].Col2 + ofsCol
+    ));
+
+  // Check for intersection between source and destination ranges
+  for i:=0 to High(FPendingSelection) do
+    for j:=0 to High(FPendingSelection) do
+      if not DistinctRanges(FPendingSelection[i], destSelection[j]) then
+      begin
+        MessageDlg('Source and destination selections are overlapping. Operation aborted.',
+          mtError, [mbOK], 0);
+        AbortSelection;
+        exit;
+      end;
+
+  // Execute pending operation
+  for i:=0 to High(FPendingSelection) do
+    for j:=0 to FPendingSelection[i].Row2-FPendingSelection[i].Row1 do
+      for k:=0 to FPendingSelection[i].Col2-FPendingSelection[i].Col1 do
+      begin
+        srcCell := Worksheet.FindCell(FPendingSelection[i].Row1+j, FPendingSelection[i].Col1+k);
+        destCell := Worksheet.GetCell(destSelection[i].Row1+j, destSelection[i].Col1+k);
+        case FPendingOperation of
+          poCopyFormat: Worksheet.CopyFormat(srcCell, destCell);
+        end;
+      end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -691,8 +777,10 @@ end;
 procedure TsWorkbookSource.SelectCell(ASheetRow, ASheetCol: Cardinal);
 begin
   if FWorksheet <> nil then
+  begin
     FWorksheet.SelectCell(ASheetRow, ASheetCol);
-  NotifyListeners([lniSelection]);
+    NotifyListeners([lniSelection]);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -746,6 +834,22 @@ begin
   FOptions := AValue;
   if Workbook <> nil then
     Workbook.Options := FOptions;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Defines a "pending operation" which will be executed at next cell select.
+  Source of the operation is the selection passes as a parameter.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.SetPendingOperation(AOperation: TsPendingOperation;
+  const ASelection: TsCellRangeArray);
+var
+  i: Integer;
+begin
+  SetLength(FPendingSelection, Length(ASelection));
+  for i:=0 to High(FPendingSelection) do
+    FPendingSelection[i] := ASelection[i];
+  FPendingSelection := ASelection;
+  FPendingOperation := AOperation;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1218,9 +1322,7 @@ procedure TsCellIndicator.ListenerNotification(AChangedItems: TsNotificationItem
 begin
   Unused(AData);
   if (lniSelection in AChangedItems) and (Worksheet <> nil) then
-    Text := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol)
-  else
-    Text := '';
+    Text := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
 end;
 
 {@@ ----------------------------------------------------------------------------

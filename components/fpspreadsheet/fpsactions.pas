@@ -90,7 +90,6 @@ type
   { Action for deleting selected worksheet }
   TsWorksheetDeleteAction = class(TsWorksheetAction)
   public
-    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
   end;
 
@@ -99,7 +98,6 @@ type
   private
     FOnGetWorksheetName: TsWorksheetNameEvent;
   public
-    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
   published
     property OnGetWorksheetName: TsWorksheetNameEvent
@@ -118,8 +116,6 @@ type
   end;
 
   TsCopyFormatAction = class(TsSpreadsheetAction)
-  private
-    FSource: TsCellRange;
   public
     procedure ExecuteTarget(Target: TObject); override;
     procedure UpdateTarget(Target: TObject); override;
@@ -163,22 +159,19 @@ type
   TsFontStyleAction = class(TsAutoFormatAction)
   private
     FFontStyle: TsFontStyle;
-    procedure SetFontStyle(AValue: TsFontStyle);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property FontStyle: TsFontStyle
-      read FFontStyle write SetFontStyle;
+    property FontStyle: TsFontStyle read FFontStyle write FFontStyle;
   end;
 
   { TsHorAlignmentAction }
   TsHorAlignmentAction = class(TsAutoFormatAction)
   private
     FHorAlign: TsHorAlignment;
-    procedure SetHorAlign(AValue: TsHorAlignment);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -186,14 +179,13 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property HorAlignment: TsHorAlignment
-      read FHorAlign write SetHorAlign default haDefault;
+      read FHorAlign write FHorAlign default haDefault;
   end;
 
   { TsVertAlignmentAction }
   TsVertAlignmentAction = class(TsAutoFormatAction)
   private
     FVertAlign: TsVertAlignment;
-    procedure SetVertAlign(AValue: TsVertAlignment);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -201,14 +193,13 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property VertAlignment: TsVertAlignment
-      read FVertAlign write SetVertAlign default vaDefault;
+      read FVertAlign write FVertAlign default vaDefault;
   end;
 
   { TsTextRotationAction }
   TsTextRotationAction = class(TsAutoFormatAction)
   private
     FTextRotation: TsTextRotation;
-    procedure SetTextRotation(AValue: TsTextRotation);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -216,7 +207,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property TextRotation: TsTextRotation
-      read FTextRotation write SetTextRotation default trHorizontal;
+      read FTextRotation write FTextRotation default trHorizontal;
   end;
 
   { TsWordwrapAction }
@@ -239,8 +230,6 @@ type
   private
     FNumberFormat: TsNumberFormat;
     FNumberFormatStr: string;
-    procedure SetNumberFormat(AValue: TsNumberFormat);
-    procedure SetNumberFormatStr(AValue: String);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -248,9 +237,9 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property NumberFormat: TsNumberFormat
-      read FNumberFormat write SetNumberFormat default nfGeneral;
+      read FNumberFormat write FNumberFormat default nfGeneral;
     property NumberFormatString: string
-      read FNumberFormatStr write SetNumberFormatStr;
+      read FNumberFormatStr write FNumberFormatStr;
   end;
 
   { TsDecimalsAction }
@@ -258,16 +247,14 @@ type
   private
     FDecimals: Integer;
     FDelta: Integer;
-    procedure SetDelta(AValue: Integer);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property Caption stored false;
     property Delta: Integer
-      read FDelta write SetDelta default +1;
+      read FDelta write FDelta default +1;
     property Hint stored false;
   end;
 
@@ -581,13 +568,11 @@ end;
 constructor TsWorksheetAddAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Caption := 'Add';
-  Hint := 'Add empty worksheet';
   FNameMask := 'Sheet%d';
 end;
 
 { Helper procedure which creates a default worksheetname by counting a number
-  up until it provides in the NameMask a unique worksheet name. }
+  up until - if inserted in the NameMask - it provides a unique worksheet name. }
 function TsWorksheetAddAction.GetUniqueSheetName: String;
 var
   i: Integer;
@@ -639,13 +624,6 @@ end;
 
 { TsWorksheetDeleteAction }
 
-constructor TsWorksheetDeleteAction.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Caption := 'Delete...';
-  Hint := 'Delete worksheet';
-end;
-
 procedure TsWorksheetDeleteAction.ExecuteTarget(Target: TObject);
 begin
   if HandlesTarget(Target) then
@@ -673,13 +651,6 @@ end;
 
 
 { TsWorksheetRenameAction }
-
-constructor TsWorksheetRenameAction.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Caption := 'Rename...';
-  Hint := 'Rename worksheet';
-end;
 
 procedure TsWorksheetRenameAction.ExecuteTarget(Target: TObject);
 var
@@ -716,35 +687,14 @@ end;
 { TsCopyFormatAction }
 
 procedure TsCopyFormatAction.ExecuteTarget(Target: TObject);
-var
-  srcRow, srcCol: Cardinal;    // Row and column index of source cell
-  destRow, destCol: Cardinal;  // Row and column index of destination cell
-  srcCell, destCell: PCell;    // Pointers to source and destination cells
 begin
-  if (FSource.Row1 = Cardinal(-1)) or (FSource.Row2 = Cardinal(-1)) or
-     (FSource.Col1 = Cardinal(-1)) or (FSource.Col2 = Cardinal(-1))
-  then
-    exit;
-
-  for srcRow := FSource.Row1 to FSource.Row2 do
-  begin
-    destRow := Worksheet.ActiveCellRow + srcRow - FSource.Row1;
-    for srcCol := FSource.Col1 to FSource.Col2 do begin
-      destCol := Worksheet.ActiveCellCol + srcCol - FSource.Col1;
-      srcCell := Worksheet.FindCell(srcRow, srcCol);
-      destCell := Worksheet.FindCell(destRow, destCol);
-      Worksheet.CopyFormat(srcCell, destCell);
-    end;
-  end;
+  Checked := true;
+  WorkbookSource.SetPendingOperation(poCopyFormat, Worksheet.GetSelection);
 end;
 
 procedure TsCopyFormatAction.UpdateTarget(Target: TObject);
 begin
-  if (Worksheet = nil) or (Worksheet.GetSelectionCount = 0) then
-    FSource := TsCellRange(Rect(-1, -1, -1,-1))
-  else
-    FSource := Worksheet.GetSelection[0];
-    // Memorize current selection - it will be the source of the copy format operation.
+  if WorkbookSource.PendingOperation = poNone then Checked := false;
 end;
 
 
@@ -806,17 +756,6 @@ begin
     Checked := false;
 end;
 
-procedure TsFontStyleAction.SetFontStyle(AValue: TsFontStyle);
-begin
-  FFontStyle := AValue;
-  case AValue of
-    fssBold: begin Caption := 'Bold'; Hint := 'Bold font'; end;
-    fssItalic: begin Caption := 'Italic'; Hint := 'Italic font'; end;
-    fssUnderline: begin Caption := 'Underline'; Hint := 'Underlines font'; end;
-    fssStrikeout: begin Caption := 'Strikeout'; Hint := 'Strike-out font'; end;
-  end;
-end;
-
 
 { TsHorAlignmentAction }
 
@@ -841,17 +780,6 @@ begin
     Checked := false
   else
     Checked := ACell^.HorAlignment = FHorAlign;
-end;
-
-procedure TsHorAlignmentAction.SetHorAlign(AValue: TsHorAlignment);
-begin
-  FHorAlign := AValue;
-  case FHorAlign of
-    haLeft   : begin Caption := 'Left'; Hint := 'Left-aligned text'; end;
-    haCenter : begin Caption := 'Center'; Hint := 'Centered text'; end;
-    haRight  : begin Caption := 'Right'; Hint := 'Right-aligned text'; end;
-    haDefault: begin Caption := 'Default'; Hint := 'Default horizontal text alignment'; end;
-  end;
 end;
 
 
@@ -880,17 +808,6 @@ begin
     Checked := ACell^.VertAlignment = FVertAlign;
 end;
 
-procedure TsVertAlignmentAction.SetVertAlign(AValue: TsVertAlignment);
-begin
-  FVertAlign := AValue;
-  case FVertAlign of
-    vaTop    : begin Caption := 'Top'; Hint := 'Top-aligned text'; end;
-    vaCenter : begin Caption := 'Center'; Hint := 'Vertically centered text'; end;
-    vaBottom : begin Caption := 'Bottom'; Hint := 'Bottom-aligned text'; end;
-    vaDefault: begin Caption := 'Default'; Hint := 'Default vertical text alignment'; end;
-  end;
-end;
-
 
 { TsTextRotationAction }
 
@@ -917,21 +834,6 @@ begin
     Checked := ACell^.TextRotation = FTextRotation;
 end;
 
-procedure TsTextRotationAction.SetTextRotation(AValue: TsTextRotation);
-begin
-  FTextRotation := AValue;
-  case FTextRotation of
-    trHorizontal:
-      begin Caption := 'Horizontal'; Hint := 'Horizontal text'; end;
-    rt90DegreeClockwiseRotation:
-      begin Caption := '90° clockwise'; Hint := '90° clockwise rotated text'; end;
-    rt90DegreeCounterClockwiseRotation:
-      begin Caption := '90° counter-clockwise'; Hint := '90° counter-clockwise rotated text'; end;
-    rtStacked:
-      begin Caption := 'Stacked'; Hint := 'Vertically stacked horizontal letters'; end;
-  end;
-end;
-
 
 { TsWordwrapAction }
 
@@ -939,8 +841,6 @@ constructor TsWordwrapAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   AutoCheck := true;
-  Caption := 'Word-wrap';
-  Hint := 'Word-wrapped text';
 end;
 
 procedure TsWordwrapAction.ApplyFormatToCell(ACell: PCell);
@@ -971,8 +871,6 @@ begin
   inherited Create(AOwner);
   GroupIndex := 1411141258;    // Date/time when this was written
   AutoCheck := true;
-  Caption := 'Number format';
-  Hint := 'Number format';
 end;
 
 procedure TsNumberFormatAction.ApplyFormatToCell(ACell: PCell);
@@ -1004,58 +902,13 @@ begin
       and (ACell^.NumberFormatStr = FNumberFormatStr);
 end;
 
-procedure TsNumberFormatAction.SetNumberFormat(AValue: TsNumberFormat);
-begin
-  FNumberFormat := AValue;
-  case FNumberFormat of
-    nfGeneral:
-      begin Caption := 'General'; Hint := 'General format'; end;
-    nfFixed:
-      begin Caption := 'Fixed'; Hint := 'Fixed decimals format'; end;
-    nfFixedTh:
-      begin Caption := 'Fixed w/thousand separator'; Hint := 'Fixed decimal count with thousand separator'; end;
-    nfExp:
-      begin Caption := 'Exponential'; Hint := 'Exponential format'; end;
-    nfPercentage:
-      begin Caption := 'Percent'; Hint := 'Percent format'; end;
-    nfCurrency:
-      begin Caption := 'Currency'; Hint := 'Currency format'; end;
-    nfCurrencyRed:
-      begin Caption := 'Currency (red)'; Hint := 'Currency format (negative values in red)'; end;
-    nfShortDateTime:
-      begin Caption := 'Date/time'; Hint := 'Date and time'; end;
-    nfShortDate:
-      begin Caption := 'Short date'; Hint := 'Short date format'; end;
-    nfLongDate:
-      begin Caption := 'Long date'; Hint := 'Long date format'; end;
-    nfShortTime:
-      begin Caption := 'Short time'; Hint := 'Short time format'; end;
-    nfLongTime:
-      begin Caption := 'Long time'; Hint := 'Long time foramt'; end;
-    nfShortTimeAM:
-      begin Caption := 'Short time AM/PM'; Hint := 'Short 12-hour time format'; end;
-    nfLongTimeAM:
-      begin Caption := 'Long time AM/PM'; Hint := 'Long 12-hour time format'; end;
-    nfTimeInterval:
-      begin Caption := 'Time interval'; Hint := 'Time interval format'; end;
-    nfCustom:
-      begin Caption := 'Custom'; Hint := 'User-defined custom format'; end;
-  end;
-end;
-
-procedure TsNumberFormatAction.SetNumberFormatStr(AValue: String);
-begin
-  FNumberFormatStr := AValue;
-end;
-
 
 { TsDecimalsAction }
 
 constructor TsDecimalsAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Caption := 'Decimals';
-  Delta := +1;
+  FDelta := +1;
 end;
 
 procedure TsDecimalsAction.ApplyFormatToCell(ACell: PCell);
@@ -1095,15 +948,6 @@ begin
   else
     Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
   FDecimals := decs;
-end;
-
-procedure TsDecimalsAction.SetDelta(AValue: Integer);
-begin
-  FDelta := AValue;
-  if FDelta > 0 then
-    Hint := 'More decimal places'
-  else
-    Hint := 'Less decimal places';
 end;
 
 
