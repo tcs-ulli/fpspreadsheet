@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  StdCtrls, ComCtrls, ActnList, Menus, StdActns, 
+  ComCtrls, ActnList, Menus, StdActns,
   fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
 
 type
@@ -14,9 +14,11 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+    AcViewInspector: TAction;
     ActionList: TActionList;
-    Button1: TButton;
     AcFileExit: TFileExit;
+    AcFileOpen: TFileOpen;
+    AcFileSaveAs: TFileSaveAs;
     ImageList: TImageList;
     MainMenu: TMainMenu;
     MenuItem1: TMenuItem;
@@ -62,7 +64,12 @@ type
     MenuItem46: TMenuItem;
     MenuItem47: TMenuItem;
     MenuItem48: TMenuItem;
+    MenuItem49: TMenuItem;
     MenuItem5: TMenuItem;
+    MenuItem50: TMenuItem;
+    MenuItem51: TMenuItem;
+    MenuItem52: TMenuItem;
+    MnuView: TMenuItem;
     MenuItem6: TMenuItem;
     MenuItem7: TMenuItem;
     MenuItem8: TMenuItem;
@@ -73,7 +80,6 @@ type
     MnuEdit: TMenuItem;
     OpenDialog: TOpenDialog;
     OpenDialog1: TOpenDialog;
-    Panel1: TPanel;
     CellEdit: TsCellEdit;
     CellIndicator: TsCellIndicator;
     AcFontBold: TsFontStyleAction;
@@ -94,6 +100,7 @@ type
     AcNumFormatPercentage: TsNumberFormatAction;
     AcNumFormatCurrency: TsNumberFormatAction;
     AcNumFormatCurrencyRed: TsNumberFormatAction;
+    Panel2: TPanel;
     PuBorders: TPopupMenu;
     PuTimeFormat: TPopupMenu;
     PuDateFormat: TPopupMenu;
@@ -130,9 +137,13 @@ type
     AcCellBorderAll: TsCellBorderAction;
     AcCellBorderAllVert: TsCellBorderAction;
     FontnameCombo: TsFontnameCombobox;
+    AcCopyFormat: TsCopyFormatAction;
     sFontSizeCombobox1: TsFontSizeCombobox;
     AcMergeCells: TsMergeAction;
+    Splitter2: TSplitter;
+    Splitter3: TSplitter;
     ToolBar2: TToolBar;
+    ToolBar3: TToolBar;
     ToolButton1: TToolButton;
     ToolButton11: TToolButton;
     ToolButton12: TToolButton;
@@ -162,6 +173,7 @@ type
     ToolButton25: TToolButton;
     ToolButton26: TToolButton;
     ToolButton27: TToolButton;
+    ToolButton28: TToolButton;
     ToolButton29: TToolButton;
     ToolButton3: TToolButton;
     ToolButton30: TToolButton;
@@ -170,15 +182,22 @@ type
     ToolButton32: TToolButton;
     ToolButton33: TToolButton;
     ToolButton34: TToolButton;
+    ToolButton35: TToolButton;
+    ToolButton36: TToolButton;
+    ToolButton37: TToolButton;
+    ToolButton38: TToolButton;
     ToolButton4: TToolButton;
     ToolButton5: TToolButton;
     ToolButton6: TToolButton;
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
+    ToolButton9: TToolButton;
     WorkbookSource: TsWorkbookSource;
     WorkbookTabControl: TsWorkbookTabControl;
     WorksheetGrid: TsWorksheetGrid;
-    procedure Button1Click(Sender: TObject);
+    procedure AcFileOpenAccept(Sender: TObject);
+    procedure AcFileSaveAsAccept(Sender: TObject);
+    procedure AcViewInspectorExecute(Sender: TObject);
     procedure InspectorTabControlChange(Sender: TObject);
   private
     { private declarations }
@@ -195,24 +214,53 @@ implementation
 
 { TForm1 }
 
-procedure TForm1.Button1Click(Sender: TObject);
+{ Loads the spreadsheet file selected by the AcFileOpen action }
+procedure TForm1.AcFileOpenAccept(Sender: TObject);
 begin
-  if OpenDialog.Execute then begin
-    WorkbookSource.AutodetectFormat := false;
-    case OpenDialog.FilterIndex of
-      1: WorkbookSource.AutoDetectFormat := true;      // All spreadsheet files
-      2: WorkbookSource.AutoDetectFormat := true;      // All Excel files
-      3: WorkbookSource.FileFormat := sfOOXML;         // Excel 2007+
-      4: WorkbookSource.FileFormat := sfExcel8;        // Excel 97-2003
-      5: WorkbookSource.FileFormat := sfExcel5;        // Excel 5.0
-      6: WorkbookSource.FileFormat := sfExcel2;        // Excel 2.1
-      7: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
-      8: WorkbookSource.FileFormat := sfCSV;           // Text files
+  WorkbookSource.AutodetectFormat := false;
+  case AcFileOpen.Dialog.FilterIndex of
+    1: WorkbookSource.AutoDetectFormat := true;      // All spreadsheet files
+    2: WorkbookSource.AutoDetectFormat := true;      // All Excel files
+    3: WorkbookSource.FileFormat := sfOOXML;         // Excel 2007+
+    4: WorkbookSource.FileFormat := sfExcel8;        // Excel 97-2003
+    5: WorkbookSource.FileFormat := sfExcel5;        // Excel 5.0
+    6: WorkbookSource.FileFormat := sfExcel2;        // Excel 2.1
+    7: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
+    8: WorkbookSource.FileFormat := sfCSV;           // Text files
+  end;
+  WorkbookSource.FileName := AcFileOpen.Dialog.FileName;  // this loads the file
+end;
+
+{ Saves the spreadsheet to the file selected by the AcFileSaveAs action }
+procedure TForm1.AcFileSaveAsAccept(Sender: TObject);
+var
+  fmt: TsSpreadsheetFormat;
+begin
+  Screen.Cursor := crHourglass;
+  try
+    case AcFileSaveAs.Dialog.FilterIndex of
+      1: fmt := sfOOXML;
+      2: fmt := sfExcel8;
+      3: fmt := sfExcel5;
+      4: fmt := sfExcel2;
+      5: fmt := sfOpenDocument;
+      6: fmt := sfCSV;
+      7: fmt := sfWikiTable_WikiMedia;
     end;
-    WorkbookSource.FileName := OpenDialog.FileName;    // this loads the file
+    WorkbookSource.SaveToSpreadsheetFile(AcFileSaveAs.Dialog.FileName, fmt);
+  finally
+    Screen.Cursor := crDefault;
   end;
 end;
 
+{ Toggles the spreadsheet inspector on and off }
+procedure TForm1.AcViewInspectorExecute(Sender: TObject);
+begin
+  InspectorTabControl.Visible := AcViewInspector.Checked;
+end;
+
+{ Event handler to synchronize the mode of the spreadsheet inspector with the
+  selected tab of the TabControl }
 procedure TForm1.InspectorTabControlChange(Sender: TObject);
 begin
   Inspector.Mode := TsInspectorMode(InspectorTabControl.TabIndex);

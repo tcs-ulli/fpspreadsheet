@@ -489,8 +489,6 @@ end;
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
   AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
 begin
-  Unused(AWorksheetIndex);
-
   // Create a new empty workbook
   InternalCreateNewWorkbook;
 
@@ -649,8 +647,13 @@ end;
 procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
 begin
-  if Workbook <> nil then
-    Workbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+  if FWorkbook <> nil then begin
+    FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+
+    // If required, display loading error message
+    if FWorkbook.ErrorMsg <> '' then
+      DoShowError(FWorkbook.ErrorMsg);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -670,8 +673,13 @@ end;
 procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
 begin
-  if Workbook <> nil then
-    Workbook.WriteToFile(AFileName, AOverwriteExisting);
+  if FWorkbook <> nil then begin
+    FWorkbook.WriteToFile(AFileName, AOverwriteExisting);
+
+    // If required, display loading error message
+    if FWorkbook.ErrorMsg <> '' then
+      DoShowError(FWorkbook.ErrorMsg);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
