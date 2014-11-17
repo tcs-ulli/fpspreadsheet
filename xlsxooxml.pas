@@ -1739,7 +1739,7 @@ begin
     if col <> nil then
       AppendToStream(AStream, Format(
         '<col min="%d" max="%d" width="%g" customWidth="1" />',
-        [c+1, c+1, col.Width])
+        [c+1, c+1, col.Width], FPointSeparatorSettings)
       );
   end;
 
@@ -1806,7 +1806,7 @@ begin
       // Font #4 is missing in fpspreadsheet due to BIFF compatibility. We write
       // an empty node to keep the numbers in sync with the stored font index.
     else begin
-      s := Format('<sz val="%g" /><name val="%s" />', [font.Size, font.FontName]);
+      s := Format('<sz val="%g" /><name val="%s" />', [font.Size, font.FontName], FPointSeparatorSettings);
       if (fssBold in font.Style) then
         s := s + '<b />';
       if (fssItalic in font.Style) then
@@ -1930,7 +1930,8 @@ begin
       row := AWorksheet.FindRow(r);
       if row <> nil then
         rh := Format(' ht="%g" customHeight="1"', [
-          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
+          (row^.Height + ROW_HEIGHT_CORRECTION)*h0],
+          FPointSeparatorSettings)
       else
         rh := '';
       AppendToStream(AStream, Format(
@@ -1985,7 +1986,7 @@ begin
       row := AWorksheet.FindRow(r);
       if row <> nil then
         rh := Format(' ht="%g" customHeight="1"', [
-          (row^.Height + ROW_HEIGHT_CORRECTION)*h0])
+          (row^.Height + ROW_HEIGHT_CORRECTION)*h0], FPointSeparatorSettings)
       else
         rh := '';
       AppendToStream(AStream, Format(

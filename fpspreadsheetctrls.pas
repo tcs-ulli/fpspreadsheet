@@ -61,6 +61,7 @@ type
     FFileFormat: TsSpreadsheetFormat;
     FPendingSelection: TsCellRangeArray;
     FPendingOperation: TsPendingOperation;
+    FControlLockCount: Integer;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
 
@@ -102,6 +103,9 @@ type
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
       AOverwriteExisting: Boolean = true); overload;
+
+    procedure DisableControls;
+    procedure EnableControls;
 
     procedure SelectCell(ASheetRow, ASheetCol: Cardinal);
     procedure SelectWorksheet(AWorkSheet: TsWorksheet);
@@ -472,6 +476,14 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Disables notification of listening controls
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.DisableControls;
+begin
+  inc(FControlLockCount);
+end;
+
+{@@ ----------------------------------------------------------------------------
   An error has occured during loading of the workbook. Shows a message box by
   default. But a different behavior can be obtained by means of the OnError
   event.
@@ -486,6 +498,14 @@ begin
     FOnError(self, AErrorMsg)
   else
     MessageDlg(AErrorMsg, mtError, [mbOK], 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Enables notification of listening controls
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.EnableControls;
+begin
+  dec(FControlLockCount);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -578,11 +598,16 @@ begin
   // Create a new empty workbook
   InternalCreateNewWorkbook;
 
-  // Read workbook from file and get worksheet
-  if AAutoDetect then
-    FWorkbook.ReadFromFile(AFileName)
-  else
-    FWorkbook.ReadFromFile(AFileName, AFormat);
+  DisableControls;
+  try
+    // Read workbook from file and get worksheet
+    if AAutoDetect then
+      FWorkbook.ReadFromFile(AFileName)
+    else
+      FWorkbook.ReadFromFile(AFileName, AFormat);
+  finally
+    EnableControls;
+  end;
 
   SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
 
@@ -653,6 +678,9 @@ procedure TsWorkbookSource.NotifyListeners(AChangedItems: TsNotificationItems;
 var
   i: Integer;
 begin
+  //if FControlLockCount > 0 then
+  //  exit;
+
   for i:=0 to FListeners.Count-1 do
     if TObject(FListeners[i]) is TsCellCombobox then
       TsCellCombobox(FListeners[i]).ListenerNotification(AChangedItems, AData)
@@ -861,6 +889,7 @@ end;
 procedure TsWorkbookSource.WorksheetAddedHandler(Sender: TObject;
   ASheet: TsWorksheet);
 begin
+  Unused(Sender);
   NotifyListeners([lniWorkbook]);
   SelectWorksheet(ASheet);
 end;
@@ -875,7 +904,7 @@ end;
 procedure TsWorkbookSource.WorksheetChangedHandler(Sender: TObject;
   ASheet: TsWorksheet);
 begin
-  Unused(ASheet);
+  Unused(Sender, ASheet);
   NotifyListeners([lniWorkbook, lniWorksheet]);
 end;
 
