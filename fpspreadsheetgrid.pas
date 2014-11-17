@@ -3012,6 +3012,13 @@ begin
     if (grow <> Row) or (gcol <> Col) then
       MoveExtend(false, gcol, grow);
   end;
+
+  // Abort selection because of an error
+  if (lniAbortSelection in AChangedItems) and (Worksheet <> nil) then
+  begin
+    MouseUp(mbLeft, [], GCache.ClickMouse.X, GCache.ClickMouse.Y);
+    // HOW TO DO THIS????    SelectActive not working...
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

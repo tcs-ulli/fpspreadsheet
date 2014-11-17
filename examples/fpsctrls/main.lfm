@@ -4,15 +4,15 @@ object Form1: TForm1
   Top = 214
   Width = 922
   Caption = 'Form1'
-  ClientHeight = 575
+  ClientHeight = 580
   ClientWidth = 922
   Menu = MainMenu
   ShowHint = True
   LCLVersion = '1.3'
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 490
-    Top = 85
+    Height = 497
+    Top = 83
     Width = 669
     TabIndex = 0
     Tabs.Strings = (
@@ -23,8 +23,8 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 460
-      Top = 28
+      Height = 472
+      Top = 23
       Width = 665
       FrozenCols = 0
       FrozenRows = 0
@@ -78,8 +78,8 @@ object Form1: TForm1
   end
   object InspectorTabControl: TTabControl
     Left = 674
-    Height = 490
-    Top = 85
+    Height = 497
+    Top = 83
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -94,8 +94,8 @@ object Form1: TForm1
     Visible = False
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 460
-      Top = 28
+      Height = 472
+      Top = 23
       Width = 244
       Align = alClient
       RowCount = 25
@@ -108,7 +108,7 @@ object Form1: TForm1
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         'FormatSettings='
         '  ThousandSeparator=.'
-        '  DecimalSeparator=,'
+        '  DecimalSeparator=.'
         '  ListSeparator=;'
         '  DateSeparator=.'
         '  TimeSeparator=:'
@@ -134,22 +134,22 @@ object Form1: TForm1
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
       ColWidths = (
-        109
-        110
+        111
+        112
       )
     end
   end
   object Splitter1: TSplitter
     Left = 669
-    Height = 490
-    Top = 85
+    Height = 497
+    Top = 83
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 28
+    Height = 26
     Top = 24
     Width = 922
     AutoSize = True
@@ -329,10 +329,10 @@ object Form1: TForm1
     end
     object FontnameCombo: TsFontNameCombobox
       Left = 54
-      Height = 28
+      Height = 23
       Top = 0
       Width = 151
-      ItemHeight = 20
+      ItemHeight = 15
       ItemIndex = 62
       Items.Strings = (
         '@Arial Unicode MS'
@@ -1129,10 +1129,10 @@ object Form1: TForm1
     end
     object sFontSizeCombobox1: TsFontSizeCombobox
       Left = 205
-      Height = 28
+      Height = 23
       Top = 0
       Width = 60
-      ItemHeight = 20
+      ItemHeight = 15
       ItemIndex = 2
       Items.Strings = (
         '8'
@@ -1251,7 +1251,7 @@ object Form1: TForm1
   object ToolBar3: TToolBar
     Left = 0
     Height = 28
-    Top = 52
+    Top = 50
     Width = 922
     AutoSize = True
     Caption = 'ToolBar3'
@@ -1270,7 +1270,7 @@ object Form1: TForm1
       TabOrder = 0
       object CellIndicator: TsCellIndicator
         Left = 0
-        Height = 28
+        Height = 23
         Top = 0
         Width = 138
         Align = alTop
@@ -1281,10 +1281,11 @@ object Form1: TForm1
     end
     object CellEdit: TsCellEdit
       Left = 144
-      Height = 26
+      Height = 24
       Top = 0
       Width = 778
       Align = alClient
+      BorderSpacing.Bottom = 2
       TabOrder = 1
       WantReturns = False
       WorkbookSource = WorkbookSource
@@ -1300,7 +1301,7 @@ object Form1: TForm1
     Cursor = crVSplit
     Left = 0
     Height = 5
-    Top = 80
+    Top = 78
     Width = 922
     Align = alTop
     ResizeAnchor = akTop
@@ -1333,7 +1334,7 @@ object Form1: TForm1
     object AcDeleteWorksheet: TsWorksheetDeleteAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'Delete'
+      Caption = 'Delete...'
       Hint = 'Delete worksheet'
       ImageIndex = 2
     end
@@ -1354,7 +1355,7 @@ object Form1: TForm1
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Bold'
-      Hint = 'Bold font'
+      Hint = 'Bold'
       ImageIndex = 4
       FontStyle = fssBold
     end
@@ -1362,7 +1363,7 @@ object Form1: TForm1
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Italic'
-      Hint = 'Italic font'
+      Hint = 'Italic'
       ImageIndex = 5
       FontStyle = fssItalic
     end
@@ -1370,7 +1371,7 @@ object Form1: TForm1
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Underline'
-      Hint = 'Underlines font'
+      Hint = 'Underline'
       ImageIndex = 6
       FontStyle = fssUnderline
     end
@@ -1378,7 +1379,7 @@ object Form1: TForm1
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Strikeout'
-      Hint = 'Strike-out font'
+      Hint = 'Strikeout'
       ImageIndex = 7
       FontStyle = fssStrikeOut
     end
@@ -1433,14 +1434,14 @@ object Form1: TForm1
     object AcWordWrap: TsWordwrapAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'AcWordWrap'
+      Caption = 'Word-wrap'
       Hint = 'Word-wrapped text'
       ImageIndex = 24
     end
     object AcTextRotHor: TsTextRotationAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'AcTextRotHor'
+      Caption = 'Horizontal text'
     end
     object AcTextRot90CW: TsTextRotationAction
       Category = 'FPSpreadsheet'
@@ -1571,19 +1572,21 @@ object Form1: TForm1
     object AcIncDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
+      Caption = 'More decimals'
       ImageIndex = 21
     end
     object AcDecDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
+      Caption = 'Less decimals'
       ImageIndex = 20
       Delta = -1
     end
     object AcCellFontDialog: TsFontDialogAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'AcCellFont'
-      Hint = 'Select cell font'
+      Caption = 'Cell font...'
+      Hint = 'Cell font'
       ImageIndex = 14
       Dialog.MinFontSize = 0
       Dialog.MaxFontSize = 0
@@ -1591,8 +1594,8 @@ object Form1: TForm1
     object AcBackgroundColorDialog: TsBackgroundColorDialogAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = 'AcBackgroundColor'
-      Hint = 'Modify background color'
+      Caption = 'Background color...'
+      Hint = 'Background color'
       ImageIndex = 22
       Dialog.Color = clBlack
       Dialog.CustomColors.Strings = (
@@ -2021,7 +2024,7 @@ object Form1: TForm1
       Caption = 'Save &as ...'
       Dialog.Title = 'AcSaveFileAs'
       Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
-      Hint = 'Save spreadsheet with a new name'
+      Hint = 'Save spreadsheet'
       ImageIndex = 45
       OnAccept = AcFileSaveAsAccept
     end
@@ -3843,8 +3846,95 @@ object Form1: TForm1
       end
       object MenuItem9: TMenuItem
         Caption = 'Cell'
+        object MenuItem89: TMenuItem
+          Action = AcBackgroundColorDialog
+        end
+        object MenuItem68: TMenuItem
+          Caption = 'Font'
+          object MenuItem69: TMenuItem
+            Action = AcCellFontDialog
+          end
+          object MenuItem70: TMenuItem
+            Caption = '-'
+          end
+          object MenuItem71: TMenuItem
+            Action = AcFontBold
+            AutoCheck = True
+          end
+          object MenuItem72: TMenuItem
+            Action = AcFontItalic
+            AutoCheck = True
+          end
+          object MenuItem73: TMenuItem
+            Action = AcFontUnderline
+            AutoCheck = True
+          end
+          object MenuItem74: TMenuItem
+            Action = AcFontStrikeout
+            AutoCheck = True
+          end
+        end
+        object MenuItem76: TMenuItem
+          Caption = 'Text rotation'
+          object MenuItem77: TMenuItem
+            Action = AcTextRotHor
+            AutoCheck = True
+          end
+          object MenuItem78: TMenuItem
+            Caption = '-'
+          end
+          object MenuItem79: TMenuItem
+            Action = AcTextRot90CW
+            AutoCheck = True
+          end
+          object MenuItem80: TMenuItem
+            Action = AcTextRot90CCW
+            AutoCheck = True
+          end
+          object MenuItem81: TMenuItem
+            Action = AcTextRotStacked
+            AutoCheck = True
+          end
+        end
+        object MenuItem75: TMenuItem
+          Caption = 'Horizontal text alignment'
+          object MenuItem82: TMenuItem
+            Action = AcHorAlignLeft
+            AutoCheck = True
+          end
+          object MenuItem83: TMenuItem
+            Action = AcHorAlignCenter
+            AutoCheck = True
+          end
+          object MenuItem84: TMenuItem
+            Action = AcHorAlignRight
+            AutoCheck = True
+          end
+        end
+        object MenuItem85: TMenuItem
+          Caption = 'Vertical text alignment'
+          object MenuItem86: TMenuItem
+            Action = AcVertAlignTop
+            AutoCheck = True
+          end
+          object MenuItem87: TMenuItem
+            Action = AcVertAlignCenter
+            AutoCheck = True
+          end
+          object MenuItem88: TMenuItem
+            Action = AcVertAlignBottom
+            AutoCheck = True
+          end
+        end
         object MenuItem10: TMenuItem
           Caption = 'Number format'
+          object MenuItem55: TMenuItem
+            Action = AcNumFormatGeneral
+            AutoCheck = True
+          end
+          object MenuItem54: TMenuItem
+            Caption = '-'
+          end
           object MenuItem12: TMenuItem
             Action = AcNumFormatFixed
             AutoCheck = True
@@ -3855,6 +3945,10 @@ object Form1: TForm1
           end
           object MenuItem13: TMenuItem
             Caption = '-'
+          end
+          object MenuItem53: TMenuItem
+            Action = AcNumFormatExp
+            AutoCheck = True
           end
           object MenuItem14: TMenuItem
             Action = AcNumFormatPercentage
@@ -3869,6 +3963,50 @@ object Form1: TForm1
           end
           object MenuItem16: TMenuItem
             Action = AcNumFormatCurrencyRed
+            AutoCheck = True
+          end
+          object MenuItem56: TMenuItem
+            Caption = '-'
+          end
+          object MenuItem57: TMenuItem
+            Action = AcNumFormatDateTime
+            AutoCheck = True
+          end
+          object MenuItem58: TMenuItem
+            Caption = '-'
+          end
+          object MenuItem59: TMenuItem
+            Action = AcNumFormatLongDate
+            AutoCheck = True
+          end
+          object MenuItem60: TMenuItem
+            Action = AcNumFormatShortDate
+            AutoCheck = True
+          end
+          object MenuItem61: TMenuItem
+            Caption = '-'
+          end
+          object MenuItem62: TMenuItem
+            Action = AcNumFormatLongTime
+            AutoCheck = True
+          end
+          object MenuItem63: TMenuItem
+            Action = AcNumFormatShortTime
+            AutoCheck = True
+          end
+          object MenuItem64: TMenuItem
+            Action = AcNumFormatLongTimeAM
+            AutoCheck = True
+          end
+          object MenuItem65: TMenuItem
+            Action = AcNumFormatShortTimeAM
+            AutoCheck = True
+          end
+          object MenuItem66: TMenuItem
+            Caption = '-'
+          end
+          object MenuItem67: TMenuItem
+            Action = AcNumFormatTimeInterval
             AutoCheck = True
           end
         end
