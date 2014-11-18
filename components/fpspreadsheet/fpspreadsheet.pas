@@ -977,7 +977,10 @@ type
     { Base methods }
     constructor Create;
     destructor Destroy; override;
-    class function GetFormatFromFileName(const AFileName: TFileName; out SheetType: TsSpreadsheetFormat): Boolean;
+    class function GetFormatFromFileHeader(const AFileName: TFileName;
+      out SheetType: TsSpreadsheetFormat): Boolean;
+    class function GetFormatFromFileName(const AFileName: TFileName;
+      out SheetType: TsSpreadsheetFormat): Boolean;
     function  CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
     function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
@@ -6288,6 +6291,83 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Helper method for determining the spreadsheet type. Read the first few bytes
+  of a file and determines the spreadsheet type from the characteristic
+  signature. Only implemented for xls files where several file types have the
+  same extension
+-------------------------------------------------------------------------------}
+class function TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean;
+const
+  BIFF2_HEADER: array[0..15] of byte = (
+    $09,$00, $04,$00, $00,$00, $10,$00, $31,$00, $0A,$00, $C8,$00, $00,$00);
+  BIFF58_HEADER: array[0..15] of byte = (
+    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1, $00,$00, $00,$00, $00,$00, $00,$00);
+  BIFF5_MARKER: array[0..7] of widechar = (
+    'B', 'o', 'o', 'k', #0, #0, #0, #0);
+  BIFF8_MARKER:array[0..7] of widechar = (
+    'W', 'o', 'r', 'k', 'b', 'o', 'o', 'k');
+var
+  buf: packed array[0..16] of byte;
+  stream: TStream;
+  i: Integer;
+  ok: Boolean;
+begin
+  Result := false;
+  stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
+  try
+    // Read first 16 bytes
+    stream.ReadBuffer(buf, 16);
+
+    // Check for Excel 2#
+    ok := true;
+    for i:=0 to 15 do
+      if buf[i] <> BIFF2_HEADER[i] then
+      begin
+        ok := false;
+        break;
+      end;
+    if ok then
+    begin
+      SheetType := sfExcel2;
+      Exit(True);
+    end;
+
+    // Check for Excel 5 or 8
+    for i:=0 to 15 do
+      if buf[i] <> BIFF58_HEADER[i] then
+        exit;
+
+    // Further information begins at offset $480:
+    stream.Position := $480;
+    stream.ReadBuffer(buf, 16);
+    // Check for Excel5
+    ok := true;
+    for i:=0 to 7 do
+      if WideChar(buf[i*2]) <> BIFF5_MARKER[i] then
+      begin
+        ok := false;
+        break;
+      end;
+    if ok then
+    begin
+      SheetType := sfExcel5;
+      Exit(True);
+    end;
+    // Check for Excel8
+    ok := true;
+    for i:=0 to 7 do
+      if WideChar(buf[i*2]) <> BIFF8_MARKER[i] then
+        exit;
+    SheetType := sfExcel8;
+    Exit(True);
+  finally
+    stream.Free;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Helper method for determining the spreadsheet type from the file type extension
 
   @param   AFileName   Name of the file to be considered
@@ -6447,7 +6527,11 @@ begin
   if not FileExists(AFileName) then
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
-  valid := GetFormatFromFileName(AFileName, SheetType);
+  if Lowercase(ExtractFileExt(AFileName))=STR_EXCEL_EXTENSION then
+    valid := GetFormatFromFileHeader(AFileName, SheetType)
+  else
+    valid := GetFormatFromFileName(AFileName, SheetType);
+
   if valid then
   begin
     if SheetType = sfExcel8 then
