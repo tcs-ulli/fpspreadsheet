@@ -1574,7 +1574,8 @@ var
   fnt: TsFont;
 begin
   fnt := GetCellFont(ACell);
-  ItemIndex := Items.IndexOf(fnt.FontName);
+  if fnt <> nil then
+    ItemIndex := Items.IndexOf(fnt.FontName);
 end;
 
 procedure TsFontNameCombobox.Populate;
@@ -1611,7 +1612,8 @@ var
   fnt: TsFont;
 begin
   fnt := GetCellFont(ACell);
-  ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+  if fnt <> nil then
+    ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
 end;
 
 procedure TsFontSizeCombobox.Populate;
