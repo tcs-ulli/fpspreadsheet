@@ -56,6 +56,7 @@ type
     FReadFormulas: Boolean;
     FDrawingCell: PCell;
     FTextOverflowing: Boolean;
+    FEnhEditMode: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
@@ -1864,12 +1865,16 @@ begin
     if oldText <> FEditText then
     begin
       cell := Worksheet.GetCell(Row-FHeaderCount, Col-FHeaderCount);
-      Worksheet.WriteCellValueAsString(cell, FEditText);
+      if (FEditText <> '') and (FEditText[1] = '=') then
+        Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
+      else
+        Worksheet.WriteCellValueAsString(cell, FEditText);
       FEditText := '';
     end;
     inherited EditingDone;
   end;
   FEditing := false;
+  FEnhEditMode := false;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2399,9 +2404,31 @@ end;
   @param   ARow   Grid row index of the grid cell being edited
   @return  Text to be passed to the cell editor.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetEditText(aCol, aRow: Integer): string;
+function TsCustomWorksheetGrid.GetEditText(ACol, ARow: Integer): string;
+var
+  cell: PCell;
 begin
-  Result := GetCellText(aCol, aRow);
+  if FEnhEditMode then   // Initiated by "F2"
+  begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Result := Worksheet.ReadFormulaAsString(cell, true);
+    if Result <> '' then
+    begin
+      if Result[1] <> '=' then Result := '=' + Result;
+    end else
+      case cell^.ContentType of
+        cctNumber:
+          Result := FloatToStr(cell^.NumberValue);
+        cctDateTime:
+          if cell^.DateTimeValue < 1.0 then
+            Result := FormatDateTime('tt', cell^.DateTimeValue)
+          else
+            Result := FormatDateTime('c', cell^.DateTimeValue);
+        else
+          Result := Worksheet.ReadAsUTF8Text(cell);
+      end;
+  end else
+    Result := GetCellText(aCol, aRow);
   if Assigned(OnGetEditText) then OnGetEditText(Self, aCol, aRow, result);
 end;
 
@@ -2864,6 +2891,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
 begin
+  if (Key = VK_F2) then
+    FEnhEditMode := true
+  else
   if (Key = VK_ESCAPE) and FEditing then begin
     SetEditText(Col, Row, FOldEditText);
     EditorHide;
