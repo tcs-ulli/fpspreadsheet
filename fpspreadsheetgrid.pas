@@ -155,6 +155,7 @@ type
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+    procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -2416,6 +2417,7 @@ begin
     begin
       if Result[1] <> '=' then Result := '=' + Result;
     end else
+    if cell <> nil then
       case cell^.ContentType of
         cctNumber:
           Result := FloatToStr(cell^.NumberValue);
@@ -2426,10 +2428,12 @@ begin
             Result := FormatDateTime('c', cell^.DateTimeValue);
         else
           Result := Worksheet.ReadAsUTF8Text(cell);
-      end;
+      end
+    else
+      Result := '';
   end else
     Result := GetCellText(aCol, aRow);
-  if Assigned(OnGetEditText) then OnGetEditText(Self, aCol, aRow, result);
+  if Assigned(OnGetEditText) then OnGetEditText(Self, aCol, aRow, Result);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3064,6 +3068,17 @@ begin
     GetWorksheetRow(Selection.Bottom),
     GetWorksheetCol(Selection.Right)
   );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Standard mouse down handler. Is overridden here to enter "enhanced edit mode"
+  which removes formatting from the values and presents formulas for editing.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.MouseDown(Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  inherited;
+  FEnhEditMode := true;
 end;
 
 {@@ ----------------------------------------------------------------------------
