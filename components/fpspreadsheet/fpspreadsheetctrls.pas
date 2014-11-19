@@ -532,10 +532,10 @@ begin
   SetLength(destSelection, Length(FPendingSelection));
   for i := 0 to High(FPendingSelection) do
     destSelection[i] := TsCellRange(Rect(
-      FPendingSelection[i].Row1 + ofsRow,
-      FPendingSelection[i].Col1 + ofsCol,
-      FPendingSelection[i].Row2 + ofsRow,
-      FPendingSelection[i].Col2 + ofsCol
+      LongInt(FPendingSelection[i].Row1) + ofsRow,
+      LongInt(FPendingSelection[i].Col1) + ofsCol,
+      LongInt(FPendingSelection[i].Row2) + ofsRow,
+      LongInt(FPendingSelection[i].Col2) + ofsCol
     ));
 
   // Check for intersection between source and destination ranges

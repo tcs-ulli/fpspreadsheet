@@ -14,6 +14,10 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+    AcRowDelete: TAction;
+    AcColDelete: TAction;
+    AcRowAdd: TAction;
+    AcColAdd: TAction;
     AcViewInspector: TAction;
     ActionList: TActionList;
     AcFileExit: TFileExit;
@@ -106,6 +110,14 @@ type
     MenuItem87: TMenuItem;
     MenuItem88: TMenuItem;
     MenuItem89: TMenuItem;
+    MenuItem90: TMenuItem;
+    MenuItem91: TMenuItem;
+    MnuColumn: TMenuItem;
+    MenuItem93: TMenuItem;
+    MenuItem94: TMenuItem;
+    MnuAddWorksheet: TMenuItem;
+    MnuRow: TMenuItem;
+    MenuItem92: TMenuItem;
     MnuView: TMenuItem;
     MenuItem6: TMenuItem;
     MenuItem7: TMenuItem;
@@ -223,7 +235,13 @@ type
     ToolButton36: TToolButton;
     ToolButton37: TToolButton;
     ToolButton38: TToolButton;
+    ToolButton39: TToolButton;
     ToolButton4: TToolButton;
+    ToolButton40: TToolButton;
+    ToolButton41: TToolButton;
+    ToolButton42: TToolButton;
+    ToolButton43: TToolButton;
+    ToolButton44: TToolButton;
     ToolButton5: TToolButton;
     ToolButton6: TToolButton;
     ToolButton7: TToolButton;
@@ -232,8 +250,12 @@ type
     WorkbookSource: TsWorkbookSource;
     WorkbookTabControl: TsWorkbookTabControl;
     WorksheetGrid: TsWorksheetGrid;
+    procedure AcColAddExecute(Sender: TObject);
+    procedure AcColDeleteExecute(Sender: TObject);
     procedure AcFileOpenAccept(Sender: TObject);
     procedure AcFileSaveAsAccept(Sender: TObject);
+    procedure AcRowAddExecute(Sender: TObject);
+    procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure InspectorTabControlChange(Sender: TObject);
   private
@@ -288,6 +310,40 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
+end;
+
+{ Adds a column before the active cell }
+procedure TForm1.AcColAddExecute(Sender: TObject);
+begin
+  WorksheetGrid.InsertCol(WorksheetGrid.Col);
+  WorksheetGrid.Col := WorksheetGrid.Col + 1;
+end;
+
+{ Deletes the column with the active cell }
+procedure TForm1.AcColDeleteExecute(Sender: TObject);
+var
+  c: Integer;
+begin
+  c := WorksheetGrid.Col;
+  WorksheetGrid.DeleteCol(c);
+  WorksheetGrid.Col := c;
+end;
+
+{ Adds a row before the active cell }
+procedure TForm1.AcRowAddExecute(Sender: TObject);
+begin
+  WorksheetGrid.InsertRow(WorksheetGrid.Row);
+  WorksheetGrid.Row := WorksheetGrid.Row + 1;
+end;
+
+{ Deletes the row with the active cell }
+procedure TForm1.AcRowDeleteExecute(Sender: TObject);
+var
+  r: Integer;
+begin
+  r := WorksheetGrid.Row;
+  WorksheetGrid.DeleteRow(r);
+  WorksheetGrid.Row := r;
 end;
 
 { Toggles the spreadsheet inspector on and off }
