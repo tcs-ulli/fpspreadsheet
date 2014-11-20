@@ -6714,9 +6714,8 @@ begin
   Result := TsWorksheet.Create;
 
   Result.FWorkbook := Self; // Must be before "SetName" needing the workbook
-  Result.Name := AName;
   FWorksheets.Add(Pointer(Result));
-
+  Result.Name := AName;
   if Assigned(FOnAddWorksheet) then FOnAddWorksheet(self, Result);
 end;
 

@@ -150,6 +150,7 @@ type
   TsWorkbookTabControl = class(TTabControl)
   private
     FWorkbookSource: TsWorkbookSource;
+    FLockCount: Integer;
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
     procedure Change; override;
@@ -983,7 +984,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.Change;
 begin
-  if FWorkbookSource <> nil then
+  if (FWorkbookSource <> nil) and (FLockCount = 0) then
     FWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByIndex(TabIndex));
   inherited;
 end;
@@ -1039,29 +1040,19 @@ procedure TsWorkbookTabControl.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 var
   i: Integer;
-  oldTabIndex: Integer;
-  list: TStringList;
+  t: Integer;
 begin
   Unused(AData);
 
   // Workbook changed
   if (lniWorkbook in AChangedItems) then
   begin
-    oldTabIndex := TabIndex;
-    list := TStringList.Create;
-    Tabs.BeginUpdate;
-    try
-      GetSheetList(list);
-      Tabs.Assign(list);
-      if (oldTabIndex = -1) and (Tabs.Count > 0) then
-        TabIndex := 0
-      else
-      if oldTabIndex < Tabs.Count then
-        TabIndex := oldTabIndex;
-    finally
-      list.Free;
-      Tabs.EndUpdate;
-    end;
+    inc(FLockCount);    // avoid WorkbookSelect message when adding each tab
+    GetSheetList(Tabs);
+    t := TabIndex;
+    TabIndex := Tabs.Count-1;
+    t := TabIndex;
+    dec(FLockCount);
   end;
 
   // Worksheet changed
@@ -1071,6 +1062,8 @@ begin
     if i <> TabIndex then
       TabIndex := i;
   end;
+
+  t := TabIndex;
 end;
 
 {@@ ----------------------------------------------------------------------------
