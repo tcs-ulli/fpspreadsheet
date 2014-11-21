@@ -73,6 +73,7 @@ type
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
     procedure SetFileName(const AFileName: TFileName);
     procedure SetOptions(AValue: TsWorkbookOptions);
+    procedure WorkbookOpenedHandler(Sender: TObject);
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetChangedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetRemovedHandler(Sender: TObject; ASheetIndex: Integer);
@@ -473,7 +474,7 @@ begin
   SelectWorksheet(FWorksheet);
 
   // notify listeners
-  NotifyListeners([lniWorkbook, lniWorksheet, lniSelection]);
+//  NotifyListeners([lniWorkbook, lniWorksheet, lniSelection]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -571,6 +572,7 @@ begin
   FreeAndNil(FWorkbook);
   FWorksheet := nil;
   FWorkbook := TsWorkbook.Create;
+  FWorkbook.OnOpenWorkbook := @WorkbookOpenedHandler;
   FWorkbook.OnAddWorksheet := @WorksheetAddedHandler;
   FWorkbook.OnChangeWorksheet := @WorksheetChangedHandler;
   FWorkbook.OnRemoveWorksheet := @WorksheetRemovedHandler;
@@ -882,6 +884,16 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Event handler called whenever a new workbook is opened.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.WorkbookOpenedHandler(Sender: TObject);
+begin
+  Unused(Sender);
+  NotifyListeners([lniWorkbook]);
+  SelectWorksheet(FWorkbook.GetFirstWorksheet);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Event handler called whenever a new worksheet is added to the workbook
 
   @param  Sender   Pointer to the workbook to which a new worksheet has been added
@@ -938,6 +950,7 @@ begin
       sheet := Workbook.GetWorksheetbyIndex(ASheetIndex);
   end else
     sheet := FWorksheet;
+  FWorksheet := sheet;  // is needed by listeners!
   NotifyListeners([lniWorkbook]);
   SelectWorksheet(sheet);
 end;
@@ -1453,8 +1466,9 @@ var
   activeCell: PCell;
 begin
   Unused(AData);
-  if worksheet = nil then
+  if (Worksheet = nil) or ([lniCell, lniSelection]*AChangedItems = []) then
     exit;
+
   activeCell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
   if ((lniCell in AChangedItems) and (PCell(AData) = activeCell)) or
      (lniSelection in AChangedItems)
