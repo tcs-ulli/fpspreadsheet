@@ -942,6 +942,7 @@ type
     FCalculationLock: Integer;
     FOptions: TsWorkbookOptions;
     FActiveWorksheet: TsWorksheet;
+    FOnOpenWorkbook: TNotifyEvent;
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
@@ -949,6 +950,7 @@ type
     FOnRemoveWorksheet: TsRemoveWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
     FFileName: String;
+    FLockCount: Integer;
     FLog: TStringList;
 
     { Setter/Getter }
@@ -1063,6 +1065,8 @@ type
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
     {@@ This event fires whenever a worksheet is changed }
     property OnChangeWorksheet: TsWorksheetEvent read FOnChangeWorksheet write FOnChangeWorksheet;
+    {@@ This event fires whenever a workbook is loaded }
+    property OnOpenWorkbook: TNotifyEvent read FOnOpenWorkbook write FOnOpenWorkbook;
     {@@ This event fires when a worksheet is deleted }
     property OnRemoveWorksheet: TsRemoveWorksheetEvent read FOnRemoveWorksheet write FOnRemoveWorksheet;
     {@@ This event fires when a worksheet is made "active"}
@@ -3366,7 +3370,7 @@ begin
   if (FWorkbook <> nil) then //and FWorkbook.ValidWorksheetName(AName) then
   begin
     FName := AName;
-    if Assigned(FWorkbook.FOnChangeWorksheet) then
+    if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnChangeWorksheet) then
       FWorkbook.FOnChangeWorksheet(FWorkbook, self);
   end;
 end;
@@ -6495,6 +6499,7 @@ procedure TsWorkbook.ReadFromFile(AFileName: string;
   AFormat: TsSpreadsheetFormat);
 var
   AReader: TsCustomSpreadReader;
+  ok: Boolean;
 begin
   if not FileExists(AFileName) then
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
@@ -6503,11 +6508,20 @@ begin
   try
     FFileName := AFileName;
     PrepareBeforeReading;
-    AReader.ReadFromFile(AFileName, Self);
-    UpdateCaches;
-    if (boAutoCalc in Options) then
-      Recalc;
-    FFormat := AFormat;
+    ok := false;
+    inc(FLockCount);          // This locks various notifications from being sent
+    try
+      AReader.ReadFromFile(AFileName, Self);
+      ok := true;
+      UpdateCaches;
+      if (boAutoCalc in Options) then
+        Recalc;
+      FFormat := AFormat;
+    finally
+      dec(FLockCount);
+      if ok and Assigned(FOnOpenWorkbook) then   // ok is true if file has been read successfully
+        FOnOpenWorkbook(self);   // send common notification
+    end;
   finally
     AReader.Free;
   end;
@@ -6596,11 +6610,21 @@ procedure TsWorkbook.ReadFromStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat);
 var
   AReader: TsCustomSpreadReader;
+  ok: Boolean;
 begin
   AReader := CreateSpreadReader(AFormat);
   try
     PrepareBeforeReading;
-    AReader.ReadFromStream(AStream, Self);
+    inc(FLockCount);
+    try
+      ok := false;
+      AReader.ReadFromStream(AStream, Self);
+      ok := true;
+    finally
+      dec(FLockCount);
+      if ok and Assigned(FOnOpenWorkbook) then
+        FOnOpenWorkbook(self);
+    end;
     UpdateCaches;
     if (boAutoCalc in Options) then
       Recalc;
@@ -6708,15 +6732,34 @@ end;
 function TsWorkbook.AddWorksheet(AName: string;
   ReplaceDuplicateName: Boolean = false): TsWorksheet;
 begin
+  // Check worksheet name
   if not ValidWorksheetName(AName, ReplaceDuplicateName) then
     raise Exception.CreateFmt(rsInvalidWorksheetName, [AName]);
 
+  // Create worksheet...
   Result := TsWorksheet.Create;
 
-  Result.FWorkbook := Self; // Must be before "SetName" needing the workbook
+  // Add it to the internal worksheet list
   FWorksheets.Add(Pointer(Result));
-  Result.Name := AName;
-  if Assigned(FOnAddWorksheet) then FOnAddWorksheet(self, Result);
+
+  // Remember the workbook to which it belongs (This must occur before
+  // setting the workbook name because the workbook is needed there).
+  Result.FWorkbook := Self;
+
+  // Set the name of the new worksheet.
+  // For this we turn off notification of listeners. This is not necessary here
+  // because it will be repeated at end when OnAddWorksheet is executed below.
+  inc(FLockCount);
+  try
+    Result.Name := AName;
+  finally
+    dec(FLockCount);
+  end;
+
+  // Send notification for new worksheet to listeners. They get the worksheet
+  // name here as well.
+  if (FLockCount = 0) and Assigned(FOnAddWorksheet) then
+    FOnAddWorksheet(self, Result);
 end;
 
 {@@ ----------------------------------------------------------------------------
