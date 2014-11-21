@@ -27,6 +27,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
+  LResources,
   fpspreadsheet, {%H-}fpsAllFormats;
 
 type
@@ -132,8 +133,9 @@ type
     property FileFormat: TsSpreadsheetFormat read FFileFormat write FFileFormat default sfExcel8;
     {@@ Name of the loaded spreadsheet file which is loaded by assigning a file name
       to this property. Format detection is determined by the properties
-      AutoDetectFormat and FileFormat. }
-    property FileName: TFileName read FFileName write SetFileName;  // using this property loads the file at design-time!
+      AutoDetectFormat and FileFormat. Using this property loads the file at
+      design-time. }
+    property FileName: TFileName read FFileName write SetFileName;
     {@@ A set of options to be transferred to the workbook, for e.g. formula
       calculation etc. }
     property Options: TsWorkbookOptions read FOptions write SetOptions;
@@ -239,6 +241,7 @@ type
 
   { TsCellCombobox }
 
+  {@@ TsCellCombobox is the ancestor of TsFontNameCombobox and TsFontSizeCombobox }
   TsCellCombobox = class(TCombobox)
   private
     FWorkbookSource: TsWorkbookSource;
@@ -256,7 +259,9 @@ type
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    {@@ Refers to the underlying workbook }
     property Workbook: TsWorkbook read GetWorkbook;
+    {@@ Refers to the underlying worksheet containing the displayed cell }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
@@ -266,6 +271,7 @@ type
 
   { TsCellFontCombobox }
 
+  {@@ TsCellFontCombobox is a combobox for selecting various font properties }
   TsCellFontCombobox = class(TsCellCombobox)
   protected
     function GetCellFont(ACell: PCell): TsFont;
@@ -274,6 +280,7 @@ type
 
   {TsFontNameCombobox }
 
+  {@@ TsCellFontNameCombobox is for selection of a font name }
   TsFontNameCombobox = class(TsCellFontCombobox)
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
@@ -286,6 +293,7 @@ type
 
   {TsFontSizeCombobox }
 
+  {@@ TsFontSizeCombobox is for selection of a font size }
   TsFontSizeCombobox = class(TsCellFontCombobox)
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
@@ -1537,6 +1545,11 @@ end;
 {                             TsCellFontCombobox                               }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Determines the font used by a specified cell. Returns the workbook's default
+  font if the cell does not exist. Considers the uffBold and uffFont formatting
+  fields of the cell
+-------------------------------------------------------------------------------}
 function TsCellFontCombobox.GetCellFont(ACell: PCell): TsFont;
 begin
   if ACell = nil then
@@ -1556,12 +1569,19 @@ end;
 {                             TsFontNameCombobox                               }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the FontNameCombobox. Predefines the width of the combobox
+  such that it is sufficient for most font names
+-------------------------------------------------------------------------------}
 constructor TsFontNameCombobox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Width := 150;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Applies the font with the selected name to a specified cell.
+-------------------------------------------------------------------------------}
 procedure TsFontNameCombobox.ApplyFormatToCell(ACell: PCell);
 var
   fnt: TsFont;
@@ -1573,6 +1593,10 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Extracts the font of the specified cell and selects its font name in the
+  combobox.
+-------------------------------------------------------------------------------}
 procedure TsFontNameCombobox.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
@@ -1582,6 +1606,10 @@ begin
     ItemIndex := Items.IndexOf(fnt.FontName);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Populates the combobox with the names of all fonts available on the current
+  system
+-------------------------------------------------------------------------------}
 procedure TsFontNameCombobox.Populate;
 begin
   Items.Assign(Screen.Fonts);
@@ -1592,12 +1620,19 @@ end;
 {                             TsFontSizeCombobox                               }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the FontSizeCombobox. Reduces the default width of the combobox
+  due to the narrow width of the font size numbers.
+-------------------------------------------------------------------------------}
 constructor TsFontSizeCombobox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Width := 60;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Applies the font with the selected size to a specified cell.
+-------------------------------------------------------------------------------}
 procedure TsFontSizeCombobox.ApplyFormatToCell(ACell: PCell);
 var
   fnt: TsFont;
@@ -1611,6 +1646,10 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Extracts the font of the specified cell and selects its font size in the
+  combobox.
+-------------------------------------------------------------------------------}
 procedure TsFontSizeCombobox.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
@@ -1620,6 +1659,9 @@ begin
     ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Populates the combobox with often-used font sizes (in points)
+-------------------------------------------------------------------------------}
 procedure TsFontSizeCombobox.Populate;
 begin
   with Items do
@@ -2034,5 +2076,9 @@ begin
     AStrings.Add(Format('Selection=%s', [ASheet.GetSelectionAsString]));
   end;
 end;
+
+initialization
+
+{$I fpspreadsheetctrls.lrs}
 
 end.
