@@ -688,12 +688,14 @@ end;
 
 procedure TsCopyFormatAction.ExecuteTarget(Target: TObject);
 begin
+  Unused(Target);
   Checked := true;
   WorkbookSource.SetPendingOperation(poCopyFormat, Worksheet.GetSelection);
 end;
 
 procedure TsCopyFormatAction.UpdateTarget(Target: TObject);
 begin
+  Unused(Target);
   if WorkbookSource.PendingOperation = poNone then Checked := false;
 end;
 
@@ -703,6 +705,7 @@ end;
 
 procedure TsAutoFormatAction.ExecuteTarget(Target: TObject);
 begin
+  Unused(Target);
   ApplyFormatToSelection;
 end;
 
@@ -1044,9 +1047,7 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
 
 var
   r, c: LongInt;
-  ls: TsLineStyle;
   bs: TsCellBorderStyle;
-  cell: PCell;
 begin
   // Top edges
   Borders.North.ApplyStyle(Workbook, bs);
@@ -1091,6 +1092,7 @@ end;
 
 procedure TsCellBorderAction.ExecuteTarget(Target: TObject);
 begin
+  Unused(Target);
   ApplyFormatToSelection;
 end;
 
@@ -1116,6 +1118,7 @@ end;
 
 procedure TsNoCellBordersAction.ExecuteTarget(Target: TObject);
 begin
+  Unused(Target);
   ApplyFormatToSelection;
 end;
 
@@ -1205,6 +1208,7 @@ end;
 
 procedure TsCommonDialogSpreadsheetAction.ExecuteTarget(Target: TObject);
 begin
+  Unused(Target);
   DoBeforeExecute;
   FExecuteResult := FDialog.Execute;
   if FExecuteResult then

@@ -52,6 +52,10 @@ object Form1: TForm1
     Top = 0
     Width = 676
     OnChange = TabControlChange
+    TabIndex = 0
+    Tabs.Strings = (
+      'Sheet 1'
+    )
     Align = alClient
     TabOrder = 1
   end
