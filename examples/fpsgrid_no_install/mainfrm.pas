@@ -84,6 +84,7 @@ end;
 procedure TForm1.BtnNewClick(Sender: TObject);
 begin
   TabControl.Tabs.Clear;
+  TabControl.Tabs.Add('Sheet1');
   Grid.NewWorkbook(26, 100);
 end;
 
@@ -135,11 +136,8 @@ begin
       ]);
 
       // Collect the sheet names in the Tabs of the TabControl for switching sheets.
-      if Grid.Workbook.FileFormat <> sfExcel2 then
-      begin
-        Grid.GetSheets(TabControl.Tabs);
-        TabControl.TabIndex := 0;
-      end;
+      Grid.GetSheets(TabControl.Tabs);
+      TabControl.TabIndex := 0;
     except
       on E:Exception do begin
         // Empty worksheet instead of the loaded one

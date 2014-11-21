@@ -517,7 +517,7 @@ procedure TsWorkbookSource.ExecutePendingOperation;
 var
   destSelection: TsCellRangeArray;
   srcCell, destCell: PCell;    // Pointers to source and destination cells
-  i, j, k: Integer;
+  i, j, k: Cardinal;
   ofsRow, ofsCol: LongInt;
 
   function DistinctRanges(R1, R2: TsCellRange): Boolean;
@@ -1053,7 +1053,6 @@ procedure TsWorkbookTabControl.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 var
   i: Integer;
-  t: Integer;
 begin
   Unused(AData);
 
@@ -1062,9 +1061,7 @@ begin
   begin
     inc(FLockCount);    // avoid WorkbookSelect message when adding each tab
     GetSheetList(Tabs);
-    t := TabIndex;
     TabIndex := Tabs.Count-1;
-    t := TabIndex;
     dec(FLockCount);
   end;
 
@@ -1075,8 +1072,6 @@ begin
     if i <> TabIndex then
       TabIndex := i;
   end;
-
-  t := TabIndex;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1417,6 +1412,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.ApplyFormatToCell(ACell: PCell);
 begin
+  Unused(ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1425,6 +1421,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
 begin
+  Unused(ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -999,7 +999,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
 begin
-  fpsVisualUtils.Convert_sFont_to_Font(Workbook, sFont, Font);
+  fpsVisualUtils.Convert_sFont_to_Font(Workbook, sFont, AFont);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -6317,6 +6317,8 @@ var
   i: Integer;
   ok: Boolean;
 begin
+  buf[0] := 0;  // Silence the compiler...
+
   Result := false;
   stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
