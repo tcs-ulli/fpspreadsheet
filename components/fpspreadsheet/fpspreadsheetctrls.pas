@@ -1844,7 +1844,8 @@ end;
   The string list items are name-value pairs in the format "name=value".
   The string list is displayed in the inspector's grid.
 
-  @param   ACell   Cell under investigation
+  @param  ACell     Pointer to cell under investigation
+  @param  AStrings  Stringlist receiving the name-value pairs.
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateCellProperties(ACell: PCell;
   AStrings: TStrings);
@@ -1931,7 +1932,8 @@ end;
   The string list items are name-value pairs in the format "name=value".
   The string list is displayed in the inspector's grid.
 
-  @param   ACell   Cell under investigation
+  @param  ACell     Pointer to cell under investigation
+  @param  AStrings  Stringlist receiving the name-value pairs.
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateCellValue(ACell: PCell; AStrings: TStrings);
 begin
@@ -1976,7 +1978,8 @@ end;
   The string list items are name-value pairs in the format "name=value".
   The string list is displayed in the inspector's grid.
 
-  @param   ACell   Cell under investigation
+  @param  AWorkbook  Workbook under investigation
+  @param  AStrings   Stringlist receiving the name-value pairs.
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateWorkbook(AWorkbook: TsWorkbook;
   AStrings: TStrings);
@@ -2051,7 +2054,8 @@ end;
   The string list items are name-value pairs in the format "name=value".
   The string list is displayed in the inspector's grid.
 
-  @param   ACell   Cell under investigation
+  @param  ASheet    Worksheet under investigation
+  @param  AStrings  Stringlist receiving the name-value pairs.
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateWorksheet(ASheet: TsWorksheet;
   AStrings: TStrings);
