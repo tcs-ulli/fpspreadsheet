@@ -114,8 +114,8 @@ object CSVParamsForm: TCSVParamsForm
         Items.Strings = (
           'System'
           'CR+LF (Windows)'
-          'CR (Unix/Linux)'
-          'LF (Mac)'
+          'CR (Mac)'
+          'LF (Unix/Linux/OS X/BSD)'
         )
         Style = csDropDownList
         TabOrder = 1
