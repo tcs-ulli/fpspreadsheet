@@ -155,7 +155,8 @@ var
   actn: TCustomAction;
 begin
   WorkbookSource := TsWorkbookSource.Create(self);
-  with WorkbookSource do begin
+  with WorkbookSource do
+  begin
     Options := [boReadFormulas, boAutoCalc];
   end;
 
@@ -178,7 +179,8 @@ begin
   end;
 
   CellIndicator := TsCellIndicator.Create(self);
-  with CellIndicator do begin
+  with CellIndicator do
+  begin
     Parent := Panel1;
     Left := BtnLoad.Left + BtnLoad.Width + 24;
     Top := BtnLoad.Top;
@@ -186,7 +188,8 @@ begin
   end;
 
   CellEdit := TsCellEdit.Create(self);
-  with CellEdit do begin
+  with CellEdit do
+  begin
     Parent := Panel1;
     Left := CellIndicator.Left + CellIndicator.Width + 24;
     Top := CellIndicator.Top;
@@ -194,14 +197,16 @@ begin
   end;
 
   Inspector := TsSpreadsheetInspector.Create(self);
-  with Inspector do begin
+  with Inspector do
+  begin
     Parent := InspectorTabControl;
     Align := alClient;
     WorkbookSource := Self.WorkbookSource;
   end;
 
   actn := TsWorksheetAddAction.Create(self);
-  with TsWorksheetAddAction(actn) do begin
+  with TsWorksheetAddAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Add';
     Hint := 'Add worksheet';
@@ -210,7 +215,8 @@ begin
   MnuAddWorksheet.Action := actn;
 
   actn := TsWorksheetDeleteAction.Create(self);
-  with TsWorksheetDeleteAction(actn) do begin
+  with TsWorksheetDeleteAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Delete...';
     Hint := 'Delete worksheet';
@@ -219,7 +225,8 @@ begin
   MnuDeleteWorksheet.Action := actn;
 
   actn := TsWorksheetRenameAction.Create(self);
-  with TsWorksheetRenameAction(actn) do begin
+  with TsWorksheetRenameAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Rename...';
     Hint := 'Rename worksheet';
@@ -228,14 +235,37 @@ begin
   MnuRenameWorksheet.Action := actn;
 
   { Font names }
-  with TsFontnameCombobox.Create(self) do begin
+  with TsCellCombobox.Create(self) do
+  begin
+//  with TsFontnameCombobox.Create(self) do begin
     Parent := Toolbar1;
     WorkbookSource := Self.WorkbookSource;
+    Width := 160;
+    CellFormatItem := cfiFontName;
+  end;
+
+  { Font size }
+  with TsCellCombobox.Create(self) do
+  begin
+    Parent := Toolbar1;
+    WorkbookSource := Self.WorkbookSource;
+    Width := 50;
+    CellFormatItem := cfiFontSize;
+  end;
+
+  { Font color }
+  with TsCellCombobox.Create(self) do
+  begin
+    Parent := Toolbar1;
+    WorkbookSource := Self.WorkbookSource;
+    Width := 120;
+    CellFormatItem := cfiFontColor;
   end;
 
   { Font styles }
   actn := TsFontStyleAction.Create(self);
-  with TsFontStyleAction(actn) do begin
+  with TsFontStyleAction(actn) do
+  begin
     ActionList := Self.ActionList;
     Caption := 'Bold';
     Hint := 'Bold';
@@ -247,7 +277,8 @@ begin
   tbBold.Action := actn;
 
   actn := TsFontStyleAction.Create(self);
-  with TsFontStyleAction(actn) do begin
+  with TsFontStyleAction(actn) do
+  begin
     ActionList := Self.ActionList;
     Caption := 'Italic';
     Hint := 'Italic';
@@ -259,7 +290,8 @@ begin
   TbItalic.Action := actn;
 
   actn := TsFontStyleAction.Create(self);
-  with TsFontStyleAction(actn) do begin
+  with TsFontStyleAction(actn) do
+  begin
     ActionList := Self.ActionList;
     Caption := 'Underline';
     Hint := 'Underline';
@@ -271,7 +303,8 @@ begin
   TbUnderline.Action := actn;
 
   actn := TsFontStyleAction.Create(self);
-  with TsFontStyleAction(actn) do begin
+  with TsFontStyleAction(actn) do
+  begin
     ActionList := Self.ActionList;
     Caption := 'Strikeout';
     Hint := 'Strikeout';
@@ -284,7 +317,8 @@ begin
 
   { Horizontal alignments }
   actn := TsHorAlignmentAction.Create(self);
-  with TsHorAlignmentAction(actn) do begin
+  with TsHorAlignmentAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Left';
     Hint := 'Left-aligned';
@@ -296,7 +330,8 @@ begin
   TbHorAlignLeft.Action := actn;
 
   actn := TsHorAlignmentAction.Create(self);
-  with TsHorAlignmentAction(actn) do begin
+  with TsHorAlignmentAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Center';
     Hint := 'Centered';
@@ -308,7 +343,8 @@ begin
   TbHorAlignCenter.Action := actn;
 
   actn := TsHorAlignmentAction.Create(self);
-  with TsHorAlignmentAction(actn) do begin
+  with TsHorAlignmentAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Right';
     Hint := 'Right-aligned';
@@ -321,7 +357,8 @@ begin
 
   { Vertical alignments }
   actn := TsVertAlignmentAction.Create(self);
-  with TsVertAlignmentAction(actn) do begin
+  with TsVertAlignmentAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Top';
     Hint := 'Top-aligned';
@@ -333,7 +370,8 @@ begin
   TbVertAlignTop.Action := actn;
 
   actn := TsVertAlignmentAction.Create(self);
-  with TsVertAlignmentAction(actn) do begin
+  with TsVertAlignmentAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Middle';
     Hint := 'Middle';
@@ -345,7 +383,8 @@ begin
   TbVertAlignCenter.Action := actn;
 
   actn := TsVertAlignmentAction.Create(self);
-  with TsVertAlignmentAction(actn) do begin
+  with TsVertAlignmentAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Bottom';
     Hint := 'Bottom-aligned';
@@ -358,7 +397,8 @@ begin
 
   { Text rotation }
   actn := TsTextRotationAction.Create(self);
-  with TsTextRotationAction(actn) do begin
+  with TsTextRotationAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Horizontal';
     Hint := 'Horizontal text';
@@ -368,7 +408,8 @@ begin
   MnuTextRotHor.Action := actn;
 
   actn := TsTextRotationAction.Create(self);
-  with TsTextRotationAction(actn) do begin
+  with TsTextRotationAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := '90° clockwise rotation';
     Hint := '90° clockwise rotated text';
@@ -378,7 +419,8 @@ begin
   MnuTextRot90CW.Action := actn;
 
   actn := TsTextRotationAction.Create(self);
-  with TsTextRotationAction(actn) do begin
+  with TsTextRotationAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := '90° couner-clockwise rotation';
     Hint := '90° counter-clockwise rotated text';
@@ -388,7 +430,8 @@ begin
   MnuTextRot90CCW.Action := actn;
 
   actn := TsTextRotationAction.Create(self);
-  with TsTextRotationAction(actn) do begin
+  with TsTextRotationAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Stacked';
     Hint := 'Stacked text';
@@ -399,7 +442,8 @@ begin
 
   { Word wrap }
   actn := TsWordwrapAction.Create(self);
-  with TsWordwrapAction(actn) do begin
+  with TsWordwrapAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Word-wrap';
     Hint := 'Word-wrapped text';
@@ -410,7 +454,8 @@ begin
 
   { Number format }
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'General';
     Hint := 'General';
@@ -420,7 +465,8 @@ begin
   MnuNumFormatGeneral.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Fixed';
     Hint := 'Fixed decimals';
@@ -430,7 +476,8 @@ begin
   MnuNumFormatFixed.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Fixed w/Thousand separator';
     Hint := 'Fixed decimals with thousand separator';
@@ -440,7 +487,8 @@ begin
   MnuNumFormatFixedTh.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Exponential';
     Hint := 'Exponential';
@@ -450,7 +498,8 @@ begin
   MnuNumFormatExp.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Percentage';
     Hint := 'Percentage';
@@ -460,7 +509,8 @@ begin
   MnuNumFormatPercentage.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Currency';
     Hint := 'Currency';
@@ -470,7 +520,8 @@ begin
   MnuNumFormatCurrency.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Currency (red)';
     Hint := 'Currency (negative values in red)';
@@ -480,7 +531,8 @@ begin
   MnuNumFormatCurrencyRed.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Date and time';
     Hint := 'Date and time';
@@ -490,7 +542,8 @@ begin
   MnuNumFormatShortDateTime.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Long date';
     Hint := 'Long date';
@@ -500,7 +553,8 @@ begin
   MnuNumFormatLongDate.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     WorkbookSource := Self.WorkbookSource;
     Caption := 'Short date';
@@ -510,7 +564,8 @@ begin
   MnuNumFormatShortDate.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Long time';
     Hint := 'Long time';
@@ -520,7 +575,8 @@ begin
   MnuNumFormatLongTime.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Short time';
     Hint := 'Short time';
@@ -530,7 +586,8 @@ begin
   MnuNumFormatShortTime.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     Caption := 'Long time AM/PM';
     Hint := 'Long time with AM/PM';
@@ -540,7 +597,8 @@ begin
   MnuNumFormatLongTimeAM.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     WorkbookSource := Self.WorkbookSource;
     Caption := 'Short time AM/PM';
@@ -550,7 +608,8 @@ begin
   MnuNumFormatShortTimeAM.Action := actn;
 
   actn := TsNumberFormatAction.Create(self);
-  with TsNumberFormatAction(actn) do begin
+  with TsNumberFormatAction(actn) do
+  begin
     ActionList := self.ActionList;
     WorkbookSource := Self.WorkbookSource;
     Caption := 'Time interval';

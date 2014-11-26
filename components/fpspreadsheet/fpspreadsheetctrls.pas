@@ -26,7 +26,7 @@ unit fpspreadsheetctrls;
 interface
 
 uses
-  Classes, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
+  Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
   LResources,
   fpspreadsheet, {%H-}fpsAllFormats;
 
@@ -239,21 +239,38 @@ type
   end;
 
 
+  { TsCellFormatItem }
+  TsCellFormatItem = (cfiFontName, cfiFontSize, cfiFontColor, cfiBackgroundColor,
+    cfiBorderColor);
+
+
   { TsCellCombobox }
 
-  {@@ TsCellCombobox is the ancestor of TsFontNameCombobox and TsFontSizeCombobox }
-  TsCellCombobox = class(TCombobox)
+ {@@ TsCellCombobox is a multi-purpose combobox for selection of formatting
+     items of a cell }
+  TsCellCombobox = class(TCustomCombobox)
   private
     FWorkbookSource: TsWorkbookSource;
+    FFormatItem: TsCellFormatItem;
+    FColorRectWidth: Integer;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
+    procedure SetColorRectWidth(AValue: Integer);
+    procedure SetFormatItem(AValue: TsCellFormatItem);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
+//    procedure UpdateCombo;
   protected
     procedure ApplyFormatToCell(ACell: PCell); virtual;
+    procedure DrawItem(AIndex: Integer; ARect: TRect;
+      AState: TOwnerDrawState); override;
     procedure ExtractFromCell(ACell: PCell); virtual;
+    function GetActiveCell: PCell;
+//    function GetItemHeight: Integer; override;
+    procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Populate; virtual;
     procedure Select; override;
+    property Items stored false;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -264,8 +281,82 @@ type
     {@@ Refers to the underlying worksheet containing the displayed cell }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    {@@ Identifies the cell format property to be used in the combobox }
+    property CellFormatItem: TsCellFormatItem read FFormatItem write SetFormatItem;
+    {@@ Width of the color box shown for the color-related format items }
+    property ColorRectWidth: Integer read FColorRectWidth write SetColorRectWidth default 10;
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+
+    { inherited properties }
+    property Align;
+    property Anchors;
+    property ArrowKeysTraverseList;
+    property AutoComplete;
+    property AutoCompleteText;
+    property AutoDropDown;
+    property AutoSelect;
+    property AutoSize;// Note: windows has a fixed height in some styles
+    property BidiMode;
+    property BorderSpacing;
+    property BorderStyle;
+    property CharCase;
+    property Color;
+    property Constraints;
+    property DragCursor;
+    property DragKind;
+    property DragMode;
+    property DropDownCount;
+    property Enabled;
+    property Font;
+    property ItemHeight;
+    property ItemIndex;
+//    property Items;
+    property ItemWidth;
+    property MaxLength;
+    property OnChange;
+    property OnChangeBounds;
+    property OnClick;
+    property OnCloseUp;
+    property OnContextPopup;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnDrawItem;
+    property OnEndDrag;
+    property OnDropDown;
+    property OnEditingDone;
+    property OnEnter;
+    property OnExit;
+    property OnGetItems;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMeasureItem;
+    property OnMouseDown;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnMouseWheel;
+    property OnMouseWheelDown;
+    property OnMouseWheelUp;
+    property OnSelect;
+    property OnStartDrag;
+    property OnUTF8KeyPress;
+    property ParentBidiMode;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ReadOnly;
+    property ShowHint;
+    property Sorted;
+//    property Style;
+    property TabOrder;
+    property TabStop;
+    property Text;
+    property Visible;
   end;
 
 
@@ -275,6 +366,76 @@ type
   TsCellFontCombobox = class(TsCellCombobox)
   protected
     function GetCellFont(ACell: PCell): TsFont;
+  published
+    { inherited properties }
+    property Align;
+    property Anchors;
+    property ArrowKeysTraverseList;
+    property AutoComplete;
+    property AutoCompleteText;
+    property AutoDropDown;
+    property AutoSelect;
+    property AutoSize;// Note: windows has a fixed height in some styles
+    property BidiMode;
+    property BorderSpacing;
+    property BorderStyle;
+    property CharCase;
+    property Color;
+    property Constraints;
+    property DragCursor;
+    property DragKind;
+    property DragMode;
+    property DropDownCount;
+    property Enabled;
+    property Font;
+    property ItemHeight;
+    property ItemIndex;
+//    property Items;
+    property ItemWidth;
+    property MaxLength;
+    property OnChange;
+    property OnChangeBounds;
+    property OnClick;
+    property OnCloseUp;
+    property OnContextPopup;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnDrawItem;
+    property OnEndDrag;
+    property OnDropDown;
+    property OnEditingDone;
+    property OnEnter;
+    property OnExit;
+    property OnGetItems;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMeasureItem;
+    property OnMouseDown;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnMouseWheel;
+    property OnMouseWheelDown;
+    property OnMouseWheelUp;
+    property OnSelect;
+    property OnStartDrag;
+    property OnUTF8KeyPress;
+    property ParentBidiMode;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ReadOnly;
+    property ShowHint;
+    property Sorted;
+//    property Style;
+    property TabOrder;
+    property TabStop;
+    property Text;
+    property Visible;
   end;
 
 
@@ -357,7 +518,7 @@ procedure Register;
 implementation
 
 uses
-  Types, TypInfo, Dialogs, Forms,
+  Types, TypInfo, LCLType, Dialogs, Forms,
   fpsStrings, fpsUtils, fpSpreadsheetGrid;
 
 
@@ -369,7 +530,8 @@ procedure Register;
 begin
   RegisterComponents('FPSpreadsheet', [
     TsWorkbookSource, TsWorkbookTabControl, TsWorksheetGrid,
-    TsCellEdit, TsCellIndicator, TsFontNameCombobox, TsFontSizeCombobox,
+    TsCellEdit, TsCellIndicator, TsCellCombobox,
+    TsFontNameCombobox, TsFontSizeCombobox,
     TsSpreadsheetInspector
   ]);
 end;
@@ -1401,6 +1563,7 @@ end;
 constructor TsCellCombobox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FColorRectWidth := 10;
   Populate;
 end;
 
@@ -1419,8 +1582,102 @@ end;
   which the combobox is responsible.
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.ApplyFormatToCell(ACell: PCell);
+var
+  fnt: TsFont;
+  clr: TColor;
+  sclr: TsColor;
 begin
-  Unused(ACell);
+  if (ItemIndex = -1) or (Worksheet = nil) then
+    exit;
+
+  case FFormatItem of
+    cfiFontName:
+      begin
+        fnt := Worksheet.ReadCellFont(ACell);
+        Worksheet.WriteFont(ACell, Items[ItemIndex], fnt.Size, fnt.Style, fnt.Color);
+      end;
+    cfiFontSize:
+      begin
+        fnt := Worksheet.ReadCellFont(ACell);
+        Worksheet.WriteFont(ACell, fnt.FontName, StrToFloat(Items[ItemIndex]), fnt.Style, fnt.Color);
+      end;
+    cfiFontColor:
+      begin
+        fnt := Worksheet.ReadCellFont(ACell);
+        clr := TsColor(PtrInt(Items.Objects[ItemIndex]));
+        sclr := Workbook.FindClosestColor(clr);
+        Worksheet.WriteFont(ACell, fnt.FontName, fnt.Size, fnt.Style, clr);
+      end;
+    cfiBackgroundColor:
+      if ItemIndex = 0 then
+        Worksheet.WriteBackgroundColor(ACell, scTransparent)
+      else
+      begin
+        clr := TsColor(PtrInt(Items.Objects[ItemIndex]));
+        sclr := Workbook.FindClosestColor(clr);
+        Worksheet.WriteBackgroundColor(ACell, sclr);
+      end;
+    cfiBorderColor:
+      ;
+    else
+      raise Exception.Create('[TsCellFormatCombobox.ApplyFormatToCell] Unknown format item');
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Customdraws an item in the combobox. This is overridden to paint a color box
+  for the color-related format items.
+ ------------------------------------------------------------------------------}
+procedure TsCellCombobox.DrawItem(AIndex: Integer; ARect: TRect;
+  AState: TOwnerDrawState);
+{ This code is adapted from colorbox.pas}
+var
+  r: TRect;
+  brushColor, penColor, newColor: TColor;
+  noFill: Boolean;
+begin
+  if AIndex = -1 then
+    Exit;
+
+  r.Top := ARect.Top + 2;
+  r.Bottom := ARect.Bottom - 2;
+  r.Left := ARect.Left + 2;
+  r.Right := r.Left + FColorRectWidth;
+  Exclude(AState, odPainted);
+
+  noFill := false;
+
+  with Canvas do
+  begin
+    FillRect(ARect);
+
+    brushColor := Brush.Color;
+    penColor := Pen.Color;
+
+    newColor := TColor(Items.Objects[AIndex]);
+
+    if newColor = clNone then
+      noFill := true;
+
+    Brush.Color := newColor;
+    Pen.Color := clBlack;
+
+    r := BiDiFlipRect(r, ARect, UseRightToLeftAlignment);
+    Rectangle(r);
+
+    if noFill then
+    begin
+      Line(r.Left, r.Top, r.Right-1, r.Bottom-1);
+      Line(r.Left, r.Bottom-1, r.Right-1, r.Top);
+    end;
+
+    Brush.Color := brushColor;
+    Pen.Color := penColor;
+  end;
+  r := ARect;
+  inc(r.Left, FColorRectWidth + 4);
+
+  inherited DrawItem(AIndex, BidiFlipRect(r, ARect, UseRightToLeftAlignment), AState);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1428,10 +1685,80 @@ end;
   selectes the corresponding combobox item.
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
+var
+  fnt: TsFont;
+  sclr: TsColor;
+  clr: TColor;
 begin
-  Unused(ACell);
+  case FFormatItem of
+    cfiFontName:
+      begin
+        fnt := Worksheet.ReadCellFont(ACell);
+        // No check for nil required because fnt is at least DefaultFont
+        ItemIndex := Items.IndexOf(fnt.FontName);
+      end;
+    cfiFontSize:
+      begin
+        fnt := Worksheet.ReadCellFont(ACell);
+        ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+      end;
+    cfiFontColor:
+      begin
+        fnt := Worksheet.ReadCellFont(ACell);
+        ItemIndex := Items.IndexOfObject(TObject(PtrInt(fnt.Color)));
+      end;
+    cfiBackgroundColor:
+      begin
+        if Worksheet = nil then
+          clr := clNone
+        else
+        begin
+          sclr := Worksheet.ReadBackgroundColor(ACell);
+          if (sclr = scNotDefined) or (sclr = scTransparent) then
+            clr := clNone
+          else
+          clr := Workbook.GetPaletteColor(sclr);
+        end;
+        ItemIndex := Items.IndexOfObject(TObject(PtrInt(clr)));
+      end;
+    cfiBorderColor:
+      ;
+    else
+      raise Exception.Create('[TsCellFormatItem.ExtractFromCell] Unknown format item');
+  end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the currently active cell of the worksheet
+-------------------------------------------------------------------------------}
+function TsCellCombobox.GetActiveCell: PCell;
+begin
+  if FWorkbookSource <> nil then
+    Result := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol)
+  else
+    Result := nil;
+end;
+                           (*
+function TsCellCombobox.GetItemHeight: Integer;
+begin
+  Result := TWSCustomComboboxClass(WidgetSetClass).GetItemHeight(Self);
+  if inherited ItemHeight = 0 then
+    inherited ItemHeight := Result;
+  {
+  // FItemHeight is not initialized at class creating. we can, but with what value?
+  // so, if it still uninitialized (=0), then we ask widgetset
+  if (FStyle in [csOwnerDrawFixed, csOwnerDrawVariable]) and (FItemHeight > 0) or not HandleAllocated then
+  begin
+    Result := FItemHeight
+  end else
+  begin
+    Result := TWSCustomComboBoxClass(WidgetSetClass).GetItemHeight(Self);
+    if (FItemHeight = 0) then
+      FItemHeight := Result;
+  end;
+  }
+end;
+                             *)
 {@@ ----------------------------------------------------------------------------
   Getter method for the property Workbook which is currently loaded by the
   WorkbookSource
@@ -1474,11 +1801,21 @@ begin
   if (Worksheet = nil) or ([lniCell, lniSelection]*AChangedItems = []) then
     exit;
 
-  activeCell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  activeCell := GetActiveCell;
   if ((lniCell in AChangedItems) and (PCell(AData) = activeCell)) or
      (lniSelection in AChangedItems)
   then
     ExtractFromCell(activeCell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Standard method. Overridden to populate combobox since items are not stored
+  in lfm file.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.Loaded;
+begin
+  inherited;
+  Populate;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1497,7 +1834,32 @@ end;
   Descendants override this method to populate the items of the combobox.
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.Populate;
+var
+  i: Integer;
 begin
+  if Workbook = nil then
+    exit;
+
+  case FFormatItem of
+    cfiFontName:
+      Items.Assign(Screen.Fonts);
+    cfiFontSize:
+      Items.CommaText := '8,9,10,11,12,13,14,16,18,20,22,24,26,28,32,36,48,72';
+    cfiFontColor:
+      for i:=0 to Workbook.GetPaletteSize-1 do
+        Items.AddObject(Workbook.GetColorName(i), TObject(Workbook.GetPaletteColor(i)));
+    cfiBackgroundColor:
+      begin
+        Items.AddObject('(none)', TObject(clNone));
+        for i:=0 to Workbook.GetPaletteSize-1 do
+          Items.AddObject(Workbook.GetColorName(i), TObject(Workbook.GetPaletteColor(i)));
+      end;
+    cfiBorderColor:
+      for i:=0 to Workbook.GetPaletteSize-1 do
+        Items.AddObject(Workbook.GetColorName(i), TObject(Workbook.GetPaletteColor(i)));
+    else
+      raise Exception.Create('[TsCellCombobox.Populate] Unknown cell format item.');
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1512,6 +1874,8 @@ var
   cell: PCell;
 begin
   inherited Select;
+//  UpdateCombo;
+
   if Worksheet = nil then
     exit;
   sel := Worksheet.GetSelection;
@@ -1522,6 +1886,33 @@ begin
         cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
         ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
       end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the ColorRectWidth property
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.SetColorRectWidth(AValue: Integer);
+begin
+  if FColorRectWidth = AValue then
+    exit;
+  FColorRectWidth := AValue;
+  Invalidate;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the FormatItem property
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.SetFormatItem(AValue: TsCellFormatItem);
+begin
+  FFormatItem := AValue;
+  if FFormatItem in [cfiFontColor, cfiBackgroundColor, cfiBorderColor] then
+    inherited Style := csOwnerDrawFixed
+  else
+    inherited Style := csDropdown;
+
+  Populate;
+  if FWorkbookSource <> nil then
+    ExtractFromCell(GetActiveCell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1539,7 +1930,35 @@ begin
   Text := '';
   ListenerNotification([lniSelection]);
 end;
-
+  (*
+procedure TsCellCombobox.UpdateCombo;
+var
+  c: integer;
+begin
+  if HandleAllocated then
+    Invalidate;
+  {
+  begin
+    for c := Ord(cbCustomColor in Style) to Items.Count - 1 do
+    begin
+      if Colors[c] = FSelected then
+      begin
+        ItemIndex := c;
+        Exit;
+      end;
+    end;
+    if cbCustomColor in Style then
+    begin
+      Items.Objects[0] := TObject(PtrInt(FSelected));
+      ItemIndex := 0;
+      Invalidate;
+    end
+    else
+      ItemIndex := -1;
+  end;
+  }
+end;
+    *)
 
 {------------------------------------------------------------------------------}
 {                             TsCellFontCombobox                               }

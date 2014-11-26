@@ -1031,7 +1031,7 @@ type
     { Color handling }
     function AddColorToPalette(AColorValue: TsColorValue): TsColor;
     function FindClosestColor(AColorValue: TsColorValue;
-      AMaxPaletteCount: Integer): TsColor;
+      AMaxPaletteCount: Integer = -1): TsColor;
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
     function GetColorName(AColorIndex: TsColor): string; overload;
     procedure GetColorName(AColorValue: TsColorValue; out AName: String); overload;
@@ -2973,12 +2973,12 @@ end;
 function TsWorksheet.ReadBackgroundColor(ACell: PCell): TsColor;
 begin
   if ACell = nil then
-  begin
-    Result := scNotDefined;
-    Exit;
-  end;
-
-  Result := ACell^.BackgroundColor;
+    Result := scNotDefined
+  else
+  if (uffBackgroundColor in ACell^.UsedFormattingFields) then
+    Result := ACell^.BackgroundColor
+  else
+    Result := scTransparent;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7370,7 +7370,7 @@ end;
   @return  Palette index of the color closest to AColorValue
 --------------------------------------------------------------------------------}
 function TsWorkbook.FindClosestColor(AColorValue: TsColorValue;
-  AMaxPaletteCount: Integer): TsColor;
+  AMaxPaletteCount: Integer = -1): TsColor;
 type
   TRGBA = record r,g,b, a: Byte end;
 var
@@ -7383,7 +7383,10 @@ var
 begin
   Result := scNotDefined;
   minDist := 1E108;
-  n := Min(Length(FPalette), AMaxPaletteCount);
+  if AMaxPaletteCount = -1 then
+    n := Length(FPalette)
+  else
+    n := Min(Length(FPalette), AMaxPaletteCount);
   for i:=0 to n-1 do
   begin
     rgb := TRGBA(GetPaletteColor(i));

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  ComCtrls, ActnList, Menus, StdActns,
+  ComCtrls, ActnList, Menus, StdActns, //ColorBox, StdCtrls,
   fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
 
 type
@@ -187,6 +187,10 @@ type
     AcCellBorderAllVert: TsCellBorderAction;
     FontnameCombo: TsFontnameCombobox;
     AcCopyFormat: TsCopyFormatAction;
+    FontColorCombobox: TsCellCombobox;
+    BackgroundColorCombobox: TsCellCombobox;
+    sCellCombobox3: TsCellCombobox;
+    sCellCombobox4: TsCellCombobox;
     sFontSizeCombobox1: TsFontSizeCombobox;
     AcMergeCells: TsMergeAction;
     Splitter2: TSplitter;
