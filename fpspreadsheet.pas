@@ -614,6 +614,8 @@ type
     function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields; overload;
     function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor; overload;
     function  ReadBackgroundColor(ACell: PCell): TsColor; overload;
+    function  ReadCellFont(ARow, ACol: Cardinal): TsFont; overload;
+    function  ReadCellFont(ACell: PCell): TsFont; overload;
 
     { Merged cells }
     procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
@@ -2977,6 +2979,36 @@ begin
   end;
 
   Result := ACell^.BackgroundColor;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the font used by a specified cell. Returns the workbook's default
+  font if the cell does not exist. Considers the uffBold and uffFont formatting
+  fields of the cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellFont(ARow, ACol: Cardinal): TsFont;
+begin
+  Result := ReadCellFont(FindCell(ARow, ACol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the font used by a specified cell. Returns the workbook's default
+  font if the cell does not exist. Considers the uffBold and uffFont formatting
+  fields of the cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellFont(ACell: PCell): TsFont;
+begin
+  Result := nil;
+  if ACell <> nil then
+  begin
+    if (uffBold in ACell^.UsedFormattingFields) then
+      Result := Workbook.GetFont(1)
+    else
+    if (uffFont in ACell^.UsedFormattingFields) then
+      Result := Workbook.GetFont(ACell^.FontIndex)
+  end;
+  if Result = nil then
+    Result := Workbook.GetDefaultFont;
 end;
 
 {@@ ----------------------------------------------------------------------------
