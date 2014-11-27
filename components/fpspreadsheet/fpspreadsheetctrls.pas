@@ -38,9 +38,9 @@ type
 
   {@@ Describes during communication between WorkbookSource and visual controls
     which kind of item has changed: the workbook, the worksheet, a cell value,
-    or a cell formatting }
+    or a cell formatting, etc. }
   TsNotificationItem = (lniWorkbook, lniWorksheet, lniCell, lniSelection,
-    lniAbortSelection);
+    lniAbortSelection, lniRow);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
@@ -68,6 +68,7 @@ type
 
     procedure AbortSelection;
     procedure CellChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
+    procedure CellFontChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure CellSelectedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure InternalCreateNewWorkbook;
     procedure InternalLoadFromFile(AFileName: string; AAutoDetect: Boolean;
@@ -518,7 +519,7 @@ procedure Register;
 implementation
 
 uses
-  Types, TypInfo, LCLType, Dialogs, Forms,
+  Types, Math, TypInfo, LCLType, Dialogs, Forms,
   fpsStrings, fpsUtils, fpSpreadsheetGrid;
 
 
@@ -610,6 +611,21 @@ procedure TsWorkbookSource.CellChangedHandler(Sender: TObject;
 begin
   if FWorksheet <> nil then
     NotifyListeners([lniCell], FWorksheet.FindCell(ARow, ACol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Event handler for the OnChangeFont event of TsWorksheet which is fired
+  whenever a cell font changes. The listener, in particular the worksheetGrid,
+  must adapt the height of non-fixed rows
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.CellFontChangedHandler(Sender: TObject;
+  ARow, ACol: Cardinal);
+begin
+  if FWorksheet <> nil then
+  begin
+    NotifyListeners([lniCell], Worksheet.FindCell(ARow, ACol));
+    NotifyListeners([lniRow], Pointer(PtrInt(ARow)));
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1138,8 +1154,8 @@ begin
   if FWorksheet <> nil then
   begin
     FWorksheet.OnChangeCell := @CellChangedHandler;
+    FWorksheet.OnChangeFont := @CellFontChangedHandler;
     FWorksheet.OnSelectCell := @CellSelectedHandler;
-    FWorksheet.OnChangeFont := @CellChangedHandler;
     NotifyListeners([lniWorksheet]);
     SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
   end else
@@ -1564,7 +1580,6 @@ constructor TsCellCombobox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColorRectWidth := 10;
-  Populate;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1604,18 +1619,16 @@ begin
     cfiFontColor:
       begin
         fnt := Worksheet.ReadCellFont(ACell);
-        clr := TsColor(PtrInt(Items.Objects[ItemIndex]));
-        sclr := Workbook.FindClosestColor(clr);
-        Worksheet.WriteFont(ACell, fnt.FontName, fnt.Size, fnt.Style, clr);
+        clr := PtrInt(Items.Objects[ItemIndex]);
+        Worksheet.WriteFont(ACell, fnt.FontName, fnt.Size, fnt.style, clr);
       end;
     cfiBackgroundColor:
-      if ItemIndex = 0 then
+      if ItemIndex <= 0 then
         Worksheet.WriteBackgroundColor(ACell, scTransparent)
       else
       begin
-        clr := TsColor(PtrInt(Items.Objects[ItemIndex]));
-        sclr := Workbook.FindClosestColor(clr);
-        Worksheet.WriteBackgroundColor(ACell, sclr);
+        clr := PtrInt(Items.Objects[ItemIndex]);
+        Worksheet.WriteBackgroundColor(ACell, clr);
       end;
     cfiBorderColor:
       ;
@@ -1633,51 +1646,72 @@ procedure TsCellCombobox.DrawItem(AIndex: Integer; ARect: TRect;
 { This code is adapted from colorbox.pas}
 var
   r: TRect;
-  brushColor, penColor, newColor: TColor;
+  clr: TsColor;
+  brushColor, penColor: TColor;
+  brushStyle: TBrushStyle;
   noFill: Boolean;
 begin
   if AIndex = -1 then
     Exit;
 
-  r.Top := ARect.Top + 2;
-  r.Bottom := ARect.Bottom - 2;
-  r.Left := ARect.Left + 2;
-  r.Right := r.Left + FColorRectWidth;
-  Exclude(AState, odPainted);
-
-  noFill := false;
-
-  with Canvas do
+  if FFormatItem in [cfiFontColor, cfiBackgroundColor, cfiBorderColor] then
   begin
-    FillRect(ARect);
+    r.Top := ARect.Top + 2;
+    r.Bottom := ARect.Bottom - 2;
+    r.Left := ARect.Left + 2;
+    if FColorRectWidth = -1 then
+      r.Right := ARect.Right - 2
+    else
+      r.Right := r.Left + FColorRectWidth;
+    Exclude(AState, odPainted);
 
-    brushColor := Brush.Color;
-    penColor := Pen.Color;
+    noFill := false;
 
-    newColor := TColor(Items.Objects[AIndex]);
-
-    if newColor = clNone then
-      noFill := true;
-
-    Brush.Color := newColor;
-    Pen.Color := clBlack;
-
-    r := BiDiFlipRect(r, ARect, UseRightToLeftAlignment);
-    Rectangle(r);
-
-    if noFill then
+    with Canvas do
     begin
-      Line(r.Left, r.Top, r.Right-1, r.Bottom-1);
-      Line(r.Left, r.Bottom-1, r.Right-1, r.Top);
+      FillRect(ARect);
+
+      brushStyle := Brush.Style;
+      brushColor := Brush.Color;
+      penColor := Pen.Color;
+
+      clr := TsColor(PtrInt(Items.Objects[AIndex]));
+      if (clr = scTransparent) or (clr = scNotDefined) then
+      begin
+        noFill := true;
+        Brush.Style := bsClear;
+      end else
+      begin
+        Brush.Color := Workbook.GetPaletteColor(clr);
+        Brush.Style := bsSolid;
+      end;
+      Pen.Color := clBlack;
+
+      r := BiDiFlipRect(r, ARect, UseRightToLeftAlignment);
+      Rectangle(r);
+
+      if noFill then
+      begin
+        Line(r.Left, r.Top, r.Right-1, r.Bottom-1);
+        Line(r.Left, r.Bottom-1, r.Right-1, r.Top);
+      end;
+
+      Brush.Style := brushStyle;
+      Brush.Color := brushColor;
+      Pen.Color := penColor;
     end;
 
-    Brush.Color := brushColor;
-    Pen.Color := penColor;
+    if FColorRectWidth > -1 then
+    begin
+      r := ARect;
+      inc(r.Left, FColorRectWidth + 4);
+      inherited DrawItem(AIndex, BidiFlipRect(r, ARect, UseRightToLeftAlignment), AState);
+    end;
+  end else
+  begin
+    r := ARect;
+    inherited DrawItem(AIndex, BidiFlipRect(r, ARect, UseRightToLeftAlignment), AState);
   end;
-  r := ARect;
-  inc(r.Left, FColorRectWidth + 4);
-
-  inherited DrawItem(AIndex, BidiFlipRect(r, ARect, UseRightToLeftAlignment), AState);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1687,8 +1721,7 @@ end;
 procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
-  sclr: TsColor;
-  clr: TColor;
+  clr: TsColor;
 begin
   case FFormatItem of
     cfiFontName:
@@ -1709,17 +1742,8 @@ begin
       end;
     cfiBackgroundColor:
       begin
-        if Worksheet = nil then
-          clr := clNone
-        else
-        begin
-          sclr := Worksheet.ReadBackgroundColor(ACell);
-          if (sclr = scNotDefined) or (sclr = scTransparent) then
-            clr := clNone
-          else
-          clr := Workbook.GetPaletteColor(sclr);
-        end;
-        ItemIndex := Items.IndexOfObject(TObject(PtrInt(clr)));
+        clr := Worksheet.ReadBackgroundColor(ACell);
+        ItemIndex := Max(0, Items.IndexOfObject(TObject(PtrInt(clr))));
       end;
     cfiBorderColor:
       ;
@@ -1738,27 +1762,7 @@ begin
   else
     Result := nil;
 end;
-                           (*
-function TsCellCombobox.GetItemHeight: Integer;
-begin
-  Result := TWSCustomComboboxClass(WidgetSetClass).GetItemHeight(Self);
-  if inherited ItemHeight = 0 then
-    inherited ItemHeight := Result;
-  {
-  // FItemHeight is not initialized at class creating. we can, but with what value?
-  // so, if it still uninitialized (=0), then we ask widgetset
-  if (FStyle in [csOwnerDrawFixed, csOwnerDrawVariable]) and (FItemHeight > 0) or not HandleAllocated then
-  begin
-    Result := FItemHeight
-  end else
-  begin
-    Result := TWSCustomComboBoxClass(WidgetSetClass).GetItemHeight(Self);
-    if (FItemHeight = 0) then
-      FItemHeight := Result;
-  end;
-  }
-end;
-                             *)
+
 {@@ ----------------------------------------------------------------------------
   Getter method for the property Workbook which is currently loaded by the
   WorkbookSource
@@ -1802,7 +1806,7 @@ begin
     exit;
 
   activeCell := GetActiveCell;
-  if ((lniCell in AChangedItems) and (PCell(AData) = activeCell)) or
+  if (([lniCell]*AChangedItems <>[]) and (PCell(AData) = activeCell)) or
      (lniSelection in AChangedItems)
   then
     ExtractFromCell(activeCell);
@@ -1832,6 +1836,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Descendants override this method to populate the items of the combobox.
+  Color index into the workbook's palette is stored in the "Objects" property.
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.Populate;
 var
@@ -1847,16 +1852,16 @@ begin
       Items.CommaText := '8,9,10,11,12,13,14,16,18,20,22,24,26,28,32,36,48,72';
     cfiFontColor:
       for i:=0 to Workbook.GetPaletteSize-1 do
-        Items.AddObject(Workbook.GetColorName(i), TObject(Workbook.GetPaletteColor(i)));
+        Items.AddObject(Workbook.GetColorName(i), TObject(PtrInt(i)));
     cfiBackgroundColor:
       begin
-        Items.AddObject('(none)', TObject(clNone));
+        Items.AddObject('(none)', TObject(scTransparent));
         for i:=0 to Workbook.GetPaletteSize-1 do
-          Items.AddObject(Workbook.GetColorName(i), TObject(Workbook.GetPaletteColor(i)));
+          Items.AddObject(Workbook.GetColorName(i), TObject(PtrInt(i)));
       end;
     cfiBorderColor:
       for i:=0 to Workbook.GetPaletteSize-1 do
-        Items.AddObject(Workbook.GetColorName(i), TObject(Workbook.GetPaletteColor(i)));
+        Items.AddObject(Workbook.GetColorName(i), TObject(PtrInt(i)));
     else
       raise Exception.Create('[TsCellCombobox.Populate] Unknown cell format item.');
   end;
