@@ -185,13 +185,11 @@ type
     AcCellBorderTopBottomDbl: TsCellBorderAction;
     AcCellBorderAll: TsCellBorderAction;
     AcCellBorderAllVert: TsCellBorderAction;
-    FontnameCombo: TsFontnameCombobox;
     AcCopyFormat: TsCopyFormatAction;
     FontColorCombobox: TsCellCombobox;
     BackgroundColorCombobox: TsCellCombobox;
-    sCellCombobox3: TsCellCombobox;
-    sCellCombobox4: TsCellCombobox;
-    sFontSizeCombobox1: TsFontSizeCombobox;
+    FontnameCombo: TsCellCombobox;
+    FontsizeCombo: TsCellCombobox;
     AcMergeCells: TsMergeAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
@@ -246,6 +244,7 @@ type
     ToolButton42: TToolButton;
     ToolButton43: TToolButton;
     ToolButton44: TToolButton;
+    ToolButton45: TToolButton;
     ToolButton5: TToolButton;
     ToolButton6: TToolButton;
     ToolButton7: TToolButton;
