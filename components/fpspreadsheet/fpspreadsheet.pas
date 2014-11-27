@@ -1616,6 +1616,9 @@ begin
   FLastRowIndex := 0;
   FLastColIndex := 0;
 
+  FActiveCellRow := Cardinal(-1);
+  FActiveCellCol := Cardinal(-1);
+
   FOptions := [soShowGridLines, soShowHeaders];
 end;
 
@@ -3670,12 +3673,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
 begin
-  if (ARow <> FActiveCellRow) or (ACol <> FActiveCellCol) then
-  begin
+  //if (ARow <> FActiveCellRow) or (ACol <> FActiveCellCol) then
+  //begin
     FActiveCellRow := ARow;
     FActiveCellCol := ACol;
     if Assigned(FOnSelectCell) then FOnSelectCell(Self, ARow, ACol);
-  end;
+  //end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3684,7 +3687,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ClearSelection;
 begin
-SetLength(FSelection, 0);
+  SetLength(FSelection, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------

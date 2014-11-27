@@ -262,14 +262,15 @@ type
 //    procedure UpdateCombo;
   protected
     procedure ApplyFormatToCell(ACell: PCell); virtual;
+    procedure Change; override;
     procedure DrawItem(AIndex: Integer; ARect: TRect;
       AState: TOwnerDrawState); override;
     procedure ExtractFromCell(ACell: PCell); virtual;
     function GetActiveCell: PCell;
-//    function GetItemHeight: Integer; override;
     procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Populate; virtual;
+    procedure ProcessItem;
     procedure Select; override;
     property Items stored false;
   public
@@ -297,7 +298,7 @@ type
     property AutoCompleteText;
     property AutoDropDown;
     property AutoSelect;
-    property AutoSize;// Note: windows has a fixed height in some styles
+    property AutoSize; // Note: windows has a fixed height in some styles
     property BidiMode;
     property BorderSpacing;
     property BorderStyle;
@@ -310,7 +311,7 @@ type
     property DropDownCount;
     property Enabled;
     property Font;
-    property ItemHeight;
+//    property ItemHeight;
     property ItemIndex;
 //    property Items;
     property ItemWidth;
@@ -350,7 +351,7 @@ type
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
-    property ReadOnly;
+//    property ReadOnly;
     property ShowHint;
     property Sorted;
 //    property Style;
@@ -389,7 +390,7 @@ type
     property DropDownCount;
     property Enabled;
     property Font;
-    property ItemHeight;
+//    property ItemHeight;
     property ItemIndex;
 //    property Items;
     property ItemWidth;
@@ -429,7 +430,7 @@ type
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
-    property ReadOnly;
+//    property ReadOnly;
     property ShowHint;
     property Sorted;
 //    property Style;
@@ -658,9 +659,6 @@ begin
   InternalCreateNewWorkbook;
   FWorksheet := FWorkbook.AddWorksheet('Sheet1');
   SelectWorksheet(FWorksheet);
-
-  // notify listeners
-//  NotifyListeners([lniWorkbook, lniWorksheet, lniSelection]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -815,7 +813,9 @@ procedure TsWorkbookSource.Loaded;
 begin
   inherited;
   if (FFileName <> '') then
-    SetFileName(FFilename);
+    SetFileName(FFilename)
+  else
+    CreateNewWorkbook;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1149,6 +1149,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.WorksheetSelectedHandler(Sender: TObject;
   AWorksheet: TsWorksheet);
+var
+  r, c: Cardinal;
 begin
   FWorksheet := AWorksheet;
   if FWorksheet <> nil then
@@ -1157,7 +1159,13 @@ begin
     FWorksheet.OnChangeFont := @CellFontChangedHandler;
     FWorksheet.OnSelectCell := @CellSelectedHandler;
     NotifyListeners([lniWorksheet]);
-    SelectCell(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
+    if FWorksheet.ActiveCellRow = Cardinal(-1) then
+      r := FWorksheet.TopPaneHeight else
+      r := FWorksheet.ActiveCellRow;
+    if FWorksheet.ActiveCellCol = Cardinal(-1) then
+      c := FWorksheet.LeftPaneWidth else
+      c := FWorksheet.ActiveCellCol;
+    SelectCell(r, c);
   end else
     NotifyListeners([lniWorksheet]);
 end;
@@ -1580,6 +1588,7 @@ constructor TsCellCombobox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColorRectWidth := 10;
+  ItemHeight := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1602,21 +1611,24 @@ var
   clr: TColor;
   sclr: TsColor;
 begin
-  if (ItemIndex = -1) or (Worksheet = nil) then
+  if (Worksheet = nil) then
     exit;
 
   case FFormatItem of
     cfiFontName:
+      if Text <> '' then
       begin
         fnt := Worksheet.ReadCellFont(ACell);
-        Worksheet.WriteFont(ACell, Items[ItemIndex], fnt.Size, fnt.Style, fnt.Color);
+        Worksheet.WriteFont(ACell, Text, fnt.Size, fnt.Style, fnt.Color);
       end;
     cfiFontSize:
+      if Text <> '' then
       begin
         fnt := Worksheet.ReadCellFont(ACell);
-        Worksheet.WriteFont(ACell, fnt.FontName, StrToFloat(Items[ItemIndex]), fnt.Style, fnt.Color);
+        Worksheet.WriteFont(ACell, fnt.FontName, StrToFloat(Text), fnt.Style, fnt.Color);
       end;
     cfiFontColor:
+      if ItemIndex > -1 then
       begin
         fnt := Worksheet.ReadCellFont(ACell);
         clr := PtrInt(Items.Objects[ItemIndex]);
@@ -1635,6 +1647,17 @@ begin
     else
       raise Exception.Create('[TsCellFormatCombobox.ApplyFormatToCell] Unknown format item');
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  The text of the currently selected combobox item has been changed.
+  Calls "ProcessValue" to changes the selected cells according to the
+  Mode property by calling ApplyFormatToCell.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.Change;
+begin
+  inherited;
+  ProcessItem;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1868,22 +1891,29 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  A new item in the combobox is selected. Changes the selected cells according
-  to the Mode property by calling ApplyFormatToCell.
+  Processes the selected combobox item after a new item has been selected or the
+  item text has been edited.
+  Changes the selected cells according to the Mode property by calling
+  ApplyFormatToCell.
 -------------------------------------------------------------------------------}
-procedure TsCellCombobox.Select;
+procedure TsCellCombobox.ProcessItem;
 var
   r, c: Cardinal;
   range: Integer;
   sel: TsCellRangeArray;
   cell: PCell;
 begin
-  inherited Select;
-//  UpdateCombo;
-
   if Worksheet = nil then
     exit;
   sel := Worksheet.GetSelection;
+  if Length(sel) = 0 then
+  begin
+    SetLength(sel, 1);
+    sel[0].Col1 := Worksheet.ActiveCellCol;
+    sel[0].Row1 := Worksheet.ActiveCellRow;
+    sel[0].Col2 := sel[0].Col1;
+    sel[0].Row2 := sel[0].Row2;
+  end;
   for range := 0 to High(sel) do
     for r := sel[range].Row1 to sel[range].Row2 do
       for c := sel[range].Col1 to sel[range].Col2 do
@@ -1891,6 +1921,16 @@ begin
         cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
         ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
       end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  A new item in the combobox is selected. Calls "ProcessValue" to changes the
+  selected cells according to the Mode property by calling ApplyFormatToCell.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.Select;
+begin
+  inherited Select;
+  ProcessItem;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1911,9 +1951,14 @@ procedure TsCellCombobox.SetFormatItem(AValue: TsCellFormatItem);
 begin
   FFormatItem := AValue;
   if FFormatItem in [cfiFontColor, cfiBackgroundColor, cfiBorderColor] then
-    inherited Style := csOwnerDrawFixed
-  else
+  begin
+    inherited Style := csOwnerDrawFixed;
+    ReadOnly := true;
+  end else
+  begin
     inherited Style := csDropdown;
+    ReadOnly := false;
+  end;
 
   Populate;
   if FWorkbookSource <> nil then

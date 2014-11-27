@@ -2,18 +2,18 @@ object Form1: TForm1
   Left = 541
   Height = 600
   Top = 214
-  Width = 876
+  Width = 941
   Caption = 'Form1'
-  ClientHeight = 575
-  ClientWidth = 876
+  ClientHeight = 580
+  ClientWidth = 941
   Menu = MainMenu
   ShowHint = True
   LCLVersion = '1.3'
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 486
-    Top = 89
-    Width = 623
+    Height = 497
+    Top = 83
+    Width = 688
     TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
@@ -23,9 +23,9 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 456
-      Top = 28
-      Width = 619
+      Height = 472
+      Top = 23
+      Width = 684
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
@@ -77,9 +77,9 @@ object Form1: TForm1
     end
   end
   object InspectorTabControl: TTabControl
-    Left = 628
-    Height = 486
-    Top = 89
+    Left = 693
+    Height = 497
+    Top = 83
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -94,8 +94,8 @@ object Form1: TForm1
     Visible = False
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 456
-      Top = 28
+      Height = 472
+      Top = 23
       Width = 244
       Align = alClient
       RowCount = 25
@@ -108,7 +108,7 @@ object Form1: TForm1
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         'FormatSettings='
         '  ThousandSeparator=.'
-        '  DecimalSeparator=,'
+        '  DecimalSeparator=.'
         '  ListSeparator=;'
         '  DateSeparator=.'
         '  TimeSeparator=:'
@@ -134,24 +134,24 @@ object Form1: TForm1
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
       ColWidths = (
-        109
-        110
+        111
+        112
       )
     end
   end
   object Splitter1: TSplitter
-    Left = 623
-    Height = 486
-    Top = 89
+    Left = 688
+    Height = 497
+    Top = 83
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 28
-    Top = 28
-    Width = 876
+    Height = 26
+    Top = 24
+    Width = 941
     AutoSize = True
     ButtonHeight = 26
     ButtonWidth = 24
@@ -160,7 +160,7 @@ object Form1: TForm1
     Images = ImageList
     TabOrder = 3
     object ToolButton4: TToolButton
-      Left = 265
+      Left = 232
       Height = 26
       Top = 0
       Width = 3
@@ -168,22 +168,22 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton6: TToolButton
-      Left = 268
+      Left = 283
       Top = 0
       Action = AcFontBold
     end
     object ToolButton7: TToolButton
-      Left = 292
+      Left = 307
       Top = 0
       Action = AcFontItalic
     end
     object ToolButton8: TToolButton
-      Left = 316
+      Left = 331
       Top = 0
       Action = AcFontUnderline
     end
     object ToolButton10: TToolButton
-      Left = 364
+      Left = 379
       Height = 26
       Top = 0
       Width = 5
@@ -191,27 +191,27 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton11: TToolButton
-      Left = 340
+      Left = 355
       Top = 0
       Action = AcFontStrikeout
     end
     object ToolButton12: TToolButton
-      Left = 369
+      Left = 384
       Top = 0
       Action = AcHorAlignLeft
     end
     object ToolButton13: TToolButton
-      Left = 393
+      Left = 408
       Top = 0
       Action = AcHorAlignCenter
     end
     object ToolButton14: TToolButton
-      Left = 417
+      Left = 432
       Top = 0
       Action = AcHorAlignRight
     end
     object ToolButton15: TToolButton
-      Left = 441
+      Left = 456
       Height = 26
       Top = 0
       Width = 5
@@ -219,22 +219,22 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton16: TToolButton
-      Left = 446
+      Left = 461
       Top = 0
       Action = AcVertAlignTop
     end
     object ToolButton17: TToolButton
-      Left = 470
+      Left = 485
       Top = 0
       Action = AcVertAlignCenter
     end
     object ToolButton18: TToolButton
-      Left = 494
+      Left = 509
       Top = 0
       Action = AcVertAlignBottom
     end
     object ToolButton19: TToolButton
-      Left = 518
+      Left = 533
       Height = 26
       Top = 0
       Width = 5
@@ -242,7 +242,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton20: TToolButton
-      Left = 523
+      Left = 567
       Hint = 'Number format'
       Top = 0
       Caption = 'ToolButton20'
@@ -251,7 +251,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton21: TToolButton
-      Left = 583
+      Left = 627
       Hint = 'Currency format'
       Top = 0
       Caption = 'ToolButton21'
@@ -260,12 +260,12 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton22: TToolButton
-      Left = 559
+      Left = 603
       Top = 0
       Action = AcNumFormatPercentage
     end
     object ToolButton23: TToolButton
-      Left = 828
+      Left = 901
       Height = 26
       Top = 0
       Width = 5
@@ -273,7 +273,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton24: TToolButton
-      Left = 619
+      Left = 663
       Hint = 'Date format'
       Top = 0
       Caption = 'ToolButton24'
@@ -282,7 +282,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton25: TToolButton
-      Left = 655
+      Left = 699
       Hint = 'Time format'
       Top = 0
       Caption = 'ToolButton25'
@@ -291,27 +291,29 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton26: TToolButton
-      Left = 691
+      Left = 735
       Top = 0
       Action = AcDecDecimals
     end
     object ToolButton27: TToolButton
-      Left = 715
+      Left = 759
       Top = 0
       Action = AcIncDecimals
     end
     object ToolButton29: TToolButton
       Left = 30
+      Hint = 'Cell font dialog'
       Top = 0
       Action = AcCellFontDialog
     end
     object ToolButton30: TToolButton
-      Left = 768
+      Left = 788
+      Hint = 'Background color dialog'
       Top = 0
       Action = AcBackgroundColorDialog
     end
     object ToolButton31: TToolButton
-      Left = 857
+      Left = 860
       Height = 26
       Top = 0
       Width = 5
@@ -319,7 +321,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object TbBorders: TToolButton
-      Left = 792
+      Left = 865
       Hint = 'Top border'
       Top = 0
       Caption = 'Top'
@@ -327,32 +329,8 @@ object Form1: TForm1
       ImageIndex = 26
       Style = tbsDropDown
     end
-    object FontnameCombo: TsFontNameCombobox
-      Left = 54
-      Height = 28
-      Top = 0
-      Width = 151
-      CellFormatItem = cfiFontName
-      WorkbookSource = WorkbookSource
-      ItemHeight = 20
-      ItemIndex = 41
-      TabOrder = 0
-      Text = 'Arial'
-    end
-    object sFontSizeCombobox1: TsFontSizeCombobox
-      Left = 205
-      Height = 28
-      Top = 0
-      Width = 60
-      CellFormatItem = cfiFontName
-      WorkbookSource = WorkbookSource
-      ItemHeight = 20
-      ItemIndex = 2
-      TabOrder = 1
-      Text = '10'
-    end
     object ToolButton3: TToolButton
-      Left = 739
+      Left = 783
       Height = 26
       Top = 0
       Width = 5
@@ -360,12 +338,12 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton5: TToolButton
-      Left = 833
+      Left = 906
       Top = 0
       Action = AcMergeCells
     end
     object ToolButton36: TToolButton
-      Left = 744
+      Left = 538
       Top = 0
       Action = AcWordWrap
     end
@@ -382,12 +360,70 @@ object Form1: TForm1
       Caption = 'ToolButton38'
       Style = tbsDivider
     end
+    object FontnameCombo: TsCellCombobox
+      Left = 54
+      Height = 23
+      Hint = 'Cell font name'
+      Top = 0
+      Width = 130
+      CellFormatItem = cfiFontName
+      WorkbookSource = WorkbookSource
+      ItemIndex = 62
+      TabOrder = 0
+      Text = 'Arial'
+    end
+    object FontsizeCombo: TsCellCombobox
+      Left = 184
+      Height = 23
+      Hint = 'Cell font size'
+      Top = 0
+      Width = 48
+      CellFormatItem = cfiFontSize
+      WorkbookSource = WorkbookSource
+      ItemIndex = 2
+      TabOrder = 1
+      Text = '10'
+    end
+    object FontColorCombobox: TsCellCombobox
+      Left = 235
+      Height = 24
+      Hint = 'Font color'
+      Top = 0
+      Width = 48
+      CellFormatItem = cfiFontColor
+      ColorRectWidth = -1
+      WorkbookSource = WorkbookSource
+      ItemIndex = 0
+      TabOrder = 2
+      Text = 'black'
+    end
+    object BackgroundColorCombobox: TsCellCombobox
+      Left = 812
+      Height = 24
+      Hint = 'Background color'
+      Top = 0
+      Width = 48
+      CellFormatItem = cfiBackgroundColor
+      ColorRectWidth = -1
+      WorkbookSource = WorkbookSource
+      ItemIndex = 0
+      TabOrder = 3
+      Text = '(none)'
+    end
+    object ToolButton45: TToolButton
+      Left = 562
+      Height = 26
+      Top = 0
+      Width = 5
+      Caption = 'ToolButton45'
+      Style = tbsDivider
+    end
   end
   object ToolBar2: TToolBar
     Left = 0
-    Height = 28
+    Height = 24
     Top = 0
-    Width = 876
+    Width = 941
     AutoSize = True
     ButtonHeight = 24
     ButtonWidth = 24
@@ -477,54 +513,12 @@ object Form1: TForm1
       Caption = 'ToolButton44'
       Style = tbsDivider
     end
-    object FontColorCombobox: TsCellCombobox
-      Left = 261
-      Height = 28
-      Top = 0
-      Width = 48
-      CellFormatItem = cfiFontColor
-      ColorRectWidth = -1
-      WorkbookSource = WorkbookSource
-      ItemHeight = 20
-      TabOrder = 0
-    end
-    object BackgroundColorCombobox: TsCellCombobox
-      Left = 309
-      Height = 28
-      Top = 0
-      Width = 48
-      CellFormatItem = cfiBackgroundColor
-      ColorRectWidth = -1
-      WorkbookSource = WorkbookSource
-      ItemHeight = 20
-      TabOrder = 1
-    end
-    object sCellCombobox3: TsCellCombobox
-      Left = 357
-      Height = 28
-      Top = 0
-      Width = 124
-      CellFormatItem = cfiFontName
-      WorkbookSource = WorkbookSource
-      ItemHeight = 20
-      TabOrder = 2
-    end
-    object sCellCombobox4: TsCellCombobox
-      Left = 481
-      Height = 28
-      Top = 0
-      Width = 50
-      CellFormatItem = cfiFontSize
-      WorkbookSource = WorkbookSource
-      ItemHeight = 20
-      TabOrder = 3
-    end
   end
   object ToolBar3: TToolBar
     Left = 0
     Height = 28
-    Top = 56
-    Width = 876
+    Top = 50
+    Width = 941
     AutoSize = True
     Caption = 'ToolBar3'
     Constraints.MinHeight = 28
@@ -542,7 +536,7 @@ object Form1: TForm1
       TabOrder = 0
       object CellIndicator: TsCellIndicator
         Left = 0
-        Height = 28
+        Height = 23
         Top = 0
         Width = 138
         Align = alTop
@@ -555,7 +549,7 @@ object Form1: TForm1
       Left = 144
       Height = 24
       Top = 0
-      Width = 732
+      Width = 797
       Align = alClient
       BorderSpacing.Bottom = 2
       TabOrder = 1
@@ -573,8 +567,8 @@ object Form1: TForm1
     Cursor = crVSplit
     Left = 0
     Height = 5
-    Top = 84
-    Width = 876
+    Top = 78
+    Width = 941
     Align = alTop
     ResizeAnchor = akTop
   end
