@@ -3053,6 +3053,13 @@ begin
     MouseUp(mbLeft, [], GCache.ClickMouse.X, GCache.ClickMouse.Y);
     // HOW TO DO THIS????    SelectActive not working...
   end;
+
+  // Row height (after font change).
+  if (lniRow in AChangedItems) and (Worksheet <> nil) then
+  begin
+    grow := GetGridRow(PtrInt(AData));
+    RowHeights[grow] := CalcAutoRowHeight(grow);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

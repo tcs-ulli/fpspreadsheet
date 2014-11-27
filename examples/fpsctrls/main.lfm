@@ -4,15 +4,15 @@ object Form1: TForm1
   Top = 214
   Width = 876
   Caption = 'Form1'
-  ClientHeight = 580
+  ClientHeight = 575
   ClientWidth = 876
   Menu = MainMenu
   ShowHint = True
   LCLVersion = '1.3'
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
-    Height = 497
-    Top = 83
+    Height = 486
+    Top = 89
     Width = 623
     TabIndex = 0
     Tabs.Strings = (
@@ -23,8 +23,8 @@ object Form1: TForm1
     WorkbookSource = WorkbookSource
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 472
-      Top = 23
+      Height = 456
+      Top = 28
       Width = 619
       FrozenCols = 0
       FrozenRows = 0
@@ -78,8 +78,8 @@ object Form1: TForm1
   end
   object InspectorTabControl: TTabControl
     Left = 628
-    Height = 497
-    Top = 83
+    Height = 486
+    Top = 89
     Width = 248
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -94,8 +94,8 @@ object Form1: TForm1
     Visible = False
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 472
-      Top = 23
+      Height = 456
+      Top = 28
       Width = 244
       Align = alClient
       RowCount = 25
@@ -108,7 +108,7 @@ object Form1: TForm1
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         'FormatSettings='
         '  ThousandSeparator=.'
-        '  DecimalSeparator=.'
+        '  DecimalSeparator=,'
         '  ListSeparator=;'
         '  DateSeparator=.'
         '  TimeSeparator=:'
@@ -134,23 +134,23 @@ object Form1: TForm1
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
       ColWidths = (
-        111
-        112
+        109
+        110
       )
     end
   end
   object Splitter1: TSplitter
     Left = 623
-    Height = 497
-    Top = 83
+    Height = 486
+    Top = 89
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 26
-    Top = 24
+    Height = 28
+    Top = 28
     Width = 876
     AutoSize = True
     ButtonHeight = 26
@@ -329,24 +329,24 @@ object Form1: TForm1
     end
     object FontnameCombo: TsFontNameCombobox
       Left = 54
-      Height = 23
+      Height = 28
       Top = 0
       Width = 151
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
-      ItemHeight = 15
-      ItemIndex = 62
+      ItemHeight = 20
+      ItemIndex = 41
       TabOrder = 0
       Text = 'Arial'
     end
     object sFontSizeCombobox1: TsFontSizeCombobox
       Left = 205
-      Height = 23
+      Height = 28
       Top = 0
       Width = 60
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 2
       TabOrder = 1
       Text = '10'
@@ -385,7 +385,7 @@ object Form1: TForm1
   end
   object ToolBar2: TToolBar
     Left = 0
-    Height = 24
+    Height = 28
     Top = 0
     Width = 876
     AutoSize = True
@@ -479,49 +479,51 @@ object Form1: TForm1
     end
     object FontColorCombobox: TsCellCombobox
       Left = 261
-      Height = 21
+      Height = 28
       Top = 0
-      Width = 82
+      Width = 48
       CellFormatItem = cfiFontColor
+      ColorRectWidth = -1
       WorkbookSource = WorkbookSource
-      ItemHeight = 15
+      ItemHeight = 20
       TabOrder = 0
     end
     object BackgroundColorCombobox: TsCellCombobox
-      Left = 343
-      Height = 21
+      Left = 309
+      Height = 28
       Top = 0
-      Width = 92
+      Width = 48
       CellFormatItem = cfiBackgroundColor
+      ColorRectWidth = -1
       WorkbookSource = WorkbookSource
-      ItemHeight = 15
+      ItemHeight = 20
       TabOrder = 1
     end
     object sCellCombobox3: TsCellCombobox
-      Left = 435
-      Height = 23
+      Left = 357
+      Height = 28
       Top = 0
       Width = 124
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
-      ItemHeight = 15
+      ItemHeight = 20
       TabOrder = 2
     end
     object sCellCombobox4: TsCellCombobox
-      Left = 559
-      Height = 23
+      Left = 481
+      Height = 28
       Top = 0
       Width = 50
       CellFormatItem = cfiFontSize
       WorkbookSource = WorkbookSource
-      ItemHeight = 15
+      ItemHeight = 20
       TabOrder = 3
     end
   end
   object ToolBar3: TToolBar
     Left = 0
     Height = 28
-    Top = 50
+    Top = 56
     Width = 876
     AutoSize = True
     Caption = 'ToolBar3'
@@ -540,7 +542,7 @@ object Form1: TForm1
       TabOrder = 0
       object CellIndicator: TsCellIndicator
         Left = 0
-        Height = 23
+        Height = 28
         Top = 0
         Width = 138
         Align = alTop
@@ -571,7 +573,7 @@ object Form1: TForm1
     Cursor = crVSplit
     Left = 0
     Height = 5
-    Top = 78
+    Top = 84
     Width = 876
     Align = alTop
     ResizeAnchor = akTop
@@ -580,14 +582,14 @@ object Form1: TForm1
     AutoDetectFormat = False
     Options = [boAutoCalc, boCalcBeforeSaving, boReadFormulas]
     left = 176
-    top = 128
+    top = 160
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
     Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv'
     Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
     left = 312
-    top = 128
+    top = 160
   end
   object ActionList: TActionList
     Images = ImageList
@@ -4359,7 +4361,7 @@ object Form1: TForm1
   end
   object PuNumFormat: TPopupMenu
     left = 504
-    top = 184
+    top = 216
     object MenuItem19: TMenuItem
       Action = AcNumFormatGeneral
       AutoCheck = True
@@ -4385,7 +4387,7 @@ object Form1: TForm1
   end
   object PuCurrencyFormat: TPopupMenu
     left = 504
-    top = 248
+    top = 280
     object MenuItem7: TMenuItem
       Action = AcNumFormatCurrency
       AutoCheck = True
@@ -4397,7 +4399,7 @@ object Form1: TForm1
   end
   object PuDateFormat: TPopupMenu
     left = 504
-    top = 312
+    top = 344
     object MenuItem22: TMenuItem
       Action = AcNumFormatDateTime
       AutoCheck = True
@@ -4416,7 +4418,7 @@ object Form1: TForm1
   end
   object PuTimeFormat: TPopupMenu
     left = 504
-    top = 376
+    top = 408
     object MenuItem26: TMenuItem
       Action = AcNumFormatLongTime
       AutoCheck = True
@@ -4440,7 +4442,7 @@ object Form1: TForm1
   object PuBorders: TPopupMenu
     Images = ImageList
     left = 504
-    top = 128
+    top = 160
     object MenuItem41: TMenuItem
       Action = AcCellBorderNone
       Bitmap.Data = {
