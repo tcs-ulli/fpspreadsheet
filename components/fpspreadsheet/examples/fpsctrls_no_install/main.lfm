@@ -4,7 +4,7 @@ object Form1: TForm1
   Top = 177
   Width = 874
   Caption = 'Form1'
-  ClientHeight = 508
+  ClientHeight = 503
   ClientWidth = 874
   Menu = MainMenu
   OnCreate = FormCreate
@@ -12,7 +12,7 @@ object Form1: TForm1
   object Panel1: TPanel
     Left = 0
     Height = 74
-    Top = 26
+    Top = 24
     Width = 874
     Align = alTop
     BevelOuter = bvNone
@@ -126,10 +126,10 @@ object Form1: TForm1
     end
     object CbLoader: TComboBox
       Left = 104
-      Height = 23
+      Height = 28
       Top = 8
       Width = 148
-      ItemHeight = 15
+      ItemHeight = 20
       ItemIndex = 1
       Items.Strings = (
         'Workbook'
@@ -142,17 +142,17 @@ object Form1: TForm1
     end
     object Label1: TLabel
       Left = 13
-      Height = 15
+      Height = 20
       Top = 11
-      Width = 58
+      Width = 73
       Caption = 'Loaded by:'
       ParentColor = False
     end
   end
   object InspectorTabControl: TTabControl
     Left = 577
-    Height = 408
-    Top = 100
+    Height = 405
+    Top = 98
     Width = 297
     OnChange = InspectorTabControlChange
     TabIndex = 0
@@ -167,17 +167,18 @@ object Form1: TForm1
   end
   object Splitter1: TSplitter
     Left = 572
-    Height = 408
-    Top = 100
+    Height = 405
+    Top = 98
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object ToolBar1: TToolBar
     Left = 0
-    Height = 26
+    Height = 24
     Top = 0
     Width = 874
+    AutoSize = True
     Caption = 'ToolBar1'
     Images = ImageList1
     TabOrder = 3
