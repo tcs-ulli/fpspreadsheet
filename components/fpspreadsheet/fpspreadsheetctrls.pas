@@ -40,7 +40,7 @@ type
     which kind of item has changed: the workbook, the worksheet, a cell value,
     or a cell formatting, etc. }
   TsNotificationItem = (lniWorkbook, lniWorksheet, lniCell, lniSelection,
-    lniAbortSelection, lniRow);
+    lniAbortSelection, lniRow, lniPalette);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
@@ -75,6 +75,7 @@ type
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
     procedure SetFileName(const AFileName: TFileName);
     procedure SetOptions(AValue: TsWorkbookOptions);
+    procedure WorkbookChangedPaletteHandler(Sender: TObject);
     procedure WorkbookOpenedHandler(Sender: TObject);
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetChangedHandler(Sender: TObject; ASheet: TsWorksheet);
@@ -761,6 +762,7 @@ begin
   FWorkbook.OnChangeWorksheet := @WorksheetChangedHandler;
   FWorkbook.OnRemoveWorksheet := @WorksheetRemovedHandler;
   FWorkbook.OnSelectWorksheet := @WorksheetSelectedHandler;
+  FWorkbook.OnChangePalette := @WorkbookChangedPaletteHandler;
   // Pass options to workbook
   SetOptions(FOptions);
 end;
@@ -867,9 +869,6 @@ procedure TsWorkbookSource.NotifyListeners(AChangedItems: TsNotificationItems;
 var
   i: Integer;
 begin
-  //if FControlLockCount > 0 then
-  //  exit;
-
   for i:=0 to FListeners.Count-1 do
     if TObject(FListeners[i]) is TsCellCombobox then
       TsCellCombobox(FListeners[i]).ListenerNotification(AChangedItems, AData)
@@ -1067,6 +1066,15 @@ begin
     FPendingSelection[i] := ASelection[i];
   FPendingSelection := ASelection;
   FPendingOperation := AOperation;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Event handler called whenever the palette of the workbook is changed.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.WorkbookChangedPaletteHandler(Sender: TObject);
+begin
+  Unused(Sender);
+  NotifyListeners([lniPalette]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1825,14 +1833,21 @@ var
   activeCell: PCell;
 begin
   Unused(AData);
-  if (Worksheet = nil) or ([lniCell, lniSelection]*AChangedItems = []) then
+  if (Worksheet = nil) or
+     ([lniCell, lniSelection, lniPalette]*AChangedItems = [])
+  then
     exit;
 
   activeCell := GetActiveCell;
-  if (([lniCell]*AChangedItems <>[]) and (PCell(AData) = activeCell)) or
+  if (([lniCell]*AChangedItems <> []) and (PCell(AData) = activeCell)) or
      (lniSelection in AChangedItems)
   then
     ExtractFromCell(activeCell);
+
+  if (FFormatItem in [cfiFontColor, cfiBorderColor, cfiBackgroundColor]) and
+     (lniPalette in AChangedItems)
+  then
+    Populate;
 end;
 
 {@@ ----------------------------------------------------------------------------
