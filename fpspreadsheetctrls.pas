@@ -260,7 +260,6 @@ type
     procedure SetColorRectWidth(AValue: Integer);
     procedure SetFormatItem(AValue: TsCellFormatItem);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
-//    procedure UpdateCombo;
   protected
     procedure ApplyFormatToCell(ACell: PCell); virtual;
     procedure Change; override;
@@ -362,7 +361,7 @@ type
     property Visible;
   end;
 
-
+                      (*
   { TsCellFontCombobox }
 
   {@@ TsCellFontCombobox is a combobox for selecting various font properties }
@@ -465,7 +464,7 @@ type
     procedure Populate; override;
   public
     constructor Create(AOwner: TComponent); override;
-  end;
+  end;            *)
 
 
   { TsSpreadsheetInspector }
@@ -534,7 +533,7 @@ begin
   RegisterComponents('FPSpreadsheet', [
     TsWorkbookSource, TsWorkbookTabControl, TsWorksheetGrid,
     TsCellEdit, TsCellIndicator, TsCellCombobox,
-    TsFontNameCombobox, TsFontSizeCombobox,
+    //TsFontNameCombobox, TsFontSizeCombobox,
     TsSpreadsheetInspector
   ]);
 end;
@@ -2024,7 +2023,7 @@ begin
   }
 end;
     *)
-
+                 (*
 {------------------------------------------------------------------------------}
 {                             TsCellFontCombobox                               }
 {------------------------------------------------------------------------------}
@@ -2170,7 +2169,7 @@ begin
     Add('72');
   end;
 end;
-
+            *)
 
 {------------------------------------------------------------------------------}
 {                          TsSpreadsheetInspector                              }
