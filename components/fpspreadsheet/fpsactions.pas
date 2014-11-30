@@ -107,20 +107,17 @@ type
 
   { --- Actions related to cell and cell selection formatting--- }
 
-  TsCellAction = class(TsSpreadsheetAction)
-  public
-    function HandlesTarget(Target: TObject): Boolean; override;
-    property ActiveCell;
-    property Selection;
-    property Worksheet;
-  end;
+  TsCopyItem = (ciFormat, ciValue, ciFormula, ciAll);
 
-  TsCopyFormatAction = class(TsSpreadsheetAction)
+  TsCopyAction = class(TsSpreadsheetAction)
+  private
+    FCopyItem: TsCopyItem;
   public
     procedure ExecuteTarget(Target: TObject); override;
     procedure UpdateTarget(Target: TObject); override;
   published
     property Caption;
+    property CopyItem: TsCopyItem read FCopyItem write FCopyItem default ciFormat;
     property Enabled;
     property HelpContext;
     property HelpKeyword;
@@ -133,6 +130,14 @@ type
     property SecondaryShortCuts;
     property ShortCut;
     property Visible;
+  end;
+
+  TsCellAction = class(TsSpreadsheetAction)
+  public
+    function HandlesTarget(Target: TObject): Boolean; override;
+    property ActiveCell;
+    property Selection;
+    property Worksheet;
   end;
 
   TsAutoFormatAction = class(TsCellAction)
@@ -451,7 +456,7 @@ begin
     // Worksheet-releated actions
     TsWorksheetAddAction, TsWorksheetDeleteAction, TsWorksheetRenameAction,
     // Cell or cell range formatting actions
-    TsCopyFormatAction,
+    TsCopyAction,
     TsFontStyleAction, TsFontDialogAction, TsBackgroundColorDialogAction,
     TsHorAlignmentAction, TsVertAlignmentAction,
     TsTextRotationAction, TsWordWrapAction,
@@ -676,27 +681,31 @@ begin
 end;
 
 
+{ TsCopyAction }
+
+procedure TsCopyAction.ExecuteTarget(Target: TObject);
+const
+  OPERATIONS: array[TsCopyItem] of TsPendingOperation = (
+    poCopyFormat, poCopyValue, poCopyFormula, poCopyCell
+  );
+begin
+  Unused(Target);
+  Checked := true;
+  WorkbookSource.SetPendingOperation(OPERATIONS[FCopyItem], Worksheet.GetSelection);
+end;
+
+procedure TsCopyAction.UpdateTarget(Target: TObject);
+begin
+  Unused(Target);
+  if WorkbookSource.PendingOperation = poNone then Checked := false;
+end;
+
+
 { TsCellAction }
 
 function TsCellAction.HandlesTarget(Target: TObject): Boolean;
 begin
   Result := inherited HandlesTarget(Target) and (Worksheet <> nil) and (Length(GetSelection) > 0);
-end;
-
-
-{ TsCopyFormatAction }
-
-procedure TsCopyFormatAction.ExecuteTarget(Target: TObject);
-begin
-  Unused(Target);
-  Checked := true;
-  WorkbookSource.SetPendingOperation(poCopyFormat, Worksheet.GetSelection);
-end;
-
-procedure TsCopyFormatAction.UpdateTarget(Target: TObject);
-begin
-  Unused(Target);
-  if WorkbookSource.PendingOperation = poNone then Checked := false;
 end;
 
 

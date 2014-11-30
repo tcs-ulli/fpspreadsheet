@@ -46,7 +46,7 @@ type
   TsNotificationItems = set of TsNotificationItem;
 
   {@@ Identifier for an operation that will be executed at next cell select }
-  TsPendingOperation = (poNone, poCopyFormat);
+  TsPendingOperation = (poNone, poCopyFormat, poCopyValue, poCopyFormula, poCopyCell);
 
   { TsWorkbookSource }
 
@@ -743,7 +743,10 @@ begin
         srcCell := Worksheet.FindCell(FPendingSelection[i].Row1+j, FPendingSelection[i].Col1+k);
         destCell := Worksheet.GetCell(destSelection[i].Row1+j, destSelection[i].Col1+k);
         case FPendingOperation of
-          poCopyFormat: Worksheet.CopyFormat(srcCell, destCell);
+          poCopyCell   : Worksheet.CopyCell(srcCell, destCell);
+          poCopyFormat : Worksheet.CopyFormat(srcCell, destCell);
+          poCopyFormula: Worksheet.CopyFormula(srcCell, destCell);
+          poCopyValue  : Worksheet.CopyValue(srcCell, destCell);
         end;
       end;
 end;

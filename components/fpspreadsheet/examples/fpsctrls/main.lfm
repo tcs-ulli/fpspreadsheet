@@ -1294,7 +1294,7 @@ object Form1: TForm1
       ImageIndex = 45
       OnAccept = AcFileSaveAsAccept
     end
-    object AcCopyFormat: TsCopyFormatAction
+    object AcCopyFormat: TsCopyAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Copy format'
