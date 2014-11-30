@@ -185,7 +185,7 @@ type
     AcCellBorderTopBottomDbl: TsCellBorderAction;
     AcCellBorderAll: TsCellBorderAction;
     AcCellBorderAllVert: TsCellBorderAction;
-    AcCopyFormat: TsCopyFormatAction;
+    AcCopyFormat: TsCopyAction;
     FontColorCombobox: TsCellCombobox;
     BackgroundColorCombobox: TsCellCombobox;
     FontnameCombo: TsCellCombobox;

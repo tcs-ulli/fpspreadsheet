@@ -773,16 +773,23 @@ type
     function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
 
     { Data manipulation methods - For Cells }
-    procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
-      AFromWorksheet: TsWorksheet); overload;
     procedure CopyCell(AFromCell, AToCell: PCell); overload;
-    procedure CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal); overload;
+    procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
+      AFromWorksheet: TsWorksheet = nil); overload;
     procedure CopyFormat(AFromCell, AToCell: PCell); overload;
+    procedure CopyFormat(AFormatCell: PCell; AToRow, AToCol: Cardinal); overload;
+    procedure CopyFormula(AFromCell, AToCell: PCell); overload;
+    procedure CopyFormula(AFormulaCell: PCell; AToRow, AToCol: Cardinal); overload;
+    procedure CopyValue(AFromCell, AToCell: PCell); overload;
+    procedure CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal); overload;
+
     procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
+
     function  FindCell(ARow, ACol: Cardinal): PCell; overload;
     function  FindCell(AddressStr: String): PCell; overload;
     function  GetCell(ARow, ACol: Cardinal): PCell; overload;
     function  GetCell(AddressStr: String): PCell; overload;
+
     function  GetCellCount: Cardinal;
     function  GetFirstCell(): PCell;
     function  GetNextCell(): PCell;
@@ -1308,6 +1315,8 @@ procedure RegisterSpreadFormat(AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat);
 
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
+procedure CopyCellValue(AFromCell, AToCell: PCell);
+
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
@@ -1497,6 +1506,27 @@ begin
   AToCell^.TextRotation := AFromCell^.TextRotation;
   AToCell^.NumberFormat := AFromCell^.NumberFormat;
   AToCell^.NumberFormatStr := AFromCell^.NumberFormatStr;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the value of a cell to another one. Does not copy the formula, erases
+  the formula of the destination cell if there is one!
+
+  @param  AFromCell   Cell from which the value is to be copied
+  @param  AToCell     Cell to which the value is to be copied
+-------------------------------------------------------------------------------}
+procedure CopyCellValue(AFromCell, AToCell: PCell);
+begin
+  Assert(AFromCell <> nil);
+  Assert(AToCell <> nil);
+
+  AToCell^.ContentType := AFromCell^.ContentType;
+  AToCell^.NumberValue := AFromCell^.NumberValue;
+  AToCell^.DateTimeValue := AFromCell^.DateTimeValue;
+  AToCell^.BoolValue := AFromCell^.BoolValue;
+  AToCell^.ErrorValue := AFromCell^.ErrorValue;
+  AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
+  AToCell^.FormulaValue := '';    // This is confirmed with Excel
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1891,6 +1921,40 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Copies a cell to a cell at another location. The new cell has the same values
+  and the same formatting. It differs in formula (adapted relative references)
+  and col/row indexes.
+
+  @param   FromCell   Pointer to the source cell which will be copied
+  @param   ToCell     Pointer to the destination cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyCell(AFromCell, AToCell: PCell);
+var
+  toRow, toCol: Cardinal;
+begin
+  if (AFromCell = nil) or (AToCell = nil) then
+    exit;
+
+  // Remember the row and column indexes of the destination cell.
+  toRow := AToCell^.Row;
+  toCol := AToCell^.Col;
+
+  // Copy cell values and formats
+  AToCell^ := AFromCell^;
+
+  // Fix row and column indexes overwritten
+  AToCell^.Row := toRow;
+  AToCell^.Col := toCol;
+
+  // Fix relative references in formulas
+  // This also fires the OnChange event.
+  CopyFormula(AFromCell, AToCell);
+
+  // Notify visual controls of possibly changed row heights.
+  ChangedFont(AToCell^.Row, AToCell^.Col);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Copies a cell. The source cell can be located in a different worksheet, while
   the destination cell must be in the same worksheet which calls the methode.
 
@@ -1898,40 +1962,18 @@ end;
   @param AFromCol  Column index of the source cell
   @param AToRow    Row index of the destination cell
   @param AToCol    Column index of the destination cell
-  @param AFromWorksheet  Worksheet containing the source cell.
+  @param AFromWorksheet  Worksheet containing the source cell. Self, if omitted.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
-  AFromWorksheet: TsWorksheet);
-var
-  lSrcCell, lDestCell: PCell;
+  AFromWorksheet: TsWorksheet = nil);
 begin
-  lSrcCell := AFromWorksheet.FindCell(AFromRow, AFromCol);
-  if lSrcCell = nil then
-    exit;
+  if AFromWorksheet = nil then
+    AFromWorksheet := self;
 
-  lDestCell := GetCell(AToRow, AToCol);
-  lDestCell^ := lSrcCell^;
-  lDestCell^.Row := AToRow;
-  lDestCell^.Col := AToCol;
+  CopyCell(AFromWorksheet.FindCell(AFromRow, AFromCol), GetCell(AToRow, AToCol));
+
   ChangedCell(AToRow, AToCol);
   ChangedFont(AToRow, AToCol);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Copies a cell
-
-  @param   FromCell   Pointer to the source cell which will be copied
-  @param   ToCell     Pointer to the destination cell
--------------------------------------------------------------------------------}
-procedure TsWorksheet.CopyCell(AFromCell, AToCell: PCell);
-begin
-  if (AFromCell = nil) or (AToCell = nil) then
-    exit;
-  AToCell^ := AFromCell^;
-  AToCell^.Row := AFromCell^.Row;
-  AToCell^.Col := AFromCell^.Col;
-  ChangedCell(AToCell^.Row, AToCell^.Col);
-  ChangedFont(AToCell^.Row, AToCell^.Col);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1946,6 +1988,7 @@ begin
     exit;
 
   CopyCellFormat(AFromCell, AToCell);
+
   ChangedCell(AToCell^.Row, AToCell^.Col);
   ChangedFont(AToCell^.Row, AToCell^.Col);
 end;
@@ -1954,13 +1997,91 @@ end;
   Copies all format parameters from a given cell to another cell identified
   by its row/column indexes.
 
-  @param  AFormat  Pointer to the source cell from which the format is copied.
-  @param  AToRow   Row index of the destination cell
-  @param  AToCol   Column index of the destination cell
+  @param  AFormatCell Pointer to the source cell from which the format is copied.
+  @param  AToRow      Row index of the destination cell
+  @param  AToCol      Column index of the destination cell
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.CopyFormat(AFormat: PCell; AToRow, AToCol: Cardinal);
+procedure TsWorksheet.CopyFormat(AFormatCell: PCell; AToRow, AToCol: Cardinal);
 begin
-  CopyFormat(AFormat, GetCell(AToRow, AToCol));
+  CopyFormat(AFormatCell, GetCell(AToRow, AToCol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the formula of a specified cell to another cell. Adapts relative
+  cell references to the new cell.
+
+  @param  AFromCell  Pointer to the source cell from which the formula is to be
+                     copied
+  @param  AToCell    Pointer to the destination cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
+var
+  rpnFormula: TsRPNFormula;
+  isSharedFormula: Boolean;
+  lCell: TCell;
+begin
+  if (AFromCell = nil) or (AToCell = nil) then
+    exit;
+
+  if AFromCell^.FormulaValue = '' then
+    AToCell^.FormulaValue := ''
+  else
+  begin
+    // Here we convert the formula to an rpn formula as seen from source...
+    // (The mechanism needs the ActiveCell of the parser which is only
+    // valid if the cell contains a shared formula)
+    lCell := AToCell^;
+    lCell.SharedFormulaBase := AFromCell;
+    rpnFormula := BuildRPNFormula(@lCell);
+    // ... and here we reconstruct the string formula as seen from destination cell.
+    AToCell^.FormulaValue := ConvertRPNFormulaToStringFormula(rpnFormula);
+  end;
+
+  ChangedCell(AToCell^.Row, AToCell^.Col);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the formula of a specified cell to another cell given by its row and
+  column index. Relative cell references are adapted to the new cell.
+
+  @param  AFormatCell Pointer to the source cell containing the formula to be
+                      copied
+  @param  AToRow      Row index of the destination cell
+  @param  AToCol      Column index of the destination cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyFormula(AFormulaCell: PCell; AToRow, AToCol: Cardinal);
+begin
+  CopyFormula(AFormulaCell, GetCell(AToRow, AToCol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the value of a specified cell to another cell (without copying
+  formulas or formats)
+
+  @param  AFromCell  Pointer to the source cell providing the value to be copied
+  @param  AToCell    Pointer to the destination cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyValue(AFromCell, AToCell: PCell);
+begin
+  if (AFromCell = nil) or (AToCell = nil) then
+    exit;
+
+  CopyCellValue(AFromCell, AToCell);
+
+  ChangedCell(AToCell^.Row, AToCell^.Col);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the value of a specified cell to another cell given by its row and
+  column index
+
+  @param  AValueCell  Pointer to the cell containing the value to be copied
+  @param  AToRow      Row index of the destination cell
+  @param  AToCol      Column index of the destination cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal);
+begin
+  CopyValue(AValueCell, GetCell(AToRow, AToCol));
 end;
 
 {@@ ----------------------------------------------------------------------------
