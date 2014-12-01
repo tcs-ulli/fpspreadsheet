@@ -1380,7 +1380,15 @@ begin
   // Vertical text alignment
   b := (xf.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
   if (b + 1 <= ord(high(TsVertAlignment))) then
-    lData.VertAlignment := tsVertAlignment(b + 1)      // + 1 due to vaDefault
+  begin
+    lData.VertAlignment := tsVertAlignment(b + 1);      // + 1 due to vaDefault
+    // Unfortunately BIFF does not provide a "default" vertical alignment code.
+    // Without the following correction "non-formatted" cells would always have
+    // the uffVertAlign FormattingField set which contradicts the statement of
+    // not being formatted.
+    if lData.VertAlignment = vaBottom then
+      lData.VertAlignment := vaDefault;
+  end
   else
     lData.VertAlignment := vaDefault;
 
@@ -1403,22 +1411,26 @@ begin
   // The case of "no line" is not included in the TsLineStyle enumeration.
   // --> correct by subtracting 1!
   dw := xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbSouth);
     lData.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 22 - 1);
   end;
   dw := xf.Border_Background_2 and MASK_XF_BORDER_LEFT;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbWest);
     lData.BorderStyles[cbWest].LineStyle := TsLineStyle(dw shr 3 - 1);
   end;
   dw := xf.Border_Background_2 and MASK_XF_BORDER_RIGHT;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbEast);
     lData.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 6 - 1);
   end;
   dw := xf.Border_Background_2 and MASK_XF_BORDER_TOP;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbNorth);
     lData.BorderStyles[cbNorth].LineStyle := TsLineStyle(dw - 1);
   end;

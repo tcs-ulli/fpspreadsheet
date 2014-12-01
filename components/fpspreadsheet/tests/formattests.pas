@@ -639,8 +639,8 @@ begin
           if MyCell = nil then
             fail('Error in test code. Failed to get cell.');
           vertAlign := TsVertAlignment(row);
-          if (vertAlign = vaDefault) and (AFormat in [sfExcel5, sfExcel8]) then
-            vertAlign := vaBottom;
+          if (vertAlign = vaBottom) and (AFormat in [sfExcel5, sfExcel8]) then
+            vertAlign := vaDefault;
           CheckEquals(
             GetEnumName(TypeInfo(TsVertAlignment), Integer(vertAlign)),
             GetEnumName(TypeInfo(TsVertAlignment), Integer(MyCell^.VertAlignment)),
