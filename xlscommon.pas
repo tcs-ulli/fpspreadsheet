@@ -321,7 +321,6 @@ type
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
-//    function FormulaElementKindToExcelTokenID(AElementKind: TFEKind; out ASecondaryID: Word): Word;
     // Helper function for writing a string with 8-bit length }
     function WriteString_8BitLen(AStream: TStream; AString: String): Integer; virtual;
 

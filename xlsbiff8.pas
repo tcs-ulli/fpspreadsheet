@@ -1966,7 +1966,15 @@ begin
   // Vertical text alignment
   b := (xf.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
   if (b + 1 <= ord(high(TsVertAlignment))) then
-    lData.VertAlignment := tsVertAlignment(b + 1)      // + 1 due to vaDefault
+  begin
+    lData.VertAlignment := tsVertAlignment(b + 1);      // + 1 due to vaDefault
+    // Unfortunately BIFF does not provide a "default" vertical alignment code.
+    // Without the following correction "non-formatted" cells would always have
+    // the uffVertAlign FormattingField set which contradicts the statement of
+    // not being formatted.
+    if lData.VertAlignment = vaBottom then
+      lData.VertAlignment := vaDefault;
+  end
   else
     lData.VertAlignment := vaDefault;
 
@@ -1988,27 +1996,32 @@ begin
 
   // the 4 masked bits encode the line style of the border line. 0 = no line
   dw := xf.Border_Background_1 and MASK_XF_BORDER_LEFT;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbWest);
     lData.BorderStyles[cbWest].LineStyle := FixLineStyle(dw);
   end;
   dw := xf.Border_Background_1 and MASK_XF_BORDER_RIGHT;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbEast);
     lData.BorderStyles[cbEast].LineStyle := FixLineStyle(dw shr 4);
   end;
   dw := xf.Border_Background_1 and MASK_XF_BORDER_TOP;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbNorth);
     lData.BorderStyles[cbNorth].LineStyle := FixLineStyle(dw shr 8);
   end;
   dw := xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     Include(lData.Borders, cbSouth);
     lData.BorderStyles[cbSouth].LineStyle := FixLineStyle(dw shr 12);
   end;
   dw := xf.Border_Background_2 and MASK_XF_BORDER_DIAGONAL;
-  if dw <> 0 then begin
+  if dw <> 0 then
+  begin
     lData.BorderStyles[cbDiagUp].LineStyle := FixLineStyle(dw shr 21);
     lData.BorderStyles[cbDiagDown].LineStyle := lData.BorderStyles[cbDiagUp].LineStyle;
     if xf.Border_Background_1 and MASK_XF_BORDER_SHOW_DIAGONAL_UP <> 0 then

@@ -1321,8 +1321,8 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
-procedure InitCell(out ACell: TCell); overload;
-procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
+procedure InitCell(var ACell: TCell); overload;
+procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell); overload;
 
 function HasFormula(ACell: PCell): Boolean;
 
@@ -1573,12 +1573,13 @@ end;
   Initalizes a new cell.
   @return  New cell record
 -------------------------------------------------------------------------------}
-procedure InitCell(out ACell: TCell);
+procedure InitCell(var ACell: TCell);
 begin
   ACell.FormulaValue := '';
   ACell.UTF8StringValue := '';
   ACell.NumberFormatStr := '';
   FillChar(ACell, SizeOf(ACell), 0);
+  ACell.BorderStyles := DEFAULT_BORDERSTYLES;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1589,7 +1590,7 @@ end;
   @param  ACol   Column index of the new cell
   @return New cell record with row and column fields preset to passed values.
 -------------------------------------------------------------------------------}
-procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
+procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell);
 begin
   InitCell(ACell);
   ACell.Row := ARow;
@@ -2287,14 +2288,9 @@ begin
   if (Result = nil) then
   begin
     New(Result);
-    FillChar(Result^, SizeOf(TCell), #0);
-
-    Result^.Row := ARow;
-    Result^.Col := ACol;
-    Result^.ContentType := cctEmpty;
-    Result^.BorderStyles := DEFAULT_BORDERSTYLES;
-
+    InitCell(ARow, ACol, Result^);
     Cells.Add(Result);
+
     if FFirstColIndex = $FFFFFFFF then FFirstColIndex := GetFirstColIndex(true)
       else FFirstColIndex := Min(FFirstColIndex, ACol);
     if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
