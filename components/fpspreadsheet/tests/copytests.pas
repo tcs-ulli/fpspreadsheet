@@ -4,6 +4,8 @@ unit copytests;
 
 interface
 { Tests for copying cells
+  NOTE: The code in these tests is very fragile because the test results are
+  hard-coded. Any modification in "InitCopyData" must be carefully verified!
 }
 
 uses
@@ -36,6 +38,9 @@ type
 
     procedure Test_CopyFormatsToEmptyCells;
     procedure Test_CopyFormatsToOccupiedCells;
+
+    procedure Test_CopyFormulasToEmptyCells;
+    procedure Test_CopyFormulasToOccupiedCells;
   end;
 
 implementation
@@ -83,6 +88,8 @@ begin
   end;
 end;
 
+{ IMPORTANT: Carefully check the Test_Copy method if anything is changed here.
+  The expected test results are hard-coded in this method! }
 procedure InitCopyData;
 begin
   SourceCells[0] := InitNumber(1.0, scTransparent);   // will be in A1
@@ -110,9 +117,11 @@ begin
   inherited TearDown;
 end;
 
-{ This test prepares a worksheet and copies Values (ATestKind = 1), Formats
-  (AWhat = 2), or Formulas (AWhat = 3). The worksheet is saved, reloaded
-  and compared to expectated data }
+{ This test prepares a worksheet and copies Values (ATestKind = 1 or 2), Formats
+  (AWhat = 3 or 4), or Formulas (AWhat = 5 or 6). The odd ATestKind number
+  copy the data to the empty column C, the even value copy them to the
+  occupied column B which contains the source data (in column A) shifted down
+  by 1 cell. "The worksheet is saved, reloaded and compared to expectated data }
 procedure TSpreadCopyTests.Test_Copy(ATestKind: Integer);
 const
   AFormat = sfExcel8;
@@ -120,38 +129,39 @@ var
   TempFile: string;
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  row, col: Integer;
+  i, row, col: Integer;
   cell: PCell;
+  expectedFormula: String;
 
 begin
   TempFile := GetTempFileName;
 
   MyWorkbook := TsWorkbook.Create;
   try
-    MyWorkbook.Options := MyWorkbook.Options + [boAutoCalc];
+//    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving]; //boAutoCalc];
 
     MyWorkSheet:= MyWorkBook.AddWorksheet(CopyTestSheet);
 
     // Prepare the worksheet in which cells are copied:
     // Store the SourceCells to column A and B; in B shifted down by 1 cell
-    {      A              B
+    {      A                B                   C
       1   1.0
-      2   2.0            1.0
-      3   3.0 (yellow)   2.0
-      4   Lazarus (red)  3.0
-      5   A1+1           Lazarus
-      6   $A1+1          A1+1
-      7   A$1+1          $A1+1
-      8   $A$1+1 (gray)  A$1+1
-      9   (empty)        $A$1+1 (gray)
-     10                 (empty)
+      2   2.0              1.0
+      3   3.0 (yellow)     2.0
+      4   Lazarus (red)    3.0
+      5   A1+1             Lazarus
+      6   $A1+1            A1+1
+      7   A$1+1            $A1+1
+      8   $A$1+1 (gray)    A$1+1
+      9   (empty)          $A$1+1 (gray)
+     10                   (empty)
     }
     for col := 0 to 1 do
       for row := 0 to High(SourceCells) do
       begin
-        // Why is there a row index of "row + col" below? The first column has the
-        // data starting at the top, in cell A1. In the second column each row
-        // index is incremented by 1, i.e. the data are shifted down by 1 cell.
+        // Adding the col to the row index shifts the data in the second column
+        // down. Offsetting the second column is done to avoid that the "copy"
+        // action operates on cells having a different content afterwards.
         case SourceCells[row].ContentType of
           cctNumber:
             cell := MyWorksheet.WriteNumber(row+col, col, SourceCells[row].NumberValue);
@@ -169,23 +179,17 @@ begin
     MyWorksheet.CalcFormulas;
 
     // Now perform the "copy" operations
-    case ATestKind of
-      1, 2:
-        // copy the source cell VALUES to the empty column C (ATestKind = 1)
-        // or occupied column B (ATestKind = 2)
-        begin
-          if ATestKind = 1 then col := 2 else col := 1;
-          for row := 0 to High(SourceCells) do
-            Myworksheet.CopyValue(MyWorksheet.FindCell(row, 0), row, col);
-        end;
-      3, 4:
-        // copy the source cell FORMATS to the empty column C (ATestKind = 1)
-        // or occupied column B (ATestKind = 2)
-        begin
-          if ATestKind = 1 then col := 2 else col := 1;
-          for row := 0 to High(SourceCells) do
-            MyWorksheet.CopyFormat(MyWorksheet.FindCell(row, 0), row, col);
-        end;
+    for row := 0 to High(SourceCells) do
+    begin
+      cell := Myworksheet.FindCell(row, 0);
+      case ATestKind of
+        1: MyWorksheet.CopyValue(cell, row, 2);
+        2: MyWorksheet.CopyValue(cell, row, 1);
+        3: MyWorksheet.CopyFormat(cell, row, 2);
+        4: MyWorksheet.CopyFormat(cell, row, 1);
+        5: MyWorksheet.CopyFormula(cell, row, 2);
+        6: MyWorksheet.CopyFormula(cell, row, 1);
+      end;
     end;
 
     // Write to file
@@ -200,6 +204,196 @@ begin
     // Read spreadsheet file...
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     MyWorksheet := MyWorkbook.GetFirstWorksheet;
+
+    if odd(ATestKind) then col := 2 else col := 1;
+
+    for i:=0 to Length(SourceCells) do  // the "-1" is dropped to catch the down-shifted column!
+    begin
+      row := i;
+      cell := MyWorksheet.FindCell(row, col);
+
+      // (1) -- Compare values ---
+
+      case ATestKind of
+        1, 2:  // Copied values
+          if cell <> nil then
+          begin
+            // Check formula results
+            if HasFormula(@SourceCells[row]) then
+              CheckEquals(
+                SourceCells[0].NumberValue + 1,
+                cell^.NumberValue,
+                'Result of copied formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+              )
+            else
+            if (SourceCells[row].ContentType in [cctNumber, cctUTF8String, cctEmpty]) then
+              CheckEquals(
+                GetEnumName(TypeInfo(TCellContentType), Integer(SourceCells[row].ContentType)),
+                GetEnumName(TypeInfo(TCellContentType), Integer(cell^.ContentType)),
+                'Content type mismatch, cell '+CellNotation(MyWorksheet, row, col)
+              );
+            case SourceCells[row].ContentType of
+              cctNumber:
+                CheckEquals(
+                  SourceCells[row].NumberValue,
+                  cell^.NumberValue,
+                  'Number value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+                );
+              cctUTF8String:
+                CheckEquals(
+                  SourceCells[row].UTF8StringValue,
+                  cell^.UTF8StringValue,
+                  'String value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+                );
+            end;
+          end;
+
+        3: // Copied formats to empty column -> there must not be any content
+          if (cell <> nil) and (cell^.ContentType <> cctEmpty) then
+            CheckEquals(
+              true,     // true = "the cell has no content"
+              (cell = nil) or (cell^.ContentType = cctEmpty),
+              'No content mismatch, cell ' + CellNotation(MyWorksheet, row,col)
+            );
+
+        4: // Copied formats to occupied column --> data must be equal to source
+           // cells, but offset by 1 cell
+          if (row = 0) then
+            CheckEquals(
+              true,    // true = "the cell has no content"
+              (cell = nil) or (cell^.ContentType = cctEmpty),
+              'No content mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+            )
+          else begin
+            if (SourceCells[i+col-2].ContentType in [cctNumber, cctUTF8String, cctEmpty]) then
+              CheckEquals(
+                GetEnumName(TypeInfo(TCellContentType), Integer(SourceCells[i+col-2].ContentType)),
+                GetEnumName(TypeInfo(TCellContentType), Integer(cell^.ContentType)),
+                'Content type mismatch, cell '+CellNotation(MyWorksheet, row, col)
+              );
+            case SourceCells[i+col-2].ContentType of
+              cctNumber:
+                CheckEquals(
+                  SourceCells[i+col-2].NumberValue,
+                  cell^.NumberValue,
+                  'Number value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+                );
+              cctUTF8String:
+                CheckEquals(
+                  SourceCells[i+col-2].UTF8StringValue,
+                  cell^.UTF8StringValue,
+                  'String value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+                );
+            end;
+          end;
+      end;
+
+      // (2) -- Compare formatting ---
+
+      case ATestKind of
+        1, 5:
+          CheckEquals(
+           true,
+           (cell = nil) or (cell^.UsedFormattingFields = []),
+           'Default formatting mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+          );
+        2, 6:
+          if (row = 0) then
+            CheckEquals(
+              true,
+              (cell = nil) or (cell^.UsedFormattingFields = []),
+              'Default formatting mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+            )
+          else
+          begin
+            CheckEquals(
+              true,
+              SourceCells[i+(col-2)].UsedFormattingFields = cell^.UsedFormattingFields,
+              'Used formatting fields mismatch, cell ' + CellNotation(myWorksheet, row, col)
+            );
+            if (uffBackgroundColor in SourceCells[i].UsedFormattingFields) then
+              CheckEquals(
+                SourceCells[i+(col-2)].BackgroundColor,
+                cell^.BackgroundColor,
+                'Background color mismatch, cell ' + CellNotation(Myworksheet, row, col)
+              );
+          end;
+        3, 4:
+          if cell <> nil then
+          begin
+            CheckEquals(
+              true,
+              SourceCells[i].UsedFormattingFields = cell^.UsedFormattingFields,
+              'Used formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+            );
+            if (uffBackgroundColor in SourceCells[i].UsedFormattingFields) then
+              CheckEquals(
+                SourceCells[i].BackgroundColor,
+                cell^.BackgroundColor,
+                'Background color mismatch, cell ' + CellNotation(Myworksheet, row, col)
+              );
+          end;
+      end;
+
+      // (3) --- Check formula ---
+
+      case ATestKind of
+        1, 2, 3:
+          CheckEquals(
+            false,
+            HasFormula(cell),
+            'No formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+          );
+        4:
+          if (row = 0) then
+            CheckEquals(
+              false,
+              (cell <> nil) and HasFormula(cell),
+              'No formula mismatch, cell ' + CellNotation(Myworksheet, row, col)
+            )
+          else
+            CheckEquals(
+              SourceCells[i+col-2].FormulaValue,
+              cell^.Formulavalue,
+              'Formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+            );
+        5:
+          if cell <> nil then
+          begin
+            case SourceCells[i].FormulaValue of
+              'A1+1' : expectedFormula := 'C1+1';
+              'A$1+1': expectedFormula := 'C$1+1';
+              else     expectedFormula := SourceCells[i].FormulaValue;
+            end;
+            CheckEquals(
+              expectedFormula,
+              cell^.FormulaValue,
+              'Formula mismatch, cell ' + Cellnotation(Myworksheet, row, col)
+            );
+          end;
+        6:
+          begin
+            if row = 0 then
+              expectedFormula := ''
+            else
+            begin
+              case SourceCells[i].FormulaValue of
+                'A1+1' : expectedFormula := 'B1+1';
+                'A$1+1': expectedFormula := 'B$1+1';
+                '$A1+1': expectedFormula := '$A1+1';
+                else     expectedFormula := SourceCells[i].FormulaValue;
+              end;
+              CheckEquals(
+                expectedFormula,
+                cell^.FormulaValue,
+                'Formula mismatch, cell ' + Cellnotation(Myworksheet, row, col)
+              );
+            end;
+          end;
+      end;
+    end; // For
+
+(*
 
     case ATestKind of
       1, 2:
@@ -383,6 +577,7 @@ begin
         end;
 
     end;
+*)
 
   finally
     MyWorkbook.Free;
@@ -413,6 +608,18 @@ end;
 procedure TSpreadCopyTests.Test_CopyFormatsToOccupiedCells;
 begin
   Test_Copy(4);
+end;
+
+{ Copy given cell formulas to empty cells }
+procedure TSpreadCopyTests.Test_CopyFormulasToEmptyCells;
+begin
+  Test_Copy(5);
+end;
+
+{ Copy given cell formulas to occupied cells }
+procedure TSpreadCopyTests.Test_CopyFormulasToOccupiedCells;
+begin
+  Test_Copy(6);
 end;
 
 
