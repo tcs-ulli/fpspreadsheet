@@ -1844,8 +1844,13 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
         begin
           r := AFormula[AIndex].Row;
           c := AFormula[AIndex].Col;
-          flags := AFormula[AIndex].RelFlags;
-          ANode := TsCellExprNode.Create(self, FWorksheet, r, c, flags);
+          if (LongInt(r) < 0) or (LongInt(c) < 0) then
+            ANode := TsConstExprNode.CreateError(self, errIllegalRef)
+          else
+          begin
+            flags := AFormula[AIndex].RelFlags;
+            ANode := TsCellExprNode.Create(self, FWorksheet, r, c, flags);
+          end;
           dec(AIndex);
         end;
       fekCellRange:
