@@ -1937,6 +1937,7 @@ begin
       AppendToStream(AStream, Format(
         '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
       for c := 0 to c2 do begin
+        lCell.Row := r; // to silence a compiler hint
         InitCell(lCell);
         value := varNull;
         styleCell := nil;

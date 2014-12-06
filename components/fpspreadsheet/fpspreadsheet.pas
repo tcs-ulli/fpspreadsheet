@@ -2018,7 +2018,6 @@ end;
 procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
   rpnFormula: TsRPNFormula;
-  isSharedFormula: Boolean;
   lCell: TCell;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
