@@ -1037,6 +1037,7 @@ var
   lCell: TCell;
 begin
   // a temporary cell record to store the formatting if there is any
+  lCell.Row := ARow;  // to silence a compiler warning...
   InitCell(ARow, ACol, lCell);
   lCell.ContentType := cctEmpty;
 
@@ -3813,6 +3814,7 @@ begin
       // Empty cell? Need to count how many "table:number-columns-repeated" to be added
       colsRepeated := 1;
 
+      lCell.Row := r;  // to silence a compiler hint...
       InitCell(r, c, lCell);
       value := varNull;
       styleCell := nil;

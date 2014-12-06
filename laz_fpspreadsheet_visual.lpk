@@ -19,7 +19,7 @@
 
 It provides graphical components like a grid and chart."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="2"/>
+    <Version Major="1" Minor="3"/>
     <Files Count="5">
       <Item1>
         <Filename Value="fpspreadsheetctrls.pas"/>

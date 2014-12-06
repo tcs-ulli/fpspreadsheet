@@ -2938,6 +2938,7 @@ begin
   for r := 0 to Workbook.VirtualRowCount-1 do
     for c := 0 to Workbook.VirtualColCount-1 do
     begin
+      lCell.Row := r; // to silence a compiler hint...
       InitCell(lCell);
       value := varNull;
       styleCell := nil;
