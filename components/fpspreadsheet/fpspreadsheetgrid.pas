@@ -165,6 +165,7 @@ type
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
+    function TrimToCell(ACell: PCell): String;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeights(AStartIndex: Integer = 0);
     {@@ Automatically recalculate formulas whenever a cell value changes. }
@@ -2382,7 +2383,7 @@ begin
     lCell := Worksheet.FindCell(r, c);
     if lCell <> nil then
     begin
-      Result := Worksheet.ReadAsUTF8Text(lCell);
+      Result := TrimToCell(lCell);
       if lCell^.TextRotation = rtStacked then
       begin
         s := Result;
@@ -3388,6 +3389,100 @@ begin
       sortParams,
       0, AIndxFrom-HeaderCount, Worksheet.GetLastRowIndex, AIndxTo-HeaderCount
     );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Modifies the text that is show for cells which are too narrow to hold the
+  entire text. The method follows the behavior of Excel and Open/LibreOffice:
+  If the specified cell contains a non-formatted number, then it is formatted
+  such that the text fits into the cell. If the text is still too long or
+  the cell does not contain a label then the cell is filled by '#' characters.
+  Label cell texts are not modified, they can overflow into the adjacent cells.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.TrimToCell(ACell: PCell): String;
+var
+  cellSize, txtSize: Integer;
+  decs: Integer;
+  p: Integer;
+  isRotated: Boolean;
+  isStacked: Boolean;
+begin
+  Result := Worksheet.ReadAsUTF8Text(ACell);
+  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
+  then
+    exit;
+
+  isRotated := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation <> trHorizontal);
+  isStacked := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation = rtStacked);
+
+  // Determine space available in cell
+  if isRotated then
+    cellSize := RowHeights[GetGridRow(ACell^.Row)]
+  else
+    cellSize := ColWidths[GetGridCol(ACell^.Col)] - 2*ConstCellPadding;
+
+  // Determine space needed for text
+  if isStacked then
+    txtSize := Length(Result) * Canvas.TextHeight('A')
+  else
+    txtSize := Canvas.TextWidth(Result);
+
+  // Nothing to do if text fits into cell
+  if txtSize <= cellSize then
+    exit;
+
+  if (ACell^.ContentType = cctNumber) then
+  begin
+    // Determine number of decimal places
+    p := pos(Workbook.FormatSettings.DecimalSeparator, Result);
+    if p = 0 then
+      decs := 0
+    else
+      decs := Length(Result) - p;
+
+    // Use floating point format, but reduce number of decimal places until
+    // text fits in
+    while decs > 0 do
+    begin
+      dec(decs);
+      Result := Format('%.*f', [decs, ACell^.NumberValue], Workbook.FormatSettings);
+      if isStacked then
+        txtSize := Length(Result) * Canvas.TextHeight('A')
+      else
+        txtSize := Canvas.TextWidth(Result);
+      if txtSize <= cellSize then
+        exit;
+    end;
+
+    // There seem to be too many integer digits. Switch to exponential format.
+    decs := 13;
+    while decs > 0 do
+    begin
+      dec(decs);
+      Result := Format('%.*e', [decs, ACell^.NumberValue], Workbook.FormatSettings);
+      if isStacked then
+        txtSize := Length(Result) * Canvas.TextHeight('A')
+      else
+        txtSize := Canvas.TextWidth(Result);
+      if txtSize <= cellSize then
+        exit;
+    end;
+  end;
+
+  // Still text too long or non-number --> Fill with # characters.
+  Result := '';
+  txtSize := 0;
+  while txtSize < cellSize do
+  begin
+    Result := Result + '#';
+    if isStacked then
+      txtSize := Length(Result) * Canvas.TextHeight('#')
+    else
+      txtSize := Canvas.TextWidth(Result);
+  end;
+
+  // We added one character too many
+  Delete(Result, Length(Result), 1);
 end;
 
 {@@ ----------------------------------------------------------------------------
