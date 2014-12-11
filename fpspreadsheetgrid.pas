@@ -116,6 +116,7 @@ type
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
     procedure SetHorAlignments(ARect: TGridRect; AValue: TsHorAlignment);
+    procedure SetReadFormulas(AValue: Boolean);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
@@ -166,7 +167,7 @@ type
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeights(AStartIndex: Integer = 0);
-    {@@ Automatically recalculate formulas whenever a cell value changes, }
+    {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
@@ -177,9 +178,9 @@ type
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
-    {@@ Activates reading of RPN formulas. Should be turned off when reading
-        not implemented formulas crashes reading of the spreadsheet file. }
-    property ReadFormulas: Boolean read FReadFormulas write FReadFormulas;
+    {@@ Activates reading of RPN formulas. Should be turned off when
+        non-implemented formulas crashe reading of the spreadsheet file. }
+    property ReadFormulas: Boolean read FReadFormulas write SetReadFormulas;
     {@@ Shows/hides vertical and horizontal grid lines }
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
@@ -349,7 +350,7 @@ type
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
-    {@@ Automatically recalculates the worksheet of a cell value changes. }
+    {@@ Automatically recalculates the worksheet if a cell value changes. }
     property AutoCalc;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
@@ -360,8 +361,8 @@ type
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows;
-    {@@ Activates reading of RPN formulas. Should be turned off when reading of
-        not implemented formulas crashes reading of the spreadsheet file. }
+    {@@ Activates reading of RPN formulas. Should be turned off when
+        non-implemented formulas crashe reading of the spreadsheet file. }
     property ReadFormulas;
     {@@ Shows/hides vertical and horizontal grid lines. }
     property ShowGridLines;
@@ -370,7 +371,7 @@ type
     {@@ Activates text overflow (cells reaching into neighbors) }
     property TextOverflow;
     {@@ Link to the workbook }
-    property WorkbookSource; //: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    property WorkbookSource;
 
     {@@ inherited from ancestors}
     property Align;
@@ -3722,7 +3723,7 @@ begin
     if FAutoCalc then
       FWorkbookSource.Options := FWorkbookSource.Options + [boAutoCalc]
     else
-      FWorkbookSource.Options := FWorkbookSource.Options - [boAUtoCalc];
+      FWorkbookSource.Options := FWorkbookSource.Options - [boAutoCalc];
   end;
 
   if Assigned(Workbook) then
@@ -3989,6 +3990,27 @@ begin
         SetHorAlignment(c, r, AValue);
   finally
     EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetReadFormulas(AValue: Boolean);
+begin
+  FReadFormulas := AValue;
+
+  if Assigned(FWorkbookSource) then
+  begin
+    if FReadFormulas then
+      FWorkbookSource.Options := FWorkbookSource.Options + [boReadFormulas]
+    else
+      FWorkbookSource.Options := FWorkbookSource.Options - [boReadFormulas];
+  end;
+
+  if Assigned(Workbook) then
+  begin
+    if FReadFormulas then
+      Workbook.Options := Workbook.Options + [boReadFormulas]
+    else
+      Workbook.Options := Workbook.Options - [boReadFormulas];
   end;
 end;
 
