@@ -82,7 +82,8 @@ function ParseCellColString(const AStr: string;
   out AResult: Cardinal): Boolean;
 
 function GetColString(AColIndex: Integer): String;
-function GetCellString(ARow,ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
+function GetCellString(ARow,ACol: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
   Compact: Boolean = false): String;
@@ -733,6 +734,9 @@ end;
   @param   ACol2       Zero-based index of the last column in the range
   @param   AFlags      A set containing an entry for first and last column and
                        row if their addresses are relative.
+  @param   Compact     If the range consists only of a single cell and compact
+                       is true then the simple cell string is returned (e.g. A1).
+                       If compact is false then the cell is repeated (e.g. A1:A1)
   @return  Excel type of cell address range containing '$' characters for absolute
            address parts and a ':' to separate the first and last cells of the
            range
