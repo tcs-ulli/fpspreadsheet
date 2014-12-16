@@ -122,7 +122,7 @@ type
     MenuItem6: TMenuItem;
     MenuItem7: TMenuItem;
     MenuItem8: TMenuItem;
-    MenuItem9: TMenuItem;
+    MnuFormat: TMenuItem;
     MnuFile: TMenuItem;
     MnuWorksheet: TMenuItem;
     MnuAddSheet: TMenuItem;

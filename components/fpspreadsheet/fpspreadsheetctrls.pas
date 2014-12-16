@@ -361,111 +361,6 @@ type
     property Visible;
   end;
 
-                      (*
-  { TsCellFontCombobox }
-
-  {@@ TsCellFontCombobox is a combobox for selecting various font properties }
-  TsCellFontCombobox = class(TsCellCombobox)
-  protected
-    function GetCellFont(ACell: PCell): TsFont;
-  published
-    { inherited properties }
-    property Align;
-    property Anchors;
-    property ArrowKeysTraverseList;
-    property AutoComplete;
-    property AutoCompleteText;
-    property AutoDropDown;
-    property AutoSelect;
-    property AutoSize;// Note: windows has a fixed height in some styles
-    property BidiMode;
-    property BorderSpacing;
-    property BorderStyle;
-    property CharCase;
-    property Color;
-    property Constraints;
-    property DragCursor;
-    property DragKind;
-    property DragMode;
-    property DropDownCount;
-    property Enabled;
-    property Font;
-//    property ItemHeight;
-    property ItemIndex;
-//    property Items;
-    property ItemWidth;
-    property MaxLength;
-    property OnChange;
-    property OnChangeBounds;
-    property OnClick;
-    property OnCloseUp;
-    property OnContextPopup;
-    property OnDblClick;
-    property OnDragDrop;
-    property OnDragOver;
-    property OnDrawItem;
-    property OnEndDrag;
-    property OnDropDown;
-    property OnEditingDone;
-    property OnEnter;
-    property OnExit;
-    property OnGetItems;
-    property OnKeyDown;
-    property OnKeyPress;
-    property OnKeyUp;
-    property OnMeasureItem;
-    property OnMouseDown;
-    property OnMouseEnter;
-    property OnMouseLeave;
-    property OnMouseMove;
-    property OnMouseUp;
-    property OnMouseWheel;
-    property OnMouseWheelDown;
-    property OnMouseWheelUp;
-    property OnSelect;
-    property OnStartDrag;
-    property OnUTF8KeyPress;
-    property ParentBidiMode;
-    property ParentColor;
-    property ParentFont;
-    property ParentShowHint;
-    property PopupMenu;
-//    property ReadOnly;
-    property ShowHint;
-    property Sorted;
-//    property Style;
-    property TabOrder;
-    property TabStop;
-    property Text;
-    property Visible;
-  end;
-
-
-  {TsFontNameCombobox }
-
-  {@@ TsCellFontNameCombobox is for selection of a font name }
-  TsFontNameCombobox = class(TsCellFontCombobox)
-  protected
-    procedure ApplyFormatToCell(ACell: PCell); override;
-    procedure ExtractFromCell(ACell: PCell); override;
-    procedure Populate; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-  end;
-
-
-  {TsFontSizeCombobox }
-
-  {@@ TsFontSizeCombobox is for selection of a font size }
-  TsFontSizeCombobox = class(TsCellFontCombobox)
-  protected
-    procedure ApplyFormatToCell(ACell: PCell); override;
-    procedure ExtractFromCell(ACell: PCell); override;
-    procedure Populate; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-  end;            *)
-
 
   { TsSpreadsheetInspector }
 
@@ -1553,10 +1448,26 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellIndicator.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
+var
+  sel: TsCellRangeArray;
+  s: String;
+  rng: TsCellRange;
+  numrows, numcols: Integer;
 begin
   Unused(AData);
   if (lniSelection in AChangedItems) and (Worksheet <> nil) then
-    Text := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  begin
+    s := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+    sel := Worksheet.GetSelection;
+    if Length(sel) > 0 then begin
+      rng := sel[High(sel)];
+      numrows := rng.Row2 - rng.Row1 + 1;
+      numcols := rng.Col2 - rng.Col1 + 1;
+      if (numrows <> 1) or (numcols <> 1) then
+        s := Format('%s (%d R x %d C)', [s, rng.Row2-rng.Row1+1, rng.Col2-rng.Col1+1]);
+    end;
+    Text := s;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

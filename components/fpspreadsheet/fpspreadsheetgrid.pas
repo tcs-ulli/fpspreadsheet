@@ -32,7 +32,7 @@ type
 
   { TsCustomWorksheetGrid }
 
-  {@@ TsCustomWorksheetGrid is the ancestor of TsWorkseetGrid and is able to
+  {@@ TsCustomWorksheetGrid is the ancestor of TsWorksheetGrid and is able to
     display spreadsheet data along with their formatting. }
   TsCustomWorksheetGrid = class(TCustomDrawGrid)
   private
@@ -3109,7 +3109,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Standard method inherited from TCustomGrid.
-  Notfies the WorkbookSource of the changed selected cell.
+  Notifies the WorkbookSource of the changed selected cell.
   Repaints the grid after moving selection to avoid spurious rests of the
   old thick selection border.
 -------------------------------------------------------------------------------}
