@@ -783,6 +783,9 @@ type
     procedure CopyValue(AFromCell, AToCell: PCell); overload;
     procedure CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal); overload;
 
+    procedure DeleteCell(ACell: PCell);
+    procedure EraseCell(ACell: PCell);
+
     procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
 
     function  FindCell(ARow, ACol: Cardinal): PCell; overload;
@@ -793,6 +796,7 @@ type
     function  GetCellCount: Cardinal;
     function  GetFirstCell(): PCell;
     function  GetNextCell(): PCell;
+
     function  GetFirstCellOfRow(ARow: Cardinal): PCell;
     function  GetLastCellOfRow(ARow: Cardinal): PCell;
     function  GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
@@ -1322,7 +1326,7 @@ procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
 procedure InitCell(var ACell: TCell); overload;
-procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell); overload;
+procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 
 function HasFormula(ACell: PCell): Boolean;
 
@@ -1590,7 +1594,7 @@ end;
   @param  ACol   Column index of the new cell
   @return New cell record with row and column fields preset to passed values.
 -------------------------------------------------------------------------------}
-procedure InitCell(ARow, ACol: Cardinal; var ACell: TCell);
+procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
 begin
   InitCell(ACell);
   ACell.Row := ARow;
@@ -2085,6 +2089,37 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Deletes a specified cell. If the cell belongs to a merged block its content
+  and formatting is erased. Otherwise the cell is destroyed, its memory is
+  released.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.DeleteCell(ACell: PCell);
+begin
+  if ACell = nil then
+    exit;
+
+  // Is base of merged block? unmerge the block
+  if ACell^.MergeBase = ACell then
+    UnmergeCells(ACell^.Row, ACell^.Col);
+
+  // Belongs to a merged block?
+  if ACell^.MergeBase <> nil then begin
+    EraseCell(ACell);
+    exit;
+  end;
+
+  // Is base of shared formula block? Recreate individual formulas
+  if ACell^.SharedFormulaBase = ACell then
+    SplitSharedFormula(ACell);
+
+  // Belongs to shared formula block? --> nothing to do
+
+  // Destroy the cell, and remove it from the tree
+  RemoveAndFreeCell(ACell^.Row, ACell^.Col);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Internal call-back procedure for looping through all cells when deleting
   a specified column. Deletion happens in DeleteCol BEFORE this callback!
 -------------------------------------------------------------------------------}
@@ -2191,6 +2226,22 @@ begin
     end;
     // (3) convert rpn formula back to string formula
     cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Erases content and formatting of a cell. The cell still occupies memory.
+
+  @param  ACell  Pointer to cell to be erased.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.EraseCell(ACell: PCell);
+var
+  r, c: Cardinal;
+begin
+  if ACell <> nil then begin
+    r := ACell^.Row;
+    c := ACell^.Col;
+    InitCell(r, c, ACell^);
   end;
 end;
 
@@ -3494,7 +3545,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Removes a cell and releases its memory.
-  Just for internal usage since it does not modify the other cells affects
+  Just for internal usage since it does not modify the other cells affected
 
   @param  ARow   Row index of the cell to be removed
   @param  ACol   Column index of the cell to be removed
@@ -3877,7 +3928,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Splits a shared formula range to which the specified cell belongs into
-  individual cells. Each cell gets same the formula as it had in the block.
+  individual cells. Each cell gets the same formula as it had in the block.
   This is required because insertion and deletion of columns/rows make shared
   formulas very complicated.
 -------------------------------------------------------------------------------}

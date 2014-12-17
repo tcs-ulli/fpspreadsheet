@@ -45,8 +45,8 @@ type
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
 
-  {@@ Identifier for an operation that will be executed at next cell select }
-  TsPendingOperation = (poNone, poCopyFormat, poCopyValue, poCopyFormula, poCopyCell);
+  {@@ Identifier for an copy operation }
+  TsCopyOperation = (coNone, coCopyFormat, coCopyValue, coCopyFormula, coCopyCell);
 
   { TsWorkbookSource }
 
@@ -61,7 +61,8 @@ type
     FFileName: TFileName;
     FFileFormat: TsSpreadsheetFormat;
     FPendingSelection: TsCellRangeArray;
-    FPendingOperation: TsPendingOperation;
+    FPendingOperation: TsCopyOperation;
+    FCutPending: Boolean;
     FControlLockCount: Integer;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
@@ -115,8 +116,15 @@ type
     procedure SelectWorksheet(AWorkSheet: TsWorksheet);
 
     procedure ExecutePendingOperation;
-    procedure SetPendingOperation(AOperation: TsPendingOperation;
+    procedure SetPendingOperation(AOperation: TsCopyOperation;
       const ASelection: TsCellRangeArray);
+
+    { Clipboard }
+    function CellClipboardEmpty: Boolean;
+    procedure ClearCellClipboard;
+    procedure CopyCellsToClipboard;
+    procedure CutCellsToClipboard;
+    procedure PasteCellsFromClipboard(AItem: TsCopyOperation);
 
   public
     {@@ Workbook linked to the WorkbookSource }
@@ -124,7 +132,7 @@ type
     {@@ Currently selected worksheet of the workbook }
     property Worksheet: TsWorksheet read FWorksheet;
     {@@ Indicates that which operation is waiting to be executed at next cell select }
-    property PendingOperation: TsPendingOperation read FPendingOperation;
+    property PendingOperation: TsCopyOperation read FPendingOperation;
 
   published
     {@@ Automatically detects the fileformat when loading the spreadsheet file
@@ -408,7 +416,6 @@ type
     property FixedCols default 0;
   end;
 
-
 procedure Register;
 
 
@@ -428,10 +435,117 @@ begin
   RegisterComponents('FPSpreadsheet', [
     TsWorkbookSource, TsWorkbookTabControl, TsWorksheetGrid,
     TsCellEdit, TsCellIndicator, TsCellCombobox,
-    //TsFontNameCombobox, TsFontSizeCombobox,
     TsSpreadsheetInspector
   ]);
 end;
+
+
+{------------------------------------------------------------------------------}
+{                               TsCellList                                     }
+{------------------------------------------------------------------------------}
+
+type
+  TsCellList = class(TList)
+  private
+    function GetCell(AIndex: Integer): PCell;
+    procedure SetCell(AIndex: Integer; ACell: PCell);
+  public
+    destructor Destroy;
+    function Add(ACell: PCell): Integer;
+    function AddCell(ACell: PCell): Integer;
+    function AddEmptyCell(ARow, ACol: Cardinal): Integer;
+    procedure Clear; override;
+    procedure Delete(AIndex: Integer);
+    function IndexOf(ACell: PCell): Integer;
+    property CellByIndex[AIndex: Integer]: PCell read GetCell write SetCell;
+  end;
+
+var
+  CellClipboard: TsCellList = nil;
+
+destructor TsCellList.Destroy;
+begin
+  Clear;
+  inherited;
+end;
+
+function TsCellList.Add(ACell: PCell): Integer;
+begin
+  Result := AddCell(ACell);
+end;
+
+{ Adds a copy of a specific cell to the list }
+function TsCellList.AddCell(ACell: PCell): Integer;
+var
+  cell: PCell;
+begin
+  if ACell = nil then
+    raise Exception.Create('[TsCellList.AddCell] Cell is nil, use AddEmptyCell.');
+  Result := IndexOf(ACell);
+  if Result = - 1 then
+  begin
+    New(cell);
+    cell^ := ACell^;
+    Result := inherited Add(cell);
+  end;
+end;
+
+{ Adds a "non-existing" cell to the list. Such a cell is nil in the worksheet.
+  Here it has ContentType = cctEmpty and UsedFormattingFields = [], i.e. it is
+  an empty cell without formatting. }
+function TsCellList.AddEmptyCell(ARow, ACol: Cardinal): Integer;
+var
+  cell: PCell;
+begin
+  New(cell);
+  InitCell(ARow, ACol, cell^);
+  Result := inherited Add(cell);
+end;
+
+procedure TsCellList.Clear;
+var
+  i: Integer;
+begin
+  for i := Count-1 downto 0 do
+    Delete(i);
+  inherited Clear;
+end;
+
+procedure TsCellList.Delete(AIndex: Integer);
+var
+  cell: PCell;
+begin
+  cell := GetCell(AIndex);
+  Dispose(cell);
+  inherited Delete(AIndex);
+end;
+
+function TsCellList.GetCell(AIndex: Integer): PCell;
+begin
+  Result := PCell(inherited Items[AIndex]);
+end;
+
+function TsCellList.IndexOf(ACell: PCell): Integer;
+var
+  cell: PCell;
+begin
+  for Result:=0 to Count-1 do
+  begin
+    cell := GetCell(Result);
+    if (cell^.Row = ACell^.Row) and (cell^.Col = ACell^.Col) then
+      exit;
+  end;
+  Result := -1;
+end;
+
+procedure TsCellList.SetCell(AIndex: Integer; ACell: PCell);
+var
+  cell: PCell;
+begin
+  cell := GetCell(AIndex);
+  cell^ := ACell^;
+end;
+
 
 
 {------------------------------------------------------------------------------}
@@ -539,10 +653,10 @@ begin
   Unused(ARow, ACol);
   NotifyListeners([lniSelection]);
 
-  if FPendingOperation <> poNone then
+  if FPendingOperation <> coNone then
   begin
     ExecutePendingOperation;
-    FPendingOperation := poNone;
+    FPendingOperation := coNone;
   end;
 end;
 
@@ -638,10 +752,10 @@ begin
         srcCell := Worksheet.FindCell(FPendingSelection[i].Row1+j, FPendingSelection[i].Col1+k);
         destCell := Worksheet.GetCell(destSelection[i].Row1+j, destSelection[i].Col1+k);
         case FPendingOperation of
-          poCopyCell   : Worksheet.CopyCell(srcCell, destCell);
-          poCopyFormat : Worksheet.CopyFormat(srcCell, destCell);
-          poCopyFormula: Worksheet.CopyFormula(srcCell, destCell);
-          poCopyValue  : Worksheet.CopyValue(srcCell, destCell);
+          coCopyCell   : Worksheet.CopyCell(srcCell, destCell);
+          coCopyFormat : Worksheet.CopyFormat(srcCell, destCell);
+          coCopyFormula: Worksheet.CopyFormula(srcCell, destCell);
+          coCopyValue  : Worksheet.CopyValue(srcCell, destCell);
         end;
       end;
 end;
@@ -953,7 +1067,7 @@ end;
   Defines a "pending operation" which will be executed at next cell select.
   Source of the operation is the selection passes as a parameter.
 -------------------------------------------------------------------------------}
-procedure TsWorkbookSource.SetPendingOperation(AOperation: TsPendingOperation;
+procedure TsWorkbookSource.SetPendingOperation(AOperation: TsCopyOperation;
   const ASelection: TsCellRangeArray);
 var
   i: Integer;
@@ -963,6 +1077,117 @@ begin
     FPendingSelection[i] := ASelection[i];
   FPendingSelection := ASelection;
   FPendingOperation := AOperation;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the internal "Clipboard" is empty or not.
+-------------------------------------------------------------------------------}
+function TsWorkbookSource.CellClipboardEmpty: Boolean;
+begin
+  Result := CellClipboard.Count = 0;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Clears the interal "Clipboard". Note that this is not the system clipboard.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.ClearCellClipboard;
+begin
+  CellClipboard.Clear;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the selected cells of the worksheet to an internal list ("Clipboard").
+  Note that this is not the system clipboard in the current implementation.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.CopyCellsToClipboard;
+var
+  r,c,i: Integer;
+  sel: TsCellRangeArray;
+  cell: PCell;
+begin
+  FCutPending := false;
+
+  ClearCellClipboard;
+  sel := FWorksheet.GetSelection;
+  if Length(sel) = 0 then
+    exit;
+
+  for i:=0 to High(sel) do
+    for r := sel[i].Row1 to sel[i].Row2 do
+      for c := sel[i].Col1 to sel[i].Col2 do
+      begin
+        cell := FWorksheet.FindCell(r, c);
+        if cell = nil then
+          CellClipboard.AddEmptyCell(r, c)
+        else
+          CellClipboard.AddCell(cell);
+      end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies the selected cells of the worksheet to an internal list ("Clipboard")
+  and sets the marker "CutPending". This means that the source cells will be
+  cleared when PasteCellsFromClipboard is called.
+  Note that the clipboard is not the system clipboard in the current
+  implementation.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.CutCellsToClipboard;
+begin
+  CopyCellsToClipboard;
+  FCutPending := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Pastes the cells stored in the internal list "Clipboard" into the worksheet.
+  Using their stored row/col indexes the stored cells are translated such that
+  the first stored cell appears at the currently active cell in the worksheet.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation);
+var
+  r, c, dr, dc: LongInt;
+  i: Integer;
+  cell: PCell;
+begin
+  if CellClipboard.Count = 0 then
+    exit;
+
+  DisableControls;
+  try
+    if FCutPending then
+    begin
+      for i:=0 to CellClipboard.Count-1 do
+      begin
+        cell := CellClipboard.CellByIndex[i];
+        r := cell^.Row;
+        c := cell^.Col;
+        cell := FWorksheet.FindCell(r, c);
+        FWorksheet.DeleteCell(cell);
+      end;
+      FCutPending := false;
+    end;
+
+    cell := CellClipboard.CellByIndex[0];
+    dr := FWorksheet.ActiveCellRow - cell^.Row;
+    dc := FWorksheet.ActiveCellCol - cell^.Col;
+
+    for i:=0 to CellClipboard.Count-1 do
+    begin
+      cell := CellClipboard.CellByIndex[i];
+      case AItem of
+        coCopyCell:
+          FWorksheet.CopyCell(cell^.Row, cell^.Col, cell^.Row + dr, cell^.Col + dc);
+        coCopyValue:
+          FWorksheet.CopyValue(cell, cell^.Row + dr, cell^.Col + dc);
+        coCopyFormat:
+          FWorksheet.CopyFormat(cell, cell^.Row + dr, cell^.Col + dc);
+        coCopyFormula:
+          FWorksheet.CopyFormula(cell, cell^.Row + dr, cell^.Col + dc);
+      end;
+    end;
+
+  finally
+    EnableControls;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2479,7 +2704,12 @@ begin
 end;
 
 initialization
+  CellClipboard := TsCellList.Create;
 
-{$I fpspreadsheetctrls.lrs}
+  {$I fpspreadsheetctrls.lrs}
+
+finalization
+  CellClipboard.Free;
+
 
 end.
