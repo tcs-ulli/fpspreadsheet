@@ -159,31 +159,23 @@ object Form1: TForm1
     EdgeBorders = []
     Images = ImageList
     TabOrder = 3
-    object ToolButton4: TToolButton
-      Left = 232
-      Height = 26
-      Top = 0
-      Width = 3
-      Caption = 'ToolButton4'
-      Style = tbsDivider
-    end
     object ToolButton6: TToolButton
-      Left = 283
+      Left = 280
       Top = 0
       Action = AcFontBold
     end
     object ToolButton7: TToolButton
-      Left = 307
+      Left = 304
       Top = 0
       Action = AcFontItalic
     end
     object ToolButton8: TToolButton
-      Left = 331
+      Left = 328
       Top = 0
       Action = AcFontUnderline
     end
     object ToolButton10: TToolButton
-      Left = 379
+      Left = 376
       Height = 26
       Top = 0
       Width = 5
@@ -191,27 +183,27 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton11: TToolButton
-      Left = 355
+      Left = 352
       Top = 0
       Action = AcFontStrikeout
     end
     object ToolButton12: TToolButton
-      Left = 384
+      Left = 381
       Top = 0
       Action = AcHorAlignLeft
     end
     object ToolButton13: TToolButton
-      Left = 408
+      Left = 405
       Top = 0
       Action = AcHorAlignCenter
     end
     object ToolButton14: TToolButton
-      Left = 432
+      Left = 429
       Top = 0
       Action = AcHorAlignRight
     end
     object ToolButton15: TToolButton
-      Left = 456
+      Left = 453
       Height = 26
       Top = 0
       Width = 5
@@ -219,22 +211,22 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton16: TToolButton
-      Left = 461
+      Left = 458
       Top = 0
       Action = AcVertAlignTop
     end
     object ToolButton17: TToolButton
-      Left = 485
+      Left = 482
       Top = 0
       Action = AcVertAlignCenter
     end
     object ToolButton18: TToolButton
-      Left = 509
+      Left = 506
       Top = 0
       Action = AcVertAlignBottom
     end
     object ToolButton19: TToolButton
-      Left = 533
+      Left = 530
       Height = 26
       Top = 0
       Width = 5
@@ -242,7 +234,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton20: TToolButton
-      Left = 567
+      Left = 564
       Hint = 'Number format'
       Top = 0
       Caption = 'ToolButton20'
@@ -251,7 +243,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton21: TToolButton
-      Left = 627
+      Left = 624
       Hint = 'Currency format'
       Top = 0
       Caption = 'ToolButton21'
@@ -260,12 +252,12 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton22: TToolButton
-      Left = 603
+      Left = 600
       Top = 0
       Action = AcNumFormatPercentage
     end
     object ToolButton23: TToolButton
-      Left = 901
+      Left = 898
       Height = 26
       Top = 0
       Width = 5
@@ -273,7 +265,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton24: TToolButton
-      Left = 663
+      Left = 660
       Hint = 'Date format'
       Top = 0
       Caption = 'ToolButton24'
@@ -282,7 +274,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton25: TToolButton
-      Left = 699
+      Left = 696
       Hint = 'Time format'
       Top = 0
       Caption = 'ToolButton25'
@@ -291,12 +283,12 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton26: TToolButton
-      Left = 735
+      Left = 732
       Top = 0
       Action = AcDecDecimals
     end
     object ToolButton27: TToolButton
-      Left = 759
+      Left = 756
       Top = 0
       Action = AcIncDecimals
     end
@@ -307,13 +299,13 @@ object Form1: TForm1
       Action = AcCellFontDialog
     end
     object ToolButton30: TToolButton
-      Left = 788
+      Left = 785
       Hint = 'Background color dialog'
       Top = 0
       Action = AcBackgroundColorDialog
     end
     object ToolButton31: TToolButton
-      Left = 860
+      Left = 857
       Height = 26
       Top = 0
       Width = 5
@@ -321,7 +313,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object TbBorders: TToolButton
-      Left = 865
+      Left = 862
       Hint = 'Top border'
       Top = 0
       Caption = 'Top'
@@ -330,7 +322,7 @@ object Form1: TForm1
       Style = tbsDropDown
     end
     object ToolButton3: TToolButton
-      Left = 783
+      Left = 780
       Height = 26
       Top = 0
       Width = 5
@@ -338,12 +330,12 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton5: TToolButton
-      Left = 906
+      Left = 903
       Top = 0
       Action = AcMergeCells
     end
     object ToolButton36: TToolButton
-      Left = 538
+      Left = 535
       Top = 0
       Action = AcWordWrap
     end
@@ -368,6 +360,7 @@ object Form1: TForm1
       Width = 130
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
+      DropDownCount = 24
       ItemIndex = 62
       TabOrder = 0
       Text = 'Arial'
@@ -380,12 +373,13 @@ object Form1: TForm1
       Width = 48
       CellFormatItem = cfiFontSize
       WorkbookSource = WorkbookSource
+      DropDownCount = 24
       ItemIndex = 2
       TabOrder = 1
       Text = '10'
     end
     object FontColorCombobox: TsCellCombobox
-      Left = 235
+      Left = 232
       Height = 24
       Hint = 'Font color'
       Top = 0
@@ -393,12 +387,13 @@ object Form1: TForm1
       CellFormatItem = cfiFontColor
       ColorRectWidth = -1
       WorkbookSource = WorkbookSource
+      DropDownCount = 24
       ItemIndex = 0
       TabOrder = 2
       Text = 'black'
     end
     object BackgroundColorCombobox: TsCellCombobox
-      Left = 812
+      Left = 809
       Height = 24
       Hint = 'Background color'
       Top = 0
@@ -406,12 +401,13 @@ object Form1: TForm1
       CellFormatItem = cfiBackgroundColor
       ColorRectWidth = -1
       WorkbookSource = WorkbookSource
+      DropDownCount = 24
       ItemIndex = 0
       TabOrder = 3
       Text = '(none)'
     end
     object ToolButton45: TToolButton
-      Left = 562
+      Left = 559
       Height = 26
       Top = 0
       Width = 5
@@ -432,22 +428,22 @@ object Form1: TForm1
     Images = ImageList
     TabOrder = 4
     object ToolButton32: TToolButton
-      Left = 54
+      Left = 143
       Top = 0
       Action = AcAddWorksheet
     end
     object ToolButton33: TToolButton
-      Left = 78
+      Left = 167
       Top = 0
       Action = AcDeleteWorksheet
     end
     object ToolButton34: TToolButton
-      Left = 102
+      Left = 191
       Top = 0
       Action = acRenameWorksheet
     end
     object ToolButton1: TToolButton
-      Left = 232
+      Left = 321
       Height = 24
       Top = 0
       Width = 5
@@ -455,7 +451,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton2: TToolButton
-      Left = 237
+      Left = 326
       Top = 0
       Action = AcFileExit
     end
@@ -465,7 +461,7 @@ object Form1: TForm1
       Action = AcFileOpen
     end
     object ToolButton28: TToolButton
-      Left = 126
+      Left = 215
       Height = 24
       Top = 0
       Width = 5
@@ -478,27 +474,27 @@ object Form1: TForm1
       Action = AcFileSaveAs
     end
     object ToolButton39: TToolButton
-      Left = 131
+      Left = 220
       Top = 0
       Action = AcColAdd
     end
     object ToolButton40: TToolButton
-      Left = 155
+      Left = 244
       Top = 0
       Action = AcColDelete
     end
     object ToolButton41: TToolButton
-      Left = 184
+      Left = 273
       Top = 0
       Action = AcRowAdd
     end
     object ToolButton42: TToolButton
-      Left = 208
+      Left = 297
       Top = 0
       Action = AcRowDelete
     end
     object ToolButton43: TToolButton
-      Left = 49
+      Left = 138
       Height = 24
       Top = 0
       Width = 5
@@ -506,11 +502,36 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object ToolButton44: TToolButton
-      Left = 179
+      Left = 268
       Height = 24
       Top = 0
       Width = 5
       Caption = 'ToolButton44'
+      Style = tbsDivider
+    end
+    object ToolButton46: TToolButton
+      Left = 54
+      Top = 0
+      Action = AcCopyToClipboard
+    end
+    object ToolButton47: TToolButton
+      Left = 78
+      Top = 0
+      Action = AcCutToClipboard
+    end
+    object ToolButton48: TToolButton
+      Left = 102
+      Top = 0
+      Action = AcPasteAllFromClipboard
+      DropdownMenu = PuPaste
+      Style = tbsDropDown
+    end
+    object ToolButton49: TToolButton
+      Left = 49
+      Height = 24
+      Top = 0
+      Width = 5
+      Caption = 'ToolButton49'
       Style = tbsDivider
     end
   end
@@ -1335,12 +1356,57 @@ object Form1: TForm1
       ImageIndex = 49
       OnExecute = AcColDeleteExecute
     end
+    object AcCopyToClipboard: TsCopyAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Copy'
+      CopyMode = cmCopy
+      ImageIndex = 51
+      ShortCut = 16451
+    end
+    object AcCutToClipboard: TsCopyAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Cut'
+      CopyMode = cmCut
+      ImageIndex = 52
+      ShortCut = 16472
+    end
+    object AcPasteAllFromClipboard: TsCopyAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Paste all'
+      CopyItem = ciAll
+      CopyMode = cmPaste
+      ImageIndex = 53
+      ShortCut = 16470
+    end
+    object AcPasteValueFromClipboard: TsCopyAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Paste value'
+      CopyItem = ciValue
+      CopyMode = cmPaste
+    end
+    object AcPasteFormatFromClipboard: TsCopyAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Paste format'
+      CopyMode = cmPaste
+    end
+    object AcPasteFormulaFromClipboard: TsCopyAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Paste formula'
+      CopyItem = ciFormula
+      CopyMode = cmPaste
+    end
   end
   object ImageList: TImageList
     left = 176
     top = 312
     Bitmap = {
-      4C693D0000001000000010000000003F9300003F9300003F9300003F9424003F
+      4C69400000001000000010000000003F9300003F9300003F9300003F9424003F
       948A003E93CC004095CC004095CC004095CC004095CC004095CC004095CC0040
       95CC004095CC00409599003F9400003F9300003F9324003F938A0E4B9CD33F76
       C0EC5D90D4FF3365A9FFA0A0A0FFA9A9A9FFA9A9A9FFAAAAAAFFACACACFFAEAE
@@ -2972,7 +3038,103 @@ object Form1: TForm1
       62FFCB8C5DFFC9885BFFC78655FFC28252FFC28252FFC28252FFC28252FFC282
       52FFC28252FFBA7642B0FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00C77947AACC8655CECC8857DECB8856DBCC88
+      56DBCB8757DBCA8350D0C479426EB2673C08FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00CA8554D0FFFFFFDBFDF3E9DEFDF3EADEFCF2
+      E8DEFAEFE3DEFAF2E7DEEABB88DECF85559CB4693D0AFFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00CB8656DAFEF5EDDEFCDEC5DEFBE0C7DEF9DC
+      C2DEF5D3B4DEFEF9F3DEFAE2C4DEECC193DEC37D4880FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00CB8655DBFEF6F0DEFCE2CDDEFCE3CDDEFADF
+      C8DEF7D9BCDEF5E9DDDEFAF3EBDEFBF8F3DECD9565DCFFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00CB8655DBFEF7F1DEFCE5D2DEFCE4D1DEFBE2
+      CCDEF9DDC4DEEAC39DFFE6BF96FFE4BB92FFE4BB92FFD1A06CF5D09E6DF6CC96
+      5FDAC479427EB2673C09FFFFFF00CB8654DBFFF7F2DEFEE7D5DEFEE7D5DEFDE5
+      D1DEFAE0CADEE5BE96FFFFFFFEFFFDF3E9FFFDF3EAFFFCF2E8FFFAEFE3FFFAF2
+      E7FFEABB88FFCF8555B3B4693D0CCB8553DBFFF7F0DEFFE7D5DEFDE7D6DEFDE6
+      D4DEFCE4D0DEE4BB93FFFEF5EDFFFCDEC5FFFBE0C7FFF9DCC2FFF5D3B4FFFEF9
+      F3FFFAE2C4FFECC193FFC37D4893CA8452DBFFF7F1DEFFE9D9DEFFEADBDEFFE9
+      D9DEFFE7D7DEE4BB92FFFEF6F0FFFCE2CDFFFCE3CDFFFADFC8FFF7D9BCFFF5E9
+      DDFFFAF3EBFFFBF8F3FFCA8353FECC8352DBFBF5EEDEFFE9D9DEFFEADBDEFFE9
+      D9DEFFE7D7DEE4BB92FFFEF7F1FFFCE5D2FFFCE4D1FFFBE2CCFFF9DDC4FFF6D7
+      BBFFF3D1AFFFFAEFE4FFCC8758FECF8253DEEFF1E7DEFFE9D9DEFFEADBDEFFE9
+      D9DEFFE7D7DEE4BB91FFFFF7F2FFFEE7D5FFFEE7D5FFFDE5D1FFFAE0CAFFF9DE
+      C4FFF7D9BCFFFDF2E7FFCC8757FEC87C4ED3FCF3ECDEFAF1E8DEFAF0E7DEFBF1
+      E9DEFBF2EADEE4BA91FFFFF7F0FFFFE7D5FFFDE7D6FFFDE6D4FFFCE4D0FFFBE3
+      CBFFFADCC2FFFEF3E8FFCC8656FEC7794AB9C8794BCEC87545DDC77545D4C875
+      45D4C77545D4CA8452FFFFF7F1FFFFE9D9FFFFEADBFFFFE9D9FFFFE7D7FFFFE5
+      D2FFFFE2CBFFFFF7F1FFCB8555FEFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00CC8352FBFBF5EEFFFFE9D9FFFFEADBFFFFE9D9FFFFE7D7FFFFE5
+      D2FFFFE2CBFFFBF6EFFFCC8355FEFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00CF8253FFEFF1E7FFFFE9D9FFFFEADBFFFFE9D9FFFFE7D7FFFFE5
+      D2FFFFE2CBFFEFF2E8FFCE8156FFFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00C77949EDFCF3ECFFFAF1E8FFFAF0E7FFFBF1E9FFFBF2EAFFFBF2
+      EAFFFBF2EBFFFDF4EEFFCA8054F9FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00C57342C1C67545E6C87545FEC77545F3C87545F3C77545F3C775
+      45F3C87546F4C57444E8CA7F53F1FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00996A252AA77B3E9E92611905FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00A67B3E69CBAE87E4905D1409FFFFFF00FFFFFF00FFFF
+      FF0092601702FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00A97E436ED5BC9DF89261190FFFFFFF00FFFFFF009867
+      222DAE854CB5FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00AB814774DEC8AEFF95641D1EFFFFFF0093601827D1B6
+      93E4BB9767B6FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00AD844C7BE6D4C0FF96651E248F5C121DD3B999DCD3B8
+      97E1915E1518FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00AF875084EDDECEFF97662063CEB38FCBE7D6C3FC9666
+      203BFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00B28A5489F1E2D3FFCFB38EF6F5E9DCFFA276376CFFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF005E3D0D02FFFFFF00B68F598BF5E9DDFFE2CDB4FFB99461A0FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF006644121A9D69
+      32ABB17E42D29E682CA4BC9767CDF0E0D0FFB6915FC581531104FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF0066431218B17E42DBDCAA
+      60FFD09E54F3EAB365FFD8BA99FFF8EBE1FFAE8957BC57390D41FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF009C6A32ACD6A55EFD704D
+      1A3E6E4B184FE4AD60FFDCBD9BFFEFCDA5FFEFB767FFD8A65DFF66491D64FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00BE8A4AF2A87E41B6FFFF
+      FF00966E3297E7B066FFCAA274FEE5B167FF945E2DC1B88D4DD3AF703BF44930
+      0B08FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00B58244E7D6A45AE8AE82
+      41C5ECB666FFA76E36D8AC6C37EBC49551F3FFFFFF0076562776B77840FF5238
+      121BFFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF0077531E56C79751ECD8A6
+      5AFEA66C36CB51350A18A86835E1D1A057FA412A091E8E6A369CB4753FFC4D33
+      0D10FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00674514186A48
+      1620FFFFFF00FFFFFF009F5E2FC6E7B263FFBF924FE5DDAB62FFA26232D8FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF004A310C07A06131D7B6763FF7A46534E04B320C14FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF002063982A206398FF2063
+      98FF206398FF206398FF206398FF206398F0FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF0020639832206398B2206398FF3775A4FFB6EF
+      FEFF80DBF3FF80DBF3FFB6EFFEFF2E6EA1FF206398FF206398A520639853FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00206398E094C9E0FDAEE2F2FF4E9DDFFFB5EE
+      FDFF75D4F0FF75D4F0FFB5EEFDFF4B9BDEFF8ECBE9FF8DCAE8F2206398F3FFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00206398FFB0E1F2FF79BDE2FF4498DDFF4497
+      DCFF4396DCFF4296DCFF4295DCFF4195DBFF539ED4FF89C6E6FF206398FFFFFF
+      FF00FFFFFF00FFFFFF00FFFFFF00206398FFAADDF1FF74B9E0FF70B6DFFF6CB3
+      DDFF6BB2DCFFD9AF84FFD7AE81FFD7AC7FFFD7AC7FFFCCA070FFCD9F71FFB38F
+      67FFCB8856D6B2673C09FFFFFF00206398FFA5DAEFFF6FB5DEFF68B0DCFF60A9
+      D9FF5FA9D9FFD7AD81FFFFFFFEFFFDF3E9FFFDF3EAFFFCF2E8FFFAEFE3FFFAF2
+      E7FFEABB88FFCE8959E7B4693D0C206398FF9ED6EDFF6BB2DCFF66AFDCFF60AA
+      DAFF5FA9D9FFD9AF84FFFEF5EDFFFCDEC5FFFBE0C7FFF9DCC2FFF5D3B4FFFEF9
+      F3FFFAE2C4FFECC193FFCB8857DC206398FF98D2EBFF65AEDAFF60AAD9FF5DA6
+      D8FF5CA5D7FFD9AF84FFFEF6F0FFFCE2CDFFFCE3CDFFFADFC8FFF7D9BCFFF5E9
+      DDFFFAF3EBFFFBF8F3FFCA8353FE206398FF91CDE9FF5FA9D9FF5DA5D8FF5AA0
+      D6FF599FD6FFD8AD81FFFEF7F1FFFCE5D2FFFCE4D1FFFBE2CCFFF9DDC4FFF6D7
+      BBFFF3D1AFFFFAEFE4FFCC8758FE206398FF8BC9E7FF5CA5D7FF59A0D5FF579C
+      D3FF569AD3FFD7AC7FFFFFF7F2FFFEE7D5FFFEE7D5FFFDE5D1FFFAE0CAFFF9DE
+      C4FFF7D9BCFFFDF2E7FFCC8757FE206398FF88C4E6FF599FD6FF569BD3FF5397
+      D1FF5395D1FFD7AC7FFFFFF7F0FFFFE7D5FFFDE7D6FFFDE6D4FFFCE4D0FFFBE3
+      CBFFFADCC2FFFEF3E8FFCC8656FE206398FF84BFE2FF569AD3FF5397D1FF5092
+      CFFF5091CFFFD6A97DFFFFF7F1FFFFE9D9FFFFEADBFFFFE9D9FFFFE7D7FFFFE5
+      D2FFFFE2CBFFFFF7F1FFCB8555FE206398FF80B9E1FF5395D1FF5092D0FF4E8E
+      CEFF4D8CCDFFD6A97DFFFBF5EEFFFFE9D9FFFFEADBFFFFE9D9FFFFE7D7FFFFE5
+      D2FFFFE2CBFFFBF6EFFFCC8355FE206398C274ADD8FF7BB2DDFF78AEDCFF75AA
+      DAFF74A9DAFFDAA97DFFEFF1E7FFFFE9D9FFFFEADBFFFFE9D9FFFFE7D7FFFFE5
+      D2FFFFE2CBFFEFF2E8FFCE8156FF2063984A206398CF206398FF206398FF2063
+      98FF206398FFC98F67FFFCF3ECFFFAF1E8FFFAF0E7FFFBF1E9FFFBF2EAFFFBF2
+      EAFFFBF2EBFFFDF4EEFFCA8054F9FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
+      FF00FFFFFF00C57342C1C67545E6C87545FEC77545F3C87545F3C77545F3C775
+      45F3C87546F4C57444E8CA7F53F1FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
       FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF003B7F320015A9000015A9000015A9
       000015A9000015AA009915AA00CC15AA00CC15AA009915A9000015A9000015A9
@@ -3424,6 +3586,33 @@ object Form1: TForm1
     end
     object MnuEdit: TMenuItem
       Caption = 'Edit'
+      object MenuItem101: TMenuItem
+        Action = AcCopyToClipboard
+      end
+      object MenuItem100: TMenuItem
+        Action = AcCutToClipboard
+      end
+      object MenuItem99: TMenuItem
+        Caption = 'Paste'
+        object MenuItem102: TMenuItem
+          Action = AcPasteAllFromClipboard
+        end
+        object MenuItem103: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem104: TMenuItem
+          Action = AcPasteValueFromClipboard
+        end
+        object MenuItem105: TMenuItem
+          Action = AcPasteFormulaFromClipboard
+        end
+        object MenuItem106: TMenuItem
+          Action = AcPasteFormatFromClipboard
+        end
+      end
+      object MenuItem98: TMenuItem
+        Caption = '-'
+      end
       object MnuWorksheet: TMenuItem
         Caption = 'Worksheet'
         object MnuAddSheet: TMenuItem
@@ -4994,6 +5183,25 @@ object Form1: TForm1
         FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
         FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
       }
+    end
+  end
+  object PuPaste: TPopupMenu
+    left = 504
+    top = 471
+    object MenuItem9: TMenuItem
+      Action = AcPasteAllFromClipboard
+    end
+    object MenuItem94: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem95: TMenuItem
+      Action = AcPasteValueFromClipboard
+    end
+    object MenuItem96: TMenuItem
+      Action = AcPasteFormatFromClipboard
+    end
+    object MenuItem97: TMenuItem
+      Action = AcPasteFormulaFromClipboard
     end
   end
 end

@@ -108,16 +108,19 @@ type
   { --- Actions related to cell and cell selection formatting--- }
 
   TsCopyItem = (ciFormat, ciValue, ciFormula, ciAll);
+  TsCopyMode = (cmBrush, cmCopy, cmCut, cmPaste);
 
   TsCopyAction = class(TsSpreadsheetAction)
   private
     FCopyItem: TsCopyItem;
+    FCopyMode: TsCopyMode;
   public
     procedure ExecuteTarget(Target: TObject); override;
     procedure UpdateTarget(Target: TObject); override;
   published
     property Caption;
     property CopyItem: TsCopyItem read FCopyItem write FCopyItem default ciFormat;
+    property CopyMode: TsCopyMode read FCopyMode write FCopyMode default cmBrush;
     property Enabled;
     property HelpContext;
     property HelpKeyword;
@@ -685,19 +688,46 @@ end;
 
 procedure TsCopyAction.ExecuteTarget(Target: TObject);
 const
-  OPERATIONS: array[TsCopyItem] of TsPendingOperation = (
-    poCopyFormat, poCopyValue, poCopyFormula, poCopyCell
+  OPERATIONS: array[TsCopyItem] of TsCopyOperation = (
+    coCopyFormat, coCopyValue, coCopyFormula, coCopyCell
   );
 begin
   Unused(Target);
-  Checked := true;
-  WorkbookSource.SetPendingOperation(OPERATIONS[FCopyItem], Worksheet.GetSelection);
+  case FCopyMode of
+    cmBrush:
+      begin
+        Checked := true;
+        WorkbookSource.SetPendingOperation(OPERATIONS[FCopyItem], Worksheet.GetSelection);
+      end;
+    cmCopy:
+      begin
+        Checked := false;
+        WorkbookSource.CopyCellsToClipboard;
+      end;
+    cmCut:
+      begin
+        Checked := false;
+        WorkbookSource.CutCellsToClipboard;
+      end;
+    cmPaste:
+      begin
+        Checked := false;
+        WorkbookSource.PasteCellsFromClipboard(OPERATIONS[FCopyItem]);
+      end;
+  end;
 end;
 
 procedure TsCopyAction.UpdateTarget(Target: TObject);
 begin
   Unused(Target);
-  if WorkbookSource.PendingOperation = poNone then Checked := false;
+  case FCopyMode of
+    cmBrush:
+      if WorkbookSource.PendingOperation = coNone then Checked := false;
+    cmCopy, cmCut:
+      Enabled := Worksheet.GetSelectionCount > 0;
+    cmPaste:
+      Enabled := not WorkbookSource.CellClipboardEmpty;
+  end;
 end;
 
 
