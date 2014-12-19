@@ -134,7 +134,7 @@ end;
 
 destructor TCustomFPSExport.Destroy;
 begin
-  // Last chance to save file if calling WriteExportFile has been forgottem
+  // Last chance to save file if calling WriteExportFile has been forgotten
   // in case of multiple sheets.
   if FMultipleSheets and (FSpreadsheet <> nil) then
   begin
@@ -290,32 +290,44 @@ end;
 procedure TCustomFPSExport.ExportField(EF: TExportFieldItem);
 var
   F : TFPSExportFieldItem;
+  dt: TDateTime;
 begin
-  F:=EF as TFPSExportFieldItem;
+  F := EF as TFPSExportFieldItem;
   with F do
   begin
     // Export depending on field datatype;
     // Fall back to string if unknown datatype
     If Field.IsNull then
-      FSheet.WriteUTF8Text(FRow,EF.Index,'')
+      FSheet.WriteBlank(FRow, EF.Index)
     else if Field.Datatype in (IntFieldTypes+[ftAutoInc,ftLargeInt]) then
-      FSheet.WriteNumber(FRow,EF.Index,Field.AsInteger)
+      FSheet.WriteNumber(FRow, EF.Index,Field.AsInteger)
     else if Field.Datatype in [ftBCD,ftCurrency,ftFloat,ftFMTBcd] then
-      FSheet.WriteNumber(FRow,EF.Index,Field.AsFloat)
+      FSheet.WriteCurrency(FRow, EF.Index, Field.AsFloat)
     else if Field.DataType in [ftString,ftFixedChar] then
-      FSheet.WriteUTF8Text(FRow,EF.Index,Field.AsString)
+      FSheet.WriteUTF8Text(FRow, EF.Index, Field.AsString)
     else if (Field.DataType in ([ftWideMemo,ftWideString,ftFixedWideChar]+BlobFieldTypes)) then
-      FSheet.WriteUTF8Text(FRow,EF.Index,UTF8Encode(Field.AsWideString))
+      FSheet.WriteUTF8Text(FRow, EF.Index, UTF8Encode(Field.AsWideString))
       { Note: we test for the wide text fields before the MemoFieldTypes, in order to
       let ftWideMemo end up at the right place }
     else if Field.DataType in MemoFieldTypes then
-      FSheet.WriteUTF8Text(FRow,EF.Index,Field.AsString)
+      FSheet.WriteUTF8Text(FRow, EF.Index, Field.AsString)
     else if Field.DataType=ftBoolean then
-      FSheet.WriteBoolValue(FRow,EF.Index,Field.AsBoolean)
-    else if field.DataType in DateFieldTypes then
-      FSheet.WriteDateTime(FRow,EF.Index,Field.AsDateTime)
+      FSheet.WriteBoolValue(FRow, EF.Index, Field.AsBoolean)
+    else if Field.DataType in DateFieldTypes then
+      case Field.DataType of
+        ftDate: FSheet.WriteDateTime(FRow, EF.Index, Field.AsDateTime, nfShortDate);
+        ftTime: FSheet.WriteDateTime(FRow, EF.Index, Field.AsDatetime, nfLongTime);
+        else    // try to guess best format if Field.DataType is ftDateTime
+                dt := Field.AsDateTime;
+                if dt < 1.0 then
+                  FSheet.WriteDateTime(FRow, EF.Index, Field.AsDateTime, nfLongTime)
+                else if frac(dt) = 0 then
+                  FSheet.WriteDateTime(FRow, EF.Index, Field.AsDateTime, nfShortDate)
+                else
+                  FSheet.WriteDateTime(FRow, EF.Index, Field.AsDateTime, nfShortDateTime);
+      end
     else //fallback to string
-      FSheet.WriteUTF8Text(FRow,EF.Index,Field.AsString);
+      FSheet.WriteUTF8Text(FRow, EF.Index, Field.AsString);
   end;
 end;
 
