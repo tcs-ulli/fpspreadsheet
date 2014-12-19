@@ -136,11 +136,15 @@ begin
   FExportDataset := TDbf.Create(self);
   FExportDataset.FilePathFull := DATADIR + DirectorySeparator;
   FExportDataset.TableName := TABLENAME;
-  FExportDataset.TableLevel := 4; //DBase IV; most widely used.
+//  FExportDataset.TableLevel := 4;  // DBase IV: most widely used.
+  FExportDataset.TableLevel := 25;   // FoxPro supports FieldType nfCurrency
   FExportDataset.FieldDefs.Add('Last name', ftString);
   FExportDataset.FieldDefs.Add('First name', ftString);
   FExportDataset.FieldDefs.Add('City', ftString);
-  FExportDataset.FieldDefs.Add('Birthday', ftDateTime);
+  FExportDataset.FieldDefs.Add('Birthday', ftDate);
+  FExportDataset.FieldDefs.Add('Salary', ftCurrency);
+  FExportDataset.FieldDefs.Add('Work begin', ftDateTime);
+  FExportDataset.FieldDefs.Add('Work end', ftDateTime);
   DeleteFile(FExportDataset.FilePathFull + FExportDataset.TableName);
   FExportDataset.CreateTable;
 
@@ -159,7 +163,9 @@ begin
     FExportDataset.FieldByName('First name').AsString := FIRST_NAMES[Random(NUM_FIRST_NAMES)];
     FExportDataset.FieldByName('City').AsString := CITIES[Random(NUM_CITIES)];
     FExportDataset.FieldByName('Birthday').AsDateTime := startDate - random(maxAge);
-      // creates a random date between "startDate" and "maxAge" days back
+    FExportDataset.FieldByName('Salary').AsFloat := 1000+Random(9000);
+    FExportDataSet.FieldByName('Work begin').AsDateTime := EncodeTime(6+Random(4), Random(60), Random(60), 0);
+    FExportDataSet.FieldByName('Work end').AsDateTime := EncodeTime(15+Random(4), Random(60), Random(60), 0);
     FExportDataset.Post;
   end;
   FExportDataset.Close;
@@ -369,6 +375,21 @@ begin
       Exporter.ExportFields.AddField('Birthday');
       Exporter.Execute;
 
+      // On the second sheet we want "Last name", "First name" and "Income"
+      Exporter.ExportFields.Clear;
+      Exporter.ExportFields.AddField('Last name');
+      Exporter.ExportFields.AddField('First name');
+      Exporter.ExportFields.AddField('Salary');
+      Exporter.Execute;
+
+      // On the second sheet we want "Last name", "First name" and "Work begin/end times"
+      Exporter.ExportFields.Clear;
+      Exporter.ExportFields.AddField('Last name');
+      Exporter.ExportFields.AddField('First name');
+      Exporter.ExportFields.AddField('Work begin');
+      Exporter.ExportFields.AddField('Work end');
+      Exporter.Execute;
+
       // Export complete --> we can write to file
       Exporter.WriteExportFile;
     end
@@ -485,8 +506,10 @@ procedure TForm1.ExporterGetSheetNameHandler(Sender: TObject; ASheetIndex: Integ
   var ASheetName: String);
 begin
   case ASheetIndex of
-    0: ASheetName := 'Cities';
-    1: ASheetName := 'Birthdays';
+    0: ASheetName := 'City';
+    1: ASheetName := 'Birthday';
+    2: ASheetName := 'Salary';
+    3: ASheetName := 'Work time';
   end;
 end;
 
