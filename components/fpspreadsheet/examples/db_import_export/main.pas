@@ -56,11 +56,14 @@ type
     // Actual export code when using FPSpreadsheet's fpsexport:
     // reads dbf and writes to spreadsheet
     // Expects FExportDataset to be available
-    procedure ExportUsingFPSExport(var DataFileName: string);
+    procedure ExportUsingFPSExport(MultipleSheets: Boolean; var DataFileName: string);
     // Actual export code when using virtual mode:
     // reads dbf and writes to spreadsheet
     // Expects FExportDataset to be available
     procedure ExportUsingVirtualMode(var DataFileName: string);
+    // FPSExport: Get sheet name
+    procedure ExporterGetSheetNameHandler(Sender: TObject; ASheetIndex: Integer;
+      var ASheetName: String);
     // Virtual mode: for reading: all data for the database is generated here out of the spreadsheet file
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       const ADataCell: PCell);
@@ -81,8 +84,11 @@ implementation
 type
   // Ways to export dbf/dataset. Corresponds to the items
   // of the RgExportMode radiogroup
-  TsExportModes=(seVirtual {manual coding using Virtual Mode},
-    seFPSExport {uses FpSpreadsheet's fpsexport - takes more memory});
+  TsExportModes=(
+    seVirtual,       {manual coding using Virtual Mode}
+    seFPSExport,     {uses FpSpreadsheet's fpsexport - takes more memory}
+    seFPSExportMulti {uses FpSpreadsheetÄs fpsexport to multiple sheets}
+  );
 
 const
   // Parameters for generating dbf file contents
@@ -197,8 +203,12 @@ begin
   try
     InfoLabel1.Caption := ('Starting database export.');
     case TsExportModes(RgExportMode.ItemIndex) of
-      seVirtual: ExportUsingVirtualMode(DataFileName);
-      seFPSExport: ExportUsingFPSExport(DataFileName);
+      seVirtual:
+        ExportUsingVirtualMode(DataFileName);
+      seFPSExport:
+        ExportUsingFPSExport(false, DataFileName);
+      seFPSExportMulti:
+        ExportUsingFPSExport(true, DataFileName);
       else
       begin
         ShowMessageFmt('Unknown export mode number %d. Please correct source code.',[RgExportMode.ItemIndex]);
@@ -298,7 +308,8 @@ begin
   end;
 end;
 
-procedure TForm1.ExportUsingFPSExport(var DataFileName: string);
+procedure TForm1.ExportUsingFPSExport(MultipleSheets: Boolean;
+  var DataFileName: string);
 var
   Exporter: TFPSExport;
   ExportSettings: TFPSExportFormatSettings;
@@ -315,18 +326,21 @@ begin
     ExportSettings.HeaderRow := true;
     case FILE_FORMATS[RgFileFormat.ItemIndex] of
       sfExcel2, sfExcel5:
-      begin
-        ShowMessage('Format not supported using this mode.');
-        exit;
-      end;
-      sfExcel8: ExportSettings.ExportFormat := efXLS;
-      sfOOXML: ExportSettings.ExportFormat := efXLSX;
-      sfOpenDocument: ExportSettings.ExportFormat := efODS;
+        begin
+          ShowMessage('Format not supported using this mode.');
+          exit;
+        end;
+      sfExcel8:
+        ExportSettings.ExportFormat := efXLS;
+      sfOOXML:
+        ExportSettings.ExportFormat := efXLSX;
+      sfOpenDocument:
+        ExportSettings.ExportFormat := efODS;
       else
-      begin
-        ShowMessage('Unknown export format. Please correct the source code.');
-        exit;
-      end;
+        begin
+          ShowMessage('Unknown export format. Please correct the source code.');
+          exit;
+        end;
     end;
     // Actually apply settings
     Exporter.FormatSettings := ExportSettings;
@@ -335,7 +349,32 @@ begin
     Exporter.Dataset := FExportDataset;
     Exporter.FileName := ChangeFileExt(DataFileName, FILE_EXT[
       RgFileFormat.ItemIndex]);
-    Exporter.Execute;
+
+    // Export to multiple sheets
+    if MultipleSheets then
+    begin
+      Exporter.MultipleSheets := true;
+      Exporter.OnGetSheetName := @ExporterGetSheetNameHandler;
+
+      // On the first sheet we want "Last name", "First name" and "City"
+      Exporter.ExportFields.AddField('Last name');
+      Exporter.ExportFields.AddField('First name');
+      Exporter.ExportFields.AddField('City');
+      Exporter.Execute;
+
+      // On the second sheet we want "Last name", "First name" and "Birthday"
+      Exporter.ExportFields.Clear;
+      Exporter.ExportFields.AddField('Last name');
+      Exporter.ExportFields.AddField('First name');
+      Exporter.ExportFields.AddField('Birthday');
+      Exporter.Execute;
+
+      // Export complete --> we can write to file
+      Exporter.WriteExportFile;
+    end
+    // Export of all records to single sheet
+    else
+      Exporter.Execute;
   finally
     Exporter.Free;
     ExportSettings.Free;
@@ -438,6 +477,16 @@ begin
       true);
   finally
     FreeAndNil(FWorkbook);
+  end;
+end;
+
+{ Determines the sheet name of the export using FPExport }
+procedure TForm1.ExporterGetSheetNameHandler(Sender: TObject; ASheetIndex: Integer;
+  var ASheetName: String);
+begin
+  case ASheetIndex of
+    0: ASheetName := 'Cities';
+    1: ASheetName := 'Birthdays';
   end;
 end;
 
