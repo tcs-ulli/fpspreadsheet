@@ -11,7 +11,8 @@ unit fpsexport;
 interface
 
 uses
-  Classes, SysUtils, db, fpsallformats, fpspreadsheet, fpsstrings, fpdbexport;
+  Classes, SysUtils, db,
+  {%H-}fpsallformats, fpspreadsheet, fpsstrings, fpdbexport;
   
 Type
 
@@ -32,16 +33,23 @@ Type
   private
     FExportFormat: TExportFormat;
     FHeaderRow: boolean;
+    FSheetName: String;
   public
     procedure Assign(Source : TPersistent); override;
     procedure InitSettings; override;
   published
     {@@ File format for the export }
     property ExportFormat: TExportFormat read FExportFormat write FExportFormat;
-    {@@ Flag that determines whethe to write the field list to the first
+    {@@ Flag that determines whether to write the field list to the first
         row of the spreadsheet }
     property HeaderRow: boolean read FHeaderRow write FHeaderRow default false;
+    {@@ Sheet name }
+    property SheetName: String read FSheetName write FSheetName;
   end;
+
+  { TGetSheetNameEvent }
+  TsGetSheetNameEvent = procedure (Sender: TObject; ASheetIndex: Integer;
+    var ASheetName: String) of object;
 
   { TCustomFPSExport }
   TCustomFPSExport = Class(TCustomDatasetExporter)
@@ -50,23 +58,36 @@ Type
     FSpreadsheet: TsWorkbook;
     FSheet: TsWorksheet;
     FFileName: string;
+    FMultipleSheets: Boolean;
+    FOnGetSheetName: TsGetSheetNameEvent;
+    function CalcSheetNameMask(const AMask: String): String;
+    function CalcUniqueSheetName(const AMask: String): String;
     function GetSettings: TFPSExportFormatSettings;
+    procedure SaveWorkbook;
     procedure SetSettings(const AValue: TFPSExportFormatSettings);
   protected
-    function CreateFormatSettings: TCustomExportFormatSettings; override;
-
     function CreateExportFields: TExportFields; override;
+    function CreateFormatSettings: TCustomExportFormatSettings; override;
     procedure DoBeforeExecute; override;
     procedure DoAfterExecute; override;
     procedure DoDataHeader; override;
     procedure DoDataRowEnd; override;
+    function  DoGetSheetName: String; virtual;
     procedure ExportField(EF : TExportFieldItem); override;
     property FileName: String read FFileName write FFileName;
     property Workbook: TsWorkbook read FSpreadsheet;
+    property RestorePosition default true;
+    property OnGetSheetName: TsGetSheetNameEvent read FOnGetSheetName write FOnGetSheetName;
   public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure WriteExportFile;
     {@@ Settings for the export. Note: a lot of generic settings are preent
         that are not relevant for this export, e.g. decimal point settings }
     property FormatSettings: TFPSExportFormatSettings read GetSettings write SetSettings;
+    {@@ MultipleSheets: export several datasets to multiple sheets in
+        the sasme file. Otherwise a single-sheet workbook is created. }
+    property MultipleSheets: Boolean read FMultipleSheets write FMultipleSheets default false;
   end;
 
   { TFPSExport }
@@ -87,6 +108,8 @@ Type
     property RestorePosition;
     {@@ Procedure to run when exporting a row }
     property OnExportRow;
+    {@@ Determines the name of the worksheet }
+    property OnGetSheetName;
   end;
 
 {@@ Register export format with fpsdbexport so it can be dynamically used }
@@ -102,6 +125,24 @@ implementation
 
 
 { TCustomFPSExport }
+
+constructor TCustomFPSExport.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  RestorePosition := true;
+end;
+
+destructor TCustomFPSExport.Destroy;
+begin
+  // Last chance to save file if calling WriteExportFile has been forgottem
+  // in case of multiple sheets.
+  if FMultipleSheets and (FSpreadsheet <> nil) then
+  begin
+    SaveWorkbook;
+    FreeAndNil(FSpreadsheet);
+  end;
+  inherited;
+end;
 
 function TCustomFPSExport.GetSettings: TFPSExportFormatSettings;
 begin
@@ -129,11 +170,17 @@ begin
   Inherited;
   if FFileName='' then
     Raise EDataExporter.Create(rsExportFileIsRequired);
-  FSpreadsheet:=TsWorkbook.Create;
-  // For extra performance. Note that virtual mode is not an option
-  // due to the data export determining flow of the program.
-  FSpreadsheet.Options:=FSpreadsheet.Options+[boBufStream];
-  FSheet:=FSpreadsheet.AddWorksheet('1');
+  if (not RestorePosition) and FMultipleSheets then
+    Raise EDataExporter.Create(rsMultipleSheetsOnlyWithRestorePosition);
+
+  if (not FMultipleSheets) or (FSpreadsheet = nil) then
+  begin
+    FSpreadsheet:=TsWorkbook.Create;
+    FSpreadsheet.Options:=FSpreadsheet.Options+[boBufStream];
+    // For extra performance. Note that virtual mode is not an option
+    // due to the data export determining flow of the program.
+  end;
+  FSheet:=FSpreadsheet.AddWorksheet(DoGetSheetName);
   FRow:=0;
 end;
 
@@ -152,30 +199,92 @@ begin
   inherited DoDataHeader;
 end;
 
-procedure TCustomFPSExport.DoAfterExecute;
+{ Writes the workbook populated during the export process to file }
+procedure TCustomFPSExport.SaveWorkbook;
 begin
   FRow:=0;
   // Overwrite existing file similar to how dbf export does it
   case Formatsettings.ExportFormat of
-    efXLS: FSpreadSheet.WriteToFile(FFileName,sfExcel8,true);
-    efXLSX: FSpreadsheet.WriteToFile(FFilename,sfOOXML,true);
-    efODS: FSpreadSheet.WriteToFile(FFileName,sfOpenDocument,true);
-    efWikiTable: FSpreadSheet.WriteToFile(FFileName,sfWikitable_wikimedia,true);
+    efXLS:
+      FSpreadSheet.WriteToFile(FFileName,sfExcel8,true);
+    efXLSX:
+      FSpreadsheet.WriteToFile(FFilename,sfOOXML,true);
+    efODS:
+      FSpreadSheet.WriteToFile(FFileName,sfOpenDocument,true);
+    efWikiTable:
+      FSpreadSheet.WriteToFile(FFileName,sfWikitable_wikimedia,true);
     else
-      ;// raise error?
+      raise Exception.Create('[TCustomFPSExport.SaveWorkbook] ExportFormat unknown');
   end;
+end;
 
-  // Don't free FSheet; done by FSpreadsheet
-  try
-    FreeAndNil(FSpreadsheet);
-  finally
-    Inherited;
+procedure TCustomFPSExport.DoAfterExecute;
+begin
+  if not FMultipleSheets then
+  begin
+    SaveWorkbook;
+    FreeAndNil(FSpreadsheet);  // Don't free FSheet; done by FSpreadsheet
   end;
+  // Multi-sheet workbooks are written when WriteExportFile is called.
+  inherited;
 end;
 
 procedure TCustomFPSExport.DoDataRowEnd;
 begin
   FRow:=FRow+1;
+end;
+
+function TCustomFPSExport.CalcSheetNameMask(const AMask: String): String;
+begin
+  Result := AMask;
+  // No %d in the mask string
+  if pos('%d', Result) = 0 then
+  begin
+    // If the mask string is already used we'll add a number to the sheet name
+    if not FSpreadsheet.ValidWorksheetName(Result) then
+    begin
+      Result := AMask + '%d';
+      exit;
+    end;
+  end;
+end;
+
+function TCustomFPSExport.CalcUniqueSheetName(const AMask: String): String;
+var
+  i: Integer;
+begin
+  if pos('%d', AMask) > 0 then
+  begin
+    i := 0;
+    repeat
+      inc(i);
+      Result := Format(AMask, [i]);
+    until (FSpreadsheet.GetWorksheetByName(Result) = nil);
+  end else
+    Result := AMask;
+  if not FSpreadsheet.ValidWorksheetName(Result) then
+    Raise EDataExporter.CreateFmt(rsInvalidWorksheetName, [Result]);
+end;
+
+{ Method which provides the name of the worksheet into which the dataset is to
+  be exported. There are several cases:
+  (1) Use the name defined in the FormatSettings.
+  (2) Provide the name in an event handler for OnGetSheetname.
+  The name provided from these sources can contain a %d placeholder which will
+  be replaced by a number such that the sheet name is unique.
+  If it does not contain a %d then a %d may be added if needed to get a unique
+  sheet name. }
+function TCustomFPSExport.DoGetSheetName: String;
+var
+  mask: String;
+begin
+  mask := CalcSheetNameMask(FormatSettings.SheetName);
+  Result := CalcUniqueSheetName(mask);
+  if Assigned(FOnGetSheetName) then
+  begin
+    FOnGetSheetName(Self, FSpreadsheet.GetWorksheetCount, mask);
+    Result := CalcUniqueSheetName(mask);
+  end;
 end;
 
 procedure TCustomFPSExport.ExportField(EF: TExportFieldItem);
@@ -210,6 +319,16 @@ begin
   end;
 end;
 
+procedure TCustomFPSExport.WriteExportFile;
+begin
+  if FMultipleSheets then begin
+    SaveWorkbook;
+    FreeAndNil(FSpreadsheet);
+    // Don't free FSheet; done by FSpreadsheet
+  end;
+end;
+
+
 procedure RegisterFPSExportFormat;
 begin
   ExportFormats.RegisterExportFormat(SFPSExport,rsFPSExportDescription,SPFSExtension,TFPSExport);
@@ -229,8 +348,9 @@ begin
   If Source is TFPSExportFormatSettings then
   begin
     FS:=Source as TFPSExportFormatSettings;
-    HeaderRow:=FS.HeaderRow;
-    ExportFormat:=FS.ExportFormat;
+    HeaderRow := FS.HeaderRow;
+    ExportFormat := FS.ExportFormat;
+    SheetName := FS.SheetName;
   end;
   inherited Assign(Source);
 end;
@@ -238,7 +358,8 @@ end;
 procedure TFPSExportFormatSettings.InitSettings;
 begin
   inherited InitSettings;
-  FExportFormat:=efXLS; //often used format
+  FExportFormat := efXLS; //often used format
+  FSheetName := 'Sheet';
 end;
 
 end.

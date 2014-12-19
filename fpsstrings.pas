@@ -12,6 +12,8 @@ interface
 resourcestring
   rsExportFileIsRequired = 'Export file name is required';
   rsFPSExportDescription = 'Spreadsheet file';
+  rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
+    'only if position is restored.';
   rsUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   rsUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   rsNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
