@@ -24,7 +24,7 @@
 
 This package is all you need if you don't want graphical components (like grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="4"/>
+    <Version Major="1" Minor="5"/>
     <Files Count="27">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
