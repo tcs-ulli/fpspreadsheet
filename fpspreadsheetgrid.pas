@@ -228,10 +228,6 @@ type
     { Interfacing with WorkbookLink }
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
-//    procedure CellChanged(ACell: PCell);
-//    procedure CellSelected(ASheetRow, ASheetCol: Cardinal);
-//    procedure WorkbookChanged;
-//    procedure WorksheetChanged;
 
     { public properties }
     {@@ Link to the workbook }
@@ -339,6 +335,7 @@ type
     property RangeSelectMode default rsmMulti;
    {$ENDIF}
   end;
+
 
   { TsWorksheetGrid }
 
@@ -558,7 +555,6 @@ type
     property OnContextPopup;
   end;
 
-//procedure Register;
 
 implementation
 
@@ -671,16 +667,7 @@ begin
     then TRGBA(Result).B := TRGBA(c).B + ADelta
     else TRGBA(Result).B := TRGBA(c).B - ADelta;
 end;
-          (*
-{@@ ----------------------------------------------------------------------------
-  Registers the worksheet grid in the Lazarus component palette,
-  page "FPSpreadsheet".
--------------------------------------------------------------------------------}
-procedure Register;
-begin
-  RegisterComponents('FPSpreadsheet', [TsWorksheetGrid]);
-end;
-            *)
+
 
 {*******************************************************************************
 *                              TsCustomWorksheetGrid                           *
@@ -3247,18 +3234,7 @@ begin
   if Workbook <> nil then
     Workbook.WriteToFile(AFileName, AOverwriteExisting);
 end;
-  (*
-{@@ ----------------------------------------------------------------------------
-  A different cell has been selected. Notifies the WorkbookLink of the change.
--------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.SelectCell(AGridCol, AGridRow: Integer): Boolean;
-begin
-  Result := inherited SelectCell(AGridCol, AGridRow);
-  if Result and (WorkbookSource <> nil) and ((AGridRow <> Row) or (AGridCol <> Col))
-  then
-    WorkbookSource.SelectCell(GetWorksheetRow(AGridRow), GetWorksheetCol(AGridCol));
-end;
-    *)
+
 {@@ ----------------------------------------------------------------------------
   Standard method inherited from TCustomGrid: Is called when editing starts.
   Is overridden here to store the old text just in case that the user presses

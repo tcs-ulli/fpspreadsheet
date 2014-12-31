@@ -12,9 +12,9 @@ uses
 
   {the actual tests}
   datetests, manualtests, stringtests, internaltests, testsutility, testutils,
-  formattests, colortests, emptycelltests, insertdeletetests,
-  errortests, numberstests, fonttests, formulatests, numformatparsertests,
-  optiontests, virtualmodetests, dbexporttests, sortingtests;
+  formattests, colortests, emptycelltests, insertdeletetests, errortests,
+  numberstests, fonttests, formulatests, numformatparsertests, optiontests,
+  virtualmodetests, dbexporttests, sortingtests, copytests, celltypetests;
 
 const
   ShortOpts = 'ac:dhlpr:x';

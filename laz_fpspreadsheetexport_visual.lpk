@@ -3,6 +3,7 @@
   <Package Version="4">
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheetexport_visual"/>
+    <Type Value="RunAndDesignTime"/>
     <Author Value="Reinier Olislagers and others"/>
     <CompilerOptions>
       <Version Value="11"/>
@@ -23,7 +24,7 @@
 
 It provides a graphical export component on the Data Export tab."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="3"/>
+    <Version Major="1" Minor="4"/>
     <Files Count="2">
       <Item1>
         <Filename Value="fpsexport.pas"/>
@@ -35,7 +36,6 @@ It provides a graphical export component on the Data Export tab."/>
         <UnitName Value="fpsexportreg"/>
       </Item2>
     </Files>
-    <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="lazdbexport"/>

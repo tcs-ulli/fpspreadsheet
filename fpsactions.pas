@@ -1141,6 +1141,7 @@ var
 begin
   if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
   begin
+    EmptyCell.Row := 0;  // silence the compiler...
     InitCell(EmptyCell);
     FBorders.ExtractFromCell(Workbook, @EmptyCell);
   end else

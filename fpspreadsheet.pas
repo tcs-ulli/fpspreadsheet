@@ -1325,7 +1325,7 @@ function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 function SameCellBorders(ACell1, ACell2: PCell): Boolean;
 
-procedure InitCell(var ACell: TCell); overload;
+procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 
 function HasFormula(ACell: PCell): Boolean;
@@ -1577,7 +1577,7 @@ end;
   Initalizes a new cell.
   @return  New cell record
 -------------------------------------------------------------------------------}
-procedure InitCell(var ACell: TCell);
+procedure InitCell(out ACell: TCell);
 begin
   ACell.FormulaValue := '';
   ACell.UTF8StringValue := '';
