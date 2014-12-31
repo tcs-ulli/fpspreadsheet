@@ -69,7 +69,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="19">
+    <Units Count="21">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -146,8 +146,17 @@
       <Unit18>
         <Filename Value="sortingtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="sortingtests"/>
       </Unit18>
+      <Unit19>
+        <Filename Value="copytests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="copytests"/>
+      </Unit19>
+      <Unit20>
+        <Filename Value="celltypetests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="celltypetests"/>
+      </Unit20>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

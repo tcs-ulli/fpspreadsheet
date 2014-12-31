@@ -450,7 +450,7 @@ type
     function GetCell(AIndex: Integer): PCell;
     procedure SetCell(AIndex: Integer; ACell: PCell);
   public
-    destructor Destroy;
+    destructor Destroy; override;
     function Add(ACell: PCell): Integer;
     function AddCell(ACell: PCell): Integer;
     function AddEmptyCell(ARow, ACol: Cardinal): Integer;
@@ -1175,13 +1175,13 @@ begin
       cell := CellClipboard.CellByIndex[i];
       case AItem of
         coCopyCell:
-          FWorksheet.CopyCell(cell^.Row, cell^.Col, cell^.Row + dr, cell^.Col + dc);
+          FWorksheet.CopyCell(cell^.Row, cell^.Col, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
         coCopyValue:
-          FWorksheet.CopyValue(cell, cell^.Row + dr, cell^.Col + dc);
+          FWorksheet.CopyValue(cell, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
         coCopyFormat:
-          FWorksheet.CopyFormat(cell, cell^.Row + dr, cell^.Col + dc);
+          FWorksheet.CopyFormat(cell, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
         coCopyFormula:
-          FWorksheet.CopyFormula(cell, cell^.Row + dr, cell^.Col + dc);
+          FWorksheet.CopyFormula(cell, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
       end;
     end;
 
@@ -1755,7 +1755,6 @@ procedure TsCellCombobox.ApplyFormatToCell(ACell: PCell);
 var
   fnt: TsFont;
   clr: TColor;
-  sclr: TsColor;
 begin
   if (Worksheet = nil) then
     exit;

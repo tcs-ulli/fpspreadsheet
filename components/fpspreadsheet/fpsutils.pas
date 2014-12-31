@@ -1506,7 +1506,6 @@ var
   testSepPos: Integer;
   lastDigitPos: Integer;
   isPercent: Boolean;
-  isExp: Boolean;
   fs: TFormatSettings;
   done: Boolean;
 begin
@@ -1532,7 +1531,6 @@ begin
   testSep := #0;      // Separator candidate to be tested
   testSepPos := 0;    // Position of this separator candidate in the string
   lastDigitPos := 0;  // Position of the last numerical digit
-  isExp := false;     // Flag for exponential format
   isPercent := false; // Flag for percentage format
 
   i := Length(AText);    // Start at end...
@@ -1544,7 +1542,7 @@ begin
           lastDigitPos := i;
 
       'e', 'E':
-        isExp := true;
+        ;
 
       '%':
         begin

@@ -3,12 +3,12 @@
   <Package Version="4">
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet_visual"/>
+    <Type Value="RunAndDesignTime"/>
     <Author Value="Felipe Monteiro de Carvalho and others"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="."/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
@@ -19,7 +19,7 @@
 
 It provides graphical components like a grid and chart."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="3"/>
+    <Version Major="1" Minor="4"/>
     <Files Count="5">
       <Item1>
         <Filename Value="fpspreadsheetctrls.pas"/>
@@ -45,7 +45,6 @@ It provides graphical components like a grid and chart."/>
         <UnitName Value="fpsvisualutils"/>
       </Item5>
     </Files>
-    <Type Value="RunAndDesignTime"/>
     <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="tachartlazaruspkg"/>
