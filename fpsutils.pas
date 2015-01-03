@@ -72,6 +72,10 @@ function ParseCellRangeString(const AStr: string;
   out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellRangeString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal): Boolean; overload;
+function ParseCellRangeString(const AStr: String;
+  out ARange: TsCellRange; out AFlags: TsRelFlags): Boolean; overload;
+function ParseCellRangeString(const AStr: String;
+  out ARange: TsCellRange): Boolean; overload;
 function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString(const AStr: string;
@@ -82,11 +86,13 @@ function ParseCellColString(const AStr: string;
   out AResult: Cardinal): Boolean;
 
 function GetColString(AColIndex: Integer): String;
+
 function GetCellString(ARow,ACol: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
-  Compact: Boolean = false): String;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
+function GetCellRangeString(ARange: TsCellRange;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
@@ -510,6 +516,43 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Parses strings like A5:C10 into a range selection information.
+  Returns in AFlags also information on relative/absolute cells.
+
+  @param  AStr           Cell range string, such as A5:C10
+  @param  ARange         TsCellRange record of the zero-based row and column
+                         indexes of the top/left and right/bottom corrners
+  @param  AFlags         a set containing an element for ARange.Row1 (top row),
+                         ARange.Col1 (left column), ARange.Row2 (bottom row),
+                         ARange.Col2 (right column) if they represent relative
+                         cell addresses.
+  @return                false if the string is not a valid cell range
+--------------------------------------------------------------------------------}
+function ParseCellRangeString(const AStr: String;
+  out ARange: TsCellRange; out AFlags: TsRelFlags): Boolean;
+begin
+  Result := ParseCelLRangeString(AStr, ARange.Row1, ARange.Col1, ARange.Row2,
+    ARange.Col2, AFlags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses strings like A5:C10 into a range selection information.
+  Information on relative/absolute cells is ignored.
+
+  @param  AStr           Cell range string, such as A5:C10
+  @param  ARange         TsCellRange record of the zero-based row and column
+                         indexes of the top/left and right/bottom corrners
+  @return                false if the string is not a valid cell range
+--------------------------------------------------------------------------------}
+function ParseCellRangeString(const AStr: String;
+  out ARange: TsCellRange): Boolean;
+begin
+  Result := ParseCellRangeString(AStr, ARange.Row1, ARange.Col1, ARange.Row2,
+    ARange.Col2);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Parses a cell string, like 'A1' into zero-based column and row numbers
   Note that there can be several letters to address for more than 26 columns.
   'AFlags' indicates relative addresses.
@@ -744,8 +787,7 @@ end;
            --> $A1:$B3
 -------------------------------------------------------------------------------}
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
-  Compact: Boolean = false): String;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
 begin
   if Compact and (ARow1 = ARow2) and (ACol1 = ACol2) then
     Result := GetCellString(ARow1, ACol1, AFlags)
@@ -756,6 +798,28 @@ begin
       RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
       RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
     ]);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates a cell range address string from a TsCellRange record
+  and the relative address state flags.
+
+  @param   ARange      TsCellRange record containing the zero-based indexes of
+                       the first and last row and columns of the range
+  @param   AFlags      A set containing an entry for first and last column and
+                       row if their addresses are relative.
+  @param   Compact     If the range consists only of a single cell and compact
+                       is true then the simple cell string is returned (e.g. A1).
+                       If compact is false then the cell is repeated (e.g. A1:A1)
+  @return  Excel type of cell address range containing '$' characters for absolute
+           address parts and a ':' to separate the first and last cells of the
+           range
+-------------------------------------------------------------------------------}
+function GetCellRangeString(ARange: TsCellRange;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
+begin
+  Result := GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2,
+    AFlags, Compact);
 end;
 
 {@@ ----------------------------------------------------------------------------
