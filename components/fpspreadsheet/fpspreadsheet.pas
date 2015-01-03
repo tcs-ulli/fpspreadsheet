@@ -97,6 +97,7 @@ type
   {@@ These tokens identify basic operations in RPN formulas. }
   TBasicOperationTokens = fekAdd..fekParen;
 
+type
   {@@ Flags to mark the address or a cell or a range of cells to be <b>absolute</b>
       or <b>relative</b>. They are used in the set TsRelFlags. }
   TsRelFlag = (rfRelRow, rfRelCol, rfRelRow2, rfRelCol2);
@@ -105,6 +106,14 @@ type
       or <b>relative</b>. It is a set consisting of TsRelFlag elements. }
   TsRelFlags = set of TsRelFlag;
 
+const
+  {@@ Abbreviation of all-relative cell reference flags }
+  rfAllRel = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
+
+  {@@ Separator between worksheet name and cell (range) reference in an address }
+  SHEETSEPARATOR = '!';
+
+type
   {@@ Elements of an expanded formula.
     Note: If ElementKind is fekCellOffset, "Row" and "Col" have to be cast
           to signed integers! }
@@ -591,6 +600,7 @@ type
     destructor Destroy; override;
 
     { Utils }
+    class function CellInRange(ARow, ACol: Cardinal; ARange: TsCellRange): Boolean;
     class function CellPosToText(ARow, ACol: Cardinal): string;
     procedure RemoveAllCells;
     procedure UpdateCaches;
@@ -1838,6 +1848,17 @@ begin
 
   if HasFormula(cell) then
     cell^.CalcState := csNotCalculated;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether a cell given by its row and column indexes belongs to a
+  specified rectangular cell range.
+-------------------------------------------------------------------------------}
+class function TsWorksheet.CellInRange(ARow, ACol: Cardinal;
+  ARange: TsCellRange): Boolean;
+begin
+  Result := (ARow >= ARange.Row1) and (ARow <= ARange.Row2) and
+            (ACol >= ARange.Col1) and (ACol <= ARange.Col2);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -423,7 +423,7 @@ implementation
 
 uses
   Types, Math, TypInfo, LCLType, Dialogs, Forms,
-  fpsStrings, fpsUtils, fpSpreadsheetGrid;
+  fpsStrings, fpsUtils, fpSpreadsheetGrid, fpSpreadsheetChart;
 
 
 {@@ ----------------------------------------------------------------------------
@@ -898,7 +898,11 @@ begin
     else
     if TObject(FListeners[i]) is TsSpreadsheetInspector then
       TsSpreadsheetInspector(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else                                    {
+    else
+    if TObject(FListeners[i]) is TsWorkbookChartSource then
+      TsWorkbookChartSource(FListeners[i]).ListenerNotification(AChangedItems, AData)
+    else
+    {
     if TObject(FListeners[i]) is TsSpreadsheetAction then
       TsSpreadsheetAction(FListeners[i]).ListenerNotifiation(AChangedItems, AData)
     else                                     }
@@ -937,7 +941,11 @@ begin
       else
       if (AListener is TsSpreadsheetInspector) then
         TsSpreadsheetInspector(AListener).WorkbookSource := nil
-      else                         {
+      else
+      if (AListener is TsWorkbookChartSource) then
+        TsWorkbookChartSource(AListener).WorkbookSource := nil
+      else
+      {
       if (AListener is TsSpreadsheetAction) then
         TsSpreadsheetAction(AListener).WorksheetLink := nil
       else                          }
