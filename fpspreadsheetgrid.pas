@@ -2902,7 +2902,8 @@ end;
 procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
-  NewWorkbook(FInitColCount, FInitRowCount);
+  if FWorkbookSource = nil then
+    NewWorkbook(FInitColCount, FInitRowCount);
 end;
 
 {@@ ----------------------------------------------------------------------------

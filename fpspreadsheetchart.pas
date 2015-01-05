@@ -1,11 +1,15 @@
-{
-fpspreadsheetgrid.pas
+{ fpspreadsheetchart.pas }
 
-Chart data source designed to work together with TChart from Lazarus to display the data
-and with TsWorksheetGrid from FPSpreadsheet to load data from a grid.
+{@@ ----------------------------------------------------------------------------
+Chart data source designed to work together with TChart from Lazarus
+to display the data and with FPSpreadsheet to load data.
 
-AUTHORS: Felipe Monteiro de Carvalho
-}
+AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
+
+LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+         distribution, for details about the license.
+-------------------------------------------------------------------------------}
+
 unit fpspreadsheetchart;
 
 {$mode objfpc}{$H+}
@@ -15,11 +19,11 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   // TChart
-  {tasources,} TACustomSource,
-  // FPSpreadsheet Visual
-  fpspreadsheetctrls, fpspreadsheetgrid,
+  TACustomSource,
   // FPSpreadsheet
-  fpspreadsheet, fpsutils;
+  fpspreadsheet, fpsutils,
+  // FPSpreadsheet Visual
+  fpspreadsheetctrls, fpspreadsheetgrid;
 
 type
 
@@ -83,8 +87,8 @@ type
     FWorkbookSource: TsWorkbookSource;
     FWorkbook: TsWorkbook;
     FWorksheets: array[TsXYRange] of TsWorksheet;
+    FRangeStr: array[TsXYRange] of String;
     FRanges: array[TsXYRange] of TsCellRangeArray;
-    FDirections: array[TsXYRange] of TsSelectionDirection;
     FPointsNumber: Cardinal;
     function GetRange(AIndex: TsXYRange): String;
     function GetWorkbook: TsWorkbook;
@@ -94,10 +98,13 @@ type
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
     FCurItem: TChartDataItem;
+    function BuildRangeStr(AIndex: TsXYRange; AListSeparator: char = #0): String;
     function CountValues(AIndex: TsXYRange): Integer;
     function GetCount: Integer; override;
     function GetItem(AIndex: Integer): PChartDataItem; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure Prepare; overload;
+    procedure Prepare(AIndex: TsXYRange); overload;
     procedure SetYCount(AValue: Cardinal); override;
   public
     destructor Destroy; override;
@@ -270,6 +277,10 @@ end;
 {                             TsWorkbookChartSource                            }
 {------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Destructor of the WorkbookChartSource.
+  Removes itself from the WorkbookSource's listener list.
+-------------------------------------------------------------------------------}
 destructor TsWorkbookChartSource.Destroy;
 begin
   if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
@@ -277,20 +288,54 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Constructs the range string from the stored internal information. Is needed
+  to have the worksheet name in the range string in order to make the range
+  string unique.
+-------------------------------------------------------------------------------}
+function TsWorkbookChartSource.BuildRangeStr(AIndex: TsXYRange;
+  AListSeparator: Char = #0): String;
+var
+  L: TStrings;
+  range: TsCellRange;
+begin
+  if (FWorkbook = nil) or (FWorksheets[AIndex] = nil) or (Length(FRanges) = 0) then
+    exit('');
+
+  L := TStringList.Create;
+  try
+    if AListSeparator = #0 then
+      L.Delimiter := FWorkbook.FormatSettings.ListSeparator
+    else
+      L.Delimiter := AListSeparator;
+    L.StrictDelimiter := true;
+    for range in FRanges[AIndex] do
+      L.Add(GetCellRangeString(range, rfAllRel, true));
+    Result := FWorksheets[AIndex].Name + SHEETSEPARATOR + L.DelimitedText;
+  finally
+    L.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Counts the number of x or y values contained in the x/y ranges
+
+  @param   AIndex   Identifies whether values in the x or y ranges are counted.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartSource.CountValues(AIndex: TsXYRange): Integer;
 var
   ir: Integer;
+  range: TsCellRange;
 begin
   Result := 0;
-  case FDirections[AIndex] of
-    fpsVerticalSelection:
-      for ir:=0 to High(FRanges[AIndex]) do
-        inc(Result, FRanges[AIndex, ir].Row2 - FRanges[AIndex, ir].Row1 + 1);
-    fpsHorizontalSelection:
-      for ir:=0 to High(FRanges[AIndex]) do
-        inc(Result, FRanges[AIndex, ir].Col2 - FRanges[AIndex, ir].Col1 + 1);
+  for range in FRanges[AIndex] do
+  begin
+    if range.Col1 = range.Col2 then
+      inc(Result, range.Row2 - range.Row1 + 1)
+    else
+    if range.Row1 = range.Row2 then
+      inc(Result, range.Col2 - range.Col1 + 1)
+    else
+      raise Exception.Create('x/y ranges can only be 1 column wide or 1 row high.');
   end;
 end;
 
@@ -306,6 +351,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Main ChartSource method called from the series requiring data for plotting.
   Retrieves the data from the workbook.
+
+  @param   AIndex   Index of the data point in the series.
+  @return  Pointer to a TChartDataItem record containing the x and y coordinates,
+           the data point mark text, and the individual data point color.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartSource.GetItem(AIndex: Integer): PChartDataItem;
 var
@@ -325,25 +374,8 @@ end;
            by the workbook's FormatSettings.
 -------------------------------------------------------------------------------}
 function TsWorkbookChartsource.GetRange(AIndex: TsXYRange): String;
-var
-  L: TStrings;
-  ir: Integer;
 begin
-  if FWorksheets[AIndex] = nil then
-  begin
-    Result := '';
-    exit;
-  end;
-
-  L := TStringList.Create;
-  try
-    L.Delimiter := Workbook.FormatSettings.ListSeparator;
-    for ir:=0 to High(FRanges[AIndex]) do
-      L.Add(GetCellRangeString(FRanges[AIndex, ir], rfAllRel, true));
-    Result := FWorksheets[AIndex].Name + SHEETSEPARATOR + L.DelimitedText;
-  finally
-    L.Free;
-  end;
+  Result := FRangeStr[AIndex];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -358,45 +390,59 @@ begin
   FWorkbook := Result;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Helper method the prepare the information required for the series data point.
+
+  @param  XOrY         Identifies whether the method retrieves the x or y
+                       coordinate.
+  @param  APointIndex  Index of the data point for which the data are required
+  @param  ANumber      (output) x or y coordinate of the data point
+  @param  AText        Data point marks label text
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.GetXYItem(XOrY:TsXYRange; APointIndex: Integer;
   out ANumber: Double; out AText: String);
 var
   range: TsCellRange;
-  i, j: Integer;
+  idx, ir: Integer;
   len: Integer;
   row, col: Cardinal;
   cell: PCell;
 begin
   cell := nil;
-  i := 0;
-  case FDirections[XOrY] of
-    fpsVerticalSelection:
-      for j:=0 to High(FRanges[XOrY]) do begin
-        range := FRanges[XOrY, j];
-        len := range.Row2 - range.Row1 + 1;
-        if (APointIndex >= i) and (APointIndex < i + len) then begin
-          row := range.Row1 + APointIndex - i;
-          col := range.Col1;
-          cell := FWorksheets[XOrY].FindCell(row, col);
-          break;
-        end;
-        inc(i, len);
-      end;
+  idx := 0;
+  if FRanges[XOrY] = nil then
+    exit;
 
-    fpsHorizontalSelection:
-      for j:=0 to High(FRanges[XOrY]) do begin
-        range := FRanges[XOrY, j];
-        len := range.Col2 - range.Col1 + 1;
-        if (APointIndex >= i) and (APointIndex < i + len) then begin
-          row := range.Row1;
-          col := range.Col1 + APointIndex - i;
-          cell := FWorksheets[XOrY].FindCell(row, col);
-          break;
-        end;
-        inc(i, len);
+  for range in FRanges[XOrY] do
+  begin
+    if (range.Col1 = range.Col2) then  // vertical range
+    begin
+      len := range.Row2 - range.Row1 + 1;
+      if (APointIndex >= idx) and (APointIndex < idx + len) then
+      begin
+        row := range.Row1 + APointIndex - idx;
+        col := range.Col1;
+        break;
       end;
+      inc(idx, len);
+    end else  // horizontal range
+    if (range.Row1 = range.Row2) then
+    begin
+      len := range.Col2 - range.Col1 + 1;
+      if (APointIndex >= idx) and (APointIndex < idx + len) then
+      begin
+        row := range.Row1;
+        col := range.Col1 + APointIndex - idx;
+        break;
+      end;
+    end else
+      raise Exception.Create('x/y ranges can only be 1 column wide or 1 row high');
   end;
-  if cell = nil then begin
+
+  cell := FWorksheets[XOrY].FindCell(row, col);
+
+  if cell = nil then
+  begin
     ANumber := NaN;
     AText := '';
   end else
@@ -417,9 +463,11 @@ end;
   and to worksheet changes by selecting the tab corresponding to the selected
   worksheet.
 
-  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
-                         cell content or cell formatting has changed
+  @param  AChangedItems  Set with elements identifying whether workbook,
+                         worksheet, cell content or cell formatting has changed
   @param  AData          Additional data, not used here
+
+  @see    TsNotificationItem
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -431,9 +479,26 @@ var
 begin
   Unused(AData);
 
-  // Worksheet changes
-  if (lniWorksheet in AChangedItems) and (Workbook <> nil) then
-    Reset;
+  // Workbook has been successfully loaded, all sheets are ready
+  if (lniWorkbook in AChangedItems) then
+    Prepare;
+
+  // Used worksheet has been renamed?
+  if (lniWorksheetRename in AChangedItems) then
+    for xy in TsXYRange do
+      if TsWorksheet(AData) = FWorksheets[xy] then begin
+        FRangeStr[xy] := BuildRangeStr(xy);
+        Prepare(xy);
+      end;
+
+  // Used worksheet will be deleted?
+  if (lniWorksheetRemoving in AChangedItems) then
+    for xy in TsXYRange do
+      if TsWorksheet(AData) = FWorksheets[xy] then begin
+        FWorksheets[xy] := nil;
+        FRangeStr[xy] := BuildRangeStr(xy);
+        Prepare(xy);
+      end;
 
   // Cell changes: Enforce recalculation of axes if modified cell is within the
   // x or y range(s).
@@ -457,6 +522,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Standard component notification: The ChartSource is notified that the
   WorkbookSource is being removed.
@@ -467,6 +533,57 @@ begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FWorkbookSource) then
     SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses the x and y cell range strings and extracts internal information
+  (worksheet used, cell range coordinates)
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartSource.Prepare;
+begin
+  Prepare(rngX);
+  Prepare(rngY);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses the range string of the data specified by AIndex and extracts internal
+  information (worksheet used, cell range coordinates)
+
+  @param  AIndex   Identifies whether x or y cell ranges are analyzed
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartSource.Prepare(AIndex: TsXYRange);
+const
+  XY: array[TsXYRange] of string = ('x', 'y');
+var
+  range: TsCellRange;
+begin
+  if (FWorkbook = nil) or (FRangeStr[AIndex] = '') then begin
+    FWorksheets[AIndex] := nil;
+    SetLength(FRanges[AIndex], 0);
+    FPointsNumber := 0;
+    Reset;
+    exit;
+  end;
+
+  if FWorkbook.TryStrToCellRanges(FRangeStr[AIndex], FWorksheets[AIndex], FRanges[AIndex])
+  then begin
+    for range in FRanges[AIndex] do
+      if (range.Col1 <> range.Col2) and (range.Row1 <> range.Row2) then
+        raise Exception.Create('x/y ranges can only be 1 column wide or 1 row high');
+    FPointsNumber := Max(CountValues(rngX), CountValues(rngY));
+    // If x and y ranges are of different size empty data points will be plotted.
+    Reset;
+    // Make sure to include worksheet name in RangeString.
+    FRangeStr[AIndex] := BuildRangeStr(AIndex);
+  end else
+  if (FWorkbook.GetWorksheetCount > 0) then begin
+    if FWorksheets[AIndex] = nil then
+      raise Exception.CreateFmt('Worksheet of %s cell range "%s" does not exist.',
+        [XY[AIndex], FRangeStr[AIndex]])
+    else
+      raise Exception.CreateFmt('No valid %s cell range in "%s".',
+        [XY[AIndex], FRangeStr[AIndex]]);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -491,59 +608,9 @@ end;
                       character defined in the Workbook's FormatSettings.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetRange(AIndex: TsXYRange; const AValue: String);
-var
-  s: String;
-  p, i: Integer;
-  L: TStrings;
-  sd: TsSelectionDirection;
-  sd0: TsSelectionDirection;
 begin
-  if (FWorkbook = nil) then
-    exit;
-
-  p := pos(SHEETSEPARATOR, AValue);
-  if p = 0 then
-  begin
-    FWorksheets[AIndex] := FWorkbook.ActiveWorksheet;
-    s := AValue;
-  end else
-  begin
-    s := Copy(AValue, 1, p-1);
-    FWorksheets[AIndex] := FWorkbook.GetWorksheetByName(s);
-    if FWorksheets[AIndex] = nil then
-      raise Exception.CreateFmt('%s cell range "%s" is in a non-existing '+
-        'worksheet.', [''+char(ord('x')+ord(AIndex)), AValue]);
-    s := Copy(AValue, p+1, Length(AValue));
-  end;
-  L := TStringList.Create;
-  try
-    L.Delimiter := FWorkbook.FormatSettings.ListSeparator;
-    L.DelimitedText := s;
-    if L.Count = 0 then
-      raise Exception.CreateFmt('No %s cell range contained in "%s".',
-        [''+char(ord('x')+ord(AIndex)), AValue]
-      );
-    sd := fpsVerticalSelection;
-    SetLength(FRanges[AIndex], L.Count);
-    for i:=0 to L.Count-1 do
-      if ParseCellRangeString(L[i], FRanges[AIndex, i]) then begin
-        if FRanges[AIndex, i].Col1 = FRanges[AIndex, i].Col2 then
-          sd := fpsVerticalSelection
-        else
-        if FRanges[AIndex, i].Row1 = FRanges[AIndex, i].Row2 then
-          sd := fpsHorizontalSelection
-        else
-          raise Exception.Create('Selection can only be 1 column wide or 1 row high');
-      end else
-        raise Exception.CreateFmt('No valid %s cell range in "%s".',
-          [''+char(ord('x')+ord(AIndex)), L[i]]
-        );
-    FPointsNumber := Max(CountValues(rngX), CountValues(rngY));
-    // If x and y ranges are of different size empty data points will be plotted.
-    Reset;
-  finally
-    L.Free;
-  end;
+  FRangeStr[AIndex] := AValue;
+  Prepare;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -564,12 +631,11 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Inherited ChartSource method telling the series how many y values are used.
-  Currently we support only single valued data
+  Currently we support only single valued data (YCount = 1).
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetYCount(AValue: Cardinal);
 begin
   FYCount := AValue;
-  // currently not used
 end;
 
 
