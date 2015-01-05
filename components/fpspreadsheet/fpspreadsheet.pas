@@ -969,8 +969,10 @@ type
     FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
+    FOnRenameWorksheet: TsWorksheetEvent;
     FOnAddWorksheet: TsWorksheetEvent;
     FOnRemoveWorksheet: TsRemoveWorksheetEvent;
+    FOnRemovingWorksheet: TsWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
     FOnChangePalette: TNotifyEvent;
     FFileName: String;
@@ -1033,6 +1035,14 @@ type
     function  ValidWorksheetName(var AName: String;
       ReplaceDuplicateName: Boolean = false): Boolean;
 
+    { String-to-cell/range conversion }
+    function TryStrToCell(AText: String; out AWorksheet: TsWorksheet;
+      out ARow,ACol: Cardinal; AListSeparator: Char = #0): Boolean;
+    function TryStrToCellRange(AText: String; out AWorksheet: TsWorksheet;
+      out ARange: TsCellRange; AListSeparator: Char = #0): Boolean;
+    function TryStrToCellRanges(AText: String; out AWorksheet: TsWorksheet;
+      out ARanges: TsCellRangeArray; AListSeparator: Char = #0): Boolean;
+
     { Font handling }
     function AddFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer; overload;
@@ -1093,8 +1103,12 @@ type
     property OnChangeWorksheet: TsWorksheetEvent read FOnChangeWorksheet write FOnChangeWorksheet;
     {@@ This event fires whenever a workbook is loaded }
     property OnOpenWorkbook: TNotifyEvent read FOnOpenWorkbook write FOnOpenWorkbook;
-    {@@ This event fires when a worksheet is deleted }
+    {@@ This event fires whenever a worksheet is renamed }
+    property OnRenameWorksheet: TsWorksheetEvent read FOnRenameWorksheet write FOnRenameWorksheet;
+    {@@ This event fires AFTER a worksheet has been deleted }
     property OnRemoveWorksheet: TsRemoveWorksheetEvent read FOnRemoveWorksheet write FOnRemoveWorksheet;
+    {@@ This event fires BEFORE a worksheet is deleted }
+    property OnRemovingWorksheet: TsWorksheetEvent read FOnRemovingWorksheet write FOnRemovingWorksheet;
     {@@ This event fires when a worksheet is made "active"}
     property OnSelectWorksheet: TsWorksheetEvent read FOnSelectWorksheet write FOnSelectWorksheet;
     {@@ This event allows to provide external cell data for writing to file,
@@ -3597,7 +3611,7 @@ begin
   begin
     FName := AName;
     if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnChangeWorksheet) then
-      FWorkbook.FOnChangeWorksheet(FWorkbook, self);
+      FWorkbook.FOnRenameWorksheet(FWorkbook, self);
   end;
 end;
 
@@ -7098,6 +7112,8 @@ begin
     i := GetWorksheetIndex(AWorksheet);
     if (i <> -1) and (AWorksheet <> nil) then
     begin
+      if Assigned(FOnRemovingWorksheet) then
+        FOnRemovingWorksheet(self, AWorksheet);
       FWorksheets.Delete(i);
       AWorksheet.Free;
       if Assigned(FOnRemoveWorksheet) then
@@ -7198,6 +7214,150 @@ begin
   end;
 end;
                               *)
+
+{ String-to-cell/range conversion }
+
+{@@ ----------------------------------------------------------------------------
+  Analyses a string which can contain an array of cell ranges along with a
+  worksheet name. Extracts the worksheet (if missing the "active" worksheet of
+  the workbook is returned) and the cell's row and column indexes.
+
+  @param  AText        General cell range string in Excel notation,
+                       i.e. worksheet name + ! + cell in A1 notation.
+                       Example: Sheet1!A1:A10; A1:A10 or A1 are valid as well.
+  @param  AWorksheet   Pointer to the worksheet referred to by AText. If AText
+                       does not contain the worksheet name, the active worksheet
+                       of the workbook is returned
+  @param  ARow, ACol   Zero-based row and column index of the cell identified
+                       by ATest. If AText contains one ore more cell ranges
+                       then the upper left corner of the first range is returned.
+  @param  AListSeparator  Character to separate the cell blocks in the text
+                       If #0 then the ListSeparator of the workbook's FormatSettings
+                       is used.
+  @returns TRUE if AText is a valid list of cell ranges, FALSE if not. If the
+           result is FALSE then AWorksheet, ARow and ACol may have unpredictable
+           values.
+-------------------------------------------------------------------------------}
+function TsWorkbook.TryStrToCell(AText: String; out AWorksheet: TsWorksheet;
+  out ARow,ACol: Cardinal; AListSeparator: Char = #0): Boolean;
+var
+  ranges: TsCellRangeArray;
+begin
+  Result := TryStrToCellRanges(AText, AWorksheet, ranges, AListSeparator);
+  if Result then
+  begin
+    ARow := ranges[0].Row1;
+    ACol := ranges[0].Col1;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Analyses a string which can contain an array of cell ranges along with a
+  worksheet name. Extracts the worksheet (if missing the "active" worksheet of
+  the workbook is returned) and the cell range (or the first cell range, if there
+  are several ranges).
+
+  @param  AText        General cell range string in Excel notation,
+                       i.e. worksheet name + ! + cell in A1 notation.
+                       Example: Sheet1!A1:A10; A1:A10 or A1 are valid as well.
+  @param  AWorksheet   Pointer to the worksheet referred to by AText. If AText
+                       does not contain the worksheet name, the active worksheet
+                       of the workbook is returned
+  @param  ARange       TsCellRange records identifying the cell block. If AText
+                       contains several cell ranges the first one is returned.
+  @param  AListSeparator  Character to separate the cell blocks in the text
+                       If #0 then the ListSeparator of the workbook's FormatSettings
+                       is used.
+  @returns TRUE if AText is a valid cell range, FALSE if not. If the
+           result is FALSE then AWorksheet and ARange may have unpredictable
+           values.
+-------------------------------------------------------------------------------}
+function TsWorkbook.TryStrToCellRange(AText: String; out AWorksheet: TsWorksheet;
+  out ARange: TsCellRange; AListSeparator: Char = #0): Boolean;
+var
+  ranges: TsCellRangeArray;
+begin
+  Result := TryStrToCellRanges(AText, AWorksheet, ranges, AListSeparator);
+  if Result then ARange := ranges[0];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Analyses a string which can contain an array of cell ranges along with a
+  worksheet name. Extracts the worksheet (if missing the "active" worksheet of
+  the workbook is returned) and the range array.
+
+  @param  AText        General cell range string in Excel notation,
+                       i.e. worksheet name + ! + cell in A1 notation.
+                       Example: Sheet1!A1:A10; A1:A10 or A1 are valid as well.
+  @param  AWorksheet   Pointer to the worksheet referred to by AText. If AText
+                       does not contain the worksheet name, the active worksheet
+                       of the workbook is returned
+  @param  ARanges      Array of TsCellRange records identifying the cell blocks
+  @param  AListSeparator  Character to separate the cell blocks in the text
+                       If #0 then the ListSeparator of the workbook's FormatSettings
+                       is used.
+  @returns TRUE if AText is a valid list of cell ranges, FALSE if not. If the
+           result is FALSE then AWorksheet and ARanges may have unpredictable
+           values.
+-------------------------------------------------------------------------------}
+function TsWorkbook.TryStrToCellRanges(AText: String; out AWorksheet: TsWorksheet;
+  out ARanges: TsCellRangeArray; AListSeparator: Char = #0): Boolean;
+var
+  i: Integer;
+  s: String;
+  L: TStrings;
+begin
+  Result := false;
+  AWorksheet := nil;
+  SetLength(ARanges, 0);
+
+  if AText = '' then
+    exit;
+
+  i := pos(SHEETSEPARATOR, AText);
+  if i = 0 then
+    AWorksheet := FActiveWorksheet
+  else begin
+    AWorksheet := GetWorksheetByName(Copy(AText, 1, i-1));
+    if AWorksheet = nil then
+      exit;
+    AText := Copy(AText, i+1, Length(AText));
+  end;
+
+  L := TStringList.Create;
+  try
+    if AListSeparator = #0 then
+      L.Delimiter := FormatSettings.ListSeparator
+    else
+      L.Delimiter := AListSeparator;
+    L.StrictDelimiter := true;
+    L.DelimitedText := AText;
+    if L.Count = 0 then
+    begin
+      AWorksheet := nil;
+      exit;
+    end;
+    SetLength(ARanges, L.Count);
+    for i:=0 to L.Count-1 do begin
+      if pos(':', L[i]) = 0 then begin
+        Result := ParseCellString(L[i], ARanges[i].Row1, ARanges[i].Col1);
+        if Result then begin
+          ARanges[i].Row2 := ARanges[i].Row1;
+          ARanges[i].Col2 := ARanges[i].Col1;
+        end;
+      end else
+        Result := ParseCellRangeString(L[i], ARanges[i]);
+      if not Result then begin
+        SetLength(ARanges, 0);
+        AWorksheet := nil;
+        exit;
+      end;
+    end;
+  finally
+    L.Free;
+  end;
+end;
+
 
 { Font handling }
 

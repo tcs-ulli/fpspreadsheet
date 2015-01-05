@@ -39,8 +39,10 @@ type
   {@@ Describes during communication between WorkbookSource and visual controls
     which kind of item has changed: the workbook, the worksheet, a cell value,
     or a cell formatting, etc. }
-  TsNotificationItem = (lniWorkbook, lniWorksheet, lniCell, lniSelection,
-    lniAbortSelection, lniRow, lniPalette);
+  TsNotificationItem = (lniWorkbook,
+    lniWorksheet, lniWorksheetAdd, lniWorksheetRemoving, lniWorksheetRemove,
+    lniWorksheetRename,
+    lniCell, lniSelection, lniAbortSelection, lniRow, lniPalette);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
@@ -81,6 +83,8 @@ type
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetChangedHandler(Sender: TObject; ASheet: TsWorksheet);
     procedure WorksheetRemovedHandler(Sender: TObject; ASheetIndex: Integer);
+    procedure WorksheetRemovingHandler(Sender: TObject; AWorksheet: TsWorksheet);
+    procedure WorksheetRenamedHandler(Sender: TObject; AWorksheet: TsWorksheet);
     procedure WorksheetSelectedHandler(Sender: TObject; AWorksheet: TsWorksheet);
 
   protected
@@ -772,6 +776,8 @@ begin
   FWorkbook.OnAddWorksheet := @WorksheetAddedHandler;
   FWorkbook.OnChangeWorksheet := @WorksheetChangedHandler;
   FWorkbook.OnRemoveWorksheet := @WorksheetRemovedHandler;
+  FWorkbook.OnRemovingWorksheet := @WorksheetRemovingHandler;
+  FWorkbook.OnRenameWorksheet := @WorksheetRenamedHandler;
   FWorkbook.OnSelectWorksheet := @WorksheetSelectedHandler;
   FWorkbook.OnChangePalette := @WorkbookChangedPaletteHandler;
   // Pass options to workbook
@@ -1227,7 +1233,7 @@ procedure TsWorkbookSource.WorksheetAddedHandler(Sender: TObject;
   ASheet: TsWorksheet);
 begin
   Unused(Sender);
-  NotifyListeners([lniWorkbook]);
+  NotifyListeners([lniWorksheetAdd]);
   SelectWorksheet(ASheet);
 end;
 
@@ -1275,8 +1281,32 @@ begin
   end else
     sheet := FWorksheet;
   FWorksheet := sheet;  // is needed by listeners!
-  NotifyListeners([lniWorkbook]);
+  NotifyListeners([lniWorksheetRemove]);
   SelectWorksheet(sheet);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Event handler called BEFORE a worksheet is deleted.
+
+  @param  Sender      Workbook containing the worksheet
+  @param  AWorksheet  Worksheet which is to be deleted
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.WorksheetRemovingHandler(Sender: TObject;
+  AWorksheet: TsWorksheet);
+begin
+  NotifyListeners([lniWorksheetRemoving], AWorksheet);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Event handler called after a worksheet has been renamed
+
+  @param  Sender      Workbook containing the worksheet
+  @param  AWorksheet  Worksheet which has been renamed
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.WorksheetRenamedHandler(Sender: TObject;
+  AWorksheet: TsWorksheet);
+begin
+  NotifyListeners([lniWorksheetRename], AWorksheet);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1388,16 +1418,23 @@ var
 begin
   Unused(AData);
 
-  // Workbook changed
-  if (lniWorkbook in AChangedItems) then
+  // Workbook changed: new workbook, worksheet added/renamed/deleted
+  if (AChangedItems * [lniWorkbook, lniWorksheetAdd, lniWorksheetRemove, lniWorksheetRename] <> []) then
   begin
     inc(FLockCount);    // avoid WorkbookSelect message when adding each tab
     GetSheetList(Tabs);
-    TabIndex := Tabs.Count-1;
+    if (lniWorkbook in AChangedItems) then
+      TabIndex := 0
+    else
+    if (lniWorksheetAdd in AChangedItems) then
+      TabIndex := Tabs.Count-1
+    else
+    if (lniWorksheetRename in AChangedItems) then
+      TabIndex := Workbook.GetWorksheetIndex(TsWorksheet(AData));
     dec(FLockCount);
   end;
 
-  // Worksheet changed
+  // Worksheet selected
   if (lniWorksheet in AChangedItems) and (Worksheet <> nil) then
   begin
     i := Tabs.IndexOf(Worksheet.Name);
