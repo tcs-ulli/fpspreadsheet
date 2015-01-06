@@ -1,7 +1,7 @@
 { fpspreadsheetgrid }
 
 {@@ ----------------------------------------------------------------------------
-  Grid component which can load and write data from / to FPSpreadsheet documents.
+  Grid component which can load and write data from/to FPSpreadsheet documents.
   Can either be used alone or in combination with a TsWorkbookSource component.
   The latter case requires less written code.
 
@@ -34,7 +34,7 @@ type
 
   {@@ TsCustomWorksheetGrid is the ancestor of TsWorksheetGrid and is able to
     display spreadsheet data along with their formatting. }
-  TsCustomWorksheetGrid = class(TCustomDrawGrid)
+  TsCustomWorksheetGrid = class(TCustomDrawGrid, IsSpreadsheetControl)
   private
     { Private declarations }
     FWorkbookSource: TsWorkbookSource;
@@ -225,9 +225,10 @@ type
     procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont);
     function FindNearestPaletteIndex(AColor: TColor): TsColor;
 
-    { Interfacing with WorkbookLink }
+    { Interfacing with WorkbookSource}
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
 
     { public properties }
     {@@ Link to the workbook }
@@ -555,6 +556,7 @@ type
     property OnContextPopup;
   end;
 
+procedure Register;
 
 implementation
 
@@ -3189,14 +3191,12 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Splits a merged cell block into single cells
+  Removes the link of the WorksheetGrid to the WorkbookSource.
+  Required before destruction.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.UnmergeCells;
+procedure TsCustomWorksheetGrid.RemoveWorkbookSource;
 begin
-  Worksheet.UnmergeCells(
-    GetWorksheetRow(Selection.Top),
-    GetWorksheetCol(Selection.Left)
-  );
+  SetWorkbookSource(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3460,6 +3460,17 @@ begin
 
   // We added one character too many
   Delete(Result, Length(Result), 1);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Splits a merged cell block into single cells
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.UnmergeCells;
+begin
+  Worksheet.UnmergeCells(
+    GetWorksheetRow(Selection.Top),
+    GetWorksheetCol(Selection.Left)
+  );
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4183,6 +4194,16 @@ begin
   finally
     EndUpdate;
   end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Registers the worksheet grid in the Lazarus component palette,
+  page "FPSpreadsheet".
+-------------------------------------------------------------------------------}
+procedure Register;
+begin
+  RegisterComponents('FPSpreadsheet', [TsWorksheetGrid]);
 end;
 
 
