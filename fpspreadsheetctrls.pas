@@ -159,12 +159,23 @@ type
   end;
 
 
+const
+  GUID_SpreadsheetControl = '{CBCAAE52-D29E-4D0C-A7F4-1016C873448A}';
+
+type
+  { IsSpreadsheetControl }
+  IsSpreadsheetControl = interface [GUID_SpreadsheetControl]
+    procedure ListenerNotification(AChangedItems: TsNotificationItems;
+      AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
+  end;
+
   { TsWorkbookTabControl }
 
   {@@ TsWorkbookTabControl is a tab control which displays the sheets of the
     workbook currently loaded by the WorkbookSource in tabs. Selecting another
     tab is communicated to other spreadsheet controls via the WorkbookSource. }
-  TsWorkbookTabControl = class(TTabControl)
+  TsWorkbookTabControl = class(TTabControl, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     FLockCount: Integer;
@@ -179,6 +190,7 @@ type
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
     {@@ The worksheet names of this workbook are currently displayed as tabs of the TabControl. }
     property Workbook: TsWorkbook read GetWorkbook;
     {@@ Identifies the worksheet which corresponds to the selected tab }
@@ -193,7 +205,7 @@ type
 
   {@@ TsCellEdit allows to edit the content or formula of the active cell of a
     worksheet, simular to Excel's cell editor above the cell grid. }
-  TsCellEdit = class(TMemo)
+  TsCellEdit = class(TMemo, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     function GetSelectedCell: PCell;
@@ -209,6 +221,7 @@ type
     procedure EditingDone; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
     {@@ Pointer to the currently active cell in the workbook. This cell is
       displayed in the control and can be edited. }
     property SelectedCell: PCell read GetSelectedCell;
@@ -227,7 +240,7 @@ type
   {@@ TsCellIndicator displays the address of the currently active cell of the
     worksheet and workbook. Editing the address allows to jump to the corresponding
     cell. }
-  TsCellIndicator = class(TEdit)
+  TsCellIndicator = class(TEdit, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     function GetWorkbook: TsWorkbook;
@@ -241,6 +254,7 @@ type
     procedure EditingDone; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
     {@@ Refers to the underlying worksheet to which the edited cell belongs. }
     property Workbook: TsWorkbook read GetWorkbook;
     {@@ Refers to the underlying worksheet to which the edited cell belongs. }
@@ -262,7 +276,7 @@ type
 
  {@@ TsCellCombobox is a multi-purpose combobox for selection of formatting
      items of a cell }
-  TsCellCombobox = class(TCustomCombobox)
+  TsCellCombobox = class(TCustomCombobox, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     FFormatItem: TsCellFormatItem;
@@ -290,6 +304,7 @@ type
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
     {@@ Refers to the underlying workbook }
     property Workbook: TsWorkbook read GetWorkbook;
     {@@ Refers to the underlying worksheet containing the displayed cell }
@@ -383,7 +398,7 @@ type
   {@@ TsSpreadsheetInspector displays all properties of a workbook, worksheet,
     cell content and cell formatting in a way similar to the Object Inspector
     of Lazarus. }
-  TsSpreadsheetInspector = class(TValueListEditor)
+  TsSpreadsheetInspector = class(TValueListEditor, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     FMode: TsInspectorMode;
@@ -403,6 +418,7 @@ type
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
     {@@ Refers to the underlying workbook which is displayed by the inspector. }
     property Workbook: TsWorkbook read GetWorkbook;
     {@@ Refers to the underlying worksheet which is displayed by the inspector. }
@@ -427,7 +443,7 @@ implementation
 
 uses
   Types, Math, TypInfo, LCLType, Dialogs, Forms,
-  fpsStrings, fpsUtils, fpSpreadsheetGrid, fpSpreadsheetChart;
+  fpsStrings, fpsUtils; //, fpSpreadsheetGrid, fpSpreadsheetChart;
 
 
 {@@ ----------------------------------------------------------------------------
@@ -437,7 +453,7 @@ uses
 procedure Register;
 begin
   RegisterComponents('FPSpreadsheet', [
-    TsWorkbookSource, TsWorkbookTabControl, TsWorksheetGrid,
+    TsWorkbookSource, TsWorkbookTabControl, //TsWorksheetGrid,
     TsCellEdit, TsCellIndicator, TsCellCombobox,
     TsSpreadsheetInspector
   ]);
@@ -884,36 +900,18 @@ end;
 procedure TsWorkbookSource.NotifyListeners(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
 var
-  i: Integer;
+  j: Integer;
+  I: IsSpreadsheetControl;
+  C: TComponent;
 begin
-  for i:=0 to FListeners.Count-1 do
-    if TObject(FListeners[i]) is TsCellCombobox then
-      TsCellCombobox(FListeners[i]).ListenerNotification(AChangedItems, AData)
+  for j:=0 to FListeners.Count-1 do begin
+    C := TComponent(FListeners[j]);
+    if C.GetInterface(GUID_SpreadsheetControl, I) then
+      I.ListenerNotification(AChangedItems, AData)
     else
-    if TObject(FListeners[i]) is TsCellIndicator then
-      TsCellIndicator(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else
-    if TObject(FListeners[i]) is TsCellEdit then
-      TsCellEdit(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else
-    if TObject(FListeners[i]) is TsWorkbookTabControl then
-      TsWorkbookTabControl(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else
-    if TObject(FListeners[i]) is TsWorksheetGrid then
-      TsWorksheetGrid(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else
-    if TObject(FListeners[i]) is TsSpreadsheetInspector then
-      TsSpreadsheetInspector(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else
-    if TObject(FListeners[i]) is TsWorkbookChartSource then
-      TsWorkbookChartSource(FListeners[i]).ListenerNotification(AChangedItems, AData)
-    else
-    {
-    if TObject(FListeners[i]) is TsSpreadsheetAction then
-      TsSpreadsheetAction(FListeners[i]).ListenerNotifiation(AChangedItems, AData)
-    else                                     }
       raise Exception.CreateFmt('Class %s is not prepared to be a spreadsheet listener.',
-        [TObject(FListeners[i]).ClassName]);
+        [C.ClassName]);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -924,40 +922,21 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.RemoveListener(AListener: TComponent);
 var
-  i: Integer;
+  j: Integer;
+  I: IsSpreadsheetControl;
+  C: TComponent;
 begin
-  for i:= FListeners.Count-1 downto 0 do
-    if TComponent(FListeners[i]) = AListener then
+  for j:=FListeners.Count-1 downto 0 do begin
+    C := TComponent(FListeners[j]);
+    if C = AListener then
     begin
-      FListeners.Delete(i);
-      if (AListener is TsCellCombobox) then
-        TsCellCombobox(AListener).WorkbookSource := nil
+      FListeners.Delete(j);
+      if C.GetInterface(GUID_SpreadsheetControl, I) then
+        I.RemoveWorkbookSource
       else
-      if (AListener is TsCellIndicator) then
-        TsCellIndicator(AListener).WorkbookSource := nil
-      else
-      if (AListener is TsCellEdit) then
-        TsCellEdit(AListener).WorkbookSource := nil
-      else
-      if (AListener is TsWorkbookTabControl) then
-        TsWorkbookTabControl(AListener).WorkbookSource := nil
-      else
-      if (AListener is TsWorksheetGrid) then
-        TsWorksheetGrid(AListener).WorkbookSource := nil
-      else
-      if (AListener is TsSpreadsheetInspector) then
-        TsSpreadsheetInspector(AListener).WorkbookSource := nil
-      else
-      if (AListener is TsWorkbookChartSource) then
-        TsWorkbookChartSource(AListener).WorkbookSource := nil
-      else
-      {
-      if (AListener is TsSpreadsheetAction) then
-        TsSpreadsheetAction(AListener).WorksheetLink := nil
-      else                          }
         raise Exception.CreateFmt('Class %s not prepared for listening.',[AListener.ClassName]);
-      exit;
     end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1456,6 +1435,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Removes the link of the TabControl to the WorkbookSource. Required before
+  destruction.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookTabControl.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Setter method for the WorkbookSource
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.SetWorkbookSource(AValue: TsWorkbookSource);
@@ -1591,6 +1579,15 @@ begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FWorkbookSource) then
     SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the link of the CellEdit to the WorkbookSource. Required before
+  destruction.
+-------------------------------------------------------------------------------}
+procedure TsCellEdit.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1749,6 +1746,15 @@ begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FWorkbookSource) then
     SetWorkbooksource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the link of the CellIndicator to the WorkbookSource. Required before
+  destruction.
+-------------------------------------------------------------------------------}
+procedure TsCellIndicator.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2121,6 +2127,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Removes the link of the CellCombobox to the WorkbookSource. Required before
+  destruction.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
   A new item in the combobox is selected. Calls "ProcessValue" to changes the
   selected cells according to the Mode property by calling ApplyFormatToCell.
 -------------------------------------------------------------------------------}
@@ -2475,6 +2490,15 @@ begin
   inherited Notification(AComponent, Operation);
   if (Operation = opRemove) and (AComponent = FWorkbookSource) then
     SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the link of the SpreadsheetInspector to the WorkbookSource.
+  Required before destruction.
+-------------------------------------------------------------------------------}
+procedure TsSpreadsheetInspector.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------

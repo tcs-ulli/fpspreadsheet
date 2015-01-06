@@ -82,7 +82,7 @@ type
 
   TsXYRange = (rngX, rngY);
 
-  TsWorkbookChartSource = class(TCustomChartSource)
+  TsWorkbookChartSource = class(TCustomChartSource, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     FWorkbook: TsWorkbook;
@@ -108,10 +108,13 @@ type
     procedure SetYCount(AValue: Cardinal); override;
   public
     destructor Destroy; override;
-    procedure ListenerNotification(AChangedItems: TsNotificationItems; AData: Pointer = nil);
     procedure Reset;
     property PointsNumber: Cardinal read FPointsNumber;
     property Workbook: TsWorkbook read GetWorkbook;
+  public
+    // Interface to TsWorkbookSource
+    procedure ListenerNotification(AChangedItems: TsNotificationItems; AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
   published
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
     property XRange: String index rngX read GetRange write SetRange;
@@ -119,8 +122,8 @@ type
   end;
 
 
-
 procedure Register;
+
 
 implementation
 
@@ -584,6 +587,15 @@ begin
       raise Exception.CreateFmt('No valid %s cell range in "%s".',
         [XY[AIndex], FRangeStr[AIndex]]);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the link of the ChartSource to the WorkbookSource.
+  Required before destruction.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartSource.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------

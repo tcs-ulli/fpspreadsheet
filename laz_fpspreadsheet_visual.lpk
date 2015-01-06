@@ -28,6 +28,7 @@ It provides graphical components like a grid and chart."/>
       </Item1>
       <Item2>
         <Filename Value="fpspreadsheetgrid.pas"/>
+        <HasRegisterProc Value="True"/>
         <UnitName Value="fpspreadsheetgrid"/>
       </Item2>
       <Item3>
