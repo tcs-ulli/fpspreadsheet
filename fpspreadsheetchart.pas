@@ -365,6 +365,7 @@ var
 begin
   GetXYItem(rngX, AIndex, FCurItem.X, FCurItem.Text);
   GetXYItem(rngY, AIndex, FCurItem.Y, dummy);
+  FCurItem.Color := clDefault;
   Result := @FCurItem;
 end;
 
