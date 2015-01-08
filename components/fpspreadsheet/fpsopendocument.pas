@@ -3849,7 +3849,7 @@ begin
         if VarType(value) = varDate then
         begin
           lCell.ContentType := cctDateTime;
-          lCell.DateTimeValue := StrToDate(VarToStr(value), Workbook.FormatSettings);
+          lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);  // was: StrToDate
         end else
         if VarIsStr(value) then
         begin
