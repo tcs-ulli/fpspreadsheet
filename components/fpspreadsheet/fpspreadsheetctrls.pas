@@ -1027,22 +1027,22 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SetFileName(const AFileName: TFileName);
 begin
+  FFileName := AFileName;
+
   if AFileName = '' then
   begin
     CreateNewWorkbook;
-    FFileName := '';
     exit;
   end;
 
-  if FileExists(AFileName) then
+  if FileExists(FFileName) then
   begin
     if FAutoDetectFormat then
-      LoadFromSpreadsheetFile(AFileName)
+      LoadFromSpreadsheetFile(FFileName)
     else
-      LoadFromSpreadsheetFile(AFileName, FFileFormat);
-    FFileName := AFileName;
+      LoadFromSpreadsheetFile(FFileName, FFileFormat);
   end else
-    raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
+    raise Exception.CreateFmt(rsFileNotFound, [ExpandFileName(AFileName)]);
 end;
 
 {@@ ----------------------------------------------------------------------------

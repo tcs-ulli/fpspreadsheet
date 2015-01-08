@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, EditBtn, ExtCtrls, fpspreadsheetchart, fpspreadsheetgrid,
+  StdCtrls, EditBtn, ExtCtrls,
+  fpspreadsheetchart, fpspreadsheetgrid,
   TAGraph, TASeries;
 
 type
@@ -23,7 +24,7 @@ type
     EditYAxis: TLabeledEdit;
     MyChart: TChart;
     FPSChartSource: TsWorksheetChartSource;
-    MyChartLineSeries: TLineSeries;
+    MyChartBarSeries1: TBarSeries;
     WorksheetGrid: TsWorksheetGrid;
     procedure btnCreateGraphicClick(Sender: TObject);
     procedure btnLoadSpreadsheetClick(Sender: TObject);
