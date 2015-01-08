@@ -10,8 +10,8 @@ object FPSChartForm: TFPSChartForm
   LCLVersion = '1.3'
   object MyChart: TChart
     Left = 352
-    Height = 240
-    Top = 136
+    Height = 264
+    Top = 112
     Width = 336
     AxisList = <    
       item
@@ -20,6 +20,10 @@ object FPSChartForm: TFPSChartForm
       end    
       item
         Alignment = calBottom
+        Marks.LabelFont.Orientation = 900
+        Marks.Format = '%2:s'
+        Marks.Source = FPSChartSource
+        Marks.Style = smsLabel
         Minors = <>
       end>
     Foot.Brush.Color = clBtnFace
@@ -30,27 +34,28 @@ object FPSChartForm: TFPSChartForm
       'TAChart'
     )
     ParentColor = False
-    object MyChartLineSeries: TLineSeries
-      LinePen.Color = clRed
+    object MyChartBarSeries1: TBarSeries
+      BarBrush.Color = clRed
       Source = FPSChartSource
     end
   end
   object WorksheetGrid: TsWorksheetGrid
     Left = 16
-    Height = 240
-    Top = 136
+    Height = 264
+    Top = 112
     Width = 328
     FrozenCols = 0
     FrozenRows = 0
     ReadFormulas = False
+    TextOverflow = True
     AutoAdvance = aaDown
     ColCount = 27
     ExtendedSelect = False
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
     RowCount = 101
     TabOrder = 1
     ColWidths = (
-      56
+      42
       64
       64
       64
@@ -82,7 +87,7 @@ object FPSChartForm: TFPSChartForm
   object btnCreateGraphic: TButton
     Left = 464
     Height = 25
-    Top = 56
+    Top = 48
     Width = 128
     Caption = 'Create Graphic'
     OnClick = btnCreateGraphicClick
@@ -100,9 +105,10 @@ object FPSChartForm: TFPSChartForm
   end
   object editSourceFile: TFileNameEdit
     Left = 152
-    Height = 28
+    Height = 23
     Top = 48
     Width = 136
+    FileName = 't1.xls'
     DialogOptions = []
     FilterIndex = 0
     HideDirectories = False
@@ -110,12 +116,13 @@ object FPSChartForm: TFPSChartForm
     NumGlyphs = 1
     MaxLength = 0
     TabOrder = 3
+    Text = 't1.xls'
   end
   object Label2: TLabel
     Left = 14
-    Height = 20
+    Height = 15
     Top = 51
-    Width = 134
+    Width = 106
     Caption = 'Source Spreadsheet:'
     ParentColor = False
   end
@@ -130,7 +137,7 @@ object FPSChartForm: TFPSChartForm
   end
   object editXAxis: TLabeledEdit
     Left = 64
-    Height = 28
+    Height = 23
     Top = 80
     Width = 80
     EditLabel.AnchorSideTop.Control = editXAxis
@@ -138,19 +145,19 @@ object FPSChartForm: TFPSChartForm
     EditLabel.AnchorSideRight.Control = editXAxis
     EditLabel.AnchorSideBottom.Control = editXAxis
     EditLabel.AnchorSideBottom.Side = asrBottom
-    EditLabel.Left = 16
-    EditLabel.Height = 20
+    EditLabel.Left = 25
+    EditLabel.Height = 15
     EditLabel.Top = 84
-    EditLabel.Width = 45
+    EditLabel.Width = 36
     EditLabel.Caption = 'X-Axis:'
     EditLabel.ParentColor = False
     LabelPosition = lpLeft
     TabOrder = 5
-    Text = 'A1:A5'
+    Text = 'A3:A14'
   end
   object EditYAxis: TLabeledEdit
     Left = 208
-    Height = 28
+    Height = 23
     Top = 80
     Width = 80
     EditLabel.AnchorSideTop.Control = EditYAxis
@@ -158,22 +165,22 @@ object FPSChartForm: TFPSChartForm
     EditLabel.AnchorSideRight.Control = EditYAxis
     EditLabel.AnchorSideBottom.Control = EditYAxis
     EditLabel.AnchorSideBottom.Side = asrBottom
-    EditLabel.Left = 161
-    EditLabel.Height = 20
+    EditLabel.Left = 169
+    EditLabel.Height = 15
     EditLabel.Top = 84
-    EditLabel.Width = 44
+    EditLabel.Width = 36
     EditLabel.Caption = 'Y-Axis:'
     EditLabel.ParentColor = False
     LabelPosition = lpLeft
     TabOrder = 6
-    Text = 'B1:B5'
+    Text = 'B3:B14'
   end
   object FPSChartSource: TsWorksheetChartSource
     PointsNumber = 5
     YFirstCellCol = 1
     XSelectionDirection = fpsVerticalSelection
     YSelectionDirection = fpsVerticalSelection
-    left = 632
-    top = 56
+    left = 512
+    top = 200
   end
 end

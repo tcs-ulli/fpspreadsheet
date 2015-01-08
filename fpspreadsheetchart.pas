@@ -205,6 +205,7 @@ end;
 function TsWorksheetChartSource.GetItem(AIndex: Integer): PChartDataItem;
 var
   XRow, XCol, YRow, YCol: Integer;
+  cell: PCell;
 begin
   // First calculate the cell position
   if XSelectionDirection = fpsVerticalSelection then
@@ -229,11 +230,28 @@ begin
     YCol := Integer(FYFirstCellCol) + AIndex;
   end;
 
-  // Check the corresponding cell, if it is empty, use zero
-  // If not, then get a number value
+  cell := FDataWorksheet.FindCell(XRow, XCol);
+  if cell = nil then
+  begin
+    FCurItem.X := NaN;
+    FCurITem.Text := '';
+  end else
+  if cell^.ContentType = cctUTF8String then begin
+    FCurItem.X := AIndex;
+    FCurItem.Text := FDataWorksheet.ReadAsUTF8Text(cell);
+  end else
+  begin
+    FCurItem.X := FDataWorksheet.ReadAsNumber(cell);
+    FCurItem.Text := '';
+  end;
 
-  FCurItem.X := FDataWorksheet.ReadAsNumber(XRow, XCol);
-  FCurItem.Y := FDataWorksheet.ReadAsNumber(YRow, YCol);
+  cell := FDataWorksheet.FindCell(YRow, YCol);
+  if cell = nil then
+    FCurItem.Y := NaN
+  else
+    FCurItem.Y := FDataWorksheet.ReadAsNumber(cell);
+
+  FCurItem.Color := clDefault;
 
   Result := @FCurItem;
 end;
@@ -561,7 +579,8 @@ const
 var
   range: TsCellRange;
 begin
-  if (FWorkbook = nil) or (FRangeStr[AIndex] = '') then begin
+  if (FWorkbook = nil) or (FRangeStr[AIndex] = '') //or (FWorksheets[AIndex] = nil)
+  then begin
     FWorksheets[AIndex] := nil;
     SetLength(FRanges[AIndex], 0);
     FPointsNumber := 0;

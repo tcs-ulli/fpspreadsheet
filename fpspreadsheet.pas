@@ -6601,10 +6601,9 @@ begin
       Exit(True);
     end;
     // Check for Excel8
-    ok := true;
     for i:=0 to 7 do
       if WideChar(buf[i*2]) <> BIFF8_MARKER[i] then
-        exit;
+        exit(false);
     SheetType := sfExcel8;
     Exit(True);
   finally
@@ -6784,8 +6783,12 @@ begin
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
   if Lowercase(ExtractFileExt(AFileName))=STR_EXCEL_EXTENSION then
-    valid := GetFormatFromFileHeader(AFileName, SheetType)
-  else
+  begin
+    valid := GetFormatFromFileHeader(AFileName, SheetType);
+    if not valid then
+      SheetType := sfExcel8;
+    valid := true;
+  end else
     valid := GetFormatFromFileName(AFileName, SheetType);
 
   if valid then
