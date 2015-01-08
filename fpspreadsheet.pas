@@ -6782,9 +6782,12 @@ begin
   if not FileExists(AFileName) then
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
+  // .xls files can contain several formats. We look into the header first.
   if Lowercase(ExtractFileExt(AFileName))=STR_EXCEL_EXTENSION then
   begin
     valid := GetFormatFromFileHeader(AFileName, SheetType);
+    // It is possible that valid xls files are not detected correctly. Therefore,
+    // we open them explicitly by trial and error - see below.
     if not valid then
       SheetType := sfExcel8;
     valid := true;
@@ -6795,6 +6798,7 @@ begin
   begin
     if SheetType = sfExcel8 then
     begin
+      // Here is the trial-and-error loop checking for the various biff formats.
       while True do
       begin
         try
