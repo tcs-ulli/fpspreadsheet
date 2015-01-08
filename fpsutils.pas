@@ -177,6 +177,12 @@ procedure Unused(const A1, A2, A3);
 { For debugging purposes }
 procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 
+{ Needed only if FPC version is < 2.6.4 }
+{$IF FPC_FULLVERSION < 020604}
+function VarIsBool(const V: Variant): Boolean;
+{$ENDIF}
+
+
 var
   {@@ Default value for the screen pixel density (pixels per inch). Is needed
   for conversion of distances to pixels}
@@ -187,6 +193,7 @@ var
 implementation
 
 uses
+  //LCLVersion,
   Math, lazutf8, fpsStrings;
 
 type
@@ -2753,6 +2760,13 @@ begin
     L.Free;
   end;
 end;
+
+{$IF FPC_FULLVERSION < 020604}
+function VarIsBool(const V: Variant): Boolean;
+begin
+  Result := (TVarData(V).vType and varTypeMask) = varboolean;
+end;
+{$ENDIF}
 
 
 initialization
