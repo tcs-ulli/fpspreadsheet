@@ -4,7 +4,7 @@ object MainFrm: TMainFrm
   Top = 258
   Width = 884
   Caption = 'spready'
-  ClientHeight = 614
+  ClientHeight = 619
   ClientWidth = 884
   Menu = MainMenu
   OnActivate = FormActivate
@@ -14,7 +14,7 @@ object MainFrm: TMainFrm
   object Panel1: TPanel
     Left = 0
     Height = 82
-    Top = 532
+    Top = 537
     Width = 884
     Align = alBottom
     BevelOuter = bvNone
@@ -23,7 +23,7 @@ object MainFrm: TMainFrm
     TabOrder = 6
     object EdFrozenCols: TSpinEdit
       Left = 429
-      Height = 28
+      Height = 23
       Top = 8
       Width = 52
       OnChange = EdFrozenColsChange
@@ -31,7 +31,7 @@ object MainFrm: TMainFrm
     end
     object EdFrozenRows: TSpinEdit
       Left = 429
-      Height = 28
+      Height = 23
       Top = 39
       Width = 52
       OnChange = EdFrozenRowsChange
@@ -39,37 +39,37 @@ object MainFrm: TMainFrm
     end
     object Label1: TLabel
       Left = 344
-      Height = 20
+      Height = 15
       Top = 13
-      Width = 77
+      Width = 62
       Caption = 'Frozen cols:'
       FocusControl = EdFrozenCols
       ParentColor = False
     end
     object Label2: TLabel
       Left = 344
-      Height = 20
+      Height = 15
       Top = 40
-      Width = 82
+      Width = 66
       Caption = 'Frozen rows:'
       FocusControl = EdFrozenRows
       ParentColor = False
     end
     object CbReadFormulas: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 8
-      Width = 120
+      Width = 96
       Caption = 'Read formulas'
       OnChange = CbReadFormulasChange
       TabOrder = 0
     end
     object CbHeaderStyle: TComboBox
       Left = 200
-      Height = 28
+      Height = 23
       Top = 8
       Width = 116
-      ItemHeight = 20
+      ItemHeight = 15
       ItemIndex = 2
       Items.Strings = (
         'Lazarus'
@@ -83,18 +83,18 @@ object MainFrm: TMainFrm
     end
     object CbAutoCalcFormulas: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 32
-      Width = 158
+      Width = 128
       Caption = 'Calculate on change'
       OnChange = CbAutoCalcFormulasChange
       TabOrder = 1
     end
     object CbTextOverflow: TCheckBox
       Left = 8
-      Height = 24
+      Height = 19
       Top = 56
-      Width = 114
+      Width = 91
       Caption = 'Text overflow'
       Checked = True
       OnChange = CbTextOverflowChange
@@ -129,6 +129,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton5: TToolButton
       Left = 70
+      Height = 24
       Top = 0
       Width = 5
       Caption = 'ToolButton5'
@@ -141,6 +142,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton6: TToolButton
       Left = 98
+      Height = 24
       Top = 0
       Width = 5
       Caption = 'ToolButton6'
@@ -173,6 +175,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton31: TToolButton
       Left = 195
+      Height = 24
       Top = 0
       Width = 5
       Caption = 'ToolButton31'
@@ -206,19 +209,19 @@ object MainFrm: TMainFrm
     end
     object FontComboBox: TComboBox
       Left = 52
-      Height = 28
+      Height = 23
       Top = 2
       Width = 127
-      ItemHeight = 20
+      ItemHeight = 15
       OnSelect = FontComboBoxSelect
       TabOrder = 0
     end
     object FontSizeComboBox: TComboBox
       Left = 179
-      Height = 28
+      Height = 23
       Top = 2
       Width = 48
-      ItemHeight = 20
+      ItemHeight = 15
       Items.Strings = (
         '8'
         '9'
@@ -256,6 +259,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton14: TToolButton
       Left = 319
+      Height = 23
       Top = 2
       Width = 5
       Caption = 'ToolButton14'
@@ -264,6 +268,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton15: TToolButton
       Left = 393
+      Height = 23
       Top = 2
       Width = 5
       Caption = 'ToolButton15'
@@ -288,6 +293,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton19: TToolButton
       Left = 467
+      Height = 23
       Top = 2
       Width = 5
       Caption = 'ToolButton19'
@@ -340,6 +346,7 @@ object MainFrm: TMainFrm
     end
     object ToolButton26: TToolButton
       Left = 24
+      Height = 23
       Top = 2
       Width = 5
       Caption = 'ToolButton26'
@@ -359,7 +366,7 @@ object MainFrm: TMainFrm
   end
   object FormulaToolBar: TToolBar
     Left = 0
-    Height = 28
+    Height = 26
     Top = 53
     Width = 884
     Caption = 'FormulaToolBar'
@@ -367,13 +374,13 @@ object MainFrm: TMainFrm
     TabOrder = 2
     object FormulaToolbarSplitter: TSplitter
       Left = 171
-      Height = 26
+      Height = 24
       Top = 2
       Width = 5
     end
     object FormulaMemo: TMemo
       Left = 176
-      Height = 26
+      Height = 24
       Top = 2
       Width = 708
       Align = alClient
@@ -383,18 +390,18 @@ object MainFrm: TMainFrm
     end
     object AddressPanel: TPanel
       Left = 1
-      Height = 24
+      Height = 22
       Top = 2
       Width = 170
       Align = alLeft
       BorderSpacing.Bottom = 2
       BevelOuter = bvNone
-      ClientHeight = 24
+      ClientHeight = 22
       ClientWidth = 170
       TabOrder = 2
       object EdCellAddress: TEdit
         Left = 0
-        Height = 28
+        Height = 23
         Top = 0
         Width = 170
         Align = alTop
@@ -406,16 +413,16 @@ object MainFrm: TMainFrm
   end
   object InspectorSplitter: TSplitter
     Left = 648
-    Height = 446
-    Top = 86
+    Height = 453
+    Top = 84
     Width = 5
     Align = alRight
     ResizeAnchor = akRight
   end
   object InspectorPageControl: TPageControl
     Left = 653
-    Height = 446
-    Top = 86
+    Height = 453
+    Top = 84
     Width = 231
     ActivePage = PgCellValue
     Align = alRight
@@ -424,11 +431,11 @@ object MainFrm: TMainFrm
     OnChange = InspectorPageControlChange
     object PgCellValue: TTabSheet
       Caption = 'Cell value'
-      ClientHeight = 413
+      ClientHeight = 425
       ClientWidth = 223
       object CellInspector: TValueListEditor
         Left = 0
-        Height = 413
+        Height = 425
         Top = 0
         Width = 223
         Align = alClient
@@ -472,15 +479,15 @@ object MainFrm: TMainFrm
   end
   object TabControl: TTabControl
     Left = 0
-    Height = 446
-    Top = 86
+    Height = 453
+    Top = 84
     Width = 648
     OnChange = TabControlChange
     Align = alClient
     TabOrder = 3
     object WorksheetGrid: TsWorksheetGrid
       Left = 2
-      Height = 441
+      Height = 448
       Top = 3
       Width = 644
       FrozenCols = 0
@@ -491,14 +498,14 @@ object MainFrm: TMainFrm
       BorderStyle = bsNone
       ColCount = 27
       MouseWheelOption = mwGrid
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goDblClickAutoSize, goSmoothScroll, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing]
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goDblClickAutoSize, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing]
       RowCount = 101
       TabOrder = 1
       TitleStyle = tsNative
       OnHeaderClick = WorksheetGridHeaderClick
       OnSelection = WorksheetGridSelection
       ColWidths = (
-        56
+        42
         64
         64
         64
@@ -532,7 +539,7 @@ object MainFrm: TMainFrm
     Cursor = crVSplit
     Left = 0
     Height = 5
-    Top = 81
+    Top = 79
     Width = 884
     Align = alTop
     ResizeAnchor = akTop

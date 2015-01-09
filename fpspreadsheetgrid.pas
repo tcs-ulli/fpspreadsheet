@@ -20,6 +20,8 @@ unit fpspreadsheetgrid;
  - Arial bold is not shown as such if loaded from ods
  - Background color of first cell is ignored.                                  }
 
+{ Activate next define for Laz >= 1.4 }
+{.$DEFINE DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
 
 interface
 
@@ -153,6 +155,10 @@ type
       AJustification: Byte; ACellHorAlign: TsHorAlignment;
       ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
       ATextWrap, ReplaceTooLong: Boolean);
+    {$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
+    function IsColWidthsStored: Boolean; override;
+    function IsRowHeightsStored: Boolean; override;
+    {$ENDIF}
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
@@ -1129,7 +1135,6 @@ begin
   else
     inherited DblClick;
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Adjusts the grid's canvas before painting a given cell. Considers
@@ -2877,6 +2882,26 @@ begin
   end;
 end;
 
+{$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
+{@@ ----------------------------------------------------------------------------
+  Prevents storing of column widths in lfm file, they are retrieved from the
+  worksheet file
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.IsColWidthsStored: Boolean;
+begin
+  Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Prevents storing of row heights in lfm file, they are retrieved from the
+  worksheet file
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.IsRowHeightsStored: Boolean;
+begin
+  Result := false;
+end;
+{$ENDIF}
+
 {@@ ----------------------------------------------------------------------------
   Standard key handling method inherited from TCustomGrid. Is overridden to
   catch the ESC key during editing in order to restore the old cell text
@@ -3049,7 +3074,7 @@ begin
   // Row height (after font change).
   if (lniRow in AChangedItems) and (Worksheet <> nil) then
   begin
-    grow := GetGridRow(PtrInt(AData));
+    grow := GetGridRow({%H-}PtrInt(AData));
     RowHeights[grow] := CalcAutoRowHeight(grow);
   end;
 end;

@@ -7311,7 +7311,6 @@ function TsWorkbook.TryStrToCellRanges(AText: String; out AWorksheet: TsWorkshee
   out ARanges: TsCellRangeArray; AListSeparator: Char = #0): Boolean;
 var
   i: Integer;
-  s: String;
   L: TStrings;
 begin
   Result := false;

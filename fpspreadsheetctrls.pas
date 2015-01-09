@@ -654,7 +654,7 @@ begin
   if FWorksheet <> nil then
   begin
     NotifyListeners([lniCell], Worksheet.FindCell(ARow, ACol));
-    NotifyListeners([lniRow], Pointer(PtrInt(ARow)));
+    NotifyListeners([lniRow], {%H-}Pointer(PtrInt(ARow)));
   end;
 end;
 
