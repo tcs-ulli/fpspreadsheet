@@ -81,7 +81,7 @@ object Form1: TForm1
       Font.Color = clBlack
       Font.Height = -15
       Font.Name = 'Calibri'
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goThumbTracking]
       ParentFont = False
       RowCount = 101
       TabOrder = 1

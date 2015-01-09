@@ -5,8 +5,8 @@ unit mainform;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, TAGraph, TASeries, TASources, Forms, Controls,
-  Graphics, Dialogs, ExtCtrls, EditBtn, StdCtrls,
+  Classes, SysUtils, FileUtil, TAGraph, TASeries, Forms, Controls,
+  Graphics, Dialogs, ExtCtrls, StdCtrls,
   fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart;
 
 type

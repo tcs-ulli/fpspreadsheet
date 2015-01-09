@@ -954,8 +954,8 @@ end;
 procedure TMainFrm.FormCreate(Sender: TObject);
 begin
   // Adjust format toolbar height, looks strange at 120 dpi
-  FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
-  FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
+//  FormatToolbar.Height := FontCombobox.Height + 2*FontCombobox.Top;
+//  FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
   CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
   CbBackgroundColor.ColorRectWidth := CbBackgroundColor.ItemHeight - 6; // to get a square box...

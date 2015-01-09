@@ -40,10 +40,10 @@ object FPSChartForm: TFPSChartForm
     end
   end
   object WorksheetGrid: TsWorksheetGrid
-    Left = 16
+    Left = 8
     Height = 264
     Top = 112
-    Width = 328
+    Width = 336
     FrozenCols = 0
     FrozenRows = 0
     ReadFormulas = False
@@ -54,35 +54,6 @@ object FPSChartForm: TFPSChartForm
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
     RowCount = 101
     TabOrder = 1
-    ColWidths = (
-      42
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-      64
-    )
   end
   object btnCreateGraphic: TButton
     Left = 464
@@ -97,7 +68,7 @@ object FPSChartForm: TFPSChartForm
     Left = 14
     Height = 42
     Top = 4
-    Width = 676
+    Width = 678
     AutoSize = False
     Caption = 'Please add data to the grid or load it from a file, then choose the location of the data for the X and Y axises and click on the button "Create Graphic" to generate a chart.'
     ParentColor = False

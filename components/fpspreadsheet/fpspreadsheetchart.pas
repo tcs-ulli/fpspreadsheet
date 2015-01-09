@@ -344,7 +344,6 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbookChartSource.CountValues(AIndex: TsXYRange): Integer;
 var
-  ir: Integer;
   range: TsCellRange;
 begin
   Result := 0;
@@ -425,7 +424,7 @@ procedure TsWorkbookChartSource.GetXYItem(XOrY:TsXYRange; APointIndex: Integer;
   out ANumber: Double; out AText: String);
 var
   range: TsCellRange;
-  idx, ir: Integer;
+  idx: Integer;
   len: Integer;
   row, col: Cardinal;
   cell: PCell;
@@ -442,7 +441,7 @@ begin
       len := range.Row2 - range.Row1 + 1;
       if (APointIndex >= idx) and (APointIndex < idx + len) then
       begin
-        row := range.Row1 + APointIndex - idx;
+        row := longint(range.Row1) + APointIndex - idx;
         col := range.Col1;
         break;
       end;
@@ -450,11 +449,11 @@ begin
     end else  // horizontal range
     if (range.Row1 = range.Row2) then
     begin
-      len := range.Col2 - range.Col1 + 1;
+      len := longint(range.Col2) - range.Col1 + 1;
       if (APointIndex >= idx) and (APointIndex < idx + len) then
       begin
         row := range.Row1;
-        col := range.Col1 + APointIndex - idx;
+        col := longint(range.Col1) + APointIndex - idx;
         break;
       end;
     end else
