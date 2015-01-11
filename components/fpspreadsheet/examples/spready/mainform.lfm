@@ -412,7 +412,7 @@ object MainFrm: TMainFrm
     end
   end
   object InspectorSplitter: TSplitter
-    Left = 648
+    Left = 638
     Height = 453
     Top = 84
     Width = 5
@@ -420,10 +420,10 @@ object MainFrm: TMainFrm
     ResizeAnchor = akRight
   end
   object InspectorPageControl: TPageControl
-    Left = 653
+    Left = 643
     Height = 453
     Top = 84
-    Width = 231
+    Width = 241
     ActivePage = PgCellValue
     Align = alRight
     TabIndex = 0
@@ -432,12 +432,12 @@ object MainFrm: TMainFrm
     object PgCellValue: TTabSheet
       Caption = 'Cell value'
       ClientHeight = 425
-      ClientWidth = 223
+      ClientWidth = 233
       object CellInspector: TValueListEditor
         Left = 0
         Height = 425
         Top = 0
-        Width = 223
+        Width = 233
         Align = alClient
         FixedCols = 0
         RowCount = 15
@@ -464,9 +464,22 @@ object MainFrm: TMainFrm
           ''
           ''
         )
-        ColWidths = (
-          109
-          110
+        RowHeights = (
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
+          22
         )
       end
     end
@@ -481,7 +494,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 453
     Top = 84
-    Width = 648
+    Width = 638
     OnChange = TabControlChange
     Align = alClient
     TabOrder = 3
@@ -489,7 +502,7 @@ object MainFrm: TMainFrm
       Left = 2
       Height = 448
       Top = 3
-      Width = 644
+      Width = 634
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
@@ -504,34 +517,108 @@ object MainFrm: TMainFrm
       TitleStyle = tsNative
       OnHeaderClick = WorksheetGridHeaderClick
       OnSelection = WorksheetGridSelection
-      ColWidths = (
-        42
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
+      RowHeights = (
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
       )
     end
   end

@@ -57,7 +57,7 @@ object Form1: TForm1
     Left = 6
     Height = 582
     Top = 46
-    Width = 380
+    Width = 388
     TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
@@ -70,7 +70,7 @@ object Form1: TForm1
       Left = 2
       Height = 557
       Top = 23
-      Width = 376
+      Width = 384
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
@@ -88,53 +88,24 @@ object Form1: TForm1
       TitleFont.Color = clBlack
       TitleFont.Height = -15
       TitleFont.Name = 'Calibri'
-      ColWidths = (
-        48
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-      )
     end
   end
   object Panel2: TPanel
-    Left = 392
+    Left = 400
     Height = 594
     Top = 40
-    Width = 478
+    Width = 470
     Align = alRight
     BevelOuter = bvNone
     Caption = 'Panel2'
     ClientHeight = 594
-    ClientWidth = 478
+    ClientWidth = 470
     TabOrder = 3
     object Chart1: TChart
       Left = 0
       Height = 183
       Top = 0
-      Width = 478
+      Width = 470
       AxisList = <      
         item
           Minors = <>
@@ -166,7 +137,7 @@ object Form1: TForm1
       Left = 0
       Height = 218
       Top = 183
-      Width = 478
+      Width = 470
       AxisList = <      
         item
           Minors = <>
@@ -204,7 +175,7 @@ object Form1: TForm1
       Left = 0
       Height = 193
       Top = 401
-      Width = 478
+      Width = 470
       AxisList = <      
         item
           Visible = False
