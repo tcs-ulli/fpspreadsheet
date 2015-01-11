@@ -13,7 +13,7 @@ object Form1: TForm1
     Left = 0
     Height = 497
     Top = 83
-    Width = 688
+    Width = 683
     TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
@@ -25,7 +25,7 @@ object Form1: TForm1
       Left = 2
       Height = 472
       Top = 23
-      Width = 684
+      Width = 679
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
@@ -45,42 +45,13 @@ object Form1: TForm1
       TitleFont.Height = -13
       TitleFont.Name = 'Arial'
       TitleStyle = tsNative
-      ColWidths = (
-        50
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-        64
-      )
     end
   end
   object InspectorTabControl: TTabControl
-    Left = 693
+    Left = 688
     Height = 497
     Top = 83
-    Width = 248
+    Width = 253
     OnChange = InspectorTabControlChange
     TabIndex = 0
     Tabs.Strings = (
@@ -96,7 +67,7 @@ object Form1: TForm1
       Left = 2
       Height = 472
       Top = 23
-      Width = 244
+      Width = 249
       Align = alClient
       RowCount = 25
       TabOrder = 1
@@ -133,14 +104,37 @@ object Form1: TForm1
       )
       WorkbookSource = WorkbookSource
       Mode = imWorkbook
-      ColWidths = (
-        111
-        112
+      RowHeights = (
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
+        22
       )
     end
   end
   object Splitter1: TSplitter
-    Left = 688
+    Left = 683
     Height = 497
     Top = 83
     Width = 5

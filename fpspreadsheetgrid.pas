@@ -30,6 +30,13 @@ uses
   LCLVersion,
   fpspreadsheet, fpspreadsheetctrls;
 
+const
+  {$IF (lcl_fullversion >= 1030000)}
+   ENABLE_MULTI_SELECT = 1;  // requires Laz trunk after r46767
+  {$ELSE}
+   ENABLE_MULTI_SELECT = 0;
+  {$ENDIF}
+
 type
 
   { TsCustomWorksheetGrid }
@@ -155,16 +162,16 @@ type
       AJustification: Byte; ACellHorAlign: TsHorAlignment;
       ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
       ATextWrap, ReplaceTooLong: Boolean);
-    {$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
-    function IsColWidthsStored: Boolean; override;
-    function IsRowHeightsStored: Boolean; override;
-    {$ENDIF}
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MoveSelection; override;
+   {$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
+    procedure NeedRowHeightsOrColWidths(Filer: TFiler;
+      out NeedHeights, NeedWidths: Boolean); override;
+   {$ENDIF}
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 //    function SelectCell(AGridCol, AGridRow: Integer): Boolean; override;
     procedure SelectEditor; override;
@@ -337,7 +344,7 @@ type
         read GetWordwraps write SetWordwraps;
 
     // inherited
-   {$IFDEF ENABLE_MULTI_SELECT}
+   {$IF (ENABLE_MULTI_SELECT = 1)}
     {@@ Allow multiple selections}
     property RangeSelectMode default rsmMulti;
    {$ENDIF}
@@ -582,11 +589,6 @@ const
     tlBottom, tlTop, tlCenter, tlBottom
   );
 
- {$IF (lcl_fullversion >= 1030000)}
-  ENABLE_MULTI_SELECT = 1;  // requires Laz trunk after r46767
- {$ELSE}
-  ENABLE_MULTI_SELECT = 0;
- {$ENDIF}
 
 var
   {@@ Auxiliary bitmap containing the fill pattern used by biff2 cell backgrounds. }
@@ -2882,26 +2884,6 @@ begin
   end;
 end;
 
-{$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
-{@@ ----------------------------------------------------------------------------
-  Prevents storing of column widths in lfm file, they are retrieved from the
-  worksheet file
--------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.IsColWidthsStored: Boolean;
-begin
-  Result := false;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Prevents storing of row heights in lfm file, they are retrieved from the
-  worksheet file
--------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.IsRowHeightsStored: Boolean;
-begin
-  Result := false;
-end;
-{$ENDIF}
-
 {@@ ----------------------------------------------------------------------------
   Standard key handling method inherited from TCustomGrid. Is overridden to
   catch the ESC key during editing in order to restore the old cell text
@@ -3172,6 +3154,20 @@ begin
   inherited;
   Refresh;
 end;
+
+{$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
+{@@ ----------------------------------------------------------------------------
+  Inherited method of TCustomGrid called during the streaming of the lfm file.
+  Since RowHeights and ColWidths are taken from the WorkSheet there is no need
+  to store them in the lfm file again.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.NeedRowHeightsOrColWidths(Filer: TFiler;
+  out NeedHeights, NeedWidths: Boolean);
+begin
+  NeedHeights := false;
+  NeedWidths := false;
+end;
+{$ENDIF}
 
 {@@ ----------------------------------------------------------------------------
   Creates a new empty workbook with the specified number of columns and rows.
