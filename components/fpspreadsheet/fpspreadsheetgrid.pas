@@ -144,6 +144,7 @@ type
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
     procedure CreateNewWorkbook;
     procedure DblClick; override;
+    procedure DoOnResize; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
@@ -1136,6 +1137,13 @@ begin
   end
   else
     inherited DblClick;
+end;
+
+procedure TsCustomWorksheetGrid.DoOnResize;
+begin
+  if (csDesigning in ComponentState) and (Worksheet = nil) then
+    NewWorkbook(FInitColCount, FInitRowCount);
+  inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2912,6 +2920,7 @@ procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
   if FWorkbookSource = nil then
+  //  CreateNewWorkbook;
     NewWorkbook(FInitColCount, FInitRowCount);
 end;
 
