@@ -20,9 +20,6 @@ unit fpspreadsheetgrid;
  - Arial bold is not shown as such if loaded from ods
  - Background color of first cell is ignored.                                  }
 
-{ Activate next define for Laz >= 1.4 }
-{.$DEFINE DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
-
 interface
 
 uses
@@ -144,6 +141,7 @@ type
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
     procedure CreateNewWorkbook;
     procedure DblClick; override;
+    procedure DefineProperties(Filer: TFiler); override;
     procedure DoOnResize; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
@@ -169,10 +167,6 @@ type
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MoveSelection; override;
-   {$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
-    procedure NeedRowHeightsOrColWidths(Filer: TFiler;
-      out NeedHeights, NeedWidths: Boolean); override;
-   {$ENDIF}
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 //    function SelectCell(AGridCol, AGridRow: Integer): Boolean; override;
     procedure SelectEditor; override;
@@ -1137,6 +1131,12 @@ begin
   end
   else
     inherited DblClick;
+end;
+
+procedure TsCustomWorksheetGrid.DefineProperties(Filer: TFiler);
+begin
+  // Don't call inherited, this is where to ColWidths/RwoHeights are stored in
+  // the lfm file - we don't need them, we get them from the workbook!
 end;
 
 procedure TsCustomWorksheetGrid.DoOnResize;
@@ -3164,20 +3164,6 @@ begin
   Refresh;
 end;
 
-{$IFDEF DO_NOT_STORE_COLWIDTHS_ROWHEIGHTS_IN_LFM}
-{@@ ----------------------------------------------------------------------------
-  Inherited method of TCustomGrid called during the streaming of the lfm file.
-  Since RowHeights and ColWidths are taken from the WorkSheet there is no need
-  to store them in the lfm file again.
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.NeedRowHeightsOrColWidths(Filer: TFiler;
-  out NeedHeights, NeedWidths: Boolean);
-begin
-  NeedHeights := false;
-  NeedWidths := false;
-end;
-{$ENDIF}
-
 {@@ ----------------------------------------------------------------------------
   Creates a new empty workbook with the specified number of columns and rows.
 
@@ -4239,6 +4225,9 @@ end;
 
 initialization
   fpsutils.ScreenPixelsPerInch := Screen.PixelsPerInch;
+
+  RegisterPropertyToSkip(TsCustomWorksheetGrid, 'ColWidths',  'taken from worksheet', '');
+  RegisterPropertyToSkip(TsCustomWorksheetGrid, 'RowHeights', 'taken from worksheet', '');
 
 finalization
   FreeAndNil(FillPattern_BIFF2);

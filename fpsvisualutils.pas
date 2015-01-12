@@ -1,5 +1,7 @@
 unit fpsvisualutils;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
