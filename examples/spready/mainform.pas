@@ -351,7 +351,7 @@ var
 implementation
 
 uses
-  TypInfo, LCLIntf, LCLType,
+  TypInfo, LCLIntf, LCLType, LCLVersion,
   fpcanvas, fpsutils, fpscsv,
   sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sfCurrencyForm;
 
@@ -958,7 +958,9 @@ begin
 //  FormatToolbar.ButtonHeight := FormatToolbar.Height - 4;
 
   CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
+ {$IF LCL_FullVersion >= 1020000}
   CbBackgroundColor.ColorRectWidth := CbBackgroundColor.ItemHeight - 6; // to get a square box...
+ {$ENDIF}
 
   InspectorPageControl.ActivePageIndex := 0;
 

@@ -1137,6 +1137,7 @@ procedure TsCustomWorksheetGrid.DefineProperties(Filer: TFiler);
 begin
   // Don't call inherited, this is where to ColWidths/RwoHeights are stored in
   // the lfm file - we don't need them, we get them from the workbook!
+  Unused(Filer);
 end;
 
 procedure TsCustomWorksheetGrid.DoOnResize;

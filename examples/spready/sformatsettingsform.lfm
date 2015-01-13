@@ -98,7 +98,6 @@ object FormatSettingsForm: TFormatSettingsForm
         Height = 28
         Top = 48
         Width = 66
-        Alignment = taRightJustify
         TabOrder = 1
       end
       object LblPosCurrencyFormat: TLabel

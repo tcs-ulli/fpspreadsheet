@@ -203,7 +203,7 @@ type
 implementation
 
 uses
-  StrUtils, Variants, fpsStrings, fpsStreams, fpsExprParser;
+  StrUtils, Variants, fpsPatches, fpsStrings, fpsStreams, fpsExprParser;
 
 const
   { OpenDocument general XML constants }
