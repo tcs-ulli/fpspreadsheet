@@ -14,6 +14,8 @@ unit fpspreadsheet;
   {$mode delphi}{$H+}
 {$endif}
 
+{$include fps.inc}
+
 interface
 
 uses
@@ -24,7 +26,7 @@ uses
 
 type
   {@@ File formats supported by fpspreadsheet }
-  TsSpreadsheetFormat = (sfExcel2, {sfExcel3, sfExcel4,} sfExcel5, sfExcel8,
+  TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8,
    sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
   {@@ Record collection limitations of a particular file format }
@@ -1359,7 +1361,8 @@ implementation
 
 uses
   Math, StrUtils, TypInfo, lazutf8,
-  fpsStrings, fpsStreams, fpsUtils, fpsCurrency, fpsNumFormatParser, fpsExprParser;
+  fpsPatches, fpsStrings, fpsStreams, fpsUtils, fpsCurrency,
+  fpsNumFormatParser, fpsExprParser;
 
 const
   { These are reserved system colors by Microsoft

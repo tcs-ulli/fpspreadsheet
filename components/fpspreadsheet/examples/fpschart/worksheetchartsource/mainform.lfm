@@ -2,12 +2,12 @@ object FPSChartForm: TFPSChartForm
   Left = 259
   Height = 382
   Top = 146
-  Width = 700
+  Width = 699
   Caption = 'FPSpreadsheet Chart Example'
   ClientHeight = 382
-  ClientWidth = 700
+  ClientWidth = 699
   OnCreate = FormCreate
-  LCLVersion = '1.3'
+  LCLVersion = '1.5'
   object MyChart: TChart
     Left = 352
     Height = 264

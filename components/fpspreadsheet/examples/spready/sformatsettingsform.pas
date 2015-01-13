@@ -299,6 +299,9 @@ begin
   FSampleDateTime := now();
 
   LblDateTimeSample.Visible := false;
+
+  // Published property not available in old Laz versions
+  EdCurrencyDecimals.Alignment := taRightJustify;
 end;
 
 procedure TFormatSettingsForm.OKButtonClick(Sender: TObject);

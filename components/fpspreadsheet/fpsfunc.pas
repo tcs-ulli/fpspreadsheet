@@ -11,13 +11,14 @@ interface
 uses
   Classes, SysUtils, fpspreadsheet;
 
-procedure RegisterStdBuiltins(AManager: TComponent); //TsBuiltInExpressionManager);
+procedure RegisterStdBuiltins(AManager: TComponent);
 
 
 implementation
 
 uses
-  Math, lazutf8, StrUtils, DateUtils, xlsconst, fpsUtils, fpsexprparser;
+  Math, lazutf8, StrUtils, DateUtils,
+  xlsconst, fpsPatches, fpsUtils, fpsexprparser;
 
 
 {------------------------------------------------------------------------------}

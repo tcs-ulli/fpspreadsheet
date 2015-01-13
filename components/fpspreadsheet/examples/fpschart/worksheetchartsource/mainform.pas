@@ -62,6 +62,8 @@ end;
 procedure TFPSChartForm.FormCreate(Sender: TObject);
 begin
   editSourceFile.InitialDir := ExtractFilePath(ParamStr(0));
+  // Property Text is not published in older versions of Lazarus
+  editSourceFile.Text := 't1.xls';
 end;
 
 end.
