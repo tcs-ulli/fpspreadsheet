@@ -299,33 +299,33 @@ constructor TSynWikiTableSyn.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  FCommentAttri := TSynHighlighterAttributes.Create(@SYNS_AttrComment, SYNS_XML_AttrComment);
+  FCommentAttri := TSynHighlighterAttributes.Create(SYNS_AttrComment, SYNS_XML_AttrComment);
   FCommentAttri.Style := [fsItalic];
   FCommentAttri.Foreground := clTeal;
   AddAttribute(FCommentAttri);
 
-  FNumberAttri := TSynHighlighterAttributes.Create(@SYNS_AttrNumber, SYNS_XML_AttrNumber);
+  FNumberAttri := TSynHighlighterAttributes.Create(SYNS_AttrNumber, SYNS_XML_AttrNumber);
   FNumberAttri.Foreground := clBlue;
   AddAttribute(fNumberAttri);
 
-  FSpaceAttri := TSynHighlighterAttributes.Create(@SYNS_AttrSpace, SYNS_XML_AttrSpace);
+  FSpaceAttri := TSynHighlighterAttributes.Create(SYNS_AttrSpace, SYNS_XML_AttrSpace);
   AddAttribute(FSpaceAttri);
 
-  FSymbolAttri := TSynHighlighterAttributes.Create(@SYNS_AttrSymbol, SYNS_XML_AttrSymbol);
+  FSymbolAttri := TSynHighlighterAttributes.Create(SYNS_AttrSymbol, SYNS_XML_AttrSymbol);
   FSymbolAttri.Style := [fsBold];
   FSymbolAttri.Foreground := clPurple;
   AddAttribute(fSymbolAttri);
 
-  FIdentifierAttri := TSynHighlighterAttributes.Create(@SYNS_AttrIdentifier, SYNS_XML_AttrIdentifier);
+  FIdentifierAttri := TSynHighlighterAttributes.Create(SYNS_AttrIdentifier, SYNS_XML_AttrIdentifier);
   FIdentifierAttri.Foreground := clNavy;
   FIdentifierAttri.Style := [fsBold];
   AddAttribute(fIdentifierAttri);
 
-  FStringAttri := TSynHighlighterAttributes.Create(@SYNS_AttrString, SYNS_XML_AttrString);
+  FStringAttri := TSynHighlighterAttributes.Create(SYNS_AttrString, SYNS_XML_AttrString);
   FStringAttri.Foreground := clOlive;
   AddAttribute(FStringAttri);
    (*
-  fKeyAttri := TSynHighlighterAttributes.Create(@SYNS_AttrKey, SYNS_XML_AttrKey);
+  fKeyAttri := TSynHighlighterAttributes.Create(SYNS_AttrKey, SYNS_XML_AttrKey);
   fKeyAttri.Style := [fsBold];
   AddAttribute(fKeyAttri);
 

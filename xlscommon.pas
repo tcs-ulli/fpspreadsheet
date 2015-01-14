@@ -407,7 +407,7 @@ implementation
 
 uses
   AVL_Tree, Math, Variants,
-  fpspatches, xlsConst, fpsNumFormatParser, fpsrpn, fpsExprParser;
+  {%H-}fpspatches, xlsConst, fpsNumFormatParser, fpsrpn, fpsExprParser;
 
 const
   { Helper table for rpn formulas:

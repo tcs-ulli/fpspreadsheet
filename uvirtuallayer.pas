@@ -902,7 +902,7 @@ begin
     ExcludeAttr:=0;
   end;
   //Hint non portable conversion, it should work, but not tested.
-  LHandle:=PFileRecLocal(Rlst.FindHandle);
+  LHandle:={%H-}PFileRecLocal(PtrUInt(Rlst.FindHandle));
   FindL:=TVirtualLayer_FolderList(LHandle^.FL);
   if Assigned(FindL) Then begin
     if FindL.Count>0 Then begin
@@ -925,7 +925,7 @@ var
   LHandle: PFileRecLocal;
 begin
   //Hint: non portable conversion. Not tested but it should work.
-  LHandle:=PFileRecLocal(Rlst.FindHandle);
+  LHandle:={%H-}PFileRecLocal(PtrUInt(Rlst.FindHandle));
   FindL:=TVirtualLayer_FolderList(LHandle^.FL);
   if Assigned(FindL) Then FindL.Free;
   FreeMem(LHandle);

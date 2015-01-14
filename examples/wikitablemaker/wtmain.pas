@@ -6,10 +6,11 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Grids, ColorBox,
-  SynEdit, SynEditHighlighter,
-  SynHighlighterHTML, SynHighlighterMulti, SynHighlighterCss,
-  fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
+  StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Grids, ColorBox, SynEdit,
+  SynEditHighlighter, SynHighlighterHTML, SynHighlighterMulti,
+  SynHighlighterCss, SynGutterBase, SynGutterMarks, SynGutterLineNumber,
+  SynGutterChanges, SynGutter, SynGutterCodeFolding, fpspreadsheetgrid,
+  fpspreadsheet, fpsallformats;
 
 type
 
@@ -60,6 +61,8 @@ type
     AcVAlignCenter: TAction;
     AcVAlignBottom: TAction;
     ActionList: TActionList;
+    MainToolBar: TToolBar;
+    MenuItem17: TMenuItem;
     MnuBorderBottom: TMenuItem;
     MnuBorderBottomDbl: TMenuItem;
     MnuBorderBottomThick: TMenuItem;
@@ -83,7 +86,6 @@ type
     MnuNew: TMenuItem;
     MnuNoBorders: TMenuItem;
     MnuTableSeparator1: TMenuItem;
-    ToolbarBevel: TBevel;
     CbBackgroundColor: TColorBox;
     FontComboBox: TComboBox;
     FontDialog: TFontDialog;
@@ -124,10 +126,7 @@ type
     BordersPopupMenu: TPopupMenu;
     PageControl: TPageControl;
     SaveDialog: TSaveDialog;
-    SynCssSyn1: TSynCssSyn;
     SynEdit: TSynEdit;
-    SynHTMLSyn1: TSynHTMLSyn;
-    SynMultiSyn1: TSynMultiSyn;
     TabControl: TTabControl;
     PgTable: TTabSheet;
     PgCode: TTabSheet;
@@ -151,6 +150,17 @@ type
     TbFontBold: TToolButton;
     TbFontItalic: TToolButton;
     TbFontUnderline: TToolButton;
+    ToolButton1: TToolButton;
+    ToolButton14: TToolButton;
+    ToolButton15: TToolButton;
+    ToolButton19: TToolButton;
+    ToolButton2: TToolButton;
+    ToolButton22: TToolButton;
+    ToolButton26: TToolButton;
+    ToolButton3: TToolButton;
+    ToolButton33: TToolButton;
+    ToolButton4: TToolButton;
+    ToolButton5: TToolButton;
     procedure AcAddColumnExecute(Sender: TObject);
     procedure AcAddRowExecute(Sender: TObject);
     procedure AcBorderExecute(Sender: TObject);
@@ -205,7 +215,7 @@ var
 implementation
 
 uses
-  TypInfo, LCLIntf, LCLType, clipbrd, fpcanvas,
+  TypInfo, LCLIntf, LCLType, LCLVersion, clipbrd, fpcanvas,
   SynHighlighterWikiTable,
   fpsutils;
 
@@ -624,7 +634,9 @@ begin
   FontSizeCombobox.DropDownCount := DROPDOWN_COUNT;
   CbBackgroundColor.DropDownCount := DROPDOWN_COUNT;
 //  CbBackgroundColor.ItemHeight := FontCombobox.ItemHeight;
+ {$IF LCL_FullVersion >= 1020000}
   CbBackgroundColor.ColorRectWidth := CbBackgroundColor.ItemHeight - 6; // to get a square box...
+  {$ENDIF}
 
   // Initialize a new empty workbook
   AcNewExecute(nil);
@@ -638,11 +650,6 @@ procedure TMainFrm.PageControlChange(Sender: TObject);
 var
   stream: TMemoryStream;
 begin
-  // Switch toolbars according to the selection of the pagecontrol
-  CodeToolbar.Visible := PageControl.ActivePage = PgCode;
-  FormatToolbar.Visible := PageControl.ActivePage = PgTable;
-  ToolbarBevel.Top := Height;
-
   if (WorksheetGrid = nil) or (WorksheetGrid.Workbook = nil) then
     exit;
 
@@ -678,7 +685,7 @@ begin
     end;
 
     // Update user interface
-    Caption := Format('spready - %s (%s)', [
+    Caption := Format('wikitable maker - %s (%s)', [
       AFilename,
       GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
     ]);
@@ -820,6 +827,9 @@ end;
 
 initialization
   {$I wtmain.lrs}
+
+//  RegisterPropertyToSkip(TColorbox, 'ColorRectWidth', 'Not available in Laz 1.0', '');
+//  RegisterPropertyToSkip(TSynEdit, 'MouseTextActions', 'Not available in Laz 1.0', '');
 
 end.
 

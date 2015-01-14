@@ -18,7 +18,7 @@ implementation
 
 uses
   Math, lazutf8, StrUtils, DateUtils,
-  xlsconst, fpsPatches, fpsUtils, fpsexprparser;
+  xlsconst, {%H-}fpsPatches, fpsUtils, fpsexprparser;
 
 
 {------------------------------------------------------------------------------}

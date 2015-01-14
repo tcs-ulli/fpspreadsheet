@@ -2,24 +2,24 @@ object MainFrm: TMainFrm
   Left = 409
   Height = 639
   Top = 258
-  Width = 884
+  Width = 885
   Caption = 'spready'
   ClientHeight = 619
-  ClientWidth = 884
+  ClientWidth = 885
   Menu = MainMenu
   OnActivate = FormActivate
   OnCreate = FormCreate
   ShowHint = True
-  LCLVersion = '1.3'
+  LCLVersion = '1.5'
   object Panel1: TPanel
     Left = 0
     Height = 82
     Top = 537
-    Width = 884
+    Width = 885
     Align = alBottom
     BevelOuter = bvNone
     ClientHeight = 82
-    ClientWidth = 884
+    ClientWidth = 885
     TabOrder = 6
     object EdFrozenCols: TSpinEdit
       Left = 429
@@ -106,7 +106,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 26
     Top = 0
-    Width = 884
+    Width = 885
     ButtonHeight = 24
     Caption = 'ToolBar1'
     EdgeBorders = []
@@ -186,7 +186,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 27
     Top = 26
-    Width = 884
+    Width = 885
     ButtonHeight = 23
     Caption = 'FormatToolBar'
     Images = ImageList
@@ -368,7 +368,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 26
     Top = 53
-    Width = 884
+    Width = 885
     Caption = 'FormulaToolBar'
     Constraints.MinHeight = 26
     TabOrder = 2
@@ -382,7 +382,7 @@ object MainFrm: TMainFrm
       Left = 176
       Height = 24
       Top = 2
-      Width = 708
+      Width = 709
       Align = alClient
       OnEditingDone = MemoFormulaEditingDone
       TabOrder = 1
@@ -412,7 +412,7 @@ object MainFrm: TMainFrm
     end
   end
   object InspectorSplitter: TSplitter
-    Left = 638
+    Left = 639
     Height = 453
     Top = 84
     Width = 5
@@ -420,7 +420,7 @@ object MainFrm: TMainFrm
     ResizeAnchor = akRight
   end
   object InspectorPageControl: TPageControl
-    Left = 643
+    Left = 644
     Height = 453
     Top = 84
     Width = 241
@@ -464,22 +464,9 @@ object MainFrm: TMainFrm
           ''
           ''
         )
-        RowHeights = (
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
-          22
+        ColWidths = (
+          114
+          115
         )
       end
     end
@@ -494,7 +481,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 453
     Top = 84
-    Width = 638
+    Width = 639
     OnChange = TabControlChange
     Align = alClient
     TabOrder = 3
@@ -502,7 +489,7 @@ object MainFrm: TMainFrm
       Left = 2
       Height = 448
       Top = 3
-      Width = 634
+      Width = 635
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
@@ -517,109 +504,6 @@ object MainFrm: TMainFrm
       TitleStyle = tsNative
       OnHeaderClick = WorksheetGridHeaderClick
       OnSelection = WorksheetGridSelection
-      RowHeights = (
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-        22
-      )
     end
   end
   object Splitter1: TSplitter
@@ -627,7 +511,7 @@ object MainFrm: TMainFrm
     Left = 0
     Height = 5
     Top = 79
-    Width = 884
+    Width = 885
     Align = alTop
     ResizeAnchor = akTop
   end

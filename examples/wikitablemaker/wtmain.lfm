@@ -1,5 +1,5 @@
 object MainFrm: TMainFrm
-  Left = 512
+  Left = 506
   Height = 639
   Top = 144
   Width = 884
@@ -11,15 +11,15 @@ object MainFrm: TMainFrm
   OnCreate = FormCreate
   ShowHint = True
   LCLVersion = '1.5'
-  object ToolBar1: TToolBar
+  object MainToolBar: TToolBar
     Left = 0
     Height = 28
     Top = 0
     Width = 884
     ButtonHeight = 24
     ButtonWidth = 24
-    Caption = 'ToolBar1'
-    EdgeBorders = []
+    Caption = 'MainToolBar'
+    EdgeBorders = [ebBottom]
     Images = ImageList
     TabOrder = 0
     object ToolButton1: TToolButton
@@ -51,238 +51,240 @@ object MainFrm: TMainFrm
       Action = AcNew
     end
   end
-  object FormatToolBar: TToolBar
-    Left = 0
-    Height = 28
-    Top = 56
-    Width = 884
-    AutoSize = True
-    ButtonHeight = 24
-    ButtonWidth = 25
-    Caption = 'FormatToolBar'
-    Constraints.MinHeight = 28
-    EdgeBorders = []
-    Images = ImageList
-    TabOrder = 1
-    object TbLeftAlign: TToolButton
-      Left = 336
-      Top = 0
-      Action = AcLeftAlign
-      Wrap = True
-    end
-    object TbHorCenterAlign: TToolButton
-      Left = 361
-      Top = 0
-      Action = AcHorCenterAlign
-    end
-    object TbRightAlign: TToolButton
-      Left = 386
-      Top = 0
-      Action = AcRightAlign
-    end
-    object FontComboBox: TComboBox
-      Left = 56
-      Height = 23
-      Top = 0
-      Width = 127
-      ItemHeight = 15
-      OnSelect = FontComboBoxSelect
-      TabOrder = 0
-    end
-    object FontSizeComboBox: TComboBox
-      Left = 183
-      Height = 23
-      Top = 0
-      Width = 48
-      ItemHeight = 15
-      Items.Strings = (
-        '8'
-        '9'
-        '10'
-        '11'
-        '12'
-        '14'
-        '16'
-        '18'
-        '20'
-        '24'
-      )
-      OnSelect = FontSizeComboBoxSelect
-      TabOrder = 1
-    end
-    object TbFontBold: TToolButton
-      Left = 231
-      Top = 0
-      Action = AcFontBold
-    end
-    object TbFontItalic: TToolButton
-      Left = 256
-      Top = 0
-      Action = AcFontItalic
-    end
-    object TbFontUnderline: TToolButton
-      Left = 281
-      Top = 0
-      Action = AcFontUnderline
-    end
-    object TbFontStrikeout: TToolButton
-      Left = 306
-      Top = 0
-      Action = AcFontStrikeout
-    end
-    object ToolButton14: TToolButton
-      Left = 331
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton14'
-      Style = tbsDivider
-      Wrap = True
-    end
-    object ToolButton15: TToolButton
-      Left = 411
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton15'
-      Style = tbsDivider
-      Wrap = True
-    end
-    object TbVAlignTop: TToolButton
-      Left = 416
-      Top = 0
-      Action = AcVAlignTop
-      Wrap = True
-    end
-    object TbVAlignCenter: TToolButton
-      Left = 441
-      Top = 0
-      Action = AcVAlignCenter
-    end
-    object TbVAlignBottom: TToolButton
-      Left = 466
-      Top = 0
-      Action = AcVAlignBottom
-    end
-    object ToolButton19: TToolButton
-      Left = 491
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton19'
-      Style = tbsDivider
-      Wrap = True
-    end
-    object TbBorders: TToolButton
-      Left = 496
-      Top = 0
-      Action = AcBorderNone
-      DropdownMenu = BordersPopupMenu
-      Style = tbsDropDown
-      Wrap = True
-    end
-    object CbBackgroundColor: TColorBox
-      Left = 558
-      Height = 26
-      Top = 0
-      Width = 149
-      NoneColorColor = clDefault
-      Style = [cbPrettyNames, cbCustomColors]
-      OnGetColors = CbBackgroundColorGetColors
-      ItemHeight = 20
-      OnSelect = CbBackgroundColorSelect
-      TabOrder = 2
-    end
-    object TbDefaultFont: TToolButton
-      Left = 31
-      Top = 0
-      Action = AcDefaultFont
-    end
-    object ToolButton26: TToolButton
-      Left = 26
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton26'
-      Style = tbsDivider
-      Wrap = True
-    end
-    object TbCopyFormat: TToolButton
-      Left = 1
-      Top = 0
-      Action = AcCopyFormat
-    end
-    object TbMergeCells: TToolButton
-      Left = 533
-      Top = 0
-      Action = AcMergeCells
-    end
-    object TbAddColumn: TToolButton
-      Left = 707
-      Top = 0
-      Action = AcAddColumn
-    end
-    object TbDeleteColumn: TToolButton
-      Left = 732
-      Top = 0
-      Action = AcDeleteColumn
-    end
-    object TbAddRow: TToolButton
-      Left = 762
-      Top = 0
-      Action = AcAddRow
-    end
-    object TbDeleteRow: TToolButton
-      Left = 787
-      Top = 0
-      Action = AcDeleteRow
-    end
-    object ToolButton33: TToolButton
-      Left = 757
-      Height = 24
-      Top = 0
-      Width = 5
-      Caption = 'ToolButton33'
-      Style = tbsDivider
-    end
-  end
   object PageControl: TPageControl
     Left = 0
-    Height = 532
-    Top = 87
+    Height = 587
+    Top = 32
     Width = 884
     ActivePage = PgTable
     Align = alClient
+    BorderSpacing.Top = 4
     Images = ImageList
     TabIndex = 0
-    TabOrder = 2
+    TabOrder = 1
     OnChange = PageControlChange
     object PgTable: TTabSheet
       Caption = 'Table'
-      ClientHeight = 504
+      ClientHeight = 559
       ClientWidth = 876
       ImageIndex = 31
       object TabControl: TTabControl
         Left = 0
-        Height = 504
-        Top = 0
+        Height = 531
+        Top = 28
         Width = 876
         OnChange = TabControlChange
         TabPosition = tpBottom
         Align = alClient
         TabOrder = 0
       end
+      object FormatToolBar: TToolBar
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 876
+        AutoSize = True
+        ButtonHeight = 26
+        ButtonWidth = 25
+        Caption = 'FormatToolBar'
+        Constraints.MinHeight = 28
+        EdgeBorders = []
+        Images = ImageList
+        TabOrder = 1
+        Transparent = True
+        object TbLeftAlign: TToolButton
+          Left = 336
+          Top = 0
+          Action = AcLeftAlign
+          Wrap = True
+        end
+        object TbHorCenterAlign: TToolButton
+          Left = 361
+          Top = 0
+          Action = AcHorCenterAlign
+        end
+        object TbRightAlign: TToolButton
+          Left = 386
+          Top = 0
+          Action = AcRightAlign
+        end
+        object FontComboBox: TComboBox
+          Left = 56
+          Height = 23
+          Top = 0
+          Width = 127
+          ItemHeight = 15
+          OnSelect = FontComboBoxSelect
+          TabOrder = 0
+        end
+        object FontSizeComboBox: TComboBox
+          Left = 183
+          Height = 23
+          Top = 0
+          Width = 48
+          ItemHeight = 15
+          Items.Strings = (
+            '8'
+            '9'
+            '10'
+            '11'
+            '12'
+            '14'
+            '16'
+            '18'
+            '20'
+            '24'
+          )
+          OnSelect = FontSizeComboBoxSelect
+          TabOrder = 1
+        end
+        object TbFontBold: TToolButton
+          Left = 231
+          Top = 0
+          Action = AcFontBold
+        end
+        object TbFontItalic: TToolButton
+          Left = 256
+          Top = 0
+          Action = AcFontItalic
+        end
+        object TbFontUnderline: TToolButton
+          Left = 281
+          Top = 0
+          Action = AcFontUnderline
+        end
+        object TbFontStrikeout: TToolButton
+          Left = 306
+          Top = 0
+          Action = AcFontStrikeout
+        end
+        object ToolButton14: TToolButton
+          Left = 331
+          Height = 26
+          Top = 0
+          Width = 5
+          Caption = 'ToolButton14'
+          Style = tbsDivider
+          Wrap = True
+        end
+        object ToolButton15: TToolButton
+          Left = 411
+          Height = 26
+          Top = 0
+          Width = 5
+          Caption = 'ToolButton15'
+          Style = tbsDivider
+          Wrap = True
+        end
+        object TbVAlignTop: TToolButton
+          Left = 416
+          Top = 0
+          Action = AcVAlignTop
+          Wrap = True
+        end
+        object TbVAlignCenter: TToolButton
+          Left = 441
+          Top = 0
+          Action = AcVAlignCenter
+        end
+        object TbVAlignBottom: TToolButton
+          Left = 466
+          Top = 0
+          Action = AcVAlignBottom
+        end
+        object ToolButton19: TToolButton
+          Left = 491
+          Height = 26
+          Top = 0
+          Width = 5
+          Caption = 'ToolButton19'
+          Style = tbsDivider
+          Wrap = True
+        end
+        object TbBorders: TToolButton
+          Left = 496
+          Top = 0
+          Action = AcBorderNone
+          DropdownMenu = BordersPopupMenu
+          Style = tbsDropDown
+          Wrap = True
+        end
+        object CbBackgroundColor: TColorBox
+          Left = 558
+          Height = 26
+          Top = 0
+          Width = 149
+          NoneColorColor = clDefault
+          Style = [cbPrettyNames, cbCustomColors]
+          OnGetColors = CbBackgroundColorGetColors
+          ItemHeight = 20
+          OnSelect = CbBackgroundColorSelect
+          TabOrder = 2
+        end
+        object TbDefaultFont: TToolButton
+          Left = 31
+          Top = 0
+          Action = AcDefaultFont
+        end
+        object ToolButton26: TToolButton
+          Left = 26
+          Height = 26
+          Top = 0
+          Width = 5
+          Caption = 'ToolButton26'
+          Style = tbsDivider
+          Wrap = True
+        end
+        object TbCopyFormat: TToolButton
+          Left = 1
+          Top = 0
+          Action = AcCopyFormat
+        end
+        object TbMergeCells: TToolButton
+          Left = 533
+          Top = 0
+          Action = AcMergeCells
+        end
+        object TbAddColumn: TToolButton
+          Left = 707
+          Top = 0
+          Action = AcAddColumn
+        end
+        object TbDeleteColumn: TToolButton
+          Left = 732
+          Top = 0
+          Action = AcDeleteColumn
+        end
+        object TbAddRow: TToolButton
+          Left = 762
+          Top = 0
+          Action = AcAddRow
+        end
+        object TbDeleteRow: TToolButton
+          Left = 787
+          Top = 0
+          Action = AcDeleteRow
+        end
+        object ToolButton33: TToolButton
+          Left = 757
+          Height = 26
+          Top = 0
+          Width = 5
+          Caption = 'ToolButton33'
+          Style = tbsDivider
+        end
+      end
     end
     object PgCode: TTabSheet
       Caption = 'Code'
-      ClientHeight = 504
-      ClientWidth = 876
+      ClientHeight = 559
+      ClientWidth = 882
       ImageIndex = 3
       inline SynEdit: TSynEdit
         Left = 0
-        Height = 504
-        Top = 0
-        Width = 876
+        Height = 531
+        Top = 28
+        Width = 882
         Align = alClient
         Font.Height = -13
         Font.Name = 'Courier New'
@@ -291,7 +293,7 @@ object MainFrm: TMainFrm
         ParentColor = False
         ParentFont = False
         TabOrder = 0
-        Gutter.Width = 57
+        Gutter.Width = 0
         Gutter.MouseActions = <>
         RightGutter.Width = 0
         RightGutter.MouseActions = <>
@@ -749,71 +751,30 @@ object MainFrm: TMainFrm
         LineHighlightColor.Foreground = clNone
         LineHighlightColor.FrameEdges = sfeAround
         inline SynLeftGutterPartList1: TSynGutterPartList
-          object SynGutterMarks1: TSynGutterMarks
-            Width = 24
-            MouseActions = <>
-          end
-          object SynGutterLineNumber1: TSynGutterLineNumber
-            Width = 17
-            MouseActions = <>
-            MarkupInfo.Background = clBtnFace
-            MarkupInfo.Foreground = clNone
-            MarkupInfo.FrameEdges = sfeAround
-            DigitCount = 2
-            ShowOnlyLineNumbersMultiplesOf = 1
-            ZeroStart = False
-            LeadingZeros = False
-          end
-          object SynGutterChanges1: TSynGutterChanges
-            Width = 4
-            MouseActions = <>
-            ModifiedColor = 59900
-            SavedColor = clGreen
-          end
-          object SynGutterSeparator1: TSynGutterSeparator
-            Width = 2
-            MouseActions = <>
-            MarkupInfo.Background = clWhite
-            MarkupInfo.Foreground = clGray
-            MarkupInfo.FrameEdges = sfeAround
-          end
-          object SynGutterCodeFolding1: TSynGutterCodeFolding
-            MouseActions = <>
-            MarkupInfo.Background = clNone
-            MarkupInfo.Foreground = clGray
-            MarkupInfo.FrameEdges = sfeAround
-            MouseActionsExpanded = <>
-            MouseActionsCollapsed = <>
-          end
+        end
+      end
+      object CodeToolBar: TToolBar
+        Left = 0
+        Height = 28
+        Top = 0
+        Width = 882
+        AutoSize = True
+        ButtonHeight = 26
+        ButtonWidth = 25
+        Caption = 'CodeToolBar'
+        EdgeBorders = [ebBottom]
+        Images = ImageList
+        List = True
+        ShowCaptions = True
+        TabOrder = 1
+        Transparent = True
+        object ToolButton4: TToolButton
+          Left = 1
+          Top = 0
+          Action = AcCopyToClipboard
         end
       end
     end
-  end
-  object CodeToolBar: TToolBar
-    Left = 0
-    Height = 28
-    Top = 28
-    Width = 884
-    Caption = 'CodeToolBar'
-    EdgeBorders = []
-    Images = ImageList
-    List = True
-    ShowCaptions = True
-    TabOrder = 3
-    Visible = False
-    object ToolButton4: TToolButton
-      Left = 1
-      Top = 0
-      Action = AcCopyToClipboard
-    end
-  end
-  object ToolbarBevel: TBevel
-    Left = 0
-    Height = 3
-    Top = 84
-    Width = 884
-    Align = alTop
-    Shape = bsTopLine
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
@@ -3758,58 +3719,5 @@ object MainFrm: TMainFrm
         FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
       }
     end
-  end
-  object SynMultiSyn1: TSynMultiSyn
-    Enabled = False
-    Schemes = <    
-      item
-        Highlighter = SynHTMLSyn1
-        MarkerAttri.FrameEdges = sfeAround
-      end    
-      item
-        Highlighter = SynCssSyn1
-        MarkerAttri.FrameEdges = sfeAround
-      end>
-    DefaultHighlighter = SynCssSyn1
-    left = 532
-    top = 126
-  end
-  object SynHTMLSyn1: TSynHTMLSyn
-    DefaultFilter = 'HTML Document (*.htm,*.html)|*.htm;*.html'
-    Enabled = False
-    AndAttri.FrameEdges = sfeAround
-    ASPAttri.FrameEdges = sfeAround
-    CDATAAttri.FrameEdges = sfeAround
-    DOCTYPEAttri.FrameEdges = sfeAround
-    CommentAttri.Foreground = clTeal
-    CommentAttri.FrameEdges = sfeAround
-    CommentAttri.Style = [fsItalic]
-    IdentifierAttri.FrameEdges = sfeAround
-    KeyAttri.FrameEdges = sfeAround
-    SpaceAttri.FrameEdges = sfeAround
-    SymbolAttri.FrameEdges = sfeAround
-    TextAttri.Foreground = clBlue
-    TextAttri.FrameEdges = sfeAround
-    UndefKeyAttri.FrameEdges = sfeAround
-    ValueAttri.FrameEdges = sfeAround
-    left = 531
-    top = 189
-  end
-  object SynCssSyn1: TSynCssSyn
-    DefaultFilter = 'Cascading Stylesheets (*.css)|*.css'
-    Enabled = False
-    CommentAttri.FrameEdges = sfeAround
-    IdentifierAttri.Foreground = clOlive
-    IdentifierAttri.FrameEdges = sfeAround
-    IdentifierAttri.Style = [fsBold]
-    KeyAttri.FrameEdges = sfeAround
-    NumberAttri.Foreground = clFuchsia
-    NumberAttri.FrameEdges = sfeAround
-    SpaceAttri.FrameEdges = sfeAround
-    StringAttri.Foreground = clBlue
-    StringAttri.FrameEdges = sfeAround
-    SymbolAttri.FrameEdges = sfeAround
-    left = 529
-    top = 243
   end
 end

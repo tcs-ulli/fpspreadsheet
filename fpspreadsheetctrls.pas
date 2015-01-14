@@ -2383,8 +2383,13 @@ begin
   inherited Create(AOwner);
   DisplayOptions := DisplayOptions - [doKeyColFixed];
   FixedCols := 0;
-  TitleCaptions.Add('Properties');
-  TitleCaptions.Add('Values');
+  with (TitleCaptions as TStringList) do begin
+    OnChange := nil;        // This fixes an issue with Laz 1.0
+    Clear;
+    Add('Properties');
+    Add('Values');
+    OnChange := @TitlesChanged;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2772,9 +2777,13 @@ begin
 end;
 
 initialization
+  {$I fpspreadsheetctrls.lrs}
+
   CellClipboard := TsCellList.Create;
 
-  {$I fpspreadsheetctrls.lrs}
+  RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights', 'For compatibility with older Laz versions.', '');
+  RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths', 'For compatibility with older Laz versions.', '');
+
 
 finalization
   CellClipboard.Free;
