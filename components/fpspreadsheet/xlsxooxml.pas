@@ -176,7 +176,7 @@ implementation
 
 uses
   variants, fileutil, strutils, math, lazutf8,
-  fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser;
+  {%H-}fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser;
 
 const
   { OOXML general XML constants }

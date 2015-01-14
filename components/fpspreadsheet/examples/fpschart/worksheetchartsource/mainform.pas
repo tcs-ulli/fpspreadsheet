@@ -66,5 +66,9 @@ begin
   editSourceFile.Text := 't1.xls';
 end;
 
+initialization
+  // Property Text is not published in older versions of Lazarus
+  RegisterPropertyToSkip(TFileNameEdit, 'Text', 'Not used in Laz 1.0', '');
+
 end.
 

@@ -66,11 +66,6 @@
         </Win32>
       </Options>
     </Linking>
-    <Other>
-      <CompilerMessages>
-        <IgnoredMessages idx11031="True" idx11030="True"/>
-      </CompilerMessages>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">

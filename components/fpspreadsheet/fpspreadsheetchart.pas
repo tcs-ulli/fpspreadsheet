@@ -43,7 +43,6 @@ type
     FPointsNumber: Integer;
     FXSelectionDirection: TsSelectionDirection;
     FYSelectionDirection: TsSelectionDirection;
-//    FWorksheetGrid: TsWorksheetGrid;
     FXFirstCellCol: Cardinal;
     FXFirstCellRow: Cardinal;
     FYFirstCellCol: Cardinal;
@@ -60,6 +59,7 @@ type
     FCurItem: TChartDataItem;
     function GetCount: Integer; override;
     function GetItem(AIndex: Integer): PChartDataItem; override;
+    procedure SetYCount(AValue: Cardinal); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -67,7 +67,6 @@ type
   public
     procedure LoadFromWorksheetGrid(const AValue: TsWorksheetGrid);
   published
-//    property WorksheetGrid: TsWorksheetGrid read FWorksheetGrid write SetWorksheetGrid;
     property PointsNumber: Integer read FPointsNumber write SetPointsNumber default 0;
     property XFirstCellCol: Cardinal read FXFirstCellCol write SetXFirstCellCol default 0;
     property XFirstCellRow: Cardinal read FXFirstCellRow write SetXFirstCellRow default 0;
@@ -291,6 +290,11 @@ begin
   if lXCount <> lYCount then raise Exception.Create(
     'TsWorksheetChartSource.LoadPropertiesFromStrings: Interval sizes don''t match');
   FPointsNumber := lXCount;
+end;
+
+procedure TsWorksheetChartSource.SetYCount(AValue: Cardinal);
+begin
+  FYCount := AValue;
 end;
 
 
@@ -662,7 +666,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Inherited ChartSource method telling the series how many y values are used.
-  Currently we support only single valued data (YCount = 1).
+  Currently we support only single valued data (YCount = 1, by default).
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetYCount(AValue: Cardinal);
 begin

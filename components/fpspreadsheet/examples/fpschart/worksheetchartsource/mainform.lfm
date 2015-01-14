@@ -2,10 +2,10 @@ object FPSChartForm: TFPSChartForm
   Left = 259
   Height = 382
   Top = 146
-  Width = 699
+  Width = 697
   Caption = 'FPSpreadsheet Chart Example'
   ClientHeight = 382
-  ClientWidth = 699
+  ClientWidth = 697
   OnCreate = FormCreate
   LCLVersion = '1.5'
   object MyChart: TChart
@@ -26,6 +26,7 @@ object FPSChartForm: TFPSChartForm
         Marks.Style = smsLabel
         Minors = <>
       end>
+    BackColor = clWhite
     Foot.Brush.Color = clBtnFace
     Foot.Font.Color = clBlue
     Title.Brush.Color = clBtnFace

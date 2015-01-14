@@ -380,7 +380,7 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
     clr := ACell^.BorderStyles[ABorder].Color;
     Result := Format('border-%s:%s', [BORDERNAMES[ABorder], LINESTYLES[ls]]);
     if clr <> scBlack then
-      Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr);
+      Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr) + '; ';
   end;
 
 const
