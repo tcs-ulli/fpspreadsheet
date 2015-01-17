@@ -9,7 +9,7 @@ unit fpsfunc;
 interface
 
 uses
-  Classes, SysUtils, fpspreadsheet;
+  Classes, SysUtils, fpstypes, fpspreadsheet;
 
 procedure RegisterStdBuiltins(AManager: TComponent);
 

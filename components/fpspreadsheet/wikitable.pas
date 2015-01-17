@@ -30,8 +30,8 @@ interface
 
 uses
   Classes, SysUtils,
-  fpimage, fgl,
-  fpspreadsheet, fpsutils, lconvencoding;
+  fpimage, fgl, lconvencoding,
+  fpsTypes, fpspreadsheet, fpsutils;
 
 type
 

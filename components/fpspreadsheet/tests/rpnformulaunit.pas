@@ -6,7 +6,7 @@ uses
   {$IFDEF Unix}
   clocale, //required for formatsettings
   {$ENDIF}
-  SysUtils, fpspreadsheet,fpsutils;
+  SysUtils, fpstypes, fpspreadsheet,fpsutils;
 
 procedure WriteRPNFormulaSamples(Worksheet: TsWorksheet;
   AFormat: TsSpreadsheetFormat; IncludeErrors: Boolean);

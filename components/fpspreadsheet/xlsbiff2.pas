@@ -33,8 +33,8 @@ unit xlsbiff2;
 interface
 
 uses
-  Classes, SysUtils,
-  fpspreadsheet, xlscommon, fpsutils, lconvencoding;
+  Classes, SysUtils, lconvencoding,
+  fpstypes, fpspreadsheet, xlscommon, fpsutils;
 
 const
   BIFF2_MAX_PALETTE_SIZE = 8;

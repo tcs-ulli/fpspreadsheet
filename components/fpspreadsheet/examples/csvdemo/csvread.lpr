@@ -9,7 +9,7 @@ program myexcel2read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, fpscsv;
+  Classes, SysUtils, fpstypes, fpspreadsheet, fpscsv;
 
 var
   MyWorkbook: TsWorkbook;

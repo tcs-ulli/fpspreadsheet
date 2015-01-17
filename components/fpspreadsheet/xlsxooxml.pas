@@ -34,14 +34,14 @@ interface
 
 uses
   Classes, SysUtils,
-  {$IF FPC_FULLVERSION >= 20701}
-  zipper,
-  {$ELSE}
-  fpszipper,
-  {$ENDIF}
   laz2_xmlread, laz2_DOM,
   AVL_Tree,
-  fpspreadsheet, fpsutils, fpsxmlcommon, xlscommon;
+ {$IF FPC_FULLVERSION >= 20701}
+  zipper,
+ {$ELSE}
+  fpszipper,
+ {$ENDIF}
+  fpstypes, fpspreadsheet, fpsutils, fpsxmlcommon, xlscommon;
   
 type
 

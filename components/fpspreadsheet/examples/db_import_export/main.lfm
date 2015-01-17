@@ -8,7 +8,7 @@ object Form1: TForm1
   ClientWidth = 521
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '1.3'
+  LCLVersion = '1.5'
   object PageControl: TPageControl
     Left = 4
     Height = 302

@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
   ColorBox, ValEdit,
-  fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
+  fpstypes, fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
 
 type
 
@@ -351,8 +351,8 @@ var
 implementation
 
 uses
-  TypInfo, LCLIntf, LCLType, LCLVersion,
-  fpcanvas, fpsutils, fpscsv,
+  TypInfo, LCLIntf, LCLType, LCLVersion, fpcanvas,
+  fpsutils, fpscsv, fpsNumFormatParser,
   sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sfCurrencyForm;
 
 const

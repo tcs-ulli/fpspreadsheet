@@ -12,7 +12,7 @@ program demo_write_formatting;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8, fpsopendocument;
+  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff8, fpsopendocument;
 
 var
   MyWorkbook: TsWorkbook;

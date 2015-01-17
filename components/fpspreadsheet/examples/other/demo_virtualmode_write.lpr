@@ -8,9 +8,8 @@ uses
   cthreads,
   {$ENDIF}
   {$ENDIF}
-  Classes, SysUtils,
-  lazutf8,
-  variants, fpspreadsheet, fpsallformats;
+  Classes, SysUtils, lazutf8, variants,
+  fpstypes, fpspreadsheet, fpsallformats;
 
 type
   TDataProvider = class

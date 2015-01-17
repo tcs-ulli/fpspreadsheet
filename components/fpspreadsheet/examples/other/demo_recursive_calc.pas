@@ -14,8 +14,8 @@ uses
   cthreads,
   {$ENDIF}
   {$ENDIF}
-  Classes,
-  math, fpspreadsheet, fpsfunc, xlsbiff8;
+  Classes, Math,
+  fpstypes, fpspreadsheet, fpsfunc, xlsbiff8;
 
 var
   workbook: TsWorkbook;

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ButtonPanel, Grids, ExtCtrls, Buttons, StdCtrls,
-  fpspreadsheet, fpspreadsheetgrid;
+  fpstypes, fpspreadsheet, fpspreadsheetgrid;
 
 type
 

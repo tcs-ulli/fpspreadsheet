@@ -10,7 +10,7 @@ program opendocwrite;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, fpsallformats;
+  Classes, SysUtils, fpstypes, fpspreadsheet, fpsallformats;
 
 var
   MyWorkbook: TsWorkbook;

@@ -10,7 +10,7 @@ program excel8read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff8,
+  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff8,
   fpsutils;
 
 var

@@ -18,7 +18,7 @@ uses
   fpolestorage,
   {$endif}
   *)
-  fpspreadsheet, fpsutils, lconvencoding;
+  fpstypes, fpspreadsheet, fpsutils, lconvencoding;
 
 const
   { RECORD IDs which didn't change across versions 2-8 }

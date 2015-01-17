@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, TAGraph, TASeries, Forms, Controls,
   Graphics, Dialogs, ExtCtrls, StdCtrls,
-  fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart;
+  fpstypes, fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart;
 
 type
 

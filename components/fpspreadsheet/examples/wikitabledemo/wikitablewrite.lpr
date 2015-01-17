@@ -10,7 +10,7 @@ program wikitablewrite;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, wikitable;
+  Classes, SysUtils, fpstypes, fpspreadsheet, wikitable;
 
 var
   MyWorkbook: TsWorkbook;

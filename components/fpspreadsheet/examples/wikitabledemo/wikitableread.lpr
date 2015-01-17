@@ -10,8 +10,8 @@ program wikitableread;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, wikitable,
-  fpsutils;
+  Classes, SysUtils,
+  fpstypes, fpspreadsheet, wikitable, fpsutils;
 
 var
   MyWorkbook: TsWorkbook;

@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, db, dbf, fpspreadsheet, fpsallformats, fpsexport;
+  ComCtrls, ExtCtrls, db, dbf,
+  fpstypes, fpspreadsheet, fpsallformats, fpsexport;
 
 type
 

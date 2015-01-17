@@ -16,7 +16,7 @@ uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  fpstypes, fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   fpsutils, fpsstreams, testsutility, md5;
 
 type
@@ -147,7 +147,7 @@ begin
     MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
     MyWorkSheet.WriteUTF8Text(0,0,FirstFileCellText);
     TempFile:=NewTempFile;
-    MyWorkBook.WriteToFile(TempFile,sfExcel8,false);
+    MyWorkBook.WriteToFile(TempFile, sfExcel8, false);
   finally
     MyWorkbook.Free;
   end;

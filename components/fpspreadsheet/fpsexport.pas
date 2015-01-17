@@ -12,7 +12,7 @@ interface
 
 uses
   Classes, SysUtils, db,
-  {%H-}fpsallformats, fpspreadsheet, fpsstrings, fpdbexport;
+  {%H-}fpsallformats, fpspreadsheet, fpstypes, fpsstrings, fpdbexport;
   
 Type
 
