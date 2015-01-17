@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpspreadsheet, fpsCsvDocument;
+  fpstypes, fpspreadsheet, fpsCsvDocument;
 
 type
   TsCSVReader = class(TsCustomSpreadReader)
@@ -95,7 +95,8 @@ implementation
 
 uses
   //StrUtils,
-  DateUtils, LConvEncoding, Math, fpsutils, fpscurrency;
+  DateUtils, LConvEncoding, Math,
+  fpsutils, fpscurrency;
 
 { Initializes the FormatSettings of the CSVParams to default values which
   can be replaced by the FormatSettings of the workbook's FormatSettings }

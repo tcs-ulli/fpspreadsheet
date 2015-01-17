@@ -8,9 +8,8 @@ uses
   cthreads,
   {$ENDIF}
   {$ENDIF}
-  Classes, SysUtils,
-  lazutf8,
-  variants, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
+  Classes, SysUtils, lazutf8, variants,
+  fpstypes, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml;
 
 type
   TDataAnalyzer = class

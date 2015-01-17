@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  ComCtrls, ActnList, Menus, StdActns, //ColorBox, StdCtrls,
-  fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
+  ComCtrls, ActnList, Menus, StdActns,
+  fpstypes, fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
 
 type
 

@@ -28,7 +28,7 @@ interface
 uses
   Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
   LResources,
-  fpspreadsheet, {%H-}fpsAllFormats;
+  fpstypes, fpspreadsheet, {%H-}fpsAllFormats;
 
 type
   {@@ Event handler procedure for displaying a message if an error or

@@ -16,7 +16,7 @@ unit fpsRPN;
 interface
 
 uses
-  SysUtils, fpspreadsheet;
+  SysUtils, fpstypes, fpspreadsheet;
 
 type
   {@@ Pointer to a TPRNItem record

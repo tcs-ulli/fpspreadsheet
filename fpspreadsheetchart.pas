@@ -21,7 +21,7 @@ uses
   // TChart
   TACustomSource,
   // FPSpreadsheet
-  fpspreadsheet, fpsutils,
+  fpstypes, fpspreadsheet, fpsutils,
   // FPSpreadsheet Visual
   fpspreadsheetctrls, fpspreadsheetgrid;
 

@@ -10,7 +10,7 @@ program excel5write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff5;
+  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff5;
 
 const
   Str_First = 'First';

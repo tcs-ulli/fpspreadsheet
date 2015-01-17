@@ -6,9 +6,8 @@ uses
   {$IFDEF UNIX}{$IFDEF UseCThreads}
   cthreads,
   {$ENDIF}{$ENDIF}
-  SysUtils, Classes
-  { you can add units after this },
-  TypInfo, fpSpreadsheet, fpsutils;
+  SysUtils, Classes, TypInfo,
+  fpstypes, fpSpreadsheet, fpsutils;
 
 var
   workbook: TsWorkbook;

@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   SysUtils, Classes
   { you can add units after this },
-  TypInfo, fpSpreadsheet, fpsUtils, fpsExprParser;
+  TypInfo, fpsTypes, fpSpreadsheet, fpsUtils, fpsExprParser;
 
 var
   workbook: TsWorkbook;

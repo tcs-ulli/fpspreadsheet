@@ -56,7 +56,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, DateUtils,
-  fpspreadsheet, xlscommon,
+  fpstypes, fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}

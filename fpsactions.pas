@@ -15,7 +15,7 @@ interface
 
 uses
   SysUtils, Classes, Controls, Graphics, ActnList, StdActns, Dialogs,
-  fpspreadsheet, fpspreadsheetctrls;
+  fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
 type
   TsSpreadsheetAction = class(TCustomAction)
@@ -451,7 +451,7 @@ procedure Register;
 implementation
 
 uses
-  fpsutils, fpsVisualUtils;
+  fpsutils, fpsnumformatparser, fpsVisualUtils;
 
 procedure Register;
 begin

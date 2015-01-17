@@ -23,8 +23,8 @@ uses
  cthreads,
  {$ENDIF}
  {$ENDIF}
- Classes, SysUtils,
- math, fpspreadsheet, fpsallformats, fpsexprparser, financemath;
+ Classes, SysUtils, math,
+ fpstypes, fpspreadsheet, fpsallformats, fpsexprparser, financemath;
 
 { Base data used in this demonstration }
 const

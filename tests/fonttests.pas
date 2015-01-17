@@ -11,7 +11,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
-  fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  fpstypes, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 var
@@ -243,8 +243,8 @@ begin
         font := MyWorkbook.GetFont(MyCell^.FontIndex);
         CheckEquals(SollSizes[row], font.Size,
           'Test unsaved font size, cell ' + CellNotation(MyWorksheet,0,0));
-        currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));
-        expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
+        currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));
+        expectedValue := GetEnumName(TypeInfo(TsFontStyles), integer(SollStyles[col]));
         CheckEquals(currValue, expectedValue,
           'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
       end;
@@ -278,8 +278,8 @@ begin
         if abs(SollSizes[row] - font.Size) > 1e-6 then  // safe-guard against rounding errors
           CheckEquals(SollSizes[row], font.Size,
             'Test saved font size, cell '+CellNotation(MyWorksheet,Row,Col));
-        currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));
-        expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
+        currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));
+        expectedValue := GetEnumName(TypeInfo(TsFontStyles), integer(SollStyles[col]));
         CheckEquals(currValue, expectedValue,
           'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
         inc(counter);

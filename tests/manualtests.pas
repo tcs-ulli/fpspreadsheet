@@ -68,7 +68,7 @@ type
 implementation
 
 uses
-  fpsUtils, rpnFormulaUnit;
+  fpstypes, fpsUtils, rpnFormulaUnit;
 
 const
   COLORSHEETNAME='color_sheet'; //for background color tests

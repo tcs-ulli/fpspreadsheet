@@ -17,7 +17,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  fpstypes, fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 var
@@ -146,7 +146,7 @@ type
 implementation
 
 uses
-  TypInfo, fpsPatches, fpsutils, fpscsv;
+  TypInfo, fpsPatches, fpsutils, fpsnumformatparser, fpscsv;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet

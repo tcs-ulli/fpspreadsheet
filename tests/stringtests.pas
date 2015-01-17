@@ -25,7 +25,7 @@ uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpsallformats, fpsutils, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  fpstypes, fpsallformats, fpsutils, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 var
@@ -182,7 +182,7 @@ begin
       CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
     end;
     TempFile:=NewTempFile;
-    MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
+    MyWorkBook.WriteToFile(TempFile, sfExcel8, true);
   finally
     MyWorkbook.Free;
   end;

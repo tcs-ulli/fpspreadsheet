@@ -10,7 +10,7 @@ program excel2read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, xlsbiff2;
+  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff2;
 
 var
   MyWorkbook: TsWorkbook;

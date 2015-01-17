@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics,
-  Dialogs, StdCtrls, ComCtrls, ExtCtrls, iniFiles, fpSpreadsheet;
+  Dialogs, StdCtrls, ComCtrls, ExtCtrls, iniFiles,
+  fpstypes, fpSpreadsheet;
 
 type
 

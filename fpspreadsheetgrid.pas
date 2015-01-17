@@ -25,7 +25,7 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
   LCLVersion,
-  fpspreadsheet, fpspreadsheetctrls;
+  fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
 const
   {$IF (lcl_fullversion >= 1030000)}

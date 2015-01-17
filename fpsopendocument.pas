@@ -31,14 +31,14 @@ interface
 
 uses
   Classes, SysUtils,
-  {$IF FPC_FULLVERSION >= 20701}
-  zipper,
-  {$ELSE}
-  fpszipper,
-  {$ENDIF}
-  fpspreadsheet,
   laz2_xmlread, laz2_DOM,
   AVL_Tree, math, dateutils,
+ {$IF FPC_FULLVERSION >= 20701}
+  zipper,
+ {$ELSE}
+  fpszipper,
+ {$ENDIF}
+  fpstypes, fpspreadsheet,
   fpsutils, fpsNumFormatParser, fpsxmlcommon;
   
 type
@@ -203,7 +203,8 @@ type
 implementation
 
 uses
-  StrUtils, Variants, fpsPatches, fpsStrings, fpsStreams, fpsExprParser;
+  StrUtils, Variants,
+  fpsPatches, fpsStrings, fpsStreams, fpsExprParser;
 
 const
   { OpenDocument general XML constants }

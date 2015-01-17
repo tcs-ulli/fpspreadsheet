@@ -18,7 +18,7 @@ interface
 
 uses
   Classes, SysUtils, StrUtils,
-  fpspreadsheet, fpsNumFormatParser;
+  fpstypes;
 
 // Exported types
 type
@@ -88,12 +88,6 @@ function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
-function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
-function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
-function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
-function IsTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
-function IsTimeFormat(AFormatStr: String): Boolean; overload;
-
 procedure BuildCurrencyFormatList(AList: TStrings;
   APositive: Boolean; AValue: Double; const ACurrencySymbol: String);
 function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
@@ -157,9 +151,6 @@ procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: S
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
 procedure Unused(const A1, A2, A3);
-
-{ For debugging purposes }
-procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 
 var
   {@@ Default value for the screen pixel density (pixels per inch). Is needed
@@ -842,80 +833,6 @@ function IfThen(ACondition: Boolean;
   AValue1, AValue2: TsNumberFormat): TsNumberFormat;
 begin
   if ACondition then Result := AValue1 else Result := AValue2;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given number format code is for currency,
-  i.e. requires currency symbol.
-
-  @param  AFormat   Built-in number format identifier to be checked
-  @return True if AFormat is nfCurrency or nfCurrencyRed, false otherwise.
--------------------------------------------------------------------------------}
-function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
-begin
-  Result := AFormat in [nfCurrency, nfCurrencyRed];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given number format code is for date/time values.
-
-  @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat is a date/time format (such as nfShortTime),
-           false otherwise
--------------------------------------------------------------------------------}
-function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
-begin
-  Result := AFormat in [{nfFmtDateTime, }nfShortDateTime, nfShortDate, nfLongDate,
-    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given string with formatting codes is for date/time values.
-
-  @param   AFormatStr   String with formatting codes to be checked.
-  @return  True if AFormatStr is a date/time format string (such as 'hh:nn'),
-           false otherwise
--------------------------------------------------------------------------------}
-function IsDateTimeFormat(AFormatStr: string): Boolean;
-var
-  parser: TsNumFormatParser;
-begin
-  parser := TsNumFormatParser.Create(nil, AFormatStr);
-  try
-    Result := parser.IsDateTimeFormat;
-  finally
-    parser.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given built-in number format code is for time values.
-
-  @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat represents to a time-format, false otherwise
--------------------------------------------------------------------------------}
-function IsTimeFormat(AFormat: TsNumberFormat): boolean;
-begin
-  Result := AFormat in [nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM,
-    nfTimeInterval];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given string with formatting codes is for time values.
-
-  @param   AFormatStr   String with formatting codes to be checked
-  @return  True if AFormatStr represents a time-format, false otherwise
--------------------------------------------------------------------------------}
-function IsTimeFormat(AFormatStr: String): Boolean;
-var
-  parser: TsNumFormatParser;
-begin
-  parser := TsNumFormatParser.Create(nil, AFormatStr);
-  try
-    Result := parser.IsTimeFormat;
-  finally
-    parser.Free;
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2310,42 +2227,6 @@ begin
   for i:=1 to 7 do begin
     UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
     UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
-  end;
-end;
-
-
-{ For debugging only }
-
-{@@ ----------------------------------------------------------------------------
-  Write the fonts stored for a given workbook to a file.
--------------------------------------------------------------------------------}
-procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
-var
-  L: TStringList;
-  i: Integer;
-  fnt: TsFont;
-begin
-  L := TStringList.Create;
-  try
-    for i:=0 to AWorkbook.GetFontCount-1 do begin
-      fnt := AWorkbook.GetFont(i);
-      if fnt = nil then
-        L.Add(Format('#%.3d: ---------------', [i]))
-      else
-        L.Add(Format('#%.3d: %-15s %4.1f %s%s%s%s %s', [
-          i,
-          fnt.FontName,
-          fnt.Size,
-          IfThen(fssBold in fnt.Style, 'b', '.'),
-          IfThen(fssItalic in fnt.Style, 'i', '.'),
-          IfThen(fssUnderline in fnt.Style, 'u', '.'),
-          IfThen(fssStrikeOut in fnt.Style, 's', '.'),
-          AWorkbook.GetPaletteColorAsHTMLStr(fnt.Color)
-        ]));
-    end;
-    L.SaveToFile(AFileName);
-  finally
-    L.Free;
   end;
 end;
 

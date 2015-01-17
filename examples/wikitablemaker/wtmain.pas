@@ -10,7 +10,7 @@ uses
   SynEditHighlighter, SynHighlighterHTML, SynHighlighterMulti,
   SynHighlighterCss, SynGutterBase, SynGutterMarks, SynGutterLineNumber,
   SynGutterChanges, SynGutter, SynGutterCodeFolding, fpspreadsheetgrid,
-  fpspreadsheet, fpsallformats;
+  fpstypes, fpspreadsheet, fpsallformats;
 
 type
 
