@@ -52,7 +52,7 @@ const
   CopyTestSheet = 'Copy';
 
 function InitNumber(ANumber: Double; ABkColor: TsColor): TCell;
-begin
+begin      (*
   InitCell(Result);
   Result.ContentType := cctNumber;
   Result.Numbervalue := ANumber;
@@ -60,11 +60,11 @@ begin
   begin
     Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackgroundColor];
     Result.BackgroundColor := ABkColor;
-  end;
+  end;       *)
 end;
 
 function InitString(AString: String; ABkColor: TsColor): TCell;
-begin
+begin          (*
   InitCell(Result);
   Result.ContentType := cctUTF8String;
   Result.UTF8StringValue := AString;
@@ -72,11 +72,11 @@ begin
   begin
     Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackgroundColor];
     Result.BackgroundColor := ABkColor;
-  end;
+  end;           *)
 end;
 
 function InitFormula(AFormula: String; ANumberResult: Double; ABkColor: TsColor): TCell;
-begin
+begin                   (*
   InitCell(Result);
   Result.FormulaValue := AFormula;
   Result.NumberValue := ANumberResult;
@@ -85,7 +85,7 @@ begin
   begin
     Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackgroundColor];
     Result.BackgroundColor := ABkColor;
-  end;
+  end;                    *)
 end;
 
 { IMPORTANT: Carefully check the Test_Copy method if anything is changed here.

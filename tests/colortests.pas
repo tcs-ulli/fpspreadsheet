@@ -150,7 +150,7 @@ begin
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
-      currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
+      currentRGB := MyWorkbook.GetPaletteColor(MyWorksheet.ReadBackgroundColor(MyCell));
       expectedRGB := MyWorkbook.GetPaletteColor(color);
       CheckEquals(expectedRGB, currentRGB,
         'Test unsaved background color, cell ' + CellNotation(MyWorksheet,0,0));
@@ -176,7 +176,7 @@ begin
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
       color := TsColor(row);
-      currentRGB := MyWorkbook.GetPaletteColor(MyCell^.BackgroundColor);
+      currentRGB := MyWorkbook.GetPaletteColor(MyWorksheet.ReadBackgroundColor(MyCell));
       expectedRGB := pal[color];
       CheckEquals(expectedRGB, currentRGB,
         'Test saved background color, cell '+CellNotation(MyWorksheet,Row,Col));
@@ -239,7 +239,7 @@ begin
       MyCell := MyWorksheet.FindCell(row, col);
       if MyCell = nil then
         fail('Error in test code. Failed to get cell.');
-      colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
+      colorInFile := MyWorksheet.ReadCellFont(MyCell).Color;
       currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
       expectedRGB := MyWorkbook.GetPaletteColor(color);
       CheckEquals(expectedRGB, currentRGB,
@@ -267,7 +267,7 @@ begin
         fail('Error in test code. Failed to get cell.');
       color := TsColor(row);
       expectedRGB := pal[color];
-      colorInFile := MyWorkbook.GetFont(MyCell^.FontIndex).Color;
+      colorInFile := MyWorksheet.ReadCellFont(MyCell).Color;
       currentRGB := MyWorkbook.GetPaletteColor(colorInFile);
 
       // Excel2 cannot write the entire palette. The writer had called "FixColor".

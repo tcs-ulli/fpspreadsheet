@@ -6,13 +6,16 @@ interface
 
 uses
   Classes, SysUtils, IniFiles, Forms,
-  fpspreadsheet;
+  fpstypes, fpspreadsheet;
 
 function  CreateIni : TCustomIniFile;
 procedure ReadFormFromIni(ini: TCustomIniFile; ASection: String; AForm: TCustomForm);
 procedure WriteFormToIni(ini: TCustomIniFile; ASection: String; AForm: TCustomForm);
 
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
+function GetFormatFromFileHeader(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean;
+
 
 implementation
 
@@ -80,6 +83,77 @@ begin
     sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
     sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
     else                    Result := '-unknown format-';
+  end;
+end;
+
+function GetFormatFromFileHeader(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean;
+const
+  BIFF2_HEADER: array[0..15] of byte = (
+    $09,$00, $04,$00, $00,$00, $10,$00, $31,$00, $0A,$00, $C8,$00, $00,$00);
+  BIFF58_HEADER: array[0..15] of byte = (
+    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1, $00,$00, $00,$00, $00,$00, $00,$00);
+  BIFF5_MARKER: array[0..7] of widechar = (
+    'B', 'o', 'o', 'k', #0, #0, #0, #0);
+  BIFF8_MARKER:array[0..7] of widechar = (
+    'W', 'o', 'r', 'k', 'b', 'o', 'o', 'k');
+var
+  buf: packed array[0..16] of byte;
+  stream: TStream;
+  i: Integer;
+  ok: Boolean;
+begin
+  buf[0] := 0;  // Silence the compiler...
+
+  Result := false;
+  stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
+  try
+    // Read first 16 bytes
+    stream.ReadBuffer(buf, 16);
+
+    // Check for Excel 2#
+    ok := true;
+    for i:=0 to 15 do
+      if buf[i] <> BIFF2_HEADER[i] then
+      begin
+        ok := false;
+        break;
+      end;
+    if ok then
+    begin
+      SheetType := sfExcel2;
+      Exit(True);
+    end;
+
+    // Check for Excel 5 or 8
+    for i:=0 to 15 do
+      if buf[i] <> BIFF58_HEADER[i] then
+        exit;
+
+    // Further information begins at offset $480:
+    stream.Position := $480;
+    stream.ReadBuffer(buf, 16);
+    // Check for Excel5
+    ok := true;
+    for i:=0 to 7 do
+      if WideChar(buf[i*2]) <> BIFF5_MARKER[i] then
+      begin
+        ok := false;
+        break;
+      end;
+    if ok then
+    begin
+      SheetType := sfExcel5;
+      Exit(True);
+    end;
+    // Check for Excel8
+    for i:=0 to 7 do
+      if WideChar(buf[i*2]) <> BIFF8_MARKER[i] then
+        exit(false);
+    SheetType := sfExcel8;
+    Exit(True);
+  finally
+    stream.Free;
   end;
 end;
 

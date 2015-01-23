@@ -849,6 +849,7 @@ var
   txtalign: TsHorAlignment;
   r: Cardinal;
   w, w0: Integer;
+  fmt: PsCellFormat;
 begin
   Result := false;
   cell := FDrawingCell;
@@ -856,16 +857,19 @@ begin
   // Nothing to do in these cases (like in Excel):
   if (cell = nil) or (cell^.ContentType <> cctUTF8String) then  // ... non-label cells
     exit;
-  if (uffWordWrap in cell^.UsedFormattingFields) then           // ... word-wrap
+
+  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+
+  if (uffWordWrap in fmt^.UsedFormattingFields) then           // ... word-wrap
     exit;
-  if (uffTextRotation in cell^.UsedFormattingFields) and        // ... vertical text
-     (cell^.TextRotation <> trHorizontal)
+  if (uffTextRotation in fmt^.UsedFormattingFields) and        // ... vertical text
+     (fmt^.TextRotation <> trHorizontal)
   then
     exit;
 
   txt := cell^.UTF8Stringvalue;
-  if (uffHorAlign in cell^.UsedFormattingFields) then
-    txtalign := cell^.HorAlignment
+  if (uffHorAlign in fmt^.UsedFormattingFields) then
+    txtalign := fmt^.HorAlignment
   else
     txtalign := haDefault;
   PrepareCanvas(ACol, ARow, AState);
@@ -1160,6 +1164,7 @@ procedure TsCustomWorksheetGrid.DoPrepareCanvas(ACol, ARow: Integer;
 var
   ts: TTextStyle;
   lCell: PCell;
+  fmt: PsCellFormat;
   r, c: Integer;
   fnt: TsFont;
   style: TFontStyles;
@@ -1194,8 +1199,9 @@ begin
     lCell := Worksheet.FindCell(r, c);
     if lCell <> nil then
     begin
+      fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
       // Background color
-      if (uffBackgroundColor in lCell^.UsedFormattingFields) then
+      if (uffBackgroundColor in fmt^.UsedFormattingFields) then
       begin
         if Workbook.FileFormat = sfExcel2 then
         begin
@@ -1206,8 +1212,8 @@ begin
         end else
         begin
           Canvas.Brush.Style := bsSolid;
-          if lCell^.BackgroundColor < Workbook.GetPaletteSize then
-            Canvas.Brush.Color := Workbook.GetPaletteColor(lCell^.BackgroundColor)
+          if fmt^.BackgroundColor < Workbook.GetPaletteSize then
+            Canvas.Brush.Color := Workbook.GetPaletteColor(fmt^.BackgroundColor)
           else
             Canvas.Brush.Color := Color;
         end;
@@ -1217,9 +1223,9 @@ begin
         Canvas.Brush.Color := Color;
       end;
       // Font
-      if (uffFont in lCell^.UsedFormattingFields) then
+      if (uffFont in fmt^.UsedFormattingFields) then
       begin
-        fnt := Workbook.GetFont(lCell^.FontIndex);
+        fnt := Workbook.GetFont(fmt^.FontIndex);
         if fnt <> nil then
         begin
           Canvas.Font.Name := fnt.FontName;
@@ -1233,7 +1239,7 @@ begin
           Canvas.Font.Size := round(fnt.Size);
         end;
       end;
-      if (lCell^.NumberFormat = nfCurrencyRed) and
+      if (fmt^.NumberFormat = nfCurrencyRed) and
          not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
       then
         Canvas.Font.Color := Workbook.GetPaletteColor(scRed);
@@ -1302,7 +1308,7 @@ begin
   cell := Worksheet.GetFirstCell;
   while cell <> nil do
   begin
-    if (uffBorder in cell^.UsedFormattingFields) then
+    if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
     begin
       c := GetGridCol(cell^.Col);
       r := GetGridRow(cell^.Row);
@@ -1442,6 +1448,7 @@ const
 var
   bs: TsCellBorderStyle;
   cell: PCell;
+  fmt: PsCellFormat;
 begin
   if Assigned(Worksheet) then begin
     // Left border
@@ -1459,14 +1466,15 @@ begin
 
     cell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
     if cell <> nil then begin
+      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
       // Diagonal up
-      if cbDiagUp in cell^.Border then begin
-        bs := cell^.Borderstyles[cbDiagUp];
+      if cbDiagUp in fmt^.Border then begin
+        bs := fmt^.Borderstyles[cbDiagUp];
         DrawBorderLine(0, ARect, drawDiagUp, bs);
       end;
       // Diagonal down
-      if cbDiagDown in cell^.Border then begin
-        bs := cell^.BorderStyles[cbDiagDown];
+      if cbDiagDown in fmt^.Border then begin
+        bs := fmt^.BorderStyles[cbDiagDown];
         DrawborderLine(0, ARect, drawDiagDown, bs);
       end;
     end;
@@ -1527,6 +1535,7 @@ var
   rct, saved_rct, temp_rct: TRect;
   clipArea: Trect;
   cell: PCell;
+  fmt: PsCellFormat;
   tmp: Integer = 0;
 
   function IsPushCellActive: boolean;
@@ -1606,9 +1615,10 @@ begin
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
+        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
         if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
-           not (uffTextRotation in cell^.UsedFormattingFields) and
-           (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haRight)
+           not (uffTextRotation in fmt^.UsedFormattingFields) and
+           (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haRight)
         then
           Break;
         // All other cases --> no overflow --> return to initial left cell
@@ -1631,9 +1641,10 @@ begin
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
+        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
         if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
-           not (uffTextRotation in cell^.UsedFormattingFields) and
-           (uffHorAlign in cell^.UsedFormattingFields) and (cell^.HorAlignment <> haLeft)
+           not (uffTextRotation in fmt^.UsedFormattingFields) and
+           (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haLeft)
         then
           Break;
         // All other cases --> no overflow --> return to initial right column
@@ -1786,6 +1797,7 @@ var
   txtRot: TsTextRotation;
   lCell: PCell;
   justif: Byte;
+  fmt: PsCellFormat;
 begin
   if (Worksheet = nil) then
     exit;
@@ -1810,12 +1822,13 @@ begin
   end;
 
   // Cells
-  wrapped := (uffWordWrap in lCell^.UsedFormattingFields) or (lCell^.TextRotation = rtStacked);
-  txtRot := lCell^.TextRotation;
-  vertAlign := lCell^.VertAlignment;
+  fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+  wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
+  txtRot := fmt^.TextRotation;
+  vertAlign := fmt^.VertAlignment;
   if vertAlign = vaDefault then vertAlign := vaBottom;
-  if lCell^.HorAlignment <> haDefault then
-    horAlign := lCell^.HorAlignment
+  if fmt^.HorAlignment <> haDefault then
+    horAlign := fmt^.HorAlignment
   else
   begin
     if (lCell^.ContentType in [cctNumber, cctDateTime]) then
@@ -1915,7 +1928,7 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
     neighbor := Worksheet.FindCell(NewRow, NewCol);
     if neighbor <> nil then
     begin
-      border := neighbor^.Border;
+      border := Worksheet.ReadCelLBorders(neighbor);
       if AInclude then
       begin
         Include(border, ANewBorder);
@@ -1928,6 +1941,7 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
 
 var
   cell: PCell;
+  fmt: PsCellFormat;
 begin
   if Worksheet = nil then
     exit;
@@ -1936,10 +1950,11 @@ begin
   if (Worksheet <> nil) and (cell <> nil) then
     with cell^ do
     begin
-      SetNeighborBorder(Row, Col-1, cbEast, BorderStyles[cbWest], cbWest in Border);
-      SetNeighborBorder(Row, Col+1, cbWest, BorderStyles[cbEast], cbEast in Border);
-      SetNeighborBorder(Row-1, Col, cbSouth, BorderStyles[cbNorth], cbNorth in Border);
-      SetNeighborBorder(Row+1, Col, cbNorth, BorderStyles[cbSouth], cbSouth in Border);
+      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
+      SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
+      SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
+      SetNeighborBorder(Row+1, Col, cbNorth, fmt^.BorderStyles[cbSouth], cbSouth in fmt^.Border);
     end;
 end;
 
@@ -2034,8 +2049,7 @@ begin
   if Assigned(Worksheet) then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) and (uffBackgroundColor in cell^.UsedFormattingFields) then
-      Result := cell^.BackgroundColor;
+    Result := Worksheet.ReadBackgroundColor(cell);
   end;
 end;
 
@@ -2084,8 +2098,7 @@ begin
   if Assigned(Worksheet) then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) and (uffBorder in cell^.UsedFormattingFields) then
-      Result := cell^.Border;
+    Result := Worksheet.ReadCellBorders(cell);
   end;
 end;
 
@@ -2137,8 +2150,7 @@ begin
   if Assigned(Worksheet) then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then
-      Result := cell^.BorderStyles[ABorder];
+    Result := Worksheet.ReadCellBorderStyle(cell, ABorder);
   end;
 end;
 
@@ -2190,17 +2202,10 @@ begin
   if (Workbook <> nil) then
   begin
     fnt := Workbook.GetDefaultFont;
-    if Worksheet <> nil then
+    if  (Worksheet <> nil) then
     begin
       cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-      if (cell <> nil) then
-      begin
-        if (uffBold in cell^.UsedFormattingFields) then
-          fnt := Workbook.GetFont(1)
-        else
-        if (uffFont in cell^.UsedFormattingFields) then
-          fnt := Workbook.GetFont(cell^.FontIndex);
-      end;
+      fnt := Worksheet.ReadCellFont(cell);
     end;
     Convert_sFont_to_Font(fnt, FCellFont);
     Result := FCellFont;
@@ -2253,7 +2258,7 @@ begin
       cell := Worksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
       if cell <> nil then
       begin
-        sFont := Workbook.GetFont(cell^.FontIndex);
+        sFont := Worksheet.ReadCellFont(cell);
         if (sFont.FontName <> sDefFont.FontName) and (sFont.Size <> sDefFont.Size)
           and (sFont.Style <> sDefFont.Style) and (sFont.Color <> sDefFont.Color)
         then
@@ -2282,6 +2287,7 @@ var
   cellR: TRect;
   flags: Cardinal;
   r1,c1,r2,c2: Cardinal;
+  fmt: PsCellFormat;
 begin
   Result := 0;
   if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
@@ -2292,7 +2298,6 @@ begin
   lCell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then
   begin
-    //if lCell^.MergedNeighbors <> [] then begin
     if (lCell^.Mergebase <> nil) then
     begin
       Worksheet.FindMergedRange(lCell, r1, c1, r2, c2);
@@ -2306,15 +2311,16 @@ begin
     if s = '' then
       exit;
     DoPrepareCanvas(ACol, ARow, []);
-    wrapped := (uffWordWrap in lCell^.UsedFormattingFields)
-      or (lCell^.TextRotation = rtStacked);
+    fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+    wrapped := (uffWordWrap in fmt^.UsedFormattingFields)
+      or (fmt^.TextRotation = rtStacked);
     // *** multi-line text ***
     if wrapped then
     begin
       // horizontal
-      if ( (uffTextRotation in lCell^.UsedFormattingFields) and
-           (lCell^.TextRotation in [trHorizontal, rtStacked]))
-         or not (uffTextRotation in lCell^.UsedFormattingFields)
+      if ( (uffTextRotation in fmt^.UsedFormattingFields) and
+           (fmt^.TextRotation in [trHorizontal, rtStacked]))
+         or not (uffTextRotation in fmt^.UsedFormattingFields)
       then
       begin
         cellR := CellRect(ACol, ARow);
@@ -2331,14 +2337,14 @@ begin
     // *** single-line text ***
     begin
       // not rotated
-      if ( not (uffTextRotation in lCell^.UsedFormattingFields) or
-           (lCell^.TextRotation = trHorizontal) )
+      if ( not (uffTextRotation in fmt^.UsedFormattingFields) or
+           (fmt^.TextRotation = trHorizontal) )
       then
         Result := Canvas.TextHeight(s) + 2*constCellPadding
       else
       // rotated by +/- 90°
-      if (uffTextRotation in lCell^.UsedFormattingFields) and
-         (lCell^.TextRotation in [rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation])
+      if (uffTextRotation in fmt^.UsedFormattingFields) and
+         (fmt^.TextRotation in [rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation])
       then
         Result := Canvas.TextWidth(s) + 2*constCellPadding;
     end;
@@ -2389,7 +2395,7 @@ begin
     if lCell <> nil then
     begin
       Result := TrimToCell(lCell);
-      if lCell^.TextRotation = rtStacked then
+      if Worksheet.ReadTextRotation(lCell) = rtStacked then
       begin
         s := Result;
         Result := '';
@@ -2495,7 +2501,7 @@ begin
     then
       result := false
     else
-      ABorderStyle := cell^.BorderStyles[border]
+      ABorderStyle := Worksheet.ReadCellBorderStyle(cell, border)
   end
   else
   // Only neighbor has border, cell has not
@@ -2506,7 +2512,7 @@ begin
     then
       result := false
     else
-      ABorderStyle := neighborcell^.BorderStyles[neighborborder]
+      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder); //neighborcell^.BorderStyles[neighborborder]
   end
   else
   // Both cells have shared border -> use top or left border
@@ -2518,9 +2524,9 @@ begin
       result := false
     else
     if (border in [cbNorth, cbWest]) then
-      ABorderStyle := neighborcell^.BorderStyles[neighborborder]
+      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder) //neighborcell^.BorderStyles[neighborborder]
     else
-      ABorderStyle := cell^.BorderStyles[border];
+      ABorderStyle := Worksheet.ReadCellBorderStyle(cell, border); //cell^.BorderStyles[border];
   end else
     Result := false;
 end;
@@ -2608,8 +2614,10 @@ end;
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
 begin
-  Result := (ACell <> nil) and (uffBorder in ACell^.UsedFormattingfields) and
-    (ABorder in ACell^.Border);
+  if Worksheet = nil then
+    result := false
+  else
+    Result := ABorder in Worksheet.ReadCellBorders(ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3299,6 +3307,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
 begin
+  if csLoading in ComponentState then
+    exit;
+
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin
       ColCount := FInitColCount + 1; //2;
@@ -3400,14 +3411,18 @@ var
   p: Integer;
   isRotated: Boolean;
   isStacked: Boolean;
+  tr: TsTextRotation;
 begin
   Result := Worksheet.ReadAsUTF8Text(ACell);
   if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
   then
     exit;
 
-  isRotated := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation <> trHorizontal);
-  isStacked := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation = rtStacked);
+  tr := Worksheet.ReadTextRotation(ACell);
+  isRotated := (tr <> trHorizontal);
+  isStacked := (tr = rtStacked);
+//  isRotated := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation <> trHorizontal);
+//  isStacked := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation = rtStacked);
 
   // Determine space available in cell
   if isRotated then
@@ -3548,11 +3563,8 @@ begin
   Result := scNotDefined;
   if (Workbook <> nil) and (Worksheet <> nil) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then begin
-      fnt := Workbook.GetFont(cell^.FontIndex);
-      if fnt <> nil then
-        Result := fnt.Color;
-    end;
+    fnt := Worksheet.ReadCellFont(cell);
+    Result := fnt.Color;
   end;
 end;
 
@@ -3581,11 +3593,8 @@ begin
   Result := '';
   if (Workbook <> nil) and (Worksheet <> nil) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then begin
-      fnt := Workbook.GetFont(cell^.FontIndex);
-      if fnt <> nil then
-        Result := fnt.FontName;
-    end;
+    fnt := Worksheet.ReadCellFont(cell);
+    Result := fnt.FontName;
   end;
 end;
 
@@ -3614,11 +3623,8 @@ begin
   Result := -1.0;
   if (Workbook <> nil) and (Worksheet <> nil) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then begin
-      fnt := Workbook.GetFont(cell^.FontIndex);
-      if fnt <> nil then
-        Result := fnt.Size;
-    end;
+    fnt := Worksheet.ReadCellFont(cell);
+    Result := fnt.Size;
   end;
 end;
 
@@ -3647,11 +3653,8 @@ begin
   Result := [];
   if (Workbook <> nil) and (Worksheet <> nil) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then begin
-      fnt := Workbook.GetFont(cell^.FontIndex);
-      if fnt <> nil then
-        Result := fnt.Style;
-    end;
+    fnt := Worksheet.ReadCellFont(cell);
+    Result := fnt.Style;
   end;
 end;
 
@@ -3679,8 +3682,7 @@ begin
   Result := haDefault;
   if Assigned(Worksheet) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if cell <> nil then
-      Result := cell^.HorAlignment;
+    Result := Worksheet.ReadHorAlignment(cell);
   end;
 end;
 
@@ -3718,8 +3720,7 @@ begin
   Result := trHorizontal;
   if Assigned(Worksheet) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then
-      Result := cell^.TextRotation;
+    Result := Worksheet.ReadTextRotation(cell);
   end;
 end;
 
@@ -3747,8 +3748,7 @@ begin
   Result := vaDefault;
   if Assigned(Worksheet) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if cell <> nil then
-      Result := cell^.VertAlignment;
+    Result := Worksheet.ReadVertAlignment(cell);
   end;
 end;
 
@@ -3792,8 +3792,7 @@ begin
   Result := false;
   if Assigned(Worksheet) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) and (uffWordwrap in cell^.UsedFormattingFields) then
-      Result := true;
+    Result := Worksheet.ReadWordwrap(cell);
   end;
 end;
 
@@ -3838,14 +3837,13 @@ end;
 procedure TsCustomWorksheetGrid.SetBackgroundColor(ACol, ARow: Integer;
   AValue: TsColor);
 var
-  c, r: Cardinal;
+  cell: PCell;
 begin
   if Assigned(Worksheet) then begin
     BeginUpdate;
     try
-      c := GetWorksheetCol(ACol);
-      r := GetWorksheetRow(ARow);
-      Worksheet.WriteBackgroundColor(r, c, AValue);
+      cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+      Worksheet.WriteBackgroundColor(cell, AValue);
     finally
       EndUpdate;
     end;
@@ -3870,14 +3868,13 @@ end;
 procedure TsCustomWorksheetGrid.SetCellBorder(ACol, ARow: Integer;
   AValue: TsCellBorders);
 var
-  c, r: Cardinal;
+  cell: PCell;
 begin
   if Assigned(Worksheet) then begin
     BeginUpdate;
     try
-      c := GetWorksheetCol(ACol);
-      r := GetWorksheetRow(ARow);
-      Worksheet.WriteBorders(r, c, AValue);
+      cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+      Worksheet.WriteBorders(cell, AValue);
       FixNeighborCellBorders(ACol, ARow);
     finally
       EndUpdate;
@@ -3902,11 +3899,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder; AValue: TsCellBorderStyle);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then begin
     BeginUpdate;
     try
-      Worksheet.WriteBorderStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), ABorder, AValue);
+      cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+      Worksheet.WriteBorderStyle(cell, ABorder, AValue);
       FixNeighborCellBorders(ACol, ARow);
     finally
       EndUpdate;
@@ -3932,14 +3932,15 @@ end;
 procedure TsCustomWorksheetGrid.SetCellFont(ACol, ARow: Integer; AValue: TFont);
 var
   fnt: TsFont;
+  cell: PCell;
 begin
   FCellFont.Assign(AValue);
   if Assigned(Worksheet) then begin
     fnt := TsFont.Create;
     try
       Convert_Font_To_sFont(FCellFont, fnt);
-      Worksheet.WriteFont(GetWorksheetRow(ARow), GetWorksheetCol(ACol),
-        fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+      cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+      Worksheet.WriteFont(cell, fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
     finally
       fnt.Free;
     end;
@@ -3962,9 +3963,14 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontColor(ACol, ARow: Integer; AValue: TsColor);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteFontColor(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteFontColor(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontColors(ARect: TGridRect; AValue: TsColor);
@@ -3982,9 +3988,14 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontName(ACol, ARow: Integer; AValue: String);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteFontName(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteFontName(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontNames(ARect: TGridRect; AValue: String);
@@ -4003,9 +4014,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetCellFontSize(ACol, ARow: Integer;
   AValue: Single);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteFontSize(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteFontSize(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontSizes(ARect: TGridRect;
@@ -4025,9 +4041,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetCellFontStyle(ACol, ARow: Integer;
   AValue: TsFontStyles);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteFontStyle(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteFontStyle(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetCellFontStyles(ARect: TGridRect;
@@ -4073,9 +4094,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetHorAlignment(ACol, ARow: Integer;
   AValue: TsHorAlignment);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteHorAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteHorAlignment(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetHorAlignments(ARect: TGridRect;
@@ -4149,9 +4175,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetTextRotation(ACol, ARow: Integer;
   AValue: TsTextRotation);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteTextRotation(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteTextRotation(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetTextRotations(ARect: TGridRect;
@@ -4171,9 +4202,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetVertAlignment(ACol, ARow: Integer;
   AValue: TsVertAlignment);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteVertAlignment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteVertAlignment(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetVertAlignments(ARect: TGridRect;
@@ -4193,9 +4229,14 @@ end;
 
 procedure TsCustomWorksheetGrid.SetWordwrap(ACol, ARow: Integer;
   AValue: Boolean);
+var
+  cell: PCell;
 begin
   if Assigned(Worksheet) then
-    Worksheet.WriteWordwrap(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Worksheet.WriteWordwrap(cell, AValue);
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetWordwraps(ARect: TGridRect;

@@ -58,7 +58,7 @@ const
 
   { Function Tokens }
   // _R: reference; _V: value; _A: array
-  // Offset 0: token; offset 1: index to a built-in sheet function ( ➜ 3.111)
+  // Offset 0: token; offset 1: index to a built-in sheet function ( ➜ 3.111) )
   INT_EXCEL_TOKEN_FUNC_R    = $21;
   INT_EXCEL_TOKEN_FUNC_V    = $41;
   INT_EXCEL_TOKEN_FUNC_A    = $61;
@@ -69,7 +69,7 @@ const
   INT_EXCEL_TOKEN_FUNCVAR_A = $62;
 
   { Special tokens }
-  INT_EXCEL_TOKEN_TEXP     = $01;  // cell belongs to shared formula
+  INT_EXCEL_TOKEN_TEXP      = $01;  // cell belongs to shared formula
 
   { Built-in/worksheet functions }
   INT_EXCEL_SHEET_FUNC_COUNT      = 0;

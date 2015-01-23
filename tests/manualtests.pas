@@ -21,7 +21,7 @@ uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, testutils, testregistry, testdecorator, fpcunit,
-  fpsallformats, fpspreadsheet,
+  fpsallformats, fpspreadsheet, fpshelpers,
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
@@ -202,9 +202,7 @@ begin
   for i:=0 to Workbook.GetPaletteSize-1 do begin
     WorkSheet.WriteUTF8Text(i+RowOffset,0,'BACKGROUND COLOR TEST');
     Cell := Worksheet.GetCell(i+RowOffset, 0);
-    Cell^.BackgroundColor := TsColor(i);
-    if not (uffBackgroundColor in Cell^.UsedFormattingFields) then
-      include (Cell^.UsedFormattingFields,uffBackgroundColor);
+    Worksheet.WriteBackgroundColor(Cell, TsColor(i));
     WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be '+Workbook.GetColorName(i)+'. Please check.');
   end;
 end;

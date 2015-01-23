@@ -10,7 +10,7 @@ program excel8write;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpspreadsheet, fpsRPN, xlsbiff8, fpsTypes;
+  Classes, SysUtils, fpspreadsheet, fpsRPN, xlsbiff8, fpsTypes, fpsHelpers;
 
 const
   Str_First = 'First';
@@ -66,7 +66,7 @@ begin
   MyWorksheet.WriteNumber(5, 3, 10);
   lCell := MyWorksheet.GetCell(5, 3);
   lCell^.BackgroundColor := scPurple;
-  lCell^.UsedFormattingFields := [uffBackgroundColor];
+//  lCell^.UsedFormattingFields := [uffBackgroundColor];
   // or: MyWorksheet.WriteBackgroundColor(5, 3, scPurple);
   MyWorksheet.WriteFontColor(5, 3, scWhite);
   MyWorksheet.WriteFontSize(5, 3, 12);

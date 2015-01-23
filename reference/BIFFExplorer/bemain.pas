@@ -12,7 +12,7 @@ uses
   {$else}
   fpolestorage,
   {$endif}
-  fpSpreadsheet,
+  fpstypes, fpSpreadsheet,
   mrumanager, beBIFFGrid, types;
 
 type
@@ -791,7 +791,18 @@ begin
     exit;
   end;
 
-  FFormat := sfExcel8;
+  // .xls files can contain several formats. We look into the header first.
+  if Lowercase(ExtractFileExt(AFileName))=STR_EXCEL_EXTENSION then
+  begin
+    valid := GetFormatFromFileHeader(AFileName, FFormat);
+    // It is possible that valid xls files are not detected correctly. Therefore,
+    // we open them explicitly by trial and error - see below.
+    if not valid then
+      FFormat := sfExcel8;
+    valid := true;
+  end else
+    FFormat := sfExcel8;
+
   while True do begin
     try
       LoadFile(AFileName, FFormat);
@@ -1169,7 +1180,8 @@ begin
         $0031, $0231:  // Font record
           begin
             inc(FFontIndex);
-            data.Index := FFontIndex;
+            if FFontIndex > 3 then data.Index := FFontIndex + 1
+              else data.Index := FFontIndex;
           end;
         $0043, $00E0:  // XF record
           begin

@@ -375,9 +375,11 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
   var
     ls: TsLineStyle;
     clr: TsColor;
+    fmt: PsCellFormat;
   begin
-    ls := ACell^.BorderStyles[ABorder].LineStyle;
-    clr := ACell^.BorderStyles[ABorder].Color;
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    ls := fmt^.BorderStyles[ABorder].LineStyle;
+    clr := fmt^.BorderStyles[ABorder].Color;
     Result := Format('border-%s:%s', [BORDERNAMES[ABorder], LINESTYLES[ls]]);
     if clr <> scBlack then
       Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr) + '; ';
@@ -403,6 +405,7 @@ var
   vertalign: TsVertAlignment;
   r1, c1, r2, c2: Cardinal;
   isHeader: Boolean;
+  borders: TsCellBorders;
 begin
   FWorksheet := Workbook.GetFirstWorksheet();
   FWorksheet.UpdateCaches;
@@ -418,7 +421,7 @@ begin
   // Default font
   lStyleStr := '';
   lFont := FWorkbook.GetDefaultFont;
-  if lFont.FontName <> DEFAULTFONTNAME then
+  if lFont.FontName <> DEFAULT_FONTNAME then
     lStyleStr := lStyleStr + Format('font-family:%s;', [lFont.FontName]);
   if fssBold in lFont.Style then
     lStyleStr := lStyleStr + 'font-weight:bold;';
@@ -426,7 +429,7 @@ begin
     lStyleStr := lStyleStr + 'font-style:italic;';
   if fssUnderline in lFont.Style then
     lStyleStr := lStyleStr + 'text-decoration:underline;';
-  if lFont.Size <> DEFAULTFONTSIZE then
+  if lFont.Size <> DEFAULT_FONTSIZE then
     lStyleStr := lStyleStr + Format('font-size:%.0fpt;', [lFont.Size]);
   if lStyleStr <> '' then
     lCurStr := lCurStr + ' style="' + lStyleStr + '"';
@@ -480,7 +483,7 @@ begin
       lFont := FWorkbook.GetDefaultFont;
       if (uffFont in lCurUsedFormatting) then
       begin
-        lFont := FWorkbook.GetFont(lCell^.FontIndex);
+        lFont := FWorksheet.ReadCellFont(lCell);
         if fssBold in lFont.Style then lCurStr := '<b>' + lCurStr + '</b>';
         if fssItalic in lFont.Style then lCurStr := '<i>' + lCurStr + '</i>';
         if fssUnderline in lFont.Style then lCurStr := '<u>' + lCurStr + '</u>';
@@ -502,7 +505,7 @@ begin
       // Horizontal alignment
       if uffHorAlign in lCurUsedFormatting then
       begin
-        horAlign := lCell^.HorAlignment;
+        horAlign := FWorksheet.ReadHorAlignment(lCell);
         if horAlign = haDefault then
           case lCell^.ContentType of
             cctNumber,
@@ -520,7 +523,7 @@ begin
       // vertical alignment
       if uffVertAlign in lCurUsedFormatting then
       begin
-        vertAlign := lCell^.VertAlignment;
+        vertAlign := FWorksheet.ReadVertAlignment(lCell);
         case vertAlign of
           vaTop    : lStyleStr := lStyleStr + 'vertical-align:top;';
           vaCenter : lStyleStr := lStyleStr + 'vertical-align:center;';
@@ -531,13 +534,14 @@ begin
       // borders
       if uffBorder in lCurUsedFormatting then
       begin
-        if (cbWest in lCell^.Border) then
+        borders := FWorksheet.ReadCellBorders(lCell);
+        if (cbWest in borders) then
           lStyleStr := lStyleStr + DoBorder(cbWest, lCell);
-        if (cbEast in lCell^.Border) then
+        if (cbEast in borders) then
           lStyleStr := lStyleStr + DoBorder(cbEast, lCell);
-        if (cbNorth in lCell^.Border) then
+        if (cbNorth in borders) then
           lStyleStr := lStyleStr + DoBorder(cbNorth, lCell);
-        if (cbSouth in lCell^.Border) then
+        if (cbSouth in borders) then
           lStyleStr := lStyleStr + DoBorder(cbSouth, lCell);
       end;
 

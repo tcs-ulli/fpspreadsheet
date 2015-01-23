@@ -115,21 +115,24 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
-    procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
-      AListIndex: Integer); override;
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
+    procedure WriteNumFormat(AStream: TStream; ANumFormatData: TsNumFormatData;
+      AListIndex: Integer); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
+    {
     procedure WriteXF(AStream: TStream; AFontIndex: Word;
       AFormatIndex: Word; AXF_TYPE_PROT, ATextRotation: Byte; ABorders: TsCellBorders;
       const ABorderStyles: TsCellBorderStyles; AHorAlignment: TsHorAlignment = haDefault;
       AVertAlignment: TsVertAlignment = vaDefault; AWordWrap: Boolean = false;
       AddBackground: Boolean = false; ABackgroundColor: TsColor = scSilver);
     procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
-    procedure WriteXFRecords(AStream: TStream);
+    }
+    procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
+      XFType_Prot: Byte = 0); override;
   public
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
@@ -274,6 +277,7 @@ const
   { XF substructures }
 
    { XF substructures --- see xlscommon! }
+     MASK_XF_ORIENTATION                 = $03;
      XF_ROTATION_HORIZONTAL              = 0;
      XF_ROTATION_STACKED                 = 1;
      XF_ROTATION_90DEG_CCW               = 2;
@@ -304,7 +308,7 @@ const
      );
 
 type
-  TBIFF5DimensionsRecord = packed record
+  TBIFF5_DimensionsRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     FirstRow: Word;
@@ -314,13 +318,25 @@ type
     NotUsed: Word;
   end;
 
-  TBIFF5LabelRecord = packed record
+  TBIFF5_LabelRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     Row: Word;
     Col: Word;
     XFIndex: Word;
     TextLen: Word;
+  end;
+
+  TBIFF5_XFRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FontIndex: Word;
+    NumFormatIndex: Word;
+    XFType_Prot_ParentXF: Word;
+    Align_TextBreak: Byte;
+    TextOrient_UnusedAttrib: Byte;
+    Border_BkGr1: DWord;
+    Border_BkGr2: DWord;
   end;
 
 
@@ -393,7 +409,7 @@ begin
   WriteCodepage(AStream, WorkBookEncoding);
   WriteWindow1(AStream);
   WriteFonts(AStream);
-  WriteFormats(AStream);
+  WriteNumFormats(AStream);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -530,7 +546,7 @@ end;
 }
 procedure TsSpreadBIFF5Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
-  rec: TBIFF5DimensionsRecord;
+  rec: TBIFF5_DimensionsRecord;
   firstCol, lastCol, firstRow, lastRow: Cardinal;
 begin
   { Determine sheet size }
@@ -658,8 +674,8 @@ end;
 *  DESCRIPTION:    Writes an Excel 5 FORMAT record
 *
 *******************************************************************}
-procedure TsSpreadBiff5Writer.WriteFormat(AStream: TStream;
-  AFormatData: TsNumFormatData; AListIndex: Integer);
+procedure TsSpreadBiff5Writer.WriteNumFormat(AStream: TStream;
+  ANumFormatData: TsNumFormatData; AListIndex: Integer);
 type
   TNumFormatRecord = packed record
     RecordID: Word;
@@ -673,7 +689,7 @@ var
   rec: TNumFormatRecord;
   buf: array of byte;
 begin
-  if (AFormatData = nil) or (AFormatData.FormatString = '') then
+  if (ANumFormatData = nil) or (ANumFormatData.FormatString = '') then
     exit;
 
   s := UTF8ToAnsi(NumFormatList.FormatStringForWriting(AListIndex));
@@ -684,7 +700,7 @@ begin
   rec.RecordSize := WordToLE(2 + 1 + len * SizeOf(AnsiChar));
 
   { Format index }
-  rec.FormatIndex := WordToLE(AFormatData.Index);
+  rec.FormatIndex := WordToLE(ANumFormatData.Index);
 
   { Format string }
   { Length in 1 byte }
@@ -751,7 +767,7 @@ const
 var
   L: Word;
   AnsiValue: ansistring;
-  rec: TBIFF5LabelRecord;
+  rec: TBIFF5_LabelRecord;
   buf: array of byte;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
@@ -905,7 +921,7 @@ begin
   { Grid line RGB colour }
   AStream.WriteDWord(DWordToLE(0));
 end;
-
+                                     (*
 {*******************************************************************
 *  TsSpreadBIFF5Writer.WriteXF ()
 *
@@ -981,8 +997,114 @@ begin
   if cbEast in ABorders then dw2 := dw2  or ((DWord(ABorderStyles[cbEast].LineStyle)+1) shl 6);
   AStream.WriteDWord(DWordToLE(dw1));
   AStream.WriteDWord(DWordToLE(dw2));
-end;
+end;                                   *)
 
+procedure TsSpreadBIFF5Writer.WriteXF(AStream: TStream;
+  AFormatRecord: PsCellFormat; XFType_Prot: Byte = 0);
+var
+  rec: TBIFF5_XFRecord;
+  j: Integer;
+  b: Byte;
+  dw1, dw2: DWord;
+begin
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
+  rec.RecordSize := WordToLE(SizeOf(TBIFF5_XFRecord) - 2*SizeOf(Word));
+
+  { Index to font record }
+  rec.FontIndex := 0;
+  if (AFormatRecord <> nil) then begin
+    if (uffBold in AFormatRecord^.UsedFormattingFields) then
+      rec.FontIndex := 1
+    else
+    if (uffFont in AFormatRecord^.UsedFormattingFields) then
+      rec.FontIndex := AFormatRecord^.FontIndex;
+  end;
+  rec.FontIndex := WordToLE(rec.FontIndex);
+
+  { Index to number format }
+  rec.NumFormatIndex := 0;
+  if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields)
+  then begin
+    // The number formats in the FormatList are still in fpc dialect
+    // They will be converted to Excel syntax immediately before writing.
+    j := NumFormatList.Find(AFormatRecord^.NumberFormat, AFormatRecord^.NumberFormatStr);
+    if j > -1 then
+      rec.NumFormatIndex := NumFormatList[j].Index;
+  end;
+  rec.NumFormatIndex := WordToLE(rec.NumFormatIndex);
+
+  { XF type, cell protection and parent style XF }
+  rec.XFType_Prot_ParentXF := XFType_Prot and MASK_XF_TYPE_PROT;
+  if XFType_Prot and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then
+    rec.XFType_Prot_ParentXF := rec.XFType_Prot_ParentXF or MASK_XF_TYPE_PROT_PARENT;
+
+  { Text alignment and text break }
+  if AFormatRecord = nil then
+    b := MASK_XF_VERT_ALIGN_BOTTOM
+  else
+  begin
+    b := 0;
+    if (uffHorAlign in AFormatRecord^.UsedFormattingFields) then
+      case AFormatRecord^.HorAlignment of
+        haLeft   : b := b or MASK_XF_HOR_ALIGN_LEFT;
+        haCenter : b := b or MASK_XF_HOR_ALIGN_CENTER;
+        haRight  : b := b or MASK_XF_HOR_ALIGN_RIGHT;
+        haDefault: ;
+      end;
+    // Since the default vertical alignment is vaDefault but "0" corresponds
+    // to vaTop, we alwys have to write the vertical alignment.
+    case AFormatRecord^.VertAlignment of
+      vaTop    : b := b or MASK_XF_VERT_ALIGN_TOP;
+      vaCenter : b := b or MASK_XF_VERT_ALIGN_CENTER;
+      vaBottom : b := b or MASK_XF_VERT_ALIGN_BOTTOM;
+      else       b := b or MASK_XF_VERT_ALIGN_BOTTOM;
+    end;
+    if (uffWordWrap in AFormatRecord^.UsedFormattingFields) then
+      b := b or MASK_XF_TEXTWRAP;
+  end;
+  rec.Align_TextBreak := b;
+
+  { Text rotation }
+  rec.TextOrient_UnusedAttrib := 0;
+  if (AFormatRecord <> nil) and (uffTextRotation in AFormatRecord^.UsedFormattingFields)
+    then rec.TextOrient_UnusedAttrib := TEXT_ROTATIONS[AFormatRecord^.TextRotation];
+
+  { Cell border lines and background area }
+  dw1 := 0;
+  dw2 := 0;
+  if (AFormatRecord <> nil) then
+  begin
+    if (uffBackgroundColor in AFormatRecord^.UsedFormattingFields) then
+    begin
+      // Background color
+      dw1 := dw1 or (FixColor(AFormatRecord^.BackgroundColor) and $0000007F);
+      dw1 := dw1 or (MASK_XF_FILL_PATT_SOLID shl 16);
+    end;
+    // Border lines
+    if (uffBorder in AFormatRecord^.UsedFormattingFields) then
+    begin
+      dw1 := dw1 or (AFormatRecord^.BorderStyles[cbSouth].Color shl 25);      // Bottom line color
+      dw2 := (FixColor(AFormatRecord^.BorderStyles[cbNorth].Color) shl 9) or  // Top line color
+             (FixColor(AFormatRecord^.BorderStyles[cbWest].Color) shl 16) or  // Left line color
+             (FixColor(AFormatRecord^.BorderStyles[cbEast].Color) shl 23);    // Right line color
+      if cbSouth in AFormatRecord^.Border then
+        dw1 := dw1 or ((DWord(AFormatRecord^.BorderStyles[cbSouth].LineStyle)+1) shl 22);
+      if cbNorth in AFormatRecord^.Border then
+        dw2 := dw2 or  (DWord(AFormatRecord^.BorderStyles[cbNorth].LineStyle)+1);
+      if cbWest in AFormatRecord^.Border then
+        dw2 := dw2  or ((DWord(AFormatRecord^.BorderStyles[cbWest].LineStyle)+1) shl 3);
+      if cbEast in AFormatRecord^.Border then
+        dw2 := dw2  or ((DWord(AFormatRecord^.BorderStyles[cbEast].LineStyle)+1) shl 6);
+    end;
+  end;
+  rec.Border_BkGr1 := dw1;
+  rec.Border_BkGr2 := dw2;
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+  (*
 procedure TsSpreadBIFF5Writer.WriteXFFieldsForFormattingStyles(AStream: TStream);
 var
   i, j: Integer;
@@ -1040,7 +1162,52 @@ begin
 end;
 
 procedure TsSpreadBIFF5Writer.WriteXFRecords(AStream: TStream);
+var
+  i: Integer;
+  fmt: TsCellFormat;
 begin
+  // XF0
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF1
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF2
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF3
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF4
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF5
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF6
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF7
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF8
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF9
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF10
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF11
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF12
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF13
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+  // XF14
+  WriteXFRecord(AStream, MASK_XF_TYPE_PROT_STYLE_XF, nil);
+
+  // XF15 - Default, no formatting
+  WriteXFRecord(AStream, 0, nil);
+
+  // Add all further non-standard format records
+  // The first style was already added --> begin loop with 1
+  for i:=1 to FWorkbook.GetNumFormatRecords-1 do begin
+    fmt := FWorkbook.GetFormatRecord(i);
+    WriteXFRecord(AStream, 0, @fmt);
+  end;
+
+{
   // XF0
   WriteXF(AStream, 0, 0, MASK_XF_TYPE_PROT_STYLE_XF, XF_ROTATION_HORIZONTAL, [], DEFAULT_BORDERSTYLES);
   // XF1
@@ -1077,8 +1244,9 @@ begin
   // Add all further non-standard/built-in formatting styles
   ListAllFormattingStyles;
   WriteXFFieldsForFormattingStyles(AStream);
+  }
 end;
-
+    *)
 
 { TsSpreadBIFF5Reader }
 
@@ -1340,6 +1508,7 @@ begin
 end;
 
 procedure TsSpreadBIFF5Reader.ReadXF(AStream: TStream);
+{
 type
   TXFRecord = packed record                // see p. 224
     FontIndex: Word;                       // Offset 0, Size 2
@@ -1349,109 +1518,136 @@ type
     XFRotation: Byte;                      // Offset 7, Size 1
     Border_Background_1: DWord;            // Offset 8, Size 4
     Border_Background_2: DWord;            // Offset 12, Size 4
-  end;
+  end;                 }
 var
-  lData: TXFListData;
-  xf: TXFRecord;
+  rec: TBIFF5_XFRecord;
+  fmt: TsCellFormat;
+  nfidx: Integer;
+  i: Integer;
+  nfdata: TsNumFormatData;
+  //lData: TXFListData;
+  //xf: TXFRecord;
   b: Byte;
   dw: DWord;
   fill: Word;
 begin
-  xf.FontIndex := 0;  // to silence the compiler...
+  InitFormatRecord(fmt);
+  fmt.ID := FCellFormatList.Count;
 
   // Read the complete xf record into a buffer
-  AStream.ReadBuffer(xf, SizeOf(xf));
-
-  lData := TXFListData.Create;
+  rec.FontIndex := 0;  // to silence the compiler...
+  AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(Word));
 
   // Font index
-  lData.FontIndex := WordLEToN(xf.FontIndex);
+  fmt.FontIndex := WordLEToN(rec.FontIndex);
+  if fmt.FontIndex = 1 then
+    Include(fmt.UsedFormattingFields, uffBold)
+  else if fmt.FontIndex > 1 then
+    Include(fmt.UsedFormattingFields, uffFont);
 
-  // Format index
-  lData.FormatIndex := WordLEToN(xf.FormatIndex);
+  // Number format index
+  nfidx := WordLEToN(rec.NumFormatIndex);
+  i := NumFormatList.FindByIndex(nfidx);
+  if i > -1 then begin
+    nfdata := NumFormatList.Items[i];
+    fmt.NumberFormat := nfdata.NumFormat;
+    fmt.NumberFormatStr := nfdata.FormatString;
+    if nfdata.NumFormat <> nfGeneral then
+      Include(fmt.UsedFormattingFields, uffNumberFormat);
+  end;
 
   // Horizontal text alignment
-  b := xf.Align_TextBreak AND MASK_XF_HOR_ALIGN;
+  b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
   if (b <= ord(High(TsHorAlignment))) then
-    lData.HorAlignment := TsHorAlignment(b)
-  else
-    lData.HorAlignment := haDefault;
+  begin
+    fmt.HorAlignment := TsHorAlignment(b);
+    if fmt.HorAlignment <> haDefault then
+      Include(fmt.UsedFormattingFields, uffHorAlign);
+  end;
 
   // Vertical text alignment
-  b := (xf.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
+  b := (rec.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
   if (b + 1 <= ord(high(TsVertAlignment))) then
   begin
-    lData.VertAlignment := tsVertAlignment(b + 1);      // + 1 due to vaDefault
+    fmt.VertAlignment := TsVertAlignment(b + 1);      // + 1 due to vaDefault
     // Unfortunately BIFF does not provide a "default" vertical alignment code.
     // Without the following correction "non-formatted" cells would always have
     // the uffVertAlign FormattingField set which contradicts the statement of
     // not being formatted.
-    if lData.VertAlignment = vaBottom then
-      lData.VertAlignment := vaDefault;
-  end
-  else
-    lData.VertAlignment := vaDefault;
-
-  // Word wrap
-  lData.WordWrap := (xf.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0;
-
-  // Text rotation
-  case xf.XFRotation of
-    XF_ROTATION_HORIZONTAL : lData.TextRotation := trHorizontal;
-    XF_ROTATION_90DEG_CCW  : lData.TextRotation := rt90DegreeCounterClockwiseRotation;
-    XF_ROTATION_90DEG_CW   : lData.TextRotation := rt90DegreeClockwiseRotation;
-    XF_ROTATION_STACKED    : lData.TextRotation := rtStacked;
+    if fmt.VertAlignment = vaBottom then
+      fmt.VertAlignment := vaDefault;
+    if fmt.VertAlignment <> vaDefault then
+      Include(fmt.UsedFormattingFields, uffVertAlign);
   end;
 
+  // Word wrap
+  if (rec.Align_TextBreak and MASK_XF_TEXTWRAP) <> 0 then
+    Include(fmt.UsedFormattingFields, uffWordwrap);
+
+  // Text rotation
+  case rec.TextOrient_UnusedAttrib and MASK_XF_ORIENTATION of
+    XF_ROTATION_HORIZONTAL : fmt.TextRotation := trHorizontal;
+    XF_ROTATION_90DEG_CCW  : fmt.TextRotation := rt90DegreeCounterClockwiseRotation;
+    XF_ROTATION_90DEG_CW   : fmt.TextRotation := rt90DegreeClockwiseRotation;
+    XF_ROTATION_STACKED    : fmt.TextRotation := rtStacked;
+  end;
+  if fmt.TextRotation <> trHorizontal then
+    Include(fmt.UsedFormattingFields, uffTextRotation);
+
   // Cell borders and background
-  xf.Border_Background_1 := DWordLEToN(xf.Border_Background_1);
-  xf.Border_Background_2 := DWordLEToN(xf.Border_Background_2);
-  lData.Borders := [];
+  rec.Border_BkGr1 := DWordLEToN(rec.Border_BkGr1);
+  rec.Border_BkGr2 := DWordLEToN(rec.Border_BkGr2);
   // The 4 masked bits encode the line style of the border line. 0 = no line.
   // The case of "no line" is not included in the TsLineStyle enumeration.
   // --> correct by subtracting 1!
-  dw := xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM;
+  dw := rec.Border_BkGr1 and MASK_XF_BORDER_BOTTOM;
   if dw <> 0 then
   begin
-    Include(lData.Borders, cbSouth);
-    lData.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 22 - 1);
+    Include(fmt.Border, cbSouth);
+    fmt.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 22 - 1);
+    Include(fmt.UsedFormattingFields, uffBorder);
   end;
-  dw := xf.Border_Background_2 and MASK_XF_BORDER_LEFT;
+  dw := rec.Border_BkGr2 and MASK_XF_BORDER_LEFT;
   if dw <> 0 then
   begin
-    Include(lData.Borders, cbWest);
-    lData.BorderStyles[cbWest].LineStyle := TsLineStyle(dw shr 3 - 1);
+    Include(fmt.Border, cbWest);
+    fmt.BorderStyles[cbWest].LineStyle := TsLineStyle(dw shr 3 - 1);
+    Include(fmt.UsedFormattingFields, uffBorder);
   end;
-  dw := xf.Border_Background_2 and MASK_XF_BORDER_RIGHT;
+  dw := rec.Border_BkGr2 and MASK_XF_BORDER_RIGHT;
   if dw <> 0 then
   begin
-    Include(lData.Borders, cbEast);
-    lData.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 6 - 1);
+    Include(fmt.Border, cbEast);
+    fmt.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 6 - 1);
+    Include(fmt.UsedFormattingFields, uffBorder);
   end;
-  dw := xf.Border_Background_2 and MASK_XF_BORDER_TOP;
+  dw := rec.Border_BkGr2 and MASK_XF_BORDER_TOP;
   if dw <> 0 then
   begin
-    Include(lData.Borders, cbNorth);
-    lData.BorderStyles[cbNorth].LineStyle := TsLineStyle(dw - 1);
+    Include(fmt.Border, cbNorth);
+    fmt.BorderStyles[cbNorth].LineStyle := TsLineStyle(dw - 1);
+    Include(fmt.UsedFormattingFields, uffBorder);
   end;
 
   // Border line colors
-  lData.BorderStyles[cbWest].Color := (xf.Border_Background_2 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
-  lData.BorderStyles[cbEast].Color := (xf.Border_Background_2 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
-  lData.BorderStyles[cbNorth].Color := (xf.Border_Background_2 and MASK_XF_BORDER_TOP_COLOR) shr 9;
-  lData.BorderStyles[cbSouth].Color := (xf.Border_Background_1 and MASK_XF_BORDER_BOTTOM_COLOR) shr 25;
+  fmt.BorderStyles[cbWest].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_LEFT_COLOR) shr 16;
+  fmt.BorderStyles[cbEast].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_RIGHT_COLOR) shr 23;
+  fmt.BorderStyles[cbNorth].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_TOP_COLOR) shr 9;
+  fmt.BorderStyles[cbSouth].Color := (rec.Border_BkGr1 and MASK_XF_BORDER_BOTTOM_COLOR) shr 25;
 
   // Background fill style
-  fill := (xf.Border_Background_1 and MASK_XF_BKGR_FILLPATTERN) shr 16;
+  fill := (rec.Border_BkGr1 and MASK_XF_BKGR_FILLPATTERN) shr 16;
 
   // Background color
   if fill = 0 then
-    lData.BackgroundColor := scTransparent
-  else
-    lData.BackgroundColor := xf.Border_Background_1 and MASK_XF_BKGR_PATTERN_COLOR;
+    fmt.BackgroundColor := scTransparent
+  else begin
+    fmt.BackgroundColor := rec.Border_BkGr1 and MASK_XF_BKGR_PATTERN_COLOR;
+    Include(fmt.UsedFormattingFields, uffBackgroundColor);
+  end;
 
   // Add the XF to the list
-  FXFList.Add(lData);
+  FCellFormatList.Add(fmt);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
@@ -1582,7 +1778,7 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
 var
-  rec: TBIFF5LabelRecord;
+  rec: TBIFF5_LabelRecord;
   L: Word;
   ARow, ACol: Cardinal;
   XF: WORD;
@@ -1592,7 +1788,7 @@ begin
   rec.Row := 0;  // to silence the compiler...
 
   { Read entire record, starting at Row, except for string data }
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF5LabelRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF5_LabelRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := WordLEToN(rec.XFIndex);

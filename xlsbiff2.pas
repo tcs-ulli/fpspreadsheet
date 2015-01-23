@@ -50,7 +50,7 @@ type
     constructor Create(AWorkbook: TsWorkbook);
     procedure ConvertBeforeWriting(var AFormatString: String;
       var ANumFormat: TsNumberFormat); override;
-    function FindFormatOf(AFormatCell: PCell): Integer; override;
+    function Find(ANumFormat: TsNumberFormat; ANumFormatStr: String): Integer; override; overload;
   end;
 
   { TsSpreadBIFF2Reader }
@@ -60,10 +60,12 @@ type
     WorkBookEncoding: TsEncoding;
     FFont: TsFont;
   protected
-    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); override;
+//    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); override;
     procedure CreateNumFormatList; override;
+    {
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); override;
+      }
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadBool(AStream: TStream); override;
     procedure ReadColWidth(AStream: TStream);
@@ -93,7 +95,6 @@ type
 
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
-    function FindXFIndex(ACell: PCell): Word;
     procedure GetCellAttributes(ACell: PCell; XFIndex: Word;
       out Attrib1, Attrib2, Attrib3: Byte);
     { Record writing methods }
@@ -107,11 +108,11 @@ type
     procedure WriteFonts(AStream: TStream);
     procedure WriteFormatCount(AStream: TStream);
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
+    {
     procedure WriteXF(AStream: TStream; AFontIndex, AFormatIndex: byte;
       ABorders: TsCellBorders = []; AHorAlign: TsHorAlignment = haLeft;
-      AddBackground: Boolean = false);
-    procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
-    procedure WriteXFRecords(AStream: TStream);
+      AddBackground: Boolean = false);                                          }
+//    procedure WriteXFFieldsForFormattingStyles(AStream: TStream);
   protected
     procedure CreateNumFormatList; override;
     procedure ListAllNumFormats; override;
@@ -121,12 +122,12 @@ type
       const AValue: Boolean; ACell: PCell); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
-    procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
-      AListIndex: Integer); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
+    procedure WriteNumFormat(AStream: TStream; ANumFormatData: TsNumFormatData;
+      AListIndex: Integer); override;
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -139,6 +140,8 @@ type
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteWindow1(AStream: TStream); override;
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
+      XFType_Prot: Byte = 0); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
@@ -158,8 +161,6 @@ var
     $00FFFF   // $07: cyan
   );
 
-  // However, it looks as if BIFF2 can handle more colors, at least 16 are
-  // compatible with the other formats.
 
 implementation
 
@@ -192,7 +193,7 @@ const
   {%H-}INT_EXCEL_MACRO_SHEET = $0040;
 
 type
-  TBIFF2BoolErrRecord = packed record
+  TBIFF2_BoolErrRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     Row: Word;
@@ -204,7 +205,7 @@ type
     ValueType: Byte;
   end;
 
-  TBIFF2DimensionsRecord = packed record
+  TBIFF2_DimensionsRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     FirstRow: Word;
@@ -213,7 +214,7 @@ type
     LastColPlus1: Word;
   end;
 
-  TBIFF2LabelRecord = packed record
+  TBIFF2_LabelRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     Row: Word;
@@ -224,7 +225,7 @@ type
     TextLen: Byte;
   end;
 
-  TBIFF2NumberRecord = packed record
+  TBIFF2_NumberRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     Row: Word;
@@ -235,7 +236,7 @@ type
     Value: Double;
   end;
 
-  TBIFF2IntegerRecord = packed record
+  TBIFF2_IntegerRecord = packed record
     RecordID: Word;
     RecordSize: Word;
     Row: Word;
@@ -244,6 +245,15 @@ type
     Attrib2: Byte;
     Attrib3: Byte;
     Value: Word;
+  end;
+
+  TBIFF2_XFRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    FontIndex: Byte;
+    NotUsed: Byte;
+    NumFormatIndex_Flags: Byte;
+    HorAlign_Border_BkGr: Byte;
   end;
 
 
@@ -265,30 +275,30 @@ var
 begin
   fs := FWorkbook.FormatSettings;
   cs := fs.CurrencyString;
-  AddFormat( 0, '', nfGeneral);
-  AddFormat( 1, '0', nfFixed);
-  AddFormat( 2, '0.00', nfFixed);
-  AddFormat( 3, '#,##0', nfFixedTh);
-  AddFormat( 4, '#,##0.00', nfFixedTh);
-  AddFormat( 5, '"'+cs+'"#,##0;("'+cs+'"#,##0)', nfCurrency);
-  AddFormat( 6, '"'+cs+'"#,##0;[Red]("'+cs+'"#,##0)', nfCurrencyRed);
-  AddFormat( 7, '"'+cs+'"#,##0.00;("'+cs+'"#,##0.00)', nfCurrency);
-  AddFormat( 8, '"'+cs+'"#,##0.00;[Red]("'+cs+'"#,##0.00)', nfCurrency);
-  AddFormat( 9, '0%', nfPercentage);
-  AddFormat(10, '0.00%', nfPercentage);
-  AddFormat(11, '0.00E+00', nfExp);
-  AddFormat(12, fs.ShortDateFormat, nfShortDate);
-  AddFormat(13, fs.LongDateFormat, nfLongDate);
-  AddFormat(14, 'd/mmm', nfCustom);
-  AddFormat(15, 'mmm/yy', nfCustom);
-  AddFormat(16, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);
-  AddFormat(17, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);
-  AddFormat(18, fs.ShortTimeFormat, nfShortTime);
-  AddFormat(19, fs.LongTimeFormat, nfLongTime);
-  AddFormat(20, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);
+  AddFormat( 0, nfGeneral, '');
+  AddFormat( 1, nfFixed, '0');
+  AddFormat( 2, nfFixed, '0.00');
+  AddFormat( 3, nfFixedTh, '#,##0');
+  AddFormat( 4, nfFixedTh, '#,##0.00');
+  AddFormat( 5, nfCurrency, Format('"%s"#,##0;("%s"#,##0)', [cs, cs]));
+  AddFormat( 6, nfCurrencyRed, Format('"%s"#,##0;[Red]("%s"#,##0)', [cs, cs]));
+  AddFormat( 7, nfCurrency, Format('"%s"#,##0.00;("%s"#,##0.00)', [cs, cs]));
+  AddFormat( 8, nfCurrencyRed, Format('"%s"#,##0.00;[Red]("%s"#,##0.00)', [cs, cs]));
+  AddFormat( 9, nfPercentage, '0%');
+  AddFormat(10, nfPercentage, '0.00%');
+  AddFormat(11, nfExp, '0.00E+00');
+  AddFormat(12, nfShortDate, fs.ShortDateFormat);
+  AddFormat(13, nfLongDate, fs.LongDateFormat);
+  AddFormat(14, nfCustom, 'd/mmm');
+  AddFormat(15, nfCustom, 'mmm/yy');
+  AddFormat(16, nfShortTimeAM, AddAMPM(fs.ShortTimeFormat, fs));
+  AddFormat(17, nfLongTimeAM, AddAMPM(fs.LongTimeFormat, fs));
+  AddFormat(18, nfShortTime, fs.ShortTimeFormat);
+  AddFormat(19, nfLongTime, fs.LongTimeFormat);
+  AddFormat(20, nfShortDateTime, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat);
 
-  FFirstFormatIndexInFile := 0;  // BIFF2 stores built-in formats to file.
-  FNextFormatIndex := 21;    // not needed - there are not user-defined formats
+  FFirstNumFormatIndexInFile := 0; // BIFF2 stores built-in formats to file.
+  FNextNumFormatIndex := 21;       // not needed - there are not user-defined formats
 end;
 
 
@@ -313,7 +323,44 @@ begin
   end;
 end;
 
+function TsBIFF2NumFormatList.Find(ANumFormat: TsNumberFormat;
+  ANumFormatStr: String): Integer;
+var
+  parser: TsNumFormatParser;
+  decs: Integer;
+  dt: string;
+begin
+  Result := 0;
 
+  parser := TsNumFormatParser.Create(Workbook, ANumFormatStr);
+  try
+    decs := parser.Decimals;
+    dt := parser.GetDateTimeCode(0);
+  finally
+    parser.Free;
+  end;
+
+  case ANumFormat of
+    nfGeneral      : exit;
+    nfFixed        : Result := IfThen(decs = 0, 1, 2);
+    nfFixedTh      : Result := IfThen(decs = 0, 3, 4);
+    nfCurrency     : Result := IfThen(decs = 0, 5, 7);
+    nfCurrencyRed  : Result := IfThen(decs = 0, 6, 8);
+    nfPercentage   : Result := IfThen(decs = 0, 9, 10);
+    nfExp          : Result := 11;
+    nfShortDate    : Result := 12;
+    nfLongDate     : Result := 13;
+    nfShortTimeAM  : Result := 16;
+    nfLongTimeAM   : Result := 17;
+    nfShortTime    : Result := 18;
+    nfLongTime     : Result := 19;
+    nfShortDateTime: Result := 20;
+    nfCustom       : if dt = 'dm' then Result := 14 else
+                     if dt = 'my' then Result := 15;
+  end;
+end;
+
+                        (*
 function TsBIFF2NumFormatList.FindFormatOf(AFormatCell: PCell): Integer;
 var
   parser: TsNumFormatParser;
@@ -349,7 +396,7 @@ begin
                      if dt = 'my' then Result := 15;
   end;
 end;
-
+                          *)
 
 { TsSpreadBIFF2Reader }
 
@@ -358,7 +405,7 @@ begin
   inherited Create(AWorkbook);
   FLimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
 end;
-
+                   (*
 procedure TsSpreadBIFF2Reader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
 var
   xfData: TXFListData;
@@ -396,7 +443,7 @@ begin
       Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
   end;
 end;
-
+                     *)
 { Creates the correct version of the number format list.
   It is for BIFF2 and BIFF3 file formats. }
 procedure TsSpreadBIFF2Reader.CreateNumFormatList;
@@ -404,7 +451,7 @@ begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFF2NumFormatList.Create(Workbook);
 end;
-
+                                   (*
 { Extracts the number format data from an XF record indexed by AXFIndex.
   Note that BIFF2 supports only 21 formats. }
 procedure TsSpreadBIFF2Reader.ExtractNumberFormat(AXFIndex: WORD;
@@ -421,7 +468,7 @@ begin
     ANumberFormatStr := '';
   end;
 end;
-
+                                     *)
 procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
 var
   ARow, ACol: Cardinal;
@@ -443,14 +490,14 @@ end;
   but also an ERROR value; BIFF stores them in the same record. }
 procedure TsSpreadBIFF2Reader.ReadBool(AStream: TStream);
 var
-  rec: TBIFF2BoolErrRecord;
+  rec: TBIFF2_BoolErrRecord;
   r, c: Cardinal;
   xf: Word;
   cell: PCell;
 begin
   { Read entire record, starting at Row }
   rec.Row := 0;  // to silence the compiler...
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2BoolErrRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_BoolErrRecord) - 2*SizeOf(Word));
   r := WordLEToN(rec.Row);
   c := WordLEToN(rec.Col);
   xf := rec.Attrib1 and $3F;
@@ -691,7 +738,7 @@ end;
 
 procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
 var
-  rec: TBIFF2LabelRecord;
+  rec: TBIFF2_LabelRecord;
   L: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
@@ -701,7 +748,7 @@ var
 begin
   { Read entire record, starting at Row, except for string data }
   rec.Row := 0;  // to silence the compiler...
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2LabelRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_LabelRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := rec.Attrib1 and $3F;
@@ -741,7 +788,7 @@ end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
 var
-  rec: TBIFF2NumberRecord;
+  rec: TBIFF2_NumberRecord;
   ARow, ACol: Cardinal;
   XF: Word;
   value: Double = 0.0;
@@ -752,7 +799,7 @@ var
 begin
   { Read entire record, starting at Row }
   rec.Row := 0;  // to silence the compiler...
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_NumberRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := rec.Attrib1 and $3F;
@@ -785,11 +832,11 @@ var
   XF: Word;
   AWord  : Word = 0;
   cell: PCell;
-  rec: TBIFF2IntegerRecord;
+  rec: TBIFF2_IntegerRecord;
 begin
   { Read record into buffer }
   rec.Row := 0;   // to silence the comiler...
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2NumberRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_NumberRecord) - 2*SizeOf(Word));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := rec.Attrib1 and $3F;
@@ -969,7 +1016,8 @@ procedure TsSpreadBIFF2Reader.ReadXF(AStream: TStream);
                   4   10H   1 = Cell has right black border
                   5   20H   1 = Cell has top black border
                   6   40H   1 = Cell has bottom black border
-                  7   80H   1 = Cell has shaded background }
+                  7   80H   1 = Cell has shaded background
+
 type
   TXFRecord = packed record
     FontIndex: byte;
@@ -977,60 +1025,80 @@ type
     NumFormat_Flags: byte;
     HorAlign_Border_BackGround: Byte;
   end;
+}
 var
-  lData: TXFListData;
-  xf: TXFRecord;
+  rec: TBIFF2_XFRecord;
+  fmt: TsCellFormat;
   b: Byte;
+  nfdata: TsNumFormatData;
+  i: Integer;
 begin
   // Read entire xf record into buffer
-  xf.FontIndex := 0;  // to silence the compiler...
-  AStream.ReadBuffer(xf, SizeOf(xf));
+  InitFormatRecord(fmt);
+  fmt.ID := FCellFormatList.Count;
 
-  lData := TXFListData.Create;
+  rec.FontIndex := 0;  // to silence the compiler...
+  AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(word));
 
   // Font index
-  lData.FontIndex := xf.FontIndex;
+  fmt.FontIndex := rec.FontIndex;
+  if fmt.FontIndex = 1 then
+    Include(fmt.UsedFormattingFields, uffBold)
+  else if fmt.FontIndex > 1 then
+    Include(fmt.UsedFormattingFields, uffFont);
 
-  // Format index
-  lData.FormatIndex := xf.NumFormat_Flags and $3F;
+  // Number format index
+  b := rec.NumFormatIndex_Flags and $3F;
+  i := NumFormatList.FindByIndex(b);
+  if i > -1 then begin
+    nfdata := NumFormatList.Items[i];
+    fmt.NumberFormat := nfdata.NumFormat;
+    fmt.NumberFormatStr := nfdata.FormatString;
+    if nfdata.NumFormat <> nfGeneral then
+      Include(fmt.UsedFormattingFields, uffNumberFormat);
+  end;
 
   // Horizontal alignment
-  b := xf.HorAlign_Border_Background and MASK_XF_HOR_ALIGN;
+  b := rec.HorAlign_Border_BkGr and MASK_XF_HOR_ALIGN;
   if (b <= ord(High(TsHorAlignment))) then
-    lData.HorAlignment := TsHorAlignment(b)
-  else
-    lData.HorAlignment := haDefault;
+  begin
+    fmt.HorAlignment := TsHorAlignment(b);
+    if fmt.HorAlignment <> haDefault then
+      Include(fmt.UsedFormattingFields, uffHorAlign);
+  end;
 
   // Vertical alignment - not used in BIFF2
-  lData.VertAlignment := vaBottom;
+  fmt.VertAlignment := vaDefault;
 
   // Word wrap - not used in BIFF2
-  lData.WordWrap := false;
+  // -- nothing to do here
 
   // Text rotation - not used in BIFF2
-  lData.TextRotation := trHorizontal;
+  // -- nothing to do here
 
   // Borders
-  lData.Borders := [];
-  if xf.HorAlign_Border_Background and $08 <> 0 then
-    Include(lData.Borders, cbWest);
-  if xf.HorAlign_Border_Background and $10 <> 0 then
-    Include(lData.Borders, cbEast);
-  if xf.HorAlign_Border_Background and $20 <> 0 then
-    Include(lData.Borders, cbNorth);
-  if xf.HorAlign_Border_Background and $40 <> 0 then
-    Include(lData.Borders, cbSouth);
+  fmt.Border := [];
+  if rec.HorAlign_Border_BkGr and $08 <> 0 then
+    Include(fmt.Border, cbWest);
+  if rec.HorAlign_Border_BkGr and $10 <> 0 then
+    Include(fmt.Border, cbEast);
+  if rec.HorAlign_Border_BkGr and $20 <> 0 then
+    Include(fmt.Border, cbNorth);
+  if rec.HorAlign_Border_BkGr and $40 <> 0 then
+    Include(fmt.Border, cbSouth);
+  if fmt.Border <> [] then
+    Include(fmt.UsedFormattingFields, uffBorder);
 
   // Background color not supported, only shaded background
-  if xf.HorAlign_Border_Background and $80 <> 0 then
-    lData.BackgroundColor := 1    // encodes "shaded background = true"
-  else
-    ldata.BackgroundColor := 0;   // encodes "shaded background = false"
+  if rec.HorAlign_Border_BkGr and $80 <> 0 then
+  begin
+    fmt.BackgroundColor := 1;    // encodes "shaded background = true"
+    Include(fmt.UsedFormattingFields, uffBackgroundColor);
+  end else
+    fmt.BackgroundColor := 0;   // encodes "shaded background = false"
 
-  // Add the decoded data to the list
-  FXFList.Add(lData);
-
-  ldata := TXFListData(FXFList.Items[FXFList.Count-1]);
+  // Add the decoded data to the format list
+  FCellFormatList.Add(fmt);
 end;
 
 
@@ -1049,7 +1117,7 @@ begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFF2NumFormatList.Create(Workbook);
 end;
-
+                                    (*
 function TsSpreadBIFF2Writer.FindXFIndex(ACell: PCell): Word;
 var
   lIndex: Integer;
@@ -1065,18 +1133,22 @@ begin
 
     // Carefully check the index
     if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
-      raise Exception.Create('[TsSpreadBIFF2Writer.WriteXFIndex] Invalid index, this should not happen!');
+      raise Exception.Create('[TsSpreadBIFF2Writer.FindXFIndex] Invalid index, this should not happen!');
     Result := FFormattingStyles[lIndex].Row;
   end;
-end;
+end;                                  *)
 
 { Determines the cell attributes needed for writing a cell content record, such
   as WriteLabel, WriteNumber, etc.
   The cell attributes contain, in bit masks, xf record index, font index, borders, etc.}
 procedure TsSpreadBIFF2Writer.GetCellAttributes(ACell: PCell; XFIndex: Word;
   out Attrib1, Attrib2, Attrib3: Byte);
+var
+  fmt: PsCellFormat;
 begin
-  if ACell^.UsedFormattingFields = [] then begin
+  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+
+  if fmt^.UsedFormattingFields = [] then begin
     Attrib1 := 15;
     Attrib2 := 0;
     Attrib3 := 0;
@@ -1090,9 +1162,9 @@ begin
   Attrib1 := Min(XFIndex, $3F) and $3F;
 
   // 2nd byte:
-  //   Mask $3F: Index to FORMAT record
+  //   Mask $3F: Index to FORMAT record ("FORMAT" = number format!)
   //   Mask $C0: Index to FONT record
-  Attrib2 := ACell^.FontIndex shr 6;
+  Attrib2 := fmt^.FontIndex shr 6;
 
   // 3rd byte
   //   Mask $07: horizontal alignment
@@ -1102,15 +1174,15 @@ begin
   //   Mask $40: Cell has bottom border
   //   Mask $80: Cell has shaded background
   Attrib3 := 0;
-  if uffHorAlign in ACell^.UsedFormattingFields then
-    Attrib3 := ord (ACell^.HorAlignment);
-  if uffBorder in ACell^.UsedFormattingFields then begin
-    if cbNorth in ACell^.Border then Attrib3 := Attrib3 or $20;
-    if cbWest in ACell^.Border then Attrib3 := Attrib3 or $08;
-    if cbEast in ACell^.Border then Attrib3 := Attrib3 or $10;
-    if cbSouth in ACell^.Border then Attrib3 := Attrib3 or $40;
+  if uffHorAlign in fmt^.UsedFormattingFields then
+    Attrib3 := ord (fmt^.HorAlignment);
+  if uffBorder in fmt^.UsedFormattingFields then begin
+    if cbNorth in fmt^.Border then Attrib3 := Attrib3 or $20;
+    if cbWest in fmt^.Border then Attrib3 := Attrib3 or $08;
+    if cbEast in fmt^.Border then Attrib3 := Attrib3 or $10;
+    if cbSouth in fmt^.Border then Attrib3 := Attrib3 or $40;
   end;
-  if uffBackgroundColor in ACell^.UsedFormattingFields then
+  if (uffBackgroundColor in fmt^.UsedFormattingFields) and (fmt^.Backgroundcolor <> scWhite) then
     Attrib3 := Attrib3 or $80;
 end;
 
@@ -1131,51 +1203,56 @@ end;
   Is called from all writing methods of cell contents. }
 procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell;
   XFIndex: Word);
+type
+  TCellFmtRecord = packed record
+    XFIndex_Locked_Hidden: Byte;
+    Format_Font: Byte;
+    Align_Border_BkGr: Byte;
+  end;
 var
-  b: Byte;
+  rec: TCellFmtRecord;
+  fmt: PsCellFormat;
   w: Word;
 begin
-  if ACell^.UsedFormattingFields = [] then
+  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  rec.XFIndex_Locked_Hidden := 0;  // to silence the compiler...
+  FillChar(rec, SizeOf(rec), 0);
+
+  if fmt^.UsedFormattingFields <> [] then
   begin
-    AStream.WriteByte($0);
-    AStream.WriteByte($0);
-    AStream.WriteByte($0);
-    Exit;
+    // 1st byte:
+    //   Mask $3F: Index to XF record
+    //   Mask $40: 1 = Cell is locked
+    //   Mask $80: 1 = Formula is hidden
+    rec.XFIndex_Locked_Hidden := Min(XFIndex, $3F) and $3F;
+    //  AStream.WriteByte(Min(XFIndex, $3F) and $3F);
+
+    // 2nd byte:
+    //   Mask $3F: Index to FORMAT record
+    //   Mask $C0: Index to FONT record
+    w := fmt^.FontIndex shr 6;   // was shl --> MUST BE shr!   // ??????????????????????
+    rec.Format_Font := Lo(w);
+    //  AStream.WriteByte(b);
+
+    // 3rd byte
+    //   Mask $07: horizontal alignment
+    //   Mask $08: Cell has left border
+    //   Mask $10: Cell has right border
+    //   Mask $20: Cell has top border
+    //   Mask $40: Cell has bottom border
+    //   Mask $80: Cell has shaded background
+    if uffHorAlign in fmt^.UsedFormattingFields then
+      rec.Align_Border_BkGr := ord(fmt^.HorAlignment);
+    if uffBorder in fmt^.UsedFormattingFields then begin
+      if cbNorth in fmt^.Border then rec.Align_Border_BkGr := rec.Align_Border_BkGr or $20;
+      if cbWest in fmt^.Border then rec.Align_Border_BkGr := rec.Align_Border_BkGr or $08;
+      if cbEast in fmt^.Border then rec.Align_Border_BkGr := rec.Align_Border_BkGr or $10;
+      if cbSouth in fmt^.Border then rec.Align_Border_BkGr := rec.Align_Border_BkGr or $40;
+    end;
+    if uffBackgroundColor in fmt^.UsedFormattingFields then
+      rec.Align_Border_BkGr := rec.Align_Border_BkGr or $80;
   end;
-
-  // 1st byte:
-  //   Mask $3F: Index to XF record
-  //   Mask $40: 1 = Cell is locked
-  //   Mask $80: 1 = Formula is hidden
-  AStream.WriteByte(Min(XFIndex, $3F) and $3F);
-
-  // 2nd byte:
-  //   Mask $3F: Index to FORMAT record
-  //   Mask $C0: Index to FONT record
-  w := ACell.FontIndex shr 6;   // was shl --> MUST BE shr!
-  b := Lo(w);
-  //b := ACell.FontIndex shl 6;
-  AStream.WriteByte(b);
-
-  // 3rd byte
-  //   Mask $07: horizontal alignment
-  //   Mask $08: Cell has left border
-  //   Mask $10: Cell has right border
-  //   Mask $20: Cell has top border
-  //   Mask $40: Cell has bottom border
-  //   Mask $80: Cell has shaded background
-  b := 0;
-  if uffHorAlign in ACell^.UsedFormattingFields then
-    b := ord (ACell^.HorAlignment);
-  if uffBorder in ACell^.UsedFormattingFields then begin
-    if cbNorth in ACell^.Border then b := b or $20;
-    if cbWest in ACell^.Border then b := b or $08;
-    if cbEast in ACell^.Border then b := b or $10;
-    if cbSouth in ACell^.Border then b := b or $40;
-  end;
-  if uffBackgroundColor in ACell^.UsedFormattingFields then
-    b := b or $80;
-  AStream.WriteByte(b);
+  AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
 {
@@ -1235,7 +1312,7 @@ end;
 procedure TsSpreadBIFF2Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
 var
   firstRow, lastRow, firstCol, lastCol: Cardinal;
-  rec: TBIFF2DimensionsRecord;
+  rec: TBIFF2_DimensionsRecord;
 begin
   { Determine sheet size }
   GetSheetDimensions(AWorksheet, firstRow, lastRow, firstCol, lastCol);
@@ -1282,7 +1359,7 @@ begin
   WriteBOF(AStream);
     WriteFonts(AStream);
     WriteFormatCount(AStream);
-    WriteFormats(AStream);
+    WriteNumFormats(AStream);
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
     WriteDimensions(AStream, FWorksheet);
@@ -1377,6 +1454,86 @@ begin
 end;
 
 procedure TsSpreadBIFF2Writer.WriteXF(AStream: TStream;
+ AFormatRecord: PsCellFormat; XFType_Prot: Byte = 0);
+var
+  rec: TBIFF2_XFRecord;
+  b: Byte;
+  j: Integer;
+  clr: TsColorvalue;
+begin
+  Unused(XFType_Prot);
+
+  { BIFF Record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
+  rec.RecordSize := WordToLE(SizeOf(TBIFF2_XFRecord) - 2*SizeOf(word));
+
+  { Index to FONT record }
+  rec.FontIndex := 0;
+  if (AFormatRecord <> nil) then
+  begin
+    if (uffBold in AFormatRecord^.UsedFormattingFields) then
+      rec.FontIndex := 1
+    else
+    if (uffFont in AFormatRecord^.UsedFormattingFields) then
+      rec.FontIndex := AFormatRecord^.FontIndex;
+  end;
+
+  { Not used byte }
+  rec.NotUsed := 0;
+
+  { Number format index and cell flags
+      Bit   Mask  Contents
+      ----- ----  --------------------------------
+      5-0   $3F   Index to (number) FORMAT record
+       6    $40   1 = Cell is locked
+       7    $80   1 = Formula is hidden }
+  rec.NumFormatIndex_Flags := 0;
+  if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields) then
+  begin
+    // The number formats in the FormatList are still in fpc dialect
+    // They will be converted to Excel syntax immediately before writing.
+    j := NumFormatList.Find(AFormatRecord^.NumberFormat, AFormatRecord^.NumberFormatStr);
+    if j > -1 then
+      rec.NumFormatIndex_Flags := NumFormatList[j].Index;
+
+    // Cell flags not used, so far...
+  end;
+
+  {Horizontal alignment, border style, and background
+  Bit  Mask  Contents
+  ---  ----  ------------------------------------------------
+  2-0  $07   XF_HOR_ALIGN – Horizontal alignment (0=General, 1=Left, 2=Centred, 3=Right)
+   3   $08   1 = Cell has left black border
+   4   $10   1 = Cell has right black border
+   5   $20   1 = Cell has top black border
+   6   $40   1 = Cell has bottom black border
+   7   $80   1 = Cell has shaded background }
+  b := 0;
+  if (AFormatRecord <> nil) then
+  begin
+    if (uffHorAlign in AFormatRecord^.UsedFormattingFields) then
+      b := b + byte(AFormatRecord^.HorAlignment);
+    if (uffBorder in AFormatRecord^.UsedFormattingFields) then
+    begin
+      if cbWest in AFormatRecord^.Border then b := b or $08;
+      if cbEast in AFormatRecord^.Border then b := b or $10;
+      if cbNorth in AFormatRecord^.Border then b := b or $20;
+      if cbSouth in AFormatRecord^.Border then b := b or $40;
+    end;
+    if (uffBackgroundColor in AFormatRecord^.UsedFormattingFields) then
+    begin
+      clr := Workbook.GetPaletteColor(AFormatRecord^.BackgroundColor);
+      if clr <> $FFFFFF then
+        b := b or $80;
+    end;
+  end;
+  rec.HorAlign_Border_BkGr:= b;
+
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+                              (*
+procedure TsSpreadBIFF2Writer.WriteXF(AStream: TStream;
   AFontIndex, AFormatIndex: byte; ABorders: TsCellBorders = [];
   AHorAlign: TsHorAlignment = haLeft; AddBackground: Boolean = false);
 var
@@ -1449,28 +1606,28 @@ end;
 
 procedure TsSpreadBIFF2Writer.WriteXFRecords(AStream: TStream);
 begin
-  WriteXF(AStream, 0, 0);  // XF0
-  WriteXF(AStream, 0, 0);  // XF1
-  WriteXF(AStream, 0, 0);  // XF2
-  WriteXF(AStream, 0, 0);  // XF3
-  WriteXF(AStream, 0, 0);  // XF4
-  WriteXF(AStream, 0, 0);  // XF5
-  WriteXF(AStream, 0, 0);  // XF6
-  WriteXF(AStream, 0, 0);  // XF7
-  WriteXF(AStream, 0, 0);  // XF8
-  WriteXF(AStream, 0, 0);  // XF9
-  WriteXF(AStream, 0, 0);  // XF10
-  WriteXF(AStream, 0, 0);  // XF11
-  WriteXF(AStream, 0, 0);  // XF12
-  WriteXF(AStream, 0, 0);  // XF13
-  WriteXF(AStream, 0, 0);  // XF14
-  WriteXF(AStream, 0, 0);  // XF15 - Default, no formatting
+  WriteXFRecord(AStream, 0, 0);  // XF0
+  WriteXFRecord(AStream, 0, 0);  // XF1
+  WriteXFRecord(AStream, 0, 0);  // XF2
+  WriteXFRecord(AStream, 0, 0);  // XF3
+  WriteXFRecord(AStream, 0, 0);  // XF4
+  WriteXFRecord(AStream, 0, 0);  // XF5
+  WriteXFRecord(AStream, 0, 0);  // XF6
+  WriteXFRecord(AStream, 0, 0);  // XF7
+  WriteXFRecord(AStream, 0, 0);  // XF8
+  WriteXFRecord(AStream, 0, 0);  // XF9
+  WriteXFRecord(AStream, 0, 0);  // XF10
+  WriteXFRecord(AStream, 0, 0);  // XF11
+  WriteXFRecord(AStream, 0, 0);  // XF12
+  WriteXFRecord(AStream, 0, 0);  // XF13
+  WriteXFRecord(AStream, 0, 0);  // XF14
+  WriteXFRecord(AStream, 0, 0);  // XF15 - Default, no formatting
 
    // Add all further non-standard/built-in formatting styles
   ListAllFormattingStyles;
   WriteXFFieldsForFormattingStyles(AStream);
 end;
-
+                                   *)
 {
   Writes an Excel 2 BOF record
 
@@ -1526,7 +1683,7 @@ begin
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONT));
-  AStream.WriteWord(WordToLE(4 + 1 + Len * Sizeof(AnsiChar)));
+  AStream.WriteWord(WordToLE(4 + 1 + Len * SizeOf(AnsiChar)));
 
   { Height of the font in twips = 1/20 of a point }
   AStream.WriteWord(WordToLE(round(font.Size*20)));
@@ -1561,8 +1718,8 @@ begin
     WriteFont(AStream, i);
 end;
 
-procedure TsSpreadBiff2Writer.WriteFormat(AStream: TStream;
-  AFormatData: TsNumFormatData; AListIndex: Integer);
+procedure TsSpreadBiff2Writer.WriteNumFormat(AStream: TStream;
+  ANumFormatData: TsNumFormatData; AListIndex: Integer);
 type
   TNumFormatRecord = packed record
     RecordID: Word;
@@ -1575,7 +1732,7 @@ var
   rec: TNumFormatRecord;
   buf: array of byte;
 begin
-  Unused(AFormatData);
+  Unused(ANumFormatData);
 
   s := NumFormatList.FormatStringForWriting(AListIndex);
   len := Length(s);
@@ -1748,7 +1905,7 @@ end;
 procedure TsSpreadBIFF2Writer.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
 var
-  rec: TBIFF2BoolErrRecord;
+  rec: TBIFF2_BoolErrRecord;
   xf: Integer;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
@@ -1781,7 +1938,7 @@ end;
 procedure TsSpreadBIFF2Writer.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 var
-  rec: TBIFF2BoolErrRecord;
+  rec: TBIFF2_BoolErrRecord;
   xf: Integer;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
@@ -1874,7 +2031,7 @@ const
 var
   L: Byte;
   AnsiText: ansistring;
-  rec: TBIFF2LabelRecord;
+  rec: TBIFF2_LabelRecord;
   buf: array of byte;
 var
   xf: Word;
@@ -1937,7 +2094,7 @@ procedure TsSpreadBIFF2Writer.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
 var
   xf: Word;
-  rec: TBIFF2NumberRecord;
+  rec: TBIFF2_NumberRecord;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;

@@ -22,8 +22,9 @@ http://openxmldeveloper.org/default.aspx
 also:
 http://office.microsoft.com/en-us/excel-help/excel-specifications-and-limits-HP010073849.aspx#BMworksheetworkbook
 
-AUTHORS: Felipe Monteiro de Carvalho
+AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
 }
+
 unit xlsxooxml;
 
 {$ifdef fpc}
@@ -61,7 +62,6 @@ type
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
-    FXfList: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
     FThemeColors: array of TsColorValue;
@@ -105,16 +105,23 @@ type
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStringsCount: Integer;
-    FFillList: array of PCell;
+    FFillList: array of PsCellFormat;
+    FBorderList: array of PsCellFormat;
+    {
+    FFillList: array of TsCell;
     FBorderList: array of PCell;
+    }
   protected
     { Helper routines }
-    procedure AddDefaultFormats; override;
+//    procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     procedure CreateStreams;
     procedure DestroyStreams;
+{
     function  FindBorderInList(ACell: PCell): Integer;
-    function  FindFillInList(ACell: PCell): Integer;
+    function  FindFillInList(ACell: PCell): Integer; }
+    function  FindBorderInList(AFormat: PsCellFormat): Integer;
+    function  FindFillInList(AFormat: PsCellFormat): Integer;
     function GetStyleIndex(ACell: PCell): Cardinal;
     procedure ListAllBorders;
     procedure ListAllFills;
@@ -305,7 +312,7 @@ type
     Borders: TsCellBorders;
     BorderStyles: TsCellBorderStyles;
   end;
-
+                (*
   TXFListData = class
     NumFmtIndex: Integer;
     FontIndex: Integer;
@@ -316,7 +323,7 @@ type
     WordWrap: Boolean;
     TextRotation: TsTextRotation;
   end;
-
+                  *)
 
 { TsOOXMLNumFormatList }
 
@@ -332,47 +339,47 @@ begin
   fs := Workbook.FormatSettings;
   cs := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
 
-  AddFormat( 0, '', nfGeneral);
-  AddFormat( 1, '0', nfFixed);
-  AddFormat( 2, '0.00', nfFixed);
-  AddFormat( 3, '#,##0', nfFixedTh);
-  AddFormat( 4, '#,##0.00', nfFixedTh);
-  AddFormat( 5, '"'+cs+'"#,##0_);("'+cs+'"#,##0)', nfCurrency);
-  AddFormat( 6, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)', nfCurrencyRed);
-  AddFormat( 7, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)', nfCurrency);
-  AddFormat( 8, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)', nfCurrencyRed);
-  AddFormat( 9, '0%', nfPercentage);
-  AddFormat(10, '0.00%', nfPercentage);
-  AddFormat(11, '0.00E+00', nfExp);
+  AddFormat( 0, nfGeneral, '');
+  AddFormat( 1, nfFixed, '0');
+  AddFormat( 2, nfFixed, '0.00');
+  AddFormat( 3, nfFixedTh, '#,##0');
+  AddFormat( 4, nfFixedTh, '#,##0.00');
+  AddFormat( 5, nfCurrency, '"'+cs+'"#,##0_);("'+cs+'"#,##0)');
+  AddFormat( 6, nfCurrencyRed, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)');
+  AddFormat( 7, nfCurrency, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)');
+  AddFormat( 8, nfCurrencyRed, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)');
+  AddFormat( 9, nfPercentage, '0%');
+  AddFormat(10, nfPercentage, '0.00%');
+  AddFormat(11, nfExp, '0.00E+00');
   // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
-  AddFormat(14, fs.ShortDateFormat, nfShortDate);                       // 'M/D/YY'
-  AddFormat(15, fs.LongDateFormat, nfLongDate);                         // 'D-MMM-YY'
-  AddFormat(16, 'd/mmm', nfCustom);                                     // 'D-MMM'
-  AddFormat(17, 'mmm/yy', nfCustom);                                    // 'MMM-YY'
-  AddFormat(18, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);        // 'h:mm AM/PM'
-  AddFormat(19, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);          // 'h:mm:ss AM/PM'
-  AddFormat(20, fs.ShortTimeFormat, nfShortTime);                       // 'h:mm'
-  AddFormat(21, fs.LongTimeFormat, nfLongTime);                         // 'h:mm:ss'
-  AddFormat(22, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);  // 'M/D/YY h:mm' (localized)
+  AddFormat(14, nfShortDate, fs.ShortDateFormat);                       // 'M/D/YY'
+  AddFormat(15, nfLongDate, fs.LongDateFormat);                         // 'D-MMM-YY'
+  AddFormat(16, nfCustom, 'd/mmm');                                     // 'D-MMM'
+  AddFormat(17, nfCustom, 'mmm/yy');                                    // 'MMM-YY'
+  AddFormat(18, nfShortTimeAM, AddAMPM(fs.ShortTimeFormat, fs));        // 'h:mm AM/PM'
+  AddFormat(19, nfLongTimeAM, AddAMPM(fs.LongTimeFormat, fs));          // 'h:mm:ss AM/PM'
+  AddFormat(20, nfShortTime, fs.ShortTimeFormat);                       // 'h:mm'
+  AddFormat(21, nfLongTime, fs.LongTimeFormat);                         // 'h:mm:ss'
+  AddFormat(22, nfShortDateTime, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat);  // 'M/D/YY h:mm' (localized)
   // 23..36 not supported
-  AddFormat(37, '_(#,##0_);(#,##0)', nfCurrency);
-  AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed);
-  AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency);
-  AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed);
-  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfCustom);
-  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfCustom);
-  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfCustom);
-  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfCustom);
-  AddFormat(45, 'nn:ss', nfCustom);
-  AddFormat(46, '[h]:nn:ss', nfTimeInterval);
-  AddFormat(47, 'nn:ss.z', nfCustom);
-  AddFormat(48, '##0.0E+00', nfCustom);
+  AddFormat(37, nfCurrency, '_(#,##0_);(#,##0)');
+  AddFormat(38, nfCurrencyRed, '_(#,##0_);[Red](#,##0)');
+  AddFormat(39, nfCurrency, '_(#,##0.00_);(#,##0.00)');
+  AddFormat(40, nfCurrencyRed, '_(#,##0.00_);[Red](#,##0.00)');
+  AddFormat(41, nfCustom, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)');
+  AddFormat(42, nfCustom, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)');
+  AddFormat(43, nfCustom, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)');
+  AddFormat(44, nfCustom, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)');
+  AddFormat(45, nfCustom, 'nn:ss');
+  AddFormat(46, nfTimeInterval, '[h]:nn:ss');
+  AddFormat(47, nfCustom, 'nn:ss.z');
+  AddFormat(48, nfCustom, '##0.0E+00');
   // 49 ("Text") not supported
 
   // All indexes from 0 to 163 are reserved for built-in formats.
   // The first user-defined format starts at 164.
-  FFirstFormatIndexInFile := 164;
-  FNextFormatIndex := 164;
+  FFirstNumFormatIndexInFile := 164;
+  FNextNumFormatIndex := 164;
 end;
 
 procedure TsOOXMLNumFormatList.ConvertBeforeWriting(var AFormatString: String;
@@ -407,7 +414,8 @@ begin
   FSharedStrings := TStringList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
-  FXfList := TFPList.Create;
+  FCellFormatList := TsCellFormatList.Create(true);
+  // Allow duplicates because xf indexes used in cell records cannot be found any more.
 
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
@@ -417,9 +425,6 @@ destructor TsSpreadOOXMLReader.Destroy;
 var
   j: Integer;
 begin
-  for j := FXfList.Count-1 downto 0 do TObject(FXfList[j]).Free;
-  FXfList.Free;
-
   for j := FFillList.Count-1 downto 0 do TObject(FFillList[j]).Free;
   FFillList.Free;
 
@@ -432,14 +437,24 @@ begin
   inherited Destroy;
 end;
 
-procedure TsSpreadOOXMLReader.ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
+procedure TsSpreadOOXMLReader.ApplyCellFormatting(ACell: PCell; XFIndex: Integer);
 var
+  i: Integer;
+  fmt: PsCellFormat;
+  {
   xf: TXfListData;
   numFmtData: TsNumFormatData;
   fillData: TFillListData;
   borderData: TBorderListData;
   j: Integer;
+  }
 begin
+  if Assigned(ACell) then begin
+    i := FCellFormatList.FindIndexOfID(XFIndex);
+    fmt := FCellFormatList.Items[i];
+    ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+  end;
+  (*
   if Assigned(ACell) then begin
     xf := TXFListData(FXfList.Items[XfIndex]);
 
@@ -505,7 +520,7 @@ begin
       end;
     end;
   end;
-
+  *)
 end;
 
 procedure TsSpreadOOXMLReader.CreateNumFormatList;
@@ -626,6 +641,7 @@ var
   formulaStr: String;
   sstIndex: Integer;
   number: Double;
+  fmt: TsCellFormat;
 begin
   if ANode = nil then
     exit;
@@ -644,8 +660,11 @@ begin
 
   // get style index
   s := GetAttrValue(ANode, 's');
-  if s <> '' then
+  if s <> '' then begin
     ApplyCellFormatting(cell, StrToInt(s));
+    fmt := Workbook.GetCellFormat(cell^.FormatIndex);
+  end else
+    InitFormatRecord(fmt);
 
   // get data
   datanode := ANode.FirstChild;
@@ -699,10 +718,10 @@ begin
   if (s = '') or (s = 'n') then begin
     // Number or date/time, depending on format
     number := StrToFloat(dataStr, FPointSeparatorSettings);
-    if IsDateTimeFormat(cell^.NumberFormatStr) then begin
-      if cell^.NumberFormat <> nfTimeInterval then   // no correction of time origin for "time interval" format
+    if IsDateTimeFormat(fmt.NumberFormatStr) then begin
+      if fmt.NumberFormat <> nfTimeInterval then   // no correction of time origin for "time interval" format
         number := ConvertExcelDateTimeToDateTime(number, FDateMode);
-      AWorksheet.WriteDateTime(cell, number, cell^.NumberFormatStr)
+      AWorksheet.WriteDateTime(cell, number, fmt.NumberFormatStr)
     end
     else
       AWorksheet.WriteNumber(cell, number);
@@ -751,79 +770,133 @@ var
   node: TDOMNode;
   childNode: TDOMNode;
   nodeName: String;
-  xf: TXfListData;
+  fmt: TsCellFormat;
   s1, s2: String;
+  i, numFmtIndex, fillIndex, borderIndex: Integer;
+  numFmtData: TsNumFormatData;
+  fillData: TFillListData;
+  borderData: TBorderListData;
 begin
   node := ANode.FirstChild;
-  while Assigned(node) do begin
+  while Assigned(node) do
+  begin
     nodeName := node.NodeName;
-    if nodeName = 'xf' then begin
-      xf := TXfListData.Create;
+    if nodeName = 'xf' then
+    begin
+      InitFormatRecord(fmt);
+      fmt.ID := FCellFormatList.Count;
+      fmt.Name := '';
 
       // strange: sometimes the "apply*" are missing. Therefore, it may be better
       // to check against "<>0" instead of "=1"
       s1 := GetAttrValue(node, 'numFmtId');
       s2 := GetAttrValue(node, 'applyNumberFormat');
-      if (s1 <> '') and (s2 <> '0') then xf.NumFmtIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then
+      begin
+        numFmtIndex := StrToInt(s1);
+        i := NumFormatList.FindByIndex(numFmtIndex);
+        if i > -1 then
+        begin
+          numFmtData := NumFormatList.Items[i];
+          fmt.NumberFormat := numFmtData.NumFormat;
+          fmt.NumberFormatStr := numFmtData.FormatString;
+          if numFmtData.NumFormat <> nfGeneral then
+            Include(fmt.UsedFormattingFields, uffNumberFormat);
+        end;
+      end;
 
       s1 := GetAttrValue(node, 'fontId');
       s2 := GetAttrValue(node, 'applyFont');
-      if (s1 <> '') and (s2 <> '0') then xf.FontIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then
+      begin
+        fmt.FontIndex := StrToInt(s1);
+        if fmt.FontIndex = 1 then
+          Include(fmt.UsedFormattingFields, uffBold)
+        else if fmt.FontIndex > 1 then
+          Include(fmt.UsedFormattingFields, uffFont);
+      end;
 
       s1 := GetAttrValue(node, 'fillId');
       s2 := GetAttrValue(node, 'applyFill');
-      if (s1 <> '') and (s2 <> '0') then xf.FillIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then
+      begin
+        fillIndex := StrToInt(s1);
+        fillData := FFillList[fillIndex];
+        if (fillData <> nil) and (fillData.PatternType <> 'none') then begin
+          Include(fmt.UsedFormattingFields, uffBackgroundColor);
+          fmt.BackgroundColor := fillData.FgColor;
+        end;
+      end;
 
       s1 := GetAttrValue(node, 'borderId');
       s2 := GetAttrValue(node, 'applyBorder');
-      if (s1 <> '') and (s2 <> '0') then xf.BorderIndex := StrToInt(s1);
+      if (s1 <> '') and (s2 <> '0') then
+      begin
+        borderIndex := StrToInt(s1);
+        borderData := FBorderList[borderIndex];
+        if (borderData <> nil) then
+        begin
+          fmt.BorderStyles := borderData.BorderStyles;
+          fmt.Border := borderData.Borders;
+        end;
+      end;
 
       s2 := GetAttrValue(node, 'applyAlignment');
-      if (s2 <> '0') then begin
+      if (s2 <> '0') and (s2 <> '') then begin
         childNode := node.FirstChild;
         while Assigned(childNode) do begin
           nodeName := childNode.NodeName;
           if nodeName = 'alignment' then begin
             s1 := GetAttrValue(childNode, 'horizontal');
             if s1 = 'left' then
-              xf.HorAlignment := haLeft
+              fmt.HorAlignment := haLeft
             else
             if s1 = 'center' then
-              xf.HorAlignment := haCenter
+              fmt.HorAlignment := haCenter
             else
             if s1 = 'right' then
-              xf.HorAlignment := haRight;
+              fmt.HorAlignment := haRight;
 
             s1 := GetAttrValue(childNode, 'vertical');
             if s1 = 'top' then
-              xf.VertAlignment := vaTop
+              fmt.VertAlignment := vaTop
             else
             if s1 = 'center' then
-              xf.VertAlignment := vaCenter
+              fmt.VertAlignment := vaCenter
             else
             if s1 = 'bottom' then
-              xf.VertAlignment := vaBottom;
+              fmt.VertAlignment := vaBottom;
 
             s1 := GetAttrValue(childNode, 'wrapText');
             if (s1 <> '0') then
-              xf.WordWrap := true;
+              Include(fmt.UsedFormattingFields, uffWordWrap);
 
             s1 := GetAttrValue(childNode, 'textRotation');
             if s1 = '90' then
-              xf.TextRotation := rt90DegreeCounterClockwiseRotation
+              fmt.TextRotation := rt90DegreeCounterClockwiseRotation
             else
             if s1 = '180' then
-              xf.TextRotation := rt90DegreeClockwiseRotation
+              fmt.TextRotation := rt90DegreeClockwiseRotation
             else
             if s1 = '255' then
-              xf.TextRotation := rtStacked
+              fmt.TextRotation := rtStacked
             else
-              xf.TextRotation := trHorizontal;
+              fmt.TextRotation := trHorizontal;
           end;
           childNode := childNode.NextSibling;
         end;
       end;
-      FXfList.Add(xf);
+      if fmt.FontIndex > 0 then
+        Include(fmt.UsedFormattingFields, uffFont);
+      if fmt.Border  <> [] then
+        Include(fmt.UsedFormattingFields, uffBorder);
+      if fmt.HorAlignment <> haDefault then
+        Include(fmt.UsedFormattingFields, uffHorAlign);
+      if fmt.VertAlignment <> vaDefault then
+        Include(fmt.UsedFormattingFields, uffVertAlign);
+      if fmt.TextRotation <> trHorizontal then
+        Include(fmt.UsedFormattingFields, uffTextRotation);
+      FCellFormatList.Add(fmt);
     end;
     node := node.NextSibling;
   end;
@@ -1003,8 +1076,8 @@ begin
     fntStyles := fnt.Style;
     fntColor := fnt.Color;
   end else begin
-    fntName := DEFAULTFONTNAME;
-    fntSize := DEFAULTFONTSIZE;
+    fntName := DEFAULT_FONTNAME;
+    fntSize := DEFAULT_FONTSIZE;
     fntStyles := [];
     fntColor := scBlack;
   end;
@@ -1245,14 +1318,19 @@ end;
 procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
 var
   node: TDOMNode;
+  nodename: String;
   sheetName: String;
   //sheetId: String;
 begin
   node := ANode.FirstChild;
   while node <> nil do begin
-    sheetName := GetAttrValue(node, 'name');
-    //sheetId := GetAttrValue(node, 'sheetId');
-    AList.Add(sheetName);
+    nodename := node.NodeName;
+    if nodename = 'sheet' then
+    begin
+      sheetName := GetAttrValue(node, 'name');
+      //sheetId := GetAttrValue(node, 'sheetId');
+      AList.Add(sheetName);
+    end;
     node := node.NextSibling;
   end;
 end;
@@ -1521,6 +1599,7 @@ end;
   - Bold styles for cells having UsedFormattingFileds = [uffBold]
   All other styles will be added by "ListAllFormattingStyles".
 }
+(*
 procedure TsSpreadOOXMLWriter.AddDefaultFormats();
 // We store the index of the XF record that will be assigned to this style in
 // the "row" of the style. Will be needed when writing the XF record.
@@ -1541,7 +1620,9 @@ begin
 
   NextXFIndex := 2;
 end;
+  *)
 
+(*
 { Looks for the combination of border attributes of the given cell in the
   FBorderList and returns its index. }
 function TsSpreadOOXMLWriter.FindBorderInList(ACell: PCell): Integer;
@@ -1566,7 +1647,32 @@ begin
   // Not found --> return -1
   Result := -1;
 end;
+*)
+{ Looks for the combination of border attributes of the given format record in
+  the FBorderList and returns its index. }
+function TsSpreadOOXMLWriter.FindBorderInList(AFormat: PsCellFormat): Integer;
+var
+  i: Integer;
+  fmt: PsCellFormat;
+begin
+  // No cell, or border-less --> index 0
+  if (AFormat = nil) or not (uffBorder in AFormat.UsedFormattingFields) then begin
+    Result := 0;
+    exit;
+  end;
 
+  for i:=0 to High(FBorderList) do begin
+    fmt := FBorderList[i];
+    if SameCellBorders(fmt, AFormat) then begin
+      Result := i;
+      exit;
+    end;
+  end;
+
+  // Not found --> return -1
+  Result := -1;
+end;
+                                   (*
 { Looks for the combination of fill attributes of the given cell in the
   FFillList and returns its index. }
 function TsSpreadOOXMLWriter.FindFillInList(ACell: PCell): Integer;
@@ -1593,11 +1699,46 @@ begin
   // Not found --> return -1
   Result := -1;
 end;
+*)
+
+{ Looks for the combination of fill attributes of the given format record in the
+  FFillList and returns its index. }
+function TsSpreadOOXMLWriter.FindFillInList(AFormat: PsCellFormat): Integer;
+var
+  i: Integer;
+  fmt: PsCellFormat;
+begin
+  if (AFormat = nil) or not (uffBackgroundColor in AFormat^.UsedFormattingFields)
+  then begin
+    Result := 0;
+    exit;
+  end;
+
+  // Index 0 is "no fill" which already has been handled.
+  // Index 1 is also pre-defined (gray 25%)
+  for i:=2 to High(FFillList) do begin
+    fmt := FFillList[i];
+    if (fmt <> nil) and (uffBackgroundColor in fmt^.UsedFormattingFields) then
+      if (AFormat^.BackgroundColor = fmt^.BackgroundColor) then
+      begin
+        Result := i;
+        exit;
+      end;
+  end;
+
+  // Not found --> return -1
+  Result := -1;
+end;
+
 
 { Determines the formatting index which a given cell has in list of
   "FormattingStyles" which correspond to the section cellXfs of the styles.xml
   file. }
 function TsSpreadOOXMLWriter.GetStyleIndex(ACell: PCell): Cardinal;
+begin
+  Result := ACell^.FormatIndex;
+end;
+    {
 var
   idx: Integer;
 begin
@@ -1613,14 +1754,26 @@ end;
   To be used for the styles.xml. }
 procedure TsSpreadOOXMLWriter.ListAllBorders;
 var
-  styleCell: PCell;
+  //styleCell: PCell;
   i, n : Integer;
+  fmt: PsCellFormat;
 begin
   // first list entry is a no-border cell
-  SetLength(FBorderList, 1);
+  n := 1;
+  SetLength(FBorderList, n);
   FBorderList[0] := nil;
 
-  n := 1;
+  for i := 0 to FWorkbook.GetNumCellFormats - 1 do
+  begin
+    fmt := FWorkbook.GetPointerToCellFormat(i);
+    if FindBorderInList(fmt) = -1 then
+    begin
+      SetLength(FBorderList, n+1);
+      FBorderList[n] := fmt;
+      inc(n);
+    end;
+  end;
+  {
   for i := 0 to High(FFormattingStyles) do begin
     styleCell := @FFormattingStyles[i];
     if FindBorderInList(styleCell) = -1 then begin
@@ -1628,7 +1781,7 @@ begin
       FBorderList[n] := styleCell;
       inc(n);
     end;
-  end;
+  end;         }
 end;
 
 { Creates a list of all fill styles found in the workbook.
@@ -1638,15 +1791,27 @@ end;
   To be used for styles.xml. }
 procedure TsSpreadOOXMLWriter.ListAllFills;
 var
-  styleCell: PCell;
+  //styleCell: PCell;
   i, n: Integer;
+  fmt: PsCellFormat;
 begin
   // Add built-in fills first.
-  SetLength(FFillList, 2);
+  n := 2;
+  SetLength(FFillList, n);
   FFillList[0] := nil;  // built-in "no fill"
   FFillList[1] := nil;  // built-in "gray125"
 
-  n := 2;
+  for i := 0 to FWorkbook.GetNumCellFormats - 1 do
+  begin
+    fmt := FWorkbook.GetPointerToCellFormat(i);
+    if FindFillInList(fmt) = -1 then
+    begin
+      SetLength(FFillList, n+1);
+      FFillList[n] := fmt;
+      inc(n);
+    end;
+  end;
+  {
   for i := 0 to High(FFormattingStyles) do begin
     styleCell := @FFormattingStyles[i];
     if FindFillInList(styleCell) = -1 then begin
@@ -1655,6 +1820,7 @@ begin
       inc(n);
     end;
   end;
+  }
 end;
 
 procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
@@ -1662,8 +1828,10 @@ const
   LINESTYLE_NAME: Array[TsLineStyle] of String = (
      'thin', 'medium', 'dashed', 'dotted', 'thick', 'double', 'hair');
 
-  procedure WriteBorderStyle(AStream: TStream; ACell: PCell; ABorder: TsCellBorder;
-    ABorderName: String);
+  //procedure WriteBorderStyle(AStream: TStream; ACell: PCell; ABorder: TsCellBorder;
+  //  ABorderName: String);
+  procedure WriteBorderStyle(AStream: TStream; AFormatRecord: PsCellFormat;
+    ABorder: TsCellBorder; ABorderName: String);
   { border names found in xlsx files for Excel selections:
     "thin", "hair", "dotted", "dashed", "dashDotDot", "dashDot", "mediumDashDotDot",
     "slantDashDot", "mediumDashDot", "mediumDashed", "medium", "thick", "double" }
@@ -1672,11 +1840,15 @@ const
     colorName: String;
     rgb: TsColorValue;
   begin
-    if (ABorder in ACell^.Border) then begin
+    //if (ABorder in ACell^.Border) then begin
+    if (ABorder in AFormatRecord^.Border) then begin
       // Line style
-      styleName := LINESTYLE_NAME[ACell.BorderStyles[ABorder].LineStyle];
+      styleName := LINESTYLE_NAME[AFormatRecord^.BorderStyles[ABorder].LineStyle];
+      //styleName := LINESTYLE_NAME[ACell.BorderStyles[ABorder].LineStyle];
+
       // Border color
-      rgb := Workbook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
+      rgb := Workbook.GetPaletteColor(AFormatRecord^.BorderStyles[ABorder].Color);
+      //rgb := Workbook.GetPaletteColor(ACell^.BorderStyles[ABorder].Color);
       colorName := ColorToHTMLColorStr(rgb, true);
       AppendToStream(AStream, Format(
         '<%s style="%s"><color rgb="%s" /></%s>',
@@ -1689,25 +1861,33 @@ const
 
 var
   i: Integer;
-  styleCell: PCell;
+//  styleCell: PCell;
   diag: String;
 begin
   AppendToStream(AStream, Format(
     '<borders count="%d">', [Length(FBorderList)]));
 
-  // index 0 -- build-in "no borders"
+  // index 0 -- built-in "no borders"
   AppendToStream(AStream,
       '<border>',
         '<left /><right /><top /><bottom /><diagonal />',
       '</border>');
 
   for i:=1 to High(FBorderList) do begin
-    styleCell := FBorderList[i];
+    //styleCell := FBorderList[i];
     diag := '';
     if (cbDiagUp in FBorderList[i].Border) then diag := diag + ' diagonalUp="1"';
     if (cbDiagDown in FBorderList[i].Border) then diag := diag + ' diagonalDown="1"';
     AppendToStream(AStream,
       '<border' + diag + '>');
+        WriteBorderStyle(AStream, FBorderList[i], cbWest, 'left');
+        WriteBorderStyle(AStream, FBorderList[i], cbEast, 'right');
+        WriteBorderStyle(AStream, FBorderList[i], cbNorth, 'top');
+        WriteBorderStyle(AStream, FBorderList[i], cbSouth, 'bottom');
+        // OOXML uses the same border style for both diagonals. In agreement with
+        // the biff implementation we select the style from the diagonal-up line.
+        WriteBorderStyle(AStream, FBorderList[i], cbDiagUp, 'diagonal');
+      {
         WriteBorderStyle(AStream, styleCell, cbWest, 'left');
         WriteBorderStyle(AStream, styleCell, cbEast, 'right');
         WriteBorderStyle(AStream, styleCell, cbNorth, 'top');
@@ -1715,6 +1895,7 @@ begin
         // OOXML uses the same border style for both diagonals. In agreement with
         // the biff implementation we select the style from the diagonal-up line.
         WriteBorderStyle(AStream, styleCell, cbDiagUp, 'diagonal');
+      }
     AppendToStream(AStream,
       '</border>');
   end;
@@ -1750,7 +1931,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteFillList(AStream: TStream);
 var
   i: Integer;
-  styleCell: PCell;
+  //styleCell: PCell;
   rgb: TsColorValue;
 begin
   AppendToStream(AStream, Format(
@@ -1770,8 +1951,9 @@ begin
 
   // user-defined fills
   for i:=2 to High(FFillList) do begin
-    styleCell := FFillList[i];
-    rgb := Workbook.GetPaletteColor(styleCell^.BackgroundColor);
+    //styleCell := FFillList[i];
+    //rgb := Workbook.GetPaletteColor(styleCell^.BackgroundColor);
+    rgb := Workbook.GetPaletteColor(FFillList[i]^.BackgroundColor);
     AppendToStream(AStream,
       '<fill>',
         '<patternFill patternType="solid">');
@@ -1861,7 +2043,7 @@ var
 begin
   s := '';
   n := 0;
-  i := NumFormatList.FindByIndex(NumFormatList.FirstFormatIndexInFile);
+  i := NumFormatList.FindByIndex(NumFormatList.FirstNumFormatIndexInFile);
   if i > -1 then begin
     while i < NumFormatList.Count do begin
       item := NumFormatList[i];
@@ -2083,27 +2265,36 @@ begin
   end;
 end;
 
-{ Writes the style list which the writer has collected in FFormattingStyles. }
+{ Writes the style list which the workbook has collected in its FormatList }
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
-  styleCell: TCell;
+//  styleCell: TCell;
   s, sAlign: String;
   fontID: Integer;
   numFmtId: Integer;
   fillId: Integer;
   borderId: Integer;
   idx: Integer;
+  fmt: PsCellFormat;
+  i: Integer;
 begin
   AppendToStream(AStream, Format(
-    '<%s count="%d">', [ANodeName, Length(FFormattingStyles)]));
+    '<%s count="%d">', [ANodeName, FWorkbook.GetNumCellFormats]));
+//    '<%s count="%d">', [ANodeName, Length(FFormattingStyles)]));
 
-  for styleCell in FFormattingStyles do begin
+//  for styleCell in FFormattingStyles do begin
+  for i:=0 to FWorkbook.GetNumCellFormats-1 do
+  begin
+    fmt := FWorkbook.GetPointerToCellFormat(i);
     s := '';
     sAlign := '';
 
     { Number format }
-    if (uffNumberFormat in styleCell.UsedFormattingFields) then begin
-      idx := NumFormatList.FindFormatOf(@styleCell);
+//    if (uffNumberFormat in styleCell.UsedFormattingFields) then
+    if (uffNumberFormat in fmt^.UsedFormattingFields) then
+    begin
+//      idx := NumFormatList.FindFormatOf(@styleCell);
+      idx := NumFormatList.Find(fmt^.NumberFormat, fmt^.NumberFormatStr);
       if idx > -1 then begin
         numFmtID := NumFormatList[idx].Index;
         s := s + Format('numFmtId="%d" applyNumberFormat="1" ', [numFmtId]);
@@ -2112,54 +2303,82 @@ begin
 
     { Font }
     fontId := 0;
+    if (uffBold in fmt^.UsedFormattingFields) then
+      fontID := 1;
+    if (uffFont in fmt^.UsedFormattingFields) then
+      fontID := fmt^.FontIndex;
+      {
     if (uffBold in styleCell.UsedFormattingFields) then
       fontId := 1;
     if (uffFont in styleCell.UsedFormattingFields) then
       fontId := styleCell.FontIndex;
+      }
     s := s + Format('fontId="%d" ', [fontId]);
     if fontID > 0 then s := s + 'applyFont="1" ';
 
     if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
 
     { Text rotation }
+    {
     if (uffTextRotation in styleCell.UsedFormattingFields) and (styleCell.TextRotation <> trHorizontal)
     then
-      case styleCell.TextRotation of
+      case styleCell.TextRotation of}
+    if (uffTextRotation in fmt^.UsedFormattingFields) then
+      case fmt^.TextRotation of
+        trHorizontal                      : ;
         rt90DegreeClockwiseRotation       : sAlign := sAlign + Format('textRotation="%d" ', [180]);
         rt90DegreeCounterClockwiseRotation: sAlign := sAlign + Format('textRotation="%d" ',  [90]);
         rtStacked                         : sAlign := sAlign + Format('textRotation="%d" ', [255]);
       end;
 
     { Text alignment }
+    {
     if (uffHorAlign in styleCell.UsedFormattingFields) and (styleCell.HorAlignment <> haDefault)
     then
-      case styleCell.HorAlignment of
+      case styleCell.HorAlignment of }
+    if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault)
+    then
+      case fmt.HorAlignment of
         haLeft  : sAlign := sAlign + 'horizontal="left" ';
         haCenter: sAlign := sAlign + 'horizontal="center" ';
         haRight : sAlign := sAlign + 'horizontal="right" ';
       end;
 
+    {
     if (uffVertAlign in styleCell.UsedformattingFields) and (styleCell.VertAlignment <> vaDefault)
     then
       case styleCell.VertAlignment of
+    }
+    if (uffVertAlign in fmt^.UsedFormattingFields) and (fmt^.VertAlignment <> vaDefault)
+    then
+      case fmt.VertAlignment of
         vaTop   : sAlign := sAlign + 'vertical="top" ';
         vaCenter: sAlign := sAlign + 'vertical="center" ';
         vaBottom: sAlign := sAlign + 'vertical="bottom" ';
       end;
 
-    if (uffWordWrap in styleCell.UsedFormattingFields) then
+    //if (uffWordWrap in styleCell.UsedFormattingFields) then
+    if (uffWordWrap in fmt^.UsedFormattingFields) then
       sAlign := sAlign + 'wrapText="1" ';
 
     { Fill }
-    if (uffBackgroundColor in styleCell.UsedFormattingFields) then begin
-      fillID := FindFillInList(@styleCell);
+    {
+    if (uffBackgroundColor in styleCell.UsedFormattingFields) then
+      fillID := FindFillInList(@styleCell); }
+    if (uffBackgroundColor in fmt.UsedFormattingFields) then
+    begin
+      fillID := FindFillInList(fmt);
       if fillID = -1 then fillID := 0;
       s := s + Format('fillId="%d" applyFill="1" ', [fillID]);
     end;
 
     { Border }
-    if (uffBorder in styleCell.UsedFormattingFields) then begin
-      borderID := FindBorderInList(@styleCell);
+    {
+    if (uffBorder in styleCell.UsedFormattingFields) then
+      borderID := FindBorderInList(@styleCell);           }
+    if (uffBorder in fmt^.UsedFormattingFields) then
+    begin
+      borderID := FindBorderInList(fmt);
       if borderID = -1 then borderID := 0;
       s := s + Format('borderId="%d" applyBorder="1" ', [borderID]);
     end;
@@ -2500,7 +2719,7 @@ var
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
-  ListAllFormattingStyles;
+  //ListAllFormattingStyles;
   ListAllFills;
   ListAllBorders;
 
@@ -2546,7 +2765,6 @@ var
 begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
-
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d">', [CellPosText, lStyleIndex]),
       '<v></v>',

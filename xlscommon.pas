@@ -159,6 +159,10 @@ const
   MASK_XF_VERT_ALIGN_BOTTOM              = $20;
   MASK_XF_VERT_ALIGN_JUSTIFIED           = $30;
 
+  { XF FILL PATTERNS }
+  MASK_XF_FILL_PATT_EMPTY                = $00;
+  MASK_XF_FILL_PATT_SOLID                = $01;
+
   { Cell Addresses constants, valid for BIFF2-BIFF5 }
   MASK_EXCEL_ROW                         = $3FFF;
   MASK_EXCEL_RELATIVE_COL                = $4000;
@@ -180,6 +184,9 @@ const
   ERR_OVERFLOW                           = $24;  // #NUM!
   ERR_ARG_ERROR                          = $2A;  // #N/A (not enough, or too many, arguments)
 
+  { Index of last built-in XF format record }
+  LAST_BUILTIN_XF                        = 15;
+
 type
   TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
 
@@ -196,7 +203,7 @@ type
   // Converts an fps error value to the byte code needed in xls files
   function ConvertToExcelError(AValue: TsErrorValue): byte;
 
-type
+type              (*
   { Contents of the XF record to be stored in the XFList of the reader }
   TXFListData = class
   public
@@ -209,7 +216,7 @@ type
     Borders: TsCellBorders;
     BorderStyles: TsCellBorderStyles;
     BackgroundColor: TsColor;
-  end;
+  end;              *)
 
   { TsBIFFNumFormatList }
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
@@ -227,21 +234,21 @@ type
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
-    FXFList: TFPList;     // of TXFListData
+//    FXFList: TFPList;     // of TXFListData
     FIncompleteCell: PCell;
-    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); overload;
-    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; overload;
+//    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); overload;
+    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; //overload;
     procedure CreateNumFormatList; override;
     // Extracts a number out of an RK value
     function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
-      out ANumberFormat: TsNumberFormat; //out ADecimals: Byte;
-      //out ACurrencySymbol: String;
-      out ANumberFormatStr: String); virtual;
+      out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); virtual;
+    {
     // Finds format record for XF record pointed to by cell
     // Will not return info for built-in formats
     function FindNumFormatDataForCell(const AXFIndex: Integer): TsNumFormatData;
+    }
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
       ANumberFormatStr: String; out ADateTime: TDateTime): Boolean;
@@ -303,7 +310,7 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    destructor Destroy; override;
+//    destructor Destroy; override;
   end;
 
   { TsSpreadBIFFWriter }
@@ -313,9 +320,9 @@ type
     FDateMode: TDateMode;
     FLastRow: Cardinal;
     FLastCol: Cardinal;
-    procedure AddDefaultFormats; override;
+//    procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
-    function FindXFIndex(ACell: PCell): Integer;
+    function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixColor(AColor: TsColor): TsColor; override;
     procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
@@ -343,14 +350,14 @@ type
     // Writes out ERROR cell record
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
-    // Writes out a FORMAT record
-    procedure WriteFormat(AStream: TStream; AFormatData: TsNumFormatData;
-      AListIndex: Integer); virtual;
-    // Writes out all FORMAT records
-    procedure WriteFormats(AStream: TStream);
     // Writes out a FORMULA record; formula is stored in cell already
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+    // Writes out a FORMAT record
+    procedure WriteNumFormat(AStream: TStream; ANumFormatData: TsNumFormatData;
+      AListIndex: Integer); virtual;
+    // Writes out all FORMAT records
+    procedure WriteNumFormats(AStream: TStream);
     // Writes out a floating point NUMBER record
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Double; ACell: PCell); override;
@@ -381,6 +388,7 @@ type
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
       const AFormula: TsRPNFormula; UseRelAddr: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
+
     // Writes out a SELECTION record
     procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
@@ -395,7 +403,13 @@ type
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
     // Writes the index of the XF record used in the given cell
-    procedure WriteXFIndex(AStream: TStream; ACell: PCell);
+    //procedure WriteXFIndex(AStream: TStream; ACell: PCell);
+
+    // Writes an XF record
+    procedure WriteXF(AStream: TStream; ACellFormat: PsCellFormat;
+      XFType_Prot: Byte = 0); virtual;
+    // Writes all xF records
+    procedure WriteXFRecords(AStream: TStream);
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -562,47 +576,47 @@ begin
   fs := Workbook.FormatSettings;
   cs := Workbook.FormatSettings.CurrencyString;
 
-  AddFormat( 0, '', nfGeneral);
-  AddFormat( 1, '0', nfFixed);
-  AddFormat( 2, '0.00', nfFixed);
-  AddFormat( 3, '#,##0', nfFixedTh);
-  AddFormat( 4, '#,##0.00', nfFixedTh);
-  AddFormat( 5, '"'+cs+'"#,##0;("'+cs+'"#,##0)', nfCurrency);
-  AddFormat( 6, '"'+cs+'"#,##0;[Red]("'+cs+'"#,##0)', nfCurrencyRed);
-  AddFormat( 7, '"'+cs+'"#,##0.00;("'+cs+'"#,##0.00)', nfCurrency);
-  AddFormat( 8, '"'+cs+'"#,##0.00;[Red]("'+cs+'"#,##0.00)', nfCurrencyRed);
-  AddFormat( 9, '0%', nfPercentage);
-  AddFormat(10, '0.00%', nfPercentage);
-  AddFormat(11, '0.00E+00', nfExp);
+  AddFormat( 0, nfGeneral, '');
+  AddFormat( 1, nfFixed, '0');
+  AddFormat( 2, nfFixed, '0.00');
+  AddFormat( 3, nfFixedTh, '#,##0');
+  AddFormat( 4, nfFixedTh, '#,##0.00');
+  AddFormat( 5, nfCurrency, '"'+cs+'"#,##0;("'+cs+'"#,##0)');
+  AddFormat( 6, nfCurrencyRed, '"'+cs+'"#,##0;[Red]("'+cs+'"#,##0)');
+  AddFormat( 7, nfCurrency, '"'+cs+'"#,##0.00;("'+cs+'"#,##0.00)');
+  AddFormat( 8, nfCurrencyRed, '"'+cs+'"#,##0.00;[Red]("'+cs+'"#,##0.00)');
+  AddFormat( 9, nfPercentage, '0%');
+  AddFormat(10, nfPercentage, '0.00%');
+  AddFormat(11, nfExp, '0.00E+00');
   // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
-  AddFormat(14, fs.ShortDateFormat, nfShortDate);                       // 'M/D/YY'
-  AddFormat(15, fs.LongDateFormat, nfLongDate);                         // 'D-MMM-YY'
-  AddFormat(16, 'd/mmm', nfCustom);                                     // 'D-MMM'
-  AddFormat(17, 'mmm/yy', nfCustom);                                    // 'MMM-YY'
-  AddFormat(18, AddAMPM(fs.ShortTimeFormat, fs), nfShortTimeAM);        // 'h:mm AM/PM'
-  AddFormat(19, AddAMPM(fs.LongTimeFormat, fs), nfLongTimeAM);          // 'h:mm:ss AM/PM'
-  AddFormat(20, fs.ShortTimeFormat, nfShortTime);                       // 'h:mm'
-  AddFormat(21, fs.LongTimeFormat, nfLongTime);                         // 'h:mm:ss'
-  AddFormat(22, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat, nfShortDateTime);  // 'M/D/YY h:mm' (localized)
+  AddFormat(14, nfShortDate, fs.ShortDateFormat);                       // 'M/D/YY'
+  AddFormat(15, nfLongDate, fs.LongDateFormat);                         // 'D-MMM-YY'
+  AddFormat(16, nfCustom, 'd/mmm');                                     // 'D-MMM'
+  AddFormat(17, nfCustom, 'mmm/yy');                                    // 'MMM-YY'
+  AddFormat(18, nfShortTimeAM, AddAMPM(fs.ShortTimeFormat, fs));        // 'h:mm AM/PM'
+  AddFormat(19, nfLongTimeAM, AddAMPM(fs.LongTimeFormat, fs));          // 'h:mm:ss AM/PM'
+  AddFormat(20, nfShortTime, fs.ShortTimeFormat);                       // 'h:mm'
+  AddFormat(21, nfLongTime, fs.LongTimeFormat);                         // 'h:mm:ss'
+  AddFormat(22, nfShortDateTime, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat);  // 'M/D/YY h:mm' (localized)
   // 23..36 not supported
-  AddFormat(37, '_(#,##0_);(#,##0)', nfCurrency);
-  AddFormat(38, '_(#,##0_);[Red](#,##0)', nfCurrencyRed);
-  AddFormat(39, '_(#,##0.00_);(#,##0.00)', nfCurrency);
-  AddFormat(40, '_(#,##0.00_);[Red](#,##0.00)', nfCurrencyRed);
-  AddFormat(41, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)', nfCustom);
-  AddFormat(42, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)', nfCustom);
-  AddFormat(43, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)', nfCustom);
-  AddFormat(44, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)', nfCustom);
-  AddFormat(45, 'nn:ss', nfCustom);
-  AddFormat(46, '[h]:nn:ss', nfTimeInterval);
-  AddFormat(47, 'nn:ss.z', nfCustom);
-  AddFormat(48, '##0.0E+00', nfCustom);
+  AddFormat(37, nfCurrency, '_(#,##0_);(#,##0)');
+  AddFormat(38, nfCurrencyRed, '_(#,##0_);[Red](#,##0)');
+  AddFormat(39, nfCurrency, '_(#,##0.00_);(#,##0.00)');
+  AddFormat(40, nfCurrencyRed, '_(#,##0.00_);[Red](#,##0.00)');
+  AddFormat(41, nfCustom, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)');
+  AddFormat(42, nfCustom, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)');
+  AddFormat(43, nfCustom, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)');
+  AddFormat(44, nfCustom, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)');
+  AddFormat(45, nfCustom, 'nn:ss');
+  AddFormat(46, nfTimeInterval, '[h]:nn:ss');
+  AddFormat(47, nfCustom, 'nn:ss.z');
+  AddFormat(48, nfCustom, '##0.0E+00');
   // 49 ("Text") not supported
 
   // All indexes from 0 to 163 are reserved for built-in formats.
   // The first user-defined format starts at 164.
-  FFirstFormatIndexInFile := 164;
-  FNextFormatIndex := 164;
+  FFirstNumFormatIndexInFile := 164;
+  FNextNumFormatIndex := 164;
 end;
 
 procedure TsBIFFNumFormatList.ConvertBeforeWriting(var AFormatString: String;
@@ -628,7 +642,8 @@ end;
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FXFList := TFPList.Create;
+  FCellFormatList := TsCellFormatList.Create(true);
+  // Allow duplicates! XF indexes get out of sync if not all format records are in list
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
   // Limitations of BIFF5 and BIFF8 file format
@@ -637,6 +652,7 @@ begin
   FLimitations.MaxPaletteSize := 64;
 end;
 
+{
 destructor TsSpreadBIFFReader.Destroy;
 var
   j: integer;
@@ -645,7 +661,8 @@ begin
   FXFList.Free;
   inherited Destroy;
 end;
-
+}
+(*
 { Applies the XF formatting referred to by XFIndex to the specified cell }
 procedure TsSpreadBIFFReader.ApplyCellFormatting(ARow, ACol: Cardinal;
   XFIndex: Word);
@@ -655,15 +672,23 @@ begin
   lCell := FWorksheet.GetCell(ARow, ACol);
   ApplyCellFormatting(lCell, XFIndex);
 end;
-
+ *)
 { Applies the XF formatting referred to by XFIndex to the specified cell }
 procedure TsSpreadBIFFReader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
 var
-  XFData: TXFListData;
+  fmt: PsCellFormat;
+  i: Integer;
 begin
   if Assigned(ACell) then begin
-    XFData := TXFListData(FXFList.Items[XFIndex]);
+    i := FCellFormatList.FindIndexOfID(XFIndex);
+    if i > -1 then
+    begin
+      fmt := FCellFormatList.Items[i];
+      ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+    end else
+      ACell^.FormatIndex := 0;
 
+    (*
     // Font
     if XFData.FontIndex = 1 then
       Include(ACell^.UsedFormattingFields, uffBold)
@@ -712,6 +737,7 @@ begin
       ACell^.BackgroundColor := XFData.BackgroundColor;
     end else
       Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
+      *)
   end;
 end;
 
@@ -758,9 +784,24 @@ end;
 { Extracts number format data from an XF record index by AXFIndex.
   Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
-  out ANumberFormat: TsNumberFormat; //out ADecimals: Byte;
-  //out ACurrencySymbol: String;
-  out ANumberFormatStr: String);
+  out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String);
+var
+  fmt: PsCellFormat;
+  i: Integer;
+begin
+  i := FCellFormatList.FindIndexOfID(AXFIndex);
+  if i > -1 then
+  begin
+    fmt := FCellFormatList.Items[i];
+    ANumberFormat := fmt^.NumberFormat;
+    ANumberFormatStr := fmt^.NumberFormatStr;
+  end else
+  begin
+    ANumberFormat := nfGeneral;
+    ANumberFormatStr := '';
+  end;
+end;
+    {
 var
   lNumFormatData: TsNumFormatData;
 begin
@@ -772,22 +813,24 @@ begin
     ANumberFormat := nfGeneral;
     ANumberFormatStr := '';
   end;
-end;
-
+end; }
+                                   (*
 { Determines the format data (for numerical formatting) which belong to a given
   XF record. }
 function TsSpreadBIFFReader.FindNumFormatDataForCell(const AXFIndex: Integer
   ): TsNumFormatData;
 var
-  lXFData: TXFListData;
+  fmt: TsCellFormat;
   i: Integer;
 begin
   Result := nil;
+  fmt := FFormatList.FindByID(AXFIndex);
+  i := NumFormatList.FindByIndex(
   lXFData := TXFListData(FXFList.Items[AXFIndex]);
   i := NumFormatList.FindByIndex(lXFData.FormatIndex);
   if i <> -1 then Result := NumFormatList[i];
 end;
-
+                                     *)
 { Convert the number to a date/time and return that if it is }
 function TsSpreadBIFFReader.IsDateTime(Number: Double;
   ANumberFormat: TsNumberFormat; ANumberFormatStr: String;
@@ -1010,7 +1053,7 @@ begin
     FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
 end;
 
-// Read the FORMAT record for formatting numerical data
+// Read the (number) FORMAT record for formatting numerical data
 procedure TsSpreadBIFFReader.ReadFormat(AStream: TStream);
 begin
   Unused(AStream);
@@ -1774,7 +1817,7 @@ destructor TsSpreadBIFFWriter.Destroy;
 begin
   inherited Destroy;
 end;
-
+  (*
 { These are default style formats which are added as XF fields regardless of
   being used in the document or not.
   Currently, only one additional default format is supported ("bold").
@@ -1795,6 +1838,7 @@ begin
   NextXFIndex := 15 + Length(FFormattingStyles);
   // "15" is the index of the last pre-defined xf record
 end;
+    *)
 
 { Creates the correct version of the number format list. It is for BIFF file
   formats.
@@ -1807,6 +1851,10 @@ end;
 
 { Determines the index of the XF record, according to formatting of the given cell }
 function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
+begin
+  Result := LAST_BUILTIN_XF + ACell^.FormatIndex;
+end;
+{
 var
   idx: Integer;
   cell: TCell;
@@ -1829,7 +1877,7 @@ begin
   else
     Result := FFormattingStyles[idx].Row;
 end;
-
+ }
 function TsSpreadBIFFWriter.FixColor(AColor: TsColor): TsColor;
 var
   rgb: TsColorValue;
@@ -2061,30 +2109,31 @@ begin
 end;
 
 
-{ Writes a BIFF format record defined in AFormatData. AListIndex the index of
-  the formatdata in the format list (not the FormatIndex!).
+{ Writes a BIFF number format record defined in AFormatData.
+  AListIndex the index of the numformatdata in the numformat list
+  (not the FormatIndex!).
   Needs to be overridden by descendants. }
-procedure TsSpreadBIFFWriter.WriteFormat(AStream: TStream;
-  AFormatData: TsNumFormatData; AListIndex: Integer);
+procedure TsSpreadBIFFWriter.WriteNumFormat(AStream: TStream;
+  ANumFormatData: TsNumFormatData; AListIndex: Integer);
 begin
-  Unused(AStream, AFormatData, AListIndex);
+  Unused(AStream, ANumFormatData, AListIndex);
   // needs to be overridden
 end;
 
 { Writes all number formats to the stream. Saving starts at the item with the
   FirstFormatIndexInFile. }
-procedure TsSpreadBIFFWriter.WriteFormats(AStream: TStream);
+procedure TsSpreadBIFFWriter.WriteNumFormats(AStream: TStream);
 var
   i: Integer;
   item: TsNumFormatData;
 begin
   ListAllNumFormats;
-  i := NumFormatList.FindByIndex(NumFormatList.FirstFormatIndexInFile);
+  i := NumFormatList.FindByIndex(NumFormatList.FirstNumFormatIndexInFile);
   if i > -1 then
     while i < NumFormatList.Count do begin
       item := NumFormatList[i];
       if item <> nil then begin
-        WriteFormat(AStream, item, i);
+        WriteNumFormat(AStream, item, i);
       end;
       inc(i);
     end;
@@ -2363,8 +2412,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record, according to formatting }
-  //AStream.WriteWord(0);
-  WriteXFIndex(AStream, ACell);
+  AStream.WriteWord(FindXFIndex(ACell));
 
   { Encoded result of RPN formula }
   WriteRPNResult(AStream, ACell);
@@ -2654,6 +2702,7 @@ var
   colindex: Cardinal;
   rowheight: Word;
   h: Single;
+  fmt: PsCellFormat;
 begin
   if (ARowIndex >= FLimitations.MaxRowCount) or
      (AFirstColIndex >= FLimitations.MaxColCount) or
@@ -2665,14 +2714,28 @@ begin
   spaceabove := false;
   spacebelow := false;
   colindex := AFirstColIndex;
-  while colindex <= ALastColIndex do begin
+  while colindex <= ALastColIndex do
+  begin
     cell := ASheet.FindCell(ARowindex, colindex);
+    if (cell <> nil) then
+    begin
+      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      if (uffBorder in fmt^.UsedFormattingFields) then
+      begin
+        if (cbNorth in fmt^.Border) and (fmt^.BorderStyles[cbNorth].LineStyle = lsThick)
+          then spaceabove := true;
+        if (cbSouth in fmt^.Border) and (fmt^.BorderStyles[cbSouth].LineStyle = lsThick)
+          then spacebelow := true;
+      end;
+    end;
+    {
     if (cell <> nil) and (uffBorder in cell^.UsedFormattingFields) then begin
       if (cbNorth in cell^.Border) and (cell^.BorderStyles[cbNorth].LineStyle = lsThick)
         then spaceabove := true;
       if (cbSouth in cell^.Border) and (cell^.BorderStyles[cbSouth].LineStyle = lsThick)
         then spacebelow := true;
     end;
+    }
     if spaceabove and spacebelow then break;
     inc(colindex);
   end;
@@ -3023,10 +3086,63 @@ begin
   AStream.WriteWord(WordToLE(600));
 end;
 
+procedure TsSpreadBIFFWriter.WriteXF(AStream: TStream; ACellFormat: PsCellFormat;
+  XFType_Prot: Byte = 0);
+begin
+  Unused(AStream, ACellFormat, XFType_Prot);
+end;
+
+procedure TsSpreadBIFFWriter.WriteXFRecords(AStream: TStream);
+var
+  i: Integer;
+begin
+  // XF0
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF1
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF2
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF3
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF4
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF5
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF6
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF7
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF8
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF9
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF10
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF11
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF12
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF13
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF14
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
+  // XF15 - Default, no formatting
+  WriteXF(AStream, nil, 0);
+
+  // Add all further non-standard format records
+  // The first style was already added --> begin loop with 1
+  for i:=1 to Workbook.GetNumCellFormats - 1 do
+    WriteXF(AStream, Workbook.GetPointerToCellFormat(i), 0);
+end;
+
+                             (*
 { Write the index of the XF record, according to formatting of the given cell
   Valid for BIFF5 and BIFF8.
   BIFF2 is handled differently. }
 procedure TsSpreadBIFFWriter.WriteXFIndex(AStream: TStream; ACell: PCell);
+begin
+  AStream.WriteWord(AStream, LAST_BUILTIN_XF + ACell^.FormatIndex);
+  {
 var
   lIndex: Integer;
   lXFIndex: Word;
@@ -3051,7 +3167,8 @@ begin
   lXFIndex := FFormattingStyles[lIndex].Row;
 
   AStream.WriteWord(WordToLE(lXFIndex));
-end;
+  }
+end;                           *)
 
 end.
 

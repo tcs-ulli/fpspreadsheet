@@ -8,7 +8,8 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
   ColorBox, ValEdit,
-  fpstypes, fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
+  fpstypes, fpspreadsheetgrid, fpspreadsheet,
+  {%H-}fpsallformats;
 
 type
 
@@ -617,6 +618,8 @@ var
   cell: PCell;
   decs: Byte;
   currsym: String;
+  nf: TsNumberFormat;
+  nfs: String;
 begin
   currsym := Sender.ClassName;
   with WorksheetGrid do begin
@@ -624,7 +627,8 @@ begin
       exit;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if (cell <> nil) then begin
-      if cell^.NumberFormat = nfGeneral then begin
+      Worksheet.ReadNumFormat(cell, nf, nfs);
+      if nf = nfGeneral then begin
         Worksheet.WriteNumberFormat(cell, nfFixed, '0.00');
         exit;
       end;
@@ -667,13 +671,14 @@ procedure TMainFrm.AcNumFormatExecute(Sender: TObject);
 const
   DATETIME_CUSTOM: array[0..4] of string = ('', 'dd/mmm', 'mmm/yy', 'nn:ss', 'nn:ss.zzz');
 var
-  nf: TsNumberFormat;
   c, r: Cardinal;
   cell: PCell;
   fmt: String;
   decs: Byte;
   cs: String;
   isDateTimeFmt: Boolean;
+  nf, cell_nf: TsNumberFormat;
+  cell_nfs: String;
 begin
   if TAction(Sender).Checked then
     nf := TsNumberFormat((TAction(Sender).Tag - NUMFMT_TAG) div 10)
@@ -691,23 +696,24 @@ begin
     c := GetWorksheetCol(Col);
     r := GetWorksheetRow(Row);
     cell := Worksheet.GetCell(r, c);
+    Worksheet.ReadNumFormat(cell, cell_nf, cell_nfs);
     Worksheet.GetNumberFormatAttributes(cell, decs, cs);
     if cs = '' then cs := '?';
     case cell^.ContentType of
       cctNumber, cctDateTime:
         if isDateTimeFmt then begin
-          if IsDateTimeFormat(cell^.NumberFormat) then
+          if IsDateTimeFormat(cell_nf) then
             Worksheet.WriteDateTime(cell, cell^.DateTimeValue, nf, fmt)
           else
             Worksheet.WriteDateTime(cell, cell^.NumberValue, nf, fmt);
         end else
         if IsCurrencyFormat(nf) then begin
-          if IsDateTimeFormat(cell^.NumberFormat) then
+          if IsDateTimeFormat(cell_nf) then
             Worksheet.WriteCurrency(cell, cell^.DateTimeValue, nf, decs, cs)
           else
             Worksheet.WriteCurrency(cell, cell^.Numbervalue, nf, decs, cs);
         end else begin
-          if IsDateTimeFormat(cell^.NumberFormat) then
+          if IsDateTimeFormat(cell_nf) then
             Worksheet.WriteNumber(cell, cell^.DateTimeValue, nf, decs)
           else
             Worksheet.WriteNumber(cell, cell^.NumberValue, nf, decs)
@@ -1114,6 +1120,7 @@ var
   s: String;
   cb: TsCellBorder;
   r1,r2,c1,c2: Cardinal;
+  fmt: TsCellFormat;
 begin
   with CellInspector do
   begin
@@ -1174,30 +1181,33 @@ begin
     end
     else
     begin
-      if (ACell=nil) or not (uffFont in ACell^.UsedFormattingFields)
+      if ACell <> nil
+        then fmt := WorksheetGrid.Workbook.GetCellFormat(ACell^.FormatIndex)
+        else InitFormatRecord(fmt);
+      if (ACell=nil) or not (uffFont in fmt.UsedFormattingFields)
         then Strings.Add('FontIndex=')
-        else Strings.Add(Format('FontIndex=%d (%s(', [
-               ACell^.FontIndex,
-               WorksheetGrid.Workbook.GetFontAsString(ACell^.FontIndex)]));
-      if (ACell=nil) or not (uffTextRotation in ACell^.UsedFormattingFields)
+        else Strings.Add(Format('FontIndex=%d (%s)', [
+               fmt.FontIndex,
+               WorksheetGrid.Workbook.GetFontAsString(fmt.FontIndex)]));
+      if (ACell=nil) or not (uffTextRotation in fmt.UsedFormattingFields)
         then Strings.Add('TextRotation=')
-        else Strings.Add(Format('TextRotation=%s', [GetEnumName(TypeInfo(TsTextRotation), ord(ACell^.TextRotation))]));
-      if (ACell=nil) or not (uffHorAlign in ACell^.UsedFormattingFields)
+        else Strings.Add(Format('TextRotation=%s', [GetEnumName(TypeInfo(TsTextRotation), ord(fmt.TextRotation))]));
+      if (ACell=nil) or not (uffHorAlign in fmt.UsedFormattingFields)
         then Strings.Add('HorAlignment=')
-        else Strings.Add(Format('HorAlignment=%s', [GetEnumName(TypeInfo(TsHorAlignment), ord(ACell^.HorAlignment))]));
-      if (ACell=nil) or not (uffVertAlign in ACell^.UsedFormattingFields)
+        else Strings.Add(Format('HorAlignment=%s', [GetEnumName(TypeInfo(TsHorAlignment), ord(fmt.HorAlignment))]));
+      if (ACell=nil) or not (uffVertAlign in fmt.UsedFormattingFields)
         then Strings.Add('VertAlignment=')
-        else Strings.Add(Format('VertAlignment=%s', [GetEnumName(TypeInfo(TsVertAlignment), ord(ACell^.VertAlignment))]));
-      if (ACell=nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+        else Strings.Add(Format('VertAlignment=%s', [GetEnumName(TypeInfo(TsVertAlignment), ord(fmt.VertAlignment))]));
+      if (ACell=nil) or not (uffBorder in fmt.UsedFormattingFields) then
         Strings.Add('Borders=')
       else begin
         s := '';
-        if cbNorth in ACell^.Border then s := s + ', cbNorth';
-        if cbSouth in ACell^.Border then s := s + ', cbSouth';
-        if cbEast in ACell^.Border then s := s + ', cbEast';
-        if cbWest in ACell^.Border then s := s + ', cbWest';
-        if cbDiagUp in ACell^.Border then s := s + ', cbDiagUp';
-        if cbDiagDown in ACell^.Border then s := s + ', cbDiagDown';
+        if cbNorth in fmt.Border then s := s + ', cbNorth';
+        if cbSouth in fmt.Border then s := s + ', cbSouth';
+        if cbEast in fmt.Border then s := s + ', cbEast';
+        if cbWest in fmt.Border then s := s + ', cbWest';
+        if cbDiagUp in fmt.Border then s := s + ', cbDiagUp';
+        if cbDiagDown in fmt.Border then s := s + ', cbDiagDown';
         if s <> '' then Delete(s, 1, 2);
         Strings.Add('Borders='+s);
       end;
@@ -1209,21 +1219,21 @@ begin
         else
           Strings.Add(Format('BorderStyles[%s]=%s, %s', [
             GetEnumName(TypeInfo(TsCellBorder), ord(cb)),
-            GetEnumName(TypeInfo(TsLineStyle), ord(ACell^.BorderStyles[cbEast].LineStyle)),
-            WorksheetGrid.Workbook.GetColorName(ACell^.BorderStyles[cbEast].Color)
+            GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cbEast].LineStyle)),
+            WorksheetGrid.Workbook.GetColorName(fmt.BorderStyles[cbEast].Color)
           ]));
-      if (ACell=nil) or not (uffBackgroundColor in ACell^.UsedformattingFields)
+      if (ACell=nil) or not (uffBackgroundColor in fmt.UsedformattingFields)
         then Strings.Add('BackgroundColor=')
         else Strings.Add(Format('BackgroundColor=%d (%s)', [
-               ACell^.BackgroundColor,
-               WorksheetGrid.Workbook.GetColorName(Acell^.BackgroundColor)
+               fmt.BackgroundColor,
+               WorksheetGrid.Workbook.GetColorName(fmt.BackgroundColor)
              ]));
-      if (ACell=nil) or not (uffNumberFormat in ACell^.UsedFormattingFields)
+      if (ACell=nil) or not (uffNumberFormat in fmt.UsedFormattingFields)
         then Strings.Add('NumberFormat=')
-        else Strings.Add(Format('NumberFormat=%s', [GetEnumName(TypeInfo(TsNumberFormat), ord(ACell^.NumberFormat))]));
-      if (ACell=nil) or not (uffNumberFormat in ACell^.UsedFormattingFields)
+        else Strings.Add(Format('NumberFormat=%s', [GetEnumName(TypeInfo(TsNumberFormat), ord(fmt.NumberFormat))]));
+      if (ACell=nil) or not (uffNumberFormat in fmt.UsedFormattingFields)
         then Strings.Add('NumberFormatStr=')
-        else Strings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
+        else Strings.Add('NumberFormatStr=' + fmt.NumberFormatStr);
       if not WorksheetGrid.Worksheet.IsMerged(ACell) then
         Strings.Add('Merged range=')
       else
@@ -1285,6 +1295,7 @@ var
   i: Integer;
   ac: TAction;
   nf: TsNumberFormat;
+  nfs: String;
   cell: PCell;
   r,c: Cardinal;
   found: Boolean;
@@ -1296,17 +1307,17 @@ begin
     if (cell = nil) or not (cell^.ContentType in [cctNumber, cctDateTime]) then
       nf := nfGeneral
     else
-      nf := cell^.NumberFormat;
+      Worksheet.ReadNumFormat(cell, nf, nfs);
     for i:=0 to ActionList.ActionCount-1 do begin
       ac := TAction(ActionList.Actions[i]);
       if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 200) then begin
         found := ((ac.Tag - NUMFMT_TAG) div 10 = ord(nf));
         if nf = nfCustom then
           case (ac.Tag - NUMFMT_TAG) mod 10 of
-            1: found := cell^.NumberFormatStr = 'dd/mmm';
-            2: found := cell^.NumberFormatStr = 'mmm/yy';
-            3: found := cell^.NumberFormatStr = 'nn:ss';
-            4: found := cell^.NumberFormatStr = 'nn:ss.z';
+            1: found := nfs = 'dd/mmm';
+            2: found := nfs = 'mmm/yy';
+            3: found := nfs = 'nn:ss';
+            4: found := nfs = 'nn:ss.z';
           end;
         ac.Checked := found;
       end;
