@@ -1254,6 +1254,7 @@ var
   stype: String;
   r1, c1: Cardinal;
   cell: PCell;
+  cellfmt: TsCellFormat;
 begin
   if Length(Args)=1 then
   begin
@@ -1282,6 +1283,10 @@ begin
       Result := ErrorResult(errWrongType);
       exit;
   end;
+  if cell <> nil then
+    cellfmt := cell^.Worksheet.ReadCellFormat(cell)
+  else
+    InitFormatRecord(cellfmt);
 
   if stype = 'address' then
     Result := StringResult(GetCellString(r1, c1, []))
@@ -1291,7 +1296,7 @@ begin
   else
   if stype = 'color' then
   begin
-    if (cell <> nil) and (cell^.NumberFormat = nfCurrencyRed) then
+    if (cell <> nil) and (cellfmt.NumberFormat = nfCurrencyRed) then
       Result := IntegerResult(1)
     else
       Result := IntegerResult(0);
@@ -1322,20 +1327,20 @@ begin
   if stype = 'format' then begin
     Result := StringResult('G');
     if cell <> nil then
-      case cell^.NumberFormat of
+      case cellfmt.NumberFormat of
         nfGeneral:
           Result := StringResult('G');
         nfFixed:
-          if cell^.NumberFormatStr= '0' then Result := StringResult('0') else
-          if cell^.NumberFormatStr = '0.00' then  Result := StringResult('F0');
+          if cellfmt.NumberFormatStr= '0' then Result := StringResult('0') else
+          if cellfmt.NumberFormatStr = '0.00' then  Result := StringResult('F0');
         nfFixedTh:
-          if cell^.NumberFormatStr = '#,##0' then Result := StringResult(',0') else
-          if cell^.NumberFormatStr = '#,##0.00' then Result := StringResult(',2');
+          if cellfmt.NumberFormatStr = '#,##0' then Result := StringResult(',0') else
+          if cellfmt.NumberFormatStr = '#,##0.00' then Result := StringResult(',2');
         nfPercentage:
-          if cell^.NumberFormatStr = '0%' then Result := StringResult('P0') else
-          if cell^.NumberFormatStr = '0.00%' then Result := StringResult('P2');
+          if cellfmt.NumberFormatStr = '0%' then Result := StringResult('P0') else
+          if cellfmt.NumberFormatStr = '0.00%' then Result := StringResult('P2');
         nfExp:
-          if cell^.NumberFormatStr = '0.00E+00' then Result := StringResult('S2');
+          if cellfmt.NumberFormatStr = '0.00E+00' then Result := StringResult('S2');
         nfShortDate, nfLongDate, nfShortDateTime:
           Result := StringResult('D4');
         nfLongTimeAM:
@@ -1352,7 +1357,7 @@ begin
   begin
     Result := StringResult('');
     if (cell^.ContentType = cctUTF8String) then
-      case cell^.HorAlignment of
+      case cellfmt.HorAlignment of
         haLeft  : Result := StringResult('''');
         haCenter: Result := StringResult('^');
         haRight : Result := StringResult('"');

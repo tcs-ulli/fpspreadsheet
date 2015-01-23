@@ -37,9 +37,9 @@ const
   MAX_COL_COUNT = 65535;
 
   {@@ Name of the default font}
-  DEFAULTFONTNAME = 'Arial';
+  DEFAULT_FONTNAME = 'Arial';
   {@@ Size of the default font}
-  DEFAULTFONTSIZE = 10;
+  DEFAULT_FONTSIZE = 10;
 
   {@@ Takes account of effect of cell margins on row height by adding this
       value to the nominal row height. Note that this is an empirical value
@@ -309,7 +309,7 @@ const
 
   // not sure - but I think the mechanism with scRGBColor is not working...
   // Will be removed sooner or later...
-  scRGBColor = $FFFF;
+  scRGBColor = $FFFD;
 
   {@@ Identifier for transparent color }
   scTransparent = $FFFE;
@@ -425,7 +425,9 @@ type
   end;
 
   {@@ Record containing all details for cell formatting }
-  TsStyle = record
+  TsCellFormat = record
+    Name: String;
+    ID: Integer;
     UsedFormattingFields: TsUsedFormattingFields;
     FontIndex: Integer;
     TextRotation: TsTextRotation;
@@ -439,8 +441,211 @@ type
     NumberFormatStr: String;
   end;
 
+  {@@ Pointer to a format record }
+  PsCellFormat = ^TsCellFormat;
+
+  {@@ Specialized list for format records }
+  TsCellFormatList = class(TFPList)
+  private
+    FAllowDuplicates: Boolean;
+    function GetItem(AIndex: Integer): PsCellFormat;
+    procedure SetItem(AIndex: Integer; const AValue: PsCellFormat);
+  public
+    constructor Create(AAllowDuplicates: Boolean);
+    destructor Destroy; override;
+    function Add(const AItem: TsCellFormat): Integer; overload;
+    function Add(AItem: PsCellFormat): Integer; overload;
+    procedure Clear;
+    procedure Delete(AIndex: Integer);
+    function FindIndexOfID(ID: Integer): Integer;
+    function FindIndexOfName(AName: String): Integer;
+    function IndexOf(const AItem: TsCellFormat): Integer; overload;
+    property Items[AIndex: Integer]: PsCellFormat read GetItem write SetItem; default;
+  end;
+
+procedure InitFormatRecord(out AValue: TsCellFormat);
+
 
 implementation
+
+{ Utilities }
+
+procedure InitFormatRecord(out AValue: TsCellFormat);
+begin
+  AValue.Name := '';
+  AValue.NumberFormatStr := '';
+  FillChar(AValue, SizeOf(AValue), 0);
+  AValue.BorderStyles := DEFAULT_BORDERSTYLES;
+  AValue.BackgroundColor := TsColor(-1);
+end;
+
+
+{ TsCellFormatList }
+
+constructor TsCellFormatList.Create(AAllowDuplicates: Boolean);
+begin
+  inherited Create;
+  FAllowDuplicates := AAllowDuplicates;
+end;
+
+destructor TsCellFormatList.Destroy;
+begin
+  Clear;
+  inherited;
+end;
+
+function TsCellFormatList.Add(const AItem: TsCellFormat): Integer;
+var
+  P: PsCellFormat;
+begin
+  if FAllowDuplicates then
+    Result := -1
+  else
+    Result := IndexOf(AItem);
+  if Result = -1 then begin
+    New(P);
+    P^.Name := AItem.Name;
+    P^.ID := AItem.ID;
+    P^.UsedFormattingFields := AItem.UsedFormattingFields;
+    P^.FontIndex := AItem.FontIndex;
+    P^.TextRotation := AItem.TextRotation;
+    P^.HorAlignment := AItem.HorAlignment;
+    P^.VertAlignment := AItem.VertAlignment;
+    P^.Border := AItem.Border;
+    P^.BorderStyles := AItem.BorderStyles;
+    P^.BackgroundColor := AItem.BackgroundColor;
+    P^.RGBBackgroundColor := AItem.RGBBackgroundColor;
+    P^.NumberFormat := AItem.NumberFormat;
+    P^.NumberFormatStr := AItem.NumberFormatStr;
+    Result := inherited Add(P);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a pointer to a FormatRecord to the list. Allows nil for the predefined
+  formats which are not stored in the file.
+-------------------------------------------------------------------------------}
+function TsCellFormatList.Add(AItem: PsCellFormat): Integer;
+begin
+  if AItem = nil then
+    Result := inherited Add(AItem)
+  else
+    Result := Add(AItem^);
+end;
+
+procedure TsCellFormatList.Clear;
+var
+  i: Integer;
+begin
+  for i:=Count-1 downto 0 do
+    Delete(i);
+  inherited;
+end;
+
+procedure TsCellFormatList.Delete(AIndex: Integer);
+var
+  P: PsCellFormat;
+begin
+  P := GetItem(AIndex);
+  if P <> nil then
+    Dispose(P);
+  inherited Delete(AIndex);
+end;
+
+function TsCellFormatList.GetItem(AIndex: Integer): PsCellFormat;
+begin
+  Result := inherited Items[AIndex];
+end;
+
+function TsCellFormatList.FindIndexOfID(ID: Integer): Integer;
+var
+  P: PsCellFormat;
+begin
+  for Result := 0 to Count-1 do
+  begin
+    P := GetItem(Result);
+    if (P <> nil) and (P^.ID = ID) then
+      exit;
+  end;
+  Result := -1;
+end;
+
+function TsCellFormatList.FindIndexOfName(AName: String): Integer;
+var
+  P: PsCellFormat;
+begin
+  for Result := 0 to Count-1 do
+  begin
+    P := GetItem(Result);
+    if (P <> nil) and (P^.Name = AName) then
+      exit;
+  end;
+  Result := -1;
+end;
+
+function TsCellFormatList.IndexOf(const AItem: TsCellFormat): Integer;
+var
+  P: PsCellFormat;
+  equ: Boolean;
+  b: TsCellBorder;
+begin
+  for Result := 0 to Count-1 do
+  begin
+    P := GetItem(Result);
+    if (P = nil) then continue;
+
+    if (P^.UsedFormattingFields <> AItem.UsedFormattingFields) then continue;
+
+    if (uffFont in AItem.UsedFormattingFields) then
+      if (P^.FontIndex) <> (AItem.FontIndex) then continue;
+
+    if (uffTextRotation in AItem.UsedFormattingFields) then
+      if (P^.TextRotation <> AItem.TextRotation) then continue;
+
+    if (uffHorAlign in AItem.UsedFormattingFields) then
+      if (P^.HorAlignment <> AItem.HorAlignment) then continue;
+
+    if (uffVertAlign in AItem.UsedFormattingFields) then
+      if (P^.VertAlignment <> AItem.VertAlignment) then continue;
+
+    if (uffBorder in AItem.UsedFormattingFields) then begin
+      if (P^.Border <> AItem.Border) then continue;
+      equ := true;
+      for b in AItem.Border do begin
+        if (P^.BorderStyles[b].LineStyle <> AItem.BorderStyles[b].LineStyle) or
+           (P^.BorderStyles[b].Color <> Aitem.BorderStyles[b].Color)
+        then begin
+          equ := false;
+          break;
+        end;
+      end;
+      if not equ then continue;
+    end;
+
+    if (uffBackgroundColor in AItem.UsedFormattingFields) then begin
+      if (P^.BackgroundColor <> AItem.BackgroundColor) then continue;
+      if (AItem.BackgroundColor = scRGBColor) then
+        if (P^.RGBBackgroundColor <> AItem.RGBBackgroundColor) then continue;
+    end;
+
+    if (uffNumberFormat in AItem.UsedFormattingFields) then begin
+      if (P^.NumberFormat <> AItem.NumberFormat) then continue;
+      if (P^.NumberFormatStr <> AItem.NumberFormatStr) then continue;
+    end;
+
+    // If we arrive here then the format records match.
+    exit;
+  end;
+
+  // We get here if no record matches
+  Result := -1;
+end;
+
+procedure TsCellFormatList.SetItem(AIndex: Integer; const AValue: PsCellFormat);
+begin
+  inherited Items[AIndex] := AValue;
+end;
+
 
 end.
 

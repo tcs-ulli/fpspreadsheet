@@ -10,6 +10,13 @@
 {.$DEFINE FPS_DONT_USE_CLOCALE}
 
 
+{ In older versions of fpspreadsheet, the formatting fields had belonged to the
+  cell record. This has been given up to reduce memory consumption.
+  For fpc >2.6, however, record helpers allow to get this feature back. In case
+  of older compilers activate the define FPS_NO_RECORD_HELPERS. Note that worksheet
+  methods can only be used to change cell formatting then. }
+{.$DEFINE FPS_NO_RECORD_HELPERS}
+
 { The next defines activate code duplicated from new compiler versions in case
   an old compiler is used. }
 

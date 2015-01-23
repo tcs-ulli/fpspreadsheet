@@ -143,7 +143,6 @@ This package is all you need if you don't want graphical components (like grids 
       </Item28>
       <Item29>
         <Filename Value="fpstypes.pas"/>
-        <HasRegisterProc Value="True"/>
         <UnitName Value="fpsTypes"/>
       </Item29>
     </Files>

@@ -21,6 +21,7 @@ var
   lRow: TRow;
   r: Integer;
   fmt: String;
+
 begin
   // Open the output file
   MyDir := ExtractFilePath(ParamStr(0));

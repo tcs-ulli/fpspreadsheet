@@ -25,7 +25,7 @@ begin
 
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
-  InputFileName := MyDir + 'test.xlsx';
+  InputFileName := MyDir + 'a.xlsx';
   if not FileExists(InputFileName) then begin
     WriteLn('Input file ', InputFileName, ' does not exist. Please run opendocwrite first.');
     Halt;
@@ -56,5 +56,7 @@ begin
 
   // Finalization
   MyWorkbook.Free;
+
+  ReadLn;
 end.
 

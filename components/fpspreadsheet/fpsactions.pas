@@ -771,7 +771,7 @@ var
   fnt: TsFont;
   fs: TsFontStyles;
 begin
-  fnt := Workbook.GetFont(ACell^.FontIndex);
+  fnt := Worksheet.ReadCellFont(ACell);
   fs := fnt.Style;
   if Checked then
     Include(fs, FFontStyle)
@@ -783,16 +783,21 @@ end;
 procedure TsFontStyleAction.ExtractFromCell(ACell: PCell);
 var
   fnt: TsFont;
+  fmt: PsCellFormat;
 begin
   if (ACell = nil) then
-    Checked := false
-  else
-  if (uffBold in ACell^.UsedFormattingFields) then
+  begin
+    Checked := false;
+    exit;
+  end;
+
+  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  if (uffBold in fmt^.UsedFormattingFields) then
     Checked := (FFontStyle = fssBold)
   else
-  if (uffFont in ACell^.UsedFormattingFields) then
+  if (uffFont in fmt^.UsedFormattingFields) then
   begin
-    fnt := Workbook.GetFont(ACell^.FontIndex);
+    fnt := Workbook.GetFont(fmt^.FontIndex);
     Checked := (FFontStyle in fnt.Style);
   end else
     Checked := false;
@@ -818,10 +823,7 @@ end;
 
 procedure TsHorAlignmentAction.ExtractFromCell(ACell: PCell);
 begin
-  if (ACell = nil) or not (uffHorAlign in ACell^.UsedFormattingFields) then
-    Checked := false
-  else
-    Checked := ACell^.HorAlignment = FHorAlign;
+  Checked := (ACell <> nil) and (Worksheet.ReadHorAlignment(ACell) = FHorAlign);
 end;
 
 
@@ -844,10 +846,7 @@ end;
 
 procedure TsVertAlignmentAction.ExtractFromCell(ACell: PCell);
 begin
-  if (ACell = nil) or not (uffVertAlign in ACell^.UsedFormattingFields) then
-    Checked := false
-  else
-    Checked := ACell^.VertAlignment = FVertAlign;
+  Checked := (ACell <> nil) and (Worksheet.ReadVertAlignment(ACell) = FVertAlign);
 end;
 
 
@@ -870,10 +869,7 @@ end;
 
 procedure TsTextRotationAction.ExtractFromCell(ACell: PCell);
 begin
-  if (ACell = nil) or not (uffTextRotation in ACell^.UsedFormattingFields) then
-    Checked := false
-  else
-    Checked := ACell^.TextRotation = FTextRotation;
+  Checked := (ACell <> nil) and (Worksheet.ReadTextRotation(ACell) = FTextRotation);
 end;
 
 
@@ -892,7 +888,7 @@ end;
 
 procedure TsWordwrapAction.ExtractFromCell(ACell: PCell);
 begin
-  Checked := (ACell <> nil) and (uffWordwrap in ACell^.UsedFormattingFields);
+  Checked := (ACell <> nil) and Worksheet.ReadWordwrap(ACell);
 end;
 
 function TsWordwrapAction.GetWordwrap: Boolean;
@@ -936,12 +932,12 @@ begin
 end;
 
 procedure TsNumberFormatAction.ExtractFromCell(ACell: PCell);
+var
+  nf: TsNumberFormat;
+  nfs: String;
 begin
-  if (ACell = nil) or not (uffNumberFormat in ACell^.UsedFormattingFields) then
-    Checked := false
-  else
-    Checked := (ACell^.NumberFormat = FNumberFormat)
-      and (ACell^.NumberFormatStr = FNumberFormatStr);
+  Worksheet.ReadNumFormat(ACell, nf, nfs);
+  Checked := (ACell <> nil) and (nf = FNumberFormat) and (nfs = FNumberFormatStr);
 end;
 
 
@@ -956,14 +952,15 @@ end;
 procedure TsDecimalsAction.ApplyFormatToCell(ACell: PCell);
 var
   decs: Integer;
+  nf: TsNumberFormat;
+  nfs: String;
 begin
-  if IsDateTimeFormat(ACell^.NumberFormat) then
+  Worksheet.ReadNumFormat(ACell, nf, nfs);
+
+  if IsDateTimeFormat(nf) then
     exit;
 
-  if (ACell^.ContentType in [cctEmpty, cctNumber]) and (
-     (not (uffNumberFormat in ACell^.UsedFormattingFields)) or
-     (ACell^.NumberFormat = nfGeneral)
-  ) then
+  if (ACell^.ContentType in [cctEmpty, cctNumber]) and (nf <> nfGeneral) then
     decs := Worksheet.GetDisplayedDecimals(ACell)
   else
     decs := FDecimals;
@@ -976,16 +973,16 @@ procedure TsDecimalsAction.ExtractFromCell(ACell: PCell);
 var
   csym: String;
   decs: Byte;
+  nf: TsNumberFormat;
+  nfs: String;
 begin
   if ACell = nil then begin
     FDecimals := 2;
     exit;
   end;
 
-  if (ACell^.ContentType in [cctEmpty, cctNumber]) and (
-     (not (uffNumberFormat in ACell^.UsedFormattingFields)) or
-     (ACell^.NumberFormat = nfGeneral)
-  ) then
+  Worksheet.ReadNumFormat(ACell, nf, nfs);
+  if (ACell^.ContentType in [cctEmpty, cctNumber]) and (nf <> nfGeneral) then
     decs := Worksheet.GetDisplayedDecimals(ACell)
   else
     Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
@@ -1029,8 +1026,11 @@ end;
 procedure TsActionBorders.ExtractFromCell(AWorkbook: TsWorkbook; ACell: PCell);
 var
   cb: TsCellBorder;
+  fmt: PsCellFormat;
 begin
-  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+  if (ACell <> nil) then
+    fmt := AWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  if (ACell = nil) or not (uffBorder in fmt^.UsedFormattingFields) then
     for cb in TsCellBorder do
     begin
       FBorders[cb].ExtractStyle(AWorkbook, DEFAULT_BORDERSTYLES[cb]);
@@ -1039,8 +1039,8 @@ begin
   else
     for cb in TsCellBorder do
     begin
-      FBorders[cb].ExtractStyle(AWorkbook, ACell^.BorderStyles[cb]);
-      FBorders[cb].Visible := cb in ACell^.Border;
+      FBorders[cb].ExtractStyle(AWorkbook, fmt^.BorderStyles[cb]);
+      FBorders[cb].Visible := cb in fmt^.Border;
     end;
 end;
 
@@ -1072,16 +1072,18 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
   procedure ShowBorder(ABorder: TsCellBorder; ACell: PCell;
     ABorderStyle: TsCellBorderStyle; AEnable: boolean);
   var
-    brdr: TsCellBorders;
+    fmt: TsCellFormat;
   begin
-    brdr := ACell^.Border;
+    fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     if AEnable then
     begin
-      Include(brdr, ABorder);
-      Worksheet.WriteBorderStyle(ACell, ABorder, ABorderStyle);
-      Worksheet.WriteBorders(ACell, brdr);
-      // Don't modify the cell directly, this will miss the OnChange event.
-    end;
+      Include(fmt.Border, ABorder);
+      fmt.BorderStyles[ABorder] := ABorderStyle;
+      ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+      Include(fmt.UsedFormattingFields, uffBorder);
+    end else
+      Exclude(fmt.UsedFormattingFields, uffBorder);
+    Worksheet.ChangedCell(ACell^.Row, ACell^.Col);
   end;
 
 var
@@ -1139,7 +1141,8 @@ procedure TsCellBorderAction.ExtractFromCell(ACell: PCell);
 var
   EmptyCell: TCell;
 begin
-  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+//  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+  if (ACell = nil) or not (uffBorder in Worksheet.ReadUsedFormatting(ACell)) then
   begin
     EmptyCell.Row := 0;  // silence the compiler...
     InitCell(EmptyCell);
@@ -1288,19 +1291,22 @@ procedure TsFontDialogAction.ExtractFromCell(ACell: PCell);
 var
   sfnt: TsFont;
   fnt: TFont;
+  fmt: PsCellFormat;
 begin
   fnt := TFont.Create;
   try
     if (ACell = nil) then
       sfnt := Workbook.GetDefaultFont
-    else
-    if uffBold in ACell^.UsedFormattingFields then
-      sfnt := Workbook.GetFont(1)
-    else
-    if uffFont in ACell^.UsedFormattingFields then
-      sfnt := Workbook.GetFont(ACell^.FontIndex)
-    else
-      sfnt := Workbook.GetDefaultFont;
+    else begin
+      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+      if (uffBold in fmt^.UsedFormattingFields) then
+        sfnt := Workbook.GetFont(1)
+      else
+      if (uffFont in fmt^.UsedFormattingFields) then
+        sfnt := Workbook.GetFont(fmt^.FontIndex)
+      else
+        sfnt := Workbook.GetDefaultFont;
+    end;
     Convert_sFont_to_Font(Workbook, sfnt, fnt);
     GetDialog.Font.Assign(fnt);
   finally
@@ -1339,11 +1345,15 @@ begin
 end;
 
 procedure TsBackgroundColorDialogAction.ExtractFromCell(ACell: PCell);
+var
+  fmt: PsCellFormat;
 begin
-  if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedFormattingFields) then
-    FBackgroundColor := scNotDefined
-  else
-    FBackgroundColor := ACell^.BackgroundColor;
+  FBackgroundColor := scNotDefined;
+  if (ACell <> nil) then begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if  (uffBackgroundColor in fmt^.UsedFormattingFields) then
+      FBackgroundColor := fmt^.BackgroundColor;
+  end;
 end;
 
 function TsBackgroundColorDialogAction.GetDialog: TColorDialog;

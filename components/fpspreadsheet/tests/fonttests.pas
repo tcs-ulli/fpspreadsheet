@@ -137,6 +137,7 @@ var
   row, col: Integer;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
+  fmt: TsCellFormat;
 begin
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -153,7 +154,8 @@ begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell.');
-    CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
+    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
+    CheckEquals(false, uffBold in fmt.UsedFormattingFields,
       'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row,Col));
 
     // Write out a cell with "bold" formatting style
@@ -163,7 +165,8 @@ begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failded to get cell.');
-    CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
+    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
+    CheckEquals(true, uffBold in fmt.UsedFormattingFields,
       'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row, Col));
 
     TempFile:=NewTempFile;
@@ -189,7 +192,8 @@ begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell.');
-    CheckEquals(uffBold in MyCell^.UsedFormattingFields, false,
+    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
+    CheckEquals(false, uffBold in fmt.UsedFormattingFields,
       'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
 
     // Try to read cell with "bold"
@@ -197,7 +201,8 @@ begin
     MyCell := MyWorksheet.FindCell(row, col);
     if MyCell = nil then
       fail('Error in test code. Failed to get cell.');
-    CheckEquals(uffBold in MyCell^.UsedFormattingFields, true,
+    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
+    CheckEquals(true, uffBold in fmt.UsedFormattingFields,
       'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
   finally
     MyWorkbook.Free;
@@ -240,7 +245,7 @@ begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
-        font := MyWorkbook.GetFont(MyCell^.FontIndex);
+        font := MyWorksheet.ReadCellFont(MyCell);
         CheckEquals(SollSizes[row], font.Size,
           'Test unsaved font size, cell ' + CellNotation(MyWorksheet,0,0));
         currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));
@@ -274,7 +279,7 @@ begin
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
-        font := MyWorkbook.GetFont(MyCell^.FontIndex);
+        font := MyWorksheet.ReadCellFont(MyCell);
         if abs(SollSizes[row] - font.Size) > 1e-6 then  // safe-guard against rounding errors
           CheckEquals(SollSizes[row], font.Size,
             'Test saved font size, cell '+CellNotation(MyWorksheet,Row,Col));

@@ -1,6 +1,7 @@
 unit formattests;
 
 {$mode objfpc}{$H+}
+{$modeswitch advancedrecords}
 
 interface
 { Formatted date/time/number tests
@@ -16,9 +17,8 @@ uses
   {$ENDIF}
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpstypes, fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  testsutility;
+  Classes, SysUtils, fpcunit, testutils, testregistry, testsutility,
+  fpstypes, fpsallformats, fpspreadsheet, fpshelpers, xlsbiff8;
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
@@ -708,6 +708,8 @@ var
         Result := GetEnumName(TypeInfo(TsCellBorder), ord(cb))
       else
         Result := Result + ', ' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
+    if Result = '' then
+      Result := 'no borders';
   end;
 
 begin
@@ -725,10 +727,11 @@ begin
       maxCol := High(SollBorders);
     for col := Low(SollBorders) to maxCol do
     begin
-      MyWorksheet.WriteUsedFormatting(row, col, [uffBorder]);
-      MyCell := MyWorksheet.GetCell(row, col);
-      Include(MyCell^.UsedFormattingFields, uffBorder);
-      MyCell^.Border := SollBorders[col];
+      // It is important for the test to write contents to the cell. Without it
+      // the first cell (col=0) would not even contain a format and would be
+      // dropped by the ods reader resulting in a matching error.
+      MyCell := MyWorksheet.WriteUTF8Text(row, col, GetBordersAsText(SollBorders[col]));
+      MyWorksheet.WriteBorders(MyCell, SollBorders[col]);
     end;
 
     TempFile:=NewTempFile;
@@ -809,6 +812,7 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
   c, ls: Integer;
   borders: TsCellBorders;
+  borderstyle: TsCellBorderStyle;
   diagUp_ls: Integer;
   diagUp_clr: integer;
 begin
@@ -874,7 +878,8 @@ begin
           fail('Error in test code. Failed to get cell.');
         for b in borders do
         begin
-          current := ord(MyCell^.BorderStyles[b].LineStyle);
+          borderStyle := MyWorksheet.ReadCellBorderStyle(MyCell, b);
+          current := ord(borderStyle.LineStyle);
           // In Excel both diagonals have the same line style. The reader picks
           // the line style of the "diagonal-up" border. We use this as expected
           // value in the "diagonal-down" case.
@@ -886,7 +891,7 @@ begin
             end;
           CheckEquals(expected, current,
             'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
-          current := MyCell^.BorderStyles[b].Color;
+          current := borderStyle.Color;
           expected := SollBorderColors[c];
           // In Excel both diagonals have the same line color. The reader picks
           // the color of the "diagonal-up" border. We use this as expected value
@@ -1207,13 +1212,15 @@ begin
     MyCell := MyWorksheet.FindCell(0, 0);
     if MyCell = nil then
       fail('Error in test code. Failed to get word-wrapped cell.');
-    CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
+    CheckEquals(true, MyWorksheet.ReadWordwrap(MyCell),
+      'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
     MyWorksheet.WriteUTF8Text(1, 0, LONGTEXT);
     MyWorksheet.WriteUsedFormatting(1, 0, []);
     MyCell := MyWorksheet.FindCell(1, 0);
     if MyCell = nil then
       fail('Error in test code. Failed to get word-wrapped cell.');
-    CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields), 'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
+    CheckEquals(false, MyWorksheet.ReadWordwrap(MyCell),
+      'Test unsaved non-wrapped cell mismatch, cell ' + CellNotation(MyWorksheet,0,0));
     TempFile:=NewTempFile;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
@@ -1233,12 +1240,12 @@ begin
     MyCell := MyWorksheet.FindCell(0, 0);
     if MyCell = nil then
       fail('Error in test code. Failed to get word-wrapped cell.');
-    CheckEquals(true, (uffWordWrap in MyCell^.UsedFormattingFields),
+    CheckEquals(true, MyWorksheet.ReadWordwrap(MyCell),
       'Failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
     MyCell := MyWorksheet.FindCell(1, 0);
     if MyCell = nil then
       fail('Error in test code. Failed to get non-wrapped cell.');
-    CheckEquals(false, (uffWordWrap in MyCell^.UsedFormattingFields),
+    CheckEquals(false, MyWorksheet.ReadWordwrap(MyCell),
       'Failed to return correct word-wrap flag, cell ' + CellNotation(MyWorksheet,0,0));
   finally
     MyWorkbook.Free;

@@ -2548,39 +2548,45 @@ var
   s: String;
   cb: TsCellBorder;
   r1, r2, c1, c2: Cardinal;
+  fmt: TsCellFormat;
 begin
-  if (ACell = nil) or not (uffFont in ACell^.UsedFormattingFields)
+  if (ACell <> nil) then
+    fmt := Workbook.GetCellFormat(ACell^.FormatIndex)
+  else
+    InitFormatRecord(fmt);
+
+  if (ACell = nil) or not (uffFont in fmt.UsedFormattingFields)
     then AStrings.Add('FontIndex=')
     else AStrings.Add(Format('FontIndex=%d (%s)', [
-           ACell^.FontIndex,
-           Workbook.GetFontAsString(ACell^.FontIndex)
+           fmt.FontIndex,
+           Workbook.GetFontAsString(fmt.FontIndex)
          ]));
 
-  if (ACell=nil) or not (uffTextRotation in ACell^.UsedFormattingFields)
+  if (ACell=nil) or not (uffTextRotation in fmt.UsedFormattingFields)
     then AStrings.Add('TextRotation=')
     else AStrings.Add(Format('TextRotation=%s', [
-           GetEnumName(TypeInfo(TsTextRotation), ord(ACell^.TextRotation))
+           GetEnumName(TypeInfo(TsTextRotation), ord(fmt.TextRotation))
          ]));
 
-  if (ACell=nil) or not (uffHorAlign in ACell^.UsedFormattingFields)
+  if (ACell=nil) or not (uffHorAlign in fmt.UsedFormattingFields)
     then AStrings.Add('HorAlignment=')
     else AStrings.Add(Format('HorAlignment=%s', [
-           GetEnumName(TypeInfo(TsHorAlignment), ord(ACell^.HorAlignment))
+           GetEnumName(TypeInfo(TsHorAlignment), ord(fmt.HorAlignment))
          ]));
 
-  if (ACell=nil) or not (uffVertAlign in ACell^.UsedFormattingFields)
+  if (ACell=nil) or not (uffVertAlign in fmt.UsedFormattingFields)
     then AStrings.Add('VertAlignment=')
     else AStrings.Add(Format('VertAlignment=%s', [
-           GetEnumName(TypeInfo(TsVertAlignment), ord(ACell^.VertAlignment))
+           GetEnumName(TypeInfo(TsVertAlignment), ord(fmt.VertAlignment))
          ]));
 
-  if (ACell=nil) or not (uffBorder in ACell^.UsedFormattingFields) then
+  if (ACell=nil) or not (uffBorder in fmt.UsedFormattingFields) then
     AStrings.Add('Borders=')
   else
   begin
     s := '';
     for cb in TsCellBorder do
-      if cb in ACell^.Border then
+      if cb in fmt.Border then
         s := s + ', ' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
     if s <> '' then Delete(s, 1, 2);
     AStrings.Add('Borders='+s);
@@ -2593,24 +2599,24 @@ begin
     else
       AStrings.Add(Format('BorderStyles[%s]=%s, %s', [
         GetEnumName(TypeInfo(TsCellBorder), ord(cb)),
-        GetEnumName(TypeInfo(TsLineStyle), ord(ACell^.BorderStyles[cbEast].LineStyle)),
-        Workbook.GetColorName(ACell^.BorderStyles[cbEast].Color)]));
+        GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cbEast].LineStyle)),
+        Workbook.GetColorName(fmt.BorderStyles[cbEast].Color)]));
 
-  if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedformattingFields)
+  if (ACell = nil) or not (uffBackgroundColor in fmt.UsedformattingFields)
     then AStrings.Add('BackgroundColor=')
     else AStrings.Add(Format('BackgroundColor=%d (%s)', [
-           ACell^.BackgroundColor,
-           Workbook.GetColorName(ACell^.BackgroundColor)]));
+           fmt.BackgroundColor,
+           Workbook.GetColorName(fmt.BackgroundColor)]));
 
-  if (ACell = nil) or not (uffNumberFormat in ACell^.UsedFormattingFields) then
+  if (ACell = nil) or not (uffNumberFormat in fmt.UsedFormattingFields) then
   begin
     AStrings.Add('NumberFormat=');
     AStrings.Add('NumberFormatStr=');
   end else
   begin
     AStrings.Add(Format('NumberFormat=%s', [
-      GetEnumName(TypeInfo(TsNumberFormat), ord(ACell^.NumberFormat))]));
-    AStrings.Add('NumberFormatStr=' + ACell^.NumberFormatStr);
+      GetEnumName(TypeInfo(TsNumberFormat), ord(fmt.NumberFormat))]));
+    AStrings.Add('NumberFormatStr=' + fmt.NumberFormatStr);
   end;
 
   if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then

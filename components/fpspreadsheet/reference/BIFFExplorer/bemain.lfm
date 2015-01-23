@@ -4,7 +4,7 @@ object MainForm: TMainForm
   Top = 177
   Width = 1089
   Caption = 'BIFF Explorer'
-  ClientHeight = 551
+  ClientHeight = 556
   ClientWidth = 1089
   Menu = MainMenu
   OnCloseQuery = FormCloseQuery
@@ -12,10 +12,10 @@ object MainForm: TMainForm
   OnDestroy = FormDestroy
   OnShow = FormShow
   ShowHint = True
-  LCLVersion = '1.3'
+  LCLVersion = '1.5'
   object Splitter1: TSplitter
     Left = 419
-    Height = 496
+    Height = 506
     Top = 27
     Width = 5
   end
@@ -49,6 +49,7 @@ object MainForm: TMainForm
     end
     object ToolButton4: TToolButton
       Left = 59
+      Height = 25
       Top = 2
       Width = 5
       Caption = 'ToolButton4'
@@ -57,17 +58,17 @@ object MainForm: TMainForm
   end
   object DetailPanel: TPanel
     Left = 424
-    Height = 496
+    Height = 506
     Top = 27
     Width = 665
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 496
+    ClientHeight = 506
     ClientWidth = 665
     TabOrder = 2
     object PageControl: TPageControl
       Left = 0
-      Height = 496
+      Height = 506
       Top = 0
       Width = 665
       ActivePage = PgAnalysis
@@ -77,12 +78,12 @@ object MainForm: TMainForm
       OnChange = PageControlChange
       object PgAnalysis: TTabSheet
         Caption = 'Analysis'
-        ClientHeight = 463
+        ClientHeight = 478
         ClientWidth = 657
         object AnalysisDetails: TMemo
           Left = 0
           Height = 191
-          Top = 272
+          Top = 287
           Width = 657
           Align = alBottom
           Font.CharSet = ANSI_CHARSET
@@ -99,7 +100,7 @@ object MainForm: TMainForm
           Cursor = crVSplit
           Left = 0
           Height = 5
-          Top = 267
+          Top = 282
           Width = 657
           Align = alBottom
           ResizeAnchor = akBottom
@@ -193,7 +194,7 @@ object MainForm: TMainForm
               20
               20
               20
-              20
+              24
             )
             Cells = (
               16
@@ -263,22 +264,22 @@ object MainForm: TMainForm
             OnClick = GridClick
             OnSelection = AlphaGridSelection
             ColWidths = (
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              15
-              27
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
             )
             Cells = (
               16
@@ -355,19 +356,19 @@ object MainForm: TMainForm
   end
   object TreePanel: TPanel
     Left = 0
-    Height = 496
+    Height = 506
     Top = 27
     Width = 419
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 496
+    ClientHeight = 506
     ClientWidth = 419
     Constraints.MinWidth = 275
     TabOrder = 3
     object FindPanel: TPanel
       Left = 0
       Height = 36
-      Top = 460
+      Top = 470
       Width = 419
       Align = alBottom
       BevelOuter = bvNone
@@ -509,10 +510,10 @@ object MainForm: TMainForm
       end
       object CbFind: TComboBox
         Left = 28
-        Height = 28
+        Height = 23
         Top = 5
         Width = 183
-        ItemHeight = 20
+        ItemHeight = 15
         OnChange = CbFindChange
         OnKeyPress = CbFindKeyPress
         TabOrder = 0
@@ -520,7 +521,7 @@ object MainForm: TMainForm
     end
     object BIFFTree: TVirtualStringTree
       Left = 0
-      Height = 460
+      Height = 470
       Top = 0
       Width = 419
       Align = alClient
@@ -583,8 +584,8 @@ object MainForm: TMainForm
   end
   object StatusBar: TStatusBar
     Left = 0
-    Height = 28
-    Top = 523
+    Height = 23
+    Top = 533
     Width = 1089
     Panels = <    
       item

@@ -42,6 +42,7 @@
       <Unit0>
         <Filename Value="demo_write_formatting.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="demo_write_formatting"/>
       </Unit0>
     </Units>
   </ProjectOptions>

@@ -5,7 +5,7 @@ unit beBIFFGrid;
 interface
 
 uses
-  Classes, SysUtils, Controls, Grids, fpspreadsheet;
+  Classes, SysUtils, Controls, Grids, fpstypes, fpspreadsheet;
 
 type
   TBIFFBuffer = array of byte;

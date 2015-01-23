@@ -74,7 +74,7 @@ type
     property YFirstCellRow: Cardinal read FYFirstCellRow write SetYFirstCellRow default 0;
     property XSelectionDirection: TsSelectionDirection read FXSelectionDirection write SetXSelectionDirection;
     property YSelectionDirection: TsSelectionDirection read FYSelectionDirection write SetYSelectionDirection;
-  end;
+  end deprecated 'Use TsWorkBOOKChartSource instead of TsWorkSHEETChartSource.';
 
 
   { TsWorkbookChartSource }
