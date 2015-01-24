@@ -1386,14 +1386,21 @@ begin
     begin
       formula := ACell^.FormulaValue;
       parser.ActiveCell := nil;
-    end
-    else
+    end else
     begin
       formula := ACell^.SharedFormulaBase^.FormulaValue;
       parser.ActiveCell := ACell;
     end;
-    parser.Expression := formula;
-    res := parser.Evaluate;
+    try
+      parser.Expression := formula;
+      res := parser.Evaluate;
+    except
+      on E:ECalcEngine do
+      begin
+        Workbook.AddErrorMsg(E.Message);
+        Res := ErrorResult(errIllegalRef);
+      end;
+    end;
     case res.ResultType of
       rtEmpty    : WriteBlank(ACell);
       rtError    : WriteErrorValue(ACell, res.ResError);
@@ -1450,7 +1457,7 @@ begin
       node := FCells.FindSuccessor(node);
     end;
 
-    // Step 2 - calculate cells. If a not-calculated cell is found it is
+    // Step 2 - calculate cells. If a not-yet-calculated cell is found it is
     // calculated and then marked as such.
     node := FCells.FindLowest;
     while Assigned(Node) do begin

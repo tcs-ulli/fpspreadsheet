@@ -795,6 +795,7 @@ type
   end;
 
   EExprParser = class(Exception);
+  ECalcEngine = class(Exception);
 
 function TokenName(AToken: TsTokenType): String;
 function ResultTypeName(AResult: TsResultType): String;
@@ -881,7 +882,7 @@ resourcestring
   ErrInvalidArgumentCount = 'Invalid argument count for function %s';
   SErrInvalidResultType = 'Invalid result type: %s';
   SErrNotVariable = 'Identifier %s is not a variable';
-  SErrCircularReference = 'Circular reference found when calculating worksheet formulas';
+  SErrCircularReference = 'Circular reference found when calculating worksheet formula in cell %s';
 
 { ---------------------------------------------------------------------
   Auxiliary functions
@@ -3846,7 +3847,7 @@ begin
       csNotCalculated:
         Worksheet.CalcFormula(cell);
       csCalculating:
-        raise Exception.Create(SErrCircularReference);
+        raise ECalcEngine.CreateFmt(SErrCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
     end;
 
   Result.ResultType := rtCell;
