@@ -1,9 +1,9 @@
-object Form1: TForm1
+object MainForm: TMainForm
   Left = 495
   Height = 600
   Top = 132
   Width = 929
-  Caption = 'Form1'
+  Caption = 'demo_ctrls'
   ClientHeight = 580
   ClientWidth = 929
   Menu = MainMenu

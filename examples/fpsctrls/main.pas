@@ -11,9 +11,9 @@ uses
 
 type
 
-  { TForm1 }
+  { TMainForm }
 
-  TForm1 = class(TForm)
+  TMainForm = class(TForm)
     AcRowDelete: TAction;
     AcColDelete: TAction;
     AcRowAdd: TAction;
@@ -286,21 +286,22 @@ type
     procedure InspectorTabControlChange(Sender: TObject);
   private
     { private declarations }
+    procedure UpdateCaption;
   public
     { public declarations }
   end;
 
 var
-  Form1: TForm1;
+  MainForm: TMainForm;
 
 implementation
 
 {$R *.lfm}
 
-{ TForm1 }
+{ TMainForm }
 
 { Loads the spreadsheet file selected by the AcFileOpen action }
-procedure TForm1.AcFileOpenAccept(Sender: TObject);
+procedure TMainForm.AcFileOpenAccept(Sender: TObject);
 begin
   WorkbookSource.AutodetectFormat := false;
   case AcFileOpen.Dialog.FilterIndex of
@@ -314,10 +315,11 @@ begin
     8: WorkbookSource.FileFormat := sfCSV;           // Text files
   end;
   WorkbookSource.FileName := AcFileOpen.Dialog.FileName;  // this loads the file
+  UpdateCaption;
 end;
 
 { Saves the spreadsheet to the file selected by the AcFileSaveAs action }
-procedure TForm1.AcFileSaveAsAccept(Sender: TObject);
+procedure TMainForm.AcFileSaveAsAccept(Sender: TObject);
 var
   fmt: TsSpreadsheetFormat;
 begin
@@ -333,20 +335,21 @@ begin
       7: fmt := sfWikiTable_WikiMedia;
     end;
     WorkbookSource.SaveToSpreadsheetFile(AcFileSaveAs.Dialog.FileName, fmt);
+    UpdateCaption;
   finally
     Screen.Cursor := crDefault;
   end;
 end;
 
 { Adds a column before the active cell }
-procedure TForm1.AcColAddExecute(Sender: TObject);
+procedure TMainForm.AcColAddExecute(Sender: TObject);
 begin
   WorksheetGrid.InsertCol(WorksheetGrid.Col);
   WorksheetGrid.Col := WorksheetGrid.Col + 1;
 end;
 
 { Deletes the column with the active cell }
-procedure TForm1.AcColDeleteExecute(Sender: TObject);
+procedure TMainForm.AcColDeleteExecute(Sender: TObject);
 var
   c: Integer;
 begin
@@ -356,14 +359,14 @@ begin
 end;
 
 { Adds a row before the active cell }
-procedure TForm1.AcRowAddExecute(Sender: TObject);
+procedure TMainForm.AcRowAddExecute(Sender: TObject);
 begin
   WorksheetGrid.InsertRow(WorksheetGrid.Row);
   WorksheetGrid.Row := WorksheetGrid.Row + 1;
 end;
 
 { Deletes the row with the active cell }
-procedure TForm1.AcRowDeleteExecute(Sender: TObject);
+procedure TMainForm.AcRowDeleteExecute(Sender: TObject);
 var
   r: Integer;
 begin
@@ -373,16 +376,27 @@ begin
 end;
 
 { Toggles the spreadsheet inspector on and off }
-procedure TForm1.AcViewInspectorExecute(Sender: TObject);
+procedure TMainForm.AcViewInspectorExecute(Sender: TObject);
 begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
 end;
 
 { Event handler to synchronize the mode of the spreadsheet inspector with the
   selected tab of the TabControl }
-procedure TForm1.InspectorTabControlChange(Sender: TObject);
+procedure TMainForm.InspectorTabControlChange(Sender: TObject);
 begin
   Inspector.Mode := TsInspectorMode(InspectorTabControl.TabIndex);
+end;
+
+procedure TMainForm.UpdateCaption;
+begin
+  if WorkbookSource = nil then
+    Caption := 'demo_ctrls'
+  else
+    Caption := Format('demo_ctrls - "%s" [%s]', [
+      WorkbookSource.Filename,
+      GetFileFormatName(WorkbookSource.Workbook.FileFormat)
+    ]);
 end;
 
 end.

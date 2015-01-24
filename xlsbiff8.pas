@@ -638,6 +638,9 @@ begin
 
     // Final preparations
     Inc(FCurrentWorksheet);
+    if FCurrentWorksheet = FWorksheetNames.Count then BIFF8EOF := True;
+    // It can happen in files written by Office97 that the OLE directory is
+    // at the end of the file.
   end;
 
   if not FPaletteFound then
