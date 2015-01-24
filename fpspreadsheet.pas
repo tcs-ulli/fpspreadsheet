@@ -37,8 +37,8 @@ type
 
   {@@ Cell structure for TsWorksheet
       The cell record contains information on the location of the cell (row and
-      column index), on the value contained (number, date, text, ...), and on
-      formatting.
+      column index), on the value contained (number, date, text, ...), on
+      formatting, etc.
 
       Never suppose that all *Value fields are valid,
       only one of the ContentTypes is valid. For other fields
@@ -46,9 +46,11 @@ type
 
       @see ReadAsUTF8Text }
   TCell = record
+    { Location of the cell }
     Worksheet: TsWorksheet;
     Col: Cardinal; // zero-based
     Row: Cardinal; // zero-based
+    (*
     ContentType: TCellContentType;
     { Possible values for the cells }
     FormulaValue: string;
@@ -57,12 +59,25 @@ type
     DateTimeValue: TDateTime;
     BoolValue: Boolean;
     ErrorValue: TsErrorValue;
-    SharedFormulaBase: PCell;    // Cell containing the shared formula
-    MergeBase: PCell;            // Upper left cell if a merged range
+    *)
     { Index of format record }
     FormatIndex: Integer;
     { Status flags }
     CalcState: TsCalcState;
+    { Special information }
+    SharedFormulaBase: PCell;  // Cell containing the shared formula
+    MergeBase: PCell;          // Upper left cell of a merged range
+    { Cell content }
+    UTF8StringValue: String;   // strings cannot be part of a variant record
+    FormulaValue: String;
+    case ContentType: TCellContentType of  // must be at the end of the declaration
+      cctEmpty      : ();      // has no data at all
+      cctFormula    : ();      // UTF8StringValue is outside the variant record
+      cctNumber     : (Numbervalue: Double);
+      cctUTF8String : ();      // FormulaValue is outside the variant record
+      cctDateTime   : (DateTimevalue: TDateTime);
+      cctBool       : (BoolValue: boolean);
+      cctError      : (ErrorValue: TsErrorValue);
   end;
 
   {@@ The record TRow contains information about a spreadsheet row:
