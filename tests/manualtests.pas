@@ -21,7 +21,7 @@ uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, testutils, testregistry, testdecorator, fpcunit,
-  fpsallformats, fpspreadsheet, fpshelpers,
+  fpsallformats, fpspreadsheet, fpscell,
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 

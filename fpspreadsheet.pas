@@ -57,43 +57,13 @@ type
     DateTimeValue: TDateTime;
     BoolValue: Boolean;
     ErrorValue: TsErrorValue;
-    SharedFormulaBase: PCell;     // Cell containing the shared formula
-    MergeBase: PCell;   // Upper left cell if a merged range
-    //MergedNeighbors: TsCellBorders;
-    { Formatting fields }
-(*
-    { When adding/deleting formatting fields don't forget to update CopyFormat! }
-    UsedFormattingFields: TsUsedFormattingFields;
-    FontIndex: Integer;
-    TextRotation: TsTextRotation;
-    HorAlignment: TsHorAlignment;
-    VertAlignment: TsVertAlignment;
-    Border: TsCellBorders;
-    BorderStyles: TsCellBorderStyles;
-    BackgroundColor: TsColor;
-    NumberFormat: TsNumberFormat;
-    NumberFormatStr: String;
-    RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
-    *)
+    SharedFormulaBase: PCell;    // Cell containing the shared formula
+    MergeBase: PCell;            // Upper left cell if a merged range
     { Index of format record }
     FormatIndex: Integer;
     { Status flags }
     CalcState: TsCalcState;
   end;
-                {
-  TCell = record
-    Worksheet: TsWorksheet;
-    Col: LongInt;
-    Row: LongInt;
-    ContentType: TCellContentType;
-    NumberValue: Double;
-    StringValue: String;
-    FormulaValue: String;
-    SharedFormulaBase: PCell;
-    MergeBase: PCell;
-    StyleIndex: Integer;
-    CalcState: TsCalcState;
-  end;           }
 
   {@@ The record TRow contains information about a spreadsheet row:
     @param Row   The index of the row (beginning with 0)
@@ -226,14 +196,11 @@ type
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
       out ACurrencySymbol: String): Boolean;
 
-//    function  ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields; overload;
     function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
-//    function  ReadBackgroundColor(ARow, ACol: Cardinal): TsColor; overload;
-    function  ReadBackgroundColor(ACell: PCell): TsColor; //overload;
+    function  ReadBackgroundColor(ACell: PCell): TsColor;
     function  ReadCellBorders(ACell: PCell): TsCellBorders;
     function  ReadCellBorderStyle(ACell: PCell; ABorder: TsCellBorder): TsCellBorderStyle;
-//    function  ReadCellFont(ARow, ACol: Cardinal): TsFont; overload;
-    function  ReadCellFont(ACell: PCell): TsFont; //overload;
+    function  ReadCellFont(ACell: PCell): TsFont;
     function  ReadCellFormat(ACell: PCell): TsCellFormat;
     function  ReadHorAlignment(ACell: PCell): TsHorAlignment;
     procedure ReadNumFormat(ACell: PCell; out ANumFormat: TsNumberFormat;
@@ -337,6 +304,8 @@ type
       ALineStyle: TsLineStyle; AColor: TsColor); overload;
     function WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles): PCell; overload;
     procedure WriteBorderStyles(ACell: PCell; const AStyles: TsCellBorderStyles); overload;
+
+    procedure WriteCellFormat(ACell: PCell; const ACellFormat: TsCellFormat);
 
     function WriteDateTimeFormat(ARow, ACol: Cardinal; ANumFormat: TsNumberFormat;
       const ANumFormatString: String = ''): PCell; overload;
@@ -568,8 +537,7 @@ type
   {@@ Event procedure called when a worksheet is removed }
   TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
-  {@@
-    The workbook contains the worksheets and provides methods for reading from
+  {@@ The workbook contains the worksheets and provides methods for reading from
     and writing to file.
   }
   TsWorkbook = class
@@ -786,7 +754,6 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook);
     destructor Destroy; override;
-//    function AddFormat(AFormatCell: PCell): Integer; overload;
     function AddFormat(AFormatIndex: Integer; AFormatName: String;
       ANumFormat: TsNumberFormat; AFormatString: String): Integer; overload;
     function AddFormat(AFormatIndex: Integer; ANumFormat: TsNumberFormat;
@@ -801,13 +768,11 @@ type
     procedure ConvertBeforeWriting(var AFormatString: String;
       var ANumFormat: TsNumberFormat); virtual;
     procedure Delete(AIndex: Integer);
-    function Find(ANumFormat: TsNumberFormat; AFormatString: String): Integer; virtual; overload;
-    function Find(AFormatString: String): Integer; overload;
+    function Find(ANumFormat: TsNumberFormat; AFormatString: String): Integer; virtual;
+    function FindByFormatStr(AFormatString: String): Integer;
     function FindByIndex(AFormatIndex: Integer): Integer;
     function FindByName(AFormatName: String): Integer;
-//    function FindFormatOf(AFormatCell: PCell): integer; virtual;
     function FormatStringForWriting(AIndex: Integer): String; virtual;
-//    function IndexOfFormatRecord(AFormatRecord: PsCellFormat): Integer; virtual;
     procedure Sort;
 
     {@@ Workbook from which the number formats are collected in the list. It is
@@ -909,17 +874,11 @@ type
   TsCustomSpreadWriter = class(TsCustomSpreadReaderWriter)
   protected
     { Helper routines }
-//    procedure AddDefaultFormats(); virtual;
     procedure CheckLimitations;
-//    function  FindFormattingInList(AFormat: PCell): Integer;
-//    procedure FixCellColors(ACell: PCell);
     function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
-//    procedure ListAllFormattingStylesCallback(ACell: PCell; AStream: TStream);
-//    procedure ListAllFormattingStyles; virtual;
-//    procedure ListAllNumFormatsCallback(ACell: PCell; AStream: TStream);
     procedure ListAllNumFormats; virtual;
     { Helpers for writing }
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
@@ -946,14 +905,6 @@ type
     {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); virtual; abstract;
-  (*
-  public
-    {@@ An array with cells which are models for the used styles
-    In this array the Row property holds the index to the corresponding XF field  }
-    FFormattingStyles: array of TCell;
-    {@@ Indicates which should be the next XF (style) index when filling the FFormattingStyles array }
-    NextXFIndex: Integer;
-    *)
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
@@ -1163,18 +1114,6 @@ begin
   Assert(AFromCell <> nil);
   Assert(AToCell <> nil);
   AToCell^.FormatIndex := AFromCell^.FormatIndex;
-                                                  {
-  AToCell^.UsedFormattingFields := AFromCell^.UsedFormattingFields;
-  AToCell^.BackgroundColor := AFromCell^.BackgroundColor;
-  AToCell^.Border := AFromCell^.Border;
-  AToCell^.BorderStyles := AFromCell^.BorderStyles;
-  AToCell^.FontIndex := AFromCell^.FontIndex;
-  AToCell^.HorAlignment := AFromCell^.HorAlignment;
-  AToCell^.VertAlignment := AFromCell^.VertAlignment;
-  AToCell^.TextRotation := AFromCell^.TextRotation;
-  AToCell^.NumberFormat := AFromCell^.NumberFormat;
-  AToCell^.NumberFormatStr := AFromCell^.NumberFormatStr;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1197,46 +1136,6 @@ begin
   AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
   AToCell^.FormulaValue := '';    // This is confirmed with Excel
 end;
-                         (*
-{@@ ----------------------------------------------------------------------------
-  Checks whether two cells have same border attributes
-
-  @param  ACell1  Pointer to the first one of the two cells to be compared
-  @param  ACell2  Pointer to the second one of the two cells to be compared
--------------------------------------------------------------------------------}
-function SameCellBorders(ACell1, ACell2: PCell): Boolean;
-
-  function NoBorder(ACell: PCell): Boolean;
-  begin
-    Result := (ACell = nil) or
-      not (uffBorder in ACell^.UsedFormattingFields) or
-      (ACell^.Border = []);
-  end;
-
-var
-  nobrdr1, nobrdr2: Boolean;
-  cb: TsCellBorder;
-begin
-  nobrdr1 := NoBorder(ACell1);
-  nobrdr2 := NoBorder(ACell2);
-  if (nobrdr1 and nobrdr2) then
-    Result := true
-  else
-  if (nobrdr1 and (not nobrdr2) ) or ( (not nobrdr1) and nobrdr2) then
-    Result := false
-  else begin
-    Result := false;
-    if ACell1^.Border <> ACell2^.Border then
-      exit;
-    for cb in TsCellBorder do begin
-      if ACell1^.BorderStyles[cb].LineStyle <> ACell2^.BorderStyles[cb].LineStyle then
-        exit;
-      if ACell1^.BorderStyles[cb].Color <> ACell2^.BorderStyles[cb].Color then
-        exit;
-    end;
-    Result := true;
-  end;
-end;                       *)
 
 {@@ ----------------------------------------------------------------------------
   Checks whether two format records have same border attributes
@@ -2168,7 +2067,6 @@ begin
   end;
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Determines some number format attributes (decimal places, currency symbol) of
   a cell
@@ -2294,7 +2192,7 @@ begin
       Result := Math.Min(Result, PCell(AVLNode.Data)^.Col);
       AVLNode := FCells.FindSuccessor(AVLNode);
     end;
-   // In addition, there may be column records defining the column width even
+    // In addition, there may be column records defining the column width even
     // without content
     for i:=0 to FCols.Count-1 do
       if FCols[i] <> nil then
@@ -2847,23 +2745,6 @@ begin
   end;
 end;
 
-(*
-{@@ ----------------------------------------------------------------------------
-  Reads the set of used formatting fields of a cell.
-
-  Each cell contains a set of "used formatting fields". Formatting is applied
-  only if the corresponding element is contained in the set.
-
-  @param  ARow    Row index of the considered cell
-  @param  ACol    Column index of the considered cell
-  @return Set of elements used in formatting the cell
--------------------------------------------------------------------------------}
-function TsWorksheet.ReadUsedFormatting(ARow, ACol: Cardinal): TsUsedFormattingFields;
-begin
-  Result := ReadUsedFormatting(FindCell(ARow, ACol));
-end;
-*)
-
 {@@ ----------------------------------------------------------------------------
   Reads the set of used formatting fields of a cell.
 
@@ -2885,19 +2766,6 @@ begin
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
   Result := fmt^.UsedFormattingFields;
 end;
-
-(*
-{@@ ----------------------------------------------------------------------------
-  Returns the background color of a cell as index into the workbook's color palette.
-
-  @param ARow  Row index of the cell
-  @param ACol  Column index of the cell
-  @return Index of the cell background color into the workbook's color palette
--------------------------------------------------------------------------------}
-function TsWorksheet.ReadBackgroundColor(ARow, ACol: Cardinal): TsColor;
-begin
-  Result := ReadBackgroundColor(FindCell(ARow, ACol));
-end;  *)
 
 {@@ ----------------------------------------------------------------------------
   Returns the background color of a cell as index into the workbook's color palette.
@@ -2951,17 +2819,7 @@ begin
     Result := fmt^.BorderStyles[ABorder];
   end;
 end;
-  (*
-{@@ ----------------------------------------------------------------------------
-  Determines the font used by a specified cell. Returns the workbook's default
-  font if the cell does not exist. Considers the uffBold and uffFont formatting
-  fields of the cell
--------------------------------------------------------------------------------}
-function TsWorksheet.ReadCellFont(ARow, ACol: Cardinal): TsFont;
-begin
-  Result := ReadCellFont(FindCell(ARow, ACol));
-end;
-    *)
+
 {@@ ----------------------------------------------------------------------------
   Determines the font used by a specified cell. Returns the workbook's default
   font if the cell does not exist. Considers the uffBold and uffFont formatting
@@ -3141,7 +2999,6 @@ begin
       cell := FindCell(r, c);
       if cell <> nil then
         cell^.MergeBase := nil;
-//        cell^.MergedNeighbors := [];
     end;
   ChangedCell(ARow, ACol);
 end;
@@ -3395,14 +3252,6 @@ end;
 procedure TsWorksheet.RemoveCallback(data, arg: pointer);
 begin
   Unused(arg);
-  (*
-  { The strings and dyn arrays must be reset to nil content manually, because
-    FreeMem only frees the record mem, without checking its content }
-  PCell(data).UTF8StringValue := '';
-  PCell(data).NumberFormatStr := '';
-  SetLength(PCell(data).RPNFormulaValue, 0);
-//  FreeMem(data);
-*)
   Dispose(PCell(data));
 end;
 
@@ -3564,13 +3413,6 @@ begin
     if (ACell1^.ContentType = cctEmpty) and (ACell2^.ContentType = cctEmpty) then
       Result := 0
     else
-      {
-    if (ACell1^.ContentType = cctEmpty) or (ACell2^.ContentType = cctEmpty) then
-    begin
-      Result := +1;  // Empty cells go to the end
-      exit;          // Avoid SortOrder to bring the empty cell back to the top
-    end else
-    }
     if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
     begin
       if ssoCaseInsensitive in ASortOptions then
@@ -3735,12 +3577,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
 begin
-  //if (ARow <> FActiveCellRow) or (ACol <> FActiveCellCol) then
-  //begin
-    FActiveCellRow := ARow;
-    FActiveCellCol := ACol;
-    if Assigned(FOnSelectCell) then FOnSelectCell(Self, ARow, ACol);
-  //end;
+  FActiveCellRow := ARow;
+  FActiveCellCol := ACol;
+  if Assigned(FOnSelectCell) then
+    FOnSelectCell(Self, ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3987,19 +3827,6 @@ begin
   if ACell <> nil then begin
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := ANumber;
-           (*
-    // old
-    ACell^.NumberFormat := ANumFormat;
-    if ANumFormat <> nfGeneral then begin
-      Include(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormatStr := BuildNumberFormatString(ACell^.NumberFormat,
-        Workbook.FormatSettings, ADecimals);
-    end else begin
-      Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormatStr := '';
-    end;
-
-    // new   *)
 
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     fmt.NumberFormat := ANumFormat;
@@ -4071,18 +3898,7 @@ begin
 
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := ANumber;
-        (*
-    // old
-    ACell^.NumberFormat := ANumFormat;
-    if ANumFormat <> nfGeneral then begin
-      Include(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormatStr := ANumFormatString;
-    end else begin
-      Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormatStr := '';
-    end;
 
-    // new*)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     fmt.NumberFormat := ANumFormat;
     if ANumFormat <> nfGeneral then begin
@@ -4381,13 +4197,7 @@ begin
   if (ACell <> nil) and IsCurrencyFormat(ANumFormat) then begin
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := AValue;
-           (*
-    // old
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormat := ANumFormat;
-    ACell^.NumberFormatStr := ANumFormatString;
 
-    // new   *)
     fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     fmt.NumberFormat := ANumFormat;
@@ -4477,11 +4287,7 @@ begin
         parser.Free;
       end;
     end;
-           (*
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormat := ANumFormat;
-    ACell^.NumberFormatStr := ANumFormatStr;
-             *)
+
     fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     fmt.NumberFormat := ANumFormat;
@@ -4570,24 +4376,7 @@ begin
 
   if not ((ANumFormat in [nfGeneral, nfCustom]) or IsDateTimeFormat(ANumFormat)) then
     raise Exception.Create('WriteDateTimeFormat can only be called with date/time formats.');
-         (*
-  // old
-  ACell^.NumberFormat := ANumFormat;
-  if (ANumFormat <> nfGeneral) then
-  begin
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    if (ANumFormatString = '') then
-      ACell^.NumberFormatStr := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings)
-    else
-      ACell^.NumberFormatStr := ANumFormatString;
-  end
-  else
-  begin
-    Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormatStr := '';
-  end;
 
-  // new   *)
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   fmt.NumberFormat := ANumFormat;
   if (ANumFormat <> nfGeneral) then
@@ -4639,7 +4428,6 @@ begin
   if (ACell = nil) then
     exit;
 
-  // new
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   if (uffNumberFormat in fmt.UsedFormattingFields) or (fmt.NumberFormat = nfGeneral)
   then
@@ -4657,24 +4445,6 @@ begin
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
-             (*
-  // old --> remove
-  if (uffNumberFormat in ACell^.UsedFormattingFields) or (ACell^.NumberFormat = nfGeneral)
-  then
-    WriteNumberFormat(ACell, nfFixed, ADecimals)
-  else
-  if (ACell^.NumberFormat <> nfCustom) then
-  begin
-    parser := TsNumFormatParser.Create(Workbook, ACell^.NumberFormatStr);
-    try
-      parser.Decimals := ADecimals;
-      ACell^.NumberFormatStr := parser.FormatString[nfdDefault];
-    finally
-      parser.Free;
-    end;
-    ChangedCell(ACell^.Row, ACell^.Col);
-  end;
-  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4810,26 +4580,7 @@ var
 begin
   if ACell = nil then
     exit;
-    (*
-  // old
-  ACell^.NumberFormat := ANumFormat;
-  if ANumFormat <> nfGeneral then begin
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    if ANumFormat in [nfCurrency, nfCurrencyRed] then
-    begin
-      ACell^.NumberFormatStr := BuildCurrencyFormatString(nfdDefault, ANumFormat,
-        Workbook.FormatSettings, ADecimals,
-        APosCurrFormat, ANegCurrFormat, ACurrencySymbol);
-      RegisterCurrency(ACurrencySymbol);
-    end else
-      ACell^.NumberFormatStr := BuildNumberFormatString(ANumFormat,
-        Workbook.FormatSettings, ADecimals);
-  end else begin
-    Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormatStr := '';
-  end;
-  // new
-  *)
+
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   fmt.NumberFormat := ANumFormat;
   if ANumFormat <> nfGeneral then begin
@@ -4888,21 +4639,7 @@ var
 begin
   if ACell = nil then
     exit;
-           (*
-  // old
-  ACell^.NumberFormat := ANumFormat;
-  if ANumFormat <> nfGeneral then begin
-    Include(ACell^.UsedFormattingFields, uffNumberFormat);
-    if (ANumFormatString = '') then
-      ACell^.NumberFormatStr := BuildNumberFormatString(ANumFormat, Workbook.FormatSettings)
-    else
-      ACell^.NumberFormatStr := ANumFormatString;
-  end else begin
-    Exclude(ACell^.UsedFormattingFields, uffNumberFormat);
-    ACell^.NumberFormatStr := '';
-  end;
-  // new
-  *)
+
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   fmt.NumberFormat := ANumFormat;
   if ANumFormat <> nfGeneral then begin
@@ -5061,12 +4798,7 @@ begin
   Result := FWorkbook.FindFont(AFontName, AFontSize, AFontStyle, AFontColor);
   if Result = -1 then
     result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor);
-  (*
-  // old
-  Include(ACell^.UsedFormattingFields, uffFont);
-  ACell^.FontIndex := Result;
-  // new
-  *)
+
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   Include(fmt.UsedFormattingFields, uffFont);
   fmt.FontIndex := Result;
@@ -5107,13 +4839,7 @@ begin
   if (AFontIndex < 0) or (AFontIndex >= Workbook.GetFontCount) or (AFontIndex = 4) then
     // note: Font index 4 is not defined in BIFF
     raise Exception.Create(rsInvalidFontIndex);
-    (*
-  // old
-  Include(ACell^.UsedFormattingFields, uffFont);
-  ACell^.FontIndex := AFontIndex;
 
-  // new
-  *)
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   Include(fmt.UsedFormattingFields, uffFont);
   fmt.FontIndex := AFontIndex;
@@ -5308,16 +5034,12 @@ var
 begin
   if ACell = nil then
     exit;
-  (*
-  // old
-  Include(ACell^.UsedFormattingFields, uffTextRotation);
-  ACell^.TextRotation := ARotation;
-  // new
-  *)
+
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   Include(fmt.UsedFormattingFields, uffTextRotation);
   fmt.TextRotation := ARotation;
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+
   ChangedFont(ACell^.Row, ACell^.Col);
 end;
 
@@ -5393,7 +5115,6 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    // new
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     if AColor = scTransparent then
       Exclude(fmt.UsedFormattingFields, uffBackgroundColor)
@@ -5403,16 +5124,6 @@ begin
       fmt.BackgroundColor := AColor;
     end;
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
-    (*
-    // old
-    if AColor = scTransparent then
-      Exclude(ACell^.UsedFormattingFields, uffBackgroundColor)
-    else
-    begin
-      Include(ACell^.UsedFormattingFields, uffBackgroundColor);
-      ACell^.BackgroundColor := AColor;
-    end;
-      *)
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
@@ -5452,11 +5163,6 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    (*
-    // old
-    ACell^.BorderStyles[ABorder].Color := AColor;
-    // new
-    *)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     fmt.BorderStyles[ABorder].Color := AColor;
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
@@ -5501,11 +5207,6 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    (*
-    // old
-    ACell^.BorderStyles[ABorder].LineStyle := ALineStyle;
-    // new
-    *)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     fmt.BorderStyles[ABorder].LineStyle := ALineStyle;
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
@@ -5546,15 +5247,6 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    (*
-    // old
-    if ABorders = [] then
-      Exclude(ACell^.UsedFormattingFields, uffBorder)
-    else
-      Include(ACell^.UsedFormattingFields, uffBorder);
-    ACell^.Border := ABorders;
-    // new
-    *)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     if ABorders = [] then
       Exclude(fmt.UsedFormattingFields, uffBorder)
@@ -5599,11 +5291,6 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    (*
-    // old
-    ACell^.BorderStyles[ABorder] := AStyle;
-    // new
-    *)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     fmt.BorderStyles[ABorder] := AStyle;
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
@@ -5648,12 +5335,6 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    (*
-    // old
-    ACell^.BorderStyles[ABorder].LineStyle := ALineStyle;
-    ACell^.BorderStyles[ABorder].Color := AColor;
-    // new
-    *)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     fmt.BorderStyles[ABorder].LineStyle := ALineStyle;
     fmt.BorderStyles[ABorder].Color := AColor;
@@ -5697,14 +5378,26 @@ var
   fmt: TsCellFormat;
 begin
   if Assigned(ACell) then begin
-    (*
-    // old
-    for b in TsCellBorder do ACell^.BorderStyles[b] := AStyles[b];
-    // new
-    *)
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     for b in TsCellBorder do fmt.BorderStyles[b] := AStyles[b];
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assigns a complete cell format record to a cell
+
+  @param ACell        Pointer to the cell to be modified
+  @param ACellFormat  Cell format record to be used by the cell
+
+  @see TsCellFormat
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteCellFormat(ACell: PCell;
+  const ACellFormat: TsCellFormat);
+begin
+  if Assigned(ACell) then begin
+    ACell^.FormatIndex := Workbook.AddCellFormat(ACellFormat);
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
@@ -5741,15 +5434,6 @@ var
 begin
   if ACell = nil then
     exit;
-  (*
-  // old
-  if AValue = haDefault then
-    Exclude(ACell^.UsedFormattingFields, uffHorAlign)
-  else
-    Include(ACell^.UsedFormattingFields, uffHorAlign);
-  ACell^.HorAlignment := AValue;
-  // new
-  *)
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   if AValue = haDefault then
     Exclude(fmt.UsedFormattingFields, uffHorAlign)
@@ -5791,15 +5475,6 @@ var
 begin
   if ACell = nil then
     exit;
-  (*
-  // old
-  if AValue = vaDefault then
-    Exclude(ACell^.UsedFormattingFields, uffVertAlign)
-  else
-    Include(ACell^.UsedFormattingFields, uffVertAlign);
-  ACell^.VertAlignment := AValue;
-  // new
-  *)
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   if AValue = vaDefault then
     Exclude(fmt.UsedFormattingFields, uffVertAlign)
@@ -5836,14 +5511,6 @@ var
 begin
   if ACell = nil then
     exit;
-  (*
-  // old
-  if AValue then
-    Include(ACell^.UsedFormattingFields, uffWordwrap)
-  else
-    Exclude(ACell^.UsedFormattingFields, uffWordwrap);
-  // new
-  *)
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   if AValue then
     Include(fmt.UsedFormattingFields, uffWordwrap)
@@ -7379,29 +7046,6 @@ begin
   Result := true;
 end;
 
-                            (*
-{@@
-  Sets the selected flag for the sheet with the given index.
-  Excel requires one sheet to be selected, otherwise strange things happen when
-  the file is loaded into Excel (cannot print, hanging instance of Excel - see
-  bug 0026386).
-
-  @param  AIndex  Index of the worksheet to be selected
-}
-procedure TsWorkbook.SelectWorksheet(AIndex: Integer);
-var
-  i: Integer;
-  sheet: TsWorksheet;
-begin
-  for i:=0 to FWorksheets.Count-1 do begin
-    sheet := TsWorksheet(FWorksheets.Items[i]);
-    if i = AIndex then
-      sheet.Options := sheet.Options + [soSelected]
-    else
-      sheet.Options := sheet.Options - [soSelected];
-  end;
-end;
-                              *)
 
 { String-to-cell/range conversion }
 
@@ -7581,6 +7225,7 @@ function TsWorkbook.GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
 begin
   Result := FCellFormatList.Items[AIndex];
 end;
+
 
 { Font handling }
 
@@ -8212,6 +7857,7 @@ begin
   Result := false;
 end;
 
+
 {*******************************************************************************
 *                       TsCustomNumFormatList                                  *
 *******************************************************************************}
@@ -8315,29 +7961,7 @@ function TsCustomNumFormatList.AddFormat(ANumFormat: TsNumberFormat;
 begin
   Result := AddFormat('', ANumFormat, AFormatString);
 end;
-  (*
-{@@ ----------------------------------------------------------------------------
-  Adds the number format used by a given cell to the list.
 
-  @param AFormatCell Pointer to a cell providing the format to be stored
-                     in the list
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.AddFormat(AFormatCell: PCell): Integer;
-begin
-  if AFormatCell = nil then
-    raise Exception.Create('TsCustomNumFormat.Add: No nil pointers please');
-
-  if Count = 0 then
-    raise Exception.Create('TsCustomNumFormatList: Error in program logics: You must provide built-in formats first.');
-
-  Result := AddFormat(FNextNumFormatIndex,
-    AFormatCell^.NumberFormatStr,
-    AFormatCell^.NumberFormat
-  );
-
-  inc(FNextNumFormatIndex);
-end;
-    *)
 {@@ ----------------------------------------------------------------------------
   Adds the builtin format items to the list. The formats must be specified in
   a way that is compatible with fpc syntax.
@@ -8503,7 +8127,7 @@ end;
   @param  AFormatString  string of formatting codes to be searched in the list.
   @return Index of the format item in the format list, or -1 if not found.
 -------------------------------------------------------------------------------}
-function TsCustomNumFormatList.Find(AFormatString: String): integer;
+function TsCustomNumFormatList.FindByFormatStr(AFormatString: String): integer;
 var
   item: TsNumFormatData;
 begin
@@ -8561,22 +8185,6 @@ begin
   end;
   Result := -1;
 end;
-                                                                         (*
-{@@ ----------------------------------------------------------------------------
-  Determines whether the format attributed to the given cell is already
-  contained in the list and returns its list index, or -1 if not found
-
-  @param  AFormatCell Pointer to a spreadsheet cell having the number format
-                      that is looked for.
-  @return Index of the format item in the list, or -1 if not found.
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.FindFormatOf(AFormatCell: PCell): integer;
-begin
-  if AFormatCell = nil then
-    Result := -1
-  else
-    Result := Find(AFormatCell^.NumberFormat, AFormatCell^.NumberFormatStr);
-end;                                                                       *)
 
 {@@ ----------------------------------------------------------------------------
   Determines the format string to be written into the spreadsheet file. Calls
@@ -8605,23 +8213,6 @@ function TsCustomNumFormatList.GetItem(AIndex: Integer): TsNumFormatData;
 begin
   Result := TsNumFormatData(inherited Items[AIndex]);
 end;
-  (*
-{@@ ----------------------------------------------------------------------------
-  Determines whether the format specified by the given format record is already
-  contained in the list and returns its list index, or -1 if not found
-
-  @param  AFormatRecord  Pointer to a format record item having the number format
-                         that is looked for.
-  @return Index of the format item in the list, or -1 if not found.
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.IndexOfFormatRecord(AFormatRecord: PsCellFormat): integer;
-begin
-  if AFormatRecord = nil then
-    Result := -1
-  else
-    Result := Find(AFormatRecord^.NumberFormat, AFormatRecord^.NumberFormatStr);
-end;
-    *)
 
 {@@ ----------------------------------------------------------------------------
   Deletes the memory occupied by the formatting data, but keeps an empty item in
@@ -8887,104 +8478,6 @@ begin
   inherited Create(AWorkbook);
 end;
 
-  (*
-{@@ ----------------------------------------------------------------------------
-  Each descendent should define its own default formats, if any.
-  Always add the normal, unformatted style first to speed things up.
-
-  To be overridden by descendants.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.AddDefaultFormats();
-begin
-  SetLength(FFormattingStyles, 0);
-  NextXFIndex := 0;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks if the formatting style of a cell is in the list of manually added
-  FFormattingStyles and returns its index, or -1 if it isn't
-
-  @param  AFormat  Cell containing the formatting styles which are seeked in the
-                   FFormattingStyles array.
--------------------------------------------------------------------------------}
-function TsCustomSpreadWriter.FindFormattingInList(AFormat: PCell): Integer;
-var
-  i, n: Integer;
-  b: TsCellBorder;
-  equ: Boolean;
-begin
-  Result := -1;
-
-  n := Length(FFormattingStyles);
-  for i := n - 1 downto 0 do
-  begin
-    if (FFormattingStyles[i].UsedFormattingFields <> AFormat^.UsedFormattingFields) then Continue;
-
-    if uffHorAlign in AFormat^.UsedFormattingFields then
-      if (FFormattingStyles[i].HorAlignment <> AFormat^.HorAlignment) then Continue;
-
-    if uffVertAlign in AFormat^.UsedFormattingFields then
-      if (FFormattingStyles[i].VertAlignment <> AFormat^.VertAlignment) then Continue;
-
-    if uffTextRotation in AFormat^.UsedFormattingFields then
-      if (FFormattingStyles[i].TextRotation <> AFormat^.TextRotation) then Continue;
-
-    if uffBorder in AFormat^.UsedFormattingFields then begin
-      if (FFormattingStyles[i].Border <> AFormat^.Border) then Continue;
-      equ := true;
-      for b in TsCellBorder do
-      begin
-        if FFormattingStyles[i].BorderStyles[b].LineStyle <> AFormat^.BorderStyles[b].LineStyle
-        then begin
-          equ := false;
-          Break;
-        end;
-        if FFormattingStyles[i].BorderStyles[b].Color <> FixColor(AFormat^.BorderStyles[b].Color)
-        then begin
-          equ := false;
-          Break;
-        end;
-      end;
-      if not equ then Continue;
-    end;
-
-    if uffBackgroundColor in AFormat^.UsedFormattingFields then
-      if (FFormattingStyles[i].BackgroundColor <> FixColor(AFormat^.BackgroundColor)) then Continue;
-
-    if uffNumberFormat in AFormat^.UsedFormattingFields then
-    begin
-      if (FFormattingStyles[i].NumberFormat <> AFormat^.NumberFormat) then Continue;
-      if (FFormattingStyles[i].NumberFormatStr <> AFormat^.NumberFormatStr) then Continue;
-    end;
-
-    if uffFont in AFormat^.UsedFormattingFields then
-      if (FFormattingStyles[i].FontIndex <> AFormat^.FontIndex) then Continue;
-
-    // If we arrived here it means that the styles match
-    Exit(i);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Makes sure that all colors used in a given cell belong to the workbook's
-  color palette.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.FixCellColors(ACell: PCell);
-var
-  b: TsCellBorder;
-begin
-  if ACell = nil then
-    exit;
-
-  ACell^.BackgroundColor := FixColor(ACell^.BackgroundColor);
-
-  for b in TsCellBorders do
-    ACell^.BorderStyles[b].Color := FixColor(ACell^.BorderStyles[b].Color);
-
-  // Font color is not corrected here because this would affect other writers.
-  // Font color is handled immediately before writing.
-end;
-    *)
 {@@ ----------------------------------------------------------------------------
   If a color index is greater then the maximum palette color count this
   color is replaced by the closest palette color.
@@ -9086,82 +8579,7 @@ begin
         break;
       end;
 end;
-      (*
-{@@ ----------------------------------------------------------------------------
-  Callback function for collecting all formatting styles found in the worksheet.
 
-  @param  ACell    Pointer to the worksheet cell being tested whether its format
-                   already has been found in the array FFormattingStyles.
-  @param  AStream  Stream to which the workbook is written
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.ListAllFormattingStylesCallback(ACell: PCell;
-  AStream: TStream);
-var
-  Len: Integer;
-begin
-  Unused(AStream);
-
-  FixFormat(ACell);
-
-  if ACell^.UsedFormattingFields = [] then Exit;
-  if FindFormattingInList(ACell) <> -1 then Exit;
-
-  Len := Length(FFormattingStyles);
-  SetLength(FFormattingStyles, Len+1);
-  FFormattingStyles[Len] := ACell^;
-
-  // Make sure that all colors of the formatting style cell are used in the workbook's
-  // palette.
-  FixCellColors(@FFormattingStyles[Len]);
-
-  // We store the index of the XF record that will be assigned to this style in
-  // the "row" of the style. Will be needed when writing the XF record.
-  FFormattingStyles[Len].Row := NextXFIndex;
-  Inc(NextXFIndex);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  This method collects all formatting styles found in the worksheet and
-  stores unique prototypes in the array FFormattingStyles.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.ListAllFormattingStyles;
-var
-  i: Integer;
-begin
-  SetLength(FFormattingStyles, 0);
-
-  // Add default styles which are required to be there by the destination file
-  AddDefaultFormats();
-
-  // Iterate through all cells and collect the individual styles
-  for i := 0 to Workbook.GetWorksheetCount - 1 do
-    IterateThroughCells(nil, Workbook.GetWorksheetByIndex(i).Cells, ListAllFormattingStylesCallback);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds the number format of the given cell to the NumFormatList, but only if
-  it does not yet exist in the list.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.ListAllNumFormatsCallback(ACell: PCell; AStream: TStream);
-var
-  fmt: string;
-  nf: TsNumberFormat;
-begin
-  Unused(AStream);
-
-  if ACell^.NumberFormat = nfGeneral then
-    exit;
-
-  // The builtin format list is in fpc dialect.
-  fmt := ACell^.NumberFormatStr;
-  nf := ACell^.NumberFormat;
-
-  // Seek the format string in the current number format list.
-  // If not found add the format to the list.
-  if FNumFormatList.Find(nf, fmt) = -1 then
-    FNumFormatList.AddFormat(fmt, nf);
-end;
-*)
 {@@ ----------------------------------------------------------------------------
   Iterates through all cells and collects the number formats in
   FNumFormatList (without duplicates).
@@ -9181,17 +8599,6 @@ begin
   end;
 end;
 
-
-(*
-procedure TsCustomSpreadWriter.ListAllNumFormats;
-var
-  i: Integer;
-begin
-  for i:=0 to Workbook.GetWorksheetCount-1 do
-    IterateThroughCells(nil, Workbook.GetWorksheetByIndex(i).Cells, ListAllNumFormatsCallback);
-  NumFormatList.Sort;
-end;
-*)
 {@@ ----------------------------------------------------------------------------
   Helper function for the spreadsheet writers. Writes the cell value to the
   stream. Calls the WriteNumber method of the worksheet for writing a number,
@@ -9351,32 +8758,4 @@ finalization
   SetLength(GsSpreadFormats, 0);
 
 end.
-
-{ Strategy for handling of number formats:
-
-Problem:
-For number formats, fpspreadsheet uses a syntax which is slightly different from
-the syntax that Excel uses in the xls files. Moreover, the file syntax can be
-different from file type to file type (biff2, for example, allows only a few
-predefined formats, while the number of allowed formats is unlimited (?) for
-biff8.
-
-Number format handling in fpspreadsheet is implemented with the following
-concept in mind:
-
-- Formats written into TsWorksheet cells always follow the fpspreadsheet syntax.
-
-- For writing, the writer creates a TsNumFormatList which stores all formats
-  in file syntax.
-  - The built-in formats of the file types are coded in the fpc syntax.
-  - The method "ConvertBeforeWriting" converts the cell formats from the
-    fpspreadsheet to the file syntax.
-
-- For reading, the reader creates another TsNumFormatList.
-  - The built-in formats of the file types are coded again in fpc syntax.
-  - After reading, the formats are converted to fpc syntax by means of
-    "ConvertAfterReading".
-
-- Format conversion is done internally by means of the TsNumFormatParser.
-}
 
