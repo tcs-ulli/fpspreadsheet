@@ -6399,8 +6399,8 @@ class function TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
 const
   BIFF2_HEADER: array[0..15] of byte = (
     $09,$00, $04,$00, $00,$00, $10,$00, $31,$00, $0A,$00, $C8,$00, $00,$00);
-  BIFF58_HEADER: array[0..15] of byte = (
-    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1, $00,$00, $00,$00, $00,$00, $00,$00);
+  BIFF58_HEADER: array[0..7] of byte = (
+    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
   BIFF5_MARKER: array[0..7] of widechar = (
     'B', 'o', 'o', 'k', #0, #0, #0, #0);
   BIFF8_MARKER:array[0..7] of widechar = (
@@ -6419,7 +6419,7 @@ begin
     // Read first 16 bytes
     stream.ReadBuffer(buf, 16);
 
-    // Check for Excel 2#
+    // Check for Excel 2
     ok := true;
     for i:=0 to 15 do
       if buf[i] <> BIFF2_HEADER[i] then
@@ -6434,7 +6434,7 @@ begin
     end;
 
     // Check for Excel 5 or 8
-    for i:=0 to 15 do
+    for i:=0 to 7 do
       if buf[i] <> BIFF58_HEADER[i] then
         exit;
 
