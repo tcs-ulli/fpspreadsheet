@@ -107,19 +107,11 @@ type
     FSharedStringsCount: Integer;
     FFillList: array of PsCellFormat;
     FBorderList: array of PsCellFormat;
-    {
-    FFillList: array of TsCell;
-    FBorderList: array of PCell;
-    }
   protected
     { Helper routines }
-//    procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     procedure CreateStreams;
     procedure DestroyStreams;
-{
-    function  FindBorderInList(ACell: PCell): Integer;
-    function  FindFillInList(ACell: PCell): Integer; }
     function  FindBorderInList(AFormat: PsCellFormat): Integer;
     function  FindFillInList(AFormat: PsCellFormat): Integer;
     function GetStyleIndex(ACell: PCell): Cardinal;
@@ -312,18 +304,7 @@ type
     Borders: TsCellBorders;
     BorderStyles: TsCellBorderStyles;
   end;
-                (*
-  TXFListData = class
-    NumFmtIndex: Integer;
-    FontIndex: Integer;
-    FillIndex: Integer;
-    BorderIndex: Integer;
-    HorAlignment: TsHorAlignment;
-    VertAlignment: TsVertAlignment;
-    WordWrap: Boolean;
-    TextRotation: TsTextRotation;
-  end;
-                  *)
+
 
 { TsOOXMLNumFormatList }
 
@@ -441,86 +422,12 @@ procedure TsSpreadOOXMLReader.ApplyCellFormatting(ACell: PCell; XFIndex: Integer
 var
   i: Integer;
   fmt: PsCellFormat;
-  {
-  xf: TXfListData;
-  numFmtData: TsNumFormatData;
-  fillData: TFillListData;
-  borderData: TBorderListData;
-  j: Integer;
-  }
 begin
   if Assigned(ACell) then begin
     i := FCellFormatList.FindIndexOfID(XFIndex);
     fmt := FCellFormatList.Items[i];
     ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
   end;
-  (*
-  if Assigned(ACell) then begin
-    xf := TXFListData(FXfList.Items[XfIndex]);
-
-    // Font
-    if FWrittenByFPS and (xf.FontIndex = 1) then
-      Include(ACell^.UsedFormattingFields, uffBold)
-    else
-    if xf.FontIndex > 0 then
-      Include(ACell^.UsedFormattingFields, uffFont);
-    ACell^.FontIndex := xf.FontIndex;
-
-    // Alignment
-    if xf.HorAlignment <> haDefault then
-      Include(ACell^.UsedFormattingFields, uffHorAlign)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffHorAlign);
-    if xf.VertAlignment <> vaDefault then
-      Include(ACell^.UsedFormattingFields, uffVertAlign)
-    else
-      Exclude(ACell^.UsedformattingFields, uffVertAlign);
-    ACell^.HorAlignment := xf.HorAlignment;
-    ACell^.VertAlignment := xf.VertAlignment;
-
-    // Word wrap
-    if xf.WordWrap then
-      Include(ACell^.UsedFormattingFields, uffWordWrap)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffWordWrap);
-
-    // Text rotation
-    if xf.TextRotation > trHorizontal then
-      Include(ACell^.UsedFormattingFields, uffTextRotation)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffTextRotation);
-    ACell^.TextRotation := xf.TextRotation;
-
-    // Borders
-    borderData := FBorderList[xf.BorderIndex];
-    if (borderData <> nil) then begin
-      ACell^.BorderStyles := borderData.BorderStyles;
-      if borderData.Borders <> [] then begin
-        Include(ACell^.UsedFormattingFields, uffBorder);
-        ACell^.Border := borderData.Borders;
-      end else
-        Exclude(ACell^.UsedFormattingFields, uffBorder);
-    end;
-
-    // Background color
-    fillData := FFillList[xf.FillIndex];
-    if (fillData <> nil) and (fillData.PatternType <> 'none') then begin
-      Include(ACell^.UsedFormattingFields, uffBackgroundColor);
-      ACell^.BackgroundColor := fillData.FgColor;
-    end else
-      Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
-
-    if xf.NumFmtIndex > 0 then begin
-      j := NumFormatList.FindByIndex(xf.NumFmtIndex);
-      if j > -1 then begin
-        numFmtData := NumFormatList[j];
-        Include(ACell^.UsedFormattingFields, uffNumberFormat);
-        ACell^.NumberFormat := numFmtData.NumFormat;
-        ACell^.NumberFormatStr := numFmtData.FormatString;
-      end;
-    end;
-  end;
-  *)
 end;
 
 procedure TsSpreadOOXMLReader.CreateNumFormatList;
@@ -1594,62 +1501,10 @@ end;
 
 { TsSpreadOOXMLWriter }
 
-{ Adds built-in styles:
-  - Default style for cells having no specific formatting
-  - Bold styles for cells having UsedFormattingFileds = [uffBold]
-  All other styles will be added by "ListAllFormattingStyles".
-}
-(*
-procedure TsSpreadOOXMLWriter.AddDefaultFormats();
-// We store the index of the XF record that will be assigned to this style in
-// the "row" of the style. Will be needed when writing the XF record.
-// --- This is needed for BIFF. Not clear if it is important here as well...
-begin
-  SetLength(FFormattingStyles, 2);
-
-  // Default style
-  InitCell(FFormattingStyles[0]);
-  FFormattingStyles[0].BorderStyles := DEFAULT_BORDERSTYLES;
-  FFormattingStyles[0].Row := 0;
-
-  // Bold style
-  InitCell(FFormattingStyles[1]);
-  FFormattingStyles[1].UsedFormattingFields := [uffBold];
-  FFormattingStyles[1].FontIndex := 1;  // this is the "bold" font
-  FFormattingStyles[1].Row := 1;
-
-  NextXFIndex := 2;
-end;
-  *)
-
-(*
-{ Looks for the combination of border attributes of the given cell in the
-  FBorderList and returns its index. }
-function TsSpreadOOXMLWriter.FindBorderInList(ACell: PCell): Integer;
-var
-  i: Integer;
-  styleCell: PCell;
-begin
-  // No cell, or border-less --> index 0
-  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then begin
-    Result := 0;
-    exit;
-  end;
-
-  for i:=0 to High(FBorderList) do begin
-    styleCell := FBorderList[i];
-    if SameCellBorders(styleCell, ACell) then begin
-      Result := i;
-      exit;
-    end;
-  end;
-
-  // Not found --> return -1
-  Result := -1;
-end;
-*)
-{ Looks for the combination of border attributes of the given format record in
-  the FBorderList and returns its index. }
+{@@ ----------------------------------------------------------------------------
+  Looks for the combination of border attributes of the given format record in
+  the FBorderList and returns its index.
+-------------------------------------------------------------------------------}
 function TsSpreadOOXMLWriter.FindBorderInList(AFormat: PsCellFormat): Integer;
 var
   i: Integer;
@@ -1672,37 +1527,11 @@ begin
   // Not found --> return -1
   Result := -1;
 end;
-                                   (*
-{ Looks for the combination of fill attributes of the given cell in the
-  FFillList and returns its index. }
-function TsSpreadOOXMLWriter.FindFillInList(ACell: PCell): Integer;
-var
-  i: Integer;
-  styleCell: PCell;
-begin
-  if (ACell = nil) or not (uffBackgroundColor in ACell^.UsedFormattingFields)
-  then begin
-    Result := 0;
-    exit;
-  end;
 
-  // Index 0 is "no fill" which already has been handled.
-  for i:=2 to High(FFillList) do begin
-    styleCell := FFillList[i];
-    if (uffBackgroundColor in styleCell^.UsedFormattingFields) then
-      if (styleCell^.BackgroundColor = ACell^.BackgroundColor) then begin
-        Result := i;
-        exit;
-      end;
-  end;
-
-  // Not found --> return -1
-  Result := -1;
-end;
-*)
-
-{ Looks for the combination of fill attributes of the given format record in the
-  FFillList and returns its index. }
+{@@ ----------------------------------------------------------------------------
+  Looks for the combination of fill attributes of the given format record in the
+  FFillList and returns its index.
+-------------------------------------------------------------------------------}
 function TsSpreadOOXMLWriter.FindFillInList(AFormat: PsCellFormat): Integer;
 var
   i: Integer;
@@ -1730,22 +1559,12 @@ begin
   Result := -1;
 end;
 
-
 { Determines the formatting index which a given cell has in list of
   "FormattingStyles" which correspond to the section cellXfs of the styles.xml
   file. }
 function TsSpreadOOXMLWriter.GetStyleIndex(ACell: PCell): Cardinal;
 begin
   Result := ACell^.FormatIndex;
-end;
-    {
-var
-  idx: Integer;
-begin
-  idx := FindFormattingInList(ACell);
-  if idx = -1 then
-    idx := 0;
-  Result := idx;
 end;
 
 { Creates a list of all border styles found in the workbook.
@@ -1773,15 +1592,6 @@ begin
       inc(n);
     end;
   end;
-  {
-  for i := 0 to High(FFormattingStyles) do begin
-    styleCell := @FFormattingStyles[i];
-    if FindBorderInList(styleCell) = -1 then begin
-      SetLength(FBorderList, n+1);
-      FBorderList[n] := styleCell;
-      inc(n);
-    end;
-  end;         }
 end;
 
 { Creates a list of all fill styles found in the workbook.
@@ -1791,7 +1601,6 @@ end;
   To be used for styles.xml. }
 procedure TsSpreadOOXMLWriter.ListAllFills;
 var
-  //styleCell: PCell;
   i, n: Integer;
   fmt: PsCellFormat;
 begin
@@ -1811,16 +1620,6 @@ begin
       inc(n);
     end;
   end;
-  {
-  for i := 0 to High(FFormattingStyles) do begin
-    styleCell := @FFormattingStyles[i];
-    if FindFillInList(styleCell) = -1 then begin
-      SetLength(FFillList, n+1);
-      FFillList[n] := styleCell;
-      inc(n);
-    end;
-  end;
-  }
 end;
 
 procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
@@ -1828,8 +1627,6 @@ const
   LINESTYLE_NAME: Array[TsLineStyle] of String = (
      'thin', 'medium', 'dashed', 'dotted', 'thick', 'double', 'hair');
 
-  //procedure WriteBorderStyle(AStream: TStream; ACell: PCell; ABorder: TsCellBorder;
-  //  ABorderName: String);
   procedure WriteBorderStyle(AStream: TStream; AFormatRecord: PsCellFormat;
     ABorder: TsCellBorder; ABorderName: String);
   { border names found in xlsx files for Excel selections:
@@ -1840,11 +1637,9 @@ const
     colorName: String;
     rgb: TsColorValue;
   begin
-    //if (ABorder in ACell^.Border) then begin
     if (ABorder in AFormatRecord^.Border) then begin
       // Line style
       styleName := LINESTYLE_NAME[AFormatRecord^.BorderStyles[ABorder].LineStyle];
-      //styleName := LINESTYLE_NAME[ACell.BorderStyles[ABorder].LineStyle];
 
       // Border color
       rgb := Workbook.GetPaletteColor(AFormatRecord^.BorderStyles[ABorder].Color);
@@ -1861,7 +1656,6 @@ const
 
 var
   i: Integer;
-//  styleCell: PCell;
   diag: String;
 begin
   AppendToStream(AStream, Format(
@@ -1874,7 +1668,6 @@ begin
       '</border>');
 
   for i:=1 to High(FBorderList) do begin
-    //styleCell := FBorderList[i];
     diag := '';
     if (cbDiagUp in FBorderList[i].Border) then diag := diag + ' diagonalUp="1"';
     if (cbDiagDown in FBorderList[i].Border) then diag := diag + ' diagonalDown="1"';
@@ -1887,15 +1680,6 @@ begin
         // OOXML uses the same border style for both diagonals. In agreement with
         // the biff implementation we select the style from the diagonal-up line.
         WriteBorderStyle(AStream, FBorderList[i], cbDiagUp, 'diagonal');
-      {
-        WriteBorderStyle(AStream, styleCell, cbWest, 'left');
-        WriteBorderStyle(AStream, styleCell, cbEast, 'right');
-        WriteBorderStyle(AStream, styleCell, cbNorth, 'top');
-        WriteBorderStyle(AStream, styleCell, cbSouth, 'bottom');
-        // OOXML uses the same border style for both diagonals. In agreement with
-        // the biff implementation we select the style from the diagonal-up line.
-        WriteBorderStyle(AStream, styleCell, cbDiagUp, 'diagonal');
-      }
     AppendToStream(AStream,
       '</border>');
   end;
@@ -1931,7 +1715,6 @@ end;
 procedure TsSpreadOOXMLWriter.WriteFillList(AStream: TStream);
 var
   i: Integer;
-  //styleCell: PCell;
   rgb: TsColorValue;
 begin
   AppendToStream(AStream, Format(
@@ -1951,8 +1734,6 @@ begin
 
   // user-defined fills
   for i:=2 to High(FFillList) do begin
-    //styleCell := FFillList[i];
-    //rgb := Workbook.GetPaletteColor(styleCell^.BackgroundColor);
     rgb := Workbook.GetPaletteColor(FFillList[i]^.BackgroundColor);
     AppendToStream(AStream,
       '<fill>',
@@ -2280,9 +2061,7 @@ var
 begin
   AppendToStream(AStream, Format(
     '<%s count="%d">', [ANodeName, FWorkbook.GetNumCellFormats]));
-//    '<%s count="%d">', [ANodeName, Length(FFormattingStyles)]));
 
-//  for styleCell in FFormattingStyles do begin
   for i:=0 to FWorkbook.GetNumCellFormats-1 do
   begin
     fmt := FWorkbook.GetPointerToCellFormat(i);
@@ -2290,10 +2069,8 @@ begin
     sAlign := '';
 
     { Number format }
-//    if (uffNumberFormat in styleCell.UsedFormattingFields) then
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
     begin
-//      idx := NumFormatList.FindFormatOf(@styleCell);
       idx := NumFormatList.Find(fmt^.NumberFormat, fmt^.NumberFormatStr);
       if idx > -1 then begin
         numFmtID := NumFormatList[idx].Index;
@@ -2307,22 +2084,12 @@ begin
       fontID := 1;
     if (uffFont in fmt^.UsedFormattingFields) then
       fontID := fmt^.FontIndex;
-      {
-    if (uffBold in styleCell.UsedFormattingFields) then
-      fontId := 1;
-    if (uffFont in styleCell.UsedFormattingFields) then
-      fontId := styleCell.FontIndex;
-      }
     s := s + Format('fontId="%d" ', [fontId]);
     if fontID > 0 then s := s + 'applyFont="1" ';
 
     if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
 
     { Text rotation }
-    {
-    if (uffTextRotation in styleCell.UsedFormattingFields) and (styleCell.TextRotation <> trHorizontal)
-    then
-      case styleCell.TextRotation of}
     if (uffTextRotation in fmt^.UsedFormattingFields) then
       case fmt^.TextRotation of
         trHorizontal                      : ;
@@ -2332,10 +2099,6 @@ begin
       end;
 
     { Text alignment }
-    {
-    if (uffHorAlign in styleCell.UsedFormattingFields) and (styleCell.HorAlignment <> haDefault)
-    then
-      case styleCell.HorAlignment of }
     if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault)
     then
       case fmt.HorAlignment of
@@ -2344,11 +2107,6 @@ begin
         haRight : sAlign := sAlign + 'horizontal="right" ';
       end;
 
-    {
-    if (uffVertAlign in styleCell.UsedformattingFields) and (styleCell.VertAlignment <> vaDefault)
-    then
-      case styleCell.VertAlignment of
-    }
     if (uffVertAlign in fmt^.UsedFormattingFields) and (fmt^.VertAlignment <> vaDefault)
     then
       case fmt.VertAlignment of
@@ -2357,14 +2115,10 @@ begin
         vaBottom: sAlign := sAlign + 'vertical="bottom" ';
       end;
 
-    //if (uffWordWrap in styleCell.UsedFormattingFields) then
     if (uffWordWrap in fmt^.UsedFormattingFields) then
       sAlign := sAlign + 'wrapText="1" ';
 
     { Fill }
-    {
-    if (uffBackgroundColor in styleCell.UsedFormattingFields) then
-      fillID := FindFillInList(@styleCell); }
     if (uffBackgroundColor in fmt.UsedFormattingFields) then
     begin
       fillID := FindFillInList(fmt);
@@ -2373,9 +2127,6 @@ begin
     end;
 
     { Border }
-    {
-    if (uffBorder in styleCell.UsedFormattingFields) then
-      borderID := FindBorderInList(@styleCell);           }
     if (uffBorder in fmt^.UsedFormattingFields) then
     begin
       borderID := FindBorderInList(fmt);
@@ -2719,7 +2470,6 @@ var
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
-  //ListAllFormattingStyles;
   ListAllFills;
   ListAllBorders;
 
@@ -2929,7 +2679,6 @@ var
   CellPosText: string;
   lStyleIndex: Cardinal;
   ResultingValue: string;
-  //S: string;
 begin
   // Office 2007-2010 (at least) support no more characters in a cell;
   if Length(AValue) > MAXBYTES then

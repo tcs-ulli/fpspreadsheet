@@ -269,22 +269,6 @@ const
   ROWHEIGHT_EPS = 1e-2;    // for lines
 
 type
-(*
-  { Cell style items relevant to FPSpreadsheet. Stored in the CellStyleList of the reader. }
-  TCellStyleData = class
-  public
-    Name: String;
-    FontIndex: Integer;
-    NumFormatIndex: Integer;
-    HorAlignment: TsHorAlignment;
-    VertAlignment: TsVertAlignment;
-    WordWrap: Boolean;
-    TextRotation: TsTextRotation;
-    Borders: TsCellBorders;
-    BorderStyles: TsCellBorderStyles;
-    BackgroundColor: TsColor;
-  end;
-  *)
 
   { Column style items stored in ColStyleList of the reader }
   TColumnStyleData = class
@@ -700,6 +684,7 @@ begin
   end;
 end;
 
+
 { TsSpreadOpenDocReader }
 
 constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
@@ -737,10 +722,6 @@ begin
 
   for j := FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
   FRowStyleList.Free;
-  {
-  for j := FCellStyleList.Count-1 downto 0 do TObject(FCellStyleList[j]).Free;
-  FCellStyleList.Free;
-  }
   FVolatileNumFmtList.Free;  // automatically destroys its items.
 
   inherited Destroy;
@@ -778,17 +759,6 @@ begin
     end;
   end;
 end;
-                               (*
-{ Applies the style data referred to by the style name to the specified cell
-  The function result is false if a style with the given name could not be found }
-function TsSpreadOpenDocReader.ApplyStyleToCell(ARow, ACol: Cardinal;
-  AStyleName: String): Boolean;
-var
-  cell: PCell;
-begin
-  cell := FWorksheet.GetCell(ARow, ACol);
-  Result := ApplyStyleToCell(cell, AStyleName)
-end;                             *)
 
 { Applies the style data referred to by the style name to the specified cell
   The function result is false if a style with the given name could not be found }
@@ -818,74 +788,6 @@ begin
   fmt := FCellFormatList.Items[styleIndex];
   ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
 
-(*
-  styleData := FCellFormatList.Items[styleIndex]);
-
-  // Now copy all style parameters from the styleData to the cell.
-
-  // Font
-  if styleData.FontIndex = 1 then
-    Include(ACell^.UsedFormattingFields, uffBold)
-  else
-  if styleData.FontIndex > 1 then
-    Include(ACell^.UsedFormattingFields, uffFont);
-  ACell^.FontIndex := styleData.FontIndex;
-
-  // Word wrap
-  if styleData.WordWrap then
-    Include(ACell^.UsedFormattingFields, uffWordWrap)
-  else
-    Exclude(ACell^.UsedFormattingFields, uffWordWrap);
-
-  // Text rotation
-  if styleData.TextRotation > trHorizontal then
-    Include(ACell^.UsedFormattingFields, uffTextRotation)
-  else
-    Exclude(ACell^.UsedFormattingFields, uffTextRotation);
-  ACell^.TextRotation := styledata.TextRotation;
-
-  // Text alignment
-  if styleData.HorAlignment <> haDefault then
-  begin
-    Include(ACell^.UsedFormattingFields, uffHorAlign);
-    ACell^.HorAlignment := styleData.HorAlignment;
-  end else
-    Exclude(ACell^.UsedFormattingFields, uffHorAlign);
-  if styleData.VertAlignment <> vaDefault then
-  begin
-    Include(ACell^.UsedFormattingFields, uffVertAlign);
-    ACell^.VertAlignment := styleData.VertAlignment;
-  end else
-    Exclude(ACell^.UsedFormattingFields, uffVertAlign);
-
-  // Borders
-  ACell^.BorderStyles := styleData.BorderStyles;
-  if styleData.Borders <> [] then
-  begin
-    Include(ACell^.UsedFormattingFields, uffBorder);
-    ACell^.Border := styleData.Borders;
-  end else
-    Exclude(ACell^.UsedFormattingFields, uffBorder);
-
-  // Background color
-  if styleData.BackgroundColor <> scNotDefined then
-  begin
-    Include(ACell^.UsedFormattingFields, uffBackgroundColor);
-    ACell^.BackgroundColor := styleData.BackgroundColor;
-  end;
-
-  // Number format
-  if styleData.NumFormatIndex > -1 then
-  begin
-    numFmtData := NumFormatList[styleData.NumFormatIndex];
-    if numFmtData <> nil then
-    begin
-      Include(ACell^.UsedFormattingFields, uffNumberFormat);
-      ACell^.NumberFormat := numFmtData.NumFormat;
-      ACell^.NumberFormatStr := numFmtData.FormatString;
-    end;
-  end;
-                 *)
   Result := true;
 end;
 
@@ -1002,15 +904,7 @@ begin
     end;
   end;
 end;
-                   (*
-function TsSpreadOpenDocReader.FindCellStyleByName(AStyleName: String): Integer;
-begin
-  for Result:=0 to FCellStyleList.Count-1 do
-    if TCellStyleData(FCellStyleList[Result]).Name = AStyleName then
-      exit;
-  Result := -1;
-end;
-                     *)
+
 function TsSpreadOpenDocReader.FindColumnByCol(AColIndex: Integer): Integer;
 begin
   for Result := 0 to FColumnList.Count-1 do
@@ -1060,10 +954,6 @@ begin
   FWorkSheet.WriteBlank(cell);
   FWorksheet.CopyFormat(@lCell, cell);
 
-{
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(cell, stylename);
-  }
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
@@ -2255,15 +2145,6 @@ var
   numFmtIndex: Integer;
   numFmtData: TsNumFormatData;
   clr: TsColorValue;
-  {
-  wrap: Boolean;
-  txtRot: TsTextRotation;
-  vertAlign: TsVertAlignment;
-  horAlign: TsHorAlignment;
-  borders: TsCellBorders;
-  borderStyles: TsCellBorderStyles;
-  fntIndex: Integer;
-  }
   s: String;
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
@@ -2954,13 +2835,11 @@ var
   nfs: String;
   fmt: TsCellFormat;
 begin
-//  for i := 0 to Length(FFormattingStyles) - 1 do
   for i := 0 to FWorkbook.GetNumCellFormats - 1 do
   begin
     fmt := FWorkbook.GetCellFormat(i);
 
-    //nfidx := NumFormatList.Find(FFormattingStyles[i].NumberFormatStr);
-    nfidx := NumFormatList.Find(fmt.NumberFormatStr);
+    nfidx := NumFormatList.FindByFormatStr(fmt.NumberFormatStr);
     if nfidx <> -1
       then nfs := 'style:data-style-name="' + NumFormatList[nfidx].Name +'"'
       else nfs := '';
@@ -2971,24 +2850,15 @@ begin
                    'style:parent-style-name="Default" '+ nfs + '>');
 
     // style:text-properties
-    //if uffBold in FFormattingStyles[i].UsedFormattingFields then
     if (uffBold in fmt.UsedFormattingFields) then
       AppendToStream(AStream,
         '<style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>');
 
-    //s := WriteFontStyleXMLAsString(FFormattingStyles[i]);
     s := WriteFontStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
         '<style:text-properties '+ s + '/>');
 
-    // style:table-cell-properties
-    {
-    s :=  WriteBorderStyleXMLAsString(FFormattingStyles[i]) +
-          WriteBackgroundColorStyleXMLAsString(FFormattingStyles[i]) +
-          WriteWordwrapStyleXMLAsString(FFormattingStyles[i]) +
-          WriteTextRotationStyleXMLAsString(FFormattingStyles[i]) +
-          WriteVertAlignmentStyleXMLAsString(FFormattingStyles[i]);}
     s := WriteBorderStyleXMLAsString(fmt) +
          WriteBackgroundColorStyleXMLAsString(fmt) +
          WriteWordwrapStyleXMLAsString(fmt) +
@@ -2999,7 +2869,6 @@ begin
         '<style:table-cell-properties ' + s + '/>');
 
     // style:paragraph-properties
-    //s := WriteHorAlignmentStyleXMLAsString(FFormattingStyles[i]);
     s := WriteHorAlignmentStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
@@ -3363,9 +3232,9 @@ begin
   inherited Destroy;
 end;
 
-{
+{@@ ----------------------------------------------------------------------------
   Writes a string to a file. Helper convenience method.
-}
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteStringToFile(AString, AFileName: string);
 var
   TheStream : TFileStream;
@@ -3377,9 +3246,9 @@ begin
   TheStream.Free;
 end;
 
-{
-  Writes an OOXML document to the disc.
-}
+{@@ ----------------------------------------------------------------------------
+  Writes an OOXML document to a file.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
@@ -3475,20 +3344,11 @@ begin
   else
     AppendToStream(AStream,
       '<table:table-cell ' + spannedStr + '/>');
-                 {
-  if ACell^.UsedFormattingFields <> [] then
-  begin
-    lIndex := FindFormattingInList(ACell);
-    AppendToStream(AStream, Format(
-      '<table:table-cell table:style-name="ce%d" %s>', [lIndex, spannedStr]),
-      '</table:table-cell>');
-  end else
-    AppendToStream(AStream,
-      '<table:table-cell ' + spannedStr + '/>');
-}
 end;
 
-{ Writes a boolean cell to the stream }
+{@@ ----------------------------------------------------------------------------
+  Writes a boolean cell to the stream
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
 var
@@ -3508,15 +3368,6 @@ begin
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
-
-  {
-  if ACell^.UsedFormattingFields <> [] then
-  begin
-    lIndex := FindFormattingInList(ACell);
-    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end else
-    lStyle := '';
-  }
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -3548,9 +3399,11 @@ begin
   ]));
 end;
 
-{ Creates an XML string for inclusion of the background color into the
+{@@ ----------------------------------------------------------------------------
+  Creates an XML string for inclusion of the background color into the
   written file from the backgroundcolor setting in the given format record.
-  Is called from WriteStyles (via WriteStylesXMLAsString). }
+  Is called from WriteStyles (via WriteStylesXMLAsString).
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteBackgroundColorStyleXMLAsString(
   const AFormat: TsCellFormat): String;
 begin
@@ -3564,9 +3417,11 @@ begin
   ]);
 end;
 
-{ Creates an XML string for inclusion of borders and border styles into the
+{@@ ----------------------------------------------------------------------------
+  Creates an XML string for inclusion of borders and border styles into the
   written file from the border settings in the given format record.
-  Is called from WriteStyles (via WriteStylesXMLAsString). }
+  Is called from WriteStyles (via WriteStylesXMLAsString).
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteBorderStyleXMLAsString(
   const AFormat: TsCellFormat): String;
 begin
@@ -3702,9 +3557,11 @@ begin
     Result := Result + Format('fo:color="%s" ', [Workbook.GetPaletteColorAsHTMLStr(fnt.Color)]);
 end;
 
-{ Creates an XML string for inclusion of the horizontal alignment into the
+{@@ ----------------------------------------------------------------------------
+  Creates an XML string for inclusion of the horizontal alignment into the
   written file from the horizontal alignment setting in the format cell.
-  Is called from WriteStyles (via WriteStylesXMLAsString). }
+  Is called from WriteStyles (via WriteStylesXMLAsString).
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteHorAlignmentStyleXMLAsString(
   const AFormat: TsCellFormat): String;
 begin
@@ -3780,9 +3637,11 @@ begin
   end;
 end;
 
-{ Creates an XML string for inclusion of the textrotation style option into the
+{@@ ----------------------------------------------------------------------------
+  Creates an XML string for inclusion of the textrotation style option into the
   written file from the textrotation setting in the format cell.
-  Is called from WriteStyles (via WriteStylesXMLAsString). }
+  Is called from WriteStyles (via WriteStylesXMLAsString).
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteTextRotationStyleXMLAsString(
   const AFormat: TsCellFormat): String;
 begin
@@ -3797,9 +3656,11 @@ begin
   end;
 end;
 
-{ Creates an XML string for inclusion of the vertical alignment into the
+{@@ ----------------------------------------------------------------------------
+  Creates an XML string for inclusion of the vertical alignment into the
   written file from the vertical alignment setting in the given format record.
-  Is called from WriteStyles (via WriteStylesXMLAsString). }
+  Is called from WriteStyles (via WriteStylesXMLAsString).
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteVertAlignmentStyleXMLAsString(
   const AFormat: TsCellFormat): String;
 begin
@@ -3939,9 +3800,11 @@ begin
   end;
 end;
 
-{ Creates an XML string for inclusion of the wordwrap option into the
+{@@ ----------------------------------------------------------------------------
+  Creates an XML string for inclusion of the wordwrap option into the
   written file from the wordwrap setting in the format cell.
-  Is called from WriteStyles (via WriteStylesXMLAsString). }
+  Is called from WriteStyles (via WriteStylesXMLAsString).
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteWordwrapStyleXMLAsString(
   const AFormat: TsCellFormat): String;
 begin
@@ -3951,7 +3814,9 @@ begin
     Result := '';
 end;
 
-{ Writes a string formula }
+{@@ ----------------------------------------------------------------------------
+  Writes a string formula
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
   ACol: Cardinal; ACell: PCell);
 var
@@ -3975,13 +3840,6 @@ begin
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
-                 {
-  if ACell^.UsedFormattingFields <> [] then
-  begin
-    lIndex := FindFormattingInList(ACell);
-    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end else
-    lStyle := ''; }
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -4069,12 +3927,12 @@ begin
 end;
 
 
-{
+{@@ ----------------------------------------------------------------------------
   Writes a cell with text content
 
   The UTF8 Text needs to be converted, because some chars are invalid in XML
   See bug with patch 19422
-}
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
 var
@@ -4094,14 +3952,7 @@ begin
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
-                 {
-  if ACell^.UsedFormattingFields <> [] then
-  begin
-    lIndex := FindFormattingInList(ACell);
-    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end else
-    lStyle := '';
-}
+
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
   begin
@@ -4156,18 +4007,7 @@ begin
       valType := 'currency';
   end else
     lStyle := '';
-                 {
-  if ACell^.UsedFormattingFields <> [] then
-  begin
-    lIndex := FindFormattingInList(ACell);
-    lStyle := ' table:style-name="ce' + IntToStr(lIndex) + '" ';
-    if pos('%', ACell^.NumberFormatStr) <> 0 then
-      valType := 'percentage'
-    else if IsCurrencyFormat(ACell^.NumberFormat) then
-      valType := 'currency';
-  end else
-    lStyle := '';
-}
+
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
   begin
@@ -4197,13 +4037,9 @@ begin
   ]));
 end;
 
-{*******************************************************************
-*  TsSpreadOpenDocWriter.WriteDateTime ()
-*
-*  DESCRIPTION:    Writes a date/time value
-*
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes a date/time value
+-------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 const
@@ -4238,23 +4074,13 @@ begin
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
-                 {
-  if ACell^.UsedFormattingFields <> [] then
-  begin
-    lIndex := FindFormattingInList(ACell);
-    lStyle := 'table:style-name="ce' + IntToStr(lIndex) + '" ';
-  end else
-    lStyle := '';
-}
 
   // nfTimeInterval is a special case - let's handle it first:
 
-//  if (ACell^.NumberFormat = nfTimeInterval) then
   if (fmt.NumberFormat = nfTimeInterval) then
   begin
     strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
     displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
-//    displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="time" office:time-value="%s" %s %s>' +
         '<text:p>%s</text:p>' +
@@ -4268,11 +4094,6 @@ begin
     isTimeOnly := IsTimeFormat(fmt.NumberFormat) or IsTimeFormat(fmt.NumberFormatStr);
     strValue := FormatDateTime(DATE_FMT[isTimeOnly], AValue);
     displayStr := FormatDateTime(fmt.NumberFormatStr, AValue);
-    {
-    isTimeOnly := IsTimeFormat(ACell^.NumberFormat) or IsTimeFormat(ACell^.NumberFormatStr);
-    strValue := FormatDateTime(FMT[isTimeOnly], AValue);
-    displayStr := FormatDateTime(ACell^.NumberFormatStr, AValue);
-    }
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +
         '<text:p>%s</text:p> ' +
@@ -4283,11 +4104,11 @@ begin
   end;
 end;
 
-{
-  Registers this reader / writer on fpSpreadsheet
-}
 initialization
 
+{@@ ----------------------------------------------------------------------------
+  Registers this reader / writer on fpSpreadsheet
+-------------------------------------------------------------------------------}
   RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument);
 
 end.

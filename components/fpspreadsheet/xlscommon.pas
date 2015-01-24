@@ -203,21 +203,7 @@ type
   // Converts an fps error value to the byte code needed in xls files
   function ConvertToExcelError(AValue: TsErrorValue): byte;
 
-type              (*
-  { Contents of the XF record to be stored in the XFList of the reader }
-  TXFListData = class
-  public
-    FontIndex: Integer;
-    FormatIndex: Integer;
-    HorAlignment: TsHorAlignment;
-    VertAlignment: TsVertAlignment;
-    WordWrap: Boolean;
-    TextRotation: TsTextRotation;
-    Borders: TsCellBorders;
-    BorderStyles: TsCellBorderStyles;
-    BackgroundColor: TsColor;
-  end;              *)
-
+type
   { TsBIFFNumFormatList }
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
@@ -234,9 +220,7 @@ type              (*
     FCodepage: string; // in a format prepared for lconvencoding.ConvertEncoding
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
-//    FXFList: TFPList;     // of TXFListData
     FIncompleteCell: PCell;
-//    procedure ApplyCellFormatting(ARow, ACol: Cardinal; XFIndex: Word); overload;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; //overload;
     procedure CreateNumFormatList; override;
     // Extracts a number out of an RK value
@@ -244,11 +228,6 @@ type              (*
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); virtual;
-    {
-    // Finds format record for XF record pointed to by cell
-    // Will not return info for built-in formats
-    function FindNumFormatDataForCell(const AXFIndex: Integer): TsNumFormatData;
-    }
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
       ANumberFormatStr: String; out ADateTime: TDateTime): Boolean;
@@ -310,8 +289,8 @@ type              (*
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-//    destructor Destroy; override;
   end;
+
 
   { TsSpreadBIFFWriter }
 
@@ -320,7 +299,6 @@ type              (*
     FDateMode: TDateMode;
     FLastRow: Cardinal;
     FLastCol: Cardinal;
-//    procedure AddDefaultFormats; override;
     procedure CreateNumFormatList; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixColor(AColor: TsColor): TsColor; override;
@@ -402,13 +380,10 @@ type              (*
     procedure WriteVirtualCells(AStream: TStream);
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
-    // Writes the index of the XF record used in the given cell
-    //procedure WriteXFIndex(AStream: TStream; ACell: PCell);
-
     // Writes an XF record
     procedure WriteXF(AStream: TStream; ACellFormat: PsCellFormat;
       XFType_Prot: Byte = 0); virtual;
-    // Writes all xF records
+    // Writes all XF records
     procedure WriteXFRecords(AStream: TStream);
 
   public
@@ -563,6 +538,7 @@ begin
   end;
 end;
 
+
 { TsBIFFNumFormatList }
 
 { These are the built-in number formats as expected in the biff spreadsheet file.
@@ -652,27 +628,6 @@ begin
   FLimitations.MaxPaletteSize := 64;
 end;
 
-{
-destructor TsSpreadBIFFReader.Destroy;
-var
-  j: integer;
-begin
-  for j := FXFList.Count-1 downto 0 do TObject(FXFList[j]).Free;
-  FXFList.Free;
-  inherited Destroy;
-end;
-}
-(*
-{ Applies the XF formatting referred to by XFIndex to the specified cell }
-procedure TsSpreadBIFFReader.ApplyCellFormatting(ARow, ACol: Cardinal;
-  XFIndex: Word);
-var
-  lCell: PCell;
-begin
-  lCell := FWorksheet.GetCell(ARow, ACol);
-  ApplyCellFormatting(lCell, XFIndex);
-end;
- *)
 { Applies the XF formatting referred to by XFIndex to the specified cell }
 procedure TsSpreadBIFFReader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
 var
@@ -687,57 +642,6 @@ begin
       ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
     end else
       ACell^.FormatIndex := 0;
-
-    (*
-    // Font
-    if XFData.FontIndex = 1 then
-      Include(ACell^.UsedFormattingFields, uffBold)
-    else
-    if XFData.FontIndex > 1 then
-      Include(ACell^.UsedFormattingFields, uffFont);
-    ACell^.FontIndex := XFData.FontIndex;
-
-    // Alignment
-    if XFData.HorAlignment <> haDefault then
-      Include(ACell^.UsedFormattingFields, uffHorAlign)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffHorAlign);
-    ACell^.HorAlignment := XFData.HorAlignment;
-
-    if XFData.VertAlignment <> vaDefault then
-      Include(ACell^.UsedFormattingFields, uffVertAlign)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffVertAlign);
-    ACell^.VertAlignment := XFData.VertAlignment;
-
-    // Word wrap
-    if XFData.WordWrap then
-      Include(ACell^.UsedFormattingFields, uffWordWrap)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffWordWrap);
-
-    // Text rotation
-    if XFData.TextRotation > trHorizontal then
-      Include(ACell^.UsedFormattingFields, uffTextRotation)
-    else
-      Exclude(ACell^.UsedFormattingFields, uffTextRotation);
-    ACell^.TextRotation := XFData.TextRotation;
-
-    // Borders
-    ACell^.BorderStyles := XFData.BorderStyles;
-    if XFData.Borders <> [] then begin
-      Include(ACell^.UsedFormattingFields, uffBorder);
-      ACell^.Border := XFData.Borders;
-    end else
-      Exclude(ACell^.UsedFormattingFields, uffBorder);
-
-    // Background color
-    if XFData.BackgroundColor <> scTransparent then begin
-      Include(ACell^.UsedFormattingFields, uffBackgroundColor);
-      ACell^.BackgroundColor := XFData.BackgroundColor;
-    end else
-      Exclude(ACell^.UsedFormattingFields, uffBackgroundColor);
-      *)
   end;
 end;
 
@@ -801,36 +705,7 @@ begin
     ANumberFormatStr := '';
   end;
 end;
-    {
-var
-  lNumFormatData: TsNumFormatData;
-begin
-  lNumFormatData := FindNumFormatDataForCell(AXFIndex);
-  if lNumFormatData <> nil then begin
-    ANumberFormat := lNumFormatData.NumFormat;
-    ANumberFormatStr := lNumFormatData.FormatString;
-  end else begin
-    ANumberFormat := nfGeneral;
-    ANumberFormatStr := '';
-  end;
-end; }
-                                   (*
-{ Determines the format data (for numerical formatting) which belong to a given
-  XF record. }
-function TsSpreadBIFFReader.FindNumFormatDataForCell(const AXFIndex: Integer
-  ): TsNumFormatData;
-var
-  fmt: TsCellFormat;
-  i: Integer;
-begin
-  Result := nil;
-  fmt := FFormatList.FindByID(AXFIndex);
-  i := NumFormatList.FindByIndex(
-  lXFData := TXFListData(FXFList.Items[AXFIndex]);
-  i := NumFormatList.FindByIndex(lXFData.FormatIndex);
-  if i <> -1 then Result := NumFormatList[i];
-end;
-                                     *)
+
 { Convert the number to a date/time and return that if it is }
 function TsSpreadBIFFReader.IsDateTime(Number: Double;
   ANumberFormat: TsNumberFormat; ANumberFormatStr: String;
@@ -1115,11 +990,6 @@ begin
     end
   else
   begin
-    {
-    if SizeOf(Double) <> 8 then
-      raise Exception.Create('Double is not 8 bytes');
-    }
-
     // Result is a number or a date/time
     Move(Data[0], ResultFormula, SizeOf(Data));
 
@@ -1817,28 +1687,6 @@ destructor TsSpreadBIFFWriter.Destroy;
 begin
   inherited Destroy;
 end;
-  (*
-{ These are default style formats which are added as XF fields regardless of
-  being used in the document or not.
-  Currently, only one additional default format is supported ("bold").
-  Here are the changes to be made when extending this list:
-  - SetLength(FFormattingstyles, <number of predefined styles>)
-}
-procedure TsSpreadBIFFWriter.AddDefaultFormats();
-begin
-  // XF0..XF14: Normal style, Row Outline level 1..7,
-  // Column Outline level 1..7.
-
-  // XF15 - Default cell format, no formatting (4.6.2)
-  SetLength(FFormattingStyles, 1);
-  FFormattingStyles[0].UsedFormattingFields := [];
-  FFormattingStyles[0].BorderStyles := DEFAULT_BORDERSTYLES;
-  FFormattingStyles[0].Row := 15;
-
-  NextXFIndex := 15 + Length(FFormattingStyles);
-  // "15" is the index of the last pre-defined xf record
-end;
-    *)
 
 { Creates the correct version of the number format list. It is for BIFF file
   formats.
@@ -1854,30 +1702,7 @@ function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
 begin
   Result := LAST_BUILTIN_XF + ACell^.FormatIndex;
 end;
-{
-var
-  idx: Integer;
-  cell: TCell;
-begin
-  // First try the fast methods for default formats
-  if ACell^.UsedFormattingFields = [] then begin
-    Result := 15;   //XF15; see TsSpreadBIFF8Writer.AddDefaultFormats
-    Exit;
-  end;
 
-  // If not, then we need to search in the list of dynamic formats
-  // But we have to consider that the number formats of the cell is in fpc syntax,
-  // but the number format list of the writer is in Excel syntax.
-  cell := ACell^;
-  idx := FindFormattingInList(@cell);
-
-  // Carefully check the index
-  if (idx < 0) or (idx > Length(FFormattingStyles)) then
-    Result := -1
-  else
-    Result := FFormattingStyles[idx].Row;
-end;
- }
 function TsSpreadBIFFWriter.FixColor(AColor: TsColor): TsColor;
 var
   rgb: TsColorValue;
@@ -2107,7 +1932,6 @@ begin
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
-
 
 { Writes a BIFF number format record defined in AFormatData.
   AListIndex the index of the numformatdata in the numformat list
@@ -2728,14 +2552,6 @@ begin
           then spacebelow := true;
       end;
     end;
-    {
-    if (cell <> nil) and (uffBorder in cell^.UsedFormattingFields) then begin
-      if (cbNorth in cell^.Border) and (cell^.BorderStyles[cbNorth].LineStyle = lsThick)
-        then spaceabove := true;
-      if (cbSouth in cell^.Border) and (cell^.BorderStyles[cbSouth].LineStyle = lsThick)
-        then spacebelow := true;
-    end;
-    }
     if spaceabove and spacebelow then break;
     inc(colindex);
   end;
@@ -3135,40 +2951,6 @@ begin
     WriteXF(AStream, Workbook.GetPointerToCellFormat(i), 0);
 end;
 
-                             (*
-{ Write the index of the XF record, according to formatting of the given cell
-  Valid for BIFF5 and BIFF8.
-  BIFF2 is handled differently. }
-procedure TsSpreadBIFFWriter.WriteXFIndex(AStream: TStream; ACell: PCell);
-begin
-  AStream.WriteWord(AStream, LAST_BUILTIN_XF + ACell^.FormatIndex);
-  {
-var
-  lIndex: Integer;
-  lXFIndex: Word;
-  lCell: TCell;
-begin
-  // First try the fast methods for default formats
-  if ACell^.UsedFormattingFields = [] then begin
-    AStream.WriteWord(WordToLE(15)); //XF15; see TsSpreadBIFF8Writer.AddDefaultFormats
-    Exit;
-  end;
-
-  // If not, then we need to search in the list of dynamic formats
-  // But we have to consider that the number formats of the cell is in fpc syntax,
-  // but the number format list of the writer is in Excel syntax.
-  lCell := ACell^;
-  lIndex := FindFormattingInList(@lCell);
-
-  // Carefully check the index
-  if (lIndex < 0) or (lIndex > Length(FFormattingStyles)) then
-    raise Exception.Create('[TsSpreadBIFFWriter.WriteXFIndex] Invalid Index, this should not happen!');
-
-  lXFIndex := FFormattingStyles[lIndex].Row;
-
-  AStream.WriteWord(WordToLE(lXFIndex));
-  }
-end;                           *)
 
 end.
 

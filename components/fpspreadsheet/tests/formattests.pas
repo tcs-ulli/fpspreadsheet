@@ -18,7 +18,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry, testsutility,
-  fpstypes, fpsallformats, fpspreadsheet, fpshelpers, xlsbiff8;
+  fpstypes, fpsallformats, fpspreadsheet, fpscell, xlsbiff8;
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
