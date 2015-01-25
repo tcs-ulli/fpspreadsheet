@@ -215,6 +215,7 @@ type
     function  ReadBackgroundColor(ACell: PCell): TsColor;
     function  ReadCellBorders(ACell: PCell): TsCellBorders;
     function  ReadCellBorderStyle(ACell: PCell; ABorder: TsCellBorder): TsCellBorderStyle;
+    function  ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
     function  ReadCellFont(ACell: PCell): TsFont;
     function  ReadCellFormat(ACell: PCell): TsCellFormat;
     function  ReadHorAlignment(ACell: PCell): TsHorAlignment;
@@ -2839,6 +2840,23 @@ begin
   begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
     Result := fmt^.BorderStyles[ABorder];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines which all border styles of a given cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
+var
+  fmt: PsCellFormat;
+  b: TsCellBorder;
+begin
+  Result := DEFAULT_BORDERSTYLES;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    for b in fmt.Border do
+      Result[b] := fmt^.BorderStyles[b];
   end;
 end;
 

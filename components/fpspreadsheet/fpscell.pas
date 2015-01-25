@@ -14,6 +14,7 @@ type
     function GetBackgroundColor: TsColor;
     function GetBorder: TsCellBorders;
     function GetBorderStyle(const ABorder: TsCellBorder): TsCellBorderStyle;
+    function GetBorderStyles: TsCellBorderStyles;
     function GetCellFormat: TsCellFormat;
     function GetFont: TsFont;
     function GetFontIndex: integer;
@@ -27,6 +28,7 @@ type
     procedure SetBackgroundColor(const AValue: TsColor);
     procedure SetBorder(const AValue: TsCellBorders);
     procedure SetBorderStyle(const ABorder: TsCellBorder; const AValue: TsCellBorderStyle);
+    procedure SetBorderStyles(const AValue: TsCellBorderStyles);
     procedure SetCellFormat(const AValue: TsCellFormat);
     procedure SetFontIndex(const AValue: Integer);
     procedure SetHorAlignment(const AValue: TsHorAlignment);
@@ -44,6 +46,10 @@ type
       read GetBackgroundColor write SetBackgroundColor;
     property Border: TsCellBorders
       read GetBorder write SetBorder;
+    property BorderStyle[ABorder: TsCellBorder]: TsCellBorderStyle
+      read GetBorderStyle write SetBorderStyle;
+    property BorderStyles: TsCellBorderStyles
+      read GetBorderStyles write SetBorderStyles;
     property CellFormat: TsCellFormat
       read GetCellFormat write SetCellFormat;
     property Font: TsFont read GetFont;
@@ -81,6 +87,11 @@ end;
 function TCellHelper.GetBorderStyle(const ABorder: TsCellBorder): TsCellBorderStyle;
 begin
   Result := Worksheet.ReadCellBorderStyle(@self, ABorder);
+end;
+
+function TCellHelper.GetBorderStyles: TsCellBorderStyles;
+begin
+  Result := Worksheet.ReadCellBorderStyles(@self);
 end;
 
 function TCellHelper.GetCellFormat: TsCellFormat;
@@ -161,6 +172,11 @@ procedure TCellHelper.SetBorderStyle(const ABorder: TsCellBorder;
   const AValue: TsCellBorderStyle);
 begin
   Worksheet.WriteBorderStyle(@self, ABorder, AValue);
+end;
+
+procedure TCellHelper.SetBorderStyles(const AValue: TsCellBorderStyles);
+begin
+  Worksheet.WriteBorderStyles(@self, AValue);
 end;
 
 procedure TCellHelper.SetCellFormat(const AValue: TsCellFormat);
