@@ -387,30 +387,29 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
+      INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
+      INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
+      INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
+      INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
+      INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
+      INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+      INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+      INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
+      INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
+      INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
+      INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
+      INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
+      INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+      INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+      INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
+      INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
+      INT_EXCEL_ID_PANE          : ReadPane(AStream);
+      INT_EXCEL_ID_BOF           : ;
+      INT_EXCEL_ID_EOF           : SectionEOF := True;
 
-    INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
-    INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
-    INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
-    INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
-    INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
-    INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
-    INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
-    INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
-    INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
-    INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
-    INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
-    INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
-    INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
-    INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
-    INT_EXCEL_ID_PANE          : ReadPane(AStream);
-    INT_EXCEL_ID_BOF           : ;
-    INT_EXCEL_ID_EOF           : SectionEOF := True;
-
-{$IFDEF FPSPREADDEBUG} // Only write out if debugging
+     {$IFDEF FPSPREADDEBUG} // Only write out if debugging
     else
-      // Show unsupported record types to console.    
+      // Show unsupported record types to console.
       case RecordType of
         $000C: ; //(CALCCOUNT) This record is part of the Calculation Settings Block. It specifies the maximum number of times the formulas should be iteratively calculated. This is a fail-safe against mutually recursive formulas locking up a spreadsheet application.
         $000D: ; //(CALCMODE) This record is part of the Calculation Settings Block. It specifies whether to calculate formulas manually, automatically or automatically except for multiple table operations.
@@ -445,7 +444,7 @@ begin
       else
         WriteLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
       end;
-{$ENDIF}
+      {$ENDIF}
     end;
 
     // Make sure we are in the right position for the next record
@@ -749,6 +748,9 @@ begin
 
     // Final preparations
     Inc(FCurrentWorksheet);
+    if FCurrentWorksheet = FWorksheetNames.Count then BIFF5EOF := True;
+    // It can happen in files written by Office97 that the OLE directory is
+    // at the end of the file.
   end;
 
   if not FPaletteFound then
