@@ -15,8 +15,20 @@ uses
   fpstypes, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, fpsopendocument, {and a project requirement for lclbase for utf8 handling}
   testsutility;
 
+type
+  PCellRecord = ^TCellRecord;
+  TCellRecord = record
+    ContentType: TCellContentType;
+    Numbervalue: Double;
+    UTF8StringValue: String;
+    FormulaValue: String;
+    UsedFormattingFields: TsUsedFormattingFields;
+    SharedFormulaBase: PCellRecord;
+    BackgroundColor: TsColor;
+  end;
+
 var
-  SourceCells: Array[0..9] of TCell;
+  SourceCells: Array[0..8] of TCellRecord;
 
 procedure InitCopyData;
 
@@ -51,41 +63,57 @@ uses
 const
   CopyTestSheet = 'Copy';
 
-function InitNumber(ANumber: Double; ABkColor: TsColor): TCell;
-begin      (*
-  InitCell(Result);
+procedure MyInitCellRecord(out ACell: TCellRecord);
+begin
+  ACell.Contenttype := cctEmpty;
+  ACell.NumberValue := 0.0;
+  ACell.UTF8StringValue := '';
+  ACell.FormulaValue := '';
+  ACell.UsedformattingFields := [];
+  ACell.BackgroundColor := scTransparent;
+  ACell.SharedFormulaBase := nil;
+end;
+
+function MyHasFormula(ACell: PCellRecord): Boolean;
+begin
+  Result := Assigned(ACell) and (
+    (ACell^.SharedFormulaBase <> nil) or (Length(ACell^.FormulaValue) > 0)
+  );
+end;
+
+function InitNumber(ANumber: Double; ABkColor: TsColor): TCellRecord;
+begin
+  MyInitCellRecord(Result);
   Result.ContentType := cctNumber;
   Result.Numbervalue := ANumber;
-  if (ABkColor <> scNotDefined) and (ABkColor <> scTransparent) then
-  begin
-    Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackgroundColor];
+  if (ABkColor <> scTransparent) then begin
+    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackgroundColor];
     Result.BackgroundColor := ABkColor;
-  end;       *)
+  end;
 end;
 
-function InitString(AString: String; ABkColor: TsColor): TCell;
-begin          (*
-  InitCell(Result);
+function InitString(AString: String; ABkColor: TsColor): TCellRecord;
+begin
+  MyInitCellRecord(Result);
   Result.ContentType := cctUTF8String;
   Result.UTF8StringValue := AString;
-  if (ABkColor <> scNotDefined) and (ABkColor <> scTransparent) then
-  begin
-    Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackgroundColor];
+  if (ABkColor <> scTransparent) then begin
+    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackgroundColor];
     Result.BackgroundColor := ABkColor;
-  end;           *)
+  end;
 end;
 
-function InitFormula(AFormula: String; ANumberResult: Double; ABkColor: TsColor): TCell;
-begin                   (*
-  InitCell(Result);
+function InitFormula(AFormula: String; ANumberResult: Double;
+  ABkColor: TsColor): TCellRecord;
+begin
+  MyInitCellRecord(Result);
   Result.FormulaValue := AFormula;
   Result.NumberValue := ANumberResult;
   Result.ContentType := cctNumber;
-  if (ABkColor <> scNotDefined) and (ABkColor <> scTransparent) then
-  begin
-    Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackgroundColor];
+  if (ABkColor <> scTransparent) then begin
+    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackgroundColor];
     Result.BackgroundColor := ABkColor;
-  end;                    *)
+  end;
 end;
 
 { IMPORTANT: Carefully check the Test_Copy method if anything is changed here.
@@ -100,7 +128,7 @@ begin
   SourceCells[5] := InitFormula('$A1+1', 2.0, scTransparent);
   SourceCells[6] := InitFormula('A$1+1', 2.0, scTransparent);
   SourceCells[7] := InitFormula('$A$1+1', 2.0, scGray);
-  InitCell(SourceCells[8]);  // empty but existing
+  MyInitCellRecord(SourceCells[8]);  // empty but existing
 end;
 
 
@@ -172,7 +200,7 @@ begin
         end;
         if SourceCells[row].FormulaValue <> '' then
           Myworksheet.WriteFormula(row+col, col, SourceCells[row].FormulaValue);
-        if (uffBackgroundColor in SourceCells[row].UsedFormattingFields) then
+        if SourceCells[row].BackgroundColor <> scTransparent then
           MyWorksheet.WriteBackgroundColor(cell, SourceCells[row].BackgroundColor);
       end;
 
@@ -216,12 +244,12 @@ begin
 
       case ATestKind of
         1, 2:  // Copied values
-          if cell <> nil then
+          if (cell <> nil) and (row <= High(SourceCells)) then
           begin
             // Check formula results
-            if HasFormula(@SourceCells[row]) then
+            if MyHasFormula(@SourceCells[row]) then
               CheckEquals(
-                SourceCells[0].NumberValue + 1,
+                SourceCells[0].NumberValue + 1,   // +1 because that's what the formula does...
                 cell^.NumberValue,
                 'Result of copied formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
               )
@@ -294,42 +322,49 @@ begin
         1, 5:
           CheckEquals(
            true,
-           (cell = nil) or (cell^.UsedFormattingFields = []),
+           (cell = nil) or (MyWorksheet.ReadUsedFormatting(cell) = []),
            'Default formatting mismatch, cell ' + CellNotation(MyWorksheet, row, col)
           );
         2, 6:
           if (row = 0) then
             CheckEquals(
               true,
-              (cell = nil) or (cell^.UsedFormattingFields = []),
+              (cell = nil) or (MyWorksheet.ReadUsedFormatting(cell) = []),
               'Default formatting mismatch, cell ' + CellNotation(MyWorksheet, row, col)
             )
           else
           begin
             CheckEquals(
               true,
-              SourceCells[i+(col-2)].UsedFormattingFields = cell^.UsedFormattingFields,
+              SourceCells[i+(col-2)].UsedFormattingFields = MyWorksheet.ReadUsedFormatting(cell),
               'Used formatting fields mismatch, cell ' + CellNotation(myWorksheet, row, col)
             );
             if (uffBackgroundColor in SourceCells[i].UsedFormattingFields) then
               CheckEquals(
                 SourceCells[i+(col-2)].BackgroundColor,
-                cell^.BackgroundColor,
+                MyWorksheet.ReadBackgroundColor(cell),
                 'Background color mismatch, cell ' + CellNotation(Myworksheet, row, col)
               );
           end;
         3, 4:
-          if cell <> nil then
+          if (i = Length(SourceCells)) and (ATestKind = 4) then
+            CheckEquals(
+              true,
+              (cell = nil) or (MyWorksheet.ReadUsedFormatting(cell) = []),
+              'Default formatting mismatch, cell ' + CellNotation(MyWorksheet, row, col)
+            )
+          else
+          if (cell <> nil) then
           begin
             CheckEquals(
               true,
-              SourceCells[i].UsedFormattingFields = cell^.UsedFormattingFields,
+              SourceCells[i].UsedFormattingFields = MyWorksheet.ReadUsedFormatting(cell),
               'Used formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
             );
             if (uffBackgroundColor in SourceCells[i].UsedFormattingFields) then
               CheckEquals(
                 SourceCells[i].BackgroundColor,
-                cell^.BackgroundColor,
+                MyWorksheet.ReadBackgroundColor(cell),
                 'Background color mismatch, cell ' + CellNotation(Myworksheet, row, col)
               );
           end;
@@ -392,192 +427,6 @@ begin
           end;
       end;
     end; // For
-
-(*
-
-    case ATestKind of
-      1, 2:
-      // Copied VALUES in first colum to empty third column (ATestKind = 1) or
-      // occuopied second column (ATestKind = 2)
-      // The formula cell should contain the result of A1+1 (only value copied)
-        begin
-          if ATestKind = 1 then col := 2 else col := 1;
-          for row := 0 to Length(SourceCells) do
-          begin
-            cell := MyWorksheet.FindCell(row, col);
-
-            if row < Length(SourceCells) then
-            begin
-              // Check content type
-              if (SourceCells[row].ContentType in [cctNumber, cctUTF8String, cctEmpty]) then
-                CheckEquals(
-                  GetEnumName(TypeInfo(TCellContentType), Integer(SourceCells[row].ContentType)),
-                  GetEnumName(TypeInfo(TCellContentType), Integer(cell^.ContentType)),
-                  'Content type mismatch, cell '+CellNotation(MyWorksheet, row, col)
-                );
-
-              // Check values
-              case SourceCells[row].ContentType of
-                cctNumber:
-                  CheckEquals(
-                    SourceCells[row].NumberValue,
-                    cell^.NumberValue,
-                    'Number value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                  );
-                cctUTF8String:
-                  CheckEquals(
-                    SourceCells[row].UTF8StringValue,
-                    cell^.UTF8StringValue,
-                    'String value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                  );
-              end;
-
-              // Check formula results
-              if HasFormula(@SourceCells[row]) then
-                CheckEquals(
-                  SourceCells[0].NumberValue + 1,
-                  cell^.NumberValue,
-                  'Result of copied formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                );
-            end;
-
-            // Check format: it should not be changed when copying only values
-            case ATestKind of
-              1:  // Copy to empty column --> no formatting
-                  CheckEquals(
-                    true,     // true = "the cell has default formatting"
-                    (cell = nil) or (cell^.UsedFormattingFields = []),
-                    'Default format mismatch, cell ' + CellNotation(MyWorksheet, row,col)
-                  );
-              2:  // Copy to occupied column --> format like source, but shifted down 1 cvell
-                  if row = 0 then  // this cell should not be formatted
-                    CheckEquals(
-                      true,
-                      cell^.UsedFormattingFields = [],
-                      'Formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                    )
-                  else
-                  begin
-                    CheckEquals(
-                      true,
-                      SourceCells[row-1].UsedFormattingFields = cell^.UsedFormattingFields,
-                      'Formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                    );
-                    if (uffBackgroundColor in cell^.UsedFormattingFields) then
-                      CheckEquals(
-                        SourceCells[row-1].BackgroundColor,
-                        cell^.BackgroundColor,
-                        'Background color mismatch, cell '+ CellNotation(MyWorksheet, row, col)
-                      );
-                  end;
-              end;
-          end;
-        end;
-
-      { ------------------------------------------------ }
-
-      3: // FORMATs copied from first column to empty third column
-        begin
-          col := 2;
-          for row :=0 to Length(SourceCells)-1 do
-          begin
-            cell := MyWorksheet.FindCell(row, col);
-
-            // There should not be any content because the column was empty and
-            // we had copied only formats
-            CheckEquals(
-              true,     // true = "the cell has no content"
-              (cell = nil) or (cell^.ContentType = cctEmpty),
-              'No content mismatch, cell ' + CellNotation(MyWorksheet, row,col)
-            );
-
-            // Check the format: it should be identical to that in column A
-            if cell <> nil then
-            begin
-              CheckEquals(
-                true,
-                SourceCells[row].UsedFormattingFields = cell^.UsedFormattingFields,
-                'Formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-              );
-              if (uffBackgroundColor in cell^.UsedFormattingFields) then
-                CheckEquals(
-                  SourceCells[row].BackgroundColor,
-                  cell^.BackgroundColor,
-                  'Background color mismatch, cell '+ CellNotation(MyWorksheet, row, col)
-                );
-            end;
-          end;
-        end;
-
-      { ---------------------------- }
-
-      4: // FORMATs copied from 1st to second column.
-        begin
-          col := 1;
-
-          // Check values: they should be unchanged, i.e. identical to column A,
-          // but there is a vertical offset by 1 cell
-          cell := MyWorksheet.FindCell(0, col);
-          CheckEquals(
-            true,     // true = "the cell has no content"
-            (cell = nil) or (cell^.ContentType = cctEmpty),
-            'No content mismatch, cell ' + CellNotation(MyWorksheet, row,col)
-          );
-          for row := 1 to Length(SourceCells) do
-          begin
-            cell := MyWorksheet.FindCell(row, col);
-            // Check content type
-            if (SourceCells[row-1].ContentType in [cctNumber, cctUTF8String, cctEmpty]) then
-              CheckEquals(
-                GetEnumName(TypeInfo(TCellContentType), Integer(SourceCells[row-1].ContentType)),
-                GetEnumName(TypeInfo(TCellContentType), Integer(cell^.ContentType)),
-                'Content type mismatch, cell '+CellNotation(MyWorksheet, row, col)
-              );
-            // Check values
-            case SourceCells[row-1].ContentType of
-              cctNumber:
-                CheckEquals(
-                  SourceCells[row-1].NumberValue,
-                  cell^.NumberValue,
-                  'Number value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                );
-              cctUTF8String:
-                CheckEquals(
-                  SourceCells[row-1].UTF8StringValue,
-                  cell^.UTF8StringValue,
-                  'String value mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-                );
-            end;
-            // Check formula results
-            if HasFormula(@SourceCells[row-1]) then
-              CheckEquals(
-                SourceCells[0].NumberValue + 1,
-                cell^.NumberValue,
-                'Result of copied formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-              );
-          end;
-
-          // Now check formatting - it should be equal to first column
-          for row := 0 to Length(SourceCells)-1 do
-          begin
-            cell := MyWorksheet.FindCell(row, col);
-            CheckEquals(
-              true,
-              SourceCells[row].UsedFormattingFields = cell^.UsedFormattingFields,
-              'Formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
-            );
-
-            if (uffBackgroundColor in cell^.UsedFormattingFields) then
-              CheckEquals(
-                SourceCells[row].BackgroundColor,
-                cell^.BackgroundColor,
-                'Background color mismatch, cell '+ CellNotation(MyWorksheet, row, col)
-              );
-          end;
-        end;
-
-    end;
-*)
 
   finally
     MyWorkbook.Free;
