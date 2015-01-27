@@ -8447,10 +8447,18 @@ procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook
 var
   InputFile: TStream;
 begin
+
   if (boBufStream in Workbook.Options) then
     InputFile := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyNone)
   else
     InputFile := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
+  {
+  //<--
+  InputFile := TMemoryStream.Create;
+  TMemoryStream(InputFile).LoadFromFile(AFilename);
+  //--->
+   }
+
   try
     ReadFromStream(InputFile, AData);
   finally
