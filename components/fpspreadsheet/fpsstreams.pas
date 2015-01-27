@@ -18,6 +18,8 @@ type
   private
     FFileStream: TFileStream;
     FMemoryStream: TMemoryStream;
+    FFileStreamPos: Int64;
+    FFileStreamSize: Int64;
     FBufWritten: Boolean;
     FBufSize: Int64;
     FKeepTmpFile: Boolean;
@@ -144,10 +146,13 @@ begin
   if FFileStream = nil then begin
     if FFileName = '' then FFileName := ChangeFileExt(GetTempFileName, '.~abc');
     FFileStream := TFileStream.Create(FFileName, FFileMode);
+    FFileStreamSize := FFileStream.Size;
+    FFileStreamPos := 0;
   end;
 end;
 
-{ Reads FBufSize bytes from the stream into the buffer }
+{ Reads FBufSize bytes from the stream into the buffer.
+  Called when reading. }
 procedure TBufStream.FillBuffer;
 var
   p, n: Int64;
@@ -156,19 +161,23 @@ begin
   FMemoryStream.Clear;
   FMemoryStream.Position := 0;
   FFileStream.Position := p;
-  n := Min(FBufSize, FFileStream.Size - p);
+  n := Min(FBufSize, FFileStreamSize - p);
   FMemoryStream.CopyFrom(FFileStream, n);
   FMemoryStream.Position := 0;
-  FFileStream.Position := p;
+  FFileStream.Position := p;  // The file stream ends where the memorystream begins!
+  FFileStreamPos := p;
 end;
 
-{ Flushes the contents of the memory stream to file }
+{ Flushes the contents of the memory stream to file
+  Called when writing. }
 procedure TBufStream.FlushBuffer;
 begin
   if (FMemoryStream.Size > 0) and not FBufWritten and IsWritingMode then begin
     FMemoryStream.Position := 0;
     CreateFileStream;
     FFileStream.CopyFrom(FMemoryStream, FMemoryStream.Size);
+    FFileStreamPos := FFileStream.Position;
+    FFileStreamSize := FFileStream.Size;
     FMemoryStream.Clear;
     FBufWritten := true;
   end;
@@ -181,7 +190,8 @@ begin
   if FFileStream = nil then
     Result := FMemoryStream.Position
   else
-    Result := FFileStream.Position + FMemoryStream.Position;
+  //  Result := FFileStream.Position + FMemoryStream.Position;
+    Result := FFileStreamPos + FMemoryStream.Position;
 end;
 
 { Returns the size of the stream. Both memory and file streams are considered
@@ -192,14 +202,15 @@ var
 begin
   if IsWritingMode then begin
     if FFileStream <> nil then
-      n := FFileStream.Size
+      n := FFileStreamSize
+//      n := FFileStream.Size
     else
       n := 0;
     if n = 0 then n := FMemoryStream.Size;
     Result := Max(n, GetPosition);
   end else begin
     CreateFileStream;
-    Result := FFileStream.Size;
+    Result := FFileStreamSize;
   end;
 end;
 
@@ -238,6 +249,7 @@ begin
     CreateFileStream;
     if IsWritingMode then begin
       Result := FFileStream.Read(Buffer, Count);
+      FFileStreamPos := FFileStream.Position;
     end else begin
       FillBuffer;
       Result := FMemoryStream.Read(Buffer, Count);
@@ -256,6 +268,7 @@ begin
     FlushBuffer;
     FFileStream.Position := p;
     Result := FFileStream.Read(Buffer, Count);
+    FFileStreamPos := p + Count;
   end else begin
     FillBuffer;
     Result := FMemoryStream.Read(Buffer, Count);
@@ -285,10 +298,12 @@ begin
   CreateFileStream;
 
   // case #2: New position is within buffer, file stream exists
-  if (newPos >= FFileStream.Position) and (newPos < FFileStream.Position + FMemoryStream.Size)
+//  if (newPos >= FFileStream.Position) and (newPos < FFileStream.Position + FMemoryStream.Size)
+  if (newPos >= FFileStreamPos) and (newPos < FFileStreamPos + FMemoryStream.Size)
   then begin
-    FMemoryStream.Position := newPos - FFileStream.Position;
-    Result := FMemoryStream.Position;
+  //  FMemoryStream.Position := newPos - FFileStream.Position;
+    FMemoryStream.Position := newPos - FFileStreamPos;
+    Result := newpos; //FMemoryStream.Position;
     exit;
   end;
 
@@ -296,6 +311,7 @@ begin
   if IsWritingMode then
     FlushBuffer;
   FFileStream.Position := newPos;
+  FFileStreamPos := newPos;
   FMemoryStream.Position := 0;
   if not IsWritingMode then
     FillBuffer;
@@ -306,17 +322,20 @@ var
   savedPos: Int64;
 begin
   // Case #1: Bytes fit into buffer
-  if FMemoryStream.Position + ACount < FBufSize then begin
+  if FMemoryStream.Position + ACount < FBufSize then
+  begin
     Result := FMemoryStream.Write(ABuffer, ACount);
     FBufWritten := false;
-    exit;
-  end;
-
+  end else
   // Case #2: Buffer would overflow
-  savedPos := GetPosition;
-  FlushBuffer;
-  FFileStream.Position := savedPos;
-  Result := FFileStream.Write(ABuffer, ACount);
+  begin;
+    savedPos := GetPosition;
+    FlushBuffer;
+    FFileStream.Position := savedPos;
+    Result := FFileStream.Write(ABuffer, ACount);
+    FFileStreamPos := savedPos + ACount;
+    FFileStreamSize := FFileStream.Size;
+  end;
 end;
 
 
