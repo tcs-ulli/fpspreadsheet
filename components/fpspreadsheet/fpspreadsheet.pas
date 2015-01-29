@@ -50,16 +50,6 @@ type
     Worksheet: TsWorksheet;
     Col: Cardinal; // zero-based
     Row: Cardinal; // zero-based
-    (*
-    ContentType: TCellContentType;
-    { Possible values for the cells }
-    FormulaValue: string;
-    NumberValue: double;
-    UTF8StringValue: ansistring;
-    DateTimeValue: TDateTime;
-    BoolValue: Boolean;
-    ErrorValue: TsErrorValue;
-    *)
     { Index of format record }
     FormatIndex: Integer;
     { Status flags }
@@ -72,9 +62,9 @@ type
     FormulaValue: String;
     case ContentType: TCellContentType of  // must be at the end of the declaration
       cctEmpty      : ();      // has no data at all
-      cctFormula    : ();      // UTF8StringValue is outside the variant record
+      cctFormula    : ();      // FormulaValue is outside the variant record
       cctNumber     : (Numbervalue: Double);
-      cctUTF8String : ();      // FormulaValue is outside the variant record
+      cctUTF8String : ();      // UTF8StringValue is outside the variant record
       cctDateTime   : (DateTimevalue: TDateTime);
       cctBool       : (BoolValue: boolean);
       cctError      : (ErrorValue: TsErrorValue);
