@@ -147,6 +147,7 @@ type
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;
+    procedure DrawCellGrid(ACol,ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawFrozenPaneBorders(ARect: TRect);
     procedure DrawRow(aRow: Integer); override;
@@ -1482,6 +1483,25 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Method inherited method from TCustomGrid. Is overridden here to avoid painting
+  of the border of frozen cells in black under some circumstances.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.DrawCellGrid(ACol, ARow: Integer; ARect: TRect;
+  AState: TGridDrawState);
+begin
+  if (TitleStyle <> tsNative) and (gdFixed in AState) and
+     {DisplayFixedColRow and} ((FFrozenCols > 0) or (FFrozenRows > 0)) then
+  begin
+    // Draw default cell borders only in the header cols/rows.
+    // If there are frozen cells they would get a black border, so we don't
+    // draw their borders here - they are drawn by "DrawRow" anyway.
+    if ((ACol=0) or (ARow = 0)) and DisplayFixedColRow then
+      inherited;
+  end else
+    inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
   This procedure is responsible for painting the focus rectangle. We don't want
   the red dashed rectangle here, but prefer the thick Excel-like black border
   line. This new focus rectangle is drawn by the method DrawSelection.
@@ -1499,7 +1519,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Draws a solid line along the borders of frozen panes.
 
-  @param  ARect  This rectangle indicates the area containing movable cells.
+  @param  ARect  This rectangle indicates the area containing scrollable cells.
                  If the grid has frozen panes, a black line is drawn along the
                  upper and/or left edge of this rectangle (depending on the
                  value of FrozenRows and FrozenCols).
@@ -1731,7 +1751,7 @@ begin
     end;
   end;    // with GCache.VisibleGrid ...
 
-  // Draw Fixed Columns
+  // Draw fixed columns
   gr := ARow;
   for gc := 0 to FixedCols-1 do begin
     gds := [gdFixed];
