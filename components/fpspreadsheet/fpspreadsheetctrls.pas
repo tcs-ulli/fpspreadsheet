@@ -2657,14 +2657,17 @@ begin
     AStrings.Add(Format('ContentType=%s', [
       GetEnumName(TypeInfo(TCellContentType), ord(ACell^.ContentType))
     ]));
-    AStrings.Add(Format('NumberValue=%g', [ACell^.NumberValue]));
-    AStrings.Add(Format('DateTimeValue=%g', [ACell^.DateTimeValue]));
-    AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
-    AStrings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
-    AStrings.Add(Format('ErrorValue=%s', [
-      GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue))
-    ]));
-    AStrings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)])); //^.FormulaValue]));
+    if ACell^.ContentType = cctNumber then
+      AStrings.Add(Format('NumberValue=%g', [ACell^.NumberValue]));
+    if ACell^.ContentType = cctDateTime then
+      AStrings.Add(Format('DateTimeValue=%g', [ACell^.DateTimeValue]));
+    if ACell^.ContentType = cctUTF8String then
+      AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
+    if ACell^.ContentType = cctBool then
+      AStrings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
+    if ACell^.ContentType = cctError then
+      AStrings.Add(Format('ErrorValue=%s', [GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue))]));
+    AStrings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)]));
     if ACell^.SharedFormulaBase = nil then
       AStrings.Add('SharedFormulaBase=')
     else

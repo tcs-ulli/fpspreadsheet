@@ -781,10 +781,9 @@ end;
 
 procedure TMainFrm.AcSortColAscExecute(Sender: TObject);
 var
-  c, r: Cardinal;
+  c: Cardinal;
   sortParams: TsSortParams;
 begin
-  r := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
   c := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
   sortParams := InitSortParams;
   WorksheetGrid.BeginUpdate;
@@ -1138,19 +1137,19 @@ begin
       if ACell=nil
         then Strings.Add('ContentType=')
         else Strings.Add(Format('ContentType=%s', [GetEnumName(TypeInfo(TCellContentType), ord(ACell^.ContentType))]));
-      if ACell=nil
+      if (ACell=nil) or (ACell^.ContentType <> cctNumber)
         then Strings.Add('NumberValue=')
         else Strings.Add(Format('NumberValue=%g', [ACell^.NumberValue]));
-      if ACell=nil
+      if (ACell=nil) or (ACell^.ContentType <> cctDateTime)
         then Strings.Add('DateTimeValue=')
         else Strings.Add(Format('DateTimeValue=%g', [ACell^.DateTimeValue]));
-      if ACell=nil
+      if (ACell=nil) or (ACell^.ContentType <> cctUTF8String)
         then Strings.Add('UTF8StringValue=')
         else Strings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
-      if ACell=nil
+      if (ACell=nil) or (ACell^.ContentType <> cctBool)
         then Strings.Add('BoolValue=')
         else Strings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
-      if ACell=nil
+      if (ACell=nil) or (ACell^.ContentType <> cctError)
         then Strings.Add('ErrorValue=')
         else Strings.Add(Format('ErrorValue=%s', [
                GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue)) ]));
