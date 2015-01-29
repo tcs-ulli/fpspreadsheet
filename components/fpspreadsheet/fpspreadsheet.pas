@@ -6420,8 +6420,8 @@ end;
 class function TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean;
 const
-  BIFF2_HEADER: array[0..15] of byte = (
-    $09,$00, $04,$00, $00,$00, $10,$00, $31,$00, $0A,$00, $C8,$00, $00,$00);
+  BIFF2_HEADER: array[0..3] of byte = (
+    $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
   BIFF58_HEADER: array[0..7] of byte = (
     $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
 
@@ -6440,7 +6440,7 @@ const
   end;
 
 var
-  buf: packed array[0..16] of byte = (0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+  buf: packed array[0..7] of byte = (0,0,0,0,0,0,0,0);
   stream: TStream;
   i: Integer;
   ok: Boolean;
@@ -6448,12 +6448,12 @@ begin
   Result := false;
   stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
-    // Read first 16 bytes
-    stream.ReadBuffer(buf, 16);
+    // Read first 8 bytes
+    stream.ReadBuffer(buf, 8);
 
     // Check for Excel 2
     ok := true;
-    for i:=0 to 15 do
+    for i:=0 to High(BIFF2_HEADER) do
       if buf[i] <> BIFF2_HEADER[i] then
       begin
         ok := false;
@@ -6466,7 +6466,7 @@ begin
     end;
 
     // Check for Excel 5 or 8
-    for i:=0 to 7 do
+    for i:=0 to High(BIFF58_HEADER) do
       if buf[i] <> BIFF58_HEADER[i] then
         exit;
 
