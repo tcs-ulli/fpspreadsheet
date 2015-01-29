@@ -27,6 +27,7 @@ type
     function FindMounted(const APath: UTF8String): TVirtualLayer; overload;
     function PreviousPath(const APath: UTF8String): UTF8String;
     function StripMountPoints(const APath: UTF8String): UTF8String;
+
   protected
     FParentLayer: TVirtualLayer;
     FVirtualLayerStream: TStream;
@@ -59,8 +60,8 @@ type
 
     procedure Lock(); virtual;
     procedure Unlock(); virtual;
-  public
 
+  public
     function MakeFolder(const AFolder: UTF8String): Boolean;
     function RemoveFolder(const AFolder: UTF8String): Boolean;
     function DeleteFile(const AFileName: UTF8String): Boolean;
@@ -100,11 +101,11 @@ type
 implementation
 
 type
-TFileRecLocal=record
-  FL: TVirtualLayer_FolderList;
-  Attr: LongInt;
-end;
-PFileRecLocal=^TFileRecLocal;
+  TFileRecLocal = record
+    FL: TVirtualLayer_FolderList;
+    Attr: LongInt;
+  end;
+  PFileRecLocal=^TFileRecLocal;
 
 { TVirtualLayer }
 
