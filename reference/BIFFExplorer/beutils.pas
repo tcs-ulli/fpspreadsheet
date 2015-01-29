@@ -19,6 +19,9 @@ function GetFormatFromFileHeader(const AFileName: TFileName;
 
 implementation
 
+uses
+  uvirtuallayer_ole;
+
 function CreateIni : TCustomIniFile;
 var
   cfg : string;
@@ -89,31 +92,40 @@ end;
 function GetFormatFromFileHeader(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean;
 const
-  BIFF2_HEADER: array[0..15] of byte = (
-    $09,$00, $04,$00, $00,$00, $10,$00, $31,$00, $0A,$00, $C8,$00, $00,$00);
-  BIFF58_HEADER: array[0..15] of byte = (
-    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1, $00,$00, $00,$00, $00,$00, $00,$00);
-  BIFF5_MARKER: array[0..7] of widechar = (
-    'B', 'o', 'o', 'k', #0, #0, #0, #0);
-  BIFF8_MARKER:array[0..7] of widechar = (
-    'W', 'o', 'r', 'k', 'b', 'o', 'o', 'k');
+  BIFF2_HEADER: array[0..3] of byte = (
+    $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
+  BIFF58_HEADER: array[0..7] of byte = (
+    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
+
+  function ValidOLEStream(AStream: TStream; AName: String): Boolean;
+  var
+    fsOLE: TVirtualLayer_OLE;
+  begin
+    AStream.Position := 0;
+    fsOLE := TVirtualLayer_OLE.Create(AStream);
+    try
+      fsOLE.Initialize;
+      Result := fsOLE.FileExists('/'+AName);
+    finally
+      fsOLE.Free;
+    end;
+  end;
+
 var
-  buf: packed array[0..16] of byte;
+  buf: packed array[0..7] of byte = (0,0,0,0,0,0,0,0);
   stream: TStream;
   i: Integer;
   ok: Boolean;
 begin
-  buf[0] := 0;  // Silence the compiler...
-
   Result := false;
   stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
-    // Read first 16 bytes
-    stream.ReadBuffer(buf, 16);
+    // Read first 8 bytes
+    stream.ReadBuffer(buf, 8);
 
-    // Check for Excel 2#
+    // Check for Excel 2
     ok := true;
-    for i:=0 to 15 do
+    for i:=0 to High(BIFF2_HEADER) do
       if buf[i] <> BIFF2_HEADER[i] then
       begin
         ok := false;
@@ -126,32 +138,24 @@ begin
     end;
 
     // Check for Excel 5 or 8
-    for i:=0 to 15 do
+    for i:=0 to High(BIFF58_HEADER) do
       if buf[i] <> BIFF58_HEADER[i] then
         exit;
 
-    // Further information begins at offset $480:
-    stream.Position := $480;
-    stream.ReadBuffer(buf, 16);
-    // Check for Excel5
-    ok := true;
-    for i:=0 to 7 do
-      if WideChar(buf[i*2]) <> BIFF5_MARKER[i] then
-      begin
-        ok := false;
-        break;
-      end;
-    if ok then
-    begin
+    // Now we know that the file is a Microsoft compound document.
+
+    // We check for Excel 5 in which the stream is named "Book"
+    if ValidOLEStream(stream, 'Book') then begin
       SheetType := sfExcel5;
-      Exit(True);
+      exit(True);
     end;
-    // Check for Excel8
-    for i:=0 to 7 do
-      if WideChar(buf[i*2]) <> BIFF8_MARKER[i] then
-        exit(false);
-    SheetType := sfExcel8;
-    Exit(True);
+
+    // Now we check for Excel 8 which names the stream "Workbook"
+    if ValidOLEStream(stream, 'Workbook') then begin
+      SheetType := sfExcel8;
+      exit(True);
+    end;
+
   finally
     stream.Free;
   end;
