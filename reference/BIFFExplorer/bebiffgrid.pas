@@ -105,6 +105,7 @@ type
     procedure ShowStyleExt;
     procedure ShowTabID;
     procedure ShowTopMargin;
+    procedure ShowTXO;
     procedure ShowWindow1;
     procedure ShowWindow2;
     procedure ShowWindowProtect;
@@ -137,7 +138,7 @@ type
 implementation
 
 uses
-  StrUtils, Math,
+  StrUtils, Math, lazutf8,
   fpsutils,
   beBIFFUtils;
 
@@ -415,6 +416,8 @@ begin
       ShowExternalBook;
     $01AF:
       ShowProt4Rev;
+    $01B6:
+      ShowTXO;
     $01B7:
       ShowRefreshAll;
     $01BC:
@@ -3101,7 +3104,7 @@ var
   w: Word = 0;
   s: String;
 begin
-  RowCount := IfThen(FFormat = sfExcel8, 6, 4);
+  RowCount := IfThen(FFormat = sfExcel8, 6, 5);
 
   // Offset 0: Row and Col index
   ShowRowColData(FBufferIndex);
@@ -3144,6 +3147,7 @@ begin
     SetLength(s, numBytes);
     Move(FBuffer[FBufferIndex], s[1], numBytes);
     SetLength(s, Length(s));
+    s := UTF8StringReplace(s, #10, '[\n]', [rfReplaceAll]);
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s, 'Comment text');
   end;
 end;
@@ -4393,6 +4397,85 @@ begin
     'Top page margin in inches (IEEE 754 floating-point value, 64-bit double precision)');
 end;
 
+
+procedure TBIFFGrid.ShowTXO;
+var
+  numbytes: Word;
+  w: Word;
+begin
+  RowCount := FixedRows + 9;
+  numbytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add(     'Option flags:'#13);
+    FDetails.Add(     'Bit 0: Reserved');
+    case (w and $000E) shr 1 of
+      0: FDetails.Add('Bits 1-3: 0 = Horizontal text alignment: none');
+      1: FDetails.Add('Bits 1-3: 1 = Horizontal text alignment: left-aligned');
+      2: FDetails.Add('Bits 1-3: 2 = Horizontal text alignment: centered');
+      3: FDetails.Add('Bits 1-3: 3 = Horizontal text alignment: right-aligned');
+      4: FDetails.Add('Bits 1-3: 4 = Horizontal text alignment: justified');
+    end;
+    case (w and $0070) shr 4 of
+      0: FDetails.Add('Bits 4-6: 0 = Vertical text alignment: none');
+      1: FDetails.Add('Bits 4-6: 1 = Vertical text alignment: top');
+      2: FDetails.Add('Bits 4-6: 2 = Vertical text alignment: center');
+      3: FDetails.Add('Bits 4-6: 3 = Vertical text alignment: bottom');
+      4: FDetails.Add('Bits 4-6: 4 = Vertical text alignment: justify');
+    end;
+    FDetails.Add(     'Bits 7-8: Reserved');
+    case (w and $0200) shr 9 of
+      0: FDetails.Add('Bit 9: Lock Text Option is off.');
+      1: FDetails.Add('Bit 9: Lock Text Option is on');
+    end;
+    FDetails.Add(     'Bits 10-15: Reserved');
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]),
+    'Option flags');
+
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordLEToN(w);
+  if Row = FCurrRow then begin
+    FDetails.Add('Orientation of text with the object boundary:'#13);
+    case w of
+      0: FDetails.Add('0 = no rotation (text appears left to right)');
+      1: FDetails.Add('1 = text appears top to bottom; letters are upright');
+      2: FDetails.Add('2 = text is rotated 90 degrees counterclockwise');
+      3: FDetails.Add('3 = text is rotated 90 degrees clockwise');
+    end;
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
+    'Orientation of text within the object boundary');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Reserved (must be 0)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Reserved (must be 0)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Reserved (must be 0)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Length (in characters) of text (in first following CONTINUE record)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Length of formatting runs (in seconds following CONTINUE record)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Reserved (must be 0)');
+
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+    'Reserved (must be 0)');
+end;
 
 procedure TBIFFGrid.ShowWindow1;
 var
