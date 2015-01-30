@@ -353,6 +353,33 @@ type
     property Visible;
   end;
 
+  TsCellCommentMode = (ccmNew, ccmEdit, ccmDelete);
+
+  TsCellCommentAction = class(TsCellAction)
+  private
+    FMode: TsCellCommentMode;
+  protected
+    function EditComment(ACaption: String; var AText: String): Boolean; virtual;
+  public
+    procedure ExecuteTarget(Target: TObject); override;
+    procedure UpdateTarget(Target: TObject); override;
+  published
+    property Mode: TsCellCommentMode read FMode write FMode;
+    property Caption;
+    property Enabled;
+    property HelpContext;
+    property HelpKeyword;
+    property HelpType;
+    property Hint;
+    property ImageIndex;
+    property OnExecute;
+    property OnHint;
+    property OnUpdate;
+    property SecondaryShortCuts;
+    property ShortCut;
+    property Visible;
+  end;
+
   { TsMergeAction }
   TsMergeAction = class(TsAutoFormatAction)
   private
@@ -451,6 +478,7 @@ procedure Register;
 implementation
 
 uses
+  StdCtrls, ExtCtrls, Buttons, Forms,
   fpsutils, fpsnumformatparser, fpsVisualUtils;
 
 procedure Register;
@@ -465,6 +493,7 @@ begin
     TsTextRotationAction, TsWordWrapAction,
     TsNumberFormatAction, TsDecimalsAction,
     TsCellBorderAction, TsNoCellBordersAction,
+    TsCellCommentAction,
     TsMergeAction
   ], nil);
 end;
@@ -1165,6 +1194,93 @@ begin
   ApplyFormatToSelection;
 end;
 
+
+{ TsCellCommentAction }
+function TsCellCommentAction.EditComment(ACaption: String;
+  var AText: String): Boolean;
+var
+  F: TForm;
+  memo: TMemo;
+  panel: TPanel;
+  btn: TBitBtn;
+begin
+  F := TForm.Create(nil);
+  try
+    F.Caption := ACaption;
+    F.Width := 400;
+    F.Height := 300;
+    F.Position := poMainFormCenter;
+    memo := TMemo.Create(F);
+    memo.Parent := F;
+    memo.Align := alClient;
+    memo.BorderSpacing.Around := 4;
+    memo.Lines.Text := AText;
+    panel := TPanel.Create(F);
+    panel.Parent := F;
+    panel.Align := alBottom;
+    panel.Height := 44;
+    panel.BevelOuter := bvNone;
+    panel.Caption := '';
+    btn := TBitBtn.Create(F);
+    btn.Parent := panel;
+    btn.Kind := bkOK;
+    btn.Left := panel.ClientWidth - 2*btn.Width - 2*8;
+    btn.Top := 6;
+    btn.Anchors := [akTop, akRight];
+    btn := TBitBtn.Create(F);
+    btn.Parent := panel;
+    btn.Kind := bkCancel;
+    btn.Left := panel.ClientWidth - btn.Width - 8;
+    btn.Top := 6;
+    btn.Anchors := [akTop, akRight];
+    if F.ShowModal = mrOK then
+    begin
+      Result := true;
+      AText := memo.Lines.Text;
+    end else
+      Result := false;
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TsCellCommentAction.ExecuteTarget(Target: TObject);
+var
+  txt: String;
+  cellStr: String;
+  x, y: Integer;
+  R: TRect;
+begin
+  if Worksheet = nil then
+    exit;
+
+  cellstr := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  case FMode of
+    ccmNew:
+      begin
+        txt := '';
+        if EditComment(Format('New comment for cell %s',[cellStr]), txt) then
+          Worksheet.WriteComment(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol, txt);
+      end;
+    ccmEdit:
+      begin
+        txt := Worksheet.ReadComment(ActiveCell);
+        if EditComment(Format('Edit comment for cell %s', [cellStr]), txt) then
+          Worksheet.WriteComment(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol, txt);
+      end;
+    ccmDelete:
+      Worksheet.WriteComment(ActiveCell, '');
+  end;
+end;
+
+procedure TsCellCommentAction.UpdateTarget(Target: TObject);
+begin
+  case FMode of
+    ccmNew   : Enabled := (Worksheet <> nil) and (Length(GetSelection) > 0);
+    ccmEdit,
+    ccmDelete: Enabled := (Worksheet <> nil) and (Worksheet.ReadComment(ActiveCell) <> '');
+  end;
+end;
 
 { TsMergeAction }
 

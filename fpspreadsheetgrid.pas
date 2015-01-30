@@ -148,12 +148,14 @@ type
     procedure DrawCellBorders; overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;
     procedure DrawCellGrid(ACol,ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
+    procedure DrawCommentMarker(ARect: TRect);
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawFrozenPaneBorders(ARect: TRect);
     procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     function GetCellHeight(ACol, ARow: Integer): Integer;
+    function GetCellHintText(ACol, ARow: Integer): String; override;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
@@ -398,6 +400,8 @@ type
     property BorderSpacing;
     {@@ inherited from ancestors}
     property BorderStyle;
+    {@@ inherited from ancestors}
+    property CellHintPriority;
     {@@ inherited from ancestors}
     property Color;
     {@@ inherited from ancestors}
@@ -1502,6 +1506,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Draws the red rectangle in the upper right corner of a cell to indicate that
+  this cell contains a popup comment
+-------------------------------------------------------------------------------}
+procedure TscustomWorksheetGrid.DrawCommentMarker(ARect: TRect);
+const
+  COMMENT_SIZE = 6;
+var
+  P: Array[0..3] of TPoint;
+begin
+  Canvas.Brush.Color := clRed;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Pen.Style := psClear;
+  P[0] := Point(ARect.Right, ARect.Top);
+  P[1] := Point(ARect.Right - COMMENT_SIZE, ARect.Top);
+  P[2] := Point(ARect.Right, ARect.Top + COMMENT_SIZE);
+  P[3] := P[0];
+  Canvas.Polygon(P);
+end;
+
+{@@ ----------------------------------------------------------------------------
   This procedure is responsible for painting the focus rectangle. We don't want
   the red dashed rectangle here, but prefer the thick Excel-like black border
   line. This new focus rectangle is drawn by the method DrawSelection.
@@ -1745,6 +1769,9 @@ begin
       begin
         gds := GetGridDrawState(gc, gr);
         DoDrawCell(gc, gr, rct, rct);
+        // Draw comment marker
+        if (FDrawingCell <> nil) and (FDrawingCell^.Comment <> '') then
+          DrawCommentMarker(rct);
       end;
 
       gc := gcNext;
@@ -1818,6 +1845,7 @@ var
   lCell: PCell;
   justif: Byte;
   fmt: PsCellFormat;
+  savedBrushColor: TColor;
 begin
   if (Worksheet = nil) then
     exit;
@@ -2369,6 +2397,22 @@ begin
         Result := Canvas.TextWidth(s) + 2*constCellPadding;
     end;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  This function defines the text to be displayed as a cell hint. By default, it
+  is the comment attached to a cell; it can further be modified by using the
+  OnGetCellHint event.
+  Option goCellHints must be active for the cell hint feature to work.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.GetCellHintText(ACol, ARow: Integer): String;
+var
+  cell: PCell;
+begin
+  cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  Result := Worksheet.ReadComment(cell);
+  if Assigned(OnGetCellHint) then
+    OnGetCellHint(self, ACol, ARow, Result);
 end;
 
 {@@ ----------------------------------------------------------------------------

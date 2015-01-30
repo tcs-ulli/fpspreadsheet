@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
-  ComCtrls, ActnList, Menus, StdActns,
+  ComCtrls, ActnList, Menus, StdActns, Buttons,
   fpstypes, fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
 
 type
@@ -211,6 +211,9 @@ type
     AcPasteValueFromClipboard: TsCopyAction;
     AcPasteFormatFromClipboard: TsCopyAction;
     AcPasteFormulaFromClipboard: TsCopyAction;
+    AcCommentNew: TsCellCommentAction;
+    AcCommentEdit: TsCellCommentAction;
+    AcCommentDelete: TsCellCommentAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;
@@ -258,6 +261,7 @@ type
     ToolButton37: TToolButton;
     ToolButton38: TToolButton;
     ToolButton39: TToolButton;
+    TbCommentAdd: TToolButton;
     ToolButton40: TToolButton;
     ToolButton41: TToolButton;
     ToolButton42: TToolButton;
@@ -269,6 +273,9 @@ type
     ToolButton48: TToolButton;
     ToolButton49: TToolButton;
     ToolButton5: TToolButton;
+    TbCommentDelete: TToolButton;
+    TbCommentEdit: TToolButton;
+    ToolButton52: TToolButton;
     ToolButton6: TToolButton;
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;

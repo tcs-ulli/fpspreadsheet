@@ -57,6 +57,7 @@ type
     { Special information }
     SharedFormulaBase: PCell;  // Cell containing the shared formula
     MergeBase: PCell;          // Upper left cell of a merged range
+    Comment: String;           // Comment attached to the cell
     { Cell content }
     UTF8StringValue: String;   // strings cannot be part of a variant record
     FormulaValue: String;
@@ -195,6 +196,7 @@ type
     function  ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean; overload;
     function  ReadFormulaAsString(ACell: PCell; ALocalized: Boolean = false): String;
     function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
+    function  ReadComment(ACell: PCell): String;
 
     { Reading of cell attributes }
     function GetDisplayedDecimals(ACell: PCell): Byte;
@@ -235,6 +237,9 @@ type
 
     function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String): PCell; overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
+
+    function WriteComment(ARow, ACol: Cardinal; const AComment: String): PCell; overload;
+    procedure WriteComment(ACell: PCell; const AComment: String); overload;
 
     function WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
       ANumFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
@@ -2737,6 +2742,20 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the comment assigned to a cell
+
+  @param   ACell  Pointer to the cell considered
+  @return  String attached to the cell as a comment
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadComment(ACell: PCell): String;
+begin
+  if ACell <> nil then
+    Result := ACell^.Comment
+  else
+    Result := '';
+end;
+
+{@@ ----------------------------------------------------------------------------
   Converts an RPN formula (as read from an xls biff file, for example) to a
   string formula.
 
@@ -4110,6 +4129,35 @@ begin
   end;
 
   WriteUTF8Text(ACell, AValue);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assigns a comment to a cell
+
+  @param ARow            Cell row index
+  @param ACol            Cell column index
+  @param AComment        Text to be used as comment. Can contain line-breaks.
+  @return  Pointer to the cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteComment(ARow, ACol: Cardinal;
+  const AComment: String): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteComment(Result, AComment);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assigns a comment to a cell
+
+  @param ACell           Pointer to the cell
+  @param AComment        Text to be used as comment. Can contain line-breaks.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteComment(ACell: PCell; const AComment: String);
+begin
+  if ACell <> nil then begin
+    ACell^.Comment := AComment;
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
