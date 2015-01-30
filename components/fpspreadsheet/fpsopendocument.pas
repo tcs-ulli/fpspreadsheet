@@ -144,6 +144,7 @@ type
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteBorderStyleXMLAsString(const AFormat: TsCellFormat): String;
+    function WriteCommentXMLAsString(AComment: String): String;
     function WriteDefaultFontXMLAsString: String;
     function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -3028,6 +3029,37 @@ begin
   end;
 end;
 
+function TsSpreadOpenDocWriter.WriteCommentXMLAsString(AComment: String): String;
+var
+  L: TStringList;
+  s: String;
+  err: Boolean;
+  i: Integer;
+begin
+  Result := '';
+  if AComment = '' then exit;
+
+  result := '<office:annotation>';
+  err := false;
+  L := TStringList.Create;
+  try
+    L.Text := AComment;
+    for i:=0 to L.Count-1 do begin
+      s := L[i];
+      if not ValidXMLText(s) then begin
+        if not err then
+          Workbook.AddErrorMsg(rsInvalidCharacterInCellComment, [AComment]);
+        err := true;
+      end;
+      Result := Result + '<text:p>' + s + '</text:p>';
+    end;
+  finally
+    L.Free;
+  end;
+
+  Result := Result + '</office:annotation>';
+end;
+
 procedure TsSpreadOpenDocWriter.WriteFontNames(AStream: TStream);
 var
   L: TStringList;
@@ -4004,6 +4036,7 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
   str: ansistring;
+  comment: String;
   fmt: TsCellFormat;
 begin
   Unused(ARow, ACol);
@@ -4033,9 +4066,12 @@ begin
       GetCellString(ARow, ACol)
     ]);
 
+  comment := WriteCommentXMLAsString(ACell^.Comment);
+
   // Write it ...
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="string" %s %s>' +
+      comment+
       '<text:p>%s</text:p>'+
     '</table:table-cell>', [
     lStyle, spannedStr,

@@ -47,6 +47,7 @@ resourcestring
   rsColumnStyleNotFound = 'Column style not found.';
   rsRowStyleNotFound = 'Row style not found.';
   rsInvalidCharacterInCell = 'Invalid character(s) in cell %s.';
+  rsInvalidCharacterInCellComment = 'Invalid character(s) in cell comment "%s".';
   rsUTF8TextExpectedButANSIFoundInCell = 'Expected UTF8 text but probably ANSI '+
       'text found in cell %s.';
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';

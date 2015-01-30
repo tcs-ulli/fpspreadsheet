@@ -1509,7 +1509,7 @@ end;
   Draws the red rectangle in the upper right corner of a cell to indicate that
   this cell contains a popup comment
 -------------------------------------------------------------------------------}
-procedure TscustomWorksheetGrid.DrawCommentMarker(ARect: TRect);
+procedure TsCustomWorksheetGrid.DrawCommentMarker(ARect: TRect);
 const
   COMMENT_SIZE = 8;
 var
