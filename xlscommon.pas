@@ -23,6 +23,7 @@ uses
 const
   { RECORD IDs which didn't change across versions 2-8 }
   INT_EXCEL_ID_EOF         = $000A;
+  INT_EXCEL_ID_NOTE        = $001C;
   INT_EXCEL_ID_SELECTION   = $001D;
   INT_EXCEL_ID_CONTINUE    = $003C;
   INT_EXCEL_ID_DATEMODE    = $0022;
@@ -221,6 +222,8 @@ type
     FDateMode: TDateMode;
     FPaletteFound: Boolean;
     FIncompleteCell: PCell;
+    FIncompleteNote: String;
+    FIncompleteNoteLength: Word;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; //overload;
     procedure CreateNumFormatList; override;
     // Extracts a number out of an RK value
@@ -238,6 +241,8 @@ type
     procedure ReadCodePage(AStream: TStream);
     // Read column info
     procedure ReadColInfo(const AStream: TStream);
+    // Read attached comment
+    procedure ReadComment(const AStream: TStream);
     // Figures out what the base year for dates is for this file
     procedure ReadDateMode(AStream: TStream);
     // Reads the default column width
@@ -320,6 +325,8 @@ type
     // Writes out column info(s)
     procedure WriteColInfo(AStream: TStream; ACol: PCol);
     procedure WriteColInfos(AStream: TStream; ASheet: TsWorksheet);
+    // Writes out NOTE record(s)
+    procedure WriteComment(AStream: TStream; ACell: PCell); override;
     // Writes out DATEMODE record depending on FDateMode
     procedure WriteDateMode(AStream: TStream);
     // Writes out a TIME/DATE/TIMETIME
@@ -460,6 +467,14 @@ type
     Col: Word;
     XFIndex: Word;
     Value: Double;
+  end;
+
+  TBIFF25NoteRecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    Row: Word;
+    Col: Word;
+    TextLen: Word;
   end;
 
 function ConvertExcelDateTimeToDateTime(const AExcelDateNum: Double;
@@ -881,6 +896,74 @@ begin
     for c := c1 to c2 do
       FWorksheet.WriteColInfo(c, col);
 end;
+
+// Read a NOTE record which describes an attached comment
+// Valid for BIFF2-BIFF5
+procedure TsSpreadBIFFReader.ReadComment(const AStream: TStream);
+var
+  rec: TBIFF25NoteRecord;
+  r, c: Cardinal;
+  n: Word;
+  s: ansiString;
+  List: TStringList;
+begin
+  rec.Row := 0; // to silence the compiler...
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF25NoteRecord) - 2*SizeOf(Word));
+  r := WordLEToN(rec.Row);
+  c := WordLEToN(rec.Col);
+  n := WordLEToN(rec.TextLen);
+  // First NOTE record
+  if r <> $FFFF then
+  begin
+    // entire note is in this record
+    if n <= self.RecordSize - 3*SizeOf(word) then
+    begin
+      SetLength(s, n);
+      AStream.ReadBuffer(s[1], n);
+      FIncompleteNote := '';
+      FIncompleteNoteLength := 0;
+      List := TStringList.Create;
+      try
+        List.Text := s;  // Fix line endings which are #10 in file
+        s := Copy(List.Text, 1, Length(List.Text) - Length(LineEnding));
+        FWorksheet.WriteComment(r, c, s);
+      finally
+        List.Free;
+      end;
+    end else
+    // note will be continued in following record(s): Store partial string
+    begin
+      FIncompleteNoteLength := n;
+      n := self.RecordSize - 3*SizeOf(Word);
+      SetLength(s, n);
+      AStream.ReadBuffer(s[1], n);
+      FIncompleteNote := s;
+      FIncompleteCell := FWorksheet.GetCell(r, c);
+    end;
+  end else
+  // One of the continuation records
+  begin
+    SetLength(s, n);
+    AStream.ReadBuffer(s[1], n);
+    FIncompleteNote := FIncompleteNote + s;
+    // last continuation record
+    if Length(FIncompleteNote) = FIncompleteNoteLength then
+    begin
+      List := TStringList.Create;
+      try
+        List.Text := FIncompleteNote;    // Fix line endings which are #10 in file
+        s := Copy(List.Text, 1, Length(List.Text) - Length(LineEnding));
+        FIncompleteCell^.Comment := s;
+      finally
+        List.Free;
+      end;
+      FIncompleteNote := '';
+      FIncompleteCell := nil;
+      FIncompleteNoteLength := 0;
+    end;
+  end;
+end;
+
 
 procedure TsSpreadBIFFReader.ReadDateMode(AStream: TStream);
 var
@@ -1872,6 +1955,61 @@ begin
   for j := 0 to ASheet.Cols.Count-1 do begin
     col := PCol(ASheet.Cols[j]);
     WriteColInfo(AStream, col);
+  end;
+end;
+
+{ Writes a NOTE record which describes a comment attached to a cell }
+procedure TsSpreadBIFFWriter.WriteComment(AStream: TStream; ACell: PCell);
+const
+  CHUNK_SIZE = 2048;
+var
+  rec: TBIFF25NoteRecord;
+  L: Integer;
+  base_size: Word;
+  p: Integer;
+  comment: ansistring;
+  List: TStringList;
+begin
+  Unused(ACell);
+
+  if (ACell^.Comment = '') then
+    exit;
+
+  List := TStringList.Create;
+  try
+    List.Text := UTF8ToAnsi(ACell^.Comment);
+    comment := List[0];
+    for p := 1 to List.Count-1 do
+      comment := comment + #$0A + List[p];
+  finally
+    List.Free;
+  end;
+
+  L := Length(comment);
+  base_size := SizeOf(rec) - 2*SizeOf(word);
+
+  // First NOTE record
+  rec.RecordID := WordToLE(INT_EXCEL_ID_NOTE);
+  rec.Row := WordToLE(ACell^.Row);
+  rec.Col := WordToLE(ACell^.Col);
+  rec.TextLen := L;
+  rec.RecordSize := base_size + Min(L, CHUNK_SIZE);
+  AStream.WriteBuffer(rec, SizeOf(rec));
+  AStream.WriteBuffer(comment[1], Min(L, CHUNK_SIZE));  // Write text
+
+  // If the comment text does not fit into 2048 bytes continuation records
+  // have to be written.
+  rec.Row := $FFFF;  // indicator that this will be a continuation record
+  rec.Col := 0;
+  p := CHUNK_SIZE;
+  dec(L, CHUNK_SIZE);
+  while L > 0 do begin
+    rec.TextLen := Min(L, CHUNK_SIZE);
+    rec.RecordSize := base_size + rec.TextLen;
+    AStream.WriteBuffer(rec, SizeOf(rec));
+    AStream.WriteBuffer(comment[p], rec.TextLen);
+    dec(L, CHUNK_SIZE);
+    inc(p, CHUNK_SIZE);
   end;
 end;
 

@@ -901,6 +901,8 @@ type
     {@@ Abstract method for writing a boolean cell. Must be overridden by descendent classes. }
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); virtual; abstract;
+    {@@ (Pseudo-)abstract method for writing a cell comment. Must be overridden by descendent classes }
+    procedure WriteComment(AStream: TStream; ACell: PCell); virtual;
     {@@ Abstract method for writing a date/time value to a cell. Must be overridden by descendent classes. }
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); virtual; abstract;
@@ -8708,6 +8710,8 @@ begin
       cctUTF8String:
         WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     end;
+  if ACell^.Comment <> '' then
+    WriteComment(AStream, ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8722,6 +8726,16 @@ procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream;
   ACells: TAVLTree);
 begin
   IterateThroughCells(AStream, ACells, WriteCellCallback);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  (Pseudo-) abstract method writing a cell comment to the stream.
+  Must be overridden by descendents.
+
+  @param  ACell      Pointer to the cell to be written
+-------------------------------------------------------------------------------}
+procedure TsCustomSpreadWriter.WriteComment(AStream: TStream; ACell: PCell);
+begin
 end;
 
 {@@ ----------------------------------------------------------------------------
