@@ -104,6 +104,7 @@
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="emptycelltests"/>
       </Unit14>
       <Unit15>
         <Filename Value="errortests.pas"/>
