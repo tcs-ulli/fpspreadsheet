@@ -3415,10 +3415,14 @@ var
   colsSpannedStr: String;
   rowsSpannedStr: String;
   spannedStr: String;
+  comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
 begin
   Unused(ARow, ACol);
+
+  // Comment
+  comment := WriteCommentXMLAsString(ACell^.Comment);
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -3434,6 +3438,7 @@ begin
   if fmt.UsedFormattingFields <> [] then
     AppendToStream(AStream, Format(
       '<table:table-cell table:style-name="ce%d" %s>', [ACell^.FormatIndex, spannedStr]),
+      comment,
       '</table:table-cell>')
   else
     AppendToStream(AStream,
@@ -3449,6 +3454,7 @@ var
   lStyle, valType: String;
   r1,c1,r2,c2: Cardinal;
   rowsSpannedStr, colsSpannedStr, spannedStr: String;
+  comment: String;
   strValue: String;
   displayStr: String;
   fmt: TsCellFormat;
@@ -3462,6 +3468,9 @@ begin
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
+
+  // Comment
+  comment := WriteCommentXMLAsString(ACell^.Comment);
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -3486,6 +3495,7 @@ begin
 
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="%s" office:boolean-value="%s" %s %s >' +
+      comment +
       '<text:p>%s</text:p>' +
     '</table:table-cell>', [
     valType, StrValue, lStyle, spannedStr,
@@ -3923,6 +3933,7 @@ var
   colsSpannedStr: String;
   rowsSpannedStr: String;
   spannedStr: String;
+  comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
 begin
@@ -3934,6 +3945,9 @@ begin
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
+
+  // Comment
+  comment := WriteCommentXMLAsString(ACell^.Comment);
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -4009,6 +4023,7 @@ begin
   if ACell^.CalcState=csCalculated then
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s %s>' +
+        comment +
         valueStr +
       '</table:table-cell>', [
       formula, valuetype, value, lStyle, spannedStr
@@ -4048,6 +4063,9 @@ begin
   else
     lStyle := '';
 
+  // Comment
+  comment := WriteCommentXMLAsString(ACell^.Comment);
+
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
   begin
@@ -4065,8 +4083,6 @@ begin
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
     ]);
-
-  comment := WriteCommentXMLAsString(ACell^.Comment);
 
   // Write it ...
   AppendToStream(AStream, Format(
@@ -4089,6 +4105,7 @@ var
   colsSpannedStr: String;
   rowsSpannedStr: String;
   spannedStr: String;
+  comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
 begin
@@ -4105,6 +4122,9 @@ begin
       valType := 'currency';
   end else
     lStyle := '';
+
+  // Comment
+  comment := WriteCommentXMLAsString(ACell^.Comment);
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -4128,6 +4148,7 @@ begin
 
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="%s" office:value="%s" %s %s >' +
+      comment +
       '<text:p>%s</text:p>' +
     '</table:table-cell>', [
     valType, StrValue, lStyle, spannedStr,
@@ -4152,6 +4173,7 @@ var
   colsSpannedStr: String;
   rowsSpannedStr: String;
   spannedStr: String;
+  comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
 begin
@@ -4173,6 +4195,9 @@ begin
   else
     lStyle := '';
 
+  // Comment
+  comment := WriteCommentXMLAsString(ACell^.Comment);
+
   // nfTimeInterval is a special case - let's handle it first:
 
   if (fmt.NumberFormat = nfTimeInterval) then
@@ -4181,6 +4206,7 @@ begin
     displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="time" office:time-value="%s" %s %s>' +
+        comment +
         '<text:p>%s</text:p>' +
       '</table:table-cell>', [
       strValue, lStyle, spannedStr,
@@ -4194,6 +4220,7 @@ begin
     displayStr := FormatDateTime(fmt.NumberFormatStr, AValue);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +
+        comment +
         '<text:p>%s</text:p> ' +
       '</table:table-cell>', [
       DT[isTimeOnly], DT[isTimeOnly], strValue, lStyle, spannedStr,

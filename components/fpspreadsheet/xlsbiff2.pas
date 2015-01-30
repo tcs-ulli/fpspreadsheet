@@ -531,6 +531,7 @@ begin
     case RecordType of
       INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
       INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
+      INT_EXCEL_ID_NOTE        : ReadComment(AStream);
       INT_EXCEL_ID_FONT        : ReadFont(AStream);
       INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
