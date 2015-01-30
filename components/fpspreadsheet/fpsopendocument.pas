@@ -83,20 +83,12 @@ type
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
-{
-    function ApplyStyleToCell(ARow, ACol: Cardinal;
-      AStyleName: String): Boolean; overload; }
-    function ApplyStyleToCell(ACell: PCell;
-      AStyleName: String): Boolean; //overload;
+    function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     // Extracts a boolean value from the xml node
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     // Extracts the date/time value from the xml node
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
-    {
-    // Searches a style by its name in the CellStyleList
-    function FindCellStyleByName(AStyleName: String): integer;
-    }
     // Searches a column style by its column index or its name in the StyleList
     function FindColumnByCol(AColIndex: Integer): Integer;
     function FindColStyleByName(AStyleName: String): integer;
@@ -118,6 +110,7 @@ type
     { Record writing methods }
     procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
     procedure ReadBoolean(ARow, ACol: Word; ACellNode: TDOMNode);
+    procedure ReadComment(ARow, ACol: Word; ACellNode: TDOMNode);
     procedure ReadDateTime(ARow, ACol: Word; ACellNode: TDOMNode);
     procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
     procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
@@ -765,9 +758,7 @@ end;
 function TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
 var
   fmt: PsCellFormat;
-//  styleData: TCellStyleData;
   styleIndex: Integer;
-//  numFmtData: TsNumFormatData;
   i: Integer;
 begin
   Result := false;
@@ -1075,7 +1066,55 @@ begin
   FColumnStyleList.Add(colStyle);
 end;
 
-procedure TsSpreadOpenDocReader.ReadDateTime(ARow: Word; ACol: Word;
+procedure TsSpreadOpenDocReader.ReadComment(ARow, ACol: Word;
+  ACellNode: TDOMNode);
+var
+  cellChildNode, pNode, spanNode: TDOMNode;
+  comment: String;
+  nodeName: String;
+  s: String;
+  found: Boolean;
+begin
+  if ACellNode = nil then
+    exit;
+
+  comment := '';
+  found := false;
+
+  cellChildNode := ACellNode.FirstChild;
+  while cellChildNode <> nil do begin
+    nodeName := cellChildNode.NodeName;
+    if nodeName = 'office:annotation' then begin
+      pNode := cellChildNode.FirstChild;
+      while pNode <> nil do begin
+        nodeName := pNode.NodeName;
+        if nodeName = 'text:p' then
+        begin
+          s := GetNodeValue(pNode);
+          if comment = '' then comment := s else comment := comment + LineEnding + s;
+          found := true;
+          spanNode := pNode.FirstChild;
+          while spanNode <> nil do begin
+            nodeName := spanNode.NodeName;
+            if nodeName = 'text:span' then
+            begin
+              s := GetNodeValue(spanNode);
+              if comment = '' then comment := s else comment := comment + ' ' + s;
+              found := true;
+            end;
+            spanNode := spanNode.NextSibling;
+          end;
+        end;
+        pNode := pNode.NextSibling;
+      end;
+    end;
+    cellChildNode := cellChildNode.NextSibling;
+  end;
+  if found then
+    FWorksheet.WriteComment(ARow, ACol, comment);
+end;
+
+procedure TsSpreadOpenDocReader.ReadDateTime(ARow, ACol: Word;
   ACellNode : TDOMNode);
 var
   dt: TDateTime;
@@ -1402,9 +1441,11 @@ var
   cellText: String;
   styleName: String;
   childnode: TDOMNode;
+  spanNode: TDOMNode;
+  nodeName: String;
+  s: String;
   cell: PCell;
 begin
-  //  cellText := ACellNode.TextContent;
   { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
     catch the spaces inserted in formatting texts. However, this adds lots of
     garbage into the cellText if is is read by means of above statement. Done
@@ -1413,11 +1454,31 @@ begin
   childnode := ACellNode.FirstChild;
   while Assigned(childnode) do
   begin
+    nodeName := childNode.NodeName;
+    if nodeName = 'text:p' then begin
+      s := childNode.TextContent;
+      if s <> '' then
+      begin
+        if cellText = '' then cellText := s else cellText := cellText + LineEnding + s;
+      end;
+      spanNode := childNode.FirstChild;
+      while spanNode <> nil do begin
+        nodeName := spanNode.NodeName;
+        if nodeName = 'text:span' then
+        begin
+          s := spanNode.TextContent;
+          if cellText = '' then cellText := s else cellText := cellText + ' ' + s;
+        end;
+        spanNode := spanNode.NextSibling;
+      end;
+    end;
+    {
     case childnode.NodeType of
       TEXT_NODE, COMMENT_NODE, PROCESSING_INSTRUCTION_NODE: ; // ignored
     else
       cellText := cellText + childnode.TextContent;
     end;
+    }
     childnode := childnode.NextSibling;
   end;
 
@@ -1936,6 +1997,9 @@ begin
         if ParamFormula <> '' then
           ReadFormula(row, col, cellNode);
 
+        // Read cell comment
+        ReadComment(row, col, cellNode);
+
         paramColsSpanned := GetAttrValue(cellNode, 'table:number-columns-spanned');
         if paramColsSpanned <> '' then
           colsSpanned := StrToInt(paramColsSpanned) - 1
@@ -2133,7 +2197,6 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
-//  style: TCellStyleData;
   styleNode: TDOMNode;
   styleChildNode: TDOMNode;
   nodeName: String;
@@ -3163,7 +3226,6 @@ begin
 
     // Next row
     inc(r, rowsRepeated);
-//    rowsRepeated := 1;
   end;
 end;
 

@@ -130,10 +130,12 @@ begin
   MyWorksheet.WriteUTF8Text(7, 3, 'This is 16pt red bold & italic Times New Roman.');
   Myworksheet.WriteFont(7, 3, 'Times New Roman', 16, [fssBold, fssItalic], scRed);
 
-  // Cell with changed font and background in D9
+  // Cell with changed font and background in D9 and comment
   MyWorksheet.WriteUTF8Text(8, 3, 'Colors...');
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
+//  MyWorksheet.WriteComment(8, 3, 'This is font "Courier New", Size 12.');
+
                                          {}
     {
   // Uncomment this to test large XLS files
