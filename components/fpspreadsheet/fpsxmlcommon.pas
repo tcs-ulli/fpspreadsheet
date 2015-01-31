@@ -20,10 +20,13 @@ type
     procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
   end;
 
+procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
+
+
 implementation
 
 uses
-  fpsStreams;
+  fpsStreams, fpsZipper;
 
 { Gets value for the specified attribute. Returns empty string if attribute
   not found. }
@@ -89,6 +92,26 @@ begin
     end;
   finally
     stream.Free;
+  end;
+end;
+
+procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
+var
+  list: TStringList;
+  unzip: TUnzipper;
+begin
+  list := TStringList.Create;
+  try
+    list.Add(AZippedFile);
+    unzip := TUnzipper.Create;
+    try
+      Unzip.OutputPath := ADestFolder;
+      Unzip.UnzipFiles(AZipFileName, list);
+    finally
+      unzip.Free;
+    end;
+  finally
+    list.Free;
   end;
 end;
 
