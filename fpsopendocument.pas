@@ -1921,7 +1921,8 @@ var
   rowStyle: TRowStyleData;
   rowHeight: Single;
   autoRowHeight: Boolean;
-  i: Integer;
+  i, n: Integer;
+  cell: PCell;
 begin
   rowsRepeated := 0;
   row := 0;
@@ -2018,6 +2019,14 @@ begin
 
         paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
         if paramColsRepeated = '' then paramColsRepeated := '1';
+        n := StrToInt(paramColsRepeated);
+        if n > 1 then
+        begin
+          cell := FWorksheet.FindCell(row, col);
+          if cell <> nil then
+            for i:=1 to n-1 do
+              FWorksheet.CopyCell(row, col, row, col+i);
+        end;
       end
       else
       if nodeName = 'table:covered-table-cell' then
