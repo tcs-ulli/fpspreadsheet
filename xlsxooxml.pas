@@ -67,11 +67,13 @@ type
     FThemeColors: array of TsColorValue;
     FSharedFormulas: TStringList;
     FWrittenByFPS: Boolean;
+    function FindCommentsFileName(ANode: TDOMNode): String;
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
     function  ReadColor(ANode: TDOMNode): TsColor;
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
+    procedure ReadComments(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
@@ -186,17 +188,18 @@ const
   // requires / instead of \, even on Windows; see 
   // http://www.pkware.com/documents/casestudies/APPNOTE.TXT
   // 4.4.17.1 All slashes MUST be forward slashes '/' as opposed to backwards slashes '\'
-     OOXML_PATH_TYPES         = '[Content_Types].xml';
-{%H-}OOXML_PATH_RELS          = '_rels/';
-     OOXML_PATH_RELS_RELS     = '_rels/.rels';
-{%H-}OOXML_PATH_XL            = 'xl/';
-{%H-}OOXML_PATH_XL_RELS       = 'xl/_rels/';
-     OOXML_PATH_XL_RELS_RELS  = 'xl/_rels/workbook.xml.rels';
-     OOXML_PATH_XL_WORKBOOK   = 'xl/workbook.xml';
-     OOXML_PATH_XL_STYLES     = 'xl/styles.xml';
-     OOXML_PATH_XL_STRINGS    = 'xl/sharedStrings.xml';
-     OOXML_PATH_XL_WORKSHEETS = 'xl/worksheets/';
-     OOXML_PATH_XL_THEME      = 'xl/theme/theme1.xml';
+     OOXML_PATH_TYPES              = '[Content_Types].xml';
+{%H-}OOXML_PATH_RELS               = '_rels/';
+     OOXML_PATH_RELS_RELS          = '_rels/.rels';
+{%H-}OOXML_PATH_XL                 = 'xl/';
+{%H-}OOXML_PATH_XL_RELS            = 'xl/_rels/';
+     OOXML_PATH_XL_RELS_RELS       = 'xl/_rels/workbook.xml.rels';
+     OOXML_PATH_XL_WORKBOOK        = 'xl/workbook.xml';
+     OOXML_PATH_XL_STYLES          = 'xl/styles.xml';
+     OOXML_PATH_XL_STRINGS         = 'xl/sharedStrings.xml';
+     OOXML_PATH_XL_WORKSHEETS      = 'xl/worksheets/';
+     OOXML_PATH_XL_WORKSHEETS_RELS = 'xl/worksheets/_rels/';
+     OOXML_PATH_XL_THEME           = 'xl/theme/theme1.xml';
 
      { OOXML schemas constants }
      SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -208,7 +211,10 @@ const
      SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
      SCHEMAS_SPREADML     = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
-  { OOXML mime types constants }
+     { OOXML relationship type constants }
+     OOXML_RELTYPE_COMMENTS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments';
+
+     { OOXML mime types constants }
 {%H-}MIME_XML             = 'application/xml';
      MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
      MIME_SPREADML        = 'application/vnd.openxmlformats-officedocument.spreadsheetml';
@@ -428,6 +434,25 @@ begin
     fmt := FCellFormatList.Items[i];
     ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
   end;
+end;
+
+function TsSpreadOOXMLReader.FindCommentsFileName(ANode: TDOMNode): String;
+var
+  nodeName: String;
+  s: String;
+begin
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'Type');
+    if s = OOXML_RELTYPE_COMMENTS then
+    begin
+      Result := ExtractFileName(GetAttrValue(ANode, 'Target'));
+      exit;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+  Result := '';
 end;
 
 procedure TsSpreadOOXMLReader.CreateNumFormatList;
@@ -903,6 +928,64 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadComments(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  node, txtNode, rNode, rchild: TDOMNode;
+  nodeName: String;
+  cellAddr: String;
+  s: String;
+  r, c: Cardinal;
+  comment: String;
+  list: TStringList;
+begin
+  comment := '';
+  node := ANode.FirstChild;
+  while node <> nil do
+  begin
+    nodeName := node.NodeName;
+    cellAddr := GetAttrValue(node, 'ref');
+    if cellAddr <> '' then
+    begin
+      txtNode := node.FirstChild;
+      while txtNode <> nil do
+      begin
+        rNode := txtnode.FirstChild;
+        while rNode <> nil do
+        begin
+          nodeName := rnode.NodeName;
+          rchild := rNode.FirstChild;
+          while rchild <> nil do begin
+            nodename := rchild.NodeName;
+            if nodename = 't' then begin
+              s := GetNodeValue(rchild);
+              if comment = '' then comment := s else comment := comment + s;
+            end;
+            rchild := rchild.NextSibling;
+          end;
+          rNode := rNode.NextSibling;
+        end;
+        if (comment <> '') and ParseCellString(cellAddr, r, c) then begin
+          // Fix line endings  // #10 --> "LineEnding"
+          comment := UTF8StringReplace(comment, #10, LineEnding, [rfReplaceAll]);
+          {
+          list := TStringList.Create;
+          try
+            list.Text := comment;
+            comment := Copy(list.Text, 1, Length(list.Text) - Length(LineEnding));
+          finally
+            list.Free;
+          end;
+          }
+          AWorksheet.WriteComment(r, c, comment);
+        end;
+        txtNode := txtNode.NextSibling;
+      end;
+      node := node.NextSibling;
+    end;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadDateMode(ANode: TDOMNode);
 var
   s: String;
@@ -1227,7 +1310,7 @@ var
   node: TDOMNode;
   nodename: String;
   sheetName: String;
-  //sheetId: String;
+  sheetId: String;
 begin
   node := ANode.FirstChild;
   while node <> nil do begin
@@ -1235,8 +1318,8 @@ begin
     if nodename = 'sheet' then
     begin
       sheetName := GetAttrValue(node, 'name');
-      //sheetId := GetAttrValue(node, 'sheetId');
-      AList.Add(sheetName);
+      sheetId := GetAttrValue(node, 'sheetId');
+      AList.AddObject(sheetName, TObject(ptrInt(StrToInt(sheetID))));
     end;
     node := node.NextSibling;
   end;
@@ -1391,18 +1474,16 @@ var
   i: Integer;
   fn: String;
 begin
-  //unzip content.xml into AFileName path
+  //unzip "content.xml" of "AFileName" to folder "FilePath"
   FilePath := GetTempDir(false);
   UnZip := TUnZipper.Create;
-  UnZip.OutputPath := FilePath;
   FileList := TStringList.Create;
-
-  FileList.Add(OOXML_PATH_XL_STYLES);   // styles
-  FileList.Add(OOXML_PATH_XL_STRINGS);  // sharedstrings
-  FileList.Add(OOXML_PATH_XL_WORKBOOK); // workbook
-  FileList.Add(OOXML_PATH_XL_THEME);    // theme
-
   try
+    FileList.Add(OOXML_PATH_XL_STYLES);   // styles
+    FileList.Add(OOXML_PATH_XL_STRINGS);  // sharedstrings
+    FileList.Add(OOXML_PATH_XL_WORKBOOK); // workbook
+    FileList.Add(OOXML_PATH_XL_THEME);    // theme
+    UnZip.OutputPath := FilePath;
     Unzip.UnZipFiles(AFileName,FileList);
   finally
     FreeAndNil(FileList);
@@ -1453,29 +1534,16 @@ begin
 
     // read worksheets
     for i:=0 to SheetList.Count-1 do begin
+      // Create worksheet
+      FWorksheet := AData.AddWorksheet(SheetList[i], true);
 
       // unzip sheet file
-      FileList := TStringList.Create;
-      try
-        // The file name is always "sheet<n>.xml", irrespective of the sheet's name!
-        fn := OOXML_PATH_XL_WORKSHEETS + 'sheet' + IntToStr(i+1) + '.xml';
-        FileList.Add(fn);
-        UnZip := TUnZipper.Create;
-        try
-          UnZip.OutputPath := FilePath;
-          Unzip.UnZipFiles(AFileName, FileList);
-        finally
-          FreeAndNil(UnZip);
-        end;
-      finally
-        FreeAndNil(FileList);
-      end;
-
+      fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1]);
+      UnzipFile(AFileName, fn, FilePath);
       ReadXMLFile(Doc, FilePath + fn);
       DeleteFile(FilePath + fn);
 
-      FWorksheet := AData.AddWorksheet(SheetList[i], true);
-
+      // Sheet data, formats, etc.
       ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
       ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
@@ -1483,6 +1551,35 @@ begin
       ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
 
       FreeAndNil(Doc);
+
+      // Comments:
+      // The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
+      // The relationship which comment belongs to which sheet file must be
+      // retrieved from the "sheet<n>.xls.rels" file (n = 1, 2, ...).
+      fn := OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]);
+      UnzipFile(AFilename, fn, FilePath);
+      if FileExists(FilePath + fn) then begin
+        // find exact name of comments<n>.xml file
+        ReadXMLFile(Doc, FilePath + fn);
+        DeleteFile(FilePath + fn);
+        fn := FindCommentsFileName(Doc.DocumentElement.FindNode('Relationship'));
+        FreeAndNil(Doc);
+      end else
+      if (SheetList.Count = 1) then
+        // if the wookbook has only 1 sheet then the sheet.xml.rels file is missing
+        fn := 'comments1.xml'
+      else
+        // this sheet does not have any cell comments
+        continue;
+      // Extract texts from the comments file found and apply to worksheet.
+      fn := OOXML_PATH_XL + fn;
+      UnzipFile(AFileName, fn, FilePath);
+      if FileExists(FilePath + fn) then begin
+        ReadXMLFile(Doc, FilePath + fn);
+        DeleteFile(FilePath + fn);
+        ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
+        FreeAndNil(Doc);
+      end;
     end;
 
   finally
