@@ -54,7 +54,8 @@ uses
 { Resets the stream position to the beginning of the stream. }
 procedure ResetStream(var AStream: TStream);
 begin
-  AStream.Position := 0;
+  if AStream <> nil then
+    AStream.Position := 0;
 end;
 
 {@@

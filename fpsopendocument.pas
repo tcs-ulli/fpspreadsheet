@@ -3048,7 +3048,7 @@ begin
   Result := '';
   if AComment = '' then exit;
 
-  result := '<office:annotation>';
+  result := '<office:annotation office:display="false">';
   err := false;
   L := TStringList.Create;
   try
