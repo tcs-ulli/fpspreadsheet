@@ -108,13 +108,13 @@ type
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
-    procedure ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
-    procedure ReadBoolean(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadComment(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadDateTime(ARow, ACol: Word; ACellNode: TDOMNode);
-    procedure ReadFormula(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
-    procedure ReadLabel(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
-    procedure ReadNumber(ARow, ACol: Word; ACellNode: TDOMNode); reintroduce;
+    procedure ReadBlank(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
+    procedure ReadBoolean(ARow, ACol: Cardinal; ACellNode: TDOMNode);
+    procedure ReadComment(ARow, ACol: Cardinal; ACellNode: TDOMNode);
+    procedure ReadDateTime(ARow, ACol: Cardinal; ACellNode: TDOMNode);
+    procedure ReadFormula(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
+    procedure ReadLabel(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
+    procedure ReadNumber(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
 
   public
     { General reading methods }
@@ -921,7 +921,8 @@ begin
   Result := -1;
 end;
 
-procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Word; ACellNode: TDOMNode);
+procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Cardinal;
+  ACellNode: TDOMNode);
 var
   styleName: String;
   cell: PCell;
@@ -950,7 +951,8 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-procedure TsSpreadOpenDocReader.ReadBoolean(ARow, ACol: Word; ACellNode: TDOMNode);
+procedure TsSpreadOpenDocReader.ReadBoolean(ARow, ACol: Cardinal;
+  ACellNode: TDOMNode);
 var
   styleName: String;
   cell: PCell;
@@ -1067,11 +1069,11 @@ begin
   FColumnStyleList.Add(colStyle);
 end;
 
-procedure TsSpreadOpenDocReader.ReadComment(ARow, ACol: Word;
+procedure TsSpreadOpenDocReader.ReadComment(ARow, ACol: Cardinal;
   ACellNode: TDOMNode);
 var
-  cellChildNode, pNode, spanNode: TDOMNode;
-  comment: String;
+  cellChildNode, pNode, pChildNode: TDOMNode;
+  comment, line: String;
   nodeName: String;
   s: String;
   found: Boolean;
@@ -1091,20 +1093,26 @@ begin
         nodeName := pNode.NodeName;
         if nodeName = 'text:p' then
         begin
-          s := GetNodeValue(pNode);
-          if comment = '' then comment := s else comment := comment + LineEnding + s;
-          found := true;
-          spanNode := pNode.FirstChild;
-          while spanNode <> nil do begin
-            nodeName := spanNode.NodeName;
+          line := '';
+          pChildNode := pNode.FirstChild;
+          while pChildNode <> nil do
+          begin
+            nodeName := pChildNode.NodeName;
+            if nodeName = '#text' then
+            begin
+              s := pChildNode.NodeValue;
+              line := IfThen(line = '', s, line + s);
+              found := true;
+            end else
             if nodeName = 'text:span' then
             begin
-              s := GetNodeValue(spanNode);
-              if comment = '' then comment := s else comment := comment + ' ' + s;
+              s := GetNodeValue(pChildNode);
+              line := IfThen(line = '', s, line + s);
               found := true;
             end;
-            spanNode := spanNode.NextSibling;
+            pChildNode := pChildNode.NextSibling;
           end;
+          comment := IfThen(comment = '', line, comment + LineEnding + line);
         end;
         pNode := pNode.NextSibling;
       end;
@@ -1115,7 +1123,7 @@ begin
     FWorksheet.WriteComment(ARow, ACol, comment);
 end;
 
-procedure TsSpreadOpenDocReader.ReadDateTime(ARow, ACol: Word;
+procedure TsSpreadOpenDocReader.ReadDateTime(ARow, ACol: Cardinal;
   ACellNode : TDOMNode);
 var
   dt: TDateTime;
@@ -1224,7 +1232,8 @@ begin
   end;
 end;
 
-procedure TsSpreadOpenDocReader.ReadFormula(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+procedure TsSpreadOpenDocReader.ReadFormula(ARow, ACol: Cardinal;
+  ACellNode : TDOMNode);
 var
   cell: PCell;
   formula: String;
@@ -1437,7 +1446,8 @@ begin
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;
 
-procedure TsSpreadOpenDocReader.ReadLabel(ARow: Word; ACol: Word; ACellNode: TDOMNode);
+procedure TsSpreadOpenDocReader.ReadLabel(ARow, ACol: Cardinal;
+  ACellNode: TDOMNode);
 var
   cellText: String;
   styleName: String;
@@ -1498,7 +1508,8 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-procedure TsSpreadOpenDocReader.ReadNumber(ARow: Word; ACol : Word; ACellNode : TDOMNode);
+procedure TsSpreadOpenDocReader.ReadNumber(ARow, ACol: Cardinal;
+  ACellNode : TDOMNode);
 var
   Value, Str: String;
   lNumber: Double;
