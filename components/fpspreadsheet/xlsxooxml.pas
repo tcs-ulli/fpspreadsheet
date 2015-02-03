@@ -2420,34 +2420,11 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteGlobalFiles;
-var
-  i: Integer;
 begin
-  (*
   { --- Content Types --- }
-  AppendToStream(FSContentTypes,
-    XML_HEADER);
-  AppendToStream(FSContentTypes,
-    '<Types xmlns="' + SCHEMAS_TYPES + '">');
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/_rels/.rels" ContentType="' + MIME_RELS + '" />');
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/_rels/workbook.xml.rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />');
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />');
+  // Will be written at the end of WriteToStream when all Sheet.rels files are
+  // known
 
-  for i:=1 to Workbook.GetWorksheetCount do
-    AppendToStream(FSContentTypes, Format(
-      '<Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />',
-        [i, MIME_WORKSHEET]));
-
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />');
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />');
-  AppendToStream(FSContentTypes,
-    '</Types>');
-*)
   { --- RelsRels --- }
   AppendToStream(FSRelsRels,
     XML_HEADER);
@@ -2801,7 +2778,6 @@ procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream);
 var
   FZip: TZipper;
   i: Integer;
-  stream: TStream;
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
