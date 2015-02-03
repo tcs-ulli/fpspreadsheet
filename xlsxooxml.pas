@@ -2745,7 +2745,7 @@ end;
 { Is called before zipping the individual file parts. Rewinds the streams. }
 procedure TsSpreadOOXMLWriter.ResetStreams;
 var
-  stream: TStream;
+  i: Integer;
 begin
   ResetStream(FSContentTypes);
   ResetStream(FSRelsRels);
@@ -2753,10 +2753,10 @@ begin
   ResetStream(FSWorkbook);
   ResetStream(FSStyles);
   ResetStream(FSSharedStrings_complete);
-  for stream in FSSheets do ResetStream(stream);
-  for stream in FSSheetRels do ResetStream(stream);
-  for stream in FSComments do ResetStream(stream);
-  for stream in FSVmlDrawings do ResetStream(stream);
+  for i:=0 to High(FSSheets) do ResetStream(FSSheets[i]);
+  for i:=0 to High(FSSheetRels) do ResetStream(FSSheetRels[i]);
+  for i:=0 to High(FSComments) do ResetStream(FSComments[i]);
+  for i:=0 to High(FSVmlDrawings) do ResetStream(FSVmlDrawings[i]);
 end;
 
 {

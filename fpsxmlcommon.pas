@@ -26,7 +26,12 @@ procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
 implementation
 
 uses
-  fpsStreams, fpsZipper;
+ {$IF FPC_FULLVERSION >= 20701}
+  zipper,
+ {$ELSE}
+  fpszipper,
+ {$ENDIF}
+  fpsStreams;
 
 { Gets value for the specified attribute. Returns empty string if attribute
   not found. }
