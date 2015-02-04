@@ -64,11 +64,12 @@ type
   { TsWikiTableReader }
 
   TsWikiTableReader = class(TsCustomSpreadReader)
+  protected
+    procedure ReadFromStrings_Pipes(AStrings: TStrings);
   public
     SubFormat: TsSpreadsheetFormat;
     { General reading methods }
-    procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); override;
-    procedure ReadFromStrings_Pipes(AStrings: TStrings; AData: TsWorkbook);
+    procedure ReadFromStrings(AStrings: TStrings); override;
   end;
 
   { TsWikiTable_PipesReader }
@@ -293,24 +294,22 @@ end;
 
 { TsWikiTableReader }
 
-procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings;
-  AData: TsWorkbook);
+procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings);
 begin
   case SubFormat of
-  sfWikiTable_Pipes: ReadFromStrings_Pipes(AStrings, AData);
+    sfWikiTable_Pipes: ReadFromStrings_Pipes(AStrings);
   end;
 end;
 
-procedure TsWikiTableReader.ReadFromStrings_Pipes(AStrings: TStrings;
-  AData: TsWorkbook);
+procedure TsWikiTableReader.ReadFromStrings_Pipes(AStrings: TStrings);
 var
   i, j: Integer;
   lCurLine: String;
   lLineSplitter: TWikiTableTokenizer;
   lCurToken: TWikiTableToken;
 begin
-  FWorksheet := AData.AddWorksheet('Table', true);
-  lLineSplitter := TWikiTableTokenizer.Create(AData);
+  FWorksheet := FWorkbook.AddWorksheet('Table', true);
+  lLineSplitter := TWikiTableTokenizer.Create(FWorkbook);
   try
     for i := 0 to AStrings.Count-1 do
     begin

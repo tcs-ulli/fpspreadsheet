@@ -27,9 +27,9 @@ type
     procedure ReadNumber(AStream: TStream); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure ReadFromFile(AFileName: String; AData: TsWorkbook); override;
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
-    procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); override;
+    procedure ReadFromFile(AFileName: String); override;
+    procedure ReadFromStream(AStream: TStream); override;
+    procedure ReadFromStrings(AStrings: TStrings); override;
   end;
 
   TsCSVWriter = class(TsCustomSpreadWriter)
@@ -203,6 +203,8 @@ constructor TsCSVReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   FWorksheetName := 'Sheet1';  // will be replaced by filename
+  FFormatSettings := CSVParams.FormatSettings;
+  ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
 end;
 
 function TsCSVReader.IsBool(AText: String; out AValue: Boolean): Boolean;
@@ -429,13 +431,13 @@ begin
   Unused(AStream);
 end;
 
-procedure TsCSVReader.ReadFromFile(AFileName: String; AData: TsWorkbook);
+procedure TsCSVReader.ReadFromFile(AFileName: String);
 begin
   FWorksheetName := ChangeFileExt(ExtractFileName(AFileName), '');
   inherited;
 end;
 
-procedure TsCSVReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+procedure TsCSVReader.ReadFromStream(AStream: TStream);
 var
   Parser: TCSVParser;
   s: String;
@@ -449,12 +451,8 @@ begin
   else
     encoding := CSVParams.Encoding;
 
-  // Store workbook for internal use, and create worksheet
-  FWorkbook := AData;
-  FWorksheet := AData.AddWorksheet(FWorksheetName, true);
-
-  FFormatSettings := CSVParams.FormatSettings;
-  ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
+  // Create worksheet
+  FWorksheet := FWorkbook.AddWorksheet(FWorksheetName, true);
 
   // Create csv parser, read file and store in worksheet
   Parser := TCSVParser.Create;
@@ -476,13 +474,13 @@ begin
   end;
 end;
 
-procedure TsCSVReader.ReadFromStrings(AStrings: TStrings; AData: TsWorkbook);
+procedure TsCSVReader.ReadFromStrings(AStrings: TStrings);
 var
   Stream: TStringStream;
 begin
   Stream := TStringStream.Create(AStrings.Text);
   try
-    ReadFromStream(Stream, AData);
+    ReadFromStream(Stream);
   finally
     Stream.Free;
   end;
