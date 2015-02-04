@@ -6,26 +6,16 @@ interface
 
 uses
   ActnList, Classes, ComCtrls, ExtCtrls, Grids, Menus, StdCtrls, SysUtils,
-  FileUtil, Forms, Controls, Graphics, Dialogs, Buttons, VirtualTrees,
+  FileUtil, Forms, Controls, Graphics, Dialogs, Buttons, Types, VirtualTrees,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
   fpolestorage,
   {$endif}
   fpstypes, fpSpreadsheet,
-  mrumanager, beBIFFGrid, types;
+  mrumanager, beTypes, beBIFFGrid;
 
 type
-  { Virtual tree node data }
-  TBiffNodeData = class
-    Offset: Integer;
-    RecordID: Integer;
-    RecordName: String;
-    RecordDescription: String;
-    Index: Integer;
-    destructor Destroy; override;
-  end;
-
 
   { TMainForm }
   TMainForm = class(TForm)
@@ -152,6 +142,7 @@ type
       aState: TGridDrawState);
     procedure DumpToFile(const AFileName: String);
     procedure ExecFind(ANext, AKeep: Boolean);
+    function  GetBIFFNodeData: TBiffNodeData;
     function  GetNodeData(ANode: PVirtualNode): TBiffNodeData;
     function  GetRecType: Word;
     procedure LoadFile(const AFileName: String); overload;
@@ -202,16 +193,6 @@ type
     Data: TObject;
   end;
   PObjectNodeData = ^TObjectNodeData;
-
-
-{ TBiffNodeData }
-
-destructor TBiffNodeData.Destroy;
-begin
-  Finalize(RecordName);
-  Finalize(RecordDescription);
-  inherited;
-end;
 
 
 { TMainForm }
@@ -703,6 +684,16 @@ begin
 end;
 
 
+function TMainForm.GetBIFFNodeData: TBiffNodeData;
+begin
+  Result := nil;
+  if BiffTree.FocusedNode <> nil then begin
+    Result := GetNodeData(BiffTree.FocusedNode);
+    if Result <> nil then
+      MemStream.Position := Result.Offset;
+  end;
+end;
+
 function TMainForm.GetNodeData(ANode: PVirtualNode): TBiffNodeData;
 var
   ptr: PObjectNodeData;
@@ -907,7 +898,8 @@ end;
 
 procedure TMainForm.PopulateAnalysisGrid;
 begin
-  FAnalysisGrid.SetRecordType(GetRecType, FBuffer, FFormat);
+//  FAnalysisGrid.SetRecordType(GetRecType, FBuffer, FFormat);
+  FAnalysisGrid.SetBIFFNodeData(GetBiffNodeData, FBuffer, FFormat);
 end;
 
 
@@ -1116,10 +1108,10 @@ var
   p0: Cardinal;
   s: String;
   i: Integer;
-  node: PVirtualNode;
+  node, prevnode: PVirtualNode;
   parentnode: PVirtualNode;
   ptr: PObjectNodeData;
-  parentdata, data: TBiffNodeData;
+  parentdata, data, prevdata: TBiffNodeData;
   w: word;
   crs: TCursor;
 begin
@@ -1203,6 +1195,21 @@ begin
       node := BIFFTree.AddChild(parentnode);
       ptr := BIFFTree.GetNodeData(node);
       ptr^.Data := data;
+      // Store info on CONTINUE records
+      if recType = $003C then begin // CONTINUE record
+        prevnode := BIFFTree.GetPrevious(node);
+        prevdata := GetNodeData(prevnode);
+        if prevdata.RecordID = $01B6 then // TXO record
+          data.Tag := BIFFNODE_TXO_CONTINUE1
+        else
+        if prevdata.RecordID = $003C then // CONTINUE record
+        begin
+          prevnode := BIFFTree.GetPrevious(prevnode);
+          prevdata := GetNodeData(prevnode);
+          if prevdata.RecordID = $01B6 then // TXO record
+            data.Tag := BIFFNODE_TXO_CONTINUE2;
+        end;
+      end;
       // advance stream pointer
       AStream.Position := AStream.Position + recSize;
     end;
