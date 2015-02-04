@@ -69,7 +69,6 @@ type
     FindPanel: TPanel;
     SaveDialog: TSaveDialog;
     SpeedButton3: TSpeedButton;
-    StringGrid1: TStringGrid;
     TreePopupMenu: TPopupMenu;
     TreePanel: TPanel;
     BtnFindNext: TSpeedButton;
@@ -1056,7 +1055,7 @@ begin
       sw[j] := WideChar(w);
     end;
     SetLength(sw, j);
-    ValueGrid.Cells[1, VALUE_ROW_WIDESTRING] := UTF8Decode(sw);
+    ValueGrid.Cells[1, VALUE_ROW_WIDESTRING] := UTF8Encode(sw);
     ValueGrid.Cells[2, VALUE_ROW_WIDESTRING] := Format('%d ... %d', [idx, idx + ls*SizeOf(wideChar)+1]);
   end else begin
     ValueGrid.Cells[1, VALUE_ROW_WIDESTRING] := '';
