@@ -1248,9 +1248,9 @@ procedure TsCellCommentAction.ExecuteTarget(Target: TObject);
 var
   txt: String;
   cellStr: String;
-  x, y: Integer;
-  R: TRect;
 begin
+  Unused(Target);
+
   if Worksheet = nil then
     exit;
 
@@ -1275,6 +1275,8 @@ end;
 
 procedure TsCellCommentAction.UpdateTarget(Target: TObject);
 begin
+  Unused(Target);
+
   case FMode of
     ccmNew   : Enabled := (Worksheet <> nil) and (Length(GetSelection) > 0);
     ccmEdit,

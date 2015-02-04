@@ -228,7 +228,7 @@ begin
       SetLength(sa, ls);
       ANumbytes := ls*SizeOf(AnsiChar) + ALenBytes + 1;
       Move(FBuffer[ABufIndex + ALenBytes + 1], sa[1], ls*SizeOf(AnsiChar));
-      AString := sa;
+      AString := AnsiToUTF8(sa);
     end else begin
       SetLength(sw, ls);
       ANumBytes := ls*SizeOf(WideChar) + ALenBytes + 1;

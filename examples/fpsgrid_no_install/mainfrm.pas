@@ -92,21 +92,23 @@ end;
 procedure TForm1.BtnSaveClick(Sender: TObject);
 var
   err: String;
+  fn: String;
 begin
   if Grid.Workbook = nil then
     exit;
 
   if Grid.Workbook.Filename <>'' then
   begin
-    SaveDialog.InitialDir := ExtractFileDir(Grid.Workbook.FileName);
-    SaveDialog.FileName := ChangeFileExt(ExtractFileName(Grid.Workbook.FileName), '');
+    fn := AnsiToUtf8(Grid.Workbook.Filename);
+    SaveDialog.InitialDir := ExtractFileDir(fn);
+    SaveDialog.FileName := ChangeFileExt(ExtractFileName(fn), '');
   end;
 
   if SaveDialog.Execute then
   begin
     Screen.Cursor := crHourglass;
     try
-      Grid.SaveToSpreadsheetFile(SaveDialog.FileName);
+      Grid.SaveToSpreadsheetFile(UTF8ToAnsi(SaveDialog.FileName));
     finally
       Screen.Cursor := crDefault;
       // Show a message in case of error(s)

@@ -115,21 +115,22 @@ end;
 // Saves sheet in grid to file, overwriting existing file
 procedure TForm1.BtnSaveClick(Sender: TObject);
 var
-  err: String;
+  err, fn: String;
 begin
   if WorksheetGrid.Workbook = nil then
     exit;
 
   if WorksheetGrid.Workbook.Filename <>'' then begin
-    SaveDialog.InitialDir := ExtractFileDir(WorksheetGrid.Workbook.FileName);
-    SaveDialog.FileName := ChangeFileExt(ExtractFileName(WorksheetGrid.Workbook.FileName), '');
+    fn := AnsiToUTF8(WorksheetGrid.Workbook.Filename);
+    SaveDialog.InitialDir := ExtractFileDir(fn);
+    SaveDialog.FileName := ChangeFileExt(ExtractFileName(fn), '');
   end;
 
   if SaveDialog.Execute then
   begin
     Screen.Cursor := crHourglass;
     try
-      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName);
+      WorksheetGrid.SaveToSpreadsheetFile(UTF8ToAnsi(SaveDialog.FileName));
     finally
       Screen.Cursor := crDefault;
       // Show a message in case of error(s)

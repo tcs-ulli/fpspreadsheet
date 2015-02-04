@@ -52,7 +52,7 @@
 {!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!  DO NOT CHANGE THIS FORMULA - ITS RESULT (-9) IS HARD-CODED IN OTHER TESTS !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!}
-
+                          (*
   // Add cell values - relative addresses
   inc(Row);
   formula := 'B1+B2';
@@ -3001,7 +3001,7 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := StringResult('Ha');
   Myworksheet.WriteUTF8Text(Row, 2, sollValues[Row].ResString);
-
+         *)
   // LEFT (2 parameters, utf8)
   inc(Row);
   formula := 'LEFT("Ändern",3)';

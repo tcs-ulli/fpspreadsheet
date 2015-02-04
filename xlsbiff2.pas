@@ -57,7 +57,7 @@ type
 
   TsSpreadBIFF2Reader = class(TsSpreadBIFFReader)
   private
-    WorkBookEncoding: TsEncoding;
+//    WorkBookEncoding: TsEncoding;
     FFont: TsFont;
   protected
     procedure CreateNumFormatList; override;
@@ -110,6 +110,8 @@ type
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
+//    procedure WriteCodePage(AStream: TStream; AEncoding: TsEncoding); override;
+    procedure WriteCodePage(AStream: TStream; ACodePage: String); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
@@ -512,7 +514,7 @@ begin
   FWorkbook.RemoveAllFonts;
 
   { Store some data about the workbook that other routines need }
-  WorkBookEncoding := AData.Encoding;
+  //WorkBookEncoding := AData.Encoding;
 
   BIFF2EOF := False;
 
@@ -531,6 +533,7 @@ begin
     case RecordType of
       INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
       INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
+      INT_EXCEL_ID_CODEPAGE    : ReadCodePage(AStream);
       INT_EXCEL_ID_NOTE        : ReadComment(AStream);
       INT_EXCEL_ID_FONT        : ReadFont(AStream);
       INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
@@ -648,8 +651,8 @@ var
   L: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
-  AValue: ansistring;
-  AStrValue: UTF8String;
+  ansiStr: ansistring;
+  valueStr: UTF8String;
   cell: PCell;
 begin
   { Read entire record, starting at Row, except for string data }
@@ -661,10 +664,12 @@ begin
 
   { String with 8-bit size }
   L := rec.TextLen;
-  SetLength(AValue, L);
-  AStream.ReadBuffer(AValue[1], L);
+  SetLength(ansiStr, L);
+  AStream.ReadBuffer(ansiStr[1], L);
 
   { Save the data }
+  valueStr := ConvertEncoding(ansiStr, FCodePage, encodingUTF8);
+  {
   case WorkBookEncoding of
     seLatin2:   AStrValue := CP1250ToUTF8(AValue);
     seCyrillic: AStrValue := CP1251ToUTF8(AValue);
@@ -676,6 +681,7 @@ begin
     // Latin 1 is the default
     AStrValue := CP1252ToUTF8(AValue);
   end;
+  }
 
   { Create cell }
   if FIsVirtualMode then begin
@@ -683,7 +689,7 @@ begin
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(ARow, ACol);
-  FWorksheet.WriteUTF8Text(cell, AStrValue);
+  FWorksheet.WriteUTF8Text(cell, valueStr);
 
   { Apply formatting to cell }
   ApplyCellFormatting(cell, XF);
@@ -870,7 +876,8 @@ begin
     begin
       // The "IncompleteCell" has been identified in the sheet when reading
       // the FORMULA record which precedes the String record.
-      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
+//      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
+      FIncompleteCell^.UTF8StringValue := ConvertEncoding(s, FCodePage, encodingUTF8);
       FIncompleteCell^.ContentType := cctUTF8String;
       if FIsVirtualMode then
         Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
@@ -1142,6 +1149,32 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes an Excel 2 CODEPAGE record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Writer.WriteCodePage(AStream: TStream; ACodePage: String);
+//  AEncoding: TsEncoding);
+begin
+  if ACodePage = 'cp1251' then begin
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
+    AStream.WriteWord(WordToLE(2));
+    AStream.WriteWord(WordToLE(WORD_CP_1258_Latin1_BIFF2_3));
+    FCodePage := ACodePage;
+  end else
+    inherited;
+              (*
+  if AEncoding = seLatin1 then begin
+    cp := WORD_CP_1258_Latin1_BIFF2_3;
+    FCodePage := 'cp1252';
+
+    { BIFF Record header }
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
+    AStream.WriteWord(WordToLE(2));
+    AStream.WriteWord(WordToLE(cp));
+  end else
+    inherited; *)
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes an Excel 2 COLWIDTH record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteColWidth(AStream: TStream; ACol: PCol);
@@ -1245,6 +1278,7 @@ begin
 
   WriteBOF(AStream);
     WriteFonts(AStream);
+    WriteCodePage(AStream, Workbook.CodePage); //Encoding);
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
     WriteXFRecords(AStream);
@@ -1531,7 +1565,7 @@ var
 begin
   Unused(ANumFormatData);
 
-  s := NumFormatList.FormatStringForWriting(AListIndex);
+  s := ConvertEncoding(NumFormatList.FormatStringForWriting(AListIndex), encodingUTF8, FCodePage);
   len := Length(s);
 
   { BIFF record header }

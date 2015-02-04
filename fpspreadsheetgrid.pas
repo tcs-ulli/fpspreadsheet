@@ -1845,7 +1845,6 @@ var
   lCell: PCell;
   justif: Byte;
   fmt: PsCellFormat;
-  savedBrushColor: TColor;
 begin
   if (Worksheet = nil) then
     exit;
