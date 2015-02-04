@@ -48,7 +48,7 @@ const
 
 
 type
-
+                       (*
   {@@ Possible encodings for a non-unicode encoded text }
   TsEncoding = (
     seLatin1,
@@ -57,8 +57,9 @@ type
     seGreek,
     seTurkish,
     seHebrew,
-    seArabic
-    );
+    seArabic,
+    seUTF16
+    );            *)
 
   {@@ Tokens to identify the <b>elements in an expanded formula</b>.
 
@@ -110,7 +111,7 @@ type
     ElementKind: TFEKind;
     Row, Row2: Cardinal;   // zero-based
     Col, Col2: Cardinal;   // zero-based
-    Param1, Param2: Word;  // Extra parameters
+//    Param1, Param2: Word;  // Extra parameters
     DoubleValue: double;
     IntValue: Word;
     StringValue: String;
@@ -228,7 +229,7 @@ type
 
       Due to limitations of the text mode the characters are not rotated here.
       There is, however, also a "stacked" variant which looks exactly like
-      the former case.
+      the 90-degrees-clockwise case.
   }
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
     rt90DegreeCounterClockwiseRotation, rtStacked);

@@ -321,7 +321,7 @@ begin
     7: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
     8: WorkbookSource.FileFormat := sfCSV;           // Text files
   end;
-  WorkbookSource.FileName := AcFileOpen.Dialog.FileName;  // this loads the file
+  WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
   UpdateCaption;
 end;
 
@@ -341,7 +341,7 @@ begin
       6: fmt := sfCSV;
       7: fmt := sfWikiTable_WikiMedia;
     end;
-    WorkbookSource.SaveToSpreadsheetFile(AcFileSaveAs.Dialog.FileName, fmt);
+    WorkbookSource.SaveToSpreadsheetFile(UTF8ToAnsi(AcFileSaveAs.Dialog.FileName), fmt);
     UpdateCaption;
   finally
     Screen.Cursor := crDefault;
@@ -401,7 +401,7 @@ begin
     Caption := 'demo_ctrls'
   else
     Caption := Format('demo_ctrls - "%s" [%s]', [
-      WorkbookSource.Filename,
+      AnsiToUTF8(WorkbookSource.Filename),
       GetFileFormatName(WorkbookSource.Workbook.FileFormat)
     ]);
 end;

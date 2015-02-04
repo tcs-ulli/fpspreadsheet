@@ -52,6 +52,7 @@ resourcestring
       'text found in cell %s.';
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
+  rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
 
 
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?

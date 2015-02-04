@@ -498,7 +498,7 @@ object MainFrm: TMainFrm
       BorderStyle = bsNone
       ColCount = 27
       MouseWheelOption = mwGrid
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goDblClickAutoSize, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing]
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goThumbTracking, goDblClickAutoSize, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing, goCellHints]
       RowCount = 101
       TabOrder = 1
       TitleStyle = tsNative

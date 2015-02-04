@@ -324,6 +324,7 @@ type
     procedure WorksheetGridHeaderClick(Sender: TObject; IsColumn: Boolean;
       Index: Integer);
     procedure WorksheetGridSelection(Sender: TObject; aCol, aRow: Integer);
+
   private
     FCopiedFormat: TCell;
     procedure LoadFile(const AFileName: String);
@@ -759,7 +760,7 @@ begin
       7: fmt := sfWikiTable_wikimedia;
     end;
     try
-      WorksheetGrid.SaveToSpreadsheetFile(SaveDialog.FileName, fmt);
+      WorksheetGrid.SaveToSpreadsheetFile(Utf8ToAnsi(SaveDialog.FileName), fmt);
     finally
       Screen.Cursor := crDefault;
       err := WorksheetGrid.Workbook.ErrorMsg;
@@ -1006,7 +1007,7 @@ begin
 end;
 
 procedure TMainFrm.LoadFile(const AFileName: String);
-// Loads first worksheet from file into grid
+// Loads first worksheet from file into grid. File name is UTF8.
 var
   err: String;
 begin
@@ -1014,7 +1015,7 @@ begin
   Screen.Cursor := crHourglass;
   try
     try
-      WorksheetGrid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
+      WorksheetGrid.LoadFromSpreadsheetFile(utf8ToAnsi(AFileName));
     except
       on E: Exception do begin
         // In an error occurs show at least an empty valid worksheet

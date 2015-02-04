@@ -381,7 +381,9 @@ var
   ActualDateTime: TDateTime;
   Row: Cardinal;
   TempFile: string; //write xls/xml to this file and read back from it
+  ErrorMargin: TDateTime;
 begin
+  ErrorMargin := 1.0/(24*60*60*1000*100); // 0.01 ms
   TempFile:=NewTempFile;
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -397,7 +399,8 @@ begin
       // Some checks inside worksheet itself
       if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
         Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet,Row));
-      CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorksheet,Row));
+      CheckEquals(SollDates[Row], ActualDateTime,
+        'Test date/time value mismatch cell '+CellNotation(MyWorksheet,Row));
     end;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
@@ -420,7 +423,8 @@ begin
     begin
       if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
         Fail('Could not read date time for cell '+CellNotation(MyWorkSheet,Row));
-      CheckEquals(SollDates[Row],ActualDateTime,'Test date/time value mismatch cell '+CellNotation(MyWorkSheet,Row));
+      CheckEquals(SollDates[Row], ActualDateTime, ErrorMargin,
+        'Test date/time value mismatch cell '+CellNotation(MyWorkSheet,Row));
     end;
   finally
     MyWorkbook.Free;

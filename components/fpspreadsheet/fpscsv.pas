@@ -65,7 +65,7 @@ type
     LineEnding: TsCSVLineEnding;     // W: Specification for line ending to be written
     Delimiter: Char;                 // RW: Column delimiter
     QuoteChar: Char;                 // RW: Character for quoting texts
-    Encoding: String;                // RW: Encoding of file
+    Encoding: String;                // RW: Encoding of file (code page, such as "utf8", "cp1252" etc)
     DetectContentType: Boolean;      // R: try to convert strings to content types
     NumberFormat: String;            // W: if empty write numbers like in sheet, otherwise use this format
     AutoDetectNumberFormat: Boolean; // R: automatically detects decimal/thousand separator used in numbers
@@ -202,8 +202,6 @@ end;
 constructor TsCSVReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FFormatSettings := CSVParams.FormatSettings;
-  ReplaceFormatSettings(FFormatSettings, AWorkbook.FormatSettings);
   FWorksheetName := 'Sheet1';  // will be replaced by filename
 end;
 
@@ -454,6 +452,9 @@ begin
   // Store workbook for internal use, and create worksheet
   FWorkbook := AData;
   FWorksheet := AData.AddWorksheet(FWorksheetName, true);
+
+  FFormatSettings := CSVParams.FormatSettings;
+  ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
 
   // Create csv parser, read file and store in worksheet
   Parser := TCSVParser.Create;

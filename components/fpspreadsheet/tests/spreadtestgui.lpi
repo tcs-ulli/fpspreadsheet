@@ -48,6 +48,7 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>
@@ -60,7 +61,6 @@
       <Unit4>
         <Filename Value="manualtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="manualtests"/>
       </Unit4>
       <Unit5>
         <Filename Value="testsutility.pas"/>
@@ -69,21 +69,19 @@
       <Unit6>
         <Filename Value="internaltests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="internaltests"/>
       </Unit6>
       <Unit7>
         <Filename Value="formattests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formattests"/>
       </Unit7>
       <Unit8>
         <Filename Value="colortests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="colortests"/>
       </Unit8>
       <Unit9>
         <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fonttests"/>
       </Unit9>
       <Unit10>
         <Filename Value="optiontests.pas"/>
@@ -96,15 +94,16 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="emptycelltests"/>
       </Unit14>
       <Unit15>
         <Filename Value="errortests.pas"/>
@@ -121,7 +120,6 @@
       <Unit18>
         <Filename Value="celltypetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="celltypetests"/>
       </Unit18>
       <Unit19>
         <Filename Value="sortingtests.pas"/>
@@ -130,7 +128,6 @@
       <Unit20>
         <Filename Value="copytests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="copytests"/>
       </Unit20>
     </Units>
   </ProjectOptions>

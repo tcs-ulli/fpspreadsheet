@@ -59,9 +59,9 @@ type
     MergeBase: PCell;          // Upper left cell of a merged range
     Comment: String;           // Comment attached to the cell
     { Cell content }
-    UTF8StringValue: String;   // strings cannot be part of a variant record
+    UTF8StringValue: String;   // Strings cannot be part of a variant record
     FormulaValue: String;
-    case ContentType: TCellContentType of  // must be at the end of the declaration
+    case ContentType: TCellContentType of  // variant part must be at the end
       cctEmpty      : ();      // has no data at all
       cctFormula    : ();      // FormulaValue is outside the variant record
       cctNumber     : (Numbervalue: Double);
@@ -187,9 +187,9 @@ type
     procedure UpdateCaches;
 
     { Reading of values }
-    function  ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring; overload;
-    function  ReadAsUTF8Text(ACell: PCell): ansistring; overload;
-    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): ansistring; overload;
+    function  ReadAsUTF8Text(ARow, ACol: Cardinal): string; overload; //ansistring; overload;
+    function  ReadAsUTF8Text(ACell: PCell): string; overload; //ansistring; overload;
+    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): string; overload; //ansistring; overload;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double; overload;
     function  ReadAsNumber(ACell: PCell): Double; overload;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean; overload;
@@ -555,7 +555,8 @@ type
   private
     { Internal data }
     FWorksheets: TFPList;
-    FEncoding: TsEncoding;
+    FCodePage: String;
+//    FEncoding: TsEncoding;
     FFormat: TsSpreadsheetFormat;
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
@@ -694,7 +695,8 @@ type
     property ActiveWorksheet: TsWorksheet read FActiveWorksheet;
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
-    property Encoding: TsEncoding read FEncoding write FEncoding;
+    property CodePage: String read FCodePage write FCodepage;
+//    property Encoding: TsEncoding read FEncoding write FEncoding;
     {@@ Retrieves error messages collected during reading/writing }
     property ErrorMsg: String read GetErrorMsg;
     {@@ Filename of the saved workbook }
@@ -2446,13 +2448,13 @@ end;
   Reads the contents of a cell and returns an user readable text
   representing the contents of the cell.
 
-  The resulting ansistring is UTF-8 encoded.
+  The resulting string is UTF-8 encoded.
 
   @param  ARow      The row of the cell
   @param  ACol      The column of the cell
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): ansistring;
+function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): string; //ansistring;
 begin
   Result := ReadAsUTF8Text(GetCell(ARow, ACol));
 end;
@@ -2461,21 +2463,21 @@ end;
   Reads the contents of a cell and returns an user readable text
   representing the contents of the cell.
 
-  The resulting ansistring is UTF-8 encoded.
+  The resulting string is UTF-8 encoded.
 
   @param  ACell     Pointer to the cell
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.ReadAsUTF8Text(ACell: PCell): ansistring;
+function TsWorksheet.ReadAsUTF8Text(ACell: PCell): string; //ansistring;
 begin
   Result := ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
 end;
 
 function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
-  AFormatSettings: TFormatSettings): ansistring;
+  AFormatSettings: TFormatSettings): string; //ansistring;
 
   function FloatToStrNoNaN(const AValue: Double;
-    ANumberFormat: TsNumberFormat; ANumberFormatStr: string): ansistring;
+    ANumberFormat: TsNumberFormat; ANumberFormatStr: string): string; //ansistring;
   begin
     if IsNan(AValue) then
       Result := ''
@@ -2493,7 +2495,7 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
   end;
 
   function DateTimeToStrNoNaN(const Value: Double;
-    ANumberFormat: TsNumberFormat; ANumberFormatStr: String): ansistring;
+    ANumberFormat: TsNumberFormat; ANumberFormatStr: String): string; //ansistring;
   var
     fmtp, fmtn, fmt0: String;
   begin
@@ -6424,11 +6426,14 @@ end;
 constructor TsWorkbook.Create;
 var
   fmt: TsCellFormat;
+  cp: String;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
   FFormat := sfExcel8;
+  FCodePage := GetDefaultTextEncoding;
+//  FEncoding := seLatin1;
 
   FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
@@ -8736,6 +8741,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteComment(AStream: TStream; ACell: PCell);
 begin
+  Unused(AStream, ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------

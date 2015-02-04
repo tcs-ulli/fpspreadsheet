@@ -78,7 +78,7 @@ type
     procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
     procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
     procedure ReadBoundsheet(AStream: TStream);
-    function ReadString(const AStream: TStream; const ALength: WORD): UTF8String;
+    function ReadString(const AStream: TStream; const ALength: WORD): String;
   protected
     procedure ReadFont(const AStream: TStream);
     procedure ReadFormat(AStream: TStream); override;
@@ -219,7 +219,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsStreams, fpsExprParser;
+  Math, lconvencoding, fpsStrings, fpsStreams, fpsExprParser;
 
 const
    { Excel record IDs }
@@ -349,81 +349,80 @@ var
   lLen: SizeInt;
   RecordType: WORD;
   RecordSize: WORD;
-  C: char;
+  C: WideChar;
 begin
   StringFlags:=AStream.ReadByte;
   Dec(PendingRecordSize);
   if StringFlags and 4 = 4 then begin
     //Asian phonetics
     //Read Asian phonetics Length (not used)
-    AsianPhoneticBytes:=DWordLEtoN(AStream.ReadDWord);
+    AsianPhoneticBytes := DWordLEtoN(AStream.ReadDWord);
   end;
   if StringFlags and 8 = 8 then begin
     //Rich string
-    RunsCounter:=WordLEtoN(AStream.ReadWord);
+    RunsCounter := WordLEtoN(AStream.ReadWord);
     dec(PendingRecordSize,2);
   end;
   if StringFlags and 1 = 1 Then begin
     //String is WideStringLE
     if (ALength*SizeOf(WideChar)) > PendingRecordSize then begin
-      SetLength(Result,PendingRecordSize div 2);
-      AStream.ReadBuffer(Result[1],PendingRecordSize);
-      Dec(PendingRecordSize,PendingRecordSize);
+      SetLength(Result, PendingRecordSize div 2);
+      AStream.ReadBuffer(Result[1], PendingRecordSize);
+      Dec(PendingRecordSize, PendingRecordSize);
     end else begin
       SetLength(Result, ALength);
-      AStream.ReadBuffer(Result[1],ALength * SizeOf(WideChar));
-      Dec(PendingRecordSize,ALength * SizeOf(WideChar));
+      AStream.ReadBuffer(Result[1], ALength * SizeOf(WideChar));
+      Dec(PendingRecordSize, ALength * SizeOf(WideChar));
     end;
     Result := WideStringLEToN(Result);
   end else begin
-    //String is 1 byte per char, this is UTF-16 with the high byte ommited because it is zero
-    //so decompress and then convert
-    lLen:=ALength;
+    // String is 1 byte per char, this is UTF-16 with the high byte ommited
+    // because it is zero, so decompress and then convert
+    lLen := ALength;
     SetLength(DecomprStrValue, lLen);
     for i := 1 to lLen do
     begin
-      C:=WideChar(AStream.ReadByte());
+      C := WideChar(AStream.ReadByte);  // Read 1 byte, but put it into a 2-byte char
       DecomprStrValue[i] := C;
       Dec(PendingRecordSize);
-      if (PendingRecordSize<=0) and (i<lLen) then begin
-        //A CONTINUE may happend here
+      if (PendingRecordSize <= 0) and (i < lLen) then begin
+        //A CONTINUE may have happened here
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
-        if RecordType<>INT_EXCEL_ID_CONTINUE then begin
+        if RecordType <> INT_EXCEL_ID_CONTINUE then begin
           Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
         end else begin
-          PendingRecordSize:=RecordSize;
-          DecomprStrValue:=copy(DecomprStrValue,1,i)+ReadWideString(AStream,ALength-i);
+          PendingRecordSize := RecordSize;
+          DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i);
           break;
         end;
       end;
     end;
-
     Result := DecomprStrValue;
   end;
   if StringFlags and 8 = 8 then begin
     //Rich string (This only happened in BIFF8)
     for j := 1 to RunsCounter do begin
-      if (PendingRecordSize<=0) then begin
+      if (PendingRecordSize <= 0) then begin
         //A CONTINUE may happend here
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
-        if RecordType<>INT_EXCEL_ID_CONTINUE then begin
+        if RecordType <> INT_EXCEL_ID_CONTINUE then begin
           Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
         end else begin
-          PendingRecordSize:=RecordSize;
+          PendingRecordSize := RecordSize;
         end;
       end;
       AStream.ReadWord;
       AStream.ReadWord;
-      dec(PendingRecordSize,2*2);
+      dec(PendingRecordSize, 2*2);
     end;
   end;
   if StringFlags and 4 = 4 then begin
     //Asian phonetics
     //Read Asian phonetics, discarded as not used.
-    SetLength(AnsiStrValue,AsianPhoneticBytes);
-    AStream.ReadBuffer(AnsiStrValue[1],AsianPhoneticBytes);
+    SetLength(AnsiStrValue, AsianPhoneticBytes);
+    AStream.ReadBuffer(AnsiStrValue[1], AsianPhoneticBytes);
   end;
 end;
 
@@ -572,7 +571,7 @@ begin
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
-  const ALength: WORD): UTF8String;
+  const ALength: WORD): String;
 begin
   Result := UTF16ToUTF8(ReadWideString(AStream, ALength));
 end;
@@ -618,18 +617,16 @@ begin
   BIFF8EOF := False;
 
   { Read workbook globals }
-
   ReadWorkbookGlobals(AStream, AData);
 
   // Check for the end of the file
   if AStream.Position >= AStream.Size then BIFF8EOF := True;
 
   { Now read all worksheets }
-
   while (not BIFF8EOF) do
   begin
     //Safe to not read beyond assigned worksheet names.
-    if FCurrentWorksheet>FWorksheetNames.Count-1 then break;
+    if FCurrentWorksheet > FWorksheetNames.Count-1 then break;
 
     ReadWorksheet(AStream, AData);
 
@@ -647,9 +644,7 @@ begin
     FWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
 
   { Finalizations }
-
   FWorksheetNames.Free;
-
 end;
 
 procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
@@ -956,20 +951,22 @@ end;
 
 { Helper function for reading a string with 8-bit length. }
 function TsSpreadBIFF8Reader.ReadString_8bitLen(AStream: TStream): String;
+const
+  HAS_8BITLEN = true;
 var
-  s: widestring;
+  wideStr: widestring;
 begin
-  s := ReadWideString(AStream, true);
-  Result := UTF8Encode(s);
+  wideStr := ReadWideString(AStream, HAS_8BITLEN);
+  Result := UTF8Encode(wideStr);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream);
 var
-  s: String;
+  wideStr: WideString;
 begin
-  s := ReadWideString(AStream, false);
-  if (FIncompleteCell <> nil) and (s <> '') then begin
-    FIncompleteCell^.UTF8StringValue := UTF8Encode(s);
+  wideStr := ReadWideString(AStream, false);
+  if (FIncompleteCell <> nil) and (wideStr <> '') then begin
+    FIncompleteCell^.UTF8StringValue := UTF8Encode(wideStr);
     FIncompleteCell^.ContentType := cctUTF8String;
     if FIsVirtualMode then
       Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
@@ -984,14 +981,12 @@ procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
   begin
     case dw of
       $01..$07: result := TsLineStyle(dw-1);
-//      $07: Result := lsDotted;
       else Result := lsDashed;
     end;
   end;
 var
   rec: TBIFF8_XFRecord;
   fmt: TsCellFormat;
-//  xf: TXFRecord;
   b: Byte;
   dw: DWord;
   fill: Integer;
@@ -1271,9 +1266,8 @@ var
   pane: Byte;
 begin
   { Write workbook globals }
-
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
-
+  WriteCodePage(AStream, 'ucs2le'); //seUTF16);
   WriteWindow1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -1293,7 +1287,6 @@ begin
   WriteEOF(AStream);
 
   { Write each worksheet }
-
   for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     FWorksheet := Workbook.GetWorksheetByIndex(i);
@@ -1483,7 +1476,7 @@ begin
   if AFont.Size <= 0.0 then
     raise Exception.Create('Font size not specified.');
 
-  WideFontName := AFont.FontName;
+  WideFontName := UTF8Decode(AFont.FontName);
   Len := Length(WideFontName);
 
   { BIFF Record header }

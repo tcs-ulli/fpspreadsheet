@@ -120,6 +120,8 @@ implementation
 { TForm1 }
 
 procedure TForm1.BtnLoadClick(Sender: TObject);
+var
+  fn: ansistring;
 begin
   if OpenDialog.Execute then begin
     WorkbookSource.AutodetectFormat := false;
@@ -136,16 +138,17 @@ begin
     end;
 
     // There are 3 possibilities to open a file:
+    fn := UTF8ToAnsi(OpenDialog.Filename);
     case CbLoader.ItemIndex of
       0:  if WorkbookSource.AutodetectFormat then
-            WorkbookSource.Workbook.ReadFromFile(OpenDialog.FileName)
+            WorkbookSource.Workbook.ReadFromFile(fn)
           else
-            WorkbookSource.Workbook.ReadFromFile(OpenDialog.Filename, WorkbookSource.FileFormat);
-      1:  WorkbookSource.FileName := OpenDialog.FileName;    // this loads the file
+            WorkbookSource.Workbook.ReadFromFile(fn, WorkbookSource.FileFormat);
+      1:  WorkbookSource.FileName := fn;    // this loads the file
       2:  if WorkbookSource.AutodetectFormat then
-            WorksheetGrid.LoadFromSpreadsheetFile(OpenDialog.FileName)
+            WorksheetGrid.LoadFromSpreadsheetFile(fn)
           else
-            WorksheetGrid.LoadFromSpreadsheetFile(OpenDialog.FileName, WorkbookSource.FileFormat);
+            WorksheetGrid.LoadFromSpreadsheetFile(fn, WorkbookSource.FileFormat);
     end;
   end;
 end;

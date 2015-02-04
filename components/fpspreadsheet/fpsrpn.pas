@@ -10,7 +10,7 @@
 unit fpsRPN;
 
 {$ifdef fpc}
-  {$mode delphi}{$H+}
+  {$mode objfpc}{$H+}
 {$endif}
 
 interface
@@ -436,6 +436,7 @@ begin
   while item <> nil do begin
     nextitem := item^.Next;
     Result[n] := item^.FE;
+    Result[n].StringValue := item^.FE.StringValue;
     if AReverse then dec(n) else inc(n);
     DisposeRPNItem(item);
     item := nextitem;

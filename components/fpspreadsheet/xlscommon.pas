@@ -4,20 +4,13 @@ unit xlscommon;
 OpenOffice Microsoft Excel File Format document }
 
 {$ifdef fpc}
-  {$mode delphi}{$H+}
+  {$mode objfpc}{$H+}
 {$endif}
 
 interface
 
 uses
   Classes, SysUtils, DateUtils,
-  (*
-  {$ifdef USE_NEW_OLE}
-  fpolebasic,
-  {$else}
-  fpolestorage,
-  {$endif}
-  *)
   fpstypes, fpspreadsheet, fpsutils, lconvencoding;
 
 const
@@ -73,6 +66,11 @@ const
 
   { CODEPAGE record constants }
   WORD_ASCII               = 367;
+  WORD_CP_437_DOS_US       = 437;
+  WORD_CP_850_DOS_Latin1   = 850;
+  WORD_CP_852_DOS_Latin2   = 852;
+  WORD_CP_866_DOS_Cyrillic = 866;
+  WORD_CP_874_Thai         = 874;
   WORD_UTF_16              = 1200; // BIFF 8
   WORD_CP_1250_Latin2      = 1250;
   WORD_CP_1251_Cyrillic    = 1251;
@@ -304,6 +302,7 @@ type
     FDateMode: TDateMode;
     FLastRow: Cardinal;
     FLastCol: Cardinal;
+    FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     procedure CreateNumFormatList; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixColor(AColor: TsColor): TsColor; override;
@@ -321,7 +320,7 @@ type
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
     // Writes out used codepage for character encoding
-    procedure WriteCodepage(AStream: TStream; AEncoding: TsEncoding);
+    procedure WriteCodePage(AStream: TStream; ACodePage: String); virtual;
     // Writes out column info(s)
     procedure WriteColInfo(AStream: TStream; ACol: PCol);
     procedure WriteColInfos(AStream: TStream; ASheet: TsWorksheet);
@@ -403,7 +402,7 @@ implementation
 
 uses
   AVL_Tree, Math, Variants,
-  {%H-}fpspatches, xlsConst, fpsNumFormatParser, fpsrpn, fpsExprParser;
+  {%H-}fpspatches, fpsStrings, xlsConst, fpsNumFormatParser, fpsrpn, fpsExprParser;
 
 const
   { Helper table for rpn formulas:
@@ -827,49 +826,41 @@ begin
   lCodePage := WordLEToN(AStream.ReadWord());
 
   case lCodePage of
-  // 016FH = 367 = ASCII
-  // 01B5H = 437 = IBM PC CP-437 (US)
-  //02D0H = 720 = IBM PC CP-720 (OEM Arabic)
-  //02E1H = 737 = IBM PC CP-737 (Greek)
-  //0307H = 775 = IBM PC CP-775 (Baltic)
-  //0352H = 850 = IBM PC CP-850 (Latin I)
-  $0352: FCodepage := 'cp850';
-  //0354H = 852 = IBM PC CP-852 (Latin II (Central European))
-  $0354: FCodepage := 'cp852';
-  //0357H = 855 = IBM PC CP-855 (Cyrillic)
-  $0357: FCodepage := 'cp855';
-  //0359H = 857 = IBM PC CP-857 (Turkish)
-  $0359: FCodepage := 'cp857';
-  //035AH = 858 = IBM PC CP-858 (Multilingual Latin I with Euro)
-  //035CH = 860 = IBM PC CP-860 (Portuguese)
-  //035DH = 861 = IBM PC CP-861 (Icelandic)
-  //035EH = 862 = IBM PC CP-862 (Hebrew)
-  //035FH = 863 = IBM PC CP-863 (Canadian (French))
-  //0360H = 864 = IBM PC CP-864 (Arabic)
-  //0361H = 865 = IBM PC CP-865 (Nordic)
-  //0362H = 866 = IBM PC CP-866 (Cyrillic (Russian))
-  //0365H = 869 = IBM PC CP-869 (Greek (Modern))
-  //036AH = 874 = Windows CP-874 (Thai)
-  //03A4H = 932 = Windows CP-932 (Japanese Shift-JIS)
-  //03A8H = 936 = Windows CP-936 (Chinese Simplified GBK)
-  //03B5H = 949 = Windows CP-949 (Korean (Wansung))
-  //03B6H = 950 = Windows CP-950 (Chinese Traditional BIG5)
-  //04B0H = 1200 = UTF-16 (BIFF8)
-  $04B0: FCodepage := 'utf-16';
-  //04E2H = 1250 = Windows CP-1250 (Latin II) (Central European)
-  //04E3H = 1251 = Windows CP-1251 (Cyrillic)
-  //04E4H = 1252 = Windows CP-1252 (Latin I) (BIFF4-BIFF5)
-  //04E5H = 1253 = Windows CP-1253 (Greek)
-  //04E6H = 1254 = Windows CP-1254 (Turkish)
-  $04E6: FCodepage := 'cp1254';
-  //04E7H = 1255 = Windows CP-1255 (Hebrew)
-  //04E8H = 1256 = Windows CP-1256 (Arabic)
-  //04E9H = 1257 = Windows CP-1257 (Baltic)
-  //04EAH = 1258 = Windows CP-1258 (Vietnamese)
-  //0551H = 1361 = Windows CP-1361 (Korean (Johab))
-  //2710H = 10000 = Apple Roman
-  //8000H = 32768 = Apple Roman
-  //8001H = 32769 = Windows CP-1252 (Latin I) (BIFF2-BIFF3)
+    // 016FH = 367 = ASCII
+    WORD_CP_437_DOS_US: FCodePage := 'cp437';      // IBM PC CP-437 (US)
+    //02D0H = 720 = IBM PC CP-720 (OEM Arabic)
+    //02E1H = 737 = IBM PC CP-737 (Greek)
+    //0307H = 775 = IBM PC CP-775 (Baltic)
+    WORD_CP_850_DOS_Latin1: FCodepage := 'cp850';  // IBM PC CP-850 (Latin I)
+    WORD_CP_852_DOS_Latin2: FCodepage := 'cp852';  // IBM PC CP-852 (Latin II (Central European))
+    //035AH = 858 = IBM PC CP-858 (Multilingual Latin I with Euro)
+    //035CH = 860 = IBM PC CP-860 (Portuguese)
+    //035DH = 861 = IBM PC CP-861 (Icelandic)
+    //035EH = 862 = IBM PC CP-862 (Hebrew)
+    //035FH = 863 = IBM PC CP-863 (Canadian (French))
+    //0360H = 864 = IBM PC CP-864 (Arabic)
+    //0361H = 865 = IBM PC CP-865 (Nordic)
+    WORD_CP_866_DOS_Cyrillic: FCodePage := 'cp866';  // IBM PC CP-866 (Cyrillic Russian)
+    //0365H = 869 = IBM PC CP-869 (Greek (Modern))
+    WORD_CP_874_Thai: FCodePage := 'cp874';  // 874 = Windows CP-874 (Thai)
+    //03A4H = 932 = Windows CP-932 (Japanese Shift-JIS)
+    //03A8H = 936 = Windows CP-936 (Chinese Simplified GBK)
+    //03B5H = 949 = Windows CP-949 (Korean (Wansung))
+    //03B6H = 950 = Windows CP-950 (Chinese Traditional BIG5)
+    WORD_UTF_16 : FCodePage := 'ucs2le';            // UTF-16 (BIFF8)
+    WORD_CP_1250_Latin2: FCodepage := 'cp1250';     // Windows CP-1250 (Latin II) (Central European)
+    WORD_CP_1251_Cyrillic: FCodePage := 'cp1251';   // Windows CP-1251 (Cyrillic)
+    WORD_CP_1252_Latin1: FCodePage := 'cp1252';     // Windows CP-1252 (Latin I) (BIFF4-BIFF5)
+    WORD_CP_1253_Greek: FCodePage := 'cp1253';      // Windows CP-1253 (Greek)
+    WORD_CP_1254_Turkish: FCodepage := 'cp1254';    // Windows CP-1254 (Turkish)
+    WORD_CP_1255_Hebrew: FCodePage := 'cp1255';     // Windows CP-1255 (Hebrew)
+    WORD_CP_1256_Arabic: FCodePage := 'cp1256';     // Windows CP-1256 (Arabic)
+    WORD_CP_1257_Baltic: FCodePage := 'cp1257';     // Windows CP-1257 (Baltic)
+    WORD_CP_1258_Vietnamese: FCodePage := 'cp1258'; // Windows CP-1258 (Vietnamese)
+    //0551H = 1361 = Windows CP-1361 (Korean (Johab))
+    //2710H = 10000 = Apple Roman
+    //8000H = 32768 = Apple Roman
+    WORD_CP_1258_Latin1_BIFF2_3: FCodePage := 'cp1252';   // Windows CP-1252 (Latin I) (BIFF2-BIFF3)
   end;
 end;
 
@@ -1711,7 +1702,8 @@ begin
   len := AStream.ReadByte;
   SetLength(s, len);
   AStream.ReadBuffer(s[1], len);
-  Result := ansiToUTF8(s);
+  Result := ConvertEncoding(s, FCodePage, encodingUTF8);
+//  Result := ansiToUTF8(s);
 end;
 
 { Reads a STRING record. It immediately precedes a FORMULA record which has a
@@ -1806,7 +1798,7 @@ end;
 function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
 begin
   FLastRow := 0;
-  IterateThroughCells(nil, AWorksheet.Cells, GetLastRowCallback);
+  IterateThroughCells(nil, AWorksheet.Cells, @GetLastRowCallback);
   Result := FLastRow;
 end;
 
@@ -1819,7 +1811,7 @@ end;
 function TsSpreadBIFFWriter.GetLastColIndex(AWorksheet: TsWorksheet): Word;
 begin
   FLastCol := 0;
-  IterateThroughCells(nil, AWorksheet.Cells, GetLastColCallback);
+  IterateThroughCells(nil, AWorksheet.Cells, @GetLastColCallback);
   Result := FLastCol;
 end;
 
@@ -1878,28 +1870,44 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
-procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream;
-  AEncoding: TsEncoding);
+{@@ ----------------------------------------------------------------------------
+  Writes the code page identifier defined by the workbook to the stream.
+  BIFF2 has to be overridden because is uses cp1252, but has a different
+  number code.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteCodepage(AStream: TStream; ACodePage: String);
+//  AEncoding: TsEncoding);
 var
-  lCodepage: Word;
+  cp: Word;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
   AStream.WriteWord(WordToLE(2));
 
   { Codepage }
-  case AEncoding of
-    seLatin2:   lCodepage := WORD_CP_1250_Latin2;
-    seCyrillic: lCodepage := WORD_CP_1251_Cyrillic;
-    seGreek:    lCodepage := WORD_CP_1253_Greek;
-    seTurkish:  lCodepage := WORD_CP_1254_Turkish;
-    seHebrew:   lCodepage := WORD_CP_1255_Hebrew;
-    seArabic:   lCodepage := WORD_CP_1256_Arabic;
+  FCodePage := lowercase(ACodePage);
+  case FCodePage of
+    'ucs2le': cp := WORD_UTF_16;  // Biff 7
+    'cp437' : cp := WORD_CP_437_DOS_US;
+    'cp850' : cp := WORD_CP_850_DOS_Latin1;
+    'cp852' : cp := WORD_CP_852_DOS_Latin2;
+    'cp866' : cp := WORD_CP_866_DOS_Cyrillic;
+    'cp874' : cp := WORD_CP_874_Thai;
+    'cp1250': cp := WORD_CP_1250_Latin2;
+    'cp1251': cp := WORD_CP_1251_Cyrillic;
+    'cp1252': cp := WORD_CP_1252_Latin1;
+    'cp1253': cp := WORD_CP_1253_Greek;
+    'cp1254': cp := WORD_CP_1254_Turkish;
+    'cp1255': cp := WORD_CP_1255_Hebrew;
+    'cp1256': cp := WORD_CP_1256_Arabic;
+    'cp1257': cp := WORD_CP_1257_Baltic;
+    'cp1258': cp := WORD_CP_1258_Vietnamese;
   else
-    // Default is Latin1
-    lCodepage := WORD_CP_1252_Latin1;
+    Workbook.AddErrorMsg(rsCodePageNotSupported, [FCodePage]);
+    FCodePage := 'cp1252';
+    cp := WORD_CP_1252_Latin1;
   end;
-  AStream.WriteWord(WordToLE(lCodepage));
+  AStream.WriteWord(WordToLE(cp));
 end;
 
 { Writes column info for the given column. Currently only the colum width is used.
@@ -1958,7 +1966,8 @@ begin
   end;
 end;
 
-{ Writes a NOTE record which describes a comment attached to a cell }
+{ Writes a NOTE record which describes a comment attached to a cell
+  Valid für Biff2 and BIFF5}
 procedure TsSpreadBIFFWriter.WriteComment(AStream: TStream; ACell: PCell);
 const
   CHUNK_SIZE = 2048;
@@ -1977,7 +1986,7 @@ begin
 
   List := TStringList.Create;
   try
-    List.Text := UTF8ToAnsi(ACell^.Comment);
+    List.Text := ConvertEncoding(ACell^.Comment, encodingUTF8, FCodePage);
     comment := List[0];
     for p := 1 to List.Count-1 do
       comment := comment + #$0A + List[p];
@@ -2402,8 +2411,8 @@ begin
     shared formula RECORD here. The shared formula RECORD must follow the
     first FORMULA record referring to the shared formula}
   if (ACell^.SharedFormulaBase <> nil) and
-     (ARow = ACell^.SharedFormulaBase.Row) and
-     (ACol = ACell^.SharedFormulaBase.Col)
+     (ARow = ACell^.SharedFormulaBase^.Row) and
+     (ACol = ACell^.SharedFormulaBase^.Col)
   then
     WriteSharedFormula(AStream, ACell^.SharedFormulaBase);
 
@@ -2484,8 +2493,8 @@ var
 begin
   rec.FormulaSize := WordToLE(5);
   rec.Token := INT_EXCEL_TOKEN_TEXP;  // Marks the cell for using a shared formula
-  rec.Row := WordToLE(ACell^.SharedFormulaBase.Row);
-  rec.Col := WordToLE(ACell^.SharedFormulaBase.Col);
+  rec.Row := WordToLE(ACell^.SharedFormulaBase^.Row);
+  rec.Col := WordToLE(ACell^.SharedFormulaBase^.Col);
   AStream.WriteBuffer(rec, SizeOf(rec));
   RPNLength := SizeOf(rec);
 end;
@@ -2929,7 +2938,7 @@ var
   len: Byte;
   s: ansistring;
 begin
-  s := UTF8ToAnsi(AString);
+  s := ConvertEncoding(AString, encodingUTF8, FCodePage);
   len := Length(s);
   AStream.WriteByte(len);
   AStream.WriteBuffer(s[1], len);

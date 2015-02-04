@@ -34,19 +34,15 @@ EOF
 The row and column numbering in BIFF files is zero-based.
 
 Excel file format specification obtained from:
-
-http://sc.openoffice.org/excelfileformat.pdf
+  http://sc.openoffice.org/excelfileformat.pdf
 
 Records Needed to Make a BIFF5 File Microsoft Excel Can Use obtained from:
-
-http://support.microsoft.com/default.aspx?scid=KB;EN-US;Q147732&ID=KB;EN-US;Q147732&LN=EN-US&rnk=2&SD=msdn&FR=0&qry=BIFF&src=DHCS_MSPSS_msdn_SRCH&SPR=MSALL&
+  http://support.microsoft.com/default.aspx?scid=KB;EN-US;Q147732&ID=KB;EN-US;Q147732&LN=EN-US&rnk=2&SD=msdn&FR=0&qry=BIFF&src=DHCS_MSPSS_msdn_SRCH&SPR=MSALL&
 
 Microsoft BIFF 5 writer example:
+  http://support.microsoft.com/kb/150447/en-us
 
-http://support.microsoft.com/kb/150447/en-us
-
-Encoding information: ISO_8859_1 is used, to have support to
-other characters, please use a format which support unicode
+Encoding information: as specified fy the Encoding property of the workbook.
 
 AUTHORS: Felipe Monteiro de Carvalho
 }
@@ -101,8 +97,6 @@ type
   { TsSpreadBIFF5Writer }
 
   TsSpreadBIFF5Writer = class(TsSpreadBIFFWriter)
-  private
-    WorkBookEncoding: TsEncoding;
   protected
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -353,6 +347,7 @@ begin
     case RecordType of
      INT_EXCEL_ID_BOF        : ;
      INT_EXCEL_ID_BOUNDSHEET : ReadBoundSheet(AStream);
+     INT_EXCEL_ID_CODEPAGE   : ReadCodePage(AStream);
      INT_EXCEL_ID_FONT       : ReadFont(AStream);
      INT_EXCEL_ID_FORMAT     : ReadFormat(AStream);
      INT_EXCEL_ID_XF         : ReadXF(AStream);
@@ -481,7 +476,8 @@ begin
 
   SetLength(s, Len);
   AStream.ReadBuffer(s[1], Len*SizeOf(AnsiChar));
-  sheetName := AnsiToUTF8(s);
+//  sheetName := AnsiToUTF8(s);
+  sheetName := ConvertEncoding(s, FCodePage, EncodingUTF8);
   FWorksheetNames.Add(sheetName);
 end;
 
@@ -550,7 +546,8 @@ begin
     SetLength(s, Len);
     AStream.ReadBuffer(s[1], len);
     if (FIncompleteCell <> nil) and (s <> '') then begin
-      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
+//      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
+      FIncompletecell^.UTF8StringValue := ConvertEncoding(s, FCodePage, encodingUTF8);
       FIncompleteCell^.ContentType := cctUTF8String;
       if FIsVirtualMode then
         Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
@@ -720,7 +717,6 @@ end;
 procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
 var
   BIFF5EOF: Boolean;
-  p,s: Int64;
 begin
   { Initializations }
 
@@ -743,8 +739,6 @@ begin
     ReadWorksheet(AStream, AData);
 
     // Check for the end of the file
-    p := AStream.Position;
-    s := AStream.Size;
     if AStream.Position >= AStream.Size then BIFF5EOF := True;
 
     // Final preparations
@@ -818,7 +812,7 @@ begin
   Len := AStream.ReadByte();
   SetLength(fontname, Len);
   AStream.ReadBuffer(fontname[1], Len);
-  font.FontName := fontname;
+  font.FontName := ConvertEncoding(fontname, FCodePage, encodingUTF8);
 
   { Add font to workbook's font list }
   FWorkbook.AddFont(font);
@@ -846,7 +840,8 @@ begin
   AStream.ReadBuffer(fmtString[1], len);
 
   // Add to the list
-  NumFormatList.AnalyzeAndAdd(fmtIndex, AnsiToUTF8(fmtString));
+//  NumFormatList.AnalyzeAndAdd(fmtIndex, AnsiToUTF8(fmtString));
+  NumFormatList.AnalyzeAndAdd(fmtIndex, ConvertEncoding(fmtString, FCodePage, encodingUTF8));
 end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
@@ -856,7 +851,8 @@ var
   ARow, ACol: Cardinal;
   XF: WORD;
   cell: PCell;
-  AValue: ansistring;
+  ansistr: ansistring;
+  valuestr: String;
 begin
   rec.Row := 0;  // to silence the compiler...
 
@@ -868,8 +864,8 @@ begin
 
   { Byte String with 16-bit size }
   L := WordLEToN(rec.TextLen);
-  SetLength(AValue, L);
-  AStream.ReadBuffer(AValue[1], L);
+  SetLength(ansistr, L);
+  AStream.ReadBuffer(ansistr[1], L);
 
   { Create cell }
   if FIsVirtualMode then begin
@@ -879,7 +875,8 @@ begin
     cell := FWorksheet.GetCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(cell, ISO_8859_1ToUTF8(AValue));
+  valueStr := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
+  FWorksheet.WriteUTF8Text(cell, valueStr); //ISO_8859_1ToUTF8(ansistr));
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);
@@ -939,14 +936,11 @@ var
   i, len: Integer;
   pane: Byte;
 begin
-  { Store some data about the workbook that other routines need }
-  WorkBookEncoding := Workbook.Encoding;
-
   { Write workbook globals }
 
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
 
-  WriteCodepage(AStream, WorkBookEncoding);
+  WriteCodepage(AStream, Workbook.CodePage); //WorkBook.Encoding);
   WriteWindow1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -1042,11 +1036,14 @@ end;
 function TsSpreadBIFF5Writer.WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
 var
   Len: Byte;
-  LatinSheetName: string;
+  xlsSheetName: ansistring;
 begin
+  xlsSheetName := ConvertEncoding(ASheetName, encodingUTF8, FCodePage);
+  Len := Length(xlsSheetName);
+  {
   LatinSheetName := UTF8ToISO_8859_1(ASheetName);
   Len := Length(LatinSheetName);
-
+   }
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOUNDSHEET));
   AStream.WriteWord(WordToLE(6 + 1 + Len));
@@ -1064,7 +1061,8 @@ begin
 
   { Sheet name: Byte string, 8-bit length }
   AStream.WriteByte(Len);
-  AStream.WriteBuffer(LatinSheetName[1], Len);
+//  AStream.WriteBuffer(LatinSheetName[1], Len);
+  AStream.WriteBuffer(xlsSheetName[1], Len);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1204,15 +1202,18 @@ type
   end;
 var
   len: Integer;
-  s: ansistring;
+  fmtStr: String;
+  ansiFmtStr: ansiString;
   rec: TNumFormatRecord;
   buf: array of byte;
 begin
   if (ANumFormatData = nil) or (ANumFormatData.FormatString = '') then
     exit;
 
-  s := UTF8ToAnsi(NumFormatList.FormatStringForWriting(AListIndex));
-  len := Length(s);
+//  s := UTF8ToAnsi(NumFormatList.FormatStringForWriting(AListIndex));
+  fmtStr := NumFormatList.FormatStringForWriting(AListIndex);
+  ansiFmtStr := ConvertEncoding(fmtStr, encodingUTF8, FCodePage);
+  len := Length(ansiFmtStr);
 
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_FORMAT);
@@ -1227,7 +1228,7 @@ begin
   { Copy the format string characters into a buffer immediately after rec }
   SetLength(buf, SizeOf(rec) + SizeOf(ansiChar)*len);
   Move(rec, buf[0], SizeOf(rec));
-  Move(s[1], buf[SizeOf(rec)], len*SizeOf(ansiChar));
+  Move(ansiFmtStr[1], buf[SizeOf(rec)], len*SizeOf(ansiChar));
 
   { Write out }
   AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*len);
@@ -1284,6 +1285,8 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
+  ansiValue := ConvertEncoding(AValue, encodingUTF8, FCodePage);
+  {
   case WorkBookEncoding of
     seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
     seCyrillic: AnsiValue := UTF8ToCP1251(AValue);
@@ -1295,6 +1298,7 @@ begin
     // Latin 1 is the default
     AnsiValue := UTF8ToCP1252(AValue);
   end;
+  }
 
   if AnsiValue = '' then begin
     // Bad formatted UTF8String (maybe ANSI?)
@@ -1354,7 +1358,8 @@ var
   s: ansistring;
   len: Integer;
 begin
-  s := UTF8ToAnsi(AString);
+//  s := UTF8ToAnsi(AString);
+  s := ConvertEncoding(AString, encodingUTF8, FCodePage);
   len := Length(s);
 
   { BIFF Record header }

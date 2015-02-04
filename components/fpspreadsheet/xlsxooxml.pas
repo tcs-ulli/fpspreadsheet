@@ -2395,6 +2395,8 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
 begin
+  Unused(AWorksheet);
+
   // Create stream
   SetLength(FSSheetRels, FCurSheetNum + 1);
   if (boBufStream in Workbook.Options) then
