@@ -8,7 +8,7 @@ uses
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
   Forms, virtualtreeview_package, laz_fpspreadsheet, beabout, bebiffgrid,
-  bebiffutils, behtml, beutils, mrumanager, beMain;
+  bebiffutils, behtml, beutils, mrumanager, beMain, beTypes;
 
 {$R *.res}
 

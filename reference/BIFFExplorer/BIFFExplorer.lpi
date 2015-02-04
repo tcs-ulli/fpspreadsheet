@@ -111,7 +111,7 @@
         <PackageName Value="LCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="10">
+    <Units Count="11">
       <Unit0>
         <Filename Value="BIFFExplorer.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -131,6 +131,7 @@
       <Unit3>
         <Filename Value="bebiffutils.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="beBIFFUtils"/>
       </Unit3>
       <Unit4>
         <Filename Value="behtml.pas"/>
@@ -161,6 +162,11 @@
         <Filename Value="beabout.lfm"/>
         <IsPartOfProject Value="True"/>
       </Unit9>
+      <Unit10>
+        <Filename Value="betypes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="beTypes"/>
+      </Unit10>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

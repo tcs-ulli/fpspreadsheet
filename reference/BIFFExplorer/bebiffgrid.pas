@@ -5,7 +5,7 @@ unit beBIFFGrid;
 interface
 
 uses
-  Classes, SysUtils, Controls, Grids, fpstypes, fpspreadsheet;
+  Classes, SysUtils, Controls, Grids, fpstypes, fpspreadsheet, beTypes;
 
 type
   TBIFFBuffer = array of byte;
@@ -18,6 +18,7 @@ type
     FBuffer: TBIFFBuffer;
     FBufferIndex: LongWord;
     FFormat: TsSpreadsheetFormat;
+    FInfo: Integer;
     FCurrRow: Integer;
     FDetails: TStrings;
     FOnDetails: TBIFFDetailsEvent;
@@ -37,6 +38,7 @@ type
     procedure ShowCodePage;
     procedure ShowColInfo;
     procedure ShowColWidth;
+    procedure ShowContinue;
     procedure ShowCountry;
     procedure ShowDateMode;
     procedure ShowDBCell;
@@ -129,7 +131,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure SetRecordType(ARecType: Word; ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
+    procedure SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
+//    procedure SetRecordType(ARecType: Word; ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
 
   published
     property OnDetails: TBIFFDetailsEvent read FOnDetails write FOnDetails;
@@ -338,6 +341,8 @@ begin
       ShowPrintGridLines;
     $0031:
       ShowFont;
+    $003C:
+      ShowContinue;
     $003D:
       ShowWindow1;
     $003E, $023E:
@@ -444,7 +449,7 @@ begin
   end;
 end;
 
-
+ {
 procedure TBIFFGrid.SetRecordType(ARecType: Word; ABuffer: TBIFFBuffer;
   AFormat: TsSpreadsheetFormat);
 begin
@@ -456,7 +461,20 @@ begin
   PopulateGrid;
   if Assigned(FOnDetails) then FOnDetails(self, FDetails);
 end;
+}
 
+procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer;
+  AFormat: TsSpreadsheetFormat);
+begin
+  FFormat := AFormat;
+  FRecType := AData.RecordID;
+  FInfo := AData.Tag;
+  SetLength(FBuffer, Length(ABuffer));
+  if Length(FBuffer) > 0 then
+    Move(ABuffer[0], FBuffer[0], Length(FBuffer));
+  PopulateGrid;
+  if Assigned(FOnDetails) then FOnDetails(self, FDetails);
+end;
 
 procedure TBIFFGrid.ShowBackup;
 var
@@ -1134,6 +1152,44 @@ begin
   Move(FBuffer[FBufferIndex], w, numbytes);
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
     'Width of the columns in 1/256 of the width of the zero character, using default font (first FONT record in the file)');
+end;
+
+
+procedure TBIFFGrid.ShowContinue;
+var
+  numbytes: Integer;
+  s: String;
+  sa: ansistring;
+  sw: widestring;
+  ls: Integer;
+  i: Integer;
+begin
+  case FInfo of
+    BIFFNODE_TXO_CONTINUE1:
+      begin
+        RowCount := FixedRows + 1;
+        numbytes := Length(FBuffer);
+        if FBuffer[FBufferIndex] = 0 then begin
+          ls := Length(FBuffer)-1;
+          SetLength(sa, ls);
+          Move(FBuffer[FBufferIndex+1], sa[1], ls);
+          s := AnsiToUTF8(sa);
+        end else
+        if FBuffer[FBufferIndex] = 1 then begin
+          ls := (Length(FBuffer) - 1) div SizeOf(WideChar);
+          SetLength(sw, ls);
+          Move(FBuffer[FBufferIndex+1], sw[1], ls*SizeOf(WideChar));
+          s := UTF8Encode(sw);
+        end else
+          s := 'ERROR!!!';
+        s := UTF8StringReplace(s, #$0A, '[/n]', [rfReplaceAll]);
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'Comment text');
+      end;
+
+    BIFFNODE_TXO_CONTINUE2:
+      begin
+      end;
+  end;
 end;
 
 
@@ -3240,13 +3296,165 @@ procedure TBIFFGrid.ShowObj;
 var
   numBytes: Integer;
   w: Word;
+  dw: DWord;
+  savedBufferIndex: Integer;
+  fieldType: Word;
+  fieldSize: Word;
+  s: String;
+  i, n: Integer;
+  guid: TGUID;
 begin
-  RowCount := FixedRows + 5;
+  if FFormat = sfExcel8 then begin
+    n := 0;
+    RowCount := FixedRows + 1000;
+    while FBufferIndex < Length(FBuffer) do begin
+      savedBufferIndex := FBufferIndex;
+      numBytes := 2;
+      Move(FBuffer[FBufferIndex], w, numBytes);
+      fieldType := WordLEToN(w);
+      case fieldType of
+        $00: s := 'ftEnd (End of OBJ record)';
+        $01: s := '(Reserved)';
+        $02: s := '(Reserved)';
+        $03: s := '(Reserved)';
+        $04: s := 'ftMacro (fmla-style macro)';
+        $05: s := 'ftButton (Command button)';
+        $06: s := 'ftGmo (Group marker)';
+        $07: s := 'ftCf (Clipboard format)';
+        $08: s := 'ftPioGrbit (Picture option flags)';
+        $09: s := 'ftPictFmla (Picture fmla-style macro)';
+        $0A: s := 'ftCbls (Checkbox link)';
+        $0B: s := 'ftRbo (Radio button)';
+        $0C: s := 'ftSbs (Scrollbar)';
+        $0D: s := 'ftNts (Note structure)';
+        $0E: s := 'ftSbsFmla (Scroll bar fmla-style macro)';
+        $0F: s := 'ftGboData (Group box data)';
+        $10: s := 'ftEdoData (Edit control data)';
+        $11: s := 'ftRboData (Radio button data)';
+        $12: s := 'ftCblsData (Check box data)';
+        $13: s := 'ftLbsData (List box data)';
+        $14: s := 'ftCblsFmla (Check box link fmla-style macro)';
+        $15: s := 'ftCmo (Common object data)';
+        else s := '(unknown)';
+      end;
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [fieldType]),
+        Format('Subrecord type: %s', [s]));
+      inc(n);
 
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numBytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [WordLEToN(w)]),
-    'ft (must be $15)');
+      Move(FBuffer[FBufferIndex], w, numBytes);
+      fieldSize := WordLEToN(w);
+      ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(fieldSize), 'Size of subrecord');
+      inc(n);
+
+      case fieldType of
+        $000D:
+          begin  // ftNts, from https://msdn.microsoft.com/en-us/library/office/dd951373%28v=office.12%29.aspx
+            numBytes := 16;
+            Move(FBuffer[FBufferIndex], guid, numBytes);
+            s := GuidToString(guid);
+            ShowInRow(FCurrRow, FBufferIndex, numbytes, s, 'GUID of comment');
+            inc(n);
+
+            numbytes := 2;
+            Move(FBuffer[FBufferIndex], w, numBytes);
+            ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+              'Shared Note (0 = false, 1 = true)');
+            inc(n);
+
+            numBytes := 4;
+            Move(FBuffer[FBufferIndex], dw, numBytes);
+            ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+              'Unused (undefined, must be ignored)');
+            inc(n);
+          end;
+
+        $0015:
+          begin  // common object data
+             Move(FBuffer[FBufferIndex], w, numBytes);
+             w := WordLEToN(w);
+             case w of
+               $00: s := 'Group';
+               $01: s := 'Line';
+               $02: s := 'Rectangle';
+               $03: s := 'Oval';
+               $04: s := 'Arc';
+               $05: s := 'Chart';
+               $06: s := 'Text';
+               $07: s := 'Button';
+               $08: s := 'Picture';
+               $09: s := 'Polybon';
+               $0A: s := '(Reserved)';
+               $0B: s := 'Checkbox';
+               $0C: s := 'Option button';
+               $0D: s := 'Edit box';
+               $0E: s := 'Label';
+               $0F: s := 'Dialog box';
+               $10: s := 'Spinner';
+               $11: s := 'Scrollbar';
+               $12: s := 'List box';
+               $13: s := 'Group box';
+               $14: s := 'Combobox';
+               $15: s := '(Reserved)';
+               $16: s := '(Reserved)';
+               $17: s := '(Reserved)';
+               $18: s := '(Reserved)';
+               $19: s := 'Comment';
+               $1A: s := '(Reserved)';
+               $1B: s := '(Reserved)';
+               $1C: s := '(Reserved)';
+               $1D: s := '(Reserved)';
+               $1E: s := 'Microsoft Office drawing';
+               else s := '(Unknown)';
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
+               'Object type: '+s);
+             inc(n);
+
+             Move(FBuffer[FBufferIndex], w, numbytes);
+             w := WordLEToN(w);
+             ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.04x', [w]),
+               'Object ID number');
+             inc(n);
+
+             Move(FBuffer[FBufferIndex], w, numbytes);
+             w := WordLEToN(w);
+             if Row = FCurrRow then begin
+               FDetails.Add('Option flags:'#13);
+               if w and $0001 <> 0
+                 then FDetails.Add('Bit $0001 = 1: Object is locked when sheet is protected.')
+                 else FDetails.Add('Bit $0001 = 0: Object is NOT locked when sheet is protected.');
+               if w and $000E <> 0
+                 then FDetails.Add('Bit $0002 <> 0: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
+                 else FDetails.Add('Bit $0002 = 0: Reserved - must be zero');
+               if w and $0010 <> 0
+                 then FDetails.Add('Bit $0010 = 1: Image of this object is intended to be included when printing')
+                 else FDetails.Add('Bit $0010 = 0: Image of this object is NOT intended to be included when printing');
+               if w and $1FE0 <> 0
+                 then FDetails.Add('Bits 12-5 <> 0: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
+                 else FDetails.Add('Bits 12-5 = 0: Reserved - must be zero');
+               if w and $2000 <> 0
+                 then FDetails.Add('Bit $2000 = 1: Object uses automatic fill style.')
+                 else FDetails.Add('Bit $2000 = 0: Object does NOT use automatic fill style.');
+               if w and $4000 <> 0
+                 then FDetails.Add('Bit $4000 = 1: Object uses automatic line style.')
+                 else FDetails.Add('Bit $4000 = 0: Object does NOT use automatic line style.');
+               if w and $8000 <> 0
+                 then FDetails.Add('Bit $8000 = 1: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
+                 else FDetails.Add('Bit $8000 = 0: Reserved - must be zero.');
+             end;
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
+               'Option flags');
+             inc(n);
+           end;
+      end;
+      FBufferIndex := savedBufferIndex + 4 + fieldSize;
+    end;
+    RowCount := FixedRows + n;
+  end else
+  if FFormat = sfExcel5 then begin
+                          (*
+
+
 
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numBytes);
@@ -3331,6 +3539,8 @@ begin
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
     'Flags');
+    *)
+  end;
 end;
 
 
