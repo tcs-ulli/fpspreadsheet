@@ -83,7 +83,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     { General reading methods }
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure ReadFromStream(AStream: TStream); override;
   end;
 
   { TsSpreadBIFF2Writer }
@@ -504,7 +504,7 @@ begin
   // (Using the formats in the file would require de-localizing them).
 end;
 
-procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream);
 var
   BIFF2EOF: Boolean;
   RecordType: Word;
@@ -519,7 +519,7 @@ begin
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
-  FWorksheet := AData.AddWorksheet('Sheet', true);
+  FWorksheet := FWorkbook.AddWorksheet('Sheet', true);
 
   { Read all records in a loop }
   while not BIFF2EOF do

@@ -96,8 +96,8 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure ReadFromFile(AFileName: string); override;
+    procedure ReadFromStream(AStream: TStream); override;
   end;
 
   { TsSpreadOOXMLWriter }
@@ -1471,7 +1471,7 @@ begin
   FixRows(AWorksheet);
 end;
 
-procedure TsSpreadOOXMLReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+procedure TsSpreadOOXMLReader.ReadFromFile(AFileName: string);
 var
   Doc : TXMLDocument;
   FilePath : string;
@@ -1542,7 +1542,7 @@ begin
     // read worksheets
     for i:=0 to SheetList.Count-1 do begin
       // Create worksheet
-      FWorksheet := AData.AddWorksheet(SheetList[i], true);
+      FWorksheet := FWorkbook.AddWorksheet(SheetList[i], true);
 
       // unzip sheet file
       fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1]);
@@ -1595,9 +1595,9 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream);
 begin
-  Unused(AStream, AData);
+  Unused(AStream);
   raise Exception.Create('[TsSpreadOOXMLReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;

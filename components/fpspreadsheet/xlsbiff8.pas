@@ -75,8 +75,8 @@ type
     FSharedStringTable: TStringList;
     function ReadWideString(const AStream: TStream; const ALength: WORD): WideString; overload;
     function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
-    procedure ReadWorkbookGlobals(AStream: TStream; AData: TsWorkbook);
-    procedure ReadWorksheet(AStream: TStream; AData: TsWorkbook);
+    procedure ReadWorkbookGlobals(AStream: TStream);
+    procedure ReadWorksheet(AStream: TStream);
     procedure ReadBoundsheet(AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: WORD): String;
   protected
@@ -102,8 +102,8 @@ type
   public
     destructor Destroy; override;
     { General reading methods }
-    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure ReadFromFile(AFileName: string); override;
+    procedure ReadFromStream(AStream: TStream); override;
   end;
 
   { TsSpreadBIFF8Writer }
@@ -439,14 +439,12 @@ begin
   Result := ReadWideString(AStream, Len);
 end;
 
-procedure TsSpreadBIFF8Reader.ReadWorkbookGlobals(AStream: TStream;
-  AData: TsWorkbook);
+procedure TsSpreadBIFF8Reader.ReadWorkbookGlobals(AStream: TStream);
 var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  Unused(AData);
   // Clear existing fonts. They will be replaced by those from the file.
   FWorkbook.RemoveAllFonts;
   if Assigned(FSharedStringTable) then FreeAndNil(FSharedStringTable);
@@ -484,20 +482,20 @@ begin
   end;
 end;
 
-procedure TsSpreadBIFF8Reader.ReadWorksheet(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF8Reader.ReadWorksheet(AStream: TStream);
 var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  FWorksheet := AData.AddWorksheet(FWorksheetNames[FCurrentWorksheet], true);
+  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurrentWorksheet], true);
 
   while (not SectionEOF) do
   begin
     { Read the record header }
     RecordType := WordLEToN(AStream.ReadWord);
     RecordSize := WordLEToN(AStream.ReadWord);
-    PendingRecordSize:=RecordSize;
+    PendingRecordSize := RecordSize;
 
     CurStreamPos := AStream.Position;
 
@@ -576,7 +574,7 @@ begin
   Result := UTF16ToUTF8(ReadWideString(AStream, ALength));
 end;
 
-procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string);
 var
   MemStream: TMemoryStream;
   OLEStorage: TOLEStorage;
@@ -595,7 +593,7 @@ begin
 
     // Rewind the stream and read from it
     MemStream.Position := 0;
-    ReadFromStream(MemStream, AData);
+    ReadFromStream(MemStream);
 
 //    Uncomment to verify if the data was correctly optained from the OLE file
 //    MemStream.SaveToFile(SysUtils.ChangeFileExt(AFileName, 'bin.xls'));
@@ -605,7 +603,7 @@ begin
   end;
 end;
 
-procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream);
 var
   BIFF8EOF: Boolean;
 begin
@@ -617,7 +615,7 @@ begin
   BIFF8EOF := False;
 
   { Read workbook globals }
-  ReadWorkbookGlobals(AStream, AData);
+  ReadWorkbookGlobals(AStream);
 
   // Check for the end of the file
   if AStream.Position >= AStream.Size then BIFF8EOF := True;
@@ -628,7 +626,7 @@ begin
     //Safe to not read beyond assigned worksheet names.
     if FCurrentWorksheet > FWorksheetNames.Count-1 then break;
 
-    ReadWorksheet(AStream, AData);
+    ReadWorksheet(AStream);
 
     // Check for the end of the file
     if AStream.Position >= AStream.Size then BIFF8EOF := True;

@@ -120,8 +120,8 @@ type
     { General reading methods }
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); override;
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); override;
+    procedure ReadFromFile(AFileName: string); override;
+    procedure ReadFromStream(AStream: TStream); override;
   end;
 
   { TsSpreadOpenDocWriter }
@@ -1342,7 +1342,7 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string);
 var
   Doc : TXMLDocument;
   FilePath : string;
@@ -1409,7 +1409,7 @@ begin
         TableNode := TableNode.NextSibling;
         continue;
       end;
-      FWorkSheet := aData.AddWorksheet(GetAttrValue(TableNode,'table:name'), true);
+      FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode,'table:name'), true);
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
@@ -1439,9 +1439,9 @@ begin
   end;
 end;
 
-procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
 begin
-  Unused(AStream, AData);
+  Unused(AStream);
   raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;

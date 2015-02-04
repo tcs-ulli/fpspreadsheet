@@ -866,9 +866,9 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     { General writing methods }
-    procedure ReadFromFile(AFileName: string; AData: TsWorkbook); virtual;
-    procedure ReadFromStream(AStream: TStream; AData: TsWorkbook); virtual;
-    procedure ReadFromStrings(AStrings: TStrings; AData: TsWorkbook); virtual;
+    procedure ReadFromFile(AFileName: string); virtual;
+    procedure ReadFromStream(AStream: TStream); virtual;
+    procedure ReadFromStrings(AStrings: TStrings); virtual;
   end;
 
 
@@ -6592,7 +6592,8 @@ begin
       Break;
     end;
 
-  if Result = nil then raise Exception.Create(rsUnsupportedReadFormat);
+  if Result = nil then
+    raise Exception.Create(rsUnsupportedReadFormat);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6617,7 +6618,8 @@ begin
       Break;
     end;
     
-  if Result = nil then raise Exception.Create(rsUnsupportedWriteFormat);
+  if Result = nil then
+    raise Exception.Create(rsUnsupportedWriteFormat);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6686,7 +6688,7 @@ begin
     ok := false;
     inc(FLockCount);          // This locks various notifications from being sent
     try
-      AReader.ReadFromFile(AFileName, Self);
+      AReader.ReadFromFile(AFileName);
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then
@@ -6801,7 +6803,7 @@ begin
     inc(FLockCount);
     try
       ok := false;
-      AReader.ReadFromStream(AStream, Self);
+      AReader.ReadFromStream(AStream);
       ok := true;
     finally
       dec(FLockCount);
@@ -8483,13 +8485,13 @@ end;
 {@@ ----------------------------------------------------------------------------
   Default file reading method.
 
-  Opens the file and calls ReadFromStream
+  Opens the file and calls ReadFromStream. Data are stored in the workbook
+  specified during construction.
 
   @param  AFileName The input file name.
-  @param  AData     The Workbook to be filled with information from the file.
   @see    TsWorkbook
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromFile(AFileName: string; AData: TsWorkbook);
+procedure TsCustomSpreadReader.ReadFromFile(AFileName: string);
 var
   InputFile: TStream;
 begin
@@ -8499,7 +8501,7 @@ begin
     InputFile := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
 
   try
-    ReadFromStream(InputFile, AData);
+    ReadFromStream(InputFile);
   finally
     InputFile.Free;
   end;
@@ -8513,10 +8515,11 @@ end;
   the data are provided by calling ReadFromStrings. This mechanism is valid
   for wikitables.
 
-  @param  AStream   Stream containing the workbook data
+  Data will be stored in the workbook defined at construction.
+
   @param  AData     Workbook which is filled by the data from the stream.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream; AData: TsWorkbook);
+procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream);
 var
   AStringStream: TStringStream;
   AStrings: TStringList;
@@ -8527,7 +8530,7 @@ begin
     AStringStream.CopyFrom(AStream, AStream.Size);
     AStringStream.Seek(0, soFromBeginning);
     AStrings.Text := AStringStream.DataString;
-    ReadFromStrings(AStrings, AData);
+    ReadFromStrings(AStrings);
   finally
     AStringStream.Free;
     AStrings.Free;
@@ -8538,10 +8541,9 @@ end;
   Reads workbook data from a string list. This abstract implementation does
   nothing and raises an exception. Must be overridden, like for wikitables.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
-  AData: TsWorkbook);
+procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings);
 begin
-  Unused(AStrings, AData);
+  Unused(AStrings);
   raise Exception.Create(rsUnsupportedReadFormat);
 end;
 
