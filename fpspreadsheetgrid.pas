@@ -1511,7 +1511,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawCommentMarker(ARect: TRect);
 const
-  COMMENT_SIZE = 8;
+  COMMENT_SIZE = 7;
 var
   P: Array[0..3] of TPoint;
 begin

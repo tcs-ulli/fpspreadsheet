@@ -55,7 +55,7 @@ unit xlsbiff8;
 interface
 
 uses
-  Classes, SysUtils, fpcanvas, DateUtils,
+  Classes, SysUtils, fpcanvas, DateUtils, contnrs,
   fpstypes, fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
@@ -73,6 +73,10 @@ type
     FWorksheetNames: TStringList;
     FCurrentWorksheet: Integer;
     FSharedStringTable: TStringList;
+    FCommentList: TObjectList;
+    FCommentPending: Boolean;
+    FCommentID: Integer;
+    FCommentLen: Integer;
     function ReadWideString(const AStream: TStream; const ALength: WORD): WideString; overload;
     function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
     procedure ReadWorkbookGlobals(AStream: TStream);
@@ -80,11 +84,14 @@ type
     procedure ReadBoundsheet(AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: WORD): String;
   protected
-    procedure ReadFont(const AStream: TStream);
-    procedure ReadFormat(AStream: TStream); override;
-    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadCONTINUE(const AStream: TStream);
+    procedure ReadFONT(const AStream: TStream);
+    procedure ReadFORMAT(AStream: TStream); override;
+    procedure ReadLABEL(AStream: TStream); override;
     procedure ReadLabelSST(const AStream: TStream);
     procedure ReadMergedCells(const AStream: TStream);
+    procedure ReadNOTE(const AStream: TStream);
+    procedure ReadOBJ(const AStream: TStream);
     procedure ReadRichString(const AStream: TStream);
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); override;
@@ -98,6 +105,7 @@ type
     procedure ReadSST(const AStream: TStream);
     function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
+    procedure ReadTXO(const AStream: TStream);
     procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
@@ -224,9 +232,31 @@ uses
 const
    { Excel record IDs }
      INT_EXCEL_ID_MERGEDCELLS            = $00E5;  // BIFF8 only
-     INT_EXCEL_ID_SST                    = $00FC; //BIFF8 only
-     INT_EXCEL_ID_LABELSST               = $00FD; //BIFF8 only
+     INT_EXCEL_ID_SST                    = $00FC;  // BIFF8 only
+     INT_EXCEL_ID_LABELSST               = $00FD;  // BIFF8 only
+     INT_EXCEL_ID_TXO                    = $01B6;  // BIFF8 only
 {%H-}INT_EXCEL_ID_FORCEFULLCALCULATION   = $08A3;
+
+   { Excel OBJ subrecord IDs }
+     INT_EXCEL_OBJID_FTEND               = $0000;
+     INT_EXCEL_OBJID_FTMACRO             = $0004;
+     INT_EXCEL_OBJID_FTBUTTON            = $0005;
+     INT_EXCEL_OBJID_FTGMO               = $0006;  // Group marker
+     INT_EXCEL_OBJID_CF                  = $0007;  // Clipboard format
+     INT_EXCEL_OBJID_PIOGRBIT            = $0008;  // Picture option flags
+     INT_EXCEL_OBJID_PICTFMLA            = $0009;  // Picture fmla-style macro
+     INT_EXCEL_OBJID_FTCBLS              = $000A;  // Checkbox link
+     INT_EXCEL_OBJID_FTRBO               = $000B;  // Radio button
+     INT_EXCEL_OBJID_FTSBS               = $000C;  // Scrollbar
+     INT_EXCEL_OBJID_FTNTS               = $000D;  // Notes structure (= Comment)
+     INT_EXCEL_OBJID_FTSBSFMLA           = $000E;  // Scroll bar fmla-style macro
+     INT_EXCEL_OBJID_FTGBODATA           = $000F;  // Group box data
+     INT_EXCEL_OBJID_FTEDODATA           = $0010;  // Edit control data
+     INT_EXCEL_OBJID_FTRBODATA           = $0011;  // Radio button data
+     INT_EXCEL_OBJID_FTCBLSDATA          = $0012;  // Check box data
+     INT_EXCEL_OBJID_FTLBSDATA           = $0013;  // List box data
+     INT_EXCEL_OBJID_FTCBLSFMLA          = $0014;  // Check box link fmla-style macro
+     INT_EXCEL_OBJID_FTCMO               = $0015;  // Common object data
 
    { Cell Addresses constants }
      MASK_EXCEL_COL_BITS_BIFF8           = $00FF;
@@ -327,13 +357,105 @@ type
     BkGr3: Word;
   end;
 
+  TBIFF8Comment = class
+    ID: Integer;
+    Text: String;
+  end;
 
 { TsSpreadBIFF8Reader }
 
 destructor TsSpreadBIFF8Reader.Destroy;
 begin
   if Assigned(FSharedStringTable) then FSharedStringTable.Free;
+  if Assigned(FCommentList) then FCommentList.Free;
   inherited;
+end;
+
+{ Reads a CONTINUE record. If the Flag "FCommentPending" is active then this
+  record contains the text of a comment assigned to a cell. The length of the
+  string is taken from the preceeding TXO record, and the ID of the comment is
+  extracted in another preceeding record, an OBJ record. }
+procedure TsSpreadBIFF8Reader.ReadCONTINUE(const AStream: TStream);
+var
+  commentStr: String;
+  comment: TBIFF8Comment;
+begin
+  if FCommentPending then begin
+    commentStr := ReadWideString(AStream, FCommentLen);
+    if commentStr <> '' then
+    begin
+      comment := TBIFF8Comment.Create;
+      comment.ID := FCommentID;
+      comment.Text := commentStr;
+      FCommentList.Add(comment);
+    end;
+    FCommentPending := false;
+  end;
+end;
+
+{ Reads a NOTE record (comment associated with a cell). All comments have been
+  collected in the FCommentList of the reader from preceding OBJ, TXO and
+  CONTINUE records. }
+procedure TsSpreadBIFF8Reader.ReadNOTE(const AStream: TStream);
+var
+  r, c: Word;
+  commentID: Word;
+  commentText: String;
+  comment: TBIFF8Comment;
+  i: Integer;
+begin
+  { Row of the comment }
+  r := WordLEToN(AStream.ReadWord);
+  { Column of the comment }
+  c := WordLEToN(AStream.ReadWord);
+  { Option flags, not needed }
+  WordLEToN(AStream.ReadWord);
+  { Comment ID }
+  commentID := WordLEToN(AStream.ReadWord);
+  { Next would be the author - ignored... }
+
+  { Seek comment with this ID in the comment list of the reader. }
+  for i:=0 to FCommentList.Count-1 do
+    if TBIFF8Comment(FCommentList[i]).ID = commentID then
+    begin
+      commentText := TBIFF8Comment(FCommentList[i]).Text;
+      FWorksheet.WriteComment(r, c, commentText);
+      exit;
+    end;
+end;
+
+{ Reads an OBJ record. So far, we only evaluate it to get the ID of the comment
+  stored in a following TXO and CONTINUE record. }
+procedure TsSpreadBIFF8Reader.ReadOBJ(const AStream: TStream);
+var
+  subrecID, subrecSize: Word;
+  streamPos: Int64;
+  lastSubRec: Boolean;
+  objType: Word;
+  objID: Word;
+begin
+  lastSubRec := false;
+  while not lastSubRec do begin
+    subrecID := WordLEToN(AStream.ReadWord);
+    subrecSize := WordLEToN(AStream.ReadWord);
+    streamPos := AStream.Position;
+    case subrecID of
+      INT_EXCEL_OBJID_FTCMO:  // common object data
+        begin
+          objType := WordLEToN(AStream.ReadWord);
+          objID := WordLEToN(AStream.ReadWord);
+          if objType = $19 then begin  // $19 = object is a "comment"
+            FCommentPending := true;
+            FCommentID := objID;
+            exit;
+          end else
+            FCommentPending := false;
+        end;
+      INT_EXCEL_OBJID_FTEND:
+        lastSubRec := true;
+    end;
+    AStream.Position := streamPos + subrecSize;
+  end;
 end;
 
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
@@ -503,12 +625,16 @@ begin
 
     INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
     INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
-    INT_EXCEL_ID_MULBLANK    : ReadMulBlank(AStream);
-    INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
-    INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
+    INT_EXCEL_ID_CONTINUE    : ReadCONTINUE(AStream);
     INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
+    INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
+    INT_EXCEL_ID_MULBLANK    : ReadMulBlank(AStream);
+    INT_EXCEL_ID_NOTE        : ReadNOTE(AStream);
+    INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
+    INT_EXCEL_ID_OBJ         : ReadOBJ(AStream);
     INT_EXCEL_ID_SHAREDFMLA  : ReadSharedFormula(AStream);
     INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
+    INT_EXCEL_ID_TXO         : ReadTXO(AStream);
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
     // In BIFF8 it is usually replaced by the LABELSST record. Excel still
     // uses this record, if it copies formatted text cells to the clipboard.
@@ -608,11 +734,14 @@ var
   BIFF8EOF: Boolean;
 begin
   { Initializations }
+  BIFF8EOF := False;
 
   FWorksheetNames := TStringList.Create;
   FWorksheetNames.Clear;
   FCurrentWorksheet := 0;
-  BIFF8EOF := False;
+
+  if FCommentList = nil then FCommentList := TObjectList.Create
+    else FCommentList.Clear;
 
   { Read workbook globals }
   ReadWorkbookGlobals(AStream);
@@ -645,7 +774,7 @@ begin
   FWorksheetNames.Free;
 end;
 
-procedure TsSpreadBIFF8Reader.ReadLabel(AStream: TStream);
+procedure TsSpreadBIFF8Reader.ReadLABEL(AStream: TStream);
 var
   L: Word;
   ARow, ACol: Cardinal;
@@ -972,6 +1101,30 @@ begin
   FIncompleteCell := nil;
 end;
 
+{ Reads a TXO record (TEXT OBJECT). Needed to retrieve cell comments.
+  We only extract the length of the comment text (in characters). The text itself
+  is contained in the following CONTINUE record. }
+procedure TsSpreadBIFF8Reader.ReadTXO(const AStream: TStream);
+type
+  TBIFF8TXORecord = packed record
+    OptionFlags: Word;
+    TextRot: Word;
+    Reserved1: Word;
+    Reserved2: Word;
+    Reserved3: Word;
+    TextLen: Word;
+    NumFormattingRuns: Word;
+    Reserved4: Word;
+    Reserved5: Word;
+  end;
+var
+  rec: TBIFF8TXORecord;
+begin
+  rec.OptionFlags := 0;  // to silence the compiler
+  AStream.ReadBuffer(rec, Sizeof(Rec));
+  FCommentLen := WordLEToN(rec.TextLen);
+end;
+
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
 
   function FixLineStyle(dw: DWord): TsLineStyle;
@@ -1123,7 +1276,8 @@ begin
   FCellFormatList.Add(fmt);
 end;
 
-procedure TsSpreadBIFF8Reader.ReadFont(const AStream: TStream);
+{ Reads a FONT record. The retrieved font is stored in the workbook's FontList. }
+procedure TsSpreadBIFF8Reader.ReadFONT(const AStream: TStream);
 var
   {%H-}lCodePage: Word;
   lHeight: Word;
@@ -1183,7 +1337,7 @@ begin
 end;
 
 // Read the (number) FORMAT record for formatting numerical data
-procedure TsSpreadBIFF8Reader.ReadFormat(AStream: TStream);
+procedure TsSpreadBIFF8Reader.ReadFORMAT(AStream: TStream);
 var
   fmtString: String;
   fmtIndex: Integer;
