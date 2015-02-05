@@ -18,8 +18,8 @@ const
   INT_EXCEL_ID_EOF         = $000A;
   INT_EXCEL_ID_NOTE        = $001C;
   INT_EXCEL_ID_SELECTION   = $001D;
-  INT_EXCEL_ID_CONTINUE    = $003C;
   INT_EXCEL_ID_DATEMODE    = $0022;
+  INT_EXCEL_ID_CONTINUE    = $003C;
   INT_EXCEL_ID_WINDOW1     = $003D;
   INT_EXCEL_ID_PANE        = $0041;
   INT_EXCEL_ID_CODEPAGE    = $0042;
@@ -52,6 +52,7 @@ const
   INT_EXCEL_ID_FORMAT      = $041E;    // BIFF2-3: $001E
 
   { RECORD IDs which did not change across versions 5-8 }
+  INT_EXCEL_ID_OBJ         = $005D;    // does not exist before BIFF5
   INT_EXCEL_ID_BOUNDSHEET  = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
   INT_EXCEL_ID_MULRK       = $00BD;    // does not exist before BIFF5
   INT_EXCEL_ID_MULBLANK    = $00BE;    // does not exist before BIFF5
