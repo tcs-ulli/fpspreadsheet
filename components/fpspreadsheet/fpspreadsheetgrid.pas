@@ -3487,13 +3487,15 @@ var
   isRotated: Boolean;
   isStacked: Boolean;
   tr: TsTextRotation;
+  fmt: PsCellFormat;
 begin
   Result := Worksheet.ReadAsUTF8Text(ACell);
   if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
   then
     exit;
 
-  tr := Worksheet.ReadTextRotation(ACell);
+  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  tr := fmt^.TextRotation;
   isRotated := (tr <> trHorizontal);
   isStacked := (tr = rtStacked);
 //  isRotated := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation <> trHorizontal);
@@ -3515,7 +3517,7 @@ begin
   if txtSize <= cellSize then
     exit;
 
-  if (ACell^.ContentType = cctNumber) then
+  if (ACell^.ContentType = cctNumber) and (fmt^.NumberFormat = nfGeneral) then
   begin
     // Determine number of decimal places
     p := pos(Workbook.FormatSettings.DecimalSeparator, Result);
