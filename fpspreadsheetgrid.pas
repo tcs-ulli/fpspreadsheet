@@ -1576,7 +1576,7 @@ var
   sr, sr1,sc1,sr2,sc2: Cardinal;                        // sheet row/column
   gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
   i: Integer;
-  rct, saved_rct, temp_rct: TRect;
+  rct, saved_rct, temp_rct, commentcell_rct: TRect;
   clipArea: Trect;
   cell: PCell;
   fmt: PsCellFormat;
@@ -1712,6 +1712,10 @@ begin
         begin
           // single cell
           FDrawingCell := cell;
+          if (cell <> nil) and (cell^.Comment <> '') then
+            commentcell_rct := CellRect(gc, gr)
+          else
+            commentcell_rct := Rect(0,0,0,0);
           // Special treatment of overflowing cells
           if FTextOverflow then
           begin
@@ -1740,6 +1744,8 @@ begin
               begin
                 gds := GetGridDrawState(gc, gr);
                 DoDrawCell(gc, gr, rct, temp_rct);
+                if (FDrawingCell <> nil) and (FDrawingCell^.Comment <> '') then
+                  DrawCommentMarker(temp_rct);
               end;
               FTextOverflowing := false;
 
@@ -1755,6 +1761,10 @@ begin
           FDrawingCell := Worksheet.FindMergeBase(cell);
           Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
           gr := GetGridRow(sr1);
+          if (FDrawingCell <> nil) and (FDrawingCell^.Comment <> '') then
+            commentcell_rct := CellRect(GetGridCol(sc2), gr)
+          else
+            commentcell_rct := Rect(0,0,0,0);
           ColRowToOffSet(False, True, gr, rct.Top, tmp);
           ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
           gc := GetGridCol(sc1);
@@ -1770,8 +1780,10 @@ begin
         gds := GetGridDrawState(gc, gr);
         DoDrawCell(gc, gr, rct, rct);
         // Draw comment marker
-        if (FDrawingCell <> nil) and (FDrawingCell^.Comment <> '') then
-          DrawCommentMarker(rct);
+        if (commentcell_rct.Left <> 0) and (commentcell_rct.Right <> 0) and
+           (commentcell_rct.Top <> 0) and (commentcell_rct.Bottom <> 0)
+        then
+          DrawCommentMarker(commentcell_rct);
       end;
 
       gc := gcNext;
