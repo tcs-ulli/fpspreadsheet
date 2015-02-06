@@ -1832,7 +1832,7 @@ begin
     '<comments xmlns="%s">', [SCHEMAS_SPREADML]));
   AppendToStream(FSComments[FCurSheetNum],
       '<authors>'+
-        '<author />'+
+        '<author />'+   // Not necessary to specify an author here. But the node must exist!
       '</authors>');
   AppendToStream(FSComments[FCurSheetNum],
       '<commentList>');
@@ -1864,7 +1864,14 @@ begin
   AppendToStream(AStream,
       '<text>'+
         '<r>'+
-          '<t xml:space="preserve">'+ comment + '</t>' +
+          '<rPr>'+     // this entire node could be omitted, but then Excel uses some default font out of control
+            '<sz val="9"/>'+
+//            '<color indexed="81"/>'+
+            '<color rgb="000000" />'+   // it could be that color index 81 does not exist in fps files --> use rgb instead
+            '<rFont val="Tahoma"/>'+    // it is not harmful to Excel if "Tahoma" does not exist.
+            '<charset val="1"/>'+
+          '</rPr>'+
+          '<t xml:space="preserve">' + comment + '</t>' +
         '</r>'+
       '</text>');
   AppendToStream(AStream,
@@ -2343,14 +2350,14 @@ begin
   // My xml viewer does not format vml files property --> format in code.
   AppendToStream(FSVmlDrawings[FCurSheetNum],
     '  <o:shapelayout v:ext="edit">'+LineEnding+{Format(}
-    '    <o:idmap v:ext="edit" data="1/>' + LineEnding +
-         // "data" is a comma-separated list with the ids of groups of 1024 comments
+    '    <o:idmap v:ext="edit" data="1" />' + LineEnding +
+         // "data" is a comma-separated list with the ids of groups of 1024 comments -- really?
 //    '    <o:idmap v:ext="edit" data="%d"/>', [FCurSheetNum+1]) + LineEnding +
     '  </o:shapelayout>' + LineEnding);
   AppendToStream(FSVmlDrawings[FCurSheetNum],
     '  <v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe">'+LineEnding+
-    '    <v:stroke joinstyle="miter"/>'+LineEnding+
-    '    <v:path gradientshapeok="t" o:connecttype="rect"/>'+LineEnding+
+    '    <v:stroke joinstyle="miter"/>' + LineEnding +
+    '    <v:path gradientshapeok="t" o:connecttype="rect"/>' + LineEnding +
     '  </v:shapetype>' + LineEnding);
 
   // Write vmlDrawings for each comment (formatting and position of comment box)
@@ -2370,20 +2377,24 @@ begin
   id := 1025 + FDrawingCounter;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
   // My xml viewer does not format vml files property --> format in code.
   AppendToStream(AStream, LineEnding + Format(
-    '  <v:shape id="_x0000_s%d" type="#_x0000_t202" ', [id]) +
-            'style=''position:absolute; margin-left:71.25pt; margin-top:1.5pt; ' + Format(
-                   'width:108pt; height:52.5pt; z-index:%d; visibility:hidden'' ', [FDrawingCounter+1]) +
+    '  <v:shape id="_x0000_s%d" type="#_x0000_t202" ', [id]) + LineEnding + Format(
+    '       style="position:absolute; width:108pt; height:52.5pt; z-index:%d; visibility:hidden" ', [FDrawingCounter+1]) + LineEnding +
+            // it is not necessary to specify margin-left and margin-top here!
+
+//            'style=''position:absolute; margin-left:71.25pt; margin-top:1.5pt; ' + Format(
+//                   'width:108pt; height:52.5pt; z-index:%d; visibility:hidden'' ', [FDrawingCounter+1]) +
                 //          'width:108pt; height:52.5pt; z-index:1; visibility:hidden'' ' +
-            'fillcolor="#ffffe1" o:insetmode="auto"> '+ LineEnding +
-    '    <v:fill color2="#ffffe1"/>'+LineEnding+
-    '    <v:shadow on="t" color="black" obscured="t"/>'+LineEnding+
-    '    <v:path o:connecttype="none"/>'+LineEnding+
-    '    <v:textbox style=''mso-direction-alt:auto''>'+LineEnding+
-    '      <div style=''text-align:left''></div>'+LineEnding+
+
+    '       fillcolor="#ffffe1" o:insetmode="auto"> '+ LineEnding +
+    '    <v:fill color2="#ffffe1" />'+LineEnding+
+    '    <v:shadow on="t" color="black" obscured="t" />'+LineEnding+
+    '    <v:path o:connecttype="none" />'+LineEnding+
+    '    <v:textbox style="mso-direction-alt:auto">'+LineEnding+
+    '      <div style="text-align:left"></div>'+LineEnding+
     '    </v:textbox>' + LineEnding +
     '    <x:ClientData ObjectType="Note">'+LineEnding+
-    '      <x:MoveWithCells/>'+LineEnding+
-    '      <x:SizeWithCells/>'+LineEnding+
+    '      <x:MoveWithCells />'+LineEnding+
+    '      <x:SizeWithCells />'+LineEnding+
     '      <x:Anchor> 1, 15, 0, 2, 2, 79, 4, 4</x:Anchor>'+LineEnding+
     '      <x:AutoFill>False</x:AutoFill>'+LineEnding + Format(
     '      <x:Row>%d</x:Row>', [ACell^.Row]) + LineEnding + Format(
