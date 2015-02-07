@@ -231,13 +231,14 @@ const
      { OOXML mime types constants }
 {%H-}MIME_XML             = 'application/xml';
      MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
-     MIME_SPREADML        = 'application/vnd.openxmlformats-officedocument.spreadsheetml';
+     MIME_OFFICEDOCUMENT  = 'application/vnd.openxmlformats-officedocument';
+     MIME_SPREADML        = MIME_OFFICEDOCUMENT + '.spreadsheetml';
      MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
      MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
      MIME_STYLES          = MIME_SPREADML + '.styles+xml';
      MIME_STRINGS         = MIME_SPREADML + '.sharedStrings+xml';
      MIME_COMMENTS        = MIME_SPREADML + '.comments+xml';
-     MIME_VMLDRAWING      = MIME_SPREADML + '.vmlDrawing';
+     MIME_VMLDRAWING      = MIME_OFFICEDOCUMENT + '.vmlDrawing';
 
      LAST_PALETTE_COLOR   = $3F;  // 63
 
@@ -1866,9 +1867,8 @@ begin
         '<r>'+
           '<rPr>'+     // this entire node could be omitted, but then Excel uses some default font out of control
             '<sz val="9"/>'+
-//            '<color indexed="81"/>'+
-            '<color rgb="000000" />'+   // it could be that color index 81 does not exist in fps files --> use rgb instead
-            '<rFont val="Tahoma"/>'+    // it is not harmful to Excel if "Tahoma" does not exist.
+            '<color rgb="000000" />'+   // It could be that color index 81 does not exist in fps files --> use rgb instead
+            '<rFont val="Arial"/>'+     // It is not harmful to Excel if the font does not exist.
             '<charset val="1"/>'+
           '</rPr>'+
           '<t xml:space="preserve">' + comment + '</t>' +
@@ -2349,10 +2349,9 @@ begin
          'xmlns:x="urn:schemas-microsoft-com:office:excel">' + LineEnding);
   // My xml viewer does not format vml files property --> format in code.
   AppendToStream(FSVmlDrawings[FCurSheetNum],
-    '  <o:shapelayout v:ext="edit">'+LineEnding+{Format(}
+    '  <o:shapelayout v:ext="edit">' + LineEnding +
     '    <o:idmap v:ext="edit" data="1" />' + LineEnding +
          // "data" is a comma-separated list with the ids of groups of 1024 comments -- really?
-//    '    <o:idmap v:ext="edit" data="%d"/>', [FCurSheetNum+1]) + LineEnding +
     '  </o:shapelayout>' + LineEnding);
   AppendToStream(FSVmlDrawings[FCurSheetNum],
     '  <v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe">'+LineEnding+
@@ -2427,6 +2426,7 @@ begin
   AppendToStream(FSSheetRels[FCurSheetNum], Format(
       '<Relationship Id="rId1" Type="%s" Target="../drawings/vmlDrawing%d.vml" />',
         [SCHEMAS_DRAWINGS, FCurSheetNum+1]));
+
   // Footer
   AppendToStream(FSSheetRels[FCurSheetNum],
     '</Relationships>');
@@ -2495,24 +2495,27 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteContent;
 var
-  i: Integer;
+  i, counter: Integer;
 begin
   { --- WorkbookRels ---
   { Workbook relations - Mark relation to all sheets }
+  counter := 0;
   AppendToStream(FSWorkbookRels,
     XML_HEADER);
   AppendToStream(FSWorkbookRels,
     '<Relationships xmlns="' + SCHEMAS_RELS + '">');
-  AppendToStream(FSWorkbookRels,
-      '<Relationship Id="rId1" Type="' + SCHEMAS_STYLES + '" Target="styles.xml" />');
-  AppendToStream(FSWorkbookRels,
-      '<Relationship Id="rId2" Type="' + SCHEMAS_STRINGS + '" Target="sharedStrings.xml" />');
-
-  for i:=1 to Workbook.GetWorksheetCount do
+  while counter <= Workbook.GetWorksheetCount do begin
+    inc(counter);
     AppendToStream(FSWorkbookRels, Format(
       '<Relationship Type="%s" Target="worksheets/sheet%d.xml" Id="rId%d" />',
-        [SCHEMAS_WORKSHEET, i, i+2]));    // +2 because of styles.xml and sharedStrings.xml
-
+        [SCHEMAS_WORKSHEET, counter, counter]));
+  end;
+  AppendToStream(FSWorkbookRels, Format(
+      '<Relationship Id="rId%d" Type="%s" Target="styles.xml" />',
+        [counter+1, SCHEMAS_STYLES]));
+  AppendToStream(FSWorkbookRels, Format(
+      '<Relationship Id="rId%d" Type="%s" Target="sharedStrings.xml" />',
+        [counter+2, SCHEMAS_STRINGS]));
   AppendToStream(FSWorkbookRels,
     '</Relationships>');
 
@@ -2532,9 +2535,10 @@ begin
       '</bookViews>');
   AppendToStream(FSWorkbook,
       '<sheets>');
-  for i:=1 to Workbook.GetWorksheetCount do
+  for counter:=1 to Workbook.GetWorksheetCount do
     AppendToStream(FSWorkbook, Format(
-        '<sheet name="%s" sheetId="%d" r:id="rId%d" />', [Workbook.GetWorksheetByIndex(i-1).Name, i, i+2]));
+        '<sheet name="%s" sheetId="%d" r:id="rId%d" />',
+          [Workbook.GetWorksheetByIndex(counter-1).Name, counter, counter]));
   AppendToStream(FSWorkbook,
       '</sheets>');
   AppendToStream(FSWorkbook,
@@ -2825,16 +2829,19 @@ begin
     end;
 
     for i:=0 to High(FSComments) do begin
+      if FSComments[i] = nil then continue;
       FSComments[i].Position := 0;
       FZip.Entries.AddFileEntry(FSComments[i], OOXML_PATH_XL + Format('comments%d.xml', [i+1]));
     end;
 
     for i:=0 to High(FSSheetRels) do begin
+      if FSSheetRels[i] = nil then continue;
       FSSheetRels[i].Position := 0;
       FZip.Entries.AddFileEntry(FSSheetRels[i], OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]));
     end;
 
     for i:=0 to High(FSVmlDrawings) do begin
+      if FSVmlDrawings[i] = nil then continue;
       FSVmlDrawings[i].Position := 0;
       FZip.Entries.AddFileEntry(FSVmlDrawings[i], OOXML_PATH_XL_DRAWINGS + Format('vmlDrawing%d.vml', [i+1]));
     end;
