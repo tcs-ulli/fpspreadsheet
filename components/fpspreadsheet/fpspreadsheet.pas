@@ -6426,14 +6426,12 @@ end;
 constructor TsWorkbook.Create;
 var
   fmt: TsCellFormat;
-  cp: String;
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
   FFormat := sfExcel8;
   FCodePage := GetDefaultTextEncoding;
-//  FEncoding := seLatin1;
 
   FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);

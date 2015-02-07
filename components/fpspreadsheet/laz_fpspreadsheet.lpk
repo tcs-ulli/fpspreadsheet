@@ -18,7 +18,7 @@
       </Parsing>
       <Other>
         <CompilerMessages>
-          <IgnoredMessages idx4055="True"/>
+          <IgnoredMessages idx5028="True" idx4055="True"/>
         </CompilerMessages>
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>

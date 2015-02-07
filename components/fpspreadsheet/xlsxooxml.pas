@@ -455,12 +455,10 @@ end;
 
 function TsSpreadOOXMLReader.FindCommentsFileName(ANode: TDOMNode): String;
 var
-  nodeName: String;
   s: String;
 begin
   while ANode <> nil do
   begin
-    nodeName := ANode.NodeName;
     s := GetAttrValue(ANode, 'Type');
     if s = SCHEMAS_COMMENTS then
     begin

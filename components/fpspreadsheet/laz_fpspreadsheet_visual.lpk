@@ -52,6 +52,8 @@ It provides graphical components like a grid and chart."/>
       </Item1>
       <Item2>
         <PackageName Value="laz_fpspreadsheet"/>
+        <MaxVersion Major="1" Minor="5"/>
+        <MinVersion Major="1" Minor="5"/>
       </Item2>
       <Item3>
         <PackageName Value="LCL"/>

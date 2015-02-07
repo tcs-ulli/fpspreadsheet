@@ -239,23 +239,23 @@ const
 
    { Excel OBJ subrecord IDs }
      INT_EXCEL_OBJID_FTEND               = $0000;
-     INT_EXCEL_OBJID_FTMACRO             = $0004;
-     INT_EXCEL_OBJID_FTBUTTON            = $0005;
-     INT_EXCEL_OBJID_FTGMO               = $0006;  // Group marker
-     INT_EXCEL_OBJID_CF                  = $0007;  // Clipboard format
-     INT_EXCEL_OBJID_PIOGRBIT            = $0008;  // Picture option flags
-     INT_EXCEL_OBJID_PICTFMLA            = $0009;  // Picture fmla-style macro
-     INT_EXCEL_OBJID_FTCBLS              = $000A;  // Checkbox link
-     INT_EXCEL_OBJID_FTRBO               = $000B;  // Radio button
-     INT_EXCEL_OBJID_FTSBS               = $000C;  // Scrollbar
-     INT_EXCEL_OBJID_FTNTS               = $000D;  // Notes structure (= Comment)
-     INT_EXCEL_OBJID_FTSBSFMLA           = $000E;  // Scroll bar fmla-style macro
-     INT_EXCEL_OBJID_FTGBODATA           = $000F;  // Group box data
-     INT_EXCEL_OBJID_FTEDODATA           = $0010;  // Edit control data
-     INT_EXCEL_OBJID_FTRBODATA           = $0011;  // Radio button data
-     INT_EXCEL_OBJID_FTCBLSDATA          = $0012;  // Check box data
-     INT_EXCEL_OBJID_FTLBSDATA           = $0013;  // List box data
-     INT_EXCEL_OBJID_FTCBLSFMLA          = $0014;  // Check box link fmla-style macro
+{%H-}INT_EXCEL_OBJID_FTMACRO             = $0004;
+{%H-}INT_EXCEL_OBJID_FTBUTTON            = $0005;
+{%H-}INT_EXCEL_OBJID_FTGMO               = $0006;  // Group marker
+{%H-}INT_EXCEL_OBJID_CF                  = $0007;  // Clipboard format
+{%H-}INT_EXCEL_OBJID_PIOGRBIT            = $0008;  // Picture option flags
+{%H-}INT_EXCEL_OBJID_PICTFMLA            = $0009;  // Picture fmla-style macro
+{%H-}INT_EXCEL_OBJID_FTCBLS              = $000A;  // Checkbox link
+{%H-}INT_EXCEL_OBJID_FTRBO               = $000B;  // Radio button
+{%H-}INT_EXCEL_OBJID_FTSBS               = $000C;  // Scrollbar
+{%H-}INT_EXCEL_OBJID_FTNTS               = $000D;  // Notes structure (= Comment)
+{%H-}INT_EXCEL_OBJID_FTSBSFMLA           = $000E;  // Scroll bar fmla-style macro
+{%H-}INT_EXCEL_OBJID_FTGBODATA           = $000F;  // Group box data
+{%H-}INT_EXCEL_OBJID_FTEDODATA           = $0010;  // Edit control data
+{%H-}INT_EXCEL_OBJID_FTRBODATA           = $0011;  // Radio button data
+{%H-}INT_EXCEL_OBJID_FTCBLSDATA          = $0012;  // Check box data
+{%H-}INT_EXCEL_OBJID_FTLBSDATA           = $0013;  // List box data
+{%H-}INT_EXCEL_OBJID_FTCBLSFMLA          = $0014;  // Check box link fmla-style macro
      INT_EXCEL_OBJID_FTCMO               = $0015;  // Common object data
 
    { Cell Addresses constants }
@@ -401,7 +401,6 @@ var
   r, c: Word;
   commentID: Word;
   commentText: String;
-  comment: TBIFF8Comment;
   i: Integer;
 begin
   { Row of the comment }
