@@ -3406,6 +3406,7 @@ begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
+      Canvas.Font.Assign(Font);
       ColWidths[0] := Canvas.TextWidth(' 999999 ');
       RowHeights[0] := DefaultRowHeight;
     end;
