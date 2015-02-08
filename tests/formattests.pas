@@ -1450,8 +1450,8 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorksheet:= MyWorkBook.AddWorksheet(SHEETNAME);
-    for r := 0 to 7 do     // change FontSize in each row
-      for c := 0 to 7 do   // change FontColor in each column
+    for r := 0 to 7 do     // each row has a different font size
+      for c := 0 to 7 do   // each column has a different font color
       begin
         MyWorksheet.WriteNumber(r, c, 123);
         MyWorksheet.WriteBackgroundColor(r, c, 0);
