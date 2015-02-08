@@ -71,6 +71,8 @@ type
     procedure TestWriteRead_DateTimeFormats(AFormat: TsSpreadsheetFormat);
     // Test merged cells
     procedure TestWriteRead_MergedCells(AFormat: TsSpreadsheetFormat);
+    // Many XF records
+    procedure TestWriteRead_ManyXF(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out numbers & reads back.
@@ -84,6 +86,7 @@ type
     procedure TestWriteRead_BIFF2_DateTimeFormats;
     procedure TestWriteRead_BIFF2_MergedCells;
     procedure TestWriteRead_BIFF2_NumberFormats;
+    procedure TestWriteRead_BIFF2_ManyXFRecords;
     // These features are not supported by Excel2 --> no test cases required!
     // - BorderStyle
     // - TextRotation
@@ -1427,7 +1430,79 @@ begin
   TestWriteRead_MergedCells(sfOOXML);
 end;
 
+{ If a biff2 file contains more than 62 XF records the XF record index is stored
+  in a separats IXFE record. This is tested here. }
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ManyXF(AFormat: TsSpreadsheetFormat);
+const
+  SHEETNAME = 'Too-many-xf-records';
+  FontSizes: array[0..7] of Integer = (9, 10, 12, 14, 16, 18, 20, 24);
+var
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  cell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+  r1, c1, r2, c2: Cardinal;
+  r, c: Cardinal;
+  fnt: TsFont;
+  actual, expected: String;
+  i: Integer;
+begin
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorksheet:= MyWorkBook.AddWorksheet(SHEETNAME);
+    for r := 0 to 7 do     // change FontSize in each row
+      for c := 0 to 7 do   // change FontColor in each column
+      begin
+        MyWorksheet.WriteNumber(r, c, 123);
+        MyWorksheet.WriteBackgroundColor(r, c, 0);
+        MyWorksheet.WriteFont(r, c, 'Times New Roman', FontSizes[r], [], c);  // Biff2 has only 8 colors --> re-use the black!
+        // --> in total 64 combinations
+      end;
+    TempFile:=NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
 
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+
+    // 1st sheet: merged cells with text
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, SHEETNAME);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet ' + SHEETNAME);
+
+    for r:=0 to MyWorksheet.GetLastRowIndex do
+      for c := 0 to MyWorksheet.GetLastColIndex do
+      begin
+        cell := MyWorksheet.FindCell(r, c);
+        fnt := MyWorksheet.ReadCellFont(cell);
+        expected := FloatToStr(FontSizes[r]);
+        actual := FloatToStr(fnt.Size);
+        CheckEquals(expected, actual,
+          'Font size mismatch, cell '+ CellNotation(MyWorksheet, r, c));
+        expected := IntToStr(c);
+        actual := IntToStr(fnt.Color);
+        CheckEquals(expected, actual,
+          'Font color mismatch, cell '+ CellNotation(MyWorksheet, r, c));
+      end;
+
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_ManyXFRecords;
+begin
+  TestWriteRead_ManyXF(sfExcel2);
+end;
 
 initialization
   RegisterTest(TSpreadWriteReadFormatTests);
