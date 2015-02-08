@@ -3401,12 +3401,12 @@ begin
   end else
   if Worksheet <> nil then begin
     Convert_sFont_to_Font(Workbook.GetDefaultFont, Font);
+    Canvas.Font.Assign(Font);
     ColCount := Max(integer(Worksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
     RowCount := Max(integer(Worksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
-      Canvas.Font.Assign(Font);
       ColWidths[0] := Canvas.TextWidth(' 999999 ');
       RowHeights[0] := DefaultRowHeight;
     end;
@@ -3600,6 +3600,8 @@ begin
       lCol := Worksheet.FindCol(i - FHeaderCount);
       if lCol <> nil then
         w := CalcColWidth(lCol^.Width)
+      else
+        w := CalcColWidth(Worksheet.DefaultColWidth);
     end;
     ColWidths[i] := w;
   end;
