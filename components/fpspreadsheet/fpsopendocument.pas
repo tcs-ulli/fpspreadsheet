@@ -3461,6 +3461,10 @@ begin
       comment,
       '</table:table-cell>')
   else
+  if comment <> '' then
+    AppendToStream(AStream,
+      '<table:table-cell ' + spannedStr + '>' + comment + '</table:table-cell>')
+  else
     AppendToStream(AStream,
       '<table:table-cell ' + spannedStr + '/>');
 end;
@@ -4049,10 +4053,15 @@ begin
       formula, valuetype, value, lStyle, spannedStr
     ]))
   else
+  begin
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" %s %s/>', [
-      formula, lStyle, spannedStr
-    ]));
+      '<table:table-cell table:formula="=%s" %s %s', [
+        formula, lStyle, spannedStr]));
+    if comment <> '' then
+      AppendToStream(AStream, '>' + comment + '</table:table-cell>')
+    else
+      AppendToStream(AStream, '/>');
+  end;
 end;
 
 

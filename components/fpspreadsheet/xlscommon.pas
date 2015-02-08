@@ -918,6 +918,7 @@ begin
       try
         List.Text := s;  // Fix line endings which are #10 in file
         s := Copy(List.Text, 1, Length(List.Text) - Length(LineEnding));
+        s := ConvertEncoding(s, FCodePage, encodingUTF8);
         FWorksheet.WriteComment(r, c, s);
       finally
         List.Free;
@@ -2011,7 +2012,7 @@ begin
   // have to be written.
   rec.Row := $FFFF;  // indicator that this will be a continuation record
   rec.Col := 0;
-  p := CHUNK_SIZE;
+  p := CHUNK_SIZE + 1;
   dec(L, CHUNK_SIZE);
   while L > 0 do begin
     rec.TextLen := Min(L, CHUNK_SIZE);
