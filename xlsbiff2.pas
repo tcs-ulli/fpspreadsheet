@@ -59,6 +59,7 @@ type
   private
 //    WorkBookEncoding: TsEncoding;
     FFont: TsFont;
+    FPendingXFIndex: Word;
   protected
     procedure CreateNumFormatList; override;
     procedure ReadBlank(AStream: TStream); override;
@@ -70,6 +71,7 @@ type
     procedure ReadFormat(AStream: TStream); override;
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadInteger(AStream: TStream);
+    procedure ReadIXFE(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
@@ -407,6 +409,7 @@ begin
   r := WordLEToN(rec.Row);
   c := WordLEToN(rec.Col);
   xf := rec.Attrib1 and $3F;
+  if xf = 63 then xf := FPendingXFIndex;
 
   { Create cell }
   if FIsVirtualMode then begin
@@ -539,6 +542,7 @@ begin
       INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
       INT_EXCEL_ID_INTEGER     : ReadInteger(AStream);
+      INT_EXCEL_ID_IXFE        : ReadIXFE(AStream);
       INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
       INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
       INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
@@ -661,6 +665,7 @@ begin
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := rec.Attrib1 and $3F;
+  if XF = 63 then XF := FPendingXFIndex;
 
   { String with 8-bit size }
   L := rec.TextLen;
@@ -715,6 +720,7 @@ begin
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := rec.Attrib1 and $3F;
+  if XF = 63 then XF := FPendingXFIndex;
   value := rec.Value;
 
   {Create cell}
@@ -752,6 +758,7 @@ begin
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := rec.Attrib1 and $3F;
+  if XF = 63 then XF := FPendingXFIndex;
   AWord := WordLEToN(rec.Value);
 
   { Create cell }
@@ -773,6 +780,16 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads an IXFE record. This record contains the "true" XF index of a cell. It
+  is used if there are more than 62 XF records (XF field is only 6-bit). The
+  IXFE record is used in front of the cell record using it
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Reader.ReadIXFE(AStream: TStream);
+begin
+  FPendingXFIndex := WordLEToN(AStream.ReadWord);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the row, column and xf index from the stream
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Reader.ReadRowColXF(AStream: TStream;
@@ -783,7 +800,9 @@ begin
   ACol := WordLEToN(AStream.ReadWord);
 
   { Index to XF record }
-  AXF := AStream.ReadByte;
+  AXF := AStream.ReadByte and $3F; // to do: if AXF = $3F = 63 then there must be a IXFE record which contains the true XF index!
+  if AXF = $3F then
+    AXF := FPendingXFIndex;
 
   { Index to format and font record, cell style - ignored because contained in XF
     Must read to keep the record in sync. }
