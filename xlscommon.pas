@@ -204,6 +204,12 @@ type
   function ConvertToExcelError(AValue: TsErrorValue): byte;
 
 type
+  { TsBIFFHeader }
+  TsBIFFHeader = packed record
+    RecordID: Word;
+    RecordSize: Word;
+  end;
+
   { TsBIFFNumFormatList }
   TsBIFFNumFormatList = class(TsCustomNumFormatList)
   protected
@@ -311,6 +317,9 @@ type
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
+
+    // Helper function for writing the BIFF header
+    procedure WriteBIFFHeader(AStream: TStream; ARecID, ARecSize: Word);
     // Helper function for writing a string with 8-bit length }
     function WriteString_8BitLen(AStream: TStream; AString: String): Integer; virtual;
 
@@ -1817,6 +1826,24 @@ begin
   Result := FLastCol;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes the BIFF record header consisting of the record ID and the size of
+  data to be written immediately afterwards.
+
+  @param  ARecID    ID of the record - see the INT_EXCEL_ID_XXXX constants
+  @param  ARedSize  Size (in bytes) of the data which follow immediately
+                    afterwards
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteBIFFHeader(AStream: TStream;
+  ARecID, ARecSize: Word);
+var
+  rec: TsBIFFHeader;
+begin
+  rec.RecordID := WordToLE(ARecID);
+  rec.RecordSize := WordToLE(ARecSize);
+  AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
 { Writes an empty ("blank") cell. Needed for formatting empty cells.
   Valid for BIFF5 and BIFF8. Needs to be overridden for BIFF2 which has a
   different record structure. }
@@ -1844,7 +1871,7 @@ begin
 end;
 
 { Writes a BOOLEAN cell record.
-  Valie for BIFF3-BIFF8. Override for BIFF2. }
+  Valid for BIFF3-BIFF8. Override for BIFF2. }
 procedure TsSpreadBIFFWriter.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
 var
@@ -1883,8 +1910,7 @@ var
   cp: Word;
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CODEPAGE));
-  AStream.WriteWord(WordToLE(2));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_CODEPAGE, 2);
 
   { Codepage }
   FCodePage := lowercase(ACodePage);
@@ -2028,8 +2054,7 @@ procedure TsSpreadBIFFWriter.WriteDateMode(AStream: TStream);
 begin
   { BIFF Record header }
   // todo: check whether this is in the right place. should end up in workbook globals stream
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_DATEMODE));
-  AStream.WriteWord(WordToLE(2));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_DATEMODE, 2);
 
   case FDateMode of
     dm1900: AStream.WriteWord(WordToLE(0));
@@ -2155,22 +2180,23 @@ begin
 end;
 
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
+const
+  NUM_COLORS = 56;
 var
   i, n: Integer;
   rgb: TsColorValue;
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PALETTE));
-  AStream.WriteWord(WordToLE(2 + 4*56));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PALETTE, 2 + 4*NUM_COLORS);
 
   { Number of colors }
-  AStream.WriteWord(WordToLE(56));
+  AStream.WriteWord(WordToLE(NUM_COLORS));
 
   { Take the colors from the palette of the Worksheet }
   n := Workbook.GetPaletteSize;
 
   { Skip the first 8 entries - they are hard-coded into Excel }
-  for i:=8 to 63 do
+  for i := 8 to 8 + NUM_COLORS - 1 do
   begin
     rgb := Math.IfThen(i < n, Workbook.GetPaletteColor(i), $FFFFFF);
     AStream.WriteDWord(DWordToLE(rgb))
@@ -2185,8 +2211,7 @@ var
   dbl: Double;
 begin
   { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PAGESETUP));
-  AStream.WriteWord(WordToLE(9*2 + 2*8));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PAGESETUP, 9*2 + 2*8);
 
   { Paper size }
   AStream.WriteWord(WordToLE(0));  // 1 = Letter, 9 = A4
@@ -2242,9 +2267,8 @@ begin
     error. They possibly require an additional SELECTION record. }
 
   { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_PANE));
   if isBIFF58 then n := 10 else n := 9;
-  AStream.WriteWord(WordToLE(n));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PANE, n);
 
   { Position of the vertical split (px, 0 = No vertical split):
     - Unfrozen pane: Width of the left pane(s) (in twips = 1/20 of a point)
@@ -2706,8 +2730,7 @@ begin
   end;
 
   { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_ROW));
-  AStream.WriteWord(WordToLE(16));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_ROW, 16);;
 
   { Index of row }
   AStream.WriteWord(WordToLE(Word(ARowIndex)));
@@ -2792,8 +2815,7 @@ begin
   end;
 
   { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SELECTION));
-  AStream.WriteWord(WordToLE(15));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_SELECTION, 15);
 
   { Pane identifier }
   AStream.WriteByte(APane);
@@ -2923,8 +2945,7 @@ var
   flags: Word;
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SHEETPR));
-  AStream.WriteWord(WordToLE(2));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_SHEETPR, 2);
 
   flags := $04C1;
   AStream.WriteWord(WordToLE(flags));
@@ -3016,8 +3037,7 @@ end;
 procedure TsSpreadBIFFWriter.WriteWindow1(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW1));
-  AStream.WriteWord(WordToLE(18));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_WINDOW1, 18);
 
   { Horizontal position of the document window, in twips = 1 / 20 of a point }
   AStream.WriteWord(WordToLE(0));

@@ -117,10 +117,16 @@ type
   { TsSpreadBIFF8Writer }
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
+  private
+    FCommentList: TFPList;
+    procedure WriteCommentsCallback(ACell: PCell; AStream: TStream);
+
   protected
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    procedure WriteComment(AStream: TStream; ACell: PCell); override;
+    procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
@@ -129,8 +135,14 @@ type
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteMSODrawing1(AStream: TStream; ANumShapes: Word; ACell: PCell);
+    procedure WriteMSODrawing2(AStream: TStream; ACell: PCell; AObjID: Word);
+    procedure WriteMSODrawing2_Data(AStream: TStream; ACell: PCell; AShapeID: Word);
+    procedure WriteMSODrawing3(AStream: TStream; ACell: PCell);
+    procedure WriteNOTE(AStream: TStream; ACell: PCell; AObjID: Word);
     procedure WriteNumFormat(AStream: TStream; AFormatData: TsNumFormatData;
       AListIndex: Integer); override;
+    procedure WriteOBJ(AStream: TStream; AObjID: Word);
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): word; override;
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
@@ -139,8 +151,9 @@ type
       AFlags: TsRelFlags): Word; override;
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteStringRecord(AStream: TStream; AString: string); override;
-    procedure WriteStyle(AStream: TStream);
-    procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteSTYLE(AStream: TStream);
+    procedure WriteTXO(AStream: TStream; ACell: PCell);
+    procedure WriteWINDOW2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
       XFType_Prot: Byte = 0); override;
   public
@@ -227,11 +240,13 @@ var
 implementation
 
 uses
-  Math, lconvencoding, fpsStrings, fpsStreams, fpsExprParser;
+  Math, lconvencoding,
+  fpsStrings, fpsStreams, fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }
      INT_EXCEL_ID_MERGEDCELLS            = $00E5;  // BIFF8 only
+     INT_EXCEL_ID_MSODRAWING             = $00EC;  // BIFF8 only
      INT_EXCEL_ID_SST                    = $00FC;  // BIFF8 only
      INT_EXCEL_ID_LABELSST               = $00FD;  // BIFF8 only
      INT_EXCEL_ID_TXO                    = $01B6;  // BIFF8 only
@@ -312,6 +327,8 @@ const
        XF_ROTATION_STACKED
      );
 
+     SHAPEID_BASE = 1024;
+
 type
   TBIFF8_DimensionsRecord = packed record
     RecordID: Word;
@@ -357,10 +374,25 @@ type
     BkGr3: Word;
   end;
 
+  TBIFF8TXORecord = packed record
+    RecordID: Word;
+    RecordSize: Word;
+    OptionFlags: Word;
+    TextRot: Word;
+    Reserved1: Word;
+    Reserved2: Word;
+    Reserved3: Word;
+    TextLen: Word;
+    NumFormattingRuns: Word;
+    Reserved4: Word;
+    Reserved5: Word;
+  end;
+
   TBIFF8Comment = class
     ID: Integer;
     Text: String;
   end;
+
 
 { TsSpreadBIFF8Reader }
 
@@ -1104,23 +1136,11 @@ end;
   We only extract the length of the comment text (in characters). The text itself
   is contained in the following CONTINUE record. }
 procedure TsSpreadBIFF8Reader.ReadTXO(const AStream: TStream);
-type
-  TBIFF8TXORecord = packed record
-    OptionFlags: Word;
-    TextRot: Word;
-    Reserved1: Word;
-    Reserved2: Word;
-    Reserved3: Word;
-    TextLen: Word;
-    NumFormattingRuns: Word;
-    Reserved4: Word;
-    Reserved5: Word;
-  end;
 var
   rec: TBIFF8TXORecord;
 begin
   rec.OptionFlags := 0;  // to silence the compiler
-  AStream.ReadBuffer(rec, Sizeof(Rec));
+  AStream.ReadBuffer(rec.OptionFlags, Sizeof(Rec) - 2*SizeOf(Word));
   FCommentLen := WordLEToN(rec.TextLen);
 end;
 
@@ -1462,6 +1482,7 @@ begin
       else begin
         WriteRows(AStream, FWorksheet);
         WriteCellsToStream(AStream, FWorksheet.Cells);
+        WriteComments(AStream, FWorksheet);
       end;
 
       // View settings block
@@ -1490,8 +1511,7 @@ end;
 procedure TsSpreadBIFF8Writer.WriteBOF(AStream: TStream; ADataType: Word);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOF));
-  AStream.WriteWord(WordToLE(16)); //total record size
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_BOF, 16);
 
   { BIFF version. Should only be used if this BOF is for the workbook globals }
   { OpenOffice rejects to correctly read xls files if this field is
@@ -1515,19 +1535,14 @@ begin
   AStream.WriteDWord(DWordToLE(0)); //?????????
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteBoundsheet ()
-*
-*  DESCRIPTION:    Writes an Excel 8 BOUNDSHEET record
-*
-*                  Always located on the workbook globals substream.
-*
-*                  One BOUNDSHEET is written for each worksheet.
-*
-*  RETURNS:        The stream position where the absolute stream position
-*                  of the BOF of this sheet should be written (4 bytes size).
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 BOUNDSHEET record
+  Always located in the workbook globals substream.
+  One BOUNDSHEET is written for each worksheet.
+
+  @return   The stream position where the absolute stream position
+            of the BOF of this sheet should be written (4 bytes size).
+-------------------------------------------------------------------------------}
 function TsSpreadBIFF8Writer.WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
 var
   Len: Byte;
@@ -1537,8 +1552,7 @@ begin
   Len := Length(WideSheetName);
 
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOUNDSHEET));
-  AStream.WriteWord(WordToLE(6 + 1 + 1 + Len * Sizeof(WideChar)));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_BOUNDSHEET, 8 + Len * Sizeof(WideChar));
 
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -1558,6 +1572,63 @@ begin
   AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Inherited method for writing a cell comment immediately after cell content.
+  A writing method has been implemented by xlscommon. But in BIFF8, this
+  must not do anything because comments are collected in a list and
+  written en-bloc. See WriteComments.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteComment(AStream: TStream; ACell: PCell);
+begin
+  // Nothing to do. Reverts the behavior introduced by xlscommon.
+  Unused(AStream, ACell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes all comments to the worksheet stream
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteComments(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  i: Integer;
+begin
+  exit;      // Remove after comments can be written correctly
+  {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
+
+  FCommentList := TFPList.Create;
+  try
+    IterateThroughCells(AStream, AWorksheet.Cells, WriteCommentsCallback);
+    if FCommentList.Count = 0 then
+      exit;
+
+    for i:=0 to FCommentList.Count-1 do begin
+      if i = 0 then
+        WriteMSODRAWING1(AStream, FCommentList.Count, PCell(FCommentList[i]))
+      else
+        WriteMSODRAWING2(AStream, PCell(FCommentList[i]), i+1);
+      WriteOBJ(AStream, i+1);
+      WriteMSODRAWING3(AStream, PCell(FCommentList[i]));
+      WriteTXO(AStream, PCell(FCommentList[i]));
+    end;
+
+    for i:=0 to FCommentList.Count-1 do
+      WriteNOTE(AStream, PCell(FCommentList[i]), i+1);
+  finally
+    FreeAndNil(FCommentList);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper method which stores the pointer to a cell in the FCommentsList if the
+  cell contains a comment
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteCommentsCallback(ACell: PCell;
+  AStream: TStream);
+begin
+  Unused(AStream);
+  if (ACell <> nil) and (ACell^.Comment <> '') then
+    FCommentList.Add(ACell);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 8 DIMENSIONS record
@@ -1590,29 +1661,20 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteEOF ()
-*
-*  DESCRIPTION:    Writes an Excel 8 EOF record
-*
-*                  This must be the last record on an Excel 8 stream
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 EOF record.
+  This must be the last record on an Excel 8 stream
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteEOF(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_EOF));
-  AStream.WriteWord(WordToLE($0000));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EOF, 0);
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteFont ()
-*
-*  DESCRIPTION:    Writes an Excel 8 FONT record
-*
-*                  The font data is passed in an instance of TsFont
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 FONT record.
+  The font data is passed as an instance of TsFont
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteFont(AStream: TStream; AFont: TsFont);
 var
   Len: Byte;
@@ -1631,8 +1693,7 @@ begin
   Len := Length(WideFontName);
 
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONT));
-  AStream.WriteWord(WordToLE(14 + 1 + 1 + Len * Sizeof(WideChar)));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_FONT, 16 + Len * Sizeof(WideChar));
 
   { Height of the font in twips = 1/20 of a point }
   AStream.WriteWord(WordToLE(round(AFont.Size*20)));
@@ -1691,7 +1752,179 @@ var
   i: Integer;
 begin
   for i:=0 to Workbook.GetFontCount-1 do
-    WriteFont(AStream, Workbook.GetFont(i));
+    WriteFONT(AStream, Workbook.GetFont(i));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the first MSODRAWING record to file. It is needed for a comment
+  attached to a cell, but also for embedded shapes (currently not supported).
+
+<pre>
+  Structure of this record:
+                                                    Type    Ver   Inst
+     Dg container                                   $F002          0
+       |--- FDG record                              $F008    0     1
+       |--- SpGr container                          $F003          0
+             |---- Sp container  (group shape)      $F004          0
+             |       |---- FSpGr record             $F009    1     0
+MSODRAWING1  |       |---- FSp record               $F00A    2     0
+................................................................................
+MSODRAWING2  |---- Sp container  (child shape)      $F004          0
+                     |---- FSp record               $F00A    2    202 (Textbox)
+                     |---- FOpt record              $F00B    3    13 (num props)
+                     |---- Client anchor record     $F010    0     0
+                     |---- Client data record       $F011    0     0
+</pre>
+-------------------------------------------------------------------------------}
+procedure TsSpreadBiff8Writer.WriteMSODrawing1(AStream: TStream; ANumShapes: Word;
+  ACell: PCell);
+const
+  DRAWING_ID = 1;
+var
+  len: DWord;
+  tmpStream: TMemoryStream;
+begin
+  tmpStream := TMemoryStream.Create;
+  try
+    { OfficeArtDgContainer record (container of drawing) }
+    len := 224 + 152*(ANumShapes - 1);
+    WriteMSODgContainer(tmpStream, len);
+
+    { OfficeArtFdg record (info on shapes: num shapes, drawing ID, last Obj ID ) }
+    WriteMSOFdgRecord(tmpStream, ANumShapes + 1, DRAWING_ID, SHAPEID_BASE + ANumShapes);
+
+    { OfficeArtSpGrContainer record (shape group container) }
+    len := 200 + 152*(ANumShapes - 1);
+    WriteMSOSpGrContainer(tmpStream, len);
+
+    { OfficeArtSpContainer record }
+    WriteMSOSpContainer(tmpStream, 40);
+
+    { OfficeArtFSpGr record }
+    WriteMSOFSpGrRecord(tmpStream, 0, 0, 0, 0);       // 16 + 8 bytes
+
+    { OfficeArtFSp record }
+    WriteMSOFSpRecord(tmpStream, SHAPEID_BASE, MSO_SPT_NOTPRIMITIVE,
+      MSO_FSP_BITS_GROUP + MSO_FSP_BITS_PATRIARCH);   // 8 + 8 bytes
+
+    { Data for the 1st comment }
+    WriteMSODrawing2_Data(tmpStream, ACell, SHAPEID_BASE + 1);
+
+    // Write the BIFF stream
+    tmpStream.Position := 0;
+    len := tmpStream.Size;
+    WriteBiffHeader(AStream, INT_EXCEL_ID_MSODRAWING, tmpStream.Size);
+    AStream.CopyFrom(tmpStream, tmpStream.Size);
+  finally
+    tmpStream.Free;
+  end;
+end;
+
+{ Write the MSODRAWING record which occurs before the OBJ record.
+  Do not use for the very first OBJ record where the record must be
+  WriteMSODrawing1 + WriteMSODrawing2_Data + WriteMSODrawing3_Data}
+procedure TsSpreadBiff8Writer.WriteMSODrawing2(AStream: TStream; ACell: PCell;
+  AObjID: Word);
+var
+  tmpStream: TStream;
+  len: Word;
+begin
+  tmpStream := TMemoryStream.Create;
+  try
+    { Shape data for cell comment }
+    WriteMSODrawing2_Data(tmpStream, ACell, SHAPEID_BASE + AObjID);
+
+    { Get size of data stream }
+    len := tmpStream.Size;
+
+    { BIFF Header }
+    WriteBiffHeader(AStream, INT_EXCEL_ID_MSODRAWING, len);
+
+    { Copy MSO data to BIFF stream }
+    tmpStream.Position := 0;
+    AStream.CopyFrom(tmpStream, len);
+  finally
+    tmpStream.Free;
+  end;
+end;
+
+procedure TsSpreadBiff8Writer.WriteMSODrawing2_Data(AStream: TStream;
+  ACell: PCell; AShapeID: Word);
+var
+  tmpStream: TStream;
+  len: Cardinal;
+begin
+  // We write all the record data to a temporary stream to get the record
+  // size (it depends on the number of properties written to the FOPT record.
+  // The record size is needed in the very first SpContainer record...
+
+  tmpStream := TMemoryStream.Create;
+  try
+    { OfficeArtFSp record }
+    WriteMSOFSpRecord(tmpStream, AShapeID, MSO_SPT_TEXTBOX,
+      MSO_FSP_BITS_HASANCHOR + MSO_FSP_BITS_HASSHAPETYPE);
+
+    { OfficeArtFOpt record }
+    WriteMSOFOptRecord_Comment(tmpStream);
+
+    { OfficeArtClientAnchor record }
+    WriteMSOClientAnchorSheetRecord(tmpStream,
+      ACell^.Row + 1, ACell^.Col + 1, ACell.Row + 3, ACell^.Col + 5,
+      691, 486, 38, 26,
+      true, true
+    );
+
+    { OfficeArtClientData record }
+    WriteMSOClientDataRecord(tmpStream);
+
+    // Now we know the record size
+    len := tmpStream.Size;
+
+    // Write an OfficeArtSpContainer to the stream provided...
+    WriteMSOSpContainer(AStream, len+8);    // !!! for some reason, Excel wants here 8 additional bytes !!!
+
+    // ... and append the data from the temporary stream.
+    tmpStream.Position := 0;
+    AStream.Copyfrom(tmpStream, len);
+
+  finally
+    tmpStream.Free;
+  end;
+end;
+
+{ Writes the MSODRAWING record which must occur immediately before a TXO record }
+procedure TsSpreadBiff8Writer.WriteMSODRAWING3(AStream: TStream; ACell: PCell);
+begin
+  { BIFF Header }
+  WriteBiffHeader(AStream, INT_EXCEL_ID_MSODRAWING, 8);
+
+  { OfficeArtClientTextbox record: Text-related data for a shape }
+  WriteMSOClientTextBoxRecord(AStream);
+end;
+
+{ Writes a NOTE record for a comment attached to a cell }
+procedure TsSpreadBiff8Writer.WriteNOTE(AStream: TStream; ACell: PCell;
+  AObjID: Word);
+const
+  AUTHOR: ansistring = 'Werner';
+var
+  len: Integer;
+begin
+  len := Length(AUTHOR) * sizeOf(ansichar);
+
+  { BIFF Header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_NOTE));  // ID of NOTE record
+  AStream.WriteWord(WordToLE(12+len));             // Size of NOTE record
+
+  { Record data }
+  AStream.WriteWord(WordToLE(ACell^.Row));         // Row index of cell
+  AStream.WriteWord(WordToLE(ACell^.Col));         // Column index of cell
+  AStream.WriteWord(0);                            // Flags
+  AStream.WriteWord(WordToLE(AObjID));             // Object identifier (1, ...)
+  AStream.WriteWord(len);                          // Char length of author string
+  AStream.WriteByte(0);                            // Flag for 8-bit characters
+  AStream.WriteBuffer(AUTHOR[1], len);             // Author
+  AStream.WriteByte(0);                            // Unused
 end;
 
 procedure TsSpreadBiff8Writer.WriteNumFormat(AStream: TStream;
@@ -1740,6 +1973,35 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
+end;
+
+{ Writes an OBJ record - belongs to the record required for cell comments }
+procedure TsSpreadBIFF8Writer.WriteOBJ(AStream: TStream; AObjID: Word);
+var
+  guid: TGuid;
+begin
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_OBJ));
+  AStream.WriteWord(WordToLE(52));
+
+  AStream.WriteWord(WordToLE($0015));  // Subrecord ftCmo
+  AStream.WriteWord(WordToLE(18));     // Subrecord size: 18 bytes
+  AStream.WriteWord(WordToLE($0019));  // Object type: Comment
+  AStream.WriteWord(WordToLE(AObjID)); // Object ID number (1, ... )
+  AStream.WriteWord(WordToLE($4011));  // Option flags automatic line style, locked when sheet is protected
+  AStream.WriteDWord(0);               // Unused
+  AStream.WriteDWord(0);               // Unused
+  AStream.WriteDWord(0);               // Unused
+
+  AStream.WriteWord(WordToLE($000D));  // Subrecord ftNts
+  AStream.WriteWord(WordToLE(22));     // Size of subrecord: 22 bytes
+//  CreateGUID(guid);
+  FillChar(guid{%H-}, SizeOf(guid), 0);
+  AStream.WriteBuffer(guid, 16);       // GUID of comment
+  AStream.WriteWord(WordToLE(0));      // shared note (0 = false)
+  AStream.WriteDWord(0);               // unused
+
+  AStream.WriteWord(WordToLE($0000));  // Subrecord ftEnd
+  AStream.WriteWord(0);                // Size of subrecord: 0 bytes
 end;
 
 { Writes the address of a cell as used in an RPN formula and returns the
@@ -1840,19 +2102,15 @@ begin
   AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteIndex ()
-*
-*  DESCRIPTION:    Writes an Excel 8 INDEX record
-*
-*                  nm = (rl - rf - 1) / 32 + 1 (using integer division)
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 INDEX record
+
+    nm = (rl - rf - 1) / 32 + 1 (using integer division)
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteIndex(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_INDEX));
-  AStream.WriteWord(WordToLE(16));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_INDEX, 16);
 
   { Not used }
   AStream.WriteDWord(DWordToLE(0));
@@ -1872,16 +2130,12 @@ begin
   { OBS: It seems to be no problem just ignoring this part of the record }
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteLabel ()
-*
-*  DESCRIPTION:    Writes an Excel 8 LABEL record
-*
-*                  Writes a string to the sheet
-*                  If the string length exceeds 32758 bytes, the string
-*                  will be silently truncated.
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 LABEL record (string cell value)
+
+  If the string length exceeds 32758 bytes, the string will be truncated,
+  a note will be left in the workbooks log.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
 const
@@ -1963,8 +2217,7 @@ begin
     // at most 1026 merged ranges per BIFF record, the rest goes into a new record
 
     { BIFF record header }
-    AStream.WriteWord(WordToLE(INT_EXCEL_ID_MERGEDCELLS));
-    AStream.WriteWord(WordToLE(2 + n*8));
+    WriteBIFFHeader(AStream, INT_EXCEL_ID_MERGEDCELLS, 2 + n*8);
 
     // Count of cell ranges in this record
     AStream.WriteWord(WordToLE(n));
@@ -1983,20 +2236,16 @@ begin
   end;
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteStyle ()
-*
-*  DESCRIPTION:    Writes an Excel 8 STYLE record
-*
-*                  Registers the name of a user-defined style or
-*                  specific options for a built-in cell style.
-*
-*******************************************************************}
+{@@-----------------------------------------------------------------------------
+  Writes an Excel 8 STYLE record
+
+  Registers the name of a user-defined style or specific options
+  for a built-in cell style.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteStyle(AStream: TStream);
 begin
   { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STYLE));
-  AStream.WriteWord(WordToLE(4));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_STYLE, 4);
 
   { Index to style XF and defines if it's a built-in or used defined style }
   AStream.WriteWord(WordToLE(MASK_STYLE_BUILT_IN));
@@ -2008,27 +2257,83 @@ begin
   AStream.WriteByte($FF);
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteWindow2 ()
-*
-*  DESCRIPTION:    Writes an Excel 8 WINDOW2 record
-*
-*                  This record contains aditional settings for the
-*                  document window (BIFF2-BIFF4) or for a specific
-*                  worksheet (BIFF5-BIFF8).
-*
-*                  The values written here are reasonable defaults,
-*                  which should work for most sheets.
-*
-*******************************************************************}
-procedure TsSpreadBIFF8Writer.WriteWindow2(AStream: TStream;
- ASheet: TsWorksheet);
+{@@ ----------------------------------------------------------------------------
+  Writes a TXO and two CONTINUE records as needed for cell comments.
+  It can safely be assumed that the cell exists and contains a comment.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteTXO(AStream: TStream; ACell: PCell);
+var
+  recTXO: TBIFF8TXORecord;
+  comment: widestring;
+  compressed: ansistring;
+  len: Integer;
+  wchar: widechar;
+  i: Integer;
+  bytesFmtRuns: Integer;
+begin
+  { Prepare comment string. It is stored as a string with 8-bit characters }
+  comment := UTF8Decode(ACell^.Comment);
+  SetLength(compressed, length(comment));
+  for i:= 1 to Length(comment) do
+  begin
+    wchar := comment[i];
+    compressed[i] := wchar;
+  end;
+  len := Length(compressed);
+
+  { (1)  TXO record ---------------------------------------------------------- }
+  { BIFF record header }
+  FillChar(recTXO{%H-}, SizeOf(recTXO), 0);
+  recTXO.RecordID := WordToLE(INT_EXCEL_ID_TXO);
+  recTXO.RecordSize := SizeOf(recTXO) - 2*SizeOf(word);
+  { Record data }
+  recTXO.OptionFlags := WordToLE($0212);  // Left & top aligned, lock option on
+  recTXO.TextRot := 0;                    // Comment text not rotated
+  recTXO.TextLen := WordToLE(len);
+  bytesFmtRuns := 8*SizeOf(Word);         // see (3) below
+  recTXO.NumFormattingRuns := WordToLE(bytesFmtRuns);
+  { Write out to file }
+  AStream.WriteBuffer(recTXO, SizeOf(recTXO));
+
+  { (2)  1st CONTINUE record containing the comment text --------------------- }
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CONTINUE));
+  AStream.WriteWord(len+1);
+  { Record data }
+  AStream.WriteByte(0);
+  AStream.WriteBuffer(compressed[1], len);
+
+  { (3)  2nd CONTINUE record containing the formatting runs ------------------ }
+  { BIFF record header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CONTINUE));
+  AStream.WriteWord(bytesFmtRuns);
+  { Record data }
+  AStream.WriteWord(0);             // start index of 1st formatting run (we only use 1 run)
+  AStream.WriteWord(WordToLE(1));   // Font index to be used (default font)
+  AStream.WriteWord(0);             // Not used
+  AStream.WriteWord(0);             // Not used
+  AStream.WriteWord(WordToLE(len)); // lastRun: number of characters
+  AStream.WriteWord(0);             // Not used
+  AStream.WriteWord(0);             // Not used
+  AStream.WriteWord(0);             // Not used
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 WINDOW2 record
+
+  This record contains additional settings for the document window (BIFF2-BIFF4)
+  or for a specific worksheet (BIFF5-BIFF8).
+
+  The values written here are reasonable defaults, which should work for most
+  sheets.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteWINDOW2(AStream: TStream;
+  ASheet: TsWorksheet);
 var
   Options: Word;
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW2));
-  AStream.WriteWord(WordToLE(18));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_WINDOW2, 18);
 
   { Options flags }
   Options :=
@@ -2069,14 +2374,9 @@ begin
   AStream.WriteDWord(DWordToLE(0));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteXF ()
-*
-*  DESCRIPTION:    Writes an Excel 8 XF record
-*
-*
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 XF record (cell format)
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream;
  AFormatRecord: PsCellFormat; XFType_Prot: Byte = 0);
 var
@@ -2087,7 +2387,7 @@ var
 begin
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
-  rec.RecordSize := WordToLE(SizeOf(TBIFF8_XFRecord) - 2*SizeOf(Word));
+  rec.RecordSize := WordToLE(SizeOf(TBIFF8_XFRecord) - SizeOf(TsBIFFHeader));
 
   { Index to font record }
   rec.FontIndex := 0;
@@ -2216,13 +2516,12 @@ begin
 end;
 
 
-{*******************************************************************
-*  Initialization section
-*
-*  Registers this reader / writer on fpSpreadsheet
-*  Converts the palette to litte-endian
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Initialization section
+
+  Registers this reader / writer on fpSpreadsheet
+  Converts the palette to litte-endian
+-------------------------------------------------------------------------------}
 
 initialization
 

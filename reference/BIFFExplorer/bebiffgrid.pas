@@ -75,6 +75,7 @@ type
     procedure ShowLeftMargin;
     procedure ShowMergedCells;
     procedure ShowMMS;
+    procedure ShowMSODrawing;
     procedure ShowMulBlank;
     procedure ShowMulRK;
     procedure ShowNote;
@@ -125,7 +126,8 @@ type
     procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
       out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
     procedure PopulateGrid;
-    procedure ShowInRow(var ARow: Integer; var AOffs: LongWord; ASize: Word; AValue,ADescr: String);
+    procedure ShowInRow(var ARow: Integer; var AOffs: LongWord; ASize: Word;
+      AValue,ADescr: String; ADescrOnly: Boolean = false);
     procedure ShowRowColData(var ABufIndex: LongWord);
 
   public
@@ -162,7 +164,10 @@ begin
   ColWidths[1] := 60;
   ColWidths[2] := 120;
   ColWidths[3] := 350;
-  Options := Options + [goThumbTracking, goColSizing, goTruncCellHints, goCellHints] - [goVertLine];
+  Options := Options
+    + [goThumbTracking, goColSizing, goTruncCellHints, goCellHints]
+    - [goVertLine, goSmoothScroll];
+  MouseWheelOption := mwGrid;
   FDetails := TStringList.Create;
 end;
 
@@ -409,6 +414,8 @@ begin
       ShowInterfaceEnd;
     $00E5:
       ShowMergedCells;
+    $00EC:
+      ShowMSODrawing;
     $00FC:
       ShowSST;
     $00FD:
@@ -466,6 +473,8 @@ end;
 procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer;
   AFormat: TsSpreadsheetFormat);
 begin
+  if AData = nil then
+    exit;
   FFormat := AFormat;
   FRecType := AData.RecordID;
   FInfo := AData.Tag;
@@ -1163,6 +1172,9 @@ var
   sw: widestring;
   ls: Integer;
   i: Integer;
+  w: Word;
+  n: Integer;
+  run: Integer;
 begin
   case FInfo of
     BIFFNODE_TXO_CONTINUE1:
@@ -1188,6 +1200,56 @@ begin
 
     BIFFNODE_TXO_CONTINUE2:
       begin
+        RowCount := FixedRows + 1000;
+        n := 0;
+        numBytes := 2;
+        run := 1;
+        while FBufferIndex < Length(FBuffer) - 4*SizeOf(Word) do begin
+          Move(FBuffer[FBufferIndex], w, numBytes);
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)), Format(
+            'Run %d: Index of first character using this font (0-based)', [run]));
+          inc(n);
+
+          Move(FBuffer[FBufferIndex], w, numbytes);
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToSTr(WordLEToN(w)),
+            Format('Run %d: Index to FONT record', [run]));
+          inc(n);
+
+          Move(FBuffer[FBufferIndex], w, numbytes);
+          ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+            'Not used');
+          inc(n);
+
+          Move(FBuffer[FBufferIndex], w, numbytes);
+          ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+            'Not used');
+          inc(n);
+
+          inc(run);
+        end;
+
+        // lastRun
+        Move(FBuffer[FBufferIndex], w, numbytes);
+        ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+          'Number of characters');
+        inc(n);
+
+        Move(FBuffer[FBufferIndex], w, numbytes);
+        ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+          'Not used');
+        inc(n);
+
+        Move(FBuffer[FBufferIndex], w, numbytes);
+        ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+          'Not used');
+        inc(n);
+
+        Move(FBuffer[FBufferIndex], w, numbytes);
+        ShowInrow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+          'Not used');
+        inc(n);
+
+        RowCount := FixedRows + n;
       end;
   end;
 end;
@@ -1903,7 +1965,7 @@ begin
   numBytes := 2;
   Move(FBuffer[FBufferIndex], w, numBytes);
   w := WordLEToN(w);
-  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d (= %.1gpt)', [w, w/20]),
     'Font height in twips (=1/20 point)');
 
   numBytes := 2;
@@ -1912,29 +1974,29 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Option flags:'#13);
     if w and $0001 = 0
-      then FDetails.Add('Bit $0001 = 0: not bold')
-      else FDetails.Add('Bit $0001 = 1: bold (redundant in BIFF5-BIFF8)');
+      then FDetails.Add('  Bit $0001 = 0: not bold')
+      else FDetails.Add('x Bit $0001 = 1: bold (redundant in BIFF5-BIFF8)');
     if w and $0002 = 0
-      then FDetails.Add('Bit $0002 = 0: not italic')
-      else FDetails.Add('Bit $0002 = 1: italic');
+      then FDetails.Add('  Bit $0002 = 0: not italic')
+      else FDetails.Add('x Bit $0002 = 1: italic');
     if w and $0004 = 0
-      then FDetails.Add('Bit $0004 = 0: not underlined')
-      else FDetails.Add('Bit $0004 = 1: underlined (redundant in BIFF5-BIFF8)');
+      then FDetails.Add('  Bit $0004 = 0: not underlined')
+      else FDetails.Add('x Bit $0004 = 1: underlined (redundant in BIFF5-BIFF8)');
     if w and $0008 = 0
-      then FDetails.Add('Bit $0008 = 0: not struck out')
-      else FDetails.Add('Bit $0008 = 1: struck out');
+      then FDetails.Add('  Bit $0008 = 0: not struck out')
+      else FDetails.Add('x Bit $0008 = 1: struck out');
     if w and $0010 = 0
-      then FDetails.Add('Bit $0010 = 0: not outlined')
-      else FDetails.Add('Bit $0010 = 1: outlined');
+      then FDetails.Add('  Bit $0010 = 0: not outlined')
+      else FDetails.Add('x Bit $0010 = 1: outlined');
     if w and $0020 = 0
-      then FDetails.Add('Bit $0020 = 0: not shadowed')
-      else FDetails.Add('Bit $0020 = 1: shadowed');
+      then FDetails.Add('  Bit $0020 = 0: not shadowed')
+      else FDetails.Add('x Bit $0020 = 1: shadowed');
     if w and $0040 = 0
-      then FDetails.Add('Bit $0040 = 0: not condensed')
-      else FDetails.Add('Bit $0040 = 1: condensed');
+      then FDetails.Add('  Bit $0040 = 0: not condensed')
+      else FDetails.Add('x Bit $0040 = 1: condensed');
     if w and $0080 = 0
-      then FDetails.Add('Bit $0080 = 0: not extended')
-      else FDetails.Add('Bit $0080 = 1: extended');
+      then FDetails.Add('  Bit $0080 = 0: not extended')
+      else FDetails.Add('x Bit $0080 = 1: extended');
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
     'Option flags');
@@ -2026,7 +2088,7 @@ begin
 
     numBytes := 1;
     Move(FBuffer[FBufferIndex], b, numBytes);
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, '', 'Not used');
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]), 'Not used');
   end;
 
   ExtractString(FBufferIndex, 1, FFormat=sfExcel8, s, numbytes);
@@ -2143,14 +2205,14 @@ begin
     Move(FBuffer[FBufferIndex], b, numBytes);
     if Row = FCurrRow then begin
       FDetails.Add('Cell protection and XF index:'#13);
-      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      FDetails.Add(Format('x Bits 5-0 = %d: XF Index', [b and $3F]));
       case b and $40 of
-        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
-        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+        0: FDetails.Add('  Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('x Bit 6 = 1: Cell is locked.');
       end;
       case b and $80 of
-        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
-        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+        0: FDetails.Add('  Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('x Bit 7 = 1: Formula is hidden.');
       end;
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
@@ -2742,11 +2804,19 @@ end;
 
 
 procedure TBIFFGrid.ShowInRow(var ARow: Integer; var AOffs: LongWord;
-  ASize: Word; AValue,ADescr: String);
+  ASize: Word; AValue,ADescr: String; ADescrOnly: Boolean = false);
 begin
-  Cells[0, ARow] := IntToStr(AOffs);
-  Cells[1, ARow] := IntToStr(ASize);
-  Cells[2, ARow] := AValue;
+  if ADescrOnly then
+  begin
+    Cells[0, ARow] := '';
+    Cells[1, ARow] := '';
+    Cells[2, ARow] := '';
+  end else
+  begin
+    Cells[0, ARow] := IntToStr(AOffs);
+    Cells[1, ARow] := IntToStr(ASize);
+    Cells[2, ARow] := AValue;
+  end;
   Cells[3, ARow] := ADescr;
   inc(ARow);
   inc(AOffs, ASize);
@@ -2770,14 +2840,14 @@ begin
   b := FBuffer[FBufferIndex];
   if Row = FCurrRow then begin
     FDetails.Add('Cell protection and XF index:'#13);
-    FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+    FDetails.Add(Format('x Bits 5-0 = %d: XF Index', [b and $3F]));
     case b and $40 of
-      0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
-      1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+      0: FDetails.Add('  Bit 6 = 0: Cell is NOT locked.');
+      1: FDetails.Add('x Bit 6 = 1: Cell is locked.');
     end;
     case b and $80 of
-      0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
-      1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+      0: FDetails.Add('  Bit 7 = 0: Formula is NOT hidden.');
+      1: FDetails.Add('x Bit 7 = 1: Formula is hidden.');
     end;
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
@@ -2796,27 +2866,27 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Cell style:'#13);
     case b and $07 of
-      0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
-      1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
-      2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
-      3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
-      4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+      0: FDetails.Add('x Bits 2-0 = 0: Horizontal alignment is GENERAL');
+      1: FDetails.Add('x Bits 2-0 = 1: Horizontal alignment is LEFT');
+      2: FDetails.Add('x Bits 2-0 = 2: Horizontal alignment is CENTERED');
+      3: FDetails.Add('x Bits 2-0 = 3: Horizontal alignment is RIGHT');
+      4: FDetails.Add('x Bits 2-0 = 4: Horizontal alignment is FILLED');
     end;
     if b and $08 = 0
-      then FDetails.Add('Bit 3 = 0: Cell has NO left border')
-      else FDetails.Add('Bit 3 = 1: Cell has left black border');
+      then FDetails.Add('  Bit 3 = 0: Cell has NO left border')
+      else FDetails.Add('x Bit 3 = 1: Cell has left black border');
     if b and $10 = 0
-      then FDetails.Add('Bit 4 = 0: Cell has NO right border')
-      else FDetails.Add('Bit 4 = 1: Cell has right black border');
+      then FDetails.Add('  Bit 4 = 0: Cell has NO right border')
+      else FDetails.Add('x Bit 4 = 1: Cell has right black border');
     if b and $20 = 0
-      then FDetails.Add('Bit 5 = 0: Cell has NO top border')
-      else FDetails.Add('Bit 5 = 1: Cell has top black border');
+      then FDetails.Add('  Bit 5 = 0: Cell has NO top border')
+      else FDetails.Add('x Bit 5 = 1: Cell has top black border');
     if b and $40 = 0
-      then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
-      else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+      then FDetails.Add('  Bit 6 = 0: Cell has NO bottom border')
+      else FDetails.Add('x Bit 6 = 1: Cell has bottom black border');
     if b and $80 = 0
-      then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
-      else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+      then FDetails.Add('  Bit 7 = 0: Cell has NO shaded background')
+      else FDetails.Add('x Bit 7 = 1: Cell has shaded background');
   end;
   ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
     'Cell style');
@@ -2904,14 +2974,14 @@ begin
     Move(FBuffer[FBufferIndex], b, numBytes);
     if Row = FCurrRow then begin
       FDetails.Add('Cell protection and XF index:'#13);
-      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      FDetails.Add(Format('x Bits 5-0 = %d: XF Index', [b and $3F]));
       case b and $40 of
-        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
-        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+        0: FDetails.Add('  Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('x Bit 6 = 1: Cell is locked.');
       end;
       case b and $80 of
-        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
-        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+        0: FDetails.Add('  Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('x Bit 7 = 1: Formula is hidden.');
       end;
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
@@ -3052,6 +3122,515 @@ begin
   ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w), 'Reserved, MUST be ignored');
 end;
 
+{ Only those records needed for comments are deciphered. }
+procedure TBIFFGrid.ShowMSODrawing;
+var
+  n: Integer;
+  numBytes: Integer;
+  w: Word;
+  dw: DWord;
+  recType: Word;
+  recLen: DWord;
+  isContainer: Boolean;
+  indent: String;
+  level: Integer;
+
+  function PrepareIndent(ALevel: Integer): String;
+  var
+    i: Integer;
+  begin
+    Result := '';
+    for i := 1 to ALevel do Result := Result + '        ';
+  end;
+
+  procedure DoShowHeader(out ARecType: Word; out ARecLen: DWord;
+    out IsContainer: Boolean);
+  var
+    s: String;
+    instance: Word;
+    version: Word;
+  begin
+    numbytes := 2;
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    w := WordLEToN(w);
+    IsContainer := (w and $000F = $000F);
+
+    if IsContainer and (FBufferIndex > 0) then
+      indent := PrepareIndent(level+1);
+
+    s := IfThen(IsContainer, '***** CONTAINER *****', '--- ATOM ---');
+    ShowInRow(FCurrRow, FBufferIndex, 0, '', indent + s, TRUE);
+    inc(n);
+
+    version := w and $000F;
+    instance := (w and $FFF0) shr 4;
+    if Row = FCurrRow then begin
+      FDetails.Add('OfficeArtDrawing Header:'#13);
+      FDetails.Add(Format('Bits 3-0 = $%.1x: Version', [version]));
+      FDetails.Add(Format('Bits 15-4 = $%.3x: Instance', [instance]));
+    end;
+    s := Format('OfficeArtDrawing Header: Version %d, instance %d', [version, instance]);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.04x', [w]), indent + s);
+    inc(n);
+
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    w := WordLEToN(w);
+    ARecType := w;
+    case ARecType of
+      $F00A: //, $F00B:
+         case instance of
+           $01: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Rectangle)';
+           $02: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Rounded rectangle)';
+           $03: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Ellipse)';
+           $04: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Diamond)';
+           $05: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Triangle)';
+           $06: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Right triangle)';
+           $07: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Parallelogram)';
+           $08: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Trapezoid)';
+           $09: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Hexagon)';
+           $0A: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Pentagon)';
+           $0B: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Plus)';
+           $0C: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Star)';
+           $0D: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Arrow)';
+           $0E: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Thick arrow)';
+           $0F: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Irregular pentagon)';
+           $10: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Cube)';
+           $11: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Speech balloon)';
+           $12: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Seal)';
+           $13: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Curved arc)';
+           $14: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Line)';
+           $15: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Plaque)';
+           $16: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Cylinder)';
+           $17: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Donut)';
+           $CA: Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + ' (Text box)';
+         end;
+      $F00B:
+        Cells[3, FCurrRow-1] := Cells[3, FCurrRow-1] + Format(' (i.e., %d properties)', [instance]);
+    end;
+
+    case ARecType of
+      $F000: s := 'OfficeArtDggContainer (all the OfficeArt file records containing document-wide data)';
+      $F001: s := 'OfficeArtBStoreContainer (all the BLIPs used in all the drawings associated with parent OfficeArtDggContainer record)';
+      $F002: s := 'OfficeArtDgContainer (all file records for the objects in a drawing)';
+      $F003: s := 'OfficeArtSpgrContainer (groups of shapes)';
+      $F004: s := 'OfficeArtSpContainer (shape)';
+      $F005: s := 'OfficeArtSolverContainer (rules applicable to the shapes contained in an OfficeArtDgContainer record)';
+      $F006: s := 'OfficeArtFDGGBlock record (document-wide information about all drawings saved in the file)';
+      $F007: s := 'OfficeArtFBSE record (File BLIP Store Entry (FBSE) containing information about the BLIP)';
+      $F008: s := 'OfficeArtFDG record (number of shapes, drawing identifier, and shape identifier of the last shape in a drawing)';
+      $F009: s := 'OfficeArtFSPGR record (coordinate system of the group shape that the anchors of the child shape are expressed in)';
+      $F00A: s := 'OfficeArtFSP record (instance of a shape)';
+      $F00B: s := 'OfficeArtFOPT record (table of OfficeArtRGFOPTE records)';
+      $F00D: s := 'OfficeArtClientTextBox (text related data for a shape)';
+      $F00F: s := 'OfficeArtChildAnchor record (anchors for the shape containing this record)';
+      $F010: s := 'OfficeArtClientAnchor record (location of a shape)';
+      $F011: s := 'OfficeArtClientData record (information about a shape)';
+      $F012: s := 'OfficeArtFConnectorRule record (connection between two shapes by a connector shape)';
+      $F014: s := 'OfficeArtFArcRule record (Specifies an arc rule. Each arc shape MUST correspond to a unique arc rule)';
+      $F017: s := 'OfficeArtFCalloutRule record (Callout rule: One callout rule MUST exist per callout shape)';
+      $F01A: s := 'OfficeArtBlipEMF record (BLIP file data for the enhanced metafile format (EMF))';
+      $F01B: s := 'OfficeArtBlipWMF record (BLIP file data for the Windows Metafile Format (WMF))';
+      $F01C: s := 'OfficeArtBlipPICT record (BLIP file data for the Macintosh PICT format)';
+      $F01D: s := 'OfficeArtBlipJPEG record (BLIP file data for the Joint Photographic Experts Group (JPEG) format)';
+      $F01E: s := 'OfficeArtBlipPNG record (BLIP file data for the Portable Network Graphics (PNG) format)';
+      $F01F: s := 'OfficeArtBlipDIB record (BLIP file data for the device-independent bitmap (DIB) format)';
+      $F029: s := 'OfficeArtBlipTIFF record (BLIP file data for the TIFF format)';
+      $F118: s := 'OfficeArtFRITContainer record (container for the table of group identifiers that are used for regrouping ungrouped shapes)';
+      $F119: s := 'OfficeArtFDGSL record (specifies both the selected shapes and the shape that is in focus in the drawing)';
+      $F11A: s := 'OfficeArtColorMRUContainer record (most recently used custom colors)';
+      $F11D: s := 'OfficeArtFPSPL record (former hierarchical position of the containing object that is either a shape or a group of shapes)';
+      $F11E: s := 'OfficeArtSplitMenuColorContainer record (container for the colors that were most recently used to format shapes)';
+      $F121: s := 'OfficeArtSecondaryFOPT record (table of OfficeArtRGFOPTE records)';
+      $F122: s := 'OfficeArtTertiaryFOPT record (table of OfficeArtRGFOPTE records)';
+      else   s := 'Not known to BIFFExplorer';
+    end;
+    if Row = FCurrRow then begin
+      FDetails.Add('OfficeArtDrawing Record Type:'#13);
+      FDetails.Add(Format('$%.4x: %s', [ARecType, s]));
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]),
+      indent + 'Record type: ' + s);
+    inc(n);
+
+    numbytes := 4;
+    Move(FBuffer[FbufferIndex], ARecLen, Numbytes);
+    ARecLen := DWordLEToN(ARecLen);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d', [ARecLen]),
+      indent + 'Record length');
+    inc(n);
+  end;
+
+  procedure DoShowOfficeArtFDG;   // $F008
+  // The OfficeArtFDG record specifies the number of shapes, the drawing
+  // identifier, and the shape identifier of the last shape in a drawing.
+  begin
+    numbytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    dw := DWordLEToN(dw);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(dw),
+      indent + 'Number of shapes in this drawing');
+    inc(n);
+
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    dw := DWordLEToN(dw);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(dw),
+      indent + 'Shape identifier of the last shape in this drawing');
+    inc(n);
+  end;
+
+  procedure DoShowOfficeArtFSPGR;  // $F009
+  // The OfficeArtFSPGR record specifies the coordinate system of the group
+  // shape that the anchors of the child shape are expressed in. This record
+  // is present only for group shapes.
+  var
+    rt: Word;
+  begin
+    numbytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(LongInt(DWordLEToN(dw))),
+      indent + 'xLeft');
+    inc(n);
+
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(LongInt(DWordLEToN(dw))),
+      indent + 'yTop');
+    inc(n);
+
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(LongInt(DWordLEToN(dw))),
+      indent + 'xRight');
+    inc(n);
+
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(LongInt(DWordLEToN(dw))),
+      indent + 'yBottom');
+    inc(n);
+  end;
+
+  procedure DoShowOfficeArtFSP;   // §F00A
+  // The OfficeArtFSP record specifies an instance of a shape.
+  // The record header contains the shape type, and the record itself
+  // contains the shape identifier and a set of bits that further define the shape.
+  var
+    rt: word;
+    s: String;
+  begin
+    numbytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+      indent + 'Shape identifier');
+    inc(n);
+
+    numbytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    dw := DWordLEToN(dw);
+    s := '';
+    if Row = FCurrRow then begin
+      FDetails.Add('Shape options:'#13);
+      if dw and $0001 = 0
+        then FDetails.Add('  Bit 1=0: Shape is NOT a group shape')
+        else FDetails.Add('x Bit 1=1: Shape is a group shape');
+      if dw and $0002 = 0
+        then FDetails.Add('  Bit 2=0: Shape is NOT a child shape')
+        else FDetails.Add('x Bit 2=1: Shape is a child shape');
+      if dw and $0004 = 0
+        then FDetails.Add('  Bit 3=0: Shape is NOT the top-most group shape (patriarch)')
+        else FDetails.Add('x Bit 3=1: Shaoe is the top-most group shape (patriarch)');
+      if dw and $0008 = 0
+        then FDetails.Add('  Bit 4=0: Shape has NOT been deleted')
+        else FDetails.Add('x Bit 4=1: Shape has been deleted');
+      if dw and $0010 = 0
+        then FDetails.Add('  Bit 5=0: Shape is NOT an OLE object')
+        else FDetails.Add('x Bit 5=1: Shape is an OLE object');
+      if dw and $0020 = 0
+        then FDetails.Add('  Bit 6=0: Shape does NOT have a valid master in the hspMaster property')
+        else FDetails.Add('x Bit 6=1: Shape has a valid master in the hspMaster property');
+      if dw and $0040 = 0
+        then FDetails.Add('  Bit 7=0: Shape is NOT horizontally flipped')
+        else FDetails.Add('x Bit 7=1: Shape is horizontally flipped');
+      if dw and $0080 = 0
+        then FDetails.Add('  Bit 8=0: Shape is NOT vertically flipped')
+        else FDetails.Add('x Bit 8=1: Shape is vertically flipped');
+      if dw and $0100 = 0
+        then FDetails.Add('  Bit 9=0: Shape is NOT a connector shape')
+        else FDetails.Add('x Bit 9=1: Shape is a connector shape');
+      if dw and $0200 = 0
+        then FDetails.Add('  Bit 10=0: Shape doe NOT have an anchor')
+        else FDetails.Add('x Bit 10=1: Shape has an anchor');
+      if dw and $0400 = 0
+        then FDetails.Add('  Bit 11=0: Shape is NOT a background shape')
+        else FDetails.Add('x Bit 11=1: Shape is a background shape');
+      if dw and $0800 = 0
+        then FDetails.Add('  Bit 12=0: Shape does NOT have a shape type property')
+        else FDetails.Add('x Bit 12=1: Shape has a shape type property');
+      FDetails.Add('  Bits 13-32: unused');
+    end;
+    s := '';
+    if dw and $0001 <> 0 then s := s + 'group shape, ';
+    if dw and $0002 <> 0 then s := s + 'child shape, ';
+    if dw and $0004 <> 0 then s := s + 'patriarch, ';
+    if dw and $0008 <> 0 then s := s + 'deleted, ';
+    if dw and $0010 <> 0 then s := s + 'OLE object, ';
+    if dw and $0020 <> 0 then s := s + 'master, ';
+    if dw and $0040 <> 0 then s := s + 'flipped hor, ';
+    if dw and $0080 <> 0 then s := s + 'flipped vert, ';
+    if dw and $0100 <> 0 then s := s + 'connector shape, ';
+    if dw and $0200 <> 0 then s := s + 'anchor, ';
+    if dw and $0400 <> 0 then s := s + 'background, ';
+    if dw and $0800 <> 0 then s := s + 'shape type, ';
+    if s <> '' then begin
+      Delete(s, Length(s)-1, 2);
+      s := 'Shape options: ' + s;
+    end else
+      s := 'Shape options';
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.8x (%d)', [dw, dw]), indent + s);
+    inc(n);
+  end;
+
+  procedure DoShowOfficeArtFOPT(ARecLen: DWord);  // $F00B
+  // The OfficeArtFOPT record specifies a table of OfficeArtRGFOPTE records.
+  var
+    startIndex: Int64;
+    opid: Word;
+    op: DWord;
+    s: String;
+  begin
+    startIndex := FBufferIndex;
+    while FBufferIndex < startIndex + ARecLen do
+    begin
+      numbytes := 2;
+      Move(FBuffer[FBufferIndex], opid, numbytes);
+      opid := WordLEToN(opid);
+      case opid of
+        $007F: s := 'OfficeArtFOPTEOPID: Protection boolean properties';
+        $0080: s := 'OfficeArtFOPTEOPID: TextID';
+        $0081: s := 'OfficeArtFOPTEOPID: dxTextLeft';
+        $0082: s := 'OfficeArtFOPTEOPID: dyTextTop';
+        $0083: s := 'OfficeArtFOPTEOPID: dxTextRight';
+        $0084: s := 'OfficeArtFOPTEOPID: dyTextBottom';
+        $0085: s := 'OfficeArtFOPTEOPID: Wrap text';
+        $0086: s := 'OfficeArtFOPTEOPID: Unused';
+        $0087: s := 'OfficeArtFOPTEOPID: Text anchor';
+        $0088: s := 'OfficeArtFOPTEOPID: Text flow';
+        $0089: s := 'OfficeArtFOPTEOPID: Font rotation';
+        $008A: s := 'OfficeArtFOPTEOPID: Next shape in sequence of linked shapes';
+        $008B: s := 'OfficeArtFOPTEOPID: Text direction';
+        $008C: s := 'OfficeArtFOPTEOPID: Unused';
+        $008D: s := 'OfficeArtFOPTEOPID: Unused';
+        $00BF: s := 'OfficeArtFOPTEOPID: Boolean properties for the text in a shape';
+        $00C0: s := 'OfficeArtFOPTEOPID: Text for this shape’s geometry text';
+        $00C2: s := 'OfficeArtFOPTEOPID: Alignment of text in the shape';
+        $00C3: s := 'OfficeArtFOPTEOPID: Font size, in points, of the geometry text for this shape';
+        $00C4: s := 'OfficeArtFOPTEOPID: Amount of spacing between characters in the text';
+        $00C5: s := 'OfficeArtFOPTEOPID: Font to use for the text';
+        $0158: s := 'OfficeArtFOPTEOPID: Type of connection point';
+        $0181: s := 'OfficeArtFOPTEOPID: Fill color';
+        $0183: s := 'OfficeArtFOPTEOPID: Background color of the fill';
+        $0185: s := 'OfficeArtFOPTEOPID: Foreground color of the fill';
+        $01BF: s := 'OfficeArtFOPTEOPID: Fill style boolean properties';
+        $01C0: s := 'OfficeArtFOPTEOPID: Line color';
+        $01C3: s := 'OfficeArtFOPTEOPID: Line foreground color for black & white display mode';
+        $01FF: s := 'OfficeArtFOPTEOPID: Line style boolean properties';
+        $0201: s := 'OfficeArtFOPTEOPID: Shadow color';
+        $0203: s := 'OfficeArtFOPTEOPID: Shadow primary color modifier if in black & white mode';
+        $023F: s := 'OfficeArtFOPTEOPID: Shadow style boolean properties';
+        $03BF: s := 'OfficeArtFOPTEOPID: Group shape boolean properties';
+        else   s := 'OfficeArtFOPTEOPID that specifies the header information for this property';
+      end;
+      s := indent + s;
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x (%d)', [opid, opid]), s);
+      inc(n);
+
+      numbytes := 4;
+      Move(FBuffer[FBufferIndex], op, numbytes);
+      op := DWordLEToN(op);
+      s := '';
+      case opid of
+        $0087: case op of
+                 0: s := s + ': text at top';
+                 1: s := s + ': text vertically centered';
+                 2: s := s + ': text at bottom';
+                 3: s := s + ': text at top and centered horizontally';
+                 4: s := s + ': text at center of box';
+                 5: s := s + ': text at bottom and centered horizontally';
+               end;
+        $0089: case op of
+                 0: s := s + ': horizontal';
+                 1: s := s + ': 90° clockwise, vertical down';
+                 2: s := s + ': horizontal, 180° rotated';
+                 3: s := s + ': 90° counter-clickwise, vertical up';
+               end;
+        $008B: case op of
+                 0: s := s + ': left-to-right';
+                 1: s := s + ': right-to-left';
+                 2: s := s + ': determined from text string';
+               end;
+        $00C2: case op of
+                 0: s := s + ': stretched';
+                 1: s := s + ': centered';
+                 2: s := s + ': left-aligned';
+                 3: s := s + ': right-aligned';
+                 4: s := s + ': justified';
+                 5: s := s + ': word-justified';
+               end;
+        $0158: case op of
+                 0: s := s + ': no connection point';
+                 1: s := s + ': Edit points of shape are used as connection points';
+                 2: s := s + ': Custom array of connection points';
+                 3: s := s + ': standard 4 connection points at the top, bottom, left, and right side centers';
+               end;
+      end;
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.8x (%d)', [op, op]),
+        indent + 'Value of this property' + s);
+      inc(n);
+    end;
+  end;
+
+  procedure DoShowOfficeArtClientTextbox(ARecLen: Word);  // $F00D
+  begin
+    numBytes := ARecLen;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, '...', indent + 'Text data follow in TXO record', true);
+    inc(n);
+  end;
+
+  procedure DoShowOfficeArtClientAnchorData(StructureKind: Integer); // $F010
+  begin
+    case StructureKind of
+      0: begin   // OfficeArtClientAnchorSheet
+           numBytes := 2;
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           w := WordLEToN(w);
+           if Row = FCurrRow then begin
+             FDetails.Add('Move/resize flags:'#13);
+             if w and $0001 = 0
+               then FDetails.Add('  Bit 0=0: Shape will NOT be kept intact when the cells are moved')
+               else FDetails.Add('x Bit 0=1: Shape will be kept intact when the cells are moved');
+             if w and $0002 = 0
+               then FDetails.Add('  Bit 1=0: Shape will NOT be kept intact when the cells are resized')
+               else FDetails.Add('x Bit 1=1: Shape will be kept intact when the cells are resized');
+             FDetails.Add(       '  Bit 2=0: reserved (must be 0)');
+             FDetails.Add(       '  Bit 3=0: reserved (must be 0)');
+             FDetails.Add(       '  Bit 4=0: reserved (must be 0)');
+             FDetails.Add(       '  Bits 15-5: unused');
+           end;
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w), indent + 'Move/resize flags');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'Column of the cell under the top left corner of the bounding rectangle of the shape');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'x coordinate of the top left corner of the bounding rectangle relative to the corner of the underlying cell (as 1/1024 of that cell’s width)');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'Row of the cell under the top left corner of the bounding rectangle of the shape');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'y coordinate of the top left corner of the bounding rectangle relative to the corner of the underlying cell (as 1/256 of that cell’s height');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'Column of the cell under the bottom right corner of the bounding rectangle of the shape');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'x coordinate of the bottom right corner of the bounding rectangle relative to the corner of the underlying cell (as 1/1024 of that cell’s width)');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'Row of the cell under the bottom right corner of the bounding rectangle of the shape');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'y coordinate of the bottom right corner of the bounding rectangle relative to the corner of the underlying cell (as 1/256 of that cell’s height');
+           inc(n);
+         end;
+      1: begin  // "Small" rectangle structure
+           numBytes := 2;
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'top');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'left');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'right');
+           inc(n);
+           Move(FBuffer[FBufferIndex], w, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+             indent + 'bottom');
+           inc(n);
+         end;
+      2: begin   // standard rectangle structure
+           numbytes := 4;
+           Move(FBuffer[FBufferIndex], dw, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+             indent + 'top');
+           inc(n);
+           Move(FBuffer[FBufferIndex], dw, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+             indent + 'left');
+           inc(n);
+           Move(FBuffer[FBufferIndex], dw, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+             indent + 'right');
+           inc(n);
+           Move(FBuffer[FBufferIndex], dw, numbytes);
+           ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(DWordLEToN(dw)),
+             indent + 'bottom');
+           inc(n);
+         end;
+    end;
+  end;
+
+  procedure DoShowOfficeArtRecord(out ARecType:Word; out ARecLen: DWord;
+    out AIsContainer: Boolean);
+  var
+    startIndex, endindex: Int64;
+    totalbytes: Int64;
+  begin
+    totalbytes := 0;
+    startIndex := FBufferIndex + 8;
+    repeat
+      DoShowHeader(ARecType, ARecLen, AIsContainer);
+      if totalbytes = 0 then endindex := startindex + ARecLen;
+      totalbytes := totalbytes + ARecLen;
+      if AIsContainer then begin
+        inc(level);
+        indent := PrepareIndent(level);
+        DoShowOfficeArtRecord(ARecType, ARecLen, AIsContainer);
+      end else
+        case ARecType of
+          $F008: DoShowOfficeArtFDG;
+          $F009: DoShowOfficeArtFSPGR;  // shape group
+          $F00A: DoShowOfficeArtFSP;    // instance of a shape
+          $F00B: DoShowOfficeArtFOPT(ARecLen); // table of OfficeArtRGFOPTE records
+          $F00D: DoShowOfficeArtClientTextbox(ARecLen);
+          $F010: DoShowOfficeArtClientAnchorData(0);  // 0 - use OfficeArtClientAnchorSheet because contained in a sheet stream
+//           $F122: DoShowOfficeArtRGFOPTE(AIndent);  // (tertiary) table of OfficeArtRGFOPTE records
+          else if ARecLen <> 0 then begin
+                 ShowInRow(FCurrRow, FBufferIndex, ARecLen, '', indent + 'Skipping this unknown record...');
+                 inc(n);
+               end;
+        end;
+    until (FBufferIndex >= endindex) or (FBufferIndex >= Length(FBuffer));
+    dec(level);
+    FBufferIndex := endindex;
+  end;
+
+begin
+  RowCount := FixedRows + 1000;
+  n := 0;
+  level := -1;
+  DoShowOfficeArtRecord(recType, recLen, isContainer);
+  RowCount := FixedRows + n;
+end;
 
 procedure TBIFFGrid.ShowMulBlank;
 var
@@ -3172,14 +3751,14 @@ begin
     if Row = FCurrRow then begin
       FDetails.Add('Comment flags:'#13);
       if (w and $0002 <> 0)
-        then FDetails.Add('Bit 1=1: Comment is shown at all times')
-        else FDetails.Add('Bit 1=0: Comment is not shown at all tiems');
+        then FDetails.Add('x Bit 1=1: Comment is shown at all times')
+        else FDetails.Add('  Bit 1=0: Comment is not shown at all tiems');
       if (w and $0080 <> 0)
-        then FDetails.Add('Bit 7=1: Row with comment is hidden')
-        else FDetails.Add('Bit 7=0: Row with comment is visible');
+        then FDetails.Add('x Bit 7=1: Row with comment is hidden')
+        else FDetails.Add('  Bit 7=0: Row with comment is visible');
       if (w and $0100 <> 0)
-        then FDetails.Add('Bit 8=1: Column with comment is hidden')
-        else FDetails.Add('Bit 8=0: Column with comment is visible');
+        then FDetails.Add('x Bit 8=1: Column with comment is hidden')
+        else FDetails.Add('  Bit 8=0: Column with comment is visible');
       FDetails.Add('All other bits are reserved and must be ignored.');
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
@@ -3225,14 +3804,14 @@ begin
     Move(FBuffer[FBufferIndex], b, numBytes);
     if Row = FCurrRow then begin
       FDetails.Add('Cell protection and XF index:'#13);
-      FDetails.Add(Format('Bits 5-0 = %d: XF Index', [b and $3F]));
+      FDetails.Add(Format('x Bits 5-0 = %d: XF Index', [b and $3F]));
       case b and $40 of
-        0: FDetails.Add('Bit 6 = 0: Cell is NOT locked.');
-        1: FDetails.Add('Bit 6 = 1: Cell is locked.');
+        0: FDetails.Add('  Bit 6 = 0: Cell is NOT locked.');
+        1: FDetails.Add('x Bit 6 = 1: Cell is locked.');
       end;
       case b and $80 of
-        0: FDetails.Add('Bit 7 = 0: Formula is NOT hidden.');
-        1: FDetails.Add('Bit 7 = 1: Formula is hidden.');
+        0: FDetails.Add('  Bit 7 = 0: Formula is NOT hidden.');
+        1: FDetails.Add('x Bit 7 = 1: Formula is hidden.');
       end;
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.2x)', [b,b]),
@@ -3253,27 +3832,27 @@ begin
     if Row = FCurrRow then begin
       FDetails.Add('Cell style:'#13);
       case b and $07 of
-        0: FDetails.Add('Bits 2-0 = 0: Horizontal alignment is GENERAL');
-        1: FDetails.Add('Bits 2-0 = 1: Horizontal alignment is LEFT');
-        2: FDetails.Add('Bits 2-0 = 2: Horizontal alignment is CENTERED');
-        3: FDetails.Add('Bits 2-0 = 3: Horizontal alignment is RIGHT');
-        4: FDetails.Add('Bits 2-0 = 4: Horizontal alignment is FILLED');
+        0: FDetails.Add('x Bits 2-0 = 0: Horizontal alignment is GENERAL');
+        1: FDetails.Add('x Bits 2-0 = 1: Horizontal alignment is LEFT');
+        2: FDetails.Add('x Bits 2-0 = 2: Horizontal alignment is CENTERED');
+        3: FDetails.Add('x Bits 2-0 = 3: Horizontal alignment is RIGHT');
+        4: FDetails.Add('x Bits 2-0 = 4: Horizontal alignment is FILLED');
       end;
       if b and $08 = 0
-        then FDetails.Add('Bit 3 = 0: Cell has NO left border')
-        else FDetails.Add('Bit 3 = 1: Cell has left black border');
+        then FDetails.Add('  Bit 3 = 0: Cell has NO left border')
+        else FDetails.Add('x Bit 3 = 1: Cell has left black border');
       if b and $10 = 0
-        then FDetails.Add('Bit 4 = 0: Cell has NO right border')
-        else FDetails.Add('Bit 4 = 1: Cell has right black border');
+        then FDetails.Add('  Bit 4 = 0: Cell has NO right border')
+        else FDetails.Add('x Bit 4 = 1: Cell has right black border');
       if b and $20 = 0
-        then FDetails.Add('Bit 5 = 0: Cell has NO top border')
-        else FDetails.Add('Bit 5 = 1: Cell has top black border');
+        then FDetails.Add('  Bit 5 = 0: Cell has NO top border')
+        else FDetails.Add('x Bit 5 = 1: Cell has top black border');
       if b and $40 = 0
-        then FDetails.Add('Bit 6 = 0: Cell has NO bottom border')
-        else FDetails.Add('Bit 6 = 1: Cell has bottom black border');
+        then FDetails.Add('  Bit 6 = 0: Cell has NO bottom border')
+        else FDetails.Add('x Bit 6 = 1: Cell has bottom black border');
       if b and $80 = 0
-        then FDetails.Add('Bit 7 = 0: Cell has NO shaded background')
-        else FDetails.Add('Bit 7 = 1: Cell has shaded background');
+        then FDetails.Add('  Bit 7 = 0: Cell has NO shaded background')
+        else FDetails.Add('x Bit 7 = 1: Cell has shaded background');
     end;
     ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.2x)', [b,b]),
       'Cell style');
@@ -3421,29 +4000,38 @@ begin
              if Row = FCurrRow then begin
                FDetails.Add('Option flags:'#13);
                if w and $0001 <> 0
-                 then FDetails.Add('Bit $0001 = 1: Object is locked when sheet is protected.')
-                 else FDetails.Add('Bit $0001 = 0: Object is NOT locked when sheet is protected.');
+                 then FDetails.Add('x Bit $0001 = 1: Object is locked when sheet is protected.')
+                 else FDetails.Add('  Bit $0001 = 0: Object is NOT locked when sheet is protected.');
                if w and $000E <> 0
-                 then FDetails.Add('Bit $0002 <> 0: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
-                 else FDetails.Add('Bit $0002 = 0: Reserved - must be zero');
+                 then FDetails.Add('! Bit $0002 <> 0: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
+                 else FDetails.Add('  Bit $0002 = 0: Reserved - must be zero');
                if w and $0010 <> 0
-                 then FDetails.Add('Bit $0010 = 1: Image of this object is intended to be included when printing')
-                 else FDetails.Add('Bit $0010 = 0: Image of this object is NOT intended to be included when printing');
+                 then FDetails.Add('x Bit $0010 = 1: Image of this object is intended to be included when printing')
+                 else FDetails.Add('  Bit $0010 = 0: Image of this object is NOT intended to be included when printing');
                if w and $1FE0 <> 0
-                 then FDetails.Add('Bits 12-5 <> 0: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
-                 else FDetails.Add('Bits 12-5 = 0: Reserved - must be zero');
+                 then FDetails.Add('! Bits 12-5 <> 0: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
+                 else FDetails.Add('  Bits 12-5 = 0: Reserved - must be zero');
                if w and $2000 <> 0
-                 then FDetails.Add('Bit $2000 = 1: Object uses automatic fill style.')
-                 else FDetails.Add('Bit $2000 = 0: Object does NOT use automatic fill style.');
+                 then FDetails.Add('x Bit $2000 = 1: Object uses automatic fill style.')
+                 else FDetails.Add('  Bit $2000 = 0: Object does NOT use automatic fill style.');
                if w and $4000 <> 0
-                 then FDetails.Add('Bit $4000 = 1: Object uses automatic line style.')
-                 else FDetails.Add('Bit $4000 = 0: Object does NOT use automatic line style.');
+                 then FDetails.Add('x Bit $4000 = 1: Object uses automatic line style.')
+                 else FDetails.Add('  Bit $4000 = 0: Object does NOT use automatic line style.');
                if w and $8000 <> 0
-                 then FDetails.Add('Bit $8000 = 1: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
-                 else FDetails.Add('Bit $8000 = 0: Reserved - must be zero.');
+                 then FDetails.Add('! Bit $8000 = 1: Reserved - must be zero - THIS SEEMS TO BE AN ERROR!')
+                 else FDetails.Add('  Bit $8000 = 0: Reserved - must be zero.');
              end;
-             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
-               'Option flags');
+             s := '';
+             if w and $0001 <> 0 then s := s + 'locked, ';
+             if w and $0010 <> 0 then s := s + 'print, ';
+             if w and $2000 <> 0 then s := s + 'automatic fill style, ';
+             if w and $4000 <> 0 then s := s + 'automatic line style, ';
+             if s <> '' then begin
+               Delete(s, Length(s)-1, 2);
+               s := 'Option flags:' + s;
+             end else
+               s := 'Option flags';
+             ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]), s);
              inc(n);
            end;
       end;
@@ -3452,94 +4040,7 @@ begin
     RowCount := FixedRows + n;
   end else
   if FFormat = sfExcel5 then begin
-                          (*
-
-
-
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numBytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [WordLEToN(w)]),
-    'cb (must be $12)');
-
-  numBytes := 2;
-  w := WordLEToN(w);
-  Move(FBuffer[FBufferIndex], w, numBytes);
-  if Row = FCurrRow then begin
-    FDetails.Add('Object type:'#13);
-    case w of
-      $00: FDetails.Add('$00 = Group');
-      $01: FDetails.Add('$01 = Line');
-      $02: FDetails.Add('$02 = Rectangle');
-      $03: FDetails.Add('$03 = Oval');
-      $04: FDetails.Add('$04 = Arc');
-      $05: FDetails.Add('$05 = Chart');
-      $06: FDetails.Add('$06 = Text');
-      $07: FDetails.Add('$07 = Button');
-      $08: FDetails.Add('$08 = Picture');
-      $09: FDetails.Add('$09 = Polygon');
-      $0B: FDetails.Add('$0B = Checkbox');
-      $0C: FDetails.Add('$0C = Radio button');
-      $0D: FDetails.Add('$0D = Edit box');
-      $0E: FDetails.Add('$0E = Label');
-      $0F: FDetails.Add('$0F = Dialog box');
-      $10: FDetails.Add('$10 = Spin control');
-      $11: FDetails.Add('$11 = Scrollbar');
-      $12: FDetails.Add('$12 = List');
-      $13: FDetails.Add('$13 = Group box');
-      $14: FDetails.ADd('$14 = Dropdown list');
-      $19: FDetails.Add('$19 = Note');
-      $1E: FDetails.Add('$1E = OfficeArt object');
-      else FDetails.Add(IntToStr(w) + ' = (unknown object)');
-    end;
-  end;
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
-    'Object type (ot)');
-
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numBytes);
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [WordLEToN(w)]),
-    'Object ID');
-
-  numBytes := 2;
-  Move(FBuffer[FBufferIndex], w, numBytes);
-  w := WordLEToN(w);
-  if Row = FCurrRow then begin
-    FDetails.Add('Object flags:'#13);
-    if w and $0001 <> 0
-      then FDetails.Add('Bit $0001 = 1: Object is locked')
-      else FDetails.Add('Bit $0001 = 0: Object is NOT locked');
-    if w and $0002 <> 0
-      then FDetails.Add('Bit $0002 = 1: Reserved - must be zero!!!d')
-      else FDetails.Add('Bit $0002 = 0: Reserved - must be zero');
-    if w and $0004 <> 0
-      then FDetails.Add('Bit $0004 = 1: Application is expected to choose object size')
-      else FDetails.Add('Bit $0004 = 0: Application is NOT expected to choose object size');
-    if w and $0008 <> 0
-      then FDetails.Add('Bit $0008 = 1: Is a chart that is expected to be published when sheet is published')
-      else FDetails.Add('Bit $0008 = 0: Is NOT a chart that is expected to be published when sheet is published');
-    if w and $0010 <> 0
-      then FDetails.Add('Bit $0010 = 1: Image of this object is intended to be included when printing')
-      else FDetails.Add('Bit $0010 = 0: Image of this object is NOT intended to be included when printing');
-    FDetails.Add('Bit $0020    : unused');
-    FDetails.Add('Bit $0040    : unused');
-    if w and $0080 <> 0
-      then FDetails.Add('Bit $0080 = 1: Object is disabled')
-      else FDetails.ADd('Bit $0080 = 0: Object is NOT disabled');
-    if w and $0100 <> 0
-      then FDetails.Add('Bit $0100 = 1: is an auxiliary object that can only be automatically inserted by the application')
-      else FDetails.Add('Bit $0100 = 0: is NOT an auxiliary object that can only be automatically inserted by the application');
-    if w and $0200 <> 0
-      then FDetails.Add('Bit $0200 = 1: is expected to be updated on load to reflect the values in the range associated with the object')
-      else FDetails.Add('Bit $0200 = 0: is NOT expected to be updated on load to reflect the values in the range associated with the object');
-    FDetails.Add('Bit $0400    : unused');
-    FDetails.Add('Bit $0800    : unused');
-    if w and $1000 <> 0
-      then FDetails.Add('Bit $1000 = 1: is expected to be updated whenever the value of a cell in the range associated with the object changes')
-      else FDetails.Add('Bit $1000 = 0: is NOT expected to be updated whenever the value of a cell in the range associated with the object changes');
-  end;
-  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.04x', [w]),
-    'Flags');
-    *)
+      // to do
   end;
 end;
 
@@ -3883,8 +4384,8 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Protection state of the workbook:'#13);
     if w = 0
-      then FDetails.Add('0 = Workbook is NOT protected.')
-      else FDetails.Add('1 = Workbook is protected.');
+      then FDetails.Add('  0 = Workbook is NOT protected.')
+      else FDetails.Add('x 1 = Workbook is protected.');
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x', [w]),
     'Protection state of the workbook');
@@ -3903,8 +4404,8 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('"Recalculate before save" option:'#13);
     if w = 0
-      then FDetails.Add('0 = Do not recalculate')
-      else FDetails.Add('1 = Recalculate before saving the document');
+      then FDetails.Add('  0 = Do not recalculate')
+      else FDetails.Add('x 1 = Recalculate before saving the document');
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
     'Recalculate before saving');
@@ -3943,8 +4444,8 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('RefreshAll record:'#13);
     if w = 0
-      then FDetails.Add('0 = Do not force refresh of external data ranges, PivotTables and XML maps on workbook load.')
-      else FDetails.Add('1 = Force refresh of external data ranges, PivotTables and XML maps on workbook load.');
+      then FDetails.Add('  0 = Do not force refresh of external data ranges, PivotTables and XML maps on workbook load.')
+      else FDetails.Add('x 1 = Force refresh of external data ranges, PivotTables and XML maps on workbook load.');
   end;
   ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.4x)', [w, w]),
     'Force refresh of external data ranges, Pivot tables and XML maps on workbook load');
@@ -4297,44 +4798,44 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Option flags:'#13);
     if w and $0001 = 0
-      then FDetails.Add('Bit $0001 = 0: Do not show automatic page breaks')
-      else FDetails.Add('Bit $0001 = 1: Show automatic page breaks');
+      then FDetails.Add('  Bit $0001 = 0: Do not show automatic page breaks')
+      else FDetails.Add('x Bit $0001 = 1: Show automatic page breaks');
     if w and $0010 = 0
-      then FDetails.Add('Bit $0010 = 0: Standard sheet')
-      else FDetails.Add('Bit $0010 = 1: Dialog sheet (BIFF5-BIFF8)');
+      then FDetails.Add('  Bit $0010 = 0: Standard sheet')
+      else FDetails.Add('x Bit $0010 = 1: Dialog sheet (BIFF5-BIFF8)');
     if w and $0020 = 0
-      then FDetails.Add('Bit $0020 = 0: No automatic styles in outlines')
-      else FDetails.Add('Bit $0020 = 1: Apply automatic styles to outlines');
+      then FDetails.Add('  Bit $0020 = 0: No automatic styles in outlines')
+      else FDetails.Add('x Bit $0020 = 1: Apply automatic styles to outlines');
     if w and $0040 = 0
-      then FDetails.Add('Bit $0040 = 0: Outline buttons above outline group')
-      else FDetails.Add('Bit $0040 = 1: Outline buttons below outline group');
+      then FDetails.Add('  Bit $0040 = 0: Outline buttons above outline group')
+      else FDetails.Add('x Bit $0040 = 1: Outline buttons below outline group');
     if w and $0080 = 0
-      then FDetails.Add('Bit $0080 = 0: Outline buttons left of outline group')
-      else FDetails.Add('Bit $0080 = 1: Outline buttons right of outline group');
+      then FDetails.Add('  Bit $0080 = 0: Outline buttons left of outline group')
+      else FDetails.Add('x Bit $0080 = 1: Outline buttons right of outline group');
     if w and $0100 = 0
-      then FDetails.Add('Bit $0100 = 0: Scale printout in percent')
-      else FDetails.Add('Bit $0100 = 1: Fit printout to number of pages');
+      then FDetails.Add('  Bit $0100 = 0: Scale printout in percent')
+      else FDetails.Add('x Bit $0100 = 1: Fit printout to number of pages');
     if w and $0200 = 0
-      then FDetails.Add('Bit $0200 = 0: Save external linked values (BIFF3-BIFF4 only)')
-      else FDetails.Add('Bit $0200 = 1: Do NOT save external linked values (BIFF3-BIFF4 only)');
+      then FDetails.Add('  Bit $0200 = 0: Save external linked values (BIFF3-BIFF4 only)')
+      else FDetails.Add('x Bit $0200 = 1: Do NOT save external linked values (BIFF3-BIFF4 only)');
     if w and $0400 = 0
-      then FDetails.Add('Bit $0400 = 0: Do not show row outline symbols')
-      else FDetails.Add('Bit $0400 = 1: Show row outline symbols');
+      then FDetails.Add('  Bit $0400 = 0: Do not show row outline symbols')
+      else FDetails.Add('x Bit $0400 = 1: Show row outline symbols');
     if w and $0800 = 0
-      then FDetails.Add('Bit $0800 = 0: Do not show column outline symbols')
-      else FDetails.Add('Bit $0800 = 1: Show column outline symbols');
+      then FDetails.Add('  Bit $0800 = 0: Do not show column outline symbols')
+      else FDetails.Add('x Bit $0800 = 1: Show column outline symbols');
     case (w and $3000) shr 12 of
-      0: FDetails.Add('Bits $3000 = $0000: Arrange windows tiled');
-      1: FDetails.Add('Bits $3000 = $1000: Arrange windows horizontal');
-      2: FDetails.Add('Bits $3000 = $2000: Arrange windows vertical');
-      3: FDetails.Add('Bits $3000 = $3000: Arrange windows cascaded');
+      0: FDetails.Add('x Bits $3000 = $0000: Arrange windows tiled');
+      1: FDetails.Add('x Bits $3000 = $1000: Arrange windows horizontal');
+      2: FDetails.Add('x Bits $3000 = $2000: Arrange windows vertical');
+      3: FDetails.Add('x Bits $3000 = $3000: Arrange windows cascaded');
     end;
     if w and $4000 = 0
-      then FDetails.Add('Bits $4000 = 0: Excel like expression evaluation (BIFF4-BIFF8 only)')
-      else FDetails.Add('Bits $4000 = 1: Lotus like expression evaluation (BIFF4-BIFF8 only)');
+      then FDetails.Add('x Bits $4000 = 0: Excel like expression evaluation (BIFF4-BIFF8 only)')
+      else FDetails.Add('x Bits $4000 = 1: Lotus like expression evaluation (BIFF4-BIFF8 only)');
     if w and $8000 = 0
-      then FDetails.Add('Bits $8000 = 0: Excel like formula editing (BIFF4-BIFF8 only)')
-      else FDetails.Add('Bits $8000 = 1: Lotus like formula editing (BIFF4-BIFF8 only)');
+      then FDetails.Add('x Bits $8000 = 0: Excel like formula editing (BIFF4-BIFF8 only)')
+      else FDetails.Add('x Bits $8000 = 1: Lotus like formula editing (BIFF4-BIFF8 only)');
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.4x (%d)', [w, w]),
     'Option flags');
@@ -4499,8 +5000,8 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Attributes:'#13);
     if w and $0001 = 0
-      then FDetails.Add('Bit 0 = 0: The containing record does not specify a range of cells.')
-      else FDetails.Add('Bit 0 = 1: The containing record specifies a range of cells.');
+      then FDetails.Add('  Bit 0 = 0: The containing record does not specify a range of cells.')
+      else FDetails.Add('x Bit 0 = 1: The containing record specifies a range of cells.');
     FDetails.Add('Bit 1: specifies wether to alert the user of possible problems '+
       'when saving the file whithout having reckognized this record.');
     FDetails.Add('Bits 2-15: reserved (MUST be zero, MUST be ignored)');
@@ -4515,11 +5016,11 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Flags:'#13);
     if b and $01 = 0
-      then FDetails.Add('Bit 0 = 0: no built-in style')
-      else FDetails.Add('Bit 0 = 1: built-in style');
+      then FDetails.Add('  Bit 0 = 0: no built-in style')
+      else FDetails.Add('x Bit 0 = 1: built-in style');
     if b and $02 = 0
-      then FDetails.Add('Bit 1 = 0: NOT hidden')
-      else FDetails.Add('Bit 1 = 1: hidden (i.e. is displayed in user interface)');
+      then FDetails.Add('  Bit 1 = 0: NOT hidden')
+      else FDetails.Add('x Bit 1 = 1: hidden (i.e. is displayed in user interface)');
     FDetails.Add('Bit 2: specifies whether the built-in cell style was modified '+
       'by the user and thus has a custom definition.');
     FDetails.Add('Bit 3-7: Reserved');
@@ -4612,28 +5113,35 @@ procedure TBIFFGrid.ShowTXO;
 var
   numbytes: Word;
   w: Word;
+  s, sh, sv, sl: String;
 begin
   RowCount := FixedRows + 9;
   numbytes := 2;
   Move(FBuffer[FBufferIndex], w, numBytes);
   w := WordLEToN(w);
+  sh := '';
+  case (w and $000E) shr 1 of
+    1: sh := sh + 'left-aligned, ';
+    2: sh := sh + 'centered, ';
+    3: sh := sh + 'right-aligned, ';
+    4: sh := sh + 'justified, ';
+  end;
+  sv := '';
+  case (w and $0070) shr 4 of
+    1: sv := sv + 'top, ';
+    2: sv := sv + 'middle, ';
+    3: sv := sv + 'bottom, ';
+    4: sv := sv + 'justify, ';
+  end;
+  s := sh + sv;
+  if (w and $0200) shr 9 <> 0 then s := s + 'lock text, ';
   if Row = FCurrRow then begin
     FDetails.Add(     'Option flags:'#13);
     FDetails.Add(     'Bit 0: Reserved');
-    case (w and $000E) shr 1 of
-      0: FDetails.Add('Bits 1-3: 0 = Horizontal text alignment: none');
-      1: FDetails.Add('Bits 1-3: 1 = Horizontal text alignment: left-aligned');
-      2: FDetails.Add('Bits 1-3: 2 = Horizontal text alignment: centered');
-      3: FDetails.Add('Bits 1-3: 3 = Horizontal text alignment: right-aligned');
-      4: FDetails.Add('Bits 1-3: 4 = Horizontal text alignment: justified');
-    end;
-    case (w and $0070) shr 4 of
-      0: FDetails.Add('Bits 4-6: 0 = Vertical text alignment: none');
-      1: FDetails.Add('Bits 4-6: 1 = Vertical text alignment: top');
-      2: FDetails.Add('Bits 4-6: 2 = Vertical text alignment: center');
-      3: FDetails.Add('Bits 4-6: 3 = Vertical text alignment: bottom');
-      4: FDetails.Add('Bits 4-6: 4 = Vertical text alignment: justify');
-    end;
+    if sh = '' then sh := 'none';
+    FDetails.Add(     'Bits 1-3: 0 = Horizontal text alignment: ' + sh);
+    if sv = '' then sv := 'none';
+    FDetails.Add(     'Bits 4-6: 0 = Vertical text alignment: ' + sv);
     FDetails.Add(     'Bits 7-8: Reserved');
     case (w and $0200) shr 9 of
       0: FDetails.Add('Bit 9: Lock Text Option is off.');
@@ -4641,22 +5149,27 @@ begin
     end;
     FDetails.Add(     'Bits 10-15: Reserved');
   end;
-  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]),
-    'Option flags');
+  if s <> '' then begin
+    Delete(s, Length(s)-1, 2);
+    s := 'Option flags: ' + s;
+  end else
+    s := 'Option flags';
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x', [w]), s);
 
   Move(FBuffer[FBufferIndex], w, numbytes);
   w := WordLEToN(w);
+  case w of
+    0: s := 'No rotation (text appears left to right';
+    1: s := 'Text appears top to bottom; letters are upright';
+    2: s := 'Text is rotated 90 degrees counterclockwise';
+    3: s := 'Text is rotated 90 degrees clockwise';
+  end;
   if Row = FCurrRow then begin
     FDetails.Add('Orientation of text with the object boundary:'#13);
-    case w of
-      0: FDetails.Add('0 = no rotation (text appears left to right)');
-      1: FDetails.Add('1 = text appears top to bottom; letters are upright');
-      2: FDetails.Add('2 = text is rotated 90 degrees counterclockwise');
-      3: FDetails.Add('3 = text is rotated 90 degrees clockwise');
-    end;
+    FDetails.Add(Format('%d = %s', [w, s]));
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
-    'Orientation of text within the object boundary');
+    'Orientation of text within the object boundary: ' + s);
 
   Move(FBuffer[FBufferIndex], w, numBytes);
   ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
@@ -4676,7 +5189,7 @@ begin
 
   Move(FBuffer[FBufferIndex], w, numBytes);
   ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
-    'Length of formatting runs (in seconds following CONTINUE record)');
+    'Length of formatting runs (in second following CONTINUE record)');
 
   Move(FBuffer[FBufferIndex], w, numBytes);
   ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
@@ -4723,20 +5236,20 @@ begin
     if Row = FCurrRow then begin
       FDetails.Add('Option flags:');
       if w and $0001 = 0
-        then FDetails.Add('Bit $0001 = 0: Window is visible')
-        else FDetails.Add('Bit $0001 = 1: Window is hidden');
+        then FDetails.Add('  Bit $0001 = 0: Window is visible')
+        else FDetails.Add('x Bit $0001 = 1: Window is hidden');
       if w and $0002 = 0
-        then FDetails.Add('Bit $0002 = 0: Window is open')
-        else FDetails.Add('Bit $0002 = 1: Window is minimized');
+        then FDetails.Add('  Bit $0002 = 0: Window is open')
+        else FDetails.Add('x Bit $0002 = 1: Window is minimized');
       if w and $0008 = 0
-        then FDetails.Add('Bit $0008 = 0: Horizontal scrollbar hidden')
-        else FDetails.Add('Bit $0008 = 1: Horizontal scrollbar visible');
+        then FDetails.Add('  Bit $0008 = 0: Horizontal scrollbar hidden')
+        else FDetails.Add('x Bit $0008 = 1: Horizontal scrollbar visible');
       if w and $0010 = 0
-        then FDetails.Add('Bit $0010 = 0: Vertical scrollbar hidden')
-        else FDetails.Add('Bit $0010 = 1: Vertical scrollbar visible');
+        then FDetails.Add('  Bit $0010 = 0: Vertical scrollbar hidden')
+        else FDetails.Add('x Bit $0010 = 1: Vertical scrollbar visible');
       if w and $0020 = 0
-        then FDetails.Add('Bit $0020 = 0: Worksheet tab bar hidden')
-        else FDetails.Add('Bit $0020 = 1: Worksheet tab bar visible');
+        then FDetails.Add('  Bit $0020 = 0: Worksheet tab bar hidden')
+        else FDetails.Add('x Bit $0020 = 1: Worksheet tab bar visible');
     end;
     ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.4x)', [w, w]),
       'Option flags');
@@ -4809,41 +5322,41 @@ begin
     if Row = FCurrRow then begin
       FDetails.Add('Option flags:');
       if w and $0001 = 0
-        then FDetails.Add('Bit $0001 = 0: Show formula results')
-        else FDetails.Add('Bit $0001 = 1: Show formulas');
+        then FDetails.Add('  Bit $0001 = 0: Show formula results')
+        else FDetails.Add('x Bit $0001 = 1: Show formulas');
       if w and $0002 = 0
-        then FDetails.Add('Bit $0002 = 0: Do not show grid lines')
-        else FDetails.Add('Bit $0002 = 1: Show grid lines');
+        then FDetails.Add('  Bit $0002 = 0: Do not show grid lines')
+        else FDetails.Add('x Bit $0002 = 1: Show grid lines');
       if w and $0004 = 0
-        then FDetails.Add('Bit $0004 = 0: Do not show sheet headers')
-        else FDetails.Add('Bit $0004 = 1: Show sheet headers');
+        then FDetails.Add('  Bit $0004 = 0: Do not show sheet headers')
+        else FDetails.Add('x Bit $0004 = 1: Show sheet headers');
       if w and $0008 = 0
-        then FDetails.Add('Bit $0008 = 0: Panes are not frozen')
-        else FDetails.Add('Bit $0008 = 1: Panes are frozen');
+        then FDetails.Add('  Bit $0008 = 0: Panes are not frozen')
+        else FDetails.Add('x Bit $0008 = 1: Panes are frozen');
       if w and $0010 = 0
-        then FDetails.Add('Bit $0010 = 0: Show zero values as empty cells')
-        else FDetails.Add('Bit $0010 = 1: Show zero values');
+        then FDetails.Add('  Bit $0010 = 0: Show zero values as empty cells')
+        else FDetails.Add('x Bit $0010 = 1: Show zero values');
       if w and $0020 = 0
-        then FDetails.Add('Bit $0020 = 0: Manual grid line color')
-        else FDetails.Add('Bit $0020 = 1: Automatic grid line color');
+        then FDetails.Add('  Bit $0020 = 0: Manual grid line color')
+        else FDetails.Add('x Bit $0020 = 1: Automatic grid line color');
       if w and $0040 = 0
-        then FDetails.Add('Bit $0040 = 0: Columns from left to right')
-        else FDetails.Add('Bit $0040 = 1: Columns from right to left');
+        then FDetails.Add('  Bit $0040 = 0: Columns from left to right')
+        else FDetails.Add('x Bit $0040 = 1: Columns from right to left');
       if w and $0080 = 0
-        then FDetails.Add('Bit $0080 = 0: Do not show outline symbols')
-        else FDetails.Add('Bit $0080 = 1: Show outline symbols');
+        then FDetails.Add('  Bit $0080 = 0: Do not show outline symbols')
+        else FDetails.Add('x Bit $0080 = 1: Show outline symbols');
       if w and $0100 = 0
-        then FDetails.Add('Bit $0100 = 0: Keep splits if pane freeze is removed')
-        else FDetails.Add('Bit $0100 = 1: Remove splits if pane freeze is removed');
+        then FDetails.Add('  Bit $0100 = 0: Keep splits if pane freeze is removed')
+        else FDetails.Add('x Bit $0100 = 1: Remove splits if pane freeze is removed');
       if w and $0200 = 0
-        then FDetails.Add('Bit $0200 = 0: Sheet not selected')
-        else FDetails.Add('Bit $0200 = 1: Sheet selected');
+        then FDetails.Add('  Bit $0200 = 0: Sheet not selected')
+        else FDetails.Add('x Bit $0200 = 1: Sheet selected');
       if w and $0400 = 0
-        then FDetails.Add('Bit $0400 = 0: Sheet not active')
-        else FDetails.Add('Bit $0400 = 1: Sheet active');
+        then FDetails.Add('  Bit $0400 = 0: Sheet not active')
+        else FDetails.Add('x Bit $0400 = 1: Sheet active');
       if w and $0800 = 0
-        then FDetails.Add('Bit $0800 = 0: Show in normal view')
-        else FDetails.Add('Bit $0800 = 1: Show in page break preview');
+        then FDetails.Add('  Bit $0800 = 0: Show in normal view')
+        else FDetails.Add('x Bit $0800 = 1: Show in page break preview');
     end;
     ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('%d ($%.4x)', [w, w]),
       'Option flags');
@@ -5027,7 +5540,7 @@ begin
         5: FDetails.Add('Bits 0-2 = 5: Horizontal alignment "Justified"');
         6: FDetails.Add('Bits 0-2 = 6: Horizontal alignment "Centred across selection"');
         7: if FFormat = sfExcel8 then
-             FDetails.Add('Bits 0-2 = 7: Horizontal alignment "Distributed"');
+             FDetails.Add('x Bits 0-2 = 7: Horizontal alignment "Distributed"');
       end;
       if b and $08 = 0
         then FDetails.Add('Bit 3    = 0: Text is not wrapped.')
@@ -5042,7 +5555,7 @@ begin
       end;
       if FFormat = sfExcel8 then begin
         if b and $80 = 0
-          then FDetails.Add('Bit 3    = 0: Don''t justify last line in justified or distibuted text')
+          then FDetails.Add('Bit 3    = 0: Do NOT justify last line in justified or distibuted text')
           else FDetails.Add('Bit 3    = 1: Justify last line in justified or distibuted text');
       end;
     end;
@@ -5394,8 +5907,8 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Attributes:'#13);
     if w and $0001 = 0
-      then FDetails.Add('Bit 0 = 0: The containing record does not specify a range of cells.')
-      else FDetails.Add('Bit 0 = 1: The containing record specifies a range of cells.');
+      then FDetails.Add('  Bit 0 = 0: The containing record does not specify a range of cells.')
+      else FDetails.Add('x Bit 0 = 1: The containing record specifies a range of cells.');
     FDetails.Add('Bit 1: specifies wether to alert the user of possible problems '+
       'when saving the file whithout having reckognized this record.');
     FDetails.Add('Bits 2-15: reserved (MUST be zero, MUST be ignored)');
@@ -5453,8 +5966,8 @@ begin
   if Row = FCurrRow then begin
     FDetails.Add('Attributes:'#13);
     if w and $0001 = 0
-      then FDetails.Add('Bit 0 = 0: The containing record does not specify a range of cells.')
-      else FDetails.Add('Bit 0 = 1: The containing record specifies a range of cells.');
+      then FDetails.Add('  Bit 0 = 0: The containing record does not specify a range of cells.')
+      else FDetails.Add('x Bit 0 = 1: The containing record specifies a range of cells.');
     FDetails.Add('Bit 1: specifies wether to alert the user of possible problems '+
       'when saving the file whithout having reckognized this record.');
     FDetails.Add('Bits 2-15: reserved (MUST be zero, MUST be ignored)');
