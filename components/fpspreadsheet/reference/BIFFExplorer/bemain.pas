@@ -769,22 +769,24 @@ procedure TMainForm.LoadFile(const AFileName: String);
 var
   valid: Boolean;
   excptn: Exception = nil;
+  ext: String;
 begin
   if not FileExistsUTF8(AFileName) then begin
     MessageDlg(Format('File "%s" not found.', [AFileName]), mtError, [mbOK], 0);
     exit;
   end;
 
-  if Lowercase(ExtractFileExt(AFileName)) <> '.xls' then begin
+  ext := Lowercase(ExtractFileExt(AFilename));
+  if ext <> '.xls' then begin
     MessageDlg('BIFFExplorer can only process binary Excel files (extension ".xls")',
       mtError, [mbOK], 0);
     exit;
   end;
 
   // .xls files can contain several formats. We look into the header first.
-  if Lowercase(ExtractFileExt(AFileName))=STR_EXCEL_EXTENSION then
+  if ext = STR_EXCEL_EXTENSION then
   begin
-    valid := GetFormatFromFileHeader(AFileName, FFormat);
+    valid := GetFormatFromFileHeader(UTF8ToAnsi(AFileName), FFormat);
     // It is possible that valid xls files are not detected correctly. Therefore,
     // we open them explicitly by trial and error - see below.
     if not valid then
@@ -853,7 +855,7 @@ begin
 
   // Rewind the stream and read from it
   MemStream.Position := 0;
-  FFileName := ExpandFileName(UTF8ToSys(AFileName));
+  FFileName := ExpandFileName(AFileName);
   ReadFromStream(MemStream);
 
   FFormat := AFormat;

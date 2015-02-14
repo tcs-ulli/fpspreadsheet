@@ -191,7 +191,7 @@ begin
     $0006: Result := 'FORMULA';
     $0007: Result := 'STRING';
     $0008: Result := 'ROW';
-    $0009: Result := 'BOF';
+    $0009: Result := 'BOF: Begin of file';
     $000A: Result := 'EOF: End of file';
     $000B: Result := 'INDEX';
     $000C: Result := 'CALCCOUNT: Iteration count';
@@ -234,7 +234,7 @@ begin
     $0037: Result := 'DateTable2';
     $003C: Result := 'CONTINUE: Continues long records';
     $003D: Result := 'WINDOW1: Window information';
-    $003E: Result := 'WINDOW2';
+    $003E: Result := 'WINDOW2: Window information';
     $0040: Result := 'BACKUP: Save backup version of the file';
     $0041: Result := 'PANE: Number of panes and their position';
     $0042: Result := 'CODEPAGE: Default code page';   // also: CODENAME: VBE object name ???
@@ -250,7 +250,7 @@ begin
     $005A: Result := 'CRN: Non-resident operands';
     $005B: Result := 'FILESHARING: File-sharing information';
     $005C: Result := 'WRITEACCESS: Write access user name';
-    $005D: Result := 'OBJ';
+    $005D: Result := 'OBJ: Properties of an object in a sheet';
     $005E: Result := 'UNCALCED: Recalculation status';
     $005F: Result := 'SAVERECALC: Recalculate before saving';
     $0060: Result := 'TEMPLATE: Workbook is a template';

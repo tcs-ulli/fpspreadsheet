@@ -8735,9 +8735,12 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   (Pseudo-) abstract method writing a cell comment to the stream.
+  The cell comment is written immediately after the cell content.
+  NOTE: This is not good for XLSX and BIFF8.
+
   Must be overridden by descendents.
 
-  @param  ACell      Pointer to the cell to be written
+  @param  ACell      Pointer to the cell containing the comment to be written
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteComment(AStream: TStream; ACell: PCell);
 begin
