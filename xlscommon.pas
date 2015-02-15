@@ -955,7 +955,7 @@ begin
       try
         List.Text := FIncompleteNote;    // Fix line endings which are #10 in file
         s := Copy(List.Text, 1, Length(List.Text) - Length(LineEnding));
-        FIncompleteCell^.Comment := s;
+        FWorksheet.WriteComment(FIncompleteCell, s);
       finally
         List.Free;
       end;
@@ -2004,25 +2004,27 @@ var
   L: Integer;
   base_size: Word;
   p: Integer;
-  comment: ansistring;
+  cmnt: ansistring;
   List: TStringList;
+  comment: PsComment;
 begin
   Unused(ACell);
 
-  if (ACell^.Comment = '') then
+  comment := FWorksheet.FindComment(ACell);
+  if (comment = nil) or (comment^.Text = '') then
     exit;
 
   List := TStringList.Create;
   try
-    List.Text := ConvertEncoding(ACell^.Comment, encodingUTF8, FCodePage);
-    comment := List[0];
+    List.Text := ConvertEncoding(comment^.Text, encodingUTF8, FCodePage);
+    cmnt := List[0];
     for p := 1 to List.Count-1 do
-      comment := comment + #$0A + List[p];
+      cmnt := cmnt + #$0A + List[p];
   finally
     List.Free;
   end;
 
-  L := Length(comment);
+  L := Length(cmnt);
   base_size := SizeOf(rec) - 2*SizeOf(word);
 
   // First NOTE record
@@ -2032,7 +2034,7 @@ begin
   rec.TextLen := L;
   rec.RecordSize := base_size + Min(L, CHUNK_SIZE);
   AStream.WriteBuffer(rec, SizeOf(rec));
-  AStream.WriteBuffer(comment[1], Min(L, CHUNK_SIZE));  // Write text
+  AStream.WriteBuffer(cmnt[1], Min(L, CHUNK_SIZE));  // Write text
 
   // If the comment text does not fit into 2048 bytes continuation records
   // have to be written.
@@ -2044,7 +2046,7 @@ begin
     rec.TextLen := Min(L, CHUNK_SIZE);
     rec.RecordSize := base_size + rec.TextLen;
     AStream.WriteBuffer(rec, SizeOf(rec));
-    AStream.WriteBuffer(comment[p], rec.TextLen);
+    AStream.WriteBuffer(cmnt[p], rec.TextLen);
     dec(L, CHUNK_SIZE);
     inc(p, CHUNK_SIZE);
   end;

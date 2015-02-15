@@ -36,22 +36,10 @@ begin
     worksheet.WriteUTF8Text(0, 0, '=B2+1');
     // B1
     worksheet.WriteFormula(0, 1, 'B2+1');
-    {
-    worksheet.WriteRPNFormula(0, 1, CreateRPNFormula(
-      RPNCellValue('B2',
-      RPNInteger(1,
-      RPNFunc(fekAdd, nil)))));
-     }
     // A2
     worksheet.WriteUTF8Text(1, 0, '=B3+1');
     // B2
     worksheet.WriteFormula(1, 1, 'B3+1');
-    {
-    worksheet.WriteRPNFormula(1, 1, CreateRPNFormula(
-      RPNCellValue('B3',
-      RPNInteger(1,
-      RPNFunc(fekAdd, nil)))));
-     }
     // A3
     worksheet.WriteUTF8Text(2, 0, '(not dependent)');
     // B3

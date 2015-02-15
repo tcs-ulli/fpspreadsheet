@@ -46,18 +46,24 @@ type
 
       @see ReadAsUTF8Text }
   TCell = record
+  {$IFNDEF NO_PRIVATE_FIELDS_IN_RECORDS}
+  private
+  {$ENDIF}
+    { Status flags }
+    Flags: TsCellFlags;
+
+  {$IFNDEF NO_PRIVATE_FIELDS_IN_RECORDS}
+  public
+  {$ENDIF}
     { Location of the cell }
     Worksheet: TsWorksheet;
     Col: Cardinal; // zero-based
     Row: Cardinal; // zero-based
     { Index of format record }
     FormatIndex: Integer;
-    { Status flags }
-    CalcState: TsCalcState;
     { Special information }
     SharedFormulaBase: PCell;  // Cell containing the shared formula
     MergeBase: PCell;          // Upper left cell of a merged range
-    Comment: String;           // Comment attached to the cell
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     FormulaValue: String;
@@ -96,6 +102,18 @@ type
   {@@ Pointer to a TCol record }
   PCol = ^TCol;
 
+  {@@ The record TsComment contains a comment attached to a cell.
+   @param  Row  (0-based) index of the row containing the cell with the comment
+   @param  Col  (0-based) index of the column containing the coll with the comment
+   @param  Text Comment text }
+  TsComment = record
+    Row, Col: Cardinal;
+    Text: String;
+  end;
+
+  {@@ Pointer to a TsComment record }
+  PsComment = ^TsComment;
+
   {@@ Worksheet user interface options:
     @param soShowGridLines  Show or hide the grid lines in the spreadsheet
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
@@ -127,6 +145,7 @@ type
     FWorkbook: TsWorkbook;
     FName: String;  // Name of the worksheet (displayed at the tab)
     FCells: TAvlTree; // Items are TCell
+    FComments: TAvlTree;  // Items are TsComment
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
@@ -158,10 +177,12 @@ type
     procedure DeleteRowCallback(data, arg: Pointer);
     procedure InsertColCallback(data, arg: Pointer);
     procedure InsertRowCallback(data, arg: Pointer);
-    procedure RemoveCallback(data, arg: pointer);
+    procedure RemoveCellsCallback(data, arg: pointer);
+    procedure RemoveCommentsCallback(data, arg: pointer);
 
   protected
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
+    procedure RemoveAllAVLTreeNodes(ATree: TAvlTree; ARemoveCallback: TsCallback);
 
     // Remove and delete cells
     function RemoveCell(ARow, ACol: Cardinal): PCell;
@@ -196,7 +217,7 @@ type
     function  ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean; overload;
     function  ReadFormulaAsString(ACell: PCell; ALocalized: Boolean = false): String;
     function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
-    function  ReadComment(ACell: PCell): String;
+//    function  ReadComment(ACell: PCell): String;
 
     { Reading of cell attributes }
     function GetDisplayedDecimals(ACell: PCell): Byte;
@@ -238,8 +259,8 @@ type
     function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String): PCell; overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
 
-    function WriteComment(ARow, ACol: Cardinal; const AComment: String): PCell; overload;
-    procedure WriteComment(ACell: PCell; const AComment: String); overload;
+//    function WriteComment(ARow, ACol: Cardinal; const AComment: String): PCell; overload;
+//    procedure WriteComment(ACell: PCell; const AComment: String); overload;
 
     function WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
       ANumFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
@@ -379,6 +400,8 @@ type
     procedure FixSharedFormulas;
     procedure SplitSharedFormula(ACell: PCell);
     function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
+    function GetCalcState(ACell: PCell): TsCalcState;
+    procedure SetCalcState(ACell: PCell; AValue: TsCalcState);
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromCell, AToCell: PCell); overload;
@@ -452,6 +475,17 @@ type
     function GetSelectionCount: Integer;
     procedure SetSelection(const ASelection: TsCellRangeArray);
 
+    // Comments
+    function FindComment(ARow, ACol: Cardinal): PsComment; overload;
+    function FindComment(ACell: PCell): PsComment; overload;
+    function HasComment(ACell: PCell): Boolean;
+    function ReadComment(ARow, ACol: Cardinal): String; overload;
+    function ReadComment(ACell: PCell): string; overload;
+    procedure RemoveAllComments;
+    procedure RemoveComment(ACell: PCell);
+    function WriteComment(ARow, ACol: Cardinal; AText: String): PCell; overload;
+    procedure WriteComment(ACell: PCell; AText: String); overload;
+
     // Notification of changed cells content and format
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
@@ -463,6 +497,8 @@ type
     property  Cells: TAVLTree read FCells;
     {@@ List of all column records of the worksheet having a non-standard column width }
     property  Cols: TIndexedAVLTree read FCols;
+    {@@ List of all comment records }
+    property  Comments: TAVLTree read FComments;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
     {@@ Name of the sheet. In the popular spreadsheet applications this is
@@ -880,8 +916,11 @@ type
   {@@ Callback function when iterating cells while accessing a stream }
   TCellsCallback = procedure (ACell: PCell; AStream: TStream) of object;
 
-  {@@
-    Custom writer of spreadsheet files. "Custom" means that it provides only
+  {@@ Callback function when iterating comments while accessing a stream }
+  TCommentsCallback = procedure (AComment: PsComment; ACommentIndex: Integer;
+    AStream: TStream) of object;
+
+  {@@ Custom writer of spreadsheet files. "Custom" means that it provides only
     the basic functionality. The main implementation is done in derived classes
     for each individual file format. }
   TsCustomSpreadWriter = class(TsCustomSpreadReaderWriter)
@@ -920,11 +959,16 @@ type
     {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); virtual; abstract;
+
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
-    procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree; ACallback: TCellsCallback);
-    procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); virtual;
+    procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree;
+      ACallback: TCellsCallback);
+    procedure IterateThroughComments(AStream: TStream; AComments: TAVLTree;
+      ACallback: TCommentsCallback);
+    procedure WriteToFile(const AFileName: string;
+      const AOverwriteExisting: Boolean = False); virtual;
     procedure WriteToStream(AStream: TStream); virtual;
     procedure WriteToStrings(AStrings: TStrings); virtual;
   end;
@@ -1247,6 +1291,12 @@ begin
   Result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
 end;
 
+function CompareCommentCells(Item1, ITem2: Pointer): Integer;
+begin
+  result := LongInt(PsComment(Item1).Row) - PsComment(Item2).Row;
+  if Result = 0 then
+    Result := LongInt(PsComment(Item1).Col) - PsComment(Item2).Col;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Write the fonts stored for a given workbook to a file.
@@ -1297,6 +1347,7 @@ begin
   FCells := TAVLTree.Create(@CompareCells);
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
+  FComments := TAVLTree.Create(@CompareCommentCells);
 
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
@@ -1323,10 +1374,12 @@ begin
   RemoveAllCells;
   RemoveAllRows;
   RemoveAllCols;
+  RemoveAllComments;
 
   FCells.Free;
   FRows.Free;
   FCols.Free;
+  FComments.Free;
 
   inherited Destroy;
 end;
@@ -1393,7 +1446,7 @@ var
   formula: String;
   cell: PCell;
 begin
-  ACell^.CalcState := csCalculating;
+  ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
 
   parser := TsSpreadsheetParser.Create(self);
   try
@@ -1443,7 +1496,7 @@ begin
     parser.Free;
   end;
 
-  ACell^.CalcState := csCalculated;
+  ACell^.Flags := ACell^.Flags + [cfCalculated] - [cfCalculating];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1494,9 +1547,8 @@ var
 begin
   Unused(arg);
   cell := PCell(data);
-
   if HasFormula(cell) then
-    cell^.CalcState := csNotCalculated;
+    SetCalcState(cell, csNotCalculated);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1564,6 +1616,133 @@ begin
   end;
   SetLength(rpnFormula, 0);
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the cell at a specified row/column contains a comment and
+  returns a pointer to the comment data.
+
+  @param  ARow   (0-based) index to the row
+  @param  ACol   (0-based) index to the column
+  @return Pointer to the TsComment record (nil, if the cell does not have a
+          comment)
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindComment(ARow, ACol: Cardinal): PsComment;
+var
+  comment: TsComment;
+  AVLNode: TAVLTreeNode;
+begin
+  Result := nil;
+  if FComments.Count = 0 then
+    exit;
+
+  comment.Row := ARow;
+  comment.Col := ACol;
+  AVLNode := FComments.Find(@comment);
+  if Assigned(AVLNode) then
+    result := PsComment(AVLNode.Data);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether a cell contains a comment and returns a pointer to the
+  comment data.
+
+  @param  ACell  Pointer to the cell
+  @return Pointer to the TsComment record (nil, if the cell does not have a
+          comment)
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindComment(ACell: PCell): PsComment;
+begin
+  if ACell = nil then
+    Result := nil
+  else
+    Result := FindComment(ACell^.Row, ACell^.Col);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether a specific cell contains a comment
+-------------------------------------------------------------------------------}
+function TsWorksheet.HasComment(ACell: PCell): Boolean;
+begin
+  Result := (ACell <> nil) and (cfHasComment in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the comment text attached to a specific cell
+
+  @param  ARow   (0-based) index to the row
+  @param  ACol   (0-based) index to the column
+  @return Text assigned to the cell as a comment
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadComment(ARow, ACol: Cardinal): String;
+var
+  comment: PsComment;
+begin
+  Result := '';
+  comment := FindComment(ARow, ACol);
+  if comment <> nil then
+    Result := comment^.Text;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the comment text attached to a specific cell
+
+  @param  ACell  Pointer to the cell
+  @return Text assigned to the cell as a comment
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadComment(ACell: PCell): String;
+var
+  comment: PsComment;
+begin
+  Result := '';
+  comment := FindComment(ACell);
+  if comment <> nil then
+    Result := comment^.Text;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a comment to a specific cell
+
+  @param  ARow   (0-based) index to the row
+  @param  ACol   (0-based) index to the column
+  @param  AText  Comment text
+  @return Pointer to the cell containing the comment
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteComment(ARow, ACol: Cardinal; AText: String): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteComment(Result, AText);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a comment to a specific cell
+
+  @param  ACell  Pointer to the cell
+  @param  AText  Comment text
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteComment(ACell: PCell; AText: String);
+var
+  comment: PsComment;
+begin
+  if ACell = nil then
+    exit;
+  if AText = '' then
+  begin
+    if (cfHasComment) in ACell^.Flags then
+    begin
+      RemoveComment(ACell);
+      ACell^.Flags := ACell^.Flags - [cfHasComment];
+    end;
+  end else
+  begin
+    New(comment);
+    comment.Row := ACell^.Row;
+    comment.Col := ACell^.Col;
+    comment.Text := AText;
+    FComments.Add(comment);
+    ACell^.Flags := ACell^.Flags + [cfHasComment];
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Is called whenever a cell value or formatting has changed. Fires an event
@@ -2744,7 +2923,7 @@ begin
   end else
     Result := False;
 end;
-
+                                (*
 {@@ ----------------------------------------------------------------------------
   Returns the comment assigned to a cell
 
@@ -2757,7 +2936,7 @@ begin
     Result := ACell^.Comment
   else
     Result := '';
-end;
+end;                              *)
 
 {@@ ----------------------------------------------------------------------------
   Converts an RPN formula (as read from an xls biff file, for example) to a
@@ -2778,6 +2957,60 @@ begin
     Result := parser.Expression;
   finally
     parser.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the CalcState flag of the specified cell. This flag tells whether a
+  formula in the cell has not yet been calculated (csNotCalculated), is
+  currently being calculated (csCalculating), or has already been calculated
+  (csCalculated.
+
+  @param   ACell   Pointer to cell considered
+  @return  Enumerated value of the cell's calculation state
+           (csNotCalculated, csCalculating, csCalculated)
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetCalcState(ACell: PCell): TsCalcState;
+var
+  calcState: TsCellFlags;
+begin
+  Result := csNotCalculated;
+  if (ACell = nil) then
+    exit;
+  calcState := ACell^.Flags * [cfCalculating, cfCalculated];
+  if calcState = [] then
+    Result := csNotCalculated
+  else
+  if calcState = [cfCalculating] then
+    Result := csCalculating
+  else
+  if calcState = [cfCalculated] then
+    Result := csCalculated
+  else
+    raise Exception.Create('[TsWorksheet.GetCalcState] Illegal cell flags.');
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Set the CalcState flag of the specified cell. This flag tells whether a
+  formula in the cell has not yet been calculated (csNotCalculated), is
+  currently being calculated (csCalculating), or has already been calculated
+  (csCalculated).
+
+  For internal use only!
+
+  @param  ACell   Pointer to cell considered
+  @param  AValue  New value for the calculation state of the cell
+                  (csNotCalculated, csCalculating, csCalculated)
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetCalcState(ACell: PCell; AValue: TsCalcState);
+begin
+  case AValue of
+    csNotCalculated:
+      ACell^.Flags := ACell^.Flags - [cfCalculated, cfCalculating];
+    csCalculating:
+      ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
+    csCalculated:
+      ACell^.Flags := ACell^.Flags + [cfCalculated] - [cfCalculating];
   end;
 end;
 
@@ -3300,28 +3533,76 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method for clearing the records in a spreadsheet.
+  Helper method for clearing the cell records in a spreadsheet.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveCallback(data, arg: pointer);
+procedure TsWorksheet.RemoveCellsCallback(data, arg: pointer);
 begin
   Unused(arg);
   Dispose(PCell(data));
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Helper method for clearing the cell comments in a spreadsheet.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveCommentsCallback(data, arg: pointer);
+begin
+  Unused(arg);
+  Dispose(PsComment(data));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Clears the list of cells and releases their memory.
 --------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllCells;
-var
-  Node: TAVLTreeNode;
 begin
-  Node:=FCells.FindLowest;
-  while Assigned(Node) do begin
-    RemoveCallback(Node.Data,nil);
-    Node.Data:=nil;
-    Node:=FCells.FindSuccessor(Node);
+  RemoveAllAvlTreeNodes(FCells, RemoveCellsCallback);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Clears the list of comments and releases their memory
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveAllComments;
+begin
+  RemoveAllAvlTreeNodes(FComments, RemoveCommentsCallback);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the comment from a cell and releases the memory occupied by the node.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveComment(ACell: PCell);
+var
+  comment: TsComment;
+  commentNode: TAvlTreeNode;
+begin
+  if ACell = nil then
+    exit;
+
+  comment.Row := ACell^.Row;
+  comment.Col := ACell^.Col;
+  commentNode := FComments.Find(@comment);
+  if commentNode <> nil then begin
+    Dispose(PsComment(commentNode.Data));
+    FComments.Delete(commentNode);
+    ACell^.Flags := ACell^.Flags - [cfHasComment];
   end;
-  FCells.Clear;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Clears the AVLTree specified and releases the memory occupied by the nodes
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveAllAVLTreeNodes(ATree: TAvlTree;
+  ARemoveCallback: TsCallback);
+var
+  node: TAvlTreeNode;
+begin
+  node := ATree.FindLowest;
+  while Assigned(node) do begin
+    ARemoveCallback(node.Data, nil);
+    node.Data := nil;
+    node := ATree.FindSuccessor(node);
+  end;
+  ATree.Clear;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3338,7 +3619,9 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Removes a cell and releases its memory.
+  Removes a cell and releases its memory. If a comment is attached to the
+  cell then it is removed and releaded as well.
+
   Just for internal usage since it does not modify the other cells affected
 
   @param  ARow   Row index of the cell to be removed
@@ -3348,6 +3631,8 @@ procedure TsWorksheet.RemoveAndFreeCell(ARow, ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
   cell: TCell;
+  comment: TsComment;
+  commentnode: TAVLTreeNode;
 begin
   cell.Row := ARow;
   cell.Col := ACol;
@@ -3355,6 +3640,14 @@ begin
   if cellnode <> nil then begin
     Dispose(PCell(cellnode.Data));
     FCells.Delete(cellnode);
+  end;
+
+  comment.Row := ARow;
+  comment.Col := ACol;
+  commentNode := FComments.Find(@comment);
+  if commentNode <> nil then begin
+    Dispose(PsComment(commentNode.Data));
+    FComments.Delete(commentNode);
   end;
 end;
 
@@ -4134,7 +4427,7 @@ begin
 
   WriteUTF8Text(ACell, AValue);
 end;
-
+                                 (*
 {@@ ----------------------------------------------------------------------------
   Assigns a comment to a cell
 
@@ -4163,7 +4456,7 @@ begin
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
-
+                                   *)
 {@@ ----------------------------------------------------------------------------
   Writes a currency value to a given cell. Its number format can be provided
   optionally by specifying various parameters.
@@ -8715,7 +9008,8 @@ begin
       cctUTF8String:
         WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     end;
-  if ACell^.Comment <> '' then
+  //if ACell^.Comment <> '' then
+  if FWorksheet.ReadComment(ACell) <> '' then
     WriteComment(AStream, ACell);
 end;
 
@@ -8766,6 +9060,31 @@ begin
   begin
     ACallback(PCell(AVLNode.Data), AStream);
     AVLNode := ACells.FindSuccessor(AVLNode);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  A generic method to iterate through all comments in a worksheet and call a
+  callback routine for each cell.
+
+  @param  AStream    The output stream, passed to the callback routine.
+  @param  AComments  List of comments to be iterated
+  @param  ACallback  Callback routine; it requires as arguments a pointer to the
+                     comment record as well as the destination stream.
+-------------------------------------------------------------------------------}
+procedure TsCustomSpreadWriter.IterateThroughComments(AStream: TStream;
+  AComments: TAVLTree; ACallback: TCommentsCallback);
+var
+  AVLNode: TAVLTreeNode;
+  index: Integer;
+begin
+  index := 0;
+  AVLNode := AComments.FindLowest;
+  while Assigned(AVLNode) do
+  begin
+    ACallback(PsComment(AVLNode.Data), index, AStream);
+    AVLNode := AComments.FindSuccessor(AVLNode);
+    inc(index);
   end;
 end;
 
