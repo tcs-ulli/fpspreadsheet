@@ -1480,8 +1480,7 @@ end;
 procedure TsSpreadBIFF2Writer.WriteBOF(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOF));
-  AStream.WriteWord(WordToLE($0004));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_BOF, 4);
 
   { Unused }
   AStream.WriteWord($0000);
@@ -1497,8 +1496,7 @@ end;
 procedure TsSpreadBIFF2Writer.WriteEOF(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_EOF));
-  AStream.WriteWord($0000);
+  WriteBiffHeader(AStream, INT_EXCEL_ID_EOF, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1525,8 +1523,7 @@ begin
   Len := Length(lFontName);
 
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONT));
-  AStream.WriteWord(WordToLE(4 + 1 + Len * SizeOf(AnsiChar)));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_FONT, 4 + 1 + Len * SizeOf(AnsiChar));
 
   { Height of the font in twips = 1/20 of a point }
   AStream.WriteWord(WordToLE(round(font.Size*20)));
@@ -1612,8 +1609,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteFormatCount(AStream: TStream);
 begin
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMATCOUNT));
-  AStream.WriteWord(WordToLE(2));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_FORMATCOUNT, 2);
   AStream.WriteWord(WordToLE(21)); // there are 21 built-in formats
 end;
 
@@ -1718,7 +1714,6 @@ procedure TsSpreadBIFF2Writer.WriteRPNTokenArraySize(AStream: TStream;
   ASize: Word);
 begin
   AStream.WriteByte(ASize);
-//  AStream.WriteByte(Lo(ASize));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1745,13 +1740,12 @@ begin
   len := Length(s);
 
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STRING));
-  AStream.WriteWord(WordToLE(1 + len*SizeOf(Char)));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_STRING, 1 + len*SizeOf(ansichar));
 
   { Write string length }
   AStream.WriteByte(len);
   { Write characters }
-  AStream.WriteBuffer(s[1], len * SizeOf(Char));
+  AStream.WriteBuffer(s[1], len * SizeOf(ansichar));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1838,7 +1832,6 @@ type
     Col: Word;
     Attrib1, Attrib2, Attrib3: Byte;
   end;
-
 var
   xf: Word;
   rec: TBlankRecord;
@@ -1981,8 +1974,7 @@ begin
   containsXF := false;
 
   { BIFF record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_ROW));
-  AStream.WriteWord(WordToLE(IfThen(containsXF, 18, 13)));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_ROW, IfThen(containsXF, 18, 13));
 
   { Index of row }
   AStream.WriteWord(WordToLE(Word(ARowIndex)));

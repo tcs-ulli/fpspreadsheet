@@ -3552,7 +3552,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Clears the list of cells and releases their memory.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllCells;
 begin
   RemoveAllAvlTreeNodes(FCells, RemoveCellsCallback);
@@ -3626,7 +3626,7 @@ end;
 
   @param  ARow   Row index of the cell to be removed
   @param  ACol   Column index of the cell to be removed
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAndFreeCell(ARow, ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
@@ -4053,7 +4053,7 @@ end;
 
   Note:   An exception is raised if the cell already contains a formula (and is
           different from the ASharedFormulaBase cell).
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.UseSharedFormula(ARow, ACol: Cardinal;
   ASharedFormulaBase: PCell): PCell;
 begin
@@ -4080,7 +4080,7 @@ end;
   @param  ACol      The column of the cell
   @param  AText     The text to be written encoded in utf-8
   @return Pointer to cell created or used
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell;
 begin
   Result := GetCell(ARow, ACol);
@@ -4095,7 +4095,7 @@ end;
 
   @param  ACell     Poiner to the cell
   @param  AText     The text to be written encoded in utf-8
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: ansistring);
 begin
   if ACell = nil then
@@ -4112,7 +4112,7 @@ end;
   @param  ACol      Cell column index
   @param  ANumber   Number to be written
   @return Pointer to cell created or used
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell;
 begin
   Result := GetCell(ARow, ACol);
@@ -4125,7 +4125,7 @@ end;
   @param  ARow      Cell row index
   @param  ACol      Cell column index
   @param  ANumber   Number to be written
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: double);
 begin
   if ACell <> nil then begin
@@ -4145,7 +4145,7 @@ end;
   @param  ADecimals    Number of decimal places used for formatting (optional)
   @return Pointer to cell created or used
   @see    TsNumberFormat
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
   ANumFormat: TsNumberFormat; ADecimals: Byte = 2): PCell;
 begin
@@ -4161,7 +4161,7 @@ end;
   @param  ANumFormat   Identifier for a built-in number format, e.g. nfFixed
   @param  ADecimals    Optional number of decimal places used for formatting
   @see TsNumberFormat
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
   ANumFormat: TsNumberFormat; ADecimals: Byte = 2);
 var
@@ -4202,7 +4202,7 @@ end;
   @param  ANumFormat        Format identifier (nfCustom)
   @param  ANumFormatString  String of formatting codes (such as 'dd/mmm'
   @return Pointer to cell created or used
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double;
   ANumFormat: TsNumberFormat; ANumFormatString: String): PCell;
 begin
@@ -4219,8 +4219,8 @@ end;
   @param  ACell             Pointer to the cell considered
   @param  ANumber           Number to be written
   @param  ANumFormat        Format identifier (nfCustom)
-  @param  ANumFormatString  String of formatting codes (such as 'dd/mmm'
---------------------------------------------------------------------------------}
+  @param  ANumFormatString  String of formatting codes (such as 'dd/mmm' )
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
   ANumFormat: TsNumberFormat; ANumFormatString: String);
 var
@@ -4268,7 +4268,7 @@ end;
   @return Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBlank(ARow, ACol: Cardinal): PCell;
 begin
   Result := GetCell(ARow, ACol);
@@ -4281,7 +4281,7 @@ end;
   @param  ACel      Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBlank(ACell: PCell);
 begin
   if ACell <> nil then begin
@@ -4297,7 +4297,7 @@ end;
   @param  ACol       The column of the cell
   @param  AValue     The boolean value
   @return Pointer to the cell
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean): PCell;
 begin
   Result := GetCell(ARow, ACol);
@@ -4309,7 +4309,7 @@ end;
 
   @param  ACell      Pointer to the cell
   @param  AValue     The boolean value
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBoolValue(ACell: PCell; AValue: Boolean);
 begin
   if ACell <> nil then begin
@@ -4330,7 +4330,7 @@ end;
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
   @return Pointer to the cell
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
   AValue: String): PCell;
 begin
@@ -4347,7 +4347,7 @@ end;
   @param  AValue  Value to be written into the cell given as a string. Depending
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
 var
   isPercent: Boolean;
@@ -4475,7 +4475,7 @@ end;
                          In case of '?' the currency symbol defined in the
                          workbook's FormatSettings is used.
   @return Pointer to the cell
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
   ANumFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
   ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
@@ -4502,7 +4502,7 @@ end;
   @param ACurrencySymbol String to be shown as currency, such as '$', or 'EUR'.
                          In case of '?' the currency symbol defined in the
                          workbook's FormatSettings is used.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCurrency(ACell: PCell; AValue: Double;
   ANumFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = -1;
   ACurrencySymbol: String = '?'; APosCurrFormat: Integer = -1;
@@ -4544,7 +4544,7 @@ end;
                             and negative number.
                             Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
   @return Pointer to the cell
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
   ANumFormat: TsNumberFormat; ANumFormatString: String): PCell;
 begin
@@ -4563,7 +4563,7 @@ end;
                             Can contain sections for different formatting of positive
                             and negative number.
                             Example: '"EUR" #,##0.00;("EUR" #,##0.00)'
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCurrency(ACell: PCell; AValue: Double;
   ANumFormat: TsNumberFormat; ANumFormatString: String);
 var
@@ -4597,7 +4597,7 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   ANumFormat: TsNumberFormat = nfShortDateTime; ANumFormatStr: String = ''): PCell;
 begin
@@ -4617,7 +4617,7 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
   ANumFormat: TsNumberFormat = nfShortDateTime; ANumFormatStr: String = '');
 var
@@ -4686,7 +4686,7 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTime(ARow, ACol: Cardinal; AValue: TDateTime;
   ANumFormatStr: String): PCell;
 begin
@@ -4705,7 +4705,7 @@ end;
   Note: at least Excel xls does not recognize a separate datetime cell type:
   a datetime is stored as a (floating point) number, and the cell is formatted
   as a date (either built-in or a custom format).
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime;
   ANumFormatStr: String);
 begin
@@ -4723,7 +4723,7 @@ end;
   @return Pointer to the cell
 
   @see    TsNumberFormat
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTimeFormat(ARow, ACol: Cardinal;
   ANumFormat: TsNumberFormat; const ANumFormatString: String = ''): PCell;
 begin
@@ -6551,7 +6551,7 @@ end;
   Removes a specified row record from the worksheet and frees the occupied memory.
   This resets the its row height to default.
   Note: Cells in that row are retained.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveRow(ARow: Cardinal);
 var
   AVLNode: TAVGLVLTreeNode;
@@ -6656,7 +6656,7 @@ end;
   Helper method called before saving the workbook. Clears the error log, and
   calculates the formulas in all worksheets if workbook option soCalcBeforeSaving
   is set.
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeSaving;
 var
   sheet: TsWorksheet;
@@ -7971,7 +7971,7 @@ end;
                              BIFF5/BIFF8 can write only 64 colors, i.e
                              AMaxPaletteCount = 64
   @return  Palette index of the color closest to AColorValue
---------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 function TsWorkbook.FindClosestColor(AColorValue: TsColorValue;
   AMaxPaletteCount: Integer = -1): TsColor;
 type

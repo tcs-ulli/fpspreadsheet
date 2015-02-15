@@ -118,8 +118,10 @@ type
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
-    procedure WriteCommentsCallback(AComment: PsComment; ACommentIndex: Integer;
-      AStream: TStream);
+    procedure WriteCommentsEscherCallback(AComment: PsComment;
+      ACommentIndex: Integer; AStream: TStream);
+    procedure WriteCommentsNoteCallback(AComment: PsComment;
+      ACommentIndex: Integer; AStream: TStream);
 
   protected
     { Record writing methods }
@@ -1595,14 +1597,19 @@ begin
   exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
 
-  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsCallback);
+  { At first we have to write all Escher-related records for all comments. }
+  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsEscherCallback);
+  { The NOTE records for all comments follow subsequently. }
+  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsNoteCallback);
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method which stores the pointer to a cell in the FCommentsList if the
-  cell contains a comment
+  Helper method which writes all Escher-related records required for a cell
+  comment:
+    MSODRAWING - OBJ - MSODRAWING - TXT
+  The NOTE records are written separately
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteCommentsCallback(AComment: PsComment;
+procedure TsSpreadBIFF8Writer.WriteCommentsEscherCallback(AComment: PsComment;
   ACommentIndex: Integer; AStream: TStream);
 begin
   if ACommentIndex = 0 then
@@ -1612,6 +1619,17 @@ begin
   WriteOBJ(AStream, ACommentIndex+1);
   WriteMSODrawing3(AStream);
   WriteTXO(AStream, AComment);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper method for writing all NOTE records of a worksheet.
+  The Escher-related records required for each cell comment already have been
+  written.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteCommentsNoteCallback(AComment: PsComment;
+  ACommentIndex: Integer; AStream: TStream);
+begin
+  WriteNOTE(AStream, AComment, ACommentIndex+1);
 end;
 
 {@@ ----------------------------------------------------------------------------
