@@ -118,8 +118,8 @@ type
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
-    FCommentList: TFPList;
-    procedure WriteCommentsCallback(ACell: PCell; AStream: TStream);
+    procedure WriteCommentsCallback(AComment: PsComment; ACommentIndex: Integer;
+      AStream: TStream);
 
   protected
     { Record writing methods }
@@ -135,11 +135,11 @@ type
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
-    procedure WriteMSODrawing1(AStream: TStream; ANumShapes: Word; ACell: PCell);
-    procedure WriteMSODrawing2(AStream: TStream; ACell: PCell; AObjID: Word);
-    procedure WriteMSODrawing2_Data(AStream: TStream; ACell: PCell; AShapeID: Word);
-    procedure WriteMSODrawing3(AStream: TStream; ACell: PCell);
-    procedure WriteNOTE(AStream: TStream; ACell: PCell; AObjID: Word);
+    procedure WriteMSODrawing1(AStream: TStream; ANumShapes: Word; AComment: PsComment);
+    procedure WriteMSODrawing2(AStream: TStream; AComment: PsComment; AObjID: Word);
+    procedure WriteMSODrawing2_Data(AStream: TStream; AComment: PsComment; AShapeID: Word);
+    procedure WriteMSODrawing3(AStream: TStream);
+    procedure WriteNOTE(AStream: TStream; AComment: PsComment; AObjID: Word);
     procedure WriteNumFormat(AStream: TStream; AFormatData: TsNumFormatData;
       AListIndex: Integer); override;
     procedure WriteOBJ(AStream: TStream; AObjID: Word);
@@ -152,7 +152,7 @@ type
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteStringRecord(AStream: TStream; AString: string); override;
     procedure WriteSTYLE(AStream: TStream);
-    procedure WriteTXO(AStream: TStream; ACell: PCell);
+    procedure WriteTXO(AStream: TStream; AComment: PsComment);
     procedure WriteWINDOW2(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
       XFType_Prot: Byte = 0); override;
@@ -1595,39 +1595,23 @@ begin
   exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
 
-  FCommentList := TFPList.Create;
-  try
-    IterateThroughCells(AStream, AWorksheet.Cells, WriteCommentsCallback);
-    if FCommentList.Count = 0 then
-      exit;
-
-    for i:=0 to FCommentList.Count-1 do begin
-      if i = 0 then
-        WriteMSODRAWING1(AStream, FCommentList.Count, PCell(FCommentList[i]))
-      else
-        WriteMSODRAWING2(AStream, PCell(FCommentList[i]), i+1);
-      WriteOBJ(AStream, i+1);
-      WriteMSODRAWING3(AStream, PCell(FCommentList[i]));
-      WriteTXO(AStream, PCell(FCommentList[i]));
-    end;
-
-    for i:=0 to FCommentList.Count-1 do
-      WriteNOTE(AStream, PCell(FCommentList[i]), i+1);
-  finally
-    FreeAndNil(FCommentList);
-  end;
+  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsCallback);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Helper method which stores the pointer to a cell in the FCommentsList if the
   cell contains a comment
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteCommentsCallback(ACell: PCell;
-  AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteCommentsCallback(AComment: PsComment;
+  ACommentIndex: Integer; AStream: TStream);
 begin
-  Unused(AStream);
-  if (ACell <> nil) and (ACell^.Comment <> '') then
-    FCommentList.Add(ACell);
+  if ACommentIndex = 0 then
+    WriteMSODrawing1(AStream, FWorksheet.Comments.Count, AComment)
+  else
+    WriteMSODrawing2(AStream, AComment, ACommentIndex+1);
+  WriteOBJ(AStream, ACommentIndex+1);
+  WriteMSODrawing3(AStream);
+  WriteTXO(AStream, AComment);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1777,7 +1761,7 @@ MSODRAWING2  |---- Sp container  (child shape)      $F004          0
 </pre>
 -------------------------------------------------------------------------------}
 procedure TsSpreadBiff8Writer.WriteMSODrawing1(AStream: TStream; ANumShapes: Word;
-  ACell: PCell);
+  AComment: PsComment);
 const
   DRAWING_ID = 1;
 var
@@ -1808,9 +1792,9 @@ begin
       MSO_FSP_BITS_GROUP + MSO_FSP_BITS_PATRIARCH);   // 8 + 8 bytes
 
     { Data for the 1st comment }
-    WriteMSODrawing2_Data(tmpStream, ACell, SHAPEID_BASE + 1);
+    WriteMSODrawing2_Data(tmpStream, AComment, SHAPEID_BASE + 1);
 
-    // Write the BIFF stream
+    { Write the BIFF stream }
     tmpStream.Position := 0;
     len := tmpStream.Size;
     WriteBiffHeader(AStream, INT_EXCEL_ID_MSODRAWING, tmpStream.Size);
@@ -1822,9 +1806,9 @@ end;
 
 { Write the MSODRAWING record which occurs before the OBJ record.
   Do not use for the very first OBJ record where the record must be
-  WriteMSODrawing1 + WriteMSODrawing2_Data + WriteMSODrawing3_Data}
-procedure TsSpreadBiff8Writer.WriteMSODrawing2(AStream: TStream; ACell: PCell;
-  AObjID: Word);
+  WriteMSODrawing1 + WriteMSODrawing2_Data}
+procedure TsSpreadBiff8Writer.WriteMSODrawing2(AStream: TStream;
+  AComment: PsComment; AObjID: Word);
 var
   tmpStream: TStream;
   len: Word;
@@ -1832,7 +1816,7 @@ begin
   tmpStream := TMemoryStream.Create;
   try
     { Shape data for cell comment }
-    WriteMSODrawing2_Data(tmpStream, ACell, SHAPEID_BASE + AObjID);
+    WriteMSODrawing2_Data(tmpStream, AComment, SHAPEID_BASE + AObjID);
 
     { Get size of data stream }
     len := tmpStream.Size;
@@ -1849,7 +1833,7 @@ begin
 end;
 
 procedure TsSpreadBiff8Writer.WriteMSODrawing2_Data(AStream: TStream;
-  ACell: PCell; AShapeID: Word);
+  AComment: PsComment; AShapeID: Word);
 var
   tmpStream: TStream;
   len: Cardinal;
@@ -1869,7 +1853,7 @@ begin
 
     { OfficeArtClientAnchor record }
     WriteMSOClientAnchorSheetRecord(tmpStream,
-      ACell^.Row + 1, ACell^.Col + 1, ACell.Row + 3, ACell^.Col + 5,
+      AComment^.Row + 1, AComment^.Col + 1, AComment^.Row + 3, AComment^.Col + 5,
       691, 486, 38, 26,
       true, true
     );
@@ -1893,7 +1877,7 @@ begin
 end;
 
 { Writes the MSODRAWING record which must occur immediately before a TXO record }
-procedure TsSpreadBiff8Writer.WriteMSODRAWING3(AStream: TStream; ACell: PCell);
+procedure TsSpreadBiff8Writer.WriteMSODRAWING3(AStream: TStream);
 begin
   { BIFF Header }
   WriteBiffHeader(AStream, INT_EXCEL_ID_MSODRAWING, 8);
@@ -1903,10 +1887,10 @@ begin
 end;
 
 { Writes a NOTE record for a comment attached to a cell }
-procedure TsSpreadBiff8Writer.WriteNOTE(AStream: TStream; ACell: PCell;
+procedure TsSpreadBiff8Writer.WriteNOTE(AStream: TStream; AComment: PsComment;
   AObjID: Word);
 const
-  AUTHOR: ansistring = 'Werner';
+  AUTHOR: ansistring = 'author';
 var
   len: Integer;
 begin
@@ -1917,8 +1901,8 @@ begin
   AStream.WriteWord(WordToLE(12+len));             // Size of NOTE record
 
   { Record data }
-  AStream.WriteWord(WordToLE(ACell^.Row));         // Row index of cell
-  AStream.WriteWord(WordToLE(ACell^.Col));         // Column index of cell
+  AStream.WriteWord(WordToLE(AComment^.Row));      // Row index of cell
+  AStream.WriteWord(WordToLE(AComment^.Col));      // Column index of cell
   AStream.WriteWord(0);                            // Flags
   AStream.WriteWord(WordToLE(AObjID));             // Object identifier (1, ...)
   AStream.WriteWord(len);                          // Char length of author string
@@ -2261,7 +2245,7 @@ end;
   Writes a TXO and two CONTINUE records as needed for cell comments.
   It can safely be assumed that the cell exists and contains a comment.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteTXO(AStream: TStream; ACell: PCell);
+procedure TsSpreadBIFF8Writer.WriteTXO(AStream: TStream; AComment: PsComment);
 var
   recTXO: TBIFF8TXORecord;
   comment: widestring;
@@ -2272,7 +2256,7 @@ var
   bytesFmtRuns: Integer;
 begin
   { Prepare comment string. It is stored as a string with 8-bit characters }
-  comment := UTF8Decode(ACell^.Comment);
+  comment := UTF8Decode(AComment^.Text);
   SetLength(compressed, length(comment));
   for i:= 1 to Length(comment) do
   begin

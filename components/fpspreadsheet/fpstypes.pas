@@ -128,6 +128,9 @@ type
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
     cctDateTime, cctBool, cctError);
 
+  {@@ Callback function, e.g. for iterating the internal AVL trees of the workbook/sheet}
+  TsCallback = procedure (data, arg: Pointer) of object;
+
   {@@ Error code values }
   TsErrorValue = (
     errOK,                 // no error
@@ -382,8 +385,14 @@ type
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
   );
 
-  {@@ State flags while calculating formulas }
+  {@@ Cell calculation state }
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
+
+  {@@ Cell flag }
+  TsCellFlag = (cfCalculating, cfCalculated, cfHasComment);
+
+  {@@ Set of cell flags }
+  TsCellFlags = set of TsCellFlag;
 
   {@@ Record combining a cell's row and column indexes }
   TsCellCoord = record

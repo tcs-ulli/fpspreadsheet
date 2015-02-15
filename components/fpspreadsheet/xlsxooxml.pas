@@ -104,8 +104,10 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
-    procedure WriteCommentsCallback(ACell: PCell; AStream: TStream);
-    procedure WriteVmlDrawingsCallback(ACell: PCell; AStream: TStream);
+    procedure WriteCommentsCallback(AComment: PsComment;
+      ACommentIndex: Integer; AStream: TStream);
+    procedure WriteVmlDrawingsCallback(AComment: PsComment;
+      ACommentIndex: Integer; AStream: TStream);
 
   protected
     FDateMode: TDateMode;
@@ -113,8 +115,6 @@ type
     FSharedStringsCount: Integer;
     FFillList: array of PsCellFormat;
     FBorderList: array of PsCellFormat;
-    FDrawingCounter: Integer;
-    FNumCommentsOnSheet: Integer;
   protected
     { Helper routines }
     procedure CreateNumFormatList; override;
@@ -1837,7 +1837,7 @@ begin
       '<commentList>');
 
   // Comments
-  IterateThroughCells(FSComments[FCurSheetNum], AWorksheet.Cells, WriteCommentsCallback);
+  IterateThroughComments(FSComments[FCurSheetNum], AWorksheet.Comments, WriteCommentsCallback);
 
   // Footer
   AppendToStream(FSComments[FCurSheetNum],
@@ -1846,20 +1846,19 @@ begin
     '</comments>');
 end;
 
-procedure TsSpreadOOXMLWriter.WriteCommentsCallback(ACell: PCell;
-  AStream: TStream);
+procedure TsSpreadOOXMLWriter.WriteCommentsCallback(AComment: PsComment;
+  ACommentIndex: Integer; AStream: TStream);
 var
   comment: String;
 begin
-  if (ACell = nil) or (ACell^.Comment = '') then
-    exit;
+  Unused(ACommentIndex);
 
-  comment := ACell^.Comment;
+  comment := AComment^.Text;
   ValidXMLText(comment);
 
   // Write comment to Comments stream
   AppendToStream(AStream, Format(
-    '<comment ref="%s" authorId="0">', [GetCellString(ACell^.Row, ACell^.Col)]));
+    '<comment ref="%s" authorId="0">', [GetCellString(AComment^.Row, AComment^.Col)]));
   AppendToStream(AStream,
       '<text>'+
         '<r>'+
@@ -2141,7 +2140,10 @@ begin
         AVLNode := AWorksheet.Cells.Find(@lCell);
         if Assigned(AVLNode) then begin
           WriteCellCallback(PCell(AVLNode.Data), AStream);
-          if PCell(AVLNode.Data)^.Comment <> '' then inc(FNumCommentsOnSheet);
+          {
+          if (cfHasComment in PCell(AVLNode.Data)^.Flags) then
+            inc(FNumCommentsOnSheet);
+            }
         end;
       end;
       AppendToStream(AStream,
@@ -2338,7 +2340,7 @@ begin
   else
     FSVmlDrawings[FCurSheetNum] := TMemoryStream.Create;
 
-  FDrawingCounter := 0;
+//  FDrawingCounter := 0;
 
   // Header
   AppendToStream(FSVmlDrawings[FCurSheetNum],
@@ -2358,24 +2360,25 @@ begin
     '  </v:shapetype>' + LineEnding);
 
   // Write vmlDrawings for each comment (formatting and position of comment box)
-  IterateThroughCells(FSVmlDrawings[FCurSheetNum], AWorksheet.Cells, WriteVmlDrawingsCallback);
+  IterateThroughComments(FSVmlDrawings[FCurSheetNum], AWorksheet.Comments, WriteVmlDrawingsCallback);
+  //  IterateThroughCells(FSVmlDrawings[FCurSheetNum], AWorksheet.Cells, WriteVmlDrawingsCallback);
 
   // Footer
   AppendToStream(FSVmlDrawings[FCurSheetNum],
     '</xml>');
 end;
 
-procedure TsSpreadOOXMLWriter.WriteVmlDrawingsCallback(ACell: PCell;
-  AStream: TStream);
+procedure TsSpreadOOXMLWriter.WriteVmlDrawingsCallback(AComment: PsComment;
+  ACommentIndex: integer; AStream: TStream);
 var
   id: Integer;
 begin
-//  id := (FCurSheetNum+1) * 1024 + ACell^.Col + ACell^.Row;
-  id := 1025 + FDrawingCounter;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
+  id := 1025 + ACommentIndex;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
+
   // My xml viewer does not format vml files property --> format in code.
   AppendToStream(AStream, LineEnding + Format(
     '  <v:shape id="_x0000_s%d" type="#_x0000_t202" ', [id]) + LineEnding + Format(
-    '       style="position:absolute; width:108pt; height:52.5pt; z-index:%d; visibility:hidden" ', [FDrawingCounter+1]) + LineEnding +
+    '       style="position:absolute; width:108pt; height:52.5pt; z-index:%d; visibility:hidden" ', [ACommentIndex+1]) + LineEnding +
             // it is not necessary to specify margin-left and margin-top here!
 
 //            'style=''position:absolute; margin-left:71.25pt; margin-top:1.5pt; ' + Format(
@@ -2394,11 +2397,10 @@ begin
     '      <x:SizeWithCells />'+LineEnding+
     '      <x:Anchor> 1, 15, 0, 2, 2, 79, 4, 4</x:Anchor>'+LineEnding+
     '      <x:AutoFill>False</x:AutoFill>'+LineEnding + Format(
-    '      <x:Row>%d</x:Row>', [ACell^.Row]) + LineEnding + Format(
-    '      <x:Column>%d</x:Column>', [ACell^.Col]) + LineEnding +
+    '      <x:Row>%d</x:Row>', [AComment^.Row]) + LineEnding + Format(
+    '      <x:Column>%d</x:Column>', [AComment^.Col]) + LineEnding +
     '    </x:ClientData>'+ LineEnding+
     '  </v:shape>' + LineEnding);
-  inc(FDrawingCounter);
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
@@ -2553,7 +2555,7 @@ begin
   begin
     FWorksheet := Workbook.GetWorksheetByIndex(i);
     WriteWorksheet(FWorksheet);
-    if FNumCommentsOnSheet <> 0 then
+    if FWorksheet.Comments.Count > 0 then
     begin
       WriteComments(FWorksheet);
       WriteVmlDrawings(FWorksheet);
@@ -2618,7 +2620,6 @@ procedure TsSpreadOOXMLWriter.WriteWorksheet(AWorksheet: TsWorksheet);
 begin
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
-  FNumCommentsOnSheet := 0;
 
   // Create the stream
   if (boBufStream in Workbook.Options) then
@@ -2639,7 +2640,7 @@ begin
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
-  if FNumCommentsOnSheet > 0 then
+  if AWorksheet.Comments.Count > 0 then
     AppendToStream(FSSheets[FCurSheetNum],
       '<legacyDrawing r:id="rId1" />');
   AppendToStream(FSSheets[FCurSheetNum],

@@ -3442,7 +3442,7 @@ begin
   Unused(ARow, ACol);
 
   // Comment
-  comment := WriteCommentXMLAsString(ACell^.Comment);
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -3494,7 +3494,7 @@ begin
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(ACell^.Comment);
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -3971,7 +3971,7 @@ begin
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(ACell^.Comment);
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -4044,7 +4044,7 @@ begin
 
   { We are writing a very rudimentary formula here without result and result
     data type. Seems to work... }
-  if ACell^.CalcState=csCalculated then
+  if FWorksheet.GetCalcState(ACell) = csCalculated then
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s %s>' +
         comment +
@@ -4093,7 +4093,7 @@ begin
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(ACell^.Comment);
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -4153,7 +4153,7 @@ begin
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(ACell^.Comment);
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // Merged?
   if FWorksheet.IsMergeBase(ACell) then
@@ -4225,7 +4225,7 @@ begin
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(ACell^.Comment);
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // nfTimeInterval is a special case - let's handle it first:
 

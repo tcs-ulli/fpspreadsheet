@@ -3843,7 +3843,7 @@ begin
     cell := FCell;
 
   if (cell <> nil) and HasFormula(cell) then
-    case cell^.CalcState of
+    case FWorksheet.GetCalcState(cell) of
       csNotCalculated:
         Worksheet.CalcFormula(cell);
       csCalculating:
@@ -3942,9 +3942,11 @@ begin
     begin
       cell := FWorksheet.FindCell(r, c);
       if HasFormula(cell) then
-        case cell^.CalcState of
-          csNotCalculated: FWorksheet.CalcFormula(cell);
-          csCalculating  : raise Exception.Create(SErrCircularReference);
+        case FWorksheet.GetCalcState(cell) of
+          csNotCalculated:
+            FWorksheet.CalcFormula(cell);
+          csCalculating:
+            raise ECalcEngine.Create(SErrCircularReference);
         end;
     end;
 

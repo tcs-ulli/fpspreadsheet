@@ -1712,7 +1712,7 @@ begin
         begin
           // single cell
           FDrawingCell := cell;
-          if (cell <> nil) and (cell^.Comment <> '') then
+          if Worksheet.HasComment(cell) then
             commentcell_rct := CellRect(gc, gr)
           else
             commentcell_rct := Rect(0,0,0,0);
@@ -1744,7 +1744,7 @@ begin
               begin
                 gds := GetGridDrawState(gc, gr);
                 DoDrawCell(gc, gr, rct, temp_rct);
-                if (FDrawingCell <> nil) and (FDrawingCell^.Comment <> '') then
+                if Worksheet.HasComment(FDrawingCell) then
                   DrawCommentMarker(temp_rct);
               end;
               FTextOverflowing := false;
@@ -1761,7 +1761,7 @@ begin
           FDrawingCell := Worksheet.FindMergeBase(cell);
           Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
           gr := GetGridRow(sr1);
-          if (FDrawingCell <> nil) and (FDrawingCell^.Comment <> '') then
+          if Worksheet.HasComment(FDrawingCell) then
             commentcell_rct := CellRect(GetGridCol(sc2), gr)
           else
             commentcell_rct := Rect(0,0,0,0);

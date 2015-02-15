@@ -9,13 +9,16 @@
   If this is not wanted, define FPS_DONT_USE_CLOCALE. }
 {.$DEFINE FPS_DONT_USE_CLOCALE}
 
-
 { In older versions of fpspreadsheet, the formatting fields had belonged to the
   cell record. This has been given up to reduce memory consumption.
   For fpc >2.6, however, record helpers allow to get this feature back. In case
   of older compilers activate the define FPS_NO_RECORD_HELPERS. Note that worksheet
   methods can only be used to change cell formatting then. }
 {.$DEFINE FPS_NO_RECORD_HELPERS}
+
+{ In new versions of fpc, records can contain private fields. Activate the
+  define FPS_NO_PRIVATE_FIELDS_IN_RECORDS if this is not supported. }
+{.$DEFINE FPS_NO_PRIVATE_FIELDS_IN_RECORDS}
 
 { The next defines activate code duplicated from new compiler versions in case
   an old compiler is used. }
