@@ -16,6 +16,7 @@ type
     function GetBorderStyle(const ABorder: TsCellBorder): TsCellBorderStyle;
     function GetBorderStyles: TsCellBorderStyles;
     function GetCellFormat: TsCellFormat;
+    function GetComment: String;
     function GetFont: TsFont;
     function GetFontIndex: integer;
     function GetHorAlignment: TsHorAlignment;
@@ -30,6 +31,7 @@ type
     procedure SetBorderStyle(const ABorder: TsCellBorder; const AValue: TsCellBorderStyle);
     procedure SetBorderStyles(const AValue: TsCellBorderStyles);
     procedure SetCellFormat(const AValue: TsCellFormat);
+    procedure SetComment(const AValue: String);
     procedure SetFontIndex(const AValue: Integer);
     procedure SetHorAlignment(const AValue: TsHorAlignment);
     procedure SetNumberFormat(const AValue: TsNumberFormat);
@@ -97,6 +99,11 @@ end;
 function TCellHelper.GetCellFormat: TsCellFormat;
 begin
   Result := Workbook.GetCellFormat(FormatIndex);
+end;
+
+function TCellHelper.GetComment: String;
+begin
+  Result := Worksheet.ReadComment(@self);
 end;
 
 function TCellHelper.GetFont: TsFont;
@@ -182,6 +189,11 @@ end;
 procedure TCellHelper.SetCellFormat(const AValue: TsCellFormat);
 begin
   Worksheet.WriteCellFormat(@self, AValue);
+end;
+
+procedure TCellHelper.SetComment(const AValue: String);
+begin
+  Worksheet.WriteComment(@self, AValue);
 end;
 
 procedure TCellHelper.SetFontIndex(const AValue: Integer);

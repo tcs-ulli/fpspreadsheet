@@ -103,9 +103,9 @@ type
   PCol = ^TCol;
 
   {@@ The record TsComment contains a comment attached to a cell.
-   @param  Row  (0-based) index of the row containing the cell with the comment
-   @param  Col  (0-based) index of the column containing the coll with the comment
-   @param  Text Comment text }
+     @param   Row        (0-based) index of the row with the cell
+     @param   Col        (0-based) index of the column with the cell
+     @param   Text       Comment text }
   TsComment = record
     Row, Col: Cardinal;
     Text: String;
@@ -258,9 +258,6 @@ type
 
     function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String): PCell; overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
-
-//    function WriteComment(ARow, ACol: Cardinal; const AComment: String): PCell; overload;
-//    procedure WriteComment(ACell: PCell; const AComment: String); overload;
 
     function WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
       ANumFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
