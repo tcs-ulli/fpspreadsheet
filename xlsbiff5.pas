@@ -883,7 +883,9 @@ begin
 end;
 
 
-{ TsSpreadBIFF5Writer }
+{------------------------------------------------------------------------------}
+{                           TsSpreadBIFF5Writer                                }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel BIFF5 file to the disc
@@ -1003,8 +1005,7 @@ end;
 procedure TsSpreadBIFF5Writer.WriteBOF(AStream: TStream; ADataType: Word);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOF));
-  AStream.WriteWord(WordToLE(8));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_BOF, 8);
 
   { BIFF version. Should only be used if this BOF is for the workbook globals }
   if ADataType = INT_BOF_WORKBOOK_GLOBALS then
@@ -1042,8 +1043,7 @@ begin
   Len := Length(LatinSheetName);
    }
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_BOUNDSHEET));
-  AStream.WriteWord(WordToLE(6 + 1 + Len));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_BOUNDSHEET, 6 + 1 + Len);
 
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -1103,8 +1103,7 @@ end;
 procedure TsSpreadBIFF5Writer.WriteEOF(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_EOF));
-  AStream.WriteWord($0000);
+  WriteBiffHeader(AStream, INT_EXCEL_ID_EOF, $0000);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1127,8 +1126,7 @@ begin
   Len := Length(AFont.FontName);
 
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_FONT));
-  AStream.WriteWord(WordToLE(14 + 1 + Len));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_FONT, 14 + 1 + Len);
 
   { Height of the font in twips = 1/20 of a point }
   AStream.WriteWord(WordToLE(round(AFont.Size*20)));
@@ -1207,7 +1205,6 @@ begin
   if (ANumFormatData = nil) or (ANumFormatData.FormatString = '') then
     exit;
 
-//  s := UTF8ToAnsi(NumFormatList.FormatStringForWriting(AListIndex));
   fmtStr := NumFormatList.FormatStringForWriting(AListIndex);
   ansiFmtStr := ConvertEncoding(fmtStr, encodingUTF8, FCodePage);
   len := Length(ansiFmtStr);
@@ -1242,8 +1239,7 @@ end;
 procedure TsSpreadBIFF5Writer.WriteIndex(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_INDEX));
-  AStream.WriteWord(WordToLE(12));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_INDEX, 12);
 
   { Not used }
   AStream.WriteDWord(0);
@@ -1283,20 +1279,6 @@ begin
     exit;
 
   ansiValue := ConvertEncoding(AValue, encodingUTF8, FCodePage);
-  {
-  case WorkBookEncoding of
-    seLatin2:   AnsiValue := UTF8ToCP1250(AValue);
-    seCyrillic: AnsiValue := UTF8ToCP1251(AValue);
-    seGreek:    AnsiValue := UTF8ToCP1253(AValue);
-    seTurkish:  AnsiValue := UTF8ToCP1254(AValue);
-    seHebrew:   AnsiValue := UTF8ToCP1255(AValue);
-    seArabic:   AnsiValue := UTF8ToCP1256(AValue);
-  else
-    // Latin 1 is the default
-    AnsiValue := UTF8ToCP1252(AValue);
-  end;
-  }
-
   if AnsiValue = '' then begin
     // Bad formatted UTF8String (maybe ANSI?)
     if Length(AValue) <> 0 then begin
@@ -1355,18 +1337,16 @@ var
   s: ansistring;
   len: Integer;
 begin
-//  s := UTF8ToAnsi(AString);
   s := ConvertEncoding(AString, encodingUTF8, FCodePage);
   len := Length(s);
 
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STRING));
-  AStream.WriteWord(WordToLE(2 + len*SizeOf(Char)));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_STRING, 2 + len*SizeOf(ansichar));
 
   { Write string length }
   AStream.WriteWord(WordToLE(len));
   { Write characters }
-  AStream.WriteBuffer(s[1], len * SizeOf(Char));
+  AStream.WriteBuffer(s[1], len * SizeOf(ansichar));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1378,8 +1358,7 @@ end;
 procedure TsSpreadBIFF5Writer.WriteStyle(AStream: TStream);
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_STYLE));
-  AStream.WriteWord(WordToLE(4));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_STYLE, 4);
 
   { Index to style XF and defines if it's a built-in or used defined style }
   AStream.WriteWord(WordToLE(MASK_STYLE_BUILT_IN));
@@ -1400,8 +1379,7 @@ var
   Options: Word;
 begin
   { BIFF Record header }
-  AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW2));
-  AStream.WriteWord(WordToLE(10));
+  WriteBiffHeader(AStream, INT_EXCEL_ID_WINDOW2, 10);
 
   { Options flags }
   Options :=
@@ -1444,7 +1422,7 @@ var
 begin
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
-  rec.RecordSize := WordToLE(SizeOf(TBIFF5_XFRecord) - 2*SizeOf(Word));
+  rec.RecordSize := WordToLE(SizeOf(TBIFF5_XFRecord) - SizeOf(TsBiffHeader));
 
   { Index to font record }
   rec.FontIndex := 0;

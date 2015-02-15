@@ -404,7 +404,6 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    destructor Destroy; override;
   end;
 
 
@@ -563,11 +562,15 @@ begin
 end;
 
 
-{ TsBIFFNumFormatList }
+{------------------------------------------------------------------------------}
+{                         TsBIFFNumFormatList                                  }
+{------------------------------------------------------------------------------}
 
-{ These are the built-in number formats as expected in the biff spreadsheet file.
+{@@ ----------------------------------------------------------------------------
+  These are the built-in number formats as expected in the biff spreadsheet file.
   In BIFF5+ they are not written to file but they are used for lookup of the
-  number format that Excel used. They are specified here in fpc dialect. }
+  number format that Excel used. They are specified here in fpc dialect.
+-------------------------------------------------------------------------------}
 procedure TsBIFFNumFormatList.AddBuiltinFormats;
 var
   fs: TFormatSettings;
@@ -637,7 +640,9 @@ begin
 end;
 
 
-{ TsSpreadBIFFReader }
+{------------------------------------------------------------------------------}
+{                           TsSpreadBIFFReader                                 }
+{------------------------------------------------------------------------------}
 
 constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
@@ -652,7 +657,9 @@ begin
   FLimitations.MaxPaletteSize := 64;
 end;
 
-{ Applies the XF formatting referred to by XFIndex to the specified cell }
+{@@ ----------------------------------------------------------------------------
+  Applies the XF formatting referred to by XFIndex to the specified cell
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
 var
   fmt: PsCellFormat;
@@ -669,17 +676,21 @@ begin
   end;
 end;
 
-{ Creates the correct version of the number format list. It is for BIFF file
+{@@ ----------------------------------------------------------------------------
+  Creates the correct version of the number format list. It is for BIFF file
   formats.
-  Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2. }
+  Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
 end;
 
-{ Extracts a number out of an RK value.
-  Valid since BIFF3. }
+{@@ ----------------------------------------------------------------------------
+  Extracts a number out of an RK value.
+  Valid since BIFF3.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.DecodeRKValue(const ARK: DWORD): Double;
 var
   Number: Double;
@@ -709,8 +720,10 @@ begin
   Result := Number;
 end;
 
-{ Extracts number format data from an XF record index by AXFIndex.
-  Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2 }
+{@@ ----------------------------------------------------------------------------
+  Extracts number format data from an XF record index by AXFIndex.
+  Valid for BIFF5-BIFF8. Needs to be overridden for BIFF2
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ExtractNumberFormat(AXFIndex: WORD;
   out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String);
 var
@@ -730,7 +743,9 @@ begin
   end;
 end;
 
-{ Convert the number to a date/time and return that if it is }
+{@@ ----------------------------------------------------------------------------
+  Converts the number to a date/time and return that if it is
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.IsDateTime(Number: Double;
   ANumberFormat: TsNumberFormat; ANumberFormatStr: String;
   out ADateTime: TDateTime): boolean;
@@ -759,7 +774,9 @@ begin
   end;
 end;
 
-// Reads a blank cell
+{@@ ----------------------------------------------------------------------------
+  Reads a blank cell
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadBlank(AStream: TStream);
 var
   ARow, ACol: Cardinal;
@@ -790,8 +807,10 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-{ The name of this method is misleading - it reads a BOOLEAN cell value,
-  but also an ERROR value; BIFF stores them in the same record. }
+{@@ ----------------------------------------------------------------------------
+  The name of this method is misleading - it reads a BOOLEAN cell value,
+  but also an ERROR value; BIFF stores them in the same record.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadBool(AStream: TStream);
 var
   rec: TBIFF38BoolErrRecord;
@@ -827,7 +846,10 @@ begin
     Workbook.OnReadCellData(Workbook, r, c, cell);
 end;
 
-// In BIFF8 it seams to always use the UTF-16 codepage
+{@@ ----------------------------------------------------------------------------
+  Reads the code page used in the xls file
+  In BIFF8 it seams to always use the UTF-16 codepage
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadCodePage(AStream: TStream);
 var
   lCodePage: Word;
@@ -874,9 +896,11 @@ begin
   end;
 end;
 
-{ Read column info (column width) from the stream.
+{@@ ----------------------------------------------------------------------------
+  Reads column info (column width) from the stream.
   Valid for BIFF3-BIFF8.
-  For BIFF2 use the records COLWIDTH and COLUMNDEFAULT. }
+  For BIFF2 use the records COLWIDTH and COLUMNDEFAULT.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBiffReader.ReadColInfo(const AStream: TStream);
 const
   EPS = 1E-2;  // allow for large epsilon because col width calculation is not very well-defined...
@@ -898,8 +922,10 @@ begin
       FWorksheet.WriteColInfo(c, col);
 end;
 
-// Read a NOTE record which describes an attached comment
-// Valid for BIFF2-BIFF5
+{@@ ----------------------------------------------------------------------------
+  Reads a NOTE record which describes an attached comment
+  Valid for BIFF2-BIFF5
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadComment(const AStream: TStream);
 var
   rec: TBIFF25NoteRecord;
@@ -966,21 +992,21 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  This record specifies the base date for displaying date values.
+  All dates are stored as count of days past this base date.
+  In BIFF2-BIFF4 this record is part of the Calculation Settings Block.
+  In BIFF5-BIFF8 it is stored in the Workbookk Globals Substream.
 
+  Record DATEMODE, BIFF2-BIFF8:
+   Offset Size Contents
+     0     2   0 = Base date is 1899-Dec-31 (the cell value 1 represents 1900-Jan-01)
+               1 = Base date is 1904-Jan-01 (the cell value 1 represents 1904-Jan-02)
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadDateMode(AStream: TStream);
 var
   lBaseMode: Word;
 begin
-  //5.28 DATEMODE
-  //BIFF2 BIFF3 BIFF4 BIFF5 BIFF8
-  //0022H 0022H 0022H 0022H 0022H
-  //This record specifies the base date for displaying date values. All dates are stored as count of days past this base date. In
-  //BIFF2-BIFF4 this record is part of the Calculation Settings Block (➜4.3). In BIFF5-BIFF8 it is stored in the Workbookk
-  //Globals Substream.
-  //Record DATEMODE, BIFF2-BIFF8:
-  //Offset Size Contents
-  //0 2 0 = Base date is 1899-Dec-31 (the cell value 1 represents 1900-Jan-01)
-  //    1 = Base date is 1904-Jan-01 (the cell value 1 represents 1904-Jan-02)
   lBaseMode := WordLEtoN(AStream.ReadWord);
   case lBaseMode of
     0: FDateMode := dm1900;
@@ -989,15 +1015,19 @@ begin
   end;
 end;
 
-// Reads the default column width
+{@@ ----------------------------------------------------------------------------
+  Reads the default column width
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadDefColWidth(AStream: TStream);
 begin
   // The file contains the column width in characters
   FWorksheet.DefaultColWidth := WordLEToN(AStream.ReadWord);
 end;
 
-// Reads the default row height
-// Valid for BIFF3 - BIFF8 (override for BIFF2)
+{@@ ----------------------------------------------------------------------------
+  Reads the default row height
+  Valid for BIFF3 - BIFF8 (override for BIFF2)
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadDefRowHeight(AStream: TStream);
 var
   hw: Word;
@@ -1013,16 +1043,20 @@ begin
     FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
 end;
 
-// Read the (number) FORMAT record for formatting numerical data
+{@@ ----------------------------------------------------------------------------
+  Reads the (number) FORMAT record for formatting numerical data
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadFormat(AStream: TStream);
 begin
   Unused(AStream);
   // to be overridden
 end;
 
-{ Reads a FORMULA record, retrieves the RPN formula and puts the result in the
+{@@ ----------------------------------------------------------------------------
+  Reads a FORMULA record, retrieves the RPN formula and puts the result in the
   corresponding field. The formula is not recalculated here!
-  Valid for BIFF5 and BIFF8. }
+  Valid for BIFF5 and BIFF8.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadFormula(AStream: TStream);
 var
   ARow, ACol: Cardinal;
@@ -1101,8 +1135,10 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-// Reads multiple blank cell records
-// Valid for BIFF5 and BIFF8 (does not exist before)
+{@@ ----------------------------------------------------------------------------
+  Reads multiple blank cell records
+  Valid for BIFF5 and BIFF8 (does not exist before)
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadMulBlank(AStream: TStream);
 var
   ARow, fc, lc, XF: Word;
@@ -1138,8 +1174,10 @@ begin
   end;
 end;
 
-{ Reads multiple RK records.
-  Valid for BIFF5 and BIFF8 (does not exist before) }
+{@@ ----------------------------------------------------------------------------
+  Reads multiple RK records.
+  Valid for BIFF5 and BIFF8 (does not exist before)
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadMulRKValues(const AStream: TStream);
 var
   ARow, fc, lc, XF: Word;
@@ -1187,8 +1225,10 @@ begin
   end;
 end;
 
-// Reads a floating point number and seeks the number format
-// NOTE: This procedure is valid after BIFF 3.
+{@@ ----------------------------------------------------------------------------
+  Reads a floating point number and seeks the number format
+  Valid after BIFF3.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadNumber(AStream: TStream);
 var
   rec: TBIFF58NumberRecord;
@@ -1230,7 +1270,9 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-// Read the palette
+{@@ ----------------------------------------------------------------------------
+  Reads the color palette
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadPalette(AStream: TStream);
 var
   i, n: Word;
@@ -1246,8 +1288,10 @@ begin
   FPaletteFound := true;
 end;
 
-{ Read pane sizes
-  Valid for all BIFF versions }
+{@@ ----------------------------------------------------------------------------
+  Reads pane sizes
+  Valid for all BIFF versions
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadPane(AStream: TStream);
 begin
   { Position of horizontal split:
@@ -1271,8 +1315,10 @@ begin
      [9]    1   Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4) }
 end;
 
-// Read the row, column and xf index
-// NOT VALID for BIFF2
+{@@ ----------------------------------------------------------------------------
+  Reads the row, column and xf index
+  NOT VALID for BIFF2
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRowColXF(AStream: TStream;
   out ARow, ACol: Cardinal; out AXF: WORD);
 begin
@@ -1284,8 +1330,10 @@ begin
   AXF := WordLEtoN(AStream.ReadWord);
 end;
 
-{ Reads an RK value cell from the stream
-  Valid since BIFF3. }
+{@@ ----------------------------------------------------------------------------
+  Reads an RK value cell from the stream
+  Valid since BIFF3.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRKValue(AStream: TStream);
 var
   RK: DWord;
@@ -1327,7 +1375,9 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-// Read the part of the ROW record that is common to BIFF3-8 versions
+{@@ ----------------------------------------------------------------------------
+  Reads the part of the ROW record that is common to BIFF3-8 versions
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRowInfo(AStream: TStream);
 type
   TRowRecord = packed record
@@ -1347,7 +1397,7 @@ begin
   rowrec.RowIndex := 0;   // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
 
-  // if bit 6 is set in the flags row height does not match the font size.
+  // If bit 6 is set in the flags row height does not match the font size.
   // Only for this case we create a row record for fpspreadsheet
   if rowrec.Flags and $00000040 <> 0 then begin
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
@@ -1360,24 +1410,14 @@ begin
     else
       lRow^.Height := 0;
   end;
-{
-  h := WordLEToN(rowrec.Height);
-  if h and $8000 = 0 then begin // if this bit were set, rowheight would be default
-    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
-    // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
-    // We need it in "lines", i.e. we divide the points by the point size of the default font
-    lRow^.Height := TwipsToPts(h and $7FFF) / FWorkbook.GetFont(0).Size;
-    if lRow^.Height > ROW_HEIGHT_CORRECTION then
-      lRow^.Height := lRow^.Height - ROW_HEIGHT_CORRECTION
-    else
-      lRow^.Height := 0;
-  end;
-  }
 end;
 
-{ Reads the cell address used in an RPN formula element. Evaluates the corresponding
-  bits to distinguish between absolute and relative addresses.
-  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
+{@@ ----------------------------------------------------------------------------
+  Reads the cell address used in an RPN formula element.
+  Evaluates the corresponding bits to distinguish between absolute and
+  relative addresses.
+  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRPNCellAddress(AStream: TStream;
   out ARow, ACol: Cardinal; out AFlags: TsRelFlags);
 var
@@ -1395,9 +1435,11 @@ begin
   if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
-{ Read the difference between cell row and column indexes of a cell and a
+{@@ ----------------------------------------------------------------------------
+  Read the difference between cell row and column indexes of a cell and a
   reference cell.
-  Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2. }
+  Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRPNCellAddressOffset(AStream: TStream;
   out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags);
 var
@@ -1426,10 +1468,12 @@ begin
   if (r and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
-{ Reads the cell range address used in an RPN formula element.
+{@@ ----------------------------------------------------------------------------
+  Reads the cell range address used in an RPN formula element.
   Evaluates the corresponding bits to distinguish between absolute and
   relative addresses.
-  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden. }
+  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRPNCellRangeAddress(AStream: TStream;
   out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags);
 var
@@ -1452,9 +1496,11 @@ begin
   if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
-{ Read the difference between row and column corner indexes of a cell range
+{@@ ----------------------------------------------------------------------------
+  Reads the difference between row and column corner indexes of a cell range
   and a reference cell.
-  Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2. }
+  Implemented here for BIFF5. BIFF8 must be overridden. Not used by BIFF2.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRPNCellRangeOffset(AStream: TStream;
   out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
   out AFlags: TsRelFlags);
@@ -1489,16 +1535,21 @@ begin
   if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
-{ Reads the identifier for an RPN function with fixed argument count.
-  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3 which read 1 byte only. }
+{@@ ----------------------------------------------------------------------------
+  Reads the identifier for an RPN function with fixed argument count.
+  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3 which read 1 byte only.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.ReadRPNFunc(AStream: TStream): Word;
 begin
   Result := WordLEToN(AStream.ReadWord);
 end;
 
-{ Reads the cell coordiantes of the top/left cell of a range using a shared formula.
+{@@ ----------------------------------------------------------------------------
+  Reads the cell coordinates of the top/left cell of a range using a
+  shared formula.
   This cell contains the rpn token sequence of the formula.
-  Valid for BIFF3-BIFF8. BIFF2 needs to be overridden (has 1 byte for column). }
+  Valid for BIFF3-BIFF8. BIFF2 needs to be overridden (has 1 byte for column).
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRPNSharedFormulaBase(AStream: TStream;
   out ARow, ACol: Cardinal);
 begin
@@ -1508,8 +1559,10 @@ begin
   ACol := WordLEToN(AStream.ReadWord);
 end;
 
-{ Reads the array of rpn tokens from the current stream position, creates an
-  rpn formula, converts it to a string formula and stores it in the cell. }
+{@@ ----------------------------------------------------------------------------
+  Reads the array of rpn tokens from the current stream position, creates an
+  rpn formula, converts it to a string formula and stores it in the cell.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
   ACell: PCell): Boolean;
 var
@@ -1663,17 +1716,21 @@ begin
   end;
 end;
 
-{ Helper funtion for reading of the size of the token array of an RPN formula.
+{@@ ----------------------------------------------------------------------------
+  Helper function for reading of the size of the token array of an RPN formula.
   Is implemented here for BIFF3-BIFF8 where the size is a 2-byte value.
-  Needs to be rewritten for BIFF2 using a 1-byte size. }
+  Needs to be rewritten for BIFF2 using a 1-byte size.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.ReadRPNTokenArraySize(AStream: TStream): Word;
 begin
   Result := WordLEToN(AStream.ReadWord);
 end;
 
-{ Reads a SHAREDFMLA record, i.e. reads cell range coordinates and a rpn
+{@@ ----------------------------------------------------------------------------
+  Reads a SHAREDFMLA record, i.e. reads cell range coordinates and a rpn
   formula. The formula is applied to all cells in the range. The formula is
-  stored only in the top/left cell of the range. }
+  stored only in the top/left cell of the range.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadSharedFormula(AStream: TStream);
 var
   r1, {%H-}r2, c1, {%H-}c2: Cardinal;
@@ -1702,9 +1759,11 @@ begin
   ReadRPNTokenArray(AStream, cell);
 end;
 
-{ Helper function for reading a string with 8-bit length. Here, we implement the
-  version for ansistrings since it is valid for all BIFF versions except for
-  BIFF8 where it has to be overridden. }
+{@@ ----------------------------------------------------------------------------
+  Helper function for reading a string with 8-bit length. Here, we implement
+  the version for ansistrings since it is valid for all BIFF versions except
+  for BIFF8 where it has to be overridden.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.ReadString_8bitLen(AStream: TStream): String;
 var
   len: Byte;
@@ -1714,22 +1773,25 @@ begin
   SetLength(s, len);
   AStream.ReadBuffer(s[1], len);
   Result := ConvertEncoding(s, FCodePage, encodingUTF8);
-//  Result := ansiToUTF8(s);
 end;
 
-{ Reads a STRING record. It immediately precedes a FORMULA record which has a
+{@@ ----------------------------------------------------------------------------
+  Reads a STRING record. It immediately precedes a FORMULA record which has a
   string result. The read value is applied to the FIncompleteCell.
-  Must be overridden because the implementation depends on BIFF version. }
+  Must be overridden because the implementation depends on BIFF version.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadStringRecord(AStream: TStream);
 begin
   Unused(AStream);
 end;
 
-{ Reads the WINDOW2 record containing information like "show grid lines",
+{@@ ----------------------------------------------------------------------------
+  Reads the WINDOW2 record containing information like "show grid lines",
   "show sheet headers", "panes are frozen", etc.
   The record structure is slightly different for BIFF5 and BIFF8, but we use
   here only the common part.
-  BIFF2 has a different structure and has to be re-written. }
+  BIFF2 has a different structure and has to be re-written.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadWindow2(AStream: TStream);
 var
   flags: Word;
@@ -1753,8 +1815,14 @@ begin
 end;
 
 
-{ TsSpreadBIFFWriter }
+{------------------------------------------------------------------------------}
+{                            TsSpreadBIFFWriter                                }
+{------------------------------------------------------------------------------}
 
+{@@ ----------------------------------------------------------------------------
+  Constructor of the general BIFF writer.
+  Initializes the date mode and the limitations of the format.
+-------------------------------------------------------------------------------}
 constructor TsSpreadBIFFWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
@@ -1769,21 +1837,21 @@ begin
   FLimitations.MaxPaletteSize := 64;
 end;
 
-destructor TsSpreadBIFFWriter.Destroy;
-begin
-  inherited Destroy;
-end;
-
-{ Creates the correct version of the number format list. It is for BIFF file
+{@@ ----------------------------------------------------------------------------
+  Creates the correct version of the number format list. It is for BIFF file
   formats.
-  Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2. }
+  Valid for BIFF5.BIFF8. Needs to be overridden for BIFF2.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.CreateNumFormatList;
 begin
   FreeAndNil(FNumFormatList);
   FNumFormatList := TsBIFFNumFormatList.Create(Workbook);
 end;
 
-{ Determines the index of the XF record, according to formatting of the given cell }
+{@@ ----------------------------------------------------------------------------
+  Determines the index of the XF record, according to formatting of the
+  given cell
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
 begin
   Result := LAST_BUILTIN_XF + ACell^.FormatIndex;
@@ -1844,9 +1912,11 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
-{ Writes an empty ("blank") cell. Needed for formatting empty cells.
+{@@ ----------------------------------------------------------------------------
+  Writes an empty ("blank") cell. Needed for formatting empty cells.
   Valid for BIFF5 and BIFF8. Needs to be overridden for BIFF2 which has a
-  different record structure. }
+  different record structure.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
@@ -1870,8 +1940,10 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
-{ Writes a BOOLEAN cell record.
-  Valid for BIFF3-BIFF8. Override for BIFF2. }
+{@@ ----------------------------------------------------------------------------
+  Writes a BOOLEAN cell record.
+  Valid for BIFF3-BIFF8. Override for BIFF2.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
 var
@@ -1938,8 +2010,11 @@ begin
   AStream.WriteWord(WordToLE(cp));
 end;
 
-{ Writes column info for the given column. Currently only the colum width is used.
-  Valid for BIFF5 and BIFF8 (BIFF2 uses a different record. }
+{@@ ----------------------------------------------------------------------------
+  Writes column info for the given column.
+  Currently only the colum width is used.
+  Valid for BIFF5 and BIFF8 (BIFF2 uses a different record.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteColInfo(AStream: TStream; ACol: PCol);
 type
   TColRecord = packed record
@@ -1956,7 +2031,8 @@ var
   rec: TColRecord;
   w: Integer;
 begin
-  if Assigned(ACol) then begin
+  if Assigned(ACol) then
+  begin
     if (ACol^.Col >= FLimitations.MaxColCount) then
       exit;
 
@@ -1981,7 +2057,9 @@ begin
   end;
 end;
 
-{ Writes the column info records for all used columns. }
+{@@ ----------------------------------------------------------------------------
+  Writes the column info records for all used columns.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteColInfos(AStream: TStream;
   ASheet: TsWorksheet);
 var
@@ -1994,8 +2072,10 @@ begin
   end;
 end;
 
-{ Writes a NOTE record which describes a comment attached to a cell
-  Valid für Biff2 and BIFF5}
+{@@ ----------------------------------------------------------------------------
+  Writes a NOTE record which describes a comment attached to a cell
+  Valid für Biff2 and BIFF5.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteComment(AStream: TStream; ACell: PCell);
 const
   CHUNK_SIZE = 2048;
@@ -2065,9 +2145,11 @@ begin
   end;
 end;
 
-{ Writes a date/time/datetime to a Biff NUMBER record, with a date/time format
+{@@ ----------------------------------------------------------------------------
+  Writes a date/time/datetime to a BIFF NUMBER record, with a date/time format
   (There is no separate date record type in xls)
-  Valid for all BIFF versions. }
+  Valid for all BIFF versions.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteDateTime(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
@@ -2080,8 +2162,10 @@ begin
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
 end;
 
-{ Writes an ERROR cell record.
-  Valie for BIFF3-BIFF8. Override for BIFF2. }
+{@@ ----------------------------------------------------------------------------
+  Writes an ERROR cell record.
+  Valid for BIFF3-BIFF8. Override for BIFF2.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 var
@@ -2109,10 +2193,12 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
-{ Writes a BIFF number format record defined in AFormatData.
+{@@ ----------------------------------------------------------------------------
+  Writes a BIFF number format record defined in AFormatData.
   AListIndex the index of the numformatdata in the numformat list
   (not the FormatIndex!).
-  Needs to be overridden by descendants. }
+  Needs to be overridden by descendants.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteNumFormat(AStream: TStream;
   ANumFormatData: TsNumFormatData; AListIndex: Integer);
 begin
@@ -2120,8 +2206,10 @@ begin
   // needs to be overridden
 end;
 
-{ Writes all number formats to the stream. Saving starts at the item with the
-  FirstFormatIndexInFile. }
+{@@ ----------------------------------------------------------------------------
+  Writes all number formats to the stream. Saving starts at the item with the
+  FirstFormatIndexInFile.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteNumFormats(AStream: TStream);
 var
   i: Integer;
@@ -2130,20 +2218,21 @@ begin
   ListAllNumFormats;
   i := NumFormatList.FindByIndex(NumFormatList.FirstNumFormatIndexInFile);
   if i > -1 then
-    while i < NumFormatList.Count do begin
+    while i < NumFormatList.Count do
+    begin
       item := NumFormatList[i];
-      if item <> nil then begin
+      if item <> nil then
         WriteNumFormat(AStream, item, i);
-      end;
       inc(i);
     end;
 end;
 
-{ Writes an Excel FORMULA record.
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel FORMULA record.
   Note: The formula is already stored in the cell.
   Since BIFF files contain RPN formulas the string formula of the cell is
   converted to an RPN formula and the method calls WriteRPNFormula.
-}
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteFormula(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
@@ -2154,8 +2243,10 @@ begin
   SetLength(formula, 0);
 end;
 
-{ Writes a 64-bit floating point NUMBER record.
-  Valid for BIFF5 and BIFF8 (BIFF2 has a different record structure.). }
+{@@ ----------------------------------------------------------------------------
+  Writes a 64-bit floating point NUMBER record.
+  Valid for BIFF5 and BIFF8 (BIFF2 has a different record structure).
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteNumber(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: double; ACell: PCell);
 var
@@ -2181,6 +2272,10 @@ begin
   AStream.WriteBuffer(rec, sizeof(Rec));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes the PALETTE record for the color palette.
+  Valid for BIFF3-BIFF8. BIFF2 has no palette in file.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 const
   NUM_COLORS = 56;
@@ -2205,9 +2300,9 @@ begin
   end;
 end;
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Writes a PAGESETUP record containing information on printing
-}
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePageSetup(AStream: TStream);
 var
   dbl: Double;
@@ -2248,9 +2343,11 @@ begin
   AStream.WriteWord(WordToLE(1));  // 1 copy
 end;
 
-{ Writes a PANE record to the stream.
+{@@ ----------------------------------------------------------------------------
+  Writes a PANE record to the stream.
   Valid for all BIFF versions. The difference for BIFF5-BIFF8 is a non-used
-  byte at the end. Activate IsBiff58 in these cases. }
+  byte at the end. Activate IsBiff58 in these cases.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePane(AStream: TStream; ASheet: TsWorksheet;
   IsBiff58: Boolean; out ActivePane: Byte);
 var
@@ -2319,9 +2416,11 @@ begin
     { Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4 }
 end;
 
-{ Writes the address of a cell as used in an RPN formula and returns the
+{@@ ----------------------------------------------------------------------------
+  Writes the address of a cell as used in an RPN formula and returns the
   count of bytes written.
-  Valid for BIFF2-BIFF5. }
+  Valid for BIFF2-BIFF5.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.WriteRPNCellAddress(AStream: TStream;
   ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
 var
@@ -2338,8 +2437,10 @@ begin
   Result := 3;
 end;
 
-{ Writes row and column offset (unsigned integers!)
-  Valid for BIFF2-BIFF5. }
+{@@ ----------------------------------------------------------------------------
+  Writes row and column offset (unsigned integers!)
+  Valid for BIFF2-BIFF5.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.WriteRPNCellOffset(AStream: TStream;
   ARowOffset, AColOffset: Integer; AFlags: TsRelFlags): Word;
 var
@@ -2359,9 +2460,11 @@ begin
   Result := 3;
 end;
 
-{ Writes the address of a cell range as used in an RPN formula and returns the
+{@@ ----------------------------------------------------------------------------
+  Writes the address of a cell range as used in an RPN formula and returns the
   count of bytes written.
-  Valid for BIFF2-BIFF5. }
+  Valid for BIFF2-BIFF5.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.WriteRPNCellRangeAddress(AStream: TStream;
   ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): Word;
 var
@@ -2383,11 +2486,12 @@ begin
   Result := 6;
 end;
 
-{ Writes an Excel FORMULA record
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel FORMULA record
   The formula needs to be converted from usual user-readable string
   to an RPN array
   Valid for BIFF5-BIFF8.
-}
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
   const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
 var
@@ -2449,16 +2553,20 @@ begin
     WriteStringRecord(AStream, ACell^.UTF8StringValue);
 end;
 
-{ Writes the identifier for an RPN function with fixed argument count and
+{@@ ----------------------------------------------------------------------------
+  Writes the identifier for an RPN function with fixed argument count and
   returns the number of bytes written.
-  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3 }
+  Valid for BIFF4-BIFF8. Override in BIFF2-BIFF3.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word;
 begin
   AStream.WriteWord(WordToLE(AIdentifier));
   Result := 2;
 end;
 
-{ Writes the result of an RPN formula. }
+{@@ ----------------------------------------------------------------------------
+  Writes the result of an RPN formula.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNResult(AStream: TStream; ACell: PCell);
 var
   Data: array[0..3] of word;
@@ -2502,11 +2610,13 @@ begin
   AStream.WriteBuffer(Data, 8);
 end;
 
-{ Is called from WriteRPNFormula in the case that the cell uses a shared
+{@@ ----------------------------------------------------------------------------
+  Is called from WriteRPNFormula in the case that the cell uses a shared
   formula and writes the token "array" pointing to the shared formula base.
   This implementation is valid for BIFF3-BIFF8. BIFF2 is different, but does not
   support shared formulas; the BIFF2 writer must copy the formula found in the
-  SharedFormulaBase field of the cell and adjust the relative references. }
+  SharedFormulaBase field of the cell and adjust the relative references.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNSharedFormulaLink(AStream: TStream;
   ACell: PCell; var RPNLength: Word);
 type
@@ -2527,7 +2637,9 @@ begin
   RPNLength := SizeOf(rec);
 end;
 
-{ Writes the token array of the given RPN formula and returns its size }
+{@@ ----------------------------------------------------------------------------
+  Writes the token array of the given RPN formula and returns its size
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
   ACell: PCell; const AFormula: TsRPNFormula; UseRelAddr: boolean;
   var RPNLength: Word);
@@ -2682,15 +2794,20 @@ begin
   AStream.Position := finalPos;
 end;
 
-{ Writes the size of the RPN token array. Called from WriteRPNFormula.
-  Valid for BIFF3-BIFF8. Override in BIFF2. }
-procedure TsSpreadBIFFWriter.WriteRPNTokenArraySize(AStream: TStream; ASize: Word);
+{@@ ----------------------------------------------------------------------------
+  Writes the size of the RPN token array. Called from WriteRPNFormula.
+  Valid for BIFF3-BIFF8. Override in BIFF2.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteRPNTokenArraySize(AStream: TStream;
+  ASize: Word);
 begin
   AStream.WriteWord(WordToLE(ASize));
 end;
 
-{ Writes an Excel 3-8 ROW record
-  Valid for BIFF3-BIFF8 }
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 3-8 ROW record
+  Valid for BIFF3-BIFF8
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRow(AStream: TStream; ASheet: TsWorksheet;
   ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
 var
@@ -2767,10 +2884,12 @@ begin
   AStream.WriteDWord(DWordToLE(dw));
 end;
 
-{ Writes all ROW records for the given sheet.
+{@@ ----------------------------------------------------------------------------
+  Writes all ROW records for the given sheet.
   Note that the OpenOffice documentation says that rows must be written in
   groups of 32, followed by the cells on these rows, etc. THIS IS NOT NECESSARY!
-  Valid for BIFF2-BIFF8 }
+  Valid for BIFF2-BIFF8.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRows(AStream: TStream; ASheet: TsWorksheet);
 var
   row: PRow;
@@ -2788,10 +2907,12 @@ begin
   end;
 end;
 
-{ Writes an Excel 2-8 SELECTION record
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 2-8 SELECTION record
   Writes just reasonable default values
   APane is 0..3 (see below)
-  Valid for BIFF2-BIFF8 }
+  Valid for BIFF2-BIFF8
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteSelection(AStream: TStream;
   ASheet: TsWorksheet; APane: Byte);
 var
@@ -2861,13 +2982,15 @@ begin
   end;
 end;
 
-{ Writes the token array of a shared formula stored in ACell.
+{@@ ----------------------------------------------------------------------------
+  Writes the token array of a shared formula stored in ACell.
   Note: Relative cell addresses of a shared formula are defined by
   token fekCellOffset
   Valid for BIFF5-BIFF8. No shared formulas before BIFF2. But since a worksheet
   containing shared formulas can be written the BIFF2 writer needs to duplicate
   the formulas in each cell (with adjusted cell references). In BIFF2
-  WriteSharedFormula must not do anything. }
+  WriteSharedFormula must not do anything.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteSharedFormula(AStream: TStream; ACell: PCell);
 var
   r1, r2, c1, c2: Cardinal;
@@ -2911,15 +3034,13 @@ begin
   AStream.Position := finalPos;
 end;
 
-{ Writes the borders of the cell range covered by a shared formula.
+{@@ ----------------------------------------------------------------------------
+  Writes the borders of the cell range covered by a shared formula.
   Valid for BIFF5 and BIFF8 - BIFF8 writes 8-bit column index as well.
-  No need for BIFF2 which does not support shared formulas. }
+  Not needed in BIFF2 which does not support shared formulas.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteSharedFormulaRange(AStream: TStream;
   AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal);
-{
-var
-  c: Word;
-}
 begin
   // Index to first row
   AStream.WriteWord(WordToLE(AFirstRow));
@@ -2927,21 +3048,14 @@ begin
   AStream.WriteWord(WordToLE(ALastRow));
   // Index to first column
   AStream.WriteByte(AFirstCol);
-  (*
-  c := {%H-}Lo(AFirstCol);
-  AStream.WriteByte(Lo(c));
-  *)
   // Index to last rcolumn
   AStream.WriteByte(ALastCol);
-  (*
-  c := {%H-}Lo(ALastCol);
-  AStream.WriteByte(Lo(c));
-  *)
 end;
 
-
-{ Writes a SHEETPR Record.
-  Valid for BIFF3-BIFF8. }
+{@@ ----------------------------------------------------------------------------
+  Writes a SHEETPR Record.
+  Valid for BIFF3-BIFF8.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteSheetPR(AStream: TStream);
 var
   flags: Word;
@@ -2953,10 +3067,12 @@ begin
   AStream.WriteWord(WordToLE(flags));
 end;
 
-{ Helper function for writing a string with 8-bit length. Here, we implement the
+{@@ ----------------------------------------------------------------------------
+  Helper function for writing a string with 8-bit length. Here, we implement the
   version for ansistrings since it is valid for all BIFF versions except BIFF8
   where it has to be overridden. Is called for writing a string rpn token.
-  Returns the count of bytes written. }
+  Returns the count of bytes written.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.WriteString_8bitLen(AStream: TStream;
   AString: String): Integer;
 var
@@ -2970,9 +3086,11 @@ begin
   Result := 1 + len;
 end;
 
-{ Write STRING record following immediately after RPN formula if formula result
-  is a non-empty string.
-  Must be overridden because depends of BIFF version }
+{@@ ----------------------------------------------------------------------------
+  Write the STRING record which immediately follows the RPN formula record if
+  the formula result is a non-empty string.
+  Must be overridden because implementation depends of BIFF version.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteStringRecord(AStream: TStream;
   AString: String);
 begin
@@ -3030,12 +3148,14 @@ begin
     end;
 end;
 
-{ Writes an Excel 5/8 WINDOW1 record
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 5/8 WINDOW1 record
   This record contains general settings for the document window and
   global workbook settings.
   The values written here are reasonable defaults which should work for most
   sheets.
-  Valid for BIFF5-BIFF8. }
+  Valid for BIFF5-BIFF8.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteWindow1(AStream: TStream);
 begin
   { BIFF Record header }
@@ -3073,12 +3193,22 @@ begin
   AStream.WriteWord(WordToLE(600));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes an XF record needed for cell formatting.
+  Is called from WriteXFRecords.
+  MUST be overridden by descendents.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteXF(AStream: TStream; ACellFormat: PsCellFormat;
   XFType_Prot: Byte = 0);
 begin
   Unused(AStream, ACellFormat, XFType_Prot);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes all XF records of a worksheet. XF records define cell formatting.
+  The BIFF file format requires 16 pre-defined records for internal use.
+  User-defined records can follow.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteXFRecords(AStream: TStream);
 var
   i: Integer;
