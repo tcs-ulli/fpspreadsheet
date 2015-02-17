@@ -52,6 +52,8 @@ type
 
     // Test alignments
     procedure TestWriteRead_Alignment(AFormat: TsSpreadsheetFormat);
+    // Test background
+    procedure TestWriteRead_Background(AFormat: TsSpreadsheetFormat);
     // Test border
     procedure TestWriteRead_Border(AFormat: TsSpreadsheetFormat);
     // Test border styles
@@ -88,12 +90,14 @@ type
     procedure TestWriteRead_BIFF2_NumberFormats;
     procedure TestWriteRead_BIFF2_ManyXFRecords;
     // These features are not supported by Excel2 --> no test cases required!
+    // - Background
     // - BorderStyle
     // - TextRotation
     // - Wordwrap
 
     { BIFF5 Tests }
     procedure TestWriteRead_BIFF5_Alignment;
+    procedure TestWriteRead_BIFF5_Background;
     procedure TestWriteRead_BIFF5_Border;
     procedure TestWriteRead_BIFF5_BorderStyles;
     procedure TestWriteRead_BIFF5_ColWidths;
@@ -106,6 +110,7 @@ type
 
     { BIFF8 Tests }
     procedure TestWriteRead_BIFF8_Alignment;
+    procedure TestWriteRead_BIFF8_Background;
     procedure TestWriteRead_BIFF8_Border;
     procedure TestWriteRead_BIFF8_BorderStyles;
     procedure TestWriteRead_BIFF8_ColWidths;
@@ -118,6 +123,7 @@ type
 
     { ODS Tests }
     procedure TestWriteRead_ODS_Alignment;
+    // no background patterns in ods
     procedure TestWriteRead_ODS_Border;
     procedure TestWriteRead_ODS_BorderStyles;
     procedure TestWriteRead_ODS_ColWidths;
@@ -130,6 +136,7 @@ type
 
     { OOXML Tests }
     procedure TestWriteRead_OOXML_Alignment;
+    procedure TestWriteRead_OOXML_Background;
     procedure TestWriteRead_OOXML_Border;
     procedure TestWriteRead_OOXML_BorderStyles;
     procedure TestWriteRead_OOXML_ColWidths;
@@ -156,6 +163,7 @@ const
   FmtDateTimesSheet = 'DateTimesFormat';
   ColWidthSheet = 'ColWidths';
   RowHeightSheet = 'RowHeights';
+  BackgroundSheet = 'Background';
   BordersSheet = 'CellBorders';
   AlignmentSheet = 'TextAlignments';
   TextRotationSheet = 'TextRotation';
@@ -686,6 +694,133 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Alignment;
 begin
   TestWriteRead_Alignment(sfOOXML);
+end;
+
+
+{ This test writes in column A the names of the Background.Styles, in column B
+  the background fill with a specific pattern and background color, in column C
+  the same, but with transparent background. }
+procedure TSpreadWriteReadFormatTests.TestWriteRead_Background(AFormat: TsSpreadsheetFormat);
+const
+  PATTERN_COLOR = scRed;
+  BK_COLOR = scYellow;
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  MyCell: PCell;
+  col, row: Integer;
+  style: TsFillStyle;
+  TempFile: String;
+  actualstyle: TsFillStyle;
+  actualcolor: TsColor;
+  patt: TsFillPattern;
+begin
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.UsePalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
+    MyWorkSheet:= MyWorkBook.AddWorksheet(BackgroundSheet);
+    for style in TsFillStyle do begin
+      row := ord(style);
+      MyWorksheet.WriteUTF8Text(row, 0, GetEnumName(TypeInfo(TsFillStyle), ord(style)));
+      MyWorksheet.WriteBackground(row, 1, style, PATTERN_COLOR, BK_COLOR);
+      MyWorksheet.WriteBackground(row, 2, style, PATTERN_COLOR, scTransparent);
+    end;
+    TempFile:= NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook, BackgroundSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    for style in TsFillStyle do begin
+      row := ord(style);
+
+      // Column B has BK_COLOR as backgroundcolor of the patterns
+      col := 1;
+      MyCell := MyWorksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell ' + CellNotation(MyWorksheet, row, col));
+      patt := MyWorksheet.ReadBackground(MyCell);
+      CheckEquals(
+        GetEnumName(TypeInfo(TsFillStyle), ord(style)),
+        GetEnumName(TypeInfo(TsFillStyle), ord(patt.Style)),
+        'Test saved fill style mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+      if style <> fsNoFill then
+      begin
+        if PATTERN_COLOR <> patt.FgColor then
+          CheckEquals(
+            MyWorkbook.GetColorName(PATTERN_COLOR),
+            MyWorkbook.GetColorName(patt.FgColor),
+            'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+        if BK_COLOR <> patt.BgColor then
+          CheckEquals(
+            MyWorkbook.GetColorName(BK_COLOR),
+            MyWorkbook.GetColorName(patt.BgColor),
+            'Test saved fill background color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+      end;
+
+      // Column C has a transparent pattern background.
+      col := 2;
+      MyCell := Myworksheet.FindCell(row, col);
+      if MyCell = nil then
+        fail('Error in test code. Failed to get cell ' + CellNotation(MyWorksheet, row, col));
+      patt := MyWorksheet.ReadBackground(MyCell);
+      CheckEquals(
+        GetEnumName(TypeInfo(TsFillStyle), ord(style)),
+        GetEnumName(TypeInfo(TsFillStyle), ord(patt.Style)),
+        'Test saved fill style mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+      if style <> fsNoFill then
+      begin
+        if PATTERN_COLOR <> patt.FgColor then
+          CheckEquals(
+            MyWorkbook.GetColorName(PATTERN_COLOR),
+            MyWorkbook.GetColorName(patt.FgColor),
+            'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+        // SolidFill is a special case: here the background color is always equal
+        // to the pattern color - the cell layout does not know this...
+        if style = fsSolidFill then
+          CheckEquals(
+            MyWorkbook.GetColorName(PATTERN_COLOR),
+            MyWorkbook.GetColorName(patt.BgColor),
+            'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col))
+        else
+          CheckEquals(
+            MyWorkbook.GetColorName(scTransparent),
+            MyWorkbook.GetColorName(patt.BgColor),
+            'Test saved fill background color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
+      end;
+    end;
+
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_Background;
+begin
+  TestWriteRead_Background(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_Background;
+begin
+  TestWriteRead_Background(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Background;
+begin
+  TestWriteRead_Background(sfOOXML);
 end;
 
 

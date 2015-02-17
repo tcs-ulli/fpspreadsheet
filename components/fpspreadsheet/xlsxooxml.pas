@@ -328,6 +328,31 @@ type
     BorderStyles: TsCellBorderStyles;
   end;
 
+const
+  PATTERN_TYPES: array [TsFillStyle] of string = (
+    'none',            // fsNoFill
+    'solid',           // fsSolidFill
+    'darkGray',        // fsGray75
+    'mediumGray',      // fsGray50
+    'lightGray',       // fsGray25
+    'gray125',         // fsGray12
+    'gray0625',        // fsGray6,
+    'darkHorizontal',  // fsStripeHor
+    'darkVertical',    // fsStripeVert
+    'darkUp',          // fsStripeDiagUp
+    'darkDown',        // fsStripeDiagDown
+    'lightHorizontal', // fsThinStripeHor
+    'lightVertical',   // fsThinStripeVert
+    'lightUp',         // fsThinStripeDiagUp
+    'lightDown',       // fsThinStripeDiagDown
+    'darkTrellis',     // fsHatchDiag
+    'lightTrellis',    // fsHatchThinDiag
+    'darkTellis',      // fsHatchTickDiag
+    'lightGrid'        // fsHatchThinHor
+    );
+
+
+
 
 { TsOOXMLNumFormatList }
 
@@ -718,6 +743,7 @@ var
   childNode: TDOMNode;
   nodeName: String;
   fmt: TsCellFormat;
+  fs: TsFillStyle;
   s1, s2: String;
   i, numFmtIndex, fillIndex, borderIndex: Integer;
   numFmtData: TsNumFormatData;
@@ -770,8 +796,15 @@ begin
         fillIndex := StrToInt(s1);
         fillData := FFillList[fillIndex];
         if (fillData <> nil) and (fillData.PatternType <> 'none') then begin
-          Include(fmt.UsedFormattingFields, uffBackgroundColor);
-          fmt.BackgroundColor := fillData.FgColor;
+          fmt.Background.FgColor := fillData.FgColor;
+          fmt.Background.BgColor := fillData.BgColor;
+          for fs in TsFillStyle do
+            if SameText(fillData.PatternType, PATTERN_TYPES[fs]) then
+            begin
+              fmt.Background.Style := fs;
+              Include(fmt.UsedFormattingFields, uffBackground);
+              break;
+            end;
         end;
       end;
 
@@ -858,6 +891,15 @@ var
   n: Integer;
 begin
   Assert(ANode <> nil);
+
+  s := GetAttrValue(ANode, 'auto');
+  if s = '1' then begin
+    if ANode.NodeName = 'fgColor' then
+      Result := scBlack
+    else
+      Result := scTransparent;
+    exit;
+  end;
 
   s := GetAttrValue(ANode, 'rgb');
   if s <> '' then begin
@@ -1640,13 +1682,28 @@ var
   i: Integer;
   fmt: PsCellFormat;
 begin
-  if (AFormat = nil) or not (uffBackgroundColor in AFormat^.UsedFormattingFields)
+  if (AFormat = nil) or not (uffBackground in AFormat^.UsedFormattingFields)
   then begin
     Result := 0;
     exit;
   end;
 
   // Index 0 is "no fill" which already has been handled.
+  for i:=1 to High(FFillList) do begin
+    fmt := FFillList[i];
+    if (fmt <> nil) and (uffBackground in fmt^.UsedFormattingFields) then
+    begin
+      if (AFormat^.Background.Style = fmt^.Background.Style) and
+         (AFormat^.Background.BgColor = fmt^.Background.BgColor) and
+         (AFormat^.Background.FgColor = fmt^.Background.FgColor)
+      then begin
+        Result := i;
+        exit;
+      end;
+    end;
+  end;
+
+  {
   // Index 1 is also pre-defined (gray 25%)
   for i:=2 to High(FFillList) do begin
     fmt := FFillList[i];
@@ -1657,8 +1714,9 @@ begin
         exit;
       end;
   end;
+   }
 
-  // Not found --> return -1
+   // Not found --> return -1
   Result := -1;
 end;
 
@@ -1893,7 +1951,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteFillList(AStream: TStream);
 var
   i: Integer;
-  rgb: TsColorValue;
+  pt, bc, fc: string;
 begin
   AppendToStream(AStream, Format(
     '<fills count="%d">', [Length(FFillList)]));
@@ -1912,15 +1970,23 @@ begin
 
   // user-defined fills
   for i:=2 to High(FFillList) do begin
-    rgb := Workbook.GetPaletteColor(FFillList[i]^.BackgroundColor);
+    pt := PATTERN_TYPES[FFillList[i]^.Background.Style];
+    if FFillList[i]^.Background.FgColor = scTransparent then
+      fc := 'auto="1"'
+    else
+      fc := Format('rgb="%s"', [Copy(Workbook.GetPaletteColorAsHTMLStr(FFillList[i]^.Background.FgColor), 2, 255)]);
+    if FFillList[i].Background.BgColor = scTransparent then
+      bc := 'auto="1"'
+    else
+      bc := Format('rgb="%s"', [Copy(Workbook.GetPaletteColorAsHTMLStr(FFillList[i]^.Background.BgColor), 2, 255)]);
     AppendToStream(AStream,
-      '<fill>',
-        '<patternFill patternType="solid">');
+      '<fill>');
     AppendToStream(AStream, Format(
-          '<fgColor rgb="%s" />', [Copy(ColorToHTMLColorStr(rgb), 2, 255)]),
-          '<bgColor indexed="64" />');
-    AppendToStream(AStream,
-        '</patternFill>',
+        '<patternFill patternType="%s">', [pt]) + Format(
+          '<fgColor %s />', [fc]) + Format(
+          '<bgColor %s />', [bc]) +
+//          '<bgColor indexed="64" />' +
+        '</patternFill>' +
       '</fill>');
   end;
 
@@ -2302,7 +2368,7 @@ begin
       sAlign := sAlign + 'wrapText="1" ';
 
     { Fill }
-    if (uffBackgroundColor in fmt.UsedFormattingFields) then
+    if (uffBackground in fmt.UsedFormattingFields) then
     begin
       fillID := FindFillInList(fmt);
       if fillID = -1 then fillID := 0;

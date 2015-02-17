@@ -87,7 +87,7 @@ begin
   Result.ContentType := cctNumber;
   Result.Numbervalue := ANumber;
   if (ABkColor <> scTransparent) then begin
-    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackgroundColor];
+    Result.UsedFormattingFields := Result.UsedFormattingFields + [uffBackground];
     Result.BackgroundColor := ABkColor;
   end;
 end;
@@ -98,7 +98,7 @@ begin
   Result.ContentType := cctUTF8String;
   Result.UTF8StringValue := AString;
   if (ABkColor <> scTransparent) then begin
-    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackgroundColor];
+    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackground];
     Result.BackgroundColor := ABkColor;
   end;
 end;
@@ -111,7 +111,7 @@ begin
   Result.NumberValue := ANumberResult;
   Result.ContentType := cctNumber;
   if (ABkColor <> scTransparent) then begin
-    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackgroundColor];
+    Result.UsedFormattingFields := Result.usedFormattingFields + [uffBackground];
     Result.BackgroundColor := ABkColor;
   end;
 end;
@@ -339,7 +339,7 @@ begin
               SourceCells[i+(col-2)].UsedFormattingFields = MyWorksheet.ReadUsedFormatting(cell),
               'Used formatting fields mismatch, cell ' + CellNotation(myWorksheet, row, col)
             );
-            if (uffBackgroundColor in SourceCells[i].UsedFormattingFields) then
+            if (uffBackground in SourceCells[i].UsedFormattingFields) then
               CheckEquals(
                 SourceCells[i+(col-2)].BackgroundColor,
                 MyWorksheet.ReadBackgroundColor(cell),
@@ -361,7 +361,7 @@ begin
               SourceCells[i].UsedFormattingFields = MyWorksheet.ReadUsedFormatting(cell),
               'Used formatting fields mismatch, cell ' + CellNotation(MyWorksheet, row, col)
             );
-            if (uffBackgroundColor in SourceCells[i].UsedFormattingFields) then
+            if (uffBackground in SourceCells[i].UsedFormattingFields) then
               CheckEquals(
                 SourceCells[i].BackgroundColor,
                 MyWorksheet.ReadBackgroundColor(cell),

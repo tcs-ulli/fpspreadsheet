@@ -543,7 +543,6 @@ begin
     SetLength(s, Len);
     AStream.ReadBuffer(s[1], len);
     if (FIncompleteCell <> nil) and (s <> '') then begin
-//      FIncompleteCell^.UTF8StringValue := AnsiToUTF8(s);
       FIncompletecell^.UTF8StringValue := ConvertEncoding(s, FCodePage, encodingUTF8);
       FIncompleteCell^.ContentType := cctUTF8String;
       if FIsVirtualMode then
@@ -591,6 +590,7 @@ var
   b: Byte;
   dw: DWord;
   fill: Word;
+  fs: TsFillStyle;
 begin
   InitFormatRecord(fmt);
   fmt.ID := FCellFormatList.Count;
@@ -696,15 +696,26 @@ begin
   fmt.BorderStyles[cbNorth].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_TOP_COLOR) shr 9;
   fmt.BorderStyles[cbSouth].Color := (rec.Border_BkGr1 and MASK_XF_BORDER_BOTTOM_COLOR) shr 25;
 
-  // Background fill style
+  // Background
   fill := (rec.Border_BkGr1 and MASK_XF_BKGR_FILLPATTERN) shr 16;
-
-  // Background color
-  if fill = 0 then
-    fmt.BackgroundColor := scTransparent
-  else begin
-    fmt.BackgroundColor := rec.Border_BkGr1 and MASK_XF_BKGR_PATTERN_COLOR;
-    Include(fmt.UsedFormattingFields, uffBackgroundColor);
+  for fs in TsFillStyle do
+  begin
+    if fs = fsNoFill then
+      Continue;
+    if fill = MASK_XF_FILL_PATT[fs] then
+    begin
+      // Fill style
+      fmt.Background.Style := fs;
+      // Pattern color
+      fmt.Background.FgColor := rec.Border_BkGr1 and MASK_XF_BKGR_PATTERN_COLOR;
+      if fmt.Background.FgColor = SYS_DEFAULT_FOREGROUND_COLOR then
+        fmt.Background.FgColor := scBlack;
+      fmt.Background.BgColor := (rec.Border_BkGr1 and MASK_XF_BKGR_BACKGROUND_COLOR) shr 7;
+      if fmt.Background.BgColor = SYS_DEFAULT_BACKGROUND_COLOR then
+        fmt.Background.BgColor := scTransparent;
+      Include(fmt.UsedFormattingFields, uffBackground);
+      break;
+    end;
   end;
 
   // Add the XF to the list
@@ -1488,11 +1499,16 @@ begin
   dw2 := 0;
   if (AFormatRecord <> nil) then
   begin
-    if (uffBackgroundColor in AFormatRecord^.UsedFormattingFields) then
+    // Background fill pattern
+    if (uffBackground in AFormatRecord^.UsedFormattingFields) then
     begin
-      // Background color
-      dw1 := dw1 or (FixColor(AFormatRecord^.BackgroundColor) and $0000007F);
-      dw1 := dw1 or (MASK_XF_FILL_PATT_SOLID shl 16);
+      if (AFormatRecord^.Background.FgColor = scTransparent)
+        then dw1 := dw1 or (SYS_DEFAULT_FOREGROUND_COLOR and $0000007F)
+        else dw1 := dw1 or (FixColor(AFormatRecord^.Background.FgColor) and $0000007F);
+      if AFormatRecord^.Background.BgColor = scTransparent
+        then dw1 := dw1 or (SYS_DEFAULT_BACKGROUND_COLOR shl 7)
+        else dw1 := dw1 or (FixColor(AFormatRecord^.Background.BgColor) shl 7);
+      dw1 := dw1 or (MASK_XF_FILL_PATT[AFormatRecord^.Background.Style] shl 16);
     end;
     // Border lines
     if (uffBorder in AFormatRecord^.UsedFormattingFields) then

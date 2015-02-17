@@ -1469,8 +1469,13 @@ begin
   FBackgroundColor := scNotDefined;
   if (ACell <> nil) then begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-    if  (uffBackgroundColor in fmt^.UsedFormattingFields) then
-      FBackgroundColor := fmt^.BackgroundColor;
+    if  (uffBackground in fmt^.UsedFormattingFields) then
+    begin
+      if fmt^.Background.Style = fsSolidFill then
+        FBackgroundColor := fmt^.Background.FgColor
+      else
+        FBackgroundColor := fmt^.Background.BgColor;
+    end;
   end;
 end;
 

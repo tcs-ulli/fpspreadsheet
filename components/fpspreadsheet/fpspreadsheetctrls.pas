@@ -903,8 +903,11 @@ var
   j: Integer;
   I: IsSpreadsheetControl;
   C: TComponent;
+
+  cell: PCell;
 begin
   for j:=0 to FListeners.Count-1 do begin
+    if Worksheet <> nil then cell := Worksheet.FindCell(0,0);
     C := TComponent(FListeners[j]);
     if C.GetInterface(GUID_SpreadsheetControl, I) then
       I.ListenerNotification(AChangedItems, AData)
@@ -2602,11 +2605,20 @@ begin
         GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cbEast].LineStyle)),
         Workbook.GetColorName(fmt.BorderStyles[cbEast].Color)]));
 
-  if (ACell = nil) or not (uffBackgroundColor in fmt.UsedformattingFields)
-    then AStrings.Add('BackgroundColor=')
-    else AStrings.Add(Format('BackgroundColor=%d (%s)', [
-           fmt.BackgroundColor,
-           Workbook.GetColorName(fmt.BackgroundColor)]));
+  if (ACell = nil) or not (uffBackground in fmt.UsedformattingFields) then
+  begin
+    AStrings.Add('Style=');
+    AStrings.Add('PatternColor=');
+    AStrings.Add('BackgroundColor=');
+  end else
+  begin
+    AStrings.Add(Format('Style=%s', [
+      GetEnumName(TypeInfo(TsFillStyle), ord(fmt.Background.Style))]));
+    AStrings.Add(Format('PatternColor=%d (%s)', [
+      fmt.Background.FgColor, Workbook.GetColorName(fmt.Background.FgColor)]));
+    AStrings.Add(Format('BackgroundColor=%d (%s)', [
+      fmt.Background.BgColor, Workbook.GetColorName(fmt.Background.BgColor)]));
+  end;
 
   if (ACell = nil) or not (uffNumberFormat in fmt.UsedFormattingFields) then
   begin
