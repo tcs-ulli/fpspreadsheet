@@ -591,24 +591,162 @@ const
 
 
 var
-  {@@ Auxiliary bitmap containing the fill pattern used by biff2 cell backgrounds. }
-  FillPattern_BIFF2: TBitmap = nil;
+  {@@ Auxiliary bitmap containing the previously used non-trivial fill pattern }
+  FillPatternBitmap: TBitmap = nil;
+  FillPatternStyle: TsFillStyle;
+  FillPatternFgColor: TColor;
+  FillPatternBgColor: TColor;
 
 {@@ ----------------------------------------------------------------------------
-  Helper procedure which creates the fill pattern used by biff2 cell backgrounds.
+  Helper procedure which creates bitmaps used for fill patterns in cell
+  backgrounds.
+  The parameters are buffered in FillPatternXXXX variables to avoid unnecessary
+  creation of the same bitmaps again and again.
 -------------------------------------------------------------------------------}
-procedure Create_FillPattern_BIFF2(ABkColor: TColor);
-begin
-  FreeAndNil(FillPattern_BIFF2);
-  FillPattern_BIFF2 := TBitmap.Create;
-  with FillPattern_BIFF2 do begin
-    SetSize(4, 4);
-    Canvas.Brush.Color := ABkColor;
-    Canvas.FillRect(0, 0, Width, Height);
-    Canvas.Pixels[0, 0] := clBlack;
-    Canvas.Pixels[2, 2] := clBlack;
+procedure CreateFillPattern(var ABitmap: TBitmap; AStyle: TsFillStyle;
+  AFgColor, ABgColor: TColor);
+
+  procedure SolidFill(AColor: TColor);
+  begin
+    ABitmap.Canvas.Brush.Color := AColor;
+    ABitmap.Canvas.FillRect(0, 0, ABitmap.Width, ABitmap.Height);
   end;
+
+var
+  x,y: Integer;
+begin
+  if (FillPatternStyle = AStyle) and (FillPatternBgColor = ABgColor) and
+     (FillPatternFgColor = AFgColor) and (ABitmap <> nil)
+  then
+    exit;
+
+  FreeAndNil(ABitmap);
+  ABitmap := TBitmap.Create;
+  with ABitmap do begin
+    if AStyle = fsGray6 then SetSize(8, 4) else SetSize(4, 4);
+    case AStyle of
+      fsNoFill:
+        SolidFill(ABgColor);
+      fsSolidFill:
+        SolidFill(AFgColor);
+      fsGray75:
+        begin
+          SolidFill(AFgColor);
+          Canvas.Pixels[0, 0] := ABgColor;
+          Canvas.Pixels[2, 1] := ABgColor;
+          Canvas.Pixels[0, 2] := ABgColor;
+          Canvas.Pixels[2, 3] := ABgColor;
+        end;
+      fsGray50:
+        begin
+          SolidFill(AFgColor);
+          for y := 0 to 3 do for
+            x := 0 to 3 do
+              if odd(x+y) then Canvas.Pixels[x,y] := ABgColor;
+        end;
+      fsGray25:
+        begin
+          SolidFill(ABgColor);
+          Canvas.Pixels[0, 0] := AFgColor;
+          Canvas.Pixels[2, 1] := AFgColor;
+          Canvas.Pixels[0, 2] := AFgColor;
+          Canvas.Pixels[2, 3] := AFgColor;
+        end;
+      fsGray12:
+        begin
+          SolidFill(ABgColor);
+          Canvas.Pixels[0, 0] := AFgColor;
+          Canvas.Pixels[2, 2] := AFgColor;
+        end;
+      fsGray6:
+        begin
+          SolidFill(ABgColor);
+          Canvas.Pixels[0, 0] := AFgColor;
+          Canvas.Pixels[4, 2] := AFgColor;
+        end;
+      fsStripeHor:
+        begin
+          SolidFill(ABgColor);
+          for y := 0 to 1 do
+            for x := 0 to 3 do
+              Canvas.Pixels[x,y] := AFgColor;
+        end;
+      fsStripeVert:
+        begin
+          SolidFill(ABgColor);
+          for y := 0 to 3 do
+            for x := 0 to 1 do
+              Canvas.Pixels[x,y] := AFgColor;
+        end;
+      fsStripeDiagUp:
+        begin
+          SolidFill(ABgColor);
+          for y := 0 to 3 do
+            for x := 0 to 1 do
+              Canvas.Pixels[(x+y) mod 4, 3-y] := AFgColor;
+        end;
+      fsStripeDiagDown:
+        begin
+          SolidFill(ABgColor);
+          for y := 0 to 3 do
+            for x := 0 to 1 do
+              Canvas.Pixels[(x+y) mod 4, y] := AFgColor;
+        end;
+      fsThinStripeHor:
+        begin
+          SolidFill(ABgColor);
+          for x := 0 to 3 do Canvas.Pixels[x, 0] := AFgColor;
+        end;
+      fsThinStripeVert:
+        begin
+          SolidFill(ABgColor);
+          for y := 0 to 3 do Canvas.Pixels[0, y] := AFgColor;
+        end;
+      fsThinStripeDiagUp:
+        begin
+          SolidFill(ABgColor);
+          for x := 0 to 3 do Canvas.Pixels[3-x, x] := AFgColor;
+        end;
+      fsThinStripeDiagDown, fsThinHatchDiag:
+        begin
+          SolidFill(ABgColor);
+          for x := 0 to 3 do Canvas.Pixels[x, x] := AFgColor;
+          if AStyle = fsThinHatchDiag then begin
+            Canvas.Pixels[0, 2] := AFgColor;
+            Canvas.Pixels[2, 0] := AFgColor;
+          end;
+        end;
+      fsHatchDiag:
+        begin
+          SolidFill(ABgColor);
+          for x := 0 to 1 do
+            for y := 0 to 1 do begin
+              Canvas.Pixels[x,y] := AFgColor;
+              Canvas.Pixels[x+2, y+2] := AFgColor;
+            end;
+        end;
+      fsThickHatchDiag:
+        begin
+          SolidFill(AFgColor);
+          for x := 2 to 3 do Canvas.Pixels[x, 0] := ABgColor;
+          for x := 0 to 1 do Canvas.Pixels[x, 2] := ABgColor;
+        end;
+      fsThinHatchHor:
+        begin
+          SolidFill(ABgColor);
+          for x := 0 to 3 do begin
+            Canvas.Pixels[x, 0] := AFgColor;
+            Canvas.Pixels[0, x] := AFgColor;
+          end;
+        end;
+    end;  // case
+  end;
+
+  FillPatternStyle := AStyle;
+  FillPatternBgColor := ABgColor;
+  FillPatternFgColor := AFgColor;
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Helper procedure which draws a densely dotted horizontal line. In Excel
@@ -1174,12 +1312,14 @@ var
   fnt: TsFont;
   style: TFontStyles;
   isSelected: Boolean;
+  fgcolor, bgcolor: TColor;
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
   Canvas.Brush.Bitmap := nil;
   Canvas.Brush.Color := Color;
   ts := Canvas.TextStyle;
+
   if ShowHeaders then
   begin
     // Formatting of row and column headers
@@ -1196,37 +1336,53 @@ begin
     if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
       Canvas.Brush.Color := FixedColor
   end;
+
   if (Worksheet <> nil) and (ARow >= FHeaderCount) and (ACol >= FHeaderCount) then
   begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
-    //lCell := FDrawingCell;
+
     lCell := Worksheet.FindCell(r, c);
     if lCell <> nil then
     begin
       fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+
       // Background color
-      if (uffBackgroundColor in fmt^.UsedFormattingFields) then
+      if (uffBackground in fmt^.UsedFormattingFields) then
       begin
         if Workbook.FileFormat = sfExcel2 then
         begin
-          if (FillPattern_BIFF2 = nil) and (ComponentState = []) then
-            Create_FillPattern_BIFF2(Color);
+          CreateFillPattern(FillPatternBitmap, fsGray50, clBlack, Color);
           Canvas.Brush.Style := bsImage;
-          Canvas.Brush.Bitmap := FillPattern_BIFF2;
+          Canvas.Brush.Bitmap := FillPatternBitmap;
         end else
         begin
-          Canvas.Brush.Style := bsSolid;
-          if fmt^.BackgroundColor < Workbook.GetPaletteSize then
-            Canvas.Brush.Color := Workbook.GetPaletteColor(fmt^.BackgroundColor)
-          else
-            Canvas.Brush.Color := Color;
+          case fmt^.Background.Style of
+            fsNoFill:
+              Canvas.Brush.Style := bsClear;
+            fsSolidFill:
+              begin
+                Canvas.Brush.Style := bsSolid;
+                Canvas.Brush.Color := Workbook.GetPaletteColor(fmt^.Background.FgColor);
+              end;
+            else
+              if fmt^.Background.BgColor = scTransparent
+                then bgcolor := Color
+                else bgcolor := Workbook.GetPaletteColor(fmt^.Background.BgColor);
+              if fmt^.Background.FgColor = scTransparent
+                then fgcolor := Color
+                else fgcolor := Workbook.GetPaletteColor(fmt^.Background.FgColor);
+              CreateFillPattern(FillPatternBitmap, fmt^.Background.Style, fgColor, bgColor);
+              Canvas.Brush.Style := bsImage;
+              Canvas.Brush.Bitmap := FillPatternBitmap;
+          end;
         end;
       end else
       begin
         Canvas.Brush.Style := bsSolid;
         Canvas.Brush.Color := Color;
       end;
+
       // Font
       if (uffFont in fmt^.UsedFormattingFields) then
       begin
@@ -4347,11 +4503,12 @@ end;
 
 initialization
   fpsutils.ScreenPixelsPerInch := Screen.PixelsPerInch;
+  FillPatternStyle := fsNoFill;
 
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'ColWidths',  'taken from worksheet', '');
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'RowHeights', 'taken from worksheet', '');
 
 finalization
-  FreeAndNil(FillPattern_BIFF2);
+  FreeAndNil(FillPatternBitmap);
 
 end.

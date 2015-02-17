@@ -147,9 +147,9 @@ type
 
   {@@ List of possible formatting fields }
   TsUsedFormattingField = (uffTextRotation, uffFont, uffBold, uffBorder,
-    uffBackgroundColor, uffNumberFormat, uffWordWrap,
-    uffHorAlign, uffVertAlign
+    uffBackground, uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign
   );
+  { NOTE: "uffBackgroundColor" of older versions replaced by "uffBackground" }
 
   {@@ Describes which formatting fields are active }
   TsUsedFormattingFields = set of TsUsedFormattingField;
@@ -380,6 +380,28 @@ const
   );
 
 type
+  {@@ Style of fill style for cell backgrounds }
+  TsFillStyle = (fsNoFill, fsSolidFill,
+    fsGray75, fsGray50, fsGray25, fsGray12, fsGray6,
+    fsStripeHor, fsStripeVert, fsStripeDiagUp, fsStripeDiagDown,
+    fsThinStripeHor, fsThinStripeVert, fsThinStripeDiagUp, fsThinStripeDiagDown,
+    fsHatchDiag, fsThinHatchDiag, fsThickHatchDiag, fsThinHatchHor);
+
+  {@@ Fill pattern record }
+  TsFillPattern = record
+    Style: TsFillStyle;
+    FgColor: TsColor;  // pattern color
+    BgColor: TsColor;  // background color
+  end;
+
+const
+  EMPTY_FILL: TsFillPattern = (
+    Style: fsNoFill;
+    FgColor: scTransparent;
+    BgColor: scTransparent;
+  );
+
+type
   {@@ Identifier for a compare operation }
   TsCompareOperation = (coNotUsed,
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
@@ -445,8 +467,7 @@ type
     VertAlignment: TsVertAlignment;
     Border: TsCellBorders;
     BorderStyles: TsCelLBorderStyles;
-    BackgroundColor: TsColor;
-    RGBBackgroundColor: TFPColor; // only valid if BackgroundColor=scRGBCOLOR
+    Background: TsFillPattern;
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
   end;
@@ -486,7 +507,7 @@ begin
   AValue.NumberFormatStr := '';
   FillChar(AValue, SizeOf(AValue), 0);
   AValue.BorderStyles := DEFAULT_BORDERSTYLES;
-  AValue.BackgroundColor := TsColor(-1);
+  AValue.Background := EMPTY_FILL;
 end;
 
 
@@ -523,8 +544,7 @@ begin
     P^.VertAlignment := AItem.VertAlignment;
     P^.Border := AItem.Border;
     P^.BorderStyles := AItem.BorderStyles;
-    P^.BackgroundColor := AItem.BackgroundColor;
-    P^.RGBBackgroundColor := AItem.RGBBackgroundColor;
+    P^.Background := AItem.Background;
     P^.NumberFormat := AItem.NumberFormat;
     P^.NumberFormatStr := AItem.NumberFormatStr;
     Result := inherited Add(P);
@@ -632,10 +652,10 @@ begin
       if not equ then continue;
     end;
 
-    if (uffBackgroundColor in AItem.UsedFormattingFields) then begin
-      if (P^.BackgroundColor <> AItem.BackgroundColor) then continue;
-      if (AItem.BackgroundColor = scRGBColor) then
-        if (P^.RGBBackgroundColor <> AItem.RGBBackgroundColor) then continue;
+    if (uffBackground in AItem.UsedFormattingFields) then begin
+      if (P^.Background.Style <> AItem.Background.Style) then continue;
+      if (P^.Background.BgColor <> AItem.Background.BgColor) then continue;
+      if (P^.Background.FgColor <> AItem.Background.FgColor) then continue;
     end;
 
     if (uffNumberFormat in AItem.UsedFormattingFields) then begin

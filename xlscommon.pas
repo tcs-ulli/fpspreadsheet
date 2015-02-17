@@ -163,6 +163,28 @@ const
   MASK_XF_FILL_PATT_EMPTY                = $00;
   MASK_XF_FILL_PATT_SOLID                = $01;
 
+  MASK_XF_FILL_PATT: array[TsFillStyle] of Byte = (
+    $00, // fsNoFill
+    $01, // fsSolidFill
+    $03, // fsGray75
+    $02, // fsGray50
+    $04, // fsGray25
+    $11, // fsGray12
+    $12, // fsGray6,
+    $05, // fsStripeHor
+    $06, // fsStripeVert
+    $08, // fsStripeDiagUp
+    $07, // fsStripeDiagDown
+    $0B, // fsThinStripeHor
+    $0C, // fsThinStripeVert
+    $0E, // fsThinStripeDiagUp
+    $0D, // fsThinStripeDiagDown
+    $09, // fsHatchDiag
+    $10, // fsThinHatchDiag
+    $0A, // fsThickHatchDiag
+    $0F  // fsThinHatchHor
+  );
+
   { Cell Addresses constants, valid for BIFF2-BIFF5 }
   MASK_EXCEL_ROW                         = $3FFF;
   MASK_EXCEL_RELATIVE_COL                = $4000;
@@ -174,6 +196,11 @@ const
   MASK_FORMULA_RECALCULATE_ALWAYS        = $0001;
   MASK_FORMULA_RECALCULATE_ON_OPEN       = $0002;
   MASK_FORMULA_SHARED_FORMULA            = $0008;
+
+  { System colors, for BIFF5-BIFF8 }
+  SYS_DEFAULT_FOREGROUND_COLOR           = $0040;
+  SYS_DEFAULT_BACKGROUND_COLOR           = $0041;
+
 
   { Error codes }
   ERR_INTERSECTION_EMPTY                 = $00;  // #NULL!

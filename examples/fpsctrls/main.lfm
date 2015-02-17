@@ -529,6 +529,12 @@ object MainForm: TMainForm
       Caption = 'ToolButton52'
       Style = tbsDivider
     end
+    object ToolButton4: TToolButton
+      Left = 427
+      Top = 0
+      Caption = 'ToolButton4'
+      OnClick = ToolButton4Click
+    end
   end
   object ToolBar3: TToolBar
     Left = 0

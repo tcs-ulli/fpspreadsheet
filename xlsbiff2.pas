@@ -1015,10 +1015,11 @@ begin
   // Background color not supported, only shaded background
   if rec.HorAlign_Border_BkGr and $80 <> 0 then
   begin
-    fmt.BackgroundColor := 1;    // encodes "shaded background = true"
-    Include(fmt.UsedFormattingFields, uffBackgroundColor);
-  end else
-    fmt.BackgroundColor := 0;   // encodes "shaded background = false"
+    fmt.Background.Style := fsGray50;
+    fmt.Background.FgColor := scBlack;
+    fmt.Background.BgColor := scTransparent;
+    Include(fmt.UsedFormattingFields, uffBackground);
+  end;
 
   // Add the decoded data to the format list
   FCellFormatList.Add(fmt);
@@ -1090,7 +1091,7 @@ begin
     if cbEast in fmt^.Border then Attrib3 := Attrib3 or $10;
     if cbSouth in fmt^.Border then Attrib3 := Attrib3 or $40;
   end;
-  if (uffBackgroundColor in fmt^.UsedFormattingFields) and (fmt^.Backgroundcolor <> scWhite) then
+  if (uffBackground in fmt^.UsedFormattingFields) then
     Attrib3 := Attrib3 or $80;
 end;
 
@@ -1161,7 +1162,7 @@ begin
       if cbSouth in fmt^.Border then
         rec.Align_Border_BkGr := rec.Align_Border_BkGr or $40;
     end;
-    if uffBackgroundColor in fmt^.UsedFormattingFields then
+    if uffBackground in fmt^.UsedFormattingFields then
       rec.Align_Border_BkGr := rec.Align_Border_BkGr or $80;
   end;
   AStream.WriteBuffer(rec, SizeOf(rec));
@@ -1399,7 +1400,6 @@ var
   rec: TBIFF2_XFRecord;
   b: Byte;
   j: Integer;
-  clr: TsColorvalue;
 begin
   Unused(XFType_Prot);
 
@@ -1460,12 +1460,8 @@ begin
       if cbNorth in AFormatRecord^.Border then b := b or $20;
       if cbSouth in AFormatRecord^.Border then b := b or $40;
     end;
-    if (uffBackgroundColor in AFormatRecord^.UsedFormattingFields) then
-    begin
-      clr := Workbook.GetPaletteColor(AFormatRecord^.BackgroundColor);
-      if clr <> $FFFFFF then
-        b := b or $80;
-    end;
+    if (uffBackground in AFormatRecord^.UsedFormattingFields) then
+      b := b or $80;
   end;
   rec.HorAlign_Border_BkGr:= b;
 

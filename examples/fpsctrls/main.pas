@@ -262,6 +262,7 @@ type
     ToolButton38: TToolButton;
     ToolButton39: TToolButton;
     TbCommentAdd: TToolButton;
+    ToolButton4: TToolButton;
     ToolButton40: TToolButton;
     ToolButton41: TToolButton;
     ToolButton42: TToolButton;
@@ -291,6 +292,7 @@ type
     procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure InspectorTabControlChange(Sender: TObject);
+    procedure ToolButton4Click(Sender: TObject);
   private
     { private declarations }
     procedure UpdateCaption;
@@ -393,6 +395,11 @@ end;
 procedure TMainForm.InspectorTabControlChange(Sender: TObject);
 begin
   Inspector.Mode := TsInspectorMode(InspectorTabControl.TabIndex);
+end;
+
+procedure TMainForm.ToolButton4Click(Sender: TObject);
+begin
+  WorksheetGrid.Worksheet.WriteBackgroundColor(0, 0, scRed);
 end;
 
 procedure TMainForm.UpdateCaption;

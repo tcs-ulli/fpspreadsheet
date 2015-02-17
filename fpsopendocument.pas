@@ -2364,10 +2364,15 @@ begin
             s := GetAttrValue(styleChildNode, 'fo:background-color');
             if (s <> '') and (s <> 'transparent') then begin
               clr := HTMLColorStrToColor(s);
-              fmt.BackgroundColor := ifThen(clr = TsColorValue(-1), scNotDefined,
-                Workbook.AddColorToPalette(clr));
-              if (fmt.BackgroundColor <> scNotDefined) then
-                Include(fmt.UsedFormattingFields, uffBackgroundColor);
+              // ODS does not support background fill patterns!
+              fmt.Background.FgColor := IfThen(clr = TsColorValue(-1),
+                scTransparent, Workbook.AddColorToPalette(clr));
+              fmt.Background.BgColor := fmt.Background.FgColor;
+              if (fmt.Background.BgColor <> scTransparent) then
+              begin
+                fmt.Background.Style := fsSolidFill;
+                Include(fmt.UsedFormattingFields, uffBackground);
+              end;
             end;
             // Borders
             s := GetAttrValue(styleChildNode, 'fo:border');
@@ -3531,17 +3536,48 @@ end;
   Creates an XML string for inclusion of the background color into the
   written file from the backgroundcolor setting in the given format record.
   Is called from WriteStyles (via WriteStylesXMLAsString).
+
+  NOTE: ODS does not support fill patterns. Fill patterns are converted to
+  solid fills by mixing pattern and background colors in the ratio defined
+  by the fill pattern. Result agrees with that what LO/OO show for an imported
+  xls file.
 -------------------------------------------------------------------------------}
 function TsSpreadOpenDocWriter.WriteBackgroundColorStyleXMLAsString(
   const AFormat: TsCellFormat): String;
+type
+  TRgb = record r,g,b,a: byte; end;
+const  // fraction of pattern color in fill pattern
+  FRACTION: array[TsFillStyle] of Double = (
+    0.0, 1.0, 0.75, 0.50, 0.25, 0.125, 0.0625,  // fsNoFill..fsGray6
+    0.5, 0.5, 0.5, 0.5,                         // fsStripeHor..fsStripeDiagDown
+    0.25, 0.25, 0.25, 0.25,                     // fsThinStripeHor..fsThinStripeDiagDown
+    0.5, 6.0/16, 0.75, 7.0/16);                 // fsHatchDiag..fsThinHatchHor
+var
+  fc,bc: TsColorValue;
+  mix: TRgb;
+  fraction_fc, fraction_bc: Double;
 begin
   Result := '';
 
-  if not (uffBackgroundColor in AFormat.UsedFormattingFields) then
+  if not (uffBackground in AFormat.UsedFormattingFields) then
     exit;
 
+  // Foreground and background colors
+  fc := Workbook.GetPaletteColor(AFormat.Background.FgColor);
+  if Aformat.Background.BgColor = scTransparent then
+    bc := Workbook.GetPaletteColor(scWhite)
+  else
+    bc := Workbook.GetPaletteColor(AFormat.Background.BgColor);
+  // Mixing fraction
+  fraction_fc := FRACTION[AFormat.Background.Style];
+  fraction_bc := 1.0 - fraction_fc;
+  // Mixed color
+  mix.r := Min(round(fraction_fc*TRgb(fc).r + fraction_bc*TRgb(bc).r), 255);
+  mix.g := Min(round(fraction_fc*TRgb(fc).g + fraction_bc*TRgb(bc).g), 255);
+  mix.b := Min(round(fraction_fc*TRgb(fc).b + fraction_bc*TRgb(bc).b), 255);
+
   Result := Format('fo:background-color="%s" ', [
-    Workbook.GetPaletteColorAsHTMLStr(AFormat.BackgroundColor)
+    ColorToHTMLColorStr(TsColorValue(mix))
   ]);
 end;
 

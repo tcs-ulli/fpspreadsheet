@@ -225,6 +225,7 @@ type
       out ACurrencySymbol: String): Boolean;
 
     function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
+    function  ReadBackground(ACell: PCell): TsFillPattern;
     function  ReadBackgroundColor(ACell: PCell): TsColor;
     function  ReadCellBorders(ACell: PCell): TsCellBorders;
     function  ReadCellBorderStyle(ACell: PCell; ABorder: TsCellBorder): TsCellBorderStyle;
@@ -300,8 +301,10 @@ type
     procedure WriteNumber(ACell: PCell; ANumber: Double;
       ANumFormat: TsNumberFormat; ANumFormatString: String); overload;
 
-    function WriteRPNFormula(ARow, ACol: Cardinal; AFormula: TsRPNFormula): PCell; overload;
-    procedure WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula); overload;
+    function WriteRPNFormula(ARow, ACol: Cardinal;
+      AFormula: TsRPNFormula): PCell; overload;
+    procedure WriteRPNFormula(ACell: PCell;
+      AFormula: TsRPNFormula); overload;
 
     procedure WriteSharedFormula(ARow1, ACol1, ARow2, ACol2: Cardinal;
       const AFormula: String); overload;
@@ -312,16 +315,25 @@ type
     procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
     { Writing of cell attributes }
+    function WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
+      APatternColor: TsColor = scTransparent;
+      ABackgroundColor: TsColor = scTransparent): PCell; overload;
+    procedure WriteBackground(ACell: PCell; AStyle: TsFillStyle;
+      APatternColor: TsColor = scTransparent;
+      ABackgroundColor: TsColor = scTransparent); overload;
     function WriteBackgroundColor(ARow, ACol: Cardinal; AColor: TsColor): PCell; overload;
     procedure WriteBackgroundColor(ACell: PCell; AColor: TsColor); overload;
 
-    function WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder; AColor: TsColor): PCell; overload;
-    procedure WriteBorderColor(ACell: PCell; ABorder: TsCellBorder; AColor: TsColor); overload;
+    function WriteBorderColor(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+      AColor: TsColor): PCell; overload;
+    procedure WriteBorderColor(ACell: PCell; ABorder: TsCellBorder;
+      AColor: TsColor); overload;
     function WriteBorderLineStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
       ALineStyle: TsLineStyle): PCell; overload;
     procedure WriteBorderLineStyle(ACell: PCell; ABorder: TsCellBorder;
       ALineStyle: TsLineStyle); overload;
-    function WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders): PCell; overload;
+    function WriteBorders(ARow, ACol: Cardinal;
+      ABorders: TsCellBorders): PCell; overload;
     procedure WriteBorders(ACell: PCell; ABorders: TsCellBorders); overload;
     function WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
       AStyle: TsCellBorderStyle): PCell; overload;
@@ -3034,6 +3046,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the background fill pattern and colors of a cell.
+
+  @param  ACell  Pointer to the cell
+  @return TsFillPattern record (or EMPTY_FILL, if the cell does not have a
+          filled background
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBackground(ACell: PCell): TsFillPattern;
+var
+  fmt : PsCellFormat;
+begin
+  Result := EMPTY_FILL;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffBackground in fmt^.UsedFormattingFields) then
+      Result := fmt^.Background;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Returns the background color of a cell as index into the workbook's color palette.
 
   @param  ACell  Pointer to the cell
@@ -3047,10 +3079,13 @@ begin
   if ACell <> nil then
   begin
     fmt :=  Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-    if (uffBackgroundColor in fmt^.UsedFormattingFields) then
-      Result := fmt^.BackgroundColor
-    else
-      Result := scTransparent;
+    if (uffBackground in fmt^.UsedFormattingFields) then
+    begin
+      if (fmt^.Background.Style = fsSolidFill) then
+        Result := fmt^.Background.FgColor
+      else
+        Result := fmt^.Background.BgColor;
+    end;
   end;
 end;
 
@@ -5458,7 +5493,62 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Sets the background color of a cell.
+  Defines a background pattern for a cell
+
+  @param  ARow              Row index of the cell
+  @param  ACol              Column index of the cell
+  @param  AFillStyle        Fill style to be used - see TsFillStyle
+  @param  APatternColor     Palette index of the pattern color
+  @param  ABackgroundColor  Palette index of the background color
+  @return Pointer to cell
+
+  @NOTE Is replaced by uniform fill if WriteBackgroundColor is called later.
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
+  APatternColor, ABackgroundColor: TsColor): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteBackground(Result, AStyle, APatternColor, ABackgroundColor);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Defines a background pattern for a cell
+
+  @param  ACell             Pointer to the cell
+  @param  AStyle            Fill style ("pattern") to be used - see TsFillStyle
+  @param  APatternColor     Palette index of the pattern color
+  @param  ABackgroundColor  Palette index of the background color
+
+  @NOTE Is replaced by uniform fill if WriteBackgroundColor is called later.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteBackground(ACell: PCell; AStyle: TsFillStyle;
+  APatternColor: TsColor = scTransparent; ABackgroundColor: TsColor = scTransparent);
+var
+  fmt: TsCellFormat;
+begin
+  if ACell <> nil then begin
+    fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+    if (AStyle = fsNoFill) or
+       ((APatternColor = scTransparent) and (ABackgroundColor = scTransparent))
+    then
+      Exclude(fmt.UsedFormattingFields, uffBackground)
+    else
+    begin
+      Include(fmt.UsedFormattingFields, uffBackground);
+      fmt.Background.Style := AStyle;
+      fmt.Background.FgColor := APatternColor;
+      if (AStyle = fsSolidFill) and (ABackgroundColor = scTransparent) then
+        fmt.Background.BgColor := APatternColor
+      else
+        fmt.Background.BgColor := ABackgroundColor;
+    end;
+    ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets a uniform background color of a cell.
 
   @param  ARow       Row index of the cell
   @param  ACol       Column index of the cell
@@ -5475,7 +5565,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Sets the background color of a cell.
+  Sets a uniform background color of a cell.
 
   @param  ACell      Pointer to cell
   @param  AColor     Index of the new background color into the workbook's
@@ -5483,20 +5573,12 @@ end;
                      erase an existing background color.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBackgroundColor(ACell: PCell; AColor: TsColor);
-var
-  fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
-    fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     if AColor = scTransparent then
-      Exclude(fmt.UsedFormattingFields, uffBackgroundColor)
+      WriteBackground(ACell, fsNoFill)
     else
-    begin
-      Include(fmt.UsedFormattingFields, uffBackgroundColor);
-      fmt.BackgroundColor := AColor;
-    end;
-    ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
-    ChangedCell(ACell^.Row, ACell^.Col);
+      WriteBackground(ACell, fsSolidFill, AColor, AColor);
   end;
 end;
 
@@ -8038,7 +8120,14 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetColorName(AColorIndex: TsColor): string;
 begin
-  GetColorName(GetPaletteColor(AColorIndex), Result);
+  case AColorIndex of
+    scTransparent:
+      Result := 'transparent';
+    scNotDefined:
+      Result := 'not defined';
+    else
+      GetColorName(GetPaletteColor(AColorIndex), Result);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8215,8 +8304,11 @@ begin
     begin
       cell := PCell(Node.Data);
       fmt := GetPointerToCellFormat(cell^.FormatIndex);
-      if (uffBackgroundColor in fmt^.UsedFormattingFields) then
-        if fmt^.BackgroundColor = AColorIndex then exit;
+      if (uffBackground in fmt^.UsedFormattingFields) then
+      begin
+        if fmt^.Background.BgColor = AColorIndex then exit;
+        if fmt^.Background.FgColor = AColorIndex then exit;
+      end;
       if (uffBorder in fmt^.UsedFormattingFields) then
         for b in TsCellBorders do
           if fmt^.BorderStyles[b].Color = AColorIndex then

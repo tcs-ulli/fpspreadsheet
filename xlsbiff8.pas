@@ -1162,6 +1162,7 @@ var
   b: Byte;
   dw: DWord;
   fill: Integer;
+  fs: TsFillStyle;
   nfidx: Integer;
   nfdata: TsNumFormatData;
   i: Integer;
@@ -1282,16 +1283,28 @@ begin
   fmt.BorderStyles[cbDiagUp].Color := (rec.Border_BkGr2 and MASK_XF_BORDER_DIAGONAL_COLOR) shr 14;
   fmt.BorderStyles[cbDiagDown].Color := fmt.BorderStyles[cbDiagUp].Color;
 
-  // Background fill pattern
+  // Background fill pattern and color
   fill := (rec.Border_BkGr2 and MASK_XF_BACKGROUND_PATTERN) shr 26;
-
-  // Background color
-  rec.BkGr3 := DWordLEToN(rec.BkGr3);
-  if fill <> 0 then begin
-    fmt.BackgroundColor := rec.BkGr3 and $007F;
-    Include(fmt.UsedFormattingFields, uffBackgroundColor);
-  end else
-    fmt.BackgroundColor := scTransparent;  // this means "no fill"
+  if fill <> MASK_XF_FILL_PATT_EMPTY then
+  begin
+    for fs in TsFillStyle do
+      if fill = MASK_XF_FILL_PATT[fs] then
+      begin
+        rec.BkGr3 := DWordLEToN(rec.BkGr3);
+        // Pattern color
+        fmt.Background.FgColor := rec.BkGr3 and $007F;
+        if fmt.Background.FgColor = SYS_DEFAULT_FOREGROUND_COLOR then
+          fmt.Background.FgColor := scBlack;
+        // Background color
+        fmt.Background.BgColor := (rec.BkGr3 and $3F80) shr 7;
+        if fmt.Background.BgColor = SYS_DEFAULT_BACKGROUND_COLOR then
+          fmt.Background.BgColor := scTransparent;
+        // Fill style
+        fmt.Background.Style := fs;
+        Include(fmt.UsedFormattingFields, uffBackground);
+        break;
+      end;
+  end;
 
   // Add the XF to the list
   FCellFormatList.Add(fmt);
@@ -2386,6 +2399,7 @@ var
   j: Integer;
   b: Byte;
   dw1, dw2: DWord;
+  w3: Word;
 begin
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
@@ -2471,7 +2485,7 @@ begin
 
   dw1 := 0;
   dw2 := 0;
-  rec.BkGr3 := 0;
+  w3 := 0;
   if (AFormatRecord <> nil) and (uffBorder in AFormatRecord^.UsedFormattingFields) then
   begin
     // Left and right line colors
@@ -2503,15 +2517,24 @@ begin
     // In BIFF8 both diagonals have the same line style - we use the color of the up-diagonal.
   end;
 
-  if (AFormatRecord <> nil) and (uffBackgroundColor in AFormatRecord^.UsedFormattingFields) then
+  { Background fill }
+  if (AFormatRecord <> nil) and (uffBackground in AFormatRecord^.UsedFormattingFields) then
   begin
-    dw2 := dw2 or DWORD(MASK_XF_FILL_PATT_SOLID shl 26);
-    rec.BkGr3 := FixColor(AFormatRecord^.BackgroundColor);
+    // Fill pattern style
+    dw2 := dw2 or DWORD(MASK_XF_FILL_PATT[AFormatRecord^.Background.Style] shl 26);
+    // Pattern color
+    if AFormatRecord^.Background.FgColor = scTransparent
+      then w3 := w3 or SYS_DEFAULT_FOREGROUND_COLOR
+      else w3 := w3 or FixColor(AFormatRecord^.Background.FgColor);
+    // Background color
+    if AFormatRecord^.Background.BgColor = scTransparent
+      then w3 := w3 or SYS_DEFAULT_BACKGROUND_COLOR shl 7
+      else w3 := w3 or (FixColor(AFormatRecord^.Background.BgColor) shl 7);
   end;
 
   rec.Border_BkGr1 := DWordToLE(dw1);
   rec.Border_BkGr2 := DWordToLE(dw2);
-  rec.BkGr3 := WordToLE(rec.BkGr3);
+  rec.BkGr3 := WordToLE(w3);
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));

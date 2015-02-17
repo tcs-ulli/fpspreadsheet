@@ -492,7 +492,7 @@ begin
         lCurStr := '<b>' + lCurStr + '</b>';
 
       // Background color
-      if uffBackgroundColor in lCurUsedFormatting then
+      if uffBackground in lCurUsedFormatting then
       begin
         lCurColor := FWorksheet.ReadBackgroundColor(lCell);
         lStyleStr := Format('background-color:%s;color:%s;', [

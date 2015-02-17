@@ -131,6 +131,7 @@
       <Unit20>
         <Filename Value="copytests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="copytests"/>
       </Unit20>
       <Unit21>
         <Filename Value="commenttests.pas"/>
