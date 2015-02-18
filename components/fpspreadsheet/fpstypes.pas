@@ -380,7 +380,7 @@ const
   );
 
 type
-  {@@ Style of fill style for cell backgrounds }
+  {@@ Style of fill pattern for cell backgrounds }
   TsFillStyle = (fsNoFill, fsSolidFill,
     fsGray75, fsGray50, fsGray25, fsGray12, fsGray6,
     fsStripeHor, fsStripeVert, fsStripeDiagUp, fsStripeDiagDown,
@@ -389,12 +389,13 @@ type
 
   {@@ Fill pattern record }
   TsFillPattern = record
-    Style: TsFillStyle;
-    FgColor: TsColor;  // pattern color
-    BgColor: TsColor;  // background color
+    Style: TsFillStyle;  // pattern type
+    FgColor: TsColor;    // pattern color
+    BgColor: TsColor;    // background color
   end;
 
 const
+  {@@ Parameters for a non-filled cell background }
   EMPTY_FILL: TsFillPattern = (
     Style: fsNoFill;
     FgColor: scTransparent;

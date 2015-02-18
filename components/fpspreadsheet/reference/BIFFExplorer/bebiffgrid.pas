@@ -33,7 +33,7 @@ type
     procedure ShowCalcCount;
     procedure ShowCalcMode;
     procedure ShowCellAddress;
-    procedure ShowCellAddressRange;
+    procedure ShowCellAddressRange(AFormat: TsSpreadsheetFormat);
     procedure ShowClrtClient;
     procedure ShowCodePage;
     procedure ShowColInfo;
@@ -65,6 +65,8 @@ type
     procedure ShowGCW;
     procedure ShowHeader;
     procedure ShowHideObj;
+    procedure ShowHyperLink;
+    procedure ShowHyperLinkTooltip;
     procedure ShowInteger;
     procedure ShowInterfaceEnd;
     procedure ShowInterfaceHdr;
@@ -432,6 +434,8 @@ begin
       ShowTXO;
     $01B7:
       ShowRefreshAll;
+    $01B8:
+      ShowHyperlink;
     $01BC:
       ShowProt4RevPass;
     $01C0:
@@ -442,6 +446,8 @@ begin
       ShowStyle;
     $04BC:
       ShowSharedFormula;
+    $0800:
+      ShowHyperlinkTooltip;
     $087C:
       ShowXFCRC;
     $087D:
@@ -918,9 +924,12 @@ begin
 end;
 
 
-procedure TBIFFGrid.ShowCellAddressRange;
+procedure TBIFFGrid.ShowCellAddressRange(AFormat: TsSpreadsheetFormat);
 { Note: The bitmask assignment to relative column/row is reversed in relation
-  to OpenOffice documentation in order to match with Excel files. }
+  to OpenOffice documentation in order to match with Excel files.
+
+  The spreadsheet format is passed as a parameter because some BIFF8 records
+  used these fields in BIFF5 format. }
 var
   numbytes: Word;
   b: Byte;
@@ -928,7 +937,7 @@ var
   r, c, r2, c2: Integer;
   s: String;
 begin
-  if FFormat = sfExcel8 then begin
+  if AFormat = sfExcel8 then begin
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
     r := WordLEToN(w);
@@ -1571,7 +1580,7 @@ begin
           if token in [$3A, $5A, $7A] then
             ShowCellAddress        // Cell address
           else
-            ShowCellAddressRange;  // Cell range
+            ShowCellAddressRange(FFormat);  // Cell range
         end;
 
       else
@@ -2618,7 +2627,7 @@ begin
              end;
              ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
                Format('Token tAREA (Cell range %s)', [s]));
-             ShowCellAddressRange;
+             ShowCellAddressRange(FFormat);
            end;
       $2C, $4C, $6C:
           begin
@@ -2800,6 +2809,248 @@ begin
   end;
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
     'Viewing mode for objects');
+end;
+
+
+procedure TBIFFGrid.ShowHyperlink;
+var
+  numbytes: Word;
+  w: Word;
+  dw: DWord;
+  n: Integer;
+  guid: TGUID;
+  flags: DWord;
+  nchar, size: DWord;
+  widestr: WideString;
+  ansistr: ansistring;
+  s: String;
+begin
+  n := 0;
+  RowCount := FixedRows + 1000;
+
+  ShowCellAddressRange(FFormat);
+  inc(n, 4);
+
+  numbytes := 16;
+  Move(FBuffer[FBufferIndex], guid, numbytes);
+  s := GuidToString(guid);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, GuidToString(guid), 'GUID of standard link');
+  inc(n);
+
+  numbytes := 4;
+  Move(FBuffer[FBufferIndex], dw, numbytes);
+  dw := DWordToLE(dw);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.8x (%d)', [dw, dw]), 'Unknown');
+  inc(n);
+
+  numbytes := 4;
+  Move(FBuffer[FBufferIndex], dw, numbytes);
+  flags := DWordToLE(dw);
+  if FCurrRow = row then begin
+    FDetails.Add('Option flags:'#13);
+    if flags and $0001 = 0
+      then FDetails.Add('  Bit  $0001=0: No link')
+      else FDetails.ADd('* Bit  $0001=1: File link or URL');
+    if flags and $0002 = 0
+      then FDetails.Add('  Bit  $0002=0: Relative path')
+      else FDetails.Add('* Bit  $0002=1: Absolute path');
+    if flags and $0014 = 0
+      then FDetails.Add('  Bits $0014=0: No desriptions')
+      else FDetails.Add('* Bits $0014=1: Description (both bits)');
+    if flags and $0008 = 0
+      then FDetails.Add('  Bit  $0008=0: No text mark')
+      else FDetails.Add('* Bit  $0008=1: Text mark');
+    if flags and $0080 = 0
+      then FDetails.Add('  Bit  $0080=0: No target frame')
+      else FDetails.Add('* Bit  $0080=1: Target frame');
+    if flags and $0100 = 0
+      then FDetails.Add('  Bit  $0100=0: File link or URL')
+      else FDetails.Add('* Bit  $0100=1: UNC path (incl server name)');
+  end;
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.8x (%d)', [flags, flags]),
+    'Option flags');
+  inc(n);
+
+  if flags and $0014 = $0014 then  // hyperlink has description
+  begin
+    numBytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    nchar := DWordToLE(dw);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(nchar),
+      'Character count of description text, incl trailing zero word');
+    inc(n);
+
+    numbytes := 2*nchar;
+    SetLength(widestr, nchar);
+    Move(FBuffer[FBufferIndex], widestr[1], 2*nchar);
+    s := UTF16ToUTF8(widestr);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+      'Character array of description text (no unicode string header, always 16-bit characters, zero-terminated)');
+    inc(n);
+  end;
+
+  if flags and $0080 <> 0 then  // Hyperlink has target frame
+  begin
+    numBytes := 4;
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    nchar := DWordToLE(dw);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(nchar),
+      'Character count of target frame, incl trailing zero word');
+    inc(n);
+
+    numbytes := 2*nchar;
+    SetLength(widestr, nchar);
+    Move(FBuffer[FBufferIndex], widestr[1], 2*nchar);
+    s := UTF16ToUTF8(widestr);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+      'Character array of target frame (no unicode string header, always 16-bit characters, zero-terminated)');
+    inc(n);
+  end;
+
+  if flags and $0011 <> 0 then // hyperlink contains URL ***OR*** a local file
+  begin
+    numbytes := 16;
+    Move(FBuffer[FBufferIndex], guid, numbytes);
+    s := GuidToString(guid);
+    if s = '{79EAC9E0-BAF9-11CE-8C82-00AA004BA90B}' then    // case: URL
+    begin
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+        'GUID of URL Moniker');
+      inc(n);
+
+      numBytes := 4;
+      Move(FBuffer[FBufferIndex], dw, numbytes);
+      size := DWordToLE(dw);
+      nchar := size div 2 - 1;
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+        'Size of URL character array, incl. trailing zero word');
+      inc(n);
+
+      numbytes := 2*nchar;
+      SetLength(widestr, nchar);
+      Move(FBuffer[FBufferIndex], widestr[1], 2*nchar);
+      s := UTF16ToUTF8(widestr);
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+        'Character array of the URL (no unicode string header, always 16-bit characters, zero-terminated');
+      inc(n);
+    end else
+    if s = '{00000303-0000-0000-C000-000000000046}' then   // case: local file
+    begin
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+        'GUID of File Moniker');
+      inc(n);
+
+      numbytes := 2;
+      Move(FBuffer[FBufferIndex], w, numbytes);
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+        'Directory up-level count. Each leading "..\" in the file link is deleted and increases this counter.');
+      inc(n);
+
+      numBytes := 4;
+      Move(FBuffer[FBufferIndex], dw, numbytes);
+      nchar := DWordToLE(dw);
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+        'Character count of the shortened file path and name, incl trailing zero byte.');
+      inc(n);
+
+      numbytes := nchar;
+      SetLength(ansistr, nchar);
+      Move(FBuffer[FBufferIndex], ansistr[1], nchar);
+      s := AnsiToUTF8(ansistr);
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+        'Character array of the shortened file path and name (no unicode string header, always 8-bit characters, zero-terminated)');
+      inc(n);
+
+      for w := 1 to 6 do begin
+        numbytes := 4;
+        Move(FBuffer[FBufferIndex], dw, numbytes);
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.8x', [DWordToLE(dw)]),
+          'Unknown');
+        inc(n);
+      end;
+
+      numBytes := 4;
+      Move(FBuffer[FBufferIndex], dw, numbytes);
+      size := DWordToLE(dw);
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+        'Size of following file link field incl string length field and additional data field');
+      inc(n);
+
+      if size > 0 then begin
+        numBytes := 4;
+        Move(FBuffer[FBufferIndex], dw, numbytes);
+        size := DWordToLE(dw);
+        nchar := size div 2;
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+          'Size of extended file path and name character array');
+        inc(n);
+
+        numBytes := 2;
+        Move(FBuffer[FBufferIndex], w, numbytes);
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordToLE(w)),
+          'Unknown');
+        inc(n);
+
+        numBytes := size;
+        SetLength(widestr, nchar);
+        Move(FBuffer[FBufferIndex], widestr[1], numbytes);
+        s := UTF16ToUTF8(widestr);
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+          'Character array of extended file path and array (No unicode string header, always 16-bit characters, NOT zero-terminated)');
+        inc(n);
+      end;
+    end;
+  end  // if flags and $0011 <> 0
+  else begin
+    // case: Hyperlink to current workbook
+  end;
+
+  if flags and $0008 <> 0 then   // hyperlink contains text mark field
+  begin
+    numBytes := 4;
+
+    Move(FBuffer[FBufferIndex], dw, numbytes);
+    nchar := DWordToLE(dw);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(nchar),
+      'Character count of the text mark, incl trailing zero word');
+    inc(n);
+
+    numbytes := 2*nchar;
+    SetLength(widestr, nchar);
+    Move(FBuffer[FBufferIndex], widestr[1], 2*nchar);
+    s := UTF16ToUTF8(widestr);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+      'Character array of the text mark, without "#" sign, no unicode string header, always 16-bit characters, zero-terminated)');
+    inc(n);
+  end;
+
+  RowCount := FixedRows + n;
+end;
+
+
+procedure TBIFFGrid.ShowHyperlinkTooltip;
+var
+  numbytes: Word;
+  w: Word;
+  widestr: widestring;
+  s: string;
+begin
+  RowCount := FixedRows + 6;
+
+  numbytes := 2;
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  w := WordToLE(w);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.4x (%d)', [w, w]),
+    'Repeated record ID');
+
+  ShowCellAddressRange(sfExcel8);
+
+  numbytes := Length(FBuffer) - FBufferIndex;
+  SetLength(widestr, numbytes div 2);
+  Move(FBuffer[FBufferIndex], widestr[1], numbytes);
+  s := UTF16toUTF8(widestr);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+    'Character array of the tool tip, no Unicode string header, always 16-bit characters, zero-terminated');
 end;
 
 
