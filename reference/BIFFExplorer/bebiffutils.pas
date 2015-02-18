@@ -367,10 +367,10 @@ begin
     $0203: Result := 'NUMBER: Cell value, floating-point cell';
     $0204: Result := 'LABEL: Cell value, string constant';
     $0205: Result := 'BOOLERR: Cell Value, boolean or error';
-    $0206: Result := 'Formula';
+    $0206: Result := 'FORMULA: Formula';
     $0207: Result := 'STRING: String value of a formula';
     $0208: Result := 'ROW: Describes a row';
-    $0209: Result := 'BOF';
+    $0209: Result := 'BOF: Begin of file';
     $020B: Result := 'INDEX: Index record';
     $0218: Result := 'NAME: Defined name';
     $0221: Result := 'ARRAY: Array-entered formula';
@@ -383,11 +383,11 @@ begin
     $027E: Result := 'RK: Cell value, RK number';
     $0293: Result := 'STYLE: Style information';
     $0406: Result := 'FORMULA: Cell formula';
-    $0409: Result := 'BOF';
+    $0409: Result := 'BOF: Begin of file';
     $041E: Result := 'FORMAT: Number format';
-    $0443: Result := 'XF';
+    $0443: Result := 'XF: Extended format';
     $04BC: Result := 'SHAREDFMLA: Shared formula';
-    $0800: Result := 'HLINKTOOLTOP: Hyperlink tooltip';
+    $0800: Result := 'HLINKTOOLTIP: Hyperlink tooltip';
     $0801: Result := 'WEBPUB: Web publish item';
     $0802: Result := 'QSISXTAG: PivotTable and query table extensions';
     $0803: Result := 'DBQUERYEXT: Database query extensions';
