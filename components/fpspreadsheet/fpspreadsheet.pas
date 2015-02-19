@@ -1987,15 +1987,24 @@ var
   col: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
+  comment: PsComment;
 begin
   col := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
 
-  // Update column index of moved cell
   if (cell^.Col > col) then
+  begin
+    // Update column index of comment assigned to moved cell
+    if HasComment(cell) then
+    begin
+      comment := FindComment(cell);
+      dec(comment^.Col);
+    end;
+    // Update column index of moved cell
     dec(cell^.Col);
+  end;
 
   // Update formulas
   if HasFormula(cell) then
@@ -2042,15 +2051,24 @@ var
   row: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
+  comment: PsComment;
 begin
   row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
 
-  // Update row index of moved cell
   if (cell^.Row > row) then
+  begin
+    // Update row index of comment assigned to moved cell
+    if HasComment(cell) then
+    begin
+      comment := FindComment(cell);
+      dec(comment^.Row);
+    end;
+    // Update row index of moved cell
     dec(cell^.Row);
+  end;
 
   // Update formulas
   if HasFormula(cell) then
@@ -6435,6 +6453,7 @@ var
   col: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
+  comment: PsComment;
 begin
   col := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
@@ -6442,8 +6461,16 @@ begin
     exit;
 
   if (cell^.Col >= col) then
+  begin
+    // Update of column index of comment assigned to moved cell
+    if HasComment(cell) then begin
+      comment := FindComment(cell);
+      inc(comment^.Col);
+    end;
+
     // Update column index of moved cell
     inc(cell^.Col);
+  end;
 
   // Update formulas
   if HasFormula(cell) and (cell^.FormulaValue <> '' ) then
@@ -6544,13 +6571,22 @@ var
   row: Cardinal;
   i: Integer;
   formula: TsRPNFormula;
+  comment: PsComment;
 begin
   row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
 
-  // Update row index of moved cells
   if cell^.Row >= row then
+  begin
+    // Update row index of comment attached to moved cells
+    if HasComment(cell) then
+    begin
+      comment := FindComment(cell);
+      inc(comment^.Row);
+    end;
+    // Update row index of moved cells
     inc(cell^.Row);
+  end;
 
   // Update formulas
   if HasFormula(cell) then
