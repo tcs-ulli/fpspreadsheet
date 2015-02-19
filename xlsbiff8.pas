@@ -1604,8 +1604,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteComments(AStream: TStream;
   AWorksheet: TsWorksheet);
-var
-  i: Integer;
 begin
   exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
