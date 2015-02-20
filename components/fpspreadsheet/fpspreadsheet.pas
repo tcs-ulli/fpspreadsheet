@@ -2106,7 +2106,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Erases content and formatting of a cell. The cell still occupies memory.
+  Erases content and formatting of a cell. Removes the comment.
+  The cell still occupies memory.
 
   @param  ACell  Pointer to cell to be erased.
 -------------------------------------------------------------------------------}
@@ -2117,6 +2118,9 @@ begin
   if ACell <> nil then begin
     r := ACell^.Row;
     c := ACell^.Col;
+    if HasComment(ACell) then
+      RemoveComment(ACell);
+
     InitCell(r, c, ACell^);
   end;
 end;
@@ -3681,8 +3685,6 @@ procedure TsWorksheet.RemoveAndFreeCell(ARow, ACol: Cardinal);
 var
   cellnode: TAVLTreeNode;
   cell: TCell;
-  comment: TsComment;
-  commentnode: TAVLTreeNode;
 begin
   cell.Row := ARow;
   cell.Col := ACol;
@@ -3690,14 +3692,6 @@ begin
   if cellnode <> nil then begin
     Dispose(PCell(cellnode.Data));
     FCells.Delete(cellnode);
-  end;
-
-  comment.Row := ARow;
-  comment.Col := ACol;
-  commentNode := FComments.Find(@comment);
-  if commentNode <> nil then begin
-    Dispose(PsComment(commentNode.Data));
-    FComments.Delete(commentNode);
   end;
 end;
 
@@ -4393,7 +4387,7 @@ end;
   string, the worksheet tries to guess whether it is a number, a date/time or
   a text and calls the corresponding writing method.
 
-  @param  ACell   Poiner to the cell
+  @param  ACell   Pointer to the cell
   @param  AValue  Value to be written into the cell given as a string. Depending
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
@@ -6257,18 +6251,25 @@ begin
     end;
   end;
 
-  // Delete cells
+  // Delete comments in column to be deleted
+  for r := lastRow downto 0 do
+  begin
+    cell := FindCell(r, ACol);
+    if HasComment(cell) then RemoveComment(cell);
+  end;
+
+  // Delete cells in column to be deleted
   for r := lastRow downto firstRow do
     RemoveAndFreeCell(r, ACol);
 
-  // Update column index of cell records
+  // Update column index of cell, formulas and comments in following columns
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
     DeleteColCallback(cellnode.Data, {%H-}pointer(PtrInt(ACol)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
-  // Update column index of col records
+  // Update column index of col records in following columns
   for i:=FCols.Count-1 downto 0 do begin
     col := PCol(FCols.Items[i]);
     if col^.Col > ACol then
@@ -6278,7 +6279,7 @@ begin
   end;
 
   // Update first and last column index
-  UpDateCaches;
+  UpdateCaches;
 
   ChangedCell(0, ACol);
 end;
@@ -6346,18 +6347,25 @@ begin
     end;
   end;
 
-  // Delete cells
+  // Delete comments in row to be deleted
+  for c := lastCol downto 0 do
+  begin
+    cell := FindCell(ARow, c);
+    if HasComment(cell) then RemoveComment(cell);
+  end;
+
+  // Delete cells in column to be deleted
   for c := lastCol downto 0 do
     RemoveAndFreeCell(ARow, c);
 
-  // Update row index of cell reocrds
+  // Update row index of cell, formulas and comments in following rows
   cellnode := FCells.FindLowest;
   while Assigned(cellnode) do begin
     DeleteRowCallback(cellnode.Data, {%H-}pointer(PtrInt(ARow)));
     cellnode := FCells.FindSuccessor(cellnode);
   end;
 
-  // Update row index of row records
+  // Update row index of row records in following rows
   for i:=FRows.Count-1 downto 0 do
   begin
     row := PRow(FRows.Items[i]);
