@@ -1106,10 +1106,10 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     if AEnable then
     begin
+      Include(fmt.UsedFormattingFields, uffBorder);
       Include(fmt.Border, ABorder);
       fmt.BorderStyles[ABorder] := ABorderStyle;
       ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
-      Include(fmt.UsedFormattingFields, uffBorder);
     end else
       Exclude(fmt.UsedFormattingFields, uffBorder);
     Worksheet.ChangedCell(ACell^.Row, ACell^.Col);
@@ -1170,7 +1170,6 @@ procedure TsCellBorderAction.ExtractFromCell(ACell: PCell);
 var
   EmptyCell: TCell;
 begin
-//  if (ACell = nil) or not (uffBorder in ACell^.UsedFormattingFields) then
   if (ACell = nil) or not (uffBorder in Worksheet.ReadUsedFormatting(ACell)) then
   begin
     EmptyCell.Row := 0;  // silence the compiler...

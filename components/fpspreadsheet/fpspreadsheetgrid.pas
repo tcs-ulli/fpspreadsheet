@@ -839,7 +839,7 @@ begin
   FCellFont := TFont.Create;
   FOwnsWorkbook := true;
  {$IF (ENABLE_MULTI_SELECT=1)}
-  RangeSelectMode := rsmMulti;
+  //RangeSelectMode := rsmMulti;
  {$ENDIF}
 end;
 
@@ -1816,7 +1816,7 @@ begin
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
         fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-        if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
+        if (not Worksheet.IsMerged(cell)) and (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
            (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haRight)
         then
@@ -1842,7 +1842,7 @@ begin
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
         fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-        if (cell^.MergeBase = nil) and (cell^.ContentType = cctUTF8String) and
+        if (not Worksheet.IsMerged(cell)) and (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
            (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haLeft)
         then
@@ -1864,7 +1864,7 @@ begin
       if Assigned(Worksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
       begin
         cell := Worksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
-        if (cell = nil) or (cell^.Mergebase = nil) then
+        if (cell = nil) or (not Worksheet.IsMerged(cell)) then
         begin
           // single cell
           FDrawingCell := cell;
@@ -2513,7 +2513,7 @@ begin
   lCell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then
   begin
-    if (lCell^.Mergebase <> nil) then
+    if Worksheet.IsMerged(lCell) then
     begin
       Worksheet.FindMergedRange(lCell, r1, c1, r2, c2);
       if r1 <> r2 then
@@ -2727,9 +2727,7 @@ begin
   // Only cell has border, but neighbor has not
   if HasBorder(cell, border) and not HasBorder(neighborCell, neighborBorder) then
   begin
-    if Worksheet.IsMerged(cell) and Worksheet.IsMerged(neighborcell) and
-       (cell^.MergeBase = neighborcell^.Mergebase)
-    then
+    if Worksheet.InSameMergedRange(cell, neighborcell) then
       result := false
     else
       ABorderStyle := Worksheet.ReadCellBorderStyle(cell, border)
@@ -2738,24 +2736,20 @@ begin
   // Only neighbor has border, cell has not
   if not HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
   begin
-    if Worksheet.IsMerged(cell) and Worksheet.IsMerged(neighborcell) and
-       (cell^.MergeBase = neighborcell^.Mergebase)
-    then
+    if Worksheet.InSameMergedRange(cell, neighborcell) then
       result := false
     else
-      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder); //neighborcell^.BorderStyles[neighborborder]
+      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder);
   end
   else
   // Both cells have shared border -> use top or left border
   if HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
   begin
-    if Worksheet.IsMerged(cell) and Worksheet.IsMerged(neighborcell) and
-       (cell^.MergeBase = neighborcell^.Mergebase)
-    then
+    if Worksheet.InSameMergedRange(cell, neighborcell) then
       result := false
     else
     if (border in [cbNorth, cbWest]) then
-      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder) //neighborcell^.BorderStyles[neighborborder]
+      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder)
     else
       ABorderStyle := Worksheet.ReadCellBorderStyle(cell, border); //cell^.BorderStyles[border];
   end else
@@ -3027,7 +3021,7 @@ begin
       P := ARect.TopLeft;
       case AJustification of
         0: ts.Alignment := taLeftJustify;
-        1: if (FDrawingCell <> nil) and (FDrawingCell^.MergeBase = nil) then
+        1: if (FDrawingCell <> nil) and not Worksheet.IsMerged(FDrawingCell) then
            begin
              // Special treatment for overflowing cells: they must be centered
              // at their original column, not in the total enclosing rectangle.

@@ -119,6 +119,7 @@
       <Unit17>
         <Filename Value="insertdeletetests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="insertdeletetests"/>
       </Unit17>
       <Unit18>
         <Filename Value="celltypetests.pas"/>

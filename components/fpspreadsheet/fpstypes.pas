@@ -412,7 +412,7 @@ type
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
   {@@ Cell flag }
-  TsCellFlag = (cfCalculating, cfCalculated, cfHasComment);
+  TsCellFlag = (cfCalculating, cfCalculated, cfHasComment, cfMerged);
 
   {@@ Set of cell flags }
   TsCellFlags = set of TsCellFlag;
@@ -426,6 +426,7 @@ type
   TsCellRange = record
     Row1, Col1, Row2, Col2: Cardinal;
   end;
+  PsCellRange = ^TsCellRange;
 
   {@@ Array with cell ranges }
   TsCellRangeArray = array of TsCellRange;

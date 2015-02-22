@@ -63,7 +63,7 @@ type
     FormatIndex: Integer;
     { Special information }
     SharedFormulaBase: PCell;  // Cell containing the shared formula
-    MergeBase: PCell;          // Upper left cell of a merged range
+//    MergeBase: PCell;          // Upper left cell of a merged range
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     FormulaValue: String;
@@ -146,6 +146,7 @@ type
     FName: String;  // Name of the worksheet (displayed at the tab)
     FCells: TAvlTree; // Items are TCell
     FComments: TAvlTree;  // Items are TsComment
+    FMergedCells: TAvlTree;  // Items are TsCellRange
     FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
@@ -177,6 +178,7 @@ type
     procedure DeleteRowCallback(data, arg: Pointer);
     procedure InsertColCallback(data, arg: Pointer);
     procedure InsertRowCallback(data, arg: Pointer);
+    procedure RemoveCellRangesCallback(data, arg: pointer);
     procedure RemoveCellsCallback(data, arg: pointer);
     procedure RemoveCommentsCallback(data, arg: pointer);
 
@@ -187,6 +189,12 @@ type
     // Remove and delete cells
     function RemoveCell(ARow, ACol: Cardinal): PCell;
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
+
+    // Merged cells
+    function CellIsInMergedRange(ARow, ACol: Cardinal; ARange: PsCellRange): Boolean;
+    function FindMergedRangeForBase(ABaseRow, ABaseCol: Cardinal): PsCellRange;
+    function FindMergedRangeForCell(ARow, ACol: Cardinal): PsCellRange;
+    procedure RemoveMergedRange(ABaseRow, ABaseCol: Cardinal);
 
     // Sorting
     function DoCompareCells(ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -247,8 +255,10 @@ type
     function FindMergeBase(ACell: PCell): PCell;
     function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
     procedure GetMergedCellRanges(out AList: TsCellRangeArray);
+    function InSameMergedRange(ACell1, ACell2: PCell): Boolean;
     function IsMergeBase(ACell: PCell): Boolean;
     function IsMerged(ACell: PCell): Boolean;
+    procedure RemoveAllMergedCells;
 
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
@@ -343,8 +353,10 @@ type
       ALineStyle: TsLineStyle; AColor: TsColor): PCell; overload;
     procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
       ALineStyle: TsLineStyle; AColor: TsColor); overload;
-    function WriteBorderStyles(ARow, ACol: Cardinal; const AStyles: TsCellBorderStyles): PCell; overload;
-    procedure WriteBorderStyles(ACell: PCell; const AStyles: TsCellBorderStyles); overload;
+    function WriteBorderStyles(ARow, ACol: Cardinal;
+      const AStyles: TsCellBorderStyles): PCell; overload;
+    procedure WriteBorderStyles(ACell: PCell;
+      const AStyles: TsCellBorderStyles); overload;
 
     procedure WriteCellFormat(ACell: PCell; const ACellFormat: TsCellFormat);
 
@@ -508,6 +520,8 @@ type
     property  Cols: TIndexedAVLTree read FCols;
     {@@ List of all comment records }
     property  Comments: TAVLTree read FComments;
+    {@@ List of merged cells (contains TsCellRange records) }
+    property  MergedCells: TAVLTree read FMergedCells;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
     {@@ Name of the sheet. In the popular spreadsheet applications this is
@@ -654,6 +668,7 @@ type
     { Base methods }
     constructor Create;
     destructor Destroy; override;
+
     class function GetFormatFromFileHeader(const AFileName: TFileName;
       out SheetType: TsSpreadsheetFormat): Boolean;
     class function GetFormatFromFileName(const AFileName: TFileName;
@@ -1300,12 +1315,20 @@ begin
   Result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
 end;
 
-function CompareCommentCells(Item1, ITem2: Pointer): Integer;
+function CompareCommentCells(Item1, Item2: Pointer): Integer;
 begin
   result := LongInt(PsComment(Item1).Row) - PsComment(Item2).Row;
   if Result = 0 then
     Result := LongInt(PsComment(Item1).Col) - PsComment(Item2).Col;
 end;
+
+function CompareMergedCells(Item1, Item2: Pointer): Integer;
+begin
+  Result := LongInt(PsCellRange(Item1)^.Row1) - PsCellRange(Item2)^.Row1;
+  if Result = 0 then
+    Result := LongInt(PsCellRange(Item1)^.Col1) - PsCellRange(Item2)^.Col1;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Write the fonts stored for a given workbook to a file.
@@ -1357,6 +1380,7 @@ begin
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
   FComments := TAVLTree.Create(@CompareCommentCells);
+  FMergedCells := TAVLTree.Create(@CompareMergedCells);
 
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
@@ -1384,11 +1408,13 @@ begin
   RemoveAllRows;
   RemoveAllCols;
   RemoveAllComments;
+  RemoveAllMergedCells;
 
   FCells.Free;
   FRows.Free;
   FCols.Free;
   FComments.Free;
+  FMergedCells.Free;
 
   inherited Destroy;
 end;
@@ -1734,6 +1760,8 @@ var
 begin
   if ACell = nil then
     exit;
+
+  // Remove the comment of an empty string is passed
   if AText = '' then
   begin
     if (cfHasComment) in ACell^.Flags then
@@ -1952,16 +1980,18 @@ end;
   released.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCell(ACell: PCell);
+{$warning TODO: Shift cells to the right/below !!! ??? }
 begin
   if ACell = nil then
     exit;
 
-  // Is base of merged block? unmerge the block
-  if ACell^.MergeBase = ACell then
-    UnmergeCells(ACell^.Row, ACell^.Col);
+  // Does cell have a comment? -->  remove it
+  if HasComment(ACell) then
+    WriteComment(ACell, '');
 
-  // Belongs to a merged block?
-  if ACell^.MergeBase <> nil then begin
+  // Cell is part of a merged block? --> Erase content, formatting etc.
+  if IsMerged(ACell)  then
+  begin
     EraseCell(ACell);
     exit;
   end;
@@ -1987,24 +2017,15 @@ var
   col: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
-  comment: PsComment;
 begin
   col := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
 
+  // Update column index of moved cell
   if (cell^.Col > col) then
-  begin
-    // Update column index of comment assigned to moved cell
-    if HasComment(cell) then
-    begin
-      comment := FindComment(cell);
-      dec(comment^.Col);
-    end;
-    // Update column index of moved cell
     dec(cell^.Col);
-  end;
 
   // Update formulas
   if HasFormula(cell) then
@@ -2051,24 +2072,15 @@ var
   row: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
-  comment: PsComment;
 begin
   row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
 
+  // Update row index of moved cell
   if (cell^.Row > row) then
-  begin
-    // Update row index of comment assigned to moved cell
-    if HasComment(cell) then
-    begin
-      comment := FindComment(cell);
-      dec(comment^.Row);
-    end;
-    // Update row index of moved cell
     dec(cell^.Row);
-  end;
 
   // Update formulas
   if HasFormula(cell) then
@@ -2106,8 +2118,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Erases content and formatting of a cell. Removes the comment.
-  The cell still occupies memory.
+  Erases content and formatting of a cell. The cell still occupies memory.
 
   @param  ACell  Pointer to cell to be erased.
 -------------------------------------------------------------------------------}
@@ -2118,9 +2129,16 @@ begin
   if ACell <> nil then begin
     r := ACell^.Row;
     c := ACell^.Col;
-    if HasComment(ACell) then
-      RemoveComment(ACell);
 
+    // Unmerge range if the cell is the base of a merged block
+    if IsMergeBase(ACell) then
+      UnmergeCells(r, c);
+
+    // Remove the comment if the cell has one
+    if HasComment(ACell) then
+      WriteComment(r, c, '');
+
+    // Erase all cell content
     InitCell(r, c, ACell^);
   end;
 end;
@@ -3275,6 +3293,79 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Checks whether the cell at ARow/ACol is in the specified merged cell block
+-------------------------------------------------------------------------------}
+function TsWorksheet.CellIsInMergedRange(ARow, ACol: Cardinal;
+  ARange: PsCellRange): Boolean;
+begin
+  Result := (ARange <> nil) and
+            (ARow >= ARange^.Row1) and (ARow <= ARange^.Row2) and
+            (ACol >= ARange^.Col1) and (ACol <= ARange^.Col2);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Retrieves the pointer to the cell range record of the merged block
+  which has the specified cell as base.
+  Returns nil if the specified cell is not the base of a merged block.
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindMergedRangeForBase(ABaseRow, ABaseCol: Cardinal): PsCellRange;
+var
+  lCellRange: TsCellRange;
+  AVLNode: TAVLTreeNode;
+begin
+  Result := nil;
+  if FMergedCells.Count = 0 then
+    exit;
+
+  lCellRange.Row1 := ABaseRow;
+  lCellRange.Col1 := ABaseCol;
+  AVLNode := FMergedCells.Find(@lCellRange);
+  if Assigned(AVLNode) then
+    Result := PsCellRange(AVLNode.Data);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Finds the pointer to a merged range record in the FMergedCells list to
+  which the specified cell belongs
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindMergedRangeForCell(ARow, ACol: Cardinal): PsCellRange;
+var
+  AVLNode: TAVLTreeNode;
+begin
+  // Iterate through all merged blocks in the list FMergedCells...
+  AVLNode := FMergedCells.FindLowest;
+  while AVLNode <> nil do begin
+    Result := PsCellRange(AVLNode.Data);
+    // ... and check if the current block contains the specified cell
+    if CellIsInMergedRange(ARow, ACol, Result) then
+      exit;
+    AVLNode := FMergedCells.FindSuccessor(AVLNode);
+  end;
+  Result := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes and destroys a merged cell range record (i.e. unmerges the cells)
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveMergedRange(ABaseRow, ABaseCol: Cardinal);
+var
+  lCellRange: TsCellRange;
+  AVLNode: TAVLTreeNode;
+  cell: PCell;
+  r, c: Cardinal;
+begin
+  lCellRange.Row1 := ABaseRow;
+  lCellRange.Col1 := ABaseCol;
+  AVLNode := FMergedCells.Find(@lCellRange);
+  if Assigned(AVLNode) then begin
+    // Destroy the cell range record
+    Dispose(PsCellRange(AVLNode.Data));
+    // Delete the avl tree node.
+    FMergedCells.Delete(AVLNode);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Merges adjacent individual cells to a larger single cell
 
   @param  ARow1   Row index of the upper left corner of the cell range
@@ -3284,21 +3375,49 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
 var
+  rng: PsCellRange;
   cell: PCell;
-  base: PCell;
   r, c: Cardinal;
 begin
-  // Case 1: single cell
+  // A single cell cannot be merged
   if (ARow1 = ARow2) and (ACol1 = ACol2) then
     exit;
 
-  base := GetCell(ARow1, ACol1);
+  // Is cell ARow1/ACol1 already the base of a merged range? ...
+  rng := FindMergedRangeForBase(ARow1, ACol1);
+  // ... no: --> Add a new merged range
+  if rng = nil then
+  begin
+    New(rng);
+    rng^.Row1 := ARow1;
+    rng^.Col1 := ACol1;
+    rng^.Row2 := ARow2;
+    rng^.Col2 := ACol2;
+    FMergedCells.Add(rng);
+  end else
+  // ... yes: --> modify the merged range accordingly
+  begin
+    // unmark previously merged range
+    for r := rng^.Row1 to rng^.Row2 do
+      for c := rng^.Col1 to rng^.Col2 do
+      begin
+        cell := FindCell(r, c);
+        if cell <> nil then     // nil happens when col/row is inserted...
+          cell^.Flags := cell^.Flags - [cfMerged];
+      end;
+    // Define new limits of merged range
+    rng^.Row2 := ARow2;
+    rng^.Col2 := ACol2;
+  end;
+
+  // Mark all cells in the range as "merged"
   for r := ARow1 to ARow2 do
     for c := ACol1 to ACol2 do
     begin
-      cell := GetCell(r, c);
-      cell^.MergeBase := base;
+      cell := GetCell(r, c);   // if not existent create new cell
+      cell^.Flags := cell^.Flags + [cfMerged];
     end;
+
   ChangedCell(ARow1, ACol1);
 end;
 
@@ -3326,20 +3445,24 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.UnmergeCells(ARow, ACol: Cardinal);
 var
+  rng: PsCellRange;
   r, c: Cardinal;
-  r1, c1, r2, c2: Cardinal;
   cell: PCell;
 begin
-  cell := FindCell(ARow, ACol);
-  if not FindMergedRange(cell, r1, c1, r2, c2) then
-    exit;
-  for r := r1 to r2 do
-    for c := c1 to c2 do
-    begin
-      cell := FindCell(r, c);
-      if cell <> nil then
-        cell^.MergeBase := nil;
-    end;
+  rng := FindMergedRangeForCell(ARow, ACol);
+  if rng <> nil then
+  begin
+    // Remove the "merged" flag from the cells in the merged range to make them
+    // isolated again.
+    for r := rng^.Row1 to rng^.Row2 do
+      for c := rng^.Col1 to rng^.Col2 do
+      begin
+        cell := FindCell(r, c);
+        cell^.Flags := cell^.Flags - [cfMerged];
+      end;
+    RemoveMergedRange(rng^.Row1, rng^.Col1);
+  end;
+
   ChangedCell(ARow, ACol);
 end;
 
@@ -3372,11 +3495,16 @@ end;
           nil.
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindMergeBase(ACell: PCell): PCell;
+var
+  rng: PsCellRange;
 begin
-  if ACell = nil then
-    Result := nil
-  else
-    Result := ACell^.MergeBase;
+  Result := nil;
+  if (ACell <> nil) and IsMerged(ACell) then
+  begin
+    rng := FindMergedRangeForCell(ACell^.Row, ACell^.Col);
+    if rng <> nil then
+      Result := FindCell(rng^.Row1, rng^.Col1);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3397,7 +3525,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Determines the merged cell block to which a given cell belongs
+  Determines the merged cell block to which a particular cell belongs
 
   @param   ACell  Pointer to the cell being investigated
   @param   ARow1  (output) Top row index of the merged block
@@ -3411,40 +3539,22 @@ end;
 function TsWorksheet.FindMergedRange(ACell: PCell;
   out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
 var
-  r, c: Cardinal;
-  cell: PCell;
-  base: PCell;
+  rng: PsCellRange;
 begin
-  base := FindMergeBase(ACell);
-  if base = nil then begin
-    Result := false;
-    exit;
-  end;
-  // Assuming that the merged block is rectangular, we start at merge base...
-  ARow1 := base^.Row;
-  ARow2 := ARow1;
-  ACol1 := base^.Col;
-  ACol2 := ACol1;
-  // ... and go along first COLUMN to find the end of the merged block, ...
-  for c := ACol1+1 to GetLastColIndex do
+  if (ACell <> nil) and IsMerged(ACell) then
   begin
-    cell := FindCell(ARow1, c);
-    if (cell = nil) or (cell^.MergeBase <> base) then
-      break
-    else
-      ACol2 := c;
+    rng := FindMergedRangeForCell(ACell^.Row, ACell^.Col);
+    if rng <> nil then
+    begin
+      ARow1 := rng^.Row1;
+      ACol1 := rng^.Col1;
+      ARow2 := rng^.Row2;
+      ACol2 := rng^.Col2;
+      Result := true;
+      exit;
+    end;
   end;
-  // ... and go along first ROW to find the end of the merged block
-  for r := ARow1 + 1 to GetLastRowIndex do
-  begin
-    cell := FindCell(r, ACol1);
-    if (cell = nil) or (cell^.MergeBase <> base) then
-      break
-    else
-      ARow2 := r;
-  end;
-
-  Result := true;
+  Result := false;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3531,35 +3641,36 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.GetMergedCellRanges(out AList: TsCellRangeArray);
 var
-  r, c: Cardinal;
-  cell: PCell;
-  rng: TsCellRange;
-  n: Integer;
-  firstRow, firstCol, lastRow, lastCol: Cardinal;
+  AVLNode: TAVLTreeNode;
+  rng: PsCellRange;
+  i: Integer;
 begin
-  firstRow := GetFirstRowIndex;
-  lastRow := GetLastOccupiedRowIndex;
-  firstCol := GetFirstColIndex;
-  lastCol := GetLastOccupiedColIndex;
-  n := 0;
-  SetLength(AList, n);
-  for r := firstRow to lastRow do
-  begin
-    c := firstCol;
-    while (c <= lastCol) do
-    begin
-      cell := FindCell(r, c);
-      if IsMergeBase(cell) then
-      begin
-        FindMergedRange(cell, rng.Row1, rng.Col1, rng.Row2, rng.Col2);
-        SetLength(AList, n+1);
-        AList[n] := rng;
-        inc(n);
-        c := rng.Col2;   // jump to last cell of block
-      end;
-      inc(c);   // go to next cell
-    end;
+  SetLength(AList, FMergedCells.Count);
+  i := 0;
+  AVLNode := FMergedCells.FindLowest;
+  while AVLNode <> nil do begin
+    rng := PsCellRange(AVLNode.Data);
+    AList[i].Row1 := rng^.Row1;
+    AList[i].Col1 := rng^.Col1;
+    AList[i].Row2 := rng^.Row2;
+    AList[i].Col2 := rng^.Col2;
+    inc(i);
+    AVLNode := FMergedCells.FindSuccessor(AVLNode);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the two specified cells belong to the same merged cell block.
+
+  @param   ACell1  Pointer to the first cell
+  @param   ACell2  Pointer to the second cell
+  @reult   TRUE if both cells belong to the same merged cell block
+           FALSE if the cells are not merged or are in different blocks
+-------------------------------------------------------------------------------}
+function TsWorksheet.InSameMergedRange(ACell1, ACell2: PCell): Boolean;
+begin
+  Result := IsMerged(ACell1) and IsMerged(ACell2) and
+            (FindMergeBase(ACell1) = FindMergeBase(ACell2));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3572,7 +3683,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.IsMergeBase(ACell: PCell): Boolean;
 begin
-  Result := (ACell <> nil) and (ACell = ACell^.MergeBase);
+  Result := (ACell <> nil) and (ACell = FindMergeBase(ACell));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3583,7 +3694,16 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.IsMerged(ACell: PCell): Boolean;
 begin
-  Result := (ACell <> nil) and (ACell^.MergeBase <> nil);
+  Result := (ACell <> nil) and (cfMerged in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper method for clearing the merged cell records in a spreadsheet.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveCellRangesCallback(data, arg: pointer);
+begin
+  Unused(arg);
+  Dispose(PsCellRange(data));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3621,6 +3741,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Empties the list of merged cell ranges.
+  Is called from the destructor of the worksheet
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveAllMergedCells;
+begin
+  RemoveAllAvlTreeNodes(FMergedCells, RemoveCellRangesCallback);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Removes the comment from a cell and releases the memory occupied by the node.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveComment(ACell: PCell);
@@ -3640,7 +3769,6 @@ begin
     ACell^.Flags := ACell^.Flags - [cfHasComment];
   end;
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Clears the AVLTree specified and releases the memory occupied by the nodes
@@ -3676,7 +3804,9 @@ end;
   Removes a cell and releases its memory. If a comment is attached to the
   cell then it is removed and releaded as well.
 
-  Just for internal usage since it does not modify the other cells affected
+  Just for internal usage since it does not modify the other cells affected.
+  And it does not change other records depending on the cell (comments,
+  merged ranges etc).
 
   @param  ARow   Row index of the cell to be removed
   @param  ACol   Column index of the cell to be removed
@@ -3686,6 +3816,7 @@ var
   cellnode: TAVLTreeNode;
   cell: TCell;
 begin
+  // Delete the cell
   cell.Row := ARow;
   cell.Col := ACol;
   cellnode := FCells.Find(@cell);
@@ -4387,7 +4518,7 @@ end;
   string, the worksheet tries to guess whether it is a number, a date/time or
   a text and calls the corresponding writing method.
 
-  @param  ACell   Pointer to the cell
+  @param  ACell   Poiner to the cell
   @param  AValue  Value to be written into the cell given as a string. Depending
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
@@ -6197,35 +6328,23 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCol(ACol: Cardinal);
 var
-  cellnode: TAVLTreeNode;
+  AVLNode, nextAVLNode: TAVLTreeNode;
   col: PCol;
   i: Integer;
   r, rr, cc: Cardinal;
-  r1, c1, r2, c2: Cardinal;
-  cell, nextcell, basecell: PCell;
+  cell, basecell, nextcell: PCell;
   firstRow, lastCol, lastRow: Cardinal;
+  rng: PsCellRange;
+  comment: PsComment;
 begin
   lastCol := GetLastColIndex;
   lastRow := GetLastOccupiedRowIndex;
   firstRow := GetFirstRowIndex;
 
-  // Loop along the column to be deleted and fix merged cells and shared formulas
+  // Loop along the column to be deleted and fix shared formulas
   for r := firstRow to lastRow do
   begin
     cell := FindCell(r, ACol);
-
-    // Fix merged cells: If the deleted column is the first column of a merged
-    // block the merge base has to be set to the second cell.
-    if IsMergeBase(cell) then begin
-      FindMergedRange(cell, r1, c1, r2, c2);
-      nextCell := FindCell(r, c1 + 1);
-      for rr := r1 to r2 do
-        for cc := c1+1 to c2 do
-        begin
-          cell := FindCell(rr, cc);
-          cell^.MergeBase := nextcell;
-        end;
-    end;
 
     // Fix shared formulas: if the deleted column contains the shared formula base
     // of a shared formula block then the shared formula has to be moved to the
@@ -6251,25 +6370,52 @@ begin
     end;
   end;
 
-  // Delete comments in column to be deleted
-  for r := lastRow downto 0 do
-  begin
-    cell := FindCell(r, ACol);
-    if HasComment(cell) then RemoveComment(cell);
+  // Fix merged cells
+  AVLNode := FMergedCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    rng := PsCellRange(AVLNode.Data);
+    // Deleted column is at the left of the merged range
+    // --> Shift entire merged range to the left by 1
+    // The "merged" flags do not have to be changed. They move with the cells.
+    if (ACol < rng^.Col1) then begin
+      dec(rng^.Col1);
+      dec(rng^.Col2);
+    end else
+    // Deleted column runs through the merged block
+    // --> Shift right column to the left by 1
+    if (ACol >= rng^.Col1) and (ACol <= rng^.Col2) then
+      dec(rng^.Col2);
+    // Proceed with next merged range
+    AVLNode := FMergedCells.FindSuccessor(AVLNode);
   end;
 
-  // Delete cells in column to be deleted
+  // Fix comments
+  AVLNode := FComments.FindLowest;
+  while Assigned(AVLNode) do begin
+    nextAVLNode := FComments.FindSuccessor(AVLNode);;
+    comment := PsComment(AVLNode.Data);
+    // Update all comment column indexes to the right of the deleted column
+    if comment^.Col > ACol then
+      dec(comment^.Col)
+    else
+    // Remove the comment if it is in the deleted column
+    if comment^.Col = ACol then
+      WriteComment(comment^.Row, ACol, '');
+    AVLNode := nextAVLNode;
+  end;
+
+  // Delete cells
   for r := lastRow downto firstRow do
     RemoveAndFreeCell(r, ACol);
 
-  // Update column index of cell, formulas and comments in following columns
-  cellnode := FCells.FindLowest;
-  while Assigned(cellnode) do begin
-    DeleteColCallback(cellnode.Data, {%H-}pointer(PtrInt(ACol)));
-    cellnode := FCells.FindSuccessor(cellnode);
+  // Update column index of cell records
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    DeleteColCallback(AVLNode.Data, {%H-}pointer(PtrInt(ACol)));
+    AVLNode := FCells.FindSuccessor(AVLNode);
   end;
 
-  // Update column index of col records in following columns
+  // Update column index of col records
   for i:=FCols.Count-1 downto 0 do begin
     col := PCol(FCols.Items[i]);
     if col^.Col > ACol then
@@ -6279,7 +6425,7 @@ begin
   end;
 
   // Update first and last column index
-  UpdateCaches;
+  UpDateCaches;
 
   ChangedCell(0, ACol);
 end;
@@ -6293,36 +6439,23 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteRow(ARow: Cardinal);
 var
-  cellnode: TAVLTreeNode;
+  AVLNode, nextAVLNode: TAVLTreeNode;
   row: PRow;
   i: Integer;
   c, rr, cc: Cardinal;
-  r1, c1, r2, c2: Cardinal;
   firstCol, lastCol, lastRow: Cardinal;
   cell, nextcell, basecell: PCell;
+  rng: PsCellRange;
+  comment: PsComment;
 begin
   firstCol := GetFirstColIndex;
   lastCol := GetLastOccupiedColIndex;
   lastRow := GetLastOccupiedRowIndex;
 
-  // Loop along the row to be deleted and fix merged cells and shared formulas
+  // Loop along the row to be deleted and fix shared formulas
   for c := firstCol to lastCol do
   begin
     cell := FindCell(ARow, c);
-
-    // Fix merged cells: If the deleted row is the first row of a merged
-    // block the merge base has to be set to the begin of the second row.
-    if IsMergeBase(cell) then begin
-      FindMergedRange(cell, r1, c1, r2, c2);
-      nextCell := FindCell(r1 + 1, c1);
-      for rr := r1+1 to r2 do
-        for cc := c1 to c2 do
-        begin
-          cell := FindCell(rr, cc);
-          cell^.MergeBase := nextcell;
-        end;
-    end;
-
     // Fix shared formulas: if the deleted row contains the shared formula base
     // of a shared formula block then the shared formula has to be moved to the
     // next row
@@ -6347,25 +6480,51 @@ begin
     end;
   end;
 
-  // Delete comments in row to be deleted
-  for c := lastCol downto 0 do
-  begin
-    cell := FindCell(ARow, c);
-    if HasComment(cell) then RemoveComment(cell);
+  // Fix merged cells
+  AVLNode := FMergedCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    rng := PsCellRange(AVLNode.Data);
+    // Deleted row is ABOVE the merged range
+    // --> Shift entire merged range up by 1
+    if (ARow < rng^.Row1) then begin
+      dec(rng^.Row1);
+      dec(rng^.Row2);
+    end else
+    // Deleted row runs through the merged block
+    // --> Shift bottom row up by 1
+    if (ARow >= rng^.Row1) and (ARow <= rng^.Row2) then
+      dec(rng^.Row2);
+    // Proceed with next merged range
+    AVLNode := FMergedCells.FindSuccessor(AVLNode);
   end;
 
-  // Delete cells in column to be deleted
+  // Fix comments
+  AVLNode := FComments.FindLowest;
+  while Assigned(AVLNode) do begin
+    nextAVLNode := FComments.FindSuccessor(AVLNode);;
+    comment := PsComment(AVLNode.Data);
+    // Update all comment row indexes below the deleted row
+    if comment^.Row > ARow then
+      dec(comment^.Row)
+    else
+    // Remove the comment if it is in the deleted row
+    if comment^.Row = ARow then
+      WriteComment(ARow, comment^.Col, '');
+    AVLNode := nextAVLNode;
+  end;
+
+  // Delete cells
   for c := lastCol downto 0 do
     RemoveAndFreeCell(ARow, c);
 
-  // Update row index of cell, formulas and comments in following rows
-  cellnode := FCells.FindLowest;
-  while Assigned(cellnode) do begin
-    DeleteRowCallback(cellnode.Data, {%H-}pointer(PtrInt(ARow)));
-    cellnode := FCells.FindSuccessor(cellnode);
+  // Update row index of cell reocrds
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    DeleteRowCallback(AVLNode.Data, {%H-}pointer(PtrInt(ARow)));
+    AVLNode := FCells.FindSuccessor(AVLNode);
   end;
 
-  // Update row index of row records in following rows
+  // Update row index of row records
   for i:=FRows.Count-1 downto 0 do
   begin
     row := PRow(FRows.Items[i]);
@@ -6377,7 +6536,6 @@ begin
 
   // Update first and last row index
   UpdateCaches;
-    // true = enforce calculation because an unoccupied row could have been deleted
 
   ChangedCell(ARow, 0);
 end;
@@ -6391,27 +6549,37 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.InsertCol(ACol: Cardinal);
 var
-  cellnode: TAVLTreeNode;
   col: PCol;
   i: Integer;
   r, c: Cardinal;
   rFirst, rLast: Cardinal;
   cell, nextcell, gapcell: PCell;
+  AVLNode: TAVLTreeNode;
+  rng: PsCellRange;
+  comment: PsComment;
 begin
   // Handling of shared formula references is too complicated for me...
-  // Splits them into isolated cell formulas
-  cellNode := FCells.FindLowest;
-  while Assigned(cellnode) do begin
-    cell := PCell(cellNode.Data);
+  // Split them into isolated cell formulas
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    cell := PCell(AVLNode.Data);
     SplitSharedFormula(cell);
-    cellNode := FCells.FindSuccessor(cellnode);
+    AVLNode := FCells.FindSuccessor(AVLNode);
+  end;
+
+  // Update column index of comments
+  AVLNode := FComments.FindLowest;
+  while Assigned(AVLNode) do begin
+    comment := PsComment(AVLNode.Data);
+    if comment^.Col >= ACol then inc(comment^.Col);
+    AVLNode := FComments.FindSuccessor(AVLNode);
   end;
 
   // Update column index of cell records
-  cellnode := FCells.FindLowest;
-  while Assigned(cellnode) do begin
-    InsertColCallback(cellnode.Data, {%H-}pointer(PtrInt(ACol)));
-    cellnode := FCells.FindSuccessor(cellnode);
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    InsertColCallback(AVLNode.Data, {%H-}pointer(PtrInt(ACol)));
+    AVLNode := FCells.FindSuccessor(AVLNode);
   end;
 
   // Update column index of column records
@@ -6423,33 +6591,39 @@ begin
   // Update first and last column index
   UpdateCaches;
 
-  // Fix merged cells: If the inserted column runs through a block of
-  // merged cells the block is cut into two pieces. Here we fill the gap
-  // with dummy cells and set their MergeBase correctly.
-  if ACol > 0 then
+  // Fix merged cells
+  AVLNode := FMergedCells.FindLowest;
+  while AVLNode <> nil do
   begin
-    rFirst := GetFirstRowIndex;
-    rLast := GetLastOccupiedRowIndex;
-    c := ACol - 1;
-    // Seek along the column immediately to the left of the inserted column
-    for r := rFirst to rLast do
+    rng := PsCellRange(AVLNode.Data);
+    // The new column is at the LEFT of the merged block
+    // --> Shift entire range to the right by 1 column
+    if (ACol < rng^.Col1) then
     begin
-      cell := FindCell(r, c);
-      if not Assigned(cell) then
-        continue;
-      // A merged cell block is found immediately before the inserted column
-      if IsMerged(cell) then
+      // The former first column is no longer marged --> un-tag its cells
+      for r := rng^.Row1 to rng^.Row2 do
       begin
-        // Does it extend beyond the newly inserted column?
-        nextcell := FindCell(r, ACol+1);
-        if Assigned(nextcell) and (nextcell^.MergeBase = cell^.MergeBase) then
-        begin
-          // Yes: we add a cell into the gap row and merge it with the others.
-          gapcell := GetCell(r, ACol);
-          gapcell^.Mergebase := cell^.MergeBase;
-        end;
+        cell := FindCell(r, rng^.Col1);
+        if cell <> nil then cell^.Flags := cell^.Flags - [cfMerged];
       end;
-    end;
+      // Shift merged block to the right
+      // Don't call "MergeCells" here - this would add a new merged block
+      // because of the new merge base! --> infinite loop!
+      inc(rng^.Col1);
+      inc(rng^.Col2);
+      // The right column needs to be tagged
+      for r := rng^.Row1 to rng^.Row2 do
+      begin
+        cell := FindCell(R, rng^.Col2);
+        if cell <> nil then cell^.Flags := cell^.Flags + [cfMerged];
+      end;
+    end else
+    // The new column goes through this cell block --> Shift only the right
+    // column of the range to the right by 1
+    if (ACol >= rng^.Col1) and (ACol <= rng^.Col2) then
+      MergeCells(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2+1);
+    // Continue with next merged block
+    AVLNode := FMergedCells.FindSuccessor(AVLNode);
   end;
 
   ChangedCell(0, ACol);
@@ -6468,17 +6642,9 @@ begin
   if cell = nil then   // This should not happen. Just to make sure...
     exit;
 
-  if (cell^.Col >= col) then
-  begin
-    // Update of column index of comment assigned to moved cell
-    if HasComment(cell) then begin
-      comment := FindComment(cell);
-      inc(comment^.Col);
-    end;
-
-    // Update column index of moved cell
+  // Update row index of moved cells
+  if cell^.Col >= col then
     inc(cell^.Col);
-  end;
 
   // Update formulas
   if HasFormula(cell) and (cell^.FormulaValue <> '' ) then
@@ -6513,25 +6679,35 @@ end;
 procedure TsWorksheet.InsertRow(ARow: Cardinal);
 var
   row: PRow;
-  cellnode: TAVLTreeNode;
   i: Integer;
   r, c: Cardinal;
   cell, nextcell, gapcell: PCell;
+  AVLNode: TAVLTreeNode;
+  rng: PsCellRange;
+  comment: PsComment;
 begin
   // Handling of shared formula references is too complicated for me...
   // Splits them into isolated cell formulas
-  cellNode := FCells.FindLowest;
-  while Assigned(cellnode) do begin
-    cell := PCell(cellNode.Data);
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    cell := PCell(AVLNode.Data);
     SplitSharedFormula(cell);
-    cellNode := FCells.FindSuccessor(cellnode);
+    AVLNode := FCells.FindSuccessor(AVLNode);
+  end;
+
+  // Update row index of cell comments
+  AVLNode := FComments.FindLowest;
+  while Assigned(AVLNode) do begin
+    comment := PsComment(AVLNode.Data);
+    if comment^.Row >= ARow then inc(comment^.Row);
+    AVLNode := FComments.FindSuccessor(AVLNode);
   end;
 
   // Update row index of cell records
-  cellnode := FCells.FindLowest;
-  while Assigned(cellnode) do begin
-    InsertRowCallback(cellnode.Data, {%H-}pointer(PtrInt(ARow)));
-    cellnode := FCells.FindSuccessor(cellnode);
+  AVLNode := FCells.FindLowest;
+  while Assigned(AVLNode) do begin
+    InsertRowCallback(AVLNode.Data, {%H-}pointer(PtrInt(ARow)));
+    AVLNode := FCells.FindSuccessor(AVLNode);
   end;
 
   // Update row index of row records
@@ -6543,31 +6719,38 @@ begin
   // Update first and last row index
   UpdateCaches;
 
-  // Fix merged cells: If the inserted row runs through a block of merged
-  // cells the block is cut into two pieces. Here we fill the gap with
-  // dummy cells and set their MergeBase correctly.
-  if ARow > 0 then
+  // Fix merged cells
+  AVLNode := FMergedCells.FindLowest;
+  while AVLNode <> nil do
   begin
-    r := ARow - 1;
-    // Seek along the row immediately above the inserted row
-    for c := GetFirstColIndex to GetLastOccupiedColIndex do
+    rng := PsCellRange(AVLNode.Data);
+    // The new row is ABOVE the merged block --> Shift entire range down by 1 row
+    if (ARow < rng^.Row1) then
     begin
-      cell := FindCell(r, c);
-      if not Assigned(cell) then
-        continue;
-      // A merged cell block is found
-      if IsMerged(cell) then
+      // The formerly first row is no longer merged --> un-tag its cells
+      for c := rng^.Col1 to rng^.Col2 do
       begin
-        // Does it extend beyond the newly inserted row?
-        nextcell := FindCell(ARow+1, c);
-        if Assigned(nextcell) and (nextcell^.MergeBase = cell^.MergeBase) then
-        begin
-          // Yes: we add a cell into the gap row and merge it with the others.
-          gapcell := GetCell(ARow, c);
-          gapcell^.Mergebase := cell^.MergeBase;
-        end;
+        cell := FindCell(rng^.Row1, c);
+        if cell <> nil then cell^.Flags := cell^.Flags - [cfMerged];
       end;
-    end;
+      // Shift merged block down
+      // (Don't call "MergeCells" here - this would add a new merged block
+      // because of the new merge base! --> infinite loop!)
+      inc(rng^.Row1);
+      inc(rng^.Row2);
+      // The last row needs to be tagged
+      for c := rng^.Col1 to rng^.Col2 do
+      begin
+        cell := FindCell(rng^.Row2, c);
+        if cell <> nil then cell^.Flags := cell^.Flags + [cfMerged];
+      end;
+    end else
+    // The new row goes through this cell block --> Shift only the bottom row
+    // of the range down by 1
+    if (ARow >= rng^.Row1) and (ARow <= rng^.Row2) then
+      MergeCells(rng^.Row1, rng^.Col1, rng^.Row2+1, rng^.Col2);
+    // Continue with next block
+    AVLNode := FMergedCells.FindSuccessor(AVLNode);
   end;
 
   ChangedCell(ARow, 0);
@@ -6583,18 +6766,12 @@ var
 begin
   row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
+  if cell = nil then   // This should not happen. Just to make sure...
+    exit;
 
+  // Update row index of moved cells
   if cell^.Row >= row then
-  begin
-    // Update row index of comment attached to moved cells
-    if HasComment(cell) then
-    begin
-      comment := FindComment(cell);
-      inc(comment^.Row);
-    end;
-    // Update row index of moved cells
     inc(cell^.Row);
-  end;
 
   // Update formulas
   if HasFormula(cell) then
