@@ -2649,6 +2649,9 @@ end;
   @param  AStrings  Stringlist receiving the name-value pairs.
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateCellValue(ACell: PCell; AStrings: TStrings);
+var
+  hyperlink: PsHyperlink;
+  s: String;
 begin
   if ACell = nil then
   begin
@@ -2666,6 +2669,9 @@ begin
   begin
     AStrings.Add(Format('Row=%d', [ACell^.Row]));
     AStrings.Add(Format('Col=%d', [ACell^.Col]));
+    AStrings.Add(Format('Flags=[%s]', [
+      SetToString(PTypeInfo(TypeInfo(TsCellflags)), integer(ACell^.Flags), false)
+    ]));
     AStrings.Add(Format('ContentType=%s', [
       GetEnumName(TypeInfo(TCellContentType), ord(ACell^.ContentType))
     ]));
@@ -2677,6 +2683,22 @@ begin
       AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
     if ACell^.ContentType = cctBool then
       AStrings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
+    if ACell^.ContentType = cctHyperlink then
+    begin
+      AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
+      hyperlink := Worksheet.FindHyperlink(ACell);
+      if hyperlink <> nil then begin
+        s := hyperlink^.Destination;
+        case hyperlink^.Kind of
+          hkNone: s := s + ' <error>';
+          hkCell: s := s + ' (internal cell reference)';
+          hkFile: s := s + ' (external file)';
+          hkURL : s := s + ' (URL)';
+        end;
+      end else
+        s := '<error>';
+      AStrings.Add(Format('Hyperlink=%s', [s]));
+    end;
     if ACell^.ContentType = cctError then
       AStrings.Add(Format('ErrorValue=%s', [GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue))]));
     AStrings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)]));

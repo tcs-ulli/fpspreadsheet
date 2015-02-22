@@ -40,6 +40,10 @@ const
   DEFAULT_FONTNAME = 'Arial';
   {@@ Size of the default font}
   DEFAULT_FONTSIZE = 10;
+  {@@ Index of the default font in workbook's font list }
+  DEFAULT_FONTINDEX = 0;
+  {@@ Index of the hyperlink font in workbook's font list }
+  HYPERLINK_FONTINDEX = 6;
 
   {@@ Takes account of effect of cell margins on row height by adding this
       value to the nominal row height. Note that this is an empirical value
@@ -126,7 +130,41 @@ type
 
   {@@ Describes the <b>type of content</b> in a cell of a TsWorksheet }
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
-    cctDateTime, cctBool, cctError);
+    cctDateTime, cctBool, cctError, cctHyperlink);
+
+  {@@ The record TsComment describes a comment attached to a cell.
+     @param   Row        (0-based) row index of the cell
+     @param   Col        (0-based) column index of the cell
+     @param   Text       Comment text }
+  TsComment = record
+    Row, Col: Cardinal;
+    Text: String;
+  end;
+
+  {@@ Pointer to a TsComment record }
+  PsComment = ^TsComment;
+
+  {@@ Specifies whether a hyperlink refers to a cell address within the current
+      workbook, an external file, or a URL }
+  TsHyperlinkKind = (hkNone, hkCell, hkFile, hkURL);
+
+  {@@ The record TsHyperlink contains info on a hyperlink in a cell
+    @param   Row          Row index of the cell containing the hyperlink
+    @param   Col          Column index of the cell containing the hyperlink
+    @param   Kind         Specifies whether clicking on the hyperlink results in
+                          jumping the a cell address within the current workbook,
+                          opens a file, or opens a URL
+    @param   Destination  Hyperlink (cell address, filename, URL)
+    @param   Note         Text displayed as a popup hint by Excel }
+  TsHyperlink = record
+    Row, Col: Cardinal;
+    Kind: TsHyperlinkKind;
+    Destination: String;
+    Note: String;
+  end;
+
+  {@@ Pointer to a TsHyperlink record }
+  PsHyperlink = ^TsHyperlink;
 
   {@@ Callback function, e.g. for iterating the internal AVL trees of the workbook/sheet}
   TsCallback = procedure (data, arg: Pointer) of object;

@@ -70,6 +70,8 @@ function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal): Boolean; overload;
+function ParseSheetCellString(const AStr: String;
+  out ASheetName: String; out ACellRow, ACellCol: Cardinal): Boolean;
 function ParseCellRowString(const AStr: string;
   out AResult: Cardinal): Boolean;
 function ParseCellColString(const AStr: string;
@@ -638,6 +640,21 @@ var
   flags: TsRelFlags;
 begin
   Result := ParseCellString(AStr, ACellRow, ACellCol, flags);
+end;
+
+function ParseSheetCellString(const AStr: String; out ASheetName: String;
+  out ACellRow, ACellCol: Cardinal): Boolean;
+var
+  p: Integer;
+begin
+  p := UTF8Pos('!', AStr);
+  if p = 0 then begin
+    Result := ParseCellString(AStr, ACellRow, ACellCol);
+    ASheetName := '';
+  end else begin
+    ASheetName := UTF8Copy(AStr, 1, p-1);
+    Result := ParseCellString(UTF8Copy(AStr, p+1, UTF8Length(AStr)), ACellRow, ACellCol);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
