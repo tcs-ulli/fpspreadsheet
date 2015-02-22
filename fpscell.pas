@@ -20,6 +20,7 @@ type
     function GetFont: TsFont;
     function GetFontIndex: integer;
     function GetHorAlignment: TsHorAlignment;
+    function GetHyperlink: TsHyperlink;
     function GetNumberFormat: TsNumberFormat;
     function GetNumberFormatStr: String;
     function GetTextRotation: TsTextRotation;
@@ -34,6 +35,7 @@ type
     procedure SetComment(const AValue: String);
     procedure SetFontIndex(const AValue: Integer);
     procedure SetHorAlignment(const AValue: TsHorAlignment);
+    procedure SetHyperlink(const AValue: TsHyperlink);
     procedure SetNumberFormat(const AValue: TsNumberFormat);
     procedure SetNumberFormatStr(const AValue: String);
     procedure SetTextRotation(const AValue: TsTextRotation);
@@ -54,11 +56,15 @@ type
       read GetBorderStyles write SetBorderStyles;
     property CellFormat: TsCellFormat
       read GetCellFormat write SetCellFormat;
+    property Comment: String
+      read GetComment write Comment;
     property Font: TsFont read GetFont;
     property FontIndex: Integer
       read GetFontIndex write SetFontIndex;
     property HorAlignment: TsHorAlignment
       read GetHorAlignment write SetHorAlignment;
+    property Hyperlink: TsHyperlink
+      read GetHyperlink write SetHyperlink;
     property NumberFormat: TsNumberFormat
       read GetNumberFormat write SetNumberFormat;
     property NumberFormatStr: String
@@ -122,6 +128,11 @@ end;
 function TCellHelper.GetHorAlignment: TsHorAlignment;
 begin
   Result := Worksheet.ReadHorAlignment(@Self);
+end;
+
+function TCellHelper.GetHyperlink: TsHyperlink;
+begin
+  Result := Worksheet.ReadHyperlink(@self);
 end;
 
 function TCellHelper.GetNumberFormat: TsNumberFormat;
@@ -204,6 +215,11 @@ end;
 procedure TCellHelper.SetHorAlignment(const AValue: TsHorAlignment);
 begin
   Worksheet.WriteHorAlignment(@self, AValue);
+end;
+
+procedure TCellHelper.SetHyperlink(const AValue: TsHyperlink);
+begin
+  Worksheet.WriteHyperlink(@self, AValue);
 end;
 
 procedure TCellHelper.SetNumberFormat(const AValue: TsNumberFormat);

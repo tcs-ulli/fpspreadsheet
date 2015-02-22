@@ -38,6 +38,9 @@ type
 
   { TsCustomWorksheetGrid }
 
+  TsHyperlinkClickEvent = procedure(Sender: TObject;
+    const AHyperlink: TsHyperlink) of object;
+
   {@@ TsCustomWorksheetGrid is the ancestor of TsWorksheetGrid and is able to
     display spreadsheet data along with their formatting. }
   TsCustomWorksheetGrid = class(TCustomDrawGrid, IsSpreadsheetControl)
@@ -63,6 +66,7 @@ type
     FDrawingCell: PCell;
     FTextOverflowing: Boolean;
     FEnhEditMode: Boolean;
+    FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
     function CalcRowHeight(AHeight: Single): Integer;
@@ -199,6 +203,8 @@ type
     property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
     {@@ Activates text overflow (cells reaching into neighbors) }
     property TextOverflow: Boolean read FTextOverflow write FTextOverflow default false;
+    {@@ Event called when an external hyperlink is clicked }
+    property OnClickHyperlink: TsHyperlinkClickEvent read FOnClickHyperlink write FOnClickHyperlink;
 
   public
     { public methods }
@@ -481,6 +487,8 @@ type
     property OnChangeBounds;
     {@@ inherited from ancestors}
     property OnClick;
+    {@@ inherited from TCustomWorksheetGrid}
+    property OnClickHyperlink;
     {@@ inherited from ancestors}
     property OnColRowDeleted;
     {@@ inherited from ancestors}
@@ -998,7 +1006,7 @@ begin
   cell := FDrawingCell;
 
   // Nothing to do in these cases (like in Excel):
-  if (cell = nil) or (cell^.ContentType <> cctUTF8String) then  // ... non-label cells
+  if (cell = nil) or not (cell^.ContentType in [cctUTF8String, cctHyperlink]) then  // ... non-label cells
     exit;
 
   fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
@@ -1384,21 +1392,24 @@ begin
       end;
 
       // Font
+      if Worksheet.IsHyperlink(lCell) then
+        fnt := Workbook.GetHyperlinkFont
+      else
+        fnt := Workbook.GetDefaultFont;
       if (uffFont in fmt^.UsedFormattingFields) then
-      begin
         fnt := Workbook.GetFont(fmt^.FontIndex);
-        if fnt <> nil then
-        begin
-          Canvas.Font.Name := fnt.FontName;
-          Canvas.Font.Color := Workbook.GetPaletteColor(fnt.Color);
-          style := [];
-          if fssBold in fnt.Style then Include(style, fsBold);
-          if fssItalic in fnt.Style then Include(style, fsItalic);
-          if fssUnderline in fnt.Style then Include(style, fsUnderline);
-          if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
-          Canvas.Font.Style := style;
-          Canvas.Font.Size := round(fnt.Size);
-        end;
+
+      if fnt <> nil then
+      begin
+        Canvas.Font.Name := fnt.FontName;
+        Canvas.Font.Size := round(fnt.Size);
+        Canvas.Font.Color := Workbook.GetPaletteColor(fnt.Color);
+        style := [];
+        if fssBold in fnt.Style then Include(style, fsBold);
+        if fssItalic in fnt.Style then Include(style, fsItalic);
+        if fssUnderline in fnt.Style then Include(style, fsUnderline);
+        if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
+        Canvas.Font.Style := style;
       end;
       if (fmt^.NumberFormat = nfCurrencyRed) and
          not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
@@ -1811,12 +1822,13 @@ begin
         cell := Worksheet.FindCell(sr, GetWorksheetCol(gc));
         // Empty cell --> proceed with next cell to the left
         if (cell = nil) or (cell^.ContentType = cctEmpty) or
-           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
+           ((cell^.ContentType in [cctUTF8String, cctHyperLink]) and (cell^.UTF8StringValue = ''))
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
         fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-        if (not Worksheet.IsMerged(cell)) and (cell^.ContentType = cctUTF8String) and
+        if (not Worksheet.IsMerged(cell)) and
+           (cell^.ContentType in [cctUTF8String, cctHyperlink]) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
            (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haRight)
         then
@@ -1837,12 +1849,13 @@ begin
         cell := Worksheet.FindCell(sr, GetWorksheetCol(gcLast));
         // Empty cell --> proceed with next cell to the right
         if (cell = nil) or (cell^.ContentType = cctEmpty) or
-           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
+           ((cell^.ContentType in [cctUTF8String, cctHyperlink]) and (cell^.UTF8StringValue = ''))
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
         fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-        if (not Worksheet.IsMerged(cell)) and (cell^.ContentType = cctUTF8String) and
+        if (not Worksheet.IsMerged(cell)) and
+           (cell^.ContentType in [cctUTF8String, cctHyperlink]) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
            (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haLeft)
         then
@@ -2607,7 +2620,7 @@ begin
       exit;
     if (ARow = 0) then
     begin
-      Result := GetColString(ACol-FHeaderCount);
+      Result := GetColString(ACol - FHeaderCount);
       exit;
     end
     else
@@ -3320,13 +3333,53 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Standard mouse down handler. Is overridden here to enter "enhanced edit mode"
-  which removes formatting from the values and presents formulas for editing.
+  Standard mouse down handler. Is overridden here to handle hyperlinks and to
+  enter "enhanced edit mode" which removes formatting from the values and
+  presents formulas for editing.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseDown(Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
+{todo: extend such the hyperlink is handled only when the text is clicked }
+var
+  hyperlink: TsHyperlink;
+  sheetname: String;
+  sheet: TsWorksheet;
+  r, c: Cardinal;
+  mouseCell: TPoint;
+  cell: PCell;
+
 begin
   inherited;
+
+  if (ssLeft in Shift) and ([ssCtrl, ssSuper] * Shift <> []) then
+  begin
+    mouseCell := MouseToCell(Point(X, Y));
+    r := GetWorksheetRow(mouseCell.Y);
+    c := GetWorksheetCol(mouseCell.X);
+    cell := Worksheet.FindCell(r, c);
+    if Worksheet.IsHyperlink(cell) then
+    begin
+      hyperlink := Worksheet.ReadHyperlink(cell);
+      case hyperlink.Kind of
+        hkNone:
+          ;  // nothing to do
+        hkCell:
+          if ParseSheetCellString(hyperlink.Destination, sheetname, r, c) then
+          begin
+            sheet := Workbook.GetWorksheetByName(sheetname);
+            Workbook.SelectWorksheet(sheet);
+            Worksheet.SelectCell(r, c);
+          end else
+            raise Exception.CreateFmt('"%s" is not a valid cell string.', [hyperlink.Destination]);
+        else
+          if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
+      end;
+      exit;
+    end;
+  end;
+
+  //inherited;
+
   FEnhEditMode := true;
 end;
 
@@ -3641,7 +3694,7 @@ var
   fmt: PsCellFormat;
 begin
   Result := Worksheet.ReadAsUTF8Text(ACell);
-  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
+  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType in [cctUTF8String, cctHyperlink]))
   then
     exit;
 

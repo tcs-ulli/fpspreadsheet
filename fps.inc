@@ -16,9 +16,7 @@
   methods can only be used to change cell formatting then. }
 {.$DEFINE FPS_NO_RECORD_HELPERS}
 
-{ In new versions of fpc, records can contain private fields. Activate the
-  define FPS_NO_PRIVATE_FIELDS_IN_RECORDS if this is not supported. }
-{.$DEFINE FPS_NO_PRIVATE_FIELDS_IN_RECORDS}
+{------------------------------------------------------------------------------}
 
 { The next defines activate code duplicated from new compiler versions in case
   an old compiler is used. }

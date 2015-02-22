@@ -46,24 +46,16 @@ type
 
       @see ReadAsUTF8Text }
   TCell = record
-  {$IFNDEF NO_PRIVATE_FIELDS_IN_RECORDS}
-  private
-  {$ENDIF}
-    { Status flags }
-    Flags: TsCellFlags;
-
-  {$IFNDEF NO_PRIVATE_FIELDS_IN_RECORDS}
-  public
-  {$ENDIF}
     { Location of the cell }
     Worksheet: TsWorksheet;
     Col: Cardinal; // zero-based
     Row: Cardinal; // zero-based
-    { Index of format record }
+    { Status flags }
+    Flags: TsCellFlags;
+    { Index of format record in the workbook's FCellFormatList }
     FormatIndex: Integer;
     { Special information }
     SharedFormulaBase: PCell;  // Cell containing the shared formula
-//    MergeBase: PCell;          // Upper left cell of a merged range
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     FormulaValue: String;
@@ -102,18 +94,6 @@ type
   {@@ Pointer to a TCol record }
   PCol = ^TCol;
 
-  {@@ The record TsComment contains a comment attached to a cell.
-     @param   Row        (0-based) index of the row with the cell
-     @param   Col        (0-based) index of the column with the cell
-     @param   Text       Comment text }
-  TsComment = record
-    Row, Col: Cardinal;
-    Text: String;
-  end;
-
-  {@@ Pointer to a TsComment record }
-  PsComment = ^TsComment;
-
   {@@ Worksheet user interface options:
     @param soShowGridLines  Show or hide the grid lines in the spreadsheet
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
@@ -147,7 +127,8 @@ type
     FCells: TAvlTree; // Items are TCell
     FComments: TAvlTree;  // Items are TsComment
     FMergedCells: TAvlTree;  // Items are TsCellRange
-    FCurrentNode: TAVLTreeNode; // For GetFirstCell and GetNextCell
+    FHyperlinks: TAvlTree;  // Items are TsHyperlink
+    FCurrentNode: TAVLTreeNode; // for GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
@@ -181,6 +162,7 @@ type
     procedure RemoveCellRangesCallback(data, arg: pointer);
     procedure RemoveCellsCallback(data, arg: pointer);
     procedure RemoveCommentsCallback(data, arg: pointer);
+    procedure RemoveHyperlinksCallback(data, arg: pointer);
 
   protected
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
@@ -190,10 +172,17 @@ type
     function RemoveCell(ARow, ACol: Cardinal): PCell;
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
 
+    // Hyperlinks
+    procedure RemoveAllHyperlinks;
+
+    // Comments
+    procedure RemoveAllComments;
+
     // Merged cells
     function CellIsInMergedRange(ARow, ACol: Cardinal; ARange: PsCellRange): Boolean;
     function FindMergedRangeForBase(ABaseRow, ABaseCol: Cardinal): PsCellRange;
     function FindMergedRangeForCell(ARow, ACol: Cardinal): PsCellRange;
+    procedure RemoveAllMergedRanges;
     procedure RemoveMergedRange(ABaseRow, ABaseCol: Cardinal);
 
     // Sorting
@@ -225,7 +214,6 @@ type
     function  ReadAsDateTime(ACell: PCell; out AResult: TDateTime): Boolean; overload;
     function  ReadFormulaAsString(ACell: PCell; ALocalized: Boolean = false): String;
     function  ReadNumericValue(ACell: PCell; out AValue: Double): Boolean;
-//    function  ReadComment(ACell: PCell): String;
 
     { Reading of cell attributes }
     function GetDisplayedDecimals(ACell: PCell): Byte;
@@ -246,19 +234,6 @@ type
     function  ReadTextRotation(ACell: PCell): TsTextRotation;
     function  ReadVertAlignment(ACell: PCell): TsVertAlignment;
     function  ReadWordwrap(ACell: PCell): boolean;
-
-    { Merged cells }
-    procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
-    procedure MergeCells(ARange: String); overload;
-    procedure UnmergeCells(ARow, ACol: Cardinal); overload;
-    procedure UnmergeCells(ARange: String); overload;
-    function FindMergeBase(ACell: PCell): PCell;
-    function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
-    procedure GetMergedCellRanges(out AList: TsCellRangeArray);
-    function InSameMergedRange(ACell1, ACell2: PCell): Boolean;
-    function IsMergeBase(ACell: PCell): Boolean;
-    function IsMerged(ACell: PCell): Boolean;
-    procedure RemoveAllMergedCells;
 
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
@@ -502,10 +477,33 @@ type
     function HasComment(ACell: PCell): Boolean;
     function ReadComment(ARow, ACol: Cardinal): String; overload;
     function ReadComment(ACell: PCell): string; overload;
-    procedure RemoveAllComments;
     procedure RemoveComment(ACell: PCell);
     function WriteComment(ARow, ACol: Cardinal; AText: String): PCell; overload;
     procedure WriteComment(ACell: PCell; AText: String); overload;
+
+    // Hyperlinks
+    function FindHyperlink(ARow, ACol: Cardinal): PsHyperlink; overload;
+    function FindHyperlink(ACell: PCell): PsHyperlink; overload;
+    function IsHyperlink(ACell: PCell): Boolean;
+    function ReadHyperlink(ARow, ACol: Cardinal): TsHyperlink; overload;
+    function ReadHyperlink(ACell: PCell): TsHyperlink;
+    procedure RemoveHyperlink(ACell: PCell; AKeepText: Boolean);
+    function WriteHyperlink(ARow, ACol: Cardinal; AKind: TsHyperlinkKind;
+      ADestination: String; ADisplayText: String = ''; ANote: String = ''): PCell; overload;
+    procedure WriteHyperlink(ACell: PCell; AKind: TsHyperlinkKind;
+      ADestination: String; ADisplayText: String = ''; ANote: String = ''); overload;
+
+    { Merged cells }
+    procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
+    procedure MergeCells(ARange: String); overload;
+    procedure UnmergeCells(ARow, ACol: Cardinal); overload;
+    procedure UnmergeCells(ARange: String); overload;
+    function FindMergeBase(ACell: PCell): PCell;
+    function FindMergedRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
+    procedure GetMergedCellRanges(out AList: TsCellRangeArray);
+    function InSameMergedRange(ACell1, ACell2: PCell): Boolean;
+    function IsMergeBase(ACell: PCell): Boolean;
+    function IsMerged(ACell: PCell): Boolean;
 
     // Notification of changed cells content and format
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -522,6 +520,8 @@ type
     property  Comments: TAVLTree read FComments;
     {@@ List of merged cells (contains TsCellRange records) }
     property  MergedCells: TAVLTree read FMergedCells;
+    {@@ List of hyperlink information records }
+    property  Hyperlinks: TAVLTree read FHyperlinks;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
     {@@ Name of the sheet. In the popular spreadsheet applications this is
@@ -726,6 +726,7 @@ type
     function GetFont(AIndex: Integer): TsFont;
     function GetFontAsString(AIndex: Integer): String;
     function GetFontCount: Integer;
+    function GetHyperlinkFont: TsFont;
     procedure InitFonts;
     procedure RemoveAllFonts;
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
@@ -766,6 +767,7 @@ type
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
     property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
     property Options: TsWorkbookOptions read FOptions write FOptions;
+
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
     {@@ This event fires whenever the workbook palette changes. }
@@ -1329,6 +1331,13 @@ begin
     Result := LongInt(PsCellRange(Item1)^.Col1) - PsCellRange(Item2)^.Col1;
 end;
 
+function CompareHyperlinks(Item1, Item2: Pointer): Integer;
+begin
+  Result := LongInt(PsHyperlink(Item1)^.Row) - PsHyperlink(Item2)^.Row;
+  if Result = 0 then
+    Result := LongInt(PsHyperlink(Item1)^.Col) - PsHyperlink(Item2)^.Col;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Write the fonts stored for a given workbook to a file.
@@ -1381,6 +1390,7 @@ begin
   FCols := TIndexedAVLTree.Create(@CompareCols);
   FComments := TAVLTree.Create(@CompareCommentCells);
   FMergedCells := TAVLTree.Create(@CompareMergedCells);
+  FHyperlinks := TAVLTree.Create(@CompareHyperlinks);
 
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
@@ -1408,7 +1418,8 @@ begin
   RemoveAllRows;
   RemoveAllCols;
   RemoveAllComments;
-  RemoveAllMergedCells;
+  RemoveAllMergedRanges;
+  RemoveAllHyperlinks;
 
   FCells.Free;
   FRows.Free;
@@ -1737,8 +1748,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds a comment to a specific cell
 
-  @param  ARow   (0-based) index to the row
-  @param  ACol   (0-based) index to the column
+  @param  ARow   (0-based) row index of the cell
+  @param  ACol   (0-based) column index of the cell
   @param  AText  Comment text
   @return Pointer to the cell containing the comment
 -------------------------------------------------------------------------------}
@@ -1757,6 +1768,7 @@ end;
 procedure TsWorksheet.WriteComment(ACell: PCell; AText: String);
 var
   comment: PsComment;
+  addNew: Boolean;
 begin
   if ACell = nil then
     exit;
@@ -1771,15 +1783,195 @@ begin
     end;
   end else
   begin
-    New(comment);
-    comment.Row := ACell^.Row;
-    comment.Col := ACell^.Col;
-    comment.Text := AText;
-    FComments.Add(comment);
+    comment := FindComment(ACell);  // Is there already a comment at this cell?
+    addNew := (comment = nil);
+    if addNew then
+      New(comment);                // No: create a new one; yes: update existing one
+    comment^.Row := ACell^.Row;
+    comment^.Col := ACell^.Col;
+    comment^.Text := AText;
+    if addNew then
+      FComments.Add(comment);
     ACell^.Flags := ACell^.Flags + [cfHasComment];
   end;
 end;
 
+
+{ Hyperlinks }
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the cell at a specified row/column contains a hyperlink and
+  returns a pointer to the hyperlink data.
+
+  @param  ARow   (0-based) row index of the cell
+  @param  ACol   (0-based) column index of the cell
+  @return Pointer to the TsHyperlink record (nil, if the cell does not contain
+          a hyperlink).
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindHyperlink(ARow, ACol: Cardinal): PsHyperlink;
+begin
+  Result := FindHyperlink(FindCell(ARow, ACol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the specified cell contains a hyperlink and returns a pointer
+  to the hyperlink data.
+
+  @param  ACell  Pointer to the cell
+  @return Pointer to the TsHyperlink record, or NIL if the cell does not contain
+          a hyperlink.
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindHyperlink(ACell: PCell): PsHyperlink;
+var
+  hyperlink: TsHyperlink;
+  AVLNode: TAVLTreeNode;
+begin
+  Result := nil;
+  if not IsHyperlink(ACell) or (FHyperlinks.Count = 0) then
+    exit;
+
+  hyperlink.Row := ACell^.Row;
+  hyperlink.Col := ACell^.Col;
+  AVLNode := FHyperlinks.Find(@hyperlink);
+  if Assigned(AVLNode) then
+    result := PsHyperlink(AVLNode.Data);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the specified cell contains a hyperlink
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsHyperlink(ACell: PCell): Boolean;
+begin
+  Result := (ACell <> nil) and (ACell^.ContentType = cctHyperlink);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the hyperlink information of a specified cell.
+
+  @param   ARow   Row index of the cell considered
+  @param   ACol   Column index of the cell considered
+  @returns Record with the hyperlink data assigned to the cell
+  If the cell is not a hyperlink the result field Kind is hkNone.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadHyperlink(ARow, ACol: Cardinal): TsHyperlink;
+begin
+  Result := ReadHyperlink(FindCell(ARow, ACol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the hyperlink information of a specified cell.
+
+  @param   ACell         Pointer to the cell considered
+  @returns Record with the hyperlink data assigned to the cell.
+           If the cell is not a hyperlink the result field Kind is hkNone.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadHyperlink(ACell: PCell): TsHyperlink;
+var
+  hyperlink: PsHyperlink;
+begin
+  hyperlink := FindHyperlink(ACell);
+  if hyperlink <> nil then
+    Result := hyperlink^
+  else
+  begin
+    Result.Kind := hkNone;
+    Result.Destination := '';
+    Result.Note := '';
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes a hyperlink from the specified cell. Releaes memory occupied by
+  the associated TsHyperlink record. Cell content type is converted to
+  cctUTF8String.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveHyperlink(ACell: PCell; AKeepText: Boolean);
+var
+  hyperlink: TsHyperlink;
+  AVLNode: TAvlTreeNode;
+begin
+  if not IsHyperlink(ACell) then
+    exit;
+
+  hyperlink.Row := ACell^.Row;
+  hyperlink.Col := ACell^.Col;
+  AVLNode := FHyperlinks.Find(@hyperlink);
+  if AVLNode <> nil then begin
+    Dispose(PsHyperlink(AVLNode.Data));
+    FHyperlinks.Delete(AVLNode);
+    if AKeepText then
+      ACell^.ContentType := cctUTF8String
+    else
+      ACell^.ContentType := cctEmpty;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assigns a hyperlink to the cell at the specified row and column
+
+  @param  ARow          Row index of the cell considered
+  @param  ACol          Column index of the cell considered
+  @param  AKind         Hyperlink type (to cell, external file, URL)
+  @param  ADestination  Depending on AKind: cell address, filename, or URL
+                        if empty the hyperlink is removed from the cell.
+  @param  ADisplayText  Text shown in cell. If empty the destination is shown
+  @param  ANote         Text for popup hint used by Excel
+  @return Pointer to the cell with the hyperlink
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteHyperlink(ARow, ACol: Cardinal; AKind: TsHyperlinkKind;
+  ADestination: String; ADisplayText: String = ''; ANote: String = ''): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteHyperlink(Result, AKind, ADestination, ADisplayText, ANote);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assigns a hyperlink to the specified cell.
+
+  @param  ACell         Pointer to the cell considered
+  @param  AKind         Hyperlink type (to cell, external file, URL)
+  @param  ADestination  Depending on AKind: cell address, filename, or URL
+                        if empty the hyperlink is removed from the cell.
+  @param  ADisplayText  Text shown in cell. If empty the destination is shown
+  @param  ANote         Text for popup hint used by Excel
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteHyperlink(ACell: PCell; AKind: TsHyperlinkKind;
+  ADestination: String; ADisplayText: String = ''; ANote: String = '');
+var
+  hyperlink: PsHyperlink;
+  addNew: Boolean;
+  row, col: Cardinal;
+begin
+  if ACell = nil then
+    exit;
+
+  row := ACell^.Row;
+  col := ACell^.Col;
+
+  // Remove the hyperlink if an empty destination is passed
+  if ADestination = '' then
+    RemoveHyperlink(ACell, false)
+  else
+  begin
+    hyperlink := FindHyperlink(ACell);
+    addNew := (hyperlink = nil);
+    if addNew then New(hyperlink);
+    hyperlink^.Row := row;
+    hyperlink^.Col := col;
+    hyperlink^.Kind := AKind;
+    hyperlink^.Destination := ADestination;
+    hyperlink^.Note := ANote;
+    if addNew then FHyperlinks.Add(hyperlink);
+
+    ACell^.ContentType := cctHyperlink;
+    if ADisplayText <> '' then
+      ACell^.UTF8StringValue := ADisplayText
+    else
+      ACell^.UTF8StringValue := ADestination;
+  end;
+
+  ChangedCell(row, col);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Is called whenever a cell value or formatting has changed. Fires an event
@@ -2770,7 +2962,8 @@ begin
     case ContentType of
       cctNumber:
         Result := FloatToStrNoNaN(NumberValue, fmt^.NumberFormat, fmt^.NumberFormatStr);
-      cctUTF8String:
+      cctUTF8String,
+      cctHyperlink:
         Result := UTF8StringValue;
       cctDateTime:
         Result := DateTimeToStrNoNaN(DateTimeValue, fmt^.NumberFormat, fmt^.NumberFormatStr);
@@ -3725,6 +3918,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Helper method for clearing the hyperlink information
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveHyperlinksCallback(data, arg: pointer);
+begin
+  Unused(arg);
+  Dispose(PsHyperlink(data));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Clears the list of cells and releases their memory.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllCells;
@@ -3741,10 +3943,19 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Empties the list of merged cell ranges.
-  Is called from the destructor of the worksheet
+  Clears the list of hyperlinks and releases their memory
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveAllMergedCells;
+procedure TsWorksheet.RemoveAllHyperlinks;
+begin
+  RemoveAllAvlTreeNodes(FHyperlinks, RemoveHyperlinksCallback);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Empties the list of merged cell ranges.
+  Is called from the destructor of the worksheet.
+  NOTE: The cells are left intact. They are still marked as merged!!!
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveAllMergedRanges;
 begin
   RemoveAllAvlTreeNodes(FMergedCells, RemoveCellRangesCallback);
 end;
@@ -4600,7 +4811,13 @@ begin
     exit;
   end;
 
-  WriteUTF8Text(ACell, AValue);
+  if IsHyperlink(ACell) then
+  begin
+    // Preserve hyperlinks. Modify only the display test.
+    WriteUTF8Text(ACell, AValue);
+    ACell^.ContentType := cctHyperlink;
+  end else
+    WriteUTF8Text(ACell, AValue);
 end;
                                  (*
 {@@ ----------------------------------------------------------------------------
@@ -5634,6 +5851,7 @@ begin
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Defines a background pattern for a cell
@@ -8010,7 +8228,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Initializes the font list. In case of BIFF format, adds 5 fonts:
+  Initializes the font list by adding 5 fonts:
 
     0: default font
     1: like default font, but bold
@@ -8018,6 +8236,7 @@ end;
     3: like default font, but underlined
     4: empty (due to a restriction of Excel)
     5: like default font, but bold and italic
+    6: like default font, but blue and underlined (for hyperlinks)
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.InitFonts;
 var
@@ -8042,6 +8261,7 @@ begin
   AddFont(fntName, fntSize, [fssUnderline], scBlack);    // FONT3 (fUnderline)
   // FONT4 which does not exist in BIFF is added automatically with nil as place-holder
   AddFont(fntName, fntSize, [fssBold, fssItalic], scBlack); // FONT5 (bold & italic)
+  AddFont(fntName, fntSize, [fssUnderline], scBlue);     // FONT6 (blue & underlined)
 
   FBuiltinFontCount := FFontList.Count;
 end;
@@ -8142,6 +8362,15 @@ function TsWorkbook.GetFontCount: Integer;
 begin
   Result := FFontList.Count;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the hypertext font. This is font with index 6 in the font list
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetHyperlinkFont: TsFont;
+begin
+  Result := GetFont(HYPERLINK_FONTINDEX);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Adds a color to the palette and returns its palette index, but only if the

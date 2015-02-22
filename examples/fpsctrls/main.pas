@@ -262,6 +262,7 @@ type
     ToolButton38: TToolButton;
     ToolButton39: TToolButton;
     TbCommentAdd: TToolButton;
+    ToolButton4: TToolButton;
     ToolButton40: TToolButton;
     ToolButton41: TToolButton;
     ToolButton42: TToolButton;
@@ -291,6 +292,9 @@ type
     procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure InspectorTabControlChange(Sender: TObject);
+    procedure ToolButton4Click(Sender: TObject);
+    procedure WorksheetGridClickHyperlink(Sender: TObject;
+      const AHyperlink: TsHyperlink);
   private
     { private declarations }
     procedure UpdateCaption;
@@ -393,6 +397,17 @@ end;
 procedure TMainForm.InspectorTabControlChange(Sender: TObject);
 begin
   Inspector.Mode := TsInspectorMode(InspectorTabControl.TabIndex);
+end;
+
+procedure TMainForm.ToolButton4Click(Sender: TObject);
+begin
+  WorkbookSource.Worksheet.WriteHyperlink(0, 0, hkURL, 'http://www.chip.de', 'Link to chip.de', 'chip.de');
+end;
+
+procedure TMainForm.WorksheetGridClickHyperlink(Sender: TObject;
+  const AHyperlink: TsHyperlink);
+begin
+  ShowMessage('Hyperlink ' + AHyperlink.Destination + ' clicked');
 end;
 
 procedure TMainForm.UpdateCaption;

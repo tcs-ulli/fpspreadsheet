@@ -46,6 +46,7 @@ object MainForm: TMainForm
       TitleFont.Height = -13
       TitleFont.Name = 'Arial'
       TitleStyle = tsNative
+      OnClickHyperlink = WorksheetGridClickHyperlink
     end
   end
   object InspectorTabControl: TTabControl
@@ -528,6 +529,12 @@ object MainForm: TMainForm
       Width = 5
       Caption = 'ToolButton52'
       Style = tbsDivider
+    end
+    object ToolButton4: TToolButton
+      Left = 427
+      Top = 0
+      Caption = 'ToolButton4'
+      OnClick = ToolButton4Click
     end
   end
   object ToolBar3: TToolBar
