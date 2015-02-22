@@ -529,12 +529,6 @@ object MainForm: TMainForm
       Caption = 'ToolButton52'
       Style = tbsDivider
     end
-    object ToolButton4: TToolButton
-      Left = 427
-      Top = 0
-      Caption = 'ToolButton4'
-      OnClick = ToolButton4Click
-    end
   end
   object ToolBar3: TToolBar
     Left = 0
@@ -558,7 +552,7 @@ object MainForm: TMainForm
       TabOrder = 0
       object CellIndicator: TsCellIndicator
         Left = 0
-        Height = 23
+        Height = 27
         Top = 0
         Width = 138
         Align = alTop

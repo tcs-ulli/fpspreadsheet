@@ -124,9 +124,9 @@ type
     procedure TestWriteRead_InsDelColRow_45_BIFF8;    // row through merged block
     procedure TestWriteRead_InsDelColRow_46_BIFF8;    // row after merged block
     // ... and deletes columns
-    procedure TestWriteRead_InsDelColRow_47_BIFF8;    // column before merged block
-    procedure TestWriteRead_InsDelColRow_48_BIFF8;    // column through merged block
-    procedure TestWriteRead_InsDelColRow_49_BIFF8;    // column after merged block
+    procedure TestWriteRead_DelColBeforeMerge_BIFF8;  // column before merged block
+    procedure TestWriteRead_DelColInMerge_BIFF8;      // column through merged block
+    procedure TestWriteRead_DelColAfterMerge_BIFF8;   // column after merged block
     // ... and deletes rows
     procedure TestWriteRead_InsDelColRow_50_BIFF8;    // row before merged block
     procedure TestWriteRead_InsDelColRow_51_BIFF8;    // row through merged block
@@ -201,9 +201,9 @@ type
     procedure TestWriteRead_InsDelColRow_45_OOXML;    // row through merged block
     procedure TestWriteRead_InsDelColRow_46_OOXML;    // row after merged block
     // ... and deletes columns
-    procedure TestWriteRead_InsDelColRow_47_OOXML;    // column before merged block
-    procedure TestWriteRead_InsDelColRow_48_OOXML;    // column through merged block
-    procedure TestWriteRead_InsDelColRow_49_OOXML;    // column after merged block
+    procedure TestWriteRead_DelColBeforeMerge_OOXML;  // column before merged block
+    procedure TestWriteRead_DelColInMerge_OOXML;      // column through merged block
+    procedure TestWriteRead_DelColAfterMerge_OOXML;   // column after merged block
     // ... and deletes rows
     procedure TestWriteRead_InsDelColRow_50_OOXML;    // row before merged block
     procedure TestWriteRead_InsDelColRow_51_OOXML;    // row through merged block
@@ -278,9 +278,9 @@ type
     procedure TestWriteRead_InsDelColRow_45_ODS;    // row through merged block
     procedure TestWriteRead_InsDelColRow_46_ODS;    // row after merged block
     // ... and deletes columns
-    procedure TestWriteRead_InsDelColRow_47_ODS;    // column before merged block
-    procedure TestWriteRead_InsDelColRow_48_ODS;    // column through merged block
-    procedure TestWriteRead_InsDelColRow_49_ODS;    // column after merged block
+    procedure TestWriteRead_DelColBeforeMerge_ODS;  // column before merged block
+    procedure TestWriteRead_DelColInMerge_ODS;      // column through merged block
+    procedure TestWriteRead_DelColAfterMerge_ODS;   // column after merged block
     // ... and deletes rows
     procedure TestWriteRead_InsDelColRow_50_ODS;    // row before merged block
     procedure TestWriteRead_InsDelColRow_51_ODS;    // row through merged block
@@ -1963,19 +1963,19 @@ begin
   TestWriteRead_InsDelColRow(46, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_47_BIFF8;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_BIFF8;
 // delete column before merged block
 begin
   TestWriteRead_InsDelColRow(47, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_48_BIFF8;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_BIFF8;
 // delete column through merged block
 begin
   TestWriteRead_InsDelColRow(48, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_49_BIFF8;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_BIFF8;
 // delete column behind merged block
 begin
   TestWriteRead_InsDelColRow(49, sfExcel8);
@@ -2286,19 +2286,19 @@ begin
   TestWriteRead_InsDelColRow(46, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_47_OOXML;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_OOXML;
 // delete column before merged block
 begin
   TestWriteRead_InsDelColRow(47, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_48_OOXML;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_OOXML;
 // delete column through merged block
 begin
   TestWriteRead_InsDelColRow(48, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_49_OOXML;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_OOXML;
 // delete column behind merged block
 begin
   TestWriteRead_InsDelColRow(49, sfOOXML);
@@ -2609,19 +2609,18 @@ begin
   TestWriteRead_InsDelColRow(46, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_47_ODS;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_ODS;
 // delete column before merged block
 begin
   TestWriteRead_InsDelColRow(47, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_48_ODS;
-// delete column through merged block
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_ODS;
 begin
   TestWriteRead_InsDelColRow(48, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_49_ODS;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_ODS;
 // delete column behind merged block
 begin
   TestWriteRead_InsDelColRow(49, sfOpenDocument);
