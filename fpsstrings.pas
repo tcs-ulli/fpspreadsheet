@@ -38,6 +38,7 @@ resourcestring
   rsIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
   rsCircularReference = 'Circular reference found when calculating worksheet formulas';
   rsFileNotFound = 'File "%s" not found.';
+  rsWorksheetNotFound = 'Worksheet "%s" not found.';
   rsInvalidWorksheetName = '"%s" is not a valid worksheet name.';
   rsDefectiveInternalStructure = 'Defective internal structure of %s file.';
   rsUnknownDataType = 'Unknown data type.';
