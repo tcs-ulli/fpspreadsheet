@@ -489,9 +489,9 @@ type
     function ReadHyperlink(ACell: PCell): TsHyperlink;
     procedure RemoveHyperlink(ACell: PCell; AKeepText: Boolean);
     function WriteHyperlink(ARow, ACol: Cardinal; AKind: TsHyperlinkKind;
-      ADestination: String; ADisplayText: String = ''; ANote: String = ''): PCell; overload;
+      ATarget: String; ADisplayText: String = ''; ATooltip: String = ''): PCell; overload;
     procedure WriteHyperlink(ACell: PCell; AKind: TsHyperlinkKind;
-      ADestination: String; ADisplayText: String = ''; ANote: String = ''); overload;
+      ATarget: String; ADisplayText: String = ''; ATooltip: String = ''); overload;
 
     { Merged cells }
     procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
@@ -1875,8 +1875,8 @@ begin
   else
   begin
     Result.Kind := hkNone;
-    Result.Destination := '';
-    Result.Note := '';
+    Result.Target := '';
+    Result.Tooltip := '';
   end;
 end;
 
@@ -1912,17 +1912,17 @@ end;
   @param  ARow          Row index of the cell considered
   @param  ACol          Column index of the cell considered
   @param  AKind         Hyperlink type (to cell, external file, URL)
-  @param  ADestination  Depending on AKind: cell address, filename, or URL
+  @param  ATarget       Depending on AKind: cell address, filename, or URL
                         if empty the hyperlink is removed from the cell.
   @param  ADisplayText  Text shown in cell. If empty the destination is shown
-  @param  ANote         Text for popup hint used by Excel
+  @param  ATooltip      Text for popup tooltip hint used by Excel
   @return Pointer to the cell with the hyperlink
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteHyperlink(ARow, ACol: Cardinal; AKind: TsHyperlinkKind;
-  ADestination: String; ADisplayText: String = ''; ANote: String = ''): PCell;
+  ATarget: String; ADisplayText: String = ''; ATooltip: String = ''): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteHyperlink(Result, AKind, ADestination, ADisplayText, ANote);
+  WriteHyperlink(Result, AKind, ATarget, ADisplayText, ATooltip);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1930,13 +1930,13 @@ end;
 
   @param  ACell         Pointer to the cell considered
   @param  AKind         Hyperlink type (to cell, external file, URL)
-  @param  ADestination  Depending on AKind: cell address, filename, or URL
+  @param  ATarget       Depending on AKind: cell address, filename, or URL
                         if empty the hyperlink is removed from the cell.
   @param  ADisplayText  Text shown in cell. If empty the destination is shown
-  @param  ANote         Text for popup hint used by Excel
+  @param  ATooltip      Text for popup tooltip hint used by Excel
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHyperlink(ACell: PCell; AKind: TsHyperlinkKind;
-  ADestination: String; ADisplayText: String = ''; ANote: String = '');
+  ATarget: String; ADisplayText: String = ''; ATooltip: String = '');
 var
   hyperlink: PsHyperlink;
   addNew: Boolean;
@@ -1949,7 +1949,7 @@ begin
   col := ACell^.Col;
 
   // Remove the hyperlink if an empty destination is passed
-  if ADestination = '' then
+  if ATarget = '' then
     RemoveHyperlink(ACell, false)
   else
   begin
@@ -1959,15 +1959,15 @@ begin
     hyperlink^.Row := row;
     hyperlink^.Col := col;
     hyperlink^.Kind := AKind;
-    hyperlink^.Destination := ADestination;
-    hyperlink^.Note := ANote;
+    hyperlink^.Target := ATarget;
+    hyperlink^.Tooltip := ATooltip;
     if addNew then FHyperlinks.Add(hyperlink);
 
     ACell^.ContentType := cctHyperlink;
     if ADisplayText <> '' then
       ACell^.UTF8StringValue := ADisplayText
     else
-      ACell^.UTF8StringValue := ADestination;
+      ACell^.UTF8StringValue := ATarget;
   end;
 
   ChangedCell(row, col);

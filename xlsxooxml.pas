@@ -64,9 +64,12 @@ type
     FSharedStrings: TStringList;
     FFillList: TFPList;
     FBorderList: TFPList;
+    FHyperlinkList: TFPList;
     FThemeColors: array of TsColorValue;
     FSharedFormulas: TStringList;
     FWrittenByFPS: Boolean;
+    procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
+    procedure ApplyHyperlinks(AWorksheet: TsWorksheet);
     function FindCommentsFileName(ANode: TDOMNode): String;
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -79,6 +82,7 @@ type
     procedure ReadFills(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
+    procedure ReadHyperlinks(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPalette(ANode: TDOMNode);
@@ -91,7 +95,6 @@ type
     procedure ReadThemeColors(ANode: TDOMNode);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
   protected
-    procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure CreateNumFormatList; override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -226,6 +229,7 @@ const
      SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
      SCHEMAS_COMMENTS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments';
      SCHEMAS_DRAWINGS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing';
+     SCHEMAS_HYPERLINKS   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink';
      SCHEMAS_SPREADML     = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
      { OOXML mime types constants }
@@ -326,6 +330,15 @@ type
   TBorderListData = class
     Borders: TsCellBorders;
     BorderStyles: TsCellBorderStyles;
+  end;
+
+  THyperlinkListData = class
+    ID: String;
+    CellRef: String;
+    Kind: TsHyperlinkKind;
+    Location: String;
+    Display: String;
+    Tooltip: String;
   end;
 
 const
@@ -439,10 +452,10 @@ begin
   Workbook.UseDefaultPalette;
 
   FSharedFormulas := TStringList.Create;
-
   FSharedStrings := TStringList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
+  FHyperlinkList := TFPList.Create;
   FCellFormatList := TsCellFormatList.Create(true);
   // Allow duplicates because xf indexes used in cell records cannot be found any more.
 
@@ -460,8 +473,12 @@ begin
   for j := FBorderList.Count-1 downto 0 do TObject(FBorderList[j]).Free;
   FBorderList.Free;
 
+  for j := FHyperlinkList.Count-1 downto 0 do TObject(FHyperlinkList[j]).Free;
+  FHyperlinkList.Free;
+
   FSharedStrings.Free;
   FSharedFormulas.Free;
+  // FCellFormatList is destroyed by ancestor
 
   inherited Destroy;
 end;
@@ -475,6 +492,30 @@ begin
     i := FCellFormatList.FindIndexOfID(XFIndex);
     fmt := FCellFormatList.Items[i];
     ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ApplyHyperlinks(AWorksheet: TsWorksheet);
+var
+  i: Integer;
+  hyperlinkData: THyperlinkListData;
+  r1, c1, r2, c2, r, c: Cardinal;
+begin
+  for i:=0 to FHyperlinkList.Count-1 do
+  begin
+    hyperlinkData := THyperlinkListData(FHyperlinkList.Items[i]);
+    if pos(':', hyperlinkdata.CellRef) = 0 then
+    begin
+      ParseCellString(hyperlinkData.CellRef, r1, c1);
+      r2 := r1;
+      c2 := c1;
+    end else
+      ParseCellRangeString(hyperlinkData.CellRef, r1, c1, r2, c2);
+
+    for r := r1 to r2 do
+      for c := c1 to c2 do
+        with hyperlinkData do
+          AWorksheet.WriteHyperlink(r, c, Kind, Location, Display, ToolTip);
   end;
 end;
 
@@ -1187,6 +1228,88 @@ begin
     FWorkbook.DeleteFont(4);
 end;
 
+procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  node: TDOMNode;
+  nodeName: String;
+  hyperlinkData: THyperlinkListData;
+  s: String;
+
+  function FindHyperlinkID(ID: String): THyperlinkListData;
+  var
+    i: Integer;
+  begin
+    for i:=0 to FHyperlinkList.Count-1 do
+      if THyperlinkListData(FHyperlinkList.Items[i]).ID = ID then
+      begin
+        Result := THyperlinkListData(FHyperlinkList.Items[i]);
+        exit;
+      end;
+  end;
+
+begin
+  if Assigned(ANode) then begin
+    nodename := ANode.NodeName;
+    if nodename = 'hyperlinks' then
+    begin
+      node := ANode.FirstChild;
+      while Assigned(node) do
+      begin
+        nodename := node.NodeName;
+        if nodename = 'hyperlink' then begin
+          hyperlinkData := THyperlinkListData.Create;
+          hyperlinkData.CellRef := GetAttrValue(node, 'ref');
+          hyperlinkData.ID := GetAttrValue(node, 'r:id');
+          hyperlinkData.Location := GetAttrValue(node, 'location');
+          hyperlinkData.Display := GetAttrValue(node, 'display');
+          hyperlinkData.Tooltip := GetAttrValue(node, 'tooltip');
+          hyperlinkData.Kind := hkCell;
+        end;
+        FHyperlinkList.Add(hyperlinkData);
+        node := node.NextSibling;
+      end;
+    end else
+    if nodename = 'Relationship' then
+    begin
+      node := ANode;
+      while Assigned(node) do
+      begin
+        nodename := node.NodeName;
+        if nodename = 'Relationship' then
+        begin
+          s := GetAttrValue(node, 'Type');
+          if s = SCHEMAS_HYPERLINKS then
+          begin
+            s := GetAttrValue(node, 'Id');
+            if s <> '' then
+            begin
+              hyperlinkData := FindHyperlinkID(s);
+              if hyperlinkData <> nil then begin
+                s := GetAttrValue(node, 'Target');
+                if s <> '' then hyperlinkData.Location := s;
+                s := GetAttrValue(node, 'TargetMode');
+                if s = 'External' then
+                begin
+                  if (pos('http:', hyperlinkdata.Location) = 1) or
+                     (pos('mailto:', hyperlinkData.Location) = 1) or
+                     (pos('file:', hyperlinkData.Location) = 1) or
+                     (pos('ftp:', hyperlinkdata.Location) = 1)
+                  then
+                    hyperlinkData.Kind := hkURL
+                  else
+                    hyperlinkData.Kind := hkFile;
+                end;
+              end;
+            end;
+          end;
+        end;
+        node := node.NextSibling;
+      end;
+    end;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadMergedCells(ANode: TDOMNode;
   AWorksheet: TsWorksheet);
 var
@@ -1494,6 +1617,7 @@ procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorks
 var
   rownode: TDOMNode;
   cellnode: TDOMNode;
+  nodename: String;
 begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
@@ -1521,6 +1645,7 @@ var
   SheetList: TStringList;
   i: Integer;
   fn: String;
+  fn_sheetxmlrels: String;
 begin
   //unzip "content.xml" of "AFileName" to folder "FilePath"
   FilePath := GetTempDir(false);
@@ -1597,13 +1722,15 @@ begin
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
       ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
+      ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'), FWorksheet);
 
       FreeAndNil(Doc);
 
       // Comments:
       // The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
       // The relationship which comment belongs to which sheet file must be
-      // retrieved from the "sheet<n>.xls.rels" file (n = 1, 2, ...).
+      // retrieved from the "sheet<n>.xml.rels" file (n = 1, 2, ...).
+      // The rels file contains also the second part of the hyperlink data.
       fn := OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]);
       UnzipFile(AFilename, fn, FilePath);
       if FileExists(FilePath + fn) then begin
@@ -1611,6 +1738,7 @@ begin
         ReadXMLFile(Doc, FilePath + fn);
         DeleteFile(FilePath + fn);
         fn := FindCommentsFileName(Doc.DocumentElement.FindNode('Relationship'));
+        ReadHyperlinks(Doc.DocumentElement.FindNode('Relationship'), FWorksheet);
         FreeAndNil(Doc);
       end else
       if (SheetList.Count = 1) then
@@ -1628,7 +1756,9 @@ begin
         ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
         FreeAndNil(Doc);
       end;
-    end;
+
+      ApplyHyperlinks(FWorksheet);
+    end;  // for
 
   finally
     SheetList.Free;

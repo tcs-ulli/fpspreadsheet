@@ -407,7 +407,7 @@ end;
 procedure TMainForm.WorksheetGridClickHyperlink(Sender: TObject;
   const AHyperlink: TsHyperlink);
 begin
-  ShowMessage('Hyperlink ' + AHyperlink.Destination + ' clicked');
+  ShowMessage('Hyperlink ' + AHyperlink.Target + ' clicked');
 end;
 
 procedure TMainForm.UpdateCaption;

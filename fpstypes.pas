@@ -154,13 +154,13 @@ type
     @param   Kind         Specifies whether clicking on the hyperlink results in
                           jumping the a cell address within the current workbook,
                           opens a file, or opens a URL
-    @param   Destination  Hyperlink (cell address, filename, URL)
+    @param   Target       Target of hyperlink (cell address, filename, URL)
     @param   Note         Text displayed as a popup hint by Excel }
   TsHyperlink = record
     Row, Col: Cardinal;
     Kind: TsHyperlinkKind;
-    Destination: String;
-    Note: String;
+    Target: String;
+    Tooltip: String;
   end;
 
   {@@ Pointer to a TsHyperlink record }

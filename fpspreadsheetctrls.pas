@@ -2687,8 +2687,9 @@ begin
     begin
       AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
       hyperlink := Worksheet.FindHyperlink(ACell);
-      if hyperlink <> nil then begin
-        s := hyperlink^.Destination;
+      if hyperlink <> nil then
+      begin
+        s := hyperlink^.Target;
         case hyperlink^.Kind of
           hkNone: s := s + ' <error>';
           hkCell: s := s + ' (internal cell reference)';
