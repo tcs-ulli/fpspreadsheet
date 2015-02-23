@@ -54,6 +54,7 @@ resourcestring
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
+  rsHyperlinkNotAValidCell = 'Hyperlink target "%s" is not a valid cell address.';
 
 
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?

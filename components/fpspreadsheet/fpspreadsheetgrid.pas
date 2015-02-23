@@ -2173,8 +2173,8 @@ begin
     hkNone:
       ;  // nothing to do
     hkCell:
-      // Goes to a cell
-      if ParseSheetCellString(hyperlink.Destination, sheetname, r, c) then
+      // Goes to a cell (unlike Excel, we don't support range here)
+      if ParseSheetCellString(hyperlink.Target, sheetname, r, c) then
       begin
         if sheetname <> '' then
         begin
@@ -2185,7 +2185,7 @@ begin
         end;
         Worksheet.SelectCell(r, c);
       end else
-        raise Exception.CreateFmt('"%s" is not a valid cell string.', [hyperlink.Destination]);
+        raise Exception.CreateFmt(rsHyperlinkNotAValidCell, [hyperlink.Target]);
     else
       // Fires the OnClickHyperlink event which should open a file or a URL
       if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
