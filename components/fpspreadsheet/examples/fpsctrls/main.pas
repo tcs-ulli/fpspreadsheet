@@ -401,7 +401,7 @@ end;
 
 procedure TMainForm.ToolButton4Click(Sender: TObject);
 begin
-  WorkbookSource.Worksheet.WriteHyperlink(0, 0, hkURL, 'http://www.chip.de', 'Link to chip.de', 'chip.de');
+  WorkbookSource.Worksheet.WriteHyperlink(0, 0, hkCell, 'B5', 'Go to B5');
 end;
 
 procedure TMainForm.WorksheetGridClickHyperlink(Sender: TObject;

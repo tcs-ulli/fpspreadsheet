@@ -23,13 +23,14 @@ unit fpspreadsheetgrid;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Grids,
+  Classes, SysUtils, LResources,
+  Forms, Controls, Graphics, Dialogs, Grids, ExtCtrls,
   LCLVersion,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
 const
   {$IF (lcl_fullversion >= 1030000)}
-   ENABLE_MULTI_SELECT = 1;  // requires Laz trunk after r46767
+   ENABLE_MULTI_SELECT = 1;  // requires Laz 1.4+ or trunk after r46767
   {$ELSE}
    ENABLE_MULTI_SELECT = 0;
   {$ENDIF}
@@ -66,6 +67,8 @@ type
     FDrawingCell: PCell;
     FTextOverflowing: Boolean;
     FEnhEditMode: Boolean;
+    FHyperlinkTimer: TTimer;
+    FHyperlinkCell: PCell;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
@@ -137,6 +140,8 @@ type
     procedure SetWordwrap(ACol, ARow: Integer; AValue: boolean);
     procedure SetWordwraps(ARect: TGridRect; AValue: boolean);
 
+    procedure HyperlinkTimerElapsed(Sender: TObject);
+
   protected
     { Protected declarations }
     procedure AutoAdjustColumn(ACol: Integer); override;
@@ -158,6 +163,7 @@ type
     procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
+    procedure ExecuteHyperlink;
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellHintText(ACol, ARow: Integer): String; override;
     function GetCellText(ACol, ARow: Integer): String;
@@ -173,6 +179,7 @@ type
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 //    function SelectCell(AGridCol, AGridRow: Integer): Boolean; override;
@@ -210,6 +217,7 @@ type
     { public methods }
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+
     procedure BeginUpdate;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DeleteCol(AGridCol: Integer); reintroduce;
@@ -583,7 +591,7 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, Math,
-  fpCanvas, fpsUtils, fpsVisualUtils;
+  fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils;
 
 const
   {@@ Translation of the fpspreadsheet type of horizontal text alignment to that
@@ -597,6 +605,13 @@ const
     tlBottom, tlTop, tlCenter, tlBottom
   );
 
+  {@@ Default number of columns prepared for a new empty worksheet }
+  DEFAULT_COL_COUNT = 26;
+  {@@ Default number of rows prepared for a new empty worksheet }
+  DEFAULT_ROW_COUNT = 100;
+  {@@ Interval how long the mouse buttons has to be held down on a
+    hyperlink cell until the associated hyperlink is executed. }
+  HYPERLINK_TIMER_INTERVAL = 500;
 
 var
   {@@ Auxiliary bitmap containing the previously used non-trivial fill pattern }
@@ -842,12 +857,15 @@ begin
   AutoAdvance := aaDown;
   ExtendedSelect := true;
   FHeaderCount := 1;
-  FInitColCount := 26;
-  FInitRowCount := 100;
+  FInitColCount := DEFAULT_COL_COUNT;
+  FInitRowCount := DEFAULT_ROW_COUNT;
   FCellFont := TFont.Create;
+  FHyperlinkTimer := TTimer.Create(self);
+  FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
+  FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
   FOwnsWorkbook := true;
  {$IF (ENABLE_MULTI_SELECT=1)}
-  //RangeSelectMode := rsmMulti;
+  RangeSelectMode := rsmMulti;
  {$ENDIF}
 end;
 
@@ -2138,6 +2156,44 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Executes a hyperlink stored in the FHyperlinkCell
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.ExecuteHyperlink;
+var
+  hyperlink: TsHyperlink;
+  sheetname: String;
+  sheet: TsWorksheet;
+  r, c: Cardinal;
+begin
+  if FHyperlinkCell = nil then
+    exit;
+
+  hyperlink := Worksheet.ReadHyperlink(FHyperlinkCell);
+  case hyperlink.Kind of
+    hkNone:
+      ;  // nothing to do
+    hkCell:
+      // Goes to a cell
+      if ParseSheetCellString(hyperlink.Destination, sheetname, r, c) then
+      begin
+        if sheetname <> '' then
+        begin
+          sheet := Workbook.GetWorksheetByName(sheetname);
+          if sheet = nil then
+            raise Exception.CreateFmt(rsWorksheetNotFound, [sheetname]);
+          Workbook.SelectWorksheet(sheet);
+        end;
+        Worksheet.SelectCell(r, c);
+      end else
+        raise Exception.CreateFmt('"%s" is not a valid cell string.', [hyperlink.Destination]);
+    else
+      // Fires the OnClickHyperlink event which should open a file or a URL
+      if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Copies the borders of a cell to its neighbors. This avoids the nightmare of
   changing borders due to border conflicts of adjacent cells.
 
@@ -2890,6 +2946,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Clicking into cells with hyperlinks poses a user-interface problem:
+  normally the cell should go into edit mode. But with hyperlinks a click should
+  also execute the hyperlink. How to distinguish both cases?
+  In order to keep both features for hyperlinks we follow a strategy similar to
+  Excel: a short click selects the cell for editing as usual; a longer click
+  opens the hyperlink by means of a timer ("FHyperlinkTimer") (in Excel, in
+  fact, the behavior is opposite, but this one here is easier to implement.)
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.HyperlinkTimerElapsed(Sender: TObject);
+begin
+  if FHyperlinkTimer.Enabled then begin
+    FHyperlinkTimer.Enabled := false;
+    FGridState := gsNormal;  // this prevents selecting a cell block
+    EditorMode := false;     // this prevents editing the clicked cell
+    ExecuteHyperlink;        // Execute the hyperlink
+    FHyperlinkCell := nil;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Inserts an empty column before the column specified
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.InsertCol(AGridCol: Integer);
@@ -3339,46 +3415,34 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseDown(Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
-{todo: extend such the hyperlink is handled only when the text is clicked }
+{todo: extend such that the hyperlink is handled only when the text is clicked (tough because of overflow cells!) }
 var
-  hyperlink: TsHyperlink;
-  sheetname: String;
-  sheet: TsWorksheet;
-  r, c: Cardinal;
   mouseCell: TPoint;
   cell: PCell;
-
+  r, c: Cardinal;
 begin
   inherited;
 
-  if (ssLeft in Shift) and ([ssCtrl, ssSuper] * Shift <> []) then
+  { Prepare processing of the hyperlink: triggers a timer, the hyperlink is
+    executed when the timer has expired (see HyperlinkTimerElapsed). }
+  if (ssLeft in Shift) then
   begin
     mouseCell := MouseToCell(Point(X, Y));
     r := GetWorksheetRow(mouseCell.Y);
     c := GetWorksheetCol(mouseCell.X);
     cell := Worksheet.FindCell(r, c);
+    if Worksheet.IsMerged(cell) then
+      cell := Worksheet.FindMergeBase(cell);
     if Worksheet.IsHyperlink(cell) then
     begin
-      hyperlink := Worksheet.ReadHyperlink(cell);
-      case hyperlink.Kind of
-        hkNone:
-          ;  // nothing to do
-        hkCell:
-          if ParseSheetCellString(hyperlink.Destination, sheetname, r, c) then
-          begin
-            sheet := Workbook.GetWorksheetByName(sheetname);
-            Workbook.SelectWorksheet(sheet);
-            Worksheet.SelectCell(r, c);
-          end else
-            raise Exception.CreateFmt('"%s" is not a valid cell string.', [hyperlink.Destination]);
-        else
-          if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
-      end;
-      exit;
+      FHyperlinkCell := cell;
+      FHyperlinkTimer.Enabled := true;
+    end else
+    begin
+      FHyperlinkCell := nil;
+      FHyperlinkTimer.Enabled := false;
     end;
   end;
-
-  //inherited;
 
   FEnhEditMode := true;
 end;
@@ -3398,6 +3462,20 @@ begin
      ((prevMouseCell.X <> GCache.MouseCell.X) or (prevMouseCell.Y <> GCache.MouseCell.Y))
   then
     InvalidateGrid;
+
+  if FHyperlinkTimer.Enabled and (ssLeft in Shift) then
+    FHyperlinkTimer.Enabled := false;
+end;
+
+procedure TsCustomWorksheetGrid.MouseUp(Button: TMouseButton;
+  Shift:TShiftState; X,Y:Integer);
+begin
+  if FHyperlinkTimer.Enabled then begin
+    FHyperlinkTimer.Enabled := false;
+    FHyperlinkCell := nil;
+  end;
+
+  inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------

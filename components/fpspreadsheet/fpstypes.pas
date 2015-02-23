@@ -678,19 +678,20 @@ begin
     if (uffVertAlign in AItem.UsedFormattingFields) then
       if (P^.VertAlignment <> AItem.VertAlignment) then continue;
 
-    if (uffBorder in AItem.UsedFormattingFields) then begin
+    if (uffBorder in AItem.UsedFormattingFields) then
       if (P^.Border <> AItem.Border) then continue;
-      equ := true;
-      for b in AItem.Border do begin
-        if (P^.BorderStyles[b].LineStyle <> AItem.BorderStyles[b].LineStyle) or
-           (P^.BorderStyles[b].Color <> Aitem.BorderStyles[b].Color)
-        then begin
-          equ := false;
-          break;
-        end;
+
+    // Border styles can be set even if borders are not used --> don't check uffBorder!
+    equ := true;
+    for b in AItem.Border do begin
+      if (P^.BorderStyles[b].LineStyle <> AItem.BorderStyles[b].LineStyle) or
+         (P^.BorderStyles[b].Color <> Aitem.BorderStyles[b].Color)
+      then begin
+        equ := false;
+        break;
       end;
-      if not equ then continue;
     end;
+    if not equ then continue;
 
     if (uffBackground in AItem.UsedFormattingFields) then begin
       if (P^.Background.Style <> AItem.Background.Style) then continue;

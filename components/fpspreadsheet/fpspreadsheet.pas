@@ -5209,6 +5209,7 @@ begin
     finally
       parser.Free;
     end;
+    Include(fmt.UsedFormattingFields, uffNumberFormat);
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
