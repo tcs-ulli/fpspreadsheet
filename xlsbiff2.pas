@@ -1732,7 +1732,7 @@ var
   s: ansistring;
   len: Integer;
 begin
-  s := UTF8ToAnsi(AString);
+  s := ConvertEncoding(AString, encodingUTF8, FCodePage);
   len := Length(s);
 
   { BIFF Record header }
