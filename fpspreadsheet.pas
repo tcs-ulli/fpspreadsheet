@@ -3563,8 +3563,6 @@ procedure TsWorksheet.RemoveMergedRange(ABaseRow, ABaseCol: Cardinal);
 var
   lCellRange: TsCellRange;
   AVLNode: TAVLTreeNode;
-  cell: PCell;
-  r, c: Cardinal;
 begin
   lCellRange.Row1 := ABaseRow;
   lCellRange.Col1 := ABaseCol;
@@ -6789,9 +6787,8 @@ procedure TsWorksheet.InsertCol(ACol: Cardinal);
 var
   col: PCol;
   i: Integer;
-  r, c: Cardinal;
-  rFirst, rLast: Cardinal;
-  cell, nextcell, gapcell: PCell;
+  r: Cardinal;
+  cell: PCell;
   AVLNode: TAVLTreeNode;
   rng: PsCellRange;
   comment: PsComment;
@@ -6873,7 +6870,6 @@ var
   col: Cardinal;
   formula: TsRPNFormula;
   i: Integer;
-  comment: PsComment;
 begin
   col := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);
@@ -6918,8 +6914,8 @@ procedure TsWorksheet.InsertRow(ARow: Cardinal);
 var
   row: PRow;
   i: Integer;
-  r, c: Cardinal;
-  cell, nextcell, gapcell: PCell;
+  c: Cardinal;
+  cell: PCell;
   AVLNode: TAVLTreeNode;
   rng: PsCellRange;
   comment: PsComment;
@@ -7000,7 +6996,6 @@ var
   row: Cardinal;
   i: Integer;
   formula: TsRPNFormula;
-  comment: PsComment;
 begin
   row := LongInt({%H-}PtrInt(arg));
   cell := PCell(data);

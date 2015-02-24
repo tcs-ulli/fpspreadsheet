@@ -82,7 +82,7 @@ type
     procedure ReadFills(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
-    procedure ReadHyperlinks(ANode: TDOMNode; AWorksheet: TsWorksheet);
+    procedure ReadHyperlinks(ANode: TDOMNode);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPalette(ANode: TDOMNode);
@@ -1232,8 +1232,7 @@ begin
     FWorkbook.DeleteFont(4);
 end;
 
-procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode;
-  AWorksheet: TsWorksheet);
+procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode);
 var
   node: TDOMNode;
   nodeName: String;
@@ -1612,7 +1611,6 @@ procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorks
 var
   rownode: TDOMNode;
   cellnode: TDOMNode;
-  nodename: String;
 begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
@@ -1717,7 +1715,7 @@ begin
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
       ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
-      ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'), FWorksheet);
+      ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
 
       FreeAndNil(Doc);
 
@@ -1733,7 +1731,7 @@ begin
         ReadXMLFile(Doc, FilePath + fn);
         DeleteFile(FilePath + fn);
         fn_comments := FindCommentsFileName(Doc.DocumentElement.FindNode('Relationship'));
-        ReadHyperlinks(Doc.DocumentElement.FindNode('Relationship'), FWorksheet);
+        ReadHyperlinks(Doc.DocumentElement.FindNode('Relationship'));
         FreeAndNil(Doc);
       end else
       if (SheetList.Count = 1) then
@@ -2171,7 +2169,6 @@ end;
 procedure TsSpreadOOXMLWriter.WriteHyperlinks(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
-  i: Integer;
   hyperlink: PsHyperlink;
   s: String;
   txt: String;
@@ -2642,7 +2639,6 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
 var
-  i: Integer;
   AVLNode: TAVLTreeNode;
   hyperlink: PsHyperlink;
   s: String;
