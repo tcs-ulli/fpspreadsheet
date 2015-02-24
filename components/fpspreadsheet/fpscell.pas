@@ -57,7 +57,7 @@ type
     property CellFormat: TsCellFormat
       read GetCellFormat write SetCellFormat;
     property Comment: String
-      read GetComment write Comment;
+      read GetComment write SetComment;
     property Font: TsFont read GetFont;
     property FontIndex: Integer
       read GetFontIndex write SetFontIndex;
@@ -219,7 +219,8 @@ end;
 
 procedure TCellHelper.SetHyperlink(const AValue: TsHyperlink);
 begin
-  Worksheet.WriteHyperlink(@self, AValue);
+  Worksheet.WriteHyperlink(@self, AValue.Kind, AValue.Target,
+    Worksheet.ReadAsUTF8Text(@self), AValue.Tooltip);
 end;
 
 procedure TCellHelper.SetNumberFormat(const AValue: TsNumberFormat);

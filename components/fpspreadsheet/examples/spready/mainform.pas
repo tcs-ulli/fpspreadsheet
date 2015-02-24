@@ -1222,11 +1222,11 @@ begin
             GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cbEast].LineStyle)),
             WorksheetGrid.Workbook.GetColorName(fmt.BorderStyles[cbEast].Color)
           ]));
-      if (ACell=nil) or not (uffBackgroundColor in fmt.UsedformattingFields)
+      if (ACell=nil) or not (uffBackground in fmt.UsedformattingFields)
         then Strings.Add('BackgroundColor=')
         else Strings.Add(Format('BackgroundColor=%d (%s)', [
-               fmt.BackgroundColor,
-               WorksheetGrid.Workbook.GetColorName(fmt.BackgroundColor)
+               fmt.Background.BgColor,
+               WorksheetGrid.Workbook.GetColorName(fmt.Background.BgColor)
              ]));
       if (ACell=nil) or not (uffNumberFormat in fmt.UsedFormattingFields)
         then Strings.Add('NumberFormat=')
