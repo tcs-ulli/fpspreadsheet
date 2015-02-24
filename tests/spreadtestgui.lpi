@@ -157,6 +157,9 @@
         <DebugInfoType Value="dsDwarf2Set"/>
       </Debugging>
     </Linking>
+    <Other>
+      <CompilerPath Value="$(CompPath)"/>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">

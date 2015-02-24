@@ -474,7 +474,7 @@ begin
             '", cell '+CellNotation(MyWorkSheet,Row,1));
           {$else}
           // Non-Windows: test without error margin
-          CheckEquals(expected.NumberValue, actual.NumberValue,
+          CheckEquals(expected.ResFloat, actual.ResFloat,
             'Test read calculated formula result mismatch, formula "' + formula +
             '", cell '+CellNotation(MyWorkSheet,Row,1));
           {$endif}

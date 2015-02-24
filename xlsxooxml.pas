@@ -1645,7 +1645,7 @@ var
   SheetList: TStringList;
   i: Integer;
   fn: String;
-  fn_sheetxmlrels: String;
+  fn_comments: String;
 begin
   //unzip "content.xml" of "AFileName" to folder "FilePath"
   FilePath := GetTempDir(false);
@@ -1737,26 +1737,28 @@ begin
         // find exact name of comments<n>.xml file
         ReadXMLFile(Doc, FilePath + fn);
         DeleteFile(FilePath + fn);
-        fn := FindCommentsFileName(Doc.DocumentElement.FindNode('Relationship'));
+        fn_comments := FindCommentsFileName(Doc.DocumentElement.FindNode('Relationship'));
         ReadHyperlinks(Doc.DocumentElement.FindNode('Relationship'), FWorksheet);
         FreeAndNil(Doc);
       end else
       if (SheetList.Count = 1) then
         // if the wookbook has only 1 sheet then the sheet.xml.rels file is missing
-        fn := 'comments1.xml'
+        fn_comments := 'comments1.xml'
       else
         // this sheet does not have any cell comments
         continue;
       // Extract texts from the comments file found and apply to worksheet.
-      fn := OOXML_PATH_XL + fn;
-      UnzipFile(AFileName, fn, FilePath);
-      if FileExists(FilePath + fn) then begin
-        ReadXMLFile(Doc, FilePath + fn);
-        DeleteFile(FilePath + fn);
-        ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
-        FreeAndNil(Doc);
+      if fn_comments <> '' then
+      begin
+        fn := OOXML_PATH_XL + fn_comments;
+        UnzipFile(AFileName, fn, FilePath);
+        if FileExists(FilePath + fn) then begin
+          ReadXMLFile(Doc, FilePath + fn);
+          DeleteFile(FilePath + fn);
+          ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
+          FreeAndNil(Doc);
+        end;
       end;
-
       ApplyHyperlinks(FWorksheet);
     end;  // for
 
