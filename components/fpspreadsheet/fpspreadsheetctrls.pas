@@ -903,11 +903,8 @@ var
   j: Integer;
   I: IsSpreadsheetControl;
   C: TComponent;
-
-  cell: PCell;
 begin
   for j:=0 to FListeners.Count-1 do begin
-    if Worksheet <> nil then cell := Worksheet.FindCell(0,0);
     C := TComponent(FListeners[j]);
     if C.GetInterface(GUID_SpreadsheetControl, I) then
       I.ListenerNotification(AChangedItems, AData)
@@ -2693,8 +2690,7 @@ begin
         case hyperlink^.Kind of
           hkNone: s := s + ' <error>';
           hkCell: s := s + ' (internal cell reference)';
-          hkFile: s := s + ' (external file)';
-          hkURL : s := s + ' (URL)';
+          hkURI : s := s + ' (external URI)';
         end;
       end else
         s := '<error>';
