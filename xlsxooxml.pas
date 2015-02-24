@@ -107,6 +107,7 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
+    FNext_rId: Integer;
     procedure WriteCommentsCallback(AComment: PsComment;
       ACommentIndex: Integer; AStream: TStream);
     procedure WriteVmlDrawingsCallback(AComment: PsComment;
@@ -136,6 +137,7 @@ type
     procedure WriteDimension(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
+    procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
@@ -171,16 +173,18 @@ type
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
+    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TDateTime; ACell: PCell); override;
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -1290,16 +1294,7 @@ begin
                 if s <> '' then hyperlinkData.Location := s;
                 s := GetAttrValue(node, 'TargetMode');
                 if s = 'External' then
-                begin
-                  if (pos('http:', hyperlinkdata.Location) = 1) or
-                     (pos('mailto:', hyperlinkData.Location) = 1) or
-                     (pos('file:', hyperlinkData.Location) = 1) or
-                     (pos('ftp:', hyperlinkdata.Location) = 1)
-                  then
-                    hyperlinkData.Kind := hkURL
-                  else
-                    hyperlinkData.Kind := hkFile;
-                end;
+                  hyperlinkData.Kind := hkURI
               end;
             end;
           end;
@@ -2007,6 +2002,9 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteComments(AWorksheet: TsWorksheet);
 begin
+  if AWorksheet.Comments.Count = 0 then
+    exit;
+
   // Create the comments stream
   SetLength(FSComments, FCurSheetNum + 1);
   if (boBufStream in Workbook.Options) then
@@ -2168,6 +2166,49 @@ begin
   end;
   AppendToStream(AStream,
       '</fonts>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteHyperlinks(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  i: Integer;
+  hyperlink: PsHyperlink;
+  s: String;
+  txt: String;
+  AVLNode: TAVLTreeNode;
+begin
+  if AWorksheet.Hyperlinks.Count = 0 then
+    exit;
+
+  AppendToStream(AStream,
+    '<hyperlinks>');
+
+  // Keep in sync with WriteWorksheetRels !
+  FNext_rID := IfThen(AWorksheet.Comments.Count = 0, 1, 3);
+
+  AVLNode := AWorksheet.Hyperlinks.FindLowest;
+  while AVLNode <> nil do begin
+    hyperlink := PsHyperlink(AVLNode.Data);
+    s := Format('ref="%s"', [GetCellString(hyperlink^.Row, hyperlink^.Col)]);
+    if hyperlink^.Kind <> hkCell then
+    begin
+      s := Format('%s r:id="rId%d"', [s, FNext_rId]);
+      inc(FNext_rId);
+    end;
+    if hyperlink^.Kind = hkCell then
+      s := Format('%s location="%s"', [s, hyperlink^.Target]);
+    txt := AWorksheet.ReadAsUTF8Text(hyperlink^.Row, hyperlink^.Col);
+    if (txt <> '') and (txt <> hyperlink^.Target) then
+      s := Format('%s display="%s"', [s, txt]);
+    if hyperlink^.ToolTip <> '' then
+      s := Format('%s tooltip="%s"', [s, hyperlink^.Tooltip]);
+    AppendToStream(AStream,
+        '<hyperlink ' + s + ' />');
+    AVLNode := AWorksheet.Hyperlinks.FindSuccessor(AVLNode);
+  end;
+
+  AppendToStream(AStream,
+    '</hyperlinks>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteMergedCells(AStream: TStream;
@@ -2338,10 +2379,6 @@ begin
         AVLNode := AWorksheet.Cells.Find(@lCell);
         if Assigned(AVLNode) then begin
           WriteCellCallback(PCell(AVLNode.Data), AStream);
-          {
-          if (cfHasComment in PCell(AVLNode.Data)^.Flags) then
-            inc(FNumCommentsOnSheet);
-            }
         end;
       end;
       AppendToStream(AStream,
@@ -2532,6 +2569,9 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteVmlDrawings(AWorksheet: TsWorksheet);
 begin
+  if AWorksheet.Comments.Count = 0 then
+    exit;
+
   SetLength(FSVmlDrawings, FCurSheetNum + 1);
   if (boBufStream in Workbook.Options) then
     FSVmlDrawings[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsVMLD%d', [FCurSheetNum])))
@@ -2559,7 +2599,6 @@ begin
 
   // Write vmlDrawings for each comment (formatting and position of comment box)
   IterateThroughComments(FSVmlDrawings[FCurSheetNum], AWorksheet.Comments, WriteVmlDrawingsCallback);
-  //  IterateThroughCells(FSVmlDrawings[FCurSheetNum], AWorksheet.Cells, WriteVmlDrawingsCallback);
 
   // Footer
   AppendToStream(FSVmlDrawings[FCurSheetNum],
@@ -2602,11 +2641,20 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
+var
+  i: Integer;
+  AVLNode: TAVLTreeNode;
+  hyperlink: PsHyperlink;
+  s: String;
 begin
-  Unused(AWorksheet);
+  // Extend stream array
+  SetLength(FSSheetRels, FCurSheetNum + 1);
+
+  // Anything to write?
+  if (AWorksheet.Comments.Count = 0) and (AWorksheet.Hyperlinks.Count = 0) then
+    exit;
 
   // Create stream
-  SetLength(FSSheetRels, FCurSheetNum + 1);
   if (boBufStream in Workbook.Options) then
     FSSheetRels[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsWSR%d', [FCurSheetNum])))
   else
@@ -2617,13 +2665,41 @@ begin
     XML_HEADER);
   AppendToStream(FSSheetRels[FCurSheetNum], Format(
     '<Relationships xmlns="%s">', [SCHEMAS_RELS]));
-  // Relationships
-  AppendToStream(FSSheetRels[FCurSheetNum], Format(
-      '<Relationship Id="rId2" Type="%s" Target="../comments%d.xml" />',
-        [SCHEMAS_COMMENTS, FCurSheetNum+1]));
-  AppendToStream(FSSheetRels[FCurSheetNum], Format(
+
+  FNext_rId := 1;
+
+  // Relationships for comments
+  if AWorksheet.Comments.Count > 0 then
+  begin
+    AppendToStream(FSSheetRels[FCurSheetNum], Format(
       '<Relationship Id="rId1" Type="%s" Target="../drawings/vmlDrawing%d.vml" />',
         [SCHEMAS_DRAWINGS, FCurSheetNum+1]));
+    AppendToStream(FSSheetRels[FCurSheetNum], Format(
+      '<Relationship Id="rId2" Type="%s" Target="../comments%d.xml" />',
+        [SCHEMAS_COMMENTS, FCurSheetNum+1]));
+    FNext_rId := 3;
+  end;
+
+  // Relationships for hyperlinks
+  if AWorksheet.Hyperlinks.Count > 0 then
+  begin
+    AVLNode := AWorksheet.Hyperlinks.FindLowest;
+    while Assigned(AVLNode) do
+    begin
+      hyperlink := PsHyperlink(AVLNode.Data);
+      if hyperlink^.Kind <> hkCell then
+      begin
+        s := Format('Id="rId%d" Type="%s" Target="%s"',
+          [FNext_rId, SCHEMAS_HYPERLINKS, hyperlink^.Target]);
+        if hyperlink^.Kind <> hkCell then
+          s := s + ' TargetMode="External"';
+        AppendToStream(FSSheetRels[FCurSheetNum],
+          '<Relationship ' + s + ' />');
+        inc(FNext_rId);
+      end;
+      AVLNode := AWorksheet.Hyperlinks.FindSuccessor(AVLNode);
+    end;
+  end;
 
   // Footer
   AppendToStream(FSSheetRels[FCurSheetNum],
@@ -2749,16 +2825,14 @@ begin
 
   // Write all worksheets which fills also the shared strings.
   // Also: write comments and related files
+  FNext_rId := 1;
   for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     FWorksheet := Workbook.GetWorksheetByIndex(i);
     WriteWorksheet(FWorksheet);
-    if FWorksheet.Comments.Count > 0 then
-    begin
-      WriteComments(FWorksheet);
-      WriteVmlDrawings(FWorksheet);
-      WriteWorksheetRels(FWorksheet);
-    end;
+    WriteComments(FWorksheet);
+    WriteVmlDrawings(FWorksheet);
+    WriteWorksheetRels(FWorksheet);
   end;
 
   // Finalization of the shared strings document
@@ -2835,6 +2909,7 @@ begin
   WriteSheetViews(FSSheets[FCurSheetNum], AWorksheet);
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
+  WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
@@ -3026,19 +3101,19 @@ begin
     end;
 
     for i:=0 to High(FSComments) do begin
-      if FSComments[i] = nil then continue;
+      if (FSComments[i] = nil) or (FSComments[i].Size = 0) then continue;
       FSComments[i].Position := 0;
       FZip.Entries.AddFileEntry(FSComments[i], OOXML_PATH_XL + Format('comments%d.xml', [i+1]));
     end;
 
     for i:=0 to High(FSSheetRels) do begin
-      if FSSheetRels[i] = nil then continue;
+      if (FSSheetRels[i] = nil) or (FSSheetRels[i].Size = 0) then continue;
       FSSheetRels[i].Position := 0;
       FZip.Entries.AddFileEntry(FSSheetRels[i], OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]));
     end;
 
     for i:=0 to High(FSVmlDrawings) do begin
-      if FSVmlDrawings[i] = nil then continue;
+      if (FSVmlDrawings[i] = nil) or (FSVmlDrawings[i].Size = 0) then continue;
       FSVmlDrawings[i].Position := 0;
       FZip.Entries.AddFileEntry(FSVmlDrawings[i], OOXML_PATH_XL_DRAWINGS + Format('vmlDrawing%d.vml', [i+1]));
     end;
@@ -3206,15 +3281,19 @@ begin
   end;
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteLabel ()
-*
-*  DESCRIPTION:    Writes a string to the sheet
-*                  If the string length exceeds 32767 bytes, the string
-*                  will be truncated and an exception will be raised as
-*                  a warning.
-*
-*******************************************************************}
+procedure TsSpreadOOXMLWriter.WriteHyperlink(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  if FWorksheet.IsHyperlink(ACell) then
+    WriteLabel(AStream, ARow, ACol, FWorksheet.ReadAsUTF8Text(ACell), ACell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a string to the stream
+
+  If the string length exceeds 32767 bytes, the string will be truncated and a
+  warning will be written to the workbook's log.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
 const

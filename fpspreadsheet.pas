@@ -968,21 +968,31 @@ type
     {@@ Abstract method for writing a boolean cell. Must be overridden by descendent classes. }
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); virtual; abstract;
-    {@@ (Pseudo-)abstract method for writing a cell comment. Must be overridden by descendent classes }
+    {@@ (Pseudo-)abstract method for writing a cell comment.
+        Must be overridden by descendent classes }
     procedure WriteComment(AStream: TStream; ACell: PCell); virtual;
-    {@@ Abstract method for writing a date/time value to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a date/time value to a cell.
+        Must be overridden by descendent classes. }
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); virtual; abstract;
-    {@@ Abstract method for writing an Excel error value to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing an Excel error value to a cell.
+        Must be overridden by descendent classes. }
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); virtual; abstract;
-    {@@ Abstract method for writing a formula to a cell. Must be overridden by descendent classes. }
+    {@@ (Pseudo-) abstract method for writing a formula to a cell.
+        Must be overridden by descendent classes. }
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); virtual;
-    {@@ Abstract method for writing a string to a cell. Must be overridden by descendent classes. }
+    {@@ (Pseudo-)abstract method for writing a hyperlink to a cell.
+        Must be overridden by descendent classes. }
+    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); virtual;
+    {@@ Abstract method for writing a string to a cell.
+        Must be overridden by descendent classes. }
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); virtual; abstract;
-    {@@ Abstract method for writing a number value to a cell. Must be overridden by descendent classes. }
+    {@@ Abstract method for writing a number value to a cell.
+        Must be overridden by descendent classes. }
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); virtual; abstract;
 
@@ -1941,6 +1951,7 @@ var
   hyperlink: PsHyperlink;
   addNew: Boolean;
   row, col: Cardinal;
+  fmt: TsCellFormat;
 begin
   if ACell = nil then
     exit;
@@ -1968,6 +1979,14 @@ begin
       ACell^.UTF8StringValue := ADisplayText
     else
       ACell^.UTF8StringValue := ATarget;
+
+    fmt := ReadCellFormat(ACell);
+    if fmt.FontIndex = DEFAULT_FONTINDEX then
+    begin
+      fmt.FontIndex := HYPERLINK_FONTINDEX;
+      Include(fmt.UsedFormattingFields, uffFont);
+      ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
+    end;
   end;
 
   ChangedCell(row, col);
@@ -9547,6 +9566,8 @@ begin
         WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
       cctUTF8String:
         WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
+      cctHyperlink:
+        WriteHyperlink(AStream, ACell^.Row, ACell^.Col, ACell);
     end;
   //if ACell^.Comment <> '' then
   if FWorksheet.ReadComment(ACell) <> '' then
@@ -9705,6 +9726,13 @@ end;
                      to the stream
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  Unused(AStream);
+  Unused(ARow, ACol, ACell);
+end;
+
+procedure TsCustomSpreadWriter.WriteHyperlink(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 begin
   Unused(AStream);
