@@ -145,15 +145,15 @@ type
   PsComment = ^TsComment;
 
   {@@ Specifies whether a hyperlink refers to a cell address within the current
-      workbook, an external file, or a URL }
-  TsHyperlinkKind = (hkNone, hkCell, hkFile, hkURL);
+      workbook, or a URI }
+  TsHyperlinkKind = (hkNone, hkCell, hkURI);
 
   {@@ The record TsHyperlink contains info on a hyperlink in a cell
     @param   Row          Row index of the cell containing the hyperlink
     @param   Col          Column index of the cell containing the hyperlink
     @param   Kind         Specifies whether clicking on the hyperlink results in
                           jumping the a cell address within the current workbook,
-                          opens a file, or opens a URL
+                          or opens a URL
     @param   Target       Target of hyperlink (cell address, filename, URL)
     @param   Note         Text displayed as a popup hint by Excel }
   TsHyperlink = record
