@@ -205,6 +205,7 @@ end;
 destructor TsCustomSpreadReader.Destroy;
 begin
   FreeAndNil(FNumFormatList);
+  FreeAndNil(FCellFormatList);
   inherited Destroy;
 end;
 

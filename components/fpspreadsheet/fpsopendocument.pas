@@ -165,12 +165,12 @@ type
     procedure ListAllRowStyles;
     procedure ResetStreams;
     // Routines to write those files
+    procedure WriteContent;
     procedure WriteMimetype;
     procedure WriteMetaInfManifest;
     procedure WriteMeta;
     procedure WriteSettings;
     procedure WriteStyles;
-    procedure WriteContent;
     procedure WriteWorksheet(AStream: TStream; CurSheet: TsWorksheet);
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -180,6 +180,8 @@ type
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
+    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
@@ -1495,10 +1497,13 @@ begin
               end else
               begin
                 hyperlink.Kind := hkURI;
+                hyperlink.Target := s;
+                {
                 if IsAbsoluteUri(s) then
                   hyperlink.Target := s
                 else
                   hyperlink.Target := FileNameToUri(s);
+                  }
               end;
               hyperlink.Tooltip := '';
             end;
@@ -2877,6 +2882,7 @@ begin
   AppendToStream(FSContent,
     '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
         '" xmlns:fo="'     + SCHEMAS_XMLNS_FO +
+        '" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/' +
         '" xmlns:style="'  + SCHEMAS_XMLNS_STYLE +
         '" xmlns:text="'   + SCHEMAS_XMLNS_TEXT +
         '" xmlns:table="'  + SCHEMAS_XMLNS_TABLE +
@@ -4145,6 +4151,15 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
+  Writes a hyperlink
+-------------------------------------------------------------------------------}
+procedure TsSpreadOpenDocWriter.WriteHyperlink(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  WriteLabel(AStream, ARow, ACol, ACell^.UTF8StringValue, ACell);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes a cell with text content
 
   The UTF8 Text needs to be converted, because some chars are invalid in XML
@@ -4158,9 +4173,10 @@ var
   rowsSpannedStr: String;
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
-  str: ansistring;
-  comment: String;
+  txt: ansistring;
+  textp, link, comment: String;
   fmt: TsCellFormat;
+  hyperlink: TsHyperlink;
 begin
   Unused(ARow, ACol);
 
@@ -4185,21 +4201,34 @@ begin
     spannedStr := '';
 
   // Check for invalid characters
-  str := AValue;
-  if not ValidXMLText(str) then
+  txt := AValue;
+  if not ValidXMLText(txt) then
     Workbook.AddErrorMsg(
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
     ]);
 
+  if ACell^.ContentType = cctHyperlink then
+  begin
+    hyperlink := FWorksheet.ReadHyperlink(ACell);
+    case hyperlink.Kind of
+      hkCell: link := '#' + hyperlink.Target;
+      hkURI : link := hyperlink.Target;
+    end;
+    textp := Format(
+      '<text:p>'+
+        '<text:a xlink:href="%s" xlink:type="simple">%s</text:a>'+
+      '</text:p>', [link, txt]);
+  end else
+    textp := '<text:p>' + txt + '</text:p>';
+
   // Write it ...
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="string" %s %s>' +
-      comment+
-      '<text:p>%s</text:p>'+
+      comment +
+      textp +
     '</table:table-cell>', [
-    lStyle, spannedStr,
-    str
+    lStyle, spannedStr
   ]));
 end;
 
