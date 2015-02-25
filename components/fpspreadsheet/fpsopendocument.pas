@@ -73,7 +73,6 @@ type
 
   TsSpreadOpenDocReader = class(TsSpreadXMLReader)
   private
-//    FCellStyleList: TFPList;
     FColumnStyleList: TFPList;
     FColumnList: TFPList;
     FRowStyleList: TFPList;
@@ -117,9 +116,10 @@ type
     procedure ReadNumber(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
 
   public
-    { General reading methods }
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
+
+    { General reading methods }
     procedure ReadFromFile(AFileName: string); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
@@ -187,9 +187,11 @@ type
       const AValue: double; ACell: PCell); override;
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TDateTime; ACell: PCell); override;
+
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
+
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
     procedure WriteToFile(const AFileName: string;
@@ -200,7 +202,7 @@ type
 implementation
 
 uses
-  StrUtils, Variants,
+  StrUtils, Variants, URIParser,
   fpsPatches, fpsStrings, fpsStreams, fpsExprParser;
 
 const
@@ -764,21 +766,26 @@ var
 begin
   Result := false;
 
-  // Is there a style attached to the cell?
-  styleIndex := -1;
-  if AStyleName <> '' then
-    styleIndex := FCellFormatList.FindIndexOfName(AStyleName);
-  if (styleIndex = -1) then
+  if ACell^.ContentType = cctHyperlink then
+    FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX)
+  else
   begin
-    // No - look for the style attached to the column of the cell and
-    // find the cell style by the DefaultCellStyleIndex stored in the column list.
-    i := FindColumnByCol(ACell^.Col);
-    if i = -1 then
-      exit;
-    styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
+    // Is there a style attached to the cell?
+    styleIndex := -1;
+    if AStyleName <> '' then
+      styleIndex := FCellFormatList.FindIndexOfName(AStyleName);
+    if (styleIndex = -1) then
+    begin
+      // No - look for the style attached to the column of the cell and
+      // find the cell style by the DefaultCellStyleIndex stored in the column list.
+      i := FindColumnByCol(ACell^.Col);
+      if i = -1 then
+        exit;
+      styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
+    end;
+    fmt := FCellFormatList.Items[styleIndex];
+    ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
   end;
-  fmt := FCellFormatList.Items[styleIndex];
-  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
 
   Result := true;
 end;
@@ -1452,10 +1459,12 @@ var
   cellText: String;
   styleName: String;
   childnode: TDOMNode;
+  subnode: TDOMNode;
   spanNode: TDOMNode;
   nodeName: String;
   s: String;
   cell: PCell;
+  hyperlink: TsHyperlink;
 begin
   { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
     catch the spaces inserted in formatting texts. However, this adds lots of
@@ -1466,7 +1475,38 @@ begin
   while Assigned(childnode) do
   begin
     nodeName := childNode.NodeName;
+    hyperlink.Kind := hkNone;
     if nodeName = 'text:p' then begin
+      subnode := childnode.FirstChild;
+      while Assigned(subnode) do
+      begin
+        nodename := subnode.NodeName;
+        if nodename = 'text:a' then begin
+          s := GetAttrValue(subnode, 'xlink:type');
+          if s = 'simple' then
+          begin
+            s := GetAttrValue(subnode, 'xlink:href');
+            if s <> '' then
+            begin
+              if s[1]='#' then
+              begin
+                hyperlink.Kind := hkCell;
+                hyperlink.Target := Copy(s, 2, Length(s));
+              end else
+              begin
+                hyperlink.Kind := hkURI;
+                if IsAbsoluteUri(s) then
+                  hyperlink.Target := s
+                else
+                  hyperlink.Target := FileNameToUri(s);
+              end;
+              hyperlink.Tooltip := '';
+            end;
+          end;
+        end;
+        subnode := subnode.NextSibling;
+      end;
+
       s := childNode.TextContent;
       if s <> '' then
       begin
@@ -1499,7 +1539,10 @@ begin
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(ARow, ACol);
-  FWorkSheet.WriteUTF8Text(cell, cellText);
+  if hyperlink.Kind = hkNone then
+    FWorkSheet.WriteUTF8Text(cell, cellText)
+  else
+    FWorksheet.WriteHyperlink(cell, hyperlink.Kind, hyperlink.Target, cellText, hyperlink.Tooltip);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
