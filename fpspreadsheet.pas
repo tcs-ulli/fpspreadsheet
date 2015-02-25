@@ -1209,6 +1209,7 @@ begin
   FCols.Free;
   FComments.Free;
   FMergedCells.Free;
+  FHyperlinks.Free;
 
   inherited Destroy;
 end;
