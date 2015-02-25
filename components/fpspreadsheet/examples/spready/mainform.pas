@@ -354,7 +354,7 @@ implementation
 
 uses
   TypInfo, LCLIntf, LCLType, LCLVersion, fpcanvas,
-  fpsutils, fpscsv, fpsNumFormatParser,
+  fpsutils, fpscsv, fpsNumFormat,
   sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sfCurrencyForm;
 
 const

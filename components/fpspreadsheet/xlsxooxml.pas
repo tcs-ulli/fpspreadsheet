@@ -42,7 +42,8 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpstypes, fpspreadsheet, fpsutils, fpsxmlcommon, xlscommon;
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsReaderWriter, fpsNumFormat,
+  fpsxmlcommon, xlsCommon;
   
 type
 

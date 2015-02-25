@@ -38,8 +38,8 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpstypes, fpspreadsheet,
-  fpsutils, fpsNumFormatParser, fpsxmlcommon;
+  fpstypes, fpspreadsheet, fpsReaderWriter,
+  fpsutils, fpsNumFormat, fpsNumFormatParser, fpsxmlcommon;
   
 type
   TDateMode=(

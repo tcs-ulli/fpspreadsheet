@@ -58,15 +58,15 @@ unit xlsbiff5;
 interface
 
 uses
-  Classes, SysUtils, fpcanvas,
-  fpstypes, fpspreadsheet,
+  Classes, SysUtils, fpcanvas, lconvencoding,
+  fpsTypes, fpsNumFormat, fpspreadsheet,
   xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
   fpolestorage,
   {$endif}
-  fpsutils, lconvencoding;
+  fpsUtils;
 
 type
 
@@ -200,7 +200,7 @@ var
 implementation
 
 uses
-  fpsStrings, fpsStreams;
+  fpsStrings, fpsStreams, fpsReaderWriter;
 
 const
    { Excel record IDs }

@@ -31,7 +31,7 @@ interface
 uses
   Classes, SysUtils,
   fpimage, fgl, lconvencoding,
-  fpsTypes, fpspreadsheet, fpsutils;
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsReaderWriter;
 
 type
 

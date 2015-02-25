@@ -57,6 +57,7 @@ begin
   // Finalization
   MyWorkbook.Free;
 
+  WriteLn('Finished. Press [ENTER] to close...');
   ReadLn;
 end.
 

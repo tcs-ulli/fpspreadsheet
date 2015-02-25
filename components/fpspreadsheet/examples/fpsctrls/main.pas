@@ -309,6 +309,10 @@ implementation
 
 {$R *.lfm}
 
+uses
+  fpsUtils;
+
+
 { TMainForm }
 
 { Loads the spreadsheet file selected by the AcFileOpen action }

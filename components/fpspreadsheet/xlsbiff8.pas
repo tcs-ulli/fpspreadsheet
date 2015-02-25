@@ -55,14 +55,14 @@ unit xlsbiff8;
 interface
 
 uses
-  Classes, SysUtils, fpcanvas, DateUtils, contnrs,
-  fpstypes, fpspreadsheet, xlscommon,
+  Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8,
+  fpstypes, fpsnumformat, fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
   fpolestorage,
   {$endif}
-  fpsutils, lazutf8;
+  fpsutils;
 
 type
 
@@ -243,7 +243,7 @@ implementation
 
 uses
   Math, lconvencoding,
-  fpsStrings, fpsStreams, fpsExprParser, xlsEscher;
+  fpsStrings, fpsStreams, fpsReaderWriter, fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }

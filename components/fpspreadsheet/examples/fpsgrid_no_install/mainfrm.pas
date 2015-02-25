@@ -41,6 +41,10 @@ implementation
 
 {$R *.lfm}
 
+uses
+  fpsUtils;
+
+
 { TForm1 }
 
 procedure TForm1.FormCreate(Sender: TObject);
