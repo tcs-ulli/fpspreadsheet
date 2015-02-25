@@ -92,6 +92,7 @@ type
 
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
+    FSheetIndex: Integer;  // Index of worksheet to be written
     procedure GetCellAttributes(ACell: PCell; XFIndex: Word;
       out Attrib1, Attrib2, Attrib3: Byte);
     { Record writing methods }
@@ -141,6 +142,20 @@ type
     { General writing methods }
     procedure WriteToStream(AStream: TStream); override;
   end;
+
+  TExcel2Settings = record
+    // Settings used when writing to file
+    DateMode: TDateMode;
+    CodePage: String;
+    SheetIndex: Integer;
+  end;
+
+var
+  Excel2Settings: TExcel2Settings = (
+    DateMode: dm1900;
+    CodePage: 'cp1252';   // on Windows, will be replaced --> see initalization
+    SheetIndex: 0;
+  );
 
 var
   { the palette of the default BIFF2 colors as "big-endian color" values }
@@ -1032,6 +1047,9 @@ constructor TsSpreadBIFF2Writer.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   FLimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
+  FDateMode := Excel2Settings.DateMode;
+  FCodePage := Excel2Settings.CodePage;
+  FSheetIndex := Excel2Settings.SheetIndex;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1294,11 +1312,13 @@ procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream);
 var
   pane: Byte;
 begin
-  FWorksheet := Workbook.GetFirstWorksheet;
+  FWorksheet := Workbook.GetWorksheetByIndex(FSheetIndex);
+  if FWorksheet = nil then
+    raise Exception.Create(rsWorksheetNotFound1);
 
   WriteBOF(AStream);
     WriteFonts(AStream);
-    WriteCodePage(AStream, Workbook.CodePage); //Encoding);
+    WriteCodePage(AStream, FCodePage);
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
     WriteXFRecords(AStream);
@@ -2022,6 +2042,10 @@ end;
 *******************************************************************}
 
 initialization
+
+ {$IFDEF MSWINDOWS}
+  Excel2Settings.CodePage := GetDefaultTextEncoding;
+ {$ENDIF}
 
   RegisterSpreadFormat(TsSpreadBIFF2Reader, TsSpreadBIFF2Writer, sfExcel2);
   MakeLEPalette(@PALETTE_BIFF2, Length(PALETTE_BIFF2));

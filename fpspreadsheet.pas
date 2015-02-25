@@ -614,8 +614,6 @@ type
   private
     { Internal data }
     FWorksheets: TFPList;
-    FCodePage: String;
-//    FEncoding: TsEncoding;
     FFormat: TsSpreadsheetFormat;
     FBuiltinFontCount: Integer;
     FPalette: array of TsColorValue;
@@ -756,9 +754,11 @@ type
 
     {@@ Identifies the "active" worksheet (only for visual controls)}
     property ActiveWorksheet: TsWorksheet read FActiveWorksheet;
+    (*
     {@@ This property is only used for formats which don't support unicode
       and support a single encoding for the whole document, like Excel 2 to 5 }
     property CodePage: String read FCodePage write FCodepage;
+    *)
 //    property Encoding: TsEncoding read FEncoding write FEncoding;
     {@@ Retrieves error messages collected during reading/writing }
     property ErrorMsg: String read GetErrorMsg;
@@ -7030,7 +7030,6 @@ begin
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
   FFormat := sfExcel8;
-  FCodePage := GetDefaultTextEncoding;
 
   FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);

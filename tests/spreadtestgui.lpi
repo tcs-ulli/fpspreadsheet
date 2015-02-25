@@ -8,6 +8,7 @@
       <MainUnit Value="0"/>
       <Title Value="spreadtestgui"/>
       <ResourceType Value="res"/>
+      <Icon Value="-1"/>
     </General>
     <i18n>
       <EnableI18N LFM="False"/>
@@ -111,6 +112,7 @@
       <Unit15>
         <Filename Value="errortests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="errortests"/>
       </Unit15>
       <Unit16>
         <Filename Value="virtualmodetests.pas"/>
@@ -157,9 +159,6 @@
         <DebugInfoType Value="dsDwarf2Set"/>
       </Debugging>
     </Linking>
-    <Other>
-      <CompilerPath Value="$(CompPath)"/>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">

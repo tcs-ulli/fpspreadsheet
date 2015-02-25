@@ -166,6 +166,15 @@ type
     procedure WriteToStream(AStream: TStream); override;
   end;
 
+  TExcel8Settings = record
+    DateMode: TDateMode;
+  end;
+
+var
+  Excel8Settings: TExcel8Settings = (
+    DateMode: dm1900;
+  );
+
 var
   // the palette of the 64 default BIFF8 colors as "big-endian color" values
   PALETTE_BIFF8: array[$00..$3F] of TsColorValue = (
@@ -1391,11 +1400,14 @@ begin
 end;
 
 
-{ TsSpreadBIFF8Writer }
+{------------------------------------------------------------------------------}
+{                          TsSpreadBIFF8Writer                                 }
+{------------------------------------------------------------------------------}
 
 constructor TsSpreadBIFF8Writer.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FDateMode := Excel8Settings.DateMode;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1448,12 +1460,12 @@ const
 var
   CurrentPos: Int64;
   Boundsheets: array of Int64;
-  i, len: Integer;
+  i: Integer;
   pane: Byte;
 begin
   { Write workbook globals }
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
-  WriteCodePage(AStream, 'ucs2le'); //seUTF16);
+  WriteCodePage(AStream, 'ucs2le'); // = utf8
   WriteWindow1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -1462,13 +1474,9 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  SetLength(Boundsheets, 0);
+  SetLength(Boundsheets, Workbook.GetWorksheetCount);
   for i := 0 to Workbook.GetWorksheetCount - 1 do
-  begin
-    len := Length(Boundsheets);
-    SetLength(Boundsheets, len + 1);
-    Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
-  end;
+    Boundsheets[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
 
   WriteEOF(AStream);
 
