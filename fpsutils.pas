@@ -87,6 +87,7 @@ function GetCellRangeString(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
@@ -834,6 +835,28 @@ begin
     // --- no Excel errors --
     errFormulaNotSupported  : Result := '#FORMULA?';
     else                      Result := '#UNKNOWN ERROR';
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the name of the given spreadsheet file format.
+
+  @param   AFormat  Identifier of the file format
+  @return  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
+           'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
+-------------------------------------------------------------------------------}
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
+begin
+  case AFormat of
+    sfExcel2              : Result := 'BIFF2';
+    sfExcel5              : Result := 'BIFF5';
+    sfExcel8              : Result := 'BIFF8';
+    sfooxml               : Result := 'OOXML';
+    sfOpenDocument        : Result := 'Open Document';
+    sfCSV                 : Result := 'CSV';
+    sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
+    sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
+    else                    Result := rsUnknownSpreadsheetFormat;
   end;
 end;
 

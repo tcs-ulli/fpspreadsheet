@@ -29,8 +29,8 @@ type
   { Forward declarations }
   TsWorksheet = class;
   TsWorkbook = class;
-  TsCustomSpreadReader = class;
-  TsCustomSpreadWriter = class;
+  TsBasicSpreadReader = class;
+  TsBasicSpreadWriter = class;
 
   {@@ Pointer to a TCell record }
   PCell = ^TCell;
@@ -657,7 +657,6 @@ type
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
     procedure ReCalc;
-    procedure UpdateCaches;
 
   public
     {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
@@ -673,8 +672,8 @@ type
       out SheetType: TsSpreadsheetFormat): Boolean;
     class function GetFormatFromFileName(const AFileName: TFileName;
       out SheetType: TsSpreadsheetFormat): Boolean;
-    function  CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
-    function  CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
+    function CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
+    function CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsBasicSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
     procedure ReadFromFile(AFileName: string); overload;
     procedure ReadFromFileIgnoringExtension(AFileName: string);
@@ -747,6 +746,9 @@ type
       ABigEndian: Boolean = false);
     function UsesColor(AColorIndex: TsColor): Boolean;
 
+    { Utilities }
+    procedure UpdateCaches;
+
     { Error messages }
     procedure AddErrorMsg(const AMsg: String); overload;
     procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
@@ -794,238 +796,53 @@ type
     property OnReadCellData: TsWorkbookReadCellDataEvent read FOnReadCellData write FOnReadCellData;
   end;
 
-  {@@ Contents of a number format record }
-  TsNumFormatData = class
-  public
-    {@@ Excel refers to a number format by means of the format "index". }
-    Index: Integer;
-    {@@ OpenDocument refers to a number format by means of the format "name". }
-    Name: String;
-    {@@ Identifier of a built-in number format, see TsNumberFormat }
-    NumFormat: TsNumberFormat;
-    {@@ String of format codes, such as '#,##0.00', or 'hh:nn'. }
-    FormatString: string;
-  end;
-
-  {@@ Specialized list for number format items }
-  TsCustomNumFormatList = class(TFPList)
-  private
-    function GetItem(AIndex: Integer): TsNumFormatData;
-    procedure SetItem(AIndex: Integer; AValue: TsNumFormatData);
+  { TsBasicSpreadReaderWriter }
+  TsBasicSpreadReaderWriter = class
   protected
-    {@@ Workbook from which the number formats are collected in the list. It is
-     mainly needed to get access to the FormatSettings for easy localization of some
-     formatting strings. }
+    {@@ Instance of the workbook which is currently being read or written. }
     FWorkbook: TsWorkbook;
-    {@@ Identifies the first number format item that is written to the file. Items
-     having a smaller index are not written. }
-    FFirstNumFormatIndexInFile: Integer;
-    {@@ Identifies the index of the next Excel number format item to be written.
-     Needed for auto-creating of the user-defined Excel number format indexes }
-    FNextNumFormatIndex: Integer;
-    procedure AddBuiltinFormats; virtual;
-    procedure RemoveFormat(AIndex: Integer);
-
-  public
-    constructor Create(AWorkbook: TsWorkbook);
-    destructor Destroy; override;
-    function AddFormat(AFormatIndex: Integer; AFormatName: String;
-      ANumFormat: TsNumberFormat; AFormatString: String): Integer; overload;
-    function AddFormat(AFormatIndex: Integer; ANumFormat: TsNumberFormat;
-      AFormatString: String): Integer; overload;
-    function AddFormat(AFormatName: String; ANumFormat: TsNumberFormat;
-      AFormatString: String): Integer; overload;
-    function AddFormat(ANumFormat: TsNumberFormat; AFormatString: String): Integer; overload;
-    procedure AnalyzeAndAdd(AFormatIndex: Integer; AFormatString: String);
-    procedure Clear;
-    procedure ConvertAfterReading(AFormatIndex: Integer; var AFormatString: String;
-      var ANumFormat: TsNumberFormat); virtual;
-    procedure ConvertBeforeWriting(var AFormatString: String;
-      var ANumFormat: TsNumberFormat); virtual;
-    procedure Delete(AIndex: Integer);
-    function Find(ANumFormat: TsNumberFormat; AFormatString: String): Integer; virtual;
-    function FindByFormatStr(AFormatString: String): Integer;
-    function FindByIndex(AFormatIndex: Integer): Integer;
-    function FindByName(AFormatName: String): Integer;
-    function FormatStringForWriting(AIndex: Integer): String; virtual;
-    procedure Sort;
-
-    {@@ Workbook from which the number formats are collected in the list. It is
-     mainly needed to get access to the FormatSettings for easy localization of some
-     formatting strings. }
-    property Workbook: TsWorkbook read FWorkbook;
-    {@@ Identifies the first number format item that is written to the file. Items
-     having a smaller index are not written. }
-    property FirstNumFormatIndexInFile: Integer read FFirstNumFormatIndexInFile;
-    {@@ Number format items contained in the list }
-    property Items[AIndex: Integer]: TsNumFormatData read GetItem write SetItem; default;
-  end;
-
-
-  { TsCustomSpreadReaderWriter }
-
-  {@@ Common ancestor of the spreadsheet reader and writer classes providing
-      shared data and methods. }
-  TsCustomSpreadReaderWriter = class
-  protected
-    {@@ Instance of the workbook which is currently being read. }
-    FWorkbook: TsWorkbook;
-    {@@ Instance of the worksheet which is currently being read. }
+    {@@ Instance of the worksheet which is currently being read or written. }
     FWorksheet: TsWorksheet;
     {@@ Limitations for the specific data file format }
     FLimitations: TsSpreadsheetFormatLimitations;
-  protected
-    {@@ List of number formats found in the file }
-    FNumFormatList: TsCustomNumFormatList;
-    procedure CreateNumFormatList; virtual;
   public
-    constructor Create(AWorkbook: TsWorkbook); virtual; // to allow descendents to override it
-    destructor Destroy; override;
+    constructor Create(AWorkbook: TsWorkbook); virtual;  // to allow descendents to override it
     function Limitations: TsSpreadsheetFormatLimitations;
     {@@ Instance of the workbook which is currently being read/written. }
     property Workbook: TsWorkbook read FWorkbook;
-    {@@ List of number formats found in the workbook. }
-    property NumFormatList: TsCustomNumFormatList read FNumFormatList;
   end;
 
-  { TsCustomSpreadReader }
+  { TsBasicSpreadReader }
+  TsBasicSpreadReader = class(TsBasicSpreadReaderWriter)
+  public
+    { General writing methods }
+    procedure ReadFromFile(AFileName: string); virtual; abstract;
+    procedure ReadFromStream(AStream: TStream); virtual; abstract;
+    procedure ReadFromStrings(AStrings: TStrings); virtual; abstract;
+  end;
+
+  { TsBasicSpreadWriter }
+  TsBasicSpreadWriter = class(TsBasicSpreadReaderWriter)
+  public
+    { Helpers }
+    procedure CheckLimitations; virtual;
+    { General writing methods }
+    procedure WriteToFile(const AFileName: string;
+      const AOverwriteExisting: Boolean = False); virtual; abstract;
+    procedure WriteToStream(AStream: TStream); virtual; abstract;
+    procedure WriteToStrings(AStrings: TStrings); virtual; abstract;
+  end;
 
   {@@ TsSpreadReader class reference type }
-  TsSpreadReaderClass = class of TsCustomSpreadReader;
-
-  {@@
-    Custom reader of spreadsheet files. "Custom" means that it provides only
-    the basic functionality. The main implementation is done in derived classes
-    for each individual file format.
-  }
-  TsCustomSpreadReader = class(TsCustomSpreadReaderWriter)
-  protected
-    {@@ list of format records collected from the file }
-    FCellFormatList: TsCellFormatList;
-    {@@ Temporary cell for virtual mode}
-    FVirtualCell: TCell;
-    {@@ Stores if the reader is in virtual mode }
-    FIsVirtualMode: Boolean;
-
-    { Helper methods }
-    {@@ Removes column records if all of them have the same column width }
-    procedure FixCols(AWorksheet: TsWorksheet);
-    {@@ Removes row records if all of them have the same row height }
-    procedure FixRows(AWorksheet: TsWorksheet);
-
-    { Record reading methods }
-    {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
-    procedure ReadBlank(AStream: TStream); virtual; abstract;
-    {@@ Abstract method for reading a BOOLEAN cell. Must be overridden by descendent classes. }
-    procedure ReadBool(AStream: TSTream); virtual; abstract;
-    {@@ Abstract method for reading a formula cell. Must be overridden by descendent classes. }
-    procedure ReadFormula(AStream: TStream); virtual; abstract;
-    {@@ Abstract method for reading a text cell. Must be overridden by descendent classes. }
-    procedure ReadLabel(AStream: TStream); virtual; abstract;
-    {@@ Abstract method for reading a number cell. Must be overridden by descendent classes. }
-    procedure ReadNumber(AStream: TStream); virtual; abstract;
-  public
-    constructor Create(AWorkbook: TsWorkbook); override;
-    destructor Destroy; override;
-    { General writing methods }
-    procedure ReadFromFile(AFileName: string); virtual;
-    procedure ReadFromStream(AStream: TStream); virtual;
-    procedure ReadFromStrings(AStrings: TStrings); virtual;
-  end;
-
-
-  { TsCustomSpreadWriter }
+  TsSpreadReaderClass = class of TsBasicSpreadReader;
 
   {@@ TsSpreadWriter class reference type }
-  TsSpreadWriterClass = class of TsCustomSpreadWriter;
+  TsSpreadWriterClass = class of TsBasicSpreadWriter;
 
-  {@@ Callback function when iterating cells while accessing a stream }
-  TCellsCallback = procedure (ACell: PCell; AStream: TStream) of object;
-
-  {@@ Callback function when iterating comments while accessing a stream }
-  TCommentsCallback = procedure (AComment: PsComment; ACommentIndex: Integer;
-    AStream: TStream) of object;
-
-  {@@ Custom writer of spreadsheet files. "Custom" means that it provides only
-    the basic functionality. The main implementation is done in derived classes
-    for each individual file format. }
-  TsCustomSpreadWriter = class(TsCustomSpreadReaderWriter)
-  protected
-    { Helper routines }
-    procedure CheckLimitations;
-    function  FixColor(AColor: TsColor): TsColor; virtual;
-    procedure FixFormat(ACell: PCell); virtual;
-    procedure GetSheetDimensions(AWorksheet: TsWorksheet;
-      out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
-    procedure ListAllNumFormats; virtual;
-    { Helpers for writing }
-    procedure WriteCellCallback(ACell: PCell; AStream: TStream);
-    procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
-    { Record writing methods }
-    {@@ Abstract method for writing a blank cell. Must be overridden by descendent classes. }
-    procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
-      ACell: PCell); virtual; abstract;
-    {@@ Abstract method for writing a boolean cell. Must be overridden by descendent classes. }
-    procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: Boolean; ACell: PCell); virtual; abstract;
-    {@@ (Pseudo-)abstract method for writing a cell comment.
-        Must be overridden by descendent classes }
-    procedure WriteComment(AStream: TStream; ACell: PCell); virtual;
-    {@@ Abstract method for writing a date/time value to a cell.
-        Must be overridden by descendent classes. }
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TDateTime; ACell: PCell); virtual; abstract;
-    {@@ Abstract method for writing an Excel error value to a cell.
-        Must be overridden by descendent classes. }
-    procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TsErrorValue; ACell: PCell); virtual; abstract;
-    {@@ (Pseudo-) abstract method for writing a formula to a cell.
-        Must be overridden by descendent classes. }
-    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      ACell: PCell); virtual;
-    {@@ (Pseudo-)abstract method for writing a hyperlink to a cell.
-        Must be overridden by descendent classes. }
-    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
-      ACell: PCell); virtual;
-    {@@ Abstract method for writing a string to a cell.
-        Must be overridden by descendent classes. }
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: string; ACell: PCell); virtual; abstract;
-    {@@ Abstract method for writing a number value to a cell.
-        Must be overridden by descendent classes. }
-    procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: double; ACell: PCell); virtual; abstract;
-
-  public
-    constructor Create(AWorkbook: TsWorkbook); override;
-    { General writing methods }
-    procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree;
-      ACallback: TCellsCallback);
-    procedure IterateThroughComments(AStream: TStream; AComments: TAVLTree;
-      ACallback: TCommentsCallback);
-    procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False); virtual;
-    procedure WriteToStream(AStream: TStream); virtual;
-    procedure WriteToStrings(AStrings: TStrings); virtual;
-  end;
-
-  {@@ List of registered formats }
-  TsSpreadFormatData = record
-    ReaderClass: TsSpreadReaderClass;
-    WriterClass: TsSpreadWriterClass;
-    Format: TsSpreadsheetFormat;
-  end;
-
-var
-  GsSpreadFormats: array of TsSpreadFormatData;
-
-procedure RegisterSpreadFormat(AReaderClass: TsSpreadReaderClass;
-  AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat);
 
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
 procedure CopyCellValue(AFromCell, AToCell: PCell);
 
-function GetFileFormatName(AFormat: TsSpreadsheetFormat): String;
 procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 //function SameCellBorders(ACell1, ACell2: PCell): Boolean; overload;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean; //overload;
@@ -1044,7 +861,8 @@ implementation
 uses
   Math, StrUtils, TypInfo, lazutf8,
   fpsPatches, fpsStrings, fpsStreams, uvirtuallayer_ole,
-  fpsUtils, fpsCurrency, fpsNumFormatParser, fpsExprParser;
+  fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
+  fpsNumFormat, fpsNumFormatParser;
 
 const
   { These are reserved system colors by Microsoft
@@ -1133,51 +951,6 @@ var
     'beige',      // $15
     'wheat'       // $16
   );
-
-{@@ ----------------------------------------------------------------------------
-  Registers a new reader/writer pair for a given spreadsheet file format
--------------------------------------------------------------------------------}
-procedure RegisterSpreadFormat(
-  AReaderClass: TsSpreadReaderClass;
-  AWriterClass: TsSpreadWriterClass;
-  AFormat: TsSpreadsheetFormat);
-var
-  len: Integer;
-begin
-  len := Length(GsSpreadFormats);
-  SetLength(GsSpreadFormats, len + 1);
-  
-  GsSpreadFormats[len].ReaderClass := AReaderClass;
-  GsSpreadFormats[len].WriterClass := AWriterClass;
-  GsSpreadFormats[len].Format := AFormat;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the name of the given spreadsheet file format.
-
-  @param   AFormat  Identifier of the file format
-  @return  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
-           'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
--------------------------------------------------------------------------------}
-function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
-begin
-  case AFormat of
-    sfExcel2              : Result := 'BIFF2';
-    {
-    sfExcel3              : Result := 'BIFF3';
-    sfExcel4              : Result := 'BIFF4';
-    }
-    sfExcel5              : Result := 'BIFF5';
-    sfExcel8              : Result := 'BIFF8';
-    sfooxml               : Result := 'OOXML';
-    sfOpenDocument        : Result := 'Open Document';
-    sfCSV                 : Result := 'CSV';
-    sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
-    sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
-    else                    Result := rsUnknownSpreadsheetFormat;
-  end;
-end;
-
 
 {@@ ----------------------------------------------------------------------------
   If a palette is coded as big-endian (e.g. by copying the rgb values from
@@ -7403,7 +7176,7 @@ end;
   @return An instance of a TsCustomSpreadReader descendent which is able to
           read the given file format.
 -------------------------------------------------------------------------------}
-function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsCustomSpreadReader;
+function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
 var
   i: Integer;
 begin
@@ -7429,7 +7202,7 @@ end;
   @return An instance of a TsCustomSpreadWriter descendent which is able to
           write the given file format.
 -------------------------------------------------------------------------------}
-function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsCustomSpreadWriter;
+function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsBasicSpreadWriter;
 var
   i: Integer;
 begin
@@ -7499,7 +7272,7 @@ end;
 procedure TsWorkbook.ReadFromFile(AFileName: string;
   AFormat: TsSpreadsheetFormat);
 var
-  AReader: TsCustomSpreadReader;
+  AReader: TsBasicSpreadReader;
   ok: Boolean;
 begin
   if not FileExists(AFileName) then
@@ -7618,7 +7391,7 @@ end;
 procedure TsWorkbook.ReadFromStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat);
 var
-  AReader: TsCustomSpreadReader;
+  AReader: TsBasicSpreadReader;
   ok: Boolean;
 begin
   AReader := CreateSpreadReader(AFormat);
@@ -7666,7 +7439,7 @@ end;
 procedure TsWorkbook.WriteToFile(const AFileName: string;
  const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False);
 var
-  AWriter: TsCustomSpreadWriter;
+  AWriter: TsBasicSpreadWriter;
 begin
   AWriter := CreateSpreadWriter(AFormat);
   try
@@ -7713,7 +7486,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
 var
-  AWriter: TsCustomSpreadWriter;
+  AWriter: TsBasicSpreadWriter;
 begin
   AWriter := CreateSpreadWriter(AFormat);
   try
@@ -8792,413 +8565,18 @@ end;
 
 
 {*******************************************************************************
-*                       TsCustomNumFormatList                                  *
-*******************************************************************************}
-
-{@@ ----------------------------------------------------------------------------
-  Constructor of the number format list.
-
-  @param AWorkbook The workbook is needed to get access to its "FormatSettings"
-                   for localization of some formatting strings.
--------------------------------------------------------------------------------}
-constructor TsCustomNumFormatList.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create;
-  FWorkbook := AWorkbook;
-  AddBuiltinFormats;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Destructor of the number format list: clears the list and destroys the
-  format items
--------------------------------------------------------------------------------}
-destructor TsCustomNumFormatList.Destroy;
-begin
-  Clear;
-  inherited Destroy;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a number format described by the Excel format index, the ODF format
-  name, the format string, and the built-in format identifier to the list
-  and returns the index of the new item.
-
-  @param AFormatIndex  Format index to be used by Excel
-  @param AFormatName   Format name to be used by OpenDocument
-  @param AFormatString String of formatting codes
-  @param ANumFormat    Identifier for built-in number format
-  @return              List index of the new item
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
-  AFormatName: String; ANumFormat: TsNumberFormat; AFormatString: String): Integer;
-var
-  item: TsNumFormatData;
-begin
-  item := TsNumFormatData.Create;
-  item.Index := AFormatIndex;
-  item.Name := AFormatName;
-  item.NumFormat := ANumFormat;
-  item.FormatString := AFormatString;
-  Result := inherited Add(item);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a number format described by the Excel format index, the format string,
-  and the built-in format identifier to the list and returns the index of
-  the new item in the format list. To be used when writing an Excel file.
-
-  @param AFormatIndex  Format index to be used by Excel
-  @param ANumFormat    Identifier for built-in number format
-  @param AFormatString String of formatting codes
-  @return              Index of the new item in the format list
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.AddFormat(AFormatIndex: Integer;
-  ANumFormat: TsNumberFormat; AFormatString: String): integer;
-begin
-  Result := AddFormat(AFormatIndex, '', ANumFormat, AFormatString);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a number format described by the ODF format name, the format string,
-  and the built-in format identifier to the list and returns the index of
-  the new item in the format list. To be used when writing an ODS file.
-
-  @param AFormatName   Format name to be used by OpenDocument
-  @param AFormatString String of formatting codes
-  @param ANumFormat    Identifier for built-in number format
-  @return              Index of the new item in the format list
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.AddFormat(AFormatName: String;
-  ANumFormat: TsNumberFormat; AFormatString: String): Integer;
-begin
-  if (AFormatString = '') and (ANumFormat <> nfGeneral) then
-  begin
-    Result := 0;
-    exit;
-  end;
-  Result := AddFormat(FNextNumFormatIndex, AFormatName, ANumFormat, AFormatString);
-  inc(FNextNumFormatIndex);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a number format described by the format string, and the built-in
-  format identifier to the format list and returns the index of the new
-  item in the list. The Excel format index and ODS format name are auto-generated.
-
-  @param ANumFormat     Identifier for built-in number format
-  @param AFormatString  String of formatting codes
-  @return               Index of the new item in the list
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.AddFormat(ANumFormat: TsNumberFormat;
-  AFormatString: String): Integer;
-begin
-  Result := AddFormat('', ANumFormat, AFormatString);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds the builtin format items to the list. The formats must be specified in
-  a way that is compatible with fpc syntax.
-
-  Conversion of the formatstrings to the syntax used in the destination file
-  can be done by calling "ConvertAfterReadung" bzw. "ConvertBeforeWriting".
-  "AddBuiltInFormats" must be called before user items are added.
-
-  Must specify FFirstNumFormatIndexInFile (BIFF5-8, e.g. don't save formats <164)
-  and must initialize the index of the first user format (FNextNumFormatIndex)
-  which is automatically incremented when adding user formats.
-
-  In TsCustomNumFormatList nothing is added.
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.AddBuiltinFormats;
-begin
-  // must be overridden - see xlscommon as an example.
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Called from the reader when a format item has been read from an Excel file.
-  Determines the number format type, format string etc and converts the
-  format string to fpc syntax which is used directly for getting the cell text.
-
-  @param AFormatIndex Excel index of the number format read from the file
-  @param AFormatString String of formatting codes as read fromt the file.
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.AnalyzeAndAdd(AFormatIndex: Integer;
-  AFormatString: String);
-var
-  nf: TsNumberFormat = nfGeneral;
-begin
-  if FindByIndex(AFormatIndex) > -1 then
-    exit;
-
-  // Analyze & convert the format string, extract infos for internal formatting
-  ConvertAfterReading(AFormatIndex, AFormatString, nf);
-
-  // Add the new item
-  AddFormat(AFormatIndex, nf, AFormatString);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Clears the number format list and frees memory occupied by the format items.
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.Clear;
-var
-  i: Integer;
-begin
-  for i:=0 to Count-1 do RemoveFormat(i);
-  inherited Clear;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Takes the format string as it is read from the file and extracts the
-  built-in number format identifier out of it for use by fpc.
-  The method also converts the format string to a form that can be used
-  by fpc's FormatDateTime and FormatFloat.
-
-  The method should be overridden in a class that knows knows more about the
-  details of the spreadsheet file format.
-
-  @param AFormatIndex   Excel index of the number format read
-  @param AFormatString  string of formatting codes extracted from the file data
-  @param ANumFormat     identifier for built-in fpspreadsheet format extracted
-                        from the file data
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.ConvertAfterReading(AFormatIndex: Integer;
-  var AFormatString: String; var ANumFormat: TsNumberFormat);
-var
-  parser: TsNumFormatParser;
-  fmt: String;
-  lFormatData: TsNumFormatData;
-  i: Integer;
-begin
-  i := FindByIndex(AFormatIndex);
-  if i > 0 then
-  begin
-    lFormatData := Items[i];
-    fmt := lFormatData.FormatString;
-  end else
-    fmt := AFormatString;
-
-  // Analyzes the format string and tries to convert it to fpSpreadsheet format.
-  parser := TsNumFormatParser.Create(Workbook, fmt);
-  try
-    if parser.Status = psOK then
-    begin
-      ANumFormat := parser.NumFormat;
-      AFormatString := parser.FormatString[nfdDefault];
-    end else
-    begin
-      //  Show an error here?
-    end;
-  finally
-    parser.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Is called before collecting all number formats of the spreadsheet and before
-  writing them to file. Its purpose is to convert the format string as used by fpc
-  to a format compatible with the spreadsheet file format.
-  Nothing is changed in the TsCustomNumFormatList, the method needs to be
-  overridden by a descendant class which known more about the details of the
-  destination file format.
-
-  Needs to be overridden by a class knowing more about the destination file
-  format.
-
-  @param AFormatString String of formatting codes. On input in fpc syntax. Is
-                       overwritten on output by format string compatible with
-                       the destination file.
-  @param ANumFormat    Identifier for built-in fpspreadsheet number format
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.ConvertBeforeWriting(var AFormatString: String;
-  var ANumFormat: TsNumberFormat);
-begin
-  Unused(AFormatString, ANumFormat);
-  // nothing to do here. But see, e.g., xlscommon.TsBIFFNumFormatList
-end;
-
-
-{@@ ----------------------------------------------------------------------------
-  Deletes a format item from the list, and makes sure that its memory is
-  released.
-
-  @param  AIndex   List index of the item to be deleted.
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.Delete(AIndex: Integer);
-begin
-  RemoveFormat(AIndex);
-  Delete(AIndex);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Seeks a format item with the given properties and returns its list index,
-  or -1 if not found.
-
-  @param ANumFormat    Built-in format identifier
-  @param AFormatString String of formatting codes
-  @return              Index of the format item in the format list,
-                       or -1 if not found.
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.Find(ANumFormat: TsNumberFormat;
-  AFormatString: String): Integer;
-var
-  item: TsNumFormatData;
-begin
-  for Result := Count-1 downto 0 do
-  begin
-    item := Items[Result];
-    if (item <> nil) and (item.NumFormat = ANumFormat) and (item.FormatString = AFormatString)
-      then exit;
-  end;
-  Result := -1;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Finds the item with the given format string and returns its index in the
-  format list, or -1 if not found.
-
-  @param  AFormatString  string of formatting codes to be searched in the list.
-  @return Index of the format item in the format list, or -1 if not found.
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.FindByFormatStr(AFormatString: String): integer;
-var
-  item: TsNumFormatData;
-begin
-  { We search backwards to find user-defined items first. They usually are
-    more appropriate than built-in items. }
-  for Result := Count-1 downto 0 do
-  begin
-    item := Items[Result];
-    if item.FormatString = AFormatString then
-      exit;
-  end;
-  Result := -1;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Finds the item with the given Excel format index and returns its index in
-  the format list, or -1 if not found.
-  Is used by BIFF file formats.
-
-  @param  AFormatIndex  Excel format index to the searched
-  @return Index of the format item in the format list, or -1 if not found.
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.FindByIndex(AFormatIndex: Integer): integer;
-var
-  item: TsNumFormatData;
-begin
-  for Result := 0 to Count-1 do
-  begin
-    item := Items[Result];
-    if item.Index = AFormatIndex then
-      exit;
-  end;
-  Result := -1;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Finds the item with the given ODS format name and returns its index in
-  the format list (or -1, if not found)
-  To be used by OpenDocument file format.
-
-  @param  AFormatName  Format name as used by OpenDocument to identify a
-                       number format
-
-  @return Index of the format item in the list, or -1 if not found
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.FindByName(AFormatName: String): integer;
-var
-  item: TsNumFormatData;
-begin
-  for Result := 0 to Count-1 do
-  begin
-    item := Items[Result];
-    if item.Name = AFormatName then
-      exit;
-  end;
-  Result := -1;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Determines the format string to be written into the spreadsheet file. Calls
-  ConvertBeforeWriting in order to convert the fpc format strings to the dialect
-  used in the file.
-
-  @param AIndex  Index of the format item under consideration.
-  @return        String of formatting codes that will be written to the file.
--------------------------------------------------------------------------------}
-function TsCustomNumFormatList.FormatStringForWriting(AIndex: Integer): String;
-var
-  item: TsNumFormatdata;
-  nf: TsNumberFormat;
-begin
-  item := Items[AIndex];
-  if item <> nil then
-  begin
-    Result := item.FormatString;
-    nf := item.NumFormat;
-    ConvertBeforeWriting(Result, nf);
-  end else
-    Result := '';
-end;
-
-function TsCustomNumFormatList.GetItem(AIndex: Integer): TsNumFormatData;
-begin
-  Result := TsNumFormatData(inherited Items[AIndex]);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Deletes the memory occupied by the formatting data, but keeps an empty item in
-  the list to retain the indexes of following items.
-
-  @param AIndex The number format item at this index will be removed.
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.RemoveFormat(AIndex: Integer);
-var
-  item: TsNumFormatData;
-begin
-  item := GetItem(AIndex);
-  if item <> nil then
-  begin
-    item.Free;
-    SetItem(AIndex, nil);
-  end;
-end;
-
-procedure TsCustomNumFormatList.SetItem(AIndex: Integer; AValue: TsNumFormatData);
-begin
-  inherited Items[AIndex] := AValue;
-end;
-
-function CompareNumFormatData(Item1, Item2: Pointer): Integer;
-begin
-  Result := CompareValue(TsNumFormatData(Item1).Index, TsNumFormatData(Item2).Index);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Sorts the format data items in ascending order of the Excel format indexes.
--------------------------------------------------------------------------------}
-procedure TsCustomNumFormatList.Sort;
-begin
-  inherited Sort(@CompareNumFormatData);
-end;
-
-
-{*******************************************************************************
-*                          TsCustomSpreadReaderWriter                          *
+*                          TsBasicSpreadReaderWriter                           *
 *******************************************************************************}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the reader/writer. Has the workbook to be read/written as a
   parameter to apply the localization information found in its FormatSettings.
-  Creates an internal instance of the number format list according to the
-  file format being read/written.
 
   @param AWorkbook  Workbook into which the file is being read or from with the
                     file is written. This parameter is passed from the workbook
                     which creates the reader/writer.
 -------------------------------------------------------------------------------}
-constructor TsCustomSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
+constructor TsBasicSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
@@ -9206,289 +8584,26 @@ begin
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
   FLimitations.MaxPaletteSize := MaxInt;
-  // Number formats
-  CreateNumFormatList;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Destructor of the reader. Destroys the internal number format list and the
-  error log list.
--------------------------------------------------------------------------------}
-destructor TsCustomSpreadReaderWriter.Destroy;
-begin
-  FNumFormatList.Free;
-  inherited Destroy;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Creates an instance of the number format list which contains prototypes of
-  all number formats found in the workbook (when writing) or in the file (when
-  reading).
-
-  The method has to be overridden because the descendants know the special
-  requirements of the file format.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadReaderWriter.CreateNumFormatList;
-begin
-  // nothing to do here
 end;
 
 {@@ ----------------------------------------------------------------------------
   Returns a record containing limitations of the specific file format of the
   writer.
 -------------------------------------------------------------------------------}
-function TsCustomSpreadReaderWriter.Limitations: TsSpreadsheetFormatLimitations;
+function TsBasicSpreadReaderWriter.Limitations: TsSpreadsheetFormatLimitations;
 begin
   Result := FLimitations;
 end;
 
 
 {*******************************************************************************
-*                             TsCustomSpreadReader                             *
+*                             TsBasicSpreadWriter                              *
 *******************************************************************************}
-
-{@@ ----------------------------------------------------------------------------
-  Constructor of the reader. Has the workbook to be read as a parameter to
-  apply the localization information found in its FormatSettings.
-  Creates an internal instance of the number format list according to the
-  file format being read.
-
-  @param AWorkbook  Workbook into which the file is being read. This parameter
-                    is passed from the workbook which creates the reader.
--------------------------------------------------------------------------------}
-constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create(AWorkbook);
-  FIsVirtualMode := (boVirtualMode in FWorkbook.Options) and
-    Assigned(FWorkbook.OnReadCellData);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Destructor of the reader. Overridden to destroy the format list.
--------------------------------------------------------------------------------}
-destructor TsCustomSpreadReader.Destroy;
-begin
-  FreeAndNil(FCellFormatList);
-  inherited Destroy;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Deletes unnecessary column records as they are written by Office applications
-  when they convert a file to another format.
-
-  @param   AWorksheet   The columns in this worksheet are processed.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsWorksheet);
-const
-  EPS = 1E-3;
-var
-  c: Cardinal;
-  w: Single;
-begin
-  if AWorksheet.Cols.Count <= 1 then
-    exit;
-
-  // Check whether all columns have the same column width
-  w := PCol(AWorksheet.Cols[0])^.Width;
-  for c := 1 to AWorksheet.Cols.Count-1 do
-    if not SameValue(PCol(AWorksheet.Cols[c])^.Width, w, EPS) then
-      exit;
-
-  // At this point we know that all columns have the same width. We pass this
-  // to the DefaultColWidth and delete all column records.
-  AWorksheet.DefaultColWidth := w;
-  AWorksheet.RemoveAllCols;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  This procedure checks whether all rows have the same height and removes the
-  row records if they do. Such unnecessary row records are often written
-  when an Office application converts a file to another format.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.FixRows(AWorkSheet: TsWorksheet);
-const
-  EPS = 1E-3;
-var
-  r: Cardinal;
-  h: Single;
-begin
-  if AWorksheet.Rows.Count <= 1 then
-    exit;
-
-  // Check whether all rows have the same height
-  h := PRow(AWorksheet.Rows[0])^.Height;
-  for r := 1 to AWorksheet.Rows.Count-1 do
-    if not SameValue(PRow(AWorksheet.Rows[r])^.Height, h, EPS) then
-      exit;
-
-  // At this point we know that all rows have the same height. We pass this
-  // to the DefaultRowHeight and delete all row records.
-  AWorksheet.DefaultRowHeight := h;
-  AWorksheet.RemoveAllRows;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Default file reading method.
-
-  Opens the file and calls ReadFromStream. Data are stored in the workbook
-  specified during construction.
-
-  @param  AFileName The input file name.
-  @see    TsWorkbook
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromFile(AFileName: string);
-var
-  InputFile: TStream;
-begin
-  if (boBufStream in Workbook.Options) then
-    InputFile := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyNone)
-  else
-    InputFile := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
-
-  try
-    ReadFromStream(InputFile);
-  finally
-    InputFile.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  This routine has the purpose to read the workbook data from the stream.
-  It should be overriden in descendent classes.
-
-  Its basic implementation here assumes that the stream is a TStringStream and
-  the data are provided by calling ReadFromStrings. This mechanism is valid
-  for wikitables.
-
-  Data will be stored in the workbook defined at construction.
-
-  @param  AData     Workbook which is filled by the data from the stream.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream);
-var
-  AStringStream: TStringStream;
-  AStrings: TStringList;
-begin
-  AStringStream := TStringStream.Create('');
-  AStrings := TStringList.Create;
-  try
-    AStringStream.CopyFrom(AStream, AStream.Size);
-    AStringStream.Seek(0, soFromBeginning);
-    AStrings.Text := AStringStream.DataString;
-    ReadFromStrings(AStrings);
-  finally
-    AStringStream.Free;
-    AStrings.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Reads workbook data from a string list. This abstract implementation does
-  nothing and raises an exception. Must be overridden, like for wikitables.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings);
-begin
-  Unused(AStrings);
-  raise Exception.Create(rsUnsupportedReadFormat);
-end;
-
-
-{*******************************************************************************
-*                           TsCustomSpreadWriter                               *
-*******************************************************************************}
-
-{@@ ----------------------------------------------------------------------------
-  Constructor of the writer. Has the workbook to be written as a parameter to
-  apply the localization information found in its FormatSettings.
-  Creates an internal number format list to collect unique samples of all the
-  number formats found in the workbook.
-
-  @param AWorkbook  Workbook which is to be written to file/stream.
-                    This parameter is passed from the workbook which creates the
-                    writer.
--------------------------------------------------------------------------------}
-constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
-begin
-  inherited Create(AWorkbook);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  If a color index is greater then the maximum palette color count this
-  color is replaced by the closest palette color.
-
-  The present implementation does not change the color. Must be overridden by
-  writers of formats with limited palette sizes.
-
-  @param  AColor   Color palette index to be checked
-  @return Closest color to AColor. If AColor belongs to the palette it must
-          be returned unchanged.
--------------------------------------------------------------------------------}
-function TsCustomSpreadWriter.FixColor(AColor: TsColor): TsColor;
-begin
-  Result := AColor;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  If formatting features of a cell are not supported by the destination file
-  format of the writer, here is the place to apply replacements.
-  Must be overridden by descendants, nothin happens here. See BIFF2.
-
-  @param  ACell  Pointer to the cell being investigated. Note that this cell
-                 does not belong to the workbook, but is a cell of the
-                 FFormattingStyles array.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
-begin
-  Unused(ACell);
-  // to be overridden
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Determines the size of the worksheet to be written. VirtualMode is respected.
-  Is called when the writer needs the size for output. Column and row count
-  limitations are repsected as well.
-
-  @param   AWorksheet  Worksheet to be written
-  @param   AFirsRow    Index of first row to be written
-  @param   ALastRow    Index of last row
-  @param   AFirstCol   Index of first column to be written
-  @param   ALastCol    Index of last column to be written
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
-  out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal);
-begin
-  if (boVirtualMode in AWorksheet.Workbook.Options) then
-  begin
-    AFirstRow := 0;
-    AFirstCol := 0;
-    ALastRow := AWorksheet.Workbook.VirtualRowCount-1;
-    ALastCol := AWorksheet.Workbook.VirtualColCount-1;
-  end else
-  begin
-    Workbook.UpdateCaches;
-    AFirstRow := AWorksheet.GetFirstRowIndex;
-    if AFirstRow = Cardinal(-1) then
-      AFirstRow := 0;  // this happens if the sheet is empty and does not contain row records
-    AFirstCol := AWorksheet.GetFirstColIndex;
-    if AFirstCol = Cardinal(-1) then
-      AFirstCol := 0;  // this happens if the sheet is empty and does not contain col records
-    ALastRow := AWorksheet.GetLastRowIndex;
-    ALastCol := AWorksheet.GetLastColIndex;
-  end;
-  if AFirstCol >= Limitations.MaxColCount then
-    AFirstCol := Limitations.MaxColCount-1;
-  if AFirstRow >= Limitations.MaxRowCount then
-    AFirstRow := Limitations.MaxRowCount-1;
-  if ALastCol >= Limitations.MaxColCount then
-    ALastCol := Limitations.MaxColCount-1;
-  if ALastRow >= Limitations.MaxRowCount then
-    ALastRow := Limitations.MaxRowCount-1;
-end;
 
 {@@ ----------------------------------------------------------------------------
   Checks limitations of the writer, e.g max row/column count
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.CheckLimitations;
+procedure TsBasicSpreadWriter.CheckLimitations;
 var
   lastCol, lastRow: Cardinal;
   i, n: Integer;
@@ -9512,226 +8627,6 @@ begin
         Workbook.AddErrorMsg(rsTooManyPaletteColors, [n, FLimitations.MaxPaletteSize]);
         break;
       end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Iterates through all cells and collects the number formats in
-  FNumFormatList (without duplicates).
-  The index of the list item is needed for the field FormatIndex of the XF record.
-  At the time when the method is called the formats are still in fpc dialect.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.ListAllNumFormats;
-var
-  i: Integer;
-  fmt: PsCellFormat;
-begin
-  for i:=0 to Workbook.GetNumCellFormats - 1 do
-  begin
-    fmt := Workbook.GetPointerToCellFormat(i);
-    if FNumFormatList.Find(fmt^.NumberFormat, fmt^.NumberFormatStr) = -1 then
-      FNumFormatList.AddFormat(fmt^.NumberFormat, fmt^.NumberFormatStr);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Helper function for the spreadsheet writers. Writes the cell value to the
-  stream. Calls the WriteNumber method of the worksheet for writing a number,
-  the WriteDateTime method for writing a date/time etc.
-
-  @param  ACell   Pointer to the worksheet cell being written
-  @param  AStream Stream to which data are written
-
-  @see    TsCustomSpreadWriter.WriteCellsToStream
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
-begin
-  if HasFormula(ACell) then
-    WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell)
-  else
-    case ACell.ContentType of
-      cctBool:
-        WriteBool(AStream, ACell^.Row, ACell^.Col, ACell^.BoolValue, ACell);
-      cctDateTime:
-        WriteDateTime(AStream, ACell^.Row, ACell^.Col, ACell^.DateTimeValue, ACell);
-      cctEmpty:
-        WriteBlank(AStream, ACell^.Row, ACell^.Col, ACell);
-      cctError:
-        WriteError(AStream, ACell^.Row, ACell^.Col, ACell^.ErrorValue, ACell);
-      cctNumber:
-        WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
-      cctUTF8String:
-        WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
-      cctHyperlink:
-        WriteHyperlink(AStream, ACell^.Row, ACell^.Col, ACell);
-    end;
-  //if ACell^.Comment <> '' then
-  if FWorksheet.ReadComment(ACell) <> '' then
-    WriteComment(AStream, ACell);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Helper function for the spreadsheet writers.
-
-  Iterates all cells on a list, calling the appropriate write method for them.
-
-  @param  AStream The output stream.
-  @param  ACells  List of cells to be writeen
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream;
-  ACells: TAVLTree);
-begin
-  IterateThroughCells(AStream, ACells, WriteCellCallback);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  (Pseudo-) abstract method writing a cell comment to the stream.
-  The cell comment is written immediately after the cell content.
-  NOTE: This is not good for XLSX and BIFF8.
-
-  Must be overridden by descendents.
-
-  @param  ACell      Pointer to the cell containing the comment to be written
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteComment(AStream: TStream; ACell: PCell);
-begin
-  Unused(AStream, ACell);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  A generic method to iterate through all cells in a worksheet and call a callback
-  routine for each cell.
-
-  @param  AStream    The output stream, passed to the callback routine.
-  @param  ACells     List of cells to be iterated
-  @param  ACallback  Callback routine; it requires as arguments a pointer to the
-                     cell as well as the destination stream.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream;
-  ACells: TAVLTree; ACallback: TCellsCallback);
-var
-  AVLNode: TAVLTreeNode;
-begin
-  AVLNode := ACells.FindLowest;
-  while Assigned(AVLNode) do
-  begin
-    ACallback(PCell(AVLNode.Data), AStream);
-    AVLNode := ACells.FindSuccessor(AVLNode);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  A generic method to iterate through all comments in a worksheet and call a
-  callback routine for each cell.
-
-  @param  AStream    The output stream, passed to the callback routine.
-  @param  AComments  List of comments to be iterated
-  @param  ACallback  Callback routine; it requires as arguments a pointer to the
-                     comment record as well as the destination stream.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.IterateThroughComments(AStream: TStream;
-  AComments: TAVLTree; ACallback: TCommentsCallback);
-var
-  AVLNode: TAVLTreeNode;
-  index: Integer;
-begin
-  index := 0;
-  AVLNode := AComments.FindLowest;
-  while Assigned(AVLNode) do
-  begin
-    ACallback(PsComment(AVLNode.Data), index, AStream);
-    AVLNode := AComments.FindSuccessor(AVLNode);
-    inc(index);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Default file writing method.
-
-  Opens the file and calls WriteToStream
-  The workbook written is the one specified in the constructor of the writer.
-
-  @param  AFileName           The output file name.
-  @param  AOverwriteExisting  If the file already exists it will be replaced.
-
-  @see    TsWorkbook
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean = False);
-var
-  OutputFile: TStream;
-  lMode: Word;
-begin
-  if AOverwriteExisting then
-    lMode := fmCreate or fmOpenWrite
-  else
-    lMode := fmCreate;
-
-  if (boBufStream in Workbook.Options) then
-    OutputFile := TBufStream.Create(AFileName, lMode)
-  else
-    OutputFile := TFileStream.Create(AFileName, lMode);
-
-  try
-    WriteToStream(OutputFile);
-  finally
-    OutputFile.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  This routine has the purpose to write the workbook to a stream.
-  Present implementation writes to a stringlists by means of WriteToStrings;
-  this behavior is required for wikitables.
-  Must be overriden in descendent classes for all other cases.
-
-  @param  AStream   Stream to which the workbook is written
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream);
-var
-  lStringList: TStringList;
-begin
-  lStringList := TStringList.Create;
-  try
-    WriteToStrings(lStringList);
-    lStringList.SaveToStream(AStream);
-  finally
-    lStringList.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes the worksheet to a list of strings. Not implemented here, needs to
-  be overridden by descendants. See wikitables.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings);
-begin
-  Unused(AStrings);
-  raise Exception.Create(rsUnsupportedWriteFormat);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Basic method which is called when writing a formula to a stream. The formula
-  is already stored in the cell fields.
-  Present implementation does nothing. Needs to be overridden by descendants.
-
-  @param   AStream   Stream to be written
-  @param   ARow      Row index of the cell containing the formula
-  @param   ACol      Column index of the cell containing the formula
-  @param   ACell     Pointer to the cell containing the formula and being written
-                     to the stream
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
-begin
-  Unused(AStream);
-  Unused(ARow, ACol, ACell);
-end;
-
-procedure TsCustomSpreadWriter.WriteHyperlink(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
-begin
-  Unused(AStream);
-  Unused(ARow, ACol, ACell);
 end;
 
 

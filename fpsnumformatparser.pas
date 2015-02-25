@@ -151,98 +151,16 @@ type
   end;
 
 
-function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
-function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
-function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
-function IsTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
-function IsTimeFormat(AFormatStr: String): Boolean; overload;
-
-
 implementation
 
 uses
   TypInfo, StrUtils, LazUTF8, fpsutils, fpsCurrency;
 
 
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given number format code is for currency,
-  i.e. requires currency symbol.
-
-  @param  AFormat   Built-in number format identifier to be checked
-  @return True if AFormat is nfCurrency or nfCurrencyRed, false otherwise.
--------------------------------------------------------------------------------}
-function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
-begin
-  Result := AFormat in [nfCurrency, nfCurrencyRed];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given number format code is for date/time values.
-
-  @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat is a date/time format (such as nfShortTime),
-           false otherwise
--------------------------------------------------------------------------------}
-function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
-begin
-  Result := AFormat in [{nfFmtDateTime, }nfShortDateTime, nfShortDate, nfLongDate,
-    nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM, nfTimeInterval];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given string with formatting codes is for date/time values.
-
-  @param   AFormatStr   String with formatting codes to be checked.
-  @return  True if AFormatStr is a date/time format string (such as 'hh:nn'),
-           false otherwise
--------------------------------------------------------------------------------}
-function IsDateTimeFormat(AFormatStr: string): Boolean;
-var
-  parser: TsNumFormatParser;
-begin
-  parser := TsNumFormatParser.Create(nil, AFormatStr);
-  try
-    Result := parser.IsDateTimeFormat;
-  finally
-    parser.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given built-in number format code is for time values.
-
-  @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat represents to a time-format, false otherwise
--------------------------------------------------------------------------------}
-function IsTimeFormat(AFormat: TsNumberFormat): boolean;
-begin
-  Result := AFormat in [nfShortTime, nfLongTime, nfShortTimeAM, nfLongTimeAM,
-    nfTimeInterval];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the given string with formatting codes is for time values.
-
-  @param   AFormatStr   String with formatting codes to be checked
-  @return  True if AFormatStr represents a time-format, false otherwise
--------------------------------------------------------------------------------}
-function IsTimeFormat(AFormatStr: String): Boolean;
-var
-  parser: TsNumFormatParser;
-begin
-  parser := TsNumFormatParser.Create(nil, AFormatStr);
-  try
-    Result := parser.IsTimeFormat;
-  finally
-    parser.Free;
-  end;
-end;
-
-
 { TsNumFormatParser }
 
-{ Creates a number format parser for analyzing a formatstring that has been read
-  from a spreadsheet file.
+{@@ Creates a number format parser for analyzing a formatstring that has been
+  read from a spreadsheet file.
   In case of "red" number formats we also have to specify the number format
   because the format string might not contain the color information, and we
   extract it from the NumFormat in this case. }

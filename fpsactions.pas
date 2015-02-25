@@ -479,7 +479,7 @@ implementation
 
 uses
   StdCtrls, ExtCtrls, Buttons, Forms,
-  fpsutils, fpsnumformatparser, fpsVisualUtils;
+  fpsUtils, fpsNumFormat, fpsVisualUtils;
 
 procedure Register;
 begin

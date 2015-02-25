@@ -10,7 +10,7 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
-  fpspreadsheet;
+  fpSpreadsheet, fpsreaderwriter;
 
 type
   TsSpreadXMLReader = class(TsCustomSpreadReader)

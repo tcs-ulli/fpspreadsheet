@@ -34,7 +34,7 @@ interface
 
 uses
   Classes, SysUtils, lconvencoding,
-  fpstypes, fpspreadsheet, xlscommon, fpsutils;
+  fpsTypes, fpsNumFormat, fpspreadsheet, fpsUtils, xlscommon;
 
 const
   BIFF2_MAX_PALETTE_SIZE = 8;
@@ -159,7 +159,7 @@ var
 implementation
 
 uses
-  Math, fpsStrings, fpsNumFormatParser;
+  Math, fpsStrings, fpsReaderWriter, fpsNumFormatParser;
 
 const
   { Excel record IDs }

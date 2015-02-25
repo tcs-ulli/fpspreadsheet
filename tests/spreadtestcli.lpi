@@ -13,6 +13,7 @@
       <Title Value="spreadtestcli"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
+      <Icon Value="-1"/>
     </General>
     <i18n>
       <EnableI18N LFM="False"/>
@@ -69,7 +70,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="21">
+    <Units Count="22">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -150,13 +151,16 @@
       <Unit19>
         <Filename Value="copytests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="copytests"/>
       </Unit19>
       <Unit20>
         <Filename Value="celltypetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="celltypetests"/>
       </Unit20>
+      <Unit21>
+        <Filename Value="commenttests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="commenttests"/>
+      </Unit21>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

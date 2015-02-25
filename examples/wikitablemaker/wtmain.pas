@@ -8,8 +8,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Grids, ColorBox, SynEdit,
   SynEditHighlighter, SynHighlighterHTML, SynHighlighterMulti,
-  SynHighlighterCss, SynGutterBase, SynGutterMarks, SynGutterLineNumber,
-  SynGutterChanges, SynGutter, SynGutterCodeFolding, fpspreadsheetgrid,
+  SynHighlighterCss, SynGutterCodeFolding, fpspreadsheetgrid,
   fpstypes, fpspreadsheet, fpsallformats;
 
 type

@@ -156,7 +156,7 @@ type
 implementation
 
 uses
-  TypInfo, fpsPatches, fpsutils, fpsnumformatparser, fpscsv;
+  TypInfo, fpsPatches, fpsutils, fpsnumformat, fpscsv;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet

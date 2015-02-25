@@ -725,7 +725,6 @@ object MainFrm: TMainFrm
           ''
         )
         VisibleSpecialChars = [vscSpace, vscTabAtLast]
-        SelectedColor.FrameEdges = sfeAround
         SelectedColor.BackPriority = 50
         SelectedColor.ForePriority = 50
         SelectedColor.FramePriority = 50
@@ -733,23 +732,17 @@ object MainFrm: TMainFrm
         SelectedColor.ItalicPriority = 50
         SelectedColor.UnderlinePriority = 50
         SelectedColor.StrikeOutPriority = 50
-        IncrementColor.FrameEdges = sfeAround
-        HighlightAllColor.FrameEdges = sfeAround
         BracketHighlightStyle = sbhsBoth
         BracketMatchColor.Background = clNone
         BracketMatchColor.Foreground = clNone
-        BracketMatchColor.FrameEdges = sfeAround
         BracketMatchColor.Style = [fsBold]
         FoldedCodeColor.Background = clNone
         FoldedCodeColor.Foreground = clGray
         FoldedCodeColor.FrameColor = clGray
-        FoldedCodeColor.FrameEdges = sfeAround
         MouseLinkColor.Background = clNone
         MouseLinkColor.Foreground = clBlue
-        MouseLinkColor.FrameEdges = sfeAround
         LineHighlightColor.Background = clNone
         LineHighlightColor.Foreground = clNone
-        LineHighlightColor.FrameEdges = sfeAround
         inline SynLeftGutterPartList1: TSynGutterPartList
         end
       end

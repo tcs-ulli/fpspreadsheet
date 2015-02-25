@@ -1,7 +1,8 @@
 {
 test_write_formula.pas
 
-Demonstrates how to write a formula using the fpspreadsheet library
+Demonstrates how to write a formula using the fpspreadsheet library in the
+"hard way" by means of rpn formulas
 
 AUTHORS: Felipe Monteiro de Carvalho
 }

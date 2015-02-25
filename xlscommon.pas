@@ -10,8 +10,8 @@ OpenOffice Microsoft Excel File Format document }
 interface
 
 uses
-  Classes, SysUtils, DateUtils,
-  fpstypes, fpspreadsheet, fpsutils, lconvencoding;
+  Classes, SysUtils, DateUtils, lconvencoding,
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsReaderWriter;
 
 const
   { RECORD IDs which didn't change across versions 2-8 }

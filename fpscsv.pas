@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpstypes, fpspreadsheet, fpsCsvDocument;
+  fpstypes, fpspreadsheet, fpsReaderWriter, fpsCsvDocument;
 
 type
   TsCSVReader = class(TsCustomSpreadReader)
