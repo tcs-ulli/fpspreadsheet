@@ -195,6 +195,17 @@ type
     procedure WriteToStream(AStream: TStream); override;
   end;
 
+
+  TXlsxSettings = record
+    DateMode: TDateMode;
+  end;
+
+var
+  XlsxSettings: TXlsxSettings = (
+    DateMode: dm1900;
+  );
+
+
 implementation
 
 uses
@@ -452,7 +463,7 @@ end;
 constructor TsSpreadOOXMLReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FDateMode := dm1900;
+  FDateMode := XlsxSettings.DateMode;
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
 
@@ -2922,7 +2933,7 @@ begin
   inherited Create(AWorkbook);
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.
-  FDateMode := dm1900;
+  FDateMode := XlsxSettings.DateMode;
 
   // Special version of FormatSettings using a point decimal separator for sure.
   FPointSeparatorSettings := DefaultFormatSettings;

@@ -116,11 +116,24 @@ type
     procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
       XFType_Prot: Byte = 0); override;
   public
+    constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream); override;
   end;
+
+  TExcel5Settings = record
+    DateMode: TDateMode;
+    CodePage: String;
+  end;
+
+var
+  Excel5Settings: TExcel5Settings = (
+    // Settings used when writing to file
+    DateMode: dm1900;
+    CodePage: 'cp1252';    // on Windows, will be replaced --> see initalization
+  );
 
 var
   // the palette of the default BIFF5 colors as "big-endian color" values
@@ -898,6 +911,14 @@ end;
 {                           TsSpreadBIFF5Writer                                }
 {------------------------------------------------------------------------------}
 
+constructor TsSpreadBIFF5Writer.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FDateMode := Excel5Settings.DateMode;
+  FCodePage := Excel5Settings.CodePage;
+end;
+
+
 {@@ ----------------------------------------------------------------------------
   Writes an Excel BIFF5 file to the disc
 
@@ -943,14 +964,14 @@ procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream);
 var
   CurrentPos: Int64;
   Boundsheets: array of Int64;
-  i, len: Integer;
+  i: Integer;
   pane: Byte;
 begin
   { Write workbook globals }
 
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
 
-  WriteCodepage(AStream, Workbook.CodePage); //WorkBook.Encoding);
+  WriteCodepage(AStream, FCodePage);
   WriteWindow1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -959,13 +980,9 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  SetLength(Boundsheets, 0);
+  SetLength(Boundsheets, Workbook.GetWorksheetCount);
   for i := 0 to Workbook.GetWorksheetCount - 1 do
-  begin
-    len := Length(Boundsheets);
-    SetLength(Boundsheets, len + 1);
-    Boundsheets[len] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
-  end;
+    Boundsheets[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
 
   WriteEOF(AStream);
 
@@ -1536,6 +1553,10 @@ end;
 
 
 initialization
+
+ {$IFDEF MSWINDOWS}
+  Excel5Settings.CodePage := GetDefaultTextEncoding;
+ {$ENDIF}
 
   RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5);
   MakeLEPalette(@PALETTE_BIFF5, Length(PALETTE_BIFF5));

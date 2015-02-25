@@ -334,9 +334,9 @@ type
   TsSpreadBIFFWriter = class(TsCustomSpreadWriter)
   protected
     FDateMode: TDateMode;
+    FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     FLastRow: Cardinal;
     FLastCol: Cardinal;
-    FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     procedure CreateNumFormatList; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixColor(AColor: TsColor): TsColor; override;
