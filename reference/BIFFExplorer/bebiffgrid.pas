@@ -2949,7 +2949,7 @@ begin
       numBytes := 4;
       Move(FBuffer[FBufferIndex], dw, numbytes);
       nchar := DWordToLE(dw);
-      ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(nchar),
         'Character count of the shortened file path and name, incl trailing zero byte.');
       inc(n);
 
@@ -2995,7 +2995,7 @@ begin
         SetLength(widestr, nchar);
         Move(FBuffer[FBufferIndex], widestr[1], numbytes);
         s := UTF16ToUTF8(widestr);
-        ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(size),
+        ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
           'Character array of extended file path and array (No unicode string header, always 16-bit characters, NOT zero-terminated)');
         inc(n);
       end;
