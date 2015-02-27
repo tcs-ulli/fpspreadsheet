@@ -122,6 +122,7 @@ type
       ACommentIndex: Integer; AStream: TStream);
     procedure WriteCommentsNoteCallback(AComment: PsComment;
       ACommentIndex: Integer; AStream: TStream);
+    procedure WriteHyperlinksCallback(AHyperlink: PsHyperlink; AStream: TStream);
 
   protected
     { Record writing methods }
@@ -134,6 +135,13 @@ type
     procedure WriteFont(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
     procedure WriteIndex(AStream: TStream);
+    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
+    procedure WriteHYPERLINKRecord(AStream: TStream; AHyperlink: PsHyperlink;
+      AWorksheet: TsWorksheet);
+    procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteHYPERLINKTOOLTIP(AStream: TStream; const ARow, ACol: Cardinal;
+      const ATooltip: String);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
@@ -251,7 +259,7 @@ var
 implementation
 
 uses
-  Math, lconvencoding,
+  Math, lconvencoding, URIParser, DOS,
   fpsStrings, fpsStreams, fpsReaderWriter, fpsExprParser, xlsEscher;
 
 const
@@ -261,6 +269,8 @@ const
      INT_EXCEL_ID_SST                    = $00FC;  // BIFF8 only
      INT_EXCEL_ID_LABELSST               = $00FD;  // BIFF8 only
      INT_EXCEL_ID_TXO                    = $01B6;  // BIFF8 only
+     INT_EXCEL_ID_HYPERLINK              = $01B8;  // BIFF8 only
+     INT_EXCEL_ID_HYPERLINKTOOLTIP       = $0800;  // BIFF8 only
 {%H-}INT_EXCEL_ID_FORCEFULLCALCULATION   = $08A3;
 
    { Excel OBJ subrecord IDs }
@@ -311,6 +321,13 @@ const
      XF_ROTATION_90DEG_CW                = 180;
      XF_ROTATION_STACKED                 = 255;   // Letters stacked top to bottom, but not rotated
 
+     TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
+       XF_ROTATION_HORIZONTAL,
+       XF_ROTATION_90DEG_CW,
+       XF_ROTATION_90DEG_CCW,
+       XF_ROTATION_STACKED
+     );
+
    { XF CELL BORDER LINE STYLES }
      MASK_XF_BORDER_LEFT                 = $0000000F;
      MASK_XF_BORDER_RIGHT                = $000000F0;
@@ -331,14 +348,16 @@ const
    { XF CELL BACKGROUND PATTERN }
      MASK_XF_BACKGROUND_PATTERN          = $FC000000;
 
-     TEXT_ROTATIONS: Array[TsTextRotation] of Byte = (
-       XF_ROTATION_HORIZONTAL,
-       XF_ROTATION_90DEG_CW,
-       XF_ROTATION_90DEG_CCW,
-       XF_ROTATION_STACKED
-     );
+   { HLINK FLAGS }
+     MASK_HLINK_LINK                     = $00000001;
+     MASK_HLINK_ABSOLUTE                 = $00000002;
+     MASK_HLINK_DESCRIPTION              = $00000014;
+     MASK_HLINK_TEXTMARK                 = $00000008;
+     MASK_HLINK_TARGETFRAME              = $00000080;
+     MASK_HLINK_UNCPATH                  = $00000100;
 
      SHAPEID_BASE = 1024;
+
 
 type
   TBIFF8_DimensionsRecord = packed record
@@ -1512,6 +1531,7 @@ begin
       WriteWindow2(AStream, FWorksheet);
       WritePane(AStream, FWorksheet, isBIFF8, pane);
       WriteSelection(AStream, FWorksheet, pane);
+      WriteHyperlinks(AStream, FWorksheet);
 
       WriteMergedCells(AStream, FWorksheet);
 
@@ -2150,6 +2170,210 @@ begin
   
   { OBS: It seems to be no problem just ignoring this part of the record }
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Inherited method for writing a hyperlink
+  Just writes the cell text; the hyperlink is written together with the other
+  hyperlinks later.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlink(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
+  WriteLabel(AStream, ARow, ACol, FWorksheet.ReadAsUTF8Text(ACell), ACell);
+  ACell^.ContentType := cctHyperlink;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 HYPERLINK record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHYPERLINKRecord(AStream: TStream;
+  AHyperlink: PsHyperlink; AWorksheet: TsWorksheet);
+var
+  temp: TStream;
+  guid: TGUID;
+  widestr: widestring;
+  ansistr: ansistring;
+  descr: String;
+  fn: String;
+  flags: DWord;
+  markpos: Integer;
+  size: Integer;
+  cell: PCell;
+begin
+  cell := AWorksheet.FindCell(AHyperlink^.Row, AHyperlink^.Col);
+  if (cell = nil) or (AHyperlink^.Kind = hkNone) then
+    exit;
+
+  descr := AWorksheet.ReadAsUTF8Text(cell);      // Hyperlink description
+  markpos := UTF8Pos('#', AHyperlink^.Target);   // Position of # in hyperlink target
+
+  // Since the length of the record is not known in the first place we write
+  // the data to a temporary stream at first.
+  temp := TMemoryStream.Create;
+  try
+    { Cell range using the same hyperlink - we support only single cells }
+    temp.WriteWord(WordToLE(cell^.Row));   // first row
+    temp.WriteWord(WordToLE(cell^.Row));   // last row
+    temp.WriteWord(WordToLE(cell^.Col));   // first column
+    temp.WriteWord(WordToLE(cell^.Col));   // last column
+
+    { GUID of standard link }
+    guid := StringToGuid('{79EAC9D0-BAF9-11CE-8C82-00AA004BA90B}');
+    temp.WriteBuffer(guid, SizeOf(guid));
+
+    { unknown }
+    temp.WriteDWord(DWordToLe($00000002));
+
+    { option flags }
+    flags := 0;
+    case AHyperlink^.Kind of
+      hkCell:
+        flags := MASK_HLINK_TEXTMARK or MASK_HLINK_DESCRIPTION;
+      hkURI:
+        flags := MASK_HLINK_LINK or MASK_HLINK_ABSOLUTE;
+    end;
+    if descr <> AHyperlink^.Target then
+      flags := flags or MASK_HLINK_DESCRIPTION;  // has description
+    if markpos > 0 then                          // has # in target
+      flags := flags or MASK_HLINK_TEXTMARK;
+    temp.WriteDWord(DWordToLE(flags));
+
+    { description }
+    if flags and MASK_HLINK_DESCRIPTION <> 0 then
+    begin
+      widestr := UTF8Decode(descr);
+      { Character count incl trailing zero }
+      temp.WriteDWord(DWordToLE(Length(wideStr) + 1));
+      { Character array (16-bit characters), plus trailing zeros }
+      temp.WriteBuffer(wideStr[1], (Length(wideStr)+1)*SizeOf(widechar));
+    end;
+
+    if AHyperlink^.Kind = hkURI then
+    begin
+      if URIToFilename(AHyperlink^.Target, fn) then  // URI is a local file
+      begin
+       { GUID of file moniker }
+        guid := StringToGuid('{00000303-0000-0000-C000-000000000046}');
+        temp.WriteBuffer(guid, SizeOf(guid));
+        { Directory-up level counter - we only use absolute paths. }
+        temp.WriteWord(WordToLE(0));
+        { Convert to DOS 8.3 format }
+        ansistr := UTF8ToAnsi(fn);   // Don't use FCodePage here - this is utf8 in case of BIFF8, but we need at true ansi string
+        //GetShortName(ansistr);
+        { Character count of file name incl trailing zero }
+        temp.WriteDWord(DWordToLe(Length(ansistr)+1));
+        { Character array of file name (8-bit characters), plus trailing zero }
+        temp.WriteBuffer(ansistr[1], Length(ansistr)+1);
+        { Unknown }
+        temp.WriteDWord(DWordToLE($DEADFFFF));
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        { Size of following file link fields }
+        widestr := UTF8ToUTF16(fn);
+        size := 4 + 2 + Length(wideStr)*SizeOf(widechar);
+        temp.WriteDWord(DWordToLE(size));
+        if size > 0 then
+        begin
+          { Character count of extended file name }
+          temp.WriteDWord(DWordToLE(Length(widestr)*SizeOf(WideChar)));
+          { Unknown }
+          temp.WriteWord(WordToLE($0003));
+          { Character array, 16-bit characters, NOT ZERO-TERMINATED! }
+          temp.WriteBuffer(widestr[1], Length(wideStr)*SizeOf(WideChar));
+        end;
+      end
+      else begin  { Hyperlink target is a URL }
+        widestr := UTF8Decode(AHyperlink^.Target);
+        { GUID of URL Moniker }
+        guid := StringToGUID('{79EAC9E0-BAF9-11CE-8C82-00AA004BA90B}');
+        temp.WriteBuffer(guid, SizeOf(guid));
+        { Character count incl trailing zero }
+        temp.WriteDWord(DWordToLE(Length(wideStr)+1)*SizeOf(wideChar));
+        { Character array plus trailing zero (16-bit characters), plus trailing zeros }
+        temp.WriteBuffer(wideStr[1], (length(wideStr)+1)*SizeOf(wideChar));
+      end;
+    end; // hkURI
+
+    // Hyperlink contains a text mark (#)
+    if flags and MASK_HLINK_TEXTMARK <> 0 then
+    begin
+      // Extract text mark without "#" and convert to 16-bit characters
+      if markpos > 0 then
+        widestr := UTF8Decode(UTF8Copy(AHyperlink^.Target, markpos+1, Length(AHyperlink^.Target)))
+      else if AHyperlink^.Kind = hkCell then
+        widestr := UTF8Decode(AHyperlink^.Target);
+      { Character count of text mark, incl trailing zero }
+      temp.WriteDWord(DWordToLE(Length(wideStr) + 1));
+      { Character array (16-bit characters) plus trailing zeros }
+      temp.WriteBuffer(wideStr[1], (Length(wideStr)+1) * SizeOf(WideChar));
+    end;
+
+    { BIFF record header }
+    WriteBIFFHeader(AStream, INT_EXCEL_ID_HYPERLINK, temp.Size);
+
+    { Record data }
+    temp.Position := 0;
+    AStream.CopyFrom(temp, temp.Size);
+
+  finally
+    temp.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes all hyperlinks
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlinks(AStream: TStream;
+  AWorksheet: TsWorksheet);
+begin
+  IterateThroughHyperlinks(AStream, AWorksheet.Hyperlinks, WriteHyperlinksCallback);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Callback procedure called for each hyperlink of the current worksheet when
+  all hyperlinks are written out
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlinksCallback(AHyperlink: PsHyperlink;
+  AStream: TStream);
+begin
+  { Write HYPERLINK record }
+  WriteHyperlinkRecord(AStream, AHyperlink, FWorksheet);
+
+  { Write HYPERLINK TOOLTIP record }
+  if AHyperlink^.Tooltip <> '' then
+    WriteHyperlinkTooltip(AStream, AHyperlink^.Row, AHyperlink^.Col, AHyperlink^.Tooltip);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a HYPERLINK TOOLTIP record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlinkTooltip(AStream: TStream;
+  const ARow, ACol: Cardinal; const ATooltip: String);
+var
+  widestr: widestring;
+begin
+  widestr := UTF8Decode(ATooltip);
+
+  { BIFF record header }
+  WriteBiffHeader(AStream, INT_EXCEL_ID_HYPERLINKTOOLTIP,
+    10 + (Length(wideStr)+1) * SizeOf(widechar));
+
+  { Repeated record ID }
+  AStream.WriteWord(WordToLe(INT_EXCEL_ID_HYPERLINKTOOLTIP));
+
+  { Cell range using the same hyperlink tooltip - we support only single cells }
+  AStream.WriteWord(WordToLE(ARow));   // first row
+  AStream.WriteWord(WordToLE(ARow));   // last row
+  AStream.WriteWord(WordToLE(ACol));   // first column
+  AStream.WriteWord(WordToLE(ACol));   // last column
+
+  { Tooltop characters, no length, but trailing zero }
+  AStream.WriteBuffer(wideStr[1], (Length(widestr)+1)*SizeOf(wideChar));
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 8 LABEL record (string cell value)

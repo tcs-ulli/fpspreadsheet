@@ -80,6 +80,10 @@ type
   TCommentsCallback = procedure (AComment: PsComment; ACommentIndex: Integer;
     AStream: TStream) of object;
 
+  {@@ Callback function when iterating hyperlinks while accessing a stream }
+  THyperlinksCallback = procedure (AHyperlink: PsHyperlink;
+    AStream: TStream) of object;
+
   {@@ Custom writer of spreadsheet files. "Custom" means that it provides only
     the basic functionality. The main implementation is done in derived classes
     for each individual file format. }
@@ -126,6 +130,8 @@ type
       ACallback: TCellsCallback);
     procedure IterateThroughComments(AStream: TStream; AComments: TAVLTree;
       ACallback: TCommentsCallback);
+    procedure IterateThroughHyperlinks(AStream: TStream; AHyperlinks: TAVLTree;
+      ACallback: THyperlinksCallback);
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream); override;
@@ -481,7 +487,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   A generic method to iterate through all comments in a worksheet and call a
-  callback routine for each cell.
+  callback routine for each comment.
 
   @param  AStream    The output stream, passed to the callback routine.
   @param  AComments  List of comments to be iterated
@@ -500,6 +506,31 @@ begin
   begin
     ACallback(PsComment(AVLNode.Data), index, AStream);
     AVLNode := AComments.FindSuccessor(AVLNode);
+    inc(index);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  A generic method to iterate through all hyperlinks in a worksheet and call a
+  callback routine for each hyperlink.
+
+  @param  AStream      The output stream, passed to the callback routine.
+  @param  AHyperlinks  List of hyperlinks to be iterated
+  @param  ACallback    Callback routine; it requires as arguments a pointer to
+                       the hyperlink record as well as the destination stream.
+-------------------------------------------------------------------------------}
+procedure TsCustomSpreadWriter.IterateThroughHyperlinks(AStream: TStream;
+  AHyperlinks: TAVLTree; ACallback: THyperlinksCallback);
+var
+  AVLNode: TAVLTreeNode;
+  index: Integer;
+begin
+  index := 0;
+  AVLNode := AHyperlinks.FindLowest;
+  while Assigned(AVLNode) do
+  begin
+    ACallback(PsHyperlink(AVLNode.Data), AStream);
+    AVLNode := AHyperlinks.FindSuccessor(AVLNode);
     inc(index);
   end;
 end;
