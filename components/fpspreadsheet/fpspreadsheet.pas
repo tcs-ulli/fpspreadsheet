@@ -487,11 +487,13 @@ type
     function IsHyperlink(ACell: PCell): Boolean;
     function ReadHyperlink(ARow, ACol: Cardinal): TsHyperlink; overload;
     function ReadHyperlink(ACell: PCell): TsHyperlink;
-    procedure RemoveHyperlink(ACell: PCell; AKeepText: Boolean);
-    function WriteHyperlink(ARow, ACol: Cardinal; AKind: TsHyperlinkKind;
-      ATarget: String; ADisplayText: String = ''; ATooltip: String = ''): PCell; overload;
-    procedure WriteHyperlink(ACell: PCell; AKind: TsHyperlinkKind;
-      ATarget: String; ADisplayText: String = ''; ATooltip: String = ''); overload;
+    procedure RemoveHyperlink(ACell: PCell);
+    procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
+    function ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
+    function WriteHyperlink(ARow, ACol: Cardinal; ATarget: String;
+      ATooltip: String = ''): PCell; overload;
+    procedure WriteHyperlink(ACell: PCell; ATarget: String;
+      ATooltip: String = ''); overload;
 
     { Merged cells }
     procedure MergeCells(ARow1, ACol1, ARow2, ACol2: Cardinal); overload;
@@ -859,7 +861,7 @@ procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 implementation
 
 uses
-  Math, StrUtils, TypInfo, lazutf8,
+  Math, StrUtils, TypInfo, lazutf8, URIParser,
   fpsPatches, fpsStrings, fpsStreams, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormat, fpsNumFormatParser;
@@ -1626,7 +1628,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.IsHyperlink(ACell: PCell): Boolean;
 begin
-  Result := (ACell <> nil) and (ACell^.ContentType = cctHyperlink);
+  Result := (ACell <> nil) and (cfHyperlink in ACell^.Flags);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1658,7 +1660,8 @@ begin
     Result := hyperlink^
   else
   begin
-    Result.Kind := hkNone;
+    Result.Row := ACell^.Row;
+    Result.Col := ACell^.Col;
     Result.Target := '';
     Result.Tooltip := '';
   end;
@@ -1669,7 +1672,7 @@ end;
   the associated TsHyperlink record. Cell content type is converted to
   cctUTF8String.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveHyperlink(ACell: PCell; AKeepText: Boolean);
+procedure TsWorksheet.RemoveHyperlink(ACell: PCell);
 var
   hyperlink: TsHyperlink;
   AVLNode: TAvlTreeNode;
@@ -1683,49 +1686,114 @@ begin
   if AVLNode <> nil then begin
     Dispose(PsHyperlink(AVLNode.Data));
     FHyperlinks.Delete(AVLNode);
-    if AKeepText then
-      ACell^.ContentType := cctUTF8String
-    else
-      ACell^.ContentType := cctEmpty;
+    Exclude(ACell^.Flags, cfHyperlink);
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Separates the target and bookmark parts of a hyperlink (separated by '#').
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
+var
+  p: Integer;
+begin
+  p := pos('#', AValue);
+  if p = 0 then
+  begin
+    ATarget := AValue;
+    ABookmark := '';
+  end else
+  begin
+    ATarget := Copy(AValue, 1, p-1);
+    ABookmark := Copy(AValue, p+1, Length(AValue));
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the passed string represents a valid hyperlink target
+
+  @param   AValue  String to be checked. Must be either a fully qualified URI,
+                   or a # followed by a cell address in the current workbook
+  @param   AErrMsg Error message in case that the string is not correct.
+  @returns TRUE if the string is correct, FALSE otherwise
+-------------------------------------------------------------------------------}
+function TsWorksheet.ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
+var
+  uri: TUri;
+  mark: String;
+  sheet: TsWorksheet;
+  r, c: Cardinal;
+begin
+  Result := false;
+  AErrMsg := '';
+  if AValue = '' then
+  begin
+    AErrMsg := rsEmptyHyperlink;
+    exit;
+  end else
+  if (AValue[1] = '#') then
+  begin
+    Delete(AValue, 1, 1);
+    if not FWorkbook.TryStrToCell(AValue, sheet, r, c) then
+    begin
+      AErrMsg := Format(rsNoValidHyperlinkInternal, ['#'+AValue]);
+      exit;
+    end;
+  end else
+  begin
+    uri := ParseURI(AValue);
+    if SameText(uri.Protocol, 'mailto') then
+    begin
+      Result := true;   // To do: Check email address here...
+      exit;
+    end else
+    begin
+      Result := true;
+      exit;
+    end;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Assigns a hyperlink to the cell at the specified row and column
+  Cell content is not affected by the presence of a hyperlink.
 
   @param  ARow          Row index of the cell considered
   @param  ACol          Column index of the cell considered
-  @param  AKind         Hyperlink type (to cell, external file, URL)
-  @param  ATarget       Depending on AKind: cell address, filename, or URL
-                        if empty the hyperlink is removed from the cell.
-  @param  ADisplayText  Text shown in cell. If empty the destination is shown
+  @param  ATarget       Hyperlink address given as a fully qualitifed URI for
+                        external links, or as a # followed by a cell address
+                        for internal links.
   @param  ATooltip      Text for popup tooltip hint used by Excel
-  @return Pointer to the cell with the hyperlink
+  @returns Pointer to the cell with the hyperlink
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteHyperlink(ARow, ACol: Cardinal; AKind: TsHyperlinkKind;
-  ATarget: String; ADisplayText: String = ''; ATooltip: String = ''): PCell;
+function TsWorksheet.WriteHyperlink(ARow, ACol: Cardinal; ATarget: String;
+  ATooltip: String = ''): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteHyperlink(Result, AKind, ATarget, ADisplayText, ATooltip);
+  WriteHyperlink(Result, ATarget, ATooltip);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Assigns a hyperlink to the specified cell.
 
   @param  ACell         Pointer to the cell considered
-  @param  AKind         Hyperlink type (to cell, external file, URL)
-  @param  ATarget       Depending on AKind: cell address, filename, or URL
-                        if empty the hyperlink is removed from the cell.
-  @param  ADisplayText  Text shown in cell. If empty the destination is shown
+  @param  ATarget       Hyperlink address given as a fully qualitifed URI for
+                        external links, or as a # followed by a cell address
+                        for internal links. An existing hyperlink is removed if
+                        ATarget is empty.
   @param  ATooltip      Text for popup tooltip hint used by Excel
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteHyperlink(ACell: PCell; AKind: TsHyperlinkKind;
-  ATarget: String; ADisplayText: String = ''; ATooltip: String = '');
+procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
+  ATooltip: String = '');
 var
   hyperlink: PsHyperlink;
   addNew: Boolean;
   row, col: Cardinal;
+  r, c: Cardinal;
   fmt: TsCellFormat;
+  fn: String;
+  err: String;
 begin
   if ACell = nil then
     exit;
@@ -1734,25 +1802,32 @@ begin
   col := ACell^.Col;
 
   // Remove the hyperlink if an empty destination is passed
-  if ATarget = '' then
-    RemoveHyperlink(ACell, false)
+  if (ATarget = '') then
+    RemoveHyperlink(ACell)
   else
   begin
+    {
+    if not ValidHyperlink(ATarget, err) then
+      raise Exception.Create(err);
+      }
     hyperlink := FindHyperlink(ACell);
     addNew := (hyperlink = nil);
     if addNew then New(hyperlink);
     hyperlink^.Row := row;
     hyperlink^.Col := col;
-    hyperlink^.Kind := AKind;
     hyperlink^.Target := ATarget;
     hyperlink^.Tooltip := ATooltip;
     if addNew then FHyperlinks.Add(hyperlink);
+    Include(ACell^.Flags, cfHyperlink);
 
-    ACell^.ContentType := cctHyperlink;
-    if ADisplayText <> '' then
-      ACell^.UTF8StringValue := ADisplayText
-    else
-      ACell^.UTF8StringValue := ATarget;
+    if ACell^.ContentType = cctEmpty then
+    begin
+      ACell^.ContentType := cctUTF8String;
+      if UriToFileName(hyperlink^.Target, fn) then
+        ACell^.UTF8StringValue := fn
+      else
+        ACell^.UTF8StringValue := hyperlink^.Target;
+    end;
 
     fmt := ReadCellFormat(ACell);
     if fmt.FontIndex = DEFAULT_FONTINDEX then
@@ -2744,6 +2819,7 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
 
 var
   fmt: PsCellFormat;
+  hyperlink: PsHyperlink;
 
 begin
   Result := '';
@@ -2755,8 +2831,7 @@ begin
     case ContentType of
       cctNumber:
         Result := FloatToStrNoNaN(NumberValue, fmt^.NumberFormat, fmt^.NumberFormatStr);
-      cctUTF8String,
-      cctHyperlink:
+      cctUTF8String:
         Result := UTF8StringValue;
       cctDateTime:
         Result := DateTimeToStrNoNaN(DateTimeValue, fmt^.NumberFormat, fmt^.NumberFormatStr);
@@ -2775,6 +2850,11 @@ begin
         end;
       else
         Result := '';
+        if IsHyperlink(ACell) then
+        begin
+          hyperlink := FindHyperlink(ACell);
+          if hyperlink <> nil then Result := hyperlink^.Target;
+        end;
     end;
 end;
 
@@ -4602,44 +4682,9 @@ begin
     exit;
   end;
 
-  if IsHyperlink(ACell) then
-  begin
-    // Preserve hyperlinks. Modify only the display test.
-    WriteUTF8Text(ACell, AValue);
-    ACell^.ContentType := cctHyperlink;
-  end else
-    WriteUTF8Text(ACell, AValue);
-end;
-                                 (*
-{@@ ----------------------------------------------------------------------------
-  Assigns a comment to a cell
-
-  @param ARow            Cell row index
-  @param ACol            Cell column index
-  @param AComment        Text to be used as comment. Can contain line-breaks.
-  @return  Pointer to the cell
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteComment(ARow, ACol: Cardinal;
-  const AComment: String): PCell;
-begin
-  Result := GetCell(ARow, ACol);
-  WriteComment(Result, AComment);
+  WriteUTF8Text(ACell, AValue);
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Assigns a comment to a cell
-
-  @param ACell           Pointer to the cell
-  @param AComment        Text to be used as comment. Can contain line-breaks.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteComment(ACell: PCell; const AComment: String);
-begin
-  if ACell <> nil then begin
-    ACell^.Comment := AComment;
-    ChangedCell(ACell^.Row, ACell^.Col);
-  end;
-end;
-                                   *)
 {@@ ----------------------------------------------------------------------------
   Writes a currency value to a given cell. Its number format can be provided
   optionally by specifying various parameters.

@@ -1024,7 +1024,7 @@ begin
   cell := FDrawingCell;
 
   // Nothing to do in these cases (like in Excel):
-  if (cell = nil) or not (cell^.ContentType in [cctUTF8String, cctHyperlink]) then  // ... non-label cells
+  if (cell = nil) or not (cell^.ContentType in [cctUTF8String]) then  // ... non-label cells
     exit;
 
   fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
@@ -1840,13 +1840,13 @@ begin
         cell := Worksheet.FindCell(sr, GetWorksheetCol(gc));
         // Empty cell --> proceed with next cell to the left
         if (cell = nil) or (cell^.ContentType = cctEmpty) or
-           ((cell^.ContentType in [cctUTF8String, cctHyperLink]) and (cell^.UTF8StringValue = ''))
+           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
         fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
         if (not Worksheet.IsMerged(cell)) and
-           (cell^.ContentType in [cctUTF8String, cctHyperlink]) and
+           (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
            (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haRight)
         then
@@ -1867,13 +1867,13 @@ begin
         cell := Worksheet.FindCell(sr, GetWorksheetCol(gcLast));
         // Empty cell --> proceed with next cell to the right
         if (cell = nil) or (cell^.ContentType = cctEmpty) or
-           ((cell^.ContentType in [cctUTF8String, cctHyperlink]) and (cell^.UTF8StringValue = ''))
+           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
         fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
         if (not Worksheet.IsMerged(cell)) and
-           (cell^.ContentType in [cctUTF8String, cctHyperlink]) and
+           (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
            (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haLeft)
         then
@@ -2161,6 +2161,7 @@ end;
 procedure TsCustomWorksheetGrid.ExecuteHyperlink;
 var
   hyperlink: TsHyperlink;
+  target, bookmark: String;
   sheetname: String;
   sheet: TsWorksheet;
   r, c: Cardinal;
@@ -2169,27 +2170,24 @@ begin
     exit;
 
   hyperlink := Worksheet.ReadHyperlink(FHyperlinkCell);
-  case hyperlink.Kind of
-    hkNone:
-      ;  // nothing to do
-    hkCell:
-      // Goes to a cell (unlike Excel, we don't support range here)
-      if ParseSheetCellString(hyperlink.Target, sheetname, r, c) then
+  Worksheet.SplitHyperlink(hyperlink.Target, target, bookmark);
+  if target = '' then begin
+    // Goes to a cell within the current workbook
+    if ParseSheetCellString(bookmark, sheetname, r, c) then
+    begin
+      if sheetname <> '' then
       begin
-        if sheetname <> '' then
-        begin
-          sheet := Workbook.GetWorksheetByName(sheetname);
-          if sheet = nil then
-            raise Exception.CreateFmt(rsWorksheetNotFound, [sheetname]);
-          Workbook.SelectWorksheet(sheet);
-        end;
-        Worksheet.SelectCell(r, c);
-      end else
-        raise Exception.CreateFmt(rsHyperlinkNotAValidCell, [hyperlink.Target]);
-    else
-      // Fires the OnClickHyperlink event which should open a file or a URL
-      if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
-  end;
+        sheet := Workbook.GetWorksheetByName(sheetname);
+        if sheet = nil then
+          raise Exception.CreateFmt(rsWorksheetNotFound, [sheetname]);
+        Workbook.SelectWorksheet(sheet);
+      end;
+      Worksheet.SelectCell(r, c);
+    end else
+      raise Exception.CreateFmt(rsNoValidHyperlinkInternal, [hyperlink.Target]);
+  end else
+    // Fires the OnClickHyperlink event which should open a file or a URL
+    if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
 end;
 
 
@@ -2637,16 +2635,44 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   This function defines the text to be displayed as a cell hint. By default, it
-  is the comment attached to a cell; it can further be modified by using the
-  OnGetCellHint event.
+  is the comment and/or the hyperlink attached to a cell; it can further be
+  modified by using the OnGetCellHint event.
   Option goCellHints must be active for the cell hint feature to work.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellHintText(ACol, ARow: Integer): String;
 var
   cell: PCell;
+  hyperlink: PsHyperlink;
+  comment: String;
 begin
   cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-  Result := Worksheet.ReadComment(cell);
+  if cell = nil then
+    Result := ''
+  else
+  begin
+    // Read comment
+    comment := Worksheet.ReadComment(cell);
+    // Read hyperlink info
+    if Worksheet.IsHyperlink(cell) then begin
+      hyperlink := Worksheet.FindHyperlink(cell);
+      if hyperlink <> nil then
+      begin
+        if hyperlink^.ToolTip <> '' then
+          Result := hyperlink^.ToolTip
+        else
+          Result := Format('Hyperlink: %s' + LineEnding + rsStdHyperlinkTooltip,
+            [hyperlink^.Target]
+          );
+      end;
+    end;
+    // Combine comment and hyperlink
+    if (Result <> '') and (comment <> '') then
+      Result := comment + LineEnding + LineEnding + Result
+    else
+    if (Result = '') and (comment <> '') then
+      Result := comment;
+  end;
+
   if Assigned(OnGetCellHint) then
     OnGetCellHint(self, ACol, ARow, Result);
 end;
@@ -3772,7 +3798,7 @@ var
   fmt: PsCellFormat;
 begin
   Result := Worksheet.ReadAsUTF8Text(ACell);
-  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType in [cctUTF8String, cctHyperlink]))
+  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
   then
     exit;
 

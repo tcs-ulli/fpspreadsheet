@@ -219,8 +219,7 @@ end;
 
 procedure TCellHelper.SetHyperlink(const AValue: TsHyperlink);
 begin
-  Worksheet.WriteHyperlink(@self, AValue.Kind, AValue.Target,
-    Worksheet.ReadAsUTF8Text(@self), AValue.Tooltip);
+  Worksheet.WriteHyperlink(@self, AValue.Target, AValue.Tooltip);
 end;
 
 procedure TCellHelper.SetNumberFormat(const AValue: TsNumberFormat);

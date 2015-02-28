@@ -2648,6 +2648,7 @@ end;
 procedure TsSpreadsheetInspector.UpdateCellValue(ACell: PCell; AStrings: TStrings);
 var
   hyperlink: PsHyperlink;
+  comment: String;
   s: String;
 begin
   if ACell = nil then
@@ -2680,22 +2681,6 @@ begin
       AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
     if ACell^.ContentType = cctBool then
       AStrings.Add(Format('BoolValue=%s', [BoolToStr(ACell^.BoolValue)]));
-    if ACell^.ContentType = cctHyperlink then
-    begin
-      AStrings.Add(Format('UTF8StringValue=%s', [ACell^.UTF8StringValue]));
-      hyperlink := Worksheet.FindHyperlink(ACell);
-      if hyperlink <> nil then
-      begin
-        s := hyperlink^.Target;
-        case hyperlink^.Kind of
-          hkNone: s := s + ' <error>';
-          hkCell: s := s + ' (internal cell reference)';
-          hkURI : s := s + ' (external URI)';
-        end;
-      end else
-        s := '<error>';
-      AStrings.Add(Format('Hyperlink=%s', [s]));
-    end;
     if ACell^.ContentType = cctError then
       AStrings.Add(Format('ErrorValue=%s', [GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue))]));
     AStrings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)]));
@@ -2705,6 +2690,23 @@ begin
       AStrings.Add(Format('SharedFormulaBase=%s', [GetCellString(
         ACell^.SharedFormulaBase^.Row, ACell^.SharedFormulaBase^.Col)
       ]));
+    if (cfHyperlink in ACell^.Flags) then
+    begin
+      hyperlink := Worksheet.FindHyperlink(ACell);
+      if hyperlink <> nil then
+      begin
+        if hyperlink^.Tooltip <> '' then
+          s := hyperlink^.Target + ' (tooltip: ' + hyperlink^.Tooltip + ')'
+        else
+          s := hyperlink^.Target;
+        AStrings.Add(Format('Hyperlink=%s', [s]));
+      end;
+    end;
+    if (cfHasComment in ACell^.Flags) then
+    begin
+      comment := Worksheet.ReadComment(ACell);
+      AStrings.Add(Format('Comment=%s', [comment]));
+    end;
   end;
 end;
 

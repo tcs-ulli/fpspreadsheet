@@ -115,8 +115,6 @@ type
       const AValue: TsErrorValue; ACell: PCell); virtual; abstract;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); virtual;
-    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
-      ACell: PCell); virtual;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); virtual; abstract;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -582,8 +580,6 @@ begin
         WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
       cctUTF8String:
         WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
-      cctHyperlink:
-        WriteHyperlink(AStream, ACell^.Row, ACell^.Col, ACell);
     end;
 
   if FWorksheet.ReadComment(ACell) <> '' then
@@ -630,23 +626,6 @@ end;
                      to the stream
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
-begin
-  Unused(AStream);
-  Unused(ARow, ACol, ACell);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Basic method which is called when writing a hyperlink to a stream.
-  Present implementation does nothing. Needs to be overridden by descendants.
-
-  @param   AStream   Stream to be written
-  @param   ARow      Row index of the cell containing the hyperlink
-  @param   ACol      Column index of the cell containing the formula
-  @param   ACell     Pointer to the cell containing the hyperlink and
-                     being written to the stream
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteHyperlink(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 begin
   Unused(AStream);

@@ -55,7 +55,11 @@ resourcestring
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
-  rsHyperlinkNotAValidCell = 'Hyperlink target "%s" is not a valid cell address.';
+  rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
+  rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';
+  rsEmptyHyperlink = 'The hyperlink is not specified.';
+  rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks for text cells only.';
+  rsStdHyperlinkTooltip = 'Press the left mouse button a bit longer to activate the hyperlink.';
 
 
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?
