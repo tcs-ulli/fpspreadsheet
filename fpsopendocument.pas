@@ -156,7 +156,8 @@ type
     FPointSeparatorSettings: TFormatSettings;
     // Streams with the contents of files
     FSMeta, FSSettings, FSStyles, FSContent, FSMimeType, FSMetaInfManifest: TStream;
-    // Helpers
+
+    { Helpers }
     procedure CreateNumFormatList; override;
     procedure CreateStreams;
     procedure DestroyStreams;
@@ -164,7 +165,8 @@ type
     procedure ListAllNumFormats; override;
     procedure ListAllRowStyles;
     procedure ResetStreams;
-    // Routines to write those files
+
+    { Routines to write those files }
     procedure WriteContent;
     procedure WriteMimetype;
     procedure WriteMetaInfManifest;
@@ -172,23 +174,22 @@ type
     procedure WriteSettings;
     procedure WriteStyles;
     procedure WriteWorksheet(AStream: TStream; CurSheet: TsWorksheet);
+
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
+    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
+      const AValue: TDateTime; ACell: PCell); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      ACell: PCell); override;
-    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
-    procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TDateTime; ACell: PCell); override;
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -768,7 +769,7 @@ var
 begin
   Result := false;
 
-  if ACell^.ContentType = cctHyperlink then
+  if FWorksheet.IsHyperlink(ACell) then
     FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX)
   else
   begin
@@ -1466,7 +1467,7 @@ var
   nodeName: String;
   s: String;
   cell: PCell;
-  hyperlink: TsHyperlink;
+  hyperlink: string;
 begin
   { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
     catch the spaces inserted in formatting texts. However, this adds lots of
@@ -1477,7 +1478,7 @@ begin
   while Assigned(childnode) do
   begin
     nodeName := childNode.NodeName;
-    hyperlink.Kind := hkNone;
+    hyperlink := '';
     if nodeName = 'text:p' then begin
       subnode := childnode.FirstChild;
       while Assigned(subnode) do
@@ -1486,28 +1487,7 @@ begin
         if nodename = 'text:a' then begin
           s := GetAttrValue(subnode, 'xlink:type');
           if s = 'simple' then
-          begin
-            s := GetAttrValue(subnode, 'xlink:href');
-            if s <> '' then
-            begin
-              if s[1]='#' then
-              begin
-                hyperlink.Kind := hkCell;
-                hyperlink.Target := Copy(s, 2, Length(s));
-              end else
-              begin
-                hyperlink.Kind := hkURI;
-                hyperlink.Target := s;
-                {
-                if IsAbsoluteUri(s) then
-                  hyperlink.Target := s
-                else
-                  hyperlink.Target := FileNameToUri(s);
-                  }
-              end;
-              hyperlink.Tooltip := '';
-            end;
-          end;
+            hyperlink := GetAttrValue(subnode, 'xlink:href');
         end;
         subnode := subnode.NextSibling;
       end;
@@ -1528,13 +1508,7 @@ begin
         spanNode := spanNode.NextSibling;
       end;
     end;
-    {
-    case childnode.NodeType of
-      TEXT_NODE, COMMENT_NODE, PROCESSING_INSTRUCTION_NODE: ; // ignored
-    else
-      cellText := cellText + childnode.TextContent;
-    end;
-    }
+
     childnode := childnode.NextSibling;
   end;
 
@@ -1544,10 +1518,10 @@ begin
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(ARow, ACol);
-  if hyperlink.Kind = hkNone then
-    FWorkSheet.WriteUTF8Text(cell, cellText)
-  else
-    FWorksheet.WriteHyperlink(cell, hyperlink.Kind, hyperlink.Target, cellText, hyperlink.Tooltip);
+
+  FWorkSheet.WriteUTF8Text(cell, cellText);
+  if hyperlink <> '' then
+    FWorksheet.WriteHyperlink(cell, hyperlink);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -3495,6 +3469,10 @@ var
 begin
   Unused(ARow, ACol);
 
+  // Hyperlink
+  if FWorksheet.IsHyperlink(ACell) then
+    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
+
   // Comment
   comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
@@ -3570,6 +3548,10 @@ begin
     strValue := 'false';
     DisplayStr := rsFALSE;
   end;
+
+  // Hyperlink
+  if FWorksheet.IsHyperlink(ACell) then
+    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="%s" office:boolean-value="%s" %s %s >' +
@@ -4068,6 +4050,10 @@ begin
   end else
     spannedStr := '';
 
+  // Hyperlink
+  if FWorksheet.IsHyperlink(ACell) then
+    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
+
   // Convert string formula to the format needed by ods: semicolon list separators!
   parser := TsSpreadsheetParser.Create(FWorksheet);
   try
@@ -4151,15 +4137,6 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Writes a hyperlink
--------------------------------------------------------------------------------}
-procedure TsSpreadOpenDocWriter.WriteHyperlink(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
-begin
-  WriteLabel(AStream, ARow, ACol, ACell^.UTF8StringValue, ACell);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Writes a cell with text content
 
   The UTF8 Text needs to be converted, because some chars are invalid in XML
@@ -4174,9 +4151,10 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
   txt: ansistring;
-  textp, link, comment: String;
+  textp, target, comment: String;
   fmt: TsCellFormat;
-  hyperlink: TsHyperlink;
+  hyperlink: PsHyperlink;
+  u: TUri;
 begin
   Unused(ARow, ACol);
 
@@ -4208,17 +4186,24 @@ begin
       GetCellString(ARow, ACol)
     ]);
 
-  if ACell^.ContentType = cctHyperlink then
+  if FWorksheet.IsHyperlink(ACell) then
   begin
-    hyperlink := FWorksheet.ReadHyperlink(ACell);
-    case hyperlink.Kind of
-      hkCell: link := '#' + hyperlink.Target;
-      hkURI : link := hyperlink.Target;
+    hyperlink := FWorksheet.FindHyperlink(ACell);
+    target := hyperlink^.Target;
+    if target[1] <> '#' then
+    begin
+      u := ParseURI(target);
+      if u.Protocol = '' then begin
+        //UriToFileName(hyperlink^.Target, target);
+        target := 'file:///' + ExpandFileName(target);
+        ValidXMLText(target);
+//        if not IsAbsoluteURI(target) then target := '..\' + target;
+      end;
     end;
     textp := Format(
       '<text:p>'+
         '<text:a xlink:href="%s" xlink:type="simple">%s</text:a>'+
-      '</text:p>', [link, txt]);
+      '</text:p>', [target, txt]);
   end else
     textp := '<text:p>' + txt + '</text:p>';
 
@@ -4283,6 +4268,10 @@ begin
     DisplayStr := FloatToStr(AValue); // Uses locale decimal separator
   end;
 
+  // Hyperlink
+  if FWorksheet.IsHyperlink(ACell) then
+    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
+
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="%s" office:value="%s" %s %s >' +
       comment +
@@ -4334,6 +4323,10 @@ begin
 
   // Comment
   comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+
+  // Hyperlink
+  if FWorksheet.IsHyperlink(ACell) then
+    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // nfTimeInterval is a special case - let's handle it first:
 

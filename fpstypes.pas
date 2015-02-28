@@ -130,7 +130,7 @@ type
 
   {@@ Describes the <b>type of content</b> in a cell of a TsWorksheet }
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
-    cctDateTime, cctBool, cctError, cctHyperlink);
+    cctDateTime, cctBool, cctError);
 
   {@@ The record TsComment describes a comment attached to a cell.
      @param   Row        (0-based) row index of the cell
@@ -143,22 +143,19 @@ type
 
   {@@ Pointer to a TsComment record }
   PsComment = ^TsComment;
-
-  {@@ Specifies whether a hyperlink refers to a cell address within the current
-      workbook, or a URI }
-  TsHyperlinkKind = (hkNone, hkCell, hkURI);
-
+                    (*
+  {@@ Specifies whether a hyperlink refers to an internal cell address
+      within the current workbook, or a URI (file://, http://, mailto, etc). }
+  TsHyperlinkKind = (hkNone, hkInternal, hkURI);
+                      *)
   {@@ The record TsHyperlink contains info on a hyperlink in a cell
     @param   Row          Row index of the cell containing the hyperlink
     @param   Col          Column index of the cell containing the hyperlink
-    @param   Kind         Specifies whether clicking on the hyperlink results in
-                          jumping the a cell address within the current workbook,
-                          or opens a URL
-    @param   Target       Target of hyperlink (cell address, filename, URL)
+    @param   Target       Target of hyperlink: URI of file, web link, mail; or:
+                          internal link (# followed by cell address)
     @param   Note         Text displayed as a popup hint by Excel }
   TsHyperlink = record
     Row, Col: Cardinal;
-    Kind: TsHyperlinkKind;
     Target: String;
     Tooltip: String;
   end;
@@ -450,7 +447,7 @@ type
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
   {@@ Cell flag }
-  TsCellFlag = (cfCalculating, cfCalculated, cfHasComment, cfMerged);
+  TsCellFlag = (cfCalculating, cfCalculated, cfHasComment, cfHyperlink, cfMerged);
 
   {@@ Set of cell flags }
   TsCellFlags = set of TsCellFlag;

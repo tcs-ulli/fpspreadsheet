@@ -9,7 +9,6 @@
       <Title Value="demo_ctrls"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
-      <Icon Value="-1"/>
     </General>
     <i18n>
       <EnableI18N LFM="False"/>

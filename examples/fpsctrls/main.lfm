@@ -559,7 +559,7 @@ object MainForm: TMainForm
       TabOrder = 0
       object CellIndicator: TsCellIndicator
         Left = 0
-        Height = 27
+        Height = 23
         Top = 0
         Width = 138
         Align = alTop

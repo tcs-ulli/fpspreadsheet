@@ -180,8 +180,6 @@ type
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
-    procedure WriteHyperlink(AStream: TStream; const ARow, ACol: Cardinal;
-      ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -351,8 +349,8 @@ type
   THyperlinkListData = class
     ID: String;
     CellRef: String;
-    Kind: TsHyperlinkKind;
-    Location: String;
+    Target: String;
+    TextMark: String;
     Display: String;
     Tooltip: String;
   end;
@@ -531,7 +529,13 @@ begin
     for r := r1 to r2 do
       for c := c1 to c2 do
         with hyperlinkData do
-          AWorksheet.WriteHyperlink(r, c, Kind, Location, Display, ToolTip);
+          if Target = '' then
+            AWorksheet.WriteHyperlink(r, c, '#'+TextMark, ToolTip)
+          else
+          if TextMark = '' then
+            AWorksheet.WriteHyperlink(r, c, Target, ToolTip)
+          else
+            AWorksheet.WriteHyperlink(r, c, Target+'#'+TextMark, ToolTip);
   end;
 end;
 
@@ -1276,10 +1280,10 @@ begin
           hyperlinkData := THyperlinkListData.Create;
           hyperlinkData.CellRef := GetAttrValue(node, 'ref');
           hyperlinkData.ID := GetAttrValue(node, 'r:id');
-          hyperlinkData.Location := GetAttrValue(node, 'location');
+          hyperlinkData.Target := '';
+          hyperlinkData.TextMark := GetAttrValue(node, 'location');
           hyperlinkData.Display := GetAttrValue(node, 'display');
           hyperlinkData.Tooltip := GetAttrValue(node, 'tooltip');
-          hyperlinkData.Kind := hkCell;
         end;
         FHyperlinkList.Add(hyperlinkData);
         node := node.NextSibling;
@@ -1302,10 +1306,13 @@ begin
               hyperlinkData := FindHyperlinkID(s);
               if hyperlinkData <> nil then begin
                 s := GetAttrValue(node, 'Target');
-                if s <> '' then hyperlinkData.Location := s;
+                if s <> '' then hyperlinkData.Target := s;
                 s := GetAttrValue(node, 'TargetMode');
-                if s = 'External' then
-                  hyperlinkData.Kind := hkURI
+                if s <> 'External' then   // Only "External" accepted!
+                begin
+                  hyperlinkData.Target := '';
+                  hyperlinkData.TextMark := '';
+                end;
               end;
             end;
           end;
@@ -2182,6 +2189,7 @@ procedure TsSpreadOOXMLWriter.WriteHyperlinks(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
   hyperlink: PsHyperlink;
+  target, bookmark: String;
   s: String;
   txt: String;
   AVLNode: TAVLTreeNode;
@@ -2198,14 +2206,15 @@ begin
   AVLNode := AWorksheet.Hyperlinks.FindLowest;
   while AVLNode <> nil do begin
     hyperlink := PsHyperlink(AVLNode.Data);
+    AWorksheet.SplitHyperlink(hyperlink^.Target, target, bookmark);
     s := Format('ref="%s"', [GetCellString(hyperlink^.Row, hyperlink^.Col)]);
-    if hyperlink^.Kind <> hkCell then
+    if target <> '' then
     begin
       s := Format('%s r:id="rId%d"', [s, FNext_rId]);
       inc(FNext_rId);
     end;
-    if hyperlink^.Kind = hkCell then
-      s := Format('%s location="%s"', [s, hyperlink^.Target]);
+    if target = '' then
+      s := Format('%s location="%s"', [s, bookmark]);
     txt := AWorksheet.ReadAsUTF8Text(hyperlink^.Row, hyperlink^.Col);
     if (txt <> '') and (txt <> hyperlink^.Target) then
       s := Format('%s display="%s"', [s, txt]);
@@ -2695,12 +2704,10 @@ begin
     while Assigned(AVLNode) do
     begin
       hyperlink := PsHyperlink(AVLNode.Data);
-      if hyperlink^.Kind <> hkCell then
+      if hyperlink^.Target <> '' then
       begin
-        s := Format('Id="rId%d" Type="%s" Target="%s"',
+        s := Format('Id="rId%d" Type="%s" Target="%s" TargetMode="External"',
           [FNext_rId, SCHEMAS_HYPERLINKS, hyperlink^.Target]);
-        if hyperlink^.Kind <> hkCell then
-          s := s + ' TargetMode="External"';
         AppendToStream(FSSheetRels[FCurSheetNum],
           '<Relationship ' + s + ' />');
         inc(FNext_rId);
@@ -3287,13 +3294,6 @@ begin
       v
     ]));
   end;
-end;
-
-procedure TsSpreadOOXMLWriter.WriteHyperlink(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
-begin
-  if FWorksheet.IsHyperlink(ACell) then
-    WriteLabel(AStream, ARow, ACol, FWorksheet.ReadAsUTF8Text(ACell), ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------
