@@ -205,9 +205,9 @@ type
     procedure UpdateCaches;
 
     { Reading of values }
-    function  ReadAsUTF8Text(ARow, ACol: Cardinal): string; overload; //ansistring; overload;
-    function  ReadAsUTF8Text(ACell: PCell): string; overload; //ansistring; overload;
-    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): string; overload; //ansistring; overload;
+    function  ReadAsUTF8Text(ARow, ACol: Cardinal): string; overload;
+    function  ReadAsUTF8Text(ACell: PCell): string; overload;
+    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): string; overload;
     function  ReadAsNumber(ARow, ACol: Cardinal): Double; overload;
     function  ReadAsNumber(ACell: PCell): Double; overload;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean; overload;
@@ -1882,6 +1882,8 @@ end;
 procedure TsWorksheet.CopyCell(AFromCell, AToCell: PCell);
 var
   toRow, toCol: Cardinal;
+  row1, col1, row2, col2: Cardinal;
+  hyperlink: PsHyperlink;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
@@ -1900,6 +1902,22 @@ begin
   // Fix relative references in formulas
   // This also fires the OnChange event.
   CopyFormula(AFromCell, AToCell);
+
+  // Merged?
+  if IsMergeBase(AFromCell) then
+  begin
+    FindMergedRange(AFromCell, row1, col1, row2, col2);
+    MergeCells(toRow, toCol, toRow + row2 - row1, toCol + col2 - col1);
+  end;
+
+  // Copy comment
+  if HasComment(AFromCell) then
+    WriteComment(AToCell, ReadComment(AFromCell));
+
+  // Copy hyperlink
+  hyperlink := FindHyperlink(AFromCell);
+  if hyperlink <> nil then
+    WriteHyperlink(AToCell, hyperlink^.Target, hyperlink^.Tooltip);
 
   // Notify visual controls of possibly changed row heights.
   ChangedFont(AToCell^.Row, AToCell^.Col);
