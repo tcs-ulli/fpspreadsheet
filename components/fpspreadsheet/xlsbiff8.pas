@@ -1468,7 +1468,6 @@ begin
   { Target frame: external link (URI or local file) }
   link := '';
   if flags and MASK_HLINK_LINK <> 0 then
-//  if flags and (MASK_HLINK_LINK or MASK_HLINK_ABSOLUTE) = (MASK_HLINK_LINK or MASK_HLINK_ABSOLUTE) then
   begin
     AStream.ReadBuffer(guid, SizeOf(guid));
 
@@ -1480,6 +1479,7 @@ begin
       // Character array of URL (16-bit-characters, with trailing zero word)
       SetLength(wideStr, len);
       AStream.ReadBuffer(wideStr[1], len*SizeOf(wideChar));
+      SetLength(wideStr, len-1);  // Remove trailing zero word
       link := UTF8Encode(wideStr);
     end else
     // Check for local file
@@ -1490,9 +1490,10 @@ begin
       len := DWordLEToN(AStream.ReadDWord);
       // Character array of the shortened file path and name in 8.3-DOS-format.
       // This field can be filled with a long file name too.
-      // No Unicode string header, always 8-bit characters, zeroterminated.
+      // No unicode string header, always 8-bit characters, zero-terminated.
       SetLength(ansiStr, len);
       AStream.ReadBuffer(ansiStr[1], len*SizeOf(ansiChar));
+      SetLength(ansistr, len-1);  // Remove trailing zero
       linkDos := AnsiToUTF8(ansiStr);
       while dirUpCount > 0 do
       begin
@@ -1535,6 +1536,7 @@ begin
     // no Unicode string header, always 16-bit characters, zero-terminated
     SetLength(wideStr, len);
     AStream.ReadBuffer(wideStr[1], len*SizeOf(wideChar));
+    SetLength(wideStr, len-1);  // Remove trailing zero word
     mark := UTF8Encode(wideStr);
   end;
 
@@ -1576,6 +1578,7 @@ begin
   numbytes := RecordSize - 5*SizeOf(word);
   SetLength(wideStr, numbytes div 2);
   AStream.ReadBuffer(wideStr[1], numbytes);
+  SetLength(wideStr, Length(wideStr)-1);  // Remove trailing zero word
   txt := UTF8Encode(wideStr);
 
   { Add tooltip to hyperlinks }
