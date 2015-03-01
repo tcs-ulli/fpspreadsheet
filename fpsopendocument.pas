@@ -769,26 +769,24 @@ var
 begin
   Result := false;
 
-  if FWorksheet.IsHyperlink(ACell) then
-    FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX)
-  else
+  if FWorksheet.HasHyperlink(ACell) then
+    FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX);
+
+  // Is there a style attached to the cell?
+  styleIndex := -1;
+  if AStyleName <> '' then
+    styleIndex := FCellFormatList.FindIndexOfName(AStyleName);
+  if (styleIndex = -1) then
   begin
-    // Is there a style attached to the cell?
-    styleIndex := -1;
-    if AStyleName <> '' then
-      styleIndex := FCellFormatList.FindIndexOfName(AStyleName);
-    if (styleIndex = -1) then
-    begin
-      // No - look for the style attached to the column of the cell and
-      // find the cell style by the DefaultCellStyleIndex stored in the column list.
-      i := FindColumnByCol(ACell^.Col);
-      if i = -1 then
-        exit;
-      styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
-    end;
-    fmt := FCellFormatList.Items[styleIndex];
-    ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+    // No - look for the style attached to the column of the cell and
+    // find the cell style by the DefaultCellStyleIndex stored in the column list.
+    i := FindColumnByCol(ACell^.Col);
+    if i = -1 then
+      exit;
+    styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
   end;
+  fmt := FCellFormatList.Items[styleIndex];
+  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
 
   Result := true;
 end;
@@ -3470,7 +3468,7 @@ begin
   Unused(ARow, ACol);
 
   // Hyperlink
-  if FWorksheet.IsHyperlink(ACell) then
+  if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // Comment
@@ -3550,7 +3548,7 @@ begin
   end;
 
   // Hyperlink
-  if FWorksheet.IsHyperlink(ACell) then
+  if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   AppendToStream(AStream, Format(
@@ -4051,7 +4049,7 @@ begin
     spannedStr := '';
 
   // Hyperlink
-  if FWorksheet.IsHyperlink(ACell) then
+  if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // Convert string formula to the format needed by ods: semicolon list separators!
@@ -4186,7 +4184,7 @@ begin
       GetCellString(ARow, ACol)
     ]);
 
-  if FWorksheet.IsHyperlink(ACell) then
+  if FWorksheet.HasHyperlink(ACell) then
   begin
     hyperlink := FWorksheet.FindHyperlink(ACell);
     target := hyperlink^.Target;
@@ -4269,7 +4267,7 @@ begin
   end;
 
   // Hyperlink
-  if FWorksheet.IsHyperlink(ACell) then
+  if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   AppendToStream(AStream, Format(
@@ -4325,7 +4323,7 @@ begin
   comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
 
   // Hyperlink
-  if FWorksheet.IsHyperlink(ACell) then
+  if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // nfTimeInterval is a special case - let's handle it first:

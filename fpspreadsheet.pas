@@ -484,7 +484,7 @@ type
     // Hyperlinks
     function FindHyperlink(ARow, ACol: Cardinal): PsHyperlink; overload;
     function FindHyperlink(ACell: PCell): PsHyperlink; overload;
-    function IsHyperlink(ACell: PCell): Boolean;
+    function HasHyperlink(ACell: PCell): Boolean;
     function ReadHyperlink(ARow, ACol: Cardinal): TsHyperlink; overload;
     function ReadHyperlink(ACell: PCell): TsHyperlink;
     procedure RemoveHyperlink(ACell: PCell);
@@ -1613,7 +1613,7 @@ var
   AVLNode: TAVLTreeNode;
 begin
   Result := nil;
-  if not IsHyperlink(ACell) or (FHyperlinks.Count = 0) then
+  if not HasHyperlink(ACell) or (FHyperlinks.Count = 0) then
     exit;
 
   hyperlink.Row := ACell^.Row;
@@ -1626,7 +1626,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified cell contains a hyperlink
 -------------------------------------------------------------------------------}
-function TsWorksheet.IsHyperlink(ACell: PCell): Boolean;
+function TsWorksheet.HasHyperlink(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (cfHyperlink in ACell^.Flags);
 end;
@@ -1677,7 +1677,7 @@ var
   hyperlink: TsHyperlink;
   AVLNode: TAvlTreeNode;
 begin
-  if not IsHyperlink(ACell) then
+  if not HasHyperlink(ACell) then
     exit;
 
   hyperlink.Row := ACell^.Row;
@@ -2850,7 +2850,7 @@ begin
         end;
       else
         Result := '';
-        if IsHyperlink(ACell) then
+        if HasHyperlink(ACell) then
         begin
           hyperlink := FindHyperlink(ACell);
           if hyperlink <> nil then Result := hyperlink^.Target;

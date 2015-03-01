@@ -1410,7 +1410,7 @@ begin
       end;
 
       // Font
-      if Worksheet.IsHyperlink(lCell) then
+      if Worksheet.HasHyperlink(lCell) then
         fnt := Workbook.GetHyperlinkFont
       else
         fnt := Workbook.GetDefaultFont;
@@ -2653,7 +2653,7 @@ begin
     // Read comment
     comment := Worksheet.ReadComment(cell);
     // Read hyperlink info
-    if Worksheet.IsHyperlink(cell) then begin
+    if Worksheet.HasHyperlink(cell) then begin
       hyperlink := Worksheet.FindHyperlink(cell);
       if hyperlink <> nil then
       begin
@@ -3459,7 +3459,7 @@ begin
     cell := Worksheet.FindCell(r, c);
     if Worksheet.IsMerged(cell) then
       cell := Worksheet.FindMergeBase(cell);
-    if Worksheet.IsHyperlink(cell) then
+    if Worksheet.HasHyperlink(cell) then
     begin
       FHyperlinkCell := cell;
       FHyperlinkTimer.Enabled := true;
