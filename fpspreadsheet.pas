@@ -6409,6 +6409,7 @@ var
   firstRow, lastCol, lastRow: Cardinal;
   rng: PsCellRange;
   comment: PsComment;
+  hyperlink: PsHyperlink;
 begin
   lastCol := GetLastColIndex;
   lastRow := GetLastOccupiedRowIndex;
@@ -6477,6 +6478,22 @@ begin
     AVLNode := nextAVLNode;
   end;
 
+  // Fix hyperlinks
+  AVLNode := FHyperlinks.FindLowest;
+  while Assigned(AVLNode) do begin
+    nextAVLNode := FHyperlinks.FindSuccessor(AVLNode);
+    hyperlink := PsHyperlink(AVLNode.Data);
+    // Update all hyperlink column indexes to the right of the deleted column
+    if hyperlink^.Col > ACol then
+      dec(hyperlink^.Col)
+    else
+    // Remove the hyperlink if it is in the deleted column
+    if hyperlink^.Col = ACol then
+      WriteHyperlink(hyperlink^.Row, ACol, '');
+    AVLNode := nextAVLNode;
+  end;
+
+
   // Delete cells
   for r := lastRow downto firstRow do
     RemoveAndFreeCell(r, ACol);
@@ -6520,6 +6537,7 @@ var
   cell, nextcell, basecell: PCell;
   rng: PsCellRange;
   comment: PsComment;
+  hyperlink: PsHyperlink;
 begin
   firstCol := GetFirstColIndex;
   lastCol := GetLastOccupiedColIndex;
@@ -6586,6 +6604,21 @@ begin
     AVLNode := nextAVLNode;
   end;
 
+  // Fix hyperlinks
+  AVLNode := FHyperlinks.FindLowest;
+  while Assigned(AVLNode) do begin
+    nextAVLNode := FHyperlinks.FindSuccessor(AVLNode);;
+    hyperlink := PsHyperlink(AVLNode.Data);
+    // Update all hyperlink row indexes below the deleted row
+    if hyperlink^.Row > ARow then
+      dec(hyperlink^.Row)
+    else
+    // Remove the hyperlink if it is in the deleted row
+    if hyperlink^.Row = ARow then
+      WriteHyperlink(ARow, hyperlink^.Col, '');
+    AVLNode := nextAVLNode;
+  end;
+
   // Delete cells
   for c := lastCol downto 0 do
     RemoveAndFreeCell(ARow, c);
@@ -6629,6 +6662,7 @@ var
   AVLNode: TAVLTreeNode;
   rng: PsCellRange;
   comment: PsComment;
+  hyperlink: PsHyperlink;
 begin
   // Handling of shared formula references is too complicated for me...
   // Split them into isolated cell formulas
@@ -6645,6 +6679,14 @@ begin
     comment := PsComment(AVLNode.Data);
     if comment^.Col >= ACol then inc(comment^.Col);
     AVLNode := FComments.FindSuccessor(AVLNode);
+  end;
+
+  // Update column index of hyperlinks
+  AVLNode := FHyperlinks.FindLowest;
+  while Assigned(AVLNode) do begin
+    hyperlink := PsHyperlink(AVLNode.Data);
+    if hyperlink^.Col >= ACol then inc(hyperlink^.Col);
+    AVLNode := FHyperlinks.FindSuccessor(AVLNode);
   end;
 
   // Update column index of cell records
@@ -6756,6 +6798,7 @@ var
   AVLNode: TAVLTreeNode;
   rng: PsCellRange;
   comment: PsComment;
+  hyperlink: PsHyperlink;
 begin
   // Handling of shared formula references is too complicated for me...
   // Splits them into isolated cell formulas
@@ -6772,6 +6815,14 @@ begin
     comment := PsComment(AVLNode.Data);
     if comment^.Row >= ARow then inc(comment^.Row);
     AVLNode := FComments.FindSuccessor(AVLNode);
+  end;
+
+  // Update row index of cell hyperlinks
+  AVLNode := FHyperlinks.FindLowest;
+  while Assigned(AVLNode) do begin
+    hyperlink := PsHyperlink(AVLNode.Data);
+    if hyperlink^.Row >= ARow then inc(hyperlink^.Row);
+    AVLNode := FHyperlinks.FindSuccessor(AVLNode);
   end;
 
   // Update row index of cell records
