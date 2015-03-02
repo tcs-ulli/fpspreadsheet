@@ -68,7 +68,7 @@ type
     FTextOverflowing: Boolean;
     FEnhEditMode: Boolean;
     FHyperlinkTimer: TTimer;
-    FHyperlinkCell: PCell;
+    FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidth(AWidth: Single): Integer;
@@ -1713,7 +1713,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   This procedure is responsible for painting the focus rectangle. We don't want
   the red dashed rectangle here, but prefer the thick Excel-like black border
-  line. This new focus rectangle is drawn by the method DrawSelection.
+  line. This new focus rectangle is drawn by the method DrawSelection because
+  the thick Excel border reaches into adjacent cells.
 
   @param   ACol   Grid column index of the focused cell
   @param   ARow   Grid row index of the focused cell
@@ -2000,10 +2001,23 @@ end;
 procedure TsCustomWorksheetGrid.DrawSelection;
 var
   P1, P2: TPoint;
+  cell: PCell;
+  r1,c1,r2,c2: Cardinal;
+  rng: PsCellRange;
 begin
+  // Selected cell
+  cell := Worksheet.FindCell(GetWorksheetRow(Selection.Top), GetWorksheetCol(Selection.Left));
+  if Worksheet.IsMerged(cell) then
+  begin
+    Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
+    P1 := CellRect(GetGridCol(c1), GetGridRow(r1)).TopLeft;
+    P2 := CellRect(GetGridCol(c2), GetGridRow(r2)).BottomRight;
+  end else
+  begin
+    P1 := CellRect(Selection.Left, Selection.Top).TopLeft;
+    P2 := CellRect(Selection.Right, Selection.Bottom).BottomRight;
+  end;
   // Cosmetics at the edges of the grid to avoid spurious rests
-  P1 := CellRect(Selection.Left, Selection.Top).TopLeft;
-  P2 := CellRect(Selection.Right, Selection.Bottom).BottomRight;
   if Selection.Top > TopRow then dec(P1.Y) else inc(P1.Y);
   if Selection.Left > LeftCol then dec(P1.X) else inc(P1.X);
   if Selection.Right = ColCount-1 then dec(P2.X);
@@ -2131,7 +2145,9 @@ begin
     oldText := GetCellText(Col, Row);
     if oldText <> FEditText then
     begin
-      cell := Worksheet.GetCell(Row-FHeaderCount, Col-FHeaderCount);
+      cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+      if Worksheet.IsMerged(cell) then
+        cell := Worksheet.FindMergeBase(cell);
       if (FEditText <> '') and (FEditText[1] = '=') then
         Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
       else
@@ -2689,7 +2705,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
-  lCell: PCell;
+  cell: PCell;
   r, c, i: Integer;
   s: String;
 begin
@@ -2717,11 +2733,11 @@ begin
   begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
-    lCell := Worksheet.FindCell(r, c);
-    if lCell <> nil then
+    cell := Worksheet.FindCell(r, c);
+    if cell <> nil then
     begin
-      Result := TrimToCell(lCell);
-      if Worksheet.ReadTextRotation(lCell) = rtStacked then
+      Result := TrimToCell(cell);
+      if Worksheet.ReadTextRotation(cell) = rtStacked then
       begin
         s := Result;
         Result := '';
@@ -2751,6 +2767,8 @@ begin
   if FEnhEditMode then   // Initiated by "F2"
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if Worksheet.IsMerged(cell) then
+      cell := Worksheet.FindMergeBase(cell);
     Result := Worksheet.ReadFormulaAsString(cell, true);
     if Result <> '' then
     begin
@@ -2772,7 +2790,8 @@ begin
       Result := '';
   end else
     Result := GetCellText(aCol, aRow);
-  if Assigned(OnGetEditText) then OnGetEditText(Self, aCol, aRow, Result);
+  if Assigned(OnGetEditText) then
+    OnGetEditText(Self, aCol, aRow, Result);
 end;
 
 {@@ ----------------------------------------------------------------------------

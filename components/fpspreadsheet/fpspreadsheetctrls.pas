@@ -1497,18 +1497,19 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.EditingDone;
 var
-  r, c: Cardinal;
   s: String;
+  cell: PCell;
 begin
   if Worksheet = nil then
     exit;
-  r := Worksheet.ActiveCellRow;
-  c := Worksheet.ActiveCellCol;
+  cell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  if Worksheet.IsMerged(cell) then
+    cell := Worksheet.FindMergeBase(cell);
   s := Lines.Text;
   if (s <> '') and (s[1] = '=') then
-    Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
+    Worksheet.WriteFormula(cell, Copy(s, 2, Length(s)), true)
   else
-    Worksheet.WriteCellValueAsString(r, c, s);
+    Worksheet.WriteCellValueAsString(cell, s);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1560,14 +1561,21 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
+var
+  cell: PCell;
 begin
   if (FWorkbookSource = nil) then
     exit;
 
   if  (lniSelection in AChangedItems) or
      ((lniCell in AChangedItems) and (PCell(AData) = SelectedCell))
-  then
-    ShowCell(SelectedCell);
+  then begin
+    if Worksheet.IsMerged(SelectedCell) then
+      cell := Worksheet.FindMergeBase(SelectedCell)
+    else
+      cell := SelectedCell;
+    ShowCell(cell);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
