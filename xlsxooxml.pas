@@ -2232,17 +2232,20 @@ end;
 procedure TsSpreadOOXMLWriter.WriteMergedCells(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
-  rng: TsCellRangeArray;
-  i: Integer;
+  rng: PsCellRange;
+  n: Integer;
 begin
-  AWorksheet.GetMergedCellRanges(rng);
-  if Length(rng) = 0 then
+  n := AWorksheet.MergedCells.Count;
+  if n = 0 then
     exit;
   AppendToStream(AStream, Format(
-    '<mergeCells count="%d">', [Length(rng)]) );
-  for i:=0 to Length(rng)-1 do begin
+    '<mergeCells count="%d">', [n]) );
+  rng := PsCellRange(AWorksheet.MergedCells.GetFirst);
+  while Assigned(rng) do
+  begin
     AppendToStream(AStream, Format(
-      '<mergeCell ref="%s" />', [GetCellRangeString(rng[i].Row1, rng[i].Col1, rng[i].Row2, rng[i].Col2)]));
+      '<mergeCell ref="%s" />', [GetCellRangeString(rng.Row1, rng.Col1, rng.Row2, rng.Col2)]));
+    rng := PsCellRange(AWorksheet.MergedCells.GetNext);
   end;
   AppendToStream(AStream,
     '</mergeCells>');

@@ -2815,6 +2815,9 @@ begin
     AStrings.Add(Format('Last column=%d', [ASheet.GetLastColIndex]));
     AStrings.Add(Format('Active cell=%s', [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]));
     AStrings.Add(Format('Selection=%s', [ASheet.GetSelectionAsString]));
+    AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
+    AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
+    AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
   end;
 end;
 

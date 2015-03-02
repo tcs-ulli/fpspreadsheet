@@ -19,6 +19,7 @@ type
   TsRowColAVLTree = class(TAVLTree)
   private
     FOwnsData: Boolean;
+    FCurrentNode: TAVLTreeNode;
   protected
     procedure DisposeData(var AData: Pointer); virtual; abstract;
     function NewData: Pointer; virtual; abstract;
@@ -28,8 +29,10 @@ type
     function Add(ARow, ACol: Cardinal): PsRowCol;
     procedure Clear;
     procedure Delete(ANode: TAVLTreeNode);
-    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean); virtual;
     function Find(ARow, ACol: Cardinal): PsRowCol;
+    function GetFirst: PsRowCol;
+    function GetNext: PsRowCol;
     procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
     procedure Remove(ARow, ACol: Cardinal);
   end;
@@ -54,6 +57,17 @@ type
     procedure DeleteHyperlink(ARow, ACol: Cardinal);
   end;
 
+  { TsMergedCells }
+  TsMergedCells = class(TsRowColAVLTree)
+  protected
+    procedure DisposeData(var AData: Pointer); override;
+    function NewData: Pointer; override;
+  public
+    function AddRange(ARow1, ACol1, ARow2, ACol2: Cardinal): PsCellRange;
+    procedure DeleteRange(ARow, ACol: Cardinal);
+    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean); override;
+    function FindRangeWithCell(ARow, ACol: Cardinal): PsCellRange;
+  end;
 
 implementation
 
@@ -197,6 +211,28 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  The combination of the methods GetFirst and GetNext allow a fast iteration
+  through all nodes of the tree.
+-------------------------------------------------------------------------------}
+function TsRowColAVLTree.GetFirst: PsRowCol;
+begin
+  FCurrentNode := FindLowest;
+  if FCurrentNode <> nil then
+    Result := PsRowCol(FCurrentNode.Data)
+  else
+    Result := nil;
+end;
+
+function TsRowColAVLTree.GetNext: PsRowCol;
+begin
+  FCurrentNode := FindSuccessor(FCurrentNode);
+  if FCurrentNode <> nil then
+    Result := PsRowCol(FCurrentNode.Data)
+  else
+    Result := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
   This procedure adjusts row or column indexes stored in the tree nodes if a
   row or column will be inserted into the underlying worksheet.
 
@@ -333,6 +369,129 @@ var
 begin
   New(hyperlink);
   Result := hyperlink;
+end;
+
+
+{******************************************************************************}
+{ TsMergedCell: a AVLTree to store merged cell range records for cells         }
+{******************************************************************************}
+
+{@@ ----------------------------------------------------------------------------
+  Adds a node with a new merge cell range record to the tree. If a node already
+  exists then its data will be replaced by the specified ones.
+  Returns a pointer to the cell range record.
+-------------------------------------------------------------------------------}
+function TsMergedCells.AddRange(ARow1, ACol1, ARow2, ACol2: Cardinal): PsCellRange;
+begin
+  Result := PsCellRange(Add(ARow1, ACol1));
+  Result^.Row2 := ARow2;
+  Result^.Col2 := ACol2;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Deletes the node for which the top/left corner of the cell range matches the
+  specified parameters. There is only a single range fulfilling this criterion.
+-------------------------------------------------------------------------------}
+procedure TsMergedCells.DeleteRange(ARow, ACol: Cardinal);
+begin
+  Remove(ARow, ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  This procedure adjusts row or column indexes stored in the tree nodes if a
+  row or column will be deleted from the underlying worksheet.
+
+  @param  AIndex  Index of the row (if IsRow=true) or column (if IsRow=false)
+                  to be deleted
+  @param  IsRow   Identifies whether AIndex refers to a row or column index
+-------------------------------------------------------------------------------}
+procedure TsMergedCells.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+var
+  rng, nextrng: PsCellRange;
+begin
+  rng := PsCellRange(GetFirst);
+  while Assigned(rng) do begin
+    nextrng := PsCellRange(GetNext);
+    if IsRow then
+    begin
+      // Deleted row is above the merged range --> Shift entire range up by 1
+      // NOTE:
+      // The "merged" flags do not have to be changed, they move with the cells.
+      if (AIndex < rng^.Row1) then begin
+        dec(rng^.Row1);
+        dec(rng^.Row2);
+      end else
+      // Single-row merged block coincides with row to be deleted
+      if (AIndex = rng^.Row1) and (rng^.Row1 = rng^.Row2) then
+        DeleteRange(rng^.Row1, rng^.Col1)
+      else
+      // Deleted row runs through the merged block --> Shift bottom row up by 1
+      // NOTE: The "merged" flags disappear with the deleted cells
+      if (AIndex >= rng^.Row1) and (AIndex <= rng^.Row2) then
+        dec(rng^.Row2);
+    end else
+    begin
+      // Deleted column is at the left of the merged range
+      // --> Shift entire merged range to the left by 1
+      // NOTE:
+      // The "merged" flags do not have to be changed, they move with the cells.
+      if (AIndex < rng^.Col1) then begin
+        dec(rng^.Col1);
+        dec(rng^.Col2);
+      end else
+      // Single-column block coincides with the column to be deleted
+      // NOTE: The "merged" flags disappear with the deleted cells
+      if (AIndex = rng^.Col1) and (rng^.Col1 = rng^.Col2) then
+        DeleteRange(rng^.Row1, rng^.Col1)
+      else
+      // Deleted column runs through the merged block
+      // --> Shift right column to the left by 1
+      if (AIndex >= rng^.Col1) and (AIndex <= rng^.Col2) then
+        dec(rng^.Col2);
+    end;
+    // Proceed with next merged range
+    rng := nextrng;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper procedure which disposes the memory occupied by the merged cell range
+  data record attached to a tree node.
+-------------------------------------------------------------------------------}
+procedure TsMergedCells.DisposeData(var AData: Pointer);
+begin
+  if AData <> nil then
+    Dispose(PsCellRange(AData));
+  AData := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Finds the cell range which contains the cell specified by its row and column
+  index
+-------------------------------------------------------------------------------}
+function TsMergedCells.FindRangeWithCell(ARow, ACol: Cardinal): PsCellRange;
+var
+  node: TAVLTreeNode;
+begin
+  node := FindLowest;
+  while Assigned(node) do
+  begin
+    Result := PsCellRange(node.Data);
+    if (ARow >= Result^.Row1) and (ARow <= Result^.Row2) and
+       (ACol >= Result^.Col1) and (ACol <= Result^.Col2) then exit;
+    node := FindSuccessor(node);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Alloates memory of a merged cell range data record.
+-------------------------------------------------------------------------------}
+function TsMergedCells.NewData: Pointer;
+var
+  range: PsCellRange;
+begin
+  New(range);
+  Result := range;
 end;
 
 end.

@@ -2611,12 +2611,10 @@ procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
 const
   MAX_PER_RECORD = 1026;
 var
-  i, n0, n: Integer;
-  rngList: TsCellRangeArray;
+  n0, n: Integer;
+  rng: PsCellRange;
 begin
-  AWorksheet.GetMergedCellRanges(rngList);
-  n0 := Length(rngList);
-  i := 0;
+  n0 := AWorksheet.MergedCells.Count;
 
   while n0 > 0 do begin
     n := Min(n0, MAX_PER_RECORD);
@@ -2625,17 +2623,18 @@ begin
     { BIFF record header }
     WriteBIFFHeader(AStream, INT_EXCEL_ID_MERGEDCELLS, 2 + n*8);
 
-    // Count of cell ranges in this record
+    { Number of cell ranges in this record }
     AStream.WriteWord(WordToLE(n));
 
-    // Loop writing the merged cell ranges
-    while (n > 0) and (i < Length(rngList)) do begin
-      AStream.WriteWord(WordToLE(rngList[i].Row1));
-      AStream.WriteWord(WordToLE(rngList[i].Row2));
-      AStream.WriteWord(WordToLE(rngList[i].Col1));
-      AStream.WriteWord(WordToLE(rngList[i].Col2));
-      inc(i);
+    { Loop for writing the merged cell ranges }
+    rng := PsCellRange(AWorksheet.MergedCells.GetFirst);
+    while (n > 0) do begin
+      AStream.WriteWord(WordToLE(rng^.Row1));
+      AStream.WriteWord(WordToLE(rng^.Row2));
+      AStream.WriteWord(WordToLE(rng^.Col1));
+      AStream.WriteWord(WordToLE(rng^.Col2));
       dec(n);
+      rng := PsCellRange(AWorksheet.MergedCells.GetNext);
     end;
 
     dec(n0, MAX_PER_RECORD);
