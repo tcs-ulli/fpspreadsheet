@@ -1671,7 +1671,7 @@ begin
   if ACell^.ContentType = cctEmpty then
   begin
     ACell^.ContentType := cctUTF8String;
-    if UriToFileName(hyperlink^.Target, fn) then
+    if (hyperlink^.Target[1] <> '#') and UriToFileName(hyperlink^.Target, fn) then
       ACell^.UTF8StringValue := fn
     else
       ACell^.UTF8StringValue := hyperlink^.Target;
