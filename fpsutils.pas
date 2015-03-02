@@ -146,6 +146,8 @@ function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation):
 function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
   ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
 
+procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
+
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
@@ -2023,6 +2025,29 @@ begin
   for i:=0 to High(Result.Keys) do begin
     Result.Keys[i].ColRowIndex := i;
     Result.Keys[i].Options := [];  // Ascending & case-sensitive
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Splits a hyperlink string at the # character.
+
+  @param  AValue     Hyperlink string to be processed
+  @param  ATarget    Part before the # ("Target")
+  @param  ABookmark  Part after the # ("Bookmark")
+-------------------------------------------------------------------------------}
+procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
+var
+  p: Integer;
+begin
+  p := pos('#', AValue);
+  if p = 0 then
+  begin
+    ATarget := AValue;
+    ABookmark := '';
+  end else
+  begin
+    ATarget := Copy(AValue, 1, p-1);
+    ABookmark := Copy(AValue, p+1, Length(AValue));
   end;
 end;
 

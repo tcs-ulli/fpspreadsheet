@@ -1585,7 +1585,7 @@ begin
   for row := row1 to row2 do
     for col := col1 to col2 do
     begin
-      hyperlink := FWorksheet.FindHyperlink(row, col);
+      hyperlink := PsHyperlink(FWorksheet.Hyperlinks.Find(row, col));
       if hyperlink <> nil then
         hyperlink^.ToolTip := txt;
     end;
@@ -2370,7 +2370,7 @@ begin
     exit;
 
   descr := AWorksheet.ReadAsUTF8Text(cell);      // Hyperlink description
-  AWorksheet.SplitHyperlink(AHyperlink^.Target, target, bookmark);
+  SplitHyperlink(AHyperlink^.Target, target, bookmark);
   isInternal := (target = '');
 
   // Since the length of the record is not known in the first place we write

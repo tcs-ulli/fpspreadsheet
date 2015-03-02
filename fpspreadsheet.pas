@@ -23,7 +23,7 @@ uses
   clocale,
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding,
-  fpsTypes;
+  fpsTypes, fpsClasses;
 
 type
   { Forward declarations }
@@ -125,9 +125,9 @@ type
     FWorkbook: TsWorkbook;
     FName: String;  // Name of the worksheet (displayed at the tab)
     FCells: TAvlTree; // Items are TCell
-    FComments: TAvlTree;  // Items are TsComment
+    FComments: TsComments;
     FMergedCells: TAvlTree;  // Items are TsCellRange
-    FHyperlinks: TAvlTree;  // Items are TsHyperlink
+    FHyperlinks: TsHyperlinks;
     FCurrentNode: TAVLTreeNode; // for GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
@@ -161,8 +161,8 @@ type
     procedure InsertRowCallback(data, arg: Pointer);
     procedure RemoveCellRangesCallback(data, arg: pointer);
     procedure RemoveCellsCallback(data, arg: pointer);
-    procedure RemoveCommentsCallback(data, arg: pointer);
-    procedure RemoveHyperlinksCallback(data, arg: pointer);
+//    procedure RemoveCommentsCallback(data, arg: pointer);
+//    procedure RemoveHyperlinksCallback(data, arg: pointer);
 
   protected
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
@@ -171,12 +171,6 @@ type
     // Remove and delete cells
     function RemoveCell(ARow, ACol: Cardinal): PCell;
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
-
-    // Hyperlinks
-    procedure RemoveAllHyperlinks;
-
-    // Comments
-    procedure RemoveAllComments;
 
     // Merged cells
     function CellIsInMergedRange(ARow, ACol: Cardinal; ARange: PsCellRange): Boolean;
@@ -472,8 +466,7 @@ type
     procedure SetSelection(const ASelection: TsCellRangeArray);
 
     // Comments
-    function FindComment(ARow, ACol: Cardinal): PsComment; overload;
-    function FindComment(ACell: PCell): PsComment; overload;
+    function FindComment(ACell: PCell): PsComment;
     function HasComment(ACell: PCell): Boolean;
     function ReadComment(ARow, ACol: Cardinal): String; overload;
     function ReadComment(ACell: PCell): string; overload;
@@ -482,13 +475,10 @@ type
     procedure WriteComment(ACell: PCell; AText: String); overload;
 
     // Hyperlinks
-    function FindHyperlink(ARow, ACol: Cardinal): PsHyperlink; overload;
-    function FindHyperlink(ACell: PCell): PsHyperlink; overload;
+    function FindHyperlink(ACell: PCell): PsHyperlink;
     function HasHyperlink(ACell: PCell): Boolean;
-    function ReadHyperlink(ARow, ACol: Cardinal): TsHyperlink; overload;
     function ReadHyperlink(ACell: PCell): TsHyperlink;
     procedure RemoveHyperlink(ACell: PCell);
-    procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
     function ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
     function WriteHyperlink(ARow, ACol: Cardinal; ATarget: String;
       ATooltip: String = ''): PCell; overload;
@@ -519,11 +509,11 @@ type
     {@@ List of all column records of the worksheet having a non-standard column width }
     property  Cols: TIndexedAVLTree read FCols;
     {@@ List of all comment records }
-    property  Comments: TAVLTree read FComments;
+    property  Comments: TsComments read FComments;
     {@@ List of merged cells (contains TsCellRange records) }
     property  MergedCells: TAVLTree read FMergedCells;
     {@@ List of hyperlink information records }
-    property  Hyperlinks: TAVLTree read FHyperlinks;
+    property  Hyperlinks: TsHyperlinks read FHyperlinks;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
     {@@ Name of the sheet. In the popular spreadsheet applications this is
@@ -1102,25 +1092,11 @@ begin
   Result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
 end;
 
-function CompareCommentCells(Item1, Item2: Pointer): Integer;
-begin
-  result := LongInt(PsComment(Item1).Row) - PsComment(Item2).Row;
-  if Result = 0 then
-    Result := LongInt(PsComment(Item1).Col) - PsComment(Item2).Col;
-end;
-
 function CompareMergedCells(Item1, Item2: Pointer): Integer;
 begin
   Result := LongInt(PsCellRange(Item1)^.Row1) - PsCellRange(Item2)^.Row1;
   if Result = 0 then
     Result := LongInt(PsCellRange(Item1)^.Col1) - PsCellRange(Item2)^.Col1;
-end;
-
-function CompareHyperlinks(Item1, Item2: Pointer): Integer;
-begin
-  Result := LongInt(PsHyperlink(Item1)^.Row) - PsHyperlink(Item2)^.Row;
-  if Result = 0 then
-    Result := LongInt(PsHyperlink(Item1)^.Col) - PsHyperlink(Item2)^.Col;
 end;
 
 
@@ -1173,9 +1149,9 @@ begin
   FCells := TAVLTree.Create(@CompareCells);
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
-  FComments := TAVLTree.Create(@CompareCommentCells);
+  FComments := TsComments.Create;
   FMergedCells := TAVLTree.Create(@CompareMergedCells);
-  FHyperlinks := TAVLTree.Create(@CompareHyperlinks);
+  FHyperlinks := TsHyperlinks.Create;
 
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
@@ -1202,9 +1178,7 @@ begin
   RemoveAllCells;
   RemoveAllRows;
   RemoveAllCols;
-  RemoveAllComments;
   RemoveAllMergedRanges;
-  RemoveAllHyperlinks;
 
   FCells.Free;
   FRows.Free;
@@ -1450,31 +1424,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Checks whether the cell at a specified row/column contains a comment and
-  returns a pointer to the comment data.
-
-  @param  ARow   (0-based) index to the row
-  @param  ACol   (0-based) index to the column
-  @return Pointer to the TsComment record (nil, if the cell does not have a
-          comment)
--------------------------------------------------------------------------------}
-function TsWorksheet.FindComment(ARow, ACol: Cardinal): PsComment;
-var
-  comment: TsComment;
-  AVLNode: TAVLTreeNode;
-begin
-  Result := nil;
-  if FComments.Count = 0 then
-    exit;
-
-  comment.Row := ARow;
-  comment.Col := ACol;
-  AVLNode := FComments.Find(@comment);
-  if Assigned(AVLNode) then
-    result := PsComment(AVLNode.Data);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Checks whether a cell contains a comment and returns a pointer to the
   comment data.
 
@@ -1484,10 +1433,10 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindComment(ACell: PCell): PsComment;
 begin
-  if ACell = nil then
-    Result := nil
+  if HasComment(ACell) then
+    Result := PsComment(FComments.Find(ACell^.Row, ACell^.Col))
   else
-    Result := FindComment(ACell^.Row, ACell^.Col);
+    Result := nil;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1510,7 +1459,7 @@ var
   comment: PsComment;
 begin
   Result := '';
-  comment := FindComment(ARow, ACol);
+  comment := PsComment(FComments.Find(ARow, ACol));
   if comment <> nil then
     Result := comment^.Text;
 end;
@@ -1559,45 +1508,23 @@ begin
   if ACell = nil then
     exit;
 
-  // Remove the comment of an empty string is passed
+  // Remove the comment if an empty string is passed
   if AText = '' then
   begin
-    if (cfHasComment) in ACell^.Flags then
-    begin
-      RemoveComment(ACell);
-      ACell^.Flags := ACell^.Flags - [cfHasComment];
-    end;
-  end else
-  begin
-    comment := FindComment(ACell);  // Is there already a comment at this cell?
-    addNew := (comment = nil);
-    if addNew then
-      New(comment);                // No: create a new one; yes: update existing one
-    comment^.Row := ACell^.Row;
-    comment^.Col := ACell^.Col;
-    comment^.Text := AText;
-    if addNew then
-      FComments.Add(comment);
-    ACell^.Flags := ACell^.Flags + [cfHasComment];
+    RemoveComment(ACell);
+    exit;
   end;
+
+  // Add new comment record
+  comment := FComments.AddComment(ACell^.Row, ACell^.Col, AText);
+  Include(ACell^.Flags, cfHasComment);
+
+  ChangedCell(ACell^.Row, ACell^.Col);
+
 end;
 
 
 { Hyperlinks }
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the cell at a specified row/column contains a hyperlink and
-  returns a pointer to the hyperlink data.
-
-  @param  ARow   (0-based) row index of the cell
-  @param  ACol   (0-based) column index of the cell
-  @return Pointer to the TsHyperlink record (nil, if the cell does not contain
-          a hyperlink).
--------------------------------------------------------------------------------}
-function TsWorksheet.FindHyperlink(ARow, ACol: Cardinal): PsHyperlink;
-begin
-  Result := FindHyperlink(FindCell(ARow, ACol));
-end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified cell contains a hyperlink and returns a pointer
@@ -1608,19 +1535,11 @@ end;
           a hyperlink.
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindHyperlink(ACell: PCell): PsHyperlink;
-var
-  hyperlink: TsHyperlink;
-  AVLNode: TAVLTreeNode;
 begin
-  Result := nil;
-  if not HasHyperlink(ACell) or (FHyperlinks.Count = 0) then
-    exit;
-
-  hyperlink.Row := ACell^.Row;
-  hyperlink.Col := ACell^.Col;
-  AVLNode := FHyperlinks.Find(@hyperlink);
-  if Assigned(AVLNode) then
-    result := PsHyperlink(AVLNode.Data);
+  if HasHyperlink(ACell) then
+    Result := PsHyperlink(FHyperlinks.Find(ACell^.Row, ACell^.Col))
+  else
+    Result := nil;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1629,19 +1548,6 @@ end;
 function TsWorksheet.HasHyperlink(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (cfHyperlink in ACell^.Flags);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Reads the hyperlink information of a specified cell.
-
-  @param   ARow   Row index of the cell considered
-  @param   ACol   Column index of the cell considered
-  @returns Record with the hyperlink data assigned to the cell
-  If the cell is not a hyperlink the result field Kind is hkNone.
--------------------------------------------------------------------------------}
-function TsWorksheet.ReadHyperlink(ARow, ACol: Cardinal): TsHyperlink;
-begin
-  Result := ReadHyperlink(FindCell(ARow, ACol));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1673,39 +1579,11 @@ end;
   cctUTF8String.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveHyperlink(ACell: PCell);
-var
-  hyperlink: TsHyperlink;
-  AVLNode: TAvlTreeNode;
 begin
-  if not HasHyperlink(ACell) then
-    exit;
-
-  hyperlink.Row := ACell^.Row;
-  hyperlink.Col := ACell^.Col;
-  AVLNode := FHyperlinks.Find(@hyperlink);
-  if AVLNode <> nil then begin
-    Dispose(PsHyperlink(AVLNode.Data));
-    FHyperlinks.Delete(AVLNode);
+  if HasHyperlink(ACell) then
+  begin
+    FHyperlinks.DeleteHyperlink(ACell^.Row, ACell^.Col);
     Exclude(ACell^.Flags, cfHyperlink);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Separates the target and bookmark parts of a hyperlink (separated by '#').
--------------------------------------------------------------------------------}
-procedure TsWorksheet.SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
-var
-  p: Integer;
-begin
-  p := pos('#', AValue);
-  if p = 0 then
-  begin
-    ATarget := AValue;
-    ABookmark := '';
-  end else
-  begin
-    ATarget := Copy(AValue, 1, p-1);
-    ABookmark := Copy(AValue, p+1, Length(AValue));
   end;
 end;
 
@@ -1788,57 +1666,38 @@ procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
   ATooltip: String = '');
 var
   hyperlink: PsHyperlink;
-  addNew: Boolean;
-  row, col: Cardinal;
-  r, c: Cardinal;
   fmt: TsCellFormat;
   fn: String;
-  err: String;
 begin
   if ACell = nil then
     exit;
 
-  row := ACell^.Row;
-  col := ACell^.Col;
-
-  // Remove the hyperlink if an empty destination is passed
-  if (ATarget = '') then
-    RemoveHyperlink(ACell)
-  else
-  begin
-    {
-    if not ValidHyperlink(ATarget, err) then
-      raise Exception.Create(err);
-      }
-    hyperlink := FindHyperlink(ACell);
-    addNew := (hyperlink = nil);
-    if addNew then New(hyperlink);
-    hyperlink^.Row := row;
-    hyperlink^.Col := col;
-    hyperlink^.Target := ATarget;
-    hyperlink^.Tooltip := ATooltip;
-    if addNew then FHyperlinks.Add(hyperlink);
-    Include(ACell^.Flags, cfHyperlink);
-
-    if ACell^.ContentType = cctEmpty then
-    begin
-      ACell^.ContentType := cctUTF8String;
-      if UriToFileName(hyperlink^.Target, fn) then
-        ACell^.UTF8StringValue := fn
-      else
-        ACell^.UTF8StringValue := hyperlink^.Target;
-    end;
-
-    fmt := ReadCellFormat(ACell);
-    if fmt.FontIndex = DEFAULT_FONTINDEX then
-    begin
-      fmt.FontIndex := HYPERLINK_FONTINDEX;
-      Include(fmt.UsedFormattingFields, uffFont);
-      ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
-    end;
+  if ATarget = '' then begin
+    RemoveHyperlink(ACell);
+    exit;
   end;
 
-  ChangedCell(row, col);
+  hyperlink := FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
+  Include(ACell^.Flags, cfHyperlink);
+
+  if ACell^.ContentType = cctEmpty then
+  begin
+    ACell^.ContentType := cctUTF8String;
+    if UriToFileName(hyperlink^.Target, fn) then
+      ACell^.UTF8StringValue := fn
+    else
+      ACell^.UTF8StringValue := hyperlink^.Target;
+  end;
+
+  fmt := ReadCellFormat(ACell);
+  if fmt.FontIndex = DEFAULT_FONTINDEX then
+  begin
+    fmt.FontIndex := HYPERLINK_FONTINDEX;
+    Include(fmt.UsedFormattingFields, uffFont);
+    ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
+  end;
+
+  ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3798,45 +3657,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method for clearing the cell comments in a spreadsheet.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveCommentsCallback(data, arg: pointer);
-begin
-  Unused(arg);
-  Dispose(PsComment(data));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Helper method for clearing the hyperlink information
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveHyperlinksCallback(data, arg: pointer);
-begin
-  Unused(arg);
-  Dispose(PsHyperlink(data));
-end;
-
-{@@ ----------------------------------------------------------------------------
   Clears the list of cells and releases their memory.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllCells;
 begin
   RemoveAllAvlTreeNodes(FCells, RemoveCellsCallback);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Clears the list of comments and releases their memory
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveAllComments;
-begin
-  RemoveAllAvlTreeNodes(FComments, RemoveCommentsCallback);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Clears the list of hyperlinks and releases their memory
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveAllHyperlinks;
-begin
-  RemoveAllAvlTreeNodes(FHyperlinks, RemoveHyperlinksCallback);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3853,20 +3678,11 @@ end;
   Removes the comment from a cell and releases the memory occupied by the node.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveComment(ACell: PCell);
-var
-  comment: TsComment;
-  commentNode: TAvlTreeNode;
 begin
-  if ACell = nil then
-    exit;
-
-  comment.Row := ACell^.Row;
-  comment.Col := ACell^.Col;
-  commentNode := FComments.Find(@comment);
-  if commentNode <> nil then begin
-    Dispose(PsComment(commentNode.Data));
-    FComments.Delete(commentNode);
-    ACell^.Flags := ACell^.Flags - [cfHasComment];
+  if HasComment(ACell) then
+  begin
+    FComments.DeleteComment(ACell^.Row, ACell^.Col);
+    Exclude(ACell^.Flags, cfHasComment);
   end;
 end;
 
@@ -6464,35 +6280,10 @@ begin
   end;
 
   // Fix comments
-  AVLNode := FComments.FindLowest;
-  while Assigned(AVLNode) do begin
-    nextAVLNode := FComments.FindSuccessor(AVLNode);;
-    comment := PsComment(AVLNode.Data);
-    // Update all comment column indexes to the right of the deleted column
-    if comment^.Col > ACol then
-      dec(comment^.Col)
-    else
-    // Remove the comment if it is in the deleted column
-    if comment^.Col = ACol then
-      WriteComment(comment^.Row, ACol, '');
-    AVLNode := nextAVLNode;
-  end;
+  FComments.DeleteRowOrCol(ACol, false);
 
   // Fix hyperlinks
-  AVLNode := FHyperlinks.FindLowest;
-  while Assigned(AVLNode) do begin
-    nextAVLNode := FHyperlinks.FindSuccessor(AVLNode);
-    hyperlink := PsHyperlink(AVLNode.Data);
-    // Update all hyperlink column indexes to the right of the deleted column
-    if hyperlink^.Col > ACol then
-      dec(hyperlink^.Col)
-    else
-    // Remove the hyperlink if it is in the deleted column
-    if hyperlink^.Col = ACol then
-      WriteHyperlink(hyperlink^.Row, ACol, '');
-    AVLNode := nextAVLNode;
-  end;
-
+  FHyperlinks.DeleteRowOrCol(ACol, false);
 
   // Delete cells
   for r := lastRow downto firstRow do
@@ -6590,40 +6381,16 @@ begin
   end;
 
   // Fix comments
-  AVLNode := FComments.FindLowest;
-  while Assigned(AVLNode) do begin
-    nextAVLNode := FComments.FindSuccessor(AVLNode);;
-    comment := PsComment(AVLNode.Data);
-    // Update all comment row indexes below the deleted row
-    if comment^.Row > ARow then
-      dec(comment^.Row)
-    else
-    // Remove the comment if it is in the deleted row
-    if comment^.Row = ARow then
-      WriteComment(ARow, comment^.Col, '');
-    AVLNode := nextAVLNode;
-  end;
+  FComments.DeleteRowOrCol(ARow, true);
 
   // Fix hyperlinks
-  AVLNode := FHyperlinks.FindLowest;
-  while Assigned(AVLNode) do begin
-    nextAVLNode := FHyperlinks.FindSuccessor(AVLNode);;
-    hyperlink := PsHyperlink(AVLNode.Data);
-    // Update all hyperlink row indexes below the deleted row
-    if hyperlink^.Row > ARow then
-      dec(hyperlink^.Row)
-    else
-    // Remove the hyperlink if it is in the deleted row
-    if hyperlink^.Row = ARow then
-      WriteHyperlink(ARow, hyperlink^.Col, '');
-    AVLNode := nextAVLNode;
-  end;
+  FHyperlinks.DeleteRowOrCol(ARow, true);
 
   // Delete cells
   for c := lastCol downto 0 do
     RemoveAndFreeCell(ARow, c);
 
-  // Update row index of cell reocrds
+  // Update row index of cell records
   AVLNode := FCells.FindLowest;
   while Assigned(AVLNode) do begin
     DeleteRowCallback(AVLNode.Data, {%H-}pointer(PtrInt(ARow)));
@@ -6674,20 +6441,10 @@ begin
   end;
 
   // Update column index of comments
-  AVLNode := FComments.FindLowest;
-  while Assigned(AVLNode) do begin
-    comment := PsComment(AVLNode.Data);
-    if comment^.Col >= ACol then inc(comment^.Col);
-    AVLNode := FComments.FindSuccessor(AVLNode);
-  end;
+  FComments.InsertRowOrCol(ACol, false);
 
   // Update column index of hyperlinks
-  AVLNode := FHyperlinks.FindLowest;
-  while Assigned(AVLNode) do begin
-    hyperlink := PsHyperlink(AVLNode.Data);
-    if hyperlink^.Col >= ACol then inc(hyperlink^.Col);
-    AVLNode := FHyperlinks.FindSuccessor(AVLNode);
-  end;
+  FHyperlinks.InsertRowOrCol(ACol, false);
 
   // Update column index of cell records
   AVLNode := FCells.FindLowest;
@@ -6810,20 +6567,10 @@ begin
   end;
 
   // Update row index of cell comments
-  AVLNode := FComments.FindLowest;
-  while Assigned(AVLNode) do begin
-    comment := PsComment(AVLNode.Data);
-    if comment^.Row >= ARow then inc(comment^.Row);
-    AVLNode := FComments.FindSuccessor(AVLNode);
-  end;
+  FComments.InsertRowOrCol(ARow, true);
 
   // Update row index of cell hyperlinks
-  AVLNode := FHyperlinks.FindLowest;
-  while Assigned(AVLNode) do begin
-    hyperlink := PsHyperlink(AVLNode.Data);
-    if hyperlink^.Row >= ARow then inc(hyperlink^.Row);
-    AVLNode := FHyperlinks.FindSuccessor(AVLNode);
-  end;
+  FHyperlinks.InsertRowOrCol(ARow, true);
 
   // Update row index of cell records
   AVLNode := FCells.FindLowest;

@@ -2206,7 +2206,7 @@ begin
   AVLNode := AWorksheet.Hyperlinks.FindLowest;
   while AVLNode <> nil do begin
     hyperlink := PsHyperlink(AVLNode.Data);
-    AWorksheet.SplitHyperlink(hyperlink^.Target, target, bookmark);
+    SplitHyperlink(hyperlink^.Target, target, bookmark);
     s := Format('ref="%s"', [GetCellString(hyperlink^.Row, hyperlink^.Col)]);
     if target <> '' then
     begin

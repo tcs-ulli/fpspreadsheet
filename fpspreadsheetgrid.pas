@@ -2170,7 +2170,7 @@ begin
     exit;
 
   hyperlink := Worksheet.ReadHyperlink(FHyperlinkCell);
-  Worksheet.SplitHyperlink(hyperlink.Target, target, bookmark);
+  SplitHyperlink(hyperlink.Target, target, bookmark);
   if target = '' then begin
     // Goes to a cell within the current workbook
     if ParseSheetCellString(bookmark, sheetname, r, c) then
