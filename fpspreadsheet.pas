@@ -4060,11 +4060,39 @@ end;
   @param  AText     The text to be written encoded in utf-8
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: ansistring);
+var
+  r, c: Cardinal;
+  hyperlink: TsHyperlink;
 begin
   if ACell = nil then
     exit;
+
+  if (AText = '') and HasHyperlink(ACell) then
+  begin
+    hyperlink := ReadHyperlink(ACell);
+    AText := hyperlink.Target;
+  end;
+
+  if (AText = '') then
+  begin
+    if (Workbook.GetCellFormat(ACell^.FormatIndex).UsedFormattingFields = []) and
+       (ACell^.Flags * [cfHyperlink, cfHasComment, cfMerged] = []) and
+       (ACell^.SharedFormulaBase = nil) and
+       (ACell^.FormulaValue = '')
+    then
+    begin
+      r := ACell^.Row;
+      c := ACell^.Col;
+      RemoveCell(r, c);
+      ChangedCell(r, c);
+    end else
+      WriteBlank(ACell);
+    exit;
+  end;
+
   ACell^.ContentType := cctUTF8String;
   ACell^.UTF8StringValue := AText;
+
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -4246,10 +4274,17 @@ end;
           along a range of cells including empty cells.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBlank(ACell: PCell);
+var
+  hyperlink: TsHyperlink;
 begin
   if ACell <> nil then begin
-    ACell^.ContentType := cctEmpty;
-    ChangedCell(ACell^.Row, ACell^.Col);
+    if HasHyperlink(ACell) then
+      WriteUTF8Text(ACell, '')  // '' will be replaced by the hyperlink target.
+    else
+    begin
+      ACell^.ContentType := cctEmpty;
+      ChangedCell(ACell^.Row, ACell^.Col);
+    end;
   end;
 end;
 
@@ -4315,7 +4350,6 @@ procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
 var
   isPercent: Boolean;
   number: Double;
-  r, c: Cardinal;
   currSym: String;
   fmt: TsCellFormat;
 begin
@@ -4324,15 +4358,9 @@ begin
 
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
 
-  if AValue = '' then begin
-    if fmt.UsedFormattingFields = [] then
-    begin
-      r := ACell^.Row;
-      c := ACell^.Col;
-      RemoveAndFreeCell(r, c);
-    end
-    else
-      WriteBlank(ACell);
+  if AValue = '' then
+  begin
+    WriteUTF8Text(ACell, '');
     exit;
   end;
 

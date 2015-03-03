@@ -1430,14 +1430,12 @@ var
   flags: DWord;
   widestr: widestring;
   len: DWord;
-  isInternal: Boolean;
   link: String;
   linkDos: String;
   mark: String;
   dirUpCount: Word;
   ansistr: ansistring;
   size: DWord;
-  buf: array of byte;
 begin
   { Row and column index range of cells using the hyperlink }
   row1 := WordLEToN(AStream.ReadWord);
@@ -1474,13 +1472,15 @@ begin
     // Check for URL
     if GuidToString(guid) = '{79EAC9E0-BAF9-11CE-8C82-00AA004BA90B}' then
     begin
-      // Character count incl trailing zero
-      len := DWordLEToN(AStream.ReadDWord);
+      // Size of character array incl trailing zero
+      size := DWordLEToN(AStream.ReadDWord);
+      len := size div 2 -1;
       // Character array of URL (16-bit-characters, with trailing zero word)
       SetLength(wideStr, len);
-      AStream.ReadBuffer(wideStr[1], len*SizeOf(wideChar));
-      SetLength(wideStr, len-1);  // Remove trailing zero word
-      link := UTF8Encode(wideStr);
+      AStream.ReadBuffer(wideStr[1], size);
+      SetLength(link, size);
+      len := System.UnicodeToUTF8(PChar(link), PWideChar(wideStr), size);
+      SetLength(link, len);
     end else
     // Check for local file
     if GuidToString(guid) = '{00000303-0000-0000-C000-000000000046}' then
@@ -1520,8 +1520,10 @@ begin
         // Character array of the extended file path and name
         // no Unicode string header, always 16-bit characters, not zero-terminated
         SetLength(wideStr, len);
-        AStream.ReadBuffer(wideStr[1], len*SizeOf(wideChar));
-        link := UTF8Encode(widestr);
+        AStream.ReadBuffer(wideStr[1], size);
+        SetLength(link, size);
+        len := System.UnicodeToUTF8(PChar(link), PWideChar(widestr), size);
+        SetLength(link, len);
       end else
         link := linkDos;
     end;
