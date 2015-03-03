@@ -4000,7 +4000,8 @@ begin
   if (Workbook <> nil) and (Worksheet <> nil) then begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     fnt := Worksheet.ReadCellFont(cell);
-    Result := fnt.FontName;
+    if fnt <> nil then
+      Result := fnt.FontName;
   end;
 end;
 

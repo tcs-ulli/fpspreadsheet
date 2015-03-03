@@ -8,7 +8,6 @@
       <MainUnit Value="0"/>
       <Title Value="spreadtestgui"/>
       <ResourceType Value="res"/>
-      <Icon Value="-1"/>
     </General>
     <i18n>
       <EnableI18N LFM="False"/>
@@ -49,12 +48,10 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="stringtests"/>
       </Unit2>
       <Unit3>
         <Filename Value="numberstests.pas"/>
@@ -71,17 +68,14 @@
       <Unit6>
         <Filename Value="internaltests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="internaltests"/>
       </Unit6>
       <Unit7>
         <Filename Value="formattests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formattests"/>
       </Unit7>
       <Unit8>
         <Filename Value="colortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="colortests"/>
       </Unit8>
       <Unit9>
         <Filename Value="fonttests.pas"/>
@@ -98,12 +92,10 @@
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="rpnFormulaUnit"/>
       </Unit12>
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
@@ -112,7 +104,6 @@
       <Unit15>
         <Filename Value="errortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="errortests"/>
       </Unit15>
       <Unit16>
         <Filename Value="virtualmodetests.pas"/>
@@ -134,7 +125,6 @@
       <Unit20>
         <Filename Value="copytests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="copytests"/>
       </Unit20>
       <Unit21>
         <Filename Value="commenttests.pas"/>
