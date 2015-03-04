@@ -40,7 +40,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="22">
+    <Units Count="23">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -96,6 +96,7 @@
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
@@ -121,6 +122,7 @@
       <Unit19>
         <Filename Value="sortingtests.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="sortingtests"/>
       </Unit19>
       <Unit20>
         <Filename Value="copytests.pas"/>
@@ -131,6 +133,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="commenttests"/>
       </Unit21>
+      <Unit22>
+        <Filename Value="enumeratortests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="enumeratortests"/>
+      </Unit22>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

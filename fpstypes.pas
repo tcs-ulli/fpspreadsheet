@@ -531,6 +531,44 @@ type
     property Items[AIndex: Integer]: PsCellFormat read GetItem write SetItem; default;
   end;
 
+  {@@ Pointer to a TCell record }
+  PCell = ^TCell;
+
+  {@@ Cell structure for TsWorksheet
+      The cell record contains information on the location of the cell (row and
+      column index), on the value contained (number, date, text, ...), on
+      formatting, etc.
+
+      Never suppose that all *Value fields are valid,
+      only one of the ContentTypes is valid. For other fields
+      use TWorksheet.ReadAsUTF8Text and similar methods
+
+      @see ReadAsUTF8Text }
+  TCell = record
+    { Location of the cell }
+    Row: Cardinal; // zero-based
+    Col: Cardinal; // zero-based
+    Worksheet: Pointer;   // Must be cast to TsWorksheet when used
+    { Status flags }
+    Flags: TsCellFlags;
+    { Index of format record in the workbook's FCellFormatList }
+    FormatIndex: Integer;
+    { Special information }
+    SharedFormulaBase: PCell;  // Cell containing the shared formula
+    { Cell content }
+    UTF8StringValue: String;   // Strings cannot be part of a variant record
+    FormulaValue: String;
+    case ContentType: TCellContentType of  // variant part must be at the end
+      cctEmpty      : ();      // has no data at all
+      cctFormula    : ();      // FormulaValue is outside the variant record
+      cctNumber     : (Numbervalue: Double);
+      cctUTF8String : ();      // UTF8StringValue is outside the variant record
+      cctDateTime   : (DateTimevalue: TDateTime);
+      cctBool       : (BoolValue: boolean);
+      cctError      : (ErrorValue: TsErrorValue);
+  end;
+
+
 procedure InitFormatRecord(out AValue: TsCellFormat);
 
 

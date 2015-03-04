@@ -55,12 +55,14 @@ resourcestring
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
+
   rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
   rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';
   rsEmptyHyperlink = 'The hyperlink is not specified.';
   rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks for text cells only.';
   rsStdHyperlinkTooltip = 'Press the left mouse button a bit longer to activate the hyperlink.';
 
+  rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
 
   rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?
   rsFALSE = 'FALSE';
@@ -73,9 +75,10 @@ resourcestring
   rsErrArgError = '#N/A';
   rsErrFormulaNotSupported = '<FORMULA?>';
 
-{%H-}rsNoValidDateTimeFormatString = 'No valid date/time format string.';
-{%H-}rsIllegalNumberFormat = 'Illegal number format.';
-
+(*
+  {%H-}rsNoValidDateTimeFormatString = 'No valid date/time format string.';
+  {%H-}rsIllegalNumberFormat = 'Illegal number format.';
+  *)
 
 implementation
 

@@ -83,6 +83,9 @@ type
     AcSortColAsc: TAction;
     AcSort: TAction;
     AcCurrencySymbols: TAction;
+    AcCommentAdd: TAction;
+    AcCommentDelete: TAction;
+    AcCommentEdit: TAction;
     AcViewInspector: TAction;
     AcWordwrap: TAction;
     AcVAlignDefault: TAction;
@@ -248,6 +251,8 @@ type
     ToolButton29: TToolButton;
     ToolButton30: TToolButton;
     ToolButton31: TToolButton;
+    ToolButton32: TToolButton;
+    ToolButton33: TToolButton;
     WorksheetGrid: TsWorksheetGrid;
     ToolBar1: TToolBar;
     FormatToolBar: TToolBar;
@@ -280,6 +285,8 @@ type
     procedure AcAddColumnExecute(Sender: TObject);
     procedure AcAddRowExecute(Sender: TObject);
     procedure AcBorderExecute(Sender: TObject);
+    procedure AcCommentAddExecute(Sender: TObject);
+    procedure AcCommentDeleteExecute(Sender: TObject);
     procedure AcCopyFormatExecute(Sender: TObject);
     procedure AcCSVParamsExecute(Sender: TObject);
     procedure AcCurrencySymbolsExecute(Sender: TObject);
@@ -327,10 +334,13 @@ type
 
   private
     FCopiedFormat: TCell;
+
+    function EditComment(ACaption: String; var AText: String): Boolean;
     procedure LoadFile(const AFileName: String);
     procedure SetupBackgroundColorBox;
     procedure UpdateBackgroundColorIndex;
     procedure UpdateCellInfo(ACell: PCell);
+    procedure UpdateCommentActions;
     procedure UpdateFontNameIndex;
     procedure UpdateFontSizeIndex;
     procedure UpdateFontStyleActions;
@@ -353,7 +363,7 @@ var
 implementation
 
 uses
-  TypInfo, LCLIntf, LCLType, LCLVersion, fpcanvas,
+  TypInfo, LCLIntf, LCLType, LCLVersion, fpcanvas, Buttons,
   fpsutils, fpscsv, fpsNumFormat,
   sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sfCurrencyForm;
 
@@ -476,6 +486,42 @@ begin
     finally
       EndUpdate;
     end;
+  end;
+end;
+
+procedure TMainFrm.AcCommentAddExecute(Sender: TObject);
+var
+  r,c: Cardinal;
+  cell: PCell;
+  comment: String;
+begin
+  with WorksheetGrid do
+  begin
+    r := GetWorksheetRow(Row);
+    c := GetWorksheetCol(Col);
+    cell := Worksheet.FindCell(r, c);
+    if Worksheet.HasComment(cell) then
+      comment := Worksheet.ReadComment(cell)
+    else
+      comment := '';
+    if EditComment(Format('Comment for cell %s', [GetCellString(r, c)]), comment)
+    then
+      Worksheet.WriteComment(r, c, comment);
+  end;
+end;
+
+procedure TMainFrm.AcCommentDeleteExecute(Sender: TObject);
+var
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  with WorksheetGrid do
+  begin
+    r := GetWorksheetRow(Row);
+    c := GetWorksheetCol(Col);
+    cell := Worksheet.FindCell(r, c);
+    if Worksheet.HasComment(cell) then
+      Worksheet.RemoveComment(cell);
   end;
 end;
 
@@ -934,6 +980,53 @@ begin
   WorksheetGrid.FrozenRows := EdFrozenRows.Value;
 end;
 
+function TMainFrm.EditComment(ACaption: String; var AText: String): Boolean;
+var
+  F: TForm;
+  memo: TMemo;
+  panel: TPanel;
+  btn: TBitBtn;
+begin
+  F := TForm.Create(nil);
+  try
+    F.Caption := ACaption;
+    F.Width := 400;
+    F.Height := 300;
+    F.Position := poMainFormCenter;
+    memo := TMemo.Create(F);
+    memo.Parent := F;
+    memo.Align := alClient;
+    memo.BorderSpacing.Around := 4;
+    memo.Lines.Text := AText;
+    panel := TPanel.Create(F);
+    panel.Parent := F;
+    panel.Align := alBottom;
+    panel.Height := 44;
+    panel.BevelOuter := bvNone;
+    panel.Caption := '';
+    btn := TBitBtn.Create(F);
+    btn.Parent := panel;
+    btn.Kind := bkOK;
+    btn.Left := panel.ClientWidth - 2*btn.Width - 2*8;
+    btn.Top := 6;
+    btn.Anchors := [akTop, akRight];
+    btn := TBitBtn.Create(F);
+    btn.Parent := panel;
+    btn.Kind := bkCancel;
+    btn.Left := panel.ClientWidth - btn.Width - 8;
+    btn.Top := 6;
+    btn.Anchors := [akTop, akRight];
+    if F.ShowModal = mrOK then
+    begin
+      Result := true;
+      AText := memo.Lines.Text;
+    end else
+      Result := false;
+  finally
+    F.Free;
+  end;
+end;
+
 procedure TMainFrm.FontComboBoxSelect(Sender: TObject);
 var
   fname: String;
@@ -1246,6 +1339,24 @@ begin
   end;
 end;
 
+procedure TMainFrm.UpdateCommentActions;
+var
+  r, c: Cardinal;
+  cell: PCell;
+  hasCmnt: Boolean;
+begin
+  with WorksheetGrid do
+  begin
+    r := GetWorksheetRow(Row);
+    c := GetWorksheetCol(Col);
+    cell := Worksheet.FindCell(row, col);
+    hasCmnt := Worksheet.HasComment(cell);
+  end;
+  AcCommentAdd.Enabled := not hasCmnt;
+  AcCommentEdit.Enabled := hasCmnt;
+  AcCommentDelete.Enabled := hasCmnt;
+end;
+
 procedure TMainFrm.UpdateFontNameIndex;
 var
   fname: String;
@@ -1418,6 +1529,7 @@ begin
   UpdateFontStyleActions;
   UpdateTextRotationActions;
   UpdateNumFormatActions;
+  UpdateCommentActions;
 
   UpdateCellInfo(cell);
 end;

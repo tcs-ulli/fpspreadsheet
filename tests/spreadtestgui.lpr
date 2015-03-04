@@ -12,7 +12,7 @@ uses
   manualtests, testsutility, internaltests, formattests, colortests, fonttests,
   optiontests, numformatparsertests, formulatests, rpnFormulaUnit,
   emptycelltests, errortests, virtualmodetests, insertdeletetests,
-  celltypetests, sortingtests, copytests, commenttests;
+  celltypetests, sortingtests, copytests, commenttests, enumeratortests;
 
 begin
  {$IFDEF HEAPTRC}

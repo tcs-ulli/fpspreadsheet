@@ -2314,7 +2314,7 @@ var
   value: Variant;
   lCell: TCell;
   styleCell: PCell;
-  AVLNode: TAVLTreeNode;
+  cell: PCell;
   rh: String;
   h0: Single;
 begin
@@ -2395,11 +2395,9 @@ begin
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
       // Write cells belonging to this row.
       for c := c1 to c2 do begin
-        lCell.Row := r;
-        lCell.Col := c;
-        AVLNode := AWorksheet.Cells.Find(@lCell);
-        if Assigned(AVLNode) then begin
-          WriteCellCallback(PCell(AVLNode.Data), AStream);
+        cell := AWorksheet.FindCell(r, c);
+        if Assigned(cell) then begin
+          WriteCellCallback(cell, AStream);
         end;
       end;
       AppendToStream(AStream,

@@ -148,6 +148,9 @@ function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
 
 procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
 
+procedure InitCell(out ACell: TCell); overload;
+procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
+
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
@@ -2049,6 +2052,32 @@ begin
     ATarget := Copy(AValue, 1, p-1);
     ABookmark := Copy(AValue, p+1, Length(AValue));
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initalizes a new cell.
+  @return  New cell record
+-------------------------------------------------------------------------------}
+procedure InitCell(out ACell: TCell);
+begin
+  ACell.FormulaValue := '';
+  ACell.UTF8StringValue := '';
+  FillChar(ACell, SizeOf(ACell), 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initalizes a new cell and presets the row and column fields of the cell record
+  to the parameters passed to the procedure.
+
+  @param  ARow   Row index of the new cell
+  @param  ACol   Column index of the new cell
+  @return New cell record with row and column fields preset to passed values.
+-------------------------------------------------------------------------------}
+procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
+begin
+  InitCell(ACell);
+  ACell.Row := ARow;
+  ACell.Col := ACol;
 end;
 
 {@@ ----------------------------------------------------------------------------

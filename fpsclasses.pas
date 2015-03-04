@@ -9,35 +9,122 @@ uses
   fpstypes;
 
 type
+  { forward declarations }
+  TsRowColAVLTree = class;
+
   { TsRowCol }
   TsRowCol = record
-    Row, Col: Cardinal;
+    Row, Col: LongInt;
   end;
   PsRowCol = ^TsRowCol;
+
+  { TAVLTreeNodeStack }
+  TAVLTreeNodeStack = class(TFPList)
+  public
+    procedure Push(ANode: TAVLTreeNode);
+    function Pop: TAVLTreeNode;
+  end;
+
+  { TsRowColEnumerator }
+  TsRowColEnumerator = class
+  protected
+    FCurrentNode: TAVLTreeNode;
+    FTree: TsRowColAVLTree;
+    FStartRow, FEndRow, FStartCol, FEndCol: LongInt;
+    FReverse: Boolean;
+    function GetCurrent: PsRowCol;
+  public
+    constructor Create(ATree: TsRowColAVLTree;
+      AStartRow, AStartCol, AEndRow, AEndCol: LongInt; AReverse: Boolean);
+    function GetEnumerator: TsRowColEnumerator; inline;
+    function MoveNext: Boolean;
+    property Current: PsRowCol read GetCurrent;
+    property StartRow: LongInt read FStartRow;
+    property EndRow: LongInt read FEndRow;
+    property StartCol: LongInt read FStartCol;
+    property EndCol: LongInt read FEndCol;
+  end;
 
   { TsRowColAVLTree }
   TsRowColAVLTree = class(TAVLTree)
   private
     FOwnsData: Boolean;
     FCurrentNode: TAVLTreeNode;
+    FCurrentNodeStack: TAVLTreeNodeStack;
   protected
     procedure DisposeData(var AData: Pointer); virtual; abstract;
     function NewData: Pointer; virtual; abstract;
   public
     constructor Create(AOwnsData: Boolean = true);
     destructor Destroy; override;
-    function Add(ARow, ACol: Cardinal): PsRowCol;
+    function Add(ARow, ACol: LongInt): PsRowCol;
     procedure Clear;
-    procedure Delete(ANode: TAVLTreeNode);
-    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean); virtual;
-    function Find(ARow, ACol: Cardinal): PsRowCol;
+    procedure Delete(ANode: TAVLTreeNode); overload;
+    procedure Delete(ARow, ACol: LongInt); overload;
+    procedure DeleteRowOrCol(AIndex: LongInt; IsRow: Boolean); virtual;
+    procedure Exchange(ARow1, ACol1, ARow2, ACol2: LongInt); virtual;
+    function Find(ARow, ACol: LongInt): PsRowCol; overload;
+    function GetData(ANode: TAVLTreeNode): PsRowCol;
     function GetFirst: PsRowCol;
+    function GetLast: PsRowCol;
     function GetNext: PsRowCol;
-    procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
-    procedure Remove(ARow, ACol: Cardinal);
+    function GetPrev: PsRowCol;
+    procedure InsertRowOrCol(AIndex: LongInt; IsRow: Boolean);
+    procedure Remove(ARow, ACol: LongInt); overload;
+    procedure PushCurrent;
+    procedure PopCurrent;
+  end;
+
+  { TsCells }
+  TsCellEnumerator = class(TsRowColEnumerator)
+  protected
+    function GetCurrent: PCell;
+  public
+    function GetEnumerator: TsCellEnumerator; inline;
+    property Current: PCell read GetCurrent;
+  end;
+
+  TsCells = class(TsRowColAVLTree)
+  private
+    FWorksheet: Pointer;  // Must be cast to TsWorksheet
+  protected
+    procedure DisposeData(var AData: Pointer); override;
+    function NewData: Pointer; override;
+  public
+    constructor Create(AWorksheet: Pointer; AOwnsData: Boolean = true);
+    function AddCell(ARow, ACol: LongInt): PCell;
+    procedure DeleteCell(ARow, ACol: LongInt);
+    function FindCell(ARow, ACol: LongInt): PCell;
+    function GetFirstCell: PCell;
+    function GetLastCell: PCell;
+    function GetNextCell: PCell;
+    function GetPrevCell: PCell;
+    // enumerators
+    function GetEnumerator: TsCellEnumerator;
+    function GetReverseEnumerator: TsCellEnumerator;
+    function GetColEnumerator(ACol: LongInt; AStartRow: Longint = 0;
+      AEndRow: Longint = $7FFFFFFF): TsCellEnumerator;
+    function GetRangeEnumerator(AStartRow, AStartCol,
+      AEndRow, AEndCol: Longint): TsCellEnumerator;
+    function GetRowEnumerator(ARow: LongInt; AStartCol:LongInt = 0;
+      AEndCol: Longint = $7FFFFFFF): TsCellEnumerator;
+    function GetReverseColEnumerator(ACol: LongInt; AStartRow: Longint = 0;
+      AEndRow: Longint = $7FFFFFFF): TsCellEnumerator;
+    function GetReverseRangeEnumerator(AStartRow, AStartCol,
+      AEndRow, AEndCol: Longint): TsCellEnumerator;
+    function GetReverseRowEnumerator(ARow: LongInt; AStartCol:LongInt = 0;
+      AEndCol: Longint = $7FFFFFFF): TsCellEnumerator;
   end;
 
   { TsComments }
+  TsCommentEnumerator = class(TsRowColEnumerator)
+  protected
+    function GetCurrent: PsComment;
+  public
+    function GetEnumerator: TsCommentEnumerator; inline;
+    property Current: PsComment read GetCurrent;
+  end;
+
   TsComments = class(TsRowColAVLTree)
   protected
     procedure DisposeData(var AData: Pointer); override;
@@ -45,16 +132,33 @@ type
   public
     function AddComment(ARow, ACol: Cardinal; AComment: String): PsComment;
     procedure DeleteComment(ARow, ACol: Cardinal);
+    // enumerators
+    function GetEnumerator: TsCommentEnumerator;
+    function GetRangeEnumerator(AStartRow, AStartCol,
+      AEndRow, AEndCol: Longint): TsCommentEnumerator;
   end;
 
   { TsHyperlinks }
+  TsHyperlinkEnumerator = class(TsRowColEnumerator)
+  protected
+    function GetCurrent: PsHyperlink;
+  public
+    function GetEnumerator: TsHyperlinkEnumerator; inline;
+    property Current: PsHyperlink read GetCurrent;
+  end;
+
   TsHyperlinks = class(TsRowColAVLTree)
   protected
     procedure DisposeData(var AData: Pointer); override;
     function NewData: Pointer; override;
   public
-    function AddHyperlink(ARow, ACol: Cardinal; ATarget: String; ATooltip: String = ''): PsHyperlink;
-    procedure DeleteHyperlink(ARow, ACol: Cardinal);
+    function AddHyperlink(ARow, ACol: Longint; ATarget: String;
+      ATooltip: String = ''): PsHyperlink;
+    procedure DeleteHyperlink(ARow, ACol: Longint);
+    // enumerators
+    function GetEnumerator: TsHyperlinkEnumerator;
+    function GetRangeEnumerator(AStartRow, AStartCol,
+      AEndRow, AEndCol: Longint): TsHyperlinkEnumerator;
   end;
 
   { TsMergedCells }
@@ -63,22 +167,120 @@ type
     procedure DisposeData(var AData: Pointer); override;
     function NewData: Pointer; override;
   public
-    function AddRange(ARow1, ACol1, ARow2, ACol2: Cardinal): PsCellRange;
-    procedure DeleteRange(ARow, ACol: Cardinal);
-    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean); override;
-    function FindRangeWithCell(ARow, ACol: Cardinal): PsCellRange;
+    function AddRange(ARow1, ACol1, ARow2, ACol2: Longint): PsCellRange;
+    procedure DeleteRange(ARow, ACol: Longint);
+    procedure DeleteRowOrCol(AIndex: Longint; IsRow: Boolean); override;
+    procedure Exchange(ARow1, ACol1, ARow2, ACol2: Longint); override;
+    function FindRangeWithCell(ARow, ACol: Longint): PsCellRange;
   end;
 
 implementation
 
 uses
-  fpspreadsheet;
+  Math, fpsUtils;
 
 function CompareRowCol(Item1, Item2: Pointer): Integer;
 begin
   Result := LongInt(PsRowCol(Item1)^.Row) - PsRowCol(Item2)^.Row;
   if Result = 0 then
     Result := LongInt(PsRowCol(Item1)^.Col) - PsRowCol(Item2)^.Col;
+end;
+
+
+function TAVLTreeNodeStack.Pop: TAVLTreeNode;
+begin
+  Result := TAVLTreeNode(Items[Count-1]);
+  Delete(Count-1);
+end;
+
+procedure TAVLTreeNodeStack.Push(ANode: TAVLTreeNode);
+begin
+  Add(ANode);
+end;
+
+
+{******************************************************************************}
+{ TsRowColEnumerator:  A specialized enumerator for TsRowColAVLTree using the  }
+{ pointers to the data records.                                                }
+{******************************************************************************}
+
+constructor TsRowColEnumerator.Create(ATree: TsRowColAVLTree;
+  AStartRow, AStartCol, AEndRow, AEndCol: LongInt; AReverse: Boolean);
+begin
+  FTree := ATree;
+  FReverse := AReverse;
+  // Rearrange col/row indexes such that iteration always begins with "StartXXX"
+  if AStartRow <= AEndRow then
+  begin
+    FStartRow := IfThen(AReverse, AEndRow, AStartRow);
+    FEndRow := IfThen(AReverse, AStartRow, AEndRow);
+  end else
+  begin
+    FStartRow := IfThen(AReverse, AStartRow, AEndRow);
+    FEndRow := IfThen(AReverse, AEndRow, AStartRow);
+  end;
+  if AStartCol <= AEndCol then
+  begin
+    FStartCol := IfThen(AReverse, AEndCol, AStartCol);
+    FEndCol := IfThen(AReverse, AStartCol, AEndCol);
+  end else
+  begin
+    FStartCol := IfThen(AReverse, AStartCol, AEndCol);
+    FEndCol := IfThen(AReverse, AEndCol, AStartCol);
+  end;
+end;
+
+function TsRowColEnumerator.GetCurrent: PsRowCol;
+begin
+  if Assigned(FCurrentNode) then
+    Result := PsRowCol(FCurrentNode.Data)
+  else
+    Result := nil;
+end;
+
+function TsRowColEnumerator.GetEnumerator: TsRowColEnumerator;
+begin
+  Result := self;
+end;
+
+function TsRowColEnumerator.MoveNext: Boolean;
+var
+  r1,c1,r2,c2: LongInt;
+  item: TsRowCol;
+begin
+  if FCurrentNode <> nil then begin
+    if FReverse then
+    begin
+      FCurrentNode := FTree.FindPrecessor(FCurrentNode);
+      while (FCurrentNode <> nil) and
+          ( (Current^.Col < FEndCol) or (Current^.Col > FStartCol) or
+            (Current^.Row < FEndRow) or (Current^.Row > FStartRow) )
+      do
+        FCurrentNode := FTree.FindPrecessor(FCurrentNode);
+    end else
+    begin
+      FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+      while (FCurrentNode <> nil) and
+          ( (Current^.Col < FStartCol) or (Current^.Col > FEndCol) or
+            (Current^.Row < FStartRow) or (Current^.Row > FEndRow) )
+      do
+        FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+    end;
+  end else
+  begin
+    if FReverse and (FStartRow = $7FFFFFFF) and (FStartCol = $7FFFFFFF) then
+      FCurrentNode := FTree.FindHighest
+    else
+    if not FReverse and (FStartRow = 0) and (FStartCol = 0) then
+      FCurrentNode := FTree.FindLowest
+    else
+    begin
+      item.Row := FStartRow;
+      item.Col := FStartCol;
+      FCurrentNode := FTree.Find(@item);
+    end;
+  end;
+  Result := FCurrentNode <> nil;
 end;
 
 
@@ -96,6 +298,7 @@ constructor TsRowColAVLTree.Create(AOwnsData: Boolean = true);
 begin
   inherited Create(@CompareRowCol);
   FOwnsData := AOwnsData;
+  FCurrentNodeStack := TAVLTreeNodeStack.Create;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -104,6 +307,7 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsRowColAVLTree.Destroy;
 begin
+  FCurrentNodeStack.Free;
   Clear;
   inherited;
 end;
@@ -112,11 +316,9 @@ end;
   Adds a new node to the tree identified by the specified row and column
   indexes.
 -------------------------------------------------------------------------------}
-function TsRowColAVLTree.Add(ARow, ACol: Cardinal): PsRowCol;
+function TsRowColAVLTree.Add(ARow, ACol: LongInt): PsRowCol;
 begin
-  Result := Find(ARow, ACol);
-  if Result = nil then
-    Result := NewData;
+  Result := NewData;
   Result^.Row := ARow;
   Result^.Col := ACol;
   inherited Add(Result);
@@ -149,6 +351,18 @@ begin
   inherited Delete(ANode);
 end;
 
+procedure TsRowColAVLTree.Delete(ARow, ACol: LongInt);
+var
+  node: TAVLTreeNode;
+  cell: TCell;
+begin
+  cell.Row := ARow;
+  cell.Col := ACol;
+  node := inherited Find(@cell);
+  if Assigned(node) then
+    Delete(node);
+end;
+
 {@@ ----------------------------------------------------------------------------
   This procedure adjusts row or column indexes stored in the tree nodes if a
   row or column will be deleted from the underlying worksheet.
@@ -157,7 +371,7 @@ end;
                   to be deleted
   @param  IsRow   Identifies whether AIndex refers to a row or column index
 -------------------------------------------------------------------------------}
-procedure TsRowColAVLTree.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+procedure TsRowColAVLTree.DeleteRowOrCol(AIndex: LongInt; IsRow: Boolean);
 var
   node, nextnode: TAVLTreeNode;
   item: PsRowCol;
@@ -190,11 +404,53 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Exchanges two nodes
+-------------------------------------------------------------------------------}
+procedure TsRowColAVLTree.Exchange(ARow1, ACol1, ARow2, ACol2: LongInt);
+var
+  item1, item2: PsRowCol;
+begin
+  item1 := Find(ARow1, ACol1);
+  item2 := Find(ARow2, ACol2);
+
+  // There are entries for both locations: Exchange row/col indexes
+  if (item1 <> nil) and (item2 <> nil) then
+  begin
+    Remove(item1);
+    Remove(item2);
+    item1^.Row := ARow2;
+    item1^.Col := ACol2;
+    item2^.Row := ARow1;
+    item2^.Col := ACol1;
+    inherited Add(item1);
+    inherited Add(item2);
+  end else
+
+  // Only the 1tst item exists --> give it the row/col indexes of the 2nd item
+  if (item1 <> nil) then
+  begin
+    Remove(item1);
+    item1^.Row := ARow2;
+    item1^.Col := ACol2;
+    inherited Add(item1);
+  end else
+
+  // Only the 2nd item exists --> give it the row/col indexes of the 1st item
+  if (item2 <> nil) then
+  begin
+    Remove(item2);
+    item2^.Row := ARow1;
+    item2^.Col := ACol1;
+    inherited Add(item2);  // just adds the existing item at the new position
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Seeks the entire tree for a node of the specified row and column indexes and
   returns a pointer to the data record.
   Returns nil if such a node does not exist
 -------------------------------------------------------------------------------}
-function TsRowColAVLTree.Find(ARow, ACol: Cardinal): PsRowCol;
+function TsRowColAVLTree.Find(ARow, ACol: LongInt): PsRowCol;
 var
   data: TsRowCol;
   node: TAVLTreeNode;
@@ -211,25 +467,60 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Extracts the pointer to the data record from a tree node
+-------------------------------------------------------------------------------}
+function TsRowColAVLTree.GetData(ANode: TAVLTreeNode): PsRowCol;
+begin
+  if ANode <> nil then
+    Result := PsRowCol(ANode.Data)
+  else
+    Result := nil;
+end;
+                          (*
+function TsRowColAVLTree.GetEnumerator: TsRowColEnumerator;
+begin
+  Result := TsRowColEnumerator.Create(self);
+end;
+
+function TsRowColAVLTree.GetColEnumerator(ACol: LongInt): TsRowColEnumerator;
+begin
+  Result := TsRowColEnumerator.Create(self, -1, ACol, -1, ACol);
+end;
+
+function TsRowColAVLTree.GetRowEnumerator(ARow: LongInt): TsRowColEnumerator;
+begin
+  Result := TsRowColEnumerator.Create(self, ARow, -1, ARow, -1);
+end;
+                            *)
+
+{@@ ----------------------------------------------------------------------------
   The combination of the methods GetFirst and GetNext allow a fast iteration
   through all nodes of the tree.
 -------------------------------------------------------------------------------}
 function TsRowColAVLTree.GetFirst: PsRowCol;
 begin
   FCurrentNode := FindLowest;
-  if FCurrentNode <> nil then
-    Result := PsRowCol(FCurrentNode.Data)
-  else
-    Result := nil;
+  Result := GetData(FCurrentNode);
+end;
+
+function TsRowColAVLTree.GetLast: PsRowCol;
+begin
+  FCurrentNode := FindHighest;
+  Result := GetData(FCurrentNode);
 end;
 
 function TsRowColAVLTree.GetNext: PsRowCol;
 begin
-  FCurrentNode := FindSuccessor(FCurrentNode);
   if FCurrentNode <> nil then
-    Result := PsRowCol(FCurrentNode.Data)
-  else
-    Result := nil;
+    FCurrentNode := FindSuccessor(FCurrentNode);
+  Result := GetData(FCurrentNode);
+end;
+
+function TsRowColAVLTree.GetPrev: PsRowCol;
+begin
+  if FCurrentNode <> nil then
+    FCurrentNode := FindPrecessor(FCurrentNode);
+  Result := GetData(FCurrentNode);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -240,7 +531,7 @@ end;
                   to be inserted
   @param  IsRow   Identifies whether AIndex refers to a row or column index
 -------------------------------------------------------------------------------}
-procedure TsRowColAVLTree.InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+procedure TsRowColAVLTree.InsertRowOrCol(AIndex: LongInt; IsRow: Boolean);
 var
   node: TAVLTreeNode;
   item: PsRowCol;
@@ -260,10 +551,9 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Removes the node and destroys the associated data reocrd (if the tree has
-  been created with AOwnsData=true) for the specified row and column indexes.
+  Removes the node, but does NOT destroy the associated data reocrd
 -------------------------------------------------------------------------------}
-procedure TsRowColAVLTree.Remove(ARow, ACol: Cardinal);
+procedure TsRowColAVLTree.Remove(ARow, ACol: LongInt);
 var
   node: TAVLTreeNode;
   item: TsRowCol;
@@ -271,12 +561,215 @@ begin
   item.Row := ARow;
   item.Col := ACol;
   node := inherited Find(@item);
-  Delete(node);
+  Remove(node);
+//  Delete(node);
+end;
+
+procedure TsRowColAVLTree.PopCurrent;
+begin
+  FCurrentNode := FCurrentNodeStack.Pop;
+end;
+
+procedure TsRowColAVLTree.PushCurrent;
+begin
+  FCurrentNodeStack.Push(FCurrentNode);
 end;
 
 
 {******************************************************************************}
-{ TsComments: a AVLTree to store comment records for cells                     }
+{ TsCellEnumerator: enumerator for the TsCells AVLTree                        }
+{******************************************************************************}
+
+function TsCellEnumerator.GetEnumerator: TsCellEnumerator;
+begin
+  Result := self;
+end;
+
+function TsCellEnumerator.GetCurrent: PCell;
+begin
+  Result := PCell(inherited GetCurrent);
+end;
+
+
+{******************************************************************************}
+{ TsCells: an AVLTree to store spreadsheet cells                               }
+{******************************************************************************}
+
+constructor TsCells.Create(AWorksheet: Pointer; AOwnsData: Boolean = true);
+begin
+  inherited Create(AOwnsData);
+  FWorksheet := AWorksheet;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a node with a new TCell record to the tree.
+  Returns a pointer to the cell record.
+  NOTE: It must be checked first that there ia no other record at the same
+        col/row. (Check omitted for better performance).
+-------------------------------------------------------------------------------}
+function TsCells.AddCell(ARow, ACol: LongInt): PCell;
+begin
+  Result := PCell(Add(ARow, ACol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Deletes the node for the specified row and column index along with the
+  associated cell data record.
+-------------------------------------------------------------------------------}
+procedure TsCells.DeleteCell(ARow, ACol: LongInt);
+begin
+  Delete(ARow, ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper procedure which disposes the memory occupied by the cell data
+  record attached to a tree node.
+-------------------------------------------------------------------------------}
+procedure TsCells.DisposeData(var AData: Pointer);
+begin
+  if AData <> nil then
+    Dispose(PCell(AData));
+  AData := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether a specific cell already exists
+-------------------------------------------------------------------------------}
+function TsCells.FindCell(ARow, ACol: Longint): PCell;
+begin
+  Result := PCell(Find(ARow, ACol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Cell enumerators (use in "for ... in" syntax)
+-------------------------------------------------------------------------------}
+function TsCells.GetEnumerator: TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, false);
+end;
+
+function TsCells.GetColEnumerator(ACol: LongInt; AStartRow: Longint = 0;
+  AEndRow: Longint = $7FFFFFFF): TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(Self, AStartRow, ACol, AEndRow, ACol, false);
+end;
+
+function TsCells.GetRangeEnumerator(AStartRow, AStartCol,
+  AEndRow, AEndCol: Longint): TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(Self,
+    AStartRow, AStartCol, AEndRow, AEndCol, false);
+end;
+
+function TsCells.GetRowEnumerator(ARow: LongInt; AStartCol: Longint = 0;
+  AEndCol: LongInt = $7FFFFFFF): TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(Self,
+    ARow, AStartCol, ARow, AEndCol, false);
+end;
+
+function TsCells.GetReverseColEnumerator(ACol: LongInt; AStartRow: Longint = 0;
+  AEndRow: Longint = $7FFFFFFF): TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(Self,
+    AStartRow, ACol, AEndRow, ACol, true);
+end;
+
+function TsCells.GetReverseEnumerator: TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, true);
+end;
+
+function TsCells.GetReverseRangeEnumerator(AStartRow, AStartCol,
+  AEndRow, AEndCol: Longint): TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(Self,
+    AStartRow, AStartCol, AEndRow, AEndCol, true);
+end;
+
+function TsCells.GetReverseRowEnumerator(ARow: LongInt; AStartCol: Longint = 0;
+  AEndCol: LongInt = $7FFFFFFF): TsCellEnumerator;
+begin
+  Result := TsCellEnumerator.Create(Self,
+    ARow, AStartCol, ARow, AEndCol, true);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns a pointer to the first cell of the tree.
+  Should always be followed by GetNextCell.
+
+  Use to iterate through all cells efficiently.
+-------------------------------------------------------------------------------}
+function TsCells.GetFirstCell: PCell;
+begin
+  Result := PCell(GetFirst);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns a pointer to the last cell of the tree.
+
+  Needed for efficient iteration through all nodes in reverse direction by
+  calling GetPrev.
+-------------------------------------------------------------------------------}
+function TsCells.GetLastCell: PCell;
+begin
+  Result := PCell(GetLast);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  After beginning an iteration through all cells with GetFirstCell, the next
+  available cell can be found by calling GetNextCell.
+
+  Use to iterate througt all cells efficiently.
+-------------------------------------------------------------------------------}
+function TsCells.GetNextCell: PCell;
+begin
+  Result := PCell(GetNext);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  After beginning a reverse iteration through all cells with GetLastCell,
+  the next available cell can be found by calling GetPrevCell.
+
+  Use to iterate througt all cells efficiently in reverse order.
+-------------------------------------------------------------------------------}
+function TsCells.GetPrevCell: PCell;
+begin
+  Result := PCell(GetPrev);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Alloates memory for a cell data record.
+-------------------------------------------------------------------------------}
+function TsCells.NewData: Pointer;
+var
+  cell: PCell;
+begin
+  New(cell);
+  InitCell(cell^);
+  cell^.Worksheet := FWorksheet;
+  Result := cell;
+end;
+
+
+{******************************************************************************}
+{ TsCommentEnumerator: enumerator for the TsComments AVLTree                   }
+{******************************************************************************}
+
+function TsCommentEnumerator.GetEnumerator: TsCommentEnumerator;
+begin
+  Result := self;
+end;
+
+function TsCommentEnumerator.GetCurrent: PsComment;
+begin
+  Result := PsComment(inherited GetCurrent);
+end;
+
+
+{******************************************************************************}
+{ TsComments: an AVLTree to store comment records for cells                     }
 {******************************************************************************}
 
 {@@ ----------------------------------------------------------------------------
@@ -287,7 +780,9 @@ end;
 function TsComments.AddComment(ARow, ACol: Cardinal;
   AComment: String): PsComment;
 begin
-  Result := PsComment(Add(ARow, ACol));
+  Result := PsComment(Find(ARow, ACol));
+  if Result = nil then
+    Result := PsComment(Add(ARow, ACol));
   Result^.Text := AComment;
 end;
 
@@ -297,7 +792,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsComments.DeleteComment(ARow, ACol: Cardinal);
 begin
-  Remove(ARow, ACol);
+  Delete(ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -322,9 +817,38 @@ begin
   Result := comment;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Comments enumerators (use in "for ... in" syntax)
+-------------------------------------------------------------------------------}
+function TsComments.GetEnumerator: TsCommentEnumerator;
+begin
+  Result := TsCommentEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, false);
+end;
+
+function TsComments.GetRangeEnumerator(AStartRow, AStartCol,
+  AEndRow, AEndCol: Longint): TsCommentEnumerator;
+begin
+  Result := TsCommentEnumerator.Create(Self,
+    AStartRow, AStartCol, AEndRow, AEndCol, false);
+end;
+
 
 {******************************************************************************}
-{ TsHyperlinks: a AVLTree to store hyperlink records for cells                 }
+{ TsHyperlinkEnumerator: enumerator for the TsHyperlinks AVLTree               }
+{******************************************************************************}
+
+function TsHyperlinkEnumerator.GetEnumerator: TsHyperlinkEnumerator;
+begin
+  Result := self;
+end;
+
+function TsHyperlinkEnumerator.GetCurrent: PsHyperlink;
+begin
+  Result := PsHyperlink(inherited GetCurrent);
+end;
+
+{******************************************************************************}
+{ TsHyperlinks: an AVLTree to store hyperlink records for cells                 }
 {******************************************************************************}
 
 {@@ ----------------------------------------------------------------------------
@@ -332,10 +856,12 @@ end;
   exists then its data will be replaced by the specified ones.
   Returns a pointer to the hyperlink record.
 -------------------------------------------------------------------------------}
-function TsHyperlinks.AddHyperlink(ARow, ACol: Cardinal; ATarget: String;
+function TsHyperlinks.AddHyperlink(ARow, ACol: Longint; ATarget: String;
   ATooltip: String = ''): PsHyperlink;
 begin
-  Result := PsHyperlink(Add(ARow, ACol));
+  Result := PsHyperlink(Find(ARow, ACol));
+  if Result = nil then
+    Result := PsHyperlink(Add(ARow, ACol));
   Result^.Target := ATarget;
   Result^.Tooltip := ATooltip;
 end;
@@ -344,9 +870,9 @@ end;
   Deletes the node for the specified row and column index along with the
   associated hyperlink data record.
 -------------------------------------------------------------------------------}
-procedure TsHyperlinks.DeleteHyperlink(ARow, ACol: Cardinal);
+procedure TsHyperlinks.DeleteHyperlink(ARow, ACol: Longint);
 begin
-  Remove(ARow, ACol);
+  Delete(ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -358,6 +884,21 @@ begin
   if AData <> nil then
     Dispose(PsHyperlink(AData));
   AData := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Hyperlink enumerators (use in "for ... in" syntax)
+-------------------------------------------------------------------------------}
+function TsHyperlinks.GetEnumerator: TsHyperlinkEnumerator;
+begin
+  Result := TsHyperlinkEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, false);
+end;
+
+function TsHyperlinks.GetRangeEnumerator(AStartRow, AStartCol,
+  AEndRow, AEndCol: Longint): TsHyperlinkEnumerator;
+begin
+  Result := TsHyperlinkEnumerator.Create(Self,
+    AStartRow, AStartCol, AEndRow, AEndCol, false);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -381,9 +922,11 @@ end;
   exists then its data will be replaced by the specified ones.
   Returns a pointer to the cell range record.
 -------------------------------------------------------------------------------}
-function TsMergedCells.AddRange(ARow1, ACol1, ARow2, ACol2: Cardinal): PsCellRange;
+function TsMergedCells.AddRange(ARow1, ACol1, ARow2, ACol2: Longint): PsCellRange;
 begin
-  Result := PsCellRange(Add(ARow1, ACol1));
+  Result := PsCellRange(Find(ARow1, ACol1));
+  if Result = nil then
+    Result := PsCellRange(Add(ARow1, ACol1));
   Result^.Row2 := ARow2;
   Result^.Col2 := ACol2;
 end;
@@ -392,9 +935,9 @@ end;
   Deletes the node for which the top/left corner of the cell range matches the
   specified parameters. There is only a single range fulfilling this criterion.
 -------------------------------------------------------------------------------}
-procedure TsMergedCells.DeleteRange(ARow, ACol: Cardinal);
+procedure TsMergedCells.DeleteRange(ARow, ACol: Longint);
 begin
-  Remove(ARow, ACol);
+  Delete(ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -405,7 +948,7 @@ end;
                   to be deleted
   @param  IsRow   Identifies whether AIndex refers to a row or column index
 -------------------------------------------------------------------------------}
-procedure TsMergedCells.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+procedure TsMergedCells.DeleteRowOrCol(AIndex: Longint; IsRow: Boolean);
 var
   rng, nextrng: PsCellRange;
 begin
@@ -465,11 +1008,41 @@ begin
   AData := nil;
 end;
 
+procedure TsMergedCells.Exchange(ARow1, ACol1, ARow2, ACol2: Longint);
+var
+  rng: PsCellrange;
+  dr, dc: LongInt;
+begin
+  rng := PsCellrange(Find(ARow1, ACol1));
+  if rng <> nil then
+  begin
+    dr := rng^.Row2 - rng^.Row1;
+    dc := rng^.Col2 - rng^.Col1;
+    rng^.Row1 := ARow2;
+    rng^.Col1 := ACol2;
+    rng^.Row2 := ARow2 + dr;
+    rng^.Col2 := ACol2 + dc;
+  end;
+
+  rng := PsCellRange(Find(ARow2, ACol2));
+  if rng <> nil then
+  begin
+    dr := rng^.Row2 - rng^.Row1;
+    dc := rng^.Col2 - rng^.Col1;
+    rng^.Row1 := ARow1;
+    rng^.Col1 := ACol1;
+    rng^.Row2 := ARow1 + dr;
+    rng^.Col2 := ACol1 + dc;
+  end;
+
+  inherited Exchange(ARow1, ACol1, ARow2, ACol2);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Finds the cell range which contains the cell specified by its row and column
   index
 -------------------------------------------------------------------------------}
-function TsMergedCells.FindRangeWithCell(ARow, ACol: Cardinal): PsCellRange;
+function TsMergedCells.FindRangeWithCell(ARow, ACol: Longint): PsCellRange;
 var
   node: TAVLTreeNode;
 begin
