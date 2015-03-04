@@ -18,6 +18,11 @@ var
   SollSortNumbers: array[0..9] of Double;
   SollSortStrings: array[0..9] of String;
 
+  CommentIsSortedToStringIndex: Integer;
+  CommentIsSortedToNumberIndex: Integer;
+  HyperlinkIsSortedToStringIndex: Integer;
+  HyperlinkIsSortedToNumberIndex: Integer;
+
   procedure InitUnsortedData;
 
 type
@@ -74,7 +79,7 @@ procedure InitUnsortedData;
 // The logics of the detection requires equal count of numbers and strings.
 begin
   // When sorted the value is equal to the index
-  SollSortNumbers[0] := 9;
+  SollSortNumbers[0] := 9;     // --> A1 --> will contain comment and hyperlink
   SollSortNumbers[1] := 8;
   SollSortNumbers[2] := 5;
   SollSortNumbers[3] := 2;
@@ -85,8 +90,11 @@ begin
   SollSortNumbers[8] := 4;
   SollSortNumbers[9] := 0;
 
+  CommentIsSortedToNumberIndex := 9;
+  HyperlinkIsSortedToNumberIndex := 9;
+
   // When sorted the value is equal to 'A' + index
-  SollSortStrings[0] := 'C';
+  SollSortStrings[0] := 'C';   // --> Ar --> will contain hyperlink and comment
   SollSortStrings[1] := 'G';
   SollSortStrings[2] := 'F';
   SollSortStrings[3] := 'I';
@@ -96,6 +104,9 @@ begin
   SollSortStrings[7] := 'H';
   SollSortStrings[8] := 'E';
   SollSortStrings[9] := 'A';
+
+  CommentIsSortedToStringIndex := 2;
+  HyperlinkIsSortedToStringIndex := 2;
 end;
 
 
@@ -120,17 +131,15 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   i, ilast, n, row, col: Integer;
-  MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
   L: TStringList;
   s: String;
   sortParams: TsSortParams;
-  sortOptions: TsSortOptions;
-  r1,r2,c1,c2: Cardinal;
   actualNumber: Double;
   actualString: String;
   expectedNumber: Double;
   expectedString: String;
+  cell: PCell;
 
 begin
   sortParams := InitSortParams(ASortByCols, 1);
@@ -145,11 +154,11 @@ begin
     row := 0;
     if ASortByCols then begin
       case AWhat of
-        0: for i :=0 to High(SollSortNumbers) do
+        0: for i :=0 to High(SollSortNumbers) do   // Numbers only
              MyWorksheet.WriteNumber(i, col, SollSortNumbers[i]);
-        1: for i := 0 to High(SollSortStrings) do
+        1: for i := 0 to High(SollSortStrings) do  // Strings only
              Myworksheet.WriteUTF8Text(i, col, SollSortStrings[i]);
-        2: begin
+        2: begin                                   // Numbers and strings
              for i := 0 to High(SollSortNumbers) do
                MyWorkSheet.WriteNumber(i*2, col, SollSortNumbers[i]);
              for i := 0 to High(SollSortStrings) do
@@ -171,6 +180,14 @@ begin
            end;
       end;
     end;
+
+    // Add comment and hyperlink to cell A1. After sorting it is expected
+    // in cell defined by CommentIsSortedToXXXIndex (XXX = Number/String)
+
+    if AFormat <> sfExcel8 then   // Comments not implemented for writing Excel8
+      MyWorksheet.WriteComment(0, 0, 'Test comment');
+    MyWorksheet.WriteHyperlink(0, 0, 'http://www.google.com');
+
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
@@ -205,7 +222,7 @@ begin
       MyWorksheet.Sort(sortParams, 0, 0, 0, iLast);
 
     // for debugging, to see the sorted data
-    // MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
+    //MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
 
     row := 0;
     col := 0;
@@ -223,20 +240,41 @@ begin
         end;
       case AWhat of
         0: begin
-             actualNumber := MyWorksheet.ReadAsNumber(row, col);
+             cell := MyWorksheet.FindCell(row, col);
+             actualNumber := MyWorksheet.ReadAsNumber(cell);
              expectedNumber := i;
              CheckEquals(expectednumber, actualnumber,
                'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
+             if AFormat <> sfExcel8 then  // Comments are not written for sfExcel8  --> ignore
+               CheckEquals(
+                 i=CommentIsSortedToNumberIndex,
+                 MyWorksheet.HasComment(cell),
+                 'Sorted comment position mismatch, cell '+CellNotation(MyWorksheet, row, col));
+             CheckEquals(
+               i = HyperlinkisSortedToNumberIndex,
+               MyWorksheet.HasHyperlink(cell),
+               'Sorted hyperlink position mismatch, cell '+CellNotation(MyWorksheet, row, col));
            end;
         1: begin
-             actualString := MyWorksheet.ReadAsUTF8Text(row, col);
+             cell := MyWorksheet.FindCell(row, col);
+             actualString := MyWorksheet.ReadAsUTF8Text(cell);
              expectedString := char(ord('A') + i);
              CheckEquals(expectedstring, actualstring,
                'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
+             if AFormat <> sfExcel8 then  // Comments are not written for sfExcel8  --> ignore
+               CheckEquals(
+                 i=CommentIsSortedToStringIndex,
+                 MyWorksheet.HasComment(cell),
+                 'Sorted comment position mismatch, cell '+CellNotation(MyWorksheet, row, col));
+             CheckEquals(
+               i = HyperlinkisSortedToStringIndex,
+               MyWorksheet.HasHyperlink(cell),
+               'Sorted hyperlink position mismatch, cell '+CellNotation(MyWorksheet, row, col));
            end;
         2: begin  // with increasing i, we see first the numbers, then the strings
              if i <= High(SollSortNumbers) then begin
-               actualnumber := MyWorksheet.ReadAsNumber(row, col);
+               cell := MyWorksheet.FindCell(row, col);
+               actualnumber := MyWorksheet.ReadAsNumber(cell);
                expectedNumber := i;
                CheckEquals(expectednumber, actualnumber,
                  'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
@@ -346,7 +384,7 @@ begin
       MyWorksheet.Sort(sortParams, 0, 0, 1, iLast);
 
     // for debugging, to see the sorted data
-    MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
+    // MyWorkbook.WriteToFile('sorted.xls', AFormat, true);
 
     for i:=0 to iLast do
     begin

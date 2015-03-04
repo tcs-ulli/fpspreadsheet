@@ -20,7 +20,7 @@ interface
 
 uses
   Classes, Sysutils, AVL_Tree,
-  fpsTypes, fpSpreadsheet, fpsNumFormat;
+  fpsTypes, fpsClasses, fpSpreadsheet, fpsNumFormat;
 
 type
   {@@
@@ -101,7 +101,7 @@ type
 
     { Helpers for writing }
     procedure WriteCellCallback(ACell: PCell; AStream: TStream);
-    procedure WriteCellsToStream(AStream: TStream; ACells: TAVLTree);
+    procedure WriteCellsToStream(AStream: TStream; ACells: TsCells);
 
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -124,11 +124,11 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     { General writing methods }
-    procedure IterateThroughCells(AStream: TStream; ACells: TAVLTree;
+    procedure IterateThroughCells(AStream: TStream; ACells: TsCells;
       ACallback: TCellsCallback);
-    procedure IterateThroughComments(AStream: TStream; AComments: TAVLTree;
+    procedure IterateThroughComments(AStream: TStream; AComments: TsComments;
       ACallback: TCommentsCallback);
-    procedure IterateThroughHyperlinks(AStream: TStream; AHyperlinks: TAVLTree;
+    procedure IterateThroughHyperlinks(AStream: TStream; AHyperlinks: TsHyperlinks;
       ACallback: THyperlinksCallback);
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
@@ -471,16 +471,29 @@ end;
                      cell as well as the destination stream.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream;
-  ACells: TAVLTree; ACallback: TCellsCallback);
+  ACells: TsCells; ACallback: TCellsCallback);
 var
-  AVLNode: TAVLTreeNode;
+  cell: PCell;
+  node: TAVLTreeNode;
 begin
-  AVLNode := ACells.FindLowest;
-  while Assigned(AVLNode) do
-  begin
-    ACallback(PCell(AVLNode.Data), AStream);
-    AVLNode := ACells.FindSuccessor(AVLNode);
+  node := ACells.FindLowest;
+  while Assigned(node) do begin
+    ACallback(PCell(node.Data), AStream);
+    node := ACells.FindSuccessor(node);
   end;
+  {
+  ACells.PushCurrent;
+  try
+    cell := ACells.GetFirstCell;
+    while Assigned(cell) do
+    begin
+      ACallback(cell, AStream);
+      cell := ACells.GetNextCell;
+    end;
+  finally
+    ACells.PopCurrent;
+  end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -493,18 +506,23 @@ end;
                      comment record as well as the destination stream.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.IterateThroughComments(AStream: TStream;
-  AComments: TAVLTree; ACallback: TCommentsCallback);
+  AComments: TsComments; ACallback: TCommentsCallback);
 var
-  AVLNode: TAVLTreeNode;
   index: Integer;
+  comment: PsComment;
 begin
   index := 0;
-  AVLNode := AComments.FindLowest;
-  while Assigned(AVLNode) do
-  begin
-    ACallback(PsComment(AVLNode.Data), index, AStream);
-    AVLNode := AComments.FindSuccessor(AVLNode);
-    inc(index);
+  AComments.PushCurrent;
+  try
+    comment := PsComment(AComments.GetFirst);
+    while Assigned(comment) do
+    begin
+      ACallback(comment, index, AStream);
+      comment := PsComment(AComments.GetNext);
+      inc(index);
+    end;
+  finally
+    AComments.PopCurrent;
   end;
 end;
 
@@ -518,18 +536,20 @@ end;
                        the hyperlink record as well as the destination stream.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.IterateThroughHyperlinks(AStream: TStream;
-  AHyperlinks: TAVLTree; ACallback: THyperlinksCallback);
+  AHyperlinks: TsHyperlinks; ACallback: THyperlinksCallback);
 var
-  AVLNode: TAVLTreeNode;
-  index: Integer;
+  hyperlink: PsHyperlink;
 begin
-  index := 0;
-  AVLNode := AHyperlinks.FindLowest;
-  while Assigned(AVLNode) do
-  begin
-    ACallback(PsHyperlink(AVLNode.Data), AStream);
-    AVLNode := AHyperlinks.FindSuccessor(AVLNode);
-    inc(index);
+  AHyperlinks.PushCurrent;
+  try
+    hyperlink := PsHyperlink(AHyperlinks.GetFirst);
+    while Assigned(hyperlink) do
+    begin
+      ACallback(hyperlink, AStream);
+      hyperlink := PsHyperlink(AHyperlinks.GetNext);
+    end;
+  finally
+    AHyperlinks.PopCurrent;
   end;
 end;
 
@@ -595,7 +615,7 @@ end;
   @param  ACells  List of cells to be writeen
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream;
-  ACells: TAVLTree);
+  ACells: TsCells);
 begin
   IterateThroughCells(AStream, ACells, WriteCellCallback);
 end;

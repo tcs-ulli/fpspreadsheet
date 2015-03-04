@@ -1495,8 +1495,7 @@ begin
   if Worksheet = nil then
     exit;
 
-  cell := Worksheet.GetFirstCell;
-  while cell <> nil do
+  for cell in Worksheet.Cells do
   begin
     if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
     begin
@@ -1505,7 +1504,6 @@ begin
       rect := CellRect(c, r);
       DrawCellBorders(c, r, rect);
     end;
-    cell := Worksheet.GetNextCell;
   end;
 end;
 
@@ -2003,7 +2001,6 @@ var
   P1, P2: TPoint;
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
-  rng: PsCellRange;
 begin
   // Selected cell
   cell := Worksheet.FindCell(GetWorksheetRow(Selection.Top), GetWorksheetCol(Selection.Left));

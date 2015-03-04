@@ -32,43 +32,6 @@ type
   TsBasicSpreadReader = class;
   TsBasicSpreadWriter = class;
 
-  {@@ Pointer to a TCell record }
-  PCell = ^TCell;
-
-  {@@ Cell structure for TsWorksheet
-      The cell record contains information on the location of the cell (row and
-      column index), on the value contained (number, date, text, ...), on
-      formatting, etc.
-
-      Never suppose that all *Value fields are valid,
-      only one of the ContentTypes is valid. For other fields
-      use TWorksheet.ReadAsUTF8Text and similar methods
-
-      @see ReadAsUTF8Text }
-  TCell = record
-    { Location of the cell }
-    Worksheet: TsWorksheet;
-    Col: Cardinal; // zero-based
-    Row: Cardinal; // zero-based
-    { Status flags }
-    Flags: TsCellFlags;
-    { Index of format record in the workbook's FCellFormatList }
-    FormatIndex: Integer;
-    { Special information }
-    SharedFormulaBase: PCell;  // Cell containing the shared formula
-    { Cell content }
-    UTF8StringValue: String;   // Strings cannot be part of a variant record
-    FormulaValue: String;
-    case ContentType: TCellContentType of  // variant part must be at the end
-      cctEmpty      : ();      // has no data at all
-      cctFormula    : ();      // FormulaValue is outside the variant record
-      cctNumber     : (Numbervalue: Double);
-      cctUTF8String : ();      // UTF8StringValue is outside the variant record
-      cctDateTime   : (DateTimevalue: TDateTime);
-      cctBool       : (BoolValue: boolean);
-      cctError      : (ErrorValue: TsErrorValue);
-  end;
-
   {@@ The record TRow contains information about a spreadsheet row:
     @param Row   The index of the row (beginning with 0)
     @param Height  The height of the row (expressed as lines count of the default font)
@@ -124,11 +87,10 @@ type
   private
     FWorkbook: TsWorkbook;
     FName: String;  // Name of the worksheet (displayed at the tab)
-    FCells: TAvlTree; // Items are TCell
+    FCells: TsCells;
     FComments: TsComments;
     FMergedCells: TsMergedCells;
     FHyperlinks: TsHyperlinks;
-    FCurrentNode: TAVLTreeNode; // for GetFirstCell and GetNextCell
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
@@ -153,17 +115,13 @@ type
     procedure SetName(const AName: String);
 
     { Callback procedures called when iterating through all cells }
-    procedure CalcFormulaCallback(data, arg: Pointer);
-    procedure CalcStateCallback(data, arg: Pointer);
     procedure DeleteColCallback(data, arg: Pointer);
     procedure DeleteRowCallback(data, arg: Pointer);
     procedure InsertColCallback(data, arg: Pointer);
     procedure InsertRowCallback(data, arg: Pointer);
-    procedure RemoveCellsCallback(data, arg: pointer);
 
   protected
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
-    procedure RemoveAllAVLTreeNodes(ATree: TAvlTree; ARemoveCallback: TsCallback);
 
     // Remove and delete cells
     function RemoveCell(ARow, ACol: Cardinal): PCell;
@@ -176,6 +134,7 @@ type
       ASortOptions: TsSortOptions): Integer;
     procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
       AFromIndex, AToIndex: Cardinal);
+    procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
 
   public
     { Base methods }
@@ -185,7 +144,7 @@ type
     { Utils }
     class function CellInRange(ARow, ACol: Cardinal; ARange: TsCellRange): Boolean;
     class function CellPosToText(ARow, ACol: Cardinal): string;
-    procedure RemoveAllCells;
+//    procedure RemoveAllCells;
     procedure UpdateCaches;
 
     { Reading of values }
@@ -397,16 +356,12 @@ type
     procedure DeleteCell(ACell: PCell);
     procedure EraseCell(ACell: PCell);
 
-    procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
-
     function  FindCell(ARow, ACol: Cardinal): PCell; overload;
     function  FindCell(AddressStr: String): PCell; overload;
     function  GetCell(ARow, ACol: Cardinal): PCell; overload;
     function  GetCell(AddressStr: String): PCell; overload;
 
     function  GetCellCount: Cardinal;
-    function  GetFirstCell(): PCell;
-    function  GetNextCell(): PCell;
 
     function  GetFirstCellOfRow(ARow: Cardinal): PCell;
     function  GetLastCellOfRow(ARow: Cardinal): PCell;
@@ -494,7 +449,7 @@ type
 
     {@@ List of cells of the worksheet. Only cells with contents or with formatting
         are listed }
-    property  Cells: TAVLTree read FCells;
+    property  Cells: TsCells read FCells;
     {@@ List of all column records of the worksheet having a non-standard column width }
     property  Cols: TIndexedAVLTree read FCols;
     {@@ List of all comment records }
@@ -828,9 +783,6 @@ procedure MakeLEPalette(APalette: PsPalette; APaletteSize: Integer);
 //function SameCellBorders(ACell1, ACell2: PCell): Boolean; overload;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean; //overload;
 
-procedure InitCell(out ACell: TCell); overload;
-procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
-
 function HasFormula(ACell: PCell): Boolean;
 
 { For debugging purposes }
@@ -841,7 +793,7 @@ implementation
 
 uses
   Math, StrUtils, TypInfo, lazutf8, URIParser,
-  fpsPatches, fpsStrings, fpsStreams, uvirtuallayer_ole,
+  fpsPatches, fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormat, fpsNumFormatParser;
 
@@ -1027,32 +979,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Initalizes a new cell.
-  @return  New cell record
--------------------------------------------------------------------------------}
-procedure InitCell(out ACell: TCell);
-begin
-  ACell.FormulaValue := '';
-  ACell.UTF8StringValue := '';
-  FillChar(ACell, SizeOf(ACell), 0);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Initalizes a new cell and presets the row and column fields of the cell record
-  to the parameters passed to the procedure.
-
-  @param  ARow   Row index of the new cell
-  @param  ACol   Column index of the new cell
-  @return New cell record with row and column fields preset to passed values.
--------------------------------------------------------------------------------}
-procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
-begin
-  InitCell(ACell);
-  ACell.Row := ARow;
-  ACell.Col := ACol;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Returns TRUE if the cell contains a formula (direct or shared, does not matter).
 
   @param   ACell   Pointer to the cell checked
@@ -1135,7 +1061,7 @@ constructor TsWorksheet.Create;
 begin
   inherited Create;
 
-  FCells := TAVLTree.Create(@CompareCells);
+  FCells := TsCells.Create(self);
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
   FComments := TsComments.Create;
@@ -1164,7 +1090,7 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsWorksheet.Destroy;
 begin
-  RemoveAllCells;
+//  RemoveAllCells;
   RemoveAllRows;
   RemoveAllCols;
 
@@ -1208,24 +1134,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method for calculation of the formulas in a spreadsheet.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.CalcFormulaCallback(data, arg: pointer);
-var
-  cell: PCell;
-begin
-  Unused(arg);
-  cell := PCell(data);
-
-  // Empty cell or error cell --> nothing to do
-  if (cell = nil) or (cell^.ContentType = cctError) then
-    exit;
-
-  if HasFormula(cell) or HasFormula(cell^.SharedFormulaBase) then
-    CalcFormula(cell);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Calculates the formula in a cell
   Should not be called by itself because the result may depend on other cells
   which may have not yet been calculated. It is better to call CalcFormulas
@@ -1253,6 +1161,7 @@ begin
       formula := ACell^.SharedFormulaBase^.FormulaValue;
       parser.ActiveCell := ACell;
     end;
+
     try
       parser.Expression := formula;
       res := parser.Evaluate;
@@ -1263,6 +1172,7 @@ begin
         Res := ErrorResult(errIllegalRef);
       end;
     end;
+
     case res.ResultType of
       rtEmpty    : WriteBlank(ACell);
       rtError    : WriteErrorValue(ACell, res.ResError);
@@ -1307,6 +1217,7 @@ end;
 procedure TsWorksheet.CalcFormulas;
 var
   node: TAVLTreeNode;
+  cell: PCell;
 begin
   // prevent infinite loop due to triggering of formula calculation whenever
   // a cell changes during execution of CalcFormulas.
@@ -1315,34 +1226,27 @@ begin
     // Step 1 - mark all formula cells as "not calculated"
     node := FCells.FindLowest;
     while Assigned(node) do begin
-      CalcStateCallback(node.Data, nil);
+      cell := PCell(node.Data);
+      if HasFormula(cell) then
+        SetCalcState(cell, csNotCalculated);
       node := FCells.FindSuccessor(node);
     end;
 
     // Step 2 - calculate cells. If a not-yet-calculated cell is found it is
     // calculated and then marked as such.
     node := FCells.FindLowest;
-    while Assigned(Node) do begin
-      CalcFormulaCallback(Node.Data, nil);
+    while Assigned(node) do begin
+      cell := PCell(node.Data);
+      if (cell^.ContentType <> cctError) and
+         (HasFormula(cell) or HasFormula(cell^.SharedFormulaBase))
+      then
+        CalcFormula(cell);
       node := FCells.FindSuccessor(node);
     end;
+
   finally
     dec(FWorkbook.FCalculationLock);
   end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Helper method marking all cells with formulas as "not calculated". This flag
-  is needed for recursive calculation of the entire worksheet.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.CalcStateCallback(data, arg: Pointer);
-var
-  cell: PCell;
-begin
-  Unused(arg);
-  cell := PCell(data);
-  if HasFormula(cell) then
-    SetCalcState(cell, csNotCalculated);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1376,37 +1280,40 @@ end;
 function TsWorksheet.CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 var
   cell: PCell;
-  cellNode: TAVLTreeNode;
   fe: TsFormulaElement;
   i: Integer;
   rpnFormula: TsRPNFormula;
 begin
-  cellNode := FCells.FindLowest;
-  while Assigned(cellNode) do begin
-    cell := PCell(cellNode.Data);
-    if HasFormula(cell) then begin
-      rpnFormula := BuildRPNFormula(cell);
-      for i := 0 to Length(rpnFormula)-1 do
-      begin
-        fe := rpnFormula[i];
-        case fe.ElementKind of
-          fekCell, fekCellRef:
-            if (fe.Row = ARow) and (fe.Col = ACol) then
-            begin
-              Result := true;
-              exit;
-            end;
-          fekCellRange:
-            if (fe.Row <= ARow) and (ARow <= fe.Row2) and
-               (fe.Col <= ACol) and (ACol <= fe.Col2) then
-            begin
-              Result := true;
-              exit;
-            end;
+  FCells.PushCurrent;
+  try
+    cell := FCells.GetFirstCell;
+    while Assigned(cell) do begin
+      if HasFormula(cell) then begin
+        rpnFormula := BuildRPNFormula(cell);
+        for i := 0 to Length(rpnFormula)-1 do
+        begin
+          fe := rpnFormula[i];
+          case fe.ElementKind of
+            fekCell, fekCellRef:
+              if (fe.Row = ARow) and (fe.Col = ACol) then
+              begin
+                Result := true;
+                exit;
+              end;
+            fekCellRange:
+              if (fe.Row <= ARow) and (ARow <= fe.Row2) and
+                 (fe.Col <= ACol) and (ACol <= fe.Col2) then
+              begin
+                Result := true;
+                exit;
+              end;
+          end;
         end;
       end;
+      cell := FCells.GetNextCell;
     end;
-    cellNode := FCells.FindSuccessor(cellNode);
+  finally
+    FCells.PopCurrent;
   end;
   SetLength(rpnFormula, 0);
 end;
@@ -1489,9 +1396,6 @@ end;
   @param  AText  Comment text
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteComment(ACell: PCell; AText: String);
-var
-  comment: PsComment;
-  addNew: Boolean;
 begin
   if ACell = nil then
     exit;
@@ -1504,7 +1408,7 @@ begin
   end;
 
   // Add new comment record
-  comment := FComments.AddComment(ACell^.Row, ACell^.Col, AText);
+  FComments.AddComment(ACell^.Row, ACell^.Col, AText);
   Include(ACell^.Flags, cfHasComment);
 
   ChangedCell(ACell^.Row, ACell^.Col);
@@ -1728,7 +1632,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyCell(AFromCell, AToCell: PCell);
 var
-  toRow, toCol: Cardinal;
+  toRow, toCol: LongInt;
   row1, col1, row2, col2: Cardinal;
   hyperlink: PsHyperlink;
 begin
@@ -2071,31 +1975,19 @@ end;
 {@@ ----------------------------------------------------------------------------
   Exchanges two cells
 
-  @param ARow1   Row index of the first cell
-  @param ACol1   Column index of the first cell
-  @param ARow2   Row index of the second cell
-  @param ACol2   Column index of the second cell
+  @param  ARow1   Row index of the first cell
+  @param  ACol1   Column index of the first cell
+  @param  ARow2   Row index of the second cell
+  @param  ACol2   Column index of the second cell
+
+  @note          This method does not take care of merged cells and does not
+                 check for this situation. Therefore, the method is not public!
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
-var
-  cell1, cell2: PCell;
 begin
-  cell1 := RemoveCell(ARow1, ACol1);
-  cell2 := RemoveCell(ARow2, ACol2);
-  if cell1 <> nil then
-  begin
-    cell1^.Row := ARow2;
-    cell1^.Col := ACol2;
-    FCells.Add(cell1);
-    ChangedCell(ARow2, ACol2);
-  end;
-  if cell2 <> nil then
-  begin
-    cell2^.Row := ARow1;
-    cell2^.Col := ACol1;
-    FCells.Add(cell2);
-    ChangedCell(ARow1, ACol1);
-  end;
+  FCells.Exchange(ARow1, ACol1, ARow2, ACol2);
+  FComments.Exchange(ARow1, ACol1, ARow2, ACol2);
+  FHyperlinks.Exchange(ARow1, ACol1, ARow2, ACol2);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2107,19 +1999,8 @@ end;
   @see    TCell
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindCell(ARow, ACol: Cardinal): PCell;
-var
-  LCell: TCell;
-  AVLNode: TAVLTreeNode;
 begin
-  Result := nil;
-  if FCells.Count = 0 then
-    exit;
-
-  LCell.Row := ARow;
-  LCell.Col := ACol;
-  AVLNode := FCells.Find(@LCell);
-  if Assigned(AVLNode) then
-    result := PCell(AVLNode.Data);
+  Result := PCell(FCells.Find(ARow, ACol));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2156,15 +2037,10 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetCell(ARow, ACol: Cardinal): PCell;
 begin
-  Result := FindCell(ARow, ACol);
-  
-  if (Result = nil) then
+  Result := Cells.FindCell(ARow, ACol);
+  if Result = nil then
   begin
-    New(Result);
-    InitCell(ARow, ACol, Result^);
-    Result^.Worksheet := self;
-    Cells.Add(Result);
-
+    Result := Cells.AddCell(ARow, ACol);
     if FFirstColIndex = $FFFFFFFF then FFirstColIndex := GetFirstColIndex(true)
       else FFirstColIndex := Min(FFirstColIndex, ACol);
     if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
@@ -2203,14 +2079,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the number of cells in the worksheet with contents.
 
-  This routine is used together with GetFirstCell and GetNextCell
-  to iterate througth all cells in a worksheet efficiently.
-
   @return The number of cells with contents in the worksheet
-
-  @see    TCell
-  @see    GetFirstCell
-  @see    GetNextCell
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetCellCount: Cardinal;
 begin
@@ -2295,49 +2164,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the first cell.
-
-  Use together with GetCellCount and GetNextCell
-  to iterate througth all cells in a worksheet efficiently.
-
-  @return The first cell if any exists, nil otherwise
-
-  @see    TCell
-  @see    GetCellCount
-  @see    GetNextCell
--------------------------------------------------------------------------------}
-function TsWorksheet.GetFirstCell(): PCell;
-begin
-  FCurrentNode := FCells.FindLowest();
-  if FCurrentNode <> nil then
-    Result := PCell(FCurrentNode.Data)
-  else Result := nil;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the next cell.
-
-  Should always be used either after GetFirstCell or
-  after GetNextCell.
-
-  Use together with GetCellCount and GetFirstCell
-  to iterate througth all cells in a worksheet efficiently.
-
-  @return The first cell if any exists, nil otherwise
-
-  @see    TCell
-  @see    GetCellCount
-  @see    GetFirstCell
--------------------------------------------------------------------------------}
-function TsWorksheet.GetNextCell(): PCell;
-begin
-  FCurrentNode := FCells.FindSuccessor(FCurrentNode);
-  if FCurrentNode <> nil then
-    Result := PCell(FCurrentNode.Data)
-  else Result := nil;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the first column with a cell with contents.
 
   If no cells have contents, zero will be returned, which is also a valid value.
@@ -2353,20 +2179,30 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
 var
-  AVLNode: TAVLTreeNode;
+  cell: PCell;
   i: Integer;
 begin
   if AForceCalculation then
   begin
     Result := $FFFFFFFF;
+    for cell in FCells do
+      Result := Math.Min(Result, cell^.Col);
+
+                                            (*
     // Traverse the tree from lowest to highest.
     // Since tree primary sort order is on row lowest col could exist anywhere.
-    AVLNode := FCells.FindLowest;
-    while Assigned(AVLNode) do
-    begin
-      Result := Math.Min(Result, PCell(AVLNode.Data)^.Col);
-      AVLNode := FCells.FindSuccessor(AVLNode);
+    FCells.PushCurrent;
+    try
+      cell := FCells.GetFirstCell;
+      while Assigned(cell) do
+      begin
+        Result := Math.Min(Result, cell^.Col);
+        cell := FCells.GetNextCell;
+      end;
+    finally
+      FCells.PopCurrent;
     end;
+    *)
     // In addition, there may be column records defining the column width even
     // without content
     for i:=0 to FCols.Count-1 do
@@ -2444,17 +2280,26 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetLastOccupiedColIndex: Cardinal;
 var
-  AVLNode: TAVLTreeNode;
+  cell: PCell;
 begin
   Result := 0;
   // Traverse the tree from lowest to highest.
   // Since tree's primary sort order is on row, highest col could exist anywhere.
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do
-  begin
-    Result := Math.Max(Result, PCell(AVLNode.Data)^.Col);
-    AVLNode := FCells.FindSuccessor(AVLNode);
+  for cell in FCells do
+    Result := Math.Max(Result, cell^.Col);
+  {
+  FCells.PushCurrent;
+  try
+    cell := FCells.GetFirstCell;
+    while Assigned(cell) do
+    begin
+      Result := Math.Max(Result, cell^.Col);
+      cell := FCells.GetNextCell;
+    end;
+  finally
+    FCells.PopCurrent;
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2509,15 +2354,20 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstRowIndex(AForceCalculation: Boolean = false): Cardinal;
 var
-  AVLNode: TAVLTreeNode;
+  cell: PCell;
   i: Integer;
 begin
   if AForceCalculation then
   begin
     Result := $FFFFFFFF;
-    AVLNode := FCells.FindLowest;
-    if Assigned(AVLNode) then
-      Result := PCell(AVLNode.Data).Row;
+    FCells.PushCurrent;
+    try
+      cell := FCells.GetFirstCell;
+    finally
+      FCells.PopCurrent;
+    end;
+    if Assigned(cell) then
+      Result := cell^.Row;
     // In addition, there may be row records even for rows without cells.
     for i:=0 to FRows.Count-1 do
       if FRows[i] <> nil then
@@ -2579,12 +2429,12 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetLastOccupiedRowIndex: Cardinal;
 var
-  AVLNode: TAVLTreeNode;
+  cell: PCell;
 begin
   Result := 0;
-  AVLNode := FCells.FindHighest;
-  if Assigned(AVLNode) then
-    Result := PCell(AVLNode.Data).Row;
+  cell := FCells.GetLastCell;
+  if Assigned(cell) then
+    Result := cell^.Row;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3360,7 +3210,6 @@ begin
     UnmergeCells(rng.Row1, rng.Col1);
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Finds the upper left cell of a shared formula block to which the specified
   cell belongs. This is the "shared formula base".
@@ -3530,23 +3379,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method for clearing the cell records in a spreadsheet.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveCellsCallback(data, arg: pointer);
-begin
-  Unused(arg);
-  Dispose(PCell(data));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Clears the list of cells and releases their memory.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveAllCells;
-begin
-  RemoveAllAvlTreeNodes(FCells, RemoveCellsCallback);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Removes the comment from a cell and releases the memory occupied by the node.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveComment(ACell: PCell);
@@ -3559,23 +3391,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Clears the AVLTree specified and releases the memory occupied by the nodes
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemoveAllAVLTreeNodes(ATree: TAvlTree;
-  ARemoveCallback: TsCallback);
-var
-  node: TAvlTreeNode;
-begin
-  node := ATree.FindLowest;
-  while Assigned(node) do begin
-    ARemoveCallback(node.Data, nil);
-    node.Data := nil;
-    node := ATree.FindSuccessor(node);
-  end;
-  ATree.Clear;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Removes a cell from its tree container. DOES NOT RELEASE ITS MEMORY!
 
   @param  ARow   Row index of the cell to be removed
@@ -3584,7 +3399,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.RemoveCell(ARow, ACol: Cardinal): PCell;
 begin
-  Result := FindCell(ARow, ACol);
+  Result := PCell(FCells.Find(ARow, ACol));
   if Result <> nil then FCells.Remove(Result);
 end;
 
@@ -3600,18 +3415,8 @@ end;
   @param  ACol   Column index of the cell to be removed
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAndFreeCell(ARow, ACol: Cardinal);
-var
-  cellnode: TAVLTreeNode;
-  cell: TCell;
 begin
-  // Delete the cell
-  cell.Row := ARow;
-  cell.Col := ACol;
-  cellnode := FCells.Find(@cell);
-  if cellnode <> nil then begin
-    Dispose(PCell(cellnode.Data));
-    FCells.Delete(cellnode);
-  end;
+  FCells.DeleteCell(ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3871,7 +3676,25 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
     until I >= R;
   end;
 
+  function ContainsMergedCells: boolean;
+  var
+    r,c: Cardinal;
+    cell: PCell;
+  begin
+    result := false;
+    for r := ARowFrom to ARowTo do
+      for c := AColFrom to AColTo do
+      begin
+        cell := FindCell(r, c);
+        if IsMerged(cell) then
+          exit(true);
+      end;
+  end;
+
 begin
+  if ContainsMergedCells then
+    raise Exception.Create(rsCannotSortMerged);
+
   FSortParams := ASortParams;
   if ASortParams.SortByCols then
     QuickSort(ARowFrom, ARowTo)
@@ -6117,13 +5940,11 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCol(ACol: Cardinal);
 var
-  AVLNode: TAVLTreeNode;
   col: PCol;
   i: Integer;
   r, rr, cc: Cardinal;
   cell, basecell, nextcell: PCell;
   firstRow, lastCol, lastRow: Cardinal;
-  rng: PsCellRange;
 begin
   lastCol := GetLastColIndex;
   lastRow := GetLastOccupiedRowIndex;
@@ -6172,10 +5993,15 @@ begin
     RemoveAndFreeCell(r, ACol);
 
   // Update column index of cell records
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do begin
-    DeleteColCallback(AVLNode.Data, {%H-}pointer(PtrInt(ACol)));
-    AVLNode := FCells.FindSuccessor(AVLNode);
+  FCells.PushCurrent;
+  try
+    cell := FCells.GetFirstCell;
+    while Assigned(cell) do begin
+      DeleteColCallback(cell, {%H-}pointer(PtrInt(ACol)));
+      cell := FCells.GetNextCell;
+    end;
+  finally
+    FCells.PopCurrent;
   end;
 
   // Update column index of col records
@@ -6202,13 +6028,11 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteRow(ARow: Cardinal);
 var
-  AVLNode: TAVLTreeNode;
   row: PRow;
   i: Integer;
   c, rr, cc: Cardinal;
   firstCol, lastCol, lastRow: Cardinal;
   cell, nextcell, basecell: PCell;
-  rng: PsCellRange;
 begin
   firstCol := GetFirstColIndex;
   lastCol := GetLastOccupiedColIndex;
@@ -6256,10 +6080,10 @@ begin
     RemoveAndFreeCell(ARow, c);
 
   // Update row index of cell records
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do begin
-    DeleteRowCallback(AVLNode.Data, {%H-}pointer(PtrInt(ARow)));
-    AVLNode := FCells.FindSuccessor(AVLNode);
+  cell := FCells.GetFirstCell;
+  while Assigned(cell) do begin
+    DeleteRowCallback(cell, {%H-}pointer(PtrInt(ARow)));
+    cell := FCells.GetNextCell;
   end;
 
   // Update row index of row records
@@ -6291,16 +6115,14 @@ var
   i: Integer;
   r: Cardinal;
   cell: PCell;
-  AVLNode: TAVLTreeNode;
   rng: PsCellRange;
 begin
   // Handling of shared formula references is too complicated for me...
   // Split them into isolated cell formulas
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do begin
-    cell := PCell(AVLNode.Data);
+  cell := FCells.GetFirstCell;
+  while Assigned(cell) do begin
     SplitSharedFormula(cell);
-    AVLNode := FCells.FindSuccessor(AVLNode);
+    cell := FCells.GetNextCell;
   end;
 
   // Update column index of comments
@@ -6310,10 +6132,10 @@ begin
   FHyperlinks.InsertRowOrCol(ACol, false);
 
   // Update column index of cell records
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do begin
-    InsertColCallback(AVLNode.Data, {%H-}pointer(PtrInt(ACol)));
-    AVLNode := FCells.FindSuccessor(AVLNode);
+  cell := FCells.GetFirstCell;
+  while Assigned(cell) do begin
+    InsertColCallback(cell, {%H-}pointer(PtrInt(ACol)));
+    cell := FCells.GetNextCell;
   end;
 
   // Update column index of column records
@@ -6416,16 +6238,14 @@ var
   i: Integer;
   c: Cardinal;
   cell: PCell;
-  AVLNode: TAVLTreeNode;
   rng: PsCellRange;
 begin
   // Handling of shared formula references is too complicated for me...
   // Splits them into isolated cell formulas
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do begin
-    cell := PCell(AVLNode.Data);
+  cell := FCells.GetFirstCell;
+  while Assigned(cell) do begin
     SplitSharedFormula(cell);
-    AVLNode := FCells.FindSuccessor(AVLNode);
+    cell  := FCells.GetNextCell;
   end;
 
   // Update row index of cell comments
@@ -6435,10 +6255,10 @@ begin
   FHyperlinks.InsertRowOrCol(ARow, true);
 
   // Update row index of cell records
-  AVLNode := FCells.FindLowest;
-  while Assigned(AVLNode) do begin
-    InsertRowCallback(AVLNode.Data, {%H-}pointer(PtrInt(ARow)));
-    AVLNode := FCells.FindSuccessor(AVLNode);
+  cell := FCells.GetFirstCell;
+  while Assigned(cell) do begin
+    InsertRowCallback(cell, {%H-}pointer(PtrInt(ARow)));
+    cell := FCells.GetNextCell;
   end;
 
   // Update row index of row records
@@ -8249,7 +8069,6 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.UsesColor(AColorIndex: TsColor): Boolean;
 var
-  Node: TAVLTreeNode;
   sheet: TsWorksheet;
   cell: PCell;
   i: Integer;
@@ -8261,10 +8080,9 @@ begin
   for i:=0 to GetWorksheetCount-1 do
   begin
     sheet := GetWorksheetByIndex(i);
-    Node := sheet.Cells.FindLowest;
-    while Assigned(Node) do
+    cell := sheet.Cells.GetFirstCell;
+    while Assigned(cell) do
     begin
-      cell := PCell(Node.Data);
       fmt := GetPointerToCellFormat(cell^.FormatIndex);
       if (uffBackground in fmt^.UsedFormattingFields) then
       begin
@@ -8281,7 +8099,7 @@ begin
         if fnt.Color = AColorIndex then
           exit;
       end;
-      Node := sheet.Cells.FindSuccessor(Node);
+      cell := sheet.Cells.GetNextCell;
     end;
   end;
   Result := false;

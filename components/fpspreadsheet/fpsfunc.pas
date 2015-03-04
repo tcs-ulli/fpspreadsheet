@@ -1284,7 +1284,7 @@ begin
       exit;
   end;
   if cell <> nil then
-    cellfmt := cell^.Worksheet.ReadCellFormat(cell)
+    cellfmt := TsWorksheet(cell^.Worksheet).ReadCellFormat(cell)
   else
     InitFormatRecord(cellfmt);
 
