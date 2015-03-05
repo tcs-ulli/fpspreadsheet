@@ -4087,11 +4087,20 @@ var
   cell: PCell;
   fs: TFormatSettings;
   dt: TDateTime;
+  p: Integer;
+  s: String;
 begin
   Result := '';
   case Arg.ResultType of
-    rtString,
-    rtHyperlink : result := Arg.ResString;
+    rtString    : result := Arg.ResString;
+    rtHyperlink : begin
+                    s := Arg.ResString;
+                    p := pos(HYPERLINK_SEPARATOR, s);
+                    if p = 0 then
+                      Result := s
+                    else
+                      Result := Copy(s, p + Length(HYPERLINK_SEPARATOR), Length(s));
+                  end;
     rtInteger   : Result := IntToStr(Arg.ResInteger);
     rtFloat     : Result := FloatToStr(Arg.ResFloat);
     rtBoolean   : if Arg.ResBoolean then Result := '1' else Result := '0';
