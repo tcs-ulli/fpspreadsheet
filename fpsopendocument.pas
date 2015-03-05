@@ -3226,12 +3226,12 @@ begin
     end
     else
     // Look for empty rows with the same style, they need the "number-rows-repeated" element.
-    if (ASheet.GetFirstCellOfRow(r) = nil) then
+    if (ASheet.Cells.GetFirstCellOfRow(r) = nil) then
     begin
       rr := r + 1;
       while (rr <= lastRow) do
       begin
-        if ASheet.GetFirstCellOfRow(rr) <> nil then
+        if ASheet.Cells.GetFirstCellOfRow(rr) <> nil then
           break;
         h1 := ASheet.GetRowHeight(rr);
         if not SameValue(h, h1, ROWHEIGHT_EPS) then
@@ -3295,7 +3295,8 @@ begin
         AppendToStream(AStream, Format(
           '<table:table-cell %s/>', [colsRepeatedStr]));
       end else
-        WriteCellCallback(cell, AStream);
+        WriteCellToStream(AStream, cell);
+//        WriteCellCallback(cell, AStream);
       inc(c, colsRepeated);
     end;
 
@@ -3980,7 +3981,8 @@ begin
           lCell.BoolValue := value <> 0;
         end else
           lCell.ContentType := cctEmpty;
-        WriteCellCallback(@lCell, AStream);
+        WriteCellToStream(AStream, @lCell);
+//        WriteCellCallback(@lCell, AStream);
       end;
       inc(c, colsRepeated);
     end;

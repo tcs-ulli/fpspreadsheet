@@ -120,10 +120,6 @@ type
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   private
-    procedure WriteCommentsEscherCallback(AComment: PsComment;
-      ACommentIndex: Integer; AStream: TStream);
-    procedure WriteCommentsNoteCallback(AComment: PsComment;
-      ACommentIndex: Integer; AStream: TStream);
     procedure WriteHyperlinksCallback(AHyperlink: PsHyperlink; AStream: TStream);
 
   protected
@@ -132,6 +128,12 @@ type
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
+    {
+    procedure WriteCommentEscher(AStream: TStream; AComment: PsComment;
+      ACommentIndex: Integer);
+    procedure WriteCommentNote(AStream: TStream; AComment: PsComment;
+      ACommentIndex: Integer);
+      }
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
@@ -1563,7 +1565,8 @@ procedure TsSpreadBIFF8Reader.ReadHyperlinkToolTip(AStream: TStream);
 var
   txt: String;
   widestr: widestring;
-  row, col, row1, col1, row2, col2: Word;
+  //row, col,
+  row1, col1, row2, col2: Word;
   hyperlink: PsHyperlink;
   numbytes: Integer;
 begin
@@ -1584,6 +1587,10 @@ begin
   txt := UTF8Encode(wideStr);
 
   { Add tooltip to hyperlinks }
+  for hyperlink in FWorksheet.Hyperlinks.GetRangeEnumerator(row1, col1, row2, col2) do
+    hyperlink^.ToolTip := txt;
+
+  {
   for row := row1 to row2 do
     for col := col1 to col2 do
     begin
@@ -1591,6 +1598,7 @@ begin
       if hyperlink <> nil then
         hyperlink^.ToolTip := txt;
     end;
+    }
 end;
 
 
@@ -1810,24 +1818,47 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteComments(AStream: TStream;
   AWorksheet: TsWorksheet);
+var
+  index: Integer;
+  comment: PsComment;
 begin
   exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
 
-  { At first we have to write all Escher-related records for all comments. }
-  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsEscherCallback);
-  { The NOTE records for all comments follow subsequently. }
-  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsNoteCallback);
-end;
+  { At first we have to write all Escher-related records for all comments;
+      MSODRAWING - OBJ - MSODRAWING - TXO }
+  index := 1;
+  for comment in AWorksheet.Comments do
+  begin
+    if index = 1 then
+      WriteMSODrawing1(AStream, FWorksheet.Comments.Count, comment)
+    else
+      WriteMSODrawing2(AStream, comment, index);
+    WriteOBJ(AStream, index);
+    WriteMSODrawing3(AStream);
+    WriteTXO(AStream, comment);
+    inc(index);
+  end;
+//  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsEscherCallback);
 
+  { The NOTE records for all comments follow subsequently. }
+  index := 1;
+  for comment in AWorksheet.Comments do
+  begin
+    WriteNOTE(AStream, comment, index);
+    inc(index);
+  end;
+//  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsNoteCallback);
+end;
+  (*
 {@@ ----------------------------------------------------------------------------
   Helper method which writes all Escher-related records required for a cell
   comment:
     MSODRAWING - OBJ - MSODRAWING - TXT
   The NOTE records are written separately
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteCommentsEscherCallback(AComment: PsComment;
-  ACommentIndex: Integer; AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteCommentsEscher(AStream: TStream;
+  AComment: PsComment; ACommentIndex: Integer);
 begin
   if ACommentIndex = 0 then
     WriteMSODrawing1(AStream, FWorksheet.Comments.Count, AComment)
@@ -1843,12 +1874,12 @@ end;
   The Escher-related records required for each cell comment already have been
   written.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteCommentsNoteCallback(AComment: PsComment;
-  ACommentIndex: Integer; AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteCommentNote(AStream: TStream;
+  AComment: PsComment; ACommentIndex: Integer);
 begin
   WriteNOTE(AStream, AComment, ACommentIndex+1);
 end;
-
+*)
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 8 DIMENSIONS record
 
@@ -2491,8 +2522,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteHyperlinks(AStream: TStream;
   AWorksheet: TsWorksheet);
+var
+  hyperlink: PsHyperlink;
 begin
-  IterateThroughHyperlinks(AStream, AWorksheet.Hyperlinks, WriteHyperlinksCallback);
+  for hyperlink in AWorksheet.Hyperlinks do
+    WriteHyperlink(AStream, hyperlink, AWorksheet);
+//  IterateThroughHyperlinks(AStream, AWorksheet.Hyperlinks, WriteHyperlinksCallback);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2613,11 +2648,37 @@ procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
 const
   MAX_PER_RECORD = 1026;
 var
-  n0, n: Integer;
+  n0, n, i: Integer;
   rng: PsCellRange;
+  newRecord: Boolean;
 begin
   n0 := AWorksheet.MergedCells.Count;
+  n := Min(n0, MAX_PER_RECORD);
+  newRecord := true;
+  for rng in AWorksheet.MergedCells do
+  begin
+    if newRecord then
+    begin
+      newRecord := false;
+      { BIFF record header }
+      WriteBIFFHeader(AStream, INT_EXCEL_ID_MERGEDCELLS, 2 + n*8);
+      { Number of cell ranges in this record }
+      AStream.WriteWord(WordToLE(n));
+    end;
+    { Write range data }
+    AStream.WriteWord(WordToLE(rng^.Row1));
+    AStream.WriteWord(WordToLE(rng^.Row2));
+    AStream.WriteWord(WordToLE(rng^.Col1));
+    AStream.WriteWord(WordToLE(rng^.Col2));
 
+    dec(n);
+    if n = 0 then begin
+      newRecord := true;
+      dec(n0, MAX_PER_RECORD);
+      n := Min(n0, MAX_PER_RECORD);
+    end;
+  end;
+      (*
   while n0 > 0 do begin
     n := Min(n0, MAX_PER_RECORD);
     // at most 1026 merged ranges per BIFF record, the rest goes into a new record
@@ -2641,6 +2702,7 @@ begin
 
     dec(n0, MAX_PER_RECORD);
   end;
+  *)
 end;
 
 {@@-----------------------------------------------------------------------------

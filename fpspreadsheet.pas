@@ -363,8 +363,8 @@ type
 
     function  GetCellCount: Cardinal;
 
-    function  GetFirstCellOfRow(ARow: Cardinal): PCell;
-    function  GetLastCellOfRow(ARow: Cardinal): PCell;
+//    function  GetFirstCellOfRow(ARow: Cardinal): PCell;
+//    function  GetLastCellOfRow(ARow: Cardinal): PCell;
     function  GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColNumber: Cardinal; deprecated 'Use GetLastColIndex';
@@ -1284,38 +1284,33 @@ var
   i: Integer;
   rpnFormula: TsRPNFormula;
 begin
-  FCells.PushCurrent;
-  try
-    cell := FCells.GetFirstCell;
-    while Assigned(cell) do begin
-      if HasFormula(cell) then begin
-        rpnFormula := BuildRPNFormula(cell);
-        for i := 0 to Length(rpnFormula)-1 do
-        begin
-          fe := rpnFormula[i];
-          case fe.ElementKind of
-            fekCell, fekCellRef:
-              if (fe.Row = ARow) and (fe.Col = ACol) then
-              begin
-                Result := true;
-                exit;
-              end;
-            fekCellRange:
-              if (fe.Row <= ARow) and (ARow <= fe.Row2) and
-                 (fe.Col <= ACol) and (ACol <= fe.Col2) then
-              begin
-                Result := true;
-                exit;
-              end;
-          end;
+  for cell in FCells do
+  begin
+    if HasFormula(cell) then begin
+      rpnFormula := BuildRPNFormula(cell);
+      for i := 0 to Length(rpnFormula)-1 do
+      begin
+        fe := rpnFormula[i];
+        case fe.ElementKind of
+          fekCell, fekCellRef:
+            if (fe.Row = ARow) and (fe.Col = ACol) then
+            begin
+              Result := true;
+              exit;
+            end;
+          fekCellRange:
+            if (fe.Row <= ARow) and (ARow <= fe.Row2) and
+               (fe.Col <= ACol) and (ACol <= fe.Col2) then
+            begin
+              Result := true;
+              exit;
+            end;
         end;
       end;
-      cell := FCells.GetNextCell;
     end;
-  finally
-    FCells.PopCurrent;
   end;
   SetLength(rpnFormula, 0);
+  Result := false;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2184,25 +2179,9 @@ var
 begin
   if AForceCalculation then
   begin
-    Result := $FFFFFFFF;
+    Result := Cardinal(-1);
     for cell in FCells do
       Result := Math.Min(Result, cell^.Col);
-
-                                            (*
-    // Traverse the tree from lowest to highest.
-    // Since tree primary sort order is on row lowest col could exist anywhere.
-    FCells.PushCurrent;
-    try
-      cell := FCells.GetFirstCell;
-      while Assigned(cell) do
-      begin
-        Result := Math.Min(Result, cell^.Col);
-        cell := FCells.GetNextCell;
-      end;
-    finally
-      FCells.PopCurrent;
-    end;
-    *)
     // In addition, there may be column records defining the column width even
     // without content
     for i:=0 to FCols.Count-1 do
@@ -2214,14 +2193,14 @@ begin
   else
   begin
     Result := FFirstColIndex;
-    if Result = $FFFFFFFF then
+    if Result = cardinal(-1) then
       Result := GetFirstColIndex(true);
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the 0-based index of the last column with a cell with contents or
-  with a column record.
+  Returns the 0-based index of the last column containing a cell with a
+  column record (due to content or formatting), or containing a Col record.
 
   If no cells have contents or there are no column records, zero will be
   returned, which is also a valid value.
@@ -2243,11 +2222,10 @@ begin
   if AForceCalculation then
   begin
     // Traverse the tree from lowest to highest.
-    // Since tree primary sort order is on row
-    // highest col could exist anywhere.
+    // Since tree primary sort order is on row highest col could exist anywhere.
     Result := GetLastOccupiedColIndex;
    // In addition, there may be column records defining the column width even
-    // without content
+    // without cells
     for i:=0 to FCols.Count-1 do
       if FCols[i] <> nil then
         Result := Math.Max(Result, PCol(FCols[i])^.Col);
@@ -2287,21 +2265,8 @@ begin
   // Since tree's primary sort order is on row, highest col could exist anywhere.
   for cell in FCells do
     Result := Math.Max(Result, cell^.Col);
-  {
-  FCells.PushCurrent;
-  try
-    cell := FCells.GetFirstCell;
-    while Assigned(cell) do
-    begin
-      Result := Math.Max(Result, cell^.Col);
-      cell := FCells.GetNextCell;
-    end;
-  finally
-    FCells.PopCurrent;
-  end;
-  }
 end;
-
+                     (*
 {@@ ----------------------------------------------------------------------------
   Finds the first cell with contents in a given row
 
@@ -2309,17 +2274,8 @@ end;
   @return       Pointer to the first cell in this row, or nil if the row is empty.
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetFirstCellOfRow(ARow: Cardinal): PCell;
-var
-  c, n: Cardinal;
 begin
-  n := GetLastColIndex;
-  c := 0;
-  Result := FindCell(ARow, c);
-  while (result = nil) and (c < n) do
-  begin
-    inc(c);
-    result := FindCell(ARow, c);
-  end;
+  Result := FCells.GetFirstCellOfRow(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2329,19 +2285,10 @@ end;
   @return       Pointer to the last cell in this row, or nil if the row is empty.
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetLastCellOfRow(ARow: Cardinal): PCell;
-var
-  c, n: Cardinal;
 begin
-  n := GetLastColIndex;
-  c := n;
-  Result := FindCell(ARow, c);
-  while (Result = nil) and (c > 0) do
-  begin
-    dec(c);
-    Result := FindCell(ARow, c);
-  end;
+  Result := FCells.GetLastCellOfRow(ARow);
 end;
-
+                       *)
 {@@ ----------------------------------------------------------------------------
   Returns the 0-based index of the first row with a cell with data or formatting.
   If no cells have contents, -1 will be returned.
@@ -2360,14 +2307,8 @@ begin
   if AForceCalculation then
   begin
     Result := $FFFFFFFF;
-    FCells.PushCurrent;
-    try
-      cell := FCells.GetFirstCell;
-    finally
-      FCells.PopCurrent;
-    end;
-    if Assigned(cell) then
-      Result := cell^.Row;
+    cell := FCells.GetFirstCell;
+    if cell <> nil then Result := cell^.Row;
     // In addition, there may be row records even for rows without cells.
     for i:=0 to FRows.Count-1 do
       if FRows[i] <> nil then
@@ -2378,13 +2319,14 @@ begin
   else
   begin
     Result := FFirstRowIndex;
-    if Result = $FFFFFFFF then
+    if Result = Cardinal(-1) then
       Result := GetFirstRowIndex(true);
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the 0-based index of the last row with a cell with contents.
+  Returns the 0-based index of the last row with a cell with contents or with
+  a ROW record.
 
   If no cells have contents, zero will be returned, which is also a valid value.
 
@@ -3125,13 +3067,8 @@ begin
   // ... yes: --> modify the merged range accordingly
   begin
     // unmark previously merged range
-    for r := rng^.Row1 to rng^.Row2 do
-      for c := rng^.Col1 to rng^.Col2 do
-      begin
-        cell := FindCell(r, c);
-        if cell <> nil then     // nil happens when col/row is inserted...
-          Exclude(cell^.Flags, cfMerged);
-      end;
+    for cell in Cells.GetRangeEnumerator(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2) do
+      Exclude(cell^.Flags, cfMerged);
     // Define new limits of merged range
     rng^.Row2 := ARow2;
     rng^.Col2 := ACol2;
@@ -3180,13 +3117,10 @@ begin
   if rng <> nil then
   begin
     // Remove the "merged" flag from the cells in the merged range to make them
-    // isolated again.
-    for r := rng^.Row1 to rng^.Row2 do
-      for c := rng^.Col1 to rng^.Col2 do
-      begin
-        cell := FindCell(r, c);
-        Exclude(cell^.Flags, cfMerged);
-      end;
+    // isolated again...
+    for cell in Cells.GetRangeEnumerator(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2) do
+      Exclude(cell^.Flags, cfMerged);
+    // ... and delete the range
     FMergedCells.DeleteRange(rng^.Row1, rng^.Col1);
   end;
 
@@ -3363,8 +3297,12 @@ procedure TsWorksheet.FixSharedFormulas;
 var
   r,c, r1,c1, r2,c2: Cardinal;
   cell: PCell;
-  firstRow, firstCol, lastRow, lastCol: Cardinal;
+//  firstRow, firstCol, lastRow, lastCol: Cardinal;
 begin
+  for cell in Cells do
+    if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
+      cell^.SharedFormulaBase := nil;
+                                     {
   firstRow := GetFirstRowIndex;
   firstCol := GetFirstColIndex;
   lastRow := GetLastOccupiedRowIndex;
@@ -3376,6 +3314,7 @@ begin
       if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
         cell^.SharedFormulaBase := nil;
     end;
+    }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3678,10 +3617,14 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
 
   function ContainsMergedCells: boolean;
   var
-    r,c: Cardinal;
+    //r,c: Cardinal;
     cell: PCell;
   begin
     result := false;
+    for cell in Cells.GetRangeEnumerator(ARowFrom, AColFrom, ARowTo, AColTo) do
+      if IsMerged(cell) then
+        exit(true);
+    {
     for r := ARowFrom to ARowTo do
       for c := AColFrom to AColTo do
       begin
@@ -3689,6 +3632,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
         if IsMerged(cell) then
           exit(true);
       end;
+      }
   end;
 
 begin
@@ -5749,11 +5693,15 @@ var
 begin
   Result := 0;
   h0 := Workbook.GetDefaultFontSize;
+  for cell in Cells.GetRowEnumerator(ARow) do
+    Result := Max(Result, ReadCellFont(cell).Size / h0);
+  {
   for col := GetFirstColIndex to GetLastColIndex do begin
     cell := FindCell(ARow, col);
     if cell <> nil then
       Result := Max(Result, ReadCellFont(cell).Size / h0);
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5993,16 +5941,8 @@ begin
     RemoveAndFreeCell(r, ACol);
 
   // Update column index of cell records
-  FCells.PushCurrent;
-  try
-    cell := FCells.GetFirstCell;
-    while Assigned(cell) do begin
-      DeleteColCallback(cell, {%H-}pointer(PtrInt(ACol)));
-      cell := FCells.GetNextCell;
-    end;
-  finally
-    FCells.PopCurrent;
-  end;
+  for cell in FCells do
+    DeleteColCallback(cell, {%H-}pointer(PtrInt(ACol)));
 
   // Update column index of col records
   for i:=FCols.Count-1 downto 0 do begin
@@ -6080,11 +6020,8 @@ begin
     RemoveAndFreeCell(ARow, c);
 
   // Update row index of cell records
-  cell := FCells.GetFirstCell;
-  while Assigned(cell) do begin
+  for cell in FCells do
     DeleteRowCallback(cell, {%H-}pointer(PtrInt(ARow)));
-    cell := FCells.GetNextCell;
-  end;
 
   // Update row index of row records
   for i:=FRows.Count-1 downto 0 do
@@ -6119,11 +6056,8 @@ var
 begin
   // Handling of shared formula references is too complicated for me...
   // Split them into isolated cell formulas
-  cell := FCells.GetFirstCell;
-  while Assigned(cell) do begin
+  for cell in FCells do
     SplitSharedFormula(cell);
-    cell := FCells.GetNextCell;
-  end;
 
   // Update column index of comments
   FComments.InsertRowOrCol(ACol, false);
@@ -6132,11 +6066,8 @@ begin
   FHyperlinks.InsertRowOrCol(ACol, false);
 
   // Update column index of cell records
-  cell := FCells.GetFirstCell;
-  while Assigned(cell) do begin
+  for cell in FCells do
     InsertColCallback(cell, {%H-}pointer(PtrInt(ACol)));
-    cell := FCells.GetNextCell;
-  end;
 
   // Update column index of column records
   for i:=0 to FCols.Count-1 do begin
@@ -6148,39 +6079,48 @@ begin
   UpdateCaches;
 
   // Fix merged cells
-  rng := PsCellRange(FMergedCells.GetFirst);
-  while rng <> nil do
+  for rng in FMergedCells do
+//  rng := PsCellRange(FMergedCells.GetFirst);
+//  while rng <> nil do
   begin
     // The new column is at the LEFT of the merged block
     // --> Shift entire range to the right by 1 column
     if (ACol < rng^.Col1) then
     begin
       // The former first column is no longer marged --> un-tag its cells
+      for cell in Cells.GetColEnumerator(rng^.Col1, rng^.Row1, rng^.Row2) do
+        Exclude(cell^.Flags, cfMerged);
+      {
       for r := rng^.Row1 to rng^.Row2 do
       begin
         cell := FindCell(r, rng^.Col1);
         if cell <> nil then
           Exclude(cell^.Flags, cfMerged);
       end;
+      }
       // Shift merged block to the right
       // Don't call "MergeCells" here - this would add a new merged block
       // because of the new merge base! --> infinite loop!
       inc(rng^.Col1);
       inc(rng^.Col2);
       // The right column needs to be tagged
+      for cell in Cells.GetColEnumerator(rng^.Col2, rng^.Row1, rng^.Row2) do
+        Include(cell^.Flags, cfMerged);
+      {
       for r := rng^.Row1 to rng^.Row2 do
       begin
         cell := FindCell(R, rng^.Col2);
         if cell <> nil then
           Include(cell^.Flags, cfMerged);
       end;
+      }
     end else
     // The new column goes through this cell block --> Shift only the right
     // column of the range to the right by 1
     if (ACol >= rng^.Col1) and (ACol <= rng^.Col2) then
       MergeCells(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2+1);
     // Continue with next merged block
-    rng := PsCellRange(FMergedCells.GetNext);
+//    rng := PsCellRange(FMergedCells.GetNext);
   end;
 
   ChangedCell(0, ACol);
@@ -6242,11 +6182,8 @@ var
 begin
   // Handling of shared formula references is too complicated for me...
   // Splits them into isolated cell formulas
-  cell := FCells.GetFirstCell;
-  while Assigned(cell) do begin
+  for cell in FCells do
     SplitSharedFormula(cell);
-    cell  := FCells.GetNextCell;
-  end;
 
   // Update row index of cell comments
   FComments.InsertRowOrCol(ARow, true);
@@ -6255,11 +6192,8 @@ begin
   FHyperlinks.InsertRowOrCol(ARow, true);
 
   // Update row index of cell records
-  cell := FCells.GetFirstCell;
-  while Assigned(cell) do begin
+  for cell in FCells do
     InsertRowCallback(cell, {%H-}pointer(PtrInt(ARow)));
-    cell := FCells.GetNextCell;
-  end;
 
   // Update row index of row records
   for i:=0 to FRows.Count-1 do begin
@@ -6271,38 +6205,47 @@ begin
   UpdateCaches;
 
   // Fix merged cells
-  rng := PsCellRange(FMergedCells.GetFirst);
-  while rng <> nil do
+  for rng in FMergedCells do
+//  rng := PsCellRange(FMergedCells.GetFirst);
+//  while rng <> nil do
   begin
     // The new row is ABOVE the merged block --> Shift entire range down by 1 row
     if (ARow < rng^.Row1) then
     begin
       // The formerly first row is no longer merged --> un-tag its cells
+      for cell in Cells.GetRowEnumerator(rng^.Row1, rng^.Col1, rng^.Col2) do
+        Exclude(cell^.Flags, cfMerged);
+      {
       for c := rng^.Col1 to rng^.Col2 do
       begin
         cell := FindCell(rng^.Row1, c);
         if cell <> nil then
           Exclude(cell^.Flags, cfMerged);
       end;
+      }
       // Shift merged block down
       // (Don't call "MergeCells" here - this would add a new merged block
       // because of the new merge base! --> infinite loop!)
       inc(rng^.Row1);
       inc(rng^.Row2);
       // The last row needs to be tagged
+      for cell in Cells.GetRowEnumerator(rng^.Row2, rng^.Col1, rng^.Col2) do
+        Include(cell^.Flags, cfMerged);
+      {
       for c := rng^.Col1 to rng^.Col2 do
       begin
         cell := FindCell(rng^.Row2, c);
         if cell <> nil then
           Include(cell^.Flags, cfMerged);
       end;
+      }
     end else
     // The new row goes through this cell block --> Shift only the bottom row
     // of the range down by 1
     if (ARow >= rng^.Row1) and (ARow <= rng^.Row2) then
       MergeCells(rng^.Row1, rng^.Col1, rng^.Row2+1, rng^.Col2);
     // Continue with next block
-    rng := PsCellRange(FMergedCells.GetNext);
+//    rng := PsCellRange(FMergedCells.GetNext);
   end;
 
   ChangedCell(ARow, 0);
@@ -8080,8 +8023,7 @@ begin
   for i:=0 to GetWorksheetCount-1 do
   begin
     sheet := GetWorksheetByIndex(i);
-    cell := sheet.Cells.GetFirstCell;
-    while Assigned(cell) do
+    for cell in sheet.Cells do
     begin
       fmt := GetPointerToCellFormat(cell^.FormatIndex);
       if (uffBackground in fmt^.UsedFormattingFields) then
@@ -8099,7 +8041,6 @@ begin
         if fnt.Color = AColorIndex then
           exit;
       end;
-      cell := sheet.Cells.GetNextCell;
     end;
   end;
   Result := false;

@@ -10,7 +10,7 @@ program excel2read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff2;
+  Classes, SysUtils, LazUTF8, fpsTypes, fpspreadsheet, xlsbiff2;
 
 var
   MyWorkbook: TsWorkbook;
@@ -19,6 +19,7 @@ var
   MyDir: string;
   i: Integer;
   CurCell: PCell;
+
 begin
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
@@ -43,16 +44,14 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  CurCell := MyWorkSheet.GetFirstCell();
-  for i := 0 to MyWorksheet.GetCellCount - 1 do
+  for CurCell in MyWorksheet.Cells do
   begin
     Write('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Value: ',
-      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
+      UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
     );
     if HasFormula(CurCell) then
       Write(' (Formula ', CurCell^.FormulaValue, ')');
     WriteLn;
-    CurCell := MyWorkSheet.GetNextCell();
   end;
 
   // Finalization

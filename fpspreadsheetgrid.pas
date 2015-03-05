@@ -75,9 +75,9 @@ type
     function CalcRowHeight(AHeight: Single): Integer;
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
-    procedure FixNeighborCellBorders(ACol, ARow: Integer);
+    procedure FixNeighborCellBorders(ACell: PCell);
     function GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
-      out ABorderStyle: TsCellBorderStyle): Boolean;
+      ACell: PCell; out ABorderStyle: TsCellBorderStyle): Boolean;
 
     // Setter/Getter
     function GetBackgroundColor(ACol, ARow: Integer): TsColor;
@@ -155,7 +155,7 @@ type
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
     procedure DrawCellBorders; overload;
-    procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect); overload;
+    procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect; ACell: PCell); overload;
     procedure DrawCellGrid(ACol,ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     procedure DrawCommentMarker(ARect: TRect);
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
@@ -1502,7 +1502,7 @@ begin
       c := GetGridCol(cell^.Col);
       r := GetGridRow(cell^.Row);
       rect := CellRect(c, r);
-      DrawCellBorders(c, r, rect);
+      DrawCellBorders(c, r, rect, cell);
     end;
   end;
 end;
@@ -1517,7 +1517,8 @@ end;
   @param  ARow   Row index
   @param  ARect  Rectangle in pixels occupied by the cell.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer; ARect: TRect);
+procedure TsCustomWorksheetGrid.DrawCellBorders(ACol, ARow: Integer;
+  ARect: TRect; ACell: PCell);
 const
   drawHor = 0;
   drawVert = 1;
@@ -1635,26 +1636,24 @@ const
 
 var
   bs: TsCellBorderStyle;
-  cell: PCell;
   fmt: PsCellFormat;
 begin
   if Assigned(Worksheet) then begin
     // Left border
-    if GetBorderStyle(ACol, ARow, -1, 0, bs) then
+    if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
       DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
     // Right border
-    if GetBorderStyle(ACol, ARow, +1, 0, bs) then
+    if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
       DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
     // Top border
-    if GetBorderstyle(ACol, ARow, 0, -1, bs) then
+    if GetBorderstyle(ACol, ARow, 0, -1, ACell, bs) then
       DrawBorderLine(ARect.Top-1, ARect, drawHor, bs);
     // Bottom border
-    if GetBorderStyle(ACol, ARow, 0, +1, bs) then
+    if GetBorderStyle(ACol, ARow, 0, +1, ACell, bs) then
       DrawBorderLine(ARect.Bottom-1, ARect, drawHor, bs);
 
-    cell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
-    if cell <> nil then begin
-      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+    if ACell <> nil then begin
+      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
       // Diagonal up
       if cbDiagUp in fmt^.Border then begin
         bs := fmt^.Borderstyles[cbDiagUp];
@@ -2208,12 +2207,12 @@ end;
   Copies the borders of a cell to its neighbors. This avoids the nightmare of
   changing borders due to border conflicts of adjacent cells.
 
-  @param  ACol  Grid column index of the cell
-  @param  ARow  Grid row index of the cell
+  @param  ACell  Pointer to the cell
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
+procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACell: PCell);
+//Col, ARow: Integer);
 
-  procedure SetNeighborBorder(NewRow, NewCol: Integer;
+  procedure SetNeighborBorder(NewRow, NewCol: Cardinal;
     ANewBorder: TsCellBorder; const ANewBorderStyle: TsCellBorderStyle;
     AInclude: Boolean);
   var
@@ -2235,17 +2234,16 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACol, ARow: Integer);
   end;
 
 var
-  cell: PCell;
   fmt: PsCellFormat;
 begin
   if Worksheet = nil then
     exit;
 
-  cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-  if (Worksheet <> nil) and (cell <> nil) then
-    with cell^ do
+//  cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if (Worksheet <> nil) and (ACell <> nil) then
+    with ACell^ do
     begin
-      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
       SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
       SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
       SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
@@ -2541,12 +2539,30 @@ end;
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellFonts(ARect: TGridRect): TFont;
 var
-  c, r: Integer;
+//  c, r: Integer;
+  r1,c1,r2,c2: Cardinal;
   sFont, sDefFont: TsFont;
   cell: PCell;
 begin
   Result := GetCellFont(ARect.Left, ARect.Top);
   sDefFont := Workbook.GetDefaultFont;  // Default font
+  r1 := GetWorksheetRow(ARect.Top);
+  c1 := GetWorksheetCol(ARect.Left);
+  r2 := GetWorksheetRow(ARect.Bottom);
+  c2 := GetWorksheetRow(ARect.Right);
+  for cell in Worksheet.Cells.GetRangeEnumerator(r1, c1, r2, c2) do
+  begin
+    sFont := Worksheet.ReadCellFont(cell);
+    if (sFont.FontName <> sDefFont.FontName) and (sFont.Size <> sDefFont.Size)
+      and (sFont.Style <> sDefFont.Style) and (sFont.Color <> sDefFont.Color)
+    then
+    begin
+      Convert_sFont_to_Font(sDefFont, FCellFont);
+      Result := FCellFont;
+      exit;
+    end;
+  end;
+      {
   for c := ARect.Left to ARect.Right do
     for r := ARect.Top to ARect.Bottom do
     begin
@@ -2564,6 +2580,7 @@ begin
         end;
       end;
     end;
+    }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2798,11 +2815,12 @@ end;
   Result is FALSE if there is no border line.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
-  out ABorderStyle: TsCellBorderStyle): Boolean;
+  ACell: PCell; out ABorderStyle: TsCellBorderStyle): Boolean;
 var
-  cell, neighborcell: PCell;
+  //cell,
+  neighborcell: PCell;
   border, neighborborder: TsCellBorder;
-  r, c: Cardinal;
+//  r, c: Cardinal;
 begin
   Result := true;
   if (ADeltaCol = -1) and (ADeltaRow = 0) then
@@ -2827,42 +2845,42 @@ begin
   end else
     raise Exception.Create('[TsCustomWorksheetGrid] Incorrect col/row for GetBorderStyle.');
 
-  r := GetWorksheetRow(ARow);
-  c := GetWorksheetCol(ACol);
-  cell := Worksheet.FindCell(r, c);
+//  r := GetWorksheetRow(ARow);
+ // c := GetWorksheetCol(ACol);
+  //cell := Worksheet.FindCell(r, c);
   if (ARow - FHeaderCount + ADeltaRow < 0) or (ACol - FHeaderCount + ADeltaCol < 0) then
     neighborcell := nil
   else
     neighborcell := Worksheet.FindCell(ARow - FHeaderCount + ADeltaRow, ACol - FHeaderCount + ADeltaCol);
 
   // Only cell has border, but neighbor has not
-  if HasBorder(cell, border) and not HasBorder(neighborCell, neighborBorder) then
+  if HasBorder(ACell, border) and not HasBorder(neighborCell, neighborBorder) then
   begin
-    if Worksheet.InSameMergedRange(cell, neighborcell) then
+    if Worksheet.InSameMergedRange(ACell, neighborcell) then
       result := false
     else
-      ABorderStyle := Worksheet.ReadCellBorderStyle(cell, border)
+      ABorderStyle := Worksheet.ReadCellBorderStyle(ACell, border)
   end
   else
   // Only neighbor has border, cell has not
-  if not HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
+  if not HasBorder(ACell, border) and HasBorder(neighborCell, neighborBorder) then
   begin
-    if Worksheet.InSameMergedRange(cell, neighborcell) then
+    if Worksheet.InSameMergedRange(ACell, neighborcell) then
       result := false
     else
       ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder);
   end
   else
   // Both cells have shared border -> use top or left border
-  if HasBorder(cell, border) and HasBorder(neighborCell, neighborBorder) then
+  if HasBorder(ACell, border) and HasBorder(neighborCell, neighborBorder) then
   begin
-    if Worksheet.InSameMergedRange(cell, neighborcell) then
+    if Worksheet.InSameMergedRange(ACell, neighborcell) then
       result := false
     else
     if (border in [cbNorth, cbWest]) then
       ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder)
     else
-      ABorderStyle := Worksheet.ReadCellBorderStyle(cell, border); //cell^.BorderStyles[border];
+      ABorderStyle := Worksheet.ReadCellBorderStyle(ACell, border);
   end else
     Result := false;
 end;
@@ -4279,7 +4297,7 @@ begin
     try
       cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
       Worksheet.WriteBorders(cell, AValue);
-      FixNeighborCellBorders(ACol, ARow);
+      FixNeighborCellBorders(cell);
     finally
       EndUpdate;
     end;
@@ -4311,7 +4329,7 @@ begin
     try
       cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
       Worksheet.WriteBorderStyle(cell, ABorder, AValue);
-      FixNeighborCellBorders(ACol, ARow);
+      FixNeighborCellBorders(cell);
     finally
       EndUpdate;
     end;

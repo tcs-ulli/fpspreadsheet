@@ -100,7 +100,7 @@ type
     procedure ListAllNumFormats; virtual;
 
     { Helpers for writing }
-    procedure WriteCellCallback(ACell: PCell; AStream: TStream);
+    procedure WriteCellToStream(AStream: TStream; ACell: PCell);
     procedure WriteCellsToStream(AStream: TStream; ACells: TsCells);
 
     { Record writing methods }
@@ -124,12 +124,14 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     { General writing methods }
+    {
     procedure IterateThroughCells(AStream: TStream; ACells: TsCells;
       ACallback: TCellsCallback);
     procedure IterateThroughComments(AStream: TStream; AComments: TsComments;
       ACallback: TCommentsCallback);
     procedure IterateThroughHyperlinks(AStream: TStream; AHyperlinks: TsHyperlinks;
       ACallback: THyperlinksCallback);
+      }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream); override;
@@ -460,7 +462,7 @@ begin
   if ALastRow >= Limitations.MaxRowCount then
     ALastRow := Limitations.MaxRowCount-1;
 end;
-
+(*
 {@@ ----------------------------------------------------------------------------
   A generic method to iterate through all cells in a worksheet and call a callback
   routine for each cell.
@@ -512,17 +514,10 @@ var
   comment: PsComment;
 begin
   index := 0;
-  AComments.PushCurrent;
-  try
-    comment := PsComment(AComments.GetFirst);
-    while Assigned(comment) do
-    begin
-      ACallback(comment, index, AStream);
-      comment := PsComment(AComments.GetNext);
-      inc(index);
-    end;
-  finally
-    AComments.PopCurrent;
+  for comment in AComments do
+  begin
+    ACallback(comment, index, AStream);
+    inc(index);
   end;
 end;
 
@@ -552,7 +547,7 @@ begin
     AHyperlinks.PopCurrent;
   end;
 end;
-
+  *)
 {@@ ----------------------------------------------------------------------------
   Iterates through all cells and collects the number formats in
   FNumFormatList (without duplicates).
@@ -577,12 +572,12 @@ end;
   stream. Calls the WriteNumber method of the worksheet for writing a number,
   the WriteDateTime method for writing a date/time etc.
 
-  @param  ACell   Pointer to the worksheet cell being written
-  @param  AStream Stream to which data are written
+  @param  ACell    Pointer to the worksheet cell being written
+  @param  AStream  Stream to which data are written
 
   @see    TsCustomSpreadWriter.WriteCellsToStream
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteCellCallback(ACell: PCell; AStream: TStream);
+procedure TsCustomSpreadWriter.WriteCellToStream(AStream: TStream; ACell: PCell);
 begin
   if HasFormula(ACell) then
     WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell)
@@ -616,8 +611,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteCellsToStream(AStream: TStream;
   ACells: TsCells);
+var
+  cell: PCell;
 begin
-  IterateThroughCells(AStream, ACells, WriteCellCallback);
+  for cell in ACells do
+    WriteCellToStream(AStream, cell);
+//  IterateThroughCells(AStream, ACells, WriteCellCallback);
 end;
 
 {@@ ----------------------------------------------------------------------------

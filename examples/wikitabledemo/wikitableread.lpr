@@ -10,7 +10,7 @@ program wikitableread;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, LazUTF8,
   fpstypes, fpspreadsheet, wikitable, fpsutils;
 
 var
@@ -46,19 +46,16 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  CurCell := MyWorkSheet.GetFirstCell();
-  for i := 0 to MyWorksheet.GetCellCount - 1 do
+  for CurCell in MyWorkSheet.Cells do
   begin
     Write('Row: ', CurCell^.Row,
-     ' Col: ', CurCell^.Col, ' Value: ',
-     UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
-       CurCell^.Col))
-     );
+      ' Col: ', CurCell^.Col, ' Value: ',
+      UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
+    );
     if HasFormula(CurCell) then
       WriteLn(' Formula: ', CurCell^.FormulaValue)
     else
       WriteLn;
-    CurCell := MyWorkSheet.GetNextCell();
   end;
 
   // Finalization
