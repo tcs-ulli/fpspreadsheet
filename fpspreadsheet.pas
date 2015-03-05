@@ -1147,6 +1147,8 @@ var
   res: TsExpressionResult;
   formula: String;
   cell: PCell;
+  p: Integer;
+  link, txt: String;
 begin
   ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
 
@@ -1174,27 +1176,36 @@ begin
     end;
 
     case res.ResultType of
-      rtEmpty    : WriteBlank(ACell);
-      rtError    : WriteErrorValue(ACell, res.ResError);
-      rtInteger  : WriteNumber(ACell, res.ResInteger);
-      rtFloat    : WriteNumber(ACell, res.ResFloat);
-      rtDateTime : WriteDateTime(ACell, res.ResDateTime);
-      rtString   : WriteUTF8Text(ACell, res.ResString);
-      rtBoolean  : WriteBoolValue(ACell, res.ResBoolean);
-      rtCell     : begin
-                     cell := FindCell(res.ResRow, res.ResCol);
-                     if cell = nil then
-                       WriteBlank(ACell)
-                     else
-                       case cell^.ContentType of
-                         cctNumber    : WriteNumber(ACell, cell^.NumberValue);
-                         cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
-                         cctUTF8String: WriteUTF8Text(ACell, cell^.UTF8StringValue);
-                         cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
-                         cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
-                         cctEmpty     : WriteBlank(ACell);
-                       end;
-                   end;
+      rtEmpty     : WriteBlank(ACell);
+      rtError     : WriteErrorValue(ACell, res.ResError);
+      rtInteger   : WriteNumber(ACell, res.ResInteger);
+      rtFloat     : WriteNumber(ACell, res.ResFloat);
+      rtDateTime  : WriteDateTime(ACell, res.ResDateTime);
+      rtString    : WriteUTF8Text(ACell, res.ResString);
+      rtHyperlink : begin
+                      link := ArgToString(res);
+                      p := pos(HYPERLINK_SEPARATOR, link);
+                      if p > 0 then
+                      begin
+                        txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
+                        link := Copy(link, 1, p-1);
+                      end else
+                        txt := link;
+                      WriteHyperlink(ACell, link);
+                      WriteUTF8Text(ACell, txt);
+                    end;
+      rtBoolean   : WriteBoolValue(ACell, res.ResBoolean);
+      rtCell      : begin
+                      cell := GetCell(res.ResRow, res.ResCol);
+                      case cell^.ContentType of
+                        cctNumber    : WriteNumber(ACell, cell^.NumberValue);
+                        cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
+                        cctUTF8String: WriteUTF8Text(ACell, cell^.UTF8StringValue);
+                        cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
+                        cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
+                        cctEmpty     : WriteBlank(ACell);
+                      end;
+                    end;
     end;
   finally
     parser.Free;

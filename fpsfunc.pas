@@ -1531,6 +1531,29 @@ end;
 
 
 {------------------------------------------------------------------------------}
+{    Builtin lookup/reference functions                                        }
+{------------------------------------------------------------------------------}
+
+procedure fpsHYPERLINK(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
+begin
+  if Args[0].ResultType = rtError then
+  begin
+    Result := ErrorResult(errWrongType);
+    exit;
+  end;
+  if (Length(Args) > 1) and (Args[1].ResultType = rtError) then
+  begin
+    Result := ErrorResult(errWrongType);
+    exit;
+  end;
+  Result.ResString := ArgToString(Args[0]);
+  if Length(Args) > 1 then Result.ResString := Result.ResString + HYPERLINK_SEPARATOR + ArgToString(Args[1]);
+  Result.ResultType := rtHyperlink;
+end;
+
+
+{------------------------------------------------------------------------------}
 {   Registration                                                               }
 {------------------------------------------------------------------------------}
 
@@ -1651,9 +1674,11 @@ begin
     AddFunction(cat, 'ISREF',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISREF,      @fpsISREF);
     AddFunction(cat, 'ISTEXT',    'B', '?',    INT_EXCEL_SHEET_FUNC_ISTEXT,     @fpsISTEXT);
 
-    (*
     // Lookup / reference functions
     cat := bcLookup;
+    AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
+
+    (*
     AddFunction(cat, 'COLUMN',    'I', 'R',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
                   *)
 
