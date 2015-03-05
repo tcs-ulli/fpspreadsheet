@@ -569,22 +569,7 @@ type
   end;
 
 
-procedure InitFormatRecord(out AValue: TsCellFormat);
-
-
 implementation
-
-{ Utilities }
-
-procedure InitFormatRecord(out AValue: TsCellFormat);
-begin
-  AValue.Name := '';
-  AValue.NumberFormatStr := '';
-  FillChar(AValue, SizeOf(AValue), 0);
-  AValue.BorderStyles := DEFAULT_BORDERSTYLES;
-  AValue.Background := EMPTY_FILL;
-end;
-
 
 { TsCellFormatList }
 

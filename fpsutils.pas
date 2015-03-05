@@ -150,6 +150,7 @@ procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
 
 procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
+procedure InitFormatRecord(out AValue: TsCellFormat);
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -2078,6 +2079,18 @@ begin
   InitCell(ACell);
   ACell.Row := ARow;
   ACell.Col := ACol;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes the fields of a TsCellFormaRecord
+-------------------------------------------------------------------------------}
+procedure InitFormatRecord(out AValue: TsCellFormat);
+begin
+  AValue.Name := '';
+  AValue.NumberFormatStr := '';
+  FillChar(AValue, SizeOf(AValue), 0);
+  AValue.BorderStyles := DEFAULT_BORDERSTYLES;
+  AValue.Background := EMPTY_FILL;
 end;
 
 {@@ ----------------------------------------------------------------------------
