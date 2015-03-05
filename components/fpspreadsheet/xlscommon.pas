@@ -335,14 +335,14 @@ type
   protected
     FDateMode: TDateMode;
     FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
-    FLastRow: Cardinal;
-    FLastCol: Cardinal;
+//    FLastRow: Cardinal;
+//    FLastCol: Cardinal;
     procedure CreateNumFormatList; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixColor(AColor: TsColor): TsColor; override;
-    procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
+//    procedure GetLastRowCallback(ACell: PCell; AStream: TStream);
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
-    procedure GetLastColCallback(ACell: PCell; AStream: TStream);
+//    procedure GetLastColCallback(ACell: PCell; AStream: TStream);
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
 
     // Helper function for writing the BIFF header
@@ -1894,31 +1894,37 @@ begin
   end else
     Result := AColor;
 end;
-
+                  (*
 procedure TsSpreadBIFFWriter.GetLastRowCallback(ACell: PCell; AStream: TStream);
 begin
   Unused(AStream);
   if ACell^.Row > FLastRow then FLastRow := ACell^.Row;
-end;
+end;                *)
 
 function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
 begin
+  Result := AWorksheet.GetLastRowIndex;
+  {
   FLastRow := 0;
   IterateThroughCells(nil, AWorksheet.Cells, @GetLastRowCallback);
   Result := FLastRow;
+  }
 end;
-
+     (*
 procedure TsSpreadBIFFWriter.GetLastColCallback(ACell: PCell; AStream: TStream);
 begin
   Unused(AStream);
   if ACell^.Col > FLastCol then FLastCol := ACell^.Col;
 end;
-
+   *)
 function TsSpreadBIFFWriter.GetLastColIndex(AWorksheet: TsWorksheet): Word;
 begin
+  Result := AWorksheet.GetLastColIndex;
+  {
   FLastCol := 0;
   IterateThroughCells(nil, AWorksheet.Cells, @GetLastColCallback);
   Result := FLastCol;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2925,9 +2931,9 @@ var
 begin
   for i := 0 to ASheet.Rows.Count-1 do begin
     row := ASheet.Rows[i];
-    cell1 := ASheet.GetFirstCellOfRow(row^.Row);
+    cell1 := ASheet.Cells.GetFirstCellOfRow(row^.Row);
     if cell1 <> nil then begin
-      cell2 := ASheet.GetLastCellOfRow(row^.Row);
+      cell2 := ASheet.Cells.GetLastCellOfRow(row^.Row);
       WriteRow(AStream, ASheet, row^.Row, cell1^.Col, cell2^.Col, row);
     end else
       WriteRow(AStream, ASheet, row^.Row, 0, 0, row);
@@ -3170,7 +3176,8 @@ begin
         lCell.BoolValue := value <> 0;
       end else
         lCell.ContentType := cctEmpty;
-      WriteCellCallback(@lCell, AStream);
+      WriteCellToStream(AStream, @lCell);
+//      WriteCellCallback(@lCell, AStream);
       value := varNULL;
     end;
 end;

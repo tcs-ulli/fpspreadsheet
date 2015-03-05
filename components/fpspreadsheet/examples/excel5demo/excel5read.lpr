@@ -10,7 +10,7 @@ program excel5read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff5;
+  Classes, SysUtils, LazUTF8, fpsTypes, fpspreadsheet, xlsbiff5;
 
 var
   MyWorkbook: TsWorkbook;
@@ -41,16 +41,14 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  CurCell := MyWorkSheet.GetFirstCell();
-  for i := 0 to MyWorksheet.GetCellCount - 1 do
+  for CurCell in MyWorksheet.Cells do
   begin
     Write('Row: ', CurCell^.Row,
      ' Col: ', CurCell^.Col, ' Value: ',
-    UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col)));
+    UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col)));
     if HasFormula(CurCell) then
       Write(' - Formula: ', CurCell^.FormulaValue);
     WriteLn;
-    CurCell := MyWorkSheet.GetNextCell();
   end;
 
   // Finalization

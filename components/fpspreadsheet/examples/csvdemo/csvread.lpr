@@ -9,7 +9,7 @@ program myexcel2read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet, fpscsv;
+  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, fpscsv;
 
 var
   MyWorkbook: TsWorkbook;
@@ -45,17 +45,16 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  CurCell := MyWorkSheet.GetFirstCell();
-  for i := 0 to MyWorksheet.GetCellCount - 1 do
+  for CurCell in MyWorksheet.Cells do
   begin
     if HasFormula(CurCell) then
       WriteLn('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Formula: ', MyWorksheet.ReadFormulaAsString(CurCell))
     else
-    WriteLn('Row: ', CurCell^.Row,
+    WriteLn(
+      'Row: ', CurCell^.Row,
       ' Col: ', CurCell^.Col,
-      ' Value: ', UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
+      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
      );
-    CurCell := MyWorkSheet.GetNextCell();
   end;
 
   // Finalization

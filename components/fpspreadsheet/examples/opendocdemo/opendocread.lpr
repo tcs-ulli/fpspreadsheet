@@ -11,7 +11,7 @@ program opendocread;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet, fpsallformats;
+  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, fpsallformats;
 
 var
   MyWorkbook: TsWorkbook;
@@ -45,14 +45,12 @@ begin
   WriteLn('Contents of the first worksheet of the file:');
   WriteLn('');
 
-  cell := MyWorkSheet.GetFirstCell();
-  for i := 0 to MyWorksheet.GetCellCount - 1 do begin
-    WriteLn('Row: ', cell^.Row,
-      ' Col: ', cell^.Col, ' Value: ',
-      UTF8ToAnsi(MyWorkSheet.ReadAsUTF8Text(cell^.Row, cell^.Col))
+  for cell in MyWorksheet.Cells do
+    WriteLn(
+      'Row: ', cell^.Row,
+      ' Col: ', cell^.Col,
+      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(cell^.Row, cell^.Col))
     );
-    cell := MyWorkSheet.GetNextCell();
-  end;
 
   // Finalization
   MyWorkbook.Free;

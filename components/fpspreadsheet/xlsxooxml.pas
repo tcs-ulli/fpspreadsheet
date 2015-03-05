@@ -109,8 +109,10 @@ type
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
     FNext_rId: Integer;
+    {
     procedure WriteCommentsCallback(AComment: PsComment;
       ACommentIndex: Integer; AStream: TStream);
+      }
     procedure WriteVmlDrawingsCallback(AComment: PsComment;
       ACommentIndex: Integer; AStream: TStream);
 
@@ -2018,6 +2020,9 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteComments(AWorksheet: TsWorksheet);
+var
+  comment: PsComment;
+  txt: String;
 begin
   if AWorksheet.Comments.Count = 0 then
     exit;
@@ -2042,7 +2047,60 @@ begin
       '<commentList>');
 
   // Comments
-  IterateThroughComments(FSComments[FCurSheetNum], AWorksheet.Comments, WriteCommentsCallback);
+  //IterateThroughComments(FSComments[FCurSheetNum], AWorksheet.Comments, WriteCommentsCallback);
+
+  for comment in AWorksheet.Comments do
+  begin
+    txt := comment^.Text;
+    ValidXMLText(txt);
+
+    // Write comment text to Comments stream
+    AppendToStream(FSComments[FCurSheetNum], Format(
+        '<comment ref="%s" authorId="0">', [GetCellString(comment^.Row, comment^.Col)]) +
+          '<text>'+
+            '<r>'+
+              '<rPr>'+  // thie entire node could be omitted, but then Excel uses some ugly default font
+                '<sz val="9"/>'+
+                '<color rgb="000000" />'+  // Excel files have color index 81 here, but it could be that this does not exist in fps files --> use rgb instead
+                '<fFont vel="Arial" />'+   // It is not harmful to Excel if the font does not exist.
+                '<charset val="1" />'+
+              '</rPr>'+
+              '<t xml:space="preserve">' + txt + '</t>' +
+            '</r>' +
+          '</text>' +
+        '</comment>');
+  end;
+
+  (*
+  procedure TsSpreadOOXMLWriter.WriteCommentsCallback(AComment: PsComment;
+    ACommentIndex: Integer; AStream: TStream);
+  var
+    comment: String;
+  begin
+    Unused(ACommentIndex);
+
+    comment := AComment^.Text;
+    ValidXMLText(comment);
+
+    // Write comment to Comments stream
+    AppendToStream(AStream, Format(
+      '<comment ref="%s" authorId="0">', [GetCellString(AComment^.Row, AComment^.Col)]));
+    AppendToStream(AStream,
+        '<text>'+
+          '<r>'+
+            '<rPr>'+     // this entire node could be omitted, but then Excel uses some default font out of control
+              '<sz val="9"/>'+
+              '<color rgb="000000" />'+   // It could be that color index 81 does not exist in fps files --> use rgb instead
+              '<rFont val="Arial"/>'+     // It is not harmful to Excel if the font does not exist.
+              '<charset val="1"/>'+
+            '</rPr>'+
+            '<t xml:space="preserve">' + comment + '</t>' +
+          '</r>'+
+        '</text>');
+    AppendToStream(AStream,
+      '</comment>');
+  end;
+  *)
 
   // Footer
   AppendToStream(FSComments[FCurSheetNum],
@@ -2050,7 +2108,7 @@ begin
   AppendToStream(FSComments[FCurSheetNum],
     '</comments>');
 end;
-
+                              (*
 procedure TsSpreadOOXMLWriter.WriteCommentsCallback(AComment: PsComment;
   ACommentIndex: Integer; AStream: TStream);
 var
@@ -2078,7 +2136,7 @@ begin
       '</text>');
   AppendToStream(AStream,
     '</comment>');
-end;
+end;                            *)
 
 procedure TsSpreadOOXMLWriter.WriteDimension(AStream: TStream;
   AWorksheet: TsWorksheet);
@@ -2240,13 +2298,9 @@ begin
     exit;
   AppendToStream(AStream, Format(
     '<mergeCells count="%d">', [n]) );
-  rng := PsCellRange(AWorksheet.MergedCells.GetFirst);
-  while Assigned(rng) do
-  begin
+  for rng in AWorksheet.MergedCells do
     AppendToStream(AStream, Format(
       '<mergeCell ref="%s" />', [GetCellRangeString(rng.Row1, rng.Col1, rng.Row2, rng.Col2)]));
-    rng := PsCellRange(AWorksheet.MergedCells.GetNext);
-  end;
   AppendToStream(AStream,
     '</mergeCells>');
 end;
@@ -2374,7 +2428,8 @@ begin
           lCell.ContentType := cctBool;
           lCell.BoolValue := value <> 0;
         end;
-        WriteCellCallback(@lCell, AStream);
+        WriteCellToStream(AStream, @lCell);
+//        WriteCellCallback(@lCell, AStream);
         varClear(value);
       end;
       AppendToStream(AStream,
@@ -2394,12 +2449,16 @@ begin
       AppendToStream(AStream, Format(
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
       // Write cells belonging to this row.
+      for cell in AWorksheet.Cells.GetRowEnumerator(r) do
+        WriteCellToStream(AStream, cell);
+                          {
       for c := c1 to c2 do begin
         cell := AWorksheet.FindCell(r, c);
         if Assigned(cell) then begin
           WriteCellCallback(cell, AStream);
         end;
       end;
+      }
       AppendToStream(AStream,
         '</row>');
     end;
@@ -2587,6 +2646,11 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteVmlDrawings(AWorksheet: TsWorksheet);
+// My xml viewer does not format vml files property --> format in code.
+var
+  comment: PsComment;
+  index: Integer;
+  id: Integer;
 begin
   if AWorksheet.Comments.Count = 0 then
     exit;
@@ -2596,8 +2660,6 @@ begin
     FSVmlDrawings[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsVMLD%d', [FCurSheetNum])))
   else
     FSVmlDrawings[FCurSheetNum] := TMemoryStream.Create;
-
-//  FDrawingCounter := 0;
 
   // Header
   AppendToStream(FSVmlDrawings[FCurSheetNum],
@@ -2617,7 +2679,38 @@ begin
     '  </v:shapetype>' + LineEnding);
 
   // Write vmlDrawings for each comment (formatting and position of comment box)
-  IterateThroughComments(FSVmlDrawings[FCurSheetNum], AWorksheet.Comments, WriteVmlDrawingsCallback);
+  index := 1;
+  for comment in AWorksheet.Comments do
+  begin
+    id := 1024 + index;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
+    AppendToStream(FSVmlDrawings[FCurSheetNum], LineEnding + Format(
+    '  <v:shape id="_x0000_s%d" type="#_x0000_t202" ', [id]) + LineEnding + Format(
+    '       style="position:absolute; width:108pt; height:52.5pt; z-index:%d; visibility:hidden" ', [index]) + LineEnding +
+            // it is not necessary to specify margin-left and margin-top here!
+
+  //            'style=''position:absolute; margin-left:71.25pt; margin-top:1.5pt; ' + Format(
+  //                   'width:108pt; height:52.5pt; z-index:%d; visibility:hidden'' ', [FDrawingCounter+1]) +
+                  //          'width:108pt; height:52.5pt; z-index:1; visibility:hidden'' ' +
+
+    '       fillcolor="#ffffe1" o:insetmode="auto"> '+ LineEnding +
+    '    <v:fill color2="#ffffe1" />'+LineEnding+
+    '    <v:shadow on="t" color="black" obscured="t" />'+LineEnding+
+    '    <v:path o:connecttype="none" />'+LineEnding+
+    '    <v:textbox style="mso-direction-alt:auto">'+LineEnding+
+    '      <div style="text-align:left"></div>'+LineEnding+
+    '    </v:textbox>' + LineEnding +
+    '    <x:ClientData ObjectType="Note">'+LineEnding+
+    '      <x:MoveWithCells />'+LineEnding+
+    '      <x:SizeWithCells />'+LineEnding+
+    '      <x:Anchor> 1, 15, 0, 2, 2, 79, 4, 4</x:Anchor>'+LineEnding+
+    '      <x:AutoFill>False</x:AutoFill>'+LineEnding + Format(
+    '      <x:Row>%d</x:Row>', [comment^.Row]) + LineEnding + Format(
+    '      <x:Column>%d</x:Column>', [comment^.Col]) + LineEnding +
+    '    </x:ClientData>'+ LineEnding+
+    '  </v:shape>' + LineEnding);
+  end;
+
+  //IterateThroughComments(FSVmlDrawings[FCurSheetNum], AWorksheet.Comments, WriteVmlDrawingsCallback);
 
   // Footer
   AppendToStream(FSVmlDrawings[FCurSheetNum],
