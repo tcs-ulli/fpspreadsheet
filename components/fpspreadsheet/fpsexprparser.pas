@@ -84,7 +84,7 @@ type
   TsFormulaDialect = (fdExcel, fdOpenDocument);
 
   TsResultType = (rtEmpty, rtBoolean, rtInteger, rtFloat, rtDateTime, rtString,
-    rtCell, rtCellRange, rtError, rtAny);
+    rtCell, rtCellRange, rtHyperlink, rtError, rtAny);
   TsResultTypes = set of TsResultType;
 
   TsExpressionResult = record
@@ -99,6 +99,7 @@ type
       rtDateTime    : (ResDateTime    : TDatetime);
       rtCell        : (ResRow, ResCol : Cardinal);
       rtCellRange   : (ResCellRange   : TsCellRange);
+      rtHyperlink   : ();
       rtString      : ();
   end;
   PsExpressionResult = ^TsExpressionResult;
@@ -825,6 +826,9 @@ procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
 
 var
   ExprFormatSettings: TFormatSettings;
+
+const
+  HYPERLINK_SEPARATOR = '|#@#|';  // Separats link and caption parts of a hyperlink
 
 const
   AllBuiltIns = [bcMath, bcStatistics, bcStrings, bcLogical, bcDateTime, bcLookup,
@@ -3994,25 +3998,27 @@ end;
 function ArgToInt(Arg: TsExpressionResult): Integer;
 var
   cell: PCell;
+  s: String;
 begin
   Result := 0;
   case Arg.ResultType of
-    rtInteger  : result := Arg.ResInteger;
-    rtFloat    : result := trunc(Arg.ResFloat);
-    rtDateTime : result := trunc(Arg.ResDateTime);
-    rtBoolean  : if Arg.ResBoolean then Result := 1 else Result := 0;
-    rtString   : if not TryStrToInt(Arg.ResString, Result) then Result := 0;
-    rtCell     : begin
-                   cell := ArgToCell(Arg);
-                   if Assigned(cell) then
-                     case cell^.ContentType of
-                       cctNumber    : result := trunc(cell^.NumberValue);
-                       cctDateTime  : result := trunc(cell^.DateTimeValue);
-                       cctBool      : if cell^.BoolValue then result := 1;
-                       cctUTF8String: if not TryStrToInt(cell^.UTF8StringValue, result)
-                                        then Result := 0;
-                     end;
-                 end;
+    rtInteger   : result := Arg.ResInteger;
+    rtFloat     : result := trunc(Arg.ResFloat);
+    rtDateTime  : result := trunc(Arg.ResDateTime);
+    rtBoolean   : if Arg.ResBoolean then Result := 1 else Result := 0;
+    rtString,
+    rtHyperlink : TryStrToInt(ArgToString(Arg), Result);
+    rtCell      : begin
+                    cell := ArgToCell(Arg);
+                    if Assigned(cell) then
+                      case cell^.ContentType of
+                        cctNumber    : result := trunc(cell^.NumberValue);
+                        cctDateTime  : result := trunc(cell^.DateTimeValue);
+                        cctBool      : if cell^.BoolValue then result := 1;
+                        cctUTF8String: if not TryStrToInt(cell^.UTF8StringValue, result)
+                                         then Result := 0;
+                      end;
+                  end;
   end;
 end;
 
@@ -4027,26 +4033,26 @@ var
 begin
   Result := 0.0;
   case Arg.ResultType of
-    rtInteger  : result := Arg.ResInteger;
-    rtDateTime : result := Arg.ResDateTime;
-    rtFloat    : result := Arg.ResFloat;
-    rtBoolean  : if Arg.ResBoolean then Result := 1.0 else Result := 0.0;
-    rtString   : if not TryStrToFloat(Arg.ResString, Result) then Result := 0.0;
-    rtCell     : begin
-                   cell := ArgToCell(Arg);
-                   if Assigned(cell) then
-                     case cell^.ContentType of
-                       cctNumber    : Result := cell^.NumberValue;
-                       cctDateTime  : Result := cell^.DateTimeValue;
-                       cctBool      : if cell^.BoolValue then result := 1.0;
-                       cctUTF8String: begin
-                                        fs := Arg.Worksheet.Workbook.FormatSettings;
-                                        s := cell^.UTF8StringValue;
-                                        if not TryStrToFloat(s, result, fs) then
-                                          result := 0.0;
-                                      end;
-                     end;
-                 end;
+    rtInteger   : result := Arg.ResInteger;
+    rtDateTime  : result := Arg.ResDateTime;
+    rtFloat     : result := Arg.ResFloat;
+    rtBoolean   : if Arg.ResBoolean then Result := 1.0;
+    rtString,
+    rtHyperlink : TryStrToFloat(ArgToString(Arg), Result);
+    rtCell      : begin
+                    cell := ArgToCell(Arg);
+                    if Assigned(cell) then
+                      case cell^.ContentType of
+                        cctNumber    : Result := cell^.NumberValue;
+                        cctDateTime  : Result := cell^.DateTimeValue;
+                        cctBool      : if cell^.BoolValue then result := 1.0;
+                        cctUTF8String: begin
+                                         fs := Arg.Worksheet.Workbook.FormatSettings;
+                                         s := cell^.UTF8StringValue;
+                                         TryStrToFloat(s, result, fs);
+                                       end;
+                       end;
+                   end;
   end;
 end;
 
@@ -4061,10 +4067,10 @@ begin
     rtInteger   : Result := Arg.ResInteger;
     rtFloat     : Result := Arg.ResFloat;
     rtBoolean   : if Arg.ResBoolean then Result := 1.0;
-    rtString    : begin
+    rtString,
+    rtHyperlink : begin
                     fs := Arg.Worksheet.Workbook.FormatSettings;
-                    if not TryStrToDateTime(Arg.ResString, Result, fs) then
-                      Result := 1.0;
+                    TryStrToDateTime(ArgToString(Arg), Result, fs);
                   end;
     rtCell      : begin
                     cell := ArgToCell(Arg);
@@ -4084,30 +4090,31 @@ var
 begin
   Result := '';
   case Arg.ResultType of
-    rtString  : result := Arg.ResString;
-    rtInteger : Result := IntToStr(Arg.ResInteger);
-    rtFloat   : Result := FloatToStr(Arg.ResFloat);
-    rtBoolean : if Arg.ResBoolean then Result := '1' else Result := '0';
-    rtCell    : begin
-                  cell := ArgToCell(Arg);
-                  if Assigned(cell) then
-                    case cell^.ContentType of
-                      cctUTF8String : Result := cell^.UTF8Stringvalue;
-                      cctNumber     : Result := Format('%g', [cell^.NumberValue]);
-                      cctBool       : if cell^.BoolValue then Result := '1' else Result := '0';
-                      cctDateTime   : begin
-                                        fs := Arg.Worksheet.Workbook.FormatSettings;
-                                        dt := cell^.DateTimeValue;
-                                        if frac(dt) = 0.0 then
-                                          Result := FormatDateTime(fs.LongTimeFormat, dt, fs)
-                                        else
-                                        if trunc(dt) = 0 then
-                                          Result := FormatDateTime(fs.ShortDateFormat, dt, fs)
-                                        else
-                                          Result := FormatDateTime('cc', dt, fs);
-                                      end;
-                    end;
-                end;
+    rtString,
+    rtHyperlink : result := Arg.ResString;
+    rtInteger   : Result := IntToStr(Arg.ResInteger);
+    rtFloat     : Result := FloatToStr(Arg.ResFloat);
+    rtBoolean   : if Arg.ResBoolean then Result := '1' else Result := '0';
+    rtCell      : begin
+                    cell := ArgToCell(Arg);
+                    if Assigned(cell) then
+                      case cell^.ContentType of
+                        cctUTF8String : Result := cell^.UTF8Stringvalue;
+                        cctNumber     : Result := Format('%g', [cell^.NumberValue]);
+                        cctBool       : if cell^.BoolValue then Result := '1' else Result := '0';
+                        cctDateTime   : begin
+                                          fs := Arg.Worksheet.Workbook.FormatSettings;
+                                          dt := cell^.DateTimeValue;
+                                          if frac(dt) = 0.0 then
+                                            Result := FormatDateTime(fs.LongTimeFormat, dt, fs)
+                                          else
+                                          if trunc(dt) = 0 then
+                                            Result := FormatDateTime(fs.ShortDateFormat, dt, fs)
+                                          else
+                                            Result := FormatDateTime('cc', dt, fs);
+                                        end;
+                      end;
+                  end;
   end;
 end;
 

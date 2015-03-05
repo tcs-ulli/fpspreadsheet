@@ -249,6 +249,8 @@ const
   INT_EXCEL_SHEET_FUNC_COUNTBLANK = 347;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_DATEDIF    = 351;  // not available in BIFF2
 
+  INT_EXCEL_SHEET_FUNC_HYPERLINK  = 359;  // BIFF8 only
+
   { Control Tokens, Special Tokens }
 //  01H tExp Matrix formula or shared formula
 //  02H tTbl Multiple operation table
