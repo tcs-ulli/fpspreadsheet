@@ -38,7 +38,7 @@ type
   end;
 
 var
-  InsDelTestData: array[0..52] of TInsDelTestDataItem;
+  InsDelTestData: array[0..34] of TInsDelTestDataItem;
 
   procedure InitTestData;
 
@@ -89,48 +89,24 @@ type
     procedure TestWriteRead_InsDelColRow_20_BIFF8;    // after formula cell
     procedure TestWriteRead_InsDelColRow_21_BIFF8;    // cell in formula
 
-    // Writes out cell layout with shared formula
-    procedure TestWriteRead_InsDelColRow_22_BIFF8;    // no insert/delete; just test shared formula
-    // ... and inserts columns
-    procedure TestWriteRead_InsDelColRow_23_BIFF8;    // column before shared formula cells
-    procedure TestWriteRead_InsDelColRow_24_BIFF8;    // column after shared formula cells
-    procedure TestWriteRead_InsDelColRow_25_BIFF8;    // column through cells addressed by shared formula
-    procedure TestWriteRead_InsDelColRow_26_BIFF8;    // column through shared formula block
-    procedure TestWriteRead_InsDelColRow_27_BIFF8;    // column behind shared formula block
-    // ... and inserts rows
-    procedure TestWriteRead_InsDelColRow_28_BIFF8;    // row before shared formula
-    procedure TestWriteRead_InsDelColRow_29_BIFF8;    // row after shared formula cells
-    procedure TestWriteRead_InsDelColRow_30_BIFF8;    // row through shared formula block
-    procedure TestWriteRead_InsDelColRow_31_BIFF8;    // row below shared formula block
-    // ... and deletes columns
-    procedure TestWriteRead_InsDelColRow_32_BIFF8;    // column before shared formula cells
-    procedure TestWriteRead_InsDelColRow_33_BIFF8;    // column after shared formula cells
-    procedure TestWriteRead_InsDelColRow_34_BIFF8;    // column in shared formula block, no formula cell
-    procedure TestWriteRead_InsDelColRow_35_BIFF8;    // column used in shared formula
-    // ... and deletes rows
-    procedure TestWriteRead_InsDelColRow_36_BIFF8;    // row above shared formula cells
-    procedure TestWriteRead_InsDelColRow_37_BIFF8;    // row below shared formula cells
-    procedure TestWriteRead_InsDelColRow_38_BIFF8;    // row through shared formula block
-    procedure TestWriteRead_InsDelColRow_39_BIFF8;    // row with cell used in shared formula
-
     // Writes out cell layout with merged cells
-    procedure TestWriteRead_InsDelColRow_40_BIFF8;    // no insert/delete; just test merged block
+    procedure TestWriteRead_InsDelColRow_22_BIFF8;    // no insert/delete; just test merged block
     // ... and inserts columns
-    procedure TestWriteRead_InsDelColRow_41_BIFF8;    // column before merged block
-    procedure TestWriteRead_InsDelColRow_42_BIFF8;    // column through merged block
-    procedure TestWriteRead_InsDelColRow_43_BIFF8;    // column after merged block
+    procedure TestWriteRead_InsDelColRow_23_BIFF8;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_24_BIFF8;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_25_BIFF8;    // column after merged block
     // ... and inserts rows
-    procedure TestWriteRead_InsDelColRow_44_BIFF8;    // row before merged block
-    procedure TestWriteRead_InsDelColRow_45_BIFF8;    // row through merged block
-    procedure TestWriteRead_InsDelColRow_46_BIFF8;    // row after merged block
+    procedure TestWriteRead_InsDelColRow_26_BIFF8;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_27_BIFF8;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_28_BIFF8;    // row after merged block
     // ... and deletes columns
     procedure TestWriteRead_DelColBeforeMerge_BIFF8;  // column before merged block
     procedure TestWriteRead_DelColInMerge_BIFF8;      // column through merged block
     procedure TestWriteRead_DelColAfterMerge_BIFF8;   // column after merged block
     // ... and deletes rows
-    procedure TestWriteRead_InsDelColRow_50_BIFF8;    // row before merged block
-    procedure TestWriteRead_InsDelColRow_51_BIFF8;    // row through merged block
-    procedure TestWriteRead_InsDelColRow_52_BIFF8;    // row after merged block
+    procedure TestWriteRead_InsDelColRow_32_BIFF8;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_33_BIFF8;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_34_BIFF8;    // row after merged block
 
     // *** OOXML tests ***
 
@@ -166,48 +142,24 @@ type
     procedure TestWriteRead_InsDelColRow_20_OOXML;    // after formula cell
     procedure TestWriteRead_InsDelColRow_21_OOXML;    // cell in formula
 
-    // Writes out cell layout with shared formula
-    procedure TestWriteRead_InsDelColRow_22_OOXML;    // no insert/delete; just test shared formula
-    // ... and inserts columns
-    procedure TestWriteRead_InsDelColRow_23_OOXML;    // column before shared formula cells
-    procedure TestWriteRead_InsDelColRow_24_OOXML;    // column after shared formula cells
-    procedure TestWriteRead_InsDelColRow_25_OOXML;    // column through cells addressed by shared formula
-    procedure TestWriteRead_InsDelColRow_26_OOXML;    // column through shared formula block
-    procedure TestWriteRead_InsDelColRow_27_OOXML;    // column behind shared formula block
-    // ... and inserts rows
-    procedure TestWriteRead_InsDelColRow_28_OOXML;    // row before shared formula
-    procedure TestWriteRead_InsDelColRow_29_OOXML;    // row after shared formula cells
-    procedure TestWriteRead_InsDelColRow_30_OOXML;    // row through shared formula block
-    procedure TestWriteRead_InsDelColRow_31_OOXML;    // row below shared formula block
-    // ... and deletes columns
-    procedure TestWriteRead_InsDelColRow_32_OOXML;    // column before shared formula cells
-    procedure TestWriteRead_InsDelColRow_33_OOXML;    // column after shared formula cells
-    procedure TestWriteRead_InsDelColRow_34_OOXML;    // column in shared formula block, no formula cell
-    procedure TestWriteRead_InsDelColRow_35_OOXML;    // column used in shared formula
-    // ... and deletes rows
-    procedure TestWriteRead_InsDelColRow_36_OOXML;    // row above shared formula cells
-    procedure TestWriteRead_InsDelColRow_37_OOXML;    // row below shared formula cells
-    procedure TestWriteRead_InsDelColRow_38_OOXML;    // row through shared formula block
-    procedure TestWriteRead_InsDelColRow_39_OOXML;    // row with cell used in shared formula
-
     // Writes out cell layout with merged cells
-    procedure TestWriteRead_InsDelColRow_40_OOXML;    // no insert/delete; just test merged block
+    procedure TestWriteRead_InsDelColRow_22_OOXML;    // no insert/delete; just test merged block
     // ... and inserts columns
-    procedure TestWriteRead_InsDelColRow_41_OOXML;    // column before merged block
-    procedure TestWriteRead_InsDelColRow_42_OOXML;    // column through merged block
-    procedure TestWriteRead_InsDelColRow_43_OOXML;    // column after merged block
+    procedure TestWriteRead_InsDelColRow_23_OOXML;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_24_OOXML;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_25_OOXML;    // column after merged block
     // ... and inserts rows
-    procedure TestWriteRead_InsDelColRow_44_OOXML;    // row before merged block
-    procedure TestWriteRead_InsDelColRow_45_OOXML;    // row through merged block
-    procedure TestWriteRead_InsDelColRow_46_OOXML;    // row after merged block
+    procedure TestWriteRead_InsDelColRow_26_OOXML;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_27_OOXML;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_28_OOXML;    // row after merged block
     // ... and deletes columns
     procedure TestWriteRead_DelColBeforeMerge_OOXML;  // column before merged block
     procedure TestWriteRead_DelColInMerge_OOXML;      // column through merged block
     procedure TestWriteRead_DelColAfterMerge_OOXML;   // column after merged block
     // ... and deletes rows
-    procedure TestWriteRead_InsDelColRow_50_OOXML;    // row before merged block
-    procedure TestWriteRead_InsDelColRow_51_OOXML;    // row through merged block
-    procedure TestWriteRead_InsDelColRow_52_OOXML;    // row after merged block
+    procedure TestWriteRead_InsDelColRow_32_OOXML;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_33_OOXML;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_34_OOXML;    // row after merged block
 
     // *** OpenDocument tests ***
 
@@ -243,48 +195,24 @@ type
     procedure TestWriteRead_InsDelColRow_20_ODS;    // after formula cell
     procedure TestWriteRead_InsDelColRow_21_ODS;    // cell in formula
 
-    // Writes out cell layout with shared formula
-    procedure TestWriteRead_InsDelColRow_22_ODS;    // no insert/delete; just test shared formula
-    // ... and inserts columns
-    procedure TestWriteRead_InsDelColRow_23_ODS;    // column before shared formula cells
-    procedure TestWriteRead_InsDelColRow_24_ODS;    // column after shared formula cells
-    procedure TestWriteRead_InsDelColRow_25_ODS;    // column through cells addressed by shared formula
-    procedure TestWriteRead_InsDelColRow_26_ODS;    // column through shared formula block
-    procedure TestWriteRead_InsDelColRow_27_ODS;    // column behind shared formula block
-    // ... and inserts rows
-    procedure TestWriteRead_InsDelColRow_28_ODS;    // row before shared formula
-    procedure TestWriteRead_InsDelColRow_29_ODS;    // row after shared formula cells
-    procedure TestWriteRead_InsDelColRow_30_ODS;    // row through shared formula block
-    procedure TestWriteRead_InsDelColRow_31_ODS;    // row below shared formula block
-    // ... and deletes columns
-    procedure TestWriteRead_InsDelColRow_32_ODS;    // column before shared formula cells
-    procedure TestWriteRead_InsDelColRow_33_ODS;    // column after shared formula cells
-    procedure TestWriteRead_InsDelColRow_34_ODS;    // column in shared formula block, no formula cell
-    procedure TestWriteRead_InsDelColRow_35_ODS;    // column used in shared formula
-    // ... and deletes rows
-    procedure TestWriteRead_InsDelColRow_36_ODS;    // row above shared formula cells
-    procedure TestWriteRead_InsDelColRow_37_ODS;    // row below shared formula cells
-    procedure TestWriteRead_InsDelColRow_38_ODS;    // row through shared formula block
-    procedure TestWriteRead_InsDelColRow_39_ODS;    // row with cell used in shared formula
-
     // Writes out cell layout with merged cells
-    procedure TestWriteRead_InsDelColRow_40_ODS;    // no insert/delete; just test merged block
+    procedure TestWriteRead_InsDelColRow_22_ODS;    // no insert/delete; just test merged block
     // ... and inserts columns
-    procedure TestWriteRead_InsDelColRow_41_ODS;    // column before merged block
-    procedure TestWriteRead_InsDelColRow_42_ODS;    // column through merged block
-    procedure TestWriteRead_InsDelColRow_43_ODS;    // column after merged block
+    procedure TestWriteRead_InsDelColRow_23_ODS;    // column before merged block
+    procedure TestWriteRead_InsDelColRow_24_ODS;    // column through merged block
+    procedure TestWriteRead_InsDelColRow_25_ODS;    // column after merged block
     // ... and inserts rows
-    procedure TestWriteRead_InsDelColRow_44_ODS;    // row before merged block
-    procedure TestWriteRead_InsDelColRow_45_ODS;    // row through merged block
-    procedure TestWriteRead_InsDelColRow_46_ODS;    // row after merged block
+    procedure TestWriteRead_InsDelColRow_26_ODS;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_27_ODS;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_28_ODS;    // row after merged block
     // ... and deletes columns
     procedure TestWriteRead_DelColBeforeMerge_ODS;  // column before merged block
     procedure TestWriteRead_DelColInMerge_ODS;      // column through merged block
     procedure TestWriteRead_DelColAfterMerge_ODS;   // column after merged block
     // ... and deletes rows
-    procedure TestWriteRead_InsDelColRow_50_ODS;    // row before merged block
-    procedure TestWriteRead_InsDelColRow_51_ODS;    // row through merged block
-    procedure TestWriteRead_InsDelColRow_52_ODS;    // row after merged block
+    procedure TestWriteRead_InsDelColRow_32_ODS;    // row before merged block
+    procedure TestWriteRead_InsDelColRow_33_ODS;    // row through merged block
+    procedure TestWriteRead_InsDelColRow_34_ODS;    // row after merged block
   end;
 
 implementation
@@ -699,519 +627,13 @@ begin
                   '67890123';
   end;
 
-  { ---------------------------------------------------------------------------}
-  {  Layouts with shared formula                                                      }
-  { ---------------------------------------------------------------------------}
-
-  // No insert/delete, just to test the shared formula
-  with InsDelTestData[22] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$B$2,B3-$B$2;'+
-                   'A4-$B$2,B4-$B$2;'+
-                   'A5-$B$2,B5-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+
-                  '23456789|'+
-                  '34501890|'+
-                  '45612901|'+
-                  '56723012|'+
-                  '67890123';
-  end;
-
-  // Insert column before any cell referred to by the shared formula (col = 0)
-  with InsDelTestData[23] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertCol := 0;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 4;   // Position of shared formula after insert op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'B3-$C$2,C3-$C$2;'+   // all column indexes increase by 1 due to added col in front
-                   'B4-$C$2,C4-$C$2;'+
-                   'B5-$C$2,C5-$C$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := ' 12345678|'+
-                  ' 23456789|'+
-                  ' 34501890|'+
-                  ' 45612901|'+
-                  ' 56723012|'+
-                  ' 67890123';
-  end;
-
-  // Insert column after last cell addressed by the shared formula
-  with InsDelTestData[24] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertCol := 7;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$B$2,B3-$B$2;'+    // formulas unchanged by insert
-                   'A4-$B$2,B4-$B$2;'+
-                   'A5-$B$2,B5-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '1234567 8|'+
-                  '2345678 9|'+
-                  '3450189 0|'+
-                  '4561290 1|'+
-                  '5672301 2|'+
-                  '6789012 3';
-  end;
-
-  // Insert column between cells referred to by the shared formula (col = 1)
-  with InsDelTestData[25] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertCol := 1;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 4;
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$C$2,C3-$C$2;'+
-                   'A4-$C$2,C4-$C$2;'+
-                   'A5-$C$2,C5-$C$2';
-    SollLayout := '1 2345678|'+
-                  '2 3456789|'+
-                  '3 4501890|'+
-                  '4 5612901|'+
-                  '5 6723012|'+
-                  '6 7890123';
-  end;
-
-  // Insert column to run through formula block (col = 4)
-  with InsDelTestData[26] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertCol := 4;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 3;
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$B$2,'',B3-$B$2;'+
-                   'A4-$B$2,'',B4-$B$2;'+
-                   'A5-$B$2,'',B5-$B$2';
-    SollLayout := '1234 5678|'+
-                  '2345 6789|'+
-                  '3450 1890|'+
-                  '4561 2901|'+
-                  '5672 3012|'+
-                  '6789 0123';
-  end;
-
-  // Insert column behind shared formula block (col = 7)
-  with InsDelTestData[27] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertCol := 7;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$B$2,B3-$B$2;'+
-                   'A4-$B$2,B4-$B$2;'+
-                   'A5-$B$2,B5-$B$2';
-    SollLayout := '1234567 8|'+
-                  '2345678 9|'+
-                  '3450189 0|'+
-                  '4561290 1|'+
-                  '5672301 2|'+
-                  '6789012 3';
-  end;
-
-  // Insert row before any cell referred to by the shared formula (row = 0)
-  with InsDelTestData[28] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertRow := 0;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after insert op
-    SharedFormulaBaseRow_After := 3;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A4-$B$3,B4-$B$3;'+   // all row indexes increase by 1 due to added row in front
-                   'A5-$B$3,B5-$B$3;'+
-                   'A6-$B$3,B6-$B$3';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '        |'+
-                  '12345678|'+
-                  '23456789|'+
-                  '34501890|'+
-                  '45612901|'+
-                  '56723012|'+
-                  '67890123';
-  end;
-
-  // Insert row through cells referred to by the shared formula (row = 2)
-  with InsDelTestData[29] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertRow := 2;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after insert op
-    SharedFormulaBaseRow_After := 3;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A4-$B$2,B4-$B$2;'+   // row 3 --> 4
-                   'A5-$B$2,B5-$B$2;'+
-                   'A6-$B$2,B6-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+
-                  '23456789|'+
-                  '        |'+
-                  '34501890|'+
-                  '45612901|'+
-                  '56723012|'+
-                  '67890123';
-  end;
-
-  // Insert row through shared formula block (row = 3)
-  with InsDelTestData[30] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertRow := 3;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after insert op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 4;
-    SollFormula := 'A3-$B$2,B3-$B$2;'+
-                   '       ,       ;'+
-                   'A5-$B$2,B5-$B$2;'+
-                   'A6-$B$2,B6-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+
-                  '23456789|'+
-                  '34501890|'+
-                  '        |'+
-                  '45612901|'+
-                  '56723012|'+
-                  '67890123';
-  end;
-
-  // Insert row below shared formula block (row = 5)
-  with InsDelTestData[31] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    InsertRow := 5;
-    Formula := 'A3-$B$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after insert op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$B$2,B3-$B$2;'+
-                   'A4-$B$2,B4-$B$2;'+
-                   'A5-$B$2,B5-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+
-                  '23456789|'+
-                  '34501890|'+
-                  '45612901|'+
-                  '56723012|'+
-                  '        |'+
-                  '67890123';
-  end;
-
-  // Delete column 0 (this is before any cell of the shared formula)
-  with InsDelTestData[32] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteCol := 0;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 2;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'A3-$B$2,B3-$B$2;'+   // all column indexes decrease by 1 due to deleted col in front
-                   'A4-$B$2,B4-$B$2;'+
-                   'A5-$B$2,B5-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '2345678|'+
-                  '3456789|'+
-                  '4501890|'+
-                  '5612901|'+
-                  '6723012|'+
-                  '7890123';
-  end;
-
-  // Delete last column (this is behind any cell of the shared formula)
-  with InsDelTestData[33] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteCol := 7;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'B3-$C$2,C3-$C$2;'+   // all column indexes unchanged due to delete behind
-                   'B4-$C$2,C4-$C$2;'+
-                   'B5-$C$2,C5-$C$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '1234567|'+
-                  '2345678|'+
-                  '3450189|'+
-                  '4561290|'+
-                  '5672301|'+
-                  '6789012';
-  end;
-
-  // Delete in shared formula block, but no formula cell affected
-  with InsDelTestData[34] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteCol := 4;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 1;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'B3-$C$2;'+
-                   'B4-$C$2;'+
-                   'B5-$C$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '1234678|'+
-                  '2345789|'+
-                  '3450890|'+
-                  '4561901|'+
-                  '5672012|'+
-                  '6789123';
-  end;
-
-  // Delete column used in shared formula base
-  with InsDelTestData[35] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteCol := 1;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 2;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := '#REF!-$B$2,#REF!-$B$2;'+
-                   '#REF!-$B$2,#REF!-$B$2;'+
-                   '#REF!-$B$2,#REF!-$B$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '1345678|'+
-                  '2456789|'+
-                  '35EE890|'+
-                  '46EE901|'+
-                  '57EE012|'+
-                  '6890123';
-  end;
-
-  // Delete row 0 (this is before any cell of the shared formula)
-  with InsDelTestData[36] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteRow := 0;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 1;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'B2-$C$1,C2-$C$1;'+   // all row indexes decrease by 1 due to deleted row in front
-                   'B3-$C$1,C3-$C$1;'+
-                   'B4-$C$1,C4-$C$1';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '23456789|'+
-                  '34501890|'+
-                  '45612901|'+
-                  '56723012|'+
-                  '67890123';
-  end;
-
-  // Delete lsst row (this is below any cell of the shared formula)
-  with InsDelTestData[37] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteRow := 5;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'B3-$C$2,C3-$C$2;'+   // all row indexes unchanged
-                   'B4-$C$2,C4-$C$2;'+
-                   'B5-$C$2,C5-$C$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+
-                  '23456789|'+
-                  '34501890|'+
-                  '45612901|'+
-                  '56723012|';
-  end;
-
-  // Delete row through shared formula block
-  with InsDelTestData[38] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteRow := 3;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 2;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 2;
-    SollFormula := 'B3-$C$2,C3-$C$2;'+
-                   'B4-$C$2,C4-$C$2;'+
-                   'B5-$C$2,C5-$C$2';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+
-                  '23456789|'+
-                  '34501890|'+
-               //   '45612901|'+
-                  '56723012|'+
-                  '67890123';;
-  end;
-
-  // Delete row through shared formula block
-  with InsDelTestData[39] do begin
-    Layout := '12345678|'+
-              '23456789|'+
-              '345S 890|'+                   // "S" = shared formula (2 cols x 3 rows)
-              '456  901|'+
-              '567  012|'+
-              '67890123';
-    DeleteRow := 1;
-    Formula := 'B3-$C$2';
-    SharedFormulaColCount := 2;
-    SharedFormulaRowCount := 3;
-    SharedFormulaBaseCol_After := 3;   // Position of shared formula after delete op
-    SharedFormulaBaseRow_After := 1;
-    SharedFormulaColCount_After := 2;  // Size of shared formula block after insert op
-    SharedFormulaRowCount_After := 3;
-    SollFormula := 'B2-#REF!,C2-#REF!;'+       // Confirmed by Excel
-                   'B3-#REF!,C3-#REF!;'+
-                   'B4-#REF!,C4-#REF!';
-      // comma-separated --> cells along row; semicolon separates rows
-    SollLayout := '12345678|'+                 // Confirmed by Excel
-               //   '23456789|'+
-                  '345EE890|'+
-                  '456EE901|'+
-                  '567EE012|'+
-                  '67890123';;
-  end;
 
   { ---------------------------------------------------------------------------}
   {  Layouts with merged cells                                                 }
   { ---------------------------------------------------------------------------}
 
   // No insert/delete, just to test the merged block
-  with InsDelTestData[40] do begin
+  with InsDelTestData[22] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1231,7 +653,7 @@ begin
   end;
 
   // Insert column before merged block
-  with InsDelTestData[41] do begin
+  with InsDelTestData[23] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1252,7 +674,7 @@ begin
   end;
 
   // Insert column through merged block
-  with InsDelTestData[42] do begin
+  with InsDelTestData[24] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1273,7 +695,7 @@ begin
   end;
 
   // Insert column behind merged block
-  with InsDelTestData[43] do begin
+  with InsDelTestData[25] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1294,7 +716,7 @@ begin
   end;
 
   // Insert row above merged block
-  with InsDelTestData[44] do begin
+  with InsDelTestData[26] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1316,7 +738,7 @@ begin
   end;
 
   // Insert row through merged block
-  with InsDelTestData[45] do begin
+  with InsDelTestData[27] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1338,7 +760,7 @@ begin
   end;
 
   // Insert row below merged block
-  with InsDelTestData[46] do begin
+  with InsDelTestData[28] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1360,7 +782,7 @@ begin
   end;
 
   // Delete column before merged block
-  with InsDelTestData[47] do begin
+  with InsDelTestData[29] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1381,7 +803,7 @@ begin
   end;
 
   // Delete column through merged block
-  with InsDelTestData[48] do begin
+  with InsDelTestData[30] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1402,7 +824,7 @@ begin
   end;
 
   // Delete column behind merged block
-  with InsDelTestData[49] do begin
+  with InsDelTestData[31] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1423,7 +845,7 @@ begin
   end;
 
   // Delete row above merged block
-  with InsDelTestData[50] do begin
+  with InsDelTestData[32] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1444,7 +866,7 @@ begin
   end;
 
   // Delete row through merged block
-  with InsDelTestData[51] do begin
+  with InsDelTestData[33] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1465,7 +887,7 @@ begin
   end;
 
   // Delete row behind merged block
-  with InsDelTestData[52] do begin
+  with InsDelTestData[34] do begin
     Layout := '12345678|'+
               '23456789|'+
               '345M 890|'+               // "M" = merged block (2 cols x 3 rows)
@@ -1559,13 +981,6 @@ begin
             ' '     : ; // Leave cell empty
             '0'..'9': MyWorksheet.WriteNumber(row, col, StrToInt(s[col+1]));
             'F'     : MyWorksheet.WriteFormula(row, col, InsDelTestData[ATestIndex].Formula);
-            'S'     : MyWorksheet.WriteSharedFormula(
-                        row,
-                        col,
-                        row + InsDelTestData[ATestIndex].SharedFormulaRowCount - 1,
-                        col + InsDelTestData[ATestIndex].SharedFormulaColCount - 1,
-                        InsDelTestData[ATestIndex].Formula
-                      );
             'M'     : begin
                         MyWorksheet.WriteUTF8Text(row, col, 'M');
                         MyWorksheet.MergeCells(
@@ -1814,189 +1229,81 @@ begin
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_BIFF8;
-// no insert/delete; just test shared formula
+// no insert/delete, just test merged cell block
 begin
   TestWriteRead_InsDelColRow(22, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_BIFF8;
-// insert column before any cell addressed by the shared formula
+// insert column before merged block
 begin
   TestWriteRead_InsDelColRow(23, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_BIFF8;
-// insert column after any cell addressed by the shared formula
+// insert column through merged block
 begin
   TestWriteRead_InsDelColRow(24, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_BIFF8;
-// insert column through cells addressed by shared formula
+// insert column behind merged block
 begin
   TestWriteRead_InsDelColRow(25, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_BIFF8;
-// insert column through shared formula block
+// insert row above merged block
 begin
   TestWriteRead_InsDelColRow(26, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_BIFF8;
-// insert column behind shared formula block
+// insert row through merged block
 begin
   TestWriteRead_InsDelColRow(27, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_BIFF8;
-// insert row before anything affected by the shared formula
-begin
-  TestWriteRead_InsDelColRow(28, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_29_BIFF8;
-// insert row after shared formula cells
-begin
-  TestWriteRead_InsDelColRow(29, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_30_BIFF8;
-// insert row through shared formula block
-begin
-  TestWriteRead_InsDelColRow(30, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_31_BIFF8;
-// insert row below shared formula block
-begin
-  TestWriteRead_InsDelColRow(31, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_BIFF8;
-// delete column before any cell referenced by the shared formula(s)
-begin
-  TestWriteRead_InsDelColRow(32, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_BIFF8;
-// delete column after any cell referenced by the shared formula(s)
-begin
-  TestWriteRead_InsDelColRow(33, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_BIFF8;
-// delete column in shared formula block, but no formula cell affected
-begin
-  TestWriteRead_InsDelColRow(34, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_35_BIFF8;
-// delete column used in shared formula
-begin
-  TestWriteRead_InsDelColRow(35, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_36_BIFF8;
-// delete row above shared formula and the used cells
-begin
-  TestWriteRead_InsDelColRow(36, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_37_BIFF8;
-// delete row below shared formula and the used cells
-begin
-  TestWriteRead_InsDelColRow(37, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_38_BIFF8;
-// delete row through shared formula block
-begin
-  TestWriteRead_InsDelColRow(38, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_39_BIFF8;
-// delete row with cell used in shared formula block
-begin
-  TestWriteRead_InsDelColRow(39, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_40_BIFF8;
-// no insert/delete, just test merged cell block
-begin
-  TestWriteRead_InsDelColRow(40, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_41_BIFF8;
-// insert column before merged block
-begin
-  TestWriteRead_InsDelColRow(41, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_42_BIFF8;
-// insert column through merged block
-begin
-  TestWriteRead_InsDelColRow(42, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_43_BIFF8;
-// insert column behind merged block
-begin
-  TestWriteRead_InsDelColRow(43, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_44_BIFF8;
-// insert row above merged block
-begin
-  TestWriteRead_InsDelColRow(44, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_45_BIFF8;
-// insert row through merged block
-begin
-  TestWriteRead_InsDelColRow(45, sfExcel8);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_46_BIFF8;
 // insert row below merged block
 begin
-  TestWriteRead_InsDelColRow(46, sfExcel8);
+  TestWriteRead_InsDelColRow(28, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_BIFF8;
 // delete column before merged block
 begin
-  TestWriteRead_InsDelColRow(47, sfExcel8);
+  TestWriteRead_InsDelColRow(29, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_BIFF8;
 // delete column through merged block
 begin
-  TestWriteRead_InsDelColRow(48, sfExcel8);
+  TestWriteRead_InsDelColRow(30, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_BIFF8;
 // delete column behind merged block
 begin
-  TestWriteRead_InsDelColRow(49, sfExcel8);
+  TestWriteRead_InsDelColRow(31, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_50_BIFF8;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_BIFF8;
 // delete row above merged block
 begin
-  TestWriteRead_InsDelColRow(50, sfExcel8);
+  TestWriteRead_InsDelColRow(32, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_51_BIFF8;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_BIFF8;
 // delete row through merged block
 begin
-  TestWriteRead_InsDelColRow(51, sfExcel8);
+  TestWriteRead_InsDelColRow(33, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_BIFF8;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_BIFF8;
 // delete row below merged block
 begin
-  TestWriteRead_InsDelColRow(52, sfExcel8);
+  TestWriteRead_InsDelColRow(34, sfExcel8);
 end;
 
 
@@ -2137,189 +1444,81 @@ begin
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_OOXML;
-// no insert/delete; just test shared formula
+// no insert/delete, just test merged cell block
 begin
   TestWriteRead_InsDelColRow(22, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_OOXML;
-// insert column before any cell addressed by the shared formula
+// insert column before merged block
 begin
   TestWriteRead_InsDelColRow(23, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_OOXML;
-// insert column after any cell addressed by the shared formula
+// insert column through merged block
 begin
   TestWriteRead_InsDelColRow(24, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_OOXML;
-// insert column through cells addressed by shared formula
+// insert column behind merged block
 begin
   TestWriteRead_InsDelColRow(25, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_OOXML;
-// insert column through shared formula block
+// insert row above merged block
 begin
   TestWriteRead_InsDelColRow(26, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_OOXML;
-// insert column behind shared formula block
+// insert row through merged block
 begin
   TestWriteRead_InsDelColRow(27, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_OOXML;
-// insert row before anything affected by the shared formula
-begin
-  TestWriteRead_InsDelColRow(28, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_29_OOXML;
-// insert row after shared formula cells
-begin
-  TestWriteRead_InsDelColRow(29, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_30_OOXML;
-// insert row through shared formula block
-begin
-  TestWriteRead_InsDelColRow(30, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_31_OOXML;
-// insert row below shared formula block
-begin
-  TestWriteRead_InsDelColRow(31, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_OOXML;
-// delete column before any cell referenced by the shared formula(s)
-begin
-  TestWriteRead_InsDelColRow(32, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_OOXML;
-// delete column after any cell referenced by the shared formula(s)
-begin
-  TestWriteRead_InsDelColRow(33, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_OOXML;
-// delete column in shared formula block, but no formula cell affected
-begin
-  TestWriteRead_InsDelColRow(34, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_35_OOXML;
-// delete column used in shared formula
-begin
-  TestWriteRead_InsDelColRow(35, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_36_OOXML;
-// delete row above shared formula and the used cells
-begin
-  TestWriteRead_InsDelColRow(36, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_37_OOXML;
-// delete row below shared formula and the used cells
-begin
-  TestWriteRead_InsDelColRow(37, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_38_OOXML;
-// delete row through shared formula block
-begin
-  TestWriteRead_InsDelColRow(38, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_39_OOXML;
-// delete row with cell used in shared formula block
-begin
-  TestWriteRead_InsDelColRow(39, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_40_OOXML;
-// no insert/delete, just test merged cell block
-begin
-  TestWriteRead_InsDelColRow(40, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_41_OOXML;
-// insert column before merged block
-begin
-  TestWriteRead_InsDelColRow(41, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_42_OOXML;
-// insert column through merged block
-begin
-  TestWriteRead_InsDelColRow(42, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_43_OOXML;
-// insert column behind merged block
-begin
-  TestWriteRead_InsDelColRow(43, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_44_OOXML;
-// insert row above merged block
-begin
-  TestWriteRead_InsDelColRow(44, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_45_OOXML;
-// insert row through merged block
-begin
-  TestWriteRead_InsDelColRow(45, sfOOXML);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_46_OOXML;
 // insert row below merged block
 begin
-  TestWriteRead_InsDelColRow(46, sfOOXML);
+  TestWriteRead_InsDelColRow(28, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_OOXML;
 // delete column before merged block
 begin
-  TestWriteRead_InsDelColRow(47, sfOOXML);
+  TestWriteRead_InsDelColRow(29, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_OOXML;
 // delete column through merged block
 begin
-  TestWriteRead_InsDelColRow(48, sfOOXML);
+  TestWriteRead_InsDelColRow(30, sfOOXML);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_OOXML;
 // delete column behind merged block
 begin
-  TestWriteRead_InsDelColRow(49, sfOOXML);
+  TestWriteRead_InsDelColRow(31, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_50_OOXML;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_OOXML;
 // delete row above merged block
 begin
-  TestWriteRead_InsDelColRow(50, sfOOXML);
+  TestWriteRead_InsDelColRow(32, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_51_OOXML;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_OOXML;
 // delete row through merged block
 begin
-  TestWriteRead_InsDelColRow(51, sfOOXML);
+  TestWriteRead_InsDelColRow(33, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_OOXML;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_OOXML;
 // delete row below merged block
 begin
-  TestWriteRead_InsDelColRow(52, sfOOXML);
+  TestWriteRead_InsDelColRow(34, sfOOXML);
 end;
 
 
@@ -2460,188 +1659,80 @@ begin
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_ODS;
-// no insert/delete; just test shared formula
+// no insert/delete, just test merged cell block
 begin
   TestWriteRead_InsDelColRow(22, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_ODS;
-// insert column before any cell addressed by the shared formula
+// insert column before merged block
 begin
   TestWriteRead_InsDelColRow(23, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_ODS;
-// insert column after any cell addressed by the shared formula
+// insert column through merged block
 begin
   TestWriteRead_InsDelColRow(24, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_ODS;
-// insert column through cells addressed by shared formula
+// insert column behind merged block
 begin
   TestWriteRead_InsDelColRow(25, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_ODS;
-// insert column through shared formula block
+// insert row above merged block
 begin
   TestWriteRead_InsDelColRow(26, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_ODS;
-// insert column behind shared formula block
+// insert row through merged block
 begin
   TestWriteRead_InsDelColRow(27, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_ODS;
-// insert row before anything affected by the shared formula
-begin
-  TestWriteRead_InsDelColRow(28, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_29_ODS;
-// insert row after shared formula cells
-begin
-  TestWriteRead_InsDelColRow(29, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_30_ODS;
-// insert row through shared formula block
-begin
-  TestWriteRead_InsDelColRow(30, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_31_ODS;
-// insert row below shared formula block
-begin
-  TestWriteRead_InsDelColRow(31, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_ODS;
-// delete column before any cell referenced by the shared formula(s)
-begin
-  TestWriteRead_InsDelColRow(32, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_ODS;
-// delete column after any cell referenced by the shared formula(s)
-begin
-  TestWriteRead_InsDelColRow(33, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_ODS;
-// delete column in shared formula block, but no formula cell affected
-begin
-  TestWriteRead_InsDelColRow(34, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_35_ODS;
-// delete column used in shared formula
-begin
-  TestWriteRead_InsDelColRow(35, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_36_ODS;
-// delete row above shared formula and the used cells
-begin
-  TestWriteRead_InsDelColRow(36, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_37_ODS;
-// delete row below shared formula and the used cells
-begin
-  TestWriteRead_InsDelColRow(37, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_38_ODS;
-// delete row through shared formula block
-begin
-  TestWriteRead_InsDelColRow(38, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_39_ODS;
-// delete row with cell used in shared formula block
-begin
-  TestWriteRead_InsDelColRow(39, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_40_ODS;
-// no insert/delete, just test merged cell block
-begin
-  TestWriteRead_InsDelColRow(40, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_41_ODS;
-// insert column before merged block
-begin
-  TestWriteRead_InsDelColRow(41, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_42_ODS;
-// insert column through merged block
-begin
-  TestWriteRead_InsDelColRow(42, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_43_ODS;
-// insert column behind merged block
-begin
-  TestWriteRead_InsDelColRow(43, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_44_ODS;
-// insert row above merged block
-begin
-  TestWriteRead_InsDelColRow(44, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_45_ODS;
-// insert row through merged block
-begin
-  TestWriteRead_InsDelColRow(45, sfOpenDocument);
-end;
-
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_46_ODS;
 // insert row below merged block
 begin
-  TestWriteRead_InsDelColRow(46, sfOpenDocument);
+  TestWriteRead_InsDelColRow(28, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_ODS;
 // delete column before merged block
 begin
-  TestWriteRead_InsDelColRow(47, sfOpenDocument);
+  TestWriteRead_InsDelColRow(29, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_ODS;
 begin
-  TestWriteRead_InsDelColRow(48, sfOpenDocument);
+  TestWriteRead_InsDelColRow(30, sfOpenDocument);
 end;
 
 procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_ODS;
 // delete column behind merged block
 begin
-  TestWriteRead_InsDelColRow(49, sfOpenDocument);
+  TestWriteRead_InsDelColRow(31, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_50_ODS;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_ODS;
 // delete row above merged block
 begin
-  TestWriteRead_InsDelColRow(50, sfOpenDocument);
+  TestWriteRead_InsDelColRow(32, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_51_ODS;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_ODS;
 // delete row through merged block
 begin
-  TestWriteRead_InsDelColRow(51, sfOpenDocument);
+  TestWriteRead_InsDelColRow(33, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_52_ODS;
+procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_ODS;
 // delete row below merged block
 begin
-  TestWriteRead_InsDelColRow(52, sfOpenDocument);
+  TestWriteRead_InsDelColRow(34, sfOpenDocument);
 end;
 
 

@@ -548,13 +548,11 @@ type
     { Location of the cell }
     Row: Cardinal; // zero-based
     Col: Cardinal; // zero-based
-    Worksheet: Pointer;   // Must be cast to TsWorksheet when used
+    Worksheet: Pointer;   // Must be cast to TsWorksheet when used  (avoids circular unit reference)
     { Status flags }
     Flags: TsCellFlags;
     { Index of format record in the workbook's FCellFormatList }
     FormatIndex: Integer;
-    { Special information }
-    SharedFormulaBase: PCell;  // Cell containing the shared formula
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     FormulaValue: String;
