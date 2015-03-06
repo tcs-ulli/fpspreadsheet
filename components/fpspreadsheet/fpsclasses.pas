@@ -5,7 +5,7 @@ unit fpsclasses;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, avglvltree,
+  Classes, SysUtils, AVL_Tree, //avglvltree,
   fpstypes;
 
 type
@@ -175,7 +175,8 @@ type
 implementation
 
 uses
-  Math, fpsUtils;
+  {%H-}Math,
+  fpsUtils;
 
 
 { Helper function for sorting }
@@ -233,9 +234,6 @@ begin
 end;
 
 function TsRowColEnumerator.MoveNext: Boolean;
-var
-  r1,c1,r2,c2: Cardinal;
-  item: TsRowCol;
 begin
   if FCurrentNode <> nil then begin
     if FReverse then

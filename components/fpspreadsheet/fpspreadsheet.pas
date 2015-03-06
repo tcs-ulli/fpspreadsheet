@@ -234,11 +234,6 @@ type
     procedure WriteRPNFormula(ACell: PCell;
       AFormula: TsRPNFormula); overload;
 
-    procedure WriteSharedFormula(ARow1, ACol1, ARow2, ACol2: Cardinal;
-      const AFormula: String); overload;
-    procedure WriteSharedFormula(ACellRange: String;
-      const AFormula: String); overload;
-
     function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell; overload;
     procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
 
@@ -330,15 +325,10 @@ type
     procedure WriteWordwrap(ACell: PCell; AValue: boolean); overload;
 
     { Formulas }
-    function BuildRPNFormula(ACell: PCell): TsRPNFormula;
+    function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
     procedure CalcFormula(ACell: PCell);
     procedure CalcFormulas;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
-    function FindSharedFormulaBase(ACell: PCell): PCell;
-    function FindSharedFormulaRange(ACell: PCell; out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
-    procedure FixSharedFormulas;
-    procedure SplitSharedFormula(ACell: PCell);
-    function UseSharedFormula(ARow, ACol: Cardinal; ASharedFormulaBase: PCell): PCell;
     function GetCalcState(ACell: PCell): TsCalcState;
     procedure SetCalcState(ACell: PCell; AValue: TsCalcState);
 
@@ -586,7 +576,6 @@ type
     FFontList: TFPList;
 
     { Internal methods }
-    procedure FixSharedFormulas;
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
@@ -979,15 +968,13 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns TRUE if the cell contains a formula (direct or shared, does not matter).
+  Returns TRUE if the cell contains a formula.
 
   @param   ACell   Pointer to the cell checked
 -------------------------------------------------------------------------------}
 function HasFormula(ACell: PCell): Boolean;
 begin
-  Result := Assigned(ACell) and (
-    (ACell^.SharedFormulaBase <> nil) or (Length(ACell^.FormulaValue) > 0)
-  );
+  Result := Assigned(ACell) and (Length(ACell^.FormulaValue) > 0);
 end;
 
 function CompareCells(Item1, Item2: Pointer): Integer;
@@ -1108,11 +1095,14 @@ end;
   Helper function which constructs an rpn formula from the cell's string
   formula. This is needed, for example, when writing a formula to xls biff
   file format.
-  If the cell belongs to a shared formula the formula is taken from the
-  shared formula base cell, cell references are adapted accordingly to the
-  location of the cell.
+  The formula is stored in ACell.
+  If ADestCell is not nil then the relative references are adjusted as seen
+  from ADestCell. This means that this function returns the formula that
+  would be created if ACell is copied to the location of ADestCell.
+  Needed for copying formulas and for splitting shared formulas.
 -------------------------------------------------------------------------------}
-function TsWorksheet.BuildRPNFormula(ACell: PCell): TsRPNFormula;
+function TsWorksheet.BuildRPNFormula(ACell: PCell;
+  ADestCell: PCell = nil): TsRPNFormula;
 var
   parser: TsSpreadsheetParser;
 begin
@@ -1122,11 +1112,9 @@ begin
   end;
   parser := TsSpreadsheetParser.Create(self);
   try
-    if (ACell^.SharedFormulaBase <> nil) then begin
-      parser.ActiveCell := ACell;
-      parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
-    end else
-      parser.Expression := ACell^.FormulaValue;
+    if ADestCell <> nil then
+      parser.PrepareCopyMode(ACell, ADestCell);
+    parser.Expression := ACell^.FormulaValue;
     Result := parser.RPNFormula;
   finally
     parser.Free;
@@ -1145,27 +1133,16 @@ procedure TsWorksheet.CalcFormula(ACell: PCell);
 var
   parser: TsSpreadsheetParser;
   res: TsExpressionResult;
-  formula: String;
-  cell: PCell;
   p: Integer;
   link, txt: String;
+  cell: PCell;
 begin
   ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
 
   parser := TsSpreadsheetParser.Create(self);
   try
-    if ACell^.SharedFormulaBase = nil then
-    begin
-      formula := ACell^.FormulaValue;
-      parser.ActiveCell := nil;
-    end else
-    begin
-      formula := ACell^.SharedFormulaBase^.FormulaValue;
-      parser.ActiveCell := ACell;
-    end;
-
     try
-      parser.Expression := formula;
+      parser.Expression := ACell^.FormulaValue;
       res := parser.Evaluate;
     except
       on E:ECalcEngine do
@@ -1248,9 +1225,7 @@ begin
     node := FCells.FindLowest;
     while Assigned(node) do begin
       cell := PCell(node.Data);
-      if (cell^.ContentType <> cctError) and
-         (HasFormula(cell) or HasFormula(cell^.SharedFormulaBase))
-      then
+      if (cell^.ContentType <> cctError) and HasFormula(cell) then
         CalcFormula(cell);
       node := FCells.FindSuccessor(node);
     end;
@@ -1496,7 +1471,6 @@ end;
 function TsWorksheet.ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
 var
   uri: TUri;
-  mark: String;
   sheet: TsWorksheet;
   r, c: Cardinal;
 begin
@@ -1664,7 +1638,7 @@ begin
   if IsMergeBase(AFromCell) then
   begin
     FindMergedRange(AFromCell, row1, col1, row2, col2);
-    MergeCells(toRow, toCol, toRow + row2 - row1, toCol + col2 - col1);
+    MergeCells(toRow, toCol, toRow + LongInt(row2) - LongInt(row1), toCol + LongInt(col2) - LongInt(col1));
   end;
 
   // Copy comment
@@ -1743,7 +1717,6 @@ end;
 procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
   rpnFormula: TsRPNFormula;
-  lCell: TCell;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
@@ -1753,11 +1726,7 @@ begin
   else
   begin
     // Here we convert the formula to an rpn formula as seen from source...
-    // (The mechanism needs the ActiveCell of the parser which is only
-    // valid if the cell contains a shared formula)
-    lCell := AToCell^;
-    lCell.SharedFormulaBase := AFromCell;
-    rpnFormula := BuildRPNFormula(@lCell);
+    rpnFormula := BuildRPNFormula(AFromCell, AToCell);
     // ... and here we reconstruct the string formula as seen from destination cell.
     AToCell^.FormulaValue := ConvertRPNFormulaToStringFormula(rpnFormula);
   end;
@@ -1811,7 +1780,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Deletes a specified cell. If the cell belongs to a merged block its content
-  and formatting is erased. Otherwise the cell is destroyed, its memory is
+  and formatting is erased. Otherwise the cell is destroyed and its memory is
   released.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCell(ACell: PCell);
@@ -1830,12 +1799,6 @@ begin
     EraseCell(ACell);
     exit;
   end;
-
-  // Is base of shared formula block? Recreate individual formulas
-  if ACell^.SharedFormulaBase = ACell then
-    SplitSharedFormula(ACell);
-
-  // Belongs to shared formula block? --> nothing to do
 
   // Destroy the cell, and remove it from the tree
   RemoveAndFreeCell(ACell^.Row, ACell^.Col);
@@ -2619,7 +2582,6 @@ end;
 {@@ ----------------------------------------------------------------------------
   If a cell contains a formula (string formula or RPN formula) the formula
   is returned as a string in Excel syntax.
-  If the cell belongs to a shared formula the adapted shared formula is returned.
 
   @param   ACell      Pointer to the cell considered
   @param   ALocalized If true, the formula is returned with decimal and list
@@ -2636,40 +2598,19 @@ begin
   if ACell = nil then
     exit;
   if HasFormula(ACell) then begin
-    // case (1): Formula is localized and has to be converted to default syntax
     if ALocalized then
     begin
+      // case (1): Formula is localized and has to be converted to default syntax   // !!!! Is this comment correct?
       parser := TsSpreadsheetParser.Create(self);
       try
-        if ACell^.SharedFormulaBase <> nil then begin
-          // case (1a): shared formula
-          parser.ActiveCell := ACell;
-          parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
-        end else begin
-          // case (1b): normal formula
-          parser.ActiveCell := nil;
-          parser.Expression := ACell^.FormulaValue;
-        end;
+        parser.Expression := ACell^.FormulaValue;
         Result := parser.LocalizedExpression[Workbook.FormatSettings];
       finally
         parser.Free;
       end;
     end
     else
-    // case (2): Formula is in default syntax
-    if ACell^.SharedFormulaBase <> nil then
-    begin
-      // case (2a): shared formula
-      parser := TsSpreadsheetParser.Create(self);
-      try
-        parser.ActiveCell := ACell;
-        parser.Expression := ACell^.SharedFormulaBase^.FormulaValue;
-        Result := parser.Expression;
-      finally
-        parser.Free;
-      end;
-    end else
-      // case (2b): normal formula
+      // case (2): Formula is already in default syntax
       Result := ACell^.FormulaValue;
   end;
 end;
@@ -3121,7 +3062,6 @@ end;
 procedure TsWorksheet.UnmergeCells(ARow, ACol: Cardinal);
 var
   rng: PsCellRange;
-  r, c: Cardinal;
   cell: PCell;
 begin
   rng := FMergedCells.FindRangeWithCell(ARow, ACol);
@@ -3153,23 +3093,6 @@ var
 begin
   if Workbook.TryStrToCellRange(ARange, sheet, rng) then
     UnmergeCells(rng.Row1, rng.Col1);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Finds the upper left cell of a shared formula block to which the specified
-  cell belongs. This is the "shared formula base".
-
-  @param   ACell   Cell under investigation
-  @return  A pointer to the cell in the upper left corner of the shared formula
-           block to which ACell belongs. If ACell is not part of a shared formula
-           block then the function returns NIL.
--------------------------------------------------------------------------------}
-function TsWorksheet.FindSharedFormulaBase(ACell: PCell): PCell;
-begin
-  if ACell = nil then
-    Result := nil
-  else
-    Result := ACell^.SharedFormulaBase;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3243,90 +3166,6 @@ begin
   Result := (ACell <> nil) and (cfMerged in ACell^.Flags);
 end;
 
-
-{ Shared formulas }
-
-{@@ ----------------------------------------------------------------------------
-  Determines the cell block sharing the same formula which is used by a given cell
-
-  Note: the block may not be contiguous. The function returns the outer edges
-  of the range.
-
-  @param   ACell  Pointer to the cell being investigated
-  @param   ARow1  (output) Top row index of the shared formula block
-  @param   ACol1  (outout) Left column index of the shared formula block
-  @param   ARow2  (output) Bottom row index of the shared formula block
-  @param   ACol2  (output) Right column index of the shared formula block
-
-  @return  True if the cell belongs to a shared formula block, False if not or
-           if the cell does not exist at all.
--------------------------------------------------------------------------------}
-function TsWorksheet.FindSharedFormulaRange(ACell: PCell;
-  out ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
-var
-  r, c: Cardinal;
-  cell: PCell;
-  base: PCell;
-  lastCol, lastRow: Cardinal;
-begin
-  base := FindSharedFormulaBase(ACell);
-  if base = nil then begin
-    Result := false;
-    exit;
-  end;
-  // Assuming that the shared formula block is rectangular, we start at the base...
-  ARow1 := base^.Row;
-  ARow2 := ARow1;
-  ACol1 := base^.Col;
-  ACol2 := ACol1;
-  lastCol := GetLastOccupiedColIndex;
-  lastRow := GetLastOccupiedRowIndex;
-  // ... and go along first COLUMN to find the end of the shared formula block, ...
-  for c := ACol1+1 to lastCol do
-  begin
-    cell := FindCell(ARow1, c);
-    if (cell <> nil) and (cell^.SharedFormulaBase = base) then
-      ACol2 := c;
-  end;
-  // ... and go along first ROW to find the end of the shared formula block
-  for r := ARow1 + 1 to lastRow do
-  begin
-    cell := FindCell(r, ACol1);
-    if (cell <> nil) and (cell^.SharedFormulaBase = base) then
-      ARow2 := r;
-  end;
-
-  Result := true;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  A shared formula must contain at least two cells. If there is only a single
-  cell then the shared formula is converted to a regular one.
-  Is called before writing to stream.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.FixSharedFormulas;
-var
-  r,c, r1,c1, r2,c2: Cardinal;
-  cell: PCell;
-//  firstRow, firstCol, lastRow, lastCol: Cardinal;
-begin
-  for cell in Cells do
-    if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
-      cell^.SharedFormulaBase := nil;
-                                     {
-  firstRow := GetFirstRowIndex;
-  firstCol := GetFirstColIndex;
-  lastRow := GetLastOccupiedRowIndex;
-  lastCol := GetLastOccupiedColIndex;
-  for r := firstRow to lastRow do
-    for c := firstCol to lastCol do
-    begin
-      cell := FindCell(r, c);
-      if FindSharedFormulaRange(cell, r1, c1, r2, c2) and (r1 = r2) and (c1 = c2) then
-        cell^.SharedFormulaBase := nil;
-    end;
-    }
-end;
 
 {@@ ----------------------------------------------------------------------------
   Removes the comment from a cell and releases the memory occupied by the node.
@@ -3746,72 +3585,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Splits a shared formula range to which the specified cell belongs into
-  individual cells. Each cell gets the same formula as it had in the block.
-  This is required because insertion and deletion of columns/rows make shared
-  formulas very complicated.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.SplitSharedFormula(ACell: PCell);
-var
-  r, c: Cardinal;
-  baseRow, baseCol: Cardinal;
-  lastRow, lastCol: Cardinal;
-  cell: PCell;
-  rpnFormula: TsRPNFormula;
-begin
-  if (ACell = nil) or (ACell^.SharedFormulaBase = nil) then
-    exit;
-  lastRow := GetLastOccupiedRowIndex;
-  lastCol := GetLastOccupiedColIndex;
-  baseRow := ACell^.SharedFormulaBase^.Row;
-  baseCol := ACell^.SharedFormulaBase^.Col;
-  for r := baseRow to lastRow do
-    for c := baseCol to lastCol do
-    begin
-      cell := FindCell(r, c);
-      if (cell = nil) or (cell^.SharedFormulaBase = nil) then
-        continue;
-      if (cell^.SharedFormulaBase^.Row = baseRow) and
-         (cell^.SharedFormulaBase^.Col = baseCol) then
-      begin
-        // This method converts the shared formula to an rpn formula as seen from cell...
-        rpnFormula := BuildRPNFormula(cell);
-        // ... and this reconstructs the string formula, again as seen from cell.
-        cell^.FormulaValue := ConvertRPNFormulaToStringFormula(rpnFormula);
-        // Remove the SharedFormulaBase information --> cell is isolated.
-        cell^.SharedFormulaBase := nil;
-      end;
-    end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Defines a cell range sharing the "same" formula. Note that relative cell
-  references are updated for each cell in the range.
-
-  @param  ARow                Row of the cell
-  @param  ACol                Column index of the cell
-  @param  ASharedFormulaBase  Cell containing the shared formula
-
-  Note:   An exception is raised if the cell already contains a formula (and is
-          different from the ASharedFormulaBase cell).
--------------------------------------------------------------------------------}
-function TsWorksheet.UseSharedFormula(ARow, ACol: Cardinal;
-  ASharedFormulaBase: PCell): PCell;
-begin
-  if ASharedFormulaBase = nil then begin
-    Result := nil;
-    exit;
-  end;
-  Result := GetCell(ARow, ACol);
-  Result.SharedFormulaBase := ASharedFormulaBase;
-  if (Result^.FormulaValue <> '') and
-     ((ASharedFormulaBase.Row <> ARow) and (ASharedFormulaBase.Col <> ACol))
-  then
-    raise Exception.CreateFmt('[TsWorksheet.UseSharedFormula] Cell %s uses a shared formula, but contains an own formula.',
-      [GetCellString(ARow, ACol)]);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.
 
   On formats that don't support unicode, the text will be converted
@@ -3855,7 +3628,6 @@ begin
   begin
     if (Workbook.GetCellFormat(ACell^.FormatIndex).UsedFormattingFields = []) and
        (ACell^.Flags * [cfHyperlink, cfHasComment, cfMerged] = []) and
-       (ACell^.SharedFormulaBase = nil) and
        (ACell^.FormulaValue = '')
     then
     begin
@@ -4052,8 +3824,6 @@ end;
           along a range of cells including empty cells.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBlank(ACell: PCell);
-var
-  hyperlink: TsHyperlink;
 begin
   if ACell <> nil then begin
     if HasHyperlink(ACell) then
@@ -4816,57 +4586,6 @@ begin
   ACell^.FormulaValue := ConvertRPNFormulaToStringFormula(AFormula);
 
   ChangedCell(ACell^.Row, ACell^.Col);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes a formula to a cell and shares it with other cells.
-
-  @param ARow1, ACol1    Row and column index of the top left corner of
-                         the range sharing the formula. The cell in this
-                         cell stores the formula.
-  @param ARow2, ACol2    Row and column of the bottom right corner of the
-                         range sharing the formula.
-  @param AFormula        Formula in Excel notation
--------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteSharedFormula(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  const AFormula: String);
-var
-  cell: PCell;
-  r, c: Cardinal;
-begin
-  if (ARow1 > ARow2) or (ACol1 > ACol2) then
-    raise Exception.Create('[TsWorksheet.WriteSharedFormula] Rows/cols not ordered correctly: ARow1 <= ARow2, ACol1 <= ACol2.');
-
-  if (ARow1 = ARow2) and (ACol1 = ACol2) then
-    raise Exception.Create('[TsWorksheet.WriteSharedFormula] A shared formula range must contain at least two cells.');
-
-  // The cell at the top/left corner of the cell range is the "SharedFormulaBase".
-  // It is the only cell which stores the formula.
-  cell := WriteFormula(ARow1, ACol1, AFormula);
-  for r := ARow1 to ARow2 do
-    for c := ACol1 to ACol2 do
-      UseSharedFormula(r, c, cell);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes a formula to a cell and shares it with other cells.
-
-  @param ACellRangeStr       Range of cells which will use the shared formula.
-                             The range is given as a string in Excel notation,
-                             such as A1:B5, or A1
-  @param AFormula       Formula (in Excel notation) to be shared. The cell
-                        addresses are relative to the top/left cell of the
-                        range.
--------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteSharedFormula(ACellRange: String;
-  const AFormula: String);
-var
-  r1,r2, c1,c2: Cardinal;
-begin
-  if ParseCellRangeString(ACellRange, r1, c1, r2, c2) then
-    WriteSharedFormula(r1, c1, r2, c2, AFormula)
-  else
-    raise Exception.Create('[TsWorksheet.WriteSharedFormula] No valid cell range string.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5699,20 +5418,12 @@ end;
 function TsWorksheet.CalcAutoRowHeight(ARow: Cardinal): Single;
 var
   cell: PCell;
-  col: Integer;
   h0: Single;
 begin
   Result := 0;
   h0 := Workbook.GetDefaultFontSize;
   for cell in Cells.GetRowEnumerator(ARow) do
     Result := Max(Result, ReadCellFont(cell).Size / h0);
-  {
-  for col := GetFirstColIndex to GetLastColIndex do begin
-    cell := FindCell(ARow, col);
-    if cell <> nil then
-      Result := Max(Result, ReadCellFont(cell).Size / h0);
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5901,42 +5612,12 @@ procedure TsWorksheet.DeleteCol(ACol: Cardinal);
 var
   col: PCol;
   i: Integer;
-  r, rr, cc: Cardinal;
-  cell, basecell, nextcell: PCell;
-  firstRow, lastCol, lastRow: Cardinal;
+  r: Cardinal;
+  cell: PCell;
+  firstRow, lastRow: Cardinal;
 begin
-  lastCol := GetLastColIndex;
   lastRow := GetLastOccupiedRowIndex;
   firstRow := GetFirstRowIndex;
-
-  // Loop along the column to be deleted and fix shared formulas
-  for r := firstRow to lastRow do
-  begin
-    cell := FindCell(r, ACol);
-
-    // Fix shared formulas: if the deleted column contains the shared formula base
-    // of a shared formula block then the shared formula has to be moved to the
-    // next column
-    if (cell <> nil) and (cell^.SharedFormulaBase = cell) then begin
-      basecell := cell;
-      nextcell := FindCell(r, ACol+1);   // cell in next column and same row
-      // Next cell in col at the right does not share this formula --> done with this formula
-      if (nextcell = nil) or (nextcell^.SharedFormulaBase <> cell) then
-        continue;
-      // Write adapted formula to the cell below.
-      WriteFormula(nextcell, basecell^.Formulavalue); //ReadFormulaAsString(nextcell));
-      // Have all cells sharing the formula use the new formula base
-      for rr := r to lastRow do
-        for cc := ACol+1 to lastCol do
-        begin
-          cell := FindCell(rr, cc);
-          if (cell <> nil) and (cell^.SharedFormulaBase = basecell) then
-            cell^.SharedFormulaBase := nextcell
-          else
-            break;
-        end;
-    end;
-  end;
 
   // Fix merged cells
   FMergedCells.DeleteRowOrCol(ACol, false);
@@ -5981,41 +5662,12 @@ procedure TsWorksheet.DeleteRow(ARow: Cardinal);
 var
   row: PRow;
   i: Integer;
-  c, rr, cc: Cardinal;
-  firstCol, lastCol, lastRow: Cardinal;
-  cell, nextcell, basecell: PCell;
+  c: Cardinal;
+  firstCol, lastCol: Cardinal;
+  cell: PCell;
 begin
   firstCol := GetFirstColIndex;
   lastCol := GetLastOccupiedColIndex;
-  lastRow := GetLastOccupiedRowIndex;
-
-  // Loop along the row to be deleted and fix shared formulas
-  for c := firstCol to lastCol do
-  begin
-    cell := FindCell(ARow, c);
-    // Fix shared formulas: if the deleted row contains the shared formula base
-    // of a shared formula block then the shared formula has to be moved to the
-    // next row
-    if (cell <> nil) and (cell^.SharedFormulaBase = cell) then begin
-      basecell := cell;
-      nextcell := FindCell(ARow+1, c);   // cell in next row at same column
-      // Next cell in row below does not share this formula --> done with this formula
-      if (nextcell = nil) or (nextcell^.SharedFormulaBase <> cell) then
-        continue;
-      // Write adapted formula to the cell below.
-      WriteFormula(nextcell, basecell^.FormulaValue); //ReadFormulaAsString(nextcell));
-      // Have all cells sharing the formula use the new formula base
-      for rr := ARow+1 to lastRow do
-        for cc := c to lastCol do
-        begin
-          cell := FindCell(rr, cc);
-          if (cell <> nil) and (cell^.SharedFormulaBase = basecell) then
-            cell^.SharedFormulaBase := nextcell
-          else
-            break;
-        end;
-    end;
-  end;
 
   // Fix merged cells
   FMergedCells.DeleteRowOrCol(ARow, true);
@@ -6027,7 +5679,7 @@ begin
   FHyperlinks.DeleteRowOrCol(ARow, true);
 
   // Delete cells
-  for c := lastCol downto 0 do
+  for c := lastCol downto firstCol do
     RemoveAndFreeCell(ARow, c);
 
   // Update row index of cell records
@@ -6061,15 +5713,9 @@ procedure TsWorksheet.InsertCol(ACol: Cardinal);
 var
   col: PCol;
   i: Integer;
-  r: Cardinal;
   cell: PCell;
   rng: PsCellRange;
 begin
-  // Handling of shared formula references is too complicated for me...
-  // Split them into isolated cell formulas
-  for cell in FCells do
-    SplitSharedFormula(cell);
-
   // Update column index of comments
   FComments.InsertRowOrCol(ACol, false);
 
@@ -6091,24 +5737,15 @@ begin
 
   // Fix merged cells
   for rng in FMergedCells do
-//  rng := PsCellRange(FMergedCells.GetFirst);
-//  while rng <> nil do
   begin
     // The new column is at the LEFT of the merged block
     // --> Shift entire range to the right by 1 column
     if (ACol < rng^.Col1) then
     begin
-      // The former first column is no longer marged --> un-tag its cells
+      // The former first column is no longer merged --> un-tag its cells
       for cell in Cells.GetColEnumerator(rng^.Col1, rng^.Row1, rng^.Row2) do
         Exclude(cell^.Flags, cfMerged);
-      {
-      for r := rng^.Row1 to rng^.Row2 do
-      begin
-        cell := FindCell(r, rng^.Col1);
-        if cell <> nil then
-          Exclude(cell^.Flags, cfMerged);
-      end;
-      }
+
       // Shift merged block to the right
       // Don't call "MergeCells" here - this would add a new merged block
       // because of the new merge base! --> infinite loop!
@@ -6117,21 +5754,11 @@ begin
       // The right column needs to be tagged
       for cell in Cells.GetColEnumerator(rng^.Col2, rng^.Row1, rng^.Row2) do
         Include(cell^.Flags, cfMerged);
-      {
-      for r := rng^.Row1 to rng^.Row2 do
-      begin
-        cell := FindCell(R, rng^.Col2);
-        if cell <> nil then
-          Include(cell^.Flags, cfMerged);
-      end;
-      }
     end else
     // The new column goes through this cell block --> Shift only the right
     // column of the range to the right by 1
     if (ACol >= rng^.Col1) and (ACol <= rng^.Col2) then
       MergeCells(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2+1);
-    // Continue with next merged block
-//    rng := PsCellRange(FMergedCells.GetNext);
   end;
 
   ChangedCell(0, ACol);
@@ -6187,15 +5814,9 @@ procedure TsWorksheet.InsertRow(ARow: Cardinal);
 var
   row: PRow;
   i: Integer;
-  c: Cardinal;
   cell: PCell;
   rng: PsCellRange;
 begin
-  // Handling of shared formula references is too complicated for me...
-  // Splits them into isolated cell formulas
-  for cell in FCells do
-    SplitSharedFormula(cell);
-
   // Update row index of cell comments
   FComments.InsertRowOrCol(ARow, true);
 
@@ -6217,8 +5838,6 @@ begin
 
   // Fix merged cells
   for rng in FMergedCells do
-//  rng := PsCellRange(FMergedCells.GetFirst);
-//  while rng <> nil do
   begin
     // The new row is ABOVE the merged block --> Shift entire range down by 1 row
     if (ARow < rng^.Row1) then
@@ -6226,14 +5845,7 @@ begin
       // The formerly first row is no longer merged --> un-tag its cells
       for cell in Cells.GetRowEnumerator(rng^.Row1, rng^.Col1, rng^.Col2) do
         Exclude(cell^.Flags, cfMerged);
-      {
-      for c := rng^.Col1 to rng^.Col2 do
-      begin
-        cell := FindCell(rng^.Row1, c);
-        if cell <> nil then
-          Exclude(cell^.Flags, cfMerged);
-      end;
-      }
+
       // Shift merged block down
       // (Don't call "MergeCells" here - this would add a new merged block
       // because of the new merge base! --> infinite loop!)
@@ -6242,21 +5854,11 @@ begin
       // The last row needs to be tagged
       for cell in Cells.GetRowEnumerator(rng^.Row2, rng^.Col1, rng^.Col2) do
         Include(cell^.Flags, cfMerged);
-      {
-      for c := rng^.Col1 to rng^.Col2 do
-      begin
-        cell := FindCell(rng^.Row2, c);
-        if cell <> nil then
-          Include(cell^.Flags, cfMerged);
-      end;
-      }
     end else
     // The new row goes through this cell block --> Shift only the bottom row
     // of the range down by 1
     if (ARow >= rng^.Row1) and (ARow <= rng^.Row2) then
       MergeCells(rng^.Row1, rng^.Col1, rng^.Row2+1, rng^.Col2);
-    // Continue with next block
-//    rng := PsCellRange(FMergedCells.GetNext);
   end;
 
   ChangedCell(ARow, 0);
@@ -6471,9 +6073,6 @@ begin
 
   // Updates fist/last column/row index
   UpdateCaches;
-
-  // Shared formulas must contain at least two cells
-  FixSharedFormulas;
 
   // Calculated formulas (if requested)
   if (boCalcBeforeSaving in FOptions) then
@@ -6715,22 +6314,6 @@ begin
     
   if Result = nil then
     raise Exception.Create(rsUnsupportedWriteFormat);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Shared formulas must contain at least two cells. If it's a single cell, then
-  the cell formula is converted to a standard one.
--------------------------------------------------------------------------------}
-procedure TsWorkbook.FixSharedFormulas;
-var
-  sheet: TsWorksheet;
-  i: Integer;
-begin
-  for i := 0 to GetWorksheetCount-1 do
-  begin
-    sheet := GetWorksheetByIndex(i);
-    sheet.FixSharedFormulas
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

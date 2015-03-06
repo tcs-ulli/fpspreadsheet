@@ -682,7 +682,9 @@ type
     FDirty: Boolean;
     FWorksheet: TsWorksheet;
     FDialect: TsFormulaDialect;
-    FActiveCell: PCell;
+    FSourceCell: PCell;
+    FDestCell: PCell;
+//    FActiveCell: PCell;
     procedure CheckEOF;
     procedure CheckNodes(var ALeft, ARight: TsExprNode);
     function ConvertNode(Todo: TsExprNode; ToType: TsResultType): TsExprNode;
@@ -730,10 +732,11 @@ type
     destructor Destroy; override;
     function IdentifierByName(AName: ShortString): TsExprIdentifierDef; virtual;
     procedure Clear;
+    function CopyMode: Boolean;
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(out Result: TsExpressionResult);
+    procedure PrepareCopyMode(ASourceCell, ADestCell: PCell);
     function ResultType: TsResultType;
-    function SharedFormulaMode: Boolean;
 
     property AsFloat: TsExprFloat read GetAsFloat;
     property AsInteger: Int64 read GetAsInteger;
@@ -747,7 +750,7 @@ type
     property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
-    property ActiveCell: PCell read FActiveCell write FActiveCell;
+//    property ActiveCell: PCell read FActiveCell write FActiveCell;
     property Worksheet: TsWorksheet read FWorksheet;
     property Dialect: TsFormulaDialect read FDialect write FDialect;
   end;
@@ -1297,6 +1300,22 @@ begin
         rtDateTime : Result := TsFloatToDateTimeExprNode.Create(self, Result);
       end;
   end;
+end;
+
+{ Prepares copy mode: The formula is contained in ASourceCell and will be
+  modified such as seen from ADestCell. }
+procedure TsExpressionParser.PrepareCopyMode(ASourceCell, ADestCell: PCell);
+begin
+  FSourceCell := ASourceCell;
+  FDestCell := ADestCell;
+end;
+
+{ Signals that the parser is in "CopyMode", i.e. there is are source and
+  destination cells. All relative references in the formula of the source cell
+  habe to be adapted as seen from the destination cell. }
+function TsExpressionParser.CopyMode: Boolean;
+begin
+  Result := (FDestCell <> nil) and (FSourceCell <> nil);
 end;
 
 procedure TsExpressionParser.CreateHashList;
@@ -1975,14 +1994,14 @@ begin
   CreateNodeFromRPN(FExprNode, index);
   if Assigned(FExprNode) then FExprNode.Check;
 end;
-
+(*
 { Signals that the parser is in SharedFormulaMode, i.e. there is an active cell
   to which all relative addresses have to be adapted. }
 function TsExpressionParser.SharedFormulaMode: Boolean;
 begin
   Result := (ActiveCell <> nil) and (ActiveCell^.SharedFormulaBase <> nil);
 end;
-
+  *)
 function TsExpressionParser.TokenType: TsTokenType;
 begin
   Result := FScanner.TokenType;
@@ -3811,37 +3830,27 @@ begin
 end;
 
 { Calculates the row address of the node's cell for various cases:
-  (1) SharedFormula mode:
-      The "ActiveCell" of the parser is the cell for which the formula is
-      calculated. If the formula contains a relative address in the cell node
-      the function calculates the row address of the cell represented by the
-      node as seen from the active cell.
+  (1) Copy mode:
+      The "DestCell" of the parser is the cell for which the formula is
+      calculated. The "SourceCell" contains the formula. If the formula contains
+      a relative address in the cell node the function calculates the row
+      address of the cell represented by the node as seen from the DestCell.
       If the formula contains an absolute address the function returns the row
-      address of the SharedFormulaBase of the ActiveCell.
+      address of the SourceCell.
   (2) Normal mode:
       Returns the "true" row address of the cell assigned to the formula node. }
 function TsCellExprNode.GetCol: Cardinal;
 begin
-  if FParser.SharedFormulaMode then
-  begin
-    // A shared formula is stored in the SharedFormulaBase cell of the ActiveCell
-    // Since the cell data stored in the node are those used by the formula in
-    // the SharedFormula, the current node is relative to the SharedFormulaBase
-    if rfRelCol in FFlags then
-      Result := FCol - FParser.ActiveCell^.SharedFormulaBase^.Col + FParser.ActiveCell^.Col
-    else
-      Result := FCol; //FParser.ActiveCell^.SharedFormulaBase^.Col;
-  end
-  else
-    // Normal mode
-    Result := FCol;
+  Result := FCol;
+  if FParser.CopyMode and (rfRelCol in FFlags) then
+    Result := FCol - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
 end;
 
 procedure TsCellExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
 begin
-  if Parser.SharedFormulaMode then
+  if Parser.CopyMode then
     cell := FWorksheet.FindCell(GetRow, GetCol)
   else
     cell := FCell;
@@ -3863,15 +3872,9 @@ end;
 { See GetCol }
 function TsCellExprNode.GetRow: Cardinal;
 begin
-  if Parser.SharedFormulaMode then
-  begin
-    if rfRelRow in FFlags then
-      Result := FRow - FParser.ActiveCell^.SharedFormulaBase^.Row + FParser.ActiveCell^.Row
-    else
-      Result := FRow; //FParser.ActiveCell^.SharedFormulaBase^.Row;
-  end
-  else
-    Result := FRow;
+  Result := FRow;
+  if Parser.CopyMode and (rfRelRow in FFlags) then
+    Result := FRow - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
 end;
 
 function TsCellExprNode.NodeType: TsResultType;
@@ -3998,7 +4001,6 @@ end;
 function ArgToInt(Arg: TsExpressionResult): Integer;
 var
   cell: PCell;
-  s: String;
 begin
   Result := 0;
   case Arg.ResultType of

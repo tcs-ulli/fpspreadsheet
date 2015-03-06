@@ -602,8 +602,8 @@ end;
 
 procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
 var
-  r, c: Cardinal;
-  LastRow, LastCol: Cardinal;
+  r: Cardinal;
+  LastRow: Cardinal;
   cell: PCell;
 begin
   FWorksheet := AWorksheet;
@@ -616,23 +616,12 @@ begin
     FCSVBuilder.SetOutput(AStream);
 
     LastRow := FWorksheet.GetLastOccupiedRowIndex;
-    LastCol := FWorksheet.GetLastOccupiedColIndex;
     for r := 0 to LastRow do
     begin
       for cell in FWorksheet.Cells.GetRowEnumerator(r) do
         WriteCellToStream(AStream, cell);
       FCSVBuilder.AppendRow;
     end;
-      {
-      for c := 0 to LastCol do
-      begin
-        Cell := FWorksheet.FindCell(r, c);
-        if Cell <> nil then
-          WriteCellCallback(Cell, AStream);
-        if c = LastCol then
-          FCSVBuilder.AppendRow;
-      end;
-      }
   finally
     FreeAndNil(FCSVBuilder);
   end;

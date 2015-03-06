@@ -67,7 +67,7 @@ type
     FBorderList: TFPList;
     FHyperlinkList: TFPList;
     FThemeColors: array of TsColorValue;
-    FSharedFormulas: TStringList;
+//    FSharedFormulas: TStringList;
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsWorksheet);
@@ -467,7 +467,7 @@ begin
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
 
-  FSharedFormulas := TStringList.Create;
+//  FSharedFormulas := TStringList.Create;
   FSharedStrings := TStringList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
@@ -493,7 +493,7 @@ begin
   FHyperlinkList.Free;
 
   FSharedStrings.Free;
-  FSharedFormulas.Free;
+//  FSharedFormulas.Free;
   // FCellFormatList is destroyed by ancestor
 
   inherited Destroy;
@@ -677,6 +677,8 @@ var
   sstIndex: Integer;
   number: Double;
   fmt: TsCellFormat;
+  rng: TsCellRange;
+  r,c: Cardinal;
 begin
   if ANode = nil then
     exit;
@@ -720,14 +722,21 @@ begin
       begin
         // Shared formula
         s := GetAttrValue(datanode, 'ref');
-        if (s <> '') then      // This is the shared formula base
+        if (s <> '') then      // This is the shared formula range
         begin
+          // Split shared formula into single-cell formulas
+          ParseCellRangeString(s, rng);
+          for r := rng.Row1 to rng.Row2 do
+            for c := rng.Col1 to rng.Col2 do
+              FWorksheet.CopyFormula(cell, r, c);
+(*
           s := GetAttrValue(datanode, 'si');
           if s <> '' then
             FSharedFormulas.AddObject(addr, {%H-}Pointer(PtrInt(StrToInt(s))));
           FWorksheet.WriteFormula(cell, formulaStr);
           cell^.SharedFormulaBase := cell;
-          //AWorksheet.WriteSharedFormula(s, formulaStr);
+          AWorksheet.WriteSharedFormula(s, formulaStr);
+
         end else
         begin
           s := GetAttrValue(datanode, 'si');
@@ -736,6 +745,7 @@ begin
             s := FSharedFormulas[FSharedFormulas.IndexOfObject({%H-}Pointer(PtrInt(StrToInt(s))))];
             cell^.SharedFormulaBase := FWorksheet.FindCell(s);
           end;
+          *)
         end;
       end
       else
@@ -3279,9 +3289,6 @@ procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
 var
   cellPosText: String;
   lStyleIndex: Integer;
-  r, r1, r2: Cardinal;
-  c, c1, c2: Cardinal;
-  cell: PCell;
   t, v: String;
 begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
@@ -3323,62 +3330,7 @@ begin
       end;
   end;
 
-  // Cell uses a shared formula
-  if Assigned(ACell^.SharedFormulaBase) then begin
-    // Cell is base of the shared formula, i.e. contains the shared formula
-    if (ACell = ACell^.SharedFormulaBase) then
-    begin
-      // Find range of cells using this shared formula
-      // The base of the shared formula is the left/top edge of the range
-      r1 := ACell^.Row;
-      r2 := r1;
-      r := r1 + 1;
-      while r <= FWorksheet.GetLastRowIndex do
-      begin
-        cell := FWorksheet.FindCell(r, ACell^.Col);
-        if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
-          r2 := r
-        else
-          break;
-        inc(r);
-      end;
-      c1 := ACell^.Col;
-      c2 := c1;
-      c := c1 + 1;
-      while c <= FWorksheet.GetLastColIndex do
-      begin
-        cell := FWorksheet.FindCell(ACell^.Row, c);
-        if (cell <> nil) and (cell^.SharedFormulaBase = ACell^.SharedFormulaBase) then
-          c2 := c
-        else
-          break;
-        inc(c);
-      end;
-      AppendToStream(AStream, Format(
-        '<c r="%s" s="%d"%s>' +
-          '<f t="shared" ref="%s" si="%d">%s</f>' +
-          '%s' +
-        '</c>', [
-        CellPosText, lStyleIndex, t,
-        GetCellRangeString(ACell^.Row, ACell^.Col, r2, c2),
-        {%H-}PtrInt(ACell),       // Use the cell pointer as ID of the shared formula
-        PrepareFormula(ACell^.FormulaValue),
-        v
-      ]));
-    end else
-      // Cell uses the shared formula
-      AppendToStream(AStream, Format(
-        '<c r="%s" s="%d"%s>' +
-          '<f t="shared" si="%d" />' +
-          '%s' +
-        '</c>', [
-        CellPosText, lStyleIndex, t,
-        {%H-}PtrInt(ACell^.SharedFormulaBase),   // ID of the shared formula
-        v
-      ]));
-  end else begin
-    // "normal" formula
-    AppendToStream(AStream, Format(
+  AppendToStream(AStream, Format(
       '<c r="%s" s="%d"%s>' +
         '<f>%s</f>' +
         '%s' +
@@ -3386,8 +3338,7 @@ begin
       CellPosText, lStyleIndex, t,
       PrepareFormula(ACell^.FormulaValue),
       v
-    ]));
-  end;
+  ]));
 end;
 
 {@@ ----------------------------------------------------------------------------

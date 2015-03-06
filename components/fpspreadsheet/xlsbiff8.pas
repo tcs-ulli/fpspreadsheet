@@ -355,8 +355,8 @@ const
      MASK_HLINK_ABSOLUTE                 = $00000002;
      MASK_HLINK_DESCRIPTION              = $00000014;
      MASK_HLINK_TEXTMARK                 = $00000008;
-     MASK_HLINK_TARGETFRAME              = $00000080;
-     MASK_HLINK_UNCPATH                  = $00000100;
+{%H-}MASK_HLINK_TARGETFRAME              = $00000080;
+{%H-}MASK_HLINK_UNCPATH                  = $00000100;
 
      SHAPEID_BASE = 1024;
 
@@ -1446,7 +1446,7 @@ begin
   col2 := WordLEToN(AStream.ReadWord);
 
   { GUID of standard link }
-  AStream.ReadBuffer(guid, SizeOf(guid));
+  AStream.ReadBuffer(guid{%H-}, SizeOf(guid));
 
   { unknown DWord }
   AStream.ReadDWord;
@@ -2648,7 +2648,7 @@ procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
 const
   MAX_PER_RECORD = 1026;
 var
-  n0, n, i: Integer;
+  n0, n: Integer;
   rng: PsCellRange;
   newRecord: Boolean;
 begin
@@ -2678,31 +2678,6 @@ begin
       n := Min(n0, MAX_PER_RECORD);
     end;
   end;
-      (*
-  while n0 > 0 do begin
-    n := Min(n0, MAX_PER_RECORD);
-    // at most 1026 merged ranges per BIFF record, the rest goes into a new record
-
-    { BIFF record header }
-    WriteBIFFHeader(AStream, INT_EXCEL_ID_MERGEDCELLS, 2 + n*8);
-
-    { Number of cell ranges in this record }
-    AStream.WriteWord(WordToLE(n));
-
-    { Loop for writing the merged cell ranges }
-    rng := PsCellRange(AWorksheet.MergedCells.GetFirst);
-    while (n > 0) do begin
-      AStream.WriteWord(WordToLE(rng^.Row1));
-      AStream.WriteWord(WordToLE(rng^.Row2));
-      AStream.WriteWord(WordToLE(rng^.Col1));
-      AStream.WriteWord(WordToLE(rng^.Col2));
-      dec(n);
-      rng := PsCellRange(AWorksheet.MergedCells.GetNext);
-    end;
-
-    dec(n0, MAX_PER_RECORD);
-  end;
-  *)
 end;
 
 {@@-----------------------------------------------------------------------------

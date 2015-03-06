@@ -313,7 +313,8 @@ type
       out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); virtual;
-    function ReadRPNTokenArray(AStream: TStream; ACell: PCell): Boolean;
+    function ReadRPNTokenArray(AStream: TStream; ACell: PCell;
+      ASharedFormulaBase: PCell = nil): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
     procedure ReadSharedFormula(AStream: TStream);
 
@@ -404,8 +405,10 @@ type
       const AFormula: TsRPNFormula; ACell: PCell); virtual;
     function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; virtual;
     procedure WriteRPNResult(AStream: TStream; ACell: PCell);
+    {
     procedure WriteRPNSharedFormulaLink(AStream: TStream; ACell: PCell;
       var RPNLength: Word); virtual;
+      }
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
       const AFormula: TsRPNFormula; UseRelAddr: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
@@ -413,10 +416,12 @@ type
     // Writes out a SELECTION record
     procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
+    (*
     // Writes out a shared formula
     procedure WriteSharedFormula(AStream: TStream; ACell: PCell); virtual;
     procedure WriteSharedFormulaRange(AStream: TStream;
       AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal); virtual;
+      *)
     procedure WriteSheetPR(AStream: TStream);
     procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
     // Writes cell content received by workbook in OnNeedCellData event
@@ -1591,7 +1596,7 @@ end;
   rpn formula, converts it to a string formula and stores it in the cell.
 -------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
-  ACell: PCell): Boolean;
+  ACell: PCell; ASharedFormulaBase: PCell = nil): Boolean;
 var
   n: Word;
   p0: Int64;
@@ -1607,7 +1612,8 @@ var
   funcCode: Word;
   b: Byte;
   found: Boolean;
-  formula: TsRPNformula;
+  rpnFormula: TsRPNformula;
+  strFormula: String;
 begin
   rpnItem := nil;
   n := ReadRPNTokenArraySize(AStream);
@@ -1652,16 +1658,16 @@ begin
           // For compatibility with other formats, convert offsets back to regular indexes.
           if (rfRelRow in flags)
             then r := LongInt(ACell^.Row) + dr
-            else r := LongInt(ACell^.SharedFormulaBase^.Row) + dr;
+            else r := LongInt(ASharedFormulaBase^.Row) + dr;
           if (rfRelRow2 in flags)
             then r2 := LongInt(ACell^.Row) + dr2
-            else r2 := LongInt(ACell^.SharedFormulaBase^.Row) + dr2;
+            else r2 := LongInt(ASharedFormulaBase^.Row) + dr2;
           if (rfRelCol in flags)
             then c := LongInt(ACell^.Col) + dc
-            else c := LongInt(ACell^.SharedFormulaBase^.Col) + dc;
+            else c := LongInt(ASharedFormulaBase^.Col) + dc;
           if (rfRelCol2 in flags)
             then c2 := LongInt(ACell^.Col) + dc2
-            else c2 := LongInt(ACell^.SharedFormulaBase^.Col) + dc2;
+            else c2 := LongInt(ASharedFormulaBase^.Col) + dc2;
           rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
         end;
       INT_EXCEL_TOKEN_TMISSARG:
@@ -1710,12 +1716,9 @@ begin
         end;
 
       INT_EXCEL_TOKEN_TEXP:
-        // Indicates that cell belongs to a shared or array formula. We determine
-        // the base cell of the shared formula and store it in the current cell.
-        begin
-           ReadRPNSharedFormulaBase(AStream, r, c);
-           ACell^.SharedFormulaBase := FWorksheet.FindCell(r, c);
-        end;
+        // Indicates that cell belongs to a shared or array formula.
+        // This information is not needed any more.
+        ReadRPNSharedFormulaBase(AStream, r, c);
 
       else
         found := false;
@@ -1734,11 +1737,16 @@ begin
     Result := false;
   end
   else begin
-    formula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
+    rpnFormula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
+    strFormula := FWorksheet.ConvertRPNFormulaToStringFormula(rpnFormula);
+    if strFormula <> '' then
+      ACell^.FormulaValue := strFormula;
+    {
     if (ACell^.SharedFormulaBase = nil) or (ACell = ACell^.SharedFormulaBase) then
       ACell^.FormulaValue := FWorksheet.ConvertRPNFormulaToStringFormula(formula)
     else
       ACell^.FormulaValue := '';
+      }
     Result := true;
   end;
 end;
@@ -1760,7 +1768,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadSharedFormula(AStream: TStream);
 var
-  r1, {%H-}r2, c1, {%H-}c2: Cardinal;
+  r, r1, r2, c, c1, c2: Cardinal;
   cell: PCell;
 begin
   // Cell range in which the formula is valid
@@ -1769,12 +1777,12 @@ begin
   c1 := AStream.ReadByte;         // 8 bit, even for BIFF8
   c2 := AStream.ReadByte;
 
-  { Create cell }
+  { Create cell - this is the "base" of the shared formula }
   if FIsVirtualMode then begin                 // "Virtual" cell
     InitCell(r1, c1, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(r1, c1);       // "Real" cell
+    cell := FWorksheet.GetCell(r1, c1);        // "Real" cell
 
   // Unused
   AStream.ReadByte;
@@ -1783,7 +1791,12 @@ begin
   AStream.ReadByte;
 
   // RPN formula tokens
-  ReadRPNTokenArray(AStream, cell);
+  ReadRPNTokenArray(AStream, cell, cell); //base);
+
+  // Copy shared formula to individual cells in the specified range
+  for r := r1 to r2 do
+    for c := c1 to c2 do
+      FWorksheet.CopyFormula(cell, r, c);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2534,8 +2547,12 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
+  if Length(AFormula) = 0 then
+    exit;
+  {
   if not ((Length(AFormula) > 0) or (ACell^.SharedFormulaBase <> nil)) then
     exit;
+   }
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
@@ -2560,18 +2577,19 @@ begin
   AStream.WriteDWord(0);
 
   { Formula data (RPN token array) }
+  {
   if ACell^.SharedFormulaBase <> nil then
     WriteRPNSharedFormulaLink(AStream, ACell, RPNLength)
   else
-    WriteRPNTokenArray(AStream, ACell, AFormula, false, RPNLength);
+  }
+  WriteRPNTokenArray(AStream, ACell, AFormula, false, RPNLength);
 
   { Write sizes in the end, after we known them }
   FinalPos := AStream.Position;
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(FinalPos - StartPos));
-//  AStream.WriteWord(WordToLE(22 + RPNLength));
   AStream.Position := FinalPos;
-
+  (*
   { If the cell is the first cell of a range with a shared formula write the
     shared formula RECORD here. The shared formula RECORD must follow the
     first FORMULA record referring to the shared formula}
@@ -2580,10 +2598,11 @@ begin
      (ACol = ACell^.SharedFormulaBase^.Col)
   then
     WriteSharedFormula(AStream, ACell^.SharedFormulaBase);
+  *)
 
   { Write following STRING record if formula result is a non-empty string. }
   if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
-    WriteStringRecord(AStream, ACell^.UTF8StringValue);
+    WriteSTRINGRecord(AStream, ACell^.UTF8StringValue);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2642,7 +2661,7 @@ begin
   { Write result of the formula, encoded above }
   AStream.WriteBuffer(Data, 8);
 end;
-
+                  (*
 {@@ ----------------------------------------------------------------------------
   Is called from WriteRPNFormula in the case that the cell uses a shared
   formula and writes the token "array" pointing to the shared formula base.
@@ -2669,6 +2688,7 @@ begin
   AStream.WriteBuffer(rec, SizeOf(rec));
   RPNLength := SizeOf(rec);
 end;
+                   *)
 
 {@@ ----------------------------------------------------------------------------
   Writes the token array of the given RPN formula and returns its size
@@ -3014,7 +3034,7 @@ begin
     end;
   end;
 end;
-
+                                (*
 {@@ ----------------------------------------------------------------------------
   Writes the token array of a shared formula stored in ACell.
   Note: Relative cell addresses of a shared formula are defined by
@@ -3083,7 +3103,7 @@ begin
   AStream.WriteByte(AFirstCol);
   // Index to last rcolumn
   AStream.WriteByte(ALastCol);
-end;
+end;                              *)
 
 {@@ ----------------------------------------------------------------------------
   Writes a SHEETPR Record.

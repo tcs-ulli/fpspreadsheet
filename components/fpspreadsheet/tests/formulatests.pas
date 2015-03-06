@@ -33,13 +33,17 @@ type
     // Test reconstruction of formula strings
     procedure Test_Write_Read_FormulaStrings(AFormat: TsSpreadsheetFormat;
       UseRPNFormula: Boolean);
+    {
     // Test reconstruction of shared formula strings
     procedure Test_Write_Read_SharedFormulaStrings(AFormat: TsSpreadsheetFormat);
     // Test calculation of formulas
+    }
     procedure Test_Write_Read_CalcFormulas(AFormat: TsSpreadsheetformat;
       UseRPNFormula: Boolean);
+    {
     // Test calculation of shared formulas
     procedure Test_Write_Read_CalcSharedFormulas(AFormat: TsSpreadsheetformat);
+    }
 
   published
     // Writes out formulas & reads them back.
@@ -54,6 +58,7 @@ type
     { ODS Tests }
     procedure Test_Write_Read_FormulaStrings_ODS;
 
+    (*
     // Writes out shared formulas & reads them back.
     { BIFF2 Tests }
     procedure Test_Write_Read_SharedFormulaStrings_BIFF2;
@@ -64,7 +69,7 @@ type
     { OOXML Tests }
     procedure Test_Write_Read_SharedFormulaStrings_OOXML;
     { ODS Tests }
-    procedure Test_Write_Read_SharedFormulaStrings_ODS;
+    procedure Test_Write_Read_SharedFormulaStrings_ODS; *)
 
     // Writes out and calculates rpn formulas, read back
     { BIFF2 Tests }
@@ -89,7 +94,7 @@ type
     procedure Test_Write_Read_CalcStringFormula_OOXML;
     { ODS Tests }
     procedure Test_Write_Read_CalcStringFormula_ODS;
-
+                                                          (*
     // Writes out and calculates shared formulas, read back
     { BIFF2 Tests }
     procedure Test_Write_Read_CalcSharedFormula_BIFF2;
@@ -100,7 +105,7 @@ type
     { OOXML Tests }
     procedure Test_Write_Read_CalcSharedFormula_OOXML;
     { ODS Tests }
-    procedure Test_Write_Read_CalcSharedFormula_ODS;
+    procedure Test_Write_Read_CalcSharedFormula_ODS;        *)
 
   end;
 
@@ -227,7 +232,7 @@ end;
 
 
 { Test writing and reading (i.e. reconstruction) of shared formula strings }
-
+                                                (*
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings(
   AFormat: TsSpreadsheetFormat);
 const
@@ -352,7 +357,7 @@ procedure TSpreadWriteReadFormulaTests.Test_Write_Read_SharedFormulaStrings_ODS;
 begin
   Test_Write_Read_SharedFormulaStrings(sfOpenDocument);
 end;
-
+                              *)
 { Test calculation of formulas }
 
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcFormulas(
@@ -550,6 +555,7 @@ end;
 //------------------------------------------------------------------------------
 //                   Calculation of shared formulas
 //------------------------------------------------------------------------------
+(*
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcSharedFormulas(
   AFormat: TsSpreadsheetFormat);
 const
@@ -707,7 +713,7 @@ procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcSharedFormula_ODS;
 begin
   Test_Write_Read_CalcSharedFormulas(sfOpenDocument);
 end;
-
+             *)
 
 initialization
   // Register so these tests are included in a full run

@@ -2692,12 +2692,14 @@ begin
     if ACell^.ContentType = cctError then
       AStrings.Add(Format('ErrorValue=%s', [GetEnumName(TypeInfo(TsErrorValue), ord(ACell^.ErrorValue))]));
     AStrings.Add(Format('FormulaValue=%s', [Worksheet.ReadFormulaAsString(ACell, true)]));
+    {
     if ACell^.SharedFormulaBase = nil then
       AStrings.Add('SharedFormulaBase=')
     else
       AStrings.Add(Format('SharedFormulaBase=%s', [GetCellString(
         ACell^.SharedFormulaBase^.Row, ACell^.SharedFormulaBase^.Col)
       ]));
+      }
     if (cfHyperlink in ACell^.Flags) then
     begin
       hyperlink := Worksheet.FindHyperlink(ACell);
