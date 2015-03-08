@@ -1526,7 +1526,8 @@ begin
 
       // An absolute path must be a fully qualified URI to be compatible with fps
       if flags and MASK_HLINK_ABSOLUTE <> 0 then
-        link := 'file:///' + link;
+        FilenameToURI(link);
+//        link := 'file:///' + link;
     end;
   end;
 
