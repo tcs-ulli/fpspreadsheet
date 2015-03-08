@@ -1,11 +1,12 @@
+{ Comment tests
+  These unit tests are writing out to and reading back from file.
+}
+
 unit commenttests;
 
 {$mode objfpc}{$H+}
 
 interface
-{ Color tests
-This unit tests writing out to and reading back from files.
-}
 
 uses
   // Not using Lazarus package as the user may be working with multiple versions

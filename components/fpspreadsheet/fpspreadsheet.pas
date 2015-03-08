@@ -593,8 +593,6 @@ type
 
     class function GetFormatFromFileHeader(const AFileName: TFileName;
       out SheetType: TsSpreadsheetFormat): Boolean;
-    class function GetFormatFromFileName(const AFileName: TFileName;
-      out SheetType: TsSpreadsheetFormat): Boolean;
     function CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
     function CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsBasicSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
@@ -781,7 +779,7 @@ procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 implementation
 
 uses
-  Math, StrUtils, TypInfo, lazutf8, URIParser,
+  Math, StrUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsPatches, fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormat, fpsNumFormatParser;
@@ -1464,13 +1462,14 @@ end;
   Checks whether the passed string represents a valid hyperlink target
 
   @param   AValue  String to be checked. Must be either a fully qualified URI,
-                   or a # followed by a cell address in the current workbook
+                   a local relative (!) file name, or a # followed by a cell
+                   address in the current workbook
   @param   AErrMsg Error message in case that the string is not correct.
   @returns TRUE if the string is correct, FALSE otherwise
 -------------------------------------------------------------------------------}
 function TsWorksheet.ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
 var
-  uri: TUri;
+  u: TUri;
   sheet: TsWorksheet;
   r, c: Cardinal;
 begin
@@ -1491,11 +1490,23 @@ begin
     end;
   end else
   begin
-    uri := ParseURI(AValue);
-    if SameText(uri.Protocol, 'mailto') then
+    u := ParseURI(AValue);
+    if SameText(u.Protocol, 'mailto') then
     begin
       Result := true;   // To do: Check email address here...
       exit;
+    end else
+    if SameText(u.Protocol, 'file') then
+    begin
+      if FilenameIsAbsolute(u.Path + u.Document) then
+      begin
+        Result := true;
+        exit;
+      end else
+      begin
+        AErrMsg := Format(rsLocalfileHyperlinkAbs, [AValue]);
+        exit;
+      end;
     end else
     begin
       Result := true;
@@ -1530,8 +1541,9 @@ end;
   @param  ACell         Pointer to the cell considered
   @param  ATarget       Hyperlink address given as a fully qualitifed URI for
                         external links, or as a # followed by a cell address
-                        for internal links. An existing hyperlink is removed if
-                        ATarget is empty.
+                        for internal links. Local files can be specified also
+                        by their name relative to the workbook.
+                        An existing hyperlink is removed if ATarget is empty.
   @param  ATooltip      Text for popup tooltip hint used by Excel
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
@@ -1539,7 +1551,7 @@ procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
 var
   hyperlink: PsHyperlink;
   fmt: TsCellFormat;
-  fn: String;
+  target, bm, fn, displayTxt: String;
 begin
   if ACell = nil then
     exit;
@@ -1554,11 +1566,15 @@ begin
 
   if ACell^.ContentType = cctEmpty then
   begin
+    SplitHyperlink(ATarget, target, bm);
+    displayTxt := ATarget;
+    if pos('file:', lowercase(displayTxt))=1 then
+    begin
+      Delete(displayTxt, 1, Length('file:///'));
+      if bm <> '' then displayTxt := fn + '#' + bm;
+    end;
     ACell^.ContentType := cctUTF8String;
-    if (hyperlink^.Target[1] <> '#') and UriToFileName(hyperlink^.Target, fn) then
-      ACell^.UTF8StringValue := fn
-    else
-      ACell^.UTF8StringValue := hyperlink^.Target;
+    ACell^.UTF8StringValue := displayTxt;
   end;
 
   fmt := ReadCellFormat(ACell);
@@ -3622,6 +3638,8 @@ begin
   begin
     hyperlink := ReadHyperlink(ACell);
     AText := hyperlink.Target;
+    if pos('file:', hyperlink.Target)=1 then
+      Delete(AText, 1, Length('file:///'));
   end;
 
   if (AText = '') then
@@ -6236,30 +6254,6 @@ begin
   finally
     stream.Free;
   end;
-end;
-
-
-{@@ ----------------------------------------------------------------------------
-  Helper method for determining the spreadsheet type from the file type extension
-
-  @param   AFileName   Name of the file to be considered
-  @param   SheetType   File format found from analysis of the extension (output)
-  @return  True if the file matches any of the known formats, false otherwise
--------------------------------------------------------------------------------}
-class function TsWorkbook.GetFormatFromFileName(const AFileName: TFileName;
-  out SheetType: TsSpreadsheetFormat): Boolean;
-var
-  suffix: String;
-begin
-  Result := True;
-  suffix := Lowercase(ExtractFileExt(AFileName));
-  if suffix = STR_EXCEL_EXTENSION then SheetType := sfExcel8
-  else if suffix = STR_OOXML_EXCEL_EXTENSION then SheetType := sfOOXML
-  else if suffix = STR_OPENDOCUMENT_CALC_EXTENSION then SheetType := sfOpenDocument
-  else if suffix = STR_COMMA_SEPARATED_EXTENSION then SheetType := sfCSV
-  else if suffix = STR_WIKITABLE_PIPES then SheetType := sfWikiTable_Pipes
-  else if suffix = STR_WIKITABLE_WIKIMEDIA then SheetType := sfWikiTable_WikiMedia
-  else Result := False;
 end;
 
 {@@ ----------------------------------------------------------------------------

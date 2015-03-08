@@ -119,9 +119,6 @@ type
   { TsSpreadBIFF8Writer }
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
-  private
-    procedure WriteHyperlinksCallback(AHyperlink: PsHyperlink; AStream: TStream);
-
   protected
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -261,7 +258,7 @@ var
 implementation
 
 uses
-  Math, lconvencoding, URIParser,
+  Math, lconvencoding, LazFileUtils, URIParser,
   fpsStrings, fpsStreams, fpsReaderWriter, fpsExprParser, xlsEscher;
 
 const
@@ -1496,12 +1493,12 @@ begin
       SetLength(ansiStr, len);
       AStream.ReadBuffer(ansiStr[1], len*SizeOf(ansiChar));
       SetLength(ansistr, len-1);  // Remove trailing zero
-      linkDos := AnsiToUTF8(ansiStr);
       while dirUpCount > 0 do
       begin
-        linkDos := '..\' + linkDos;
+        ansistr := '..' + PathDelim + ansistr;
         dec(dirUpCount);
       end;
+      linkDos := AnsiToUTF8(ansiStr);
       // 6 unknown DWord values
       AStream.ReadDWord;
       AStream.ReadDWord;
@@ -1523,11 +1520,13 @@ begin
         // no Unicode string header, always 16-bit characters, not zero-terminated
         SetLength(wideStr, len);
         AStream.ReadBuffer(wideStr[1], size);
-        SetLength(link, size);
-        len := System.UnicodeToUTF8(PChar(link), PWideChar(widestr), size);
-        SetLength(link, len);
+        link := UTF8Encode(wideStr);
       end else
         link := linkDos;
+
+      // An absolute path must be a fully qualified URI to be compatible with fps
+      if flags and MASK_HLINK_ABSOLUTE <> 0 then
+        link := 'file:///' + link;
     end;
   end;
 
@@ -2395,8 +2394,10 @@ var
   flags: DWord;
   size: Integer;
   cell: PCell;
-  isInternal: Boolean;
   target, bookmark: String;
+  u: TUri;
+  isInternal: Boolean;
+  dirUpCounter: Integer;
 begin
   cell := AWorksheet.FindCell(AHyperlink^.Row, AHyperlink^.Col);
   if (cell = nil) or (AHyperlink^.Target='') then
@@ -2404,7 +2405,17 @@ begin
 
   descr := AWorksheet.ReadAsUTF8Text(cell);      // Hyperlink description
   SplitHyperlink(AHyperlink^.Target, target, bookmark);
-  isInternal := (target = '');
+  u := ParseURI(AHyperlink^.Target);
+  isInternal := (target = '') and (bookmark <> '');
+  fn := '';        // Name of local file
+  if target <> '' then
+  begin
+    if (u.Protocol='') then
+      fn := target
+    else
+      UriToFileName(target, fn);
+    ForcePathDelims(fn);
+  end;
 
   // Since the length of the record is not known in the first place we write
   // the data to a temporary stream at first.
@@ -2428,7 +2439,9 @@ begin
     if isInternal then
       flags := MASK_HLINK_TEXTMARK or MASK_HLINK_DESCRIPTION
     else
-      flags := MASK_HLINK_LINK or MASK_HLINK_ABSOLUTE;
+      flags := MASK_HLINK_LINK;
+    if SameText(u.Protocol, 'file') then
+      flags := flags or MASK_HLINK_ABSOLUTE;
     if descr <> AHyperlink^.Target then
       flags := flags or MASK_HLINK_DESCRIPTION;  // has description
     if bookmark <> '' then
@@ -2447,16 +2460,22 @@ begin
 
     if target <> '' then
     begin
-      if URIToFilename(target, fn) then  // URI is a local file
+      if (fn <> '') then  // URI is a local file
       begin
        { GUID of file moniker }
         guid := StringToGuid('{00000303-0000-0000-C000-000000000046}');
         temp.WriteBuffer(guid, SizeOf(guid));
-        { Directory-up level counter - we only use absolute paths. }
-        temp.WriteWord(WordToLE(0));
-        { Convert to DOS 8.3 format }
-        ansistr := UTF8ToAnsi(fn);   // Don't use FCodePage here - this is utf8 in case of BIFF8, but we need at true ansi string
-        //GetShortName(ansistr);
+        { Convert to ansi - should be DOS 8.3, but this is not necessary }
+        ansistr := UTF8ToAnsi(fn);
+        { Directory-up level counter  }
+        dirUpCounter := 0;
+        if not FileNameIsAbsolute(ansistr) then
+          while (pos ('..' + PathDelim, ansistr) = 1) do
+          begin
+            inc(dirUpCounter);
+            Delete(ansistr, 1, Length('..'+PathDelim));
+          end;
+        temp.WriteWord(WordToLE(dirUpCounter));
         { Character count of file name incl trailing zero }
         temp.WriteDWord(DWordToLe(Length(ansistr)+1));
         { Character array of file name (8-bit characters), plus trailing zero }
@@ -2525,24 +2544,13 @@ procedure TsSpreadBIFF8Writer.WriteHyperlinks(AStream: TStream;
 var
   hyperlink: PsHyperlink;
 begin
-  for hyperlink in AWorksheet.Hyperlinks do
+  for hyperlink in AWorksheet.Hyperlinks do begin
+    { Write HYPERLINK record }
     WriteHyperlink(AStream, hyperlink, AWorksheet);
-//  IterateThroughHyperlinks(AStream, AWorksheet.Hyperlinks, WriteHyperlinksCallback);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Callback procedure called for each hyperlink of the current worksheet when
-  all hyperlinks are written out
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteHyperlinksCallback(AHyperlink: PsHyperlink;
-  AStream: TStream);
-begin
-  { Write HYPERLINK record }
-  WriteHyperlink(AStream, AHyperlink, FWorksheet);
-
-  { Write HYPERLINK TOOLTIP record }
-  if AHyperlink^.Tooltip <> '' then
-    WriteHyperlinkTooltip(AStream, AHyperlink^.Row, AHyperlink^.Col, AHyperlink^.Tooltip);
+    { Write HYPERLINK TOOLTIP record }
+    if hyperlink^.Tooltip <> '' then
+      WriteHyperlinkTooltip(AStream, hyperlink^.Row, hyperlink^.Col, hyperlink^.Tooltip);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

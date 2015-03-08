@@ -23,7 +23,7 @@ AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon
 unit fpsopendocument;
 
 {$ifdef fpc}
-  {$mode delphi}{$H+}
+  {$mode objfpc}{$H+}
 {$endif}
 
 {.$define FPSPREADDEBUG} //used to be XLSDEBUG
@@ -205,7 +205,7 @@ type
 implementation
 
 uses
-  StrUtils, Variants, URIParser,
+  StrUtils, Variants, LazFileUtils, URIParser,
   fpsPatches, fpsStrings, fpsStreams, fpsExprParser;
 
 const
@@ -383,7 +383,7 @@ function TsSpreadOpenDocNumFormatParser.BuildDateTimeXMLAsString(ASection: Integ
 var
   el: Integer;
   s: String;
-  prevToken: TsNumFormatToken;
+  prevTok: TsNumFormatToken;
 begin
   Result := '';
   AIsTimeOnly := true;
@@ -396,7 +396,7 @@ begin
       case Elements[el].Token of
         nftYear:
           begin
-            prevToken := Elements[el].Token;
+            prevTok := Elements[el].Token;
             AIsTimeOnly := false;
             s := IfThen(Elements[el].IntValue > 2, 'number:style="long" ', '');
             Result := Result +
@@ -405,7 +405,7 @@ begin
 
         nftMonth:
           begin
-            prevToken := Elements[el].Token;
+            prevTok := Elements[el].Token;
             AIsTimeOnly := false;
             case Elements[el].IntValue of
               1: s := '';
@@ -419,7 +419,7 @@ begin
 
         nftDay:
           begin
-            prevToken := Elements[el].Token;
+            prevTok := Elements[el].Token;
             AIsTimeOnly := false;
             case Elements[el].IntValue of
               1: s := 'day ';
@@ -433,7 +433,7 @@ begin
 
         nftHour, nftMinute, nftSecond:
           begin
-            prevToken := Elements[el].Token;
+            prevTok := Elements[el].Token;
             case Elements[el].Token of
               nftHour  : s := 'hours ';
               nftMinute: s := 'minutes ';
@@ -460,7 +460,7 @@ begin
               s := Elements[el].TextValue;
               if (s = '/') then
               begin
-                if prevToken in [nftYear, nftMonth, nftDay] then
+                if prevTok in [nftYear, nftMonth, nftDay] then
                   s := FWorkbook.FormatSettings.DateSeparator
                 else
                   s := FWorkbook.FormatSettings.TimeSeparator;
@@ -1461,52 +1461,51 @@ var
   styleName: String;
   childnode: TDOMNode;
   subnode: TDOMNode;
-  spanNode: TDOMNode;
   nodeName: String;
   s: String;
   cell: PCell;
   hyperlink: string;
+
+  procedure AddToCellText(AText: String);
+  begin
+    if cellText = ''
+       then cellText := AText
+       else cellText := cellText + AText;
+  end;
+
 begin
   { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
     catch the spaces inserted in formatting texts. However, this adds lots of
     garbage into the cellText if is is read by means of above statement. Done
     like below is much better: }
   cellText := '';
+  hyperlink := '';
   childnode := ACellNode.FirstChild;
   while Assigned(childnode) do
   begin
     nodeName := childNode.NodeName;
-    hyperlink := '';
     if nodeName = 'text:p' then begin
+      // Each 'text:p' node is a paragraph --> we insert a line break after the first paragraph
+      if cellText <> '' then
+        cellText := cellText + LineEnding;
       subnode := childnode.FirstChild;
       while Assigned(subnode) do
       begin
         nodename := subnode.NodeName;
-        if nodename = 'text:a' then begin
-          s := GetAttrValue(subnode, 'xlink:type');
-          if s = 'simple' then
-            hyperlink := GetAttrValue(subnode, 'xlink:href');
+        case nodename of
+          '#text' :
+            AddToCellText(subnode.TextContent);
+          'text:a':     // "hyperlink anchor"
+            begin
+              hyperlink := GetAttrValue(subnode, 'xlink:href');
+              AddToCellText(subnode.TextContent);
+            end;
+          'text:span':
+            AddToCellText(subnode.TextContent);
         end;
         subnode := subnode.NextSibling;
       end;
-
-      s := childNode.TextContent;
-      if s <> '' then
-      begin
-        if cellText = '' then cellText := s else cellText := cellText + LineEnding + s;
-      end;
-      spanNode := childNode.FirstChild;
-      while spanNode <> nil do begin
-        nodeName := spanNode.NodeName;
-        if nodeName = 'text:span' then
-        begin
-          s := spanNode.TextContent;
-          if cellText = '' then cellText := s else cellText := cellText + ' ' + s;
-        end;
-        spanNode := spanNode.NextSibling;
-      end;
     end;
-
     childnode := childnode.NextSibling;
   end;
 
@@ -1519,7 +1518,14 @@ begin
 
   FWorkSheet.WriteUTF8Text(cell, cellText);
   if hyperlink <> '' then
+  begin
+    // ODS sees relative paths relative to the internal own file structure
+    // --> we must remove 1 level-up to be at the same level where fps expects
+    // the file.
+    if pos('../', hyperlink) = 1 then
+      Delete(hyperlink, 1, Length('../'));
     FWorksheet.WriteHyperlink(cell, hyperlink);
+  end;
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -4153,7 +4159,7 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
   txt: ansistring;
-  textp, target, comment: String;
+  textp, target, bookmark, comment: String;
   fmt: TsCellFormat;
   hyperlink: PsHyperlink;
   u: TUri;
@@ -4191,6 +4197,30 @@ begin
   if FWorksheet.HasHyperlink(ACell) then
   begin
     hyperlink := FWorksheet.FindHyperlink(ACell);
+    SplitHyperlink(hyperlink^.Target, target, bookmark);
+
+    if (target = '') and (bookmark <> '') then
+      target := '#' + bookmark
+    else
+    if (pos('file:', target) = 0) then
+    begin
+      u := ParseURI(target);
+      if u.Protocol = '' then
+        target := '../' + target;
+    end;
+
+
+        {
+    u := ParseURI(hyperlink^.Target);
+    if u.Protocol = '' then  // relative file name, or internal link
+    begin
+      if target <> '' then target := '../' + target;
+      if bookmark <> '' then target := target + '#' + bookmark;
+    end else
+      target := hyperlink^.Target;
+      }
+    ValidXMLText(target);
+    {
     target := hyperlink^.Target;
     if target[1] <> '#' then
     begin
@@ -4202,6 +4232,7 @@ begin
 //        if not IsAbsoluteURI(target) then target := '..\' + target;
       end;
     end;
+    }
     textp := Format(
       '<text:p>'+
         '<text:a xlink:href="%s" xlink:type="simple">%s</text:a>'+

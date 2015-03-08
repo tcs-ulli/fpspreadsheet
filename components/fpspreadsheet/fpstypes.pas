@@ -29,9 +29,9 @@ const
   {@@ Default extension of <b>comma-separated-values</b> file }
   STR_COMMA_SEPARATED_EXTENSION = '.csv';
   {@@ Default extension of <b>wikitable files</b> in <b>pipes</b> format}
-  STR_WIKITABLE_PIPES = '.wikitable_pipes';
+  STR_WIKITABLE_PIPES_EXTENSION = '.wikitable_pipes';
   {@@ Default extension of <b>wikitable files</b> in <b>wikimedia</b> format }
-  STR_WIKITABLE_WIKIMEDIA = '.wikitable_wikimedia';
+  STR_WIKITABLE_WIKIMEDIA_EXTENSION = '.wikitable_wikimedia';
 
   {@@ Maximum count of worksheet columns}
   MAX_COL_COUNT = 65535;
