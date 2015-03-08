@@ -12,7 +12,8 @@ uses
   manualtests, testsutility, internaltests, formattests, colortests, fonttests,
   optiontests, numformatparsertests, formulatests, rpnFormulaUnit,
   emptycelltests, errortests, virtualmodetests, insertdeletetests,
-  celltypetests, sortingtests, copytests, commenttests, enumeratortests;
+  celltypetests, sortingtests, copytests, commenttests, enumeratortests,
+  hyperlinktests;
 
 begin
  {$IFDEF HEAPTRC}

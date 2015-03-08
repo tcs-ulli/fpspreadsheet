@@ -88,6 +88,9 @@ function GetCellRangeString(ARange: TsCellRange;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
+function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
+function GetFormatFromFileName(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
@@ -863,6 +866,52 @@ begin
     sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
     sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
     else                    Result := rsUnknownSpreadsheetFormat;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the default extension of each spreadsheet file format
+
+  @param  AFormat  Identifier of the file format
+  @retur  File extension
+-------------------------------------------------------------------------------}
+function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
+begin
+  case AFormat of
+    sfExcel2,
+    sfExcel5,
+    sfExcel8              : Result := STR_EXCEL_EXTENSION;
+    sfOOXML               : Result := STR_OOXML_EXCEL_EXTENSION;
+    sfOpenDocument        : Result := STR_OPENDOCUMENT_CALC_EXTENSION;
+    sfCSV                 : Result := STR_COMMA_SEPARATED_EXTENSION;
+    sfWikiTable_Pipes     : Result := STR_WIKITABLE_PIPES_EXTENSION;
+    sfWikiTable_WikiMedia : Result := STR_WIKITABLE_WIKIMEDIA_EXTENSION;
+    else                    raise Exception.Create(rsUnknownSpreadsheetFormat);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the spreadsheet type from the file type extension
+
+  @param   AFileName   Name of the file to be considered
+  @param   SheetType   File format found from analysis of the extension (output)
+  @return  True if the file matches any of the known formats, false otherwise
+-------------------------------------------------------------------------------}
+function GetFormatFromFileName(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean;
+var
+  suffix: String;
+begin
+  Result := true;
+  suffix := Lowercase(ExtractFileExt(AFileName));
+  case suffix of
+    STR_EXCEL_EXTENSION               : SheetType := sfExcel8;
+    STR_OOXML_EXCEL_EXTENSION         : SheetType := sfOOXML;
+    STR_OPENDOCUMENT_CALC_EXTENSION   : SheetType := sfOpenDocument;
+    STR_COMMA_SEPARATED_EXTENSION     : SheetType := sfCSV;
+    STR_WIKITABLE_PIPES_EXTENSION     : SheetType := sfWikiTable_Pipes;
+    STR_WIKITABLE_WIKIMEDIA_EXTENSION : SheetType := sfWikiTable_WikiMedia;
+    else                                Result := False;
   end;
 end;
 

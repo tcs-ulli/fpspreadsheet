@@ -109,10 +109,6 @@ type
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
     FNext_rId: Integer;
-    {
-    procedure WriteCommentsCallback(AComment: PsComment;
-      ACommentIndex: Integer; AStream: TStream);
-      }
     procedure WriteVmlDrawingsCallback(AComment: PsComment;
       ACommentIndex: Integer; AStream: TStream);
 
@@ -209,7 +205,7 @@ var
 implementation
 
 uses
-  variants, fileutil, strutils, math, lazutf8,
+  variants, fileutil, strutils, math, lazutf8, uriparser,
   {%H-}fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser;
 
 const
@@ -2281,13 +2277,16 @@ begin
       s := Format('%s r:id="rId%d"', [s, FNext_rId]);
       inc(FNext_rId);
     end;
-    if target = '' then
+    if bookmark <> '' then //target = '' then
       s := Format('%s location="%s"', [s, bookmark]);
     txt := AWorksheet.ReadAsUTF8Text(hyperlink^.Row, hyperlink^.Col);
     if (txt <> '') and (txt <> hyperlink^.Target) then
       s := Format('%s display="%s"', [s, txt]);
-    if hyperlink^.ToolTip <> '' then
-      s := Format('%s tooltip="%s"', [s, hyperlink^.Tooltip]);
+    if hyperlink^.ToolTip <> '' then begin
+      txt := hyperlink^.Tooltip;
+      ValidXMLText(txt);
+      s := Format('%s tooltip="%s"', [s, txt]);
+    end;
     AppendToStream(AStream,
         '<hyperlink ' + s + ' />');
     AVLNode := AWorksheet.Hyperlinks.FindSuccessor(AVLNode);
@@ -2767,6 +2766,7 @@ var
   AVLNode: TAVLTreeNode;
   hyperlink: PsHyperlink;
   s: String;
+  target, bookmark: String;
 begin
   // Extend stream array
   SetLength(FSSheetRels, FCurSheetNum + 1);
@@ -2808,10 +2808,13 @@ begin
     while Assigned(AVLNode) do
     begin
       hyperlink := PsHyperlink(AVLNode.Data);
-      if hyperlink^.Target <> '' then
+      SplitHyperlink(hyperlink^.Target, target, bookmark);
+      if target <> '' then
       begin
+        if (pos('file:', target) = 0) and FileNameIsAbsolute(target) then
+          target := 'file:///' + target;
         s := Format('Id="rId%d" Type="%s" Target="%s" TargetMode="External"',
-          [FNext_rId, SCHEMAS_HYPERLINKS, hyperlink^.Target]);
+          [FNext_rId, SCHEMAS_HYPERLINKS, target]);
         AppendToStream(FSSheetRels[FCurSheetNum],
           '<Relationship ' + s + ' />');
         inc(FNext_rId);

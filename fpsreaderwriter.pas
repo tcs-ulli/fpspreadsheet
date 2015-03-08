@@ -123,15 +123,8 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
+
     { General writing methods }
-    {
-    procedure IterateThroughCells(AStream: TStream; ACells: TsCells;
-      ACallback: TCellsCallback);
-    procedure IterateThroughComments(AStream: TStream; AComments: TsComments;
-      ACallback: TCommentsCallback);
-    procedure IterateThroughHyperlinks(AStream: TStream; AHyperlinks: TsHyperlinks;
-      ACallback: THyperlinksCallback);
-      }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
     procedure WriteToStream(AStream: TStream); override;

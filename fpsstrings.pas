@@ -51,13 +51,15 @@ resourcestring
   rsInvalidCharacterInCell = 'Invalid character(s) in cell %s.';
   rsInvalidCharacterInCellComment = 'Invalid character(s) in cell comment "%s".';
   rsUTF8TextExpectedButANSIFoundInCell = 'Expected UTF8 text but probably ANSI '+
-      'text found in cell %s.';
+    'text found in cell %s.';
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
 
   rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
   rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';
+  rsLocalFileHyperlinkAbs = 'The hyperlink "%s" points to a local file. ' +
+    'In case of an absolute path the protocol "file:" must be specified.';
   rsEmptyHyperlink = 'The hyperlink is not specified.';
   rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks for text cells only.';
   rsStdHyperlinkTooltip = 'Press the left mouse button a bit longer to activate the hyperlink.';
