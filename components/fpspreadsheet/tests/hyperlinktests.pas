@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  lazfileutils, fpsutils;
+  uriparser, lazfileutils, fpsutils;
 
 const
   HyperlinkSheet = 'Hyperlinks';
@@ -127,12 +127,15 @@ var
 procedure TSpreadWriteReadHyperlinkTests.SetUp;
 var
   i: Integer;
+  fn: String;
 begin
   inherited SetUp;
   for i:=Low(SollLinks) to High(SollLinks) do
     if SollLinks[i] = 'file:///' then
     begin
-      SollLinks[i] := 'file:///' + ExpandFileName('testbiff8_1899.xls');
+      fn := ExpandFileName('testbiff8_1899.xls');
+      FilenameToURI(fn);
+      SollLinks[i] := fn;
       exit;
     end;
 end;

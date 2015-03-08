@@ -1570,7 +1570,8 @@ begin
     displayTxt := ATarget;
     if pos('file:', lowercase(displayTxt))=1 then
     begin
-      Delete(displayTxt, 1, Length('file:///'));
+      URIToFilename(displayTxt, displayTxt);
+//      Delete(displayTxt, 1, Length('file:///'));
       ForcePathDelims(displayTxt);
       if bm <> '' then displayTxt := fn + '#' + bm;
     end;
@@ -3641,7 +3642,8 @@ begin
     AText := hyperlink.Target;
     if pos('file:', hyperlink.Target)=1 then
     begin
-      Delete(AText, 1, Length('file:///'));
+      URIToFileName(AText, AText);
+//      Delete(AText, 1, Length('file:///'));
       ForcePathDelims(AText);
     end;
   end;

@@ -2812,7 +2812,8 @@ begin
       if target <> '' then
       begin
         if (pos('file:', target) = 0) and FileNameIsAbsolute(target) then
-          target := 'file:///' + target;
+          FileNameToURI(target);
+//          target := 'file:///' + target;
         s := Format('Id="rId%d" Type="%s" Target="%s" TargetMode="External"',
           [FNext_rId, SCHEMAS_HYPERLINKS, target]);
         AppendToStream(FSSheetRels[FCurSheetNum],
