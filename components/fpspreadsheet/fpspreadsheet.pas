@@ -1571,6 +1571,7 @@ begin
     if pos('file:', lowercase(displayTxt))=1 then
     begin
       Delete(displayTxt, 1, Length('file:///'));
+      ForcePathDelims(displayTxt);
       if bm <> '' then displayTxt := fn + '#' + bm;
     end;
     ACell^.ContentType := cctUTF8String;
@@ -3639,7 +3640,10 @@ begin
     hyperlink := ReadHyperlink(ACell);
     AText := hyperlink.Target;
     if pos('file:', hyperlink.Target)=1 then
+    begin
       Delete(AText, 1, Length('file:///'));
+      ForcePathDelims(AText);
+    end;
   end;
 
   if (AText = '') then

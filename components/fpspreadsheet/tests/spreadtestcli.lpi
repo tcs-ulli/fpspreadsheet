@@ -69,7 +69,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="23">
+    <Units Count="24">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -162,8 +162,12 @@
       <Unit22>
         <Filename Value="enumeratortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="enumeratortests"/>
       </Unit22>
+      <Unit23>
+        <Filename Value="hyperlinktests.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="hyperlinktests"/>
+      </Unit23>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
