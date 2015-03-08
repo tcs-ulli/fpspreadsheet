@@ -1477,9 +1477,7 @@ begin
       // Character array of URL (16-bit-characters, with trailing zero word)
       SetLength(wideStr, len);
       AStream.ReadBuffer(wideStr[1], size);
-      SetLength(link, size);
-      len := System.UnicodeToUTF8(PChar(link), PWideChar(wideStr), size);
-      SetLength(link, len);
+      link := UTF8Encode(widestr);
     end else
     // Check for local file
     if GuidToString(guid) = '{00000303-0000-0000-C000-000000000046}' then
@@ -1527,7 +1525,6 @@ begin
       // An absolute path must be a fully qualified URI to be compatible with fps
       if flags and MASK_HLINK_ABSOLUTE <> 0 then
         FilenameToURI(link);
-//        link := 'file:///' + link;
     end;
   end;
 
