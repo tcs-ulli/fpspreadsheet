@@ -4163,6 +4163,7 @@ var
   fmt: TsCellFormat;
   hyperlink: PsHyperlink;
   u: TUri;
+  i: Integer;
 begin
   Unused(ARow, ACol);
 
@@ -4199,16 +4200,23 @@ begin
     hyperlink := FWorksheet.FindHyperlink(ACell);
     SplitHyperlink(hyperlink^.Target, target, bookmark);
 
+    {
     if (target = '') and (bookmark <> '') then
       target := '#' + bookmark
     else
-    if (pos('file:', target) = 0) then
+    }
+    if (target <> '') and (pos('file:', target) = 0) then
     begin
       u := ParseURI(target);
       if u.Protocol = '' then
         target := '../' + target;
     end;
 
+    // ods absolutely wants "/" path delimiters in the file uri!
+    FixHyperlinkPathdelims(target);
+
+    if (bookmark <> '') then
+      target := target + '#' + bookmark;
 
         {
     u := ParseURI(hyperlink^.Target);
@@ -4219,7 +4227,7 @@ begin
     end else
       target := hyperlink^.Target;
       }
-    ValidXMLText(target);
+    //ValidXMLText(target);
     {
     target := hyperlink^.Target;
     if target[1] <> '#' then

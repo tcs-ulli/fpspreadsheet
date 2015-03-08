@@ -150,6 +150,7 @@ function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
   ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
 
 procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
+procedure FixHyperlinkPathDelims(var ATarget: String);
 
 procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
@@ -2102,6 +2103,18 @@ begin
     ATarget := Copy(AValue, 1, p-1);
     ABookmark := Copy(AValue, p+1, Length(AValue));
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Replaces backslashes by forward slashes in hyperlink path names
+-------------------------------------------------------------------------------}
+procedure FixHyperlinkPathDelims(var ATarget: String);
+var
+  i: Integer;
+begin
+  if pos('file:', ATarget) = 1 then
+    for i:=1 to Length(ATarget) do
+      if ATarget[i] = '\' then ATarget[i] := '/';
 end;
 
 {@@ ----------------------------------------------------------------------------

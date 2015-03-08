@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  fpsutils;
+  lazfileutils, fpsutils;
 
 const
   HyperlinkSheet = 'Hyperlinks';
@@ -104,7 +104,7 @@ var
   SollLinks: array[0..5] of String = (
     'http://wiki.lazarus.freepascal.org/Lazarus_Documentation',
     'http://wiki.lazarus.freepascal.org/Lazarus_Documentation#The_Lazarus_User_Guides',
-    'file:///',   // file link: path of this program will be added
+    'file:///',   // file link: path of test file will be added
     'testbiff8_1899.xls',
     'testbiff8_1899.xls#Texts!A2',
     '#A10'
@@ -174,7 +174,7 @@ begin
 
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
     // To see the file also in the test folder uncomment the next line
-    MyWorkBook.WriteToFile(Format('hyperlink_Test_%d_%d%s', [ATestMode, AToolTipMode, GetFileFormatExt(AFormat)]), AFormat, true);
+    // MyWorkBook.WriteToFile(Format('hyperlink_Test_%d_%d%s', [ATestMode, AToolTipMode, GetFileFormatExt(AFormat)]), AFormat, true);
 
   finally
     MyWorkbook.Free;
@@ -201,6 +201,9 @@ begin
 
       actual := hyperlink.Target;
       expected := SollLinks[ATestMode];
+      // Make sure that the same path delimiter is used in the comparison (fps accepts both)
+      FixHyperlinkPathDelims(actual);
+      FixHyperlinkPathDelims(expected);
       CheckEquals(expected, actual,
         'Test saved hyperlink target, cell '+CellNotation(MyWorksheet, row, col));
 
@@ -209,8 +212,10 @@ begin
         // an originally blank cell shows the hyperlink.Target. But Worksheet.WriteHyperlink
         // removes the "file:///" protocol
         expected := hyperlink.Target;
-        if pos('file:', SollLinks[ATestMode])=1 then
+        if pos('file:', SollLinks[ATestMode])=1 then begin
           Delete(expected, 1, Length('file:///'));
+          ForcePathDelims(expected);
+        end;
       end else
         expected := SollCellContent[row];
       CheckEquals(expected, actual,
