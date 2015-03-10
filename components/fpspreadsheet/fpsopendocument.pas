@@ -96,7 +96,7 @@ type
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
-    function ReadFont(ANode: TDOMnode; IsDefaultFont: Boolean): Integer;
+    function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
 
@@ -1183,9 +1183,11 @@ end;
 
 { Reads font data from an xml node, adds the font to the workbooks FontList
   (if not yet contained), and returns the index in the font list.
-  If "IsDefaultFont" is true the first FontList entry (DefaultFont) is replaced. }
+  If the font is a special font (such as DefaultFont, or HyperlinkFont) then
+  APreferredIndex defines the index under which the font should be stored in the
+  list. }
 function TsSpreadOpenDocReader.ReadFont(ANode: TDOMnode;
-  IsDefaultFont: Boolean): Integer;
+  APreferredIndex: Integer = -1): Integer;
 var
   fntName: String;
   fntSize: Single;
@@ -1227,12 +1229,18 @@ begin
   else
     fntColor := FWorkbook.GetFont(0).Color;
 
-  if IsDefaultFont then
+  if APreferredIndex = 0 then
   begin
     FWorkbook.SetDefaultFont(fntName, fntSize);
     Result := 0;
-  end
-  else
+  end else
+  if (APreferredIndex > -1) then
+  begin
+    if (APreferredIndex = 4) then
+      raise Exception.Create('Cannot replace font #4');
+    FWorkbook.ReplaceFont(APreferredIndex, fntName, fntSize, fntStyles, fntColor);
+    Result := APreferredIndex;
+  end else
   begin
     Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor);
     if Result = -1 then
@@ -1525,6 +1533,7 @@ begin
     if pos('../', hyperlink) = 1 then
       Delete(hyperlink, 1, Length('../'));
     FWorksheet.WriteHyperlink(cell, hyperlink);
+    FWorksheet.WriteFont(cell, HYPERLINK_FONTINDEX);
   end;
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
@@ -2340,7 +2349,7 @@ begin
     nodeName := styleNode.NodeName;
     if nodeName = 'style:default-style' then
     begin
-      ReadFont(styleNode.FindNode('style:text-properties'), true);
+      ReadFont(styleNode.FindNode('style:text-properties'), DEFAULT_FONTINDEX);
     end else
     if nodeName = 'style:style' then
     begin
@@ -2378,7 +2387,13 @@ begin
           nodeName := styleChildNode.NodeName;
           if nodeName = 'style:text-properties' then
           begin
-            fmt.FontIndex := ReadFont(styleChildNode, false);
+            if SameText(stylename, 'Default') then
+              fmt.FontIndex := ReadFont(styleChildNode, DEFAULT_FONTINDEX)
+            else
+            if SameText(stylename, 'Excel_20_Built-in_20_Hyperlink') then
+              fmt.FontIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
+            else
+              fmt.FontIndex := ReadFont(styleChildNode);
             if fmt.FontIndex = 1  then
               Include(fmt.UsedFormattingFields, uffBold)
             else if fmt.FontIndex > 1 then

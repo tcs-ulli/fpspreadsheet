@@ -627,9 +627,10 @@ type
     function TryStrToCellRanges(AText: String; out AWorksheet: TsWorksheet;
       out ARanges: TsCellRangeArray; AListSeparator: Char = #0): Boolean;
 
-    { Format handling }
+    { Cell format handling }
     function AddCellFormat(const AValue: TsCellFormat): Integer;
     function GetCellFormat(AIndex: Integer): TsCellFormat;
+    function GetCellFormatAsString(AIndex: Integer): String;
     function GetNumCellFormats: Integer;
     function GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
 
@@ -649,6 +650,8 @@ type
     function GetHyperlinkFont: TsFont;
     procedure InitFonts;
     procedure RemoveAllFonts;
+    procedure ReplaceFont(AFontIndex: Integer; AFontName: String;
+      ASize: Single; AStyle: TsFontStyles; AColor: TsColor);
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
 
     { Color handling }
@@ -6164,8 +6167,10 @@ begin
   InitFonts;
 
   FCellFormatList := TsCellFormatList.Create(false);
+
+  // Add default cell format
   InitFormatRecord(fmt);
-  AddCellFormat(fmt);   // Add record for default format to the FormatList
+  AddCellFormat(fmt);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6977,6 +6982,51 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns a string describing the cell format with the specified index.
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetCellFormatAsString(AIndex: Integer): String;
+var
+  fmt: PsCellFormat;
+  cb: TsCellBorder;
+  s: String;
+begin
+  Result := '';
+  fmt := GetPointerToCellFormat(AIndex);
+  if fmt = nil then
+    exit;
+
+  if (uffBold in fmt^.UsedFormattingFields) then
+    Result := Format('%s; bold', [Result]);
+  if (uffFont in fmt^.UsedFormattingFields) then
+    Result := Format('%s; Font%d', [Result, fmt^.FontIndex]);
+  if (uffBackground in fmt^.UsedFormattingFields) then begin
+    Result := Format('%s; Bg %s', [GetColorName(fmt^.Background.BgColor)]);
+    Result := Format('%s; Fg %s', [GetColorName(fmt^.Background.FgColor)]);
+    Result := Format('%s; Pattern %s', [GetEnumName(TypeInfo(TsFillStyle), ord(fmt^.Background.Style))]);
+  end;
+  if (uffHorAlign in fmt^.UsedFormattingfields) then
+    Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsHorAlignment), ord(fmt^.HorAlignment))]);
+  if (uffVertAlign in fmt^.UsedFormattingFields) then
+    Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsVertAlignment), ord(fmt^.VertAlignment))]);
+  if (uffWordwrap in fmt^.UsedFormattingFields) then
+    Result := Format('%s; Word-wrap', [Result]);
+  if (uffNumberFormat in fmt^.UsedFormattingFields) then
+    Result := Format('%s; %s (%s)', [Result,
+        GetEnumName(TypeInfo(TsNumberFormat), ord(fmt^.NumberFormat)),
+        fmt^.NumberFormatStr
+      ]);
+  if (uffBorder in fmt^.UsedFormattingFields) then
+  begin
+    s := '';
+    for cb in fmt^.Border do
+      if s = '' then s := GetEnumName(TypeInfo(TsCellBorder), ord(cb))
+        else s := s + '+' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
+    Result := Format('%s; %s', [Result, s]);
+  end;
+  if Result <> '' then Delete(Result, 1, 2);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Returns the count of format records used all over the workbook
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetNumCellFormats: Integer;
@@ -7153,6 +7203,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Replaces the built-in font at a specific index with different font parameters
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.ReplaceFont(AFontIndex: Integer; AFontName: String;
+  ASize: Single; AStyle: TsFontStyles; AColor: TsColor);
+var
+  fnt: TsFont;
+begin
+  if (AFontIndex < FBuiltinFontCount) and (AFontIndex <> 4) then
+  begin
+    fnt := TsFont(FFontList[AFontIndex]);
+    fnt.FontName := AFontName;
+    fnt.Size := ASize;
+    fnt.Style := AStyle;
+    fnt.Color := AColor;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Defines the default font. This is the font with index 0 in the FontList.
   The next built-in fonts will have the same font name and size
 -------------------------------------------------------------------------------}
@@ -7214,7 +7282,7 @@ var
 begin
   fnt := GetFont(AIndex);
   if fnt <> nil then begin
-    Result := Format('%s; size %.1f; color %s', [
+    Result := Format('%s; size %.1g; %s', [
       fnt.FontName, fnt.Size, GetColorName(fnt.Color)]);
     if (fssBold in fnt.Style) then Result := Result + '; bold';
     if (fssItalic in fnt.Style) then Result := Result + '; italic';
