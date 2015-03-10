@@ -230,7 +230,7 @@ type
     ToolButton19: TToolButton;
     AcFontUnderline: TsFontStyleAction;
     AcFontStrikeout: TsFontStyleAction;
-    Splitter1: TSplitter;
+    InspectorSplitter: TSplitter;
     Inspector: TsSpreadsheetInspector;
     InspectorTabControl: TTabControl;
     AcAddWorksheet: TsWorksheetAddAction;
@@ -394,6 +394,8 @@ end;
 procedure TMainForm.AcViewInspectorExecute(Sender: TObject);
 begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
+  InspectorSplitter.Visible := AcViewInspector.Checked;
+  InspectorSplitter.Left := 0;
 end;
 
 { Event handler to synchronize the mode of the spreadsheet inspector with the

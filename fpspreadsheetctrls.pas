@@ -2563,33 +2563,37 @@ begin
   else
     InitFormatRecord(fmt);
 
+  if (ACell = nil)
+    then AStrings.Add('FormatIndex=(default)')
+    else AStrings.Add(Format('FormatIndex=%d', [ACell^.FormatIndex]));
+
   if (ACell = nil) or not (uffFont in fmt.UsedFormattingFields)
-    then AStrings.Add('FontIndex=')
+    then AStrings.Add('FontIndex=(default)')
     else AStrings.Add(Format('FontIndex=%d (%s)', [
            fmt.FontIndex,
            Workbook.GetFontAsString(fmt.FontIndex)
          ]));
 
   if (ACell=nil) or not (uffTextRotation in fmt.UsedFormattingFields)
-    then AStrings.Add('TextRotation=')
+    then AStrings.Add('TextRotation=(default)')
     else AStrings.Add(Format('TextRotation=%s', [
            GetEnumName(TypeInfo(TsTextRotation), ord(fmt.TextRotation))
          ]));
 
   if (ACell=nil) or not (uffHorAlign in fmt.UsedFormattingFields)
-    then AStrings.Add('HorAlignment=')
+    then AStrings.Add('HorAlignment=(default)')
     else AStrings.Add(Format('HorAlignment=%s', [
            GetEnumName(TypeInfo(TsHorAlignment), ord(fmt.HorAlignment))
          ]));
 
   if (ACell=nil) or not (uffVertAlign in fmt.UsedFormattingFields)
-    then AStrings.Add('VertAlignment=')
+    then AStrings.Add('VertAlignment=(default)')
     else AStrings.Add(Format('VertAlignment=%s', [
            GetEnumName(TypeInfo(TsVertAlignment), ord(fmt.VertAlignment))
          ]));
 
   if (ACell=nil) or not (uffBorder in fmt.UsedFormattingFields) then
-    AStrings.Add('Borders=')
+    AStrings.Add('Borders=(none)')
   else
   begin
     s := '';
@@ -2602,7 +2606,7 @@ begin
 
   for cb in TsCellBorder do
     if ACell = nil then
-      AStrings.Add(Format('BorderStyles[%s]=', [
+      AStrings.Add(Format('BorderStyles[%s]=(default)', [
         GetEnumName(TypeInfo(TsCellBorder), ord(cb))]))
     else
       AStrings.Add(Format('BorderStyles[%s]=%s, %s', [
@@ -2612,9 +2616,9 @@ begin
 
   if (ACell = nil) or not (uffBackground in fmt.UsedformattingFields) then
   begin
-    AStrings.Add('Style=');
-    AStrings.Add('PatternColor=');
-    AStrings.Add('BackgroundColor=');
+    AStrings.Add('Style=(default)');
+    AStrings.Add('PatternColor=(default)');
+    AStrings.Add('BackgroundColor=(default)');
   end else
   begin
     AStrings.Add(Format('Style=%s', [
@@ -2627,8 +2631,8 @@ begin
 
   if (ACell = nil) or not (uffNumberFormat in fmt.UsedFormattingFields) then
   begin
-    AStrings.Add('NumberFormat=');
-    AStrings.Add('NumberFormatStr=');
+    AStrings.Add('NumberFormat=(default)');
+    AStrings.Add('NumberFormatStr=(none)');
   end else
   begin
     AStrings.Add(Format('NumberFormat=%s', [
@@ -2637,7 +2641,7 @@ begin
   end;
 
   if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then
-    AStrings.Add('Merged range=')
+    AStrings.Add('Merged range=(none)')
   else
   begin
     Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
@@ -2793,6 +2797,12 @@ begin
     AStrings.Add('  PosCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.CurrencyFormat));
     AStrings.Add('  NegCurrencyFormat='+IntToStr(AWorkbook.FormatSettings.NegCurrFormat));
     AStrings.Add('  TwoDigitYearCenturyWindow='+IntToStr(AWorkbook.FormatSettings.TwoDigitYearCenturyWindow));
+
+    for i:=0 to AWorkbook.GetFontCount-1 do
+      AStrings.Add(Format('Font%d=%s', [i, AWorkbook.GetFontAsString(i)]));
+
+    for i:=0 to AWorkbook.GetNumCellFormats-1 do
+      AStrings.Add(Format('CellFormat%d=%s', [i, AWorkbook.GetCellFormatAsString(i)]));
   end;
 end;
 
