@@ -821,9 +821,6 @@ begin
   end;
 
   fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-  if (uffBold in fmt^.UsedFormattingFields) then
-    Checked := (FFontStyle = fssBold)
-  else
   if (uffFont in fmt^.UsedFormattingFields) then
   begin
     fnt := Workbook.GetFont(fmt^.FontIndex);
@@ -1416,9 +1413,10 @@ begin
       sfnt := Workbook.GetDefaultFont
     else begin
       fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+      {
       if (uffBold in fmt^.UsedFormattingFields) then
-        sfnt := Workbook.GetFont(1)
-      else
+        sfnt := Workbook.GetFont(BOLD_FONTINDEX)
+      else}
       if (uffFont in fmt^.UsedFormattingFields) then
         sfnt := Workbook.GetFont(fmt^.FontIndex)
       else

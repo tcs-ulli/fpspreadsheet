@@ -33,36 +33,36 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
-    procedure TestWriteReadBold(AFormat: TsSpreadsheetFormat);
+//    procedure TestWriteReadBold(AFormat: TsSpreadsheetFormat);
     procedure TestWriteReadFont(AFormat: TsSpreadsheetFormat; AFontName: String);
 
   published
     // BIFF2 test cases
-    procedure TestWriteRead_BIFF2_Bold;
+//    procedure TestWriteRead_BIFF2_Bold;
     procedure TestWriteRead_BIFF2_Font_Arial;
     procedure TestWriteRead_BIFF2_Font_TimesNewRoman;
     procedure TestWriteRead_BIFF2_Font_CourierNew;
 
     // BIFF5 test cases
-    procedure TestWriteRead_BIFF5_Bold;
+//    procedure TestWriteRead_BIFF5_Bold;
     procedure TestWriteRead_BIFF5_Font_Arial;
     procedure TestWriteRead_BIFF5_Font_TimesNewRoman;
     procedure TestWriteRead_BIFF5_Font_CourierNew;
 
     // BIFF8 test cases
-    procedure TestWriteRead_BIFF8_Bold;
+//    procedure TestWriteRead_BIFF8_Bold;
     procedure TestWriteRead_BIFF8_Font_Arial;
     procedure TestWriteRead_BIFF8_Font_TimesNewRoman;
     procedure TestWriteRead_BIFF8_Font_CourierNew;
 
     // ODS test cases
-    procedure TestWriteRead_ODS_Bold;
+//    procedure TestWriteRead_ODS_Bold;
     procedure TestWriteRead_ODS_Font_Arial;
     procedure TestWriteRead_ODS_Font_TimesNewRoman;
     procedure TestWriteRead_ODS_Font_CourierNew;
 
     // OOXML test cases
-    procedure TestWriteRead_OOXML_Bold;
+//    procedure TestWriteRead_OOXML_Bold;
     procedure TestWriteRead_OOXML_Font_Arial;
     procedure TestWriteRead_OOXML_Font_TimesNewRoman;
     procedure TestWriteRead_OOXML_Font_CourierNew;
@@ -129,7 +129,7 @@ procedure TSpreadWriteReadFontTests.TearDown;
 begin
   inherited TearDown;
 end;
-
+                     (*
 procedure TSpreadWriteReadFontTests.TestWriteReadBold(AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
@@ -208,7 +208,7 @@ begin
     MyWorkbook.Free;
     DeleteFile(TempFile);
   end;
-end;
+end;                   *)
 
 procedure TSpreadWriteReadFontTests.TestWriteReadFont(AFormat: TsSpreadsheetFormat;
   AFontName: String);
@@ -224,11 +224,6 @@ var
   expectedValue: String;
   counter: Integer;
 begin
-
-  {// Not needed: use workbook.writetofile with overwrite=true
-  if fileexists(TempFile) then
-    DeleteFile(TempFile);
-  }
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
@@ -254,7 +249,7 @@ begin
           'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
       end;
     end;
-    TempFile:=NewTempFile;
+    TempFile := NewTempFile;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
@@ -296,12 +291,12 @@ begin
 end;
 
 { BIFF2 }
-
+{
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF2_Bold;
 begin
   TestWriteReadBold(sfExcel2);
 end;
-
+}
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF2_Font_Arial;
 begin
   TestWriteReadFont(sfExcel2, 'Arial');
@@ -318,11 +313,12 @@ begin
 end;
 
 { BIFF5 }
+{
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF5_Bold;
 begin
   TestWriteReadBold(sfExcel5);
 end;
-
+}
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF5_Font_Arial;
 begin
   TestWriteReadFont(sfExcel5, 'Arial');
@@ -339,11 +335,12 @@ begin
 end;
 
 { BIFF8 }
+{
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF8_Bold;
 begin
   TestWriteReadBold(sfExcel8);
 end;
-
+}
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF8_Font_Arial;
 begin
   TestWriteReadFont(sfExcel8, 'Arial');
@@ -360,11 +357,12 @@ begin
 end;
 
 { ODS }
+{
 procedure TSpreadWriteReadFontTests.TestWriteRead_ODS_Bold;
 begin
   TestWriteReadBold(sfOpenDocument);
 end;
-
+}
 procedure TSpreadWriteReadFontTests.TestWriteRead_ODS_Font_Arial;
 begin
   TestWriteReadFont(sfOpenDocument, 'Arial');
@@ -381,11 +379,12 @@ begin
 end;
 
 { OOXML }
+{
 procedure TSpreadWriteReadFontTests.TestWriteRead_OOXML_Bold;
 begin
   TestWriteReadBold(sfOOXML);
 end;
-
+}
 procedure TSpreadWriteReadFontTests.TestWriteRead_OOXML_Font_Arial;
 begin
   TestWriteReadFont(sfOOXML, 'Arial');

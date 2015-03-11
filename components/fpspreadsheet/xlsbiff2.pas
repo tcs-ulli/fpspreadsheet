@@ -505,8 +505,8 @@ begin
   AStream.ReadBuffer(lFontName[1], Len);
   FFont.FontName := lFontName;
 
-  { Add font to workbook's font list }
-  FWorkbook.AddFont(FFont);
+  { Add font to internal font list }
+  FFontList.Add(FFont);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFontColor(AStream: TStream);
@@ -530,12 +530,6 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  // Clear existing fonts. They will be replaced by those from the file.
-  FWorkbook.RemoveAllFonts;
-
-  { Store some data about the workbook that other routines need }
-  //WorkBookEncoding := AData.Encoding;
-
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
@@ -972,6 +966,7 @@ var
   b: Byte;
   nfdata: TsNumFormatData;
   i: Integer;
+  fnt: TsFont;
 begin
   // Read entire xf record into buffer
   InitFormatRecord(fmt);
@@ -981,10 +976,18 @@ begin
   AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(word));
 
   // Font index
-  fmt.FontIndex := rec.FontIndex;
-  if fmt.FontIndex = 1 then
+  i := rec.FontIndex;
+  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
+  fnt := TsFont(FFontList[i]);
+  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  if fmt.FontIndex = -1 then
+    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  {
+  if fmt.FontIndex = BOLD_FONTINDEX then
     Include(fmt.UsedFormattingFields, uffBold)
-  else if fmt.FontIndex > 1 then
+  else
+  }
+  if fmt.FontIndex > 1 then
     Include(fmt.UsedFormattingFields, uffFont);
 
   // Number format index
@@ -1433,11 +1436,16 @@ begin
   rec.FontIndex := 0;
   if (AFormatRecord <> nil) then
   begin
+    {
     if (uffBold in AFormatRecord^.UsedFormattingFields) then
-      rec.FontIndex := 1
+      rec.FontIndex := BOLD_FONTINDEX
     else
+    }
     if (uffFont in AFormatRecord^.UsedFormattingFields) then
+    begin
       rec.FontIndex := AFormatRecord^.FontIndex;
+      if rec.FontIndex >= 4 then inc(rec.FontIndex);  // Font #4 does not exist in BIFF
+    end;
   end;
 
   { Not used byte }
@@ -1699,32 +1707,7 @@ begin
   AStream.WriteByte(Lo(AIdentifier));
   Result := 1;
 end;
-                                        (*
-{@@ ----------------------------------------------------------------------------
-  This method is intended to write a link to the cell containing the shared
-  formula used by the cell. But since BIFF2 does not support shared formulas
-  the writer must copy the shared formula and adapt the relative
-  references.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.WriteRPNSharedFormulaLink(AStream: TStream;
-  ACell: PCell; var RPNLength: Word);
-var
-  formula: TsRPNFormula;
-begin
-  // Create RPN formula from the shared formula base's string formula
-  formula := FWorksheet.BuildRPNFormula(ACell);
-    // Don't use ACell^.SharedFormulaBase here because this lookup is made
-    // by the worksheet automatically.
 
-  // Write adapted copy of shared formula to stream.
-  WriteRPNTokenArray(AStream, ACell, formula, false, RPNLength);
-  // false --> "do not convert cell addresses to relative offsets", because
-  // biff2 does not support shared formulas!
-
-  // Clean up
-  SetLength(formula, 0);
-end;
-                                 *)
 {@@ ----------------------------------------------------------------------------
   Writes the size of the RPN token array. Called from WriteRPNFormula.
   Overrides xlscommon.
@@ -1734,16 +1717,6 @@ procedure TsSpreadBIFF2Writer.WriteRPNTokenArraySize(AStream: TStream;
 begin
   AStream.WriteByte(ASize);
 end;
-                                (*
-{@@ ----------------------------------------------------------------------------
-  Is intended to write the token array of a shared formula stored in ACell.
-  But since BIFF2 does not support shared formulas this method must not do
-  anything.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.WriteSharedFormula(AStream: TStream; ACell: PCell);
-begin
-  Unused(AStream, ACell);
-end;                          *)
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 2 STRING record which immediately follows a FORMULA record

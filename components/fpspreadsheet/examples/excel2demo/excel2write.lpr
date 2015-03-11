@@ -46,7 +46,7 @@ begin
 
   // Write some number cells
   MyWorksheet.WriteNumber(0, 0, 1.0);
-  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
+  MyWorksheet.WriteFontStyle(0, 0, [fssBold]);
   MyWorksheet.WriteNumber(0, 1, 2.0);
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);

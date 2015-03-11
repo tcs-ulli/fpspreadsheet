@@ -67,7 +67,6 @@ type
     FBorderList: TFPList;
     FHyperlinkList: TFPList;
     FThemeColors: array of TsColorValue;
-//    FSharedFormulas: TStringList;
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsWorksheet);
@@ -463,7 +462,6 @@ begin
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
 
-//  FSharedFormulas := TStringList.Create;
   FSharedStrings := TStringList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
@@ -489,8 +487,8 @@ begin
   FHyperlinkList.Free;
 
   FSharedStrings.Free;
-//  FSharedFormulas.Free;
-  // FCellFormatList is destroyed by ancestor
+
+  // FCellFormatList and FFontList are destroyed by ancestor
 
   inherited Destroy;
 end;
@@ -725,23 +723,6 @@ begin
           for r := rng.Row1 to rng.Row2 do
             for c := rng.Col1 to rng.Col2 do
               FWorksheet.CopyFormula(cell, r, c);
-(*
-          s := GetAttrValue(datanode, 'si');
-          if s <> '' then
-            FSharedFormulas.AddObject(addr, {%H-}Pointer(PtrInt(StrToInt(s))));
-          FWorksheet.WriteFormula(cell, formulaStr);
-          cell^.SharedFormulaBase := cell;
-          AWorksheet.WriteSharedFormula(s, formulaStr);
-
-        end else
-        begin
-          s := GetAttrValue(datanode, 'si');
-          if s <> '' then
-          begin
-            s := FSharedFormulas[FSharedFormulas.IndexOfObject({%H-}Pointer(PtrInt(StrToInt(s))))];
-            cell^.SharedFormulaBase := FWorksheet.FindCell(s);
-          end;
-          *)
         end;
       end
       else
@@ -818,6 +799,7 @@ var
   numFmtData: TsNumFormatData;
   fillData: TFillListData;
   borderData: TBorderListData;
+  fnt: TsFont;
 begin
   node := ANode.FirstChild;
   while Assigned(node) do
@@ -851,10 +833,15 @@ begin
       s2 := GetAttrValue(node, 'applyFont');
       if (s1 <> '') and (s2 <> '0') then
       begin
-        fmt.FontIndex := StrToInt(s1);
-        if fmt.FontIndex = 1 then
+        fnt := TsFont(FFontList.Items[StrToInt(s1)]);
+        fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+        if fmt.FontIndex = -1 then
+          fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+        {
+        if fmt.FontIndex = BOLD_FONTINDEX then
           Include(fmt.UsedFormattingFields, uffBold)
-        else if fmt.FontIndex > 1 then
+        else }
+        if fmt.FontIndex > 0 then
           Include(fmt.UsedFormattingFields, uffFont);
       end;
 
@@ -1174,7 +1161,6 @@ var
   fntColor: TsColor;
   nodename: String;
   s: String;
-  isNilFont: Boolean;
 begin
   fnt := Workbook.GetDefaultFont;
   if fnt <> nil then begin
@@ -1190,7 +1176,6 @@ begin
   end;
 
   node := ANode.FirstChild;
-  isNilFont := node = nil;
   while node <> nil do begin
     nodename := node.NodeName;
     if nodename = 'name' then begin
@@ -1228,32 +1213,24 @@ begin
     node := node.NextSibling;
   end;
 
-  { We must not check for duplicate fonts here because then we cannot reconstruct
-    the correct font id later }
-  if not isNilFont then  // the font #4 (nil) is added automatically --> skip it here
-    FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+  fnt := TsFont.Create;
+  fnt.FontName := fntName;
+  fnt.Size := fntSize;
+  fnt.Style := fntStyles;
+  fnt.Color := fntColor;
+
+  FFontList.Add(fnt);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
 var
   node: TDOMNode;
 begin
-  // Clear existing fonts. They will be replaced by those from the file.
-  FWorkbook.RemoveAllFonts;
-
   node := ANode.FirstChild;
   while node <> nil do begin
     ReadFont(node);
     node := node.NextSibling;
   end;
-
-  { A problem is caused by the font #4 which is missing in BIFF file versions.
-    FPSpreadsheet writes a nil value to this position in order to keep compatibility
-    with other file formats. Other applications, however, have a valid font at
-    this index. Therefore, we delete the font #4 if the file was not written
-    by FPSpreadsheet. }
-  if not FWrittenByFPS then
-    FWorkbook.DeleteFont(4);
 end;
 
 procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode);
@@ -2219,11 +2196,13 @@ begin
       '<fonts count="%d">', [Workbook.GetFontCount]));
   for i:=0 to Workbook.GetFontCount-1 do begin
     font := Workbook.GetFont(i);
-    if font = nil then
+    {
+    if font = 4 then
+//    if font = nil then
       AppendToStream(AStream, '<font />')
       // Font #4 is missing in fpspreadsheet due to BIFF compatibility. We write
       // an empty node to keep the numbers in sync with the stored font index.
-    else begin
+    else begin}
       s := Format('<sz val="%g" /><name val="%s" />', [font.Size, font.FontName], FPointSeparatorSettings);
       if (fssBold in font.Style) then
         s := s + '<b />';
@@ -2243,7 +2222,7 @@ begin
       end;
       AppendToStream(AStream,
         '<font>', s, '</font>');
-    end;
+//    end;
   end;
   AppendToStream(AStream,
       '</fonts>');
@@ -2585,8 +2564,10 @@ begin
 
     { Font }
     fontId := 0;
+    {
     if (uffBold in fmt^.UsedFormattingFields) then
-      fontID := 1;
+      fontID := BOLD_FONTINDEX;
+    }
     if (uffFont in fmt^.UsedFormattingFields) then
       fontID := fmt^.FontIndex;
     s := s + Format('fontId="%d" ', [fontId]);

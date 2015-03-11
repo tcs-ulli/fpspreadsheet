@@ -55,13 +55,13 @@ begin
 
   // Test for Bold
   MyCell := MyWorksheet.GetCell(2, 0);
-  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell^.FontIndex := BOLD_FONTINDEX;
   MyCell := MyWorksheet.GetCell(2, 1);
-  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell^.FontIndex := BOLD_FONTINDEX;
   MyCell := MyWorksheet.GetCell(2, 2);
-  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell^.FontIndex := BOLD_FONTINDEX;
   MyCell := MyWorksheet.GetCell(2, 3);
-  MyCell^.UsedFormattingFields := [uffBold];
+  MyCell^.FontIndex := BOLD_FONTINDEX;
 
   // Background and text color
   MyWorksheet.WriteUTF8Text(4, 0, 'white on red');

@@ -48,7 +48,7 @@ begin
   MyWorksheet.WriteDateTime(5, 0, now);
 
   // Add some formatting
-  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold]);
+  MyWorksheet.WriteFontStyle(0, 0, [fssBold]);
   MyWorksheet.WriteFont(0, 1, 'Times New Roman', 16, [], scRed);
 
   // Show number formats

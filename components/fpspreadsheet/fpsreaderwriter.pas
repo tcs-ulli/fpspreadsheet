@@ -32,6 +32,8 @@ type
   protected
     {@@ list of format records collected from the file }
     FCellFormatList: TsCellFormatList;
+    {@@ List of fonts collected from the file }
+    FFontList: TFPList;
     {@@ Temporary cell for virtual mode}
     FVirtualCell: TCell;
     {@@ Stores if the reader is in virtual mode }
@@ -190,6 +192,8 @@ end;
 constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  // Font list
+  FFontList := TFPList.Create;
   // Number formats
   CreateNumFormatList;
   // Virtual mode
@@ -202,7 +206,13 @@ end;
   error log list.
 -------------------------------------------------------------------------------}
 destructor TsCustomSpreadReader.Destroy;
+var
+  j: Integer;
 begin
+  for j:=FFontList.Count-1 downto 0 do
+    if FFontList[j] <> nil then TObject(FFontList[j]).Free;
+  FreeAndNil(FFontList);
+
   FreeAndNil(FNumFormatList);
   FreeAndNil(FCellFormatList);
   inherited Destroy;
@@ -455,92 +465,7 @@ begin
   if ALastRow >= Limitations.MaxRowCount then
     ALastRow := Limitations.MaxRowCount-1;
 end;
-(*
-{@@ ----------------------------------------------------------------------------
-  A generic method to iterate through all cells in a worksheet and call a callback
-  routine for each cell.
 
-  @param  AStream    The output stream, passed to the callback routine.
-  @param  ACells     List of cells to be iterated
-  @param  ACallback  Callback routine; it requires as arguments a pointer to the
-                     cell as well as the destination stream.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.IterateThroughCells(AStream: TStream;
-  ACells: TsCells; ACallback: TCellsCallback);
-var
-  cell: PCell;
-  node: TAVLTreeNode;
-begin
-  node := ACells.FindLowest;
-  while Assigned(node) do begin
-    ACallback(PCell(node.Data), AStream);
-    node := ACells.FindSuccessor(node);
-  end;
-  {
-  ACells.PushCurrent;
-  try
-    cell := ACells.GetFirstCell;
-    while Assigned(cell) do
-    begin
-      ACallback(cell, AStream);
-      cell := ACells.GetNextCell;
-    end;
-  finally
-    ACells.PopCurrent;
-  end;
-  }
-end;
-
-{@@ ----------------------------------------------------------------------------
-  A generic method to iterate through all comments in a worksheet and call a
-  callback routine for each comment.
-
-  @param  AStream    The output stream, passed to the callback routine.
-  @param  AComments  List of comments to be iterated
-  @param  ACallback  Callback routine; it requires as arguments a pointer to the
-                     comment record as well as the destination stream.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.IterateThroughComments(AStream: TStream;
-  AComments: TsComments; ACallback: TCommentsCallback);
-var
-  index: Integer;
-  comment: PsComment;
-begin
-  index := 0;
-  for comment in AComments do
-  begin
-    ACallback(comment, index, AStream);
-    inc(index);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  A generic method to iterate through all hyperlinks in a worksheet and call a
-  callback routine for each hyperlink.
-
-  @param  AStream      The output stream, passed to the callback routine.
-  @param  AHyperlinks  List of hyperlinks to be iterated
-  @param  ACallback    Callback routine; it requires as arguments a pointer to
-                       the hyperlink record as well as the destination stream.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.IterateThroughHyperlinks(AStream: TStream;
-  AHyperlinks: TsHyperlinks; ACallback: THyperlinksCallback);
-var
-  hyperlink: PsHyperlink;
-begin
-  AHyperlinks.PushCurrent;
-  try
-    hyperlink := PsHyperlink(AHyperlinks.GetFirst);
-    while Assigned(hyperlink) do
-    begin
-      ACallback(hyperlink, AStream);
-      hyperlink := PsHyperlink(AHyperlinks.GetNext);
-    end;
-  finally
-    AHyperlinks.PopCurrent;
-  end;
-end;
-  *)
 {@@ ----------------------------------------------------------------------------
   Iterates through all cells and collects the number formats in
   FNumFormatList (without duplicates).
