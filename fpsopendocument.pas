@@ -2394,9 +2394,11 @@ begin
               fmt.FontIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
             else
               fmt.FontIndex := ReadFont(styleChildNode);
-            if fmt.FontIndex = 1  then
+            {
+            if fmt.FontIndex = BOLD_FONTINDEX  then
               Include(fmt.UsedFormattingFields, uffBold)
-            else if fmt.FontIndex > 1 then
+            else }
+            if fmt.FontIndex > 0 then
               Include(fmt.UsedFormattingFields, uffFont);
           end else
           if nodeName = 'style:table-cell-properties' then
@@ -2981,9 +2983,11 @@ begin
                    'style:parent-style-name="Default" '+ nfs + '>');
 
     // style:text-properties
+    {
     if (uffBold in fmt.UsedFormattingFields) then
       AppendToStream(AStream,
         '<style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>');
+    }
 
     s := WriteFontStyleXMLAsString(fmt);
     if s <> '' then

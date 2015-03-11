@@ -487,9 +487,9 @@ begin
         if fssItalic in lFont.Style then lCurStr := '<i>' + lCurStr + '</i>';
         if fssUnderline in lFont.Style then lCurStr := '<u>' + lCurStr + '</u>';
         if fssStrikeout in lFont.Style then lCurStr := '<s>' + lCurStr + '</s>';
-      end else
+      end;{ else
       if uffBold in lCurUsedFormatting then
-        lCurStr := '<b>' + lCurStr + '</b>';
+        lCurStr := '<b>' + lCurStr + '</b>';}
 
       // Background color
       if uffBackground in lCurUsedFormatting then

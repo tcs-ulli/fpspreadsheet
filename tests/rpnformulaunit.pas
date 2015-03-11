@@ -51,7 +51,7 @@ begin
     '=SUM(A1, B1)'  becomes  Format('=SUM(A1%s B1)', [ls])  }
 
   Worksheet.WriteUTF8Text(0, 0, SBaseCells);
-  Worksheet.WriteUsedFormatting(0, 0, [uffBold]);
+  Worksheet.WriteFont(0, 0, BOLD_FONTINDEX);
 
   Worksheet.WriteNumber(0,1, cellB1);
   Worksheet.WriteNumber(0,2, cellC1);
@@ -62,15 +62,15 @@ begin
 
   Row := 2;
   Worksheet.WriteUTF8Text(Row, 1, 'read value');
-  Worksheet.WriteUsedFormatting(Row, 1, [uffBold]);
+  Worksheet.WriteFont(Row, 1, BOLD_FONTINDEX);
   Worksheet.WriteUTF8Text(Row, 2, 'expected value');
-  Worksheet.WriteUsedFormatting(Row, 2, [uffBold]);
+  Worksheet.WriteFont(Row, 2, BOLD_FONTINDEX);
 
   { ---------- }
 
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, 'Constants');
-  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+  Worksheet.WriteFont(Row, 0, BOLD_FONTINDEX);
 
   // Numbers
   inc(Row);
@@ -103,7 +103,7 @@ begin
   inc(Row);
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, 'Cell references - please check formula in editing line');
-  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+  Worksheet.WriteFont(Row, 0, BOLD_FONTINDEX);
 
   // Absolute col and row references
   inc(Row);
@@ -183,7 +183,7 @@ begin
   inc(Row);
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, 'Basic operations');
-  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+  Worksheet.WriteFont(Row, 0, BOLD_FONTINDEX);
 
   // Add two cells
   inc(Row);
@@ -481,7 +481,7 @@ begin
   inc(Row);
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, 'Logical functions');
-  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+  Worksheet.WriteFont(Row, 0, BOLD_FONTINDEX);
 
   // TRUE()
   inc(Row);
@@ -650,7 +650,7 @@ begin
   inc(Row);
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, 'Math functions');
-  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+  Worksheet.WriteFont(Row, 0, BOLD_FONTINDEX);
 
   // absolute of positive number
   inc(Row);
@@ -928,7 +928,7 @@ begin
   inc(Row);
   inc(Row);
   Worksheet.WriteUTF8Text(Row, 0, 'Rounding');
-  Worksheet.WriteUsedFormatting(Row, 0, [uffBold]);
+  Worksheet.WriteFont(Row, 0, BOLD_FONTINDEX);
 
   // Round positive number to 1 decimal     =ROUND($F$1, 1)
   inc(Row);

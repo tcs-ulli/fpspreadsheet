@@ -627,8 +627,6 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  // Clear existing fonts. They will be replaced by those from the file.
-  FWorkbook.RemoveAllFonts;
   if Assigned(FSharedStringTable) then FreeAndNil(FSharedStringTable);
 
   while (not SectionEOF) do begin
@@ -1185,6 +1183,7 @@ procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
       else Result := lsDashed;
     end;
   end;
+
 var
   rec: TBIFF8_XFRecord;
   fmt: TsCellFormat;
@@ -1195,6 +1194,7 @@ var
   nfidx: Integer;
   nfdata: TsNumFormatData;
   i: Integer;
+  fnt: TsFont;
 begin
   InitFormatRecord(fmt);
   fmt.ID := FCellFormatList.Count;
@@ -1204,10 +1204,13 @@ begin
   AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(word));
 
   // Font index
-  fmt.FontIndex := WordLEToN(rec.FontIndex);
-  if fmt.FontIndex = 1 then
-    Include(fmt.UsedFormattingFields, uffBold)
-  else if fmt.FontIndex > 1 then
+  i := WordLEToN(rec.FontIndex);
+  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
+  fnt := TsFont(FFontList[i]);
+  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  if fmt.FontIndex = -1 then
+    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  if fmt.FontIndex > 1 then
     Include(fmt.UsedFormattingFields, uffFont);
 
   // Number format index
@@ -1335,7 +1338,7 @@ begin
       end;
   end;
 
-  // Add the XF to the list
+  // Add the XF to the internal cell format list
   FCellFormatList.Add(fmt);
 end;
 
@@ -1395,8 +1398,10 @@ begin
   Len := AStream.ReadByte();
   font.FontName := ReadString(AStream, Len);
 
-  { Add font to workbook's font list }
-  FWorkbook.AddFont(font);
+  { Add font to internal font list; will be transferred to workbook later because
+    the font index in the internal list (= index in file) is not the same as the
+    index the font will have in the workbook's fontlist! }
+  FFontList.Add(font);
 end;
 
 // Read the (number) FORMAT record for formatting numerical data
@@ -2828,7 +2833,7 @@ end;
   Writes an Excel 8 XF record (cell format)
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteXF(AStream: TStream;
- AFormatRecord: PsCellFormat; XFType_Prot: Byte = 0);
+  AFormatRecord: PsCellFormat; XFType_Prot: Byte = 0);
 var
   rec: TBIFF8_XFRecord;
   j: Integer;
@@ -2843,11 +2848,11 @@ begin
   { Index to font record }
   rec.FontIndex := 0;
   if (AFormatRecord <> nil) then begin
-    if (uffBold in AFormatRecord^.UsedFormattingFields) then
-      rec.FontIndex := 1
-    else
     if (uffFont in AFormatRecord^.UsedFormattingFields) then
+    begin
       rec.FontIndex := AFormatRecord^.FontIndex;
+      if rec.FontIndex >= 4 then inc(rec.FontIndex);  // Font #4 does not exist in BIFF
+    end;
   end;
   rec.FontIndex := WordToLE(rec.FontIndex);
 

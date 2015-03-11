@@ -702,7 +702,7 @@ begin
     if i > -1 then
     begin
       fmt := FCellFormatList.Items[i];
-      ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+      ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);  // Adds a copy of fmt to workbook
     end else
       ACell^.FormatIndex := 0;
   end;

@@ -43,7 +43,11 @@ const
   {@@ Index of the default font in workbook's font list }
   DEFAULT_FONTINDEX = 0;
   {@@ Index of the hyperlink font in workbook's font list }
-  HYPERLINK_FONTINDEX = 6;
+  HYPERLINK_FONTINDEX = 1;
+  {@@ Index of bold default font in workbook's font list }
+  BOLD_FONTINDEX = 2;
+  {@@ Index of italic default font in workbook's font list - not used directly }
+  INTALIC_FONTINDEX = 3;
 
   {@@ Takes account of effect of cell margins on row height by adding this
       value to the nominal row height. Note that this is an empirical value
@@ -181,7 +185,7 @@ type
   );
 
   {@@ List of possible formatting fields }
-  TsUsedFormattingField = (uffTextRotation, uffFont, uffBold, uffBorder,
+  TsUsedFormattingField = (uffTextRotation, uffFont, {uffBold, }uffBorder,
     uffBackground, uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign
   );
   { NOTE: "uffBackgroundColor" of older versions replaced by "uffBackground" }

@@ -28,21 +28,19 @@ begin
     worksheet.WriteNumber(0, 0, 1);           // A1
     worksheet.WriteNumber(0, 1, 2.5);         // B1
 
-    {
     worksheet.WriteUTF8Text(0, 0, 'Hallo');         // A1
     worksheet.WriteUTF8Text(0, 1, 'World');         // B1
-     }
-    //cell := worksheet.WriteFormula(1, 0, '=4+5');    // A2
-    //cell := worksheet.WriteFormula(1, 0, 'AND(TRUE(), TRUE(), TRUE())');
-    //cell := worksheet.WriteFormula(1, 0, 'SIN(A1+B1)');
-    //cell := worksheet.WriteFormula(1, 0, '=TRUE()');
-    //cell := worksheet.WriteFormula(1, 0, '=1-(4/2)^2*2-1');    // A2
-    //cell := Worksheet.WriteFormula(1, 0, 'datedif(today(),Date(2014,1,1),"D")');
-    //cell := Worksheet.WriteFormula(1, 0, 'Day(Date(2014, 1, 12))');
-    //cell := Worksheet.WriteFormula(1, 0, 'SUM(1,2,3)');
-    //cell := Worksheet.WriteFormula(1, 0, 'CELL("address",A1)');
-//    cell := Worksheet.WriteFormula(1, 0, 'REPT("Hallo", 3)');
-    cell := Worksheet.WriteFormula(1, 0, '#REF!');
+    cell := worksheet.WriteFormula(1, 0, '=4+5');    // A2
+    cell := worksheet.WriteFormula(2, 0, 'AND(TRUE(), TRUE(), TRUE())');
+    cell := worksheet.WriteFormula(3, 0, 'SIN(A1+B1)');
+    cell := worksheet.WriteFormula(4, 0, '=TRUE()');
+    cell := worksheet.WriteFormula(5, 0, '=1-(4/2)^2*2-1');    // A2
+    cell := Worksheet.WriteFormula(6, 0, 'datedif(today(),Date(2014,1,1),"D")');
+    cell := Worksheet.WriteFormula(7, 0, 'Day(Date(2014, 1, 12))');
+    cell := Worksheet.WriteFormula(8, 0, 'SUM(1,2,3)');
+    cell := Worksheet.WriteFormula(9, 0, 'CELL("address",A1)');
+    cell := Worksheet.WriteFormula(10, 0, 'REPT("Hallo", 3)');
+    cell := Worksheet.WriteFormula(11, 0, '#REF!');
 
     WriteLn('A1: ', worksheet.ReadAsUTF8Text(0, 0));
     WriteLn('B1: ', worksheet.ReadAsUTF8Text(0, 1));

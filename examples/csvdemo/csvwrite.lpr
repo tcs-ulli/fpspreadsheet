@@ -44,7 +44,7 @@ begin
   MyWorksheet.TopPaneHeight := 3;
 
   // Write some number cells
-  MyWorksheet.WriteUsedFormatting(0, 0, [uffBold, uffNumberFormat]);
+  MyWorksheet.WriteFont(0, 0, BOLD_FONTINDEX);
   MyWorksheet.WriteNumber(0, 1, 2.0);
   MyWorksheet.WriteNumber(0, 2, 3.0);
   MyWorksheet.WriteNumber(0, 3, 4.0);

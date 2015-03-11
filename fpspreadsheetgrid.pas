@@ -2503,30 +2503,6 @@ begin
     Convert_sFont_to_Font(fnt, FCellFont);
     Result := FCellFont;
   end;
-  {
-  if (Workbook <> nil) and (Worksheet <> nil) then
-  begin
-    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    if (cell <> nil) then
-    begin
-      if (uffBold in cell^.UsedFormattingFields) then
-        fnt := Workbook.GetFont(1)
-      else
-      if (uffFont in cell^.UsedFormattingFields) then
-        fnt := Workbook.GetFont(cell^.FontIndex)
-      else
-        fnt := Workbook.GetDefaultFont;
-      Convert_sFont_to_Font(fnt, FCellFont);
-      Result := FCellFont;
-    end;
-  end;
-  if Result = nil then
-  begin
-    fnt := Workbook.GetDefaultFont;
-    Convert_sFont_to_Font(fnt, FCellFont);
-    Result := FCellFont;
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------

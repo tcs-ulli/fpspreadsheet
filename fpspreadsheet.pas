@@ -638,10 +638,10 @@ type
     function AddFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer; overload;
     function AddFont(const AFont: TsFont): Integer; overload;
-    procedure CopyFontList(ASource: TFPList);
     procedure DeleteFont(AFontIndex: Integer);
     function FindFont(const AFontName: String; ASize: Single;
       AStyle: TsFontStyles; AColor: TsColor): Integer;
+    function GetBuiltinFontCount: Integer;
     function GetDefaultFont: TsFont;
     function GetDefaultFontSize: Single;
     function GetFont(AIndex: Integer): TsFont;
@@ -2887,10 +2887,12 @@ begin
   if ACell <> nil then
   begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    {
     if (uffBold in fmt^.UsedFormattingFields) then
-      Result := Workbook.GetFont(1)
+      Result := Workbook.GetFont(BOLD_FONTINDEX)
     else
-      Result := Workbook.GetFont(fmt^.FontIndex);
+    }
+    Result := Workbook.GetFont(fmt^.FontIndex);
   end;
   if Result = nil then
     Result := Workbook.GetDefaultFont;
@@ -6078,6 +6080,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeReading;
 begin
+  // Initializes fonts
+  InitFonts;
+
   // Clear error log
   FLog.Clear;
 
@@ -6995,14 +7000,16 @@ begin
   if fmt = nil then
     exit;
 
+  {
   if (uffBold in fmt^.UsedFormattingFields) then
     Result := Format('%s; bold', [Result]);
+    }
   if (uffFont in fmt^.UsedFormattingFields) then
     Result := Format('%s; Font%d', [Result, fmt^.FontIndex]);
   if (uffBackground in fmt^.UsedFormattingFields) then begin
-    Result := Format('%s; Bg %s', [GetColorName(fmt^.Background.BgColor)]);
-    Result := Format('%s; Fg %s', [GetColorName(fmt^.Background.FgColor)]);
-    Result := Format('%s; Pattern %s', [GetEnumName(TypeInfo(TsFillStyle), ord(fmt^.Background.Style))]);
+    Result := Format('%s; Bg %s', [Result, GetColorName(fmt^.Background.BgColor)]);
+    Result := Format('%s; Fg %s', [Result, GetColorName(fmt^.Background.FgColor)]);
+    Result := Format('%s; Pattern %s', [Result, GetEnumName(TypeInfo(TsFillStyle), ord(fmt^.Background.Style))]);
   end;
   if (uffHorAlign in fmt^.UsedFormattingfields) then
     Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsHorAlignment), ord(fmt^.HorAlignment))]);
@@ -7075,28 +7082,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFont: TsFont): Integer;
 begin
-  // Font index 4 does not exist in BIFF. Avoid that a real font gets this index.
-  if FFontList.Count = 4 then
-    FFontList.Add(nil);
   result := FFontList.Add(AFont);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Copies a font list to the workbook's font list
-
-  @param   ASource   Font list to be copied
--------------------------------------------------------------------------------}
-procedure TsWorkbook.CopyFontList(ASource: TFPList);
-var
-  fnt: TsFont;
-  i: Integer;
-begin
-  RemoveAllFonts;
-  for i:=0 to ASource.Count-1 do
-  begin
-    fnt := TsFont(ASource.Items[i]);
-    AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7150,12 +7136,9 @@ end;
   Initializes the font list by adding 5 fonts:
 
     0: default font
-    1: like default font, but bold
-    2: like default font, but italic
-    3: like default font, but underlined
-    4: empty (due to a restriction of Excel)
-    5: like default font, but bold and italic
-    6: like default font, but blue and underlined (for hyperlinks)
+    1: like default font, but blue and underlined (for hyperlinks)
+    2: like default font, but bold
+    3: like default font, but italic
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.InitFonts;
 var
@@ -7173,14 +7156,10 @@ begin
   RemoveAllFonts;
 
   // Build new font list
-  SetDefaultFont(fntName, fntSize);                      // Default font (FONT0)
-  AddFont(fntName, fntSize, [fssBold], scBlack);         // FONT1 for uffBold
-
-  AddFont(fntName, fntSize, [fssItalic], scBlack);       // FONT2 (Italic)
-  AddFont(fntName, fntSize, [fssUnderline], scBlack);    // FONT3 (fUnderline)
-  // FONT4 which does not exist in BIFF is added automatically with nil as place-holder
-  AddFont(fntName, fntSize, [fssBold, fssItalic], scBlack); // FONT5 (bold & italic)
-  AddFont(fntName, fntSize, [fssUnderline], scBlue);     // FONT6 (blue & underlined)
+  SetDefaultFont(fntName, fntSize);                      // FONT0: Default font
+  AddFont(fntName, fntSize, [fssUnderline], scBlue);     // FONT1: Hyperlink font = blue & underlined
+  AddFont(fntName, fntSize, [fssBold], scBlack);         // FONT2: Bold font
+  AddFont(fntName, fntSize, [fssItalic], scBlack);       // FONT3: Italic font (not used directly)
 
   FBuiltinFontCount := FFontList.Count;
 end;
@@ -7238,6 +7217,15 @@ begin
         FontName := AFontName;
         Size := ASize;
       end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the count of built-in fonts (default font, hyperlink font, bold font
+  by default).
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetBuiltinFontCount: Integer;
+begin
+  Result := FBuiltinFontCount;
 end;
 
 {@@ ----------------------------------------------------------------------------
