@@ -6771,9 +6771,7 @@ end;
   (ODS seems to be a bit less restrictive, but if we follow Excel's convention
   we always have valid sheet names independent of the format.
 
-  @param   AName                Name to be checked. If the input name is already
-                                used AName will be modified such that the sheet
-                                name is unique.
+  @param   AName                Name to be checked.
   @param   ReplaceDuplicateName If there exists already a sheet name equal to
                                 AName then a number is added to AName such that
                                 the name is unique.

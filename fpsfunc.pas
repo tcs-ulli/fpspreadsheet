@@ -18,7 +18,7 @@ implementation
 
 uses
   Math, lazutf8, StrUtils, DateUtils,
-  xlsconst, {%H-}fpsPatches, fpsUtils, fpsexprparser;
+  xlsconst, {%H-}fpsPatches, fpsUtils, fpsnumformat, fpsexprparser;
 
 
 {------------------------------------------------------------------------------}
@@ -833,9 +833,24 @@ begin
     Result := StringResult(UTF8StringReplace(s, sOld, sNew, [rfReplaceAll]));
 end;
 
+procedure fpsTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// TEXT( value, format )
+// Returns a value converted to text with a specified format.
+var
+  fmt: String;
+  value: double;
+begin
+  value := ArgToFloat(Args[0]);
+  fmt := ArgToString(Args[1]);
+  if IsDateTimeFormat(fmt) then
+    Result := StringResult(FormatDateTime(fmt, value))
+  else
+    Result := StringResult(Format(fmt, [value]));
+end;
+
 procedure fpsTRIM(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // TRIM( text )
-// returns a text value with the leading and trailing spaces removed
+// Returns a text value with the leading and trailing spaces removed
 begin
   Result := StringResult(UTF8Trim(ArgToString(Args[0])));
 end;
@@ -861,6 +876,9 @@ begin
     Result := IntegerResult(n)
   else
   if TryStrToFloat(s, x, ExprFormatSettings) then
+    Result := FloatResult(x)
+  else
+  if TryStrToDateTime(s, x) then
     Result := FloatResult(x)
   else
     Result := ErrorResult(errWrongType);
@@ -1630,6 +1648,7 @@ begin
     AddFunction(cat, 'REPT',      'S', 'SI',   INT_EXCEL_SHEET_FUNC_REPT,       @fpsREPT);
     AddFunction(cat, 'RIGHT',     'S', 'Si',   INT_EXCEL_SHEET_FUNC_RIGHT,      @fpsRIGHT);
     AddFunction(cat, 'SUBSTITUTE','S', 'SSSi', INT_EXCEL_SHEET_FUNC_SUBSTITUTE, @fpsSUBSTITUTE);
+    AddFunction(cat, 'TEXT',      'S', '?S',   INT_EXCEL_SHEET_FUNC_TEXT,       @fpsTEXT);
     AddFunction(cat, 'TRIM',      'S', 'S',    INT_EXCEL_SHEET_FUNC_TRIM,       @fpsTRIM);
     AddFunction(cat, 'UPPER',     'S', 'S',    INT_EXCEL_SHEET_FUNC_UPPER,      @fpsUPPER);
     AddFunction(cat, 'VALUE',     'F', 'S',    INT_EXCEL_SHEET_FUNC_VALUE,      @fpsVALUE);
