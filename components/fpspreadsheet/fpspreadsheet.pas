@@ -1601,10 +1601,13 @@ end;
   @param  ACol   Column index of the cell which has been changed
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
+var
+  cell: PCell;
 begin
   if (FWorkbook.FCalculationLock = 0) and (boAutoCalc in FWorkbook.Options) then
   begin
-    if CellUsedInFormula(ARow, ACol) then
+    cell := FindCell(ARow, ACol);
+    if HasFormula(cell) or CellUsedInFormula(ARow, ACol) then
       CalcFormulas;
   end;
   if Assigned(FOnChangeCell) then
