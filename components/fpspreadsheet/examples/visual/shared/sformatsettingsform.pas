@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  Grids, ButtonPanel, ComCtrls, StdCtrls, Spin, ExtCtrls, sCtrls;
+  Grids, ButtonPanel, ComCtrls, StdCtrls, Spin, ExtCtrls, Buttons, sCtrls;
 
 type
   { TFormatSettingsForm }
@@ -15,6 +15,7 @@ type
     Bevel1: TBevel;
     Bevel2: TBevel;
     Bevel3: TBevel;
+    BtnCurrency: TBitBtn;
     ButtonPanel: TButtonPanel;
     CbLongDateFormat: TComboBox;
     CbLongTimeFormat: TComboBox;
@@ -48,6 +49,7 @@ type
     PgCurrency: TTabSheet;
     PgDateTime: TTabSheet;
     PgNumber: TTabSheet;
+    procedure BtnCurrencyClick(Sender: TObject);
     procedure DateTimeFormatChange(Sender: TObject);
     procedure EdCurrencySymbolChange(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
@@ -81,7 +83,8 @@ var
 implementation
 
 uses
-  fpsUtils;
+  fpsUtils,
+  sCurrencyForm;
 
 const
   CURR_VALUE = 100.0;
@@ -152,6 +155,20 @@ begin
   LblDateTimeSample.Visible := (PageControl.Activepage = PgDateTime) and
     ((FDateFormatSample <> '') or (FTimeFormatSample <> ''));
 //  Application.ProcessMessages;
+end;
+
+procedure TFormatSettingsForm.BtnCurrencyClick(Sender: TObject);
+var
+  F: TCurrencyForm;
+begin
+  F := TCurrencyForm.Create(nil);
+  try
+    F.CurrencySymbol := EdCurrencySymbol.Text;
+    if F.ShowModal = mrOK then
+      EdCurrencySymbol.Text := F.CurrencySymbol;
+  finally
+    F.Free;
+  end;
 end;
 
 procedure TFormatSettingsForm.EdCurrencySymbolChange(Sender: TObject);
