@@ -36,4 +36,9 @@
   FPS_LAZUTF8. Keep undefined for the current Lazarus version. }
 {.$DEFINE FPS_LAZUTF8}
 
+{ In order to allow selection of multiple ranges in the WorksheetGrid a
+  sufficiently new version of the basic TCustomGrid is required. The required
+  property "RangeSelect" was introduced in Lazarus 1.4. In order to compile
+  the package with older versions activate the define FPS_NO_GRID_MULTISELECT }
+{.$DEFINE FPS_NO_GRID_MULTISELECT}
 

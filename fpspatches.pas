@@ -15,7 +15,6 @@ interface
 uses
   Classes, SysUtils;
 
-
 {$IFDEF FPS_VARISBOOL}
 { Needed only if FPC version is < 2.6.4 }
   function VarIsBool(const V: Variant): Boolean;
@@ -1710,6 +1709,7 @@ end;
 
 {$ENDIF}
 
+
 {$IFDEF FPS_FORMATDATETIME}
 {******************************************************************************}
 {******************************************************************************}
@@ -1717,13 +1717,13 @@ end;
 {******************************************************************************}
 {******************************************************************************}
 
-{@@
+{@@ ----------------------------------------------------------------------------
   Applies a formatting string to a date/time value and converts the number
   to a date/time string.
 
   This functionality is available in the SysUtils unit. But it is duplicated
   here to add a patch which is not available in stable fpc.
-}
+-------------------------------------------------------------------------------}
 procedure DateTimeToString(out Result: string; const FormatStr: string; const DateTime: TDateTime;
   const FormatSettings: TFormatSettings; Options : TFormatDateTimeOptions = []);
 // Copied from "fpc/rtl/objpas/sysutils/datei.inc"
@@ -1731,44 +1731,7 @@ var
   ResultLen: integer;
   ResultBuffer: array[0..255] of char;
   ResultCurrent: pchar;
-  (*                    ---- not needed here ---
-{$IFDEF MSWindows}
-  isEnable_E_Format : Boolean;
-  isEnable_G_Format : Boolean;
-  eastasiainited : boolean;
 
-  procedure InitEastAsia;
-  var     ALCID : LCID;
-         PriLangID , SubLangID : Word;
-
-  begin
-    ALCID := GetThreadLocale;
-    PriLangID := ALCID and $3FF;
-    if (PriLangID>0) then
-       SubLangID := (ALCID and $FFFF) shr 10
-      else
-        begin
-          PriLangID := SysLocale.PriLangID;
-          SubLangID := SysLocale.SubLangID;
-        end;
-    isEnable_E_Format := (PriLangID = LANG_JAPANESE)
-                  or
-                  (PriLangID = LANG_KOREAN)
-                  or
-                  ((PriLangID = LANG_CHINESE)
-                   and
-                   (SubLangID = SUBLANG_CHINESE_TRADITIONAL)
-                  );
-    isEnable_G_Format := (PriLangID = LANG_JAPANESE)
-                  or
-                  ((PriLangID = LANG_CHINESE)
-                   and
-                   (SubLangID = SUBLANG_CHINESE_TRADITIONAL)
-                  );
-    eastasiainited :=true;
-  end;
-{$ENDIF MSWindows}
-                     *)
   procedure StoreStr(Str: PChar; Len: Integer);
   begin
     if ResultLen + Len < SizeOf(ResultBuffer) then
@@ -2000,38 +1963,6 @@ var
                    StoreString(' ');
                    StoreFormat(FormatSettings.LongTimeFormat, Nesting+1, True);
                  end;
-            (* ------------ not needed here...
-{$IFDEF MSWindows}
-            'E':
-               begin
-                 if not Eastasiainited then InitEastAsia;
-                 if Not(isEnable_E_Format) then StoreStr(@FormatCurrent^, 1)
-                  else
-                   begin
-                     while (P < FormatEnd) and (UpCase(P^) = Token) do
-                     P := P + 1;
-                     Count := P - FormatCurrent;
-                     StoreString(ConvertEraYearString(Count,Year,Month,Day));
-                   end;
-		 prevlasttoken := lastformattoken;
-                 lastformattoken:=token;
-               end;
-             'G':
-               begin
-                 if not Eastasiainited then InitEastAsia;
-                 if Not(isEnable_G_Format) then StoreStr(@FormatCurrent^, 1)
-                  else
-                   begin
-                     while (P < FormatEnd) and (UpCase(P^) = Token) do
-                     P := P + 1;
-                     Count := P - FormatCurrent;
-                     StoreString(ConvertEraString(Count,Year,Month,Day));
-                   end;
-		 prevlasttoken := lastformattoken;
-                 lastformattoken:=token;
-               end;
-{$ENDIF MSWindows}
-*)
           end;
 	  prevlasttoken := lastformattoken;
           lastformattoken := token;
@@ -2043,11 +1974,7 @@ var
     end;
   end;
 
-begin          (*
-{$ifdef MSWindows}
-  eastasiainited:=false;
-{$endif MSWindows}
-*)
+begin
   DecodeDateFully(DateTime, Year, Month, Day, DayOfWeek);
   DecodeTime(DateTime, Hour, Minute, Second, MilliSecond);
   ResultLen := 0;
@@ -2099,7 +2026,6 @@ begin
   DateTimeToString(Result, FormatStr, DateTime, FormatSettings,Options);
 end;
 {$ENDIF}
-
 
 end.
 
