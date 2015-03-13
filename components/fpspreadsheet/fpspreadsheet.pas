@@ -1274,6 +1274,11 @@ begin
   for cell in FCells do
   begin
     if HasFormula(cell) then begin
+      if (cell^.Row = ARow) and (cell^.Col = ACol) then
+      begin
+        Result := true;
+        exit;
+      end;
       rpnFormula := BuildRPNFormula(cell);
       for i := 0 to Length(rpnFormula)-1 do
       begin
@@ -1601,13 +1606,10 @@ end;
   @param  ACol   Column index of the cell which has been changed
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
-var
-  cell: PCell;
 begin
   if (FWorkbook.FCalculationLock = 0) and (boAutoCalc in FWorkbook.Options) then
   begin
-    cell := FindCell(ARow, ACol);
-    if HasFormula(cell) or CellUsedInFormula(ARow, ACol) then
+    if CellUsedInFormula(ARow, ACol) then
       CalcFormulas;
   end;
   if Assigned(FOnChangeCell) then

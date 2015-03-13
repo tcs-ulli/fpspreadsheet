@@ -1470,7 +1470,6 @@ var
   childnode: TDOMNode;
   subnode: TDOMNode;
   nodeName: String;
-  s: String;
   cell: PCell;
   hyperlink: string;
 
@@ -4182,7 +4181,6 @@ var
   fmt: TsCellFormat;
   hyperlink: PsHyperlink;
   u: TUri;
-  i: Integer;
 begin
   Unused(ARow, ACol);
 

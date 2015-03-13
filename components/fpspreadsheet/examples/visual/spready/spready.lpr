@@ -4,7 +4,7 @@ program spready;
 
 uses
   Interfaces, // this includes the LCL widgetset
-  Forms, mainform, sCtrls, fpsCurrency,
+  Forms, mainform, sCtrls,
   scsvparamsform, sfcurrencyform, sformatsettingsform, ssortparamsform;
 
 {$R *.res}
