@@ -18,7 +18,7 @@
       </Parsing>
       <Other>
         <CompilerMessages>
-          <IgnoredMessages idx5028="True" idx4055="True"/>
+          <IgnoredMessages idx5028="True" idx4055="True" idx2005="True"/>
         </CompilerMessages>
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>
@@ -151,7 +151,7 @@ This package is all you need if you don't want graphical components (like grids 
       </Item30>
       <Item31>
         <Filename Value="fpsreaderwriter.pas"/>
-        <UnitName Value="fpsreaderwriter"/>
+        <UnitName Value="fpsReaderWriter"/>
       </Item31>
       <Item32>
         <Filename Value="fpsnumformat.pas"/>

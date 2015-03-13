@@ -13,6 +13,7 @@ LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
 unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
+{$I fps.inc}
 
 { To do:
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
@@ -27,13 +28,6 @@ uses
   Forms, Controls, Graphics, Dialogs, Grids, ExtCtrls,
   LCLVersion,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
-
-const
-  {$IF (lcl_fullversion >= 1030000)}
-   ENABLE_MULTI_SELECT = 1;  // requires Laz 1.4+ or trunk after r46767
-  {$ELSE}
-   ENABLE_MULTI_SELECT = 0;
-  {$ENDIF}
 
 type
 
@@ -356,7 +350,7 @@ type
         read GetWordwraps write SetWordwraps;
 
     // inherited
-   {$IF (ENABLE_MULTI_SELECT = 1)}
+   {$IFNDEF FPS_NO_GRID_MULTISELECT}
     {@@ Allow multiple selections}
     property RangeSelectMode default rsmMulti;
    {$ENDIF}
@@ -864,7 +858,7 @@ begin
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
   FOwnsWorkbook := true;
- {$IF (ENABLE_MULTI_SELECT=1)}
+ {$IFNDEF FPS_NO_GRID_MULTISELECT}
   RangeSelectMode := rsmMulti;
  {$ENDIF}
 end;
@@ -3523,13 +3517,13 @@ end;
 procedure TsCustomWorksheetGrid.MoveSelection;
 var
   sel: TsCellRangeArray;
-  {$IF (ENABLE_MULTI_SELECT=1)}
+  {$IFNDEF FPS_NO_GRID_MULTISELECT}
   i: Integer;
   {$ENDIF}
 begin
   if Worksheet <> nil then
   begin
-    {$IF (ENABLE_MULTI_SELECT=1)}
+    {$IFNDEF FPS_NO_GRID_MULTISELECT}
     if HasMultiSelection then
     begin
       SetLength(sel, SelectedRangeCount);
