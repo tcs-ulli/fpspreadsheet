@@ -18,6 +18,9 @@ type
     AcColDelete: TAction;
     AcRowAdd: TAction;
     AcColAdd: TAction;
+    AcSettingsCSVParams: TAction;
+    AcSettingsCurrency: TAction;
+    AcSettingsFormatSettings: TAction;
     AcViewInspector: TAction;
     ActionList: TActionList;
     AcFileExit: TFileExit;
@@ -34,6 +37,10 @@ type
     MenuItem104: TMenuItem;
     MenuItem105: TMenuItem;
     MenuItem106: TMenuItem;
+    MenuItem107: TMenuItem;
+    MenuItem108: TMenuItem;
+    MenuItem109: TMenuItem;
+    MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
     MenuItem13: TMenuItem;
@@ -290,6 +297,9 @@ type
     procedure AcFileSaveAsAccept(Sender: TObject);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
+    procedure AcSettingsCSVParamsExecute(Sender: TObject);
+    procedure AcSettingsCurrencyExecute(Sender: TObject);
+    procedure AcSettingsFormatSettingsExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure InspectorTabControlChange(Sender: TObject);
     procedure ToolButton4Click(Sender: TObject);
@@ -310,7 +320,8 @@ implementation
 {$R *.lfm}
 
 uses
-  fpsUtils;
+  fpsUtils, fpsCSV,
+  sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm;
 
 
 { TMainForm }
@@ -389,6 +400,53 @@ begin
   WorksheetGrid.DeleteRow(r);
   WorksheetGrid.Row := r;
 end;
+
+procedure TMainForm.AcSettingsCSVParamsExecute(Sender: TObject);
+var
+  F: TCSVParamsForm;
+begin
+  F := TCSVParamsForm.Create(nil);
+  try
+    F.SetParams(fpscsv.CSVParams);
+    if F.ShowModal = mrOK then
+      F.GetParams(fpscsv.CSVParams);
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TMainForm.AcSettingsCurrencyExecute(Sender: TObject);
+var
+  F: TCurrencyForm;
+begin
+  F := TCurrencyForm.Create(nil);
+  try
+    F.ShowModal;
+  finally
+    F.Free;
+  end;
+end;
+
+procedure TMainForm.AcSettingsFormatSettingsExecute(Sender: TObject);
+var
+  F: TFormatSettingsForm;
+begin
+  if WorksheetGrid.Workbook = nil then
+    exit;
+
+  F := TFormatSettingsForm.Create(nil);
+  try
+    F.FormatSettings := WorksheetGrid.Workbook.FormatSettings;
+    if F.ShowModal = mrOK then
+    begin
+      WorksheetGrid.Workbook.FormatSettings := F.FormatSettings;
+      WorksheetGrid.Invalidate;
+    end;
+  finally
+    F.Free;
+  end;
+end;
+
 
 { Toggles the spreadsheet inspector on and off }
 procedure TMainForm.AcViewInspectorExecute(Sender: TObject);

@@ -55,7 +55,7 @@ object MainForm: TMainForm
     Top = 83
     Width = 253
     OnChange = InspectorTabControlChange
-    TabIndex = 1
+    TabIndex = 0
     Tabs.Strings = (
       'Workbook'
       'Worksheet'
@@ -71,7 +71,7 @@ object MainForm: TMainForm
       Top = 23
       Width = 249
       Align = alClient
-      RowCount = 32
+      RowCount = 30
       TabOrder = 1
       TitleStyle = tsNative
       DisplayOptions = [doColumnTitles]
@@ -101,13 +101,11 @@ object MainForm: TMainForm
         '  PosCurrencyFormat=3'
         '  NegCurrencyFormat=8'
         '  TwoDigitYearCenturyWindow=50'
-        'Font0=Arial; size 10,0; color black'
-        'Font1=Arial; size 10,0; color black; bold'
-        'Font2=Arial; size 10,0; color black; italic'
-        'Font3=Arial; size 10,0; color black; underline'
-        'Font4='
-        'Font5=Arial; size 10,0; color black; bold; italic'
-        'Font6=Arial; size 10,0; color blue; underline'
+        'Font0=Arial; size 10; black'
+        'Font1=Arial; size 10; blue; underline'
+        'Font2=Arial; size 10; black; bold'
+        'Font3=Arial; size 10; black; italic'
+        'CellFormat0='
       )
       TitleCaptions.Strings = (
         'Properties'
@@ -1436,6 +1434,24 @@ object MainForm: TMainForm
       Caption = 'Delete comment'
       Hint = 'Delete comment'
       ImageIndex = 55
+    end
+    object AcSettingsCSVParams: TAction
+      Category = 'Settings'
+      Caption = 'CSV parameters...'
+      Hint = 'Parameters for CSV files'
+      OnExecute = AcSettingsCSVParamsExecute
+    end
+    object AcSettingsCurrency: TAction
+      Category = 'Settings'
+      Caption = 'Currency symbols...'
+      Hint = 'Define currency symbols'
+      OnExecute = AcSettingsCurrencyExecute
+    end
+    object AcSettingsFormatSettings: TAction
+      Category = 'Settings'
+      Caption = 'Number format settings...'
+      Hint = 'Define number format settings'
+      OnExecute = AcSettingsFormatSettingsExecute
     end
   end
   object ImageList: TImageList
@@ -4779,6 +4795,18 @@ object MainForm: TMainForm
       object MenuItem52: TMenuItem
         Action = AcViewInspector
         AutoCheck = True
+      end
+    end
+    object MnuSettings: TMenuItem
+      Caption = 'Settings'
+      object MenuItem109: TMenuItem
+        Action = AcSettingsFormatSettings
+      end
+      object MenuItem107: TMenuItem
+        Action = AcSettingsCSVParams
+      end
+      object MenuItem108: TMenuItem
+        Action = AcSettingsCurrency
       end
     end
   end
