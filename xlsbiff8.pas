@@ -125,12 +125,6 @@ type
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
-    {
-    procedure WriteCommentEscher(AStream: TStream; AComment: PsComment;
-      ACommentIndex: Integer);
-    procedure WriteCommentNote(AStream: TStream; AComment: PsComment;
-      ACommentIndex: Integer);
-      }
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
@@ -1529,7 +1523,7 @@ begin
 
       // An absolute path must be a fully qualified URI to be compatible with fps
       if flags and MASK_HLINK_ABSOLUTE <> 0 then
-        FilenameToURI(link);
+        link := FilenameToURI(link);
     end;
   end;
 
@@ -1841,7 +1835,6 @@ begin
     WriteTXO(AStream, comment);
     inc(index);
   end;
-//  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsEscherCallback);
 
   { The NOTE records for all comments follow subsequently. }
   index := 1;
@@ -1850,38 +1843,8 @@ begin
     WriteNOTE(AStream, comment, index);
     inc(index);
   end;
-//  IterateThroughComments(AStream, AWorksheet.Comments, WriteCommentsNoteCallback);
-end;
-  (*
-{@@ ----------------------------------------------------------------------------
-  Helper method which writes all Escher-related records required for a cell
-  comment:
-    MSODRAWING - OBJ - MSODRAWING - TXT
-  The NOTE records are written separately
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteCommentsEscher(AStream: TStream;
-  AComment: PsComment; ACommentIndex: Integer);
-begin
-  if ACommentIndex = 0 then
-    WriteMSODrawing1(AStream, FWorksheet.Comments.Count, AComment)
-  else
-    WriteMSODrawing2(AStream, AComment, ACommentIndex+1);
-  WriteOBJ(AStream, ACommentIndex+1);
-  WriteMSODrawing3(AStream);
-  WriteTXO(AStream, AComment);
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Helper method for writing all NOTE records of a worksheet.
-  The Escher-related records required for each cell comment already have been
-  written.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteCommentNote(AStream: TStream;
-  AComment: PsComment; ACommentIndex: Integer);
-begin
-  WriteNOTE(AStream, AComment, ACommentIndex+1);
-end;
-*)
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 8 DIMENSIONS record
 
