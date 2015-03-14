@@ -951,7 +951,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
   FWorkSheet.WriteBlank(cell);
   FWorksheet.CopyFormat(@lCell, cell);
 
@@ -971,7 +971,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   boolValue := ExtractBoolFromNode(ACellNode);
   FWorkSheet.WriteBoolValue(cell, boolValue);
@@ -1144,7 +1144,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -1269,7 +1269,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -1521,7 +1521,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   FWorkSheet.WriteUTF8Text(cell, cellText);
   if hyperlink <> '' then
@@ -1556,7 +1556,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   Value := GetAttrValue(ACellNode,'office:value');
   if UpperCase(Value)='1.#INF' then

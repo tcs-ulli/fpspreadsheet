@@ -383,15 +383,18 @@ var
   warning: String;
   nf: TsNumberFormat;
   decs: Integer;
+  cell: PCell;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
     exit;
 
+  cell := FWorksheet.AddCell(ARow, ACol);
+
   // Do not try to interpret the strings. --> everything is a LABEL cell.
   if not CSVParams.DetectContentType then
   begin
-    FWorksheet.WriteUTF8Text(ARow, aCol, AText);
+    FWorksheet.WriteUTF8Text(cell, AText);
     exit;
   end;
 
@@ -399,9 +402,9 @@ begin
   if IsNumber(AText, dblValue, nf, decs, currSym, warning) then
   begin
     if currSym <> '' then
-      FWorksheet.WriteCurrency(ARow, ACol, dblValue, nfCurrency, decs, currSym)
+      FWorksheet.WriteCurrency(cell, dblValue, nfCurrency, decs, currSym)
     else
-      FWorksheet.WriteNumber(ARow, ACol, dblValue, nf, decs);
+      FWorksheet.WriteNumber(cell, dblValue, nf, decs);
     if warning <> '' then
       FWorkbook.AddErrorMsg('Cell %s: %s', [GetCellString(ARow, ACol), warning]);
     exit;
@@ -411,19 +414,19 @@ begin
   // No idea how to apply the date/time formatsettings here...
   if IsDateTime(AText, dtValue, nf) then
   begin
-    FWorksheet.WriteDateTime(ARow, ACol, dtValue, nf);
+    FWorksheet.WriteDateTime(cell, dtValue, nf);
     exit;
   end;
 
   // Check for a BOOLEAN cell
   if IsBool(AText, boolValue) then
   begin
-    FWorksheet.WriteBoolValue(ARow, aCol, boolValue);
+    FWorksheet.WriteBoolValue(cell, boolValue);
     exit;
   end;
 
   // What is left is handled as a TEXT cell
-  FWorksheet.WriteUTF8Text(ARow, ACol, AText);
+  FWorksheet.WriteUTF8Text(cell, AText);
 end;
 
 procedure TsCSVReader.ReadFormula(AStream: TStream);

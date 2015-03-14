@@ -850,7 +850,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);    // "real" cell
+    cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
 
   FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(WideStrValue));
 
@@ -902,7 +902,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   { Save the data }
   FWorksheet.WriteUTF8Text(cell, AStrValue);
@@ -1119,7 +1119,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   FWorksheet.WriteUTF8Text(cell, FSharedStringTable[SSTIndex]);
 

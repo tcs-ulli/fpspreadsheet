@@ -98,6 +98,9 @@ type
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
+    FLastFoundCell: PCell;
+    FLastFoundRow: Cardinal;
+    FLastFoundCol: Cardinal;
     FFirstRowIndex: Cardinal;
     FFirstColIndex: Cardinal;
     FLastRowIndex: Cardinal;
@@ -346,6 +349,7 @@ type
     procedure DeleteCell(ACell: PCell);
     procedure EraseCell(ACell: PCell);
 
+    function  AddCell(ARow, ACol: Cardinal): PCell;
     function  FindCell(ARow, ACol: Cardinal): PCell; overload;
     function  FindCell(AddressStr: String): PCell; overload;
     function  GetCell(ARow, ACol: Cardinal): PCell; overload;
@@ -1066,6 +1070,10 @@ begin
 
   FActiveCellRow := Cardinal(-1);
   FActiveCellCol := Cardinal(-1);
+
+  FLastFoundCell := nil;
+  FLastFoundRow := Cardinal(-1);
+  FLastFoundCol := Cardinal(-1);
 
   FOptions := [soShowGridLines, soShowHeaders];
 end;
@@ -1992,6 +2000,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Adds a new cell at a specified row and column index to the Cells list.
+
+  NOTE: It is not checked if there exists already another cell at this location.
+  This case must be avoided. USE CAREFULLY WITHOUT FindCell
+  (e.g., during reading into empty worksheets).
+-------------------------------------------------------------------------------}
+function TsWorksheet.AddCell(ARow, ACol: Cardinal): PCell;
+begin
+  Result := Cells.AddCell(ARow, ACol);
+  if FFirstColIndex = $FFFFFFFF then FFirstColIndex := GetFirstColIndex(true)
+    else FFirstColIndex := Min(FFirstColIndex, ACol);
+  if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
+    else FFirstRowIndex := Min(FFirstRowIndex, ARow);
+  if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
+    else FLastColIndex := Max(FLastColIndex, ACol);
+  if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
+    else FLastRowIndex := Max(FLastRowIndex, ARow);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Tries to locate a Cell in the list of already written Cells
 
   @param  ARow      The row of the cell
@@ -2002,6 +2030,17 @@ end;
 function TsWorksheet.FindCell(ARow, ACol: Cardinal): PCell;
 begin
   Result := PCell(FCells.Find(ARow, ACol));
+{
+  if (ARow = FLastFoundRow) and (ACol = FLastFoundCol) then
+    Result := FLastFoundCell
+  else
+  begin
+    Result := PCell(FCells.Find(ARow, ACol));
+    FLastFoundCell := Result;
+    FLastFoundRow := ARow;
+    FLastFoundCol := ACol;
+  end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2040,17 +2079,7 @@ function TsWorksheet.GetCell(ARow, ACol: Cardinal): PCell;
 begin
   Result := Cells.FindCell(ARow, ACol);
   if Result = nil then
-  begin
-    Result := Cells.AddCell(ARow, ACol);
-    if FFirstColIndex = $FFFFFFFF then FFirstColIndex := GetFirstColIndex(true)
-      else FFirstColIndex := Min(FFirstColIndex, ACol);
-    if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
-      else FFirstRowIndex := Min(FFirstRowIndex, ARow);
-    if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
-      else FLastColIndex := Max(FLastColIndex, ACol);
-    if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
-      else FLastRowIndex := Max(FLastRowIndex, ARow);
-  end;
+    Result := AddCell(ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------

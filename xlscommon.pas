@@ -828,7 +828,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   FWorksheet.WriteBlank(cell);
 
@@ -863,7 +863,7 @@ begin
     InitCell(r, c, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(r, c);
+    cell := FWorksheet.AddCell(r, c);
 
   { Retrieve boolean or error value depending on the "ValueType" }
   case rec.ValueType of
@@ -998,7 +998,7 @@ begin
       SetLength(s, n);
       AStream.ReadBuffer(s[1], n);
       FIncompleteNote := s;
-      FIncompleteCell := FWorksheet.GetCell(r, c);
+      FIncompleteCell := FWorksheet.GetCell(r, c);  // no AddCell here!
     end;
   end else
   // One of the continuation records
@@ -1121,7 +1121,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);    // "Real" cell
+    cell := FWorksheet.AddCell(ARow, ACol);    // "Real" cell
 
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
@@ -1189,7 +1189,7 @@ begin
     if FIsVirtualMode then
       cell^.Col := fc
     else
-      cell := FWorksheet.GetCell(ARow, fc);
+      cell := FWorksheet.AddCell(ARow, fc);
     FWorksheet.WriteBlank(cell);
     ApplyCellFormatting(cell, XF);
     if FIsVirtualMode then
@@ -1233,7 +1233,7 @@ begin
     if FIsVirtualMode then
       cell^.Col := fc
     else
-      cell := FWorksheet.GetCell(ARow, fc);
+      cell := FWorksheet.AddCell(ARow, fc);
     RK := DWordLEtoN(AStream.ReadDWord);
     lNumber := DecodeRKValue(RK);
     {Find out what cell type, set contenttype and value}
@@ -1288,7 +1288,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);  // "real" cell
+    cell := FWorksheet.AddCell(ARow, ACol);  // "real" cell
 
   if IsDateTime(value, nf, nfs, dt) then
     FWorksheet.WriteDateTime(cell, dt, nf, nfs)
@@ -1391,7 +1391,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   {Find out what cell type, set contenttype and value}
   ExtractNumberFormat(XF, nf, nfs);
@@ -1782,7 +1782,7 @@ begin
     InitCell(r1, c1, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(r1, c1);        // "Real" cell
+    cell := FWorksheet.AddCell(r1, c1);        // "Real" cell
 
   // Unused
   AStream.ReadByte;
