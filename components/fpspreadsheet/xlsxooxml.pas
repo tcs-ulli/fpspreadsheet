@@ -687,7 +687,7 @@ begin
     InitCell(rowIndex, colIndex, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := AWorksheet.GetCell(rowIndex, colIndex);
+    cell := AWorksheet.AddCell(rowIndex, colIndex);
 
   // get style index
   s := GetAttrValue(ANode, 's');

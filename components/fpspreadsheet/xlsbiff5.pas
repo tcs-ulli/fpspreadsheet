@@ -509,7 +509,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   { Save the data }
   FWorksheet.WriteUTF8Text(cell, ISO_8859_1ToUTF8(AStrValue));
@@ -896,7 +896,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   { Save the data }
   valueStr := ConvertEncoding(ansistr, FCodePage, encodingUTF8);

@@ -403,7 +403,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
   ApplyCellFormatting(cell, XF);
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -433,7 +433,7 @@ begin
     InitCell(r, c, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(r, c);
+    cell := FWorksheet.AddCell(r, c);
 
   { Retrieve boolean or error value depending on the "ValueType" }
   case rec.ValueType of
@@ -609,7 +609,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
@@ -704,7 +704,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
   FWorksheet.WriteUTF8Text(cell, valueStr);
 
   { Apply formatting to cell }
@@ -739,7 +739,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nfs);
@@ -778,7 +778,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);
+    cell := FWorksheet.AddCell(ARow, ACol);
 
   { Save the data }
   FWorksheet.WriteNumber(cell, AWord);
