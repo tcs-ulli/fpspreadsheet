@@ -76,13 +76,18 @@
       <Unit2>
         <Filename Value="..\shared\scsvparamsform.pas"/>
         <IsPartOfProject Value="True"/>
+        <ComponentName Value="CSVParamsForm"/>
         <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
         <UnitName Value="sCSVParamsForm"/>
       </Unit2>
       <Unit3>
         <Filename Value="..\shared\sformatsettingsform.pas"/>
         <IsPartOfProject Value="True"/>
+        <ComponentName Value="FormatSettingsForm"/>
         <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sFormatsettingsForm"/>
       </Unit3>
       <Unit4>
         <Filename Value="..\shared\ssortparamsform.pas"/>
@@ -93,6 +98,7 @@
         <Filename Value="..\shared\scurrencyform.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="CurrencyForm"/>
+        <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="scurrencyform"/>
       </Unit5>
