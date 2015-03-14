@@ -545,7 +545,7 @@ type
     FPalette: array of TsColorValue;
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
-    FWriting: Boolean;
+    FReadWriteFlag: TsReadWriteFlag;
     FCalculationLock: Integer;
     FOptions: TsWorkbookOptions;
     FActiveWorksheet: TsWorksheet;
@@ -1607,6 +1607,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedCell(ARow, ACol: Cardinal);
 begin
+  if FWorkbook.FReadWriteFlag = rwfRead then
+    exit;
+
   if (FWorkbook.FCalculationLock = 0) and (boAutoCalc in FWorkbook.Options) then
   begin
     if CellUsedInFormula(ARow, ACol) then
@@ -1625,7 +1628,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedFont(ARow, ACol: Cardinal);
 begin
-  if Assigned(FOnChangeFont) then FOnChangeFont(Self, ARow, ACol);
+  if FWorkbook.FReadWriteFlag = rwfRead then
+    exit;
+  if Assigned(FOnChangeFont) then
+    FOnChangeFont(Self, ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6379,6 +6385,7 @@ begin
     FFileName := AFileName;
     PrepareBeforeReading;
     ok := false;
+    FReadWriteFlag := rwfRead;
     inc(FLockCount);          // This locks various notifications from being sent
     try
       AReader.ReadFromFile(AFileName);
@@ -6388,6 +6395,7 @@ begin
         Recalc;
       FFormat := AFormat;
     finally
+      FReadWriteFlag := rwfNormal;
       dec(FLockCount);
       if ok and Assigned(FOnOpenWorkbook) then   // ok is true if file has been read successfully
         FOnOpenWorkbook(self);   // send common notification
@@ -6513,13 +6521,13 @@ end;
 
 procedure TsWorkbook.SetVirtualColCount(AValue: Cardinal);
 begin
-  if FWriting then exit;
+  if FReadWriteFlag = rwfWrite then exit;
   FVirtualColCount := AValue;
 end;
 
 procedure TsWorkbook.SetVirtualRowCount(AValue: Cardinal);
 begin
-  if FWriting then exit;
+  if FReadWriteFlag = rwfWrite then exit;
   FVirtualRowCount := AValue;
 end;
 
@@ -6542,10 +6550,10 @@ begin
     FFileName := AFileName;
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
-    FWriting := true;
+    FReadWriteFlag := rwfWrite;
     AWriter.WriteToFile(AFileName, AOverwriteExisting);
   finally
-    FWriting := false;
+    FReadWriteFlag := rwfNormal;
     AWriter.Free;
   end;
 end;
@@ -6588,10 +6596,10 @@ begin
   try
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
-    FWriting := true;
+    FReadWriteFlag := rwfWrite;
     AWriter.WriteToStream(AStream);
   finally
-    FWriting := false;
+    FReadWriteFlag := rwfNormal;
     AWriter.Free;
   end;
 end;
