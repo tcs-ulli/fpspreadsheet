@@ -12,6 +12,9 @@ type
   TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8,
    sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
+  {@@ Flag set during reading or writing of a workbook }
+  TsReadWriteFlag = (rwfNormal, rwfRead, rwfWrite);
+
   {@@ Record collection limitations of a particular file format }
   TsSpreadsheetFormatLimitations = record
     MaxRowCount: Cardinal;
