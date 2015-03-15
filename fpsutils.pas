@@ -2112,9 +2112,8 @@ procedure FixHyperlinkPathDelims(var ATarget: String);
 var
   i: Integer;
 begin
-  if pos('file:', ATarget) = 1 then
-    for i:=1 to Length(ATarget) do
-      if ATarget[i] = '\' then ATarget[i] := '/';
+  for i:=1 to Length(ATarget) do
+    if ATarget[i] = '\' then ATarget[i] := '/';
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -911,6 +911,8 @@ var
   sourceSheet, destSheet: TsWorksheet;
   fmt: TsCellFormat;
   font: TsFont;
+  clr: TsColorvalue;
+  cb: TsCellBorder;
 begin
   Assert(AFromCell <> nil);
   Assert(AToCell <> nil);
@@ -921,8 +923,27 @@ begin
   else
   begin
     fmt := sourceSheet.ReadCellFormat(AFromCell);
-    font := sourceSheet.ReadCellFont(AFromCell);
-    fmt.FontIndex := destSheet.WriteFont(AToCell, font.FontName, font.Size, font.Style, font.Color);
+    destSheet.WriteCellFormat(AToCell, fmt);
+    if (uffBackground in fmt.UsedFormattingFields) then
+    begin
+      clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.BgColor);
+      fmt.Background.BgColor := destSheet.Workbook.AddColorToPalette(clr);
+      clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.FgColor);
+      fmt.Background.FgColor := destSheet.Workbook.AddColorToPalette(clr);
+    end;
+    if (uffFont in fmt.UsedFormattingFields) then
+    begin
+      font := sourceSheet.ReadCellFont(AFromCell);
+      clr := sourceSheet.Workbook.GetPaletteColor(font.Color);
+      font.Color := destSheet.Workbook.AddColorToPalette(clr);
+      fmt.FontIndex := destSheet.WriteFont(AToCell, font.FontName, font.Size, font.Style, font.Color);
+    end;
+    if (uffBorder in fmt.UsedFormattingFields) then
+      for cb in fmt.Border do
+      begin
+        clr := sourceSheet.Workbook.GetPaletteColor(fmt.BorderStyles[cb].Color);
+        fmt.BorderStyles[cb].Color := destSheet.Workbook.AddColorToPalette(clr);
+      end;
     destSheet.WriteCellFormat(AToCell, fmt);
   end;
 end;
@@ -7016,6 +7037,7 @@ function TsWorkbook.TryStrToCellRanges(AText: String; out AWorksheet: TsWorkshee
 var
   i: Integer;
   L: TStrings;
+  sheetname: String;
 begin
   Result := false;
   AWorksheet := nil;
@@ -7028,7 +7050,12 @@ begin
   if i = 0 then
     AWorksheet := FActiveWorksheet
   else begin
-    AWorksheet := GetWorksheetByName(Copy(AText, 1, i-1));
+    sheetname := Copy(AText, 1, i-1);
+    if (sheetname <> '') and (sheetname[1] = '''') then
+      Delete(sheetname, 1, 1);
+    if (sheetname <> '') and (sheetname[Length(sheetname)] = '''') then
+      Delete(sheetname, Length(sheetname), 1);
+    AWorksheet := GetWorksheetByName(sheetname);
     if AWorksheet = nil then
       exit;
     AText := Copy(AText, i+1, Length(AText));
