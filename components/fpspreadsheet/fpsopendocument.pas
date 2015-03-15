@@ -3751,6 +3751,8 @@ begin
 
   fnt := Workbook.GetFont(AFormat.FontIndex);
   defFnt := Workbook.GetDefaultfont;
+  if fnt = nil then
+    fnt := defFnt;
 
   if fnt.FontName <> defFnt.FontName then
     Result := Result + Format('style:font-name="%s" ', [fnt.FontName]);
