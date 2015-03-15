@@ -612,6 +612,8 @@ type
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;
       ReplaceDuplicateName: Boolean = false): TsWorksheet;
+    function  CopyWorksheetFrom(AWorksheet: TsWorksheet;
+      ReplaceDuplicateName: Boolean = false): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
     function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
@@ -905,10 +907,24 @@ end;
   @param  AToCell     Cell to which the format is to be copied
 -------------------------------------------------------------------------------}
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
+var
+  sourceSheet, destSheet: TsWorksheet;
+  fmt: TsCellFormat;
+  font: TsFont;
 begin
   Assert(AFromCell <> nil);
   Assert(AToCell <> nil);
-  AToCell^.FormatIndex := AFromCell^.FormatIndex;
+  sourceSheet := TsWorksheet(AFromCell.Worksheet);
+  destSheet := TsWorksheet(AToCell.Worksheet);
+  if (sourceSheet=nil) or (destSheet=nil) or (sourceSheet.Workbook = destSheet.Workbook) then
+    AToCell^.FormatIndex := AFromCell^.FormatIndex
+  else
+  begin
+    fmt := sourceSheet.ReadCellFormat(AFromCell);
+    font := sourceSheet.ReadCellFont(AFromCell);
+    fmt.FontIndex := destSheet.WriteFont(AToCell, font.FontName, font.Size, font.Style, font.Color);
+    destSheet.WriteCellFormat(AToCell, fmt);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1086,7 +1102,6 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsWorksheet.Destroy;
 begin
-//  RemoveAllCells;
   RemoveAllRows;
   RemoveAllCols;
 
@@ -1669,10 +1684,14 @@ begin
   // Fix row and column indexes overwritten
   AToCell^.Row := toRow;
   AToCell^.Col := toCol;
+  AToCell^.Worksheet := self;
 
   // Fix relative references in formulas
   // This also fires the OnChange event.
   CopyFormula(AFromCell, AToCell);
+
+  // Copy cell format
+  CopyFormat(AFromCell, AToCell);
 
   // Merged?
   if IsMergeBase(AFromCell) then
@@ -1706,11 +1725,16 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
   AFromWorksheet: TsWorksheet = nil);
+var
+  srcCell, destCell: PCell;
 begin
   if AFromWorksheet = nil then
     AFromWorksheet := self;
 
-  CopyCell(AFromWorksheet.FindCell(AFromRow, AFromCol), GetCell(AToRow, AToCol));
+  srcCell := AFromWorksheet.FindCell(AFromRow, AFromCol);
+  destCell := GetCell(AToRow, AToCol);
+
+  CopyCell(srcCell, destCell);
 
   ChangedCell(AToRow, AToCol);
   ChangedFont(AToRow, AToCol);
@@ -6675,6 +6699,45 @@ begin
   // name here as well.
   if (FLockCount = 0) and Assigned(FOnAddWorksheet) then
     FOnAddWorksheet(self, Result);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies a worksheet (even from an external workbook) and adds it to the
+  current workbook
+
+  @param  AWorksheet            Worksheet to be copied. Can be in a different
+                                workbook.
+  @param  ReplaceDuplicateName  The copied worksheet gets the name of the original.
+                                If ReplaceDuplicateName is true and this sheet
+                                name already exists then a number is added to
+                                the sheet name to make it unique.
+  @return The instance of the newly created worksheet
+  @see    TsWorksheet
+-------------------------------------------------------------------------------}
+function TsWorkbook.CopyWorksheetFrom(AWorksheet: TsWorksheet;
+  ReplaceDuplicateName: boolean = false): TsWorksheet;
+var
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  Result := nil;
+  if (AWorksheet = nil) then
+    exit;
+
+  Result := AddWorksheet(AWorksheet.Name, ReplaceDuplicateName);
+  inc(FLockCount);
+  try
+    for cell in AWorksheet.Cells do
+    begin
+      r := cell^.Row;
+      c := cell^.Col;
+      Result.CopyCell(r, c, r, c, AWorksheet);
+    end;
+  finally
+    dec(FLockCount);
+  end;
+
+  Result.ChangedCell(r, c);
 end;
 
 {@@ ----------------------------------------------------------------------------
