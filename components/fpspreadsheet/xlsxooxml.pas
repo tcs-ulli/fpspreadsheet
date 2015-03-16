@@ -2417,7 +2417,6 @@ begin
           lCell.BoolValue := value <> 0;
         end;
         WriteCellToStream(AStream, @lCell);
-//        WriteCellCallback(@lCell, AStream);
         varClear(value);
       end;
       AppendToStream(AStream,
@@ -2437,16 +2436,18 @@ begin
       AppendToStream(AStream, Format(
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
       // Write cells belonging to this row.
+
+      {         // Strange: the RowEnumerator is very slow here... ?!
       for cell in AWorksheet.Cells.GetRowEnumerator(r) do
         WriteCellToStream(AStream, cell);
-                          {
+      }
+
       for c := c1 to c2 do begin
         cell := AWorksheet.FindCell(r, c);
-        if Assigned(cell) then begin
-          WriteCellCallback(cell, AStream);
-        end;
+        if Assigned(cell) then
+          WriteCellToStream(AStream, cell);
       end;
-      }
+
       AppendToStream(AStream,
         '</row>');
     end;

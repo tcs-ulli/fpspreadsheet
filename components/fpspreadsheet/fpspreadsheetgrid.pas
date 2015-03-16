@@ -26,7 +26,6 @@ interface
 uses
   Classes, SysUtils, LResources,
   Forms, Controls, Graphics, Dialogs, Grids, ExtCtrls,
-  LCLVersion,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
 type
@@ -53,6 +52,7 @@ type
     FEditText: String;
     FOldEditText: String;
     FLockCount: Integer;
+    FLockSetup: Integer;
     FEditing: Boolean;
     FCellFont: TFont;
     FAutoCalc: Boolean;
@@ -584,7 +584,7 @@ procedure Register;
 implementation
 
 uses
-  Types, LCLType, LCLIntf, Math,
+  Types, LCLType, LCLIntf, LCLProc, Math,
   fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils;
 
 const
@@ -3289,6 +3289,7 @@ begin
 
   FOwnedWorksheet := AWorksheet;
   if FOwnedWorksheet <> nil then begin
+    inc(FLockSetup);
     FOwnedWorksheet.OnChangeCell := @ChangedCellHandler;
     FOwnedWorksheet.OnChangeFont := @ChangedFontHandler;
     ShowHeaders := (soShowHeaders in Worksheet.Options);
@@ -3302,6 +3303,7 @@ begin
     end;
     Row := FrozenRows;
     Col := FrozenCols;
+    dec(FLockSetup);
   end;
   Setup;
 end;
@@ -3316,6 +3318,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
+var
+  t: TTime;
 begin
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
@@ -3326,9 +3330,17 @@ begin
   begin
     BeginUpdate;
     try
+      t := now;
       CreateNewWorkbook;
+      DebugLn(Format('[Timer] Create workbook: %.3f sec', [(now - t)*24*3600]));
+
+      t := now;
       Workbook.ReadFromFile(AFileName, AFormat);
+      DebugLn(Format('[Timer] Read file: %.3f sec', [(now - t)*24*3600]));
+
+      t := now;
       LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
+      DebugLn(Format('[Timer] Load into grid: %.3f sec', [(now - t)*24*3600]));
     finally
       EndUpdate;
     end;
@@ -3344,6 +3356,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
+var
+  t: TTime;
 begin
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
@@ -3354,9 +3368,17 @@ begin
   begin
     BeginUpdate;
     try
+      t := now;
       CreateNewWorkbook;
+      DebugLn(Format('[Timer] Create workbook: %.3f sec', [(now - t)*24*3600]));
+
+      t := now;
       Workbook.ReadFromFile(AFilename);
+      DebugLn(Format('[Timer] Read file: %.3f sec', [(now - t)*24*3600]));
+
+      t := now;
       LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
+      DebugLn(Format('[Timer] Load into grid: %.3f sec', [(now - t)*24*3600]));
     finally
       EndUpdate;
     end;
@@ -3382,6 +3404,7 @@ begin
   begin
     if (Worksheet <> nil) then
     begin
+      inc(FLockSetup);
       ShowHeaders := (soShowHeaders in Worksheet.Options);
       ShowGridLines := (soShowGridLines in Worksheet.Options);
       if (soHasFrozenPanes in Worksheet.Options) then begin
@@ -3391,6 +3414,7 @@ begin
         FrozenCols := 0;
         FrozenRows := 0;
       end;
+      dec(FLockSetup);
     end;
     Setup;
   end;
@@ -3696,6 +3720,9 @@ begin
   if csLoading in ComponentState then
     exit;
 
+  if FLockSetup > 0 then
+    exit;
+
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin
       ColCount := FInitColCount + 1; //2;
@@ -3928,6 +3955,7 @@ var
   lRow: PRow;
   h: Integer;
 begin
+  BeginUpdate;
   if AStartIndex <= 0 then AStartIndex := FHeaderCount;
   for i := AStartIndex to RowCount-1 do begin
     h := CalcAutoRowHeight(i);
@@ -3939,6 +3967,7 @@ begin
     end;
     RowHeights[i] := h;
   end;
+  EndUpdate;
 end;
 
 

@@ -24,6 +24,7 @@ type
     FCurrentNode: TAVLTreeNode;
     FTree: TsRowColAVLTree;
     FStartRow, FEndRow, FStartCol, FEndCol: Cardinal;
+    FDone: Boolean;
     FReverse: Boolean;
     function GetCurrent: PsRowCol;
   public
@@ -175,7 +176,7 @@ type
 implementation
 
 uses
-  {%H-}Math,
+  Math,
   fpsUtils;
 
 
@@ -199,24 +200,23 @@ constructor TsRowColEnumerator.Create(ATree: TsRowColAVLTree;
 begin
   FTree := ATree;
   FReverse := AReverse;
-  // Rearrange col/row indexes such that iteration always begins with "StartXXX"
   if AStartRow <= AEndRow then
   begin
-    FStartRow := IfThen(AReverse, AEndRow, AStartRow);
-    FEndRow := IfThen(AReverse, AStartRow, AEndRow);
+    FStartRow := AStartRow;
+    FEndRow := AEndRow;
   end else
   begin
-    FStartRow := IfThen(AReverse, AStartRow, AEndRow);
-    FEndRow := IfThen(AReverse, AEndRow, AStartRow);
+    FStartRow := AEndRow;
+    FEndRow := AStartRow;
   end;
   if AStartCol <= AEndCol then
   begin
-    FStartCol := IfThen(AReverse, AEndCol, AStartCol);
-    FEndCol := IfThen(AReverse, AStartCol, AEndCol);
+    FStartCol := AStartCol;
+    FEndCol := AEndCol;
   end else
   begin
-    FStartCol := IfThen(AReverse, AStartCol, AEndCol);
-    FEndCol := IfThen(AReverse, AEndCol, AStartCol);
+    FStartCol := AEndCol;
+    FEndCol := AStartCol;
   end;
 end;
 
@@ -234,46 +234,68 @@ begin
 end;
 
 function TsRowColEnumerator.MoveNext: Boolean;
+var
+  curr: PsRowCol;
 begin
+  Result := false;
   if FCurrentNode <> nil then begin
     if FReverse then
     begin
       FCurrentNode := FTree.FindPrecessor(FCurrentNode);
-      while (FCurrentNode <> nil) and
-          ( (Current^.Col < FEndCol) or (Current^.Col > FStartCol) or
-            (Current^.Row < FEndRow) or (Current^.Row > FStartRow) )
-      do
-        FCurrentNode := FTree.FindPrecessor(FCurrentNode);
+      if FCurrentNode <> nil then
+      begin
+        curr := PsRowCol(FCurrentNode.Data);
+        if not InRange(curr^.Col, FStartCol, FEndCol) then
+          while (FCurrentNode <> nil) and
+                not InRange(curr^.Col, FStartCol, FEndCol) and (curr^.Row >= FStartRow)
+          do begin
+            FCurrentNode := FTree.FindPrecessor(FCurrentNode);
+            if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+          end;
+      end;
     end else
     begin
       FCurrentNode := FTree.FindSuccessor(FCurrentNode);
-      while (FCurrentNode <> nil) and
-          ( (Current^.Col < FStartCol) or (Current^.Col > FEndCol) or
-            (Current^.Row < FStartRow) or (Current^.Row > FEndRow) )
-      do
-        FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+      if FCurrentNode <> nil then
+      begin
+        curr := PsRowCol(FCurrentNode.Data);
+        if not InRange(curr^.Col, FStartCol, FEndCol) then
+          while (FCurrentNode <> nil) and
+                not InRange(curr^.Col, FStartCol, FEndCol) and (curr^.Row <= FEndRow)
+          do begin
+            FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+            if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+          end;
+      end;
     end;
+    Result := (FCurrentNode <> nil) and
+              InRange(curr^.Col, FStartCol, FEndCol) and
+              InRange(curr^.Row, FStartRow, FEndRow);
   end else
   begin
     if FReverse then
     begin
       FCurrentNode := FTree.FindHighest;
+      curr := PsRowCol(FCurrentNode.Data);
       while (FCurrentNode <> nil) and
-          ( (Current^.Row < FEndRow) or (Current^.Row > FStartRow) or
-            (Current^.Col < FEndCol) or (Current^.Col > FStartCol) )
-      do
+            not (InRange(curr^.Row, FStartRow, FEndRow) and InRange(curr^.Col, FStartCol, FEndCol))
+      do begin
         FCurrentNode := FTree.FindPrecessor(FCurrentNode);
+        if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+      end;
     end else
     begin
       FCurrentNode := FTree.FindLowest;
+      curr := Current;
       while (FCurrentNode <> nil) and
-          ( (Current^.Row < FStartRow) or (Current^.Row > FEndRow) or
-            (Current^.Col < FStartCol) or (Current^.Col > FEndCol) )
-      do
+            not (InRange(curr^.Row, FStartRow, FEndRow) and InRange(curr^.Col, FStartCol, FEndCol))
+      do begin
         FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+        if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+      end;
     end;
+    Result := (FCurrentNode <> nil);
   end;
-  Result := FCurrentNode <> nil;
 end;
 
 

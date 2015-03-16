@@ -442,8 +442,8 @@ procedure Register;
 implementation
 
 uses
-  Types, Math, TypInfo, LCLType, Dialogs, Forms,
-  fpsStrings, fpsUtils; //, fpSpreadsheetGrid, fpSpreadsheetChart;
+  Types, Math, TypInfo, LCLType, LCLProc, Dialogs, Forms,
+  fpsStrings, fpsUtils;
 
 
 {@@ ----------------------------------------------------------------------------
@@ -453,7 +453,7 @@ uses
 procedure Register;
 begin
   RegisterComponents('FPSpreadsheet', [
-    TsWorkbookSource, TsWorkbookTabControl, //TsWorksheetGrid,
+    TsWorkbookSource, TsWorkbookTabControl,
     TsCellEdit, TsCellIndicator, TsCellCombobox,
     TsSpreadsheetInspector
   ]);
@@ -816,22 +816,30 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
   AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
+var
+  t: TTime;
 begin
   // Create a new empty workbook
+  t := now;
   InternalCreateNewWorkbook;
+  DebugLn(Format('[Timer] Create workbook: %.3f sec', [(now-t)*24*3600]));
 
   DisableControls;
   try
+    t := Now;
     // Read workbook from file and get worksheet
     if AAutoDetect then
       FWorkbook.ReadFromFile(AFileName)
     else
       FWorkbook.ReadFromFile(AFileName, AFormat);
+    DebugLn(Format('[Timer] Read file: %.3f sec', [(now-t)*24*3600]))
   finally
     EnableControls;
   end;
 
-  SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
+  t := now;
+    SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
+  DebugLn(Format('[Timer] Select worksheet: %.3f sec', [(now-t)*24*3600]));
 
   // If required, display loading error message
   if FWorkbook.ErrorMsg <> '' then

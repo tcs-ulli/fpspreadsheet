@@ -1,7 +1,7 @@
 object MainForm: TMainForm
-  Left = 503
+  Left = 338
   Height = 621
-  Top = 157
+  Top = 118
   Width = 940
   Caption = 'demo_ctrls'
   ClientHeight = 601
@@ -80,7 +80,7 @@ object MainForm: TMainForm
         'FileName='
         'FileFormat=sfExcel8'
         'ActiveWorksheet=Sheet1'
-        'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
+        'Options=boBufStream, boCalcBeforeSaving, boReadFormulas'
         'FormatSettings='
         '  ThousandSeparator=.'
         '  DecimalSeparator=.'

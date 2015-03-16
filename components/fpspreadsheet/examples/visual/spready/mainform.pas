@@ -365,7 +365,7 @@ implementation
 uses
   TypInfo, LCLIntf, LCLType, LCLVersion, fpcanvas, Buttons,
   fpsutils, fpscsv, fpsNumFormat,
-  sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sfCurrencyForm;
+  sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sCurrencyForm;
 
 const
   DROPDOWN_COUNT = 24;
