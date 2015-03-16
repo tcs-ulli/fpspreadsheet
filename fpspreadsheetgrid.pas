@@ -181,6 +181,7 @@ type
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
+    procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeights(AStartIndex: Integer = 0);
@@ -1483,22 +1484,41 @@ end;
 procedure TsCustomWorksheetGrid.DrawCellBorders;
 var
   cell: PCell;
-  c, r: Integer;
+  gc, gr: Integer;
+  sr1, sc1, sr2, sc2: Cardinal;
   rect: TRect;
 begin
   if Worksheet = nil then
     exit;
 
+  sr1 := GetWorksheetRow(GCache.VisibleGrid.Top);
+  sc1 := GetWorksheetCol(GCache.VisibleGrid.Left);
+  sr2 := GetWorksheetRow(GCache.VisibleGrid.Bottom);
+  sc2 := GetWorksheetCol(GCache.VisibleGrid.Right);
+
+  for cell in Worksheet.Cells.GetRangeEnumerator(sr1, sc1, sr2, sc2) do
+    if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
+    begin
+      gc := GetGridCol(cell^.Col);
+      gr := GetGridRow(cell^.Row);
+      rect := CellRect(gc, gr);
+      DrawCellBorders(gc, gr, rect, cell);
+    end;
+
+  {
+  gr := TopLeft.Y;
+  gc := TopLeft.X;
   for cell in Worksheet.Cells do
   begin
     if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
     begin
-      c := GetGridCol(cell^.Col);
-      r := GetGridRow(cell^.Row);
-      rect := CellRect(c, r);
-      DrawCellBorders(c, r, rect, cell);
+      gc := GetGridCol(cell^.Col);
+      gr := GetGridRow(cell^.Row);
+      rect := CellRect(gc, gr);
+      DrawCellBorders(gc, gr, rect, cell);
     end;
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3811,6 +3831,17 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Inherited method called whenever to grid is scrolled, i.e. the top/left cell
+  changes.
+  Is overridden to calculate the row heights of the currently visible grid
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.TopLeftChanged;
+begin
+  UpdateRowHeights;
+  inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Modifies the text that is show for cells which are too narrow to hold the
   entire text. The method follows the behavior of Excel and Open/LibreOffice:
   If the specified cell contains a non-formatted number, then it is formatted
@@ -3955,6 +3986,7 @@ var
   lRow: PRow;
   h: Integer;
 begin
+  {
   BeginUpdate;
   if AStartIndex <= 0 then AStartIndex := FHeaderCount;
   for i := AStartIndex to RowCount-1 do begin
@@ -3968,6 +4000,16 @@ begin
     RowHeights[i] := h;
   end;
   EndUpdate;
+      }
+  for i:=GCache.VisibleGrid.Top to GCache.VisibleGrid.Bottom do begin
+    h := CalcAutoRowHeight(i);
+    if Worksheet <> nil then
+    begin
+      lRow := Worksheet.FindRow(i - FHeaderCount);
+      if (lRow <> nil) then
+        h := CalcRowHeight(lRow^.Height);
+    end;
+  end;
 end;
 
 

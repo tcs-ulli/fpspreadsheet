@@ -27,13 +27,6 @@
             <OtherUnitFiles Value="../..;../shared"/>
             <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
           </SearchPaths>
-          <Linking>
-            <Options>
-              <Win32>
-                <GraphicApplication Value="True"/>
-              </Win32>
-            </Options>
-          </Linking>
         </CompilerOptions>
       </Item2>
       <Item3 Name="Release">
@@ -133,7 +126,6 @@
         <Filename Value="..\shared\scurrencyform.pas"/>
         <IsPartOfProject Value="True"/>
         <HasResources Value="True"/>
-        <UnitName Value="scurrencyform"/>
       </Unit6>
     </Units>
   </ProjectOptions>
