@@ -816,30 +816,22 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
   AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
-var
-  t: TTime;
 begin
   // Create a new empty workbook
-  t := now;
   InternalCreateNewWorkbook;
-  DebugLn(Format('[Timer] Create workbook: %.3f sec', [(now-t)*24*3600]));
 
   DisableControls;
   try
-    t := Now;
     // Read workbook from file and get worksheet
     if AAutoDetect then
       FWorkbook.ReadFromFile(AFileName)
     else
       FWorkbook.ReadFromFile(AFileName, AFormat);
-    DebugLn(Format('[Timer] Read file: %.3f sec', [(now-t)*24*3600]))
   finally
     EnableControls;
   end;
 
-  t := now;
-    SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
-  DebugLn(Format('[Timer] Select worksheet: %.3f sec', [(now-t)*24*3600]));
+  SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
 
   // If required, display loading error message
   if FWorkbook.ErrorMsg <> '' then
