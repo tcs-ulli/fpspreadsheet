@@ -320,7 +320,6 @@ implementation
 {$R *.lfm}
 
 uses
-  LCLProc, // debugln
   fpsUtils, fpsCSV,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm;
 
@@ -329,8 +328,6 @@ uses
 
 { Loads the spreadsheet file selected by the AcFileOpen action }
 procedure TMainForm.AcFileOpenAccept(Sender: TObject);
-var
-  t: TTime;
 begin
   WorkbookSource.AutodetectFormat := false;
   case AcFileOpen.Dialog.FilterIndex of
@@ -343,10 +340,7 @@ begin
     7: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
     8: WorkbookSource.FileFormat := sfCSV;           // Text files
   end;
-  t := now;
   WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
-  t := (now - t)*24*3600;
-  DebugLn(Format('Loading time for %s: %.3f sec', [AcFileOpen.Dialog.FileName, t]));
   UpdateCaption;
 end;
 

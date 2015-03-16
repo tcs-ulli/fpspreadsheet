@@ -212,15 +212,15 @@ begin
 
       actual := MyWorksheet.ReadAsUTF8Text(cell);
       if row = 0 then begin
-        // an originally blank cell shows the hyperlink.Target. But Worksheet.WriteHyperlink
-        // removes the "file:///" protocol
+        // An originally blank cell shows the hyperlink.Target.
+        // But Worksheet.WriteHyperlink removes the "file:///" protocol
         expected := hyperlink.Target;
-        if pos('file:', SollLinks[ATestMode])=1 then begin
-          Delete(expected, 1, Length('file:///'));
-          ForcePathDelims(expected);
-        end;
+        if pos('file:', SollLinks[ATestMode])=1 then
+          Delete(expected, 1, Length('file:///'))
       end else
         expected := SollCellContent[row];
+      FixHyperlinkPathDelims(expected);
+      FixHyperlinkPathDelims(actual);
       CheckEquals(expected, actual,
         'Test saved hyperlink cell text, cell '+ CellNotation(MyWorksheet, row, col));
 
