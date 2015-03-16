@@ -1454,7 +1454,6 @@ var
   tmp: Integer = 0;
 begin
   inherited;
-
   Canvas.SaveHandleState;
   try
     // Avoid painting into the header cells
@@ -1463,15 +1462,12 @@ begin
       ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
     if FixedRows > 0 then
       ColRowToOffset(False, True, FixedRows-1, tmp, cliprect.Top);
-
     DrawFrozenPaneBorders(clipRect);
 
     rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
     SelectClipRgn(Canvas.Handle, Rgn);
-
     DrawCellBorders;
     DrawSelection;
-
     DeleteObject(rgn);
   finally
     Canvas.RestoreHandleState;
@@ -1770,7 +1766,7 @@ end;
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gds: TGridDrawState;
-  sr, sr1,sc1,sr2,sc2: Cardinal;                        // sheet row/column
+  sr, sr1,sc1,sr2,sc2, scLastUsed: Cardinal;                // sheet row/column
   gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
   i: Integer;
   rct, saved_rct, temp_rct, commentcell_rct: TRect;
@@ -1835,11 +1831,13 @@ begin
     exit;
   end;
 
+  scLastused := Worksheet.GetLastColIndex;
   sr := GetWorksheetRow(ARow);
 
   // Draw columns in this row
   with GCache.VisibleGrid do
   begin
+    gcLast := Right;
     gc := Left;
 
     // Because of possible cell overflow from cells left of the visible range
@@ -1873,7 +1871,7 @@ begin
     gcLast := Right;
     if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(Worksheet) then
     begin
-      gcLastUsed := GetGridCol(Worksheet.GetLastOccupiedColIndex);
+      gcLastUsed := GetGridCol(scLastUsed);
       while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
         inc(gcLast);
         cell := Worksheet.FindCell(sr, GetWorksheetCol(gcLast));
@@ -3338,8 +3336,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
-var
-  t: TTime;
 begin
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
@@ -3350,17 +3346,9 @@ begin
   begin
     BeginUpdate;
     try
-      t := now;
       CreateNewWorkbook;
-      DebugLn(Format('[Timer] Create workbook: %.3f sec', [(now - t)*24*3600]));
-
-      t := now;
       Workbook.ReadFromFile(AFileName, AFormat);
-      DebugLn(Format('[Timer] Read file: %.3f sec', [(now - t)*24*3600]));
-
-      t := now;
       LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
-      DebugLn(Format('[Timer] Load into grid: %.3f sec', [(now - t)*24*3600]));
     finally
       EndUpdate;
     end;
@@ -3376,8 +3364,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
-var
-  t: TTime;
 begin
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
@@ -3388,17 +3374,9 @@ begin
   begin
     BeginUpdate;
     try
-      t := now;
       CreateNewWorkbook;
-      DebugLn(Format('[Timer] Create workbook: %.3f sec', [(now - t)*24*3600]));
-
-      t := now;
       Workbook.ReadFromFile(AFilename);
-      DebugLn(Format('[Timer] Read file: %.3f sec', [(now - t)*24*3600]));
-
-      t := now;
       LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
-      DebugLn(Format('[Timer] Load into grid: %.3f sec', [(now - t)*24*3600]));
     finally
       EndUpdate;
     end;
@@ -3676,14 +3654,14 @@ end;
   Saves the workbook into a file with the specified file name. If this file
   name already exists the file is overwritten if AOverwriteExisting is true.
 
-  @param   AFileName          Name of the file to which the workbook is to be
-                              saved
-                              If the file format is not known is is written
-                              as BIFF8/XLS.
-  @param   AOverwriteExisting If this file already exists it is overwritten if
-                              AOverwriteExisting = true, or an exception is
-                              raised if AOverwriteExisting = false.
-}
+  @param   AFileName           Name of the file to which the workbook is to be
+                               saved
+                               If the file format is not known it is written
+                               as BIFF8/XLS.
+  @param   AOverwriteExisting  If this file already exists it is overwritten if
+                               AOverwriteExisting = true, or an exception is
+                               raised if AOverwriteExisting = false.
+-------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
 begin

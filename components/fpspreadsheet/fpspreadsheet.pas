@@ -98,9 +98,9 @@ type
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
     FOptions: TsSheetOptions;
-    FLastFoundCell: PCell;
-    FLastFoundRow: Cardinal;
-    FLastFoundCol: Cardinal;
+//    FLastFoundCell: PCell;
+//    FLastFoundRow: Cardinal;
+//    FLastFoundCol: Cardinal;
     FFirstRowIndex: Cardinal;
     FFirstColIndex: Cardinal;
     FLastRowIndex: Cardinal;
@@ -1108,9 +1108,9 @@ begin
   FActiveCellRow := Cardinal(-1);
   FActiveCellCol := Cardinal(-1);
 
-  FLastFoundCell := nil;
+{  FLastFoundCell := nil;
   FLastFoundRow := Cardinal(-1);
-  FLastFoundCol := Cardinal(-1);
+  FLastFoundCol := Cardinal(-1);}
 
   FOptions := [soShowGridLines, soShowHeaders];
 end;
@@ -2085,7 +2085,7 @@ begin
     FLastFoundRow := ARow;
     FLastFoundCol := ACol;
   end;
-  }
+}
 end;
 
 {@@ ----------------------------------------------------------------------------
