@@ -3959,8 +3959,10 @@ end;
   calculating the row height from the max of the cell heights
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartIndex: Integer = 0);
+const
+  DELTA = 10;
 var
-  i: Integer;
+  r, r1, r2: Integer;
   lRow: PRow;
   h: Integer;
 begin
@@ -3979,14 +3981,20 @@ begin
   end;
   EndUpdate;
       }
-  for i:=GCache.VisibleGrid.Top to GCache.VisibleGrid.Bottom do begin
-    h := CalcAutoRowHeight(i);
+  r1 := Max(FHeaderCount, GCache.VisibleGrid.Top - DELTA);
+  r2 := Min(RowCount-1, GCache.VisibleGrid.Bottom + DELTA);
+  for r:=r1 to r2 do
+  begin
     if Worksheet <> nil then
     begin
-      lRow := Worksheet.FindRow(i - FHeaderCount);
+      lRow := Worksheet.FindRow(r - FHeaderCount);
       if (lRow <> nil) then
-        h := CalcRowHeight(lRow^.Height);
-    end;
+        h := CalcRowHeight(lRow^.Height)
+      else
+        h := CalcAutoRowHeight(r);
+    end else
+      h := DefaultRowHeight;
+    RowHeights[r] := h;
   end;
 end;
 
