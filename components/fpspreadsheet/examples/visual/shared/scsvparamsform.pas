@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   ButtonPanel, ExtCtrls, ComCtrls, StdCtrls,
   fpsCSV,
-  sCtrls, sFormatsettingsForm;
+  sCtrls;
 
 type
 
@@ -90,6 +90,8 @@ var
   CSVParamsForm: TCSVParamsForm;
 
 implementation
+
+{$R *.lfm}
 
 uses
   LConvEncoding, fpsUtils;
@@ -585,8 +587,8 @@ begin
   end;
 end;
 
-initialization
-  {$I scsvparamsform.lrs}
+//initialization
+//  {$I scsvparamsform.lrs}
 
 end.
 

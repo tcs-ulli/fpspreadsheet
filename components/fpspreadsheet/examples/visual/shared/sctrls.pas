@@ -14,7 +14,7 @@ type
     FEmptyString: String;
     FCount: Integer;
     FShortnames: Boolean;
-    procedure ButtonClick(Sender: TObject);
+    procedure ButtonClickHandler(Sender: TObject);
     function CreateMonthDayNamesEditor(var AGrid: TStringGrid): TForm;
   protected
   public
@@ -51,11 +51,10 @@ constructor TMonthDayNamesEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Button.Caption := '...';
-  //ButtonCaption := '...';
-  OnButtonClick := @ButtonClick;
+  OnButtonClick := @ButtonClickHandler;
 end;
 
-procedure TMonthDayNamesEdit.ButtonClick(Sender: TObject);
+procedure TMonthDayNamesEdit.ButtonClickHandler(Sender: TObject);
 var
   F: TForm;
   i: Integer;
