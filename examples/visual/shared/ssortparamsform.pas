@@ -46,6 +46,8 @@ var
 
 implementation
 
+{$R *.lfm}
+
 uses
   fpsutils;
 
@@ -58,6 +60,7 @@ end;
 procedure TSortParamsForm.GridSelectEditor(Sender: TObject;
   aCol, aRow: Integer; var Editor: TWinControl);
 begin
+  Unused(aCol, aRow);
   if (Editor is TCustomComboBox) then
     (Editor as TCustomComboBox).Style := csDropDownList;
 end;
@@ -249,8 +252,6 @@ begin
   Result := true;
 end;
 
-initialization
-  {$I ssortparamsform.lrs}
 
 end.
 

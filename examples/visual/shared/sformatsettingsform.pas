@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  Grids, ButtonPanel, ComCtrls, StdCtrls, Spin, ExtCtrls, Buttons, sCtrls;
+  ButtonPanel, ComCtrls, StdCtrls, Spin, ExtCtrls, Buttons, sCtrls;
 
 type
   { TFormatSettingsForm }
@@ -81,6 +81,8 @@ var
 
 
 implementation
+
+{$R *.lfm}
 
 uses
   fpsUtils,
@@ -461,8 +463,8 @@ begin
   Result := true;
 end;
 
-initialization
-  {$I sformatsettingsform.lrs}
+//initialization
+//  {$I sformatsettingsform.lrs}
 
 end.
 
