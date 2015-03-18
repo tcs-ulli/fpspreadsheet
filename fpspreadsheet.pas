@@ -1601,9 +1601,8 @@ end;
 procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
   ATooltip: String = '');
 var
-  hyperlink: PsHyperlink;
   fmt: TsCellFormat;
-  target, bm, fn, displayTxt: String;
+  target, bm, displayTxt: String;
 begin
   if ACell = nil then
     exit;
@@ -1613,20 +1612,19 @@ begin
     exit;
   end;
 
-  hyperlink := FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
+  FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
   Include(ACell^.Flags, cfHyperlink);
 
   if ACell^.ContentType = cctEmpty then
   begin
     SplitHyperlink(ATarget, target, bm);
-    displayTxt := ATarget;
-    if pos('file:', lowercase(displayTxt))=1 then
+    if pos('file:', lowercase(ATarget))=1 then
     begin
-      URIToFilename(displayTxt, displayTxt);
-//      Delete(displayTxt, 1, Length('file:///'));
+      URIToFilename(target, displayTxt);
       ForcePathDelims(displayTxt);
-      if bm <> '' then displayTxt := fn + '#' + bm;
-    end;
+      if bm <> '' then displayTxt := displayTxt + '#' + bm;
+    end else
+      displayTxt := ATarget;
     ACell^.ContentType := cctUTF8String;
     ACell^.UTF8StringValue := displayTxt;
   end;
