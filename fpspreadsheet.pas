@@ -1360,7 +1360,7 @@ end;
 function TsWorksheet.FindComment(ACell: PCell): PsComment;
 begin
   if HasComment(ACell) then
-    Result := PsComment(FComments.Find(ACell^.Row, ACell^.Col))
+    Result := PsComment(FComments.FindByRowCol(ACell^.Row, ACell^.Col))
   else
     Result := nil;
 end;
@@ -1385,7 +1385,7 @@ var
   comment: PsComment;
 begin
   Result := '';
-  comment := PsComment(FComments.Find(ARow, ACol));
+  comment := PsComment(FComments.FindByRowCol(ARow, ACol));
   if comment <> nil then
     Result := comment^.Text;
 end;
@@ -1460,7 +1460,7 @@ end;
 function TsWorksheet.FindHyperlink(ACell: PCell): PsHyperlink;
 begin
   if HasHyperlink(ACell) then
-    Result := PsHyperlink(FHyperlinks.Find(ACell^.Row, ACell^.Col))
+    Result := PsHyperlink(FHyperlinks.FindByRowCol(ACell^.Row, ACell^.Col))
   else
     Result := nil;
 end;
@@ -2074,7 +2074,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindCell(ARow, ACol: Cardinal): PCell;
 begin
-  Result := PCell(FCells.Find(ARow, ACol));
+  Result := PCell(FCells.FindByRowCol(ARow, ACol));
 {
   if (ARow = FLastFoundRow) and (ACol = FLastFoundCol) then
     Result := FLastFoundCell
@@ -3119,7 +3119,7 @@ begin
     exit;
 
   // Is cell ARow1/ACol1 already the base of a merged range? ...
-  rng := PsCellRange(FMergedCells.Find(ARow1, ACol1));
+  rng := PsCellRange(FMergedCells.FindByRowCol(ARow1, ACol1));
   // ... no: --> Add a new merged range
   if rng = nil then
     FMergedCells.AddRange(ARow1, ACol1, ARow2, ACol2)
@@ -3296,7 +3296,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.RemoveCell(ARow, ACol: Cardinal): PCell;
 begin
-  Result := PCell(FCells.Find(ARow, ACol));
+  Result := PCell(FCells.FindByRowCol(ARow, ACol));
   if Result <> nil then FCells.Remove(Result);
 end;
 
