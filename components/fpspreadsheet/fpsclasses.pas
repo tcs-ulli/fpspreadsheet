@@ -20,6 +20,7 @@ type
 
   { TsRowColEnumerator }
   TsRowColEnumerator = class
+  private
   protected
     FCurrentNode: TAVLTreeNode;
     FTree: TsRowColAVLTree;
@@ -55,7 +56,7 @@ type
     procedure Delete(ARow, ACol: Cardinal); overload;
     procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean); virtual;
     procedure Exchange(ARow1, ACol1, ARow2, ACol2: Cardinal); virtual;
-    function Find(ARow, ACol: Cardinal): PsRowCol; overload;
+    function FindByRowCol(ARow, ACol: Cardinal): PsRowCol; overload;
     function GetData(ANode: TAVLTreeNode): PsRowCol;
     function GetFirst: PsRowCol;
     function GetLast: PsRowCol;
@@ -197,6 +198,8 @@ end;
 
 constructor TsRowColEnumerator.Create(ATree: TsRowColAVLTree;
   AStartRow, AStartCol, AEndRow, AEndCol: Cardinal; AReverse: Boolean);
+var
+  node: TAVLTreeNode;
 begin
   FTree := ATree;
   FReverse := AReverse;
@@ -218,6 +221,11 @@ begin
     FStartCol := AEndCol;
     FEndCol := AStartCol;
   end;
+  if FEndRow = $7FFFFFFF then
+  begin
+    node := FTree.FindHighest;
+    FEndRow := PsRowCol(node.Data)^.Row;
+  end;
 end;
 
 function TsRowColEnumerator.GetCurrent: PsRowCol;
@@ -236,6 +244,7 @@ end;
 function TsRowColEnumerator.MoveNext: Boolean;
 var
   curr: PsRowCol;
+  rc: TsRowCol;
 begin
   Result := false;
   if FCurrentNode <> nil then begin
@@ -245,13 +254,23 @@ begin
       if FCurrentNode <> nil then
       begin
         curr := PsRowCol(FCurrentNode.Data);
-        if not InRange(curr^.Col, FStartCol, FEndCol) then
-          while (FCurrentNode <> nil) and
-                not InRange(curr^.Col, FStartCol, FEndCol) and (curr^.Row >= FStartRow)
-          do begin
-            FCurrentNode := FTree.FindPrecessor(FCurrentNode);
-            if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+        if not InRange(LongInt(curr^.Col), FStartCol, FEndCol) then
+        begin
+          rc := curr^;
+          if LongInt(rc.Col) < FStartCol then
+            dec(rc.Row);
+          rc.Col := FEndCol;
+          FCurrentNode := FTree.FindNearest(@rc);
+          if FCurrentNode <> nil then begin
+            curr := PsRowCol(FCurrentNode.Data);
+            while (FCurrentNode <> nil) and
+                  not (InRange(curr^.Row, FStartRow, FEndRow) and InRange(curr^.Col, FStartCol, FEndCol))
+            do begin
+              FCurrentNode := FTree.FindPrecessor(FCurrentNode);
+              if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+            end;
           end;
+        end;
       end;
     end else
     begin
@@ -259,13 +278,31 @@ begin
       if FCurrentNode <> nil then
       begin
         curr := PsRowCol(FCurrentNode.Data);
-        if not InRange(curr^.Col, FStartCol, FEndCol) then
-          while (FCurrentNode <> nil) and
-                not InRange(curr^.Col, FStartCol, FEndCol) and (curr^.Row <= FEndRow)
-          do begin
-            FCurrentNode := FTree.FindSuccessor(FCurrentNode);
-            if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+        rc.Col := FStartCol;
+        if LongInt(rc.Col) > FEndCol then inc(rc.Row);
+        if not InRange(LongInt(curr^.Col), FStartCol, FEndCol) then
+        begin
+          rc := curr^;
+          if LongInt(rc.Col) > FEndCol then inc(rc.Row);
+          rc.Col := FStartCol;
+          FCurrentNode := FTree.FindNearest(@rc);
+          if FCurrentNode <> nil then
+          begin
+            curr := PsRowCol(FCurrentNode.Data);
+            if (curr^.Col < FStartCol) then
+              while (FCurrentNode <> nil) and not InRange(curr^.Col, FStartCol, FEndCol) do
+              begin
+                FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+                if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+              end;
+            while (FCurrentNode <> nil) and
+                  not (InRange(curr^.Row, FStartRow, FEndRow) and InRange(curr^.Col, FStartCol, FEndCol))
+            do begin
+              FCurrentNode := FTree.FindSuccessor(FCurrentNode);
+              if FCurrentNode <> nil then curr := PsRowCol(FCurrentNode.Data);
+            end;
           end;
+        end;
       end;
     end;
     Result := (FCurrentNode <> nil) and
@@ -275,8 +312,11 @@ begin
   begin
     if FReverse then
     begin
-      FCurrentNode := FTree.FindHighest;
-      curr := PsRowCol(FCurrentNode.Data);
+      rc.Row := FEndRow;
+      rc.Col := FEndCol;
+      FCurrentNode := FTree.FindNearest(@rc);
+      if FCurrentNode <> nil then
+        curr := PsRowCol(FCurrentNode.Data);
       while (FCurrentNode <> nil) and
             not (InRange(curr^.Row, FStartRow, FEndRow) and InRange(curr^.Col, FStartCol, FEndCol))
       do begin
@@ -285,8 +325,11 @@ begin
       end;
     end else
     begin
-      FCurrentNode := FTree.FindLowest;
-      curr := Current;
+      rc.Row := FStartRow;
+      rc.Col := FStartCol;
+      FCurrentNode := FTree.FindNearest(@rc);
+      if FCurrentNode <> nil then
+        curr := PsRowCol(FCurrentNode.Data);
       while (FCurrentNode <> nil) and
             not (InRange(curr^.Row, FStartRow, FEndRow) and InRange(curr^.Col, FStartCol, FEndCol))
       do begin
@@ -423,8 +466,8 @@ procedure TsRowColAVLTree.Exchange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 var
   item1, item2: PsRowCol;
 begin
-  item1 := Find(ARow1, ACol1);
-  item2 := Find(ARow2, ACol2);
+  item1 := FindByRowCol(ARow1, ACol1);
+  item2 := FindByRowCol(ARow2, ACol2);
 
   // There are entries for both locations: Exchange row/col indexes
   if (item1 <> nil) and (item2 <> nil) then
@@ -463,7 +506,7 @@ end;
   returns a pointer to the data record.
   Returns nil if such a node does not exist
 -------------------------------------------------------------------------------}
-function TsRowColAVLTree.Find(ARow, ACol: Cardinal): PsRowCol;
+function TsRowColAVLTree.FindByRowCol(ARow, ACol: Cardinal): PsRowCol;
 var
   data: TsRowCol;
   node: TAVLTreeNode;
@@ -608,7 +651,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsCells.FindCell(ARow, ACol: Cardinal): PCell;
 begin
-  Result := PCell(Find(ARow, ACol));
+  Result := PCell(FindByRowCol(ARow, ACol));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -745,7 +788,7 @@ end;
 function TsComments.AddComment(ARow, ACol: Cardinal;
   AComment: String): PsComment;
 begin
-  Result := PsComment(Find(ARow, ACol));
+  Result := PsComment(FindByRowCol(ARow, ACol));
   if Result = nil then
     Result := PsComment(Add(ARow, ACol));
   Result^.Text := AComment;
@@ -825,7 +868,7 @@ end;
 function TsHyperlinks.AddHyperlink(ARow, ACol: Cardinal; ATarget: String;
   ATooltip: String = ''): PsHyperlink;
 begin
-  Result := PsHyperlink(Find(ARow, ACol));
+  Result := PsHyperlink(FindByRowCol(ARow, ACol));
   if Result = nil then
     Result := PsHyperlink(Add(ARow, ACol));
   Result^.Target := ATarget;
@@ -905,7 +948,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsMergedCells.AddRange(ARow1, ACol1, ARow2, ACol2: Cardinal): PsCellRange;
 begin
-  Result := PsCellRange(Find(ARow1, ACol1));
+  Result := PsCellRange(FindByRowCol(ARow1, ACol1));
   if Result = nil then
     Result := PsCellRange(Add(ARow1, ACol1));
   Result^.Row2 := ARow2;
@@ -999,7 +1042,7 @@ var
   rng: PsCellrange;
   dr, dc: Cardinal;
 begin
-  rng := PsCellrange(Find(ARow1, ACol1));
+  rng := PsCellrange(FindByRowCol(ARow1, ACol1));
   if rng <> nil then
   begin
     dr := rng^.Row2 - rng^.Row1;
@@ -1010,7 +1053,7 @@ begin
     rng^.Col2 := ACol2 + dc;
   end;
 
-  rng := PsCellRange(Find(ARow2, ACol2));
+  rng := PsCellRange(FindByRowCol(ARow2, ACol2));
   if rng <> nil then
   begin
     dr := rng^.Row2 - rng^.Row1;
