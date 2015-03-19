@@ -1887,7 +1887,6 @@ begin
   RemoveAndFreeCell(ACell^.Row, ACell^.Col);
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Internal call-back procedure for looping through all cells when deleting
   a specified column. Deletion happens in DeleteCol BEFORE this callback!
@@ -3713,7 +3712,7 @@ end;
   On formats that don't support unicode, the text will be converted
   to ISO Latin 1.
 
-  @param  ACell     Poiner to the cell
+  @param  ACell     Pointer to the cell
   @param  AText     The text to be written encoded in utf-8
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: ansistring);
@@ -3938,6 +3937,7 @@ end;
 procedure TsWorksheet.WriteBlank(ACell: PCell);
 begin
   if ACell <> nil then begin
+    ACell^.FormulaValue := '';
     if HasHyperlink(ACell) then
       WriteUTF8Text(ACell, '')  // '' will be replaced by the hyperlink target.
     else
@@ -4001,7 +4001,7 @@ end;
   string, the worksheet tries to guess whether it is a number, a date/time or
   a text and calls the corresponding writing method.
 
-  @param  ACell   Poiner to the cell
+  @param  ACell   Pointer to the cell
   @param  AValue  Value to be written into the cell given as a string. Depending
                   on the structure of the string, however, the value is written
                   as a number, a date/time or a text.
