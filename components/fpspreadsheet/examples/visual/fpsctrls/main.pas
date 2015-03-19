@@ -221,6 +221,9 @@ type
     AcCommentNew: TsCellCommentAction;
     AcCommentEdit: TsCellCommentAction;
     AcCommentDelete: TsCellCommentAction;
+    AcHyperlinkNew: TsCellHyperlinkAction;
+    AcHyperlinkEdit: TsCellHyperlinkAction;
+    AcHyperlinkDelete: TsCellHyperlinkAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;
@@ -283,7 +286,11 @@ type
     ToolButton5: TToolButton;
     TbCommentDelete: TToolButton;
     TbCommentEdit: TToolButton;
+    ToolButton50: TToolButton;
+    ToolButton51: TToolButton;
     ToolButton52: TToolButton;
+    ToolButton53: TToolButton;
+    ToolButton54: TToolButton;
     ToolButton6: TToolButton;
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
@@ -295,12 +302,18 @@ type
     procedure AcColDeleteExecute(Sender: TObject);
     procedure AcFileOpenAccept(Sender: TObject);
     procedure AcFileSaveAsAccept(Sender: TObject);
+    procedure AcHyperlinkEditHyperlink(Sender: TObject; ACaption: String;
+      var AHyperlink: TsHyperlink);
+    procedure AcHyperlinkNewHyperlink(Sender: TObject; ACaption: String;
+      var AHyperlink: TsHyperlink);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
     procedure AcSettingsCurrencyExecute(Sender: TObject);
     procedure AcSettingsFormatSettingsExecute(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
+    procedure HyperlinkHandler(Sender: TObject; ACaption: String;
+      var AHyperlink: TsHyperlink);
     procedure InspectorTabControlChange(Sender: TObject);
     procedure ToolButton4Click(Sender: TObject);
     procedure WorksheetGridClickHyperlink(Sender: TObject;
@@ -315,16 +328,35 @@ type
 var
   MainForm: TMainForm;
 
+
 implementation
 
 {$R *.lfm}
 
 uses
   fpsUtils, fpsCSV,
-  sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm;
+  sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
+  sHyperlinkForm;
 
 
 { TMainForm }
+
+{ Adds a column before the active cell }
+procedure TMainForm.AcColAddExecute(Sender: TObject);
+begin
+  WorksheetGrid.InsertCol(WorksheetGrid.Col);
+  WorksheetGrid.Col := WorksheetGrid.Col + 1;
+end;
+
+{ Deletes the column with the active cell }
+procedure TMainForm.AcColDeleteExecute(Sender: TObject);
+var
+  c: Integer;
+begin
+  c := WorksheetGrid.Col;
+  WorksheetGrid.DeleteCol(c);
+  WorksheetGrid.Col := c;
+end;
 
 { Loads the spreadsheet file selected by the AcFileOpen action }
 procedure TMainForm.AcFileOpenAccept(Sender: TObject);
@@ -367,22 +399,18 @@ begin
   end;
 end;
 
-{ Adds a column before the active cell }
-procedure TMainForm.AcColAddExecute(Sender: TObject);
+procedure TMainForm.AcHyperlinkEditHyperlink(Sender: TObject; ACaption: String;
+  var AHyperlink: TsHyperlink);
 begin
-  WorksheetGrid.InsertCol(WorksheetGrid.Col);
-  WorksheetGrid.Col := WorksheetGrid.Col + 1;
+  HyperlinkHandler(Sender, ACaption, AHyperlink);
 end;
 
-{ Deletes the column with the active cell }
-procedure TMainForm.AcColDeleteExecute(Sender: TObject);
-var
-  c: Integer;
+procedure TMainForm.AcHyperlinkNewHyperlink(Sender: TObject; ACaption: String;
+  var AHyperlink: TsHyperlink);
 begin
-  c := WorksheetGrid.Col;
-  WorksheetGrid.DeleteCol(c);
-  WorksheetGrid.Col := c;
+  HyperlinkHandler(Sender, ACaption, AHyperlink);
 end;
+
 
 { Adds a row before the active cell }
 procedure TMainForm.AcRowAddExecute(Sender: TObject);
@@ -447,13 +475,24 @@ begin
   end;
 end;
 
-
 { Toggles the spreadsheet inspector on and off }
 procedure TMainForm.AcViewInspectorExecute(Sender: TObject);
 begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
   InspectorSplitter.Visible := AcViewInspector.Checked;
   InspectorSplitter.Left := 0;
+end;
+
+{ Event handler for hyperlinks }
+procedure TMainForm.HyperlinkHandler(Sender: TObject; ACaption: String;
+  var AHyperlink: TsHyperlink);
+begin
+  if HyperlinkForm = nil then
+    HyperlinkForm := THyperlinkForm.Create(self);
+  HyperlinkForm.Caption := ACaption;
+  HyperlinkForm.SetHyperlink(WorkbookSource.Worksheet, AHyperlink);
+  if HyperlinkForm.ShowModal = mrOK then
+    HyperlinkForm.GetHyperlink(AHyperlink);
 end;
 
 { Event handler to synchronize the mode of the spreadsheet inspector with the

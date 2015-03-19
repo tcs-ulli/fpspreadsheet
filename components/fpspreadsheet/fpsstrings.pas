@@ -62,7 +62,7 @@ resourcestring
     'In case of an absolute path the protocol "file:" must be specified.';
   rsEmptyHyperlink = 'The hyperlink is not specified.';
   rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks for text cells only.';
-  rsStdHyperlinkTooltip = 'Press the left mouse button a bit longer to activate the hyperlink.';
+  rsStdHyperlinkTooltip = 'Hold the left mouse button down for a short time to activate the hyperlink.';
 
   rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
 

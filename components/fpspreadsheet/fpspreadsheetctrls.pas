@@ -1146,7 +1146,6 @@ var
   i, j: Integer;
   cell: PCell;
   baserng, rng: TsCellRange;
-  nc, nr: Integer;
   baseRow, baseCol: Cardinal;
 begin
   if CellClipboard.Count = 0 then
