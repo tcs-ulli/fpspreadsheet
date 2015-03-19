@@ -11,6 +11,8 @@ LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
 -------------------------------------------------------------------------------}
 unit fpsActions;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
@@ -353,6 +355,9 @@ type
     property Visible;
   end;
 
+
+  { Cell comment actions }
+
   TsCellCommentMode = (ccmNew, ccmEdit, ccmDelete);
 
   TsCellCommentAction = class(TsCellAction)
@@ -365,6 +370,41 @@ type
     procedure UpdateTarget(Target: TObject); override;
   published
     property Mode: TsCellCommentMode read FMode write FMode;
+    property Caption;
+    property Enabled;
+    property HelpContext;
+    property HelpKeyword;
+    property HelpType;
+    property Hint;
+    property ImageIndex;
+    property OnExecute;
+    property OnHint;
+    property OnUpdate;
+    property SecondaryShortCuts;
+    property ShortCut;
+    property Visible;
+  end;
+
+
+  { Cell hyperlink actions }
+
+  TsCellHyperlinkMode = (chmNew, chmEdit, chmDelete);
+
+  TsCellHyperlinkEvent = procedure (Sender: TObject; ACaption: String;
+    var AHyperlink: TsHyperlink) of object;
+
+  TsCellHyperlinkAction = class(TsCellAction)
+  private
+    FMode: TsCellHyperlinkMode;
+    FOnHyperlink: TsCellHyperlinkEvent;
+  protected
+    function EditHyperlink(ACaption: String; var AHyperlink: TsHyperlink): Boolean; virtual;
+  public
+    procedure ExecuteTarget(Target: TObject); override;
+    procedure UpdateTarget(Target: TObject); override;
+  published
+    property Mode: TsCellHyperlinkMode read FMode write FMode;
+    property OnHyperlink: TsCellHyperlinkEvent read FOnHyperlink write FOnHyperlink;
     property Caption;
     property Enabled;
     property HelpContext;
@@ -493,7 +533,7 @@ begin
     TsTextRotationAction, TsWordWrapAction,
     TsNumberFormatAction, TsDecimalsAction,
     TsCellBorderAction, TsNoCellBordersAction,
-    TsCellCommentAction,
+    TsCellCommentAction, TsCellHyperlinkAction,
     TsMergeAction
   ], nil);
 end;
@@ -1192,6 +1232,7 @@ end;
 
 
 { TsCellCommentAction }
+
 function TsCellCommentAction.EditComment(ACaption: String;
   var AText: String): Boolean;
 var
@@ -1274,11 +1315,87 @@ begin
   Unused(Target);
 
   case FMode of
-    ccmNew   : Enabled := (Worksheet <> nil) and (Length(GetSelection) > 0);
-    ccmEdit,
-    ccmDelete: Enabled := (Worksheet <> nil) and (Worksheet.ReadComment(ActiveCell) <> '');
+    ccmNew:
+      Enabled := (Worksheet <> nil) and (Length(GetSelection) > 0) and not Worksheet.HasComment(ActiveCell);
+    ccmEdit, ccmDelete:
+      Enabled := (Worksheet <> nil) and (Worksheet.ReadComment(ActiveCell) <> '');
   end;
 end;
+
+
+{ TsCellHyperlinkAction }
+
+function TsCellHyperlinkAction.EditHyperlink(ACaption: String;
+  var AHyperlink: TsHyperlink): Boolean;
+begin
+  if Assigned(FOnHyperlink) then
+    FOnHyperlink(Self, ACaption, AHyperlink)
+  else
+    AHyperlink.Target := InputBox(ACaption, 'Target', AHyperlink.Target);
+
+  Result := AHyperlink.Target <> '';
+end;
+
+procedure TsCellHyperlinkAction.ExecuteTarget(Target: TObject);
+var
+  txt: String;
+  cellStr: String;
+  hyperlink: TsHyperlink;
+  displayText: String;
+  noCellText: Boolean;
+  cell: PCell;
+begin
+  Unused(Target);
+
+  if Worksheet = nil then
+    exit;
+
+  cellstr := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  case FMode of
+    chmNew:
+      begin
+        txt := Format('New hyperlink for cell %s', [cellStr]);
+        hyperlink.Target := '';
+        hyperlink.Tooltip := '';
+        if EditHyperlink(txt, hyperlink) then
+          Worksheet.WriteHyperlink(
+            Worksheet.ActiveCellRow, Worksheet.ActiveCellCol,
+            hyperlink.Target, hyperlink.ToolTip
+          );
+      end;
+    chmEdit:
+      begin
+        displayText := Worksheet.ReadAsUTF8Text(ActiveCell);
+        hyperlink := Worksheet.ReadHyperlink(ActiveCell);
+        noCellText := displayText = hyperlink.Target;
+        txt := Format('Edit hyperlink for cell %s', [cellStr]);
+        if EditHyperlink(txt, hyperlink) then
+        begin
+          Worksheet.WriteHyperlink(
+            Worksheet.ActiveCellRow, Worksheet.ActiveCellCol,
+            hyperlink.Target, hyperlink.ToolTip
+          );
+          if noCellText then
+            Worksheet.WriteBlank(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+        end;
+      end;
+    chmDelete:
+      Worksheet.WriteHyperlink(ActiveCell, '');
+  end;
+end;
+
+procedure TsCellHyperlinkAction.UpdateTarget(Target: TObject);
+begin
+  Unused(Target);
+  case FMode of
+    chmNew:
+      Enabled := (Worksheet <> nil) and (Length(GetSelection) > 0) and not Worksheet.HasHyperlink(ActiveCell);
+    chmEdit, chmDelete:
+      Enabled := (Worksheet <> nil) and Worksheet.HasHyperlink(ActiveCell);
+  end;
+end;
+
+
 
 { TsMergeAction }
 

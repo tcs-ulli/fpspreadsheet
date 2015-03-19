@@ -60,7 +60,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="6">
+    <Units Count="7">
       <Unit0>
         <Filename Value="demo_ctrls.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -103,6 +103,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="scurrencyform"/>
       </Unit5>
+      <Unit6>
+        <Filename Value="..\shared\shyperlinkform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="HyperlinkForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sHyperlinkForm"/>
+      </Unit6>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -120,6 +128,9 @@
       <SmartLinkUnit Value="True"/>
     </CodeGeneration>
     <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2Set"/>
+      </Debugging>
       <Options>
         <Win32>
           <GraphicApplication Value="True"/>
