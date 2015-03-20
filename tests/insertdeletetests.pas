@@ -24,12 +24,14 @@ type
     DeleteRow: Integer;
     Formula: String;
     SollFormula: String;
+    {
     SharedFormulaRowCount: Integer;    // Size of shared formula block before insert/delete
     SharedFormulaColCount: Integer;
     SharedFormulaBaseCol_After: Integer;   // Position of shared formula base after insert/delete
     SharedFormulaBaseRow_After: Integer;
     SharedFormulaRowCount_After: Integer;  // Size of shared formula block after insert/delete
     SharedFormulaColCount_After: Integer;
+    }
     MergedColCount: Integer;      // size of merged block before insert/delete
     MergedRowCount: Integer;
     MergedColCount_After: Integer;  // size of merged block after insert/delete
@@ -237,12 +239,14 @@ begin
       DeleteRow := -1;
       Formula := '';
       SollFormula := '';
+      {
       SharedFormulaColCount := 0;
       SharedFormulaRowCount := 0;
       SharedFormulaBaseCol_After := -1;
       SharedFormulaBaseRow_After := -1;
       SharedFormulaColCount_After := 0;
       SharedFormulaRowCount_After := 0;
+      }
       MergedColCount := 0;
       MergedRowCount := 0;
     end;
@@ -931,16 +935,17 @@ var
   r1,c1,r2,c2: Cardinal;
   MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
-  L, LL: TStringList;
+  L: TStringList;
   s: String;
   expected: String;
   actual: String;
-  expectedFormulas: array of array of String;
+//  expectedFormulas: array of array of String;
 begin
   TempFile := GetTempFileName;
 
   L := TStringList.Create;
   try
+    {
     // Extract soll formulas into a 2D array in case of shared formulas
     if (InsDelTestData[ATestIndex].SharedFormulaRowCount_After > 0) or
        (InsDelTestData[ATestIndex].SharedFormulaColCount_After > 0) then
@@ -963,7 +968,7 @@ begin
         LL.Free;
       end;
     end;
-
+     }
     L.Delimiter := '|';
     L.StrictDelimiter := true;
     L.DelimitedText := InsDelTestData[ATestIndex].Layout;
@@ -1047,6 +1052,7 @@ begin
             end;
           if HasFormula(MyCell) then
           begin
+            {
             if (InsDelTestData[ATestIndex].SharedFormulaRowCount_After > 0) or
                (InsDelTestData[ATestIndex].SharedFormulaColCount_After > 0)
             then
@@ -1057,6 +1063,7 @@ begin
                 'Shared formula mismatch, cell ' + CellNotation(MyWorksheet, Row, Col)
               )
             else
+            }
               CheckEquals(
                 InsDelTestData[ATestIndex].SollFormula,
                 MyWorksheet.ReadFormulaAsString(MyCell),

@@ -1275,6 +1275,7 @@ begin
   ApplyStyleToCell(cell, stylename);
   fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
 
+  formula := '';
   if (boReadFormulas in FWorkbook.Options) then
   begin
     // Read formula, trim it, ...
@@ -1352,6 +1353,7 @@ begin
     FWorksheet.WriteBoolValue(cell, boolValue);
   end else
   // (e) Text
+  if (valueStr <> '') then
     FWorksheet.WriteUTF8Text(cell, valueStr);
 
   if FIsVirtualMode then
@@ -4219,11 +4221,6 @@ begin
     hyperlink := FWorksheet.FindHyperlink(ACell);
     SplitHyperlink(hyperlink^.Target, target, bookmark);
 
-    {
-    if (target = '') and (bookmark <> '') then
-      target := '#' + bookmark
-    else
-    }
     if (target <> '') and (pos('file:', target) = 0) then
     begin
       u := ParseURI(target);
@@ -4237,33 +4234,11 @@ begin
     if (bookmark <> '') then
       target := target + '#' + bookmark;
 
-        {
-    u := ParseURI(hyperlink^.Target);
-    if u.Protocol = '' then  // relative file name, or internal link
-    begin
-      if target <> '' then target := '../' + target;
-      if bookmark <> '' then target := target + '#' + bookmark;
-    end else
-      target := hyperlink^.Target;
-      }
-    //ValidXMLText(target);
-    {
-    target := hyperlink^.Target;
-    if target[1] <> '#' then
-    begin
-      u := ParseURI(target);
-      if u.Protocol = '' then begin
-        //UriToFileName(hyperlink^.Target, target);
-        target := 'file:///' + ExpandFileName(target);
-        ValidXMLText(target);
-//        if not IsAbsoluteURI(target) then target := '..\' + target;
-      end;
-    end;
-    }
     textp := Format(
       '<text:p>'+
         '<text:a xlink:href="%s" xlink:type="simple">%s</text:a>'+
       '</text:p>', [target, txt]);
+
   end else
     textp := '<text:p>' + txt + '</text:p>';
 

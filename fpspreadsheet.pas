@@ -1249,7 +1249,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcFormulas;
 var
-  node: TAVLTreeNode;
   cell: PCell;
 begin
   // prevent infinite loop due to triggering of formula calculation whenever
@@ -1257,23 +1256,15 @@ begin
   inc(FWorkbook.FCalculationLock);
   try
     // Step 1 - mark all formula cells as "not calculated"
-    node := FCells.FindLowest;
-    while Assigned(node) do begin
-      cell := PCell(node.Data);
+    for cell in FCells do
       if HasFormula(cell) then
         SetCalcState(cell, csNotCalculated);
-      node := FCells.FindSuccessor(node);
-    end;
 
     // Step 2 - calculate cells. If a not-yet-calculated cell is found it is
     // calculated and then marked as such.
-    node := FCells.FindLowest;
-    while Assigned(node) do begin
-      cell := PCell(node.Data);
-      if (cell^.ContentType <> cctError) and HasFormula(cell) then
+    for cell in FCells do
+      if HasFormula(cell) and (cell^.ContentType <> cctError) then
         CalcFormula(cell);
-      node := FCells.FindSuccessor(node);
-    end;
 
   finally
     dec(FWorkbook.FCalculationLock);
