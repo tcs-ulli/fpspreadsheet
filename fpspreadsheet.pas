@@ -1600,36 +1600,59 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
   ATooltip: String = '');
-var
-  fmt: TsCellFormat;
-  target, bm, displayTxt: String;
-begin
-  if ACell = nil then
-    exit;
 
-  if ATarget = '' then begin
-    RemoveHyperlink(ACell);
-    exit;
-  end;
-
-  FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
-  Include(ACell^.Flags, cfHyperlink);
-
-  if ACell^.ContentType = cctEmpty then
+  function GetDisplayText(ATarget: String): String;
+  var
+    target, bm: String;
   begin
     SplitHyperlink(ATarget, target, bm);
     if pos('file:', lowercase(ATarget))=1 then
     begin
-      URIToFilename(target, displayTxt);
-      ForcePathDelims(displayTxt);
-      if bm <> '' then displayTxt := displayTxt + '#' + bm;
+      URIToFilename(target, Result);
+      ForcePathDelims(Result);
+      if bm <> '' then Result := Result + '#' + bm;
     end else
-      displayTxt := ATarget;
-    ACell^.ContentType := cctUTF8String;
-    ACell^.UTF8StringValue := displayTxt;
+    if target = '' then
+      Result := bm
+    else
+      Result := ATarget;
   end;
 
+var
+  fmt: TsCellFormat;
+  noCellText: Boolean = false;
+begin
+  if ACell = nil then
+    exit;
+
   fmt := ReadCellFormat(ACell);
+
+  // Empty target string removes the hyperlink. Resets the font from hyperlink
+  // to default font.
+  if ATarget = '' then begin
+    RemoveHyperlink(ACell);
+    if fmt.FontIndex = HYPERLINK_FONTINDEX then
+      WriteFont(ACell, DEFAULT_FONTINDEX);
+    exit;
+  end;
+
+  // Detect whether the cell already has a hyperlink, but has no other content.
+  if HasHyperlink(ACell) then
+    noCellText := (ACell^.ContentType = cctUTF8String) and
+      (GetDisplayText(ReadHyperlink(ACell).Target) = ReadAsUTF8Text(ACell));
+
+  // Attach the hyperlink to the cell
+  FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
+  Include(ACell^.Flags, cfHyperlink);
+
+  // If there is no other cell content use the target as cell label string.
+  if (ACell^.ContentType = cctEmpty) or noCellText then
+  begin
+    ACell^.ContentType := cctUTF8String;
+    ACell^.UTF8StringValue := GetDisplayText(ATarget);
+  end;
+
+  // Select the hyperlink font.
   if fmt.FontIndex = DEFAULT_FONTINDEX then
   begin
     fmt.FontIndex := HYPERLINK_FONTINDEX;

@@ -1342,7 +1342,7 @@ var
   cellStr: String;
   hyperlink: TsHyperlink;
   displayText: String;
-  noCellText: Boolean;
+//  noCellText: Boolean;
   cell: PCell;
 begin
   Unused(Target);
@@ -1367,7 +1367,7 @@ begin
       begin
         displayText := Worksheet.ReadAsUTF8Text(ActiveCell);
         hyperlink := Worksheet.ReadHyperlink(ActiveCell);
-        noCellText := displayText = hyperlink.Target;
+//        noCellText := displayText = hyperlink.Target;
         txt := Format('Edit hyperlink for cell %s', [cellStr]);
         if EditHyperlink(txt, hyperlink) then
         begin
@@ -1375,8 +1375,10 @@ begin
             Worksheet.ActiveCellRow, Worksheet.ActiveCellCol,
             hyperlink.Target, hyperlink.ToolTip
           );
+          {
           if noCellText then
             Worksheet.WriteBlank(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+            }
         end;
       end;
     chmDelete:
