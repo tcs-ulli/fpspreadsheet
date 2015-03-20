@@ -217,6 +217,8 @@ begin
         expected := hyperlink.Target;
         if pos('file:', SollLinks[ATestMode])=1 then
           Delete(expected, 1, Length('file:///'))
+        else if expected[1] = '#' then   // ... and internal links are displayed without #
+          Delete(expected, 1, 1);
       end else
         expected := SollCellContent[row];
       FixHyperlinkPathDelims(expected);
