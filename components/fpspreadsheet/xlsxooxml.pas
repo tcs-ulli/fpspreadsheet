@@ -66,6 +66,7 @@ type
     FFillList: TFPList;
     FBorderList: TFPList;
     FHyperlinkList: TFPList;
+    FSharedFormulaBaseList: TFPList;
     FThemeColors: array of TsColorValue;
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
@@ -468,6 +469,7 @@ begin
   FHyperlinkList := TFPList.Create;
   FCellFormatList := TsCellFormatList.Create(true);
   // Allow duplicates because xf indexes used in cell records cannot be found any more.
+  FSharedFormulaBaseList := TFPList.Create;
 
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
@@ -487,6 +489,7 @@ begin
   FHyperlinkList.Free;
 
   FSharedStrings.Free;
+  FSharedFormulaBaseList.Free;   // Don't free items, they are worksheet cells
 
   // FCellFormatList and FFontList are destroyed by ancestor
 
@@ -664,7 +667,7 @@ procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet)
 var
   addr, s: String;
   rowIndex, colIndex: Cardinal;
-  cell: PCell;
+  cell, sharedformulabase: PCell;
   datanode: TDOMNode;
   dataStr: String;
   formulaStr: String;
@@ -716,13 +719,21 @@ begin
       begin
         // Shared formula
         s := GetAttrValue(datanode, 'ref');
-        if (s <> '') then      // This is the shared formula range
+        if (s <> '') then      // This defines the shared formula range
         begin
-          // Split shared formula into single-cell formulas
-          ParseCellRangeString(s, rng);
-          for r := rng.Row1 to rng.Row2 do
-            for c := rng.Col1 to rng.Col2 do
-              FWorksheet.CopyFormula(cell, r, c);
+          AWorksheet.WriteFormula(cell, FormulaStr);
+          // We store the shared formula base in the SharedFormulaBaseList.
+          // The list index is identical with the 'si' attribute of the node.
+          FSharedFormulaBaseList.Add(cell);
+        end else
+        begin
+          // Get index into the SharedFormulaBaseList
+          s := GetAttrValue(datanode, 'si');
+          if s <> '' then
+          begin
+            sharedformulabase := PCell(FSharedFormulaBaseList[StrToInt(s)]);
+            FWorksheet.CopyFormula(sharedformulabase, rowindex, colindex);
+          end;
         end;
       end
       else
@@ -735,8 +746,10 @@ begin
   // get data type
   s := GetAttrValue(ANode, 't');   // "t" = data type
   if (s = '') and (dataStr = '') then
-    AWorksheet.WriteBlank(cell)
-  else
+  begin
+    AWorksheet.WriteBlank(cell);     // this erases the formula!!!
+    if formulaStr <> '' then cell^.FormulaValue := formulaStr;
+  end else
   if (s = '') or (s = 'n') then begin
     // Number or date/time, depending on format
     number := StrToFloat(dataStr, FPointSeparatorSettings);
