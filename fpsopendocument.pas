@@ -4216,6 +4216,7 @@ begin
       GetCellString(ARow, ACol)
     ]);
 
+  // Hyperlink?
   if FWorksheet.HasHyperlink(ACell) then
   begin
     hyperlink := FWorksheet.FindHyperlink(ACell);
@@ -4240,6 +4241,7 @@ begin
       '</text:p>', [target, txt]);
 
   end else
+    // No hyperlink, normal text only
     textp := '<text:p>' + txt + '</text:p>';
 
   // Write it ...

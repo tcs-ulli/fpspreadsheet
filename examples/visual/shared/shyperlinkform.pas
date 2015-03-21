@@ -17,34 +17,48 @@ type
     Bevel1: TBevel;
     BtnBrowseFile: TButton;
     ButtonPanel1: TButtonPanel;
-    CbFileName1: TComboBox;
-    CbFileName2: TComboBox;
-    CbFileName3: TComboBox;
+    CbFtpServer: TComboBox;
+    CbFtpUsername: TComboBox;
+    CbFtpPassword: TComboBox;
+    CbHttpAddress: TComboBox;
+    CbFileBookmark: TComboBox;
     CbWorksheets: TComboBox;
     CbCellAddress: TComboBox;
     CbFileName: TComboBox;
     CbMailRecipient: TComboBox;
+    EdHttpBookmark: TEdit;
+    EdTooltip: TEdit;
     EdMailSubject: TEdit;
     GroupBox2: TGroupBox;
-    GroupBox3: TGroupBox;
-    GroupBox4: TGroupBox;
-    GroupBox5: TGroupBox;
-    GroupBox6: TGroupBox;
+    GbFileName: TGroupBox;
+    GbInternetLinkType: TGroupBox;
+    GbHttp: TGroupBox;
     GbMailRecipient: TGroupBox;
+    GroupBox6: TGroupBox;
+    GbFileBookmark: TGroupBox;
     GroupBox8: TGroupBox;
+    GbFtp: TGroupBox;
     Images: TImageList;
     HyperlinkInfo: TLabel;
+    Label1: TLabel;
+    LblFtpUserName: TLabel;
+    LblFtpPassword: TLabel;
+    LblHttpAddress: TLabel;
     Label5: TLabel;
     Label6: TLabel;
+    LblHttpBookmark: TLabel;
     Notebook: TNotebook;
+    InternetNotebook: TNotebook;
     OpenDialog: TOpenDialog;
+    PgHTTP: TPage;
+    PfFTP: TPage;
     PgInternal: TPage;
-    Page2: TPage;
-    Page3: TPage;
-    Page4: TPage;
+    PgFile: TPage;
+    PgInternet: TPage;
+    PgMail: TPage;
     Panel2: TPanel;
-    RadioButton1: TRadioButton;
-    RadioButton2: TRadioButton;
+    RbFTP: TRadioButton;
+    RbHTTP: TRadioButton;
     ToolBar: TToolBar;
     TbInternal: TToolButton;
     TbFile: TToolButton;
@@ -52,8 +66,14 @@ type
     TbMail: TToolButton;
     procedure BtnBrowseFileClick(Sender: TObject);
     procedure CbCellAddressEditingDone(Sender: TObject);
+    procedure CbFileBookmarkDropDown(Sender: TObject);
+    procedure CbFileNameEditingDone(Sender: TObject);
+    procedure CbFtpServerEditingDone(Sender: TObject);
+    procedure CbHttpAddressEditingDone(Sender: TObject);
     procedure CbMailRecipientEditingDone(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
     procedure OKButtonClick(Sender: TObject);
+    procedure HTTP_FTP_Change(Sender: TObject);
     procedure ToolButtonClick(Sender: TObject);
     procedure UpdateHyperlinkInfo(Sender: TObject);
   private
@@ -65,6 +85,7 @@ type
     procedure SetHyperlinkKind(AValue: Integer);
     procedure SetHyperlinkTarget(const AValue: String);
     procedure SetHyperlinkTooltip(const AValue: String);
+    procedure SetInternetLinkKind(AValue: Integer);
     procedure SetWorksheet(AWorksheet: TsWorksheet);
   protected
     function GetHyperlinkKind: Integer;
@@ -92,6 +113,9 @@ const
   TAG_INTERNET = 2;
   TAG_MAIL = 3;
 
+  TAG_HTTP = 0;
+  TAG_FTP = 1;
+
 { THyperlinkForm }
 
 procedure THyperlinkForm.BtnBrowseFileClick(Sender: TObject);
@@ -99,9 +123,10 @@ begin
   with OpenDialog do begin
     Filename := CbFileName.Text;
     if Execute then begin
+      InitialDir := ExtractFileDir(FileName);
       CbFileName.Text := FileName;
-      if CbFileName.Items.IndexOf(FileName) = -1 then
-        CbFilename.Items.Add(FileName);
+      if (CbFileName.Text <> '') and (CbFileName.Items.IndexOf(FileName) = -1) then
+        CbFilename.Items.Insert(0, FileName);
     end;
   end;
 end;
@@ -111,12 +136,67 @@ begin
   CbCellAddress.Text := Uppercase(CbCellAddress.Text);
 end;
 
+procedure THyperlinkForm.CbFileBookmarkDropDown(Sender: TObject);
+var
+  ext: String;
+  wb: TsWorkbook;
+  ws: TsWorksheet;
+  i: Integer;
+begin
+  CbFileBookmark.Items.Clear;
+  if FileExists(CbFilename.Text) then begin
+    ext := Lowercase(ExtractFileExt(CbFileName.Text));
+    if (ext = '.xls') or (ext = '.xlsx') or (ext = '.ods') then begin
+      wb := TsWorkbook.Create;
+      try
+        wb.ReadFromFile(CbFileName.Text);
+        for i:=0 to wb.GetWorksheetCount-1 do
+        begin
+          ws := wb.GetWorksheetByIndex(i);
+          CbFileBookmark.Items.Add(ws.Name);
+        end;
+      finally
+        wb.Free;
+      end;
+    end;
+  end;
+end;
+
+procedure THyperlinkForm.CbFileNameEditingDone(Sender: TObject);
+begin
+  if (CbFilename.Text <> '') and
+     (CbFilename.Items.IndexOf(CbFilename.Text) = -1)
+  then
+    CbFileName.Items.Insert(0, CbFileName.Text);
+end;
+
+procedure THyperlinkForm.CbFtpServerEditingDone(Sender: TObject);
+begin
+  if (CbFtpServer.Text <> '') and
+     (CbFtpServer.Items.IndexOf(CbFtpServer.Text) = -1)
+  then
+    CbFtpServer.Items.Insert(0, CbFtpServer.Text);
+end;
+
+procedure THyperlinkForm.CbHttpAddressEditingDone(Sender: TObject);
+begin
+  if (CbHttpAddress.Text <> '') and
+     (CbHttpAddress.Items.Indexof(CbHttpAddress.Text) = -1)
+  then
+    CbHttpAddress.Items.Insert(0, CbHttpAddress.Text);
+end;
+
 procedure THyperlinkForm.CbMailRecipientEditingDone(Sender: TObject);
 begin
   if (CbMailRecipient.Text <> '') and
      (CbMaiLRecipient.Items.IndexOf(CbMailRecipient.Text) = -1)
   then
     CbMailRecipient.Items.Insert(0, CbMailRecipient.Text);
+end;
+
+procedure THyperlinkForm.FormCreate(Sender: TObject);
+begin
+  HTTP_FTP_Change(nil);
 end;
 
 procedure THyperlinkForm.GetHyperlink(out AHyperlink: TsHyperlink);
@@ -135,6 +215,7 @@ end;
 
 function THyperlinkForm.GetHyperlinkTarget: String;
 begin
+  Result := '';
   case GetHyperlinkKind of
     TAG_INTERNAL:
       begin //internal
@@ -143,19 +224,42 @@ begin
         else if (CbWorksheets.ItemIndex > 0) then
           Result := '#' + CbWorksheets.Text + '!'
         else if (CbCellAddress.Text <> '') then
-          Result := '#' + Uppercase(CbCellAddress.Text)
-        else
-          Result := '';
+          Result := '#' + Uppercase(CbCellAddress.Text);
       end;
+
     TAG_FILE:
       begin  // File
-        if (FWorkbook = nil) or (FWorkbook.FileName = '') then
+        if FileNameIsAbsolute(CbFilename.Text) then
           Result := FilenameToURI(CbFilename.Text)
         else
-          Result := '';
+          Result := CbFilename.Text;
+        if CbFileBookmark.Text <> '' then
+          Result := Result + '#' + CbFileBookmark.Text;
       end;
+
     TAG_INTERNET:
-      ;
+      begin  // Internet link
+        if RbHttp.Checked and (CbHttpAddress.Text <> '') then
+        begin
+          if pos('http', Lowercase(CbHttpAddress.Text)) = 1 then
+            Result := CbHttpAddress.Text
+          else
+            Result := 'http://' + CbHttpAddress.Text;
+          if EdHttpBookmark.Text <> '' then
+            Result := Result + '#' + EdHttpBookmark.Text;
+        end else
+        if RbFtp.Checked and (CbFtpServer.Text <> '') then
+        begin
+          if (CbFtpUsername.Text <> '') and (CbFtpPassword.Text <> '') then
+            Result := Format('ftp://%s:%s@%s', [CbFtpUsername.Text, CbFtpPassword.Text, CbFtpServer.Text])
+          else
+          if (CbFtpUsername.Text <> '') and (CbFtpPassword.Text = '') then
+            Result := Format('ftp://%s@%s', [CbFtpUsername.Text , CbFtpServer.Text])
+          else
+            Result := 'ftp://anonymous@' + CbFtpServer.Text;
+        end;
+      end;
+
     TAG_MAIL:
       begin  // Mail
         if EdMailSubject.Text <> '' then
@@ -168,7 +272,7 @@ end;
 
 function THyperlinkForm.GetHyperlinkTooltip: String;
 begin
-  //
+  Result := EdTooltip.Text;
 end;
 
 procedure THyperlinkForm.OKButtonClick(Sender: TObject);
@@ -181,6 +285,15 @@ begin
     MessageDlg(msg, mtError, [mbOK], 0);
     ModalResult := mrNone;
   end;
+end;
+
+procedure THyperlinkForm.HTTP_FTP_Change(Sender: TObject);
+begin
+  if RbHTTP.Checked then
+    InternetNotebook.PageIndex := 0;
+  if RbFTP.Checked then
+    InternetNotebook.PageIndex := 1;
+  UpdateHyperlinkInfo(nil);
 end;
 
 procedure THyperlinkForm.SetHyperlink(AWorksheet: TsWorksheet;
@@ -207,6 +320,7 @@ var
   c,r: Cardinal;
   i, idx: Integer;
   p: Integer;
+  fn, bm: String;
 begin
   if AValue = '' then
   begin
@@ -251,6 +365,17 @@ begin
   // external links
   u := ParseURI(AValue);
 
+  // File with absolute path
+  if SameText(u.Protocol, 'file') then
+  begin
+    SetHyperlinkKind(TAG_FILE);
+    UriToFilename(AValue, fn);
+    CbFilename.Text := fn;
+    CbFileBookmark.Text := u.Bookmark;
+    UpdateHyperlinkInfo(nil);
+    exit;
+  end;
+
   // Mail
   if SameText(u.Protocol, 'mailto') then
   begin
@@ -267,11 +392,48 @@ begin
     UpdateHyperlinkInfo(nil);
     exit;
   end;
+
+  // http
+  if SameText(u.Protocol, 'http') or SameText(u.Protocol, 'https') then
+  begin
+    SetHyperlinkKind(TAG_INTERNET);
+    SetInternetLinkKind(TAG_HTTP);
+    CbHttpAddress.Text := u.Host;
+    EdHttpBookmark.Text := u.Bookmark;
+    UpdateHyperlinkInfo(nil);
+    exit;
+  end;
+
+  // ftp
+  if SameText(u.Protocol, 'ftp') then
+  begin
+    SetHyperlinkKind(TAG_INTERNET);
+    SetInternetLinkKind(TAG_FTP);
+    CbFtpServer.Text := u.Host;
+    CbFtpUserName.text := u.UserName;
+    CbFtpPassword.Text := u.Password;
+    UpdateHyperlinkInfo(nil);
+    exit;
+  end;
+
+  // If we get there it must be a local file with relative path
+  SetHyperlinkKind(TAG_FILE);
+  SplitHyperlink(AValue, fn, bm);
+  CbFileName.Text := fn;
+  CbFileBookmark.Text := bm;
+  UpdateHyperlinkInfo(nil);
 end;
 
 procedure THyperlinkForm.SetHyperlinkTooltip(const AValue: String);
 begin
-  //
+  EdTooltip.Text := AValue;
+end;
+
+procedure THyperlinkForm.SetInternetLinkKind(AValue: Integer);
+begin
+  RbHttp.Checked := AValue = TAG_HTTP;
+  RbFtp.Checked := AValue = TAG_FTP;
+  InternetNotebook.PageIndex := AValue;
 end;
 
 procedure THyperlinkForm.SetWorksheet(AWorksheet: TsWorksheet);
@@ -300,8 +462,12 @@ begin
 end;
 
 procedure THyperlinkForm.UpdateHyperlinkInfo(Sender: TObject);
+var
+  s: String;
 begin
-  HyperlinkInfo.Caption := GetHyperlinkTarget;
+  s := GetHyperlinkTarget;
+  if s = '' then s := #32;
+  HyperlinkInfo.Caption := s;
 end;
 
 function THyperlinkForm.ValidData(out AControl: TWinControl;
@@ -332,6 +498,36 @@ begin
         begin
           AMsg := Format('Worksheet "%s" does not exist.', [CbWorksheets.Text]);
           AControl := CbWorksheets;
+          exit;
+        end;
+      end;
+
+    TAG_FILE:
+      begin
+        if CbFilename.Text = '' then
+        begin
+          AMsg := 'No filename specified.';
+          AControl := CbFileName;
+          exit;
+        end;
+      end;
+
+    TAG_INTERNET:
+      if RbHttp.Checked then
+      begin
+        if CbHttpAddress.Text = '' then
+        begin
+          AMsg := 'URL of web site not specified.';
+          AControl := CbHttpAddress;
+          exit;
+        end;
+      end else
+      if RbFtp.Checked then
+      begin
+        if CbFtpServer.Text = '' then
+        begin
+          AMsg := 'Ftp server not specified.';
+          AControl := CbFtpServer;
           exit;
         end;
       end;

@@ -1,17 +1,18 @@
 object HyperlinkForm: THyperlinkForm
   Left = 327
-  Height = 347
+  Height = 386
   Top = 259
   Width = 498
   Caption = 'Hyperlink'
-  ClientHeight = 347
+  ClientHeight = 386
   ClientWidth = 498
+  OnCreate = FormCreate
   ShowHint = True
   LCLVersion = '1.5'
   object ButtonPanel1: TButtonPanel
     Left = 6
     Height = 34
-    Top = 307
+    Top = 346
     Width = 486
     OKButton.Name = 'OKButton'
     OKButton.DefaultCaption = True
@@ -27,20 +28,20 @@ object HyperlinkForm: THyperlinkForm
   end
   object Panel2: TPanel
     Left = 75
-    Height = 301
+    Height = 340
     Top = 0
     Width = 423
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 301
+    ClientHeight = 340
     ClientWidth = 423
     TabOrder = 1
     object Notebook: TNotebook
       Left = 4
-      Height = 263
+      Height = 246
       Top = 4
       Width = 415
-      PageIndex = 0
+      PageIndex = 2
       Align = alClient
       BorderSpacing.Around = 4
       TabOrder = 0
@@ -62,7 +63,8 @@ object HyperlinkForm: THyperlinkForm
             Left = 8
             Height = 23
             Top = 24
-            Width = 208
+            Width = 210
+            Anchors = [akTop, akLeft, akRight]
             ItemHeight = 15
             OnChange = UpdateHyperlinkInfo
             ParentFont = False
@@ -79,20 +81,21 @@ object HyperlinkForm: THyperlinkForm
             ParentFont = False
           end
           object Label6: TLabel
-            Left = 224
+            Left = 226
             Height = 15
             Top = 8
             Width = 66
+            Anchors = [akTop, akRight]
             Caption = 'Cell address:'
             ParentColor = False
             ParentFont = False
           end
           object CbCellAddress: TComboBox
-            Left = 224
+            Left = 226
             Height = 23
             Top = 24
-            Width = 178
-            Anchors = [akTop, akLeft, akRight]
+            Width = 176
+            Anchors = [akTop, akRight]
             ItemHeight = 15
             OnChange = UpdateHyperlinkInfo
             OnEditingDone = CbCellAddressEditingDone
@@ -101,33 +104,35 @@ object HyperlinkForm: THyperlinkForm
           end
         end
       end
-      object Page2: TPage
-        object GroupBox3: TGroupBox
+      object PgFile: TPage
+        object GbFileName: TGroupBox
           Left = 0
-          Height = 88
+          Height = 64
           Top = 0
-          Width = 417
+          Width = 407
           Align = alTop
           BorderSpacing.Right = 8
           BorderSpacing.Bottom = 8
-          Caption = 'File'
-          ClientHeight = 68
-          ClientWidth = 413
+          Caption = 'File / Document'
+          ClientHeight = 44
+          ClientWidth = 403
           Font.Style = [fsBold]
           ParentFont = False
           TabOrder = 0
           object CbFileName: TComboBox
-            Left = 16
+            Left = 8
             Height = 23
             Top = 8
-            Width = 306
+            Width = 307
             Anchors = [akTop, akLeft, akRight]
             ItemHeight = 15
+            OnChange = UpdateHyperlinkInfo
+            OnEditingDone = CbFileNameEditingDone
             ParentFont = False
             TabOrder = 0
           end
           object BtnBrowseFile: TButton
-            Left = 330
+            Left = 320
             Height = 23
             Top = 8
             Width = 75
@@ -137,102 +142,215 @@ object HyperlinkForm: THyperlinkForm
             ParentFont = False
             TabOrder = 1
           end
-          object RadioButton1: TRadioButton
-            Left = 19
-            Height = 19
-            Top = 41
-            Width = 92
-            Caption = 'absolute path'
-            Checked = True
-            ParentFont = False
-            TabOrder = 3
-            TabStop = True
-          end
-          object RadioButton2: TRadioButton
-            Left = 137
-            Height = 19
-            Top = 41
-            Width = 85
-            Caption = 'relative path'
-            ParentFont = False
-            TabOrder = 2
-          end
         end
-      end
-      object Page3: TPage
-        object GroupBox4: TGroupBox
+        object GbFileBookmark: TGroupBox
           Left = 0
           Height = 64
           Top = 72
           Width = 407
           Align = alTop
-          BorderSpacing.Top = 8
           BorderSpacing.Right = 8
-          Caption = 'URL'
+          BorderSpacing.Bottom = 8
+          Caption = 'Bookmark within document'
           ClientHeight = 44
           ClientWidth = 403
-          TabOrder = 0
-          object CbFileName1: TComboBox
-            Left = 16
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 1
+          object CbFileBookmark: TComboBox
+            Left = 8
             Height = 23
             Top = 8
-            Width = 395
+            Width = 387
+            Anchors = [akTop, akLeft, akRight]
             ItemHeight = 15
+            OnChange = UpdateHyperlinkInfo
+            OnDropDown = CbFileBookmarkDropDown
+            ParentFont = False
             TabOrder = 0
-            Text = 'ComboBox1'
           end
         end
-        object GroupBox5: TGroupBox
+      end
+      object PgInternet: TPage
+        object GbInternetLinkType: TGroupBox
           Left = 0
           Height = 64
           Top = 0
           Width = 407
           Align = alTop
           BorderSpacing.Right = 8
-          Caption = 'Link'
+          Caption = 'Type of link'
           ClientHeight = 44
           ClientWidth = 403
-          TabOrder = 1
-          object CbFileName2: TComboBox
-            Left = 16
-            Height = 23
-            Top = 8
-            Width = 80
-            ItemHeight = 15
-            ItemIndex = 0
-            Items.Strings = (
-              'http'
-              'ftp'
-            )
+          Font.Style = [fsBold]
+          ParentFont = False
+          TabOrder = 0
+          object RbHTTP: TRadioButton
+            Left = 11
+            Height = 19
+            Top = 7
+            Width = 42
+            Caption = 'http'
+            Checked = True
+            OnChange = HTTP_FTP_Change
+            ParentFont = False
+            TabOrder = 1
+            TabStop = True
+          end
+          object RbFTP: TRadioButton
+            Left = 77
+            Height = 19
+            Top = 7
+            Width = 35
+            Caption = 'ftp'
+            OnChange = HTTP_FTP_Change
+            ParentFont = False
             TabOrder = 0
-            Text = 'http'
           end
         end
-        object GroupBox6: TGroupBox
+        object InternetNotebook: TNotebook
           Left = 0
-          Height = 64
-          Top = 144
-          Width = 407
-          Align = alTop
-          BorderSpacing.Top = 8
-          BorderSpacing.Right = 8
-          Caption = 'URL'
-          ClientHeight = 44
-          ClientWidth = 403
-          TabOrder = 2
-          object CbFileName3: TComboBox
-            Left = 16
-            Height = 23
-            Top = 8
-            Width = 381
-            Anchors = [akTop, akLeft, akRight]
-            ItemHeight = 15
-            TabOrder = 0
-            Text = 'ComboBox1'
+          Height = 182
+          Top = 64
+          Width = 415
+          PageIndex = 1
+          Align = alClient
+          TabOrder = 1
+          TabStop = True
+          object PgHTTP: TPage
+            object GbHttp: TGroupBox
+              Left = 0
+              Height = 144
+              Top = 8
+              Width = 407
+              Align = alTop
+              BorderSpacing.Top = 8
+              BorderSpacing.Right = 8
+              Caption = 'Bookmark within document'
+              ClientHeight = 124
+              ClientWidth = 403
+              Font.Style = [fsBold]
+              ParentFont = False
+              TabOrder = 0
+              object CbHttpAddress: TComboBox
+                Left = 8
+                Height = 23
+                Top = 32
+                Width = 384
+                Anchors = [akTop, akLeft, akRight]
+                ItemHeight = 15
+                OnEditingDone = CbHttpAddressEditingDone
+                ParentFont = False
+                TabOrder = 0
+              end
+              object EdHttpBookmark: TEdit
+                Left = 8
+                Height = 23
+                Top = 86
+                Width = 384
+                ParentFont = False
+                TabOrder = 1
+              end
+              object LblHttpAddress: TLabel
+                Left = 8
+                Height = 15
+                Top = 8
+                Width = 121
+                Caption = 'URL of web document;'
+                FocusControl = CbHttpAddress
+                ParentColor = False
+                ParentFont = False
+              end
+              object LblHttpBookmark: TLabel
+                Left = 8
+                Height = 15
+                Top = 64
+                Width = 151
+                Caption = 'Bookmark within document:'
+                FocusControl = EdHttpBookmark
+                ParentColor = False
+                ParentFont = False
+              end
+            end
+          end
+          object PfFTP: TPage
+            object GbFtp: TGroupBox
+              Left = 0
+              Height = 144
+              Top = 8
+              Width = 407
+              Align = alTop
+              BorderSpacing.Top = 8
+              BorderSpacing.Right = 8
+              Caption = 'ftp server'
+              ClientHeight = 124
+              ClientWidth = 403
+              Font.Style = [fsBold]
+              ParentFont = False
+              TabOrder = 0
+              object CbFtpServer: TComboBox
+                Left = 8
+                Height = 23
+                Top = 32
+                Width = 384
+                Anchors = [akTop, akLeft, akRight]
+                ItemHeight = 15
+                OnEditingDone = CbFtpServerEditingDone
+                ParentFont = False
+                TabOrder = 0
+              end
+              object Label1: TLabel
+                Left = 8
+                Height = 15
+                Top = 10
+                Width = 35
+                Caption = 'Server:'
+                ParentColor = False
+                ParentFont = False
+              end
+              object LblFtpUserName: TLabel
+                Left = 8
+                Height = 15
+                Top = 64
+                Width = 59
+                Caption = 'User name:'
+                FocusControl = CbFtpUsername
+                ParentColor = False
+                ParentFont = False
+              end
+              object CbFtpUsername: TComboBox
+                Left = 8
+                Height = 23
+                Top = 86
+                Width = 190
+                ItemHeight = 15
+                ParentFont = False
+                TabOrder = 1
+              end
+              object LblFtpPassword: TLabel
+                Left = 208
+                Height = 15
+                Top = 64
+                Width = 53
+                Caption = 'Password:'
+                FocusControl = CbFtpPassword
+                ParentColor = False
+                ParentFont = False
+              end
+              object CbFtpPassword: TComboBox
+                Left = 208
+                Height = 23
+                Top = 86
+                Width = 182
+                ItemHeight = 15
+                ParentFont = False
+                TabOrder = 2
+              end
+            end
           end
         end
       end
-      object Page4: TPage
+      object PgMail: TPage
         object GbMailRecipient: TGroupBox
           Left = 0
           Height = 60
@@ -251,6 +369,7 @@ object HyperlinkForm: THyperlinkForm
             Height = 23
             Top = 6
             Width = 397
+            Anchors = [akTop, akLeft, akRight]
             ItemHeight = 15
             OnEditingDone = CbMailRecipientEditingDone
             ParentFont = False
@@ -286,7 +405,7 @@ object HyperlinkForm: THyperlinkForm
     object HyperlinkInfo: TLabel
       Left = 8
       Height = 15
-      Top = 282
+      Top = 321
       Width = 407
       Align = alBottom
       BorderSpacing.Left = 8
@@ -300,17 +419,41 @@ object HyperlinkForm: THyperlinkForm
     object Bevel1: TBevel
       Left = 4
       Height = 3
-      Top = 271
+      Top = 310
       Width = 415
       Align = alBottom
       BorderSpacing.Left = 4
       BorderSpacing.Right = 4
       Shape = bsBottomLine
     end
+    object GroupBox6: TGroupBox
+      Left = 0
+      Height = 56
+      Top = 254
+      Width = 415
+      Align = alBottom
+      BorderSpacing.Right = 8
+      Caption = 'Cell tooltip'
+      ClientHeight = 36
+      ClientWidth = 411
+      Font.Style = [fsBold]
+      ParentFont = False
+      TabOrder = 1
+      object EdTooltip: TEdit
+        Left = 8
+        Height = 23
+        Top = 3
+        Width = 392
+        Anchors = [akTop, akLeft, akRight]
+        ParentFont = False
+        TabOrder = 0
+        Text = 'EdTooltip'
+      end
+    end
   end
   object ToolBar: TToolBar
     Left = 4
-    Height = 297
+    Height = 336
     Top = 4
     Width = 67
     Align = alLeft
