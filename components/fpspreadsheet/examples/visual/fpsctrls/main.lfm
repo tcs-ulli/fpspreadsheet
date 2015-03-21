@@ -538,12 +538,6 @@ object MainForm: TMainForm
       Caption = 'ToolButton52'
       Style = tbsDivider
     end
-    object ToolButton4: TToolButton
-      Left = 504
-      Top = 0
-      Caption = 'ToolButton4'
-      OnClick = ToolButton4Click
-    end
     object ToolButton50: TToolButton
       Left = 403
       Top = 0
@@ -1480,7 +1474,7 @@ object MainForm: TMainForm
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Mode = chmNew
-      OnHyperlink = AcHyperlinkNewHyperlink
+      OnHyperlink = HyperlinkHandler
       Caption = 'New hyperlink...'
       Hint = 'Add hyperlink to active cell'
       ImageIndex = 57
@@ -1489,7 +1483,7 @@ object MainForm: TMainForm
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Mode = chmEdit
-      OnHyperlink = AcHyperlinkEditHyperlink
+      OnHyperlink = HyperlinkHandler
       Caption = 'Edit hyperlink...'
       Hint = 'Edit hyperlink of selected cell'
       ImageIndex = 59

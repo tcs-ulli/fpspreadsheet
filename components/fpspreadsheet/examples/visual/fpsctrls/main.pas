@@ -272,7 +272,6 @@ type
     ToolButton38: TToolButton;
     ToolButton39: TToolButton;
     TbCommentAdd: TToolButton;
-    ToolButton4: TToolButton;
     ToolButton40: TToolButton;
     ToolButton41: TToolButton;
     ToolButton42: TToolButton;
@@ -302,10 +301,6 @@ type
     procedure AcColDeleteExecute(Sender: TObject);
     procedure AcFileOpenAccept(Sender: TObject);
     procedure AcFileSaveAsAccept(Sender: TObject);
-    procedure AcHyperlinkEditHyperlink(Sender: TObject; ACaption: String;
-      var AHyperlink: TsHyperlink);
-    procedure AcHyperlinkNewHyperlink(Sender: TObject; ACaption: String;
-      var AHyperlink: TsHyperlink);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
@@ -315,7 +310,6 @@ type
     procedure HyperlinkHandler(Sender: TObject; ACaption: String;
       var AHyperlink: TsHyperlink);
     procedure InspectorTabControlChange(Sender: TObject);
-    procedure ToolButton4Click(Sender: TObject);
     procedure WorksheetGridClickHyperlink(Sender: TObject;
       const AHyperlink: TsHyperlink);
   private
@@ -334,6 +328,7 @@ implementation
 {$R *.lfm}
 
 uses
+  LCLIntf, uriparser,
   fpsUtils, fpsCSV,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
   sHyperlinkForm;
@@ -398,19 +393,6 @@ begin
     Screen.Cursor := crDefault;
   end;
 end;
-
-procedure TMainForm.AcHyperlinkEditHyperlink(Sender: TObject; ACaption: String;
-  var AHyperlink: TsHyperlink);
-begin
-  HyperlinkHandler(Sender, ACaption, AHyperlink);
-end;
-
-procedure TMainForm.AcHyperlinkNewHyperlink(Sender: TObject; ACaption: String;
-  var AHyperlink: TsHyperlink);
-begin
-  HyperlinkHandler(Sender, ACaption, AHyperlink);
-end;
-
 
 { Adds a row before the active cell }
 procedure TMainForm.AcRowAddExecute(Sender: TObject);
@@ -480,10 +462,17 @@ procedure TMainForm.AcViewInspectorExecute(Sender: TObject);
 begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
   InspectorSplitter.Visible := AcViewInspector.Checked;
-  InspectorSplitter.Left := 0;
+  InspectorSplitter.Left := 0;  // Make sure that the splitter is always at the left of the inspector
 end;
 
-{ Event handler for hyperlinks }
+{ Event handler for hyperlinks: it only has to provide the hyperlink data
+  which are applied to the active cell by the TsCellHyperlinkAction.
+  Is called by the "new hyperlink" and "edit hyperlink" actions.
+  Here we open the HyperlinkForm which is similar to the one used by
+  Open/LibreOffice.
+
+  Caption .... Caption of the form in which the hyperlink can be specified
+  Hyperlink .. Data record (target, tooltip) for/from the the hyperlink form. }
 procedure TMainForm.HyperlinkHandler(Sender: TObject; ACaption: String;
   var AHyperlink: TsHyperlink);
 begin
@@ -502,15 +491,20 @@ begin
   Inspector.Mode := TsInspectorMode(InspectorTabControl.TabIndex);
 end;
 
-procedure TMainForm.ToolButton4Click(Sender: TObject);
-begin
-  WorkbookSource.Worksheet.WriteHyperlink(0, 0, '#Sheet2!B5', 'Go to B5');
-end;
-
+{ Event handler if an external hyperlink in a cell is activated. Usually the
+  linked documents/web sites etc. are opened. }
 procedure TMainForm.WorksheetGridClickHyperlink(Sender: TObject;
   const AHyperlink: TsHyperlink);
+var
+  u: TUri;
 begin
-  ShowMessage('Hyperlink ' + AHyperlink.Target + ' clicked');
+  u := ParseURI(AHyperlink.Target);
+  case Lowercase(u.Protocol) of
+    'http', 'https', 'ftp', 'mailto', 'file':
+      OpenUrl(AHyperlink.Target);
+    else
+      ShowMessage('Hyperlink ' + AHyperlink.Target + ' clicked');
+  end;
 end;
 
 procedure TMainForm.UpdateCaption;
