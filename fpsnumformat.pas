@@ -78,6 +78,8 @@ type
     property Items[AIndex: Integer]: TsNumFormatData read GetItem write SetItem; default;
   end;
 
+function FormatAsFraction(ANumFormatStr: String; AValue: Double): String;
+
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
@@ -90,6 +92,50 @@ implementation
 uses
   Math,
   fpsUtils, fpsNumFormatParser;
+
+{@@ ----------------------------------------------------------------------------
+  Formats a floating point value as a fraction according to the specified
+  formatting string.
+
+  @param  ANumFormatStr  String with formatting codes
+-------------------------------------------------------------------------------}
+function FormatAsFraction(ANumFormatStr: String; AValue: Double): String;
+var
+  parser: TsNumFormatParser;
+  int,num,denom: Integer;
+  maxNum, maxDenom: Integer;
+  isNeg: Boolean;
+begin
+  if AValue < 0 then begin
+    isNeg := true;
+    AValue := abs(AValue);
+  end else
+    isNeg := false;
+
+  parser := TsNumFormatParser.Create(nil, ANumFormatStr);
+  try
+    if parser.NumFormat <> nfFraction then
+      raise Exception.Create('[FormatAsFraction] No formatting string for fractions.');
+
+    if parser.FracInt = 0 then
+      int := 0
+    else
+    begin
+      int := trunc(AValue);
+      AValue := frac(AValue);
+    end;
+    maxNum := Round(IntPower(10, parser.FracNumerator));
+    maxDenom := Round(IntPower(10, parser.FracDenominator));
+    FloatToFraction(AValue, maxNum, maxDenom, num, denom);
+    if int = 0 then
+      Result := Format('%d/%d', [num, denom])
+    else
+      Result := Format('%d %d/%d', [int, num, denom]);
+    if isNeg then Result := '-' + Result;
+  finally
+    parser.Free;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether the given number format code is for currency,

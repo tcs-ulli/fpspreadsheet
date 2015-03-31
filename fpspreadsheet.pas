@@ -312,6 +312,10 @@ type
     procedure WriteNumberFormat(ACell: PCell; ANumFormat: TsNumberFormat;
       ADecimals: Integer; ACurrencySymbol: String = '';
       APosCurrFormat: Integer = -1; ANegCurrFormat: Integer = -1); overload;
+    function WriteFractionFormat(ARow, ACol: Cardinal; AMixedFraction: Boolean;
+      ANumeratorDigits, ADenominatorDigits: Integer): PCell; overload;
+    procedure WriteFractionFormat(ACell: PCell; AMixedFraction: Boolean;
+      ANumeratorDigits, ADenominatorDigits: Integer); overload;
 
     function WriteTextRotation(ARow, ACol: Cardinal; ARotation: TsTextRotation): PCell; overload;
     procedure WriteTextRotation(ACell: PCell; ARotation: TsTextRotation); overload;
@@ -2514,6 +2518,8 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
 
   function FloatToStrNoNaN(const AValue: Double;
     ANumberFormat: TsNumberFormat; ANumberFormatStr: string): string; //ansistring;
+  var
+    i: Integer;
   begin
     if IsNan(AValue) then
       Result := ''
@@ -2523,6 +2529,9 @@ function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
     else
     if (ANumberFormat = nfPercentage) then
       Result := FormatFloat(ANumberFormatStr, AValue*100, AFormatSettings)
+    else
+    if (ANumberFormat = nfFraction) then
+      Result := FormatAsFraction(ANumberFormatStr, AValue)
     else
     if IsCurrencyFormat(ANumberFormat) then
       Result := FormatCurr(ANumberFormatStr, AValue, AFormatSettings)
@@ -4026,6 +4035,7 @@ var
   number: Double;
   currSym: String;
   fmt: TsCellFormat;
+  maxDig: Integer;
 begin
   if ACell = nil then
     exit;
@@ -4044,6 +4054,13 @@ begin
   if TryStrToCurrency(AValue, number, currSym, FWorkbook.FormatSettings) then
   begin
     WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
+    exit;
+  end;
+
+  if TryFractionStrToFloat(AValue, number, maxdig) then
+  begin
+    WriteNumber(ACell, number);
+    WriteFractionFormat(ACell, true, maxdig, maxdig);
     exit;
   end;
 
@@ -4616,7 +4633,56 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Adds number format to the formatting of a cell
+  Formats a number as a fraction
+
+  @param  ARow             Row index of the cell
+  @param  ACol             Column index of the cell
+  @param  ANumFormat       Identifier of the format to be applied. Must be
+                           either nfFraction or nfMixedFraction
+  @param  ANumeratorDigts  Count of numerator digits
+  @param  ADenominatorDigits Count of denominator digits
+  @return Pointer to the cell
+
+  @see    TsNumberFormat
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteFractionFormat(ARow, ACol: Cardinal;
+  AMixedFraction: Boolean; ANumeratorDigits, ADenominatorDigits: Integer): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteFractionFormat(Result, AMixedFraction, ANumeratorDigits, ADenominatorDigits);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Formats a number as a fraction
+
+  @param  ACell            Pointer to the cell to be formatted
+  @param  ANumFormat       Identifier of the format to be applied. Must be
+                           either nfFraction or nfMixedFraction
+  @param  ANumeratorDigts  Count of numerator digits
+  @param  ADenominatorDigits Count of denominator digits
+
+  @see    TsNumberFormat
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteFractionFormat(ACell: PCell;
+  AMixedFraction: Boolean; ANumeratorDigits, ADenominatorDigits: Integer);
+var
+  fmt: TsCellFormat;
+begin
+  if ACell = nil then
+    exit;
+
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  fmt.NumberFormat := nfFraction;
+  fmt.NumberFormatStr := BuildFractionFormatString(AMixedFraction,
+    ANumeratorDigits, ADenominatorDigits);
+  Include(fmt.UsedFormattingFields, uffNumberFormat);
+  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a number format to the formatting of a cell
 
   @param  ARow             The row of the cell
   @param  ACol             The column of the cell

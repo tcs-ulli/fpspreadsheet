@@ -40,6 +40,14 @@ type
     MenuItem107: TMenuItem;
     MenuItem108: TMenuItem;
     MenuItem109: TMenuItem;
+    MenuItem110: TMenuItem;
+    MenuItem111: TMenuItem;
+    MenuItem112: TMenuItem;
+    MenuItem113: TMenuItem;
+    MenuItem114: TMenuItem;
+    MenuItem115: TMenuItem;
+    MenuItem116: TMenuItem;
+    MenuItem117: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -224,6 +232,9 @@ type
     AcHyperlinkNew: TsCellHyperlinkAction;
     AcHyperlinkEdit: TsCellHyperlinkAction;
     AcHyperlinkDelete: TsCellHyperlinkAction;
+    AcNumFormatFraction2: TsNumberFormatAction;
+    AcNumFormatFraction1: TsNumberFormatAction;
+    AcNumFormatFraction3: TsNumberFormatAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;

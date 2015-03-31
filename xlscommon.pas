@@ -623,7 +623,8 @@ begin
   AddFormat( 9, nfPercentage, '0%');
   AddFormat(10, nfPercentage, '0.00%');
   AddFormat(11, nfExp, '0.00E+00');
-  // fraction formats 12 ('# ?/?') and 13 ('# ??/??') not supported
+  AddFormat(12, nfFraction, '# ?/?');
+  AddFormat(13, nfFraction, '# ??/??');
   AddFormat(14, nfShortDate, fs.ShortDateFormat);                       // 'M/D/YY'
   AddFormat(15, nfLongDate, fs.LongDateFormat);                         // 'D-MMM-YY'
   AddFormat(16, nfCustom, 'd/mmm');                                     // 'D-MMM'
