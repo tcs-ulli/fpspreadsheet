@@ -101,6 +101,8 @@ function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
   ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
+function BuildFractionFormatString(AMixedFraction: Boolean;
+  ANumeratorDigits, ADenominatorDigits: Integer): String;
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
 
@@ -111,6 +113,8 @@ function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
 function DayNamesToString(const ADayNames: TWeekNameArray;
   const AEmptyStr: String): String;
+procedure FloatToFraction(AValue: Double; AMaxNumerator, AMaxDenominator: Integer;
+  out ANumerator, ADenominator: Integer);
 function MakeLongDateFormat(ADateFormat: String): String;
 function MakeShortDateFormat(ADateFormat: String): String;
 function MonthNamesToString(const AMonthNames: TMonthNameArray;
@@ -124,6 +128,9 @@ procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
   out ADecimalSeparator, AThousandSeparator: Char; out AWarning: String): Boolean;
+
+function TryFractionStrToFloat(AText: String; out ANumber: Double;
+  out AMaxDigits: Integer): Boolean;
 
 function TwipsToPts(AValue: Integer): Single;
 function PtsToTwips(AValue: Single): Integer;
@@ -1128,6 +1135,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Builds a number format string for fraction formatting from the number format
+  code and the count of numerator and denominator digits.
+
+  @param  AMixedFraction     If TRUE fraction is presented as mixed fraction
+  @param  ANumeratorDigits   Count of numerator digits
+  @param  ADenominatorDigits Count of denominator digits
+
+  @return String of formatting code, here something like: '##/##' or '# ##/##'
+-------------------------------------------------------------------------------}
+function BuildFractionFormatString(AMixedFraction: Boolean;
+  ANumeratorDigits, ADenominatorDigits: Integer): String;
+begin
+  Result := Format('%s/%s', [
+    DupeString('#', ANumeratorDigits), DupeString('#', ADenominatorDigits)
+  ]);
+  if AMixedFraction then
+    Result := '#" "' + Result;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Builds a number format string from the number format code and the count of
   decimal places.
 
@@ -1303,6 +1330,99 @@ begin
     Result := ADayNames[1];
     for i:=2 to 7 do
       Result := Result + DefaultFormatSettings.ListSeparator + ' ' + ADayNames[i];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Approximates a floating point value as a fraction and returns the values of
+  numerator and denominator.
+
+  @param   AValue           Floating point value to be analyzed
+  @param   AMaxNumerator    Maximum value of the numerator allowed
+  @param   AMaxDenominator  Maximum value of the denominator allowed
+  @param   ANumerator       (out) Numerator of the best approximating fraction
+  @param   ADenominator     (out) Denominator of the best approximating fraction
+-------------------------------------------------------------------------------}
+procedure FloatToFraction(AValue: Double; AMaxNumerator, AMaxDenominator: Integer;
+  out ANumerator, ADenominator: Integer);
+// "Stern-Brocot-Tree"
+// Original from : http://stackoverflow.com/questions/5124743/algorithm-for-simplifying-decimal-to-fractions
+// Procedure adapted by forum user "circular": http://forum.lazarus.freepascal.org/index.php/topic,27805.msg172372.html#msg172372
+var
+  n: Integer;
+  lower_n, lower_d, upper_n, upper_d, middle_n, middle_d: Integer;
+  isNeg: Boolean;
+  backup_num, backup_denom: Integer;
+  newResult_num, newResult_denom: Integer;
+  EPS: Double;
+begin
+  EPS := 0.01 / AMaxDenominator;
+
+  isNeg := AValue < 0;
+  if isNeg then
+    AValue := -AValue;
+
+  n := Trunc(AValue);
+  newResult_num := round(AValue);
+  newResult_denom := 1;
+  if isNeg then newResult_num := -newResult_num;
+  backup_num := newResult_num;
+  backup_denom := newResult_denom;
+
+  AValue := AValue - n;
+
+  // Lower fraction is 0/1
+  lower_n := 0;
+  lower_d := 1;
+
+  // Upper fraction is 1/1
+  upper_n := 1;
+  upper_d := 1;
+
+  while true do
+  begin
+    if abs(newResult_num/newResult_denom - n - AValue) <
+       abs(backup_num/backup_denom - n - AValue)
+    then begin
+      backup_num := newResult_num;
+      backup_denom := newResult_denom;
+    end;
+
+    // middle fraction is (lower_n + upper_n) / (lower_d + upper_d)
+    middle_n := lower_n + upper_n;
+    middle_d := lower_d + upper_d;
+    newResult_num := n * middle_d + middle_n;
+    newResult_denom := middle_d;
+//    newResult.Normalize;
+    if (newResult_num > AMaxNumerator) or (newResult_denom > AMaxDenominator)
+    then begin
+      ANumerator := backup_num;
+      ADenominator := backup_denom;
+      exit;
+    end;
+
+    if isNeg then newResult_num := -newResult_num;
+
+    // AValue + EPS < middle
+    if middle_d * (AValue + EPS) < middle_n then
+    begin
+      // middle is our new upper
+      upper_n := middle_n;
+      upper_d := middle_d;
+    end else
+    // middle < AValue - EPS
+    if middle_n < (AValue - EPS) * middle_d then
+    begin
+      // middle is our new lower
+      lower_n := middle_n;
+      lower_d := middle_d;
+    end else
+    // middle is our best fraction
+    begin
+      ANumerator := newResult_num;
+      ADenominator := newResult_denom;
+      exit;
+    end;
   end;
 end;
 
@@ -1720,6 +1840,64 @@ begin
     if isPercent then
       ANumber := ANumber * 0.01;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assumes that the specified text is a string representation of a mathematical
+  fraction and tries to extract the floating point value of this number.
+  Returns also the maximum count of digits used in the numerator or
+  denominator of the fraction
+
+  @param  AText       String to be considered
+  @param  ANumber     (out) value of the converted floating point number
+  @param  AMaxDigits  Maximum count of digits used in the numerator or
+                      denominator of the fraction
+
+  @return TRUE if a number value can be retrieved successfully, FALSE otherwise
+
+  @example  AText := '1 3/4' --> ANumber = 1.75; AMaxDigits = 1; Result = true
+-------------------------------------------------------------------------------}
+function TryFractionStrToFloat(AText: String; out ANumber: Double;
+  out AMaxDigits: Integer): Boolean;
+var
+  p: Integer;
+  s, sInt, sNum, sDenom: String;
+  i,num,denom: Integer;
+begin
+  Result := false;
+  s := '';
+  sInt := '';
+  sNum := '';
+  sDenom := '';
+
+  p := 1;
+  while p <= Length(AText) do begin
+    case AText[p] of
+      '0'..'9': s := s + AText[p];
+      ' ': begin sInt := s; s := ''; end;
+      '/': begin sNum := s; s := ''; end;
+      else exit;
+    end;
+    inc(p);
+  end;
+  sDenom := s;
+
+  if (sInt <> '') and not TryStrToInt(sInt, i) then
+    exit;
+  if (sNum = '') or not TryStrtoInt(sNum, num) then
+    exit;
+  if (sDenom = '') or not TryStrToInt(sDenom, denom) then
+    exit;
+  if denom = 0 then
+    exit;
+
+  ANumber := num / denom;
+  if sInt <> '' then
+    ANumber := ANumber + i;
+
+  AMaxDigits := Length(sDenom);
+
+  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -820,12 +820,104 @@ object MainForm: TMainForm
       Hint = 'Currency format (negative values in red)'
       NumberFormat = nfCurrencyRed
     end
+    object AcFileOpen: TFileOpen
+      Category = 'File'
+      Caption = '&Open ...'
+      Dialog.Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv'
+      Dialog.Options = [ofExtensionDifferent, ofFileMustExist, ofEnableSizing, ofViewDetail]
+      Hint = 'Open spreadsheet file'
+      ImageIndex = 44
+      ShortCut = 16463
+      OnAccept = AcFileOpenAccept
+    end
+    object AcFileSaveAs: TFileSaveAs
+      Category = 'File'
+      Caption = 'Save &as ...'
+      Dialog.Title = 'AcSaveFileAs'
+      Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
+      Hint = 'Save spreadsheet'
+      ImageIndex = 45
+      OnAccept = AcFileSaveAsAccept
+    end
+    object AcViewInspector: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Inspector'
+      OnExecute = AcViewInspectorExecute
+    end
+    object AcRowAdd: TAction
+      Category = 'Edit'
+      Caption = 'Add row'
+      Hint = 'Add row'
+      ImageIndex = 48
+      OnExecute = AcRowAddExecute
+    end
+    object AcColAdd: TAction
+      Category = 'Edit'
+      Caption = 'Add column'
+      Hint = 'Add column'
+      ImageIndex = 47
+      OnExecute = AcColAddExecute
+    end
+    object AcRowDelete: TAction
+      Category = 'Edit'
+      Caption = 'Delete row'
+      Hint = 'Delete row'
+      ImageIndex = 50
+      OnExecute = AcRowDeleteExecute
+    end
+    object AcColDelete: TAction
+      Category = 'Edit'
+      Caption = 'Delete column'
+      Hint = 'Delete column'
+      ImageIndex = 49
+      OnExecute = AcColDeleteExecute
+    end
+    object AcSettingsCSVParams: TAction
+      Category = 'Settings'
+      Caption = 'CSV parameters...'
+      Hint = 'Parameters for CSV files'
+      OnExecute = AcSettingsCSVParamsExecute
+    end
+    object AcSettingsCurrency: TAction
+      Category = 'Settings'
+      Caption = 'Currency symbols...'
+      Hint = 'Define currency symbols'
+      OnExecute = AcSettingsCurrencyExecute
+    end
+    object AcSettingsFormatSettings: TAction
+      Category = 'Settings'
+      Caption = 'Number format settings...'
+      Hint = 'Define number format settings'
+      OnExecute = AcSettingsFormatSettingsExecute
+    end
     object AcNumFormatExp: TsNumberFormatAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Exponential'
       Hint = 'Exponential format'
       NumberFormat = nfExp
+    end
+    object AcNumFormatFraction1: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Fraction (1 digit)'
+      NumberFormat = nfFraction
+      NumberFormatString = '#" "#/#'
+    end
+    object AcNumFormatFraction2: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Fraction (2 digits)'
+      NumberFormat = nfFraction
+      NumberFormatString = '#" "##/##'
+    end
+    object AcNumFormatFraction3: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Fraction (3 digits)'
+      NumberFormat = nfFraction
+      NumberFormatString = '#" "###/###'
     end
     object AcNumFormatDateTime: TsNumberFormatAction
       Category = 'FPSpreadsheet'
@@ -1323,65 +1415,12 @@ object MainForm: TMainForm
       Hint = 'Merge cells'
       ImageIndex = 23
     end
-    object AcFileOpen: TFileOpen
-      Category = 'File'
-      Caption = '&Open ...'
-      Dialog.Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv'
-      Dialog.Options = [ofExtensionDifferent, ofFileMustExist, ofEnableSizing, ofViewDetail]
-      Hint = 'Open spreadsheet file'
-      ImageIndex = 44
-      ShortCut = 16463
-      OnAccept = AcFileOpenAccept
-    end
-    object AcFileSaveAs: TFileSaveAs
-      Category = 'File'
-      Caption = 'Save &as ...'
-      Dialog.Title = 'AcSaveFileAs'
-      Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
-      Hint = 'Save spreadsheet'
-      ImageIndex = 45
-      OnAccept = AcFileSaveAsAccept
-    end
     object AcCopyFormat: TsCopyAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
       Caption = 'Copy format'
       Hint = 'Copy format'
       ImageIndex = 46
-    end
-    object AcViewInspector: TAction
-      Category = 'View'
-      AutoCheck = True
-      Caption = 'Inspector'
-      OnExecute = AcViewInspectorExecute
-    end
-    object AcRowAdd: TAction
-      Category = 'Edit'
-      Caption = 'Add row'
-      Hint = 'Add row'
-      ImageIndex = 48
-      OnExecute = AcRowAddExecute
-    end
-    object AcColAdd: TAction
-      Category = 'Edit'
-      Caption = 'Add column'
-      Hint = 'Add column'
-      ImageIndex = 47
-      OnExecute = AcColAddExecute
-    end
-    object AcRowDelete: TAction
-      Category = 'Edit'
-      Caption = 'Delete row'
-      Hint = 'Delete row'
-      ImageIndex = 50
-      OnExecute = AcRowDeleteExecute
-    end
-    object AcColDelete: TAction
-      Category = 'Edit'
-      Caption = 'Delete column'
-      Hint = 'Delete column'
-      ImageIndex = 49
-      OnExecute = AcColDeleteExecute
     end
     object AcCopyToClipboard: TsCopyAction
       Category = 'FPSpreadsheet'
@@ -1451,24 +1490,6 @@ object MainForm: TMainForm
       Caption = 'Delete comment'
       Hint = 'Delete comment'
       ImageIndex = 55
-    end
-    object AcSettingsCSVParams: TAction
-      Category = 'Settings'
-      Caption = 'CSV parameters...'
-      Hint = 'Parameters for CSV files'
-      OnExecute = AcSettingsCSVParamsExecute
-    end
-    object AcSettingsCurrency: TAction
-      Category = 'Settings'
-      Caption = 'Currency symbols...'
-      Hint = 'Define currency symbols'
-      OnExecute = AcSettingsCurrencyExecute
-    end
-    object AcSettingsFormatSettings: TAction
-      Category = 'Settings'
-      Caption = 'Number format settings...'
-      Hint = 'Define number format settings'
-      OnExecute = AcSettingsFormatSettingsExecute
     end
     object AcHyperlinkNew: TsCellHyperlinkAction
       Category = 'FPSpreadsheet'
@@ -4828,6 +4849,21 @@ object MainForm: TMainForm
         object MenuItem13: TMenuItem
           Caption = '-'
         end
+        object MenuItem117: TMenuItem
+          Action = AcNumFormatFraction1
+          AutoCheck = True
+        end
+        object MenuItem116: TMenuItem
+          Action = AcNumFormatFraction2
+          AutoCheck = True
+        end
+        object MenuItem115: TMenuItem
+          Action = AcNumFormatFraction3
+          AutoCheck = True
+        end
+        object MenuItem114: TMenuItem
+          Caption = '-'
+        end
         object MenuItem53: TMenuItem
           Action = AcNumFormatExp
           AutoCheck = True
@@ -4968,6 +5004,21 @@ object MainForm: TMainForm
       AutoCheck = True
     end
     object MenuItem20: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem112: TMenuItem
+      Action = AcNumFormatFraction1
+      AutoCheck = True
+    end
+    object MenuItem110: TMenuItem
+      Action = AcNumFormatFraction2
+      AutoCheck = True
+    end
+    object MenuItem113: TMenuItem
+      Action = AcNumFormatFraction3
+      AutoCheck = True
+    end
+    object MenuItem111: TMenuItem
       Caption = '-'
     end
     object MenuItem21: TMenuItem

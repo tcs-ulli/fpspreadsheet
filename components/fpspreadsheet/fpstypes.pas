@@ -203,7 +203,7 @@ type
     // general-purpose for all numbers
     nfGeneral,
     // numbers
-    nfFixed, nfFixedTh, nfExp, nfPercentage,
+    nfFixed, nfFixedTh, nfExp, nfPercentage, nfFraction,
     // currency
     nfCurrency, nfCurrencyRed,
     // dates and times

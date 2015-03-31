@@ -508,6 +508,7 @@ var
   s: String;
   isTimeOnly: Boolean;
   isInterval: Boolean;
+  num, denom: byte;
 
 begin
   Result := '';
@@ -567,6 +568,39 @@ begin
               'number:decimal-places="' + IntToStr(decs) +
             '" />' +
             sStylemap +
+          '</number:number-style>';
+        exit;
+      end;
+
+      // nfFraction
+      if IsTextAt(' ', ASection, next) and
+         IsNumberAt(ASection, next+1, nf, num, next) and
+         IsTokenAt(nftFraction, ASection, next) and
+         IsNumberAt(ASection, next+1, nf, denom, next) and
+         (next = Length(Elements))
+      then begin
+        Result :=
+          '<number:number-style style:name="' + AFormatName + '">' +
+            sColor +
+            '<number:fraction ' +
+              'number:min-integer-digits="' + IntToStr(decs) + '" ' +
+              'number:min-numerator-digits="' + IntToStr(num) + '" ' +
+              'number:min-denominator-digits="' + IntToStr(denom) + '" ' +
+            '/>' +
+          '</number:number-style>';
+        exit;
+      end;
+      if IsTokenAt(nftFraction, ASection, next) and
+         IsNumberAt(ASection, next+1, nf, denom, next) and
+         (next = Length(Elements))
+      then begin
+        Result :=
+          '<number:number-style style:name="' + AFormatName + '">' +
+            sColor +
+            '<number:fraction ' +
+              'number:min-numerator-digits="' + IntToStr(decs) + '" ' +
+              'number:min-denominator-digits="' + IntToStr(denom) + '" ' +
+            '/>' +
           '</number:number-style>';
         exit;
       end;
@@ -1678,6 +1712,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     nfs: String;
     decs: Byte;
     s: String;
+    fracInt, fracNum, fracDenom: Integer;
     grouping: Boolean;
     nex: Integer;
     cs: String;
@@ -1697,17 +1732,23 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end else
       if nodeName = 'number:number' then
       begin
-        {
-        if ANumFormatName = 'number:currency-style' then
-          s := GetAttrValue(node, 'decimal-places')
-        else
-        }
         s := GetAttrValue(node, 'number:decimal-places');
         if s = '' then s := GetAttrValue(node, 'decimal-places');
         if s <> '' then decs := StrToInt(s) else decs := 0;
         grouping := GetAttrValue(node, 'number:grouping') = 'true';
         nf := IfThen(grouping, nfFixedTh, nfFixed);
         nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+      end else
+      if nodeName = 'number:fraction' then
+      begin
+        nf := nfFraction;
+        s := GetAttrValue(node, 'number:min-integer-digits');
+        if s <> '' then fracInt := StrToInt(s) else fracInt := 0;
+        s := GetAttrValue(node, 'number:min-numerator-digits');
+        if s <> '' then fracNum := StrToInt(s) else fracNum := 0;
+        s := GetAttrValue(node, 'number:min-denominator-digits');
+        if s <> '' then fracDenom := StrToInt(s) else fracDenom := 0;
+        nfs := nfs + BuildFractionFormatString(fracInt > 0, fracNum, fracDenom);
       end else
       if nodeName = 'number:scientific-number' then
       begin
