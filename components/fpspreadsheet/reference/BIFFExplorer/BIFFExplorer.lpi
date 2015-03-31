@@ -20,12 +20,21 @@
     <VersionInfo>
       <StringTable ProductVersion=""/>
     </VersionInfo>
+    <MacroValues Count="1">
+      <Macro1 Name="LCLWidgetType" Value="win32"/>
+    </MacroValues>
     <BuildModes Count="3">
       <Item1 Name="Release" Default="True"/>
       <Item2 Name="Debug">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="win32"/>
+        </MacroValues>
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
+          <Target>
+            <Filename Value="bin\$(TargetCPU)-$(TargetOS)\BiffExplorer"/>
+          </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
             <OtherUnitFiles Value="mrumenu"/>
@@ -48,6 +57,9 @@
         </CompilerOptions>
       </Item2>
       <Item3 Name="Debug with heaptrace">
+        <MacroValues Count="1">
+          <Macro1 Name="LCLWidgetType" Value="win32"/>
+        </MacroValues>
         <CompilerOptions>
           <Version Value="11"/>
           <PathDelim Value="\"/>
@@ -165,7 +177,6 @@
       <Unit10>
         <Filename Value="betypes.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="beTypes"/>
       </Unit10>
     </Units>
   </ProjectOptions>
