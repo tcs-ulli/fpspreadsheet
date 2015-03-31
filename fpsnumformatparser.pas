@@ -122,13 +122,9 @@ type
     // Format string
     function BuildFormatString(ADialect: TsNumFormatDialect): String; virtual;
     function BuildFormatStringFromSection(ASection: Integer;
-      ADialect: TsNumFormatDialect; AStartIndex: Integer = 0): String; virtual;
+      ADialect: TsNumFormatDialect): String; virtual;
     // NumberFormat
     procedure EvalNumFormatOfSection(ASection: Integer);
-    {; out ANumFormat: TsNumberFormat;
-      out ADecimals: byte; out ANumerator, ADenominator: Integer;
-      out ACurrencySymbol: String; out AColor: TsColor);
-      }
     function IsCurrencyAt(ASection: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor): Boolean;
     function IsDateAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
@@ -296,7 +292,7 @@ end;
 { Creates a format string for the given section. This implementation covers
   the formatstring dialects of fpc (nfdDefault) and Excel (nfdExcel). }
 function TsNumFormatParser.BuildFormatStringFromSection(ASection: Integer;
-  ADialect: TsNumFormatDialect; AStartIndex: Integer = 0): String;
+  ADialect: TsNumFormatDialect): String;
 var
   element: TsNumFormatElement;
   i: Integer;
@@ -588,7 +584,7 @@ begin
         exit;
       end;
       // nfFraction
-      if IsTextAt(' ', ASection, next) and
+      if (IsTokenAt(nftSpace, ASection, next) or IsTextAt(' ', ASection, next)) and
          IsNumberAt(ASection, next+1, nf, num, next) and
          IsTokenAt(nftFraction, ASection, next) and
          IsNumberAt(ASection, next+1, nf, denom, next) and
@@ -659,7 +655,7 @@ begin
       end;
   end;
 
-  // What is left must be a custom format.
+  // If we get here it must be a custom format.
   FSections[ASection].NumFormat := nfCustom;
 end;
 

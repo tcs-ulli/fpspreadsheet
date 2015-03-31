@@ -1151,7 +1151,7 @@ begin
     DupeString('#', ANumeratorDigits), DupeString('#', ADenominatorDigits)
   ]);
   if AMixedFraction then
-    Result := '#" "' + Result;
+    Result := '# ' + Result;
 end;
 
 {@@ ----------------------------------------------------------------------------
