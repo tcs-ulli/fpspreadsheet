@@ -31,8 +31,11 @@ type
     nftSign, nftSignBracket,
     nftDigit, nftOptDigit, nftOptSpaceDigit, nftDecs, nftOptDec,
     nftExpChar, nftExpSign, nftExpDigits,
-    nftPercent,
-    nftFraction,
+    nftPercent,     // '%'
+    nftFracSymbol,  // '/'
+    nftFracIntDigit, nftFracIntSpaceDigit, nftFracIntZeroDigit,  // '#', '?', '0'
+    nftFracNumDigit, nftFracNumSpaceDigit, nftFracNumZeroDigit,
+    nftFracDenomDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit,
     nftCurrSymbol, nftCountry,
     nftColor, nftCompareOp, nftCompareValue,
     nftSpace, nftEscaped,
@@ -119,16 +122,21 @@ type
     // General
     procedure CheckSections;
     procedure CheckSection(ASection: Integer);
+    procedure FixMonthMinuteToken(ASection: Integer);
     // Format string
     function BuildFormatString(ADialect: TsNumFormatDialect): String; virtual;
     function BuildFormatStringFromSection(ASection: Integer;
       ADialect: TsNumFormatDialect): String; virtual;
     // NumberFormat
     procedure EvalNumFormatOfSection(ASection: Integer);
+    function GetTokenIntValueAt(AToken: TsNumFormatToken;
+      ASection,AIndex: Integer): Integer;
     function IsCurrencyAt(ASection: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor): Boolean;
     function IsDateAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
       var ANextIndex: Integer): Boolean;
+    function IsFractionAt(ASection,AIndex: Integer;
+      out AIntPart, ANumPart, ADenomPart, ANextIndex: Integer): Boolean;
     function IsNumberAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
       out ADecimals: Byte; out ANextIndex: Integer): Boolean;
     function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
@@ -308,12 +316,14 @@ begin
         if element.TextValue <> '' then result := Result + '"' + element.TextValue + '"';
       nftThSep, nftDecSep:
         Result := Result + element.TextValue;
-      nftDigit:
-        Result := Result + '0';
-      nftOptDigit, nftOptDec:
-        Result := Result + '#';
-      nftOptSpaceDigit:
-        Result := Result + '#';  /// !!!!!!!!!!! TO BE CHANGED !!!!!!!!!!!!!!!!!
+      nftDigit, nftFracIntZeroDigit, nftFracNumZeroDigit, nftFracDenomZeroDigit:
+        Result := Result + DupeString('0', element.IntValue);
+      nftOptDigit, nftOptDec, nftFracIntDigit, nftFracNumDigit, nftFracDenomDigit:
+        Result := Result + DupeString('#', element.IntValue);
+      nftOptSpaceDigit, nftFracIntSpaceDigit, nftFracNumSpaceDigit, nftFracDenomSpaceDigit:
+        Result := Result + DupeString('?', element.IntValue);
+      nftFracSymbol:
+        Result := Result + '/';
       nftYear:
         Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'Y', 'y'), element.IntValue);
       nftMonth:
@@ -335,7 +345,7 @@ begin
       nftDecs, nftExpDigits, nftMilliseconds:
         Result := Result + Dupestring('0', element.IntValue);
       nftSpace, nftSign, nftSignBracket, nftExpChar, nftExpSign, nftPercent,
-      nftFraction, nftAMPM, nftDateTimeSep:
+      nftAMPM, nftDateTimeSep:
         if element.TextValue <> '' then Result := Result + element.TextValue;
       nftCurrSymbol:
         if element.TextValue <> '' then begin
@@ -383,6 +393,37 @@ begin
 end;
 
 procedure TsNumFormatParser.CheckSection(ASection: Integer);
+begin
+  FixMonthMinuteToken(ASection);
+  EvalNumFormatOfSection(ASection);
+end;
+
+procedure TsNumFormatParser.ClearAll;
+var
+  i, j: Integer;
+begin
+  for i:=0 to Length(FSections)-1 do begin
+    for j:=0 to Length(FSections[i].Elements) do
+      if FSections[i].Elements <> nil then
+        FSections[i].Elements[j].TextValue := '';
+    FSections[i].Elements := nil;
+    FSections[i].CurrencySymbol := '';
+  end;
+  FSections := nil;
+end;
+
+procedure TsNumFormatParser.DeleteElement(ASection, AIndex: Integer);
+var
+  i, n: Integer;
+begin
+  n := Length(FSections[ASection].Elements);
+  for i:= AIndex+1 to n-1 do
+    FSections[ASection].Elements[i-1] := FSections[ASection].Elements[i];
+  SetLength(FSections[ASection].Elements, n-1);
+end;
+
+{ Identify the ambiguous "m" token ("month" or "minute") }
+procedure TsNumFormatParser.FixMonthMinuteToken(ASection: Integer);
 var
   i, j: Integer;
 
@@ -419,7 +460,6 @@ var
   end;
 
 begin
-  // Fix the ambiguous "m":
   for i:=0 to High(FSections[ASection].Elements) do
     // Find index of nftMonthMinute token...
     if FSections[ASection].Elements[i].Token = nftMonthMinute then begin
@@ -453,41 +493,6 @@ begin
             end;
         end;
     end;
-
-  EvalNumFormatOfSection(ASection);
-  {
-    FSections[ASection].NumFormat,
-    FSections[ASection].Decimals,
-    FSections[ASection].Numerator,
-    FSections[ASection].Denominator,
-    FSections[ASection].CurrencySymbol,
-    FSections[ASection].Color
-  );
-  }
-end;
-
-procedure TsNumFormatParser.ClearAll;
-var
-  i, j: Integer;
-begin
-  for i:=0 to Length(FSections)-1 do begin
-    for j:=0 to Length(FSections[i].Elements) do
-      if FSections[i].Elements <> nil then
-        FSections[i].Elements[j].TextValue := '';
-    FSections[i].Elements := nil;
-    FSections[i].CurrencySymbol := '';
-  end;
-  FSections := nil;
-end;
-
-procedure TsNumFormatParser.DeleteElement(ASection, AIndex: Integer);
-var
-  i, n: Integer;
-begin
-  n := Length(FSections[ASection].Elements);
-  for i:= AIndex+1 to n-1 do
-    FSections[ASection].Elements[i-1] := FSections[ASection].Elements[i];
-  SetLength(FSections[ASection].Elements, n-1);
 end;
 
 procedure TsNumFormatParser.InsertElement(ASection, AIndex: Integer;
@@ -542,22 +547,17 @@ begin
 end;
 
 procedure TsNumFormatParser.EvalNumFormatOfSection(ASection: Integer);
-{
-  out ANumFormat: TsNumberFormat; out ADecimals: byte;
-  out ANumerator, ADenominator: Integer; out ACurrencySymbol: String;
-  out AColor: TsColor);
-  }
 var
   nf, nf1: TsNumberFormat;
   next: Integer = 0;
-  decs, num, denom: Byte;
+  decs: Byte;
+  intPart, numPart, denomPart: Integer;
   cs: String;
   clr: TsColor;
+  tok: TsNumFormatToken;
 begin
   nf := nfCustom;
   decs := 0;
-  num := 0;
-  denom := 0;
   cs := '';
   clr := scNotDefined;
 
@@ -567,7 +567,7 @@ begin
       exit;
     end;
 
-    // Look for number formats
+    // Look for number formats (note: fractions are rarely used --> at end)
     if IsNumberAt(ASection, 0, nf, decs, next) then begin
       // nfFixed, nfFixedTh
       if next = Length(Elements) then
@@ -581,28 +581,6 @@ begin
       then begin
         FSections[ASection].NumFormat := nfPercentage;
         FSections[ASection].Decimals := decs;
-        exit;
-      end;
-      // nfFraction
-      if (IsTokenAt(nftSpace, ASection, next) or IsTextAt(' ', ASection, next)) and
-         IsNumberAt(ASection, next+1, nf, num, next) and
-         IsTokenAt(nftFraction, ASection, next) and
-         IsNumberAt(ASection, next+1, nf, denom, next) and
-         (next = Length(Elements))
-      then begin
-        FSections[ASection].NumFormat := nfFraction;
-        FSections[ASection].FracInt := integer(decs);  // "decs" means "number of integer digits", here
-        FSections[ASection].FracNumerator := integer(num);
-        FSections[ASection].FracDenominator := integer(denom);
-        exit;
-      end;
-      if IsTokenAt(nftFraction, ASection, next) and
-         IsNumberAt(ASection, next+1, nf, denom, next) and
-         (next = Length(Elements))
-      then begin
-        FSections[ASection].NumFormat := nfFraction;
-        FSections[ASection].FracNumerator := integer(decs);
-        FSections[ASection].FracDenominator := integer(denom);
         exit;
       end;
       // nfExp
@@ -651,6 +629,17 @@ begin
       if next = Length(Elements) then
       begin
         FSections[ASection].NumFormat := nf;
+        exit;
+      end;
+
+    // Look for fractions
+    if IsFractionAt(ASection, 0, intPart, numPart, denomPart, next) then
+      if next = Length(Elements) then
+      begin
+        FSections[ASection].NumFormat := nfFraction;
+        FSections[ASection].FracInt := intPart;
+        FSections[ASection].FracNumerator := numPart;
+        FSections[ASection].FracDenominator := denomPart;
         exit;
       end;
   end;
@@ -787,6 +776,15 @@ end;
 function TsNumFormatParser.GetParsedSections(AIndex: Integer): TsNumFormatSection;
 begin
   Result := FSections[AIndex];
+end;
+
+function TsNumFormatParser.GetTokenIntValueAt(AToken: TsNumFormatToken;
+  ASection, AIndex: Integer): Integer;
+begin
+  if IsTokenAt(AToken, ASection, AIndex) then
+    Result := FSections[ASection].Elements[AIndex].IntValue
+  else
+    Result := -1;
 end;
 
 { Checks if a currency-type of format string begins at index AIndex, and returns
@@ -969,10 +967,70 @@ begin
   Result := false;
 end;
 
+function TsNumFormatParser.IsFractionAt(ASection,AIndex: Integer;
+  out AIntPart, ANumPart, ADenomPart, ANextIndex: Integer): Boolean;
+var
+  tok: TsNumFormatToken;
+  section: TsNumFormatSection;
+begin
+  Result := false;
+  AIntPart := 0;
+  ANumPart := 0;
+  ADenomPart := 0;
+  ANextIndex := MaxInt;
+
+  if ASection > High(FSections) then
+    exit;
+  section := FSections[ASection];
+  if AIndex > High(section.Elements) then
+    exit;
+
+  // integer part of the fraction
+  tok := section.Elements[AIndex].Token;
+  if tok in [nftFracIntDigit, nftFracIntSpaceDigit, nftFracIntZeroDigit] then
+  begin
+    AIntPart := section.Elements[AIndex].IntValue;
+    inc(AIndex);
+  end;
+
+  // Skip space(s)
+  while (AIndex <= High(section.Elements)) and
+        (IsTokenAt(nftSpace, ASection, AIndex) or IsTextAt(' ', ASection, AIndex))
+  do
+    inc(AIndex);
+  if AIndex > High(section.Elements) then
+    exit;
+
+  // numerator
+  tok := section.Elements[AIndex].Token;
+  if tok in [nftFracNumDigit, nftFracNumSpaceDigit, nftFracNumZeroDigit] then
+    ANumPart := section.Elements[AIndex].IntValue
+  else
+    exit;
+
+  // Skip space(s) and fraction symbol
+  inc(AIndex);
+  while (AIndex <= High(section.Elements)) and
+        (IsTokenAt(nftSpace, ASection, AIndex) or
+         IsTextAt(' ', ASection, AIndex) or
+         IsTokenAt(nftFracSymbol, ASection, AIndex))
+  do
+    inc(AIndex);
+
+  // denominator
+  tok := section.Elements[AIndex].Token;
+  if tok in [nftFracDenomDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit] then
+  begin
+    ADenomPart := section.Elements[AIndex].IntValue;
+    ANextIndex := AIndex + 1;
+    Result := true;
+  end;
+end;
+
 { Checks whether the format tokens beginning at AIndex for ASection represent
   at standard number format, like nfFixed, nfPercentage etc.
   Returns TRUE if it does.
-  NOTE: ADecimals can have various meanings -- see EvalNumFormatOfSection}
+  NOTE: Fraction format is not checked here --> see: IsFractionAt }
 function TsNumFormatParser.IsNumberAt(ASection,AIndex: Integer;
   out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
   out ANextIndex: Integer): Boolean;
@@ -1003,56 +1061,28 @@ begin
     end;
   end else
   // Now look also for optional digits ('#')
-  if IsTokenAt(nftOptDigit, ASection, AIndex) then begin   // '#'
-    if IsTokenAt(nftThSep, ASection, AIndex+1) and         // ','
-       IsTokenAt(nftOptDigit, ASection, AIndex+2) and      // '#'
-       IsTokenAt(nftOptDigit, ASection, Aindex+3) and      // '#'
-       IsTokenAt(nftDigit, ASection, AIndex+4)             // '0'
+  if IsTokenAt(nftOptDigit, ASection, AIndex) then begin              // '#'
+    if IsTokenAt(nftThSep, ASection, AIndex+1) and                    // ','
+       (GetTokenIntValueAt(nftOptDigit, ASection, AIndex+2) = 2) and  // '##'
+       (GetTokenIntValueAt(nftDigit, ASection, AIndex+3) = 1)         // '0'
     then begin
-      if IsTokenAt(nftDecSep, ASection, AIndex+5) and      // '.'
-         IsTokenAt(nftDecs, ASection, AIndex+6)            // count of decimals
+      if IsTokenAt(nftDecSep, ASection, AIndex+4) and      // '.'
+         IsTokenAt(nftDecs, ASection, AIndex+5)            // count of decimals
       then begin
         // This is the case with decimal separator, like "#,##0.000"
         Result := true;
         ANumberFormat := nfFixedTh;
-        ADecimals := FSections[ASection].Elements[AIndex+6].IntValue;
-        ANextIndex := AIndex+7;
+        ADecimals := FSections[ASection].Elements[AIndex+5].IntValue;
+        ANextIndex := AIndex + 6;
       end else
-      if not IsTokenAt(nftDecSep, ASection, AIndex+5) then begin
+      if not IsTokenAt(nftDecSep, ASection, AIndex+4) then begin
         // and this is without decimal separator, "#,##0"
         result := true;
         ANumberFormat := nfFixedTh;
         ADecimals := 0;
-        ANextIndex := AIndex + 5;
+        ANextIndex := AIndex + 4;
       end;
-    end else
-    begin      // Isolated '#'
-      result := true;
-      inc(AIndex);
-      ANextIndex := AIndex;
-      ADecimals := 1;
-      while IsTokenAt(nftOptDigit, ASection, AIndex) do
-      begin
-        inc(AIndex);
-        inc(ANextIndex);
-        inc(ADecimals);
-      end;
-      ANumberFormat := nfFraction;
     end;
-  end else
-  if IsTokenAt(nftOptSpaceDigit, ASection, AIndex) then // '?'
-  begin
-    Result := true;
-    inc(AIndex);
-    ANextIndex := AIndex;
-    ADecimals := 1;
-    while IsTokenAt(nftOptSpaceDigit, ASection, AIndex) do
-    begin
-      inc(AIndex);
-      inc(ANextIndex);
-      inc(ADecimals);
-    end;
-    ANumberFormat := nfFraction;
   end;
 end;
 
@@ -1602,9 +1632,12 @@ end;
 procedure TsNumFormatParser.ScanNumber;
 var
   hasDecSep: Boolean;
+  isFrac: Boolean;
   n: Integer;
+  elem: Integer;
 begin
   hasDecSep := false;
+  isFrac := false;
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
     case FToken of
       ',': AddElement(nftThSep, ',');
@@ -1612,12 +1645,17 @@ begin
              AddElement(nftDecSep, '.');
              hasDecSep := true;
            end;
-      '0': if hasDecSep then begin
+      '0': begin
              ScanAndCount('0', n);
              FToken := PrevToken;
-             AddElement(nftDecs, n);
-           end else
-             AddElement(nftDigit, '0');
+             if hasDecSep then
+               AddElement(nftDecs, n)
+             else
+             if isFrac then
+               AddElement(nftFracDenomZeroDigit, n)
+             else
+               Addelement(nftDigit, n);
+           end;
       'E', 'e':
            begin
              AddElement(nftExpChar, FToken);
@@ -1633,10 +1671,52 @@ begin
            end;
       '+', '-':
            AddElement(nftSign, FToken);
-      '#': AddElement(nftOptDigit, FToken);
-      '?': AddElement(nftOptSpaceDigit, FToken);
+      '#': begin
+             ScanAndCount('#', n);
+             FToken := PrevToken;
+             if isFrac then
+               AddElement(nftFracDenomDigit, n)
+             else
+               AddElement(nftOptDigit, n);
+           end;
+      '?': begin
+             ScanAndCount('?', n);
+             FToken := PrevToken;
+             if isFrac then
+               AddElement(nftFracDenomSpaceDigit, n)
+             else
+               AddElement(nftOptSpaceDigit, n);
+           end;
       '%': AddElement(nftPercent, FToken);
-      '/': AddElement(nftFraction, FToken);
+      '/': begin
+             isFrac := true;
+             AddElement(nftFracSymbol, FToken);
+             // go back and replace correct token for numerator (n=0) and integer part (n=1)
+             n := 0;
+             elem := High(FSections[FCurrSection].Elements);
+             while elem > 0 do begin
+               dec(elem);
+               case FSections[FCurrSection].Elements[elem].Token of
+                 nftOptDigit:
+                   if n = 0 then
+                     FSections[FCurrSection].Elements[elem].Token := nftFracNumDigit
+                   else
+                     FSections[FCurrSection].Elements[elem].Token := nftFracIntDigit;
+                 nftOptSpaceDigit:
+                   if n = 0 then
+                     FSections[FCurrSection].Elements[elem].Token := nftFracNumSpaceDigit
+                   else
+                     FSections[FCurrSection].Elements[elem].Token := nftFracIntSpaceDigit;
+                 nftDigit:
+                   if n = 0 then
+                     FSections[FCurrSection].Elements[elem].Token := nftFracNumZeroDigit
+                   else
+                     FSections[FCurrSection].Elements[elem].Token := nftFracIntZeroDigit;
+               end;
+               inc(n);
+             end;
+           end;
+
       else
            FToken := PrevToken;
            Exit;

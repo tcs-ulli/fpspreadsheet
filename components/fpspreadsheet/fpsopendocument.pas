@@ -315,7 +315,7 @@ end;
 
 function TsSpreadOpenDocNumFormatParser.BuildCurrencyXMLAsString(ASection: Integer): String;
 var
-  el: Integer;
+  el, next: Integer;
   clr: TsColorValue;
   nf: TsNumberFormat;
   decs: byte;
@@ -354,15 +354,21 @@ begin
             inc(el);
           end;
         nftOptDigit:
-          if IsNumberAt(ASection, el, nf, decs, el) then
+          if IsNumberAt(ASection, el, nf, decs, next) then
+          begin
             Result := Result +
               '  <number:number decimal-places="' + IntToStr(decs) +
                  '" number:min-integer-digits="1" number:grouping="true" />';
+            el := next;
+          end;
         nftDigit:
-          if IsNumberAt(ASection, el, nf, decs, el) then
+          if IsNumberAt(ASection, el, nf, decs, next) then
+          begin
             Result := Result +
             '  <number:number decimal-places="' + IntToStr(decs) +
                '" number:min-integer-digits="1" />';
+            el := next;
+          end;
         nftRepeat:
           begin
             if FSections[ASection].Elements[el].TextValue = ' ' then
@@ -498,7 +504,7 @@ var
   nf : TsNumberFormat;
   decs: Byte;
   expdig: Integer;
-  next: Integer;
+  curr, next: Integer;
   sGrouping: String;
   sColor: String;
   sStyleMap: String;
@@ -508,7 +514,7 @@ var
   s: String;
   isTimeOnly: Boolean;
   isInterval: Boolean;
-  num, denom: byte;
+  intPart, numPart, denomPart: Integer;
 
 begin
   Result := '';
@@ -545,14 +551,14 @@ begin
 
   with FSections[ASection] do
   begin
-    next := 0;
+    curr := 0;
     if IsTokenAt(nftColor, ASection, 0) then
     begin
       clr := FWorkbook.GetPaletteColor(Elements[0].IntValue);
       sColor := '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
-      next := 1;
+      curr := 1;
     end;
-    if IsNumberAt(ASection, next, nf, decs, next) then
+    if IsNumberAt(ASection, curr, nf, decs, next) then
     begin
       if nf = nfFixedTh then
         sGrouping := 'number:grouping="true" ';
@@ -568,39 +574,6 @@ begin
               'number:decimal-places="' + IntToStr(decs) +
             '" />' +
             sStylemap +
-          '</number:number-style>';
-        exit;
-      end;
-
-      // nfFraction
-      if IsTextAt(' ', ASection, next) and
-         IsNumberAt(ASection, next+1, nf, num, next) and
-         IsTokenAt(nftFraction, ASection, next) and
-         IsNumberAt(ASection, next+1, nf, denom, next) and
-         (next = Length(Elements))
-      then begin
-        Result :=
-          '<number:number-style style:name="' + AFormatName + '">' +
-            sColor +
-            '<number:fraction ' +
-              'number:min-integer-digits="' + IntToStr(decs) + '" ' +
-              'number:min-numerator-digits="' + IntToStr(num) + '" ' +
-              'number:min-denominator-digits="' + IntToStr(denom) + '" ' +
-            '/>' +
-          '</number:number-style>';
-        exit;
-      end;
-      if IsTokenAt(nftFraction, ASection, next) and
-         IsNumberAt(ASection, next+1, nf, denom, next) and
-         (next = Length(Elements))
-      then begin
-        Result :=
-          '<number:number-style style:name="' + AFormatName + '">' +
-            sColor +
-            '<number:fraction ' +
-              'number:min-numerator-digits="' + IntToStr(decs) + '" ' +
-              'number:min-denominator-digits="' + IntToStr(denom) + '" ' +
-            '/>' +
           '</number:number-style>';
         exit;
       end;
@@ -647,7 +620,25 @@ begin
       end;
     end;
 
-    // If the program gets here the format can only be nfSci, nfCurrency or date/time.
+    // nfFraction
+    if IsFractionAt(ASection, curr, intPart, numPart, denomPart, next)
+    then begin
+      Result :=
+        '<number:number-style style:name="' + AFormatName + '">' +
+          sColor +
+          '<number:fraction ';
+      if intPart > 0 then
+        Result := Result +
+            'number:min-integer-digits="' + IntToStr(intPart) + '" ';
+      Result := Result +
+            'number:min-numerator-digits="' + IntToStr(numPart) + '" ' +
+            'number:min-denominator-digits="' + IntToStr(denomPart) + '" ' +
+          '/>' +
+        '</number:number-style>';
+      exit;
+    end;
+
+    // If the program gets here the format can only be Currency or date/time.
     el := 0;
     decs := 0;
     while el < Length(Elements) do
