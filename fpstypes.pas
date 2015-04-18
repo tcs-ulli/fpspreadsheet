@@ -196,27 +196,6 @@ type
   {@@ Describes which formatting fields are active }
   TsUsedFormattingFields = set of TsUsedFormattingField;
 
-  {@@ Number/cell formatting. Only uses a subset of the default formats,
-      enough to be able to read/write date/time values.
-      nfCustom allows to apply a format string directly. }
-  TsNumberFormat = (
-    // general-purpose for all numbers
-    nfGeneral,
-    // numbers
-    nfFixed, nfFixedTh, nfExp, nfPercentage, nfFraction,
-    // currency
-    nfCurrency, nfCurrencyRed,
-    // dates and times
-    nfShortDateTime, {nfFmtDateTime, }nfShortDate, nfLongDate, nfShortTime, nfLongTime,
-    nfShortTimeAM, nfLongTimeAM, nfTimeInterval,
-    // other (format string goes directly into the file)
-    nfCustom);
-
-  {@@ Identifies which "dialect" is used in the format strings:
-    nfdDefault is the dialect used by fpc
-    fndExcel is the dialect used by Excel }
-  TsNumFormatDialect = (nfdDefault, nfdExcel);
-
 const
   { @@ Codes for curreny format according to FormatSettings.CurrencyFormat:
        "C" = currency symbol, "V" = currency value, "S" = space character
@@ -450,6 +429,112 @@ type
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
   );
 
+  {@@ Number/cell formatting. Only uses a subset of the default formats,
+      enough to be able to read/write date/time values.
+      nfCustom allows to apply a format string directly. }
+  TsNumberFormat = (
+    // general-purpose for all numbers
+    nfGeneral,
+    // numbers
+    nfFixed, nfFixedTh, nfExp, nfPercentage, nfFraction,
+    // currency
+    nfCurrency, nfCurrencyRed,
+    // dates and times
+    nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
+    nfShortTimeAM, nfLongTimeAM, nfDayMonth, nfMonthYear, nfTimeInterval,
+    // other (format string goes directly into the file)
+    nfCustom);
+
+  {@@ Identifies which "dialect" is used in the format strings:
+    nfdDefault is the dialect used by fpc
+    fndExcel is the dialect used by Excel }
+  TsNumFormatDialect = (nfdDefault, nfdExcel);
+
+  TsNumFormatToken = (
+    nftText,               // must be quoted, stored in TextValue
+    nftThSep,              // ',', replaced by FormatSettings.ThousandSeparator
+    nftDecSep,             // '.', replaced by FormatSettings.DecimalSeparator
+    nftYear,               // 'y' or 'Y', count stored in IntValue
+    nftMonth,              // 'm' or 'M', count stored in IntValue
+    nftDay,                // 'd' or 'D', count stored in IntValue
+    nftHour,               // 'h' or 'H', count stored in IntValue
+    nftMinute,             // 'n' or 'N' (or 'm'/'M'), count stored in IntValue
+    nftSecond,             // 's' or 'S', count stored in IntValue
+    nftMilliseconds,       // 'z', 'Z', '0', count stored in IntValue
+    nftAMPM,               //
+    nftMonthMinute,        // 'm'/'M' or 'n'/'N', meaning depending on context
+    nftDateTimeSep,        // '/' or ':', replaced by value from FormatSettings, stored in TextValue
+    nftSign,               // '+' or '-', stored in TextValue
+    nftSignBracket,        // '(' or ')' for negative values, stored in TextValue
+    nftIntOptDigit,        // '#', count stored in IntValue
+    nftIntZeroDigit,       // '0', count stored in IntValue
+    nftIntSpaceDigit,      // '?', count stored in IntValue
+    nftIntTh,              // '#,##0' sequence for nfFixed, count of 0 stored in IntValue
+    nftZeroDecs,           // '0' after dec sep, count stored in IntValue
+    nftOptDecs,            // '#' after dec sep, count stored in IntValue
+    nftSpaceDecs,          // '?' after dec sep, count stored in IntValue
+    nftExpChar,            // 'e' or 'E', stored in TextValue
+    nftExpSign,            // '+' or '-' in exponent
+    nftExpDigits,          // '0' digits in exponent, count stored in IntValue
+    nftPercent,            // '%' percent symbol
+    nftFracSymbol,         // '/' fraction symbol
+    nftFracNumOptDigit,    // '#' in numerator, count stored in IntValue
+    nftFracNumSpaceDigit,  // '?' in numerator, count stored in IntValue
+    nftFracNumZeroDigit,   // '0' in numerator, count stored in IntValue
+    nftFracDenomOptDigit,  // '#' in denominator, count stored in IntValue
+    nftFracDenomSpaceDigit,// '?' in denominator, count stored in IntValue
+    nftFracDenomZeroDigit, // '0' in denominator, count stored in IntValue
+    nftCurrSymbol,         // e.g., '"$"', stored in TextValue
+    nftCountry,
+    nftColor,              // e.g., '[red]', Color in IntValue
+    nftCompareOp,
+    nftCompareValue,
+    nftSpace,
+    nftEscaped,            // '\'
+    nftRepeat,
+    nftEmptyCharWidth,
+    nftTextFormat);
+
+  TsNumFormatElement = record
+    Token: TsNumFormatToken;
+    IntValue: Integer;
+    FloatValue: Double;
+    TextValue: String;
+  end;
+
+  TsNumFormatElements = array of TsNumFormatElement;
+
+  TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction, nfkDate, nfkTime, nfkTimeInterval);
+  TsNumFormatKinds = set of TsNumFormatKind;
+
+  TsNumFormatSection = record
+    Elements: TsNumFormatElements;
+    Kind: TsNumFormatKinds;
+    NumFormat: TsNumberFormat;
+    Decimals: Byte;
+    FracInt: Integer;
+    FracNumerator: Integer;
+    FracDenominator: Integer;
+    CurrencySymbol: String;
+    Color: TsColor;
+  end;
+  PsNumFormatSection = ^TsNumFormatSection;
+
+  TsNumFormatSections = array of TsNumFormatSection;
+
+  TsNumFormatParams = class(TObject)
+  protected
+    function GetNumFormat: TsNumberFormat; virtual;
+    function GetNumFormatStr(ADialect: TsNumFormatDialect): String; virtual;
+  public
+    Sections: TsNumFormatSections;
+    function SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
+    property NumFormat: TsNumberFormat read GetNumFormat;
+    property NumFormatStr[ADialect: TsNumFormatDialect]: String read GetNumFormatStr;
+  end;
+
+  TsNumFormatParamsClass = class of TsNumFormatParams;
+
   {@@ Cell calculation state }
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
@@ -512,6 +597,8 @@ type
     Border: TsCellBorders;
     BorderStyles: TsCelLBorderStyles;
     Background: TsFillPattern;
+    NumberFormatIndex: Integer;
+    // next two are deprecated...
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
   end;
@@ -573,8 +660,14 @@ type
       cctError      : (ErrorValue: TsErrorValue);
   end;
 
+function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
+  ADialect: TsNumFormatDialect): String;
+
 
 implementation
+
+uses
+  StrUtils;
 
 { TsCellFormatList }
 
@@ -610,6 +703,7 @@ begin
     P^.Border := AItem.Border;
     P^.BorderStyles := AItem.BorderStyles;
     P^.Background := AItem.Background;
+    P^.NumberFormatIndex := AItem.NumberFormatIndex;
     P^.NumberFormat := AItem.NumberFormat;
     P^.NumberFormatStr := AItem.NumberFormatStr;
     Result := inherited Add(P);
@@ -725,6 +819,7 @@ begin
     end;
 
     if (uffNumberFormat in AItem.UsedFormattingFields) then begin
+      if (P^.NumberFormatIndex <> AItem.NumberFormatIndex) then continue;
       if (P^.NumberFormat <> AItem.NumberFormat) then continue;
       if (P^.NumberFormatStr <> AItem.NumberFormatStr) then continue;
     end;
@@ -740,6 +835,203 @@ end;
 procedure TsCellFormatList.SetItem(AIndex: Integer; const AValue: PsCellFormat);
 begin
   inherited Items[AIndex] := AValue;
+end;
+
+
+{ Creates a format string for the given section. This implementation covers
+  the formatstring dialects of fpc (nfdDefault) and Excel (nfdExcel). }
+function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
+  ADialect: TsNumFormatDialect): String;
+var
+  element: TsNumFormatElement;
+  i: Integer;
+begin
+  Result := '';
+
+  for i := 0 to High(ASection.Elements)  do begin
+    element := ASection.Elements[i];
+    case element.Token of
+      nftIntOptDigit, nftOptDecs, nftFracNumOptDigit, nftFracDenomOptDigit:
+        if element.IntValue > 0 then
+          Result := Result + DupeString('#', element.IntValue);
+      nftIntZeroDigit, nftZeroDecs, nftFracNumZeroDigit, nftFracDenomZeroDigit, nftExpDigits:
+        if element.IntValue > 0 then
+          Result := result + DupeString('0', element.IntValue);
+      nftIntSpaceDigit, nftSpaceDecs, nftFracNumSpaceDigit, nftFracDenomSpaceDigit:
+        if element.Intvalue > 0 then
+          Result := result + DupeString('?', element.IntValue);
+      nftIntTh:
+        case element.Intvalue of
+          0: Result := Result + '#,###';
+          1: Result := Result + '#,##0';
+          2: Result := Result + '#,#00';
+          3: Result := Result + '#,000';
+        end;
+      nftDecSep:
+        Result := Result + '.';
+      nftThSep:
+        Result := Result + ',';
+      nftFracSymbol:
+        Result := Result + '/';
+      nftPercent:
+        Result := Result + '%';
+      nftSpace:
+        Result := Result + ' ';
+      nftText:
+        if element.TextValue <> '' then result := Result + '"' + element.TextValue + '"';
+      nftYear:
+        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'Y', 'y'), element.IntValue);
+      nftMonth:
+        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'M', 'm'), element.IntValue);
+      nftDay:
+        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'D', 'd'), element.IntValue);
+      nftHour:
+        if element.IntValue < 0
+          then Result := Result + '[' + DupeString('h', -element.IntValue) + ']'
+          else Result := Result + DupeString('h', element.IntValue);
+      nftMinute:
+        if element.IntValue < 0
+          then Result := result + '[' + DupeString(IfThen(ADialect = nfdExcel, 'm', 'n'), -element.IntValue) + ']'
+          else Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'm', 'n'), element.IntValue);
+      nftSecond:
+        if element.IntValue < 0
+          then Result := Result + '[' + DupeString('s', -element.IntValue) + ']'
+          else Result := Result + DupeString('s', element.IntValue);
+      nftMilliseconds:
+        if ADialect = nfdExcel then
+          Result := Result + Dupestring('0', element.IntValue)
+        else
+          Result := Result + DupeString('z', element.IntValue);
+      nftSign, nftSignBracket, nftExpChar, nftExpSign, nftAMPM, nftDateTimeSep:
+        if element.TextValue <> '' then Result := Result + element.TextValue;
+      nftCurrSymbol:
+        if element.TextValue <> '' then begin
+          if ADialect = nfdExcel then
+            Result := Result + '[$' + element.TextValue + ']'
+          else
+            Result := Result + '"' + element.TextValue + '"';
+        end;
+      nftEscaped:
+        if element.TextValue <> '' then begin
+          if ADialect = nfdExcel then
+            Result := Result + '\' + element.TextValue
+          else
+            Result := Result + element.TextValue;
+        end;
+      nftTextFormat:
+        if element.TextValue <> '' then
+          if ADialect = nfdExcel then Result := Result + element.TextValue;
+      nftRepeat:
+        if element.TextValue <> '' then Result := Result + '*' + element.TextValue;
+      nftColor:
+        if ADialect = nfdExcel then begin
+          case element.IntValue of
+            scBlack  : Result := '[black]';
+            scWhite  : Result := '[white]';
+            scRed    : Result := '[red]';
+            scBlue   : Result := '[blue]';
+            scGreen  : Result := '[green]';
+            scYellow : Result := '[yellow]';
+            scMagenta: Result := '[magenta]';
+            scCyan   : Result := '[cyan]';
+            else       Result := Format('[Color%d]', [element.IntValue]);
+          end;
+        end;
+    end;
+  end;
+end;
+
+
+{ TsNumFormatParams }
+
+function TsNumFormatParams.GetNumFormat: TsNumberFormat;
+begin
+  Result := nfCustom;
+  case Length(Sections) of
+    0: Result := nfGeneral;
+    1: Result := Sections[0].NumFormat;
+    2: if (Sections[0].NumFormat = Sections[1].NumFormat) and
+          (Sections[0].NumFormat in [nfCurrency, nfCurrencyRed])
+       then
+         Result := Sections[0].NumFormat;
+    3: if (Sections[0].NumFormat = Sections[1].NumFormat) and
+          (Sections[1].NumFormat = Sections[2].NumFormat) and
+          (Sections[0].NumFormat in [nfCurrency, nfCurrencyRed])
+       then
+         Result := Sections[0].NumFormat;
+  end;
+end;
+
+function TsNumFormatParams.GetNumFormatStr(ADialect: TsNumFormatDialect): String;
+var
+  i: Integer;
+begin
+  if Length(Sections) > 0 then begin
+    Result := BuildFormatStringFromSection(Sections[0], ADialect);
+    for i := 1 to High(Sections) do
+      Result := Result + ';' + BuildFormatStringFromSection(Sections[i], ADialect);
+  end else
+    Result := '';
+end;
+
+function TsNumFormatParams.SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
+var
+  i, j: Integer;
+begin
+  Result := false;
+  if Length(ASections) <> Length(Sections) then
+    exit;
+  for i := 0 to High(Sections) do begin
+    if Length(Sections[i].Elements) <> Length(ASections[i].Elements) then
+      exit;
+
+    for j:=0 to High(Sections[i].Elements) do
+    begin
+      if Sections[i].Elements[j].Token <> ASections[i].Elements[j].Token then
+        exit;
+
+      if Sections[i].NumFormat <> ASections[i].NumFormat then
+        exit;
+      if Sections[i].Decimals <> ASections[i].Decimals then
+        exit;
+      if Sections[i].FracInt <> ASections[i].FracInt then
+        exit;
+      if Sections[i].FracNumerator <> ASections[i].FracNumerator then
+        exit;
+      if Sections[i].FracDenominator <> ASections[i].FracDenominator then
+        exit;
+      if Sections[i].CurrencySymbol <> ASections[i].CurrencySymbol then
+        exit;
+      if Sections[i].Color <> ASections[i].Color then
+        exit;
+
+      case Sections[i].Elements[j].Token of
+        nftText, nftThSep, nftDecSep, nftDateTimeSep,
+        nftAMPM, nftSign, nftSignBracket,
+        nftExpChar, nftExpSign, nftPercent, nftFracSymbol, nftCurrSymbol,
+        nftCountry, nftSpace, nftEscaped, nftRepeat, nftEmptyCharWidth,
+        nftTextFormat:
+          if Sections[i].Elements[j].TextValue <> ASections[i].Elements[j].TextValue
+            then exit;
+
+        nftYear, nftMonth, nftDay,
+        nftHour, nftMinute, nftSecond, nftMilliseconds,
+        nftMonthMinute,
+        nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit, nftIntTh,
+        nftZeroDecs, nftOptDecs, nftSpaceDecs, nftExpDigits,
+        nftFracNumOptDigit, nftFracNumSpaceDigit, nftFracNumZeroDigit,
+        nftFracDenomOptDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit,
+        nftColor:
+          if Sections[i].Elements[j].IntValue <> ASections[i].Elements[j].IntValue
+            then exit;
+
+        nftCompareOp, nftCompareValue:
+          if Sections[i].Elements[j].FloatValue <> ASections[i].Elements[j].FloatValue
+            then exit;
+      end;
+    end;
+  end;
+  Result := true;
 end;
 
 

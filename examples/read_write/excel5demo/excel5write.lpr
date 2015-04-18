@@ -336,6 +336,15 @@ begin
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, h');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, 'h');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfFraction, ??/??');
+  MyWorksheet.WriteNumber(r, 1, number);
+  MyWorksheet.WriteFractionFormat(r, 1, false, 2, 2);
+
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfFraction, # ??/??');
+  MyWorksheet.WriteNumber(r, 1, number);
+  MyWorksheet.WriteFractionFormat(r, 1, true, 2, 2);
 
   //MyFormula.FormulaStr := '';
 

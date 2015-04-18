@@ -14,7 +14,6 @@ uses
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  MyRPNFormula: TsRPNFormula;
   MyDir: string;
   number: Double;
   lCol: TCol;

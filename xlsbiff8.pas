@@ -56,7 +56,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8,
-  fpstypes, fpsnumformat, fpspreadsheet, xlscommon,
+  fpstypes, fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -143,8 +143,8 @@ type
     procedure WriteMSODrawing2_Data(AStream: TStream; AComment: PsComment; AShapeID: Word);
     procedure WriteMSODrawing3(AStream: TStream);
     procedure WriteNOTE(AStream: TStream; AComment: PsComment; AObjID: Word);
-    procedure WriteNumFormat(AStream: TStream; AFormatData: TsNumFormatData;
-      AListIndex: Integer); override;
+    procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
+      ANumFormatIndex: Integer); override;
     procedure WriteOBJ(AStream: TStream; AObjID: Word);
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): word; override;
@@ -940,9 +940,9 @@ begin
   if (c and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
 end;
 
-{ Read the difference between cell row and column indexed of a cell and a reference
-  cell.
-  Overriding the implementation in xlscommon. }
+{ Reads the difference between cell row and column indexed of a cell and
+  a reference cell.
+  Overrides the implementation in xlscommon. }
 procedure TsSpreadBIFF8Reader.ReadRPNCellAddressOffset(AStream: TStream;
   out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags);
 var
@@ -1185,8 +1185,8 @@ var
   dw: DWord;
   fill: Integer;
   fs: TsFillStyle;
-  nfidx: Integer;
-  nfdata: TsNumFormatData;
+  nfs: String;
+  nfParams: TsNumFormatParams;
   i: Integer;
   fnt: TsFont;
 begin
@@ -1208,14 +1208,20 @@ begin
     Include(fmt.UsedFormattingFields, uffFont);
 
   // Number format index
-  nfidx := WordLEToN(rec.NumFormatIndex);
-  i := NumFormatList.FindByIndex(nfidx);
-  if i > -1 then begin
-    nfdata := NumFormatList.Items[i];
-    fmt.NumberFormat := nfdata.NumFormat;
-    fmt.NumberFormatStr := nfdata.FormatString;
-    if nfdata.NumFormat <> nfGeneral then
-      Include(fmt.UsedFormattingFields, uffNumberFormat);
+  if rec.NumFormatIndex <> 0 then begin
+    nfs := NumFormatList[rec.NumFormatIndex];
+    // "General" (NumFormatIndex = 0) not stored in workbook's NumFormatList
+    if (rec.NumFormatIndex > 0) and not SameText(nfs, 'General') then
+    begin
+      fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
+      nfParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      if nfParams <> nil then
+      begin
+        fmt.NumberFormat := nfParams.NumFormat;
+        fmt.NumberFormatStr := nfs;
+        Include(fmt.UsedFormattingFields, uffNumberFormat);
+      end;
+    end;
   end;
 
   // Horizontal text alignment
@@ -1398,7 +1404,11 @@ begin
   FFontList.Add(font);
 end;
 
-// Read the (number) FORMAT record for formatting numerical data
+{@@ ----------------------------------------------------------------------------
+  Reads the (number) FORMAT record for formatting numerical data and stores the
+  format strings in an internal stringlist. The strings are put at the index
+  specified by the FORMAT record.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Reader.ReadFORMAT(AStream: TStream);
 var
   fmtString: String;
@@ -1410,12 +1420,15 @@ begin
   // 2      var   Number format string (Unicode string, 16-bit string length)
   // From BIFF5 on: indexes 0..163 are built in
   fmtIndex := WordLEtoN(AStream.ReadWord);
+  if fmtIndex = 0 then  // "General" already in list
+    exit;
 
   // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
   fmtString := UTF8Encode(ReadWideString(AStream, False));
 
-  // Analyze the format string and add format to the list
-  NumFormatList.AnalyzeAndAdd(fmtIndex, fmtString);
+  // Add to the list at the specified index. If necessary insert empty strings
+  while NumFormatList.Count <= fmtIndex do NumFormatList.Add('');
+  NumFormatList[fmtIndex] := fmtString;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1585,16 +1598,6 @@ begin
   { Add tooltip to hyperlinks }
   for hyperlink in FWorksheet.Hyperlinks.GetRangeEnumerator(row1, col1, row2, col2) do
     hyperlink^.ToolTip := txt;
-
-  {
-  for row := row1 to row2 do
-    for col := col1 to col2 do
-    begin
-      hyperlink := PsHyperlink(FWorksheet.Hyperlinks.Find(row, col));
-      if hyperlink <> nil then
-        hyperlink^.ToolTip := txt;
-    end;
-    }
 end;
 
 
@@ -1646,15 +1649,12 @@ begin
   end;
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteToStream ()
-*
-*  DESCRIPTION:    Writes an Excel BIFF8 record structure
-*
-*                  Be careful as this method doesn't write the OLE
-*                  part of the document, just the BIFF records
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel BIFF8 record structure to a stream
+
+  Be careful as this method doesn't write the OLE part of the document,
+  just the BIFF records
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream);
 const
   isBIFF8 = true;
@@ -1669,7 +1669,7 @@ begin
   WriteCodePage(AStream, 'ucs2le'); // = utf8
   WriteWindow1(AStream);
   WriteFonts(AStream);
-  WriteNumFormats(AStream);
+  WriteNumFormats(AStream, nfdExcel);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -1724,15 +1724,11 @@ begin
   SetLength(Boundsheets, 0);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 BOF record
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteBOF ()
-*
-*  DESCRIPTION:    Writes an Excel 8 BOF record
-*
-*                  This must be the first record on an Excel 8 stream
-*
-*******************************************************************}
+  This must be the first record on an Excel 8 stream
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteBOF(AStream: TStream; ADataType: Word);
 begin
   { BIFF Record header }
@@ -1955,13 +1951,9 @@ begin
   AStream.WriteBuffer(WideStringToLE(WideFontName)[1], Len * Sizeof(WideChar));
 end;
 
-{*******************************************************************
-*  TsSpreadBIFF8Writer.WriteFonts ()
-*
-*  DESCRIPTION:    Writes the Excel 8 FONT records needed for the
-*                  used fonts in the workbook.
-*
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes the Excel 8 FONT records needed for the fonts used in the workbook.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBiff8Writer.WriteFonts(AStream: TStream);
 var
   i: Integer;
@@ -2035,9 +2027,11 @@ begin
   end;
 end;
 
-{ Write the MSODRAWING record which occurs before the OBJ record.
-  Do not use for the very first OBJ record where the record must be
-  WriteMSODrawing1 + WriteMSODrawing2_Data}
+{@@ ----------------------------------------------------------------------------
+  Writes the MSODRAWING record which occurs before the OBJ record.
+  Not to be used for the very first OBJ record where the record must be
+  WriteMSODrawing1 + WriteMSODrawing2_Data
+-------------------------------------------------------------------------------}
 procedure TsSpreadBiff8Writer.WriteMSODrawing2(AStream: TStream;
   AComment: PsComment; AObjID: Word);
 var
@@ -2107,7 +2101,9 @@ begin
   end;
 end;
 
-{ Writes the MSODRAWING record which must occur immediately before a TXO record }
+{@@ ----------------------------------------------------------------------------
+  Writes the MSODRAWING record which must occur immediately before a TXO record
+-------------------------------------------------------------------------------}
 procedure TsSpreadBiff8Writer.WriteMSODRAWING3(AStream: TStream);
 begin
   { BIFF Header }
@@ -2117,7 +2113,9 @@ begin
   WriteMSOClientTextBoxRecord(AStream);
 end;
 
-{ Writes a NOTE record for a comment attached to a cell }
+{@@ ----------------------------------------------------------------------------
+  Writes a NOTE record for a comment attached to a cell
+-------------------------------------------------------------------------------}
 procedure TsSpreadBiff8Writer.WriteNOTE(AStream: TStream; AComment: PsComment;
   AObjID: Word);
 const
@@ -2143,7 +2141,7 @@ begin
 end;
 
 procedure TsSpreadBiff8Writer.WriteNumFormat(AStream: TStream;
-  AFormatData: TsNumFormatData; AListIndex: Integer);
+  ANumFormatStr: String; ANumFormatIndex: Integer);
 type
   TNumFormatRecord = packed record
     RecordID: Word;
@@ -2154,16 +2152,11 @@ type
   end;
 var
   len: Integer;
-  s: String;
   ws: widestring;
   rec: TNumFormatRecord;
   buf: array of byte;
 begin
-  if (AFormatData = nil) or (AFormatData.FormatString = '') then
-    exit;
-
-  s := NumFormatList.FormatStringForWriting(AListIndex);
-  ws := UTF8Decode(s);
+  ws := UTF8Decode(ANumFormatStr);
   len := Length(ws);
 
   { BIFF record header }
@@ -2171,7 +2164,7 @@ begin
   rec.RecordSize := WordToLE(2 + 2 + 1 + len * SizeOf(WideChar));
 
   { Format index }
-  rec.FormatIndex := WordToLE(AFormatData.Index);
+  rec.FormatIndex := WordToLE(ANumFormatIndex);
 
   { Format string }
   { - length of string = 16 bits }
@@ -2190,7 +2183,9 @@ begin
   SetLength(buf, 0);
 end;
 
-{ Writes an OBJ record - belongs to the record required for cell comments }
+{@@ ----------------------------------------------------------------------------
+  Writes an OBJ record - belongs to the records required for cell comments
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteOBJ(AStream: TStream; AObjID: Word);
 var
   guid: TGuid;
@@ -2219,8 +2214,10 @@ begin
   AStream.WriteWord(0);                // Size of subrecord: 0 bytes
 end;
 
-{ Writes the address of a cell as used in an RPN formula and returns the
-  number of bytes written. }
+{@@ ----------------------------------------------------------------------------
+  Writes the address of a cell as used in an RPN formula and returns the
+  number of bytes written.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFF8Writer.WriteRPNCellAddress(AStream: TStream;
   ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
 var
@@ -2234,8 +2231,10 @@ begin
   Result := 4;
 end;
 
-{ Writes row and column offset (unsigned integers!)
-  Valid for BIFF2-BIFF5. }
+{@@ ----------------------------------------------------------------------------
+  Writes row and column offset needed in RPN formulas (unsigned integers!)
+  Valid for BIFF2-BIFF5.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFF8Writer.WriteRPNCellOffset(AStream: TStream;
   ARowOffset, AColOffset: Integer; AFlags: TsRelFlags): Word;
 var
@@ -2255,8 +2254,10 @@ begin
   Result := 4;
 end;
 
-{ Writes the address of a cell range as used in an RPN formula and returns the
-  count of bytes written. }
+{@@ ----------------------------------------------------------------------------
+  Writes the address of a cell range as used in an RPN formula and returns the
+  count of bytes written.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFF8Writer.WriteRPNCellRangeAddress(AStream: TStream;
   ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags): Word;
 var
@@ -2278,9 +2279,11 @@ begin
   Result := 8;
 end;
 
-{ Helper function for writing a string with 8-bit length. Overridden version
+{@@ ----------------------------------------------------------------------------
+  Helper function for writing a string with 8-bit length. Overridden version
   for BIFF8. Called for writing rpn formula string tokens.
-  Returns the count of bytes written}
+  Returns the count of bytes written.
+-------------------------------------------------------------------------------}
 function TsSpreadBIFF8Writer.WriteString_8BitLen(AStream: TStream;
   AString: String): Integer;
 var
@@ -2803,6 +2806,8 @@ var
   b: Byte;
   dw1, dw2: DWord;
   w3: Word;
+  nfParams: TsNumFormatParams;
+  nfs: String;
 begin
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
@@ -2820,16 +2825,18 @@ begin
   rec.FontIndex := WordToLE(rec.FontIndex);
 
   { Index to number format }
-  rec.NumFormatIndex := 0;
+  j := 0;
   if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields)
   then begin
-    // The number formats in the FormatList are still in fpc dialect
-    // They will be converted to Excel syntax immediately before writing.
-    j := NumFormatList.Find(AFormatRecord^.NumberFormat, AFormatRecord^.NumberFormatStr);
-    if j > -1 then
-      rec.NumFormatIndex := NumFormatList[j].Index;
+    nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
+    if nfParams <> nil then
+    begin
+      nfs := nfParams.NumFormatStr[nfdExcel];
+      j := NumFormatList.IndexOf(nfs);
+      if j = -1 then j := 0;
+    end;
   end;
-  rec.NumFormatIndex := WordToLE(rec.NumFormatIndex);
+  rec.NumFormatIndex := WordToLE(j);
 
   { XF type, cell protection and parent style XF }
   rec.XFType_Prot_ParentXF := XFType_Prot and MASK_XF_TYPE_PROT;
@@ -2944,16 +2951,12 @@ begin
 end;
 
 
-{@@ ----------------------------------------------------------------------------
-  Initialization section
-
-  Registers this reader / writer on fpSpreadsheet
-  Converts the palette to litte-endian
--------------------------------------------------------------------------------}
-
 initialization
 
+  // Registers this reader / writer in fpSpreadsheet
   RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8);
+
+  // Converts the palette to litte-endian
   MakeLEPalette(@PALETTE_BIFF8, Length(PALETTE_BIFF8));
 
 end.

@@ -59,7 +59,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, lconvencoding,
-  fpsTypes, fpsNumFormat, fpspreadsheet,
+  fpsTypes, fpspreadsheet,
   xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
@@ -79,9 +79,9 @@ type
   protected
     { Record writing methods }
     procedure ReadBoundsheet(AStream: TStream);
-    procedure ReadFont(const AStream: TStream);
-    procedure ReadFormat(AStream: TStream); override;
-    procedure ReadLabel(AStream: TStream); override;
+    procedure ReadFONT(const AStream: TStream);
+    procedure ReadFORMAT(AStream: TStream); override;
+    procedure ReadLABEL(AStream: TStream); override;
     procedure ReadWorkbookGlobals(AStream: TStream);
     procedure ReadWorksheet(AStream: TStream);
     procedure ReadRichString(AStream: TStream);
@@ -108,8 +108,8 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WriteNumFormat(AStream: TStream; ANumFormatData: TsNumFormatData;
-      AListIndex: Integer); override;
+    procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
+      ANumFormatIndex: Integer); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -594,9 +594,10 @@ procedure TsSpreadBIFF5Reader.ReadXF(AStream: TStream);
 var
   rec: TBIFF5_XFRecord;
   fmt: TsCellFormat;
-  nfidx: Integer;
+//  nfidx: Integer;
   i: Integer;
-  nfdata: TsNumFormatData;
+  nfparams: TsNumFormatParams;
+  nfs: String;
   b: Byte;
   dw: DWord;
   fill: Word;
@@ -621,6 +622,30 @@ begin
     Include(fmt.UsedFormattingFields, uffFont);
 
   // Number format index
+  if rec.NumFormatIndex <> 0 then begin
+    nfs := NumFormatList[rec.NumFormatIndex];
+    // "General" (NumFormatIndex = 0) not stored in workbook's NumFormatList
+    if (rec.NumFormatIndex > 0) and not SameText(nfs, 'General') then
+    begin
+      fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
+      nfParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      fmt.NumberFormat := nfParams.NumFormat;
+      fmt.NumberFormatStr := nfs;
+      Include(fmt.UsedFormattingFields, uffNumberFormat);
+    end;
+  end;
+{
+  // Number format index
+  nfparams := Workbook.GetNumberFormat(rec.NumFormatIndex);
+  nfs := nfParams.NumFormatStr[nfdDefault];
+  if nfs <> '' then begin
+    fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
+    fmt.NumberFormat := nfParams.NumFormat;
+    fmt.NumberFormatStr := nfs;
+    Include(fmt.UsedFormattingFields, uffNumberFormat);
+  end;
+ }
+ {
   nfidx := WordLEToN(rec.NumFormatIndex);
   i := NumFormatList.FindByIndex(nfidx);
   if i > -1 then begin
@@ -630,7 +655,7 @@ begin
     if nfdata.NumFormat <> nfGeneral then
       Include(fmt.UsedFormattingFields, uffNumberFormat);
   end;
-
+       }
   // Horizontal text alignment
   b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
   if (b <= ord(High(TsHorAlignment))) then
@@ -848,6 +873,7 @@ var
   len: byte;
   fmtIndex: Integer;
   fmtString: AnsiString;
+  nfs: String;
 begin
   // Record FORMAT, BIFF 8 (5.49):
   // Offset Size Contents
@@ -863,9 +889,10 @@ begin
   SetLength(fmtString, len);
   AStream.ReadBuffer(fmtString[1], len);
 
-  // Add to the list
-//  NumFormatList.AnalyzeAndAdd(fmtIndex, AnsiToUTF8(fmtString));
-  NumFormatList.AnalyzeAndAdd(fmtIndex, ConvertEncoding(fmtString, FCodePage, encodingUTF8));
+  // Add to the list at the specified index. If necessary insert empty strings
+  nfs := ConvertEncoding(fmtString, FCodePage, encodingUTF8);
+  while NumFormatList.Count <= fmtIndex do NumFormatList.Add('');
+  NumFormatList[fmtIndex] := nfs;
 end;
 
 procedure TsSpreadBIFF5Reader.ReadLabel(AStream: TStream);
@@ -977,7 +1004,7 @@ begin
   WriteCodepage(AStream, FCodePage);
   WriteWindow1(AStream);
   WriteFonts(AStream);
-  WriteNumFormats(AStream);
+  WriteNumFormats(AStream, nfdExcel);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -1218,7 +1245,7 @@ end;
   data.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBiff5Writer.WriteNumFormat(AStream: TStream;
-  ANumFormatData: TsNumFormatData; AListIndex: Integer);
+  ANumFormatStr: String; ANumFormatIndex: Integer);
 type
   TNumFormatRecord = packed record
     RecordID: Word;
@@ -1228,16 +1255,13 @@ type
   end;
 var
   len: Integer;
-  fmtStr: String;
+  //fmtStr: String;
   ansiFmtStr: ansiString;
   rec: TNumFormatRecord;
   buf: array of byte;
 begin
-  if (ANumFormatData = nil) or (ANumFormatData.FormatString = '') then
-    exit;
-
-  fmtStr := NumFormatList.FormatStringForWriting(AListIndex);
-  ansiFmtStr := ConvertEncoding(fmtStr, encodingUTF8, FCodePage);
+  //fmtStr := NumFormatList.FormatStringForWriting(AListIndex);
+  ansiFmtStr := ConvertEncoding(ANumFormatStr, encodingUTF8, FCodePage);
   len := Length(ansiFmtStr);
 
   { BIFF record header }
@@ -1245,7 +1269,7 @@ begin
   rec.RecordSize := WordToLE(2 + 1 + len * SizeOf(AnsiChar));
 
   { Format index }
-  rec.FormatIndex := WordToLE(ANumFormatData.Index);
+  rec.FormatIndex := WordToLE(ANumFormatIndex);
 
   { Format string }
   { Length in 1 byte }
@@ -1450,6 +1474,8 @@ var
   j: Integer;
   b: Byte;
   dw1, dw2: DWord;
+  nfParams: TsNumFormatParams;
+  nfs: String;
 begin
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
@@ -1467,9 +1493,16 @@ begin
   rec.FontIndex := WordToLE(rec.FontIndex);
 
   { Index to number format }
-  rec.NumFormatIndex := 0;
+  j := 0;
   if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields)
   then begin
+    nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
+    nfs := nfParams.NumFormatStr[nfdExcel];
+    j := NumFormatList.IndexOf(nfs);
+    if j = -1 then j := 0;
+  end;
+  rec.NumFormatIndex := WordToLE(j);
+{
     // The number formats in the FormatList are still in fpc dialect
     // They will be converted to Excel syntax immediately before writing.
     j := NumFormatList.Find(AFormatRecord^.NumberFormat, AFormatRecord^.NumberFormatStr);
@@ -1477,7 +1510,7 @@ begin
       rec.NumFormatIndex := NumFormatList[j].Index;
   end;
   rec.NumFormatIndex := WordToLE(rec.NumFormatIndex);
-
+ }
   { XF type, cell protection and parent style XF }
   rec.XFType_Prot_ParentXF := XFType_Prot and MASK_XF_TYPE_PROT;
   if XFType_Prot and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then

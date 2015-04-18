@@ -467,7 +467,7 @@ var
 begin
   ErrorMargin := 1E-5/(24*60*60*1000);  // = 10 nsec = 1E-8 sec (1 ns fails)
 
-  if Row>High(SollDates) then
+  if Row > High(SollDates) then
     fail('Error in test code: array bounds overflow. Check array size is correct.');
 
   // Load the file only if is the file name changes.

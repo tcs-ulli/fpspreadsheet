@@ -109,7 +109,6 @@
         <ComponentName Value="HyperlinkForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="sHyperlinkForm"/>
       </Unit6>
     </Units>
   </ProjectOptions>

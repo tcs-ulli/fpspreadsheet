@@ -837,6 +837,7 @@ object MainForm: TMainForm
       Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
       Hint = 'Save spreadsheet'
       ImageIndex = 45
+      BeforeExecute = AcFileSaveAsBeforeExecute
       OnAccept = AcFileSaveAsAccept
     end
     object AcViewInspector: TAction

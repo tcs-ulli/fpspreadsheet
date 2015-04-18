@@ -203,6 +203,16 @@ begin
   MyWorksheet.WriteCurrency(row, 6, number6, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 7, number7, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
   MyWorksheet.WriteCurrency(row, 8, number8, nfCurrencyRed, 2, '$', pcfCSV, ncfBCSVB);
+  inc(row);
+  MyWorksheet.WriteUTF8Text(row, 0, 'nfFraction, 2 digits');
+  MyWorksheet.WriteNumber(row, 1, number1, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 2, number2, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 3, number3, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 4, number4, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 5, number5, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 6, number6, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 7, number7, nfFraction, '# ???/???');
+  MyWorksheet.WriteNumber(row, 8, number8, nfFraction, '# ???/???');
   inc(row,2);
 
   MyWorksheet.WriteUTF8Text(row, 0, 'Some date/time values in various formats:');

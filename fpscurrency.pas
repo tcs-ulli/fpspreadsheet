@@ -38,7 +38,7 @@ var
 -------------------------------------------------------------------------------}
 procedure RegisterCurrency(ACurrencySymbol: String);
 begin
-  if not CurrencyRegistered(ACurrencySymbol) then
+  if not CurrencyRegistered(ACurrencySymbol) and (ACurrencySymbol <> '') then
     CurrencyList.Add(ACurrencySymbol);
 end;
 

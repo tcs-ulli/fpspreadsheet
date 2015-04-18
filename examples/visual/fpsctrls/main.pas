@@ -312,6 +312,7 @@ type
     procedure AcColDeleteExecute(Sender: TObject);
     procedure AcFileOpenAccept(Sender: TObject);
     procedure AcFileSaveAsAccept(Sender: TObject);
+    procedure AcFileSaveAsBeforeExecute(Sender: TObject);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
@@ -403,6 +404,14 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
+end;
+
+procedure TMainForm.AcFileSaveAsBeforeExecute(Sender: TObject);
+begin
+  if WorkbookSource.FileName = '' then
+    exit;
+  AcfileSaveAs.Dialog.InitialDir := ExtractFileDir(WorkbookSource.FileName);
+  AcFileSaveAs.Dialog.FileName := ExtractFileName(WorkbookSource.FileName);
 end;
 
 { Adds a row before the active cell }

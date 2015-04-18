@@ -290,7 +290,7 @@ begin
           if FCurrentNode <> nil then
           begin
             curr := PsRowCol(FCurrentNode.Data);
-            if (curr^.Col < FStartCol) then
+            if (LongInt(curr^.Col) < FStartCol) then
               while (FCurrentNode <> nil) and not InRange(curr^.Col, FStartCol, FEndCol) do
               begin
                 FCurrentNode := FTree.FindSuccessor(FCurrentNode);
