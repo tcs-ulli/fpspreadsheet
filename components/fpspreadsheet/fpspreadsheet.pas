@@ -910,6 +910,8 @@ procedure CopyCellFormat(AFromCell, AToCell: PCell);
 var
   sourceSheet, destSheet: TsWorksheet;
   fmt: TsCellFormat;
+  numFmtParams: TsNumFormatParams;
+  nfs: String;
   font: TsFont;
   clr: TsColorvalue;
   cb: TsCellBorder;
@@ -923,7 +925,7 @@ begin
   else
   begin
     fmt := sourceSheet.ReadCellFormat(AFromCell);
-    destSheet.WriteCellFormat(AToCell, fmt);
+    //destSheet.WriteCellFormat(AToCell, fmt);
     if (uffBackground in fmt.UsedFormattingFields) then
     begin
       clr := sourceSheet.Workbook.GetPaletteColor(fmt.Background.BgColor);
@@ -936,7 +938,9 @@ begin
       font := sourceSheet.ReadCellFont(AFromCell);
       clr := sourceSheet.Workbook.GetPaletteColor(font.Color);
       font.Color := destSheet.Workbook.AddColorToPalette(clr);
-      fmt.FontIndex := destSheet.WriteFont(AToCell, font.FontName, font.Size, font.Style, font.Color);
+      fmt.FontIndex := destSheet.Workbook.FindFont(font.FontName, font.Size, font.Style, font.Color);
+      if fmt.FontIndex = -1 then
+        fmt.FontIndex := destSheet.Workbook.AddFont(font.FontName, font.Size, font.Style, font.Color);
     end;
     if (uffBorder in fmt.UsedFormattingFields) then
       for cb in fmt.Border do
@@ -944,6 +948,16 @@ begin
         clr := sourceSheet.Workbook.GetPaletteColor(fmt.BorderStyles[cb].Color);
         fmt.BorderStyles[cb].Color := destSheet.Workbook.AddColorToPalette(clr);
       end;
+    if (uffNumberformat in fmt.UsedFormattingFields) then
+    begin
+      numFmtParams := sourceSheet.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      if numFmtParams <> nil then
+      begin
+        nfs := numFmtParams.NumFormatStr[nfdExcel];
+        fmt.NumberFormatIndex := destSheet.Workbook.AddNumberFormat(nfs);
+      end;
+    end;
+
     destSheet.WriteCellFormat(AToCell, fmt);
   end;
 end;

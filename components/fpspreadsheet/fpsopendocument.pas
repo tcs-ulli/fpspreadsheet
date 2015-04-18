@@ -50,12 +50,6 @@ type
 
   { TsSpreadOpenDocNumFormatParser }
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
-    {
-  private
-    function BuildCurrencyXMLAsString(ASection: Integer): String;
-    function BuildDateTimeXMLAsString(ASection: Integer;
-      out AIsTimeOnly, AIsInterval: Boolean): String;
-      }
   protected
     function BuildXMLAsStringFromSection(ASection: Integer;
       AFormatName: String): String;
@@ -71,7 +65,6 @@ type
     FColumnList: TFPList;
     FRowStyleList: TFPList;
     FRowList: TFPList;
-//    FVolatileNumFmtList: TStringList;
     FDateMode: TDateMode;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
@@ -298,194 +291,10 @@ type
   *)
 
 
-{------------------------------------------------------------------------------}
+{******************************************************************************}
 {                     TsSpreadOpenDocNumFormatParser                           }
-{------------------------------------------------------------------------------}
+{******************************************************************************}
 
-  (*
-function TsSpreadOpenDocNumFormatParser.BuildCurrencyXMLAsString(ASection: Integer): String;
-var
-  el, next: Integer;
-  clr: TsColorValue;
-  nf: TsNumberFormat;
-  decs: byte;
-  s: String;
-  n: Integer;
-begin
-  Result := '';
-  el := 0;
-  with FSections[ASection] do
-    while el < Length(Elements) do
-    begin
-      case Elements[el].Token of
-        nftColor:
-          begin
-            clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
-            Result := Result +
-              '  <style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />';
-            inc(el);
-          end;
-        nftSign, nftSignBracket:
-          begin
-            Result := Result +
-              '  <number:text>' + Elements[el].TextValue + '</number:text>';
-            inc(el);
-          end;
-        nftSpace:
-          begin
-            Result := Result +
-              '  <number:text><![CDATA[ ]]></number:text>';
-            inc(el);
-          end;
-        nftCurrSymbol:
-          begin
-            Result := Result +
-              '  <number:currency-symbol>' + Elements[el].TextValue +
-                '</number:currency-symbol>';
-            inc(el);
-          end;
-        nftIntTh:
-          if IsNumberAt(ASection, el, nf, decs, next) then
-          begin
-            Result := Result + Format(
-              '  <number:number decimal-places="%d" ' +
-                 'number:min-integer-digits="%d" number:grouping="true" />',
-              [decs, Elements[el].IntValue]);
-            el := next;
-          end;
-        nftIntZeroDigit:
-          if IsNumberAt(ASection, el, nf, decs, next) then
-          begin
-            Result := Result + Format(
-            '  <number:number decimal-places="%d" ' +
-               'number:min-integer-digits="%d" />',
-               [decs, elements[el].IntValue]);
-            el := next;
-          end;
-        nftIntOptDigit, nftIntSpaceDigit:  // To do: SpaceDigit not correct here
-          if IsNumberAt(ASection, el, nf, decs, next) then
-          begin
-            Result := Result +
-            '  <number:number decimal-places="' + IntToStr(decs) +
-               '" number:min-integer-digits="0" />';
-            el := next;
-          end;
-        nftRepeat:
-          begin
-            if FSections[ASection].Elements[el].TextValue = ' ' then
-              s := '<![CDATA[ ]]>' else
-              s := FSections[ASection].Elements[el].TextValue;
-            Result := Result +
-            '  <number:text>' + s + '</number:text>';
-            inc(el);
-          end
-        else
-          inc(el);
-      end; // case
-    end;  // while
-end;
-
-function TsSpreadOpenDocNumFormatParser.BuildDateTimeXMLAsString(ASection: Integer;
-  out AIsTimeOnly, AIsInterval: boolean): String;
-var
-  el: Integer;
-  s: String;
-  prevTok: TsNumFormatToken;
-begin
-  Result := '';
-  AIsTimeOnly := true;
-  AIsInterval := false;
-  with FSections[ASection] do
-  begin
-    el := 0;
-    while el < Length(Elements) do
-    begin
-      case Elements[el].Token of
-        nftYear:
-          begin
-            prevTok := Elements[el].Token;
-            AIsTimeOnly := false;
-            s := IfThen(Elements[el].IntValue > 2, 'number:style="long" ', '');
-            Result := Result +
-              '<number:year ' + s + '/>';
-          end;
-
-        nftMonth:
-          begin
-            prevTok := Elements[el].Token;
-            AIsTimeOnly := false;
-            case Elements[el].IntValue of
-              1: s := '';
-              2: s := 'number:style="long" ';
-              3: s := 'number:textual="true" ';
-              4: s := 'number:style="long" number:textual="true" ';
-            end;
-            Result := result +
-              '<number:month ' + s + '/>';
-          end;
-
-        nftDay:
-          begin
-            prevTok := Elements[el].Token;
-            AIsTimeOnly := false;
-            case Elements[el].IntValue of
-              1: s := 'day ';
-              2: s := 'day number:style="long" ';
-              3: s := 'day-of-week ';
-              4: s := 'day-of-week number:style="long" ';
-            end;
-            Result := Result +
-              '<number:' + s + '/>';
-          end;
-
-        nftHour, nftMinute, nftSecond:
-          begin
-            prevTok := Elements[el].Token;
-            case Elements[el].Token of
-              nftHour  : s := 'hours ';
-              nftMinute: s := 'minutes ';
-              nftSecond: s := 'seconds ';
-            end;
-            s := s + IfThen(abs(Elements[el].IntValue) = 1, '', 'number:style="long" ');
-            if Elements[el].IntValue < 0 then
-              AIsInterval := true;
-            Result := Result +
-              '<number:' + s + '/>';
-          end;
-
-        nftMilliseconds:
-          begin
-             // ???
-          end;
-
-        nftDateTimeSep, nftText, nftEscaped, nftSpace:
-          begin
-            if Elements[el].TextValue = ' ' then
-              s := '<![CDATA[ ]]>'
-            else
-            begin
-              s := Elements[el].TextValue;
-              if (s = '/') then
-              begin
-                if prevTok in [nftYear, nftMonth, nftDay] then
-                  s := FWorkbook.FormatSettings.DateSeparator
-                else
-                  s := FWorkbook.FormatSettings.TimeSeparator;
-              end;
-            end;
-            Result := Result +
-              '<number:text>' + s + '</number:text>';
-          end;
-
-        nftAMPM:
-          Result := Result +
-            '<number:am-pm />';
-      end;
-      inc(el);
-    end;
-  end;
-end;
-*)
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AFormatName: String): String;
 var
   i: Integer;
@@ -509,7 +318,6 @@ var
   mask: String;
   timeIntervalStr: String;
   styleMapStr: String;
-
 begin
   Result := '';
 
@@ -577,7 +385,7 @@ begin
               Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
               inc(el, 2);
             end else
-            if (el = nel) or (Elements[el+1].Token <> nftDecSep) then
+            if (el = nel-1) or (Elements[el+1].Token <> nftDecSep) then
               Result := Result + ' number:decimal-places="0"';
             Result := Result + ' />';
           end;
@@ -645,7 +453,7 @@ begin
             end
             else
             // Standard integer
-            if (el = nel) or (Elements[el+1].Token <> nftDecSep) then
+            if (el = nel-1) or (Elements[el+1].Token <> nftDecSep) then
             begin
               Result := Result + '<number:number number:decimal-places="0"';
               n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
@@ -741,144 +549,11 @@ begin
     Result := Format(mask, [AFormatName, TimeIntervalStr, Result, StyleMapStr]);
   end;
 end;
-(*
-
-    if IsTokenAt(nftColor, ASection, el) then
-    begin
-      clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
-      sColor := '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
-      el := 1;
-    end;
-
-    // Find start of number format code
-    while (el < Length(Elements)) and not IsNumberAt(ASection, el, nf, decs, next) do
-      inc(el);
-
-    if IsNumberAt(ASection, el, nf, decs, next) then
-    begin
-      if nf = nfFixedTh then
-        sGrouping := 'number:grouping="true" ';
-
-      // nfFixed, nfFixedTh
-      if (next = Length(Elements)) then
-      begin
-        Result :=
-          '<number:number-style style:name="' + AFormatName + '">' +
-          sColor +
-            '<number:number ' +
-              'number:min-integer-digits="1" ' + sGrouping +
-              'number:decimal-places="' + IntToStr(decs) +
-            '" />' +
-            sStylemap +
-          '</number:number-style>';
-        exit;
-      end;
-
-      // nfPercentage
-      if (nfkPercent in Kind) then
-      begin
-        Result :=
-          '<number:percentage-style style:name="' + AFormatName + '">' +
-          sColor +
-            '<number:number ' +
-              'number:min-integer-digits="1" ' + sGrouping +
-              'number:decimal-places="' + IntToStr(decs) + '" />' +
-              '<number:text>%</number:text>' +
-            sStyleMap +
-            '</number:percentage-style>';
-        exit;
-      end;
-
-      // nfExp
-      if (nf = nfFixed) and IsTokenAt(nftExpChar, ASection, next) then
-      begin
-        if (next + 2 < Length(Elements)) and
-           IsTokenAt(nftExpSign, ASection, next+1) and
-           IsTokenAt(nftExpDigits, ASection, next+2)
-        then
-          expdig := Elements[next+2].IntValue
-        else
-        if (next + 1 < Length(Elements)) and
-           IsTokenAt(nftExpDigits, ASection, next+1)
-        then
-          expdig := Elements[next+1].IntValue
-        else
-          exit;
-        Result :=
-          '<number:number-style style:name="' + AFormatName + '">' +
-            sColor +
-            '<number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
-              'number:min-integer-digits="1" '+
-              'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
-              sStylemap +
-            '</number:number-style>';
-        exit;
-      end;
-
-      // nfFraction
-      if (nf in [nfFixed, nfFraction]) and (nfkFraction in Kind) and (decs = 0) then
-      begin
-        if IsTokenAt(nftIntOptDigit, ASection, el) then
-          Result :=
-            '<number:number-style style:name="' + AFormatName + '">' +
-              sColor +
-              '<number:fraction ' +
-                'number:min-integer-digits="' + IntToStr(FracInt) + '" ' +
-                'number:min-numerator-digits="' + IntToStr(FracNumerator) + '" ' +
-                'number:min-denominator-digits="' + IntToStr(FracDenominator) + '" ' +
-              '/>' +
-            '</number:number-style>'
-        else
-          Result :=
-            '<number:number-style style:name="' + AFormatName + '">' +
-              sColor +
-              '<number:fraction ' +
-                'number:min-numerator-digits="' + IntToStr(FracNumerator) + '" ' +
-                'number:min-denominator-digits="' + IntToStr(FracDenominator) + '" ' +
-              '/>' +
-            '</number:number-style>';
-        exit;
-      end;
-
-      // nfCurrency
-      if (nfkCurrency in Kind) then
-      begin
-        Result :=
-          '<number:currency-style style:name="' + AFormatName + '">' +
-            BuildCurrencyXMLAsString(ASection) +
-            sStyleMap +
-          '</number:currency-style>';
-        exit;
-      end;
-    end;
-
-    // If the program gets here the format can only be date/time.
-    if (Kind * [nfkDate, nfkTime] <> []) then
-    begin
-      s := BuildDateTimeXMLAsString(ASection, isTimeOnly, isInterval);
-      if isTimeOnly then
-      begin
-        Result := Result +
-          '<number:time-style ' +
-           'style:name="' + AFormatName + '"' +
-           IfThen(isInterval, ' number:truncate-on-overflow="false"') + '>' +
-             s +
-             sStylemap +
-          '</number:time-style>';
-      end else
-        Result := Result +
-          '<number:date-style style:name="' + AFormatName + '">' +
-            s +
-            sStylemap +
-          '</number:date-style>';
-      exit;
-    end;
-  end;
-end;
-*)
 
 
-{ TsSpreadOpenDocReader }
+{******************************************************************************}
+{                         TsSpreadOpenDocReader                                }
+{******************************************************************************}
 
 constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
