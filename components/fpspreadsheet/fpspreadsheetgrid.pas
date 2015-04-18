@@ -19,7 +19,11 @@ unit fpspreadsheetgrid;
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
    FindNearestPaletteIndex.
  - Arial bold is not shown as such if loaded from ods
- - Background color of first cell is ignored.                                  }
+ - Background color of first cell is ignored.
+
+ - Enter 1234567890 into a cell. reduce col width with mouse. Immediately
+   before display becomes #### there is 11E09 in the cell - it should be 1E09.
+   Cell not correctly erased? }
 
 interface
 
@@ -585,7 +589,7 @@ procedure Register;
 implementation
 
 uses
-  Types, LCLType, LCLIntf, LCLProc, Math,
+  Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
   fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils;
 
 const
@@ -1334,6 +1338,9 @@ var
   style: TFontStyles;
   isSelected: Boolean;
   fgcolor, bgcolor: TColor;
+  numFmt: TsNumFormatParams;
+  sidx: Integer;
+  clr: Integer;
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
@@ -1367,6 +1374,7 @@ begin
     if lCell <> nil then
     begin
       fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+      numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
 
       // Background color
       if (uffBackground in fmt^.UsedFormattingFields) then
@@ -1424,10 +1432,26 @@ begin
         if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
         Canvas.Font.Style := style;
       end;
+      if not IsNaN(lCell^.NumberValue) and (numFmt <> nil) then
+      begin
+        sidx := 0;
+        if (Length(numFmt.Sections) > 1) and (lCell^.NumberValue < 0) then
+          sidx := 1
+        else
+        if (Length(numFmt.Sections) > 2) and (lCell^.NumberValue = 0) then
+          sidx := 2;
+        if numFmt.Sections[sidx].Elements[0].Token = nftColor then
+        begin
+          clr := numFmt.Sections[sidx].Elements[0].IntValue;
+          Canvas.Font.Color := Workbook.GetPaletteColor(clr);
+        end;
+      end;
+      {
       if (fmt^.NumberFormat = nfCurrencyRed) and
          not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
       then
         Canvas.Font.Color := Workbook.GetPaletteColor(scRed);
+        }
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;
@@ -3834,8 +3858,10 @@ var
   p: Integer;
   isRotated: Boolean;
   isStacked: Boolean;
-  tr: TsTextRotation;
   fmt: PsCellFormat;
+  numFmt: TsNumFormatParams;
+  nfs: String;
+  isGeneralFmt: Boolean;
 begin
   Result := Worksheet.ReadAsUTF8Text(ACell);
   if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
@@ -3843,11 +3869,10 @@ begin
     exit;
 
   fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-  tr := fmt^.TextRotation;
-  isRotated := (tr <> trHorizontal);
-  isStacked := (tr = rtStacked);
-//  isRotated := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation <> trHorizontal);
-//  isStacked := (uffTextRotation in ACell^.UsedFormattingFields) and (ACell^.TextRotation = rtStacked);
+  isRotated := (fmt^.TextRotation <> trHorizontal);
+  isStacked := (fmt^.TextRotation = rtStacked);
+  numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+  isGeneralFmt := (numFmt = nil);
 
   // Determine space available in cell
   if isRotated then
@@ -3865,7 +3890,7 @@ begin
   if txtSize <= cellSize then
     exit;
 
-  if (ACell^.ContentType = cctNumber) and (fmt^.NumberFormat = nfGeneral) then
+  if (ACell^.ContentType = cctNumber) and isGeneralFmt then
   begin
     // Determine number of decimal places
     p := pos(Workbook.FormatSettings.DecimalSeparator, Result);
@@ -3893,7 +3918,9 @@ begin
     while decs > 0 do
     begin
       dec(decs);
-      Result := Format('%.*e', [decs, ACell^.NumberValue], Workbook.FormatSettings);
+      nfs := '0.' + DupeString('0', decs) + 'E-00';
+      Result := FormatFloat(nfs, ACell^.NumberValue, Workbook.FormatSettings);
+//      Result := Format('%.*e', [decs, ACell^.NumberValue], Workbook.FormatSettings);
       if isStacked then
         txtSize := Length(Result) * Canvas.TextHeight('A')
       else
@@ -3966,6 +3993,8 @@ var
   lRow: PRow;
   h: Integer;
 begin
+  Unused(AStartIndex);
+
   {
   BeginUpdate;
   if AStartIndex <= 0 then AStartIndex := FHeaderCount;

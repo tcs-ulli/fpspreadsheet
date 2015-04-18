@@ -31,6 +31,7 @@ resourcestring
   rsInvalidNumberFormat = 'Trying to use an incompatible number format.';
   rsInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
   rsNoValidNumberFormatString = 'No valid number format string.';
+  rsIsNoValidNumberFormatString = '%s is not a valid number format string.';
   rsNoValidCellAddress = '"%s" is not a valid cell address.';
   rsNoValidCellRangeAddress = '"%s" is not a valid cell range address.';
   rsNoValidCellRangeOrCellAddress = '"%s" is not a valid cell or cell range address.';
@@ -76,11 +77,6 @@ resourcestring
   rsErrOverflow = '#NUM!';
   rsErrArgError = '#N/A';
   rsErrFormulaNotSupported = '<FORMULA?>';
-
-(*
-  {%H-}rsNoValidDateTimeFormatString = 'No valid date/time format string.';
-  {%H-}rsIllegalNumberFormat = 'Illegal number format.';
-  *)
 
 implementation
 

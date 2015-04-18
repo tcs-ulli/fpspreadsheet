@@ -105,6 +105,7 @@ begin
   Myworksheet.Writenumber(5, 6, 12345.6789, nfExp, 4);
   MyWorksheet.WriteCurrency(6, 6,-12345.6789, nfCurrency, 2);
   MyWorksheet.WriteCurrency(7, 6,-12345.6789, nfCurrencyRed, 2);
+  MyWorksheet.WriteNumber(8, 6, 1.66666667, nfFraction, '# ?/?');
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML);

@@ -47,15 +47,6 @@ uses
   
 type
 
-  { TsOOXMLFormatList }
-  TsOOXMLNumFormatList = class(TsCustomNumFormatList)
-  protected
-    procedure AddBuiltinFormats; override;
-  public
-    procedure ConvertBeforeWriting(var AFormatString: String;
-      var ANumFormat: TsNumberFormat); override;
-  end;
-
   { TsSpreadOOXMLReader }
 
   TsSpreadOOXMLReader = class(TsSpreadXMLReader)
@@ -96,7 +87,8 @@ type
     procedure ReadThemeColors(ANode: TDOMNode);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
   protected
-    procedure CreateNumFormatList; override;
+    FFirstNumFormatIndexInFile: Integer;
+    procedure AddBuiltinNumFormats; override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -109,9 +101,7 @@ type
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
     FNext_rId: Integer;
-    procedure WriteVmlDrawingsCallback(AComment: PsComment;
-      ACommentIndex: Integer; AStream: TStream);
-
+    FFirstNumFormatIndexInFile: Integer;
   protected
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
@@ -119,8 +109,7 @@ type
     FFillList: array of PsCellFormat;
     FBorderList: array of PsCellFormat;
   protected
-    { Helper routines }
-    procedure CreateNumFormatList; override;
+    procedure AddBuiltinNumFormats; override;
     procedure CreateStreams;
     procedure DestroyStreams;
     function  FindBorderInList(AFormat: PsCellFormat): Integer;
@@ -377,85 +366,9 @@ const
     );
 
 
-
-
-{ TsOOXMLNumFormatList }
-
-{ These are the built-in number formats as expected in the biff spreadsheet file.
-  Identical to BIFF8. These formats are not written to file but they are used
-  for lookup of the number format that Excel used. They are specified here in
-  fpc dialect. }
-procedure TsOOXMLNumFormatList.AddBuiltinFormats;
-var
-  fs: TFormatSettings;
-  cs: String;
-begin
-  fs := Workbook.FormatSettings;
-  cs := AnsiToUTF8(Workbook.FormatSettings.CurrencyString);
-
-  AddFormat( 0, nfGeneral, '');
-  AddFormat( 1, nfFixed, '0');
-  AddFormat( 2, nfFixed, '0.00');
-  AddFormat( 3, nfFixedTh, '#,##0');
-  AddFormat( 4, nfFixedTh, '#,##0.00');
-  AddFormat( 5, nfCurrency, '"'+cs+'"#,##0_);("'+cs+'"#,##0)');
-  AddFormat( 6, nfCurrencyRed, '"'+cs+'"#,##0_);[Red]("'+cs+'"#,##0)');
-  AddFormat( 7, nfCurrency, '"'+cs+'"#,##0.00_);("'+cs+'"#,##0.00)');
-  AddFormat( 8, nfCurrencyRed, '"'+cs+'"#,##0.00_);[Red]("'+cs+'"#,##0.00)');
-  AddFormat( 9, nfPercentage, '0%');
-  AddFormat(10, nfPercentage, '0.00%');
-  AddFormat(11, nfExp, '0.00E+00');
-  AddFormat(12, nfFraction, '# ?/?');
-  AddFormat(13, nfFraction, '# ??/??');
-  AddFormat(14, nfShortDate, fs.ShortDateFormat);                       // 'M/D/YY'
-  AddFormat(15, nfLongDate, fs.LongDateFormat);                         // 'D-MMM-YY'
-  AddFormat(16, nfCustom, 'd/mmm');                                     // 'D-MMM'
-  AddFormat(17, nfCustom, 'mmm/yy');                                    // 'MMM-YY'
-  AddFormat(18, nfShortTimeAM, AddAMPM(fs.ShortTimeFormat, fs));        // 'h:mm AM/PM'
-  AddFormat(19, nfLongTimeAM, AddAMPM(fs.LongTimeFormat, fs));          // 'h:mm:ss AM/PM'
-  AddFormat(20, nfShortTime, fs.ShortTimeFormat);                       // 'h:mm'
-  AddFormat(21, nfLongTime, fs.LongTimeFormat);                         // 'h:mm:ss'
-  AddFormat(22, nfShortDateTime, fs.ShortDateFormat + ' ' + fs.ShortTimeFormat);  // 'M/D/YY h:mm' (localized)
-  // 23..36 not supported
-  AddFormat(37, nfCurrency, '_(#,##0_);(#,##0)');
-  AddFormat(38, nfCurrencyRed, '_(#,##0_);[Red](#,##0)');
-  AddFormat(39, nfCurrency, '_(#,##0.00_);(#,##0.00)');
-  AddFormat(40, nfCurrencyRed, '_(#,##0.00_);[Red](#,##0.00)');
-  AddFormat(41, nfCustom, '_("'+cs+'"* #,##0_);_("'+cs+'"* (#,##0);_("'+cs+'"* "-"_);_(@_)');
-  AddFormat(42, nfCustom, '_(* #,##0_);_(* (#,##0);_(* "-"_);_(@_)');
-  AddFormat(43, nfCustom, '_("'+cs+'"* #,##0.00_);_("'+cs+'"* (#,##0.00);_("'+cs+'"* "-"??_);_(@_)');
-  AddFormat(44, nfCustom, '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)');
-  AddFormat(45, nfCustom, 'nn:ss');
-  AddFormat(46, nfTimeInterval, '[h]:nn:ss');
-  AddFormat(47, nfCustom, 'nn:ss.z');
-  AddFormat(48, nfCustom, '##0.0E+00');
-  // 49 ("Text") not supported
-
-  // All indexes from 0 to 163 are reserved for built-in formats.
-  // The first user-defined format starts at 164.
-  FFirstNumFormatIndexInFile := 164;
-  FNextNumFormatIndex := 164;
-end;
-
-procedure TsOOXMLNumFormatList.ConvertBeforeWriting(var AFormatString: String;
-  var ANumFormat: TsNumberFormat);
-var
-  parser: TsNumFormatParser;
-begin
-  parser := TsNumFormatParser.Create(Workbook, AFormatString, ANumFormat);
-  try
-    if parser.Status = psOK then begin
-      // For writing, we have to convert the fpc format string to Excel dialect
-      AFormatString := parser.FormatString[nfdExcel];
-      ANumFormat := parser.NumFormat;
-    end;
-  finally
-    parser.Free;
-  end;
-end;
-
-
-{ TsSpreadOOXMLReader }
+{------------------------------------------------------------------------------}
+{                           TsSpreadOOXMLReader                                }
+{------------------------------------------------------------------------------}
 
 constructor TsSpreadOOXMLReader.Create(AWorkbook: TsWorkbook);
 begin
@@ -492,9 +405,20 @@ begin
   FSharedStrings.Free;
   FSharedFormulaBaseList.Free;   // Don't free items, they are worksheet cells
 
-  // FCellFormatList and FFontList are destroyed by ancestor
+  // FCellFormatList, FNumFormatList and FFontList are destroyed by ancestor
 
   inherited Destroy;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds the built-in number formats to the NumFormatList.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLReader.AddBuiltinNumFormats;
+begin
+  FFirstNumFormatIndexInFile := 164;
+  AddBuiltInBiffFormats(
+    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1, nfdDefault
+  );
 end;
 
 procedure TsSpreadOOXMLReader.ApplyCellFormatting(ACell: PCell; XFIndex: Integer);
@@ -556,15 +480,10 @@ begin
   Result := '';
 end;
 
-procedure TsSpreadOOXMLReader.CreateNumFormatList;
-begin
-  FreeAndNil(FNumFormatList);
-  FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
-end;
-
 procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
 
-  function ReadBorderStyle(ANode: TDOMNode; out ABorderStyle: TsCellBorderStyle): Boolean;
+  function ReadBorderStyle(ANode: TDOMNode;
+    out ABorderStyle: TsCellBorderStyle): Boolean;
   var
     s: String;
     colorNode: TDOMNode;
@@ -675,8 +594,7 @@ var
   sstIndex: Integer;
   number: Double;
   fmt: TsCellFormat;
-  rng: TsCellRange;
-  r,c: Cardinal;
+  numFmt: TsNumFormatParams = nil;
 begin
   if ANode = nil then
     exit;
@@ -700,6 +618,9 @@ begin
     fmt := Workbook.GetCellFormat(cell^.FormatIndex);
   end else
     InitFormatRecord(fmt);
+
+  // get number format parameters
+  numFmt := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
 
   // get data
   datanode := ANode.FirstChild;
@@ -754,10 +675,11 @@ begin
   if (s = '') or (s = 'n') then begin
     // Number or date/time, depending on format
     number := StrToFloat(dataStr, FPointSeparatorSettings);
-    if IsDateTimeFormat(fmt.NumberFormatStr) then begin
-      if fmt.NumberFormat <> nfTimeInterval then   // no correction of time origin for "time interval" format
+    if IsDateTimeFormat(numFmt) then
+    begin
+      if not IsTimeIntervalFormat(numFmt) then   // no correction of time origin for "time interval" format
         number := ConvertExcelDateTimeToDateTime(number, FDateMode);
-      AWorksheet.WriteDateTime(cell, number, fmt.NumberFormatStr)
+      AWorksheet.WriteDateTime(cell, number);
     end
     else
       AWorksheet.WriteNumber(cell, number);
@@ -809,8 +731,9 @@ var
   fmt: TsCellFormat;
   fs: TsFillStyle;
   s1, s2: String;
-  i, numFmtIndex, fillIndex, borderIndex: Integer;
-  numFmtData: TsNumFormatData;
+  numFmtIndex, fillIndex, borderIndex: Integer;
+  numFmtStr: String;
+  numFmtParams: TsNumFormatParams;
   fillData: TFillListData;
   borderData: TBorderListData;
   fnt: TsFont;
@@ -832,14 +755,24 @@ begin
       if (s1 <> '') and (s2 <> '0') then
       begin
         numFmtIndex := StrToInt(s1);
-        i := NumFormatList.FindByIndex(numFmtIndex);
-        if i > -1 then
+        numFmtStr := NumFormatList[numFmtIndex];
+        if SameText(numFmtStr, 'General') then
+          numFmtParams := nil
+        else
         begin
-          numFmtData := NumFormatList.Items[i];
-          fmt.NumberFormat := numFmtData.NumFormat;
-          fmt.NumberFormatStr := numFmtData.FormatString;
-          if numFmtData.NumFormat <> nfGeneral then
-            Include(fmt.UsedFormattingFields, uffNumberFormat);
+          fmt.NumberFormatIndex := Workbook.AddNumberFormat(numFmtStr);
+          numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+        end;
+        if numFmtParams <> nil then
+        begin
+          fmt.NumberFormat := numFmtParams.NumFormat;
+          fmt.NumberFormatStr := numFmtStr;
+          Include(fmt.UsedFormattingFields, uffNumberFormat);
+        end else
+        begin
+          fmt.NumberFormat := nfGeneral;
+          fmt.NumberFormatStr := '';
+          Exclude(fmt.UsedFormattingFields, uffNumberFormat);
         end;
       end;
 
@@ -851,10 +784,6 @@ begin
         fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
         if fmt.FontIndex = -1 then
           fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
-        {
-        if fmt.FontIndex = BOLD_FONTINDEX then
-          Include(fmt.UsedFormattingFields, uffBold)
-        else }
         if fmt.FontIndex > 0 then
           Include(fmt.UsedFormattingFields, uffFont);
       end;
@@ -1344,22 +1273,28 @@ begin
   end;
 end;
 
-
 procedure TsSpreadOOXMLReader.ReadNumFormats(ANode: TDOMNode);
 var
   node: TDOMNode;
   idStr: String;
   fmtStr: String;
   nodeName: String;
+  id: Integer;
 begin
-  if Assigned(ANode) then begin
+  if Assigned(ANode) then
+  begin
     node := ANode.FirstChild;
-    while Assigned(node) do begin
+    while Assigned(node) do
+    begin
       nodeName := node.NodeName;
-      if nodeName = 'numFmt' then begin
-        idStr := GetAttrValue(node, 'numFmtId');
+      if nodeName = 'numFmt' then
+      begin
         fmtStr := GetAttrValue(node, 'formatCode');
-        NumFormatList.AnalyzeAndAdd(StrToInt(idStr), fmtStr);
+        idStr := GetAttrValue(node, 'numFmtId');
+        id := StrToInt(idStr);
+        while id >= NumFormatList.Count do
+          NumFormatList.Add('');
+        NumFormatList[id] := fmtStr;
       end;
       node := node.NextSibling;
     end;
@@ -1787,7 +1722,33 @@ begin
 end;
 
 
-{ TsSpreadOOXMLWriter }
+{------------------------------------------------------------------------------}
+{                             TsSpreadOOXMLWriter                              }
+{------------------------------------------------------------------------------}
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the OOXML writer
+
+  Defines the date mode and the limitations of the file format.
+  Initializes the format settings to be used when writing to xml.
+-------------------------------------------------------------------------------}
+constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+
+  // Initial base date in case it won't be set otherwise.
+  // Use 1900 to get a bit more range between 1900..1904.
+  FDateMode := XlsxSettings.DateMode;
+
+  // Special version of FormatSettings using a point decimal separator for sure.
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+
+  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
+  FLimitations.MaxColCount := 16384;
+  FLimitations.MaxRowCount := 1048576;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Looks for the combination of border attributes of the given format record in
@@ -2044,8 +2005,6 @@ begin
       '<commentList>');
 
   // Comments
-  //IterateThroughComments(FSComments[FCurSheetNum], AWorksheet.Comments, WriteCommentsCallback);
-
   for comment in AWorksheet.Comments do
   begin
     txt := comment^.Text;
@@ -2068,72 +2027,12 @@ begin
         '</comment>');
   end;
 
-  (*
-  procedure TsSpreadOOXMLWriter.WriteCommentsCallback(AComment: PsComment;
-    ACommentIndex: Integer; AStream: TStream);
-  var
-    comment: String;
-  begin
-    Unused(ACommentIndex);
-
-    comment := AComment^.Text;
-    ValidXMLText(comment);
-
-    // Write comment to Comments stream
-    AppendToStream(AStream, Format(
-      '<comment ref="%s" authorId="0">', [GetCellString(AComment^.Row, AComment^.Col)]));
-    AppendToStream(AStream,
-        '<text>'+
-          '<r>'+
-            '<rPr>'+     // this entire node could be omitted, but then Excel uses some default font out of control
-              '<sz val="9"/>'+
-              '<color rgb="000000" />'+   // It could be that color index 81 does not exist in fps files --> use rgb instead
-              '<rFont val="Arial"/>'+     // It is not harmful to Excel if the font does not exist.
-              '<charset val="1"/>'+
-            '</rPr>'+
-            '<t xml:space="preserve">' + comment + '</t>' +
-          '</r>'+
-        '</text>');
-    AppendToStream(AStream,
-      '</comment>');
-  end;
-  *)
-
   // Footer
   AppendToStream(FSComments[FCurSheetNum],
       '</commentList>');
   AppendToStream(FSComments[FCurSheetNum],
     '</comments>');
 end;
-                              (*
-procedure TsSpreadOOXMLWriter.WriteCommentsCallback(AComment: PsComment;
-  ACommentIndex: Integer; AStream: TStream);
-var
-  comment: String;
-begin
-  Unused(ACommentIndex);
-
-  comment := AComment^.Text;
-  ValidXMLText(comment);
-
-  // Write comment to Comments stream
-  AppendToStream(AStream, Format(
-    '<comment ref="%s" authorId="0">', [GetCellString(AComment^.Row, AComment^.Col)]));
-  AppendToStream(AStream,
-      '<text>'+
-        '<r>'+
-          '<rPr>'+     // this entire node could be omitted, but then Excel uses some default font out of control
-            '<sz val="9"/>'+
-            '<color rgb="000000" />'+   // It could be that color index 81 does not exist in fps files --> use rgb instead
-            '<rFont val="Arial"/>'+     // It is not harmful to Excel if the font does not exist.
-            '<charset val="1"/>'+
-          '</rPr>'+
-          '<t xml:space="preserve">' + comment + '</t>' +
-        '</r>'+
-      '</text>');
-  AppendToStream(AStream,
-    '</comment>');
-end;                            *)
 
 procedure TsSpreadOOXMLWriter.WriteDimension(AStream: TStream;
   AWorksheet: TsWorksheet);
@@ -2311,31 +2210,33 @@ end;
   FirstFormatIndexInFile. }
 procedure TsSpreadOOXMLWriter.WriteNumFormatList(AStream: TStream);
 var
-  i: Integer;
-  item: TsNumFormatData;
-  s: String;
-  n: Integer;
+  i, n: Integer;
+  numFmtStr: String;
+  xmlStr: String;
+  parser: TsNumFormatParser;
 begin
-  s := '';
+  xmlStr := '';
   n := 0;
-  i := NumFormatList.FindByIndex(NumFormatList.FirstNumFormatIndexInFile);
-  if i > -1 then begin
-    while i < NumFormatList.Count do begin
-      item := NumFormatList[i];
-      if item <> nil then begin
-        s := s + Format('<numFmt numFmtId="%d" formatCode="%s" />',
-          [item.Index, UTF8TextToXMLText(NumFormatList.FormatStringForWriting(i))]);
-        inc(n);
-      end;
-      inc(i);
+  for i:= FFirstNumFormatIndexInFile to NumFormatList.Count-1 do
+  begin
+    numFmtStr := NumFormatList[i];
+    parser := TsNumFormatParser.Create(Workbook, numFmtStr);
+    try
+      numFmtStr := UTF8TextToXMLText(parser.FormatString[nfdExcel]);
+      xmlStr := xmlStr + Format('<numFmt numFmtId="%d" formatCode="%s" />',
+        [i, numFmtStr]);
+      inc(n);
+    finally
+      parser.Free;
     end;
-    if n > 0 then
-      AppendToStream(AStream, Format(
-        '<numFmts count="%d">', [n]),
-          s,
-        '</numFmts>'
-      );
   end;
+
+  if n > 0 then
+    AppendToStream(AStream, Format(
+      '<numFmts count="%d">', [n]),
+        xmlStr,
+      '</numFmts>'
+    );
 end;
 
 { Writes the workbook's color palette to the file }
@@ -2551,7 +2452,8 @@ var
 //  styleCell: TCell;
   s, sAlign: String;
   fontID: Integer;
-  numFmtId: Integer;
+  numFmtParams: TsNumFormatParams;
+  numFmtStr: String;
   fillId: Integer;
   borderId: Integer;
   idx: Integer;
@@ -2570,19 +2472,18 @@ begin
     { Number format }
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
     begin
-      idx := NumFormatList.Find(fmt^.NumberFormat, fmt^.NumberFormatStr);
-      if idx > -1 then begin
-        numFmtID := NumFormatList[idx].Index;
-        s := s + Format('numFmtId="%d" applyNumberFormat="1" ', [numFmtId]);
-      end;
+      numFmtParams := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+      if numFmtParams <> nil then
+      begin
+        numFmtStr := numFmtParams.NumFormatStr[nfdExcel];
+        idx := NumFormatList.IndexOf(numFmtStr);
+      end else
+        idx := 0;  // "General" format is at index 0
+      s := s + Format('numFmtId="%d" applyNumberFormat="1" ', [idx]);
     end;
 
     { Font }
     fontId := 0;
-    {
-    if (uffBold in fmt^.UsedFormattingFields) then
-      fontID := BOLD_FONTINDEX;
-    }
     if (uffFont in fmt^.UsedFormattingFields) then
       fontID := fmt^.FontIndex;
     s := s + Format('fontId="%d" ', [fontId]);
@@ -2715,46 +2616,9 @@ begin
     '  </v:shape>' + LineEnding);
   end;
 
-  //IterateThroughComments(FSVmlDrawings[FCurSheetNum], AWorksheet.Comments, WriteVmlDrawingsCallback);
-
   // Footer
   AppendToStream(FSVmlDrawings[FCurSheetNum],
     '</xml>');
-end;
-
-procedure TsSpreadOOXMLWriter.WriteVmlDrawingsCallback(AComment: PsComment;
-  ACommentIndex: integer; AStream: TStream);
-var
-  id: Integer;
-begin
-  id := 1025 + ACommentIndex;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
-
-  // My xml viewer does not format vml files property --> format in code.
-  AppendToStream(AStream, LineEnding + Format(
-    '  <v:shape id="_x0000_s%d" type="#_x0000_t202" ', [id]) + LineEnding + Format(
-    '       style="position:absolute; width:108pt; height:52.5pt; z-index:%d; visibility:hidden" ', [ACommentIndex+1]) + LineEnding +
-            // it is not necessary to specify margin-left and margin-top here!
-
-//            'style=''position:absolute; margin-left:71.25pt; margin-top:1.5pt; ' + Format(
-//                   'width:108pt; height:52.5pt; z-index:%d; visibility:hidden'' ', [FDrawingCounter+1]) +
-                //          'width:108pt; height:52.5pt; z-index:1; visibility:hidden'' ' +
-
-    '       fillcolor="#ffffe1" o:insetmode="auto"> '+ LineEnding +
-    '    <v:fill color2="#ffffe1" />'+LineEnding+
-    '    <v:shadow on="t" color="black" obscured="t" />'+LineEnding+
-    '    <v:path o:connecttype="none" />'+LineEnding+
-    '    <v:textbox style="mso-direction-alt:auto">'+LineEnding+
-    '      <div style="text-align:left"></div>'+LineEnding+
-    '    </v:textbox>' + LineEnding +
-    '    <x:ClientData ObjectType="Note">'+LineEnding+
-    '      <x:MoveWithCells />'+LineEnding+
-    '      <x:SizeWithCells />'+LineEnding+
-    '      <x:Anchor> 1, 15, 0, 2, 2, 79, 4, 4</x:Anchor>'+LineEnding+
-    '      <x:AutoFill>False</x:AutoFill>'+LineEnding + Format(
-    '      <x:Row>%d</x:Row>', [AComment^.Row]) + LineEnding + Format(
-    '      <x:Column>%d</x:Column>', [AComment^.Col]) + LineEnding +
-    '    </x:ClientData>'+ LineEnding+
-    '  </v:shape>' + LineEnding);
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
@@ -2973,12 +2837,7 @@ begin
     XML_HEADER);
   AppendToStream(FSContentTypes,
     '<Types xmlns="' + SCHEMAS_TYPES + '">');
-    (*
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/_rels/.rels" ContentType="' + MIME_RELS + '" />');
-  AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/_rels/workbook.xml.rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />');
-      *)
+
   AppendToStream(FSContentTypes, Format(
       '<Default Extension="rels" ContentType="%s" />', [MIME_RELS]));
   AppendToStream(FSContentTypes, Format(
@@ -3039,30 +2898,21 @@ begin
     '</worksheet>');
 end;
 
-constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsWorkbook);
+{@@ ----------------------------------------------------------------------------
+  Adds the built-in number formats to the NumFormatList.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLWriter.AddBuiltinNumFormats;
 begin
-  inherited Create(AWorkbook);
-  // Initial base date in case it won't be set otherwise.
-  // Use 1900 to get a bit more range between 1900..1904.
-  FDateMode := XlsxSettings.DateMode;
-
-  // Special version of FormatSettings using a point decimal separator for sure.
-  FPointSeparatorSettings := DefaultFormatSettings;
-  FPointSeparatorSettings.DecimalSeparator := '.';
-
-  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
-  FLimitations.MaxColCount := 16384;
-  FLimitations.MaxRowCount := 1048576;
+  FFirstNumFormatIndexInFile := 164;
+  AddBuiltInBiffFormats(
+    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1, nfdExcel
+  );
 end;
 
-procedure TsSpreadOOXMLWriter.CreateNumFormatList;
-begin
-  FreeAndNil(FNumFormatList);
-  FNumFormatList := TsOOXMLNumFormatList.Create(Workbook);
-end;
-
-{ Creates the streams for the individual data files. Will be zipped into a
-  single xlsx file. }
+{@@ ----------------------------------------------------------------------------
+  Creates the streams for the individual data files. Will be zipped into a
+  single xlsx file.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.CreateStreams;
 begin
   if (boBufStream in Workbook.Options) then begin
@@ -3085,7 +2935,9 @@ begin
   // FSSheets will be created when needed.
 end;
 
-{ Destroys the streams that were created by the writer }
+{@@ ----------------------------------------------------------------------------
+  Destroys the streams that were created by the writer
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.DestroyStreams;
 
   procedure DestroyStream(AStream: TStream);
@@ -3119,7 +2971,10 @@ begin
   SetLength(FSVmlDrawings, 0);
 end;
 
-{ Prepares a string formula for writing }
+{@@ ----------------------------------------------------------------------------
+  Prepares a string formula for writing: Deletes the leading = sign and makes
+  sure that it is a valid xml string.
+-------------------------------------------------------------------------------}
 function TsSpreadOOXMLWriter.PrepareFormula(const AFormula: String): String;
 begin
   Result := AFormula;
@@ -3127,7 +2982,9 @@ begin
   Result := UTF8TextToXMLText(Result)
 end;
 
-{ Is called before zipping the individual file parts. Rewinds the streams. }
+{@@ ----------------------------------------------------------------------------
+  Is called before zipping the individual file parts. Rewinds the streams.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.ResetStreams;
 var
   i: Integer;
@@ -3144,23 +3001,26 @@ begin
   for i:=0 to High(FSVmlDrawings) do ResetStream(FSVmlDrawings[i]);
 end;
 
-{
+{@@ ----------------------------------------------------------------------------
   Writes a string to a file. Helper convenience method.
-}
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteStringToFile(AFileName, AString: string);
 var
-  TheStream : TFileStream;
+  stream : TFileStream;
   S : String;
 begin
-  TheStream := TFileStream.Create(AFileName, fmCreate);
-  S:=AString;
-  TheStream.WriteBuffer(Pointer(S)^,Length(S));
-  TheStream.Free;
+  stream := TFileStream.Create(AFileName, fmCreate);
+  try
+    S := AString;
+    stream.WriteBuffer(Pointer(S)^, Length(S));
+  finally
+    stream.Free;
+  end;
 end;
 
-{
-  Writes an OOXML document to the disc
-}
+{@@ ----------------------------------------------------------------------------
+  Writes an OOXML document to the file
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean);
 var
@@ -3188,7 +3048,7 @@ var
   i: Integer;
 begin
   { Analyze the workbook and collect all information needed }
-  ListAllNumFormats;
+  ListAllNumFormats(nfdExcel);
   ListAllFills;
   ListAllBorders;
 
@@ -3259,7 +3119,9 @@ begin
     '</c>');
 end;
 
-{ Writes a boolean value to the stream }
+{@@ ----------------------------------------------------------------------------
+  Writes a boolean value to the stream
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: Boolean; ACell: PCell);
 var
@@ -3274,7 +3136,9 @@ begin
     '<c r="%s" s="%d" t="b"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
 
-{ Writes an error value to the specified cell. }
+{@@ ----------------------------------------------------------------------------
+  Writes an error value to the specified cell.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 begin
@@ -3283,7 +3147,9 @@ begin
   Unused(AValue, ACell);
 end;
 
-{ Writes a string formula to the given cell. }
+{@@ ----------------------------------------------------------------------------
+  Writes a string formula to the given cell.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteFormula(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
@@ -3386,9 +3252,9 @@ begin
   inc(FSharedStringsCount);
 end;
 
-{
-  Writes a number (64-bit IEE 754 floating point) to the sheet
-}
+{@@ ----------------------------------------------------------------------------
+  Writes a number (64-bit IEE 754 floating point) to the stream
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteNumber(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: double; ACell: PCell);
 var
@@ -3403,12 +3269,11 @@ begin
     '<c r="%s" s="%d" t="n"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
 
-{*******************************************************************
-*  TsSpreadOOXMLWriter.WriteDateTime ()
-*
-*  DESCRIPTION:    Writes a date/time value as a number
-*                  Respects DateMode of the file
-*******************************************************************}
+{@@ ----------------------------------------------------------------------------
+  Writes a date/time value as a number
+
+  Respects DateMode of the file
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
@@ -3418,12 +3283,13 @@ begin
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
 end;
 
-{
-  Registers this reader / writer on fpSpreadsheet
-}
+
 initialization
 
+  // Registers this reader / writer on fpSpreadsheet
   RegisterSpreadFormat(TsSpreadOOXMLReader, TsSpreadOOXMLWriter, sfOOXML);
+
+  // Create color palette for OOXML file format
   MakeLEPalette(@PALETTE_OOXML, Length(PALETTE_OOXML));
 
 end.

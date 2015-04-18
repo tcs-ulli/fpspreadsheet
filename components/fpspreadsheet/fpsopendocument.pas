@@ -45,23 +45,17 @@ type
   TDateMode=(
     dm1899 {default for ODF; almost same as Excel 1900},
     dm1900 {StarCalc legacy only},
-    dm1904 {e.g. Quattro Pro,Mac Excel compatibility}
+    dm1904 {e.g. Quattro Pro, Mac Excel compatibility}
   );
-
-  { TsSpreadOpenDocNumFormatList }
-
-  TsSpreadOpenDocNumFormatList = class(TsCustomNumFormatList)
-  protected
-    procedure AddBuiltinFormats; override;
-  public
-  end;
 
   { TsSpreadOpenDocNumFormatParser }
   TsSpreadOpenDocNumFormatParser = class(TsNumFormatParser)
+    {
   private
     function BuildCurrencyXMLAsString(ASection: Integer): String;
     function BuildDateTimeXMLAsString(ASection: Integer;
       out AIsTimeOnly, AIsInterval: Boolean): String;
+      }
   protected
     function BuildXMLAsStringFromSection(ASection: Integer;
       AFormatName: String): String;
@@ -77,7 +71,7 @@ type
     FColumnList: TFPList;
     FRowStyleList: TFPList;
     FRowList: TFPList;
-    FVolatileNumFmtList: TsCustomNumFormatList;
+//    FVolatileNumFmtList: TStringList;
     FDateMode: TDateMode;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
@@ -91,6 +85,7 @@ type
     // Searches a column style by its column index or its name in the StyleList
     function FindColumnByCol(AColIndex: Integer): Integer;
     function FindColStyleByName(AStyleName: String): integer;
+    function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
@@ -102,7 +97,7 @@ type
 
   protected
     FPointSeparatorSettings: TFormatSettings;
-    procedure CreateNumFormatList; override;
+    procedure AddBuiltinNumFormats; override;
     procedure ReadNumFormats(AStylesNode: TDOMNode);
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
@@ -158,11 +153,11 @@ type
     FSMeta, FSSettings, FSStyles, FSContent, FSMimeType, FSMetaInfManifest: TStream;
 
     { Helpers }
-    procedure CreateNumFormatList; override;
+    procedure AddBuiltinNumFormats; override;
     procedure CreateStreams;
     procedure DestroyStreams;
     procedure ListAllColumnStyles;
-    procedure ListAllNumFormats; override;
+    procedure ListAllNumFormats(ADialect: TsNumFormatDialect); override;
     procedure ListAllRowStyles;
     procedure ResetStreams;
 
@@ -303,16 +298,11 @@ type
   *)
 
 
-{ TsSpreadOpenDocNumFormatList }
+{------------------------------------------------------------------------------}
+{                     TsSpreadOpenDocNumFormatParser                           }
+{------------------------------------------------------------------------------}
 
-procedure TsSpreadOpenDocNumFormatList.AddBuiltinFormats;
-begin
-  AddFormat('N0', nfGeneral, '');
-end;
-
-
-{ TsSpreadOpenDocNumFormatParser }
-
+  (*
 function TsSpreadOpenDocNumFormatParser.BuildCurrencyXMLAsString(ASection: Integer): String;
 var
   el, next: Integer;
@@ -320,6 +310,7 @@ var
   nf: TsNumberFormat;
   decs: byte;
   s: String;
+  n: Integer;
 begin
   Result := '';
   el := 0;
@@ -353,20 +344,30 @@ begin
                 '</number:currency-symbol>';
             inc(el);
           end;
-        nftOptDigit:
+        nftIntTh:
           if IsNumberAt(ASection, el, nf, decs, next) then
           begin
-            Result := Result +
-              '  <number:number decimal-places="' + IntToStr(decs) +
-                 '" number:min-integer-digits="1" number:grouping="true" />';
+            Result := Result + Format(
+              '  <number:number decimal-places="%d" ' +
+                 'number:min-integer-digits="%d" number:grouping="true" />',
+              [decs, Elements[el].IntValue]);
             el := next;
           end;
-        nftDigit:
+        nftIntZeroDigit:
+          if IsNumberAt(ASection, el, nf, decs, next) then
+          begin
+            Result := Result + Format(
+            '  <number:number decimal-places="%d" ' +
+               'number:min-integer-digits="%d" />',
+               [decs, elements[el].IntValue]);
+            el := next;
+          end;
+        nftIntOptDigit, nftIntSpaceDigit:  // To do: SpaceDigit not correct here
           if IsNumberAt(ASection, el, nf, decs, next) then
           begin
             Result := Result +
             '  <number:number decimal-places="' + IntToStr(decs) +
-               '" number:min-integer-digits="1" />';
+               '" number:min-integer-digits="0" />';
             el := next;
           end;
         nftRepeat:
@@ -484,7 +485,7 @@ begin
     end;
   end;
 end;
-
+*)
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsString(AFormatName: String): String;
 var
   i: Integer;
@@ -501,41 +502,34 @@ end;
 function TsSpreadOpenDocNumFormatParser.BuildXMLAsStringFromSection(
   ASection: Integer; AFormatName: String): String;
 var
-  nf : TsNumberFormat;
-  decs: Byte;
-  expdig: Integer;
-  curr, next: Integer;
-  sGrouping: String;
-  sColor: String;
-  sStyleMap: String;
+  n: Integer;
+  el, nEl: Integer;
   ns: Integer;
   clr: TsColorvalue;
-  el: Integer;
-  s: String;
-  isTimeOnly: Boolean;
-  isInterval: Boolean;
-  intPart, numPart, denomPart: Integer;
+  mask: String;
+  timeIntervalStr: String;
+  styleMapStr: String;
 
 begin
   Result := '';
-  sGrouping := '';
-  sColor := '';
-  sStyleMap := '';
 
   ns := Length(FSections);
   if (ns = 0) then
     exit;
+
+  styleMapStr := '';
+  timeIntervalStr := '';
 
   if (ns > 1) then
   begin
     // The file corresponding to the last section contains the styleMap.
     if (ASection = ns - 1) then
       case ns of
-        2: sStyleMap :=
+        2: styleMapStr :=
              '<style:map ' +
                'style:apply-style-name="' + AFormatName + 'P0" ' +
                'style:condition="value()&gt;=0" />';                   // >= 0
-        3: sStyleMap :=
+        3: styleMapStr :=
              '<style:map '+
                'style:apply-style-name="' + AFormatName + 'P0" ' +     // > 0
                'style:condition="value()&gt;0" />' +
@@ -551,14 +545,216 @@ begin
 
   with FSections[ASection] do
   begin
-    curr := 0;
-    if IsTokenAt(nftColor, ASection, 0) then
-    begin
-      clr := FWorkbook.GetPaletteColor(Elements[0].IntValue);
-      sColor := '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
-      curr := 1;
+    nEl := Length(Elements);
+    el := 0;
+    while (el < nEl) do begin
+      case Elements[el].Token of
+        nftColor:
+          begin
+            clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
+            Result := Result + '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />';
+          end;
+
+        nftSign, nftSignBracket, nftText, nftSpace:
+          if Elements[el].TextValue = ' ' then
+            Result := Result + '<number:text><![CDATA[ ]]></number:text>'
+          else
+            Result := Result + '<number:text>' + Elements[el].TextValue + '</number:text>';
+
+        nftPercent:
+          Result := Result + '<number:text>%</number:text>';
+
+        nftCurrSymbol:
+          Result := Result + '<number:currency-symbol>' + Elements[el].TextValue + '</number:currency-symbol>';
+
+        nftIntTh:
+          begin
+            Result := Result + '<number:number number:min-integer-digits="1" number:grouping="true"';
+            if (el+2 < nel) and (Elements[el+1].Token = nftDecSep) and
+               (Elements[el+2].Token in [nftZeroDecs, nftOptDecs, nftSpaceDecs]) then
+            begin
+              n := IfThen(Elements[el+2].Token = nftZeroDecs, Elements[el+2].IntValue, 1);
+              Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
+              inc(el, 2);
+            end else
+            if (el = nel) or (Elements[el+1].Token <> nftDecSep) then
+              Result := Result + ' number:decimal-places="0"';
+            Result := Result + ' />';
+          end;
+
+        nftFracNumZeroDigit, nftFracNumOptDigit, nftFracNumSpaceDigit:
+          if (el+2 < nel) and (Elements[el+1].Token = nftFracSymbol) then
+          begin
+            Result := Result +
+              '<number:fraction' +
+              ' number:min-numerator-digits="' + IntToStr(Elements[el].IntValue) +
+              '" number:min-denominator-digits="' + IntToStr(Elements[el+2].IntValue) +
+              '" />';
+            inc(el, 2);
+          end;
+
+        nftIntZeroDigit, nftIntOptDigit, nftIntSpaceDigit:
+          begin
+            // Mixed fraction
+            if (el+4 < nel) and (Elements[el+1].Token = nftSpace) and (Elements[el+3].Token = nftFracSymbol)
+            then begin
+              Result := Result +
+                '<number:fraction' +
+                ' number:min-integer-digits="' + IntToStr(Elements[el].IntValue) +
+                '" number:min-numerator-digits="' + IntToStr(Elements[el+2].IntValue) +
+                '" number:min-denominator-digits="' + IntToStr(Elements[el+4].IntValue) +
+                '" />';
+              inc(el, 4);
+            end
+            else
+            // Scientific, no decimals
+            if (el+3 < nel) and (Elements[el+1].Token = nftExpChar) then
+            begin
+              Result := Result + '<number:scientific-number number:decimal-places="0"';
+              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
+              n := Elements[el+3].IntValue;
+              Result := Result + ' number:min-exponent-digits="' + IntToStr(n) + '"';
+              Result := Result + ' />';
+              inc(el, 3);
+            end
+            else
+            // Scientific, with decimals
+            if (el+5 < nel) and (Elements[el+1].Token = nftDecSep) and (Elements[el+3].Token = nftExpChar)
+            then begin
+              Result := Result + '<number:scientific-number';
+              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
+              n := IfThen(Elements[el+2].Token = nftZeroDecs, Elements[el+2].IntValue, 1);
+              Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
+              Result := Result + ' number:min-exponent-digits="' + IntToStr(Elements[el+5].IntValue) + '"';
+              Result := Result + ' />';
+              inc(el, 5);
+            end
+            else
+            // Standard decimal number
+            if (el+2 < nel) and (Elements[el+1].Token = nftDecSep) then
+            begin
+              Result := Result + '<number:number';
+              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
+              n := IfThen(Elements[el+2].Token = nftZeroDecs, Elements[el+2].IntValue, 1);
+              Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
+              Result := Result + ' />';
+              inc(el, 2);
+            end
+            else
+            // Standard integer
+            if (el = nel) or (Elements[el+1].Token <> nftDecSep) then
+            begin
+              Result := Result + '<number:number number:decimal-places="0"';
+              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
+              Result := Result + ' />';
+            end;
+          end;
+
+        nftYear:
+          if Elements[el].IntValue > 2 then
+            Result := Result + '<number:year number:style="long" />'
+          else
+            Result := Result + '<number:year />';
+
+        nftMonth:
+          case Elements[el].IntValue of
+            1: Result := Result + '<number:month />';
+            2: Result := Result + '<number:month number:style="long" />';
+            3: Result := Result + '<number:month number:textual="true" />';
+            4: Result := Result + '<number:month number:style="long" number:textual="true" />';
+          end;
+
+        nftDay:
+          case Elements[el].IntValue of
+            1: Result := Result + '<number:day />';
+            2: Result := Result + '<number:day number:style="long" />';
+            3: Result := Result + '<number:day-of-week />';
+            4: Result := Result + '<number:day-of-week number:style="long" />';
+          end;
+
+        nftHour:
+          begin
+            case abs(Elements[el].IntValue) of
+              1: Result := Result + '<number:hours />';
+              2: Result := Result + '<number:hours number:style="long" />';
+            end;
+            if Elements[el].IntValue < 0 then
+              timeIntervalStr := ' number:truncate-on-overflow="false"';
+          end;
+
+        nftMinute:
+          begin
+            case abs(Elements[el].IntValue) of
+              1: Result := Result + '<number:minutes />';
+              2: Result := Result + '<number:minutes number:style="long" />';
+            end;
+            if Elements[el].IntValue < 0 then
+              timeIntervalStr := ' number:truncate-on-overflow="false"';
+          end;
+
+        nftSecond:
+          begin
+            case abs(Elements[el].IntValue) of
+              1: Result := Result + '<number:seconds />';
+              2: Result := Result + '<number:seconds number:style="long" />';
+            end;
+            if Elements[el].IntValue < 0 then
+              timeIntervalStr := ' number:truncate-on-overflow="false"';
+          end;
+
+        nftMilliseconds:
+          ; // ???
+
+        nftAMPM:
+          Result := Result + '<number:am-pm />';
+
+        nftDateTimeSep:
+          case Elements[el].TextValue of
+            '/': Result := Result + '<number:text>' + FWorkbook.FormatSettings.DateSeparator + '</number:text>';
+            ':': Result := Result + '<number:text>' + FWorkbook.FormatSettings.TimeSeparator + '</number:text>';
+            ' ': Result := Result + '<number:text><![CDATA[ ]]></number:text>';
+            else Result := Result + '<number:text>' + Elements[el].TextValue + '</number:text>';
+          end;
+      end;
+
+      inc(el);
     end;
-    if IsNumberAt(ASection, curr, nf, decs, next) then
+
+    if (nfkPercent in Kind) then
+      mask := '<number:percentage-style style:name="%s"%s>%s%s</number:percentage-style>'
+    else
+    if (nfkCurrency in Kind) then
+      mask := '<number:currency-style style:name="%s"%s>%s%s</number:currency-style>'
+    else
+    if (nfkDate in Kind) then
+      mask := '<number:date-style style:name="%s"%s>%s%s</number:date-style>'
+    else
+    if (Kind * [nfkDate, nfkTime] = [nfkTime]) then
+      mask := '<number:time-style style:name="%s"%s>%s%s</number:time-style>'
+    else
+      mask := '<number:number-style style:name="%s"%s>%s%s</number:number-style>';
+
+    Result := Format(mask, [AFormatName, TimeIntervalStr, Result, StyleMapStr]);
+  end;
+end;
+(*
+
+    if IsTokenAt(nftColor, ASection, el) then
+    begin
+      clr := FWorkbook.GetPaletteColor(Elements[el].IntValue);
+      sColor := '<style:text-properties fo:color="' + ColorToHTMLColorStr(clr) + '" />' + LineEnding;
+      el := 1;
+    end;
+
+    // Find start of number format code
+    while (el < Length(Elements)) and not IsNumberAt(ASection, el, nf, decs, next) do
+      inc(el);
+
+    if IsNumberAt(ASection, el, nf, decs, next) then
     begin
       if nf = nfFixedTh then
         sGrouping := 'number:grouping="true" ';
@@ -579,7 +775,7 @@ begin
       end;
 
       // nfPercentage
-      if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements)) then
+      if (nfkPercent in Kind) then
       begin
         Result :=
           '<number:percentage-style style:name="' + AFormatName + '">' +
@@ -610,7 +806,7 @@ begin
           exit;
         Result :=
           '<number:number-style style:name="' + AFormatName + '">' +
-          sColor +
+            sColor +
             '<number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
               'number:min-integer-digits="1" '+
               'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
@@ -618,95 +814,68 @@ begin
             '</number:number-style>';
         exit;
       end;
+
+      // nfFraction
+      if (nf in [nfFixed, nfFraction]) and (nfkFraction in Kind) and (decs = 0) then
+      begin
+        if IsTokenAt(nftIntOptDigit, ASection, el) then
+          Result :=
+            '<number:number-style style:name="' + AFormatName + '">' +
+              sColor +
+              '<number:fraction ' +
+                'number:min-integer-digits="' + IntToStr(FracInt) + '" ' +
+                'number:min-numerator-digits="' + IntToStr(FracNumerator) + '" ' +
+                'number:min-denominator-digits="' + IntToStr(FracDenominator) + '" ' +
+              '/>' +
+            '</number:number-style>'
+        else
+          Result :=
+            '<number:number-style style:name="' + AFormatName + '">' +
+              sColor +
+              '<number:fraction ' +
+                'number:min-numerator-digits="' + IntToStr(FracNumerator) + '" ' +
+                'number:min-denominator-digits="' + IntToStr(FracDenominator) + '" ' +
+              '/>' +
+            '</number:number-style>';
+        exit;
+      end;
+
+      // nfCurrency
+      if (nfkCurrency in Kind) then
+      begin
+        Result :=
+          '<number:currency-style style:name="' + AFormatName + '">' +
+            BuildCurrencyXMLAsString(ASection) +
+            sStyleMap +
+          '</number:currency-style>';
+        exit;
+      end;
     end;
 
-    // nfFraction
-    if IsFractionAt(ASection, curr, intPart, numPart, denomPart, next)
-    then begin
-      Result :=
-        '<number:number-style style:name="' + AFormatName + '">' +
-          sColor +
-          '<number:fraction ';
-      if intPart > 0 then
+    // If the program gets here the format can only be date/time.
+    if (Kind * [nfkDate, nfkTime] <> []) then
+    begin
+      s := BuildDateTimeXMLAsString(ASection, isTimeOnly, isInterval);
+      if isTimeOnly then
+      begin
         Result := Result +
-            'number:min-integer-digits="' + IntToStr(intPart) + '" ';
-      Result := Result +
-            'number:min-numerator-digits="' + IntToStr(numPart) + '" ' +
-            'number:min-denominator-digits="' + IntToStr(denomPart) + '" ' +
-          '/>' +
-        '</number:number-style>';
+          '<number:time-style ' +
+           'style:name="' + AFormatName + '"' +
+           IfThen(isInterval, ' number:truncate-on-overflow="false"') + '>' +
+             s +
+             sStylemap +
+          '</number:time-style>';
+      end else
+        Result := Result +
+          '<number:date-style style:name="' + AFormatName + '">' +
+            s +
+            sStylemap +
+          '</number:date-style>';
       exit;
     end;
-
-    // If the program gets here the format can only be Currency or date/time.
-    el := 0;
-    decs := 0;
-    while el < Length(Elements) do
-    begin
-      case Elements[el].Token of
-        nftDecs:
-          decs := Elements[el].IntValue;        // ???
-
-        nftExpChar:
-          // nfSci: not supported by ods, use nfExp instead.
-          begin
-            while el < Length(Elements) do
-            begin
-              if Elements[el].Token = nftExpDigits then
-              begin
-                expdig := Elements[el].IntValue;
-                Result :=
-                  '<number:number-style style:name="' + AFormatName + '">' +
-                  sColor +
-                    '<number:scientific-number number:decimal-places="' + IntToStr(decs) +'" '+
-                      'number:min-integer-digits="1" '+
-                      'number:min-exponent-digits="' + IntToStr(expdig) +'" />' +
-                      sStylemap +
-                    '</number:number-style>';
-                exit;
-              end;
-              inc(el);
-            end;
-            exit;
-          end;
-
-        // Currency
-        nftCurrSymbol:
-          begin
-            Result :=
-              '<number:currency-style style:name="' + AFormatName + '">' +
-                BuildCurrencyXMLAsString(ASection) +
-                sStyleMap +
-              '</number:currency-style>';
-            exit;
-          end;
-
-        // date/time
-        nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond:
-          begin
-            s := BuildDateTimeXMLAsString(ASection, isTimeOnly, isInterval);
-            if isTimeOnly then
-            begin
-              Result := Result +
-                '<number:time-style style:name="' + AFormatName + '"';
-              if isInterval then
-                Result := Result + ' number:truncate-on-overflow="false"';
-              Result := Result + '>' +
-                s +
-                '</number:time-style>';
-            end else
-              Result := Result +
-                '<number:date-style style:name="' + AFormatName + '">' +
-                s +
-                '</number:date-style>';
-            exit;
-          end;
-      end;
-      inc(el);
-    end;
-
   end;
 end;
+*)
 
 
 { TsSpreadOpenDocReader }
@@ -724,7 +893,7 @@ begin
   FColumnList := TFPList.Create;
   FRowStyleList := TFPList.Create;
   FRowList := TFPList.Create;
-  FVolatileNumFmtList := TsCustomNumFormatList.Create(Workbook);
+//  FVolatileNumFmtList := TStringList.Create;
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
@@ -746,9 +915,16 @@ begin
 
   for j := FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
   FRowStyleList.Free;
-  FVolatileNumFmtList.Free;  // automatically destroys its items.
+
+//  FVolatileNumFmtList.Free;
 
   inherited Destroy;
+end;
+
+procedure TsSpreadOpenDocReader.AddBuiltinNumFormats;
+begin
+  FNumFormatList.Clear;
+  FNumFormatList.Add('N0:');
 end;
 
 { Creates for each non-default column width stored internally in FColumnList
@@ -814,14 +990,6 @@ begin
   ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
 
   Result := true;
-end;
-
-{ Creates the correct version of the number format list
-  suited for ODS file formats. }
-procedure TsSpreadOpenDocReader.CreateNumFormatList;
-begin
-  FreeAndNil(FNumFormatList);
-  FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
 end;
 
 { Extracts a boolean value from a "boolean" cell node.
@@ -942,6 +1110,14 @@ function TsSpreadOpenDocReader.FindColStyleByName(AStyleName: String): Integer;
 begin
   for Result := 0 to FColumnStyleList.Count-1 do
     if TColumnStyleData(FColumnStyleList[Result]).Name = AStyleName then
+      exit;
+  Result := -1;
+end;
+
+function TsSpreadOpenDocReader.FindNumFormatByName(ANumFmtName: String): Integer;
+begin
+  for Result := 0 to FNumFormatList.Count-1 do
+    if pos(ANumFmtName+':', FNumFormatList[Result]) = 1 then
       exit;
   Result := -1;
 end;
@@ -1577,6 +1753,7 @@ var
   styleName: String;
   cell: PCell;
   fmt: PsCellFormat;
+  numFmt: TsNumFormatParams;
 begin
   if FIsVirtualMode then
   begin
@@ -1599,15 +1776,16 @@ begin
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
   fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+  numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
 
   // Sometimes date/time cells are stored as "float".
   // We convert them to date/time and also correct the date origin offset if
   // needed.
-  if IsDateTimeFormat(fmt^.NumberFormat) or IsDateTimeFormat(fmt^.NumberFormatStr)
-  then begin
+  if IsDateTimeFormat(numFmt) then
+  begin
     cell^.ContentType := cctDateTime;
     // No datemode correction for intervals and for time-only values
-    if (fmt^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
+    if (numFmt.NumFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
       cell^.DateTimeValue := cell^.NumberValue
     else
       case FDateMode of
@@ -1630,12 +1808,19 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     stylename: String;
     styleindex: Integer;
     fmt: String;
-    posfmt, negfmt, zerofmt: String;
+    posfmt, negfmt, zerofmt, currfmt: String;
     nf: TsNumberFormat;
+    parser: TsNumFormatParser;
+    counter: Integer;
   begin
     posfmt := '';
     negfmt := '';
     zerofmt := '';
+    currfmt := AFormatStr;
+    counter := 0;
+
+    AFormatStr := '';
+    ANumFormat := nfCustom;
 
     while ANode <> nil do
     begin
@@ -1657,16 +1842,26 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
 
       Delete(condition, 1, Length('value()'));
       styleindex := -1;
-      styleindex := FNumFormatList.FindByName(stylename);
+      styleIndex := FindNumFormatByName(stylename);
       if (styleindex = -1) or (condition = '') then
       begin
         ANode := ANode.NextSibling;
         continue;
       end;
 
-      fmt := FNumFormatList[styleindex].FormatString;
-      nf := FNumFormatList[styleindex].NumFormat;
-      if nf in [nfCurrency, nfCurrencyRed] then ANumFormat := nf;
+      fmt := NumFormatList[styleIndex];
+      fmt := Copy(fmt, pos(':', fmt)+1, Length(fmt));
+      parser := TsNumFormatParser.Create(Workbook, fmt);
+      try
+        nf := parser.NumFormat;
+        if (nf = nfCurrency) and (parser.ParsedSections[0].Color = scRed) then
+          nf := nfCurrencyRed;
+        if nf in [nfCurrency, nfCurrencyRed] then
+          ANumFormat := nf;
+      finally
+        parser.Free;
+      end;
+
       case condition[1] of
         '>': begin
                posfmt := fmt;
@@ -1683,13 +1878,26 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
              end;
       end;
       ANode := ANode.NextSibling;
+      inc(counter);
     end;
-    if posfmt = '' then posfmt := AFormatStr;
-    if negfmt = '' then negfmt := AFormatStr;
+    {
+    if posfmt = '' then posfmt := currFmt;
+    if negfmt = '' then negfmt := currFmt;
+    }
+//    if posfmt = '' then posfmt := AFormatStr;
+//    if negfmt = '' then negfmt := AFormatStr;
 
-    AFormatStr := posFmt;
-    if negfmt <> '' then AFormatStr := AFormatStr + ';' + negfmt;
-    if zerofmt <> '' then AFormatStr := AFormatStr + ';' + zerofmt;
+    case counter of
+      1: begin
+           if negfmt = '' then negfmt := currfmt;
+           AFormatStr := posfmt + ';' + negfmt;
+         end;
+      2: begin
+           if zerofmt = '' then zerofmt := currfmt;
+           AFormatStr := posfmt + ';' + negfmt + ';' + zerofmt;
+         end;
+      3: AFormatStr := posfmt + ';' + negfmt + ';' + zerofmt;
+    end;
 
     if not (ANumFormat in [nfCurrency, nfCurrencyRed]) then
       ANumFormat := nfCustom;
@@ -1707,7 +1915,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     grouping: Boolean;
     nex: Integer;
     cs: String;
+    color: TsColorValue;
     hasColor: Boolean;
+    idx: Integer;
   begin
     nfs := '';
     cs := '';
@@ -1757,7 +1967,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         while childnode <> nil do
         begin
           cs := cs + childNode.NodeValue;
-          nfs := nfs + childNode.NodeValue;
+          nfs := nfs + '"' + childNode.NodeValue + '"';
           childNode := childNode.NextSibling;
         end;
       end else
@@ -1776,14 +1986,14 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         if s <> '' then
         begin
           hasColor := true;
-          {                        // currently not needed
+         // {                        // currently not needed
           color := HTMLColorStrToColor(s);
           idx := FWorkbook.AddColorToPalette(color);
           if idx < 8 then
             nfs := Format('[%s]%s', [FWorkbook.GetColorName(idx), nfs])
           else
             nfs := Format('[Color%d]%s', [idx, nfs]);
-          }
+         // }
         end;
       end;
       node := node.NextSibling;
@@ -1799,7 +2009,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if (ANumFormatNode.NodeName = 'number:currency-style') then
       nf := IfThen(hasColor, nfCurrencyRed, nfCurrency);
 
-    NumFormatList.AddFormat(ANumFormatName, nf, nfs);
+    NumFormatList.Add(Format('%s:%s', [ANumFormatName, nfs]));
   end;
 
   procedure ReadDateTimeStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -1903,7 +2113,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if node <> nil then
       ReadStyleMap(node, nf, nfs);
 
-    NumFormatList.AddFormat(ANumFormatName, nf, nfs);
+    NumFormatList.Add(ANumFormatName + ':' + nfs);
+//    NumFormatList.AddFormat(ANumFormatName, nf, nfs);
   end;
 
   procedure ReadTextStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -1941,7 +2152,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       ReadStyleMap(node, nf, nfs);
     nf := nfCustom;
 
-    NumFormatList.AddFormat(ANumFormatName, nf, nfs);
+    NumFormatList.Add(Format('%s:%s', [ANumFormatName, nfs]));
+
+    //NumFormatList.AddFormat(ANumFormatName, nf, nfs);
   end;
 
 var
@@ -2294,8 +2507,9 @@ var
   fmt: TsCellFormat;
   numFmtIndexDefault: Integer;
   numFmtName: String;
+  numFmtStr: String;
   numFmtIndex: Integer;
-  numFmtData: TsNumFormatData;
+  numFmtParams: TsNumFormatParams;
   clr: TsColorValue;
   s: String;
 
@@ -2375,7 +2589,7 @@ begin
   if not Assigned(AStylesNode) then
     exit;
 
-  numFmtIndexDefault := NumFormatList.FindByName('N0');
+  numFmtIndexDefault := FindNumFormatByName('N0');
 
   styleNode := AStylesNode.FirstChild;
   while Assigned(styleNode) do begin
@@ -2406,13 +2620,17 @@ begin
 
         numFmtIndex := -1;
         numFmtName := GetAttrValue(styleNode, 'style:data-style-name');
-        if numFmtName <> '' then numFmtIndex := NumFormatList.FindByName(numFmtName);
+        if numFmtName <> '' then numFmtIndex := FindNumFormatByName(numFmtName);
         if numFmtIndex = -1 then numFmtIndex := numFmtIndexDefault;
-        numFmtData := NumFormatList.Items[numFmtIndex];
-        fmt.NumberFormat := numFmtData.NumFormat;
-        fmt.NumberFormatStr := numFmtData.FormatString;
-        if fmt.NumberFormat <> nfGeneral then
+        numFmtStr := NumFormatList[numFmtIndex];
+        numFmtStr := Copy(numFmtStr, pos(':', numFmtStr)+1, Length(numFmtStr));
+        fmt.NumberFormatIndex := Workbook.AddNumberFormat(numFmtStr);
+        numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+        if numFmtParams <> nil then begin
+          fmt.NumberFormat := numFmtParams.NumFormat;
+          fmt.NumberFormatStr := numFmtStr;
           Include(fmt.UsedFormattingFields, uffNumberFormat);
+        end;
 
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do
@@ -2559,10 +2777,10 @@ end;
 
 { TsSpreadOpenDocWriter }
 
-procedure TsSpreadOpenDocWriter.CreateNumFormatList;
+procedure TsSpreadOpenDocWriter.AddBuiltinNumFormats;
 begin
-  FreeAndNil(FNumFormatList);
-  FNumFormatList := TsSpreadOpenDocNumFormatList.Create(Workbook);
+  FNumFormatList.Clear;
+  FNumFormatList.Add('N0:');
 end;
 
 { Creates the streams for the individual data files. Will be zipped into a
@@ -2669,9 +2887,20 @@ end;
 { Contains all number formats used in the workbook. Overrides the inherited
   method to assign a unique name according to the OpenDocument syntax ("N<number>"
   to the format items. }
-procedure TsSpreadOpenDocWriter.ListAllNumFormats;
+procedure TsSpreadOpenDocWriter.ListAllNumFormats(ADialect: TsNumFormatDialect);
 const
   FMT_BASE = 1000;  // Format number to start with. Not clear if this is correct...
+var
+  i: Integer;
+  nfparams: TsNumFormatParams;
+begin
+  // The default format has already been added.
+  for i:=0 to Workbook.GetNumberFormatCount - 1 do
+  begin
+    nfParams := Workbook.GetNumberFormat(i);
+    FNumFormatList.Add(Format('N%d:%s', [FMT_BASE+i, nfParams.NumFormatStr[ADialect]]));
+  end;
+                                                                                  {
 var
   n, i, j: Integer;
 begin
@@ -2683,6 +2912,7 @@ begin
     NumFormatList.Items[i].Name := Format('N%d', [FMT_BASE + j]);
     inc(j);
   end;
+  }
 end;
 
 procedure TsSpreadOpenDocWriter.ListAllRowStyles;
@@ -2995,20 +3225,39 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteCellStyles(AStream: TStream);
 var
-  i: Integer;
+  i, j, p: Integer;
   s: String;
   nfidx: Integer;
   nfs: String;
   fmt: TsCellFormat;
+  nfParams: TsNumFormatParams;
 begin
   for i := 0 to FWorkbook.GetNumCellFormats - 1 do
   begin
     fmt := FWorkbook.GetCellFormat(i);
-
-    nfidx := NumFormatList.FindByFormatStr(fmt.NumberFormatStr);
-    if nfidx <> -1
-      then nfs := 'style:data-style-name="' + NumFormatList[nfidx].Name +'"'
-      else nfs := '';
+    nfs := '';
+    nfidx := fmt.NumberFormatIndex;
+    if nfidx <> -1 then
+    begin
+      nfParams := FWorkbook.GetNumberFormat(nfidx);
+      if nfParams <> nil then
+      begin
+        nfs := nfParams.NumFormatStr[nfdExcel];
+        for j:=0 to NumFormatList.Count-1 do
+        begin
+          s := NumFormatList[j];
+          p := pos(':', s);
+          if SameText(Copy(s, p+1, Length(s)), nfs) then
+          begin
+            nfs := Format('style:data-style-name="%s"', [copy(s, 1, p-1)]);
+            break;
+          end;
+          p := 0;
+        end;
+        if p = 0 then // not found
+          nfs := '';
+      end;
+    end;
 
     // Start and name
     AppendToStream(AStream,
@@ -3016,12 +3265,6 @@ begin
                    'style:parent-style-name="Default" '+ nfs + '>');
 
     // style:text-properties
-    {
-    if (uffBold in fmt.UsedFormattingFields) then
-      AppendToStream(AStream,
-        '<style:text-properties fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold"/>');
-    }
-
     s := WriteFontStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
@@ -3194,13 +3437,27 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteNumFormats(AStream: TStream);
 var
-  i: Integer;
+  i, p: Integer;
   numFmtXML: String;
-  fmtItem: TsNumFormatData;
+  numFmtStr: String;
+  numFmtName: String;
   parser: TsSpreadOpenDocNumFormatParser;
 begin
-  for i:=0 to FNumFormatList.Count-1 do
+  for i:=0 to NumFormatList.Count-1 do
   begin
+    numFmtStr := NumFormatList[i];
+    p := pos(':', numFmtStr);
+    numFmtName := Copy(numFmtStr, 1, p-1);
+    numFmtStr := Copy(numFmtStr, p+1, Length(numFmtStr));
+    parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, numFmtStr);
+    try
+      numFmtXML := parser.BuildXMLAsString(numFmtName);
+      if numFmtXML <> '' then
+        AppendToStream(AStream, numFmtXML);
+    finally
+      parser.Free;
+    end;
+        {
     fmtItem := FNumFormatList.Items[i];
     parser := TsSpreadOpenDocNumFormatParser.Create(Workbook, fmtItem.FormatString,
       fmtItem.NumFormat);
@@ -3211,6 +3468,7 @@ begin
     finally
       parser.Free;
     end;
+    }
   end;
 end;
 
@@ -3475,8 +3733,7 @@ var
   FZip: TZipper;
 begin
   { Analyze the workbook and collect all information needed }
-  ListAllNumFormats;
-//  ListAllFormattingStyles;
+  ListAllNumFormats(nfdExcel);
   ListAllColumnStyles;
   ListAllRowStyles;
 
@@ -4299,6 +4556,8 @@ var
   comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
+  numFmt: TsNumFormatParams;
+  nfSection: TsNumFormatSection;
 begin
   Unused(ARow, ACol);
 
@@ -4306,11 +4565,22 @@ begin
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
   begin
+    numFmt := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
+    if (numFmt <> nil) then begin
+      if (Length(numFmt.Sections) > 1) and (AValue < 0) then
+        nfSection := numFmt.Sections[1]
+      else
+      if (Length(numFmt.Sections) > 2) and (AValue = 0) then
+        nfSection := NumFmt.Sections[2]
+      else
+        nfSection := numFmt.Sections[0];
+      if (nfkPercent in nfSection.Kind) then
+        valType := 'percentage'
+      else
+      if (nfkCurrency in nfSection.Kind) then
+        valtype := 'currency'
+    end;
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" ';
-    if pos('%', fmt.NumberFormatStr) <> 0 then
-      valType := 'percentage'
-    else if IsCurrencyFormat(fmt.NumberFormat) then
-      valType := 'currency';
   end else
     lStyle := '';
 
@@ -4334,7 +4604,7 @@ begin
     DisplayStr := '1.#INF';
   end else begin
     StrValue := FloatToStr(AValue, FPointSeparatorSettings); // Uses '.' as decimal separator
-    DisplayStr := FloatToStr(AValue); // Uses locale decimal separator
+    DisplayStr := FWorksheet.ReadAsUTF8Text(ACell); //FloatToStr(AValue); // Uses locale decimal separator
   end;
 
   // Hyperlink
@@ -4371,6 +4641,7 @@ var
   comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
+  numFmtParams: TsNumFormatParams;
 begin
   Unused(ARow, ACol);
 
@@ -4385,6 +4656,7 @@ begin
     spannedStr := '';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
+  numFmtParams := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
   if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
@@ -4399,10 +4671,11 @@ begin
 
   // nfTimeInterval is a special case - let's handle it first:
 
-  if (fmt.NumberFormat = nfTimeInterval) then
+  if IsTimeIntervalformat(numFmtParams) then
   begin
     strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
-    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
+    displayStr := FWorksheet.ReadAsUTF8Text(ACell);
+//    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="time" office:time-value="%s" %s %s>' +
         comment +
@@ -4414,9 +4687,12 @@ begin
   end else
   begin
     // We have to distinguish between time-only values and values that contain date parts.
-    isTimeOnly := IsTimeFormat(fmt.NumberFormat) or IsTimeFormat(fmt.NumberFormatStr);
+    if (numFmtParams <> nil) then
+      isTimeOnly := Assigned(numFmtParams) and (numFmtParams.Sections[0].Kind * [nfkDate, nfkTime] = [nfkTime])
+    else
+      isTimeOnly := false;
     strValue := FormatDateTime(DATE_FMT[isTimeOnly], AValue);
-    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue);
+    displayStr := FWorksheet.ReadAsUTF8Text(ACell);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +
         comment +

@@ -1003,7 +1003,8 @@ var
   nfs: String;
 begin
   Worksheet.ReadNumFormat(ACell, nf, nfs);
-  Checked := (ACell <> nil) and (nf = FNumberFormat) and (nfs = FNumberFormatStr);
+  Checked := (ACell <> nil) and (nf = FNumberFormat) and
+    ((FNumberFormatStr = '') or (nfs = FNumberFormatStr));
 end;
 
 
@@ -1341,8 +1342,6 @@ var
   txt: String;
   cellStr: String;
   hyperlink: TsHyperlink;
-  displayText: String;
-  cell: PCell;
 begin
   Unused(Target);
 

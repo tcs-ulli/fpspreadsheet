@@ -20,7 +20,7 @@ interface
 
 uses
   Classes, Sysutils, AVL_Tree,
-  fpsTypes, fpsClasses, fpSpreadsheet, fpsNumFormat;
+  fpsTypes, fpsClasses, fpSpreadsheet;
 
 type
   {@@
@@ -38,10 +38,11 @@ type
     FVirtualCell: TCell;
     {@@ Stores if the reader is in virtual mode }
     FIsVirtualMode: Boolean;
-    {@@ List of number formats found in the file }
-    FNumFormatList: TsCustomNumFormatList;
+    {@@ List of number formats  }
+    FNumFormatList: TStringList;
 
     { Helper methods }
+    procedure AddBuiltinNumFormats; virtual;
     {@@ Removes column records if all of them have the same column width }
     procedure FixCols(AWorksheet: TsWorksheet);
     {@@ Removes row records if all of them have the same row height }
@@ -59,8 +60,6 @@ type
     {@@ Abstract method for reading a number cell. Must be overridden by descendent classes. }
     procedure ReadNumber(AStream: TStream); virtual; abstract;
 
-    procedure CreateNumFormatList; virtual;
-
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -71,7 +70,7 @@ type
     procedure ReadFromStrings(AStrings: TStrings); override;
 
     {@@ List of number formats found in the workbook. }
-    property NumFormatList: TsCustomNumFormatList read FNumFormatList;
+    property NumFormatList: TStringList read FNumFormatList;
   end;
 
 
@@ -92,14 +91,15 @@ type
   TsCustomSpreadWriter = class(TsBasicSpreadWriter)
   protected
     {@@ List of number formats found in the file }
-    FNumFormatList: TsCustomNumFormatList;
+    FNumFormatList: TStringList;
 
-    procedure CreateNumFormatList; virtual;
+    procedure AddBuiltinNumFormats; virtual;
+    function  FindNumFormatInList(ANumFormatStr: String): Integer;
     function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
-    procedure ListAllNumFormats; virtual;
+    procedure ListAllNumFormats(ADialect: TsNumFormatDialect); virtual;
 
     { Helpers for writing }
     procedure WriteCellToStream(AStream: TStream; ACell: PCell);
@@ -133,7 +133,7 @@ type
     procedure WriteToStrings(AStrings: TStrings); override;
 
     {@@ List of number formats found in the workbook. }
-    property NumFormatList: TsCustomNumFormatList read FNumFormatList;
+    property NumFormatList: TStringList read FNumFormatList;
   end;
 
   {@@ List of registered formats }
@@ -195,7 +195,8 @@ begin
   // Font list
   FFontList := TFPList.Create;
   // Number formats
-  CreateNumFormatList;
+  FNumFormatList := TStringList.Create;
+  AddBuiltinNumFormats;
   // Virtual mode
   FIsVirtualMode := (boVirtualMode in FWorkbook.Options) and
     Assigned(FWorkbook.OnReadCellData);
@@ -219,15 +220,14 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates an instance of the number format list which contains prototypes of
-  all number formats found in the the file (when reading).
+  Adds the built-in number formats to the internal NumFormatList.
 
-  The method has to be overridden because the descendants know the special
-  requirements of the file format.
+  Must be overridden by descendants because they know about the details of
+  the file format.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.CreateNumFormatList;
+procedure TsCustomSpreadReader.AddBuiltinNumFormats;
 begin
-  // nothing to do here
+  // to be overridden by descendants
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -368,12 +368,13 @@ constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   // Number formats
-  CreateNumFormatList;
+  FNumFormatList := TStringList.Create;
+  AddBuiltinNumFormats;
 end;
 
 {@@ ----------------------------------------------------------------------------
   Destructor of the writer.
-  Destroys the internal number format list and the error log list.
+  Destroys the internal number format list.
 -------------------------------------------------------------------------------}
 destructor TsCustomSpreadWriter.Destroy;
 begin
@@ -382,15 +383,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates an instance of the number format list which contains prototypes of
-  all number formats found in the workbook .
+  Adds the built-in number formats to the NumFormatList
 
   The method has to be overridden because the descendants know the special
   requirements of the file format.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.CreateNumFormatList;
+procedure TsCustomSpreadWriter.AddBuiltinNumFormats;
 begin
-  // nothing to do here
+  // to be overridden by descendents
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the specified number format string is already contained in the
+  the writer's internal number format list. If yes, the list index is returned.
+-------------------------------------------------------------------------------}
+function TsCustomSpreadWriter.FindNumFormatInList(ANumFormatStr: String): Integer;
+begin
+  for Result:=0 to FNumFormatList.Count-1 do
+    if SameText(ANumFormatStr, FNumFormatList[Result]) then
+      exit;
+  Result := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -467,21 +479,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Iterates through all cells and collects the number formats in
-  FNumFormatList (without duplicates).
-  The index of the list item is needed for the field FormatIndex of the XF record.
-  At the time when the method is called the formats are still in fpc dialect.
+  Copies the format strings from the workbook's NumFormatList to the writer's
+  internal NumFormatList.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.ListAllNumFormats;
+procedure TsCustomSpreadWriter.ListAllNumFormats(ADialect: TsNumFormatDialect);
 var
   i: Integer;
-  fmt: PsCellFormat;
+  numFmt: TsNumFormatParams;
+  numFmtStr: String;
 begin
-  for i:=0 to Workbook.GetNumCellFormats - 1 do
+  for i:=0 to Workbook.GetNumberFormatCount - 1 do
   begin
-    fmt := Workbook.GetPointerToCellFormat(i);
-    if FNumFormatList.Find(fmt^.NumberFormat, fmt^.NumberFormatStr) = -1 then
-      FNumFormatList.AddFormat(fmt^.NumberFormat, fmt^.NumberFormatStr);
+    numFmt := Workbook.GetNumberFormat(i);
+    if numFmt <> nil then
+    begin
+      numFmtStr := numFmt.NumFormatStr[ADialect];
+      if FindNumFormatInList(numFmtStr) = -1 then
+        FNumFormatList.Add(numFmtStr);
+    end;
   end;
 end;
 
@@ -534,7 +549,6 @@ var
 begin
   for cell in ACells do
     WriteCellToStream(AStream, cell);
-//  IterateThroughCells(AStream, ACells, WriteCellCallback);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -7,7 +7,7 @@ unit fpsNumFormatParser;
 interface
 
 uses
-  SysUtils, fpstypes, fpspreadsheet;
+  Classes, SysUtils, fpstypes, fpspreadsheet;
 
 
 const
@@ -22,47 +22,9 @@ const
   psErrQuoteExpected = 8;
   psAmbiguousSymbol = 9;
 
-{ TsNumFormatParser }
-
 type
-  TsNumFormatToken = (nftText, nftThSep, nftDecSep,
-    nftYear, nftMonth, nftDay, nftHour, nftMinute, nftSecond, nftMilliseconds,
-    nftAMPM, nftMonthMinute, nftDateTimeSep,
-    nftSign, nftSignBracket,
-    nftDigit, nftOptDigit, nftOptSpaceDigit, nftDecs, nftOptDec,
-    nftExpChar, nftExpSign, nftExpDigits,
-    nftPercent,     // '%'
-    nftFracSymbol,  // '/'
-    nftFracIntDigit, nftFracIntSpaceDigit, nftFracIntZeroDigit,  // '#', '?', '0'
-    nftFracNumDigit, nftFracNumSpaceDigit, nftFracNumZeroDigit,
-    nftFracDenomDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit,
-    nftCurrSymbol, nftCountry,
-    nftColor, nftCompareOp, nftCompareValue,
-    nftSpace, nftEscaped,
-    nftRepeat, nftEmptyCharWidth,
-    nftTextFormat);
 
-  TsNumFormatElement = record
-    Token: TsNumFormatToken;
-    IntValue: Integer;
-    FloatValue: Double;
-    TextValue: String;
-  end;
-
-  TsNumFormatElements = array of TsNumFormatElement;
-
-  TsNumFormatSection = record
-    Elements: TsNumFormatElements;
-    NumFormat: TsNumberFormat;
-    Decimals: Byte;
-    FracInt: Integer;
-    FracNumerator: Integer;
-    FracDenominator: Integer;
-    CurrencySymbol: String;
-    Color: TsColor;
-  end;
-
-  TsNumFormatSections = array of TsNumFormatSection;
+  { TsNumFormatParser }
 
   TsNumFormatParser = class
   private
@@ -72,8 +34,8 @@ type
     FStart: PChar;
     FEnd: PChar;
     FCurrSection: Integer;
-    FHasRedSection: Boolean;
     FStatus: Integer;
+    FDialect: TsNumFormatDialect;
     function GetCurrencySymbol: String;
     function GetDecimals: byte;
     function GetFracDenominator: Integer;
@@ -125,28 +87,17 @@ type
     procedure FixMonthMinuteToken(ASection: Integer);
     // Format string
     function BuildFormatString(ADialect: TsNumFormatDialect): String; virtual;
-    function BuildFormatStringFromSection(ASection: Integer;
-      ADialect: TsNumFormatDialect): String; virtual;
-    // NumberFormat
-    procedure EvalNumFormatOfSection(ASection: Integer);
+    // Token analysis
     function GetTokenIntValueAt(AToken: TsNumFormatToken;
       ASection,AIndex: Integer): Integer;
-    function IsCurrencyAt(ASection: Integer; out ANumFormat: TsNumberFormat;
-      out ADecimals: byte; out ACurrencySymbol: String; out AColor: TsColor): Boolean;
-    function IsDateAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
-      var ANextIndex: Integer): Boolean;
-    function IsFractionAt(ASection,AIndex: Integer;
-      out AIntPart, ANumPart, ADenomPart, ANextIndex: Integer): Boolean;
-    function IsNumberAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
+    function IsNumberAt(ASection,AIndex: Integer; out ANumFormat: TsNumberFormat;
       out ADecimals: Byte; out ANextIndex: Integer): Boolean;
     function IsTextAt(AText: string; ASection, AIndex: Integer): Boolean;
-    function IsTimeAt(ASection,AIndex: Integer; out ANumberFormat: TsNumberFormat;
-      out ANextIndex: Integer): Boolean;
     function IsTokenAt(AToken: TsNumFormatToken; ASection,AIndex: Integer): Boolean;
 
   public
     constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
-      const ANumFormat: TsNumberFormat = nfGeneral);
+      ADialect: TsNumFormatDialect = nfdDefault);
     destructor Destroy; override;
     procedure ClearAll;
     function GetDateTimeCode(ASection: Integer): String;
@@ -171,7 +122,7 @@ type
 implementation
 
 uses
-  TypInfo, StrUtils, LazUTF8, fpsutils, fpsCurrency;
+  TypInfo, LazUTF8, fpsutils, fpsCurrency;
 
 
 { TsNumFormatParser }
@@ -182,19 +133,19 @@ uses
   because the format string might not contain the color information, and we
   extract it from the NumFormat in this case. }
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String; const ANumFormat: TsNumberFormat = nfGeneral);
+  const AFormatString: String; ADialect: TsNumFormatDialect = nfdDefault);
 begin
   inherited Create;
   FCreateMethod := 0;
   FWorkbook := AWorkbook;
-  FHasRedSection := (ANumFormat = nfCurrencyRed);
+  FDialect := ADialect;
   Parse(AFormatString);
+  CheckSections;
 end;
 
 destructor TsNumFormatParser.Destroy;
 begin
   FSections := nil;
-//  ClearAll;
   inherited Destroy;
 end;
 
@@ -290,97 +241,9 @@ var
   i: Integer;
 begin
   if Length(FSections) > 0 then begin
-    Result := BuildFormatStringFromSection(0, ADialect);
-    for i := 1 to High(FSections) do
-      Result := Result + ';' + BuildFormatStringFromSection(i, ADialect);
-  end else
-    Result := '';
-end;
-
-{ Creates a format string for the given section. This implementation covers
-  the formatstring dialects of fpc (nfdDefault) and Excel (nfdExcel). }
-function TsNumFormatParser.BuildFormatStringFromSection(ASection: Integer;
-  ADialect: TsNumFormatDialect): String;
-var
-  element: TsNumFormatElement;
-  i: Integer;
-begin
-  Result := '';
-
-  if (ASection < 0) and (ASection >= GetParsedSectionCount) then
-    exit;
-  for i := 0 to High(FSections[ASection].Elements)  do begin
-    element := FSections[ASection].Elements[i];
-    case element.Token of
-      nftText:
-        if element.TextValue <> '' then result := Result + '"' + element.TextValue + '"';
-      nftThSep, nftDecSep:
-        Result := Result + element.TextValue;
-      nftDigit, nftFracIntZeroDigit, nftFracNumZeroDigit, nftFracDenomZeroDigit:
-        Result := Result + DupeString('0', element.IntValue);
-      nftOptDigit, nftOptDec, nftFracIntDigit, nftFracNumDigit, nftFracDenomDigit:
-        Result := Result + DupeString('#', element.IntValue);
-      nftOptSpaceDigit, nftFracIntSpaceDigit, nftFracNumSpaceDigit, nftFracDenomSpaceDigit:
-        Result := Result + DupeString('?', element.IntValue);
-      nftFracSymbol:
-        Result := Result + '/';
-      nftYear:
-        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'Y', 'y'), element.IntValue);
-      nftMonth:
-        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'M', 'm'), element.IntValue);
-      nftDay:
-        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'D', 'd'), element.IntValue);
-      nftHour:
-        if element.IntValue < 0
-          then Result := Result + '[' + DupeString('h', -element.IntValue) + ']'
-          else Result := Result + DupeString('h', element.IntValue);
-      nftMinute:
-        if element.IntValue < 0
-          then Result := result + '[' + DupeString(IfThen(ADialect = nfdExcel, 'm', 'n'), -element.IntValue) + ']'
-          else Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'm', 'n'), element.IntValue);
-      nftSecond:
-        if element.IntValue < 0
-          then Result := Result + '[' + DupeString('s', -element.IntValue) + ']'
-          else Result := Result + DupeString('s', element.IntValue);
-      nftDecs, nftExpDigits, nftMilliseconds:
-        Result := Result + Dupestring('0', element.IntValue);
-      nftSpace, nftSign, nftSignBracket, nftExpChar, nftExpSign, nftPercent,
-      nftAMPM, nftDateTimeSep:
-        if element.TextValue <> '' then Result := Result + element.TextValue;
-      nftCurrSymbol:
-        if element.TextValue <> '' then begin
-          if ADialect = nfdExcel then
-            Result := Result + '[$' + element.TextValue + ']'
-          else
-            Result := Result + '"' + element.TextValue + '"';
-        end;
-      nftEscaped:
-        if element.TextValue <> '' then begin
-          if ADialect = nfdExcel then
-            Result := Result + '\' + element.TextValue
-          else
-            Result := Result + element.TextValue;
-        end;
-      nftTextFormat:
-        if element.TextValue <> '' then
-          if ADialect = nfdExcel then Result := Result + element.TextValue;
-      nftRepeat:
-        if element.TextValue <> '' then Result := Result + '*' + element.TextValue;
-      nftColor:
-        if ADialect = nfdExcel then begin
-          case element.IntValue of
-            scBlack  : Result := '[black]';
-            scWhite  : Result := '[white]';
-            scRed    : Result := '[red]';
-            scBlue   : Result := '[blue]';
-            scGreen  : Result := '[green]';
-            scYellow : Result := '[yellow]';
-            scMagenta: Result := '[magenta]';
-            scCyan   : Result := '[cyan]';
-            else       Result := Format('[Color%d]', [element.IntValue]);
-          end;
-        end;
-    end;
+    Result := BuildFormatStringFromSection(FSections[0], ADialect);
+    for i:=1 to High(FSections) do
+      Result := Result + ';' + BuildFormatStringFromSection(FSections[i], ADialect);
   end;
 end;
 
@@ -388,14 +251,152 @@ procedure TsNumFormatParser.CheckSections;
 var
   i: Integer;
 begin
-  for i:=0 to Length(FSections)-1 do
+  for i:=0 to High(FSections) do
     CheckSection(i);
+
+  if (Length(FSections) > 1) and (FSections[1].NumFormat = nfCurrencyRed) then
+    for i:=0 to High(FSections) do
+      if FSections[i].NumFormat = nfCurrency then
+        FSections[i].NumFormat := nfCurrencyRed;
 end;
 
 procedure TsNumFormatParser.CheckSection(ASection: Integer);
+var
+  el, next: Integer;
+  section: PsNumFormatSection;
+  nfs: String;
+  nf: TsNumberFormat;
+  datetimeFormats: set of TsNumberformat;
+  f1,f2: Integer;
+  decs: Byte;
 begin
-  FixMonthMinuteToken(ASection);
-  EvalNumFormatOfSection(ASection);
+  if FStatus <> psOK then
+    exit;
+
+  section := @FSections[ASection];
+  section^.Kind := [];
+
+  for el := 0 to High(section^.Elements) do
+    case section^.Elements[el].Token of
+      nftPercent:
+        section^.Kind := section^.Kind + [nfkPercent];
+      nftExpChar:
+        section^.Kind := section^.Kind + [nfkExp];
+      nftFracSymbol:
+        section^.Kind := section^.Kind + [nfkFraction];
+      nftCurrSymbol:
+        begin
+          section^.Kind := section^.Kind + [nfkCurrency];
+          section^.CurrencySymbol := section^.Elements[el].TextValue;
+        end;
+      nftYear, nftMonth, nftDay:
+        section^.Kind := section^.Kind + [nfkDate];
+      nftHour, nftMinute, nftSecond, nftMilliseconds:
+        begin
+          section^.Kind := section^.Kind + [nfkTime];
+          if section^.Elements[el].IntValue < 0 then
+            section^.Kind := section^.Kind + [nfkTimeInterval];
+        end;
+    end;
+
+  if (section^.Kind * [nfkDate, nfkTime] <> []) and
+     (section^.Kind * [nfkPercent, nfkExp, nfkCurrency, nfkFraction] <> []) then
+  begin
+    FStatus := psErrNoValidDateTimeFormat;
+    exit;
+  end;
+
+  section^.NumFormat := nfCustom;
+
+  if (section^.Kind * [nfkDate, nfkTime] <> []) then
+  begin
+    FixMonthMinuteToken(ASection);
+    nfs := FormatString[nfdDefault];
+    if (nfkTimeInterval in section^.Kind) then
+      section^.NumFormat := nfTimeInterval
+    else
+    begin
+      datetimeFormats := [nfShortDateTime, nfLongDate, nfShortDate, nfLongTime,
+        nfShortTime, nfLongTimeAM, nfShortTimeAM, nfDayMonth, nfMonthYear];
+      for nf in datetimeFormats do
+        if SameText(nfs, BuildDateTimeFormatString(nf, FWorkbook.FormatSettings)) then
+        begin
+          section^.NumFormat := nf;
+          break;
+        end;
+    end;
+  end else
+  begin
+    el := 0;
+    while el < Length(section^.Elements) do
+    begin
+      if IsNumberAt(ASection, el, nf, decs, next) then begin
+        section^.Decimals := decs;
+        if nf = nfFixedTh then begin
+          if (nfkCurrency in section^.Kind) then
+            section^.NumFormat := nfCurrency
+          else
+            section^.NumFormat := nfFixedTh
+        end else
+        begin
+          section^.NumFormat := nf;
+          if (nfkPercent in section^.Kind) then
+            section^.NumFormat := nfPercentage
+          else
+          if (nfkExp in section^.Kind) then
+            section^.NumFormat := nfExp
+          else
+          if (nfkCurrency in section^.Kind) then
+            section^.NumFormat := nfCurrency
+          else
+          if (nfkFraction in section^.Kind) and (decs = 0) then begin
+            f1 := section^.Elements[el].IntValue;  // int part or numerator
+            el := next;
+            while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', ASection, el) do
+              inc(el);
+            if IsTokenAt(nftFracSymbol, ASection, el) then begin
+              inc(el);
+              while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', aSection, el) do
+                inc(el);
+              if IsNumberAt(ASection, el, nf, decs, next) and (nf in [nfFixed, nfFraction]) and (decs = 0) then
+              begin
+                section^.FracInt := 0;
+                section^.FracNumerator := f1;
+                section^.FracDenominator := section^.Elements[el].IntValue;
+                section^.NumFormat := nfFraction;
+              end;
+            end else
+            if IsNumberAt(ASection, el, nf, decs, next) and (nf in [nfFixed, nfFraction]) and (decs = 0) then
+            begin
+              f2 := section^.Elements[el].IntValue;
+              el := next;
+              while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', ASection, el) do
+                inc(el);
+              if IsTokenAt(nftFracSymbol, ASection, el) then
+              begin
+                inc(el);
+                while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', ASection, el) do
+                  inc(el);
+                if IsNumberAt(ASection, el, nf, decs, next) and (nf in [nfFixed, nfFraction]) and (decs=0) then
+                begin
+                  section^.FracInt := f1;
+                  section^.FracNumerator := f2;
+                  section^.FracDenominator := section^.Elements[el].IntValue;
+                  section^.NumFormat := nfFraction;
+                end;
+              end;
+            end;
+          end;
+        end;
+        break;
+      end else
+      if IsTokenAt(nftColor, ASection, el) then
+        section^.Color := section^.Elements[el].IntValue;
+      inc(el);
+    end;
+    if (section^.NumFormat = nfCurrency) and (section^.Color = scRed) then
+      section^.NumFormat := nfCurrencyRed;
+  end;
 end;
 
 procedure TsNumFormatParser.ClearAll;
@@ -535,117 +536,8 @@ begin
 end;
 
 function TsNumFormatParser.GetFormatString(ADialect: TsNumFormatDialect): String;
-var
-  i: Integer;
 begin
-  Result := '';
-  if Length(FSections) > 0 then begin
-    Result := BuildFormatStringFromSection(0, ADialect);
-    for i:=1 to High(FSections) do
-      Result := Result + ';' + BuildFormatStringFromSection(i, ADialect);
-  end;
-end;
-
-procedure TsNumFormatParser.EvalNumFormatOfSection(ASection: Integer);
-var
-  nf, nf1: TsNumberFormat;
-  next: Integer = 0;
-  decs: Byte;
-  intPart, numPart, denomPart: Integer;
-  cs: String;
-  clr: TsColor;
-  tok: TsNumFormatToken;
-begin
-  nf := nfCustom;
-  decs := 0;
-  cs := '';
-  clr := scNotDefined;
-
-  with FSections[ASection] do begin
-    if Length(Elements) = 0 then begin
-      FSections[ASection].NumFormat := nfGeneral;
-      exit;
-    end;
-
-    // Look for number formats (note: fractions are rarely used --> at end)
-    if IsNumberAt(ASection, 0, nf, decs, next) then begin
-      // nfFixed, nfFixedTh
-      if next = Length(Elements) then
-      begin
-        FSections[ASection].NumFormat := nf;
-        FSections[ASection].Decimals := decs;
-        exit;
-      end;
-      // nfPercentage
-      if IsTokenAt(nftPercent, ASection, next) and (next+1 = Length(Elements))
-      then begin
-        FSections[ASection].NumFormat := nfPercentage;
-        FSections[ASection].Decimals := decs;
-        exit;
-      end;
-      // nfExp
-      if IsTokenAt(nftExpChar, ASection, next) then begin
-        if IsTokenAt(nftExpSign, ASection, next+1) and IsTokenAt(nftExpDigits, ASection, next+2) and
-          (next+3 = Length(Elements))
-        then begin
-          if nf = nfFixed then
-          begin
-            FSections[ASection].NumFormat := nfExp;
-            FSections[ASection].Decimals := decs;
-            exit;
-          end;
-        end;
-      end;
-    end;
-
-    // Currency?
-    if IsCurrencyAt(ASection, nf, decs, cs, clr) then
-    begin
-      FSections[ASection].NumFormat := nf;
-      FSections[ASection].Decimals := decs;
-      FSections[ASection].CurrencySymbol := cs;
-      FSections[ASection].Color := clr;
-      exit;
-    end;
-
-    // Look for date formats
-    if IsDateAt(ASection, 0, nf, next) then begin
-      if (next = Length(Elements)) then
-      begin
-        FSections[ASection].NumFormat := nf;
-        exit;
-      end;
-      if IsTokenAt(nftSpace, ASection, next) and IsTimeAt(ASection, next+1, nf1, next) and
-         (next = Length(Elements))
-      then begin
-        if (nf = nfShortDate) and (nf1 = nfShortTime) then
-          FSections[ASection].NumFormat := nfShortDateTime;
-      end;
-      exit;
-    end;
-
-    // Look for time formats
-    if IsTimeAt(ASection, 0, nf, next) then
-      if next = Length(Elements) then
-      begin
-        FSections[ASection].NumFormat := nf;
-        exit;
-      end;
-
-    // Look for fractions
-    if IsFractionAt(ASection, 0, intPart, numPart, denomPart, next) then
-      if next = Length(Elements) then
-      begin
-        FSections[ASection].NumFormat := nfFraction;
-        FSections[ASection].FracInt := intPart;
-        FSections[ASection].FracNumerator := numPart;
-        FSections[ASection].FracDenominator := denomPart;
-        exit;
-      end;
-  end;
-
-  // If we get here it must be a custom format.
-  FSections[ASection].NumFormat := nfCustom;
+  Result := BuildFormatString(ADialect);
 end;
 
 { Extracts the currency symbol form the formatting sections. It is assumed that
@@ -787,303 +679,83 @@ begin
     Result := -1;
 end;
 
-{ Checks if a currency-type of format string begins at index AIndex, and returns
-  the numberformat code, the count of decimals, the currency sambol, and the
-  color.
-  Note that the check is not very exact, but should cover most cases. }
-function TsNumFormatParser.IsCurrencyAt(ASection: Integer;
-  out ANumFormat: TsNumberFormat; out ADecimals: byte;
-  out ACurrencySymbol: String; out AColor: TsColor): Boolean;
-var
-  hasCurrSymbol: Boolean;
-  hasColor: Boolean;
-  el: Integer;
-begin
-  Result := false;
-
-  ANumFormat := nfCustom;
-  ACurrencySymbol := '';
-  ADecimals := 0;
-  AColor := scNotDefined;
-  hasColor := false;
-  hasCurrSymbol := false;
-
-  // Looking for the currency symbol: it is the unique identifier of the
-  // currency format.
-  for el := 0 to High(FSections[ASection].Elements) do
-    if FSections[ASection].Elements[el].Token = nftCurrSymbol then begin
-      Result := true;
-      break;
-    end;
-
-  if not Result then
-    exit;
-
-  { When the format string comes from fpc it does not contain a color token.
-    Color would be lost when saving. Therefore, we take the color from the
-    knowledge of the NumFormat passed on creation: nfCurrencyRed has color red
-    in the second section! }
-  if (ASection = 1) and FHasRedSection then
-    AColor := scRed;
-
-  // Now that we know that it is a currency format analyze the elements again
-  // and determine color, decimals and currency symbol.
-  el := 0;
-  while (el < Length(FSections[ASection].Elements)) do begin
-    case FSections[ASection].Elements[el].Token of
-      nftColor:
-        begin
-          AColor := FSections[ASection].Elements[el].IntValue;
-          hasColor := true;
-        end;
-      nftRepeat:
-        ;
-      nftCurrSymbol:
-        begin
-          ACurrencySymbol := FSections[ASection].Elements[el].TextValue;
-          hasCurrSymbol := true;
-        end;
-      nftOptDigit:
-        if IsNumberAt(ASection, el, ANumFormat, ADecimals, el) then
-          dec(el)
-        else begin
-          Result := false;
-          exit;
-        end;
-      nftDigit:
-        if IsNumberAt(ASection, el, ANumFormat, ADecimals, el) then
-          dec(el)
-        else begin
-          Result := false;
-          exit;
-        end;
-    end;
-    inc(el);
-  end;
-
-  if (ASection = 1) and FHasRedSection and not hasColor then
-    InsertElement(ASection, 0, nftColor, scRed);
-
-  Result := hasCurrSymbol and ((ANumFormat = nfFixedTh) or (ASection = 2));
-  if Result then begin
-    if AColor = scNotDefined then ANumFormat := nfCurrency else
-    if AColor = scRed then ANumFormat := nfCurrencyRed;
-  end else
-    ANumFormat := nfCustom;
-end;
-
-function TsNumFormatParser.IsDateAt(ASection,AIndex: Integer;
-  out ANumberFormat: TsNumberFormat; var ANextIndex: Integer): Boolean;
-
-  function CheckFormat(AFmtStr: String; var idx: Integer): Boolean;
-  var
-    i: Integer;
-    s: String;
-  begin
-    Result := false;
-    idx := AIndex;
-    i := 1;
-    while (i < Length(AFmtStr)) and (idx < Length(FSections[ASection].Elements)) do begin
-      case AFmtStr[i] of
-        'y', 'Y':
-          begin
-            if not IsTokenAt(nftYear, ASection, idx) then Exit;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['y', 'Y']) do inc(i);
-          end;
-        'm', 'M':
-          begin
-            if not IsTokenAt(nftMonth, ASection, idx) then Exit;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['m', 'M']) do inc(i);
-          end;
-        'd', 'D':
-          begin
-            if not IsTokenAt(nftDay, ASection, idx) then exit;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['d', 'D']) do inc(i);
-          end;
-        '/':
-          begin
-            if not IsTokenAt(nftDateTimeSep, ASection, idx) then exit;
-            s := FSections[ASection].Elements[idx].TextValue;
-            if not ((s = '/') or (s = FWorkbook.FormatSettings.DateSeparator)) then
-              exit;
-            inc(idx);
-            inc(i);
-          end;
-        else
-          begin
-            if not (IsTokenAt(nftDateTimeSep, ASection, idx) and
-                   (FSections[ASection].Elements[idx].textValue = AFmtStr[i]))
-            then
-              exit;
-            inc(idx);
-            inc(i);
-          end;
-      end;
-    end;  // while ...
-    Result := true;
-    ANextIndex := idx;
-  end;
-
-begin
-  if FWorkbook = nil then begin
-    Result := false;
-    exit;
-  end;
-
-  // The default format nfShortDate is defined by the ShortDateFormat of the
-  // Workbook's FormatSettings. Check whether the current format string matches.
-  // But watch out for different date separators!
-  if CheckFormat(FWorkbook.FormatSettings.ShortDateFormat, ANextIndex) then begin
-    Result := true;
-    ANumberFormat := nfShortDate;
-  end else
-  // dto. with the LongDateFormat
-  if CheckFormat(FWorkbook.FormatSettings.LongDateFormat, ANextIndex) then begin
-    Result := true;
-    ANumberFormat := nfLongDate;
-  end else
-    Result := false;
-end;
-
 { Returns true if the format elements contain at least one date/time token }
 function TsNumFormatParser.IsDateTimeFormat: Boolean;
 var
-  section: Integer;
-  elem: Integer;
-begin
-  Result := true;
-  for section := 0 to High(FSections) do
-    for elem := 0 to High(FSections[section].Elements) do
-      if FSections[section].Elements[elem].Token in [nftYear, nftMonth, nftDay,
-        nftHour, nftMinute, nftSecond]
-      then
-        exit;
-  Result := false;
-end;
-
-function TsNumFormatParser.IsFractionAt(ASection,AIndex: Integer;
-  out AIntPart, ANumPart, ADenomPart, ANextIndex: Integer): Boolean;
-var
-  tok: TsNumFormatToken;
   section: TsNumFormatSection;
 begin
+  for section in FSections do
+    if section.Kind * [nfkDate, nfkTime] <> [] then
+    begin
+      Result := true;
+      exit;
+    end;
   Result := false;
-  AIntPart := 0;
-  ANumPart := 0;
-  ADenomPart := 0;
-  ANextIndex := MaxInt;
-
-  if ASection > High(FSections) then
-    exit;
-  section := FSections[ASection];
-  if AIndex > High(section.Elements) then
-    exit;
-
-  // integer part of the fraction
-  tok := section.Elements[AIndex].Token;
-  if tok in [nftFracIntDigit, nftFracIntSpaceDigit, nftFracIntZeroDigit] then
-  begin
-    AIntPart := section.Elements[AIndex].IntValue;
-    inc(AIndex);
-  end;
-
-  // Skip space(s)
-  while (AIndex <= High(section.Elements)) and
-        (IsTokenAt(nftSpace, ASection, AIndex) or IsTextAt(' ', ASection, AIndex))
-  do
-    inc(AIndex);
-  if AIndex > High(section.Elements) then
-    exit;
-
-  // numerator
-  tok := section.Elements[AIndex].Token;
-  if tok in [nftFracNumDigit, nftFracNumSpaceDigit, nftFracNumZeroDigit] then
-    ANumPart := section.Elements[AIndex].IntValue
-  else
-    exit;
-
-  // Skip space(s) and fraction symbol
-  inc(AIndex);
-  while (AIndex <= High(section.Elements)) and
-        (IsTokenAt(nftSpace, ASection, AIndex) or
-         IsTextAt(' ', ASection, AIndex) or
-         IsTokenAt(nftFracSymbol, ASection, AIndex))
-  do
-    inc(AIndex);
-
-  // denominator
-  tok := section.Elements[AIndex].Token;
-  if tok in [nftFracDenomDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit] then
-  begin
-    ADenomPart := section.Elements[AIndex].IntValue;
-    ANextIndex := AIndex + 1;
-    Result := true;
-  end;
 end;
 
-{ Checks whether the format tokens beginning at AIndex for ASection represent
-  at standard number format, like nfFixed, nfPercentage etc.
-  Returns TRUE if it does.
-  NOTE: Fraction format is not checked here --> see: IsFractionAt }
-function TsNumFormatParser.IsNumberAt(ASection,AIndex: Integer;
-  out ANumberFormat: TsNumberFormat; out ADecimals: Byte;
+function TsNumFormatParser.IsNumberAt(ASection, AIndex: Integer;
+  out ANumFormat: TsNumberFormat; out ADecimals: Byte;
   out ANextIndex: Integer): Boolean;
 var
-  i: Integer;
+  token: TsNumFormatToken;
 begin
-  Result := false;
-  ANumberFormat := nfGeneral;
+  if (ASection > High(FSections)) or (AIndex > High(FSections[ASection].Elements))
+  then begin
+    Result := false;
+    ANextIndex := AIndex;
+    exit;
+  end;
+
+  Result := true;
+  ANumFormat := nfCustom;
   ADecimals := 0;
-  ANextIndex := MaxInt;
-  // Let's look for digit tokens ('0') first
-  if IsTokenAt(nftDigit, ASection, AIndex) then begin      // '0'
-    if IsTokenAt(nftDecSep, ASection, AIndex+1) and        // '.'
-       IsTokenAt(nftDecs, ASection, AIndex+2)              // count of decimals
-    then begin
-      // This is the case with decimal separator, like "0.000"
-      Result := true;
-      ANumberFormat := nfFixed;
-      ADecimals := FSections[ASection].Elements[AIndex+2].IntValue;
-      ANextIndex := AIndex+3;
-    end else
-    if not IsTokenAt(nftDecSep, ASection, AIndex+1) then begin
-      // and this is the (only) case without decimal separator ("0")
-      Result := true;
-      ANumberFormat := nfFixed;
-      ADecimals := 0;
-      ANextIndex := AIndex+1;
-    end;
-  end else
-  // Now look also for optional digits ('#')
-  if IsTokenAt(nftOptDigit, ASection, AIndex) then begin              // '#'
-    if IsTokenAt(nftThSep, ASection, AIndex+1) and                    // ','
-       (GetTokenIntValueAt(nftOptDigit, ASection, AIndex+2) = 2) and  // '##'
-       (GetTokenIntValueAt(nftDigit, ASection, AIndex+3) = 1)         // '0'
-    then begin
-      if IsTokenAt(nftDecSep, ASection, AIndex+4) and      // '.'
-         IsTokenAt(nftDecs, ASection, AIndex+5)            // count of decimals
-      then begin
-        // This is the case with decimal separator, like "#,##0.000"
-        Result := true;
-        ANumberFormat := nfFixedTh;
-        ADecimals := FSections[ASection].Elements[AIndex+5].IntValue;
-        ANextIndex := AIndex + 6;
-      end else
-      if not IsTokenAt(nftDecSep, ASection, AIndex+4) then begin
-        // and this is without decimal separator, "#,##0"
-        result := true;
-        ANumberFormat := nfFixedTh;
-        ADecimals := 0;
-        ANextIndex := AIndex + 4;
+  token := FSections[ASection].Elements[AIndex].Token;
+
+  if token in [nftFracNumOptDigit, nftFracNumZeroDigit, nftFracNumSpaceDigit,
+    nftFracDenomOptDigit, nftFracDenomZeroDigit, nftFracDenomSpaceDigit] then
+  begin
+    ANumFormat := nfFraction;
+    ANextIndex := AIndex + 1;
+    exit;
+  end;
+
+  if (token = nftIntTh) and (FSections[ASection].Elements[AIndex].IntValue = 1) then   // '#,##0'
+    ANumFormat := nfFixedTh
+  else
+  if (token = nftIntZeroDigit) and (FSections[ASection].Elements[AIndex].IntValue = 1) then // '0'
+    ANumFormat := nfFixed;
+
+  if (token in [nftIntTh, nftIntZeroDigit, nftIntOptDigit, nftIntSpaceDigit]) then
+  begin
+    if IsTokenAt(nftDecSep, ASection, AIndex+1) then
+    begin
+      if AIndex + 2 < Length(FSections[ASection].Elements) then
+      begin
+        token := FSections[ASection].Elements[AIndex+2].Token;
+        if (token in [nftZeroDecs, nftOptDecs, nftSpaceDecs]) then
+        begin
+          ANextIndex := AIndex + 3;
+          ADecimals := FSections[ASection].Elements[AIndex+2].IntValue;
+          if (token <> nftZeroDecs) then
+            ANumFormat := nfCustom;
+          exit;
+        end;
       end;
+    end else
+    if IsTokenAt(nftSpace, ASection, AIndex+1) then
+    begin
+      ANumFormat := nfFraction;
+      ANextIndex := AIndex + 1;
+      exit;
+    end else
+    begin
+      ANextIndex := AIndex + 1;
+      exit;
     end;
   end;
+
+  ANextIndex := AIndex;
+  Result := false;
 end;
 
 function TsNumFormatParser.IsTextAt(AText: String; ASection, AIndex: Integer): Boolean;
@@ -1092,153 +764,18 @@ begin
     (FSections[ASection].Elements[AIndex].TextValue = AText);
 end;
 
-function TsNumFormatParser.IsTimeAt(ASection,AIndex: Integer;
-  out ANumberFormat: TsNumberFormat; out ANextIndex: Integer): Boolean;
-
-  function CheckFormat(AFmtStr: String; out idx: Integer;
-    out AMPM, IsInterval: boolean): Boolean;
-  var
-    i: Integer;
-    s: String;
-  begin
-    Result := false;
-    AMPM := false;
-    IsInterval := false;
-    idx := AIndex;
-    i := 1;
-    while (i < Length(AFmtStr)) and (idx < Length(FSections[ASection].Elements)) do begin
-      case AFmtStr[i] of
-        'h', 'H':
-          begin
-            if not IsTokenAt(nftHour, ASection, idx) then Exit;
-            if FSections[ASection].Elements[idx].IntValue < 0 then isInterval := true;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['h', 'H']) do inc(i);
-          end;
-        'm', 'M', 'n', 'N':
-          begin
-            if not IsTokenAt(nftMinute, ASection, idx) then Exit;
-            if FSections[ASection].Elements[idx].IntValue < 0 then isInterval := true;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['m', 'M', 'n', 'N']) do inc(i);
-          end;
-        's', 'S':
-          begin
-            if not IsTokenAt(nftSecond, ASection, idx) then exit;
-            if FSections[ASection].Elements[idx].IntValue < 0 then isInterval := true;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['s', 'S']) do inc(i);
-          end;
-        ':':
-          begin
-            if not IsTokenAt(nftDateTimeSep, ASection, idx) then exit;
-            s := FSections[ASection].Elements[idx].TextValue;
-            if not ((s = ':') or (s = FWorkbook.FormatSettings.DateSeparator)) then
-              exit;
-            inc(idx);
-            inc(i);
-          end;
-        ' ':
-          if (i+1 <= Length(AFmtStr)) and (AFmtStr[i+1] in ['a', 'A']) then begin
-            inc(idx);
-            inc(i);
-          end else
-            exit;
-        'a', 'A':
-          begin
-            if not IsTokenAt(nftAMPM, ASection, idx) then exit;
-            inc(idx);
-            inc(i);
-            while (i < Length(AFmtStr)) and (AFmtStr[i] in ['m','M','/','p','P']) do inc(i);
-            AMPM := true;
-          end;
-        '[':
-           begin
-             if not IsTokenAt(nftHour, ASection, idx+1) then exit;
-             if IsTextAt(']', ASection, idx+2) then begin
-               inc(i, 3);
-               inc(idx, 3);
-               IsInterval := true;
-             end else
-             if IsTokenAt(nftHour, ASection, idx+2) and IsTextAt(']', ASection, idx+3) then begin
-               inc(i, 4);
-               inc(idx, 4);
-               isInterval := true;
-             end else
-               exit;
-           end
-        else
-          exit;
-      end;
-    end;
-    Result := i >= Length(AFmtStr); //true;
-  end;
-
-var
-  AMPM, isInterval: Boolean;
-  i: Integer;
-  fmt: String;
-begin
-  if FWorkbook = nil then begin
-    Result := false;
-    exit;
-  end;
-
-  Result := true;
-  fmt := AddAMPM(FWorkbook.FormatSettings.LongTimeFormat, FWorkbook.FormatSettings);
-  if CheckFormat(fmt, ANextIndex, AMPM, isInterval) then begin
-    ANumberFormat := IfThen(AMPM, nfLongTimeAM, IfThen(isInterval, nfTimeInterval, nfLongTime));
-    exit;
-  end;
-  fmt := FWorkbook.FormatSettings.LongTimeFormat;
-  if CheckFormat(fmt, ANextIndex, AMPM, isInterval) then begin
-    ANumberFormat := IfThen(AMPM, nfLongTimeAM, IfThen(isInterval, nfTimeInterval, nfLongTime));
-    exit;
-  end;
-  fmt := AddAMPM(FWorkbook.FormatSettings.ShortTimeFormat, FWorkbook.FormatSettings);
-  if CheckFormat(fmt, ANextIndex, AMPM, isInterval) then begin
-    ANumberFormat := IfThen(AMPM, nfShortTimeAM, nfShortTime);
-    exit;
-  end;
-  fmt := FWorkbook.FormatSettings.ShortTimeFormat;
-  if CheckFormat(fmt, ANextIndex, AMPM, isInterval) then begin
-    ANumberFormat := IfThen(AMPM, nfShortTimeAM, nfShortTime);
-    exit;
-  end;
-
-  for i:=0 to High(FSections[ASection].Elements) do
-    if (FSections[ASection].Elements[i].Token in [nftHour, nftMinute, nftSecond]) and
-       (FSections[ASection].Elements[i].IntValue < 0)
-    then begin
-      ANumberFormat := nfTimeInterval;
-      exit;
-    end;
-
-  Result := false;
-end;
-
 { Returns true if the format elements contain only time, no date tokens. }
 function TsNumFormatParser.IsTimeFormat: Boolean;
 var
-  section: Integer;
-  elem: Integer;
+  section: TsNumFormatSection;
 begin
+  for section in FSections do
+    if (nfkTime in section.Kind) then
+    begin
+      Result := true;
+      exit;
+    end;
   Result := false;
-  for section := 0 to High(FSections) do
-    for elem := 0 to High(FSections[section].Elements) do
-      if FSections[section].Elements[elem].Token in [nftHour, nftMinute, nftSecond]
-      then begin
-        Result := true;
-      end else
-      if FSections[section].Elements[elem].Token in
-         [nftYear, nftMonth, nftDay, nftExpChar, nftCurrSymbol]
-      then begin
-        Result := false;
-        exit;
-      end;
 end;
 
 function TsNumFormatParser.IsTokenAt(AToken: TsNumFormatToken;
@@ -1256,7 +793,7 @@ var
 begin
   for j:=0 to High(FSections) do
     for i:=0 to High(FSections[j].Elements) do
-      if FSections[j].Elements[i].Token = nftDecs then
+      if FSections[j].Elements[i].Token = nftZeroDecs then
         if FSections[j].Elements[i].IntValue > 0 then
           FSections[j].Elements[i].IntValue := 2;
 end;
@@ -1304,8 +841,9 @@ end;
 procedure TsNumFormatParser.Parse(const AFormatString: String);
 begin
   FStatus := psOK;
+
   AddSection;
-  if (AFormatString = '') or (lowercase(AFormatString) = 'general') then
+  if (AFormatString = '') or SameText(AFormatString, 'General') then
     exit;
 
   FStart := @AFormatString[1];
@@ -1322,8 +860,6 @@ begin
     end;
     FToken := NextToken;
   end;
-
-  CheckSections;
 end;
 
 { Scans an AM/PM sequence (or AMPM or A/P).
@@ -1331,6 +867,7 @@ end;
 procedure TsNumFormatParser.ScanAMPM;
 var
   s: String;
+  el: Integer;
 begin
   s := '';
   while (FCurrent < FEnd) do begin
@@ -1340,7 +877,18 @@ begin
       break;
     FToken := NextToken;
   end;
-  AddElement(nftAMPM, s);
+  if s <> '' then
+  begin
+    AddElement(nftAMPM, s);
+    // Tag the hour element for AM/PM format needed
+    el := High(FSections[FCurrSection].Elements)-1;
+    for el := High(FSections[FCurrSection].Elements)-1 downto 0 do
+      if FSections[FCurrSection].Elements[el].Token = nftHour then
+      begin
+        FSections[FCurrSection].Elements[el].TextValue := 'AM';
+        break;
+      end;
+  end;
 end;
 
 { Counts the number of characters equal to ATestChar. Stops at the next
@@ -1365,12 +913,17 @@ var
   s: String;
   n: Integer;
   prevtoken: Char;
+  isText: Boolean;
 begin
   s := '';
+  isText := false;
   FToken := NextToken;   // Cursor was at '['
   while (FCurrent < FEnd) and (FStatus = psOK) do begin
     case FToken of
       'h', 'H', 'm', 'M', 'n', 'N', 's', 'S':
+        if isText then
+          s := s + FToken
+        else
         begin
           prevtoken := FToken;
           ScanAndCount(FToken, n);
@@ -1411,6 +964,7 @@ begin
 
       else
         s := s + FToken;
+        isText := true;
     end;
     FToken := NextToken;
   end;
@@ -1485,14 +1039,16 @@ begin
     s := s + FToken;
     FToken := NextToken;
   end;
-  AddElement(nftCurrSymbol, s);
+  if s <> '' then
+    AddElement(nftCurrSymbol, s);
   if FToken <> ']' then begin
     FToken := NextToken;
     while (FCurrent < FEnd) and (FToken <> ']') do begin
       s := s + FToken;
       FToken := NextToken;
     end;
-    AddElement(nftCountry, s);
+    if s <> '' then
+      AddElement(nftCountry, s);
   end;
 end;
 
@@ -1563,7 +1119,7 @@ begin
         ScanAMPM;
       ',', '-':
         begin
-          Addelement(nftText, FToken);
+          AddElement(nftText, FToken);
           FToken := NextToken;
         end
       else
@@ -1622,6 +1178,8 @@ begin
           AddSection;
           Exit;
         end;
+      else
+        AddElement(nftText, FToken);
     end;
     FToken := NextToken;
   end;
@@ -1634,7 +1192,8 @@ var
   hasDecSep: Boolean;
   isFrac: Boolean;
   n: Integer;
-  elem: Integer;
+  el: Integer;
+  savedCurrent: PChar;
 begin
   hasDecSep := false;
   isFrac := false;
@@ -1645,16 +1204,73 @@ begin
              AddElement(nftDecSep, '.');
              hasDecSep := true;
            end;
+      '#': begin
+             ScanAndCount('#', n);
+             savedCurrent := FCurrent;
+             if not (hasDecSep or isFrac) and (n = 1) and (FToken = ',') then
+             begin
+               FToken := NextToken;
+               ScanAndCount('#', n);
+               case n of
+                 0: begin
+                      FToken := PrevToken;
+                      ScanAndCount('0', n);
+                      FToken := prevToken;
+                      if n = 3 then
+                        AddElement(nftIntTh, 3)
+                      else
+                        FCurrent := savedCurrent;
+                    end;
+                 1: begin
+                      ScanAndCount('0', n);
+                      FToken := prevToken;
+                      if n = 2 then
+                        AddElement(nftIntTh, 2)
+                      else
+                        FCurrent := savedCurrent;
+                    end;
+                 2: begin
+                      ScanAndCount('0', n);
+                      FToken := prevToken;
+                      if (n = 1) then
+                        AddElement(nftIntTh, 1)
+                      else
+                        FCurrent := savedCurrent;
+                    end;
+               end;
+             end else
+             begin
+               FToken := PrevToken;
+               if isFrac then
+                 AddElement(nftFracDenomOptDigit, n)
+               else
+               if hasDecSep then
+                 AddElement(nftOptDecs, n)
+               else
+                 AddElement(nftIntOptDigit, n);
+             end;
+           end;
       '0': begin
              ScanAndCount('0', n);
              FToken := PrevToken;
              if hasDecSep then
-               AddElement(nftDecs, n)
+               AddElement(nftZeroDecs, n)
              else
              if isFrac then
                AddElement(nftFracDenomZeroDigit, n)
              else
-               Addelement(nftDigit, n);
+               AddElement(nftIntZeroDigit, n);
+           end;
+      '?': begin
+             ScanAndCount('?', n);
+             FToken := PrevToken;
+             if hasDecSep then
+               AddElement(nftSpaceDecs, n)
+             else
+             if isFrac then
+               AddElement(nftFracDenomSpaceDigit, n)
+             else
+               AddElement(nftIntSpaceDigit, n);
            end;
       'E', 'e':
            begin
@@ -1671,49 +1287,31 @@ begin
            end;
       '+', '-':
            AddElement(nftSign, FToken);
-      '#': begin
-             ScanAndCount('#', n);
-             FToken := PrevToken;
-             if isFrac then
-               AddElement(nftFracDenomDigit, n)
-             else
-               AddElement(nftOptDigit, n);
-           end;
-      '?': begin
-             ScanAndCount('?', n);
-             FToken := PrevToken;
-             if isFrac then
-               AddElement(nftFracDenomSpaceDigit, n)
-             else
-               AddElement(nftOptSpaceDigit, n);
-           end;
       '%': AddElement(nftPercent, FToken);
       '/': begin
              isFrac := true;
              AddElement(nftFracSymbol, FToken);
-             // go back and replace correct token for numerator (n=0) and integer part (n=1)
-             n := 0;
-             elem := High(FSections[FCurrSection].Elements);
-             while elem > 0 do begin
-               dec(elem);
-               case FSections[FCurrSection].Elements[elem].Token of
-                 nftOptDigit:
-                   if n = 0 then
-                     FSections[FCurrSection].Elements[elem].Token := nftFracNumDigit
-                   else
-                     FSections[FCurrSection].Elements[elem].Token := nftFracIntDigit;
-                 nftOptSpaceDigit:
-                   if n = 0 then
-                     FSections[FCurrSection].Elements[elem].Token := nftFracNumSpaceDigit
-                   else
-                     FSections[FCurrSection].Elements[elem].Token := nftFracIntSpaceDigit;
-                 nftDigit:
-                   if n = 0 then
-                     FSections[FCurrSection].Elements[elem].Token := nftFracNumZeroDigit
-                   else
-                     FSections[FCurrSection].Elements[elem].Token := nftFracIntZeroDigit;
+             // go back and replace correct token for numerator
+             el := High(FSections[FCurrSection].Elements);
+             while el > 0 do begin
+               dec(el);
+               case FSections[FCurrSection].Elements[el].Token of
+                 nftIntOptDigit:
+                   begin
+                     FSections[FCurrSection].Elements[el].Token := nftFracNumOptDigit;
+                     break;
+                   end;
+                 nftIntSpaceDigit:
+                   begin
+                     FSections[FCurrSection].Elements[el].Token := nftFracNumSpaceDigit;
+                     break;
+                   end;
+                 nftIntZeroDigit:
+                   begin
+                     FSections[FCurrSection].Elements[el].Token := nftFracNumZeroDigit;
+                     break;
+                   end;
                end;
-               inc(n);
              end;
            end;
 
@@ -1759,18 +1357,19 @@ begin
     i := n-1;
     while (i > -1) do begin
       case FSections[j].Elements[i].Token of
-        nftDigit:
+        nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit, nftIntTh:
           // no decimals so far --> add decimal separator and decimals element
           if (AValue > 0) then begin
             // Don't use "AddElements" because nfCurrency etc have elements after the number.
             InsertElement(j, i, nftDecSep, '.');
-            InsertElement(j, i+1, nftDecs, AValue);
+            InsertElement(j, i+1, nftZeroDecs, AValue);
             break;
           end;
-        nftDecs:
+        nftZeroDecs, nftOptDecs, nftSpaceDecs:
           if AValue > 0 then begin
             // decimals are already used, just replace value of decimal places
             FSections[j].Elements[i].IntValue := AValue;
+            FSections[j].Elements[i].Token := nftZeroDecs;
             break;
           end else begin
             // No decimals any more: delete decs and decsep elements

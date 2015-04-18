@@ -957,6 +957,8 @@ procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
 begin
   if FWorkbook <> nil then begin
     FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+    FFileName := AFilename;
+    FFileFormat := AFormat;
 
     // If required, display loading error message
     if FWorkbook.ErrorMsg <> '' then
@@ -1210,13 +1212,13 @@ begin
       begin
         rng := FWorksheet.GetSelection[j];
         r := rng.Row1;
-        while (r <= rng.Row2) do begin
+        while (r <= longInt(rng.Row2)) do begin
           c := rng.Col1;
-          while (c <= rng.Col2) do begin
+          while (c <= LongInt(rng.Col2)) do begin
             for i:=0 to CellClipboard.Count-1 do begin
               cell := CellClipboard.CellByIndex[i];
-              destRow := r + LongInt(cell^.Row) - baserng.Row1;
-              destCol := c + LongInt(cell^.Col) - baserng.Col1;
+              destRow := r + LongInt(cell^.Row) - LongInt(baserng.Row1);
+              destCol := c + LongInt(cell^.Col) - LongInt(baserng.Col1);
               case AItem of
                 coCopyCell:
                   FWorksheet.CopyCell(cell^.Row, cell^.Col, destRow, destCol);
@@ -2613,6 +2615,7 @@ var
   cb: TsCellBorder;
   r1, r2, c1, c2: Cardinal;
   fmt: TsCellFormat;
+  numFmt: TsNumFormatParams;
 begin
   if (ACell <> nil) then
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex)
@@ -2687,13 +2690,16 @@ begin
 
   if (ACell = nil) or not (uffNumberFormat in fmt.UsedFormattingFields) then
   begin
+    AStrings.Add('NumberFormatIndex=-1');
     AStrings.Add('NumberFormat=(default)');
     AStrings.Add('NumberFormatStr=(none)');
   end else
   begin
+    AStrings.Add(Format('NumberFormatIndex=%d', [fmt.NumberFormatIndex]));
+    numFmt := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
     AStrings.Add(Format('NumberFormat=%s', [
-      GetEnumName(TypeInfo(TsNumberFormat), ord(fmt.NumberFormat))]));
-    AStrings.Add('NumberFormatStr=' + fmt.NumberFormatStr);
+      GetEnumName(TypeInfo(TsNumberFormat), ord(numFmt.NumFormat))]));
+    AStrings.Add('NumberFormatStr=' + numFmt.NumFormatStr[nfdDefault]);
   end;
 
   if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then

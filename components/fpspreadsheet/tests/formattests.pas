@@ -230,8 +230,14 @@ begin
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
     SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
     SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
+    {
     SollNumberStrings[i, 8] := FormatCurr('"€"#,##0;("€"#,##0)', SollNumbers[i], fs);
     SollNumberStrings[i, 9] := FormatCurr('"€"#,##0.00;("€"#,##0.00)', SollNumbers[i], fs);
+    }
+    // Don't use FormatCurr for the next two cases because is reports the sign of
+    // very small numbers inconsistenly with the spreadsheet applications.
+    SollNumberStrings[i, 8] := FormatFloat('"€"#,##0;("€"#,##0)', SollNumbers[i], fs);
+    SollNumberStrings[i, 9] := FormatFloat('"€"#,##0.00;("€"#,##0.00)', SollNumbers[i], fs);
   end;
 
   // Date/time values
@@ -384,7 +390,7 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkbook.FormatSettings.CurrencyString := '€';  // use € for checking UTF8 issues
-    MyWorkbook.FormatSettings.Currencyformat := pcfCV;  // €100
+    MyWorkbook.FormatSettings.Currencyformat := pcfCV;   // €100
     Myworkbook.FormatSettings.NegCurrFormat := ncfBCVB;  // (€100)
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     if AFormat in [sfExcel2, sfCSV] then

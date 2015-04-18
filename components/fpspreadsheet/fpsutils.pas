@@ -113,8 +113,6 @@ function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 function AddIntervalBrackets(AFormatString: String): String;
 function DayNamesToString(const ADayNames: TWeekNameArray;
   const AEmptyStr: String): String;
-procedure FloatToFraction(AValue: Double; AMaxNumerator, AMaxDenominator: Integer;
-  out ANumerator, ADenominator: Integer);
 function MakeLongDateFormat(ADateFormat: String): String;
 function MakeShortDateFormat(ADateFormat: String): String;
 function MonthNamesToString(const AMonthNames: TMonthNameArray;
@@ -126,9 +124,12 @@ procedure SplitFormatString(const AFormatString: String; out APositivePart,
 
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
+function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
+  AFormatSettings: TFormatSettings): String;
+procedure FloatToFraction(AValue, APrecision: Double;
+  AMaxNumerator, AMaxDenominator: Int64; out ANumerator, ADenominator: Int64);
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
   out ADecimalSeparator, AThousandSeparator: Char; out AWarning: String): Boolean;
-
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
   out AMaxDigits: Integer): Boolean;
 
@@ -171,6 +172,7 @@ procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: S
 procedure Unused(const A1);
 procedure Unused(const A1, A2);
 procedure Unused(const A1, A2, A3);
+
 
 var
   {@@ Default value for the screen pixel density (pixels per inch). Is needed
@@ -952,6 +954,9 @@ end;
 -------------------------------------------------------------------------------}
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
+var
+  i, j: Integer;
+  Unwanted: set of ansichar;
 begin
   case ANumberFormat of
     nfShortDateTime:
@@ -977,9 +982,34 @@ begin
         if pos('a', lowercase(AFormatSettings.LongTimeFormat)) = 0 then
           Result := AddAMPM(Result, AFormatSettings);
       end;
+    nfDayMonth,                                  // --> dd/mmm
+    nfMonthYear:                                 // --> mmm/yy
+      begin
+        Result := AFormatSettings.ShortDateFormat;
+        case ANumberFormat of
+          nfDayMonth:
+            unwanted := ['y', 'Y'];
+          nfMonthYear:
+            unwanted := ['d', 'D'];
+        end;
+        for i:=Length(Result) downto 1 do
+          if Result[i] in unwanted then Delete(Result, i, 1);
+        while not (Result[1] in (['m', 'M', 'd', 'D', 'y', 'Y'] - unwanted)) do
+          Delete(Result, 1, 1);
+        while not (Result[Length(Result)] in (['m', 'M', 'd', 'D', 'y', 'Y'] - unwanted)) do
+          Delete(Result, Length(Result), 1);
+        i := 1;
+        while not (Result[i] in ['m', 'M']) do inc(i);
+        j := i;
+        while (j <= Length(Result)) and (Result[j] in ['m', 'M']) do inc(j);
+        while (j - i < 3) do begin
+          Insert(Result[i], Result, j);
+          inc(j);
+        end;
+      end;
     nfTimeInterval:                               // --> [h]:nn:ss
       if AFormatString = '' then
-        Result := '[h]:mm:ss'
+        Result := '[h]:nn:ss'
       else
         Result := AddIntervalBrackets(AFormatString);
   end;
@@ -1115,7 +1145,8 @@ begin
 
   if ACurrencySymbol <> '' then begin
     Result := Format(p, ['#,##0' + decs, ACurrencySymbol]) + ';'
-            + IfThen(negRed and (ADialect = nfdExcel), '[red]', '')
+            + IfThen(negRed, '[red]', '')
+//            + IfThen(negRed and (ADialect = nfdExcel), '[red]', '')
             + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
             + Format(p, ['0'+decs, ACurrencySymbol]);
   end
@@ -1343,88 +1374,75 @@ end;
   @param   ANumerator       (out) Numerator of the best approximating fraction
   @param   ADenominator     (out) Denominator of the best approximating fraction
 -------------------------------------------------------------------------------}
-procedure FloatToFraction(AValue: Double; AMaxNumerator, AMaxDenominator: Integer;
-  out ANumerator, ADenominator: Integer);
-// "Stern-Brocot-Tree"
-// Original from : http://stackoverflow.com/questions/5124743/algorithm-for-simplifying-decimal-to-fractions
-// Procedure adapted by forum user "circular": http://forum.lazarus.freepascal.org/index.php/topic,27805.msg172372.html#msg172372
+procedure FloatToFraction(AValue, APrecision: Double;
+  AMaxNumerator, AMaxDenominator: Int64; out ANumerator, ADenominator: Int64);
+// Uses method of continued fractions, adapted version from a function in
+// Bart Broersma's fractions.pp unit:
+// http://svn.code.sf.net/p/flyingsheep/code/trunk/ConsoleProjecten/fractions/
+const
+  MaxInt64 = High(Int64);
+  MinInt64 = Low(Int64);
 var
-  n: Integer;
-  lower_n, lower_d, upper_n, upper_d, middle_n, middle_d: Integer;
-  isNeg: Boolean;
-  backup_num, backup_denom: Integer;
-  newResult_num, newResult_denom: Integer;
-  EPS: Double;
+  H1, H2, K1, K2, A, NewA, tmp, prevH1, prevK1: Int64;
+  B, diff, test, eps: Double;
+  Found, PendingOverflow: Boolean;
+  i: Integer = 0;
 begin
-  EPS := 0.01 / AMaxDenominator;
+  Assert((APrecision > 0) and (APrecision < 1));
 
-  isNeg := AValue < 0;
-  if isNeg then
-    AValue := -AValue;
+  if (AValue > MaxInt64) or (AValue < MinInt64) then
+    raise Exception.Create('Range error');
 
-  n := Trunc(AValue);
-  newResult_num := round(AValue);
-  newResult_denom := 1;
-  if isNeg then newResult_num := -newResult_num;
-  backup_num := newResult_num;
-  backup_denom := newResult_denom;
-
-  AValue := AValue - n;
-
-  // Lower fraction is 0/1
-  lower_n := 0;
-  lower_d := 1;
-
-  // Upper fraction is 1/1
-  upper_n := 1;
-  upper_d := 1;
-
-  while true do
+  if abs(AValue) < 0.5 / AMaxDenominator then
   begin
-    if abs(newResult_num/newResult_denom - n - AValue) <
-       abs(backup_num/backup_denom - n - AValue)
-    then begin
-      backup_num := newResult_num;
-      backup_denom := newResult_denom;
-    end;
-
-    // middle fraction is (lower_n + upper_n) / (lower_d + upper_d)
-    middle_n := lower_n + upper_n;
-    middle_d := lower_d + upper_d;
-    newResult_num := n * middle_d + middle_n;
-    newResult_denom := middle_d;
-//    newResult.Normalize;
-    if (newResult_num > AMaxNumerator) or (newResult_denom > AMaxDenominator)
-    then begin
-      ANumerator := backup_num;
-      ADenominator := backup_denom;
-      exit;
-    end;
-
-    if isNeg then newResult_num := -newResult_num;
-
-    // AValue + EPS < middle
-    if middle_d * (AValue + EPS) < middle_n then
-    begin
-      // middle is our new upper
-      upper_n := middle_n;
-      upper_d := middle_d;
-    end else
-    // middle < AValue - EPS
-    if middle_n < (AValue - EPS) * middle_d then
-    begin
-      // middle is our new lower
-      lower_n := middle_n;
-      lower_d := middle_d;
-    end else
-    // middle is our best fraction
-    begin
-      ANumerator := newResult_num;
-      ADenominator := newResult_denom;
-      exit;
-    end;
+    ANumerator := 0;
+    ADenominator := AMaxDenominator;
+    exit;
   end;
+
+  H1 := 1;
+  H2 := 0;
+  K1 := 0;
+  K2 := 1;
+  B := AValue;
+  NewA := Round(Floor(B));
+  prevH1 := H1;
+  prevK1 := K1;
+  repeat
+    inc(i);
+    A := NewA;
+    tmp := H1;
+    H1 := A * H1 + H2;
+    H2 := tmp;
+    tmp := K1;
+    K1 := A * K1 + K2;
+    K2 := tmp;
+    test := H1/K1;
+    diff := test - AValue;
+    if (abs(diff) < APrecision) then
+      break;
+    if (abs(H1) > AMaxNumerator) or (abs(K1) > AMaxDenominator) then
+    begin
+      H1 := prevH1;
+      K1 := prevK1;
+      break;
+    end;
+    if (Abs(B - A) < 1E-30) then
+      B := 1E30   //happens when H1/K1 exactly matches Value
+    else
+      B := 1 / (B - A);
+    PendingOverFlow := (B * H1 + H2 > MaxInt64) or
+                       (B * K1 + K2 > MaxInt64) or
+                       (B > MaxInt64);
+    if not PendingOverflow then
+      NewA := Round(Floor(B));
+    prevH1 := H1;
+    prevK1 := K1;
+  until PendingOverflow;
+  ANumerator := H1;
+  ADenominator := K1;
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Creates a long date format string out of a short date format string.
@@ -2330,6 +2348,7 @@ begin
   FillChar(AValue, SizeOf(AValue), 0);
   AValue.BorderStyles := DEFAULT_BORDERSTYLES;
   AValue.Background := EMPTY_FILL;
+  AValue.NumberFormatIndex := -1;  // GENERAL format not contained in NumFormatList
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2370,6 +2389,725 @@ begin
   AppendToStream(AStream, AString1);
   AppendToStream(AStream, AString2);
   AppendToStream(AStream, AString3);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Converts a floating point number to a string as determined by the specified
+  number format parameters
+-------------------------------------------------------------------------------}
+function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
+  AFormatSettings: TFormatSettings): String;
+var
+  fs: TFormatSettings absolute AFormatSettings;
+  sidx: Integer;
+  section: TsNumFormatSection;
+  i, p, q, el, numEl: Integer;
+  isNeg: Boolean;
+  yr, mon, day, hr, min, sec, ms: Word;
+  frInt, frNum, frDenom: Int64;
+  maxNum, maxDenom: Int64;
+  decsZero, decsOpt, decsSpace: Integer;
+  digitsZero, digitsOpt, digitsSpace: Integer;
+  numDigitsZero, numDigitsOpt, numDigitsSpace: Integer;
+  denomDigitsZero, denomDigitsOpt, denomDigitsSpace: Integer;
+  expSign: Char;
+  expDigits: Integer;
+  numStr, s: String;
+  terminatingTokens: set of TsNumFormatToken;
+  intTokens: set of TsNumFormatToken;
+  decsTokens: set of TsNumFormatToken;
+  fracNumTokens: set of TsNumFormatToken;
+  fracDenomTokens: set of TsNumFormatToken;
+
+  function FixIntPart(AValue: Double; AddThousandSeparator: Boolean;
+    AZeroCount, AOptCount, ASpaceCount: Integer): String;
+  var
+    j: Integer;
+    isNeg: Boolean;
+  begin
+    isNeg := AValue < 0;
+    Result := IntToStr(trunc(abs(AValue)));
+    if (AZeroCount = 0) and (ASpaceCount = 0) then
+    begin
+      if Result = '0' then
+        Result := '';
+    end else
+    if (AZeroCount > 0) and (ASpaceCount = 0) then
+    begin
+      while Length(Result) < AZeroCount do
+        Result := '0' + Result;
+    end else
+    if (AZeroCount = 0) and (ASpaceCount > 0) then
+    begin
+      while Length(Result) < AZeroCount do
+        Result := ' ' + Result;
+    end else
+    begin
+      while Length(Result) < AZeroCount do
+        Result := '0' + Result;
+      while Length(Result) < AZeroCount + ASpaceCount do
+        Result := ' ' + Result;
+    end;
+    if AddThousandSeparator then
+    begin
+      j := Length(Result)-2;
+      while (j > 0) do
+      begin
+         Insert(fs.ThousandSeparator, Result, j);
+         dec(j, 3);
+      end;
+    end;
+    if isNeg then
+      Result := '-' + Result;
+  end;
+
+  function FixDecimals(AValue: Double;
+    AZeroCount, AOptCount, ASpaceCount: Integer): String;
+  var
+    j, decs: Integer;
+  begin
+    if AZeroCount + AOptCount + ASpaceCount = 0 then
+    begin
+      Result := '';        // no decimals in this case
+      exit;
+    end;
+
+    Result := FloatToStrF(abs(frac(AValue)), ffFixed, 20, AZeroCount + AOptCount + ASpaceCount, fs);
+    Delete(Result, 1, 2);  // Delete '0.' to extract the decimals
+    decs := Length(Result);
+    while decs < AZeroCount do begin
+      Result := Result + '0';
+      inc(decs);
+    end;
+
+    j := Length(Result);
+    while (Result[j] = '0') and (decs > AZeroCount) and (( decsOpt > 0) or (decsSpace > 0)) do
+    begin
+      if decsOpt > 0 then
+      begin
+        Delete(Result, j, 1);
+        dec(decs);
+        dec(decsOpt);
+      end else
+      if decsSpace > 0 then
+      begin
+        Result[j] := ' ';
+        dec(decs);
+        dec(decsOpt);
+      end;
+      dec(j);
+    end;
+
+    if Result <> '' then
+      Result := fs.DecimalSeparator + Result;
+  end;
+
+  procedure InvalidFormat;
+  var
+    fmtStr: String;
+  begin
+    fmtStr := AParams.NumFormatStr[nfdExcel];
+    raise Exception.CreateFmt(rsIsNoValidNumberFormatString, [fmtStr]);
+  end;
+
+begin
+  Result := '';
+  if IsNaN(AValue) then
+    exit;
+
+  if AParams = nil then
+  begin
+    Result := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
+    exit;
+  end;
+
+  sidx := 0;
+  if (AValue < 0) and (Length(AParams.Sections) > 1) then
+    sidx := 1;
+  if (AValue = 0) and (Length(AParams.Sections) > 2) then
+    sidx := 2;
+  isNeg := (AValue < 0);
+  if (sidx > 0) and isNeg then
+    AValue := -AValue;
+  section := AParams.Sections[sidx];
+  numEl := Length(section.Elements);
+
+  terminatingTokens := [nftSpace, nftText, nftPercent, nftCurrSymbol, nftSignBracket,
+    nftEscaped];
+  intTokens := [nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit];
+  decsTokens := [nftZeroDecs, nftOptDecs, nftSpaceDecs];
+  fracNumTokens := [nftFracNumOptDigit, nftFracNumZeroDigit, nftFracNumSpaceDigit];
+  fracDenomTokens := [nftFracDenomOptDigit, nftFracDenomZeroDigit, nftFracDenomSpaceDigit];
+
+  if nfkPercent in section.Kind then
+    AValue := AValue * 100.0;
+  if nfkTime in section.Kind then
+    DecodeTime(AValue, hr, min, sec, ms);
+  if nfkDate in section.Kind then
+    DecodeDate(AValue, yr, mon, day);
+
+  el := 0;
+  while (el < numEl) do begin
+    case section.Elements[el].Token of
+      nftIntOptDigit,
+      nftIntZeroDigit,
+      nftIntSpaceDigit:
+        begin
+          // Decimals
+          decsZero := 0;
+          decsSpace := 0;
+          decsOpt := 0;
+          // Integer part of number format
+          digitsZero := 0;
+          digitsSpace := 0;
+          digitsOpt := 0;
+          i := el;
+          while (i < numEl) and (section.Elements[i].Token in intTokens) do
+          begin
+            case section.Elements[i].Token of
+              nftIntOptDigit  : inc(digitsOpt, section.Elements[i].IntValue);
+              nftIntZeroDigit : inc(digitsZero, section.Elements[i].IntValue);
+              nftIntSpaceDigit: inc(digitsSpace, section.Elements[i].IntValue);
+            end;
+            inc(i);
+          end;
+
+          { These are the cases that can occur:
+              (1) number w/ decimals ---> end of line
+              (2) number w/ decimals --> space, terminating tokens
+              (3) number w/ decimals --> exponent
+              (4) number w/o decimals --> end of line
+              (5) number w/o decimals --> space, terminating tokens
+              (6) number w/o decimals --> space --> numerator --> '/' --> denominator
+              (7) number w/o decimals --> exponent
+          }
+          // Integer only, followed by end-of-line (case 4)
+          if (i = numEl) or (section.Elements[i].Token in (terminatingTokens - [nftSpace])) then
+          begin
+            Result := Result + FixIntPart(AValue, false, digitsZero, digitsOpt, digitsSpace);
+            el := i;
+            Continue;
+          end;
+
+          if (i < numEl) then
+          begin
+            // Check for Exponent (format '0E+00', case 7)
+            if (section.Elements[i].Token = nftExpChar) then begin
+              inc(i);
+              if (i < numEl) and (section.Elements[i].Token = nftExpSign) then begin
+                expSign := section.Elements[i].TextValue[1];
+                inc(i);
+                if (i < numEl) and (section.Elements[i].Token = nftExpDigits) then
+                  expDigits := section.Elements[i].IntValue
+                else
+                  InvalidFormat;
+              end else
+                InvalidFormat;
+              numStr := FormatFloat('0E'+expSign+DupeString('0', expDigits), AValue, fs);
+              p := pos('e', Lowercase(numStr));
+              s := copy(numStr, p, Length(numStr));    // E part of the number string
+              numStr := copy(numStr, 1, p-1);          // Mantissa of the number string
+              Result := Result
+                + FixIntPart(StrToFloat(numStr, fs), false, digitsZero, digitsOpt, digitsSpace) + s;
+              el := i;
+              Continue;
+            end;
+
+            // Check for decimal separator
+            if (section.Elements[i].Token = nftDecSep) then
+            begin
+              // Yes, cases (1) or (2) -- get decimal specification
+              decsZero := 0;
+              decsSpace := 0;
+              decsOpt := 0;
+              inc(i);
+              while (i < numEl) and (section.Elements[i].Token in decsTokens) do
+              begin
+                case section.Elements[i].Token of
+                  nftZeroDecs : inc(decsZero, section.Elements[i].IntValue);
+                  nftOptDecs  : inc(decsOpt, section.Elements[i].IntValue);
+                  nftSpaceDecs: inc(decsSpace, section.Elements[i].IntValue);
+                end;
+                inc(i);
+              end;
+
+              // Simple decimal number (nfFixed), followed by eol (case 1)
+              if (i = numEl) then
+              begin
+                // Simple decimal number (nfFixed) (case 1)
+                Result := Result
+                  + FixIntPart(AValue, false, digitsZero, digitsOpt, digitsSpace)
+                  + FixDecimals(AValue, decsZero, decsOpt, decsSpace);
+                el := i;
+                Continue;
+              end;
+
+              // Check for exponential format (case 3)
+              if (section.Elements[i].Token = nftExpChar) then
+              begin
+                inc(i);
+                if (i < numEl) and (section.Elements[i].Token = nftExpSign) then begin
+                  expSign := section.Elements[i].TextValue[1];
+                  inc(i);
+                  if (i < numEl) and (section.Elements[i].Token = nftExpDigits) then
+                    expDigits := section.Elements[i].IntValue
+                  else
+                    InvalidFormat;
+                end else
+                  InvalidFormat;
+                numStr := FloatToStrF(AValue, ffExponent, decsZero+decsOpt+decsSpace+1, expDigits, fs);
+                if (abs(AValue) >= 1.0) and (expSign = '-') then
+                  Delete(numStr, pos('+', numStr), 1);
+                p := pos('e', Lowercase(numStr));
+                s := copy(numStr, p, Length(numStr));    // E part of the number string
+                numStr := copy(numStr, 1, p-1);          // Mantissa of the number string
+                q := pos(fs.DecimalSeparator, numStr);
+                Result := Result
+                  + FixIntPart(StrToFloat(numStr, fs), false, digitsZero, digitsOpt, digitsSpace);
+                if q = 0 then
+                  Result := Result + s
+                else
+                  Result := Result + FixDecimals(StrToFloat(numStr, fs), decsZero, decsOpt, decsSpace) + s;
+                el := i;
+                Continue;
+              end;
+            end;
+
+            // Check for fraction (case 6)
+            if (section.Elements[i].Token = nftSpace) or
+               ((section.Elements[i].Token = nftText) and (section.Elements[i].TextValue = ' ')) then
+            begin
+              inc(i);
+              if (i < numEl) and (section.Elements[i].Token in fracNumTokens) then
+              begin
+                // Process numerator
+                numDigitsZero := 0;
+                numDigitsSpace := 0;
+                numDigitsOpt := 0;
+                while (i < numEl) and (section.Elements[i].Token in fracNumTokens) do
+                begin
+                  case section.Elements[i].Token of
+                    nftFracNumOptDigit  : inc(numDigitsOpt, section.Elements[i].IntValue);
+                    nftFracNumZeroDigit : inc(numDigitsZero, section.Elements[i].IntValue);
+                    nftFracNumSpaceDigit: inc(numDigitsSpace, section.Elements[i].IntValue);
+                  end;
+                  inc(i);
+                end;
+                // Skip spaces before '/' symbol, find '/'
+                while (i < numEl) and (section.Elements[i].Token <> nftFracSymbol) do
+                  inc(i);
+                // Skip spaces after '/' symbol, find denominator
+                while (i < numEl) and not (section.Elements[i].Token in fracDenomTokens) do
+                  inc(i);
+                // Process denominator
+                denomDigitsZero := 0;
+                denomDigitsOpt := 0;
+                denomDigitsSpace := 0;
+                while (i < numEl) and (section.Elements[i].Token in fracDenomTokens) do
+                begin
+                  case section.Elements[i].Token of
+                    nftFracDenomOptDigit  : inc(denomDigitsOpt, section.Elements[i].IntValue);
+                    nftFracDenomZeroDigit : inc(denomDigitsZero, section.Elements[i].IntValue);
+                    nftFracDenomSpaceDigit: inc(denomDigitsSpace, section.Elements[i].IntValue);
+                  end;
+                  inc(i);
+                end;
+
+                // Calculate fraction
+                maxNum := Round(IntPower(10, numDigitsOpt+numDigitsZero+numDigitsSpace));
+                maxDenom := Round(IntPower(10, denomDigitsOpt+denomDigitsZero+denomDigitsSpace));
+                if (digitsOpt = 0) and (digitsSpace = 0) and (digitsZero = 0) then
+                begin
+                  frint := 0;
+                  s := '';
+                end else begin
+                  frint := trunc(abs(AValue));
+                  AValue := frac(abs(AValue));
+                  s := IntToStr(frInt);
+                end;
+                FloatToFraction(abs(AValue), 0.1/maxdenom, maxnum, maxdenom, frnum, frdenom);
+
+                if frInt > 0 then
+                  Result := Result +
+                    FixIntPart(frInt, false, digitsZero, digitsOpt, digitsSpace);
+                Result := Result +
+                  ' ' +
+                  FixIntPart(frnum, false, numDigitsZero, numDigitsOpt, numDigitsSpace) +
+                  '/' +
+                  FixIntPart(frdenom, false, denomDigitsZero, denomDigitsOpt, denomDigitsSpace);
+                if isNeg then
+                  Result := '-' + Result;
+                el := i;
+                Continue;
+              end;
+            end;
+
+            // Simple decimal number (nfFixed), followed by terminating tokens (case 5)
+            if (i < numEl) and (section.Elements[i].Token in terminatingTokens) then
+            begin
+              // Simple decimal number (nfFixed) (case 1)
+              Result := Result
+                + FixIntPart(AValue, false, digitsZero, digitsOpt, digitsSpace)
+                + FixDecimals(AValue, decsZero, decsOpt, decsSpace);
+              el := i;
+              Continue;
+            end;
+          end;
+        end;
+
+      nftIntTh:   // Format with thousand separator
+        begin
+          terminatingTokens := [nftSpace, nftText, nftPercent, nftCurrSymbol,
+            nftSignBracket, nftEscaped];
+          decsTokens := [nftZeroDecs, nftOptDecs, nftSpaceDecs];
+          decsZero := 0;
+          decsSpace := 0;
+          decsOpt := 0;
+          digitsZero := section.Elements[el].IntValue;
+          i := el+1;
+          if (i < numEl) and (section.Elements[i].Token = nftDecSep) then
+          begin
+            inc(i);
+            while (i < numEl) and (section.Elements[i].Token in [nftZeroDecs, nftOptDecs, nftSpaceDecs]) do
+            begin
+              case section.Elements[i].Token of
+                nftZeroDecs : inc(decsZero, section.Elements[i].IntValue);
+                nftOptDecs  : inc(decsOpt, section.Elements[i].IntValue);
+                nftSpaceDecs: inc(decsSpace, section.Elements[i].IntValue);
+              end;
+              inc(i);
+            end;
+          end;
+          Result := Result + FixIntPart(AValue, true, digitsZero, 0, 0)
+                           + FixDecimals(AValue, decsZero, DecsOpt, decsSpace);
+          el := i;
+          Continue;
+        end;
+
+      nftFracNumZeroDigit,
+      nftFracNumOptDigit,
+      nftFracNumSpaceDigit:
+        begin
+          // Process numerator
+          numDigitsZero := 0;
+          numDigitsSpace := 0;
+          numDigitsOpt := 0;
+          i := el;
+          while (i < numEl) and (section.Elements[i].Token in fracNumTokens) do
+          begin
+            case section.Elements[i].Token of
+              nftFracNumOptDigit  : inc(numDigitsOpt, section.Elements[i].IntValue);
+              nftFracNumZeroDigit : inc(numDigitsZero, section.Elements[i].IntValue);
+              nftFracNumSpaceDigit: inc(numDigitsSpace, section.Elements[i].IntValue);
+            end;
+            inc(i);
+          end;
+          // Skip spaces before '/' symbol, find '/'
+          while (i < numEl) and (section.Elements[i].Token <> nftFracSymbol) do
+            inc(i);
+          // Skip spaces after '/' symbol, find denominator
+          while (i < numEl) and not (section.Elements[i].Token in fracDenomTokens) do
+            inc(i);
+          // Process denominator
+          denomDigitsZero := 0;
+          denomDigitsOpt := 0;
+          denomDigitsSpace := 0;
+          while (i < numEl) and (section.Elements[i].Token in fracDenomTokens) do
+          begin
+            case section.Elements[i].Token of
+              nftFracDenomOptDigit  : inc(denomDigitsOpt, section.Elements[i].IntValue);
+              nftFracDenomZeroDigit : inc(denomDigitsZero, section.Elements[i].IntValue);
+              nftFracDenomSpaceDigit: inc(denomDigitsSpace, section.Elements[i].IntValue);
+            end;
+            inc(i);
+          end;
+
+          // Calculate fraction
+          maxNum := Round(IntPower(10, numDigitsOpt+numDigitsZero+numDigitsSpace));
+          maxDenom := Round(IntPower(10, denomDigitsOpt+denomDigitsZero+denomDigitsSpace));
+          FloatToFraction(abs(AValue), 0.1/maxdenom, MaxInt, maxdenom, frnum, frdenom);
+          if isNeg then
+            Result := Result + '-';
+          Result := Result +
+            FixIntPart(frnum, false, numDigitsZero, numDigitsOpt, numDigitsSpace) +
+            '/' +
+            FixIntPart(frdenom, false, denomDigitsZero, denomDigitsOpt, denomDigitsSpace);
+          el := i-1;
+        end;
+
+      nftSpace:
+        Result := Result + ' ';
+
+      nftText:
+        Result := Result + section.Elements[el].TextValue;
+
+      nftEscaped:
+        begin
+          inc(el);
+          if el < Length(section.Elements) then
+            Result := Result + section.Elements[el].TextValue;
+        end;
+
+      nftDateTimeSep:
+        case section.Elements[el].TextValue of
+          '/': Result := Result + fs.DateSeparator;
+          ':': Result := Result + fs.TimeSeparator;
+          else Result := Result + section.Elements[el].TextValue;
+        end;
+
+      nftDecSep:
+        Result := Result + fs.DecimalSeparator;
+
+      nftThSep:
+        Result := Result + fs.ThousandSeparator;
+
+      nftSign, nftSignBracket, nftCurrSymbol:
+        Result := Result + section.Elements[el].TextValue;
+
+      nftPercent:
+        Result := Result + '%';
+
+      nftYear:
+        case section.Elements[el].IntValue of
+          1,
+          2: Result := Result + IfThen(yr mod 100 < 10, '0'+IntToStr(yr mod 100), IntToStr(yr mod 100));
+          4: Result := Result + IntToStr(yr);
+        end;
+
+      nftMonth:
+        case section.Elements[el].IntValue of
+          1: Result := Result + IntToStr(mon);
+          2: Result := Result + IfThen(mon < 10, '0'+IntToStr(mon), IntToStr(mon));
+          3: Result := Result + fs.ShortMonthNames[mon];
+          4: Result := Result + fs.LongMonthNames[mon];
+        end;
+
+      nftDay:
+        case section.Elements[el].IntValue of
+          1: result := result + IntToStr(day);
+          2: result := Result + IfThen(day < 10, '0'+IntToStr(day), IntToStr(day));
+          3: Result := Result + fs.ShortDayNames[day];
+          4: Result := Result + fs.LongDayNames[day];
+        end;
+
+      nftHour:
+        begin
+          if section.Elements[el].IntValue < 0 then  // This case is for nfTimeInterval
+            s := IntToStr(Int64(hr) + trunc(AValue) * 24)
+          else
+          if section.Elements[el].TextValue = 'AM' then  // This tag is set in case of AM/FM format
+          begin
+            hr := hr mod 12;
+            if hr = 0 then hr := 12;
+            s := IntToStr(hr)
+          end else
+            s := IntToStr(hr);
+          if (abs(section.Elements[el].IntValue) = 2) and (Length(s) = 1) then
+            s := '0' + s;
+          Result := Result + s;
+        end;
+
+      nftMinute:
+        begin
+          if section.Elements[el].IntValue < 0 then  // case for nfTimeInterval
+            s := IntToStr(int64(min) + trunc(AValue) * 24 * 60)
+          else
+            s := IntToStr(min);
+          if (abs(section.Elements[el].IntValue) = 2) and (Length(s) = 1) then
+            s := '0' + s;
+          Result := Result + s;
+        end;
+
+      nftSecond:
+        begin
+          if section.Elements[el].IntValue < 0 then  // case for nfTimeInterval
+            s := IntToStr(Int64(sec) + trunc(AValue) * 24 * 60 * 60)
+          else
+            s := IntToStr(sec);
+          if (abs(section.Elements[el].IntValue) = 2) and (Length(s) = 1) then
+            s := '0' + s;
+          Result := Result + s;
+        end;
+
+      nftMilliseconds:
+        case section.Elements[el].IntValue of
+          1: Result := Result + IntToStr(ms div 100);
+          2: Result := Result + Format('%02d', [ms div 10]);
+          3: Result := Result + Format('%03d', [ms]);
+        end;
+
+      nftAMPM:
+        begin
+          s := section.Elements[el].TextValue;
+          if lowercase(s) = 'ampm' then
+            s := IfThen(frac(AValue) < 0.5, fs.TimeAMString, fs.TimePMString)
+          else
+          begin
+            i := pos('/', s);
+            if i > 0 then
+              s := IfThen(frac(AValue) < 0.5, copy(s, 1, i-1), copy(s, i+1, Length(s)))
+            else
+              s := IfThen(frac(AValue) < 0.5, 'AM', 'PM');
+          end;
+          Result := Result + s;
+        end;
+    end;
+    inc(el);
+  end;
+
+                    (*
+  section := AParams.Sections[sidx];
+  nf := section.NumFormat;
+  case nf of
+    nfFixed:
+      Result := FloatToStrF(AValue, ffFixed, 20, section.Decimals, fs);
+    nfFixedTh:
+      Result := FloatToStrF(AValue, ffNumber, 20, section.Decimals, fs);
+    nfPercentage:
+      Result := FloatToStrF(AValue*100.0, ffFixed, 20, section.Decimals, fs) + '%';
+    nfExp:
+      begin
+        elem := High(Section.Elements);
+        expDigits := 2;
+        if section.Elements[elem].Token = nftExpDigits then
+          expDigits := section.Elements[elem].IntValue;
+        Result := FloatToStrF(AValue, ffExponent, section.Decimals+1, expDigits, fs);
+        if (abs(AValue) >= 1.0) and (
+           ((section.Elements[elem-1].Token <> nftExpSign) or (section.Elements[elem-1].TextValue = '-')) )
+        then
+          Delete(Result, pos('+', Result), 1);
+      end;
+    nfFraction:
+      begin
+        AValue := abs(AValue);
+        if section.FracInt = 0 then
+          frint := 0
+        else begin
+          frint := trunc(AValue);
+          AValue := frac(AValue);
+        end;
+        maxNum := Round(IntPower(10, section.FracNumerator));
+        maxDenom := Round(IntPower(10, section.FracDenominator));
+        FloatToFraction(AValue, maxnum, maxdenom, frnum, frdenom);
+        Result := IntToStr(frnum) + '/' + IntToStr(frdenom);
+        if frint <> 0 then
+          Result := IntToStr(frint) + ' ' + result;
+        if isNeg then Result := '-' + Result;
+      end;
+    nfCurrency,
+    nfCurrencyRed:
+      begin
+        valueDone := false;
+        for elem := 0 to High(section.Elements) do
+          case section.Elements[elem].Token of
+            nftSpace:
+              Result := Result + ' ';
+            nftText:
+              Result := Result + section.Elements[elem].TextValue;
+            nftCurrSymbol:
+              Result := Result + section.CurrencySymbol;
+            nftSign:
+              Result := Result + '-';
+            nftSignBracket:
+              Result := Result + section.Elements[elem].TextValue;
+            nftDigit, nftOptDigit:
+              if not ValueDone then
+              begin
+                Result := Result + FloatToStrF(AValue, ffNumber, 20, section.Decimals, fs);
+                valueDone := true;
+              end;
+          end;
+      end;
+    nfShortDate, nfLongDate, nfShortTime, nfLongTime, nfShortDateTime,
+    nfShortTimeAM, nfLongTimeAM:
+      begin
+        DecodeDate(trunc(AValue), yr, mon, day);
+        DecodeTime(frac(AValue), hr, min, sec, ms);
+        elem := 0;
+        while elem < Length(section.Elements) do
+        begin
+          case section.Elements[elem].Token of
+            nftSpace:
+              Result := Result + ' ';
+            nftText:
+              Result := Result + section.Elements[elem].TextValue;
+            nftYear:
+              case section.Elements[elem].IntValue of
+                1,
+                2: Result := Result + IfThen(yr < 10, '0'+IntToStr(yr), IntToStr(yr));
+                4: Result := Result + IntToStr(yr);
+              end;
+            nftMonth:
+              case section.Elements[elem].IntValue of
+                1: Result := Result + IntToStr(mon);
+                2: Result := Result + IfThen(mon < 10, '0'+IntToStr(mon), IntToStr(mon));
+                3: Result := Result + fs.ShortMonthNames[mon];
+                4: Result := Result + fs.LongMonthNames[mon];
+              end;
+            nftDay:
+              case section.Elements[elem].IntValue of
+                1: result := result + IntToStr(day);
+                2: result := Result + IfThen(day < 10, '0'+IntToStr(day), IntToStr(day));
+                3: Result := Result + fs.ShortDayNames[day];
+                4: Result := Result + fs.LongDayNames[day];
+              end;
+            nftHour:
+              begin
+                if section.Elements[elem].IntValue < 0 then
+                  hr := hr + trunc(AValue) * 24;
+                case abs(section.Elements[elem].IntValue) of
+                  1: Result := Result + IntToStr(hr);
+                  2: Result := Result + IfThen(hr < 10, '0'+IntToStr(hr), IntToStr(hr));
+                end;
+              end;
+            nftMinute:
+              begin
+                if section.Elements[elem].IntValue < 0 then
+                  min := min + trunc(AValue) * 24 * 60;
+                case abs(section.Elements[elem].IntValue) of
+                  1: Result := Result + IntToStr(min);
+                  2: Result := Result + IfThen(min < 10, '0'+IntToStr(min), IntToStr(min));
+                end;
+              end;
+            nftSecond:
+              begin
+                if section.Elements[elem].IntValue < 0 then
+                  sec := sec + trunc(AValue) * 24 * 60 * 60;
+                case abs(section.Elements[elem].IntValue) of
+                  1: Result := Result + IntToStr(sec);
+                  2: Result := Result + IfThen(sec < 10, '0'+IntToStr(sec), IntToStr(sec));
+                end;
+              end;
+            nftDecSep:
+              Result := Result + fs.DecimalSeparator;
+            nftMilliseconds:
+              case section.Elements[elem].IntValue of
+                1: Result := Result + IntToStr(ms div 100);
+                2: Result := Result + Format('%02d', [ms div 10]);
+                3: Result := Result + Format('%03d', [ms]);
+              end;
+            nftDateTimeSep:
+              case section.Elements[elem].TextValue of
+                '/': Result := Result + fs.DateSeparator;
+                ':': Result := Result + fs.TimeSeparator;
+                else Result := Result + section.Elements[elem].TextValue;
+              end;
+            nftAMPM:
+              if frac(AValue) <= 0.5 then
+                Result := Result + fs.TimeAMString
+              else
+                Result := Result + fs.TimePMString;
+            nftEscaped:
+              begin
+                inc(elem);
+                Result := Result + section.Elements[elem].TextValue;
+              end;
+          end;
+          inc(elem);
+        end;
+      end;
+  end;*)
 end;
 
 

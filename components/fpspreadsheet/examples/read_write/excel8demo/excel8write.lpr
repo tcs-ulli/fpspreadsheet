@@ -361,6 +361,12 @@ begin
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfTimeInterval, [ss]');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval, '[ss]');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfFraction, ??/??');
+  Myworksheet.WriteNumber(r, 1, number, nfFraction, '??/??');
+  inc(r);
+  MyWorksheet.WriteUTF8Text(r, 0, 'nfFraction, # ??/??');
+  Myworksheet.WriteNumber(r, 1, number, nfFraction, '# ??/??');
 
   // Set width of columns 0, 1 and 5
   MyWorksheet.WriteColWidth(0, 30);

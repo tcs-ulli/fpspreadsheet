@@ -51,6 +51,8 @@ type
     // Test buffered stream
     procedure TestReadBufStream;
     procedure TestWriteBufStream;
+    // Test fractions
+    procedure FractionTest;
   end;
 
 implementation
@@ -395,6 +397,26 @@ begin
   CheckEquals(s, GetCellString(r, c, flags));
 end;
 
+procedure TSpreadInternalTests.FractionTest;
+const
+  N = 300;
+  DIGITS = 3;
+var
+  i, j: Integer;
+  sollNum, sollDenom: Integer;
+  sollValue: Double;
+  actualNum, actualDenom: Int64;
+begin
+  sollNum := 1;
+  for j := 1 to N do
+  begin
+    sollDenom := j;
+    sollValue := StrToFloat(FormatFloat('0.00000', sollNum/sollDenom));
+    FloatToFraction(sollvalue, 0.1/DIGITS, DIGITS, DIGITS, actualNum, actualDenom);
+    if actualDenom > sollDenom then
+      fail(Format('Conversion error: approximated %d/%d turns to %d/%d', [sollNum, sollDenom, actualNum, actualDenom]));
+  end;
+end;
 
 procedure TSpreadInternalTests.SetUp;
 begin

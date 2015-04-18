@@ -110,5 +110,8 @@ begin
     workbook.Free;
   end;
 
+  WriteLn('Press ENTER to quit...');
+  ReadLn;
+
 end.
 
