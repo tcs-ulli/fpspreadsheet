@@ -31,7 +31,7 @@ var
 
 begin
   // Just for the demo: create the file "source.xls". It contains hyperlinks to
-  // some the "test" files created in the XXXXdemo projects
+  // some of the "test" files created in the XXXXdemo projects
   Write('Creating source workbook...');
   srcWorkbook := TsWorkbook.Create;
   try
