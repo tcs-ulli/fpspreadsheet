@@ -20,7 +20,10 @@ const
   psErrNoValidNumberFormat = 6;
   psErrNoValidDateTimeFormat = 7;
   psErrQuoteExpected = 8;
-  psAmbiguousSymbol = 9;
+  psErrMultipleCurrSymbols = 9;
+  psErrMultipleFracSymbols = 10;
+  psErrMultipleExpChars = 11;
+  psAmbiguousSymbol = 12;
 
 type
 
@@ -35,13 +38,12 @@ type
     FEnd: PChar;
     FCurrSection: Integer;
     FStatus: Integer;
-    FDialect: TsNumFormatDialect;
     function GetCurrencySymbol: String;
     function GetDecimals: byte;
     function GetFracDenominator: Integer;
     function GetFracInt: Integer;
     function GetFracNumerator: Integer;
-    function GetFormatString(ADialect: TsNumFormatDialect): String;
+    function GetFormatString: String;
     function GetNumFormat: TsNumberFormat;
     function GetParsedSectionCount: Integer;
     function GetParsedSections(AIndex: Integer): TsNumFormatSection;
@@ -86,7 +88,7 @@ type
     procedure CheckSection(ASection: Integer);
     procedure FixMonthMinuteToken(ASection: Integer);
     // Format string
-    function BuildFormatString(ADialect: TsNumFormatDialect): String; virtual;
+    function BuildFormatString: String; virtual;
     // Token analysis
     function GetTokenIntValueAt(AToken: TsNumFormatToken;
       ASection,AIndex: Integer): Integer;
@@ -96,8 +98,7 @@ type
     function IsTokenAt(AToken: TsNumFormatToken; ASection,AIndex: Integer): Boolean;
 
   public
-    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String;
-      ADialect: TsNumFormatDialect = nfdDefault);
+    constructor Create(AWorkbook: TsWorkbook; const AFormatString: String);
     destructor Destroy; override;
     procedure ClearAll;
     function GetDateTimeCode(ASection: Integer): String;
@@ -108,7 +109,7 @@ type
 
     property CurrencySymbol: String read GetCurrencySymbol;
     property Decimals: Byte read GetDecimals write SetDecimals;
-    property FormatString[ADialect: TsNumFormatDialect]: String read GetFormatString;
+    property FormatString: String read GetFormatString;
     property FracDenominator: Integer read GetFracDenominator;
     property FracInt: Integer read GetFracInt;
     property FracNumerator: Integer read GetFracNumerator;
@@ -128,17 +129,13 @@ uses
 { TsNumFormatParser }
 
 {@@ Creates a number format parser for analyzing a formatstring that has been
-  read from a spreadsheet file.
-  In case of "red" number formats we also have to specify the number format
-  because the format string might not contain the color information, and we
-  extract it from the NumFormat in this case. }
+  read from a spreadsheet file. }
 constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
-  const AFormatString: String; ADialect: TsNumFormatDialect = nfdDefault);
+  const AFormatString: String);
 begin
   inherited Create;
   FCreateMethod := 0;
   FWorkbook := AWorkbook;
-  FDialect := ADialect;
   Parse(AFormatString);
   CheckSections;
 end;
@@ -236,14 +233,14 @@ end;
 { Creates a formatstring for all sections.
   Note: this implementation is only valid for the fpc and Excel dialects of
   format string. }
-function TsNumFormatParser.BuildFormatString(ADialect: TsNumFormatDialect): String;
+function TsNumFormatParser.BuildFormatString: String;
 var
   i: Integer;
 begin
   if Length(FSections) > 0 then begin
-    Result := BuildFormatStringFromSection(FSections[0], ADialect);
+    Result := BuildFormatStringFromSection(FSections[0]);
     for i:=1 to High(FSections) do
-      Result := Result + ';' + BuildFormatStringFromSection(FSections[i], ADialect);
+      Result := Result + ';' + BuildFormatStringFromSection(FSections[i]);
   end;
 end;
 
@@ -262,9 +259,9 @@ end;
 
 procedure TsNumFormatParser.CheckSection(ASection: Integer);
 var
-  el, next: Integer;
+  el, next, i: Integer;
   section: PsNumFormatSection;
-  nfs: String;
+  nfs, nfsTest: String;
   nf: TsNumberFormat;
   datetimeFormats: set of TsNumberformat;
   f1,f2: Integer;
@@ -281,13 +278,23 @@ begin
       nftPercent:
         section^.Kind := section^.Kind + [nfkPercent];
       nftExpChar:
-        section^.Kind := section^.Kind + [nfkExp];
+        if (nfkExp in section^.Kind) then
+          FStatus := psErrMultipleExpChars
+        else
+          section^.Kind := section^.Kind + [nfkExp];
       nftFracSymbol:
-        section^.Kind := section^.Kind + [nfkFraction];
+        if (nfkFraction in section^.Kind) then
+          FStatus := psErrMultipleFracSymbols
+        else
+          section^.Kind := section^.Kind + [nfkFraction];
       nftCurrSymbol:
         begin
-          section^.Kind := section^.Kind + [nfkCurrency];
-          section^.CurrencySymbol := section^.Elements[el].TextValue;
+          if (nfkCurrency in section^.Kind) then
+            FStatus := psErrMultipleCurrSymbols
+          else begin
+            section^.Kind := section^.Kind + [nfkCurrency];
+            section^.CurrencySymbol := section^.Elements[el].TextValue;
+          end;
         end;
       nftYear, nftMonth, nftDay:
         section^.Kind := section^.Kind + [nfkDate];
@@ -298,6 +305,9 @@ begin
             section^.Kind := section^.Kind + [nfkTimeInterval];
         end;
     end;
+
+  if FStatus <> psOK then
+    exit;
 
   if (section^.Kind * [nfkDate, nfkTime] <> []) and
      (section^.Kind * [nfkPercent, nfkExp, nfkCurrency, nfkFraction] <> []) then
@@ -311,7 +321,7 @@ begin
   if (section^.Kind * [nfkDate, nfkTime] <> []) then
   begin
     FixMonthMinuteToken(ASection);
-    nfs := FormatString[nfdDefault];
+    nfs := GetFormatString;
     if (nfkTimeInterval in section^.Kind) then
       section^.NumFormat := nfTimeInterval
     else
@@ -319,11 +329,31 @@ begin
       datetimeFormats := [nfShortDateTime, nfLongDate, nfShortDate, nfLongTime,
         nfShortTime, nfLongTimeAM, nfShortTimeAM, nfDayMonth, nfMonthYear];
       for nf in datetimeFormats do
+      begin
+        nfsTest := BuildDateTimeFormatString(nf, FWorkbook.FormatSettings);
+        if Length(nfsTest) = Length(nfs) then
+        begin
+          for i := 1 to Length(nfsTest) do
+            case nfsTest[i] of
+              '/': if not (nf in [nfLongTimeAM, nfShortTimeAM]) then
+                     nfsTest[i] := FWorkbook.FormatSettings.DateSeparator;
+              ':': nfsTest[i] := FWorkbook.FormatSettings.TimeSeparator;
+              'n': nfsTest[i] := 'm';
+            end;
+          if SameText(nfs, nfsTest) then
+          begin
+            section^.NumFormat := nf;
+            break;
+          end;
+        end;
+{
         if SameText(nfs, BuildDateTimeFormatString(nf, FWorkbook.FormatSettings)) then
         begin
           section^.NumFormat := nf;
           break;
         end;
+        }
+      end;
     end;
   end else
   begin
@@ -535,9 +565,9 @@ begin
   FSections[ASection].Elements[AIndex+1].FloatValue := AFloatValue;
 end;
 
-function TsNumFormatParser.GetFormatString(ADialect: TsNumFormatDialect): String;
+function TsNumFormatParser.GetFormatString: String;
 begin
-  Result := BuildFormatString(ADialect);
+  Result := BuildFormatString;
 end;
 
 { Extracts the currency symbol form the formatting sections. It is assumed that

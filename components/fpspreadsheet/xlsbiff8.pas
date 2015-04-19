@@ -1669,7 +1669,7 @@ begin
   WriteCodePage(AStream, 'ucs2le'); // = utf8
   WriteWindow1(AStream);
   WriteFonts(AStream);
-  WriteNumFormats(AStream, nfdExcel);
+  WriteNumFormats(AStream);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -2831,7 +2831,7 @@ begin
     nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
     if nfParams <> nil then
     begin
-      nfs := nfParams.NumFormatStr[nfdExcel];
+      nfs := nfParams.NumFormatStr;
       j := NumFormatList.IndexOf(nfs);
       if j = -1 then j := 0;
     end;

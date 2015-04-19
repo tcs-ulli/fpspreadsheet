@@ -417,7 +417,7 @@ procedure TsSpreadOOXMLReader.AddBuiltinNumFormats;
 begin
   FFirstNumFormatIndexInFile := 164;
   AddBuiltInBiffFormats(
-    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1, nfdDefault
+    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1
   );
 end;
 
@@ -2222,7 +2222,7 @@ begin
     numFmtStr := NumFormatList[i];
     parser := TsNumFormatParser.Create(Workbook, numFmtStr);
     try
-      numFmtStr := UTF8TextToXMLText(parser.FormatString[nfdExcel]);
+      numFmtStr := UTF8TextToXMLText(parser.FormatString);
       xmlStr := xmlStr + Format('<numFmt numFmtId="%d" formatCode="%s" />',
         [i, numFmtStr]);
       inc(n);
@@ -2475,7 +2475,7 @@ begin
       numFmtParams := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
       if numFmtParams <> nil then
       begin
-        numFmtStr := numFmtParams.NumFormatStr[nfdExcel];
+        numFmtStr := numFmtParams.NumFormatStr;
         idx := NumFormatList.IndexOf(numFmtStr);
       end else
         idx := 0;  // "General" format is at index 0
@@ -2905,7 +2905,7 @@ procedure TsSpreadOOXMLWriter.AddBuiltinNumFormats;
 begin
   FFirstNumFormatIndexInFile := 164;
   AddBuiltInBiffFormats(
-    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1, nfdExcel
+    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1
   );
 end;
 
@@ -3048,7 +3048,7 @@ var
   i: Integer;
 begin
   { Analyze the workbook and collect all information needed }
-  ListAllNumFormats(nfdExcel);
+  ListAllNumFormats;
   ListAllFills;
   ListAllBorders;
 

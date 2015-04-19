@@ -105,7 +105,7 @@ object MainForm: TMainForm
         'Font1=Arial; size 10; blue; underline'
         'Font2=Arial; size 10; black; bold'
         'Font3=Arial; size 10; black; italic'
-        'CellFormat0='
+        'CellFormat0=nfGeneral'
       )
       TitleCaptions.Strings = (
         'Properties'
@@ -820,6 +820,34 @@ object MainForm: TMainForm
       Hint = 'Currency format (negative values in red)'
       NumberFormat = nfCurrencyRed
     end
+    object AcNumFormatExp: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Exponential'
+      Hint = 'Exponential format'
+      NumberFormat = nfExp
+    end
+    object AcNumFormatFraction1: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Fraction (1 digit)'
+      NumberFormat = nfFraction
+      NumberFormatString = '# #/#'
+    end
+    object AcNumFormatFraction2: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Fraction (2 digits)'
+      NumberFormat = nfFraction
+      NumberFormatString = '# ##/##'
+    end
+    object AcNumFormatFraction3: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Fraction (3 digits)'
+      NumberFormat = nfFraction
+      NumberFormatString = '# ###/###'
+    end
     object AcFileOpen: TFileOpen
       Category = 'File'
       Caption = '&Open ...'
@@ -874,6 +902,12 @@ object MainForm: TMainForm
       ImageIndex = 49
       OnExecute = AcColDeleteExecute
     end
+    object AcSettingsFormatSettings: TAction
+      Category = 'Settings'
+      Caption = 'Number format settings...'
+      Hint = 'Define number format settings'
+      OnExecute = AcSettingsFormatSettingsExecute
+    end
     object AcSettingsCSVParams: TAction
       Category = 'Settings'
       Caption = 'CSV parameters...'
@@ -885,40 +919,6 @@ object MainForm: TMainForm
       Caption = 'Currency symbols...'
       Hint = 'Define currency symbols'
       OnExecute = AcSettingsCurrencyExecute
-    end
-    object AcSettingsFormatSettings: TAction
-      Category = 'Settings'
-      Caption = 'Number format settings...'
-      Hint = 'Define number format settings'
-      OnExecute = AcSettingsFormatSettingsExecute
-    end
-    object AcNumFormatExp: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Exponential'
-      Hint = 'Exponential format'
-      NumberFormat = nfExp
-    end
-    object AcNumFormatFraction1: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Fraction (1 digit)'
-      NumberFormat = nfFraction
-      NumberFormatString = '# #/#'
-    end
-    object AcNumFormatFraction2: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Fraction (2 digits)'
-      NumberFormat = nfFraction
-      NumberFormatString = '# ##/##'
-    end
-    object AcNumFormatFraction3: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Fraction (3 digits)'
-      NumberFormat = nfFraction
-      NumberFormatString = '# ###/###'
     end
     object AcNumFormatDateTime: TsNumberFormatAction
       Category = 'FPSpreadsheet'
@@ -940,6 +940,20 @@ object MainForm: TMainForm
       Caption = 'Short date'
       Hint = 'Short date format'
       NumberFormat = nfShortDate
+    end
+    object AcNumFormatDayMonth: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Day and month'
+      Hint = 'Day and month only'
+      NumberFormat = nfDayMonth
+    end
+    object AcNumFormatMonthYear: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Month and year'
+      Hint = 'Month and year only'
+      NumberFormat = nfMonthYear
     end
     object AcNumFormatLongTime: TsNumberFormatAction
       Category = 'FPSpreadsheet'
@@ -5055,6 +5069,17 @@ object MainForm: TMainForm
     end
     object MenuItem25: TMenuItem
       Action = AcNumFormatShortDate
+      AutoCheck = True
+    end
+    object MenuItem118: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem119: TMenuItem
+      Action = AcNumFormatDayMonth
+      AutoCheck = True
+    end
+    object MenuItem120: TMenuItem
+      Action = AcNumFormatMonthYear
       AutoCheck = True
     end
   end

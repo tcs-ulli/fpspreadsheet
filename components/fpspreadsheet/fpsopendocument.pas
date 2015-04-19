@@ -150,7 +150,7 @@ type
     procedure CreateStreams;
     procedure DestroyStreams;
     procedure ListAllColumnStyles;
-    procedure ListAllNumFormats(ADialect: TsNumFormatDialect); override;
+    procedure ListAllNumFormats; override;
     procedure ListAllRowStyles;
     procedure ResetStreams;
 
@@ -2562,7 +2562,7 @@ end;
 { Contains all number formats used in the workbook. Overrides the inherited
   method to assign a unique name according to the OpenDocument syntax ("N<number>"
   to the format items. }
-procedure TsSpreadOpenDocWriter.ListAllNumFormats(ADialect: TsNumFormatDialect);
+procedure TsSpreadOpenDocWriter.ListAllNumFormats;
 const
   FMT_BASE = 1000;  // Format number to start with. Not clear if this is correct...
 var
@@ -2573,21 +2573,9 @@ begin
   for i:=0 to Workbook.GetNumberFormatCount - 1 do
   begin
     nfParams := Workbook.GetNumberFormat(i);
-    FNumFormatList.Add(Format('N%d:%s', [FMT_BASE+i, nfParams.NumFormatStr[ADialect]]));
+    if nfParams <> nil then
+      FNumFormatList.Add(Format('N%d:%s', [FMT_BASE+i, nfParams.NumFormatStr]));
   end;
-                                                                                  {
-var
-  n, i, j: Integer;
-begin
-  n := NumFormatList.Count;
-  inherited ListAllNumFormats;
-  j := 0;
-  for i:=n to NumFormatList.Count-1 do
-  begin
-    NumFormatList.Items[i].Name := Format('N%d', [FMT_BASE + j]);
-    inc(j);
-  end;
-  }
 end;
 
 procedure TsSpreadOpenDocWriter.ListAllRowStyles;
@@ -2917,7 +2905,7 @@ begin
       nfParams := FWorkbook.GetNumberFormat(nfidx);
       if nfParams <> nil then
       begin
-        nfs := nfParams.NumFormatStr[nfdExcel];
+        nfs := nfParams.NumFormatStr;
         for j:=0 to NumFormatList.Count-1 do
         begin
           s := NumFormatList[j];
@@ -3408,7 +3396,7 @@ var
   FZip: TZipper;
 begin
   { Analyze the workbook and collect all information needed }
-  ListAllNumFormats(nfdExcel);
+  ListAllNumFormats;
   ListAllColumnStyles;
   ListAllRowStyles;
 

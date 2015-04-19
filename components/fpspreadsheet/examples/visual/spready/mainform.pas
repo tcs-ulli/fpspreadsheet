@@ -66,8 +66,8 @@ type
     AcNFShortTimeAM: TAction;
     AcNFLongTimeAM: TAction;
     AcNFTimeInterval: TAction;
-    AcNFCustomDM: TAction;
-    AcNFCustomMY: TAction;
+    AcNFDayMonth: TAction;
+    AcNFMonthDay: TAction;
     AcNFCusstomMS: TAction;
     AcNFCustomMSZ: TAction;
     AcNew: TAction;
@@ -716,7 +716,7 @@ end;
 
 procedure TMainFrm.AcNumFormatExecute(Sender: TObject);
 const
-  DATETIME_CUSTOM: array[0..4] of string = ('', 'dd/mmm', 'mmm/yy', 'nn:ss', 'nn:ss.zzz');
+  DATETIME_CUSTOM: array[0..2] of string = ('', 'nn:ss', 'nn:ss.zzz');
 var
   c, r: Cardinal;
   cell: PCell;
@@ -1417,14 +1417,12 @@ begin
       Worksheet.ReadNumFormat(cell, nf, nfs);
     for i:=0 to ActionList.ActionCount-1 do begin
       ac := TAction(ActionList.Actions[i]);
-      if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 200) then begin
+      if (ac.Tag >= NUMFMT_TAG) and (ac.Tag < NUMFMT_TAG + 300) then begin
         found := ((ac.Tag - NUMFMT_TAG) div 10 = ord(nf));
         if nf = nfCustom then
           case (ac.Tag - NUMFMT_TAG) mod 10 of
-            1: found := nfs = 'dd/mmm';
-            2: found := nfs = 'mmm/yy';
-            3: found := nfs = 'nn:ss';
-            4: found := nfs = 'nn:ss.z';
+            1: found := nfs = 'nn:ss';
+            2: found := nfs = 'nn:ss.z';
           end;
         ac.Checked := found;
       end;

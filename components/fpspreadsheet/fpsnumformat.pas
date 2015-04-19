@@ -26,7 +26,7 @@ type
     constructor Create(AWorkbook: TsWorkbook; AOwnsData: Boolean);
     destructor Destroy; override;
     function AddFormat(ASections: TsNumFormatSections): Integer; overload;
-    function AddFormat(AFormatStr: String; ADialect: TsNumFormatDialect): Integer; overload;
+    function AddFormat(AFormatStr: String): Integer; overload;
     procedure Clear;
     procedure Delete(AIndex: Integer);
     function Find(ASections: TsNumFormatSections): Integer;
@@ -214,14 +214,13 @@ begin
   end;
 end;
 
-function TsNumFormatList.AddFormat(AFormatStr: String;
-  ADialect: TsNumFormatDialect): Integer;
+function TsNumFormatList.AddFormat(AFormatStr: String): Integer;
 var
   parser: TsNumFormatParser;
   newSections: TsNumFormatSections;
   i: Integer;
 begin
-  parser := TsNumFormatParser.Create(FWorkbook, AFormatStr, ADialect);
+  parser := TsNumFormatParser.Create(FWorkbook, AFormatStr);
   try
     SetLength(newSections, parser.ParsedSectionCount);
     for i:=0 to High(newSections) do

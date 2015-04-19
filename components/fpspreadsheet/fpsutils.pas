@@ -96,9 +96,9 @@ function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberF
 
 procedure BuildCurrencyFormatList(AList: TStrings;
   APositive: Boolean; AValue: Double; const ACurrencySymbol: String);
-function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
-  ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
-  ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
+function BuildCurrencyFormatString(ANumberFormat: TsNumberFormat;
+  const AFormatSettings: TFormatSettings; ADecimals, APosCurrFmt, ANegCurrFmt: Integer;
+  ACurrencySymbol: String; Accounting: Boolean = false): String;
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = ''): String;
 function BuildFractionFormatString(AMixedFraction: Boolean;
@@ -119,9 +119,10 @@ function MonthNamesToString(const AMonthNames: TMonthNameArray;
   const AEmptyStr: String): String;
 function SpecialDateTimeFormat(ACode: String;
   const AFormatSettings: TFormatSettings; ForWriting: Boolean): String;
+{
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
-
+ }
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
@@ -1062,30 +1063,30 @@ end;
   or minus signs) is taken from the provided format settings. The format string
   consists of three sections, separated by semicolons.
 
-  @param  ADialect        Determines whether the format string is for use by
-                          fpspreadsheet (nfdDefault) or by Excel (nfdExcel)
   @param  ANumberFormat   Identifier of the built-in number format for which the
                           format string is to be generated.
   @param  AFormatSettings FormatSettings to be applied (used to extract default
                           values for the next parameters)
   @param  ADecimals       number of decimal places. If < 0, the CurrencyDecimals
                           of the FormatSettings is used.
-  @param  APosCurrFormat  Identifier for the order of currency symbol, value and
+  @param  APosCurrFmt     Identifier for the order of currency symbol, value and
                           spaces of positive values
                           - see pcfXXXX constants in fpspreadsheet.pas.
                           If < 0, the CurrencyFormat of the FormatSettings is used.
-  @param  ANegCurrFormat  Identifier for the order of currency symbol, value and
+  @param  ANegCurrFmt     Identifier for the order of currency symbol, value and
                           spaces of negative values. Specifies also usage of ().
                           - see ncfXXXX constants in fpspreadsheet.pas.
                           If < 0, the NegCurrFormat of the FormatSettings is used.
   @param  ACurrencySymbol Name of the currency, like $ or USD.
                           If ? the CurrencyString of the FormatSettings is used.
+  @param  Accounting      If true, adds spaces for alignment of decimals
 
   @return String of formatting codes, such as '"$"#,##0.00;("$"#,##0.00);"$"0.00'
 -------------------------------------------------------------------------------}
-function BuildCurrencyFormatString(ADialect: TsNumFormatDialect;
-  ANumberFormat: TsNumberFormat; const AFormatSettings: TFormatSettings;
-  ADecimals, APosCurrFormat, ANegCurrFormat: Integer; ACurrencySymbol: String): String;
+function BuildCurrencyFormatString(ANumberFormat: TsNumberFormat;
+  const AFormatSettings: TFormatSettings;
+  ADecimals, APosCurrFmt, ANegCurrFmt: Integer; ACurrencySymbol: String;
+  Accounting: Boolean = false): String;
 {
 const
   POS_FMT: array[0..3] of string = (
@@ -1120,8 +1121,8 @@ var
   p, n: String;
   negRed: Boolean;
 begin
-  pcf := IfThen(APosCurrFormat < 0, AFormatSettings.CurrencyFormat, APosCurrFormat);
-  ncf := IfThen(ANegCurrFormat < 0, AFormatSettings.NegCurrFormat, ANegCurrFormat);
+  pcf := IfThen(APosCurrFmt < 0, AFormatSettings.CurrencyFormat, APosCurrFmt);
+  ncf := IfThen(ANegCurrFmt < 0, AFormatSettings.NegCurrFormat, ANegCurrFmt);
   if (ADecimals < 0) then
     ADecimals := AFormatSettings.CurrencyDecimals;
   if ACurrencySymbol = '?' then
@@ -1134,25 +1135,25 @@ begin
   negRed := (ANumberFormat = nfCurrencyRed);
   p := POS_CURR_FMT[pcf];   // Format mask for positive values
   n := NEG_CURR_FMT[ncf];   // Format mask for negative values
+
   // add extra space for the sign of the number for perfect alignment in Excel
-  if ADialect = nfdExcel then
+  if Accounting then
     case ncf of
       0, 14: p := p + '_)';
       3, 11: p := p + '_-';
-      4, 15: p := '_(' + p;
+       4, 15: p := '_(' + p;
       5, 8 : p := '_-' + p;
     end;
 
   if ACurrencySymbol <> '' then begin
     Result := Format(p, ['#,##0' + decs, ACurrencySymbol]) + ';'
             + IfThen(negRed, '[red]', '')
-//            + IfThen(negRed and (ADialect = nfdExcel), '[red]', '')
             + Format(n, ['#,##0' + decs, ACurrencySymbol]) + ';'
             + Format(p, ['0'+decs, ACurrencySymbol]);
   end
   else begin
     Result := '#,##0' + decs;
-    if negRed and (ADialect = nfdExcel) then
+    if negRed then
       Result := Result +';[red]'
     else
       Result := Result +';';
@@ -1216,14 +1217,20 @@ begin
       Result := '0' + decs + 'E+00';
     nfPercentage:
       Result := '0' + decs + '%';
+    nfFraction:
+      if ADecimals = 0 then
+        Result := '# ??/??'
+      else
+      begin
+        decs := DupeString('?', ADecimals);
+        Result := '# ' + decs + '/' + decs;
+      end;
     nfCurrency, nfCurrencyRed:
-      Result := BuildCurrencyFormatString(nfdDefault, ANumberFormat, AFormatSettings,
+      Result := BuildCurrencyFormatString(ANumberFormat, AFormatSettings,
         ADecimals, AFormatSettings.CurrencyFormat, AFormatSettings.NegCurrFormat,
         AFormatSettings.CurrencyString);
-//      raise Exception.Create('BuildNumberFormatString: Use BuildCurrencyFormatString '+
-//        'to create a format string for currency values.');
     nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
-    nfShortTimeAM, nfLongTimeAM, nfTimeInterval:
+    nfShortTimeAM, nfLongTimeAM, nfDayMonth, nfMonthYear, nfTimeInterval:
       raise Exception.Create('BuildNumberFormatString: Use BuildDateTimeFormatSstring '+
         'to create a format string for date/time values.');
   end;
@@ -1384,8 +1391,8 @@ const
   MinInt64 = Low(Int64);
 var
   H1, H2, K1, K2, A, NewA, tmp, prevH1, prevK1: Int64;
-  B, diff, test, eps: Double;
-  Found, PendingOverflow: Boolean;
+  B, diff, test: Double;
+  PendingOverflow: Boolean;
   i: Integer = 0;
 begin
   Assert((APrecision > 0) and (APrecision < 1));
@@ -1610,6 +1617,7 @@ end;
                           for negative numbers
   @param   AZeroPart      Third section of the formatting string for zero.
 -------------------------------------------------------------------------------}
+(*
 procedure SplitFormatString(const AFormatString: String; out APositivePart,
   ANegativePart, AZeroPart: String);
 
@@ -1666,7 +1674,7 @@ begin
     inc(P);
   end;
 end;
-
+         *)
 {@@ ----------------------------------------------------------------------------
   Creates a "time interval" format string having the first time code identifier
   in square brackets.
@@ -2452,7 +2460,7 @@ var
     if AddThousandSeparator then
     begin
       j := Length(Result)-2;
-      while (j > 0) do
+      while (j > 1) do
       begin
          Insert(fs.ThousandSeparator, Result, j);
          dec(j, 3);
@@ -2507,7 +2515,7 @@ var
   var
     fmtStr: String;
   begin
-    fmtStr := AParams.NumFormatStr[nfdExcel];
+    fmtStr := AParams.NumFormatStr;
     raise Exception.CreateFmt(rsIsNoValidNumberFormatString, [fmtStr]);
   end;
 
@@ -2583,7 +2591,7 @@ begin
               (7) number w/o decimals --> exponent
           }
           // Integer only, followed by end-of-line (case 4)
-          if (i = numEl) or (section.Elements[i].Token in (terminatingTokens - [nftSpace])) then
+          if (i = numEl) or (section.Elements[i].Token in (terminatingTokens - [nftSpace, nftEmptyCharWidth])) then
           begin
             Result := Result + FixIntPart(AValue, false, digitsZero, digitsOpt, digitsSpace);
             el := i;
@@ -2744,7 +2752,7 @@ begin
             end;
 
             // Simple decimal number (nfFixed), followed by terminating tokens (case 5)
-            if (i < numEl) and (section.Elements[i].Token in terminatingTokens) then
+            if (i < numEl) and (section.Elements[i].Token in terminatingTokens - [nftEmptyCharWidth]) then
             begin
               // Simple decimal number (nfFixed) (case 1)
               Result := Result
@@ -2848,6 +2856,9 @@ begin
           if el < Length(section.Elements) then
             Result := Result + section.Elements[el].TextValue;
         end;
+
+      nftEmptyCharWidth:
+        Result := Result + ' ';
 
       nftDateTimeSep:
         case section.Elements[el].TextValue of
@@ -2955,159 +2966,6 @@ begin
     end;
     inc(el);
   end;
-
-                    (*
-  section := AParams.Sections[sidx];
-  nf := section.NumFormat;
-  case nf of
-    nfFixed:
-      Result := FloatToStrF(AValue, ffFixed, 20, section.Decimals, fs);
-    nfFixedTh:
-      Result := FloatToStrF(AValue, ffNumber, 20, section.Decimals, fs);
-    nfPercentage:
-      Result := FloatToStrF(AValue*100.0, ffFixed, 20, section.Decimals, fs) + '%';
-    nfExp:
-      begin
-        elem := High(Section.Elements);
-        expDigits := 2;
-        if section.Elements[elem].Token = nftExpDigits then
-          expDigits := section.Elements[elem].IntValue;
-        Result := FloatToStrF(AValue, ffExponent, section.Decimals+1, expDigits, fs);
-        if (abs(AValue) >= 1.0) and (
-           ((section.Elements[elem-1].Token <> nftExpSign) or (section.Elements[elem-1].TextValue = '-')) )
-        then
-          Delete(Result, pos('+', Result), 1);
-      end;
-    nfFraction:
-      begin
-        AValue := abs(AValue);
-        if section.FracInt = 0 then
-          frint := 0
-        else begin
-          frint := trunc(AValue);
-          AValue := frac(AValue);
-        end;
-        maxNum := Round(IntPower(10, section.FracNumerator));
-        maxDenom := Round(IntPower(10, section.FracDenominator));
-        FloatToFraction(AValue, maxnum, maxdenom, frnum, frdenom);
-        Result := IntToStr(frnum) + '/' + IntToStr(frdenom);
-        if frint <> 0 then
-          Result := IntToStr(frint) + ' ' + result;
-        if isNeg then Result := '-' + Result;
-      end;
-    nfCurrency,
-    nfCurrencyRed:
-      begin
-        valueDone := false;
-        for elem := 0 to High(section.Elements) do
-          case section.Elements[elem].Token of
-            nftSpace:
-              Result := Result + ' ';
-            nftText:
-              Result := Result + section.Elements[elem].TextValue;
-            nftCurrSymbol:
-              Result := Result + section.CurrencySymbol;
-            nftSign:
-              Result := Result + '-';
-            nftSignBracket:
-              Result := Result + section.Elements[elem].TextValue;
-            nftDigit, nftOptDigit:
-              if not ValueDone then
-              begin
-                Result := Result + FloatToStrF(AValue, ffNumber, 20, section.Decimals, fs);
-                valueDone := true;
-              end;
-          end;
-      end;
-    nfShortDate, nfLongDate, nfShortTime, nfLongTime, nfShortDateTime,
-    nfShortTimeAM, nfLongTimeAM:
-      begin
-        DecodeDate(trunc(AValue), yr, mon, day);
-        DecodeTime(frac(AValue), hr, min, sec, ms);
-        elem := 0;
-        while elem < Length(section.Elements) do
-        begin
-          case section.Elements[elem].Token of
-            nftSpace:
-              Result := Result + ' ';
-            nftText:
-              Result := Result + section.Elements[elem].TextValue;
-            nftYear:
-              case section.Elements[elem].IntValue of
-                1,
-                2: Result := Result + IfThen(yr < 10, '0'+IntToStr(yr), IntToStr(yr));
-                4: Result := Result + IntToStr(yr);
-              end;
-            nftMonth:
-              case section.Elements[elem].IntValue of
-                1: Result := Result + IntToStr(mon);
-                2: Result := Result + IfThen(mon < 10, '0'+IntToStr(mon), IntToStr(mon));
-                3: Result := Result + fs.ShortMonthNames[mon];
-                4: Result := Result + fs.LongMonthNames[mon];
-              end;
-            nftDay:
-              case section.Elements[elem].IntValue of
-                1: result := result + IntToStr(day);
-                2: result := Result + IfThen(day < 10, '0'+IntToStr(day), IntToStr(day));
-                3: Result := Result + fs.ShortDayNames[day];
-                4: Result := Result + fs.LongDayNames[day];
-              end;
-            nftHour:
-              begin
-                if section.Elements[elem].IntValue < 0 then
-                  hr := hr + trunc(AValue) * 24;
-                case abs(section.Elements[elem].IntValue) of
-                  1: Result := Result + IntToStr(hr);
-                  2: Result := Result + IfThen(hr < 10, '0'+IntToStr(hr), IntToStr(hr));
-                end;
-              end;
-            nftMinute:
-              begin
-                if section.Elements[elem].IntValue < 0 then
-                  min := min + trunc(AValue) * 24 * 60;
-                case abs(section.Elements[elem].IntValue) of
-                  1: Result := Result + IntToStr(min);
-                  2: Result := Result + IfThen(min < 10, '0'+IntToStr(min), IntToStr(min));
-                end;
-              end;
-            nftSecond:
-              begin
-                if section.Elements[elem].IntValue < 0 then
-                  sec := sec + trunc(AValue) * 24 * 60 * 60;
-                case abs(section.Elements[elem].IntValue) of
-                  1: Result := Result + IntToStr(sec);
-                  2: Result := Result + IfThen(sec < 10, '0'+IntToStr(sec), IntToStr(sec));
-                end;
-              end;
-            nftDecSep:
-              Result := Result + fs.DecimalSeparator;
-            nftMilliseconds:
-              case section.Elements[elem].IntValue of
-                1: Result := Result + IntToStr(ms div 100);
-                2: Result := Result + Format('%02d', [ms div 10]);
-                3: Result := Result + Format('%03d', [ms]);
-              end;
-            nftDateTimeSep:
-              case section.Elements[elem].TextValue of
-                '/': Result := Result + fs.DateSeparator;
-                ':': Result := Result + fs.TimeSeparator;
-                else Result := Result + section.Elements[elem].TextValue;
-              end;
-            nftAMPM:
-              if frac(AValue) <= 0.5 then
-                Result := Result + fs.TimeAMString
-              else
-                Result := Result + fs.TimePMString;
-            nftEscaped:
-              begin
-                inc(elem);
-                Result := Result + section.Elements[elem].TextValue;
-              end;
-          end;
-          inc(elem);
-        end;
-      end;
-  end;*)
 end;
 
 

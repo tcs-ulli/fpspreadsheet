@@ -953,7 +953,7 @@ begin
       numFmtParams := sourceSheet.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
       if numFmtParams <> nil then
       begin
-        nfs := numFmtParams.NumFormatStr[nfdExcel];
+        nfs := numFmtParams.NumFormatStr;
         fmt.NumberFormatIndex := destSheet.Workbook.AddNumberFormat(nfs);
       end;
     end;
@@ -2977,7 +2977,7 @@ begin
       if numFmt <> nil then
       begin
         ANumFormat := numFmt.NumFormat;
-        ANumFormatStr := numFmt.NumFormatStr[nfdDefault];
+        ANumFormatStr := numFmt.NumFormatStr;
       end else
       begin
         ANumFormat := nfGeneral;
@@ -4108,7 +4108,6 @@ begin
   RegisterCurrency(ACurrencySymbol);
 
   nfs := BuildCurrencyFormatString(
-    nfdDefault,
     ANumFormat,
     Workbook.FormatSettings,
     ADecimals,
@@ -4156,10 +4155,10 @@ procedure TsWorksheet.WriteCurrency(ACell: PCell; AValue: Double;
 var
   fmt: TsCellFormat;
 begin
-  if not (ANumFormat in [nfCurrency, nfCurrencyRed]) then
+  if not IsCurrencyFormat(ANumFormat) then
     raise Exception.Create('[TsWorksheet.WriteCurrency] ANumFormat can only be nfCurrency or nfCurrencyRed');
 
-  if (ACell <> nil) and IsCurrencyFormat(ANumFormat) then begin
+  if (ACell <> nil) then begin
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := AValue;
 
@@ -4364,6 +4363,7 @@ procedure TsWorksheet.WriteDateTimeFormat(ACell: PCell;
   ANumFormat: TsNumberFormat; const ANumFormatString: String = '');
 var
   fmt: TsCellFormat;
+  nfs: String;
 begin
   if ACell = nil then
     exit;
@@ -4377,14 +4377,17 @@ begin
   begin
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     if (ANumFormatString = '') then
-      fmt.NumberFormatStr := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings)
+      nfs := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings)
     else
-      fmt.NumberFormatStr := ANumFormatString;
+      nfs := ANumFormatString;
   end else
   begin
     Exclude(fmt.UsedFormattingFields, uffNumberFormat);
     fmt.NumberFormatStr := '';
   end;
+  fmt.NumberFormat := ANumFormat;
+  fmt.NumberFormatStr := nfs;
+  fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
   ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
 
   ChangedCell(ACell^.Row, ACell^.Col);
@@ -4426,11 +4429,11 @@ begin
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   numFmt := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
-  numFmtStr := numFmt.NumFormatStr[nfdDefault];
+  numFmtStr := numFmt.NumFormatStr;
   parser := TsNumFormatParser.Create(Workbook, numFmtStr);
   try
     parser.Decimals := ADecimals;
-    numFmtStr := parser.FormatString[nfdDefault];
+    numFmtStr := parser.FormatString;
     fmt.NumberFormatIndex := Workbook.AddNumberFormat(numFmtStr);
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
@@ -4579,12 +4582,11 @@ begin
   fmt.NumberFormat := ANumFormat;
   if ANumFormat <> nfGeneral then begin
     Include(fmt.UsedFormattingFields, uffNumberFormat);
-    if ANumFormat in [nfCurrency, nfCurrencyRed] then
+    if IsCurrencyFormat(ANumFormat) then
     begin
       RegisterCurrency(ACurrencySymbol);
-      fmtStr := BuildCurrencyFormatString(nfdDefault, ANumFormat,
-        Workbook.FormatSettings, ADecimals,
-        APosCurrFormat, ANegCurrFormat, ACurrencySymbol);
+      fmtStr := BuildCurrencyFormatString(ANumFormat, Workbook.FormatSettings,
+        ADecimals, APosCurrFormat, ANegCurrFormat, ACurrencySymbol);
     end else
       fmtStr := BuildNumberFormatString(ANumFormat,
         Workbook.FormatSettings, ADecimals);
@@ -7197,7 +7199,7 @@ begin
     if numFmt <> nil then
       Result := Format('%s; %s (%s)', [Result,
         GetEnumName(TypeInfo(TsNumberFormat), ord(numFmt.NumFormat)),
-        numFmt.NumFormatStr[nfdDefault]
+        numFmt.NumFormatStr
       ])
     else
       Result := Format('%s; %s', [Result, 'nfGeneral']);
@@ -7487,7 +7489,7 @@ begin
   if AFormatStr = '' then
     Result := -1  // General number format is not stored
   else
-    Result := TsNumFormatList(FNumFormatList).AddFormat(AFormatStr, nfdDefault);
+    Result := TsNumFormatList(FNumFormatList).AddFormat(AFormatStr);
 end;
 
 {@@ ----------------------------------------------------------------------------

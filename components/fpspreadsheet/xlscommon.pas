@@ -369,7 +369,7 @@ type
     procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); virtual;
     // Writes out all FORMAT records
-    procedure WriteNumFormats(AStream: TStream; ADialect: TsNumFormatDialect);
+    procedure WriteNumFormats(AStream: TStream);
     // Writes out a floating point NUMBER record
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Double; ACell: PCell); override;
@@ -429,8 +429,7 @@ type
   end;
 
 procedure AddBuiltinBiffFormats(AList: TStringList;
-  AFormatSettings: TFormatSettings; ALastIndex: Integer;
-  ADialect: TsNumFormatDialect);
+  AFormatSettings: TFormatSettings; ALastIndex: Integer);
 
 
 implementation
@@ -594,8 +593,7 @@ end;
   number format that Excel used.
 -------------------------------------------------------------------------------}
 procedure AddBuiltinBiffFormats(AList: TStringList;
-  AFormatSettings: TFormatSettings; ALastIndex: Integer;
-  ADialect: TsNumFormatDialect);
+  AFormatSettings: TFormatSettings; ALastIndex: Integer);
 var
   fs: TFormatSettings absolute AFormatSettings;
   cs: String;
@@ -608,10 +606,10 @@ begin
   AList.Add('0.00');      // 2
   AList.Add('#,##0');     // 3
   AList.Add('#,##0.00');  // 4
-  AList.Add(BuildCurrencyFormatString(ADialect, nfCurrency, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 5
-  AList.Add(BuildCurrencyFormatString(ADialect, nfCurrencyRed, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 6
-  AList.Add(BuildCurrencyFormatString(ADialect, nfCurrency, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 7
-  AList.Add(BuildCurrencyFormatString(ADialect, nfCurrencyRed, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 8
+  AList.Add(BuildCurrencyFormatString(nfCurrency, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 5
+  AList.Add(BuildCurrencyFormatString(nfCurrencyRed, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 6
+  AList.Add(BuildCurrencyFormatString(nfCurrency, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 7
+  AList.Add(BuildCurrencyFormatString(nfCurrencyRed, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 8
   AList.Add('0%');                // 9
   AList.Add('0.00%');             // 10
   AList.Add('0.00E+00');          // 11
@@ -670,7 +668,7 @@ procedure TsSpreadBIFFReader.AddBuiltinNumFormats;
 begin
   FFirstNumFormatIndexInFile := 164;
   AddBuiltInBiffFormats(
-    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1, nfdDefault
+    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1
   );
 end;
 
@@ -1861,7 +1859,7 @@ procedure TsSpreadBIFFWriter.AddBuiltinNumFormats;
 begin
   FFirstNumFormatIndexInFile := 164;
   AddBuiltInBiffFormats(
-    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1, nfdExcel
+    FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1
   );
 end;
 
@@ -2211,37 +2209,24 @@ end;
   Writes all number formats to the stream. Saving starts at the item with the
   FirstFormatIndexInFile.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteNumFormats(AStream: TStream;
-  ADialect: TsNumFormatDialect);
+procedure TsSpreadBIFFWriter.WriteNumFormats(AStream: TStream);
 var
   i: Integer;
   parser: TsNumFormatParser;
   fmtStr: String;
 begin
-  ListAllNumFormats(ADialect);
+  ListAllNumFormats;
   for i:= FFirstNumFormatIndexInFile to NumFormatList.Count-1 do
   begin
     fmtStr := NumFormatList[i];
     parser := TsNumFormatParser.Create(Workbook, fmtStr);
     try
-      fmtStr := parser.FormatString[ADialect];;
+      fmtStr := parser.FormatString;
       WriteNumFormat(AStream, fmtStr, i);
     finally
       parser.Free;
     end;
   end;
-
-{
-  i := NumFormatList.FindByIndex(FFirstNumFormatIndexInFile);
-  if i > -1 then
-    while i < NumFormatList.Count do
-    begin
-      item := NumFormatList[i];
-      if item <> nil then
-        WriteNumFormat(AStream, item, i);
-      inc(i);
-    end;
-}
 end;
 
 {@@ ----------------------------------------------------------------------------
