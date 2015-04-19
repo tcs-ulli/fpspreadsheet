@@ -99,7 +99,7 @@ type
     procedure FixFormat(ACell: PCell); virtual;
     procedure GetSheetDimensions(AWorksheet: TsWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
-    procedure ListAllNumFormats(ADialect: TsNumFormatDialect); virtual;
+    procedure ListAllNumFormats; virtual;
 
     { Helpers for writing }
     procedure WriteCellToStream(AStream: TStream; ACell: PCell);
@@ -482,7 +482,7 @@ end;
   Copies the format strings from the workbook's NumFormatList to the writer's
   internal NumFormatList.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.ListAllNumFormats(ADialect: TsNumFormatDialect);
+procedure TsCustomSpreadWriter.ListAllNumFormats;
 var
   i: Integer;
   numFmt: TsNumFormatParams;
@@ -493,7 +493,7 @@ begin
     numFmt := Workbook.GetNumberFormat(i);
     if numFmt <> nil then
     begin
-      numFmtStr := numFmt.NumFormatStr[ADialect];
+      numFmtStr := numFmt.NumFormatStr;
       if FindNumFormatInList(numFmtStr) = -1 then
         FNumFormatList.Add(numFmtStr);
     end;

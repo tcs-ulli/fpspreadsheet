@@ -254,11 +254,9 @@ begin
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0_);("$"#,##0)');
   MyWorksheet.WriteNumber(r, 1, number);
-  MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
   MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"$"#,##0_);("$"#,##0)');
   MyWorksheet.WriteNumber(r, 2, -number);
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '"$"#,##0_);("$"#,##0)');
-  MyWorksheet.WriteFontColor(r, 2, NA_COLOR);
   inc(r);
   MyWorksheet.WriteUTF8Text(r, 0, 'nfCustom, "$"#,##0.0_);[Red]("$"#,##0.0)');
   MyWorksheet.WriteNumber(r, 1, number);

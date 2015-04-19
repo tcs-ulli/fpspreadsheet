@@ -97,7 +97,7 @@ type
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
   protected
     procedure AddBuiltinNumFormats; override;
-    procedure ListAllNumFormats(ADialect: TsNumFormatDialect); override;
+    procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -251,8 +251,7 @@ type
   end;
 
 
-procedure InternalAddBuiltinNumFormats(AList: TStringList;
-  AFormatSettings: TFormatSettings; ADialect: TsNumFormatDialect);
+procedure InternalAddBuiltinNumFormats(AList: TStringList; AFormatSettings: TFormatSettings);
 var
   fs: TFormatSettings absolute AFormatSettings;
   cs: String;
@@ -266,10 +265,10 @@ begin
     Add('0.00');      // 2
     Add('#,##0');     // 3
     Add('#,##0.00');  // 4
-    Add(BuildCurrencyFormatString(ADialect, nfCurrency, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 5
-    Add(BuildCurrencyFormatString(ADialect, nfCurrencyRed, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 6
-    Add(BuildCurrencyFormatString(ADialect, nfCurrency, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 7
-    Add(BuildCurrencyFormatString(ADialect, nfCurrencyRed, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 8
+    Add(BuildCurrencyFormatString(nfCurrency, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 5
+    Add(BuildCurrencyFormatString(nfCurrencyRed, fs, 0, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 6
+    Add(BuildCurrencyFormatString(nfCurrency, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));     // 7
+    Add(BuildCurrencyFormatString(nfCurrencyRed, fs, 2, fs.CurrencyFormat, fs.NegCurrFormat, cs));  // 8
     Add('0%');                // 9
     Add('0.00%');             // 10
     Add('0.00E+00');          // 11
@@ -299,7 +298,7 @@ end;
 procedure TsSpreadBIFF2Reader.AddBuiltInNumFormats;
 begin
   FFirstNumFormatIndexInFile := 0;
-  InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings, nfdDefault);
+  InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
@@ -905,7 +904,7 @@ begin
     fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
     nf := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
     fmt.NumberFormat := nf.NumFormat;
-    fmt.NumberFormatStr := nf.NumFormatStr[nfdDefault];
+    fmt.NumberFormatStr := nf.NumFormatStr;
     Include(fmt.UsedFormattingFields, uffNumberFormat);
   end;
 
@@ -974,7 +973,7 @@ end;
 procedure TsSpreadBIFF2Writer.AddBuiltInNumFormats;
 begin
   FFirstNumFormatIndexInFile := 0;
-  InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings, nfdExcel);
+  InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1034,9 +1033,8 @@ end;
   standard formats; these formats have been added by AddBuiltInFormats.
   Nothing to do here.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.ListAllNumFormats(ADialect: TsNumFormatDialect);
+procedure TsSpreadBIFF2Writer.ListAllNumFormats;
 begin
-  Unused(ADialect);
   // Nothing to do here.
 end;
 
@@ -1234,7 +1232,7 @@ begin
     WriteFonts(AStream);
     WriteCodePage(AStream, FCodePage);
     WriteFormatCount(AStream);
-    WriteNumFormats(AStream, nfdExcel);
+    WriteNumFormats(AStream);
     WriteXFRecords(AStream);
     WriteColWidths(AStream);
     WriteDimensions(AStream, FWorksheet);

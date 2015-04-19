@@ -1004,7 +1004,7 @@ begin
   WriteCodepage(AStream, FCodePage);
   WriteWindow1(AStream);
   WriteFonts(AStream);
-  WriteNumFormats(AStream, nfdExcel);
+  WriteNumFormats(AStream);
   WritePalette(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
@@ -1497,20 +1497,12 @@ begin
   if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields)
   then begin
     nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
-    nfs := nfParams.NumFormatStr[nfdExcel];
+    nfs := nfParams.NumFormatStr;
     j := NumFormatList.IndexOf(nfs);
     if j = -1 then j := 0;
   end;
   rec.NumFormatIndex := WordToLE(j);
-{
-    // The number formats in the FormatList are still in fpc dialect
-    // They will be converted to Excel syntax immediately before writing.
-    j := NumFormatList.Find(AFormatRecord^.NumberFormat, AFormatRecord^.NumberFormatStr);
-    if j > -1 then
-      rec.NumFormatIndex := NumFormatList[j].Index;
-  end;
-  rec.NumFormatIndex := WordToLE(rec.NumFormatIndex);
- }
+
   { XF type, cell protection and parent style XF }
   rec.XFType_Prot_ParentXF := XFType_Prot and MASK_XF_TYPE_PROT;
   if XFType_Prot and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then

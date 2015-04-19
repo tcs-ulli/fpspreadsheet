@@ -445,11 +445,7 @@ type
     // other (format string goes directly into the file)
     nfCustom);
 
-  {@@ Identifies which "dialect" is used in the format strings:
-    nfdDefault is the dialect used by fpc
-    fndExcel is the dialect used by Excel }
-  TsNumFormatDialect = (nfdDefault, nfdExcel);
-
+  {@@ Tokens used by the elements of the number format parser }
   TsNumFormatToken = (
     nftText,               // must be quoted, stored in TextValue
     nftThSep,              // ',', replaced by FormatSettings.ThousandSeparator
@@ -525,12 +521,12 @@ type
   TsNumFormatParams = class(TObject)
   protected
     function GetNumFormat: TsNumberFormat; virtual;
-    function GetNumFormatStr(ADialect: TsNumFormatDialect): String; virtual;
+    function GetNumFormatStr: String; virtual;
   public
     Sections: TsNumFormatSections;
     function SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
     property NumFormat: TsNumberFormat read GetNumFormat;
-    property NumFormatStr[ADialect: TsNumFormatDialect]: String read GetNumFormatStr;
+    property NumFormatStr: String read GetNumFormatStr;
   end;
 
   TsNumFormatParamsClass = class of TsNumFormatParams;
@@ -660,8 +656,7 @@ type
       cctError      : (ErrorValue: TsErrorValue);
   end;
 
-function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
-  ADialect: TsNumFormatDialect): String;
+function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 
 
 implementation
@@ -838,10 +833,10 @@ begin
 end;
 
 
-{ Creates a format string for the given section. This implementation covers
-  the formatstring dialects of fpc (nfdDefault) and Excel (nfdExcel). }
-function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
-  ADialect: TsNumFormatDialect): String;
+{ Creates a format string for the given number format section section.
+  The format string is created according to Excel convention (which is used by
+  ODS as well }
+function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 var
   element: TsNumFormatElement;
   i: Integer;
@@ -880,62 +875,49 @@ begin
       nftText:
         if element.TextValue <> '' then result := Result + '"' + element.TextValue + '"';
       nftYear:
-        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'Y', 'y'), element.IntValue);
+        Result := Result + DupeString('Y', element.IntValue);
       nftMonth:
-        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'M', 'm'), element.IntValue);
+        Result := Result + DupeString('M', element.IntValue);
       nftDay:
-        Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'D', 'd'), element.IntValue);
+        Result := Result + DupeString('D', element.IntValue);
       nftHour:
         if element.IntValue < 0
           then Result := Result + '[' + DupeString('h', -element.IntValue) + ']'
           else Result := Result + DupeString('h', element.IntValue);
       nftMinute:
         if element.IntValue < 0
-          then Result := result + '[' + DupeString(IfThen(ADialect = nfdExcel, 'm', 'n'), -element.IntValue) + ']'
-          else Result := Result + DupeString(IfThen(ADialect = nfdExcel, 'm', 'n'), element.IntValue);
+          then Result := result + '[' + DupeString('m', -element.IntValue) + ']'
+          else Result := Result + DupeString('m', element.IntValue);
       nftSecond:
         if element.IntValue < 0
           then Result := Result + '[' + DupeString('s', -element.IntValue) + ']'
           else Result := Result + DupeString('s', element.IntValue);
       nftMilliseconds:
-        if ADialect = nfdExcel then
-          Result := Result + Dupestring('0', element.IntValue)
-        else
-          Result := Result + DupeString('z', element.IntValue);
+        Result := Result + DupeString('0', element.IntValue);
       nftSign, nftSignBracket, nftExpChar, nftExpSign, nftAMPM, nftDateTimeSep:
         if element.TextValue <> '' then Result := Result + element.TextValue;
       nftCurrSymbol:
-        if element.TextValue <> '' then begin
-          if ADialect = nfdExcel then
-            Result := Result + '[$' + element.TextValue + ']'
-          else
-            Result := Result + '"' + element.TextValue + '"';
-        end;
+        if element.TextValue <> '' then
+          Result := Result + '[$' + element.TextValue + ']';
       nftEscaped:
-        if element.TextValue <> '' then begin
-          if ADialect = nfdExcel then
-            Result := Result + '\' + element.TextValue
-          else
-            Result := Result + element.TextValue;
-        end;
+        if element.TextValue <> '' then
+          Result := Result + '\' + element.TextValue;
       nftTextFormat:
         if element.TextValue <> '' then
-          if ADialect = nfdExcel then Result := Result + element.TextValue;
+          Result := Result + element.TextValue;
       nftRepeat:
         if element.TextValue <> '' then Result := Result + '*' + element.TextValue;
       nftColor:
-        if ADialect = nfdExcel then begin
-          case element.IntValue of
-            scBlack  : Result := '[black]';
-            scWhite  : Result := '[white]';
-            scRed    : Result := '[red]';
-            scBlue   : Result := '[blue]';
-            scGreen  : Result := '[green]';
-            scYellow : Result := '[yellow]';
-            scMagenta: Result := '[magenta]';
-            scCyan   : Result := '[cyan]';
-            else       Result := Format('[Color%d]', [element.IntValue]);
-          end;
+        case element.IntValue of
+          scBlack  : Result := '[black]';
+          scWhite  : Result := '[white]';
+          scRed    : Result := '[red]';
+          scBlue   : Result := '[blue]';
+          scGreen  : Result := '[green]';
+          scYellow : Result := '[yellow]';
+          scMagenta: Result := '[magenta]';
+          scCyan   : Result := '[cyan]';
+          else       Result := Format('[Color%d]', [element.IntValue]);
         end;
     end;
   end;
@@ -962,14 +944,14 @@ begin
   end;
 end;
 
-function TsNumFormatParams.GetNumFormatStr(ADialect: TsNumFormatDialect): String;
+function TsNumFormatParams.GetNumFormatStr: String;
 var
   i: Integer;
 begin
   if Length(Sections) > 0 then begin
-    Result := BuildFormatStringFromSection(Sections[0], ADialect);
+    Result := BuildFormatStringFromSection(Sections[0]);
     for i := 1 to High(Sections) do
-      Result := Result + ';' + BuildFormatStringFromSection(Sections[i], ADialect);
+      Result := Result + ';' + BuildFormatStringFromSection(Sections[i]);
   end else
     Result := '';
 end;

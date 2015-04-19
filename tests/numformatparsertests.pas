@@ -84,7 +84,7 @@ begin
   end;
   with ParserTestData[4] do begin
     FormatString := 'hh:mm:ss';
-    SollFormatString := 'hh:nn:ss';
+    SollFormatString := 'hh:mm:ss';
     SollNumFormat := nfLongTime;
     SollSectionCount := 1;
     SollDecimals := 0;
@@ -92,7 +92,7 @@ begin
   end;
   with ParserTestData[5] do begin
     FormatString := 'hh:mm:ss AM/PM';
-    SollFormatString := 'hh:nn:ss AM/PM';
+    SollFormatString := 'hh:mm:ss AM/PM';
     SollNumFormat := nfLongTimeAM;
     SollSectionCount := 1;
     SollDecimals := 0;
@@ -100,7 +100,7 @@ begin
   end;
   with ParserTestData[6] do begin
     FormatString := '[$-409]hh:mm:ss\ AM/PM;@';
-    SollFormatString := 'hh:nn:ss AM/PM';
+    SollFormatString := 'hh:mm:ss AM/PM';
     SollNumFormat := nfLongTimeAM;
     SollSectionCount := 2;
     SollDecimals := 0;
@@ -108,7 +108,7 @@ begin
   end;
   with ParserTestData[7] do begin
     FormatString := '[$-F400]dd.mm.yy\ hh:mm';
-    SollFormatString := 'dd.mm.yy hh:nn';
+    SollFormatString := 'dd.mm.yy hh:mm';
     SollNumFormat := nfShortDateTime;
     SollSectionCount := 1;
     SollDecimals := 0;
@@ -170,7 +170,7 @@ begin
     for i:=0 to 5 do begin
       parser := TsNumFormatParser.Create(MyWorkbook, ParserTestData[i].FormatString);
       try
-        actual := parser.FormatString[nfdDefault];
+        actual := parser.FormatString;
         CheckEquals(ParserTestData[i].SollFormatString, actual,
           'Test format string ' + ParserTestData[i].SollFormatString + ' construction mismatch');
         CheckEquals(ord(ParserTestData[i].SollNumFormat), ord(parser.ParsedSections[0].NumFormat),

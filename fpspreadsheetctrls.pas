@@ -1560,7 +1560,7 @@ var
 begin
   if Worksheet = nil then
     exit;
-  cell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  cell := Worksheet.GetCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
   if Worksheet.IsMerged(cell) then
     cell := Worksheet.FindMergeBase(cell);
   s := Lines.Text;
@@ -1695,9 +1695,12 @@ begin
         cctNumber:
           Lines.Text := FloatToStr(ACell^.NumberValue);
         cctDateTime:
-          if ACell^.DateTimeValue < 1.0 then
+          if ACell^.DateTimeValue < 1.0 then        // Time only
             Lines.Text := FormatDateTime('tt', ACell^.DateTimeValue)
           else
+          if frac(ACell^.DateTimeValue) = 0 then    // Date only
+            Lines.Text := FormatDateTime('ddddd', ACell^.DateTimevalue)
+          else                                      // both
             Lines.Text := FormatDateTime('c', ACell^.DateTimeValue);
         else
           Lines.Text := Worksheet.ReadAsUTF8Text(ACell);
@@ -2699,7 +2702,7 @@ begin
     numFmt := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
     AStrings.Add(Format('NumberFormat=%s', [
       GetEnumName(TypeInfo(TsNumberFormat), ord(numFmt.NumFormat))]));
-    AStrings.Add('NumberFormatStr=' + numFmt.NumFormatStr[nfdDefault]);
+    AStrings.Add('NumberFormatStr=' + numFmt.NumFormatStr);
   end;
 
   if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then

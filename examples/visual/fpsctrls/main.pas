@@ -48,6 +48,9 @@ type
     MenuItem115: TMenuItem;
     MenuItem116: TMenuItem;
     MenuItem117: TMenuItem;
+    MenuItem118: TMenuItem;
+    MenuItem119: TMenuItem;
+    MenuItem120: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -235,6 +238,8 @@ type
     AcNumFormatFraction2: TsNumberFormatAction;
     AcNumFormatFraction1: TsNumberFormatAction;
     AcNumFormatFraction3: TsNumberFormatAction;
+    AcNumFormatDayMonth: TsNumberFormatAction;
+    AcNumFormatMonthYear: TsNumberFormatAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;

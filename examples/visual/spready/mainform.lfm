@@ -1303,11 +1303,11 @@ object MainFrm: TMainFrm
           AutoCheck = True
         end
         object MenuItem54: TMenuItem
-          Action = AcNFCustomDM
+          Action = AcNFDayMonth
           AutoCheck = True
         end
         object MenuItem55: TMenuItem
-          Action = AcNFCustomMY
+          Action = AcNFMonthDay
           AutoCheck = True
         end
         object MenuItem61: TMenuItem
@@ -3077,98 +3077,98 @@ object MainFrm: TMainFrm
       OnExecute = AcNumFormatExecute
     end
     object AcNFCurrency: TAction
-      Tag = 1050
+      Tag = 1060
       Category = 'Format'
       AutoCheck = True
       Caption = 'Currency'
       OnExecute = AcNumFormatExecute
     end
     object AcNFCurrencyRed: TAction
-      Tag = 1060
+      Tag = 1070
       Category = 'Format'
       AutoCheck = True
       Caption = 'Currency (negative values in red)'
       OnExecute = AcNumFormatExecute
     end
     object AcNFShortDateTime: TAction
-      Tag = 1070
+      Tag = 1080
       Category = 'Format'
       AutoCheck = True
       Caption = 'Date + time'
       OnExecute = AcNumFormatExecute
     end
     object AcNFShortDate: TAction
-      Tag = 1080
+      Tag = 1090
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short date'
       OnExecute = AcNumFormatExecute
     end
     object AcNFLongDate: TAction
-      Tag = 1090
+      Tag = 1100
       Category = 'Format'
       AutoCheck = True
       Caption = 'Long date'
       OnExecute = AcNumFormatExecute
     end
-    object AcNFCustomDM: TAction
-      Tag = 1151
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Day + month'
-      OnExecute = AcNumFormatExecute
-    end
-    object AcNFCustomMY: TAction
-      Tag = 1152
-      Category = 'Format'
-      AutoCheck = True
-      Caption = 'Month + year'
-      OnExecute = AcNumFormatExecute
-    end
     object AcNFShortTime: TAction
-      Tag = 1100
+      Tag = 1110
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short time'
       OnExecute = AcNumFormatExecute
     end
     object AcNFLongTime: TAction
-      Tag = 1110
+      Tag = 1120
       Category = 'Format'
       AutoCheck = True
       Caption = 'Long time'
       OnExecute = AcNumFormatExecute
     end
     object AcNFShortTimeAM: TAction
-      Tag = 1120
+      Tag = 1130
       Category = 'Format'
       AutoCheck = True
       Caption = 'Short time AM/PM'
       OnExecute = AcNumFormatExecute
     end
     object AcNFLongTimeAM: TAction
-      Tag = 1130
+      Tag = 1140
       Category = 'Format'
       AutoCheck = True
       Caption = 'Long time AM/PM'
       OnExecute = AcNumFormatExecute
     end
+    object AcNFDayMonth: TAction
+      Tag = 1150
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Day + month'
+      OnExecute = AcNumFormatExecute
+    end
+    object AcNFMonthDay: TAction
+      Tag = 1160
+      Category = 'Format'
+      AutoCheck = True
+      Caption = 'Month + year'
+      OnExecute = AcNumFormatExecute
+    end
     object AcNFCusstomMS: TAction
-      Tag = 1153
+      Tag = 1181
       Category = 'Format'
       AutoCheck = True
       Caption = 'Minutes + seconds'
       OnExecute = AcNumFormatExecute
     end
     object AcNFCustomMSZ: TAction
-      Tag = 1154
+      Tag = 1182
       Category = 'Format'
       AutoCheck = True
       Caption = 'Minutes + seconds + milliseconds'
       OnExecute = AcNumFormatExecute
     end
     object AcNFTimeInterval: TAction
-      Tag = 1140
+      Tag = 1170
       Category = 'Format'
       AutoCheck = True
       Caption = 'Time interval'
@@ -4001,11 +4001,11 @@ object MainFrm: TMainFrm
       AutoCheck = True
     end
     object MnuFmtDateTimeDM: TMenuItem
-      Action = AcNFCustomDM
+      Action = AcNFDayMonth
       AutoCheck = True
     end
     object MnuFmtDateTimeMY: TMenuItem
-      Action = AcNFCustomMY
+      Action = AcNFMonthDay
       AutoCheck = True
     end
     object MenuItem43: TMenuItem
