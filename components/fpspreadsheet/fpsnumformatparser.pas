@@ -31,7 +31,6 @@ type
 
   TsNumFormatParser = class
   private
-    FCreateMethod: Byte;
     FToken: Char;
     FCurrent: PChar;
     FStart: PChar;
@@ -105,7 +104,6 @@ type
     function IsDateTimeFormat: Boolean;
     function IsTimeFormat: Boolean;
     procedure LimitDecimals;
-    procedure Localize;
 
     property CurrencySymbol: String read GetCurrencySymbol;
     property Decimals: Byte read GetDecimals write SetDecimals;
@@ -134,7 +132,6 @@ constructor TsNumFormatParser.Create(AWorkbook: TsWorkbook;
   const AFormatString: String);
 begin
   inherited Create;
-  FCreateMethod := 0;
   FWorkbook := AWorkbook;
   Parse(AFormatString);
   CheckSections;
@@ -826,28 +823,6 @@ begin
       if FSections[j].Elements[i].Token = nftZeroDecs then
         if FSections[j].Elements[i].IntValue > 0 then
           FSections[j].Elements[i].IntValue := 2;
-end;
-
-{ Localizes the thousand- and decimal separator symbols by replacing them with
-  the FormatSettings value of the workbook. A recreated format string will be
-  localized as required by Excel2. }
-procedure TsNumFormatParser.Localize;
-var
-  i, j: Integer;
-  fs: TFormatSettings;
-  txt: String;
-begin
-  fs := FWorkbook.FormatSettings;
-  for j:=0 to High(FSections) do
-    for i:=0 to High(FSections[j].Elements) do begin
-      txt := FSections[j].Elements[i].TextValue;
-      case FSections[j].Elements[i].Token of
-        nftThSep     : txt := fs.ThousandSeparator;
-        nftDecSep    : txt := fs.DecimalSeparator;
-        nftCurrSymbol: txt := UTF8ToAnsi(txt);
-      end;
-      FSections[j].Elements[i].TextValue := txt;
-    end;
 end;
 
 function TsNumFormatParser.NextToken: Char;
