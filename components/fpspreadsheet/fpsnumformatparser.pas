@@ -301,6 +301,8 @@ begin
           if section^.Elements[el].IntValue < 0 then
             section^.Kind := section^.Kind + [nfkTimeInterval];
         end;
+      nftColor:
+        section^.Kind := section^.Kind + [nfkHasColor];
     end;
 
   if FStatus <> psOK then

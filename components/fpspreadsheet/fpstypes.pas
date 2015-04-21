@@ -500,7 +500,8 @@ type
 
   TsNumFormatElements = array of TsNumFormatElement;
 
-  TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction, nfkDate, nfkTime, nfkTimeInterval);
+  TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction,
+    nfkDate, nfkTime, nfkTimeInterval, nfkHasColor);
   TsNumFormatKinds = set of TsNumFormatKind;
 
   TsNumFormatSection = record

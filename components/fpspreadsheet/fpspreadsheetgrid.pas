@@ -1440,9 +1440,9 @@ begin
         else
         if (Length(numFmt.Sections) > 2) and (lCell^.NumberValue = 0) then
           sidx := 2;
-        if numFmt.Sections[sidx].Elements[0].Token = nftColor then
+        if (nfkHasColor in numFmt.Sections[sidx].Kind) then
         begin
-          clr := numFmt.Sections[sidx].Elements[0].IntValue;
+          clr := numFmt.Sections[sidx].Color;
           Canvas.Font.Color := Workbook.GetPaletteColor(clr);
         end;
       end;
