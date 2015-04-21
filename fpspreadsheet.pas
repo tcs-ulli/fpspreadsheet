@@ -3749,7 +3749,7 @@ end;
   @see    TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-  ANumFormat: TsNumberFormat = nfGeneral; ADecimals: Byte = 2): PCell;
+  ANumFormat: TsNumberFormat; ADecimals: Byte = 2): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteNumber(Result, ANumber, ANumFormat, ADecimals);
