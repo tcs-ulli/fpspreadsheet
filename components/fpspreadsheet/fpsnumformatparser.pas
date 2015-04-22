@@ -135,6 +135,7 @@ begin
   FWorkbook := AWorkbook;
   Parse(AFormatString);
   CheckSections;
+  if AFormatString = '' then FSections[0].NumFormat := nfGeneral;
 end;
 
 destructor TsNumFormatParser.Destroy;
@@ -1358,12 +1359,19 @@ end;
 procedure TsNumFormatParser.SetDecimals(AValue: Byte);
 var
   i, j, n: Integer;
+  foundDecs: Boolean;
 begin
+  foundDecs := false;
   for j := 0 to High(FSections) do begin
     n := Length(FSections[j].Elements);
     i := n-1;
     while (i > -1) do begin
       case FSections[j].Elements[i].Token of
+        nftDecSep:                  // this happens, e.g., for "0.E+00"
+          if (AValue > 0) and not foundDecs then begin
+            InsertElement(j, i, nftZeroDecs, AValue);
+            break;
+          end;
         nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit, nftIntTh:
           // no decimals so far --> add decimal separator and decimals element
           if (AValue > 0) then begin
@@ -1373,16 +1381,19 @@ begin
             break;
           end;
         nftZeroDecs, nftOptDecs, nftSpaceDecs:
-          if AValue > 0 then begin
-            // decimals are already used, just replace value of decimal places
-            FSections[j].Elements[i].IntValue := AValue;
-            FSections[j].Elements[i].Token := nftZeroDecs;
-            break;
-          end else begin
-            // No decimals any more: delete decs and decsep elements
-            DeleteElement(j, i);
-            DeleteElement(j, i-1);
-            break;
+          begin
+            foundDecs := true;
+            if AValue > 0 then begin
+              // decimals are already used, just replace value of decimal places
+              FSections[j].Elements[i].IntValue := AValue;
+              FSections[j].Elements[i].Token := nftZeroDecs;
+              break;
+            end else begin
+              // No decimals any more: delete decs and decsep elements
+              DeleteElement(j, i);
+              DeleteElement(j, i-1);
+              break;
+            end;
           end;
       end;
       dec(i);
