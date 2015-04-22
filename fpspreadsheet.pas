@@ -4424,12 +4424,15 @@ var
   numFmt: TsNumFormatParams;
   numFmtStr: String;
 begin
-  if (ACell = nil) then
+  if (ACell = nil) or (ACell^.ContentType <> cctNumber) then
     exit;
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   numFmt := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
-  numFmtStr := numFmt.NumFormatStr;
+  if numFmt <> nil then
+    numFmtStr := numFmt.NumFormatStr
+  else
+    numFmtStr := '0.00';
   parser := TsNumFormatParser.Create(Workbook, numFmtStr);
   try
     parser.Decimals := ADecimals;

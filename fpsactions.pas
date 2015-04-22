@@ -1031,6 +1031,7 @@ begin
     decs := Worksheet.GetDisplayedDecimals(ACell)
   else
     decs := FDecimals;
+
   inc(decs, FDelta);
   if decs < 0 then decs := 0;
   Worksheet.WriteDecimals(ACell, decs);
