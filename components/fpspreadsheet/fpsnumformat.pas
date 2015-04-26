@@ -29,7 +29,8 @@ type
     function AddFormat(AFormatStr: String): Integer; overload;
     procedure Clear;
     procedure Delete(AIndex: Integer);
-    function Find(ASections: TsNumFormatSections): Integer;
+    function Find(ASections: TsNumFormatSections): Integer; overload;
+    function Find(AFormatstr: String): Integer; overload;
     property Items[AIndex: Integer]: TsNumFormatParams read GetItem write SetItem; default;
     {@@ Workbook from which the number formats are collected in the list. It is
      mainly needed to get access to the FormatSettings for easy localization of
@@ -44,6 +45,8 @@ function IsCurrencyFormat(ANumFormat: TsNumFormatParams): Boolean; overload;
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 function IsDateTimeFormat(ANumFormat: TsNumFormatParams): Boolean; overload;
+
+function IsDateFormat(ANumFormat: TsNumFormatParams): Boolean;
 
 function IsTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsTimeFormat(AFormatStr: String): Boolean; overload;
@@ -129,6 +132,18 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Checks whether the specified number format parameters apply to a date value.
+
+  @param   ANumFormat   Number format parameters
+  @return  True if Kind of the 1st format parameter section contains the
+           nfkDate, but no nfkTime elements; false otherwise
+-------------------------------------------------------------------------------}
+function IsDateFormat(ANumFormat: TsNumFormatParams): Boolean;
+begin
+  Result := (ANumFormat <> nil) and (nfkDate in ANumFormat.Sections[0].Kind);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Checks whether the given built-in number format code is for time values.
 
   @param   AFormat  Built-in number format identifier to be checked
@@ -163,7 +178,7 @@ end;
 
   @param   ANumFormat   Number format parameters
   @return  True if Kind of the 1st format parameter section contains the
-           nfkTime elements; false otherwise
+           nfkTime, but no nfkDate elements; false otherwise
 -------------------------------------------------------------------------------}
 function IsTimeFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
@@ -204,13 +219,13 @@ end;
 
 function TsNumFormatList.AddFormat(ASections: TsNumFormatSections): Integer;
 var
-  item: TsNumFormatParams;
+  nfp: TsNumFormatParams;
 begin
   Result := Find(ASections);
   if Result = -1 then begin
-    item := FClass.Create;
-    item.Sections := ASections;
-    Result := inherited Add(item);
+    nfp := FClass.Create;
+    nfp.Sections := ASections;
+    Result := inherited Add(nfp);
   end;
 end;
 
@@ -224,9 +239,7 @@ begin
   try
     SetLength(newSections, parser.ParsedSectionCount);
     for i:=0 to High(newSections) do
-    begin
       newSections[i] := parser.ParsedSections[i];
-    end;
     Result := AddFormat(newSections);
   finally
     parser.Free;
@@ -259,14 +272,25 @@ end;
 
 function TsNumFormatList.Find(ASections: TsNumFormatSections): Integer;
 var
-  item: TsNumFormatParams;
+  nfp: TsNumFormatParams;
 begin
   for Result := 0 to Count-1 do begin
-    item := GetItem(Result);
-    if item.SectionsEqualTo(ASections) then
+    nfp := GetItem(Result);
+    if nfp.SectionsEqualTo(ASections) then
       exit;
   end;
   Result := -1;
+end;
+
+function TsNumFormatList.Find(AFormatStr: String): Integer;
+var
+  nfp: TsNumFormatParams;
+begin
+  nfp := CreateNumFormatParams(FWorkbook, AFormatStr);
+  if nfp = nil then
+    Result := -1
+  else
+    Result := Find(nfp.Sections);
 end;
 
 function TsNumFormatList.GetItem(AIndex: Integer): TsNumFormatParams;

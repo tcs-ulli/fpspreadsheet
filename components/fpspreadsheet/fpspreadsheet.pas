@@ -788,7 +788,7 @@ procedure DumpFontsToFile(AWorkbook: TsWorkbook; AFileName: String);
 implementation
 
 uses
-  Math, StrUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
+  Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsPatches, fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormat, fpsNumFormatParser;
@@ -3969,12 +3969,15 @@ var
   number: Double;
   currSym: String;
   fmt: TsCellFormat;
+  nf: TsNumberFormat;
+  numFmtParams: TsNumFormatParams;
   maxDig: Integer;
 begin
   if ACell = nil then
     exit;
 
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
 
   if AValue = '' then
   begin
@@ -4004,12 +4007,10 @@ begin
       WriteNumber(ACell, number/100, nfPercentage)
     else
     begin
-      if IsDateTimeFormat(fmt.NumberFormat) then
-      begin
-        fmt.NumberFormat := nfGeneral;
-        fmt.NumberFormatStr := '';
-      end;
-      WriteNumber(ACell, number, fmt.NumberFormat, fmt.NumberFormatStr);
+      if IsDateTimeFormat(numFmtParams) then
+        WriteNumber(ACell, number, nfGeneral)
+      else
+        WriteNumber(ACell, number);
     end;
     exit;
   end;
@@ -4017,27 +4018,21 @@ begin
   if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then
   begin
     if number < 1.0 then begin    // this is a time alone
-      if not IsTimeFormat(fmt.NumberFormat) then
-      begin
-        fmt.NumberFormat := nfLongTime;
-        fmt.NumberFormatStr := '';
+      if not IsTimeFormat(numFmtParams) then begin
+        if SecondOf(number) = 0 then
+          WriteDateTime(ACell, number, nfShortTime)
+        else
+          WriteDateTime(ACell, number, nfLongTime);
       end;
     end else
     if frac(number) = 0.0 then begin  // this is a date alone
-      if not (fmt.NumberFormat in [nfShortDate, nfLongDate]) then
-      begin
-        fmt.NumberFormat := nfShortDate;
-        fmt.NumberFormatStr := '';
-      end;
+      if not IsDateFormat(numFmtParams) then
+        WriteDateTime(ACell, number, nfShortDate);
     end else
-    begin
-      if not IsDateTimeFormat(fmt.NumberFormat) then
-      begin
-        fmt.NumberFormat := nfShortDateTime;
-        fmt.NumberFormatStr := '';
-      end;
-    end;
-    WriteDateTime(ACell, number, fmt.NumberFormat, fmt.NumberFormatStr);
+    if not IsDateTimeFormat(fmt.NumberFormat) then
+      WriteDateTime(ACell, number, nfShortDateTime)
+    else
+      WriteDateTime(ACell, number);
     exit;
   end;
 

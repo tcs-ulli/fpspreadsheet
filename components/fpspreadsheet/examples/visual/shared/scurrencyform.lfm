@@ -118,7 +118,6 @@ object CurrencyForm: TCurrencyForm
         FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFF
         FF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00FFFFFF00
       }
-      ModalResult = 6
       OnClick = BtnAddClick
       Spacing = 0
       TabOrder = 2

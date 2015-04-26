@@ -1428,7 +1428,7 @@ begin
     diff := test - AValue;
     if (abs(diff) < APrecision) then
       break;
-    if (abs(H1) > AMaxNumerator) or (abs(K1) > AMaxDenominator) then
+    if (abs(H1) >= AMaxNumerator) or (abs(K1) >= AMaxDenominator) then
     begin
       H1 := prevH1;
       K1 := prevK1;
@@ -2572,7 +2572,7 @@ begin
     while (i < numEl) and (AElements[i].Token in ATokens) do
       inc(i);
     j := i;
-    dec(i);
+    if i > 0 then dec(i);
     if (AValue = '0') and (AElements[i].Token in AllOptTokens) and (i = AIndex) then
       Result := '';
     // From the end of the sequence, going backward, add leading zeros or spaces
@@ -2717,17 +2717,19 @@ var
   sfrsym, sintnumspace, snumsymspace, ssymdenomspace: String;
   i, numEl: Integer;
   mixed: Boolean;
+  prec: Double;
 begin
   sintnumspace := '';
   snumsymspace := '';
   ssymdenomspace := '';
   sfrsym := '/';
   maxDenom := Round(IntPower(10, ADigits));
+  prec := 1/maxDenom;
   numEl := Length(AElements);
 
-  // Split-off integer
   i := AIndex;
   if AElements[i].Token in (INT_TOKENS + [nftIntTh]) then begin
+    // Split-off integer
     mixed := true;
     if (AValue >= 1) then
     begin
@@ -2735,9 +2737,10 @@ begin
       AValue := frac(AValue);
     end else
       frint := 0;
-    FloatToFraction(AValue, 0.1/maxdenom, MaxInt, maxdenom, frnum, frdenom);
+    FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom);
     sfrint := ProcessIntegerFormat(IntToStr(frint), fs, AElements, i,
-      INT_TOKENS, false, false);
+      INT_TOKENS, false, (AElements[i].Token = nftIntTh));
+    inc(i);
     while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do
     begin
       sintnumspace := sintnumspace + AElements[i].TextValue;
@@ -2745,13 +2748,14 @@ begin
     end;
   end else
   begin
+    // "normal" fraction
     mixed := false;
     sfrint := '';
-    FloatToFraction(AValue, 0.1/maxdenom, MaxInt, maxdenom, frnum, frdenom);
+    FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom);
     sintnumspace := '';
   end;
 
-  // "normal" fraction
+  // numerator and denominator
   sfrnum := ProcessIntegerFormat(IntToStr(frnum), fs, AElements, i,
     FRACNUM_TOKENS, false, false);
   while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do
@@ -2767,10 +2771,10 @@ begin
   end;
   sfrdenom := ProcessIntegerFormat(IntToStr(frdenom), fs, AElements, i,
     FRACDENOM_TOKENS, false, false);
-  AIndex := i;
+  AIndex := i+1;
 
   // Special cases
-  if mixed and (frnum = 0) then
+  if {mixed and }(frnum = 0) then
   begin
     if sfrnum = '' then begin
       sintnumspace := '';
@@ -2898,6 +2902,16 @@ begin
       Continue;
     end
     else
+    // Regular fraction (without integer being split off)
+    if (section.Elements[el].Token in FRACNUM_TOKENS) and
+       CheckFraction(section.Elements, el, digits) then
+    begin
+      s := ProcessFracFormat(AValue, fs, digits, section.Elements, el);
+      if (sidx = 0) and isNeg then s := '-' + s;
+      Result := Result + s;
+      Continue;
+    end
+    else
       case section.Elements[el].Token of
         nftSpace, nftText, nftEscaped, nftCurrSymbol,
         nftSign, nftSignBracket, nftPercent:
@@ -2938,8 +2952,8 @@ begin
           case section.Elements[el].IntValue of
             1: result := result + IntToStr(day);
             2: result := Result + IfThen(day < 10, '0'+IntToStr(day), IntToStr(day));
-            3: Result := Result + fs.ShortDayNames[day];
-            4: Result := Result + fs.LongDayNames[day];
+            3: Result := Result + fs.ShortDayNames[DayOfWeek(day)];
+            4: Result := Result + fs.LongDayNames[DayOfWeek(day)];
           end;
 
         nftHour:

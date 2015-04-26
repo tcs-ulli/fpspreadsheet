@@ -1432,6 +1432,7 @@ begin
         if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
         Canvas.Font.Style := style;
       end;
+      // Read text color from number format if available
       if not IsNaN(lCell^.NumberValue) and (numFmt <> nil) then
       begin
         sidx := 0;
@@ -1446,12 +1447,6 @@ begin
           Canvas.Font.Color := Workbook.GetPaletteColor(clr);
         end;
       end;
-      {
-      if (fmt^.NumberFormat = nfCurrencyRed) and
-         not IsNaN(lCell^.NumberValue) and (lCell^.NumberValue < 0)
-      then
-        Canvas.Font.Color := Workbook.GetPaletteColor(scRed);
-        }
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;
