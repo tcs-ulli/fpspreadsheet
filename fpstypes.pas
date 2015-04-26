@@ -501,7 +501,7 @@ type
   TsNumFormatElements = array of TsNumFormatElement;
 
   TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction,
-    nfkDate, nfkTime, nfkTimeInterval, nfkHasColor);
+    nfkDate, nfkTime, nfkTimeInterval, nfkHasColor, nfkHasThSep);
   TsNumFormatKinds = set of TsNumFormatKind;
 
   TsNumFormatSection = record
@@ -519,13 +519,23 @@ type
 
   TsNumFormatSections = array of TsNumFormatSection;
 
+  { TsNumFormatParams }
+
   TsNumFormatParams = class(TObject)
+  private
   protected
     function GetNumFormat: TsNumberFormat; virtual;
     function GetNumFormatStr: String; virtual;
   public
     Sections: TsNumFormatSections;
+    procedure DeleteElement(ASectionIndex, AElementIndex: Integer);
+    procedure InsertElement(ASectionIndex, AElementIndex: Integer;
+      AToken: TsNumFormatToken);
     function SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
+    procedure SetCurrSymbol(AValue: String);
+    procedure SetDecimals(AValue: Byte);
+    procedure SetNegativeRed(AEnable: Boolean);
+    procedure SetThousandSep(AEnable: Boolean);
     property NumFormat: TsNumberFormat read GetNumFormat;
     property NumFormatStr: String read GetNumFormatStr;
   end;
@@ -927,6 +937,20 @@ end;
 
 { TsNumFormatParams }
 
+procedure TsNumFormatParams.DeleteElement(ASectionIndex, AElementIndex: Integer);
+var
+  i, n: Integer;
+begin
+  with Sections[ASectionIndex] do
+  begin
+    n := Length(Elements);
+    for i:=AElementIndex+1 to n-1 do
+      Elements[i-1] := Elements[i];
+    SetLength(Elements, n-1);
+  end;
+end;
+
+
 function TsNumFormatParams.GetNumFormat: TsNumberFormat;
 begin
   Result := nfCustom;
@@ -955,6 +979,21 @@ begin
       Result := Result + ';' + BuildFormatStringFromSection(Sections[i]);
   end else
     Result := '';
+end;
+
+procedure TsNumFormatParams.InsertElement(ASectionIndex, AElementIndex: Integer;
+  AToken: TsNumFormatToken);
+var
+  i, n: Integer;
+begin
+  with Sections[ASectionIndex] do
+  begin
+    n := Length(Elements);
+    SetLength(Elements, n+1);
+    for i:=n-1 downto AElementIndex do
+      Elements[i+1] := Elements[i];
+    Elements[AElementIndex].Token := AToken;
+  end;
 end;
 
 function TsNumFormatParams.SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
@@ -1017,6 +1056,114 @@ begin
   Result := true;
 end;
 
+procedure TsNumFormatParams.SetCurrSymbol(AValue: String);
+var
+  section: TsNumFormatSection;
+  el: Integer;
+begin
+  for section in Sections do
+    if (nfkCurrency in section.Kind) then
+    begin
+      section.CurrencySymbol := AValue;
+      for el := 0 to High(section.Elements) do
+        if section.Elements[el].Token = nftCurrSymbol then
+          section.Elements[el].Textvalue := AValue;
+    end;
+end;
+
+procedure TsNumFormatParams.SetDecimals(AValue: byte);
+var
+  section: TsNumFormatSection;
+  s, el: Integer;
+begin
+  for s := 0 to High(Sections) do
+  begin
+    section := Sections[s];
+    if section.Kind * [nfkFraction, nfkDate, nfkTime] <> [] then
+      Continue;
+    section.Decimals := AValue;
+    for el := High(section.Elements) downto 0 do
+      case section.Elements[el].Token of
+        nftZeroDecs:
+          section.Elements[el].Intvalue := AValue;
+        nftOptDecs, nftSpaceDecs:
+          DeleteElement(s, el);
+      end;
+  end;
+end;
+
+procedure TsNumFormatParams.SetNegativeRed(AEnable: Boolean);
+var
+  section: TsNumFormatSection;
+  el: Integer;
+begin
+  // Enable negative-value color
+  if AEnable then
+  begin
+    if Length(Sections) = 1 then begin
+      SetLength(Sections, 2);
+      Sections[1] := Sections[0];
+      InsertElement(1, 0, nftColor);
+      Sections[1].Elements[0].Intvalue := scRed;
+      InsertElement(1, 1, nftSign);
+      Sections[1].Elements[1].TextValue := '-';
+    end else
+    begin
+      if not (nfkHasColor in Sections[1].Kind) then
+        InsertElement(1, 0, nftColor);
+      for el := 0 to High(Sections[1].Elements) do
+        if Sections[1].Elements[el].Token = nftColor then
+          Sections[1].Elements[el].IntValue := scRed;
+    end;
+    Sections[1].Kind := Sections[1].Kind + [nfkHasColor];
+    Sections[1].Color := scRed;
+  end else
+  // Disable negative-value color
+  if Length(Sections) >= 2 then
+  begin
+    Sections[1].Kind := Sections[1].Kind - [nfkHasColor];
+    Sections[1].Color := scBlack;
+    for el := High(Sections[1].Elements) downto 0 do
+      if Sections[1].Elements[el].Token = nftColor then
+        DeleteElement(1, el);
+  end;
+end;
+
+procedure TsNumFormatParams.SetThousandSep(AEnable: Boolean);
+var
+  section: TsNumFormatSection;
+  s, el: Integer;
+  replaced: Boolean;
+begin
+  for s := 0 to High(Sections) do
+  begin
+    section := Sections[s];
+    replaced := false;
+    for el := High(section.Elements) downto 0 do
+    begin
+      if AEnable then
+      begin
+        if section.Elements[el].Token in [nftIntOptDigit, nftIntSpaceDigit, nftIntZeroDigit] then
+        begin
+          if replaced then
+            DeleteElement(s, el)
+          else begin
+            section.Elements[el].Token := nftIntTh;
+            Include(section.Kind, nfkHasThSep);
+            replaced := true;
+          end;
+        end;
+      end else
+      begin
+        if section.Elements[el].Token = nftIntTh then begin
+          section.Elements[el].Token := nftIntZeroDigit;
+          Exclude(section.Kind, nfkHasThSep);
+          break;
+        end;
+      end;
+    end;
+  end;
+end;
 
 end.
 

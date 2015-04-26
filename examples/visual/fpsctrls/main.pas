@@ -51,6 +51,16 @@ type
     MenuItem118: TMenuItem;
     MenuItem119: TMenuItem;
     MenuItem120: TMenuItem;
+    MenuItem121: TMenuItem;
+    MenuItem122: TMenuItem;
+    MenuItem123: TMenuItem;
+    MenuItem124: TMenuItem;
+    MenuItem125: TMenuItem;
+    MenuItem126: TMenuItem;
+    MenuItem127: TMenuItem;
+    MenuItem128: TMenuItem;
+    MenuItem129: TMenuItem;
+    MenuItem130: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -240,6 +250,7 @@ type
     AcNumFormatFraction3: TsNumberFormatAction;
     AcNumFormatDayMonth: TsNumberFormatAction;
     AcNumFormatMonthYear: TsNumberFormatAction;
+    AcNumFormatCustom: TsNumberFormatAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;
@@ -318,6 +329,8 @@ type
     procedure AcFileOpenAccept(Sender: TObject);
     procedure AcFileSaveAsAccept(Sender: TObject);
     procedure AcFileSaveAsBeforeExecute(Sender: TObject);
+    procedure AcNumFormatCustomGetNumberFormatString(Sender: TObject;
+      AWorkbook: TsWorkbook; var ANumFormatStr: String);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
@@ -332,6 +345,9 @@ type
   private
     { private declarations }
     procedure UpdateCaption;
+  protected
+    procedure ReadFromIni;
+    procedure WriteToIni;
   public
     { public declarations }
   end;
@@ -345,11 +361,15 @@ implementation
 {$R *.lfm}
 
 uses
-  LCLIntf, uriparser,
+  LCLIntf, inifiles, uriparser,
   fpsUtils, fpsCSV,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
-  sHyperlinkForm;
+  sHyperlinkForm, sNumFormatForm;
 
+function CreateIni: TCustomIniFile;
+begin
+  Result := TMemIniFile.Create(GetAppConfigFile(false));
+end;
 
 { TMainForm }
 
@@ -417,6 +437,25 @@ begin
     exit;
   AcfileSaveAs.Dialog.InitialDir := ExtractFileDir(WorkbookSource.FileName);
   AcFileSaveAs.Dialog.FileName := ExtractFileName(WorkbookSource.FileName);
+end;
+
+procedure TMainForm.AcNumFormatCustomGetNumberFormatString(Sender: TObject;
+  AWorkbook: TsWorkbook; var ANumFormatStr: String);
+var
+  F: TNumFormatForm;
+  sample: Double;
+begin
+  F := TNumFormatForm.Create(nil);
+  try
+    F.Position := poMainFormCenter;
+    with WorkbookSource.Worksheet do
+      sample := ReadAsNumber(ActiveCellRow, ActiveCellCol);
+    F.SetData(ANumFormatStr, WorkbookSource.Workbook, sample);
+    if F.ShowModal = mrOK then
+      ANumFormatStr := F.NumFormatStr;
+  finally
+    F.Free;
+  end;
 end;
 
 { Adds a row before the active cell }
@@ -514,6 +553,30 @@ end;
 procedure TMainForm.InspectorTabControlChange(Sender: TObject);
 begin
   Inspector.Mode := TsInspectorMode(InspectorTabControl.TabIndex);
+end;
+
+procedure TMainForm.ReadFromIni;
+var
+  ini: TCustomIniFile;
+begin
+  ini := CreateIni;
+  try
+    //...
+  finally
+    ini.Free;
+  end;
+end;
+
+procedure TMainForm.WriteToIni;
+var
+  ini: TCustomIniFile;
+begin
+  ini := CreateIni;
+  try
+    // ...
+  finally
+    ini.Free;
+  end;
 end;
 
 { Event handler if an external hyperlink in a cell is activated. Usually the

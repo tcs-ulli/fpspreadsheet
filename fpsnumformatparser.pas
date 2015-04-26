@@ -118,10 +118,46 @@ type
   end;
 
 
+  function CreateNumFormatParams(AWorkbook: TsWorkbook;
+    ANumFormatStr: String): TsNumFormatParams;
+  function ParamsOfNumFormatStr(AWorkbook: TsWorkbook;
+    ANumFormatStr: String; var AResult: TsNumFormatParams): Integer;
+
+
 implementation
 
 uses
   TypInfo, LazUTF8, fpsutils, fpsCurrency;
+
+
+function CreateNumFormatParams(AWorkbook: TsWorkbook;
+  ANumFormatStr: String): TsNumFormatParams;
+begin
+  Result := TsNumFormatParams.Create;
+  ParamsOfNumFormatStr(AWorkbook, ANumFormatStr, result);
+end;
+
+function ParamsOfNumFormatStr(AWorkbook: TsWorkbook;
+  ANumFormatStr: String; var AResult: TsNumFormatParams): Integer;
+var
+  parser: TsNumFormatParser;
+  i: Integer;
+begin
+  Assert(AResult <> nil);
+  if ANumFormatstr = 'General' then ANumFormatStr := '';
+  parser := TsNumFormatParser.Create(AWorkbook, ANumFormatStr);
+  try
+    Result := parser.Status;
+    AResult.Sections := parser.FSections;
+    {
+    SetLength(AResult.Sections, parser.ParsedSectionCount);
+    for i:=0 to parser.ParsedSectionCount-1 do
+      AResult.Sections[i] := parser.ParsedSections[i];
+      }
+  finally
+    parser.Free;
+  end;
+end;
 
 
 { TsNumFormatParser }
@@ -304,6 +340,8 @@ begin
         end;
       nftColor:
         section^.Kind := section^.Kind + [nfkHasColor];
+      nftIntTh:
+        section^.Kind := section^.Kind + [nfkHasThSep];
     end;
 
   if FStatus <> psOK then

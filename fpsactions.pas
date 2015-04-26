@@ -236,10 +236,14 @@ type
   end;
 
   { TsNumberFormatAction }
+  TsNumFormatStrEvent = procedure (Sender: TObject; AWorkbook: TsWorkbook;
+    var ANumFormatStr: String) of object;
+
   TsNumberFormatAction = class(TsAutoFormatAction)
   private
     FNumberFormat: TsNumberFormat;
     FNumberFormatStr: string;
+    FOnGetNumFormatStr: TsNumFormatStrEvent;
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -250,6 +254,8 @@ type
       read FNumberFormat write FNumberFormat default nfGeneral;
     property NumberFormatString: string
       read FNumberFormatStr write FNumberFormatStr;
+    property OnGetNumberFormatString: TsNumFormatStrEvent
+      read FOnGetNumFormatStr write FOnGetNumFormatStr;
   end;
 
   { TsDecimalsAction }
@@ -984,8 +990,16 @@ var
 begin
   if Checked then
   begin
-    nf := FNumberFormat;
-    nfstr := FNumberFormatStr;
+    if (FNumberFormat = nfCustom) and Assigned(FOnGetNumFormatStr) then
+    begin
+      Worksheet.ReadNumFormat(ACell, nf, nfstr);
+      FOnGetNumFormatStr(self, Workbook, nfstr);
+      nf := nfCustom;
+    end else
+    begin
+      nf := FNumberFormat;
+      nfstr := FNumberFormatStr;
+    end;
   end else
   begin
     nf := nfGeneral;

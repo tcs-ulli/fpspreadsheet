@@ -216,18 +216,17 @@ object MainForm: TMainForm
     end
     object ToolButton20: TToolButton
       Left = 564
-      Hint = 'Number format'
       Top = 0
-      Caption = 'ToolButton20'
+      Action = AcNumFormatCustom
       DropdownMenu = PuNumFormat
       ImageIndex = 15
+      Marked = True
       Style = tbsDropDown
     end
     object ToolButton21: TToolButton
       Left = 624
-      Hint = 'Currency format'
       Top = 0
-      Caption = 'ToolButton21'
+      Action = AcNumFormatCustom
       DropdownMenu = PuCurrencyFormat
       ImageIndex = 17
       Style = tbsDropDown
@@ -247,18 +246,16 @@ object MainForm: TMainForm
     end
     object ToolButton24: TToolButton
       Left = 660
-      Hint = 'Date format'
       Top = 0
-      Caption = 'ToolButton24'
+      Action = AcNumFormatCustom
       DropdownMenu = PuDateFormat
       ImageIndex = 18
       Style = tbsDropDown
     end
     object ToolButton25: TToolButton
       Left = 696
-      Hint = 'Time format'
       Top = 0
-      Caption = 'ToolButton25'
+      Action = AcNumFormatCustom
       DropdownMenu = PuTimeFormat
       ImageIndex = 19
       Style = tbsDropDown
@@ -778,6 +775,14 @@ object MainForm: TMainForm
       Hint = 'Vertically stacked horizontal letters'
       TextRotation = rtStacked
     end
+    object AcNumFormatCustom: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Custom...'
+      Hint = 'Custom number format'
+      NumberFormat = nfCustom
+      OnGetNumberFormatString = AcNumFormatCustomGetNumberFormatString
+    end
     object AcNumFormatGeneral: TsNumberFormatAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
@@ -847,6 +852,76 @@ object MainForm: TMainForm
       Caption = 'Fraction (3 digits)'
       NumberFormat = nfFraction
       NumberFormatString = '# ###/###'
+    end
+    object AcNumFormatDateTime: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Date/time'
+      Hint = 'Date and time'
+      NumberFormat = nfShortDateTime
+    end
+    object AcNumFormatLongDate: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Long date'
+      Hint = 'Long date format'
+      NumberFormat = nfLongDate
+    end
+    object AcNumFormatShortDate: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Short date'
+      Hint = 'Short date format'
+      NumberFormat = nfShortDate
+    end
+    object AcNumFormatDayMonth: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Day and month'
+      Hint = 'Day and month only'
+      NumberFormat = nfDayMonth
+    end
+    object AcNumFormatMonthYear: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Month and year'
+      Hint = 'Month and year only'
+      NumberFormat = nfMonthYear
+    end
+    object AcNumFormatLongTime: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Long time'
+      Hint = 'Long time foramt'
+      NumberFormat = nfLongTime
+    end
+    object AcNumFormatShortTime: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Short time'
+      Hint = 'Short time format'
+      NumberFormat = nfShortTime
+    end
+    object AcNumFormatLongTimeAM: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Long time AM/PM'
+      Hint = 'Long 12-hour time format'
+      NumberFormat = nfLongTimeAM
+    end
+    object AcNumFormatShortTimeAM: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Short time AM/PM'
+      Hint = 'Short 12-hour time format'
+      NumberFormat = nfShortTimeAM
+    end
+    object AcNumFormatTimeInterval: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Time interval'
+      Hint = 'Time interval format'
+      NumberFormat = nfTimeInterval
     end
     object AcFileOpen: TFileOpen
       Category = 'File'
@@ -919,76 +994,6 @@ object MainForm: TMainForm
       Caption = 'Currency symbols...'
       Hint = 'Define currency symbols'
       OnExecute = AcSettingsCurrencyExecute
-    end
-    object AcNumFormatDateTime: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Date/time'
-      Hint = 'Date and time'
-      NumberFormat = nfShortDateTime
-    end
-    object AcNumFormatLongDate: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Long date'
-      Hint = 'Long date format'
-      NumberFormat = nfLongDate
-    end
-    object AcNumFormatShortDate: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Short date'
-      Hint = 'Short date format'
-      NumberFormat = nfShortDate
-    end
-    object AcNumFormatDayMonth: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Day and month'
-      Hint = 'Day and month only'
-      NumberFormat = nfDayMonth
-    end
-    object AcNumFormatMonthYear: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Month and year'
-      Hint = 'Month and year only'
-      NumberFormat = nfMonthYear
-    end
-    object AcNumFormatLongTime: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Long time'
-      Hint = 'Long time foramt'
-      NumberFormat = nfLongTime
-    end
-    object AcNumFormatShortTime: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Short time'
-      Hint = 'Short time format'
-      NumberFormat = nfShortTime
-    end
-    object AcNumFormatLongTimeAM: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Long time AM/PM'
-      Hint = 'Long 12-hour time format'
-      NumberFormat = nfLongTimeAM
-    end
-    object AcNumFormatShortTimeAM: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Short time AM/PM'
-      Hint = 'Short 12-hour time format'
-      NumberFormat = nfShortTimeAM
-    end
-    object AcNumFormatTimeInterval: TsNumberFormatAction
-      Category = 'FPSpreadsheet'
-      WorkbookSource = WorkbookSource
-      Caption = 'Time interval'
-      Hint = 'Time interval format'
-      NumberFormat = nfTimeInterval
     end
     object AcIncDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
@@ -3788,6 +3793,7 @@ object MainForm: TMainForm
       Caption = 'File'
       object MenuItem50: TMenuItem
         Action = AcFileOpen
+        Caption = '&Open ...x'
         Bitmap.Data = {
           36040000424D3604000000000000360000002800000010000000100000000100
           2000000000000004000064000000640000000000000000000000FFFFFF00FFFF
@@ -4846,6 +4852,13 @@ object MainForm: TMainForm
       end
       object MenuItem10: TMenuItem
         Caption = 'Number format'
+        object MenuItem122: TMenuItem
+          Action = AcNumFormatCustom
+          AutoCheck = True
+        end
+        object MenuItem121: TMenuItem
+          Caption = '-'
+        end
         object MenuItem55: TMenuItem
           Action = AcNumFormatGeneral
           AutoCheck = True
@@ -5040,6 +5053,13 @@ object MainForm: TMainForm
       Action = AcNumFormatExp
       AutoCheck = True
     end
+    object MenuItem123: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem124: TMenuItem
+      Action = AcNumFormatCustom
+      AutoCheck = True
+    end
   end
   object PuCurrencyFormat: TPopupMenu
     left = 504
@@ -5050,6 +5070,13 @@ object MainForm: TMainForm
     end
     object MenuItem8: TMenuItem
       Action = AcNumFormatCurrencyRed
+      AutoCheck = True
+    end
+    object MenuItem125: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem126: TMenuItem
+      Action = AcNumFormatCustom
       AutoCheck = True
     end
   end
@@ -5082,6 +5109,13 @@ object MainForm: TMainForm
       Action = AcNumFormatMonthYear
       AutoCheck = True
     end
+    object MenuItem127: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem128: TMenuItem
+      Action = AcNumFormatCustom
+      AutoCheck = True
+    end
   end
   object PuTimeFormat: TPopupMenu
     left = 504
@@ -5103,6 +5137,13 @@ object MainForm: TMainForm
     end
     object MenuItem30: TMenuItem
       Action = AcNumFormatShortTimeAM
+      AutoCheck = True
+    end
+    object MenuItem129: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem130: TMenuItem
+      Action = AcNumFormatCustom
       AutoCheck = True
     end
   end
