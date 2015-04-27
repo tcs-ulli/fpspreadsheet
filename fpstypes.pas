@@ -1059,9 +1059,11 @@ end;
 procedure TsNumFormatParams.SetCurrSymbol(AValue: String);
 var
   section: TsNumFormatSection;
-  el: Integer;
+  s, el: Integer;
 begin
-  for section in Sections do
+  for s:=0 to High(Sections) do
+  begin
+    section := Sections[s];
     if (nfkCurrency in section.Kind) then
     begin
       section.CurrencySymbol := AValue;
@@ -1069,6 +1071,7 @@ begin
         if section.Elements[el].Token = nftCurrSymbol then
           section.Elements[el].Textvalue := AValue;
     end;
+  end;
 end;
 
 procedure TsNumFormatParams.SetDecimals(AValue: byte);
