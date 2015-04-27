@@ -4017,15 +4017,18 @@ begin
 
   if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then
   begin
-    if number < 1.0 then begin    // this is a time alone
-      if not IsTimeFormat(numFmtParams) then begin
-        if SecondOf(number) = 0 then
-          WriteDateTime(ACell, number, nfShortTime)
+    if number < 1.0 then          // this is a time alone
+    begin
+      if not IsTimeFormat(numFmtParams) then
+      begin
+        if IsLongTimeFormat(AValue, FWorkbook.FormatSettings.TimeSeparator) then
+          WriteDateTime(ACell, number, nfLongTime)
         else
-          WriteDateTime(ACell, number, nfLongTime);
+          WriteDateTime(ACell, number, nfShortTime);
       end;
     end else
-    if frac(number) = 0.0 then begin  // this is a date alone
+    if frac(number) = 0.0 then  // this is a date alone
+    begin
       if not IsDateFormat(numFmtParams) then
         WriteDateTime(ACell, number, nfShortDate);
     end else

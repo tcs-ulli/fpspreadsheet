@@ -51,6 +51,7 @@ function IsDateFormat(ANumFormat: TsNumFormatParams): Boolean;
 function IsTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsTimeFormat(AFormatStr: String): Boolean; overload;
 function IsTimeFormat(ANumFormat: TsNumFormatParams): Boolean; overload;
+function IsLongTimeFormat(AFormatStr: String; ATimeSeparator: char): Boolean; overload;
 
 function IsTimeIntervalFormat(ANumFormat: TsNumFormatParams): Boolean;
 
@@ -184,6 +185,20 @@ function IsTimeFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
   Result := (ANumFormat <> nil) and
             (ANumFormat.Sections[0].Kind * [nfkTime] <> []);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the specified format string represents a long time format, i.e.
+  it contains two TimeSeparators.
+-------------------------------------------------------------------------------}
+function IsLongTimeFormat(AFormatStr: String; ATimeSeparator: Char): Boolean;
+var
+  i, n: Integer;
+begin
+  n := 0;
+  for i:=1 to Length(AFormatStr) do
+    if AFormatStr[i] = ATimeSeparator then inc(n);
+  Result := (n=2);
 end;
 
 {@@ ----------------------------------------------------------------------------
