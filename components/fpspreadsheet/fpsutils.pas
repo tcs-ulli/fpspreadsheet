@@ -139,6 +139,7 @@ function PtsToTwips(AValue: Single): Integer;
 function cmToPts(AValue: Double): Double;
 function PtsToCm(AValue: Double): Double;
 function InToPts(AValue: Double): Double;
+function PtsToIn(AValue: Double): Double;
 function mmToPts(AValue: Double): Double;
 function PtsToMM(AValue: Double): Double;
 function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
@@ -1985,6 +1986,17 @@ end;
 function InToPts(AValue: Double): Double;
 begin
   Result := AValue * 72;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts points to inches (72 pts = 1 inch)
+
+  @param   AValue   Length value in points
+  @return  Value converted to inches
+-------------------------------------------------------------------------------}
+function PtsToIn(AValue: Double): Double;
+begin
+  Result := AValue / 72;
 end;
 
 {@@ ----------------------------------------------------------------------------

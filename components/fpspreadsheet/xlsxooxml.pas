@@ -77,6 +77,7 @@ type
     procedure ReadHyperlinks(ANode: TDOMNode);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
+    procedure ReadPageMargins(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
@@ -129,6 +130,7 @@ type
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
+    procedure WritePageMargins(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetData(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
@@ -1301,6 +1303,44 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadPageMargins(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+  layout: TsPageLayout;
+begin
+  if ANode = nil then
+    exit;
+
+  layout := AWorksheet.PageLayout;
+
+  s := GetAttrValue(ANode, 'left');
+  if s <> '' then
+    layout.LeftMargin := HtmlLengthStrToPts(s);
+
+  s := GetAttrValue(ANode, 'right');
+  if s <> '' then
+    layout.RightMargin := HtmlLengthStrToPts(s);
+
+  s := GetAttrValue(ANode, 'top');
+  if s <> '' then
+    layout.TopMargin := HtmlLengthStrToPts(s);
+
+  s := GetAttrValue(ANode, 'bottom');
+  if s <> '' then
+    layout.BottomMargin := HtmlLengthStrToPts(s);
+
+  s := GetAttrValue(ANode, 'header');
+  if s <> '' then
+    layout.HeaderDistance := HtmlLengthStrToPts(s);
+
+  s := GetAttrValue(ANode, 'footer');
+  if s <> '' then
+    layout.FooterDistance := HtmlLengthStrToPts(s);
+
+  AWorksheet.PageLayout := layout;
+end;
+
 procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
 var
   node, colornode: TDOMNode;
@@ -1669,6 +1709,7 @@ begin
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
       ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
       ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
+      ReadPageMargins(Doc.DocumentElement.FindNode('pageMargins'), FWorksheet);
 
       FreeAndNil(Doc);
 
@@ -2260,6 +2301,18 @@ begin
   AppendToStream(AStream,
       '</indexedColors>' +
     '</colors>');
+end;
+
+procedure TsSpreadOOXMLWriter.WritePageMargins(AStream: TStream;
+  AWorksheet: TsWorksheet);
+begin
+  with AWorksheet.PageLayout do
+    AppendToStream(AStream, Format(
+      '<pageMargins left="%g" right="%g" top="%g" bottom="%g" header="%g" footer="%g" />', [
+      PtsToIn(LeftMargin), PtsToIn(RightMargin), PtsToIn(TopMargin), PtsToIn(BottomMargin),
+      PtsToIn(HeaderDistance), PtsToIn(FooterDistance) ],
+      FPointSeparatorSettings
+    ));
 end;
 
 procedure TsSpreadOOXMLWriter.WriteSheetData(AStream: TStream;
@@ -2889,6 +2942,7 @@ begin
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
   WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
+  WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
   if AWorksheet.Comments.Count > 0 then

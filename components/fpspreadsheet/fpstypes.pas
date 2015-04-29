@@ -668,6 +668,15 @@ type
       cctError      : (ErrorValue: TsErrorValue);
   end;
 
+  TsPageLayout = record
+    LeftMargin: Double;      // in Points
+    RightMargin: Double;
+    TopMargin: Double;
+    BottomMargin: Double;
+    HeaderDistance: Double;
+    FooterDistance: Double;
+  end;
+
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 
 
