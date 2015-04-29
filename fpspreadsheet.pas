@@ -105,6 +105,7 @@ type
     FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
+    FPageLayout: TsPageLayout;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -467,6 +468,8 @@ type
     {@@ The default row height is given in "line count" (height of the
       default font }
     property DefaultRowHeight: Single read FDefaultRowHeight write FDefaultRowHeight;
+    {@@ Page layout parameters for printing }
+    property PageLayout: TsPageLayout read FPageLayout write FPageLayout;
 
     // These are properties to interface to TsWorksheetGrid
     {@@ Parameters controlling visibility of grid lines and row/column headers,
@@ -1110,6 +1113,15 @@ begin
   FComments := TsComments.Create;
   FMergedCells := TsMergedCells.Create;
   FHyperlinks := TsHyperlinks.Create;
+
+  with FPageLayout do begin
+    LeftMargin := InToPts(0.7);
+    RightMargin := InToPts(0.7);
+    TopMargin := InToPts(0.78740157499999996);
+    BottomMargin := InToPts(0.78740157499999996);
+    HeaderDistance := InToPts(0.3);
+    FooterDistance := InToPts(0.3);
+  end;
 
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
