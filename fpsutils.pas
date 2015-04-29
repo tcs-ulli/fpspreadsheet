@@ -1179,9 +1179,14 @@ end;
 function BuildFractionFormatString(AMixedFraction: Boolean;
   ANumeratorDigits, ADenominatorDigits: Integer): String;
 begin
-  Result := Format('%s/%s', [
-    DupeString('#', ANumeratorDigits), DupeString('#', ADenominatorDigits)
-  ]);
+  if ADenominatorDigits < 0 then  // a negative value indicates a fixed denominator value
+    Result := Format('%s/%d', [
+      DupeString('?', ANumeratorDigits), -ADenominatorDigits
+    ])
+  else
+    Result := Format('%s/%s', [
+      DupeString('?', ANumeratorDigits), DupeString('?', ADenominatorDigits)
+    ]);
   if AMixedFraction then
     Result := '# ' + Result;
 end;
@@ -2413,7 +2418,7 @@ const
   FRACNUM_TOKENS: TsNumFormatTokenSet =
     [nftFracNumOptDigit, nftFracNumZeroDigit, nftFracNumSpaceDigit];
   FRACDENOM_TOKENS: TsNumFormatTokenSet =
-    [nftFracDenomOptDigit, nftFracDenomZeroDigit, nftFracDenomSpaceDigit];
+    [nftFracDenomOptDigit, nftFracDenomZeroDigit, nftFracDenomSpaceDigit, nftFracDenom];
   EXP_TOKENS: TsNumFormatTokenSet =
     [nftExpDigits];   // todo: expand by optional digits (0.00E+#)
 
@@ -2490,12 +2495,12 @@ begin
   // Here follows the ordinary fraction (no integer split off); sample format "??/??"
   while (i < numEl) and (AElements[i].Token in FRACNUM_TOKENS) do inc(i);
   while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do inc(i);
-  if (AElements[i].Token <> nftFracSymbol) then
+  if (i = numEl) or (AElements[i].Token <> nftFracSymbol) then
     exit(False);
 
   inc(i);
   while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do inc(i);
-  if not (AElements[i].Token in FRACDENOM_TOKENS) then
+  if (i = numEl) or (not (AElements[i].Token in FRACDENOM_TOKENS)) then
     exit(false);
 
   while (i < numEL) and (AElements[i].Token in FRACDENOM_TOKENS) do
@@ -2504,6 +2509,7 @@ begin
       nftFracDenomZeroDigit : inc(digits, AElements[i].IntValue);
       nftFracDenomSpaceDigit: inc(digits, AElements[i].IntValue);
       nftFracDenomOptDigit  : inc(digits, AElements[i].IntValue);
+      nftFracDenom          : digits := -AElements[i].IntValue;  // "-" indicates a literal denominator value!
     end;
     inc(i);
   end;
@@ -2723,8 +2729,10 @@ begin
   snumsymspace := '';
   ssymdenomspace := '';
   sfrsym := '/';
-  maxDenom := Round(IntPower(10, ADigits));
-  prec := 1/maxDenom;
+  if ADigits >= 0 then begin
+    maxDenom := Round(IntPower(10, ADigits));
+    prec := 1/maxDenom;
+  end;
   numEl := Length(AElements);
 
   i := AIndex;
@@ -2737,10 +2745,16 @@ begin
       AValue := frac(AValue);
     end else
       frint := 0;
-    FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom);
+    if ADigits >= 0 then
+      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
+    else
+    begin
+      frdenom := -ADigits;
+      frnum := round(AValue*frdenom);
+    end;
     sfrint := ProcessIntegerFormat(IntToStr(frint), fs, AElements, i,
       INT_TOKENS, false, (AElements[i].Token = nftIntTh));
-    inc(i);
+    //inc(i);
     while (i < numEl) and (AElements[i].Token in TERMINATING_TOKENS) do
     begin
       sintnumspace := sintnumspace + AElements[i].TextValue;
@@ -2751,7 +2765,13 @@ begin
     // "normal" fraction
     mixed := false;
     sfrint := '';
-    FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom);
+    if ADigits > 0 then
+      FloatToFraction(AValue, prec, MaxInt, maxdenom, frnum, frdenom)
+    else
+    begin
+      frdenom := -ADigits;
+      frnum := round(AValue*frdenom);
+    end;
     sintnumspace := '';
   end;
 
@@ -2769,6 +2789,7 @@ begin
     ssymdenomspace := ssymdenomspace + AElements[i].TextValue;
     inc(i);
   end;
+
   sfrdenom := ProcessIntegerFormat(IntToStr(frdenom), fs, AElements, i,
     FRACDENOM_TOKENS, false, false);
   AIndex := i+1;
@@ -2894,8 +2915,8 @@ begin
       // Check for fraction format
       if CheckFraction(section.Elements, el, digits) then
         s := ProcessFracFormat(AValue, fs, digits, section.Elements, el)
-      // Floating-point or integer
       else
+      // Floating-point or integer
         s := ProcessFloatFormat(AValue, fs, section.Elements, el);
       if (sidx = 0) and isNeg then s := '-' + s;
       Result := Result + s;

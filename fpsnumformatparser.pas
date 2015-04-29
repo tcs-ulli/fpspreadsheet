@@ -1307,6 +1307,20 @@ begin
              else
                AddElement(nftIntZeroDigit, n);
            end;
+      '1'..'9':
+           begin
+             if isFrac then
+             begin
+               n := 0;
+               while (FToken in ['1'..'9','0']) do //and (FToken <= FEnd) do
+               begin
+                 n := n*10 + StrToInt(FToken);
+                 FToken := nextToken;
+               end;
+               AddElement(nftFracDenom, n);
+             end else
+               AddElement(nftText, FToken);
+           end;
       '?': begin
              ScanAndCount('?', n);
              FToken := PrevToken;

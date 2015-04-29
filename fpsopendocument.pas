@@ -318,6 +318,7 @@ var
   mask: String;
   timeIntervalStr: String;
   styleMapStr: String;
+  int,num,denom: Integer;
 begin
   Result := '';
 
@@ -391,28 +392,72 @@ begin
           end;
 
         nftFracNumZeroDigit, nftFracNumOptDigit, nftFracNumSpaceDigit:
-          if (el+2 < nel) and (Elements[el+1].Token = nftFracSymbol) then
           begin
-            Result := Result +
-              '<number:fraction' +
-              ' number:min-numerator-digits="' + IntToStr(Elements[el].IntValue) +
-              '" number:min-denominator-digits="' + IntToStr(Elements[el+2].IntValue) +
-              '" />';
-            inc(el, 2);
+            num := Elements[el].IntValue;
+            inc(el);
+            while (el < nel) and (Elements[el].Token in [nftSpace, nftText, nftEscaped]) do
+              inc(el);
+            if (el < nel) and (Elements[el].Token <> nftFracSymbol) then
+              Continue;
+            while (el < nel) and (Elements[el].Token in [nftSpace, nftText, nftEscaped]) do
+              inc(el);
+            if (el < nel) and
+               (Elements[el].Token in [nftFracDenomOptDigit, nftFracDenomSpaceDigit, nftFracDenomZeroDigit, nftFracDenom])
+            then
+              denom := Elements[el].IntValue
+            else
+              Continue;
+            if Elements[el].Token = nftFracDenom then    // fixed denominator
+              Result := Result +
+                '<number:fraction' +
+                ' number:min-numerator-digits="' + IntToStr(num) +
+                '" number:min-denominator-digits="' + IntToStr(num) +
+                '" number:denominator-value="' + IntToStr(denom) +
+                '" />'
+            else
+              Result := Result +
+                '<number:fraction' +
+                ' number:min-numerator-digits="' + IntToStr(num) +
+                '" number:min-denominator-digits="' + IntToStr(num) +
+                '" />'
           end;
 
         nftIntZeroDigit, nftIntOptDigit, nftIntSpaceDigit:
           begin
             // Mixed fraction
-            if (el+4 < nel) and (Elements[el+1].Token = nftSpace) and (Elements[el+3].Token = nftFracSymbol)
-            then begin
-              Result := Result +
-                '<number:fraction' +
-                ' number:min-integer-digits="' + IntToStr(Elements[el].IntValue) +
-                '" number:min-numerator-digits="' + IntToStr(Elements[el+2].IntValue) +
-                '" number:min-denominator-digits="' + IntToStr(Elements[el+4].IntValue) +
-                '" />';
-              inc(el, 4);
+            if nfkFraction in Kind then
+            begin
+              int := Elements[el].IntValue;
+              inc(el);
+              while (el < nel) and not
+                (Elements[el].Token in [nftFracNumZeroDigit, nftFracNumOptDigit, nftFracNumSpaceDigit])
+              do
+                inc(el);
+              if el = nel then
+                Continue;
+              num := Elements[el].IntValue;
+              while (el < nel) and not
+                (Elements[el].Token in [nftFracDenomZeroDigit, nftFracDenomOptDigit, nftFracDenomSpaceDigit, nftFracDenom])
+              do
+                inc(el);
+              if el = nel then
+                Continue;
+              denom := Elements[el].IntValue;
+              if (Elements[el].Token = nftFracDenom) then
+                Result := Result +
+                  '<number:fraction' +
+                  ' number:min-integer-digits="' + IntToStr(int) +
+                  '" number:min-numerator-digits="' + IntToStr(num) +
+                  '" number:min-denominator-digits="' + IntToStr(num) +
+                  '" number:denominator-value="' + IntToStr(denom) +
+                  '" />'
+              else
+                Result := Result +
+                  '<number:fraction' +
+                  ' number:min-integer-digits="' + IntToStr(int) +
+                  '" number:min-numerator-digits="' + IntToStr(num) +
+                  '" number:min-denominator-digits="' + IntToStr(denom) +
+                  '" />';
             end
             else
             // Scientific, no decimals
@@ -1624,6 +1669,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         if s <> '' then fracNum := StrToInt(s) else fracNum := 0;
         s := GetAttrValue(node, 'number:min-denominator-digits');
         if s <> '' then fracDenom := StrToInt(s) else fracDenom := 0;
+        s := GetAttrValue(node, 'number:denominator-value');
+        if s <> '' then fracDenom := -StrToInt(s);
         nfs := nfs + BuildFractionFormatString(fracInt > 0, fracNum, fracDenom);
       end else
       if nodeName = 'number:scientific-number' then
