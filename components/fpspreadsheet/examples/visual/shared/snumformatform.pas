@@ -177,9 +177,19 @@ begin
   AddToList(nfcFraction, '# ?/?');
   AddToList(nfcFraction, '# ??/??');
   AddToList(nfcFraction, '# ???/???');
+  AddToList(nfcFraction, '# ?/2');
+  AddToList(nfcFraction, '# ?/4');
+  AddToList(nfcFraction, '# ?/8');
+  AddToList(nfcFraction, '# ?/16');
+  AddToList(nfcFraction, '# ?/32');
   AddToList(nfcFraction, '?/?');
   AddToList(nfcFraction, '?/??');
   AddToList(nfcFraction, '?/???');
+  AddToList(nfcFraction, '?/2');
+  AddToList(nfcFraction, '?/4');
+  AddToList(nfcFraction, '?/8');
+  AddToList(nfcFraction, '?/16');
+  AddToList(nfcFraction, '?/32');
 
   AddToList(nfcCurrency, '#,##0 [$$];-#,##0 [$$]');
   AddToList(nfcCurrency, '#,##0.00 [$$];-#,##0.00 [$$]');

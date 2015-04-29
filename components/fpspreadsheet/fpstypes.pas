@@ -480,6 +480,7 @@ type
     nftFracDenomOptDigit,  // '#' in denominator, count stored in IntValue
     nftFracDenomSpaceDigit,// '?' in denominator, count stored in IntValue
     nftFracDenomZeroDigit, // '0' in denominator, count stored in IntValue
+    nftFracDenom,          // specified denominator, value stored in IntValue
     nftCurrSymbol,         // e.g., '"$"', stored in TextValue
     nftCountry,
     nftColor,              // e.g., '[red]', Color in IntValue
@@ -866,6 +867,8 @@ begin
       nftIntSpaceDigit, nftSpaceDecs, nftFracNumSpaceDigit, nftFracDenomSpaceDigit:
         if element.Intvalue > 0 then
           Result := result + DupeString('?', element.IntValue);
+      nftFracDenom:
+        Result := Result + IntToStr(element.IntValue);
       nftIntTh:
         case element.Intvalue of
           0: Result := Result + '#,###';
