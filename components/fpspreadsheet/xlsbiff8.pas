@@ -120,6 +120,7 @@ type
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   protected
+    function GetPrintOptions: Word; override;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
@@ -675,39 +676,51 @@ begin
 
     case RecordType of
 
-    INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
-    INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
-    INT_EXCEL_ID_CONTINUE    : ReadCONTINUE(AStream);
-    INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
-    INT_EXCEL_ID_HYPERLINK   : ReadHyperlink(AStream);
-    INT_EXCEL_ID_HLINKTOOLTIP: ReadHyperlinkToolTip(AStream);
-    INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
-    INT_EXCEL_ID_MULBLANK    : ReadMulBlank(AStream);
-    INT_EXCEL_ID_NOTE        : ReadNOTE(AStream);
-    INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
-    INT_EXCEL_ID_OBJ         : ReadOBJ(AStream);
-    INT_EXCEL_ID_SHAREDFMLA  : ReadSharedFormula(AStream);
-    INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
-    INT_EXCEL_ID_TXO         : ReadTXO(AStream);
+    INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
+    INT_EXCEL_ID_BOF           : ;
+    INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
+    INT_EXCEL_ID_BOTTOMMARGIN  : ReadBottomMargin(AStream);
+    INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
+    INT_EXCEL_ID_CONTINUE      : ReadCONTINUE(AStream);
+    INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
+    INT_EXCEL_ID_EOF           : SectionEOF := True;
+    INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+    INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
+    INT_EXCEL_ID_HLINKTOOLTIP  : ReadHyperlinkToolTip(AStream);
+    INT_EXCEL_ID_HYPERLINK     : ReadHyperlink(AStream);
+    INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
+    INT_EXCEL_ID_LABELSST      : ReadLabelSST(AStream);
+    INT_EXCEL_ID_LEFTMARGIN    : ReadLeftMargin(AStream);
+    INT_EXCEL_ID_MERGEDCELLS   : ReadMergedCells(AStream);
+    INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
+    INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
+    INT_EXCEL_ID_NOTE          : ReadNOTE(AStream);
+    INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
+    INT_EXCEL_ID_OBJ           : ReadOBJ(AStream);
+    INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
+    INT_EXCEL_ID_PANE          : ReadPane(AStream);
+    INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
+    INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
+    INT_EXCEL_ID_RIGHTMARGIN   : ReadRightMargin(AStream);
+    INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
+
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
     // In BIFF8 it is usually replaced by the LABELSST record. Excel still
     // uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RSTRING     : ReadRichString(AStream);
+    INT_EXCEL_ID_RSTRING       : ReadRichString(AStream);
+
     // (RK) This record represents a cell that contains an RK value
     // (encoded integer or floating-point value). If a floating-point
     // value cannot be encoded to an RK value, a NUMBER record will be written.
     // This record replaces the record INTEGER written in BIFF2.
-    INT_EXCEL_ID_RK          : ReadRKValue(AStream);
-    INT_EXCEL_ID_MULRK       : ReadMulRKValues(AStream);
-    INT_EXCEL_ID_LABELSST    : ReadLabelSST(AStream); //BIFF8 only
-    INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
-    INT_EXCEL_ID_COLINFO     : ReadColInfo(AStream);
-    INT_EXCEL_ID_MERGEDCELLS : ReadMergedCells(AStream);
-    INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
-    INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
-    INT_EXCEL_ID_PANE        : ReadPane(AStream);
-    INT_EXCEL_ID_BOF         : ;
-    INT_EXCEL_ID_EOF         : SectionEOF := True;
+    INT_EXCEL_ID_RK            : ReadRKValue(AStream);
+
+    INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+    INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
+    INT_EXCEL_ID_TOPMARGIN     : ReadTopMargin(AStream);
+    INT_EXCEL_ID_TXO           : ReadTXO(AStream);
+    INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
+    INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
     else
       // nothing
     end;
@@ -1614,6 +1627,17 @@ begin
   FDateMode := Excel8Settings.DateMode;
 end;
 
+function TsSpreadBIFF8Writer.GetPrintOptions: Word;
+Begin
+  Result := inherited GetPrintOptions;
+{ The following flags are valid for BIFF8 only:
+  Bit 9: 0 = Print notes as displayed; 1 = Print notes at end of sheet
+  Bit 11-10:  00 = Print errors as displayed; 1 = Do not print errors
+              2 = Print errors as “--”; 3 = Print errors as “#N/A” }
+  if poCommentsAtEnd in FWorksheet.PageLayout.Options then
+    Result := Result or $0200;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes an Excel BIFF8 file to the disc
 
@@ -1695,8 +1719,20 @@ begin
 
     WriteBOF(AStream, INT_BOF_SHEET);
       WriteIndex(AStream);
+      WritePrintHeaders(AStream);
+      WritePrintGridLines(AStream);
+
       //WriteSheetPR(AStream);
-//      WritePageSetup(AStream);
+
+      // Page setting block
+      WriteHCenter(AStream);
+      WriteVCenter(AStream);
+      WriteLeftMargin(AStream);
+      WriteRightMargin(AStream);
+      WriteTopMargin(AStream);
+      WriteBottomMargin(AStream);
+      WritePageSetup(AStream);
+
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
       //WriteRowAndCellBlock(AStream, sheet);

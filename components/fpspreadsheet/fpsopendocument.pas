@@ -66,6 +66,7 @@ type
     FRowStyleList: TFPList;
     FRowList: TFPList;
     FDateMode: TDateMode;
+    FPageLayout: TsPageLayout;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
@@ -91,6 +92,7 @@ type
   protected
     FPointSeparatorSettings: TFormatSettings;
     procedure AddBuiltinNumFormats; override;
+    procedure ReadAutomaticStyles(AStylesNode: TDOMNode);
     procedure ReadNumFormats(AStylesNode: TDOMNode);
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
@@ -618,6 +620,8 @@ begin
   Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
   FDateMode := dm1899;
+  // Initialize internal PageLayout record
+  InitPageLayout(FPageLayout);
 end;
 
 destructor TsSpreadOpenDocReader.Destroy;
@@ -848,6 +852,79 @@ begin
     if TRowStyleData(FRowStyleList[Result]).Name = AStyleName then
       exit;
   Result := -1;
+end;
+
+procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
+var
+  nodeName: String;
+  layoutNode: TDOMNode;
+  node: TDOMNode;
+  s: String;
+begin
+  if not Assigned(AStylesNode) then
+    exit;
+  layoutNode := AStylesNode.FirstChild;
+  while layoutNode <> nil do
+  begin
+    nodeName := layoutNode.NodeName;
+    if nodeName = 'style:page-layout' then begin
+      s := GetAttrValue(layoutNode, 'style:name');
+      if s = 'Mpm1' then
+      begin
+        node := layoutNode.FirstChild;
+        while node <> nil do
+        begin
+          nodeName := node.NodeName;
+          if nodeName = 'style:page-layout-properties' then
+          begin
+            s := GetAttrValue(node, 'fo:margin-top');
+            if s <> '' then
+              FPageLayout.TopMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+            s := GetAttrValue(node, 'fo:margin-bottom');
+            if s <> '' then
+              FPageLayout.BottomMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+            s := GetAttrValue(node, 'fo:margin-left');
+            if s <> '' then
+              FPageLayout.LeftMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+            s := GetAttrValue(node, 'fo:margin-right');
+            if s <> '' then
+              FPageLayout.RightMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+            s := GetAttrValue(node, 'style:scale-to');
+            if (s <> '') then
+            begin
+              if s[Length(s)] = '%' then Delete(s, Length(s), 1);
+              FPageLayout.ScalingFactor := StrToFloat(s, FPointSeparatorSettings);
+            end;
+
+            s := GetAttrValue(node, 'style:print');
+            if pos('grid', s) > 0 then
+              Include(FPageLayout.Options, poPrintGridLines);
+            if pos('headers', s) > 0 then
+              Include(FPageLayout.Options, poPrintHeaders);
+            if pos('annotations', s) > 0 then
+              Include(FPageLayout.Options, poPrintCellComments);
+
+            s := GetAttrValue(node, 'style:print-page-order');
+            if s = 'ltr' then    // "left-to-right", the other option is "ttb = top-to-bottom"
+              Include(FPageLayout.Options, poPrintPagesByRows);
+
+            s := GetAttrValue(node, 'style:first-page-number');
+            if s = 'continue' then
+              Exclude(FPageLayout.Options, poUseStartPageNumber)
+            else
+            if TryStrToInt(s, FPageLayout.StartPageNumber) then
+              Include(FPageLayout.Options, poUseStartPageNumber);
+          end;
+          node := node.NextSibling;
+        end;
+      end;
+    end;
+    layoutNode := layoutNode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Cardinal;
@@ -1317,6 +1394,9 @@ begin
     ReadNumFormats(StylesNode);
     ReadStyles(StylesNode);
 
+    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
+    ReadAutomaticStyles(StylesNode);
+
     Doc.Free;
 
     //process the content.xml file
@@ -1349,6 +1429,7 @@ begin
         continue;
       end;
       FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode,'table:name'), true);
+      FWorksheet.PageLayout := FPageLayout;
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row

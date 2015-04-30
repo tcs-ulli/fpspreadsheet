@@ -455,27 +455,33 @@ begin
 
     case RecordType of
       INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
+      INT_EXCEL_ID_BOF         : ;
       INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
+      INT_EXCEL_ID_BOTTOMMARGIN: ReadBottomMargin(AStream);
       INT_EXCEL_ID_CODEPAGE    : ReadCodePage(AStream);
-      INT_EXCEL_ID_NOTE        : ReadComment(AStream);
+      INT_EXCEL_ID_COLWIDTH    : ReadColWidth(AStream);
+      INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
+      INT_EXCEL_ID_EOF         : BIFF2EOF := True;
       INT_EXCEL_ID_FONT        : ReadFont(AStream);
       INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
+      INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
       INT_EXCEL_ID_INTEGER     : ReadInteger(AStream);
       INT_EXCEL_ID_IXFE        : ReadIXFE(AStream);
-      INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
       INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
-      INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
-      INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
-      INT_EXCEL_ID_COLWIDTH    : ReadColWidth(AStream);
-      INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
+      INT_EXCEL_ID_LEFTMARGIN  : ReadLeftMargin(AStream);
+      INT_EXCEL_ID_NOTE        : ReadComment(AStream);
+      INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
+      INT_EXCEL_ID_PANE        : ReadPane(AStream);
+      INT_EXCEL_ID_PRINTGRID   : ReadPrintGridLines(AStream);
+      INT_EXCEL_ID_PRINTHEADERS: ReadPrintHeaders(AStream);
+      INT_EXCEL_ID_RIGHTMARGIN : ReadRightMargin(AStream);
       INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
+      INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
+      INT_EXCEL_ID_TOPMARGIN   : ReadTopMargin(AStream);
       INT_EXCEL_ID_DEFROWHEIGHT: ReadDefRowHeight(AStream);
       INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
-      INT_EXCEL_ID_PANE        : ReadPane(AStream);
       INT_EXCEL_ID_XF          : ReadXF(AStream);
-      INT_EXCEL_ID_BOF         : ;
-      INT_EXCEL_ID_EOF         : BIFF2EOF := True;
     else
       // nothing
     end;
@@ -1229,8 +1235,18 @@ begin
     raise Exception.Create(rsWorksheetNotFound1);
 
   WriteBOF(AStream);
-    WriteFonts(AStream);
     WriteCodePage(AStream, FCodePage);
+    WritePrintHeaders(AStream);
+    WritePrintGridLines(AStream);
+    WriteFonts(AStream);
+
+    // Page settings block
+    WriteLeftMargin(AStream);
+    WriteRightMargin(AStream);
+    WriteTopMargin(AStream);
+    WriteBottomMargin(AStream);
+//    WritePageSetup(AStream);  // does not exist in BIFF2
+
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
     WriteXFRecords(AStream);

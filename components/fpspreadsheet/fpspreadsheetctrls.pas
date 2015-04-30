@@ -2881,6 +2881,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.UpdateWorksheet(ASheet: TsWorksheet;
   AStrings: TStrings);
+var
+  s: String;
+  po: TsPrintOption;
 begin
   if ASheet = nil then
   begin
@@ -2891,6 +2894,7 @@ begin
     AStrings.Add('Last column=');
     AStrings.Add('Active cell=');
     AStrings.Add('Selection=');
+    AStrings.Add('Page layout=');
   end else
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
@@ -2903,6 +2907,27 @@ begin
     AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
     AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
     AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
+    AStrings.Add('Page layout=');
+    AStrings.Add(Format('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]));
+    AStrings.Add(Format('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]));
+    AStrings.Add(Format('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]));
+    AStrings.Add(Format('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]));
+    AStrings.Add(Format('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]));
+    AStrings.Add(Format('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]));
+    AStrings.Add(Format('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]));
+    AStrings.Add(Format('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]));
+    AStrings.Add(Format('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]));
+    if poUseStartPageNumber in ASheet.PageLayout.Options then
+      AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
+    else
+      AStrings.Add     ('  Start page number=automatic');
+    AStrings.Add(Format('  Scaling factor=%.0f%%', [ASheet.PageLayout.ScalingFactor]));
+    AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
+    s := '';
+    for po in TsPrintOption do
+      if po in ASheet.PageLayout.Options then s := s + '; ' + GetEnumName(typeInfo(TsPrintOption), ord(po));
+    if s <> '' then Delete(s, 1, 2);
+    AStrings.Add(Format('  Options=%s', [s]));
   end;
 end;
 
