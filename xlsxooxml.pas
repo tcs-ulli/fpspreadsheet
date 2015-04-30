@@ -79,6 +79,7 @@ type
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPageMargins(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
+    procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -131,7 +132,10 @@ type
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
     procedure WritePageMargins(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WritePageSetup(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WritePrintOptions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetData(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteSheetPr(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
     procedure WriteVmlDrawings(AWorksheet: TsWorksheet);
@@ -1307,38 +1311,33 @@ procedure TsSpreadOOXMLReader.ReadPageMargins(ANode: TDOMNode;
   AWorksheet: TsWorksheet);
 var
   s: String;
-  layout: TsPageLayout;
 begin
-  if ANode = nil then
+  if (ANode = nil) or (AWorksheet = nil) then     // just to make sure...
     exit;
-
-  layout := AWorksheet.PageLayout;
 
   s := GetAttrValue(ANode, 'left');
   if s <> '' then
-    layout.LeftMargin := HtmlLengthStrToPts(s);
+    AWorksheet.PageLayout.LeftMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
 
   s := GetAttrValue(ANode, 'right');
   if s <> '' then
-    layout.RightMargin := HtmlLengthStrToPts(s);
+    AWorksheet.PageLayout.RightMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
 
   s := GetAttrValue(ANode, 'top');
   if s <> '' then
-    layout.TopMargin := HtmlLengthStrToPts(s);
+    AWorksheet.PageLayout.TopMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
 
   s := GetAttrValue(ANode, 'bottom');
   if s <> '' then
-    layout.BottomMargin := HtmlLengthStrToPts(s);
+    AWorksheet.PageLayout.BottomMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
 
   s := GetAttrValue(ANode, 'header');
   if s <> '' then
-    layout.HeaderDistance := HtmlLengthStrToPts(s);
+    AWorksheet.PageLayout.HeaderMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
 
   s := GetAttrValue(ANode, 'footer');
   if s <> '' then
-    layout.FooterDistance := HtmlLengthStrToPts(s);
-
-  AWorksheet.PageLayout := layout;
+    AWorksheet.PageLayout.FooterMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
 end;
 
 procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
@@ -1383,6 +1382,22 @@ begin
     end;
     node := node.NextSibling;
   end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadPrintOptions(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+  s := GetAttrValue(ANode, 'headings');
+  if (s = '1') then
+    Include(AWorksheet.PageLayout.Options, poPrintHeaders);
+
+  s := GetAttrValue(ANode, 'gridLines');
+  if (s = '1') then
+    Include(AWorksheet.PageLayout.Options, poPrintGridLines);
 end;
 
 procedure TsSpreadOOXMLReader.ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -1709,6 +1724,7 @@ begin
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
       ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
       ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
+      ReadPrintOptions(Doc.DocumentElement.FindNode('printOptions'), FWorksheet);
       ReadPageMargins(Doc.DocumentElement.FindNode('pageMargins'), FWorksheet);
 
       FreeAndNil(Doc);
@@ -2309,10 +2325,85 @@ begin
   with AWorksheet.PageLayout do
     AppendToStream(AStream, Format(
       '<pageMargins left="%g" right="%g" top="%g" bottom="%g" header="%g" footer="%g" />', [
-      PtsToIn(LeftMargin), PtsToIn(RightMargin), PtsToIn(TopMargin), PtsToIn(BottomMargin),
-      PtsToIn(HeaderDistance), PtsToIn(FooterDistance) ],
+      mmToIn(LeftMargin), mmToIn(RightMargin), mmToIn(TopMargin), mmToIn(BottomMargin),
+      mmToIn(HeaderMargin), mmToIn(FooterMargin) ],
       FPointSeparatorSettings
     ));
+end;
+
+procedure TsSpreadOOXMLWriter.WritePageSetup(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+  i: Integer;
+begin
+  s := '';
+
+  // Paper size
+  for i:=0 to High(PAPER_SIZES) do
+    if (SameValue(PAPER_SIZES[i,0], AWorksheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,1], AWorksheet.PageLayout.PageWidth))
+    or (SameValue(PAPER_SIZES[i,1], AWorksheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,0], AWorksheet.PageLayout.PageWidth))
+    then begin
+      s := Format('%s paperSize="%d"', [s, i]);
+      break;
+    end;
+
+  // Scaling factor
+  if AWorksheet.PageLayout.ScalingFactor <> 100 then
+    s := Format('%s scale="%.0f" fitToHeight="0" fitToWidth="0"', [
+      s, AWorksheet.PageLayout.ScalingFactor
+    ], FPointSeparatorSettings);
+
+  // Fit width pages
+  if AWorksheet.PageLayout.FitWidthToPages > 0 then
+    s := Format('%s fitToWidth="%d"', [s, AWorksheet.PageLayout.FitWidthToPages]);
+
+  // Fit height pages
+  if AWorksheet.PageLayout.FitHeightToPages > 0 then
+    s := Format('%s fitToHeight="%d"', [s, AWorksheet.PageLayout.FitHeightToPages]);
+
+  // Orientation
+  s := Format('%s orientation="%s"', [
+    s, IfThen(AWorksheet.PageLayout.Orientation = spoPortrait, 'portrait', 'landscape')
+  ]);
+
+  // First page number
+  if poUseStartPageNumber in FWorksheet.PageLayout.Options then
+    s := Format('%s useFirstPageNumber="%d"', [s, AWorksheet.PageLayout.StartPageNumber]);
+
+  // Print order
+  if poPrintPagesByRows in AWorksheet.PageLayout.Options then
+    s := s + ' pageOrder="overThenDown"';
+
+  // Monochrome
+  if poMonochrome in AWorksheet.PageLayout.Options then
+    s := s + ' blackAndWhite="1"';
+
+  // Quality
+  if poDraftQuality in AWOrksheet.PageLayout.Options then
+    s := s + ' draft="1"';
+
+  if s <> '' then
+    AppendToStream(AStream,
+      '<pageSetup' + s + ' />');
+end;
+
+procedure TsSpreadOOXMLWriter.WritePrintOptions(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+begin
+  s := '';
+  if poPrintGridLines in AWorksheet.PageLayout.Options then
+    s := s + ' gridLines="1"';
+  if poPrintHeaders in AWorksheet.PageLayout.Options then
+    s := s + ' headings="1"';
+
+  if s <> '' then
+    AppendToStream(AStream,
+      '<printOptions' + s + ' />');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteSheetData(AStream: TStream;
@@ -2422,6 +2513,21 @@ begin
   end;
   AppendToStream(AStream,
       '</sheetData>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteSheetPr(AStream: TStream; AWorksheet: TsWorksheet);
+var
+  s: String;
+begin
+  s := '';
+  if (AWorksheet.PageLayout.FitWidthToPages > 0) or
+     (AWorksheet.PageLayout.FitHeightToPages > 0) then
+  s := s + ' fitToPage="1"';
+  if s <> '' then s := '<pageSetUpPr' + s + ' />';
+
+  if s <> '' then
+    AppendToStream(AStream,
+      '<sheetPr>' + s + '</sheetPr>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteSheetViews(AStream: TStream;
@@ -2936,13 +3042,16 @@ begin
   AppendToStream(FSSheets[FCurSheetNum], Format(
     '<worksheet xmlns="%s" xmlns:r="%s">', [SCHEMAS_SPREADML, SCHEMAS_DOC_RELS]));
 
+  WriteSheetPr(FSSheets[FCurSheetNum], AWorksheet);
   WriteDimension(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetViews(FSSheets[FCurSheetNum], AWorksheet);
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
   WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
+  WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
+  WritePageSetup(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
   if AWorksheet.Comments.Count > 0 then

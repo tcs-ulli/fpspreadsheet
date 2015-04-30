@@ -134,17 +134,19 @@ function TryStrToFloatAuto(AText: String; out ANumber: Double;
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
   out AMaxDigits: Integer): Boolean;
 
-function TwipsToPts(AValue: Integer): Single;
-function PtsToTwips(AValue: Single): Integer;
-function cmToPts(AValue: Double): Double;
-function PtsToCm(AValue: Double): Double;
-function InToPts(AValue: Double): Double;
-function PtsToIn(AValue: Double): Double;
-function mmToPts(AValue: Double): Double;
-function PtsToMM(AValue: Double): Double;
-function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
-function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer;
-function HTMLLengthStrToPts(AValue: String): Double;
+function TwipsToPts(AValue: Integer): Single;  inline;
+function PtsToTwips(AValue: Single): Integer;  inline;
+function cmToPts(AValue: Double): Double; inline;
+function PtsToCm(AValue: Double): Double; inline;
+function InToMM(AValue: Double): Double; inline;
+function InToPts(AValue: Double): Double; inline;
+function PtsToIn(AValue: Double): Double; inline;
+function mmToPts(AValue: Double): Double; inline;
+function mmToIn(AValue: Double): Double; inline;
+function PtsToMM(AValue: Double): Double; inline;
+function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
+function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer; inline;
+function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 
 function HTMLColorStrToColor(AValue: String): TsColorValue;
 function ColorToHTMLColorStr(AValue: TsColorValue; AExcelDialect: Boolean = false): String;
@@ -165,6 +167,7 @@ procedure FixHyperlinkPathDelims(var ATarget: String);
 procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 procedure InitFormatRecord(out AValue: TsCellFormat);
+procedure InitPageLayout(out APageLayout: TsPageLayout);
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -1978,6 +1981,28 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Converts inches to millimeters
+
+  @param   AValue   Length value in inches
+  @return  Value converted to mm
+-------------------------------------------------------------------------------}
+function InToMM(AValue: Double): Double;
+begin
+  Result := AValue * 25.4;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts millimeters to inches
+
+  @param   AValue   Length value in millimeters
+  @return  Value converted to inches
+-------------------------------------------------------------------------------}
+function mmToIn(AValue: Double): Double;
+begin
+  Result := AValue / 25.4;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Converts inches to points (72 pts = 1 inch)
 
   @param   AValue   Length value in inches
@@ -2052,9 +2077,11 @@ end;
                     such as '1.25in'. These unit codes are accepted:
                     'px' (pixels), 'pt' (points), 'in' (inches), 'mm' (millimeters),
                     'cm' (centimeters).
+  @param   DefaultUnits  String identifying the units to be used if not contained
+                         in AValue.
   @return  Extracted length in points
 -------------------------------------------------------------------------------}
-function HTMLLengthStrToPts(AValue: String): Double;
+function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 var
   units: String;
   x: Double;
@@ -2062,10 +2089,11 @@ var
 begin
   if (Length(AValue) > 1) and (AValue[Length(AValue)] in ['a'..'z', 'A'..'Z']) then begin
     units := lowercase(Copy(AValue, Length(AValue)-1, 2));
+    if units = '' then units := DefaultUnits;
     val(copy(AValue, 1, Length(AValue)-2), x, res);
     // No hasseling with the decimal point...
   end else begin
-    units := '';
+    units := DefaultUnits;
     val(AValue, x, res);
   end;
   if res <> 0 then
@@ -2374,6 +2402,30 @@ begin
   AValue.BorderStyles := DEFAULT_BORDERSTYLES;
   AValue.Background := EMPTY_FILL;
   AValue.NumberFormatIndex := -1;  // GENERAL format not contained in NumFormatList
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes the fields of a TsPageLayout record
+-------------------------------------------------------------------------------}
+procedure InitPageLayout(out APageLayout: TsPageLayout);
+begin
+  with APageLayout do begin
+    Orientation := spoPortrait;
+    PageWidth := 210;
+    PageHeight := 297;
+    LeftMargin := InToMM(0.7);
+    RightMargin := InToMM(0.7);
+    TopMargin := InToMM(0.78740157499999996);
+    BottomMargin := InToMM(0.78740157499999996);
+    HeaderMargin := InToMM(0.3);
+    FooterMargin := InToMM(0.3);
+    StartPageNumber := 1;
+    ScalingFactor := 100;   // Percent
+    FitWidthToPages := 0;   // use as many pages as needed
+    FitHeightToPages := 0;
+    Copies := 1;
+    Options := [];
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

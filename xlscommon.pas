@@ -20,6 +20,12 @@ const
   INT_EXCEL_ID_NOTE        = $001C;
   INT_EXCEL_ID_SELECTION   = $001D;
   INT_EXCEL_ID_DATEMODE    = $0022;
+  INT_EXCEL_ID_LEFTMARGIN  = $0026;
+  INT_EXCEL_ID_RIGHTMARGIN = $0027;
+  INT_EXCEL_ID_TOPMARGIN   = $0028;
+  INT_EXCEL_ID_BOTTOMMARGIN= $0029;
+  INT_EXCEL_ID_PRINTHEADERS= $002A;
+  INT_EXCEL_ID_PRINTGRID   = $002B;
   INT_EXCEL_ID_CONTINUE    = $003C;
   INT_EXCEL_ID_WINDOW1     = $003D;
   INT_EXCEL_ID_PANE        = $0041;
@@ -33,6 +39,8 @@ const
   { RECORD IDs which did not change across version 3-8}
   INT_EXCEL_ID_COLINFO     = $007D;    // does not exist in BIFF2
   INT_EXCEL_ID_SHEETPR     = $0081;    // does not exist in BIFF2
+  INT_EXCEL_ID_HCENTER     = $0083;    // does not exist in BIFF2
+  INT_EXCEL_ID_VCENTER     = $0084;    // does not exist in BIFF2
   INT_EXCEL_ID_COUNTRY     = $008C;    // does not exist in BIFF2
   INT_EXCEL_ID_PALETTE     = $0092;    // does not exist in BIFF2
   INT_EXCEL_ID_DIMENSIONS  = $0200;    // BIFF2: $0000
@@ -215,6 +223,100 @@ const
   { Index of last built-in XF format record }
   LAST_BUILTIN_XF                        = 15;
 
+  PAPER_SIZES: array[0..90] of array[0..1] of Double = (  // Dimensions in mm
+    (        0.0  ,    0.0       ),  // 0 - undefined
+    (2.54*   8.5  ,   11.0  *2.54),  // 1 - Letter
+    (2.54*   8.5  ,   11.0  *2.54),  // 2 - Letter small
+    (2.54*  11.0  ,   17.0  *2.54),  // 3 - Tabloid
+    (2.54*  17.0  ,   11.0  *2.54),  // 4 - Ledger
+    (2.54*   8.5  ,   14.0  *2.54),  // 5 - Legal
+    (2.54*   5.5  ,    8.5  *2.54),  // 6 - Statement
+    (2.54*   7.25 ,   10.5  *2.54),  // 7 - Executive
+    (      297.0  ,  420.0       ),  // 8 - A3
+    (      210.0  ,  297.0       ),  // 9 - A4
+    (      210.0  ,  297.0       ),  // 10 - A4 small
+    (      148.0  ,  210.0       ),  // 11 - A5
+    (      257.0  ,  364.0       ),  // 12 - B4 (JIS)
+    (      182.0  ,  257.0       ),  // 13 - B5 (JIS)
+    (2.54*   8.5  ,   13.0  *2.54),  // 14 - Folie
+    (      215.0  ,  275.0       ),  // 15 - Quarto
+    (2.54*  10.0  ,   14.0  *2.54),  // 16 - 10x14
+    (2.54*  11.0  ,   17.0  *2.54),  // 17 - 11x17
+    (2.54*   8.5  ,   11.0  *2.54),  // 18 - Note
+    (2.54*   3.875,    8.875*2.54),  // 19 - Envelope #9
+    (2.54*   4.125,    9.5  *2.54),  // 20 - Envelope #10
+    (2.54*   4.5  ,   10.375*2.54),  // 21 - Envelope #11
+    (2.54*   4.75 ,   11.0  *2.54),  // 22 - Envelope #12
+    (2.54*   5.0  ,   11.5  *2.54),  // 23 - Envelope #14
+    (2.54*  17.0  ,   22.0  *2.54),  // 24 - C
+    (2.54*  22.0  ,   34.0  *2.54),  // 25 - D
+    (2.54*  34.0  ,   44.0  *2.54),  // 26 - E
+    (      110.0  ,  220.0       ),  // 27 - Envelope DL
+    (      162.0  ,  229.0       ),  // 28 - Envelope C5
+    (      324.0  ,  458.0       ),  // 29 - Envelope C3
+    (      229.0  ,  324.0       ),  // 30 - Envelope C4
+    (      114.0  ,  162.0       ),  // 31 - Envelope C6
+    (      114.0  ,  229.0       ),  // 32 - Envelope C6/C5
+    (      250.0  ,  353.0       ),  // 33 - B4 (ISO)
+    (      176.0  ,  250.0       ),  // 34 - B5 (ISO)
+    (      125.0  ,  176.0       ),  // 35 - B6 (ISO)
+    (      110.0  ,  230.0       ),  // 36 - Envelope Italy
+    (2.54*   3.875,    7.5  *2.54),  // 37 - Envelope Monarch
+    (2.54*   3.625,    6.5  *2.54),  // 38 - 6 3/4 Envelope
+    (2.54*  14.875,   11.0  *2.54),  // 39 - US Standard Fanfold
+    (2.54*   8.5  ,   12.0  *2.54),  // 40 - German Std Fanfold
+    (2.54*   8.5  ,   13.0  *2.54),  // 41 - German Legal Fanfold
+    (      250.0  ,  353.0       ),  // 42 - B4 (ISO)
+    (      100.0  ,  148.0       ),  // 43 - Japanese Postcard
+    (2.54*   9.0  ,   11.0  *2.54),  // 44 - 9x11
+    (2.54*  10.0  ,   11.0  *2.54),  // 45 - 10x11
+    (2.54*  15.0  ,   11.0  *2.54),  // 46 - 15x11
+    (      220.0  ,  220.0       ),  // 47 - Envelope Invite
+    (        0.0  ,    0.0       ),  // 48 - undefined
+    (        0.0  ,    0.0       ),  // 49 - undefined
+    (2.54*   9.5  ,   11.0  *2.54),  // 50 - Letter Extra
+    (2.54*   9.5  ,   15.0  *2.54),  // 51 - Legal Extra
+    (2.54* 11.6875,   18.0  *2.54),  // 52 - Tabloid Extra
+    (      235.0  ,  322.0       ),  // 53 - A4 Extra
+    (2.54*   8.5  ,   11.0  *2.54),  // 54 - Letter Transverse
+    (      210.0  ,  297.0       ),  // 55 - A4 Transverse
+    (2.54*   9.5  ,   11.0  *2.54),  // 56 - Letter Extra Transverse
+    (      227.0  ,  356.0       ),  // 57 - Super A/A4
+    (      305.0  ,  487.0       ),  // 58 - Super B/B4
+    (2.54*   8.5  ,  12.6875*2.54),  // 59 - Letter plus
+    (      210.0  ,  330.0       ),  // 60 - A4 plus
+    (      148.0  ,  210.0       ),  // 61 - A5 transverse
+    (      182.0  ,  257.0       ),  // 62 - B5 (JIS) transverse
+    (      322.0  ,  445.0       ),  // 63 - A3 Extra
+    (      174.0  ,  235.0       ),  // 64 - A5 Extra
+    (      201.0  ,  276.0       ),  // 65 - B5 (ISO) Extra
+    (      420.0  ,  594.0       ),  // 66 - A2
+    (      297.0  ,  420.0       ),  // 67 - A3 Transverse
+    (      322.0  ,  445.0       ),  // 68 - A3 Extra Transverse
+    (      200.0  ,  148.0       ),  // 69 - Double Japanese Postcard
+    (      105.0  ,  148.0       ),  // 70 - A6
+    (        0.0  ,    0.0       ),  // 71 - undefined
+    (        0.0  ,    0.0       ),  // 72 - undefined
+    (        0.0  ,    0.0       ),  // 73 - undefined
+    (        0.0  ,    0.0       ),  // 74 - undefined
+    (2.54*  11.0  ,    8.5  *2.54),  // 75 - Letter rotated
+    (      420.0  ,  297.0       ),  // 76 - A3 rotated
+    (      297.0  ,  210.0       ),  // 77 - A4 rotated
+    (      210.0  ,  148.0       ),  // 78 - A5 rotated
+    (      364.0  ,  257.0       ),  // 79 - B4 (JIS) rotated
+    (      257.0  ,  182.0       ),  // 80 - B5 (JIS) rotated
+    (      148.0  ,  100.0       ),  // 81 - Japanese Postcard rotated
+    (      148.0  ,  200.0       ),  // 82 - Double Japanese Postcard rotated
+    (      148.0  ,  105.0       ),  // 83 - A6 rotated
+    (        0.0  ,    0.0       ),  // 84 - undefined
+    (        0.0  ,    0.0       ),  // 85 - undefined
+    (        0.0  ,    0.0       ),  // 86 - undefined
+    (        0.0  ,    0.0       ),  // 87 - undefined
+    (      128.0  ,  182.0       ),  // 88 - B6 (JIS)
+    (      182.0  ,  128.0       ),  // 89 - B6 (JIS) rotated
+    (2.54*  12.0  ,   11.0  *2.54)   // 90 - 12x11
+  );
+
 type
   TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
 
@@ -263,6 +365,7 @@ type
     // Read a blank cell
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadBool(AStream: TStream); override;
+    procedure ReadBottomMargin(AStream: TStream);
     procedure ReadCodePage(AStream: TStream);
     // Read column info
     procedure ReadColInfo(const AStream: TStream);
@@ -278,6 +381,8 @@ type
     procedure ReadFormat(AStream: TStream); virtual;
     // Read FORMULA record
     procedure ReadFormula(AStream: TStream); override;
+    procedure ReadHCENTER(AStream: TStream);
+    procedure ReadLeftMargin(AStream: TStream);
     // Read multiple blank cells
     procedure ReadMulBlank(AStream: TStream);
     // Read multiple RK cells
@@ -286,8 +391,13 @@ type
     procedure ReadNumber(AStream: TStream); override;
     // Read palette
     procedure ReadPalette(AStream: TStream);
+    // Read page setup
+    procedure ReadPageSetup(AStream: TStream);
     // Read PANE record
     procedure ReadPane(AStream: TStream);
+    procedure ReadPrintGridLines(AStream: TStream);
+    procedure ReadPrintHeaders(AStream: TStream);
+    procedure ReadRightMargin(AStream: TStream);
     // Read an RK value cell
     procedure ReadRKValue(AStream: TStream);
     // Read the row, column, and XF index at the current stream position
@@ -310,11 +420,13 @@ type
       ASharedFormulaBase: PCell = nil): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
     procedure ReadSharedFormula(AStream: TStream);
+    procedure ReadTopMargin(AStream: TStream);
 
     // Helper function for reading a string with 8-bit length
     function ReadString_8bitLen(AStream: TStream): String; virtual;
     // Read STRING record (result of string formula)
     procedure ReadStringRecord(AStream: TStream); virtual;
+    procedure ReadVCENTER(AStream: TStream);
     // Read WINDOW2 record (gridlines, sheet headers)
     procedure ReadWindow2(AStream: TStream); virtual;
 
@@ -335,6 +447,7 @@ type
     function FixColor(AColor: TsColor): TsColor; override;
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
+    function GetPrintOptions: Word; virtual;
 
     // Helper function for writing the BIFF header
     procedure WriteBIFFHeader(AStream: TStream; ARecID, ARecSize: Word);
@@ -347,6 +460,8 @@ type
     // Write out BOOLEAN cell record
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
+    // Writes out bottom page margin for printing
+    procedure WriteBottomMargin(AStream: TStream);
     // Writes out used codepage for character encoding
     procedure WriteCodePage(AStream: TStream; ACodePage: String); virtual;
     // Writes out column info(s)
@@ -365,6 +480,9 @@ type
     // Writes out a FORMULA record; formula is stored in cell already
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
+    procedure WriteHCenter(AStream: TStream);
+    // Writes out left page margin for printing
+    procedure WriteLeftMargin(AStream: TStream);
     // Writes out a FORMAT record
     procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); virtual;
@@ -379,6 +497,11 @@ type
     // Writes out a PANE record
     procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean;
       out ActivePane: Byte);
+    // Writes out whether grid lines are printed
+    procedure WritePrintGridLines(AStream: TStream);
+    procedure WritePrintHeaders(AStream: TStream);
+    // Writes out right page margin for printing
+    procedure WriteRightMargin(AStream: TStream);
     // Writes out a ROW record
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); virtual;
@@ -414,6 +537,9 @@ type
       *)
     procedure WriteSheetPR(AStream: TStream);
     procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
+    // Writes out the top page margin used when printing
+    procedure WriteTopMargin(AStream: TStream);
+    procedure WriteVCenter(AStream: TStream);
     // Writes cell content received by workbook in OnNeedCellData event
     procedure WriteVirtualCells(AStream: TStream);
     // Writes out a WINDOW1 record
@@ -509,6 +635,7 @@ type
     Col: Word;
     TextLen: Word;
   end;
+
 
 function ConvertExcelDateTimeToDateTime(const AExcelDateNum: Double;
   ADateMode: TDateMode): TDateTime;
@@ -852,6 +979,18 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the bottom page margin of the current worksheet (for printing).
+  The file value is in inches.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadBottomMargin(AStream: TStream);
+var
+  dbl: Double;
+begin
+  AStream.ReadBuffer(dbl, SizeOf(dbl));
+  FWorksheet.PageLayout.BottomMargin := InToMM(dbl);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the code page used in the xls file
   In BIFF8 it seams to always use the UTF-16 codepage
 -------------------------------------------------------------------------------}
@@ -1142,6 +1281,30 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads whether the page is to be centered horizontally for printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadHCENTER(AStream: TStream);
+var
+  w: word;
+begin
+  w := WordLEToN(AStream.ReadWord);
+  if w = 1 then Include(FWorksheet.PageLayout.Options, poHorCentered);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Reads the left page margin of the current worksheet (for printing).
+  The file value is in inches.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadLeftMargin(AStream: TStream);
+var
+  dbl: Double;
+begin
+  AStream.ReadBuffer(dbl, SizeOf(dbl));
+  FWorksheet.PageLayout.LeftMargin := InToMM(dbl);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads multiple blank cell records
   Valid for BIFF5 and BIFF8 (does not exist before)
 -------------------------------------------------------------------------------}
@@ -1295,6 +1458,72 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the page setup record containing some parameters for printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadPageSetup(AStream: TStream);
+var
+  w: Word;
+  dbl: Double;
+begin
+  // Paper size
+  w := WordLEToN(AStream.ReadWord);
+  if (w >= 0) and (w <= High(PAPER_SIZES)) then
+  begin
+    FWorksheet.PageLayout.PageWidth := PAPER_SIZES[w, 0];
+    FWorksheet.PageLayout.PageHeight := PAPER_SIZES[w, 1];
+  end;
+
+  // Scaling factor in percent
+  FWorksheet.PageLayout.ScalingFactor := WordLEToN(AStream.ReadWord);
+
+  // Start page number
+  FWorksheet.PageLayout.StartPageNumber := WordLEToN(AStream.ReadWord);
+
+  // Fit worksheet width to this number of pages (0 = use as many as neede)
+  FWorksheet.PageLayout.FitWidthToPages := WordLEToN(AStream.ReadWord);
+
+  // Fit worksheet height to this number of pages (0 = use as many as needed)
+  FWorksheet.PageLayout.FitHeightToPages := WordLEToN(AStream.ReadWord);
+
+  // Option flags
+  w := WordLEToN(AStream.ReadWord);
+  if w and $0001 <> 0 then
+    Include(FWorksheet.pageLayout.Options, poPrintPagesByRows);
+  if w and $0002 <> 0 then
+    FWorksheet.PageLayout.Orientation := spoPortrait else
+    FWorksheet.PageLayout.Orientation := spoLandscape;
+  if w and $0008 <> 0 then
+    Include(FWorksheet.PageLayout.Options, poMonochrome);
+  if w and $0010 <> 0 then
+    Include(FWorksheet.PageLayout.Options, poDraftQuality);
+  if w and $0020 <> 0 then
+    Include(FWorksheet.PageLayout.Options, poPrintCellComments);
+  if w and $0040 <> 0 then
+    Include(FWorksheet.PageLayout.Options, poDefaultOrientation);
+  if w and $0080 <> 0 then
+    Include(FWorksheet.PageLayout.Options, poUseStartPageNumber);
+  if w and $0200 <> 0 then
+    Include(FWorksheet.Pagelayout.Options, poCommentsAtEnd);
+
+  // Print resolution in dpi  -- ignoried
+  w := WordLEToN(AStream.ReadWord);
+
+  // Vertical print resolution in dpi  -- ignored
+  w := WordLEToN(AStream.ReadWord);
+
+  // Header margin
+  AStream.ReadBuffer(dbl, SizeOf(dbl));
+  FWorksheet.PageLayout.HeaderMargin := InToMM(dbl);
+
+  // Footer margin
+  AStream.ReadBuffer(dbl, SizeOf(dbl));
+  FWorksheet.PageLayout.FooterMargin := InToMM(dbl);
+
+  // Number of copies
+  FWorksheet.PageLayout.Copies := WordLEToN(AStream.ReadWord);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads pane sizes
   Valid for all BIFF versions
 -------------------------------------------------------------------------------}
@@ -1322,6 +1551,30 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads whether the gridlines are printed or not
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadPrintGridLines(AStream: TStream);
+var
+  w: Word;
+begin
+  w := WordLEToN(AStream.ReadWord);
+  if w = 1 then
+    Include(FWorksheet.PageLayout.Options, poPrintGridLines);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads whether the spreadsheet row/column headers are printed or not
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadPrintHeaders(AStream: TStream);
+var
+  w: Word;
+begin
+  w := WordLEToN(AStream.ReadWord);
+  if w = 1 then
+    Include(FWorksheet.PageLayout.Options , poPrintHeaders);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the row, column and xf index
   NOT VALID for BIFF2
 -------------------------------------------------------------------------------}
@@ -1334,6 +1587,18 @@ begin
 
   { Index to XF record }
   AXF := WordLEtoN(AStream.ReadWord);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the right page margin of the current worksheet (for printing).
+  The file value is in inches.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadRightMargin(AStream: TStream);
+var
+  dbl: Double;
+begin
+  AStream.ReadBuffer(dbl, SizeOf(dbl));
+  FWorksheet.PageLayout.RightMargin := InToMM(dbl);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1800,6 +2065,29 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the top page margin of the current worksheet (for printing).
+  The file value is in inches.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadTopMargin(AStream: TStream);
+var
+  dbl: Double;
+begin
+  AStream.ReadBuffer(dbl, SizeOf(dbl));
+  FWorksheet.PageLayout.TopMargin := InToMM(dbl);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads whether the page is to be centered vertically for printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadVCENTER(AStream: TStream);
+var
+  w: word;
+begin
+  w := WordLEToN(AStream.ReadWord);
+  if w = 1 then Include(FWorksheet.PageLayout.Options, poVertCentered);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the WINDOW2 record containing information like "show grid lines",
   "show sheet headers", "panes are frozen", etc.
   The record structure is slightly different for BIFF5 and BIFF8, but we use
@@ -1894,6 +2182,46 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Converts the Options of the worksheet's PageLayout to the bitmap required
+  by the PageSetup record
+  Is overridden by BIFF8 which uses more bits. Not used by BIFF2.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFWriter.GetPrintOptions: Word;
+begin
+  { Options:
+     Bit 0: 0 = Print pages in columns; 1 = Print pages in rows
+     Bit 1: 0 = Landscape; 1 = Portrait
+     Bit 2: 1 = Paper size, scaling factor, paper orientation (portrait/landscape),
+                print resolution and number of copies are not initialised
+     Bit 3: 0 = Print coloured; 1 = Print black and white
+     Bit 4: 0 = Default print quality; 1 = Draft quality
+     Bit 5: 0 = Do not print cell notes; 1 = Print cell notes
+     Bit 6: 0 = Use paper orientation (portrait/landscape) flag above
+            1 = Use default paper orientation (landscape for chart sheets, portrait otherwise)
+     Bit 7: 0 = Automatic page numbers; 1 = Use start page number above
+
+     The following flags are valid for BIFF8 only:
+     Bit 9: 0 = Print notes as displayed; 1 = Print notes at end of sheet
+     Bit 11-10:  00 = Print errors as displayed; 1 = Do not print errors
+                 2 = Print errors as “--”; 3 = Print errors as “#N/A” }
+  Result := 0;
+  if poPrintPagesByRows in FWorksheet.PageLayout.Options then
+    Result := Result or $0001;
+  if FWorksheet.PageLayout.Orientation = spoPortrait then
+    Result := Result or $0002;
+  if poMonochrome in FWorksheet.PageLayout.Options then
+    Result := Result or $0008;
+  if poDraftQuality in FWorksheet.PageLayout.Options then
+    Result := Result or $0010;
+  if poPrintCellComments in FWorksheet.PageLayout.Options then
+    Result := Result or $0020;
+  if poDefaultOrientation in FWorksheet.PageLayout.Options then
+    Result := Result or $0040;
+  if poUseStartPageNumber in FWorksheet.PageLayout.Options then
+    Result := Result or $0080;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the BIFF record header consisting of the record ID and the size of
   data to be written immediately afterwards.
 
@@ -1968,6 +2296,21 @@ begin
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Write the bottom margin of the printed page (in inches)
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteBottomMargin(AStream: TStream);
+var
+  dbl: double;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_BOTTOMMARGIN, SizeOf(Double));
+
+  { Page margin value, written in inches }
+  dbl := mmToIn(FWorksheet.PageLayout.BottomMargin);
+  AStream.WriteBuffer(dbl, SizeOf(dbl));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2193,6 +2536,21 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Write the left margin of the printed page (in inches)
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteLeftMargin(AStream: TStream);
+var
+  dbl: double;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_LEFTMARGIN, SizeOf(Double));
+
+  { Page margin value, written in inches }
+  dbl := mmToIn(FWorksheet.PageLayout.LeftMargin);
+  AStream.WriteBuffer(dbl, SizeOf(dbl));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes a BIFF number format record defined in the specified format string
   (in Excel dialect).
   AFormatIndex is equal to the format index used in the Excel file.
@@ -2243,6 +2601,22 @@ begin
   formula := FWorksheet.BuildRPNFormula(ACell);
   WriteRPNFormula(AStream, ARow, ACol, formula, ACell);
   SetLength(formula, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel HCENTER record which determines whether the page is to be
+  centered horizontally for printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteHCenter(AStream: TStream);
+var
+  w: Word;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_HCENTER, SizeOf(w));
+
+  { Data }
+  if poHorCentered in FWorksheet.PageLayout.Options then w := 1 else w := 0;
+  AStream.WriteWord(WordToLE(w));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2304,30 +2678,64 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes a PAGESETUP record containing information on printing
+  Valid for BIFF5-8
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePageSetup(AStream: TStream);
 var
   dbl: Double;
+  i: Integer;
+  w: Word;
 begin
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_PAGESETUP, 9*2 + 2*8);
 
   { Paper size }
-  AStream.WriteWord(WordToLE(0));  // 1 = Letter, 9 = A4
+  w := 0;
+  for i:=0 to High(PAPER_SIZES) do
+    if (SameValue(PAPER_SIZES[i,0], FWorksheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,1], FWorksheet.PageLayout.PageWidth))
+    or (SameValue(PAPER_SIZES[i,1], FWorksheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,0], FWorksheet.PageLayout.PageWidth))
+    then begin
+      w := i;
+      break;
+    end;
+  AStream.WriteWord(WordToLE(w));
 
   { Scaling factor in percent }
-  AStream.WriteWord(WordToLE(100));  // 100 %
+  w := Round(FWorksheet.PageLayout.ScalingFactor);
+  AStream.WriteWord(WordToLE(w));
 
   { Start page number }
-  AStream.WriteWord(WordToLE(1));   // starting at  page 1
+  w := FWorksheet.PageLayout.StartPageNumber;
+  AStream.WriteWord(WordToLE(w));
 
   { Fit worksheet width to this number of pages, 0 = use as many as needed }
-  AStream.WriteWord(WordToLE(0));
+  w := FWorksheet.PageLayout.FitWidthToPages;
+  AStream.WriteWord(WordToLE(w));
 
   { Fit worksheet height to this number of pages, 0 = use as many as needed }
-  AStream.WriteWord(WordToLE(0));
+  w := FWorksheet.PageLayout.FitHeightToPages;
+  AStream.WriteWord(WordToLE(w));
 
-  AStream.WriteWord(WordToLE(0));
+  { Options:
+     Bit 0: 0 = Print pages in columns; 1 = Print pages in rows
+     Bit 1: 0 = Landscape; 1 = Portrait
+     Bit 2: 1 = Paper size, scaling factor, paper orientation (portrait/landscape),
+                print resolution and number of copies are not initialised
+     Bit 3: 0 = Print coloured; 1 = Print black and white
+     Bit 4: 0 = Default print quality; 1 = Draft quality
+     Bit 5: 0 = Do not print cell notes; 1 = Print cell notes
+     Bit 6: 0 = Use paper orientation (portrait/landscape) flag above
+            1 = Use default paper orientation (landscape for chart sheets, portrait otherwise)
+     Bit 7: 0 = Automatic page numbers; 1 = Use start page number above
+
+     The following flags are valid for BIFF8 only:
+     Bit 9: 0 = Print notes as displayed; 1 = Print notes at end of sheet
+     Bit 11-10:  00 = Print errors as displayed; 1 = Do not print errors
+                 2 = Print errors as “--”; 3 = Print errors as “#N/A” }
+  w := GetPrintOptions;
+  AStream.WriteWord(WordToLE(w));
 
   { Print resolution in dpi }
   AStream.WriteWord(WordToLE(600));
@@ -2336,13 +2744,16 @@ begin
   AStream.WriteWord(WordToLE(600));
 
   { Header margin }
-  dbl := 0.5;
+  dbl := mmToIn(FWorksheet.PageLayout.HeaderMargin);
   AStream.WriteBuffer(dbl, SizeOf(dbl));
+
   { Footer margin }
+  dbl := mmToIn(FWorksheet.PageLayout.FooterMargin);
   AStream.WriteBuffer(dbl, SizeOf(dbl));
 
   { Number of copies to print }
-  AStream.WriteWord(WordToLE(1));  // 1 copy
+  w := FWorksheet.PageLayout.Copies;
+  AStream.WriteWord(WordToLE(w));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2419,6 +2830,36 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes out whether grid lines are printed or not
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WritePrintGridLines(AStream: TStream);
+var
+  w: Word;
+begin
+  { Biff record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PRINTGRID, SizeOf(w));
+
+  { Data }
+  if poPrintGridLines in FWorksheet.PageLayout.Options then w := 1 else w := 0;
+  AStream.WriteWord(WordToLE(w));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes out whether column and row headers are printed or not
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WritePrintHeaders(AStream: TStream);
+var
+  w: Word;
+begin
+  { Biff record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PRINTHEADERS, SizeOf(w));
+
+  { Data }
+  if poPrintHeaders in FWorksheet.PageLayout.Options then w := 1 else w := 0;
+  AStream.WriteWord(WordToLE(w));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the address of a cell as used in an RPN formula and returns the
   count of bytes written.
   Valid for BIFF2-BIFF5.
@@ -2426,7 +2867,7 @@ end;
 function TsSpreadBIFFWriter.WriteRPNCellAddress(AStream: TStream;
   ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
 var
-  r: Cardinal;  // row index containing encoded relativ/absolute address info
+  r: Cardinal;  // row index containing encoded relative/absolute address info
 begin
   // Encoded row address
   r := ARow and MASK_EXCEL_ROW;
@@ -2814,6 +3255,22 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes the right margin of the printed page (in inches)
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteRightMargin(AStream: TStream);
+var
+  dbl: double;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_RIGHTMARGIN, SizeOf(Double));
+
+  { Page margin value, written in inches }
+  dbl := mmToIn(FWorksheet.PageLayout.RightMargin);
+  AStream.WriteBuffer(dbl, SizeOf(dbl));
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Writes an Excel 3-8 ROW record
   Valid for BIFF3-BIFF8
 -------------------------------------------------------------------------------}
@@ -3105,6 +3562,38 @@ procedure TsSpreadBIFFWriter.WriteStringRecord(AStream: TStream;
 begin
   Unused(AStream, AString);
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Write the top margin of the printed page (in inches)
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteTopMargin(AStream: TStream);
+var
+  dbl: double;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_TOPMARGIN, SizeOf(Double));
+
+  { Page margin value, written in inches }
+  dbl := mmToIn(FWorksheet.PageLayout.TopMargin);
+  AStream.WriteBuffer(dbl, SizeOf(dbl));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel VCENTER record which determines whether the page is to be
+  centered vertically for printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteVCenter(AStream: TStream);
+var
+  w: Word;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_VCENTER, SizeOf(w));
+
+  { Data }
+  if poVertCentered in FWorksheet.PageLayout.Options then w := 1 else w := 0;
+  AStream.WriteWord(WordToLE(w));
+end;
+
 
 procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);
 var

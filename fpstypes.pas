@@ -668,13 +668,39 @@ type
       cctError      : (ErrorValue: TsErrorValue);
   end;
 
-  TsPageLayout = record
-    LeftMargin: Double;      // in Points
+{
+  TsPaperSize = (psUndefined, psLetter, psLetterSmall, psTabloid, psLedger,
+    psLegal, psStatement, psExecutive, psA3, psA4, psA4small, psA5, psB4, psB5,
+    psFolie, psQuarto, ps10x14, ps11x17, psNote, psEnvelope9, psEnvelope10,
+    psEnvelope11, psEnvelope12, psEnvelope14, psC, psD, psE, psEnvelopeDL,
+    psEnvelopeC5, psEnvelopeC3, psEnvelopeC4, psEnvelopeC6, psEnvelopeC6C5,
+    psB4ISO, psB5ISO, psB6ISO,
+    }
+
+  TsPageOrientation = (spoPortrait, spoLandscape);
+
+  TsPrintOption = (poPrintGridLines, poPrintHeaders, poPrintPagesByRows,
+    poMonochrome, poDraftQuality, poPrintCellComments, poDefaultOrientation,
+    poUseStartPageNumber, poCommentsAtEnd, poHorCentered, poVertCentered);
+
+  TsPrintOptions = set of TsPrintOption;
+
+  TsPageLayout = record      // all lengths in mm
+    Orientation: TsPageOrientation;
+    PageWidth: Double;       // for "normal" orientation (mostly portrait)
+    PageHeight: Double;
+    LeftMargin: Double;
     RightMargin: Double;
     TopMargin: Double;
     BottomMargin: Double;
-    HeaderDistance: Double;
-    FooterDistance: Double;
+    HeaderMargin: Double;
+    FooterMargin: Double;
+    StartPageNumber: Integer;
+    ScalingFactor: Double;  // in percent
+    FitWidthToPages: Integer;
+    FitHeightToPages: Integer;
+    Copies: Integer;
+    Options: TsPrintOptions;
   end;
 
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;

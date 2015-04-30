@@ -390,25 +390,34 @@ begin
 
     case RecordType of
       INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
+      INT_EXCEL_ID_BOF           : ;
       INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
+      INT_EXCEL_ID_BOTTOMMARGIN  : ReadBottomMargin(AStream);
+      INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
+      INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
+      INT_EXCEL_ID_EOF           : SectionEOF := True;
+      INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+      INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
+      INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
+      INT_EXCEL_ID_LEFTMARGIN    : ReadLeftMargin(AStream);
       INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
+      INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
       INT_EXCEL_ID_NOTE          : ReadComment(AStream);
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
-      INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
-      INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
-      INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
-      INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
-      INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
-      INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
-      INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
-      INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
-      INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
-      INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
-      INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
-      INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
-      INT_EXCEL_ID_BOF           : ;
-      INT_EXCEL_ID_EOF           : SectionEOF := True;
+      INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
+      INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
+      INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
+      INT_EXCEL_ID_RIGHTMARGIN   : ReadRightMargin(AStream);
+      INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+      INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
+      INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+      INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+      INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
+      INT_EXCEL_ID_TOPMARGIN     : ReadTopMargin(AStream);
+      INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
+      INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
+      INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
 
      {$IFDEF FPSPREADDEBUG} // Only write out if debugging
     else
@@ -1030,9 +1039,19 @@ begin
     AStream.Position := CurrentPos;
 
     WriteBOF(AStream, INT_BOF_SHEET);
-
       WriteIndex(AStream);
-//      WritePageSetup(AStream);
+      WritePrintHeaders(AStream);
+      WritePrintGridLines(AStream);
+
+      // Page settings block
+      WriteHCenter(AStream);
+      WriteVCenter(AStream);
+      WriteLeftMargin(AStream);
+      WriteRightMargin(AStream);
+      WriteTopMargin(AStream);
+      WriteBottomMargin(AStream);
+      WritePageSetup(AStream);
+
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
       WriteWindow2(AStream, FWorksheet);
