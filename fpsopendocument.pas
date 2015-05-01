@@ -65,8 +65,9 @@ type
     FColumnList: TFPList;
     FRowStyleList: TFPList;
     FRowList: TFPList;
+    FPageLayoutList: TFPList;
+    FMasterPageList: TFPList;
     FDateMode: TDateMode;
-    FPageLayout: TsPageLayout;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
     // Applies a style to a cell
@@ -86,6 +87,7 @@ type
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
     function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
+    function ReadHeaderFooterAsXMLString(ANode: TDOMNode): String;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
 
@@ -93,7 +95,9 @@ type
     FPointSeparatorSettings: TFormatSettings;
     procedure AddBuiltinNumFormats; override;
     procedure ReadAutomaticStyles(AStylesNode: TDOMNode);
+    procedure ReadMasterStyles(AStylesNode: TDOMNode);
     procedure ReadNumFormats(AStylesNode: TDOMNode);
+    function ReadPageLayout(AStylesNode: TDOMNode; ATableStyleName: String): PsPageLayout;
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
@@ -280,6 +284,20 @@ type
     Name: String;
     RowHeight: Double;          // in mm
     AutoRowHeight: Boolean;
+  end;
+
+  { PageLayout items stored in PageLayoutList }
+  TPageLayoutData = class
+  public
+    Name: String;
+    PageLayout: TsPageLayout;
+  end;
+
+  { MasterPage items stored in MasterPageList }
+  TMasterPageData = class
+  public
+    Name: String;
+    PageLayoutName: String;
   end;
 
   (* --- presently not used, but this may change... ---
@@ -605,23 +623,24 @@ end;
 constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
   FPointSeparatorSettings.ListSeparator := ';';  // for formulas
 
   FCellFormatList := TsCellFormatList.Create(true);
-    // Allow duplicates because style names used in cell records will not be found any more.
+    // true = allow duplicates because style names used in cell records will not be found any more.
   FColumnStyleList := TFPList.Create;
   FColumnList := TFPList.Create;
   FRowStyleList := TFPList.Create;
   FRowList := TFPList.Create;
-//  FVolatileNumFmtList := TStringList.Create;
+  FPageLayoutList := TFPList.Create;
+  FMasterPageList := TFPList.Create;
+
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
   // Initial base date in case it won't be read from file
   FDateMode := dm1899;
-  // Initialize internal PageLayout record
-  InitPageLayout(FPageLayout);
 end;
 
 destructor TsSpreadOpenDocReader.Destroy;
@@ -640,7 +659,11 @@ begin
   for j := FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
   FRowStyleList.Free;
 
-//  FVolatileNumFmtList.Free;
+  for j := FPageLayoutList.Count-1 downto 0 do TObject(FPageLayoutList[j]).Free;
+  FPageLayoutList.Free;
+
+  for j := FMasterPageList.Count-1 downto 0 do TObject(FMasterPageList[j]).Free;
+  FMasterPageList.Free;
 
   inherited Destroy;
 end;
@@ -860,6 +883,7 @@ var
   layoutNode: TDOMNode;
   node: TDOMNode;
   s: String;
+  data: TPageLayoutData;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -868,76 +892,231 @@ begin
   begin
     nodeName := layoutNode.NodeName;
     if nodeName = 'style:page-layout' then begin
-      s := GetAttrValue(layoutNode, 'style:name');
-      if s = 'Mpm1' then
+      data := TPageLayoutData.Create;
+      InitPageLayout(data.PageLayout);
+      data.Name := GetAttrValue(layoutNode, 'style:name');
+
+      node := layoutNode.FirstChild;
+      while node <> nil do
       begin
-        node := layoutNode.FirstChild;
-        while node <> nil do
+        nodeName := node.NodeName;
+        if nodeName = 'style:page-layout-properties' then
         begin
-          nodeName := node.NodeName;
-          if nodeName = 'style:page-layout-properties' then
+          s := GetAttrValue(node, 'style:print-orientation');
+          if s = 'landscape' then
+            data.PageLayout.Orientation := spoLandscape
+          else if s = 'portrait' then
+            data.PageLayout.Orientation := spoPortrait;
+
+          s := GetAttrValue(node, 'fo:page-width');
+          if s <> '' then
+            data.PageLayout.PageWidth := PtsToMM(HTMLLengthStrToPts(s));
+
+          s := GetAttrValue(node, 'fo:page-height');
+          if s <> '' then
+            data.PageLayout.PageHeight := PtsToMM(HTMLLengthStrToPts(s));
+
+          s := GetAttrValue(node, 'fo:margin-top');
+          if s <> '' then
+            data.PageLayout.TopMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+          s := GetAttrValue(node, 'fo:margin-bottom');
+          if s <> '' then
+            data.PageLayout.BottomMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+          s := GetAttrValue(node, 'fo:margin-left');
+          if s <> '' then
+            data.PageLayout.LeftMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+          s := GetAttrValue(node, 'fo:margin-right');
+          if s <> '' then
+            data.PageLayout.RightMargin := PtsToMM(HTMLLengthStrToPts(s));
+
+          s := GetAttrValue(node, 'style:scale-to');
+          if (s <> '') then
           begin
-            s := GetAttrValue(node, 'style:print-orientation');
-            if s = 'landscape' then
-              FPageLayout.Orientation := spoLandscape
-            else if s = 'portrait' then
-              FPageLayout.Orientation := spoPortrait;
-
-            s := GetAttrValue(node, 'fo:page-width');
-            if s <> '' then
-              FPageLayout.PageWidth := PtsToMM(HTMLLengthStrToPts(s));
-
-            s := GetAttrValue(node, 'fo:page-height');
-            if s <> '' then
-              FPageLayout.PageHeight := PtsToMM(HTMLLengthStrToPts(s));
-
-            s := GetAttrValue(node, 'fo:margin-top');
-            if s <> '' then
-              FPageLayout.TopMargin := PtsToMM(HTMLLengthStrToPts(s));
-
-            s := GetAttrValue(node, 'fo:margin-bottom');
-            if s <> '' then
-              FPageLayout.BottomMargin := PtsToMM(HTMLLengthStrToPts(s));
-
-            s := GetAttrValue(node, 'fo:margin-left');
-            if s <> '' then
-              FPageLayout.LeftMargin := PtsToMM(HTMLLengthStrToPts(s));
-
-            s := GetAttrValue(node, 'fo:margin-right');
-            if s <> '' then
-              FPageLayout.RightMargin := PtsToMM(HTMLLengthStrToPts(s));
-
-            s := GetAttrValue(node, 'style:scale-to');
-            if (s <> '') then
-            begin
-              if s[Length(s)] = '%' then Delete(s, Length(s), 1);
-              FPageLayout.ScalingFactor := StrToFloat(s, FPointSeparatorSettings);
-            end;
-
-            s := GetAttrValue(node, 'style:print');
-            if pos('grid', s) > 0 then
-              Include(FPageLayout.Options, poPrintGridLines);
-            if pos('headers', s) > 0 then
-              Include(FPageLayout.Options, poPrintHeaders);
-            if pos('annotations', s) > 0 then
-              Include(FPageLayout.Options, poPrintCellComments);
-
-            s := GetAttrValue(node, 'style:print-page-order');
-            if s = 'ltr' then    // "left-to-right", the other option is "ttb = top-to-bottom"
-              Include(FPageLayout.Options, poPrintPagesByRows);
-
-            s := GetAttrValue(node, 'style:first-page-number');
-            if s = 'continue' then
-              Exclude(FPageLayout.Options, poUseStartPageNumber)
-            else
-            if TryStrToInt(s, FPageLayout.StartPageNumber) then
-              Include(FPageLayout.Options, poUseStartPageNumber);
+            if s[Length(s)] = '%' then Delete(s, Length(s), 1);
+            data.PageLayout.ScalingFactor := StrToFloat(s, FPointSeparatorSettings);
           end;
-          node := node.NextSibling;
+
+          s := GetAttrValue(node, 'style:print');
+          if pos('grid', s) > 0 then
+            Include(data.PageLayout.Options, poPrintGridLines);
+          if pos('headers', s) > 0 then
+            Include(data.PageLayout.Options, poPrintHeaders);
+          if pos('annotations', s) > 0 then
+            Include(data.PageLayout.Options, poPrintCellComments);
+
+          s := GetAttrValue(node, 'style:print-page-order');
+          if s = 'ltr' then    // "left-to-right", the other option is "ttb = top-to-bottom"
+            Include(data.PageLayout.Options, poPrintPagesByRows);
+
+          s := GetAttrValue(node, 'style:first-page-number');
+          if s = 'continue' then
+            Exclude(data.PageLayout.Options, poUseStartPageNumber)
+          else
+          if TryStrToInt(s, data.PageLayout.StartPageNumber) then
+            Include(data.PageLayout.Options, poUseStartPageNumber);
+
+          FPageLayoutList.Add(data);
         end;
+        node := node.NextSibling;
       end;
     end;
     layoutNode := layoutNode.NextSibling;
+  end;
+end;
+
+function TsSpreadOpenDocReader.ReadHeaderFooterAsXMLString(ANode: TDOMNode): String;
+var
+  regionNode, textNode, spanNode: TDOMNode;
+  nodeName: String;
+  s: String;
+begin
+  Result := '';
+  regionNode := ANode.FirstChild;
+  while regionNode <> nil do
+  begin
+    nodeName := regionNode.NodeName;
+    if nodeName = 'text:p' then
+    begin
+      if Result <> '' then Result := Result + LineEnding;
+      textNode := regionNode.FirstChild;
+      while textNode <> nil do
+      begin
+        nodeName := textNode.NodeName;
+        case nodeName of
+          '#text':
+            Result := Result + textNode.NodeValue;
+          'text:sheet-name':
+            Result := Result + '&A';
+          'text:page-number':
+            Result := Result + '&P';
+          'text:page-count':
+            Result := Result + '&N';
+          'text:date':
+            Result := Result + '&D';
+          'text:time':
+            Result := Result + '&T';
+          'text:file-name':
+            case GetAttrValue(textNode, 'text:display') of
+              'full': Result := Result + '&Z&F';
+              'path': Result := Result + '&Z';
+              else    Result := Result + '&F';
+            end;
+          'text:span':
+            begin
+              spanNode := textNode.FirstChild;
+              while spanNode <> nil do
+              begin
+                nodeName := spanNode.NodeName;
+                case nodeName of
+                  '#text': Result := Result + spanNode.NodeValue;
+                end;
+                spanNode := spanNode.NextSibling;
+              end;
+            end;
+        end;
+        textNode := textNode.NextSibling;
+      end;
+    end else
+    if (nodeName = 'style:region-left') then
+    begin
+      s := ReadHeaderFooterAsXMLString(regionNode);
+      Result := Result + '&L' + s;
+    end else
+    if (nodeName = 'style:region-center') then
+    begin
+      s := ReadHeaderFooterAsXMLString(regionNode);
+      Result := Result + '&C' + s;
+    end else
+    if (nodeName = 'style:region-right') then
+    begin
+      s := ReadHeaderFooterAsXMLString(regionNode);
+      Result := Result + '&R' + s;
+    end;
+    regionNode := regionNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadMasterStyles(AStylesNode: TDOMNode);
+var
+  masternode, stylenode, regionnode: TDOMNode;
+  nodeName: String;
+  s: String;
+  data: TMasterPageData;
+  pagelayout: PsPageLayout;
+  j: Integer;
+
+begin
+  if AStylesNode = nil then
+    exit;
+
+  masterNode := AStylesNode.FirstChild;
+  while (masterNode <> nil) do
+  begin
+    nodeName := masterNode.NodeName;
+    if nodeName = 'style:master-page' then begin
+      s := GetAttrvalue(masterNode, 'style:page-layout-name');
+
+      pageLayout := nil;
+      for j:=0 to FPageLayoutList.Count-1 do
+        if TPageLayoutData(FPageLayoutList[j]).Name = s then
+        begin
+          pageLayout := @TPageLayoutData(FPageLayoutList[j]).PageLayout;
+          break;
+        end;
+      if pagelayout = nil then
+        exit;
+
+      data := TMasterPageData.create;
+      data.Name := GetAttrValue(masternode, 'style:name');
+      data.PageLayoutName := s;
+      FMasterPageList.Add(data);
+
+      styleNode := masterNode.FirstChild;
+      while styleNode <> nil do begin
+        nodeName := styleNode.NodeName;
+        if nodeName = 'style:header' then
+        begin
+          s := ReadHeaderFooterAsXMLString(styleNode);
+          if s <> '' then
+            pageLayout^.Headers[HEADER_FOOTER_INDEX_ODD] := s;
+        end else
+        if nodeName = 'style:header-left' then
+        begin
+          s := ReadHeaderFooterAsXMLString(styleNode);
+          if s <> '' then
+          begin
+            pageLayout^.Headers[HEADER_FOOTER_INDEX_EVEN] := s;
+            Include(pageLayout^.Options, poDifferentOddEven);
+          end;
+          s := GetAttrValue(styleNode, 'style:display');
+          if s = 'false' then
+            Exclude(pagelayout^.Options, poDifferentOddEven);
+        end else
+        if nodeName = 'style:footer' then
+        begin
+          s := ReadHeaderFooterAsXMLString(styleNode);
+          if s <> '' then
+            pageLayout^.Footers[HEADER_FOOTER_INDEX_ODD] := s;
+        end else
+        if nodeName = 'style:footer-left' then
+        begin
+          s := ReadHeaderFooterAsXMLString(styleNode);
+          if s <> '' then
+          begin
+            pageLayout^.Footers[HEADER_FOOTER_INDEX_EVEN] := s;
+            Include(pageLayout^.Options, poDifferentOddEven);
+          end;
+          s := GetAttrValue(styleNode, 'style:display');
+          if s = 'false' then
+            Exclude(pagelayout^.Options, poDifferentOddEven);
+        end;
+        styleNode := styleNode.NextSibling;
+      end;
+    end;
+    masterNode := masterNode.NextSibling;
   end;
 end;
 
@@ -1382,6 +1561,7 @@ var
   StylesNode: TDOMNode;
   OfficeSettingsNode: TDOMNode;
   nodename: String;
+  pageLayout: PsPageLayout;
 begin
   //unzip files into AFileName path
   FilePath := GetTempDir(false);
@@ -1410,6 +1590,9 @@ begin
 
     StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
     ReadAutomaticStyles(StylesNode);
+
+    StylesNode := Doc.DocumentElement.FindNode('office:master-styles');
+    ReadMasterStyles(StylesNode);
 
     Doc.Free;
 
@@ -1442,14 +1625,18 @@ begin
         TableNode := TableNode.NextSibling;
         continue;
       end;
-      FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode,'table:name'), true);
-      FWorksheet.PageLayout := FPageLayout;
+      FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
       ReadRowsAndCells(TableNode);
+      // Read page layout
+      pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
+      if pageLayout <> nil then
+        FWorksheet.PageLayout := pagelayout^;
       // Handle columns and rows
       ApplyColWidths;
+      // Page layout
       FixCols(FWorksheet);
       FixRows(FWorksheet);
       // Continue with next table
@@ -2008,6 +2195,71 @@ begin
 
     // Next node
     NumFormatNode := NumFormatNode.NextSibling;
+  end;
+end;
+
+{ Finds the PageLayout record for a given TableStyle name in the "styles" nodes.
+  First, seeks the TableStyle among the children of the "styles" node in the
+  contents.xml - this node contains the name of the used master page.
+  Then seeks the FMasterPageList for the entry with the determined master page
+  name. This entry contains the name of the associated PageLayoutData stored in
+  the PageLayoutList which, finally, contains the requested PageLayout record. }
+function TsSpreadOpenDocReader.ReadPageLayout(AStylesNode: TDOMNode;
+  ATableStyleName: String): PsPageLayout;
+var
+  nodeName, s: String;
+  node: TDOMNode;
+  masterPageName: String;
+  masterPageData: TMasterPageData;
+  pageLayoutData: TPageLayoutData;
+  i, j: Integer;
+begin
+  Result := nil;
+
+  if AStylesNode = nil then
+    exit;
+
+  { Looking through the "styles" node...}
+  node := AStylesNode.FirstChild;
+  while node <> nil do
+  begin
+    nodeName := node.NodeName;
+    { ... for the node which is named like the requested TableStyle }
+    if nodeName = 'style:style' then
+    begin
+      s := GetAttrValue(node, 'style:name');
+      if s = ATableStyleName then
+      begin
+        { Found: extract the name of the master page }
+        masterPageName := GetAttrValue(node, 'style:master-page-name');
+        if masterPageName = '' then
+          exit;
+
+        { Looking through the MasterPage list...}
+        for i:=0 to FMasterPageList.Count-1 do
+        begin
+          masterPageData := TMasterPageData(FMasterPageList[i]);
+          { ... for the entry with the found master page name }
+          if masterPageData.Name = masterPageName then
+          begin
+            { Found: looking through the PageLayout list ...}
+            for j:=0 to FPageLayoutList.Count-1 do
+            begin
+              pageLayoutData := TPageLayoutData(FPageLayoutList[j]);
+              { ... for the entry with the name specified by the master page }
+              if pageLayoutData.Name = masterPageData.PageLayoutName then
+              begin
+                { Found: Return a pointer to the PageLayout record stored in the list }
+                Result := @pageLayoutData.PageLayout;
+                exit;
+              end;
+            end;
+          end;
+        end;
+      end;
+    end;
+    { Not found: try next node in the styles list }
+    node := node.NextSibling;
   end;
 end;
 
