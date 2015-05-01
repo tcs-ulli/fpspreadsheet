@@ -87,6 +87,7 @@ type
     procedure ReadCONTINUE(const AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
+    procedure ReadHeaderFooter(AStream: TStream; AIsHeader: Boolean); override;
     procedure ReadHyperLink(AStream: TStream);
     procedure ReadHyperlinkToolTip(AStream: TStream);
     procedure ReadLABEL(AStream: TStream); override;
@@ -130,12 +131,13 @@ type
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
-    procedure WriteIndex(AStream: TStream);
+    procedure WriteHeaderFooter(AStream: TStream; AIsHeader: Boolean); override;
     procedure WriteHyperlink(AStream: TStream; AHyperlink: PsHyperlink;
       AWorksheet: TsWorksheet);
     procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteHyperlinkToolTip(AStream: TStream; const ARow, ACol: Cardinal;
       const ATooltip: String);
+    procedure WriteIndex(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
@@ -679,18 +681,20 @@ begin
     INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
     INT_EXCEL_ID_BOF           : ;
     INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
-    INT_EXCEL_ID_BOTTOMMARGIN  : ReadBottomMargin(AStream);
+    INT_EXCEL_ID_BOTTOMMARGIN  : ReadMargin(AStream, 3);
     INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
     INT_EXCEL_ID_CONTINUE      : ReadCONTINUE(AStream);
     INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
     INT_EXCEL_ID_EOF           : SectionEOF := True;
+    INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
     INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
     INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
+    INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
     INT_EXCEL_ID_HLINKTOOLTIP  : ReadHyperlinkToolTip(AStream);
     INT_EXCEL_ID_HYPERLINK     : ReadHyperlink(AStream);
     INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
     INT_EXCEL_ID_LABELSST      : ReadLabelSST(AStream);
-    INT_EXCEL_ID_LEFTMARGIN    : ReadLeftMargin(AStream);
+    INT_EXCEL_ID_LEFTMARGIN    : ReadMargin(AStream, 0);
     INT_EXCEL_ID_MERGEDCELLS   : ReadMergedCells(AStream);
     INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
     INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
@@ -701,7 +705,7 @@ begin
     INT_EXCEL_ID_PANE          : ReadPane(AStream);
     INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
     INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
-    INT_EXCEL_ID_RIGHTMARGIN   : ReadRightMargin(AStream);
+    INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
     INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
 
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
@@ -717,7 +721,7 @@ begin
 
     INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
     INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
-    INT_EXCEL_ID_TOPMARGIN     : ReadTopMargin(AStream);
+    INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
     INT_EXCEL_ID_TXO           : ReadTXO(AStream);
     INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
     INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
@@ -1445,6 +1449,30 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the header/footer to be used for printing.
+  Overriden for BIFF8 because of wide strings
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Reader.ReadHeaderFooter(AStream: TStream;
+  AIsHeader: Boolean);
+var
+  s: widestring;
+  len: word;
+begin
+  if RecordSize = 0 then
+    exit;
+
+  len := WordLEToN(AStream.ReadWord);
+  s := ReadWideString(AStream, len);
+  if AIsHeader then
+    FWorksheet.PageLayout.Headers[1] := UTF8Encode(s)
+  else
+    FWOrksheet.PageLayout.Footers[1] := UTF8Encode(s);
+
+  { Options poDifferentFirst and poDifferentOddEvent are not used, BIFF supports
+    only common headers/footers }
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads a HYPERLINK record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Reader.ReadHyperlink(AStream: TStream);
@@ -1725,12 +1753,14 @@ begin
       //WriteSheetPR(AStream);
 
       // Page setting block
+      WriteHeaderFooter(AStream, true);
+      WriteHeaderFooter(AStream, false);
       WriteHCenter(AStream);
       WriteVCenter(AStream);
-      WriteLeftMargin(AStream);
-      WriteRightMargin(AStream);
-      WriteTopMargin(AStream);
-      WriteBottomMargin(AStream);
+      WriteMargin(AStream, 0);  // 0 = left margin
+      WriteMargin(AStream, 1);  // 1 = right margin
+      WriteMargin(AStream, 2);  // 2 = top margin
+      WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
 
       WriteColInfos(AStream, FWorksheet);
@@ -2382,6 +2412,46 @@ begin
   { Array of nm absolute stream positions of the DBCELL record of each Row Block }
   
   { OBS: It seems to be no problem just ignoring this part of the record }
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 HEADER or FOOTER record, depending on AIsHeader.
+  Overridden because of wide string
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHeaderFooter(AStream: TStream;
+  AIsHeader: Boolean);
+var
+  wideStr: WideString;
+  len: Integer;
+  id: Word;
+begin
+  with FWorksheet.PageLayout do
+    if AIsHeader then
+    begin
+      if (Headers[HEADER_FOOTER_INDEX_ALL] = '') then
+        exit;
+      wideStr := UTF8Decode(Headers[HEADER_FOOTER_INDEX_ALL]);
+      id := INT_EXCEL_ID_HEADER;
+    end else
+    begin
+      if (Footers[HEADER_FOOTER_INDEX_ALL] = '') then
+        exit;
+      wideStr := UTF8Decode(Footers[HEADER_FOOTER_INDEX_ALL]);
+      id := INT_EXCEL_ID_FOOTER;
+    end;
+  len := Length(wideStr);
+
+  { BIFF record header }
+  WriteBiffHeader(AStream, id, 3 + len*sizeOf(wideChar));
+
+  { 16-bit string length }
+  AStream.WriteWord(WordToLE(len));
+
+  { Widestring flags, 1=regular unicode LE string }
+  AStream.WriteByte(1);
+
+  { Characters }
+  AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
 end;
 
 {@@ ----------------------------------------------------------------------------

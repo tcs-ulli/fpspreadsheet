@@ -28,7 +28,8 @@ AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
 unit xlsxooxml;
 
 {$ifdef fpc}
-  {$mode delphi}
+  {$mode objfpc}{$H+}
+//  {$mode delphi}
 {$endif}
 
 interface
@@ -74,10 +75,12 @@ type
     procedure ReadFills(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode);
     procedure ReadFonts(ANode: TDOMNode);
+    procedure ReadHeaderFooter(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadHyperlinks(ANode: TDOMNode);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPageMargins(ANode: TDOMNode; AWorksheet: TsWorksheet);
+    procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -127,6 +130,7 @@ type
     procedure WriteDimension(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFontList(AStream: TStream);
+    procedure WriteHeaderFooter(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteNumFormatList(AStream: TStream);
@@ -799,7 +803,7 @@ begin
       if (s1 <> '') and (s2 <> '0') then
       begin
         fillIndex := StrToInt(s1);
-        fillData := FFillList[fillIndex];
+        fillData := TFillListData(FFillList[fillIndex]);
         if (fillData <> nil) and (fillData.PatternType <> 'none') then begin
           fmt.Background.FgColor := fillData.FgColor;
           fmt.Background.BgColor := fillData.BgColor;
@@ -818,7 +822,7 @@ begin
       if (s1 <> '') and (s2 <> '0') then
       begin
         borderIndex := StrToInt(s1);
-        borderData := FBorderList[borderIndex];
+        borderData := TBorderListData(FBorderList[borderIndex]);
         if (borderData <> nil) then
         begin
           fmt.BorderStyles := borderData.BorderStyles;
@@ -1182,6 +1186,40 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadHeaderFooter(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  node: TDOMNode;
+  nodeName: String;
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'differentOddEven');
+  if s = '1' then
+    Include(AWorksheet.PageLayout.Options, poDifferentOddEven);
+
+  s := GetAttrValue(ANode, 'differentFirst');
+  if s = '1' then
+    Include(AWorksheet.PageLayout.Options, poDifferentFirst);
+
+  node := ANode.FirstChild;
+  while node <> nil do
+  begin
+    nodeName := node.NodeName;
+    case nodeName of
+      'firstHeader': AWorksheet.PageLayout.Headers[0] := GetNodeValue(node);
+      'oddHeader'  : AWorksheet.PageLayout.Headers[1] := GetNodeValue(node);
+      'evenHeader' : AWorksheet.PageLayout.Headers[2] := GetNodeValue(node);
+      'firstFooter': AWorksheet.PageLayout.Footers[0] := GetNodeValue(node);
+      'oddFooter'  : AWorksheet.PageLayout.Footers[1] := GetNodeValue(node);
+      'evenFooter' : AWorksheet.PageLayout.Footers[2] := GetNodeValue(node);
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -1338,6 +1376,33 @@ begin
   s := GetAttrValue(ANode, 'footer');
   if s <> '' then
     AWorksheet.PageLayout.FooterMargin := PtsToMM(HtmlLengthStrToPts(s, 'in'));
+end;
+
+procedure TsSpreadOOXMLReader.ReadPageSetup(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+  n: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'paperSize');
+  if s <> '' then
+  begin
+    n := StrToInt(s);
+    if (n >= 0) and (n <= High(PAPER_SIZES)) then
+    begin
+      AWorksheet.PageLayout.PageWidth := PAPER_SIZES[n, 0];
+      AWorksheet.PageLayout.PageHeight := PAPER_SIZES[n, 1];
+    end;
+  end;
+
+  s:= GetAttrValue(ANode, 'orientation');
+  if s = 'portrait' then
+    AWorksheet.PageLayout.Orientation := spoPortrait
+  else if s = 'landscape' then
+    AWorksheet.PageLayout.Orientation := spoLandscape;
 end;
 
 procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
@@ -1726,6 +1791,8 @@ begin
       ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
       ReadPrintOptions(Doc.DocumentElement.FindNode('printOptions'), FWorksheet);
       ReadPageMargins(Doc.DocumentElement.FindNode('pageMargins'), FWorksheet);
+      ReadPageSetup(Doc.DocumentElement.FindNode('pageSetup'), FWorksheet);
+      ReadHeaderFooter(Doc.DocumentElement.FindNode('headerFooter'), FWorksheet);
 
       FreeAndNil(Doc);
 
@@ -1817,7 +1884,7 @@ var
   fmt: PsCellFormat;
 begin
   // No cell, or border-less --> index 0
-  if (AFormat = nil) or not (uffBorder in AFormat.UsedFormattingFields) then begin
+  if (AFormat = nil) or not (uffBorder in AFormat^.UsedFormattingFields) then begin
     Result := 0;
     exit;
   end;
@@ -1991,8 +2058,9 @@ begin
 
   for i:=1 to High(FBorderList) do begin
     diag := '';
-    if (cbDiagUp in FBorderList[i].Border) then diag := diag + ' diagonalUp="1"';
-    if (cbDiagDown in FBorderList[i].Border) then diag := diag + ' diagonalDown="1"';
+    if (cbDiagUp in FBorderList[i]^.Border) then
+      diag := diag + ' diagonalUp="1"';
+    if (cbDiagDown in FBorderList[i]^.Border) then diag := diag + ' diagonalDown="1"';
     AppendToStream(AStream,
       '<border' + diag + '>');
         WriteBorderStyle(AStream, FBorderList[i], cbWest, 'left');
@@ -2026,7 +2094,7 @@ begin
     if col <> nil then
       AppendToStream(AStream, Format(
         '<col min="%d" max="%d" width="%g" customWidth="1" />',
-        [c+1, c+1, col.Width], FPointSeparatorSettings)
+        [c+1, c+1, col^.Width], FPointSeparatorSettings)
       );
   end;
 
@@ -2133,7 +2201,7 @@ begin
       fc := 'auto="1"'
     else
       fc := Format('rgb="%s"', [Copy(Workbook.GetPaletteColorAsHTMLStr(FFillList[i]^.Background.FgColor), 2, 255)]);
-    if FFillList[i].Background.BgColor = scTransparent then
+    if FFillList[i]^.Background.BgColor = scTransparent then
       bc := 'auto="1"'
     else
       bc := Format('rgb="%s"', [Copy(Workbook.GetPaletteColorAsHTMLStr(FFillList[i]^.Background.BgColor), 2, 255)]);
@@ -2198,6 +2266,68 @@ begin
       '</fonts>');
 end;
 
+procedure TsSpreadOOXMLWriter.WriteHeaderFooter(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  hasHeader: Boolean;
+  hasFooter: Boolean;
+  i: Integer;
+  s: String;
+begin
+  hasHeader := false;
+  hasFooter := false;
+
+  with AWorksheet.PageLayout do
+  begin
+    for i:=HEADER_FOOTER_INDEX_FIRST to HEADER_FOOTER_INDEX_EVEN do
+    begin
+      if Headers[i] <> '' then
+        hasHeader := true;
+      if Footers[i] <> '' then
+        hasFooter := true;
+    end;
+    if not (hasHeader or hasFooter) then
+      exit;
+
+    s := '';
+    if poDifferentFirst in Options then
+      s := s + ' differentFirst="1"';
+    if poDifferentOddEven in Options then
+      s := s + ' differentOddEven="1"';
+
+    AppendToStream(AStream,
+        '<headerFooter' + s);
+
+    if Headers[HEADER_FOOTER_INDEX_ODD] <> '' then
+      AppendToStream(AStream,
+          '<oddHeader>' + Headers[HEADER_FOOTER_INDEX_ODD] + '</oddHeader>');
+    if Footers[HEADER_FOOTER_INDEX_ODD] <> '' then
+      AppendToStream(AStream,
+          '<oddFooter>' + Footers[HEADER_FOOTER_INDEX_ODD] + '</oddFooter>');
+
+    if poDifferentFirst in AWorksheet.PageLayout.Options then
+    begin
+      if Headers[HEADER_FOOTER_INDEX_FIRST] <> '' then
+        AppendToStream(AStream,
+          '<firstHeader>' + Headers[HEADER_FOOTER_INDEX_FIRST] + '</firstHeader>');
+      if Footers[HEADER_FOOTER_INDEX_FIRST] <> '' then
+        AppendToStream(AStream,
+          '<firstFooter>' + Footers[HEADER_FOOTER_INDEX_FIRST] + '</firstFooter>');
+    end;
+
+    if poDifferentOddEven in Options then
+    begin
+      AppendToStream(AStream,
+          '<evenHeader>' + Headers[HEADER_FOOTER_INDEX_EVEN] + '</evenHeader>');
+      AppendToStream(AStream,
+          '<evenFooter>' + Footers[HEADER_FOOTER_INDEX_EVEN] + '</evenFooter>');
+    end;
+
+    AppendToStream(AStream,
+        '</headerFooter>');
+  end;
+end;
+
 procedure TsSpreadOOXMLWriter.WriteHyperlinks(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
@@ -2258,7 +2388,7 @@ begin
     '<mergeCells count="%d">', [n]) );
   for rng in AWorksheet.MergedCells do
     AppendToStream(AStream, Format(
-      '<mergeCell ref="%s" />', [GetCellRangeString(rng.Row1, rng.Col1, rng.Row2, rng.Col2)]));
+      '<mergeCell ref="%s" />', [GetCellRangeString(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2)]));
   AppendToStream(AStream,
     '</mergeCells>');
 end;
@@ -2662,7 +2792,7 @@ begin
     { Text alignment }
     if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault)
     then
-      case fmt.HorAlignment of
+      case fmt^.HorAlignment of
         haLeft  : sAlign := sAlign + 'horizontal="left" ';
         haCenter: sAlign := sAlign + 'horizontal="center" ';
         haRight : sAlign := sAlign + 'horizontal="right" ';
@@ -2670,7 +2800,7 @@ begin
 
     if (uffVertAlign in fmt^.UsedFormattingFields) and (fmt^.VertAlignment <> vaDefault)
     then
-      case fmt.VertAlignment of
+      case fmt^.VertAlignment of
         vaTop   : sAlign := sAlign + 'vertical="top" ';
         vaCenter: sAlign := sAlign + 'vertical="center" ';
         vaBottom: sAlign := sAlign + 'vertical="bottom" ';
@@ -2680,7 +2810,7 @@ begin
       sAlign := sAlign + 'wrapText="1" ';
 
     { Fill }
-    if (uffBackground in fmt.UsedFormattingFields) then
+    if (uffBackground in fmt^.UsedFormattingFields) then
     begin
       fillID := FindFillInList(fmt);
       if fillID = -1 then fillID := 0;
@@ -2913,7 +3043,7 @@ procedure TsSpreadOOXMLWriter.WriteContent;
 var
   i, counter: Integer;
 begin
-  { --- WorkbookRels ---
+  { --- WorkbookRels --- }
   { Workbook relations - Mark relation to all sheets }
   counter := 0;
   AppendToStream(FSWorkbookRels,
@@ -3052,6 +3182,7 @@ begin
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
   WritePageSetup(FSSheets[FCurSheetNum], AWorksheet);
+  WriteHeaderFooter(FSSheets[FCurSheetNum], AWorksheet);
 
   // Footer
   if AWorksheet.Comments.Count > 0 then

@@ -17,6 +17,8 @@ uses
 const
   { RECORD IDs which didn't change across versions 2-8 }
   INT_EXCEL_ID_EOF         = $000A;
+  INT_EXCEL_ID_HEADER      = $0014;
+  INT_EXCEL_ID_FOOTER      = $0015;
   INT_EXCEL_ID_NOTE        = $001C;
   INT_EXCEL_ID_SELECTION   = $001D;
   INT_EXCEL_ID_DATEMODE    = $0022;
@@ -365,7 +367,6 @@ type
     // Read a blank cell
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadBool(AStream: TStream); override;
-    procedure ReadBottomMargin(AStream: TStream);
     procedure ReadCodePage(AStream: TStream);
     // Read column info
     procedure ReadColInfo(const AStream: TStream);
@@ -382,7 +383,8 @@ type
     // Read FORMULA record
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadHCENTER(AStream: TStream);
-    procedure ReadLeftMargin(AStream: TStream);
+    procedure ReadHeaderFooter(AStream: TStream; AIsHeader: Boolean); virtual;
+    procedure ReadMargin(AStream: TStream; AMargin: Integer);
     // Read multiple blank cells
     procedure ReadMulBlank(AStream: TStream);
     // Read multiple RK cells
@@ -397,7 +399,6 @@ type
     procedure ReadPane(AStream: TStream);
     procedure ReadPrintGridLines(AStream: TStream);
     procedure ReadPrintHeaders(AStream: TStream);
-    procedure ReadRightMargin(AStream: TStream);
     // Read an RK value cell
     procedure ReadRKValue(AStream: TStream);
     // Read the row, column, and XF index at the current stream position
@@ -420,7 +421,6 @@ type
       ASharedFormulaBase: PCell = nil): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
     procedure ReadSharedFormula(AStream: TStream);
-    procedure ReadTopMargin(AStream: TStream);
 
     // Helper function for reading a string with 8-bit length
     function ReadString_8bitLen(AStream: TStream): String; virtual;
@@ -460,8 +460,6 @@ type
     // Write out BOOLEAN cell record
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
-    // Writes out bottom page margin for printing
-    procedure WriteBottomMargin(AStream: TStream);
     // Writes out used codepage for character encoding
     procedure WriteCodePage(AStream: TStream; ACodePage: String); virtual;
     // Writes out column info(s)
@@ -481,8 +479,9 @@ type
     procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteHCenter(AStream: TStream);
-    // Writes out left page margin for printing
-    procedure WriteLeftMargin(AStream: TStream);
+    procedure WriteHeaderFooter(AStream: TStream; AIsHeader: Boolean); virtual;
+    // Writes out page margin for printing
+    procedure WriteMARGIN(AStream: TStream; AMargin: Integer);
     // Writes out a FORMAT record
     procedure WriteNumFormat(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); virtual;
@@ -500,8 +499,6 @@ type
     // Writes out whether grid lines are printed
     procedure WritePrintGridLines(AStream: TStream);
     procedure WritePrintHeaders(AStream: TStream);
-    // Writes out right page margin for printing
-    procedure WriteRightMargin(AStream: TStream);
     // Writes out a ROW record
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); virtual;
@@ -537,8 +534,6 @@ type
       *)
     procedure WriteSheetPR(AStream: TStream);
     procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
-    // Writes out the top page margin used when printing
-    procedure WriteTopMargin(AStream: TStream);
     procedure WriteVCenter(AStream: TStream);
     // Writes cell content received by workbook in OnNeedCellData event
     procedure WriteVirtualCells(AStream: TStream);
@@ -979,18 +974,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Reads the bottom page margin of the current worksheet (for printing).
-  The file value is in inches.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFReader.ReadBottomMargin(AStream: TStream);
-var
-  dbl: Double;
-begin
-  AStream.ReadBuffer(dbl, SizeOf(dbl));
-  FWorksheet.PageLayout.BottomMargin := InToMM(dbl);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Reads the code page used in the xls file
   In BIFF8 it seams to always use the UTF-16 codepage
 -------------------------------------------------------------------------------}
@@ -1291,17 +1274,50 @@ begin
   if w = 1 then Include(FWorksheet.PageLayout.Options, poHorCentered);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Reads the header/footer to be used for printing.
+  Valid for BIFF2-BIFF5, override for BIFF8
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadHeaderFooter(AStream: TStream;
+  AIsHeader: Boolean);
+var
+  s: ansistring;
+  len: Byte;
+begin
+  if RecordSize = 0 then
+    exit;
+
+  Len := AStream.ReadByte;
+  SetLength(s, len*SizeOf(ansichar));
+  AStream.ReadBuffer(s[1], len*SizeOf(ansichar));
+  if AIsHeader then
+  begin
+    FWorksheet.PageLayout.Headers[1] := ConvertEncoding(s, FCodePage, 'utf8');
+    FWorksheet.PageLayout.Headers[2] := '';
+  end else
+  begin
+    FWorksheet.PageLayout.Footers[1] := ConvertEncoding(s, FCodePage, 'utf8');
+    FWorksheet.PageLayout.Footers[2] := '';
+  end;
+  Exclude(FWorksheet.PageLayout.Options, poDifferentOddEven);
+end;
 
 {@@ ----------------------------------------------------------------------------
-  Reads the left page margin of the current worksheet (for printing).
+  Reads a page margin of the current worksheet (for printing). The margin is
+  identified by the parameter "AMargin" (0=left, 1=right, 2=top, 3=bottom)
   The file value is in inches.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFReader.ReadLeftMargin(AStream: TStream);
+procedure TsSpreadBIFFReader.ReadMargin(AStream: TStream; AMargin: Integer);
 var
   dbl: Double;
 begin
   AStream.ReadBuffer(dbl, SizeOf(dbl));
-  FWorksheet.PageLayout.LeftMargin := InToMM(dbl);
+  case AMargin of
+    0: FWorksheet.PageLayout.LeftMargin := InToMM(dbl);
+    1: FWorksheet.PageLayout.RightMargin := InToMM(dbl);
+    2: FWorksheet.PageLayout.TopMargin := InToMM(dbl);
+    3: FWorksheet.PageLayout.BottomMargin := InToMM(dbl);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1587,18 +1603,6 @@ begin
 
   { Index to XF record }
   AXF := WordLEtoN(AStream.ReadWord);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Reads the right page margin of the current worksheet (for printing).
-  The file value is in inches.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFReader.ReadRightMargin(AStream: TStream);
-var
-  dbl: Double;
-begin
-  AStream.ReadBuffer(dbl, SizeOf(dbl));
-  FWorksheet.PageLayout.RightMargin := InToMM(dbl);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2065,18 +2069,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Reads the top page margin of the current worksheet (for printing).
-  The file value is in inches.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFReader.ReadTopMargin(AStream: TStream);
-var
-  dbl: Double;
-begin
-  AStream.ReadBuffer(dbl, SizeOf(dbl));
-  FWorksheet.PageLayout.TopMargin := InToMM(dbl);
-end;
-
-{@@ ----------------------------------------------------------------------------
   Reads whether the page is to be centered vertically for printing
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadVCENTER(AStream: TStream);
@@ -2296,21 +2288,6 @@ begin
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Write the bottom margin of the printed page (in inches)
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteBottomMargin(AStream: TStream);
-var
-  dbl: double;
-begin
-  { BIFF record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_BOTTOMMARGIN, SizeOf(Double));
-
-  { Page margin value, written in inches }
-  dbl := mmToIn(FWorksheet.PageLayout.BottomMargin);
-  AStream.WriteBuffer(dbl, SizeOf(dbl));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2536,17 +2513,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Write the left margin of the printed page (in inches)
+  Writes the a margin record for printing (margin is in inches).
+  The margin is identified by the parameter AMargin:
+    0=left, 1=right, 2=top, 3=bottom
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteLeftMargin(AStream: TStream);
+procedure TsSpreadBIFFWriter.WriteMargin(AStream: TStream; AMargin: Integer);
 var
   dbl: double;
 begin
   { BIFF record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_LEFTMARGIN, SizeOf(Double));
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_LEFTMARGIN + AMargin, SizeOf(Double));
+  // the MARGIN IDs are consecutive beginning with the one for left margin
 
   { Page margin value, written in inches }
-  dbl := mmToIn(FWorksheet.PageLayout.LeftMargin);
+  case AMargin of
+    0: dbl := FWorksheet.PageLayout.LeftMargin;
+    1: dbl := FWorksheet.PageLayout.RightMargin;
+    2: dbl := FWorksheet.PageLayout.TopMargin;
+    3: dbl := FWorksheet.PageLayout.Bottommargin;
+  end;
+  dbl := mmToIn(dbl);
   AStream.WriteBuffer(dbl, SizeOf(dbl));
 end;
 
@@ -2618,6 +2604,44 @@ begin
   if poHorCentered in FWorksheet.PageLayout.Options then w := 1 else w := 0;
   AStream.WriteWord(WordToLE(w));
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel HEADER or FOOTER record, depending on AIsHeader.
+  Valid for BIFF2-5. Override for BIFF7 because of WideStrings
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteHeaderFooter(AStream: TStream;
+  AIsHeader: Boolean);
+var
+  s: AnsiString;
+  len: Integer;
+  id: Word;
+begin
+  with FWorksheet.PageLayout do
+    if AIsHeader then
+    begin
+      if (Headers[HEADER_FOOTER_INDEX_ALL] = '') then
+        exit;
+      s := ConvertEncoding(Headers[HEADER_FOOTER_INDEX_ALL], 'utf8', FCodePage);
+      id := INT_EXCEL_ID_HEADER;
+    end else
+    begin
+      if (Footers[HEADER_FOOTER_INDEX_ALL] = '') then
+        exit;
+      s := ConvertEncoding(Footers[HEADER_FOOTER_INDEX_ALL], 'utf8', FCodePage);
+      id := INT_EXCEL_ID_FOOTER;
+    end;
+  len := Length(s);
+
+  { BIFF record header }
+  WriteBiffHeader(AStream, id, 1 + len*sizeOf(AnsiChar));
+
+  { 8-bit string length }
+  AStream.WriteByte(len);
+
+  { Characters }
+  AStream.WriteBuffer(s[1], len * SizeOf(AnsiChar));
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes a 64-bit floating point NUMBER record.
@@ -3255,22 +3279,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes the right margin of the printed page (in inches)
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteRightMargin(AStream: TStream);
-var
-  dbl: double;
-begin
-  { BIFF record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_RIGHTMARGIN, SizeOf(Double));
-
-  { Page margin value, written in inches }
-  dbl := mmToIn(FWorksheet.PageLayout.RightMargin);
-  AStream.WriteBuffer(dbl, SizeOf(dbl));
-end;
-
-
-{@@ ----------------------------------------------------------------------------
   Writes an Excel 3-8 ROW record
   Valid for BIFF3-BIFF8
 -------------------------------------------------------------------------------}
@@ -3561,21 +3569,6 @@ procedure TsSpreadBIFFWriter.WriteStringRecord(AStream: TStream;
   AString: String);
 begin
   Unused(AStream, AString);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Write the top margin of the printed page (in inches)
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteTopMargin(AStream: TStream);
-var
-  dbl: double;
-begin
-  { BIFF record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_TOPMARGIN, SizeOf(Double));
-
-  { Page margin value, written in inches }
-  dbl := mmToIn(FWorksheet.PageLayout.TopMargin);
-  AStream.WriteBuffer(dbl, SizeOf(dbl));
 end;
 
 {@@ ----------------------------------------------------------------------------

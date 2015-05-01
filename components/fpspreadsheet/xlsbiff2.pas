@@ -457,28 +457,30 @@ begin
       INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
       INT_EXCEL_ID_BOF         : ;
       INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
-      INT_EXCEL_ID_BOTTOMMARGIN: ReadBottomMargin(AStream);
+      INT_EXCEL_ID_BOTTOMMARGIN: ReadMargin(AStream, 3);
       INT_EXCEL_ID_CODEPAGE    : ReadCodePage(AStream);
       INT_EXCEL_ID_COLWIDTH    : ReadColWidth(AStream);
       INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
       INT_EXCEL_ID_EOF         : BIFF2EOF := True;
       INT_EXCEL_ID_FONT        : ReadFont(AStream);
       INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
+      INT_EXCEL_ID_FOOTER      : ReadHeaderFooter(AStream, false);
       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
       INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
+      INT_EXCEL_ID_HEADER      : ReadHeaderFooter(AStream, true);
       INT_EXCEL_ID_INTEGER     : ReadInteger(AStream);
       INT_EXCEL_ID_IXFE        : ReadIXFE(AStream);
       INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
-      INT_EXCEL_ID_LEFTMARGIN  : ReadLeftMargin(AStream);
+      INT_EXCEL_ID_LEFTMARGIN  : ReadMargin(AStream, 0);
       INT_EXCEL_ID_NOTE        : ReadComment(AStream);
       INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
       INT_EXCEL_ID_PANE        : ReadPane(AStream);
       INT_EXCEL_ID_PRINTGRID   : ReadPrintGridLines(AStream);
       INT_EXCEL_ID_PRINTHEADERS: ReadPrintHeaders(AStream);
-      INT_EXCEL_ID_RIGHTMARGIN : ReadRightMargin(AStream);
+      INT_EXCEL_ID_RIGHTMARGIN : ReadMargin(AStream, 1);
       INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
       INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
-      INT_EXCEL_ID_TOPMARGIN   : ReadTopMargin(AStream);
+      INT_EXCEL_ID_TOPMARGIN   : ReadMargin(AStream, 2);
       INT_EXCEL_ID_DEFROWHEIGHT: ReadDefRowHeight(AStream);
       INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
       INT_EXCEL_ID_XF          : ReadXF(AStream);
@@ -1241,11 +1243,12 @@ begin
     WriteFonts(AStream);
 
     // Page settings block
-    WriteLeftMargin(AStream);
-    WriteRightMargin(AStream);
-    WriteTopMargin(AStream);
-    WriteBottomMargin(AStream);
-//    WritePageSetup(AStream);  // does not exist in BIFF2
+    WriteHeaderFooter(AStream, true);    // true = header
+    WriteHeaderFooter(AStream, false);   // false = footer
+    WriteMargin(AStream, 0);             // 0 = left margin
+    WriteMargin(AStream, 1);             // 1 = right margin
+    WriteMargin(AStream, 2);             // 2 = top margin
+    WriteMargin(AStream, 3);             // 3 = bottom margin
 
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
@@ -1264,7 +1267,7 @@ begin
     WriteWindow1(AStream);
     //  { -- currently not working
     WriteWindow2(AStream, FWorksheet);
-    WritePane(AStream, FWorksheet, false, pane);  // false for "is not BIFF5 or BIFF8"
+    WritePane(AStream, FWorksheet, false, pane);  // false = "is not BIFF5 or BIFF8"
     WriteSelections(AStream, FWorksheet);
       //}
   WriteEOF(AStream);
