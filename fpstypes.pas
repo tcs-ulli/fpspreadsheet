@@ -668,20 +668,12 @@ type
       cctError      : (ErrorValue: TsErrorValue);
   end;
 
-{
-  TsPaperSize = (psUndefined, psLetter, psLetterSmall, psTabloid, psLedger,
-    psLegal, psStatement, psExecutive, psA3, psA4, psA4small, psA5, psB4, psB5,
-    psFolie, psQuarto, ps10x14, ps11x17, psNote, psEnvelope9, psEnvelope10,
-    psEnvelope11, psEnvelope12, psEnvelope14, psC, psD, psE, psEnvelopeDL,
-    psEnvelopeC5, psEnvelopeC3, psEnvelopeC4, psEnvelopeC6, psEnvelopeC6C5,
-    psB4ISO, psB5ISO, psB6ISO,
-    }
-
   TsPageOrientation = (spoPortrait, spoLandscape);
 
   TsPrintOption = (poPrintGridLines, poPrintHeaders, poPrintPagesByRows,
     poMonochrome, poDraftQuality, poPrintCellComments, poDefaultOrientation,
-    poUseStartPageNumber, poCommentsAtEnd, poHorCentered, poVertCentered);
+    poUseStartPageNumber, poCommentsAtEnd, poHorCentered, poVertCentered,
+    poDifferentOddEven, poDifferentFirst);
 
   TsPrintOptions = set of TsPrintOption;
 
@@ -701,7 +693,34 @@ type
     FitHeightToPages: Integer;
     Copies: Integer;
     Options: TsPrintOptions;
+    { Headers and footers are in Excel syntax:
+      - left/center/right sections begin with &L / &C / &R
+      - page number: &P
+      - page count: &N
+      - current date: &D
+      - current time:  &T
+      - sheet name: &A
+      - file name without path: &F
+      - file path without file name: &Z
+      - bold/italic/underlining/double underlining/strike out/shadowed/
+        outlined/superscript/subscript on/off:
+          &B / &I / &U / &E / &S / &H
+          &O / &X / &Y
+      There can be three headers/footers, for first ([0]) page and
+      odd ([1])/even ([2]) page numbers.
+      This is activated by Options poDifferentOddEven and poDifferentFirst.
+      Array index 1 contains the strings if these options are not used. }
+    Headers: array[0..2] of string;
+    Footers: array[0..2] of string;
   end;
+
+const
+  {@@ Indexes to be used for the various headers and footers }
+  HEADER_FOOTER_INDEX_FIRST   = 0;
+  HEADER_FOOTER_INDEX_ODD     = 1;
+  HEADER_FOOTER_INDEX_EVEN    = 2;
+  HEADER_FOOTER_INDEX_ODDEVEN = 1;
+  HEADER_FOOTER_INDEX_ALL     = 1;
 
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 

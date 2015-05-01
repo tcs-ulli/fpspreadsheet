@@ -877,6 +877,20 @@ begin
           nodeName := node.NodeName;
           if nodeName = 'style:page-layout-properties' then
           begin
+            s := GetAttrValue(node, 'style:print-orientation');
+            if s = 'landscape' then
+              FPageLayout.Orientation := spoLandscape
+            else if s = 'portrait' then
+              FPageLayout.Orientation := spoPortrait;
+
+            s := GetAttrValue(node, 'fo:page-width');
+            if s <> '' then
+              FPageLayout.PageWidth := PtsToMM(HTMLLengthStrToPts(s));
+
+            s := GetAttrValue(node, 'fo:page-height');
+            if s <> '' then
+              FPageLayout.PageHeight := PtsToMM(HTMLLengthStrToPts(s));
+
             s := GetAttrValue(node, 'fo:margin-top');
             if s <> '' then
               FPageLayout.TopMargin := PtsToMM(HTMLLengthStrToPts(s));

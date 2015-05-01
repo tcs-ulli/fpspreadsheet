@@ -392,14 +392,16 @@ begin
       INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
       INT_EXCEL_ID_BOF           : ;
       INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
-      INT_EXCEL_ID_BOTTOMMARGIN  : ReadBottomMargin(AStream);
+      INT_EXCEL_ID_BOTTOMMARGIN  : ReadMargin(AStream, 3);
       INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
       INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
       INT_EXCEL_ID_EOF           : SectionEOF := True;
+      INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
       INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+      INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
       INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
       INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
-      INT_EXCEL_ID_LEFTMARGIN    : ReadLeftMargin(AStream);
+      INT_EXCEL_ID_LEFTMARGIN    : ReadMargin(AStream, 0);
       INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
       INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
       INT_EXCEL_ID_NOTE          : ReadComment(AStream);
@@ -408,13 +410,13 @@ begin
       INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
       INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
       INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
-      INT_EXCEL_ID_RIGHTMARGIN   : ReadRightMargin(AStream);
+      INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
       INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
       INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
       INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
       INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
-      INT_EXCEL_ID_TOPMARGIN     : ReadTopMargin(AStream);
+      INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
       INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
@@ -1044,12 +1046,14 @@ begin
       WritePrintGridLines(AStream);
 
       // Page settings block
+      WriteHeaderFooter(AStream, true);
+      WriteHeaderFooter(AStream, false);
       WriteHCenter(AStream);
       WriteVCenter(AStream);
-      WriteLeftMargin(AStream);
-      WriteRightMargin(AStream);
-      WriteTopMargin(AStream);
-      WriteBottomMargin(AStream);
+      WriteMargin(AStream, 0);  // 0 = left margin
+      WriteMargin(AStream, 1);  // 1 = right margin
+      WriteMargin(AStream, 2);  // 2 = top margin
+      WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
 
       WriteColInfos(AStream, FWorksheet);

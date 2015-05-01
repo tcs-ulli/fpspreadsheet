@@ -2408,6 +2408,8 @@ end;
   Initializes the fields of a TsPageLayout record
 -------------------------------------------------------------------------------}
 procedure InitPageLayout(out APageLayout: TsPageLayout);
+var
+  i: Integer;
 begin
   with APageLayout do begin
     Orientation := spoPortrait;
@@ -2425,6 +2427,8 @@ begin
     FitHeightToPages := 0;
     Copies := 1;
     Options := [];
+    for i:=0 to 2 do Headers[i] := '';
+    for i:=0 to 2 do Footers[i] := '';
   end;
 end;
 
