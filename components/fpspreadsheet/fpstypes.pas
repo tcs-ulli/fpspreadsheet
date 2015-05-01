@@ -714,6 +714,8 @@ type
     Footers: array[0..2] of string;
   end;
 
+  PsPageLayout = ^TsPageLayout;
+
 const
   {@@ Indexes to be used for the various headers and footers }
   HEADER_FOOTER_INDEX_FIRST   = 0;

@@ -2925,16 +2925,16 @@ begin
     AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
     if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
     begin
-      AStrings.Add(Format('  Header (first)=%s', [ASheet.PageLayout.Headers[0]]));
-      AStrings.Add(Format('  Header (odd)=%s', [ASheet.PageLayout.Headers[1]]));
-      AStrings.Add(Format('  Header (even)=%s', [ASheet.PageLayout.Headers[2]]));
-      AStrings.Add(Format('  Footer (first)=%s', [ASheet.PageLayout.Footers[0]]));
-      AStrings.Add(Format('  Footer (odd)=%s', [ASheet.PageLayout.Footers[1]]));
-      AStrings.Add(Format('  Footer (even)=%s', [ASheet.PageLayout.Footers[2]]));
+      AStrings.Add(Format('  Header (first)=%s', [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]));
+      AStrings.Add(Format('  Header (odd)=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
+      AStrings.Add(Format('  Header (even)=%s', [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]));
+      AStrings.Add(Format('  Footer (first)=%s', [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]));
+      AStrings.Add(Format('  Footer (odd)=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]));
+      AStrings.Add(Format('  Footer (even)=%s', [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]));
     end else
     begin
-      AStrings.Add(Format('  Header=%s', [ASheet.PageLayout.Headers[1]]));
-      AStrings.Add(Format('  Footer=%s', [ASheet.PageLayout.Footers[1]]));
+      AStrings.Add(Format('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
+      AStrings.Add(Format('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]));
     end;
     s := '';
     for po in TsPrintOption do
