@@ -1387,6 +1387,7 @@ begin
   if ANode = nil then
     exit;
 
+  // Paper size
   s := GetAttrValue(ANode, 'paperSize');
   if s <> '' then
   begin
@@ -1398,11 +1399,50 @@ begin
     end;
   end;
 
-  s:= GetAttrValue(ANode, 'orientation');
+  // Orientation
+  s := GetAttrValue(ANode, 'orientation');
   if s = 'portrait' then
     AWorksheet.PageLayout.Orientation := spoPortrait
   else if s = 'landscape' then
     AWorksheet.PageLayout.Orientation := spoLandscape;
+
+  // Scaling factor
+  s := GetAttrValue(ANode, 'scale');
+  if s <> '' then
+    AWorksheet.PageLayout.ScalingFactor := StrToInt(s);
+
+  // Fit print job to pages
+  s := GetAttrValue(ANode, 'fitToHeight');
+  if s <> '' then
+    AWorksheet.PageLayout.FitHeightToPages := StrToInt(s);
+  if poFitPages in AWorksheet.PageLayout.Options then
+
+  s := GetAttrValue(ANode, 'fitToWidth');
+  if s <> '' then
+    AWorksheet.PageLayout.FitWidthToPages := StrToInt(s);
+
+  if (AWorksheet.PageLayout.FitHeightToPages > 0) or (AWorksheet.PageLayout.FitWidthToPages > 0) then
+    Include(AWorksheet.pageLayout.Options, poFitPages);
+
+  // First page number
+  s := GetAttrValue(ANode, 'useFirstPageNumber');
+  if s <> '' then
+    AWorksheet.PageLayout.StartPageNumber := StrToInt(s);
+
+  // Print order
+  s := GetAttrValue(ANode, 'pageOrder');
+  if s = 'overThenDown' then
+    Include(AWorksheet.PageLayout.Options, poPrintPagesByRows);
+
+  // Monochrome
+  s := GetAttrValue(ANode, 'blackAndWhite');
+  if s = '1' then
+    Include(AWorksheet.PageLayout.Options, poMonochrome);
+
+  // Quality
+  s := GetAttrValue(ANode, 'draft');
+  if s = '1' then
+    Include(AWorksheet.PageLayout.Options, poDraftQuality);
 end;
 
 procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
@@ -2296,31 +2336,31 @@ begin
       s := s + ' differentOddEven="1"';
 
     AppendToStream(AStream,
-        '<headerFooter' + s);
+        '<headerFooter' + s + '>');
 
     if Headers[HEADER_FOOTER_INDEX_ODD] <> '' then
       AppendToStream(AStream,
-          '<oddHeader>' + Headers[HEADER_FOOTER_INDEX_ODD] + '</oddHeader>');
+          '<oddHeader>' + UTF8TextToXMLText(Headers[HEADER_FOOTER_INDEX_ODD]) + '</oddHeader>');
     if Footers[HEADER_FOOTER_INDEX_ODD] <> '' then
       AppendToStream(AStream,
-          '<oddFooter>' + Footers[HEADER_FOOTER_INDEX_ODD] + '</oddFooter>');
+          '<oddFooter>' + UTF8TextToXMLText(Footers[HEADER_FOOTER_INDEX_ODD]) + '</oddFooter>');
 
     if poDifferentFirst in AWorksheet.PageLayout.Options then
     begin
       if Headers[HEADER_FOOTER_INDEX_FIRST] <> '' then
         AppendToStream(AStream,
-          '<firstHeader>' + Headers[HEADER_FOOTER_INDEX_FIRST] + '</firstHeader>');
+          '<firstHeader>' + UTF8TextToXMLText(Headers[HEADER_FOOTER_INDEX_FIRST]) + '</firstHeader>');
       if Footers[HEADER_FOOTER_INDEX_FIRST] <> '' then
         AppendToStream(AStream,
-          '<firstFooter>' + Footers[HEADER_FOOTER_INDEX_FIRST] + '</firstFooter>');
+          '<firstFooter>' + UTF8TextToXMLText(Footers[HEADER_FOOTER_INDEX_FIRST]) + '</firstFooter>');
     end;
 
     if poDifferentOddEven in Options then
     begin
       AppendToStream(AStream,
-          '<evenHeader>' + Headers[HEADER_FOOTER_INDEX_EVEN] + '</evenHeader>');
+          '<evenHeader>' + UTF8TextToXMLText(Headers[HEADER_FOOTER_INDEX_EVEN]) + '</evenHeader>');
       AppendToStream(AStream,
-          '<evenFooter>' + Footers[HEADER_FOOTER_INDEX_EVEN] + '</evenFooter>');
+          '<evenFooter>' + UTF8TextToXMLText(Footers[HEADER_FOOTER_INDEX_EVEN]) + '</evenFooter>');
     end;
 
     AppendToStream(AStream,

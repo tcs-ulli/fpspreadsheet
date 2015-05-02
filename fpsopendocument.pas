@@ -87,7 +87,7 @@ type
     // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
     function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
-    function ReadHeaderFooterAsXMLString(ANode: TDOMNode): String;
+    function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
 
@@ -126,14 +126,17 @@ type
     FRowStyleList: TFPList;
 
     // Routines to write parts of files
+    procedure WriteAutomaticStyles(AStream: TStream);
     procedure WriteCellStyles(AStream: TStream);
     procedure WriteColStyles(AStream: TStream);
     procedure WriteColumns(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteFontNames(AStream: TStream);
+    procedure WriteMasterStyles(AStream: TStream);
     procedure WriteNumFormats(AStream: TStream);
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteTableSettings(AStream: TStream);
+    procedure WriteTableStyles(AStream: TStream);
     procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -167,7 +170,7 @@ type
     procedure WriteMeta;
     procedure WriteSettings;
     procedure WriteStyles;
-    procedure WriteWorksheet(AStream: TStream; CurSheet: TsWorksheet);
+    procedure WriteWorksheet(AStream: TStream; ASheetIndex: Integer);
 
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -881,9 +884,11 @@ procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
 var
   nodeName: String;
   layoutNode: TDOMNode;
-  node: TDOMNode;
+  node, child: TDOMNode;
   s: String;
   data: TPageLayoutData;
+  isHeader: Boolean;
+  h: Double;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -919,10 +924,12 @@ begin
           s := GetAttrValue(node, 'fo:margin-top');
           if s <> '' then
             data.PageLayout.TopMargin := PtsToMM(HTMLLengthStrToPts(s));
+            // But: if there is a header this value is the headermargin!
 
           s := GetAttrValue(node, 'fo:margin-bottom');
           if s <> '' then
             data.PageLayout.BottomMargin := PtsToMM(HTMLLengthStrToPts(s));
+            // But: if there is a footer this value is the footermargin!
 
           s := GetAttrValue(node, 'fo:margin-left');
           if s <> '' then
@@ -937,6 +944,31 @@ begin
           begin
             if s[Length(s)] = '%' then Delete(s, Length(s), 1);
             data.PageLayout.ScalingFactor := StrToFloat(s, FPointSeparatorSettings);
+            Exclude(data.PageLayout.Options, poFitPages);
+          end;
+
+          s := GetAttrValue(node, 'style:scale-to-X');
+          if s <> '' then
+          begin
+            data.PageLayout.FitWidthToPages := StrToInt(s);
+            Include(data.PageLayout.Options, poFitPages);
+          end;
+
+          s := GetAttrValue(node, 'style:scale-to-Y');
+          if s <> '' then
+          begin
+            data.PageLayout.FitHeightToPages := StrToInt(s);
+            Include(data.PageLayout.Options, poFitPages);
+          end;
+
+          s := GetAttrValue(node, 'style:table-centering');
+          case s of
+            'both':
+              data.PageLayout.Options := data.PageLayout.Options + [poHorCentered, poVertCentered];
+            'horizontal':
+              data.PageLayout.Options := data.PageLayout.Options + [poHorCentered] - [poVertCentered];
+            'vertical':
+              data.PageLayout.Options := data.PageLayout.Options - [poHorCentered] + [poVertCentered];
           end;
 
           s := GetAttrValue(node, 'style:print');
@@ -959,6 +991,33 @@ begin
             Include(data.PageLayout.Options, poUseStartPageNumber);
 
           FPageLayoutList.Add(data);
+        end else
+        if (nodeName = 'style:header-style') or (nodeName = 'style:footer.style')
+        then
+        begin
+          isHeader := nodeName = 'style:header-style';
+          child := node.FirstChild;
+          while child <> nil do
+          begin
+            nodeName := child.NodeName;
+            if nodeName = 'style:header-footer-properties' then
+            begin
+              s := GetAttrValue(child, 'fo:min-height');
+              if s <> '' then begin
+                h := PtsToMM(HTMLLengthStrToPts(s));
+                if isHeader then
+                begin
+                  data.PageLayout.HeaderMargin := data.PageLayout.TopMargin;
+                  data.PageLayout.TopMargin := data.PageLayout.HeaderMargin + h;
+                end else
+                begin
+                  data.PageLayout.FooterMargin := data.PageLayout.BottomMargin;
+                  data.PageLayout.BottomMargin := data.PageLayout.FooterMargin + h;
+                end;
+              end;
+            end;
+            child := child.NextSibling;
+          end;
         end;
         node := node.NextSibling;
       end;
@@ -967,7 +1026,7 @@ begin
   end;
 end;
 
-function TsSpreadOpenDocReader.ReadHeaderFooterAsXMLString(ANode: TDOMNode): String;
+function TsSpreadOpenDocReader.ReadHeaderFooterText(ANode: TDOMNode): String;
 var
   regionNode, textNode, spanNode: TDOMNode;
   nodeName: String;
@@ -1022,17 +1081,17 @@ begin
     end else
     if (nodeName = 'style:region-left') then
     begin
-      s := ReadHeaderFooterAsXMLString(regionNode);
+      s := ReadHeaderFooterText(regionNode);
       Result := Result + '&L' + s;
     end else
     if (nodeName = 'style:region-center') then
     begin
-      s := ReadHeaderFooterAsXMLString(regionNode);
+      s := ReadHeaderFooterText(regionNode);
       Result := Result + '&C' + s;
     end else
     if (nodeName = 'style:region-right') then
     begin
-      s := ReadHeaderFooterAsXMLString(regionNode);
+      s := ReadHeaderFooterText(regionNode);
       Result := Result + '&R' + s;
     end;
     regionNode := regionNode.NextSibling;
@@ -1079,13 +1138,13 @@ begin
         nodeName := styleNode.NodeName;
         if nodeName = 'style:header' then
         begin
-          s := ReadHeaderFooterAsXMLString(styleNode);
+          s := ReadHeaderFooterText(styleNode);
           if s <> '' then
             pageLayout^.Headers[HEADER_FOOTER_INDEX_ODD] := s;
         end else
         if nodeName = 'style:header-left' then
         begin
-          s := ReadHeaderFooterAsXMLString(styleNode);
+          s := ReadHeaderFooterText(styleNode);
           if s <> '' then
           begin
             pageLayout^.Headers[HEADER_FOOTER_INDEX_EVEN] := s;
@@ -1097,13 +1156,13 @@ begin
         end else
         if nodeName = 'style:footer' then
         begin
-          s := ReadHeaderFooterAsXMLString(styleNode);
+          s := ReadHeaderFooterText(styleNode);
           if s <> '' then
             pageLayout^.Footers[HEADER_FOOTER_INDEX_ODD] := s;
         end else
         if nodeName = 'style:footer-left' then
         begin
-          s := ReadHeaderFooterAsXMLString(styleNode);
+          s := ReadHeaderFooterText(styleNode);
           if s <> '' then
           begin
             pageLayout^.Footers[HEADER_FOOTER_INDEX_EVEN] := s;
@@ -3042,6 +3101,164 @@ begin
   FSMetaInfManifest.Position := 0;
 end;
 
+procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
+
+  function PageLayoutAsXMLString(AStyleName: String;
+    const APageLayout: TsPageLayout): String;
+  const
+    ORIENTATIONS: Array[TsPageOrientation] of string = ('portrait', 'landscape');
+    PAGEORDERS: Array[boolean] of string = ('ttb', 'ltr');
+  var
+    pageLayoutStr: String;
+    headerStyleStr: String;
+    footerStyleStr: String;
+    options: String;
+    i: Integer;
+    hasHeader, hasFooter: Boolean;
+    topmargin, bottommargin: Double;
+  begin
+    hasHeader := false;
+    hasFooter := false;
+    for i:=0 to High(APageLayout.Headers) do
+    begin
+      if APageLayout.Headers[i] <> '' then hasHeader := true;
+      if APageLayout.Footers[i] <> '' then hasFooter := true;
+    end;
+
+    if hasHeader then
+      topMargin := APageLayout.HeaderMargin
+    else
+      topMargin := APageLayout.TopMargin;
+
+    if hasFooter then
+      bottomMargin := APageLayout.FooterMargin
+    else
+      bottomMargin := APageLayout.BottomMargin;
+
+    pageLayoutStr := Format(
+        'fo:page-width="%.2fmm" fo:page-height="%.2fmm" '+
+        'fo:margin-top="%.2fmm" fo:margin-bottom="%.2fmm" '+
+        'fo:margin-left="%.2fmm" fo:margin-right="%.2fmm" ', [
+        APageLayout.PageWidth, APageLayout.PageHeight,
+        topmargin, bottommargin,
+        APageLayout.LeftMargin, APageLayout.RightMargin
+      ], FPointSeparatorSettings);
+
+    if APageLayout.Orientation = spoLandscape then
+      pageLayoutStr := pageLayoutStr + 'style:print-orientation="landscape" ';
+
+    if poPrintPagesByRows in APageLayout.Options then
+      pageLayoutStr := pageLayoutStr + 'style:print-page-order="ltr" ';
+
+    if poUseStartPageNumber in APageLayout.Options then
+      pageLayoutStr := pageLayoutStr + 'style:first-page-number="' + IntToStr(APageLayout.StartPageNumber) +'" '
+    else
+      pageLayoutStr := pageLayoutStr + 'style:first-page-number="continue" ';
+
+    if APageLayout.Options * [poHorCentered, poVertCentered] = [poHorCentered, poVertCentered] then
+      pageLayoutStr := pageLayoutStr + 'style:table-centering="both" '
+    else if poHorCentered in APageLayout.Options then
+      pageLayoutStr := pageLayoutStr + 'style:table-centering="horizontal" '
+    else if poVertCentered in APageLayout.Options then
+      pageLayoutStr := pageLayoutStr + 'style:table-centering="vertical" ';
+
+    if poFitPages in APageLayout.Options then
+    begin
+      if APageLayout.FitWidthToPages > 0 then
+        pageLayoutStr := pageLayoutStr + 'style:scale-to-X="' + IntToStr(APageLayout.FitWidthToPages) + '" ';
+      if APageLayout.FitHeightToPages > 0 then
+        pageLayoutStr := pageLayoutStr + 'style:scale-to-Y="' + IntToStr(APageLayout.FitHeightToPages) + '" ';
+    end else
+      pageLayoutStr := pageLayoutStr + 'style:scale-to="' + IntToStr(round(APageLayout.ScalingFactor)) + '%" ';
+
+    options := 'charts drawings objects zero-values';
+    if poPrintGridLines in APageLayout.Options then
+      options := options + ' grid';
+    if poPrintHeaders in APageLayout.Options then
+      options := options + ' headers';
+    if poPrintCellComments in APageLayout.Options then
+      options := options + ' annotations';
+
+    pageLayoutStr := pageLayoutStr + 'style:print="' + options + '" ';
+
+    if hasHeader then
+      headerStyleStr := Format(
+        '<style:header-style>'+
+          '<style:header-footer-properties ' +
+            'fo:margin-left="0mm" fo:margin-right="0mm" '+
+            'fo:min-height="%.2fmm" '+
+          '/>'+
+        '</style:header-style>', [
+        APageLayout.TopMargin - APageLayout.HeaderMargin], FPointSeparatorSettings)
+    else
+      headerStyleStr := '';
+
+    if hasFooter then
+      footerStyleStr := Format(
+        '<style:footer-style>'+
+          '<style:header-footer-properties ' +
+            'fo:margin-left="0mm" fo:margin-right="0mm" '+
+            'fo:min-height="%.2fmm" '+
+          '/>'+
+        '</style:footer-style>', [
+        APageLayout.BottomMargin - APageLayout.FooterMargin], FPointSeparatorSettings)
+    else
+      footerStyleStr := '';
+
+    Result := '<style:page-layout style:name="' + AStyleName + '">' +
+                '<style:page-layout-properties ' + pageLayoutStr + '/>'+
+                headerStyleStr +
+                footerStyleStr +
+              '</style:page-layout>';
+  end;
+
+var
+  i: Integer;
+  sheet: TsWorksheet;
+
+begin
+  AppendToStream(AStream,
+    '<office:automatic-styles>');
+
+  AppendToStream(AStream,
+      '<style:page-layout style:name="Mpm1">' +
+
+        '<style:page-layout-properties '+
+             'fo:margin-top="1.25cm" '+
+             'fo:margin-bottom="1.25cm" '+
+             'fo:margin-left="1.905cm" '+
+             'fo:margin-right="1.905cm" />' +
+
+        '<style:header-style>' +
+          '<style:header-footer-properties '+
+             'fo:min-height="0.751cm" '+
+             'fo:margin-left="0cm" '+
+             'fo:margin-right="0cm" '+
+             'fo:margin-bottom="0.25cm" '+
+             'fo:margin-top="0cm" />' +
+        '</style:header-style>' +
+
+        '<style:footer-style>' +
+          '<style:header-footer-properties '+
+             'fo:min-height="0.751cm" '+
+             'fo:margin-left="0cm" '+
+             'fo:margin-right="0cm" '+
+             'fo:margin-top="0.25cm" '+
+             'fo:margin-bottom="0cm" />' +
+        '</style:footer-style>' +
+
+      '</style:page-layout>');
+
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    AppendToStream(AStream,
+      PageLayoutAsXMLString('Mpm' + IntToStr(3+i), sheet.PageLayout));
+  end;
+
+  AppendToStream(AStream,
+    '</office:automatic-styles>');
+end;
+
 procedure TsSpreadOpenDocWriter.WriteMimetype;
 begin
   AppendToStream(FSMimeType,
@@ -3163,28 +3380,10 @@ begin
   AppendToStream(FSStyles,
       '</office:styles>');
 
-  AppendToStream(FSStyles,
-      '<office:automatic-styles>' +
-        '<style:page-layout style:name="pm1">' +
-          '<style:page-layout-properties fo:margin-top="1.25cm" fo:margin-bottom="1.25cm" fo:margin-left="1.905cm" fo:margin-right="1.905cm" />' +
-          '<style:header-style>' +
-            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-bottom="0.25cm" fo:margin-top="0cm" />' +
-          '</style:header-style>' +
-          '<style:footer-style>' +
-            '<style:header-footer-properties fo:min-height="0.751cm" fo:margin-left="0cm" fo:margin-right="0cm" fo:margin-top="0.25cm" fo:margin-bottom="0cm" />' +
-          '</style:footer-style>' +
-        '</style:page-layout>' +
-      '</office:automatic-styles>');
+  WriteAutomaticStyles(FSStyles);
+  WriteMasterStyles(FSStyles);
 
   AppendToStream(FSStyles,
-      '<office:master-styles>' +
-        '<style:master-page style:name="Default" style:page-layout-name="pm1">' +
-          '<style:header />' +
-          '<style:header-left style:display="false" />' +
-          '<style:footer />' +
-          '<style:footer-left style:display="false" />' +
-        '</style:master-page>' +
-      '</office:master-styles>' +
     '</office:document-styles>');
 end;
 
@@ -3228,13 +3427,9 @@ begin
   WriteNumFormats(FSContent);
   WriteColStyles(FSContent);
   WriteRowStyles(FSContent);
-
-  AppendToStream(FSContent,
-        '<style:style style:name="ta1" style:family="table" style:master-page-name="Default">' +
-          '<style:table-properties table:display="true" style:writing-mode="lr-tb"/>' +
-        '</style:style>');
-  // Automatically generated styles
+  WriteTableStyles(FSContent);
   WriteCellStyles(FSContent);
+
   AppendToStream(FSContent,
       '</office:automatic-styles>');
 
@@ -3245,7 +3440,7 @@ begin
 
   // Write all worksheets
   for i := 0 to Workbook.GetWorksheetCount - 1 do
-    WriteWorksheet(FSContent, Workbook.GetWorksheetByIndex(i));
+    WriteWorksheet(FSContent, i);
 
   AppendToStream(FSContent,
         '</office:spreadsheet>' +
@@ -3255,25 +3450,27 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
-  CurSheet: TsWorksheet);
+  ASheetIndex: Integer);
 begin
-  FWorksheet := CurSheet;
+  FWorksheet := FWorkbook.GetWorksheetByIndex(ASheetIndex);
 
   // Header
-  AppendToStream(AStream,
-    '<table:table table:name="' + CurSheet.Name + '" table:style-name="ta1">');
+  AppendToStream(AStream, Format(
+    '<table:table table:name="%s" table:style-name="ta%d">', [
+    FWorkSheet.Name, ASheetIndex+1
+  ]));
 
   // columns
-  WriteColumns(AStream, CurSheet);
+  WriteColumns(AStream, FWorkSheet);
 
   // rows and cells
   // The cells need to be written in order, row by row, cell by cell
   if (boVirtualMode in Workbook.Options) then
   begin
     if Assigned(Workbook.OnWriteCellData) then
-      WriteVirtualCells(AStream, CurSheet)
+      WriteVirtualCells(AStream, FWorksheet)
   end else
-    WriteRowsAndCells(AStream, CurSheet);
+    WriteRowsAndCells(AStream, FWorksheet);
 
   // Footer
   AppendToStream(AStream,
@@ -3492,6 +3689,142 @@ begin
     '</office:font-face-decls>');
 end;
 
+procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
+
+  function HeaderFooterAsString(AIndex: Integer; AIsHeader: Boolean;
+    const APageLayout: TsPageLayout): String;
+  var
+    p: Integer;
+    str: String;
+    region: Integer;  // -1=default, 0=left, 1=center, 2=right
+  begin
+    Result := '';
+    if AIsHeader then
+      str := APageLayout.Headers[AIndex] else
+      str := APageLayout.Footers[AIndex];
+    if str = '' then
+      exit;
+    p := 1;
+    region := -1;
+    while p <= Length(str) do begin
+      if (str[p] = '&') and (p < Length(str)) then
+      begin
+        inc(p);
+        case str[p] of
+          'L': begin
+                 case region of
+                   0: Result := Result + '</text:p></style:region-left>';
+                   1: Result := Result + '</text:p></style:region-center>';
+                   2: Result := Result + '</text:p></style:region-right>';
+                 end;
+                 Result := Result + '<style:region-left><text:p>';
+                 region := 0;
+               end;
+          'C': begin
+                 case region of
+                   0: Result := Result + '</text:p></style:region-left>';
+                   1: Result := Result + '</text:p></style:region-center>';
+                   2: Result := Result + '</text:p></style:region-right>';
+                 end;
+                 Result := Result + '<style:region-center><text:p>';
+                 region := 1;
+               end;
+          'R': begin
+                 case region of
+                   0: Result := Result + '</text:p></style:region-left>';
+                   1: Result := Result + '</text:p></style:region-center>';
+                   2: Result := Result + '</text:p></style:region-right>';
+                 end;
+                 Result := Result + '<style:region-right><text:p>';
+                 region := 2;
+               end;
+          'A': Result := Result + '<text:sheet-name>???</text:sheet-name>';
+          'D': Result := Result + Format(
+                 '<text:date style:data-style-name="N2" text:date-value="%s">%s</text:date>',
+                 [FormatDateTime('yyyy"-"mm"-"dd', date()), DateToStr(date())]);
+          'F': Result := Result + '<text:file-name text:display="full">???</text:file-name>';
+          'P': Result := Result + '<text:page-number>1</text:page-number>';
+          'N': Result := Result + '<text:page-count>1</text:page-count>';
+          'T': Result := Result + Format(
+                 '<text:time>%s</text:time>', [FormatDateTime('hh:nn:ss', time())]);
+          'Z': Result := Result + '<text:file-name text:display="path">???</text:file-name>';
+        end;
+      end
+      else
+        Result := Result + str[p];
+      inc(p);
+    end; // while
+
+    case region of
+      -1: Result := '<text:p>' + Result + '</text:p>';
+       0: Result := Result + '</text:p></style:region-left>';
+       1: Result := Result + '</text:p></style:region-center>';
+       2: Result := Result + '</text:p></style:region-right>';
+    end;
+  end;
+
+  function MasterPageAsString(AStyleName, ADisplayName, APageLayoutName: String;
+    const APageLayout: TsPageLayout): String;
+  const
+    IS_HEADER = true;
+    IS_FOOTER = false;
+  var
+    headerstyleStr: array[1..2] of String;  // 1=odd=right, 2=even=left
+    footerStyleStr: array[1..2] of String;
+  begin
+    Result := Format(
+      '<style:master-page style:name="%s" ' +
+                        'style:display-name="%s" ' +
+                        'style:page-layout-name="%s">', [
+      AStyleName, ADisplayName, APageLayoutName
+    ]);
+
+    Result := Result +
+        '<style:header>' +
+          HeaderFooterAsString(1, IS_HEADER, APageLayout) +
+        '</style:header>' +
+        '<style:footer>' +
+          HeaderFooterAsString(1, IS_FOOTER, APageLayout) +
+        '</style:footer>';
+
+    if poDifferentOddEven in APageLayout.Options then
+      Result := Result +
+        '<style:header-left>' +
+          HeaderFooterAsString(2, IS_HEADER, APageLayout) +
+        '</style:header-left>' +
+        '<style:footer-left>' +
+          HeaderFooterAsString(2, IS_FOOTER, APageLayout) +
+        '</style:footer-left>';
+
+    Result := Result + '</style:master-page>';
+  end;
+
+var
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  AppendToStream(AStream,
+    '<office:master-styles>');
+
+  AppendToStream(AStream,
+      '<style:master-page style:name="Default" style:page-layout-name="Mpm1">' +
+        '<style:header />' +
+        '<style:header-left style:display="false" />' +
+        '<style:footer />' +
+        '<style:footer-left style:display="false" />' +
+      '</style:master-page>');
+
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    AppendToStream(AStream,
+      MasterPageAsString('PageStyle_5f_' + sheet.Name, 'PageStyle_' + sheet.Name,
+        'Mpm' + IntToStr(3+i), sheet.PageLayout));
+  end;
+
+  AppendToStream(AStream,
+    '</office:master-styles>');
+end;
+
 procedure TsSpreadOpenDocWriter.WriteNumFormats(AStream: TStream);
 var
   i, p: Integer;
@@ -3705,7 +4038,7 @@ begin
 
     // Column width
     AppendToStream(AStream, Format(
-      '<style:table-row-properties style:row-height="%.3gmm" ', [rowStyle.RowHeight], FPointSeparatorSettings));
+      '<style:table-row-properties style:row-height="%.3fmm" ', [rowStyle.RowHeight], FPointSeparatorSettings));
     if rowStyle.AutoRowHeight then
       AppendToStream(AStream, 'style:use-optimal-row-height="true" ');
     AppendToStream(AStream, 'fo:break-before="auto"/>');
@@ -4202,6 +4535,23 @@ begin
        // this "ShowGrid" overrides the global setting. But Open/LibreOffice do not allow to change ShowGrid per sheet.
     AppendToStream(AStream,
       '</config:config-item-map-entry>');
+  end;
+end;
+
+procedure TsSpreadOpenDocWriter.WriteTableStyles(AStream: TStream);
+var
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    AppendToStream(AStream, Format(
+      '<style:style style:name="ta%d" style:family="table" style:master-page-name="PageStyle_5f_%s">' +
+        '<style:table-properties table:display="true" style:writing-mode="lr-tb"/>' +
+      '</style:style>', [
+      i+1, sheet.Name
+    ]));
   end;
 end;
 
