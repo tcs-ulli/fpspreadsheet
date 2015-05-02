@@ -673,7 +673,7 @@ type
   TsPrintOption = (poPrintGridLines, poPrintHeaders, poPrintPagesByRows,
     poMonochrome, poDraftQuality, poPrintCellComments, poDefaultOrientation,
     poUseStartPageNumber, poCommentsAtEnd, poHorCentered, poVertCentered,
-    poDifferentOddEven, poDifferentFirst);
+    poDifferentOddEven, poDifferentFirst, poFitPages);
 
   TsPrintOptions = set of TsPrintOption;
 

@@ -1509,6 +1509,9 @@ begin
   // Fit worksheet height to this number of pages (0 = use as many as needed)
   FWorksheet.PageLayout.FitHeightToPages := WordLEToN(AStream.ReadWord);
 
+  if (FWorksheet.PageLayout.FitWidthToPages > 0) or (FWorksheet.PageLayout.FitHeightToPages > 0)
+    then Include(FWorksheet.PageLayout.Options, poFitPages);
+
   // Option flags
   w := WordLEToN(AStream.ReadWord);
   if w and $0001 <> 0 then
@@ -2736,12 +2739,12 @@ begin
     end;
   AStream.WriteWord(WordToLE(w));
 
-  { Scaling factor in percent }
-  w := Round(FWorksheet.PageLayout.ScalingFactor);
-  AStream.WriteWord(WordToLE(w));
-
   { Start page number }
   w := FWorksheet.PageLayout.StartPageNumber;
+  AStream.WriteWord(WordToLE(w));
+
+  { Scaling factor in percent }
+  w := Round(FWorksheet.PageLayout.ScalingFactor);
   AStream.WriteWord(WordToLE(w));
 
   { Fit worksheet width to this number of pages, 0 = use as many as needed }
