@@ -1197,6 +1197,12 @@ var
   err: TsErrorValue;
   ok: Boolean;
   cell: PCell;
+
+
+
+
+
+  fmt: TsCellFormat;
 begin
   { Index to XF Record }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1217,7 +1223,9 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);    // "Real" cell
+    cell := FWorksheet.GetCell(ARow, ACol);    // "Real" cell
+    // Don't call "AddCell" because, if the cell belongs to a shared formula, it
+    // already has been created before, and then would exist in the tree twice.
 
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
@@ -1243,9 +1251,9 @@ begin
     {Find out what cell type, set content type and value}
     ExtractNumberFormat(XF, nf, nfs);
     if IsDateTime(ResultFormula, nf, nfs, dt) then
-      FWorksheet.WriteDateTime(cell, dt, nf, nfs)
+      FWorksheet.WriteDateTime(cell, dt) //, nf, nfs)
     else
-      FWorksheet.WriteNumber(cell, ResultFormula, nf, nfs);
+      FWorksheet.WriteNumber(cell, ResultFormula); //, nf, nfs);
   end;
 
   { Formula token array }
@@ -2025,7 +2033,9 @@ begin
     InitCell(r1, c1, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(r1, c1);        // "Real" cell
+    cell := FWorksheet.GetCell(r1, c1);        // "Real" cell
+    // Don't use "AddCell" here because this cell already exists in files written
+    // by Excel, and this would destroy its formatting.
 
   // Unused
   AStream.ReadByte;
