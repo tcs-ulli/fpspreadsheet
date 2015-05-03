@@ -3325,8 +3325,8 @@ begin
     exit;
   end;
 
-  if (Result.ResultType in [rtInteger, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtInteger, rtCell, rtEmpty])
+  if (Result.ResultType in [rtInteger, {rtCell, }rtEmpty]) and
+     (RRes.ResultType in [rtInteger, {rtCell, }rtEmpty])
   then
     Result := IntegerResult(ArgToInt(Result) + ArgToInt(RRes))
   else
@@ -3368,8 +3368,8 @@ begin
     exit;
   end;
 
-  if (Result.ResultType in [rtInteger, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtInteger, rtCell, rtEmpty])
+  if (Result.ResultType in [rtInteger, {rtCell, }rtEmpty]) and
+     (RRes.ResultType in [rtInteger, {rtCell, }rtEmpty])
   then
     Result := IntegerResult(ArgToInt(Result) - ArgToInt(RRes))
   else
@@ -3411,8 +3411,8 @@ begin
     exit;
   end;
 
-  if (Result.ResultType in [rtInteger, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtInteger, rtCell, rtEmpty])
+  if (Result.ResultType in [rtInteger, {rtCell, }rtEmpty]) and
+     (RRes.ResultType in [rtInteger, {rtCell, }rtEmpty])
   then
     Result := IntegerResult(ArgToInt(Result) * ArgToInt(RRes))
   else
