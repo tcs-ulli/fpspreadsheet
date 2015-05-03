@@ -992,7 +992,7 @@ begin
 
           FPageLayoutList.Add(data);
         end else
-        if (nodeName = 'style:header-style') or (nodeName = 'style:footer.style')
+        if (nodeName = 'style:header-style') or (nodeName = 'style:footer-style')
         then
         begin
           isHeader := nodeName = 'style:header-style';
@@ -1003,17 +1003,16 @@ begin
             if nodeName = 'style:header-footer-properties' then
             begin
               s := GetAttrValue(child, 'fo:min-height');
-              if s <> '' then begin
-                h := PtsToMM(HTMLLengthStrToPts(s));
-                if isHeader then
-                begin
-                  data.PageLayout.HeaderMargin := data.PageLayout.TopMargin;
-                  data.PageLayout.TopMargin := data.PageLayout.HeaderMargin + h;
-                end else
-                begin
-                  data.PageLayout.FooterMargin := data.PageLayout.BottomMargin;
-                  data.PageLayout.BottomMargin := data.PageLayout.FooterMargin + h;
-                end;
+              if s <> '' then
+                h := PtsToMM(HTMLLengthStrToPts(s)) else h := 0;
+              if isHeader then
+              begin
+                data.PageLayout.HeaderMargin := data.PageLayout.TopMargin;
+                data.PageLayout.TopMargin := data.PageLayout.HeaderMargin + h;
+              end else
+              begin
+                data.PageLayout.FooterMargin := data.PageLayout.BottomMargin;
+                data.PageLayout.BottomMargin := data.PageLayout.FooterMargin + h;
               end;
             end;
             child := child.NextSibling;
@@ -3116,6 +3115,7 @@ procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
     i: Integer;
     hasHeader, hasFooter: Boolean;
     topmargin, bottommargin: Double;
+    h: Double;
   begin
     hasHeader := false;
     hasFooter := false;
@@ -3181,15 +3181,18 @@ procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
 
     pageLayoutStr := pageLayoutStr + 'style:print="' + options + '" ';
 
+    h := PtsToMM(FWorkbook.GetDefaultFontSize);
+
     if hasHeader then
       headerStyleStr := Format(
         '<style:header-style>'+
           '<style:header-footer-properties ' +
             'fo:margin-left="0mm" fo:margin-right="0mm" '+
-            'fo:min-height="%.2fmm" '+
+            'fo:min-height="%.2fmm" fo:margin-bottom="%.2fmm" '+
           '/>'+
         '</style:header-style>', [
-        APageLayout.TopMargin - APageLayout.HeaderMargin], FPointSeparatorSettings)
+        APageLayout.TopMargin - APageLayout.HeaderMargin,
+        APageLayout.TopMargin - APageLayout.HeaderMargin - h], FPointSeparatorSettings)
     else
       headerStyleStr := '';
 
@@ -3198,10 +3201,11 @@ procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
         '<style:footer-style>'+
           '<style:header-footer-properties ' +
             'fo:margin-left="0mm" fo:margin-right="0mm" '+
-            'fo:min-height="%.2fmm" '+
+            'fo:min-height="%.2fmm" fo:margin-top="%.2fmm" '+
           '/>'+
         '</style:footer-style>', [
-        APageLayout.BottomMargin - APageLayout.FooterMargin], FPointSeparatorSettings)
+        APageLayout.BottomMargin - APageLayout.FooterMargin,
+        APageLayout.BottomMargin - APageLayout.FooterMargin - h], FPointSeparatorSettings)
     else
       footerStyleStr := '';
 

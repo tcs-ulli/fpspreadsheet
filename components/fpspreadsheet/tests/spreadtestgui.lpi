@@ -40,7 +40,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="24">
+    <Units Count="25">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -48,17 +48,14 @@
       <Unit1>
         <Filename Value="datetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="datetests"/>
       </Unit1>
       <Unit2>
         <Filename Value="stringtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="stringtests"/>
       </Unit2>
       <Unit3>
         <Filename Value="numberstests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="numberstests"/>
       </Unit3>
       <Unit4>
         <Filename Value="manualtests.pas"/>
@@ -71,12 +68,10 @@
       <Unit6>
         <Filename Value="internaltests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="internaltests"/>
       </Unit6>
       <Unit7>
         <Filename Value="formattests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formattests"/>
       </Unit7>
       <Unit8>
         <Filename Value="colortests.pas"/>
@@ -85,7 +80,6 @@
       <Unit9>
         <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="fonttests"/>
       </Unit9>
       <Unit10>
         <Filename Value="optiontests.pas"/>
@@ -94,7 +88,6 @@
       <Unit11>
         <Filename Value="numformatparsertests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="numformatparsertests"/>
       </Unit11>
       <Unit12>
         <Filename Value="rpnformulaunit.pas"/>
@@ -104,7 +97,6 @@
       <Unit13>
         <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="formulatests"/>
       </Unit13>
       <Unit14>
         <Filename Value="emptycelltests.pas"/>
@@ -121,7 +113,6 @@
       <Unit17>
         <Filename Value="insertdeletetests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="insertdeletetests"/>
       </Unit17>
       <Unit18>
         <Filename Value="celltypetests.pas"/>
@@ -130,7 +121,6 @@
       <Unit19>
         <Filename Value="sortingtests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="sortingtests"/>
       </Unit19>
       <Unit20>
         <Filename Value="copytests.pas"/>
@@ -139,18 +129,19 @@
       <Unit21>
         <Filename Value="commenttests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="commenttests"/>
       </Unit21>
       <Unit22>
         <Filename Value="enumeratortests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="enumeratortests"/>
       </Unit22>
       <Unit23>
         <Filename Value="hyperlinktests.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="hyperlinktests"/>
       </Unit23>
+      <Unit24>
+        <Filename Value="pagelayouttests.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit24>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
