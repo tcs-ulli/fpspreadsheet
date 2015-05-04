@@ -720,6 +720,7 @@ begin
     INT_EXCEL_ID_RK            : ReadRKValue(AStream);
 
     INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+    INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
     INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
     INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
     INT_EXCEL_ID_TXO           : ReadTXO(AStream);
@@ -1749,8 +1750,7 @@ begin
       WriteIndex(AStream);
       WritePrintHeaders(AStream);
       WritePrintGridLines(AStream);
-
-      //WriteSheetPR(AStream);
+      WriteSheetPR(AStream);
 
       // Page setting block
       WriteHeaderFooter(AStream, true);

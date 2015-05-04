@@ -421,6 +421,7 @@ type
       ASharedFormulaBase: PCell = nil): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
     procedure ReadSharedFormula(AStream: TStream);
+    procedure ReadSHEETPR(AStream: TStream);
 
     // Helper function for reading a string with 8-bit length
     function ReadString_8bitLen(AStream: TStream): String; virtual;
@@ -1509,8 +1510,8 @@ begin
   // Fit worksheet height to this number of pages (0 = use as many as needed)
   FWorksheet.PageLayout.FitHeightToPages := WordLEToN(AStream.ReadWord);
 
-  if (FWorksheet.PageLayout.FitWidthToPages > 0) or (FWorksheet.PageLayout.FitHeightToPages > 0)
-    then Include(FWorksheet.PageLayout.Options, poFitPages);
+  // Information whether scaling factor or fittopages are used is stored in the
+  // SHEETPR record.
 
   // Option flags
   w := WordLEToN(AStream.ReadWord);
@@ -2053,6 +2054,19 @@ begin
   for r := r1 to r2 do
     for c := c1 to c2 do
       FWorksheet.CopyFormula(cell, r, c);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads an Excel SHEETPR record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadSheetPR(AStream: TStream);
+var
+  flags: Word;
+begin
+  flags := WordLEToN(AStream.ReadWord);
+  if flags and $0100 <> 0 then
+    Include(FWorksheet.PageLayout.Options, poFitPages);
+  // The other flags are ignored, so far.
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2739,12 +2753,12 @@ begin
     end;
   AStream.WriteWord(WordToLE(w));
 
-  { Start page number }
-  w := FWorksheet.PageLayout.StartPageNumber;
-  AStream.WriteWord(WordToLE(w));
-
   { Scaling factor in percent }
   w := Round(FWorksheet.PageLayout.ScalingFactor);
+  AStream.WriteWord(WordToLE(w));
+
+  { Start page number }
+  w := FWorksheet.PageLayout.StartPageNumber;
   AStream.WriteWord(WordToLE(w));
 
   { Fit worksheet width to this number of pages, 0 = use as many as needed }
@@ -3540,7 +3554,7 @@ begin
 end;                              *)
 
 {@@ ----------------------------------------------------------------------------
-  Writes a SHEETPR Record.
+  Writes a SHEETPR record.
   Valid for BIFF3-BIFF8.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteSheetPR(AStream: TStream);
@@ -3550,7 +3564,14 @@ begin
   { BIFF Record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_SHEETPR, 2);
 
-  flags := $04C1;
+  flags := $0001  // show automatic page breaks
+        or $0040  // Outline buttons below outline groups
+        or $0080  // Outline buttons right of outline groups
+        or $0400; // Show outline symbols
+
+  if (poFitPages in FWorksheet.PageLayout.Options) then
+    flags := flags or $0100;  // Fit printout to number of pages
+
   AStream.WriteWord(WordToLE(flags));
 end;
 
