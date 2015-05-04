@@ -1045,7 +1045,9 @@ begin
         nodeName := textNode.NodeName;
         case nodeName of
           '#text':
-            Result := Result + textNode.NodeValue;
+            if textNode.NodeValue = '&amp;'
+              then Result := Result + '&&'
+              else Result := Result + textNode.NodeValue;
           'text:sheet-name':
             Result := Result + '&A';
           'text:page-number':
@@ -3746,12 +3748,13 @@ procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
           'D': Result := Result + Format(
                  '<text:date style:data-style-name="N2" text:date-value="%s">%s</text:date>',
                  [FormatDateTime('yyyy"-"mm"-"dd', date()), DateToStr(date())]);
-          'F': Result := Result + '<text:file-name text:display="full">???</text:file-name>';
+          'F': Result := Result + '<text:file-name text:display="name-and-extension">???</text:file-name>';
           'P': Result := Result + '<text:page-number>1</text:page-number>';
           'N': Result := Result + '<text:page-count>1</text:page-count>';
           'T': Result := Result + Format(
                  '<text:time>%s</text:time>', [FormatDateTime('hh:nn:ss', time())]);
           'Z': Result := Result + '<text:file-name text:display="path">???</text:file-name>';
+          '&': Result := Result + '&amp;&amp;';
         end;
       end
       else
