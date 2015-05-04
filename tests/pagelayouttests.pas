@@ -42,6 +42,14 @@ type
     procedure TestWriteRead_BIFF2_PageMargins_3sheets_2;
     procedure TestWriteRead_BIFF2_PageMargins_3sheets_3;
 
+    procedure TestWriteRead_BIFF2_HeaderFooterRegions_1sheet;
+    procedure TestWriteRead_BIFF2_HeaderFooterRegions_2sheets;
+    procedure TestWriteRead_BIFF2_HeaderFooterRegions_3sheets;
+
+    procedure TestWriteRead_BIFF2_HeaderFooterSymbols_1sheet;
+    procedure TestWriteRead_BIFF2_HeaderFooterSymbols_2sheets;
+    procedure TestWriteRead_BIFF2_HeaderFooterSymbols_3sheets;
+
     // no BIFF2 page orientation tests because this info is not readily available in the file
 
 
@@ -83,6 +91,14 @@ type
     procedure TestWriteRead_BIFF5_PageNumber_2sheets;
     procedure TestWriteRead_BIFF5_PageNumber_3sheets;
 
+    procedure TestWriteRead_BIFF5_HeaderFooterRegions_1sheet;
+    procedure TestWriteRead_BIFF5_HeaderFooterRegions_2sheets;
+    procedure TestWriteRead_BIFF5_HeaderFooterRegions_3sheets;
+
+    procedure TestWriteRead_BIFF5_HeaderFooterSymbols_1sheet;
+    procedure TestWriteRead_BIFF5_HeaderFooterSymbols_2sheets;
+    procedure TestWriteRead_BIFF5_HeaderFooterSymbols_3sheets;
+
     { BIFF8 page layout tests }
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_0;
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_1;
@@ -120,6 +136,14 @@ type
     procedure TestWriteRead_BIFF8_PageNumber_1sheet;
     procedure TestWriteRead_BIFF8_PageNumber_2sheets;
     procedure TestWriteRead_BIFF8_PageNumber_3sheets;
+
+    procedure TestWriteRead_BIFF8_HeaderFooterRegions_1sheet;
+    procedure TestWriteRead_BIFF8_HeaderFooterRegions_2sheets;
+    procedure TestWriteRead_BIFF8_HeaderFooterRegions_3sheets;
+
+    procedure TestWriteRead_BIFF8_HeaderFooterSymbols_1sheet;
+    procedure TestWriteRead_BIFF8_HeaderFooterSymbols_2sheets;
+    procedure TestWriteRead_BIFF8_HeaderFooterSymbols_3sheets;
 
     { OOXML page layout tests }
     procedure TestWriteRead_OOXML_PageMargins_1sheet_0;
@@ -159,6 +183,14 @@ type
     procedure TestWriteRead_OOXML_PageNumber_2sheets;
     procedure TestWriteRead_OOXML_PageNumber_3sheets;
 
+    procedure TestWriteRead_OOXML_HeaderFooterRegions_1sheet;
+    procedure TestWriteRead_OOXML_HeaderFooterRegions_2sheets;
+    procedure TestWriteRead_OOXML_HeaderFooterRegions_3sheets;
+
+    procedure TestWriteRead_OOXML_HeaderFooterSymbols_1sheet;
+    procedure TestWriteRead_OOXML_HeaderFooterSymbols_2sheets;
+    procedure TestWriteRead_OOXML_HeaderFooterSymbols_3sheets;
+
     { OpenDocument page layout tests }
     procedure TestWriteRead_ODS_PageMargins_1sheet_0;
     procedure TestWriteRead_ODS_PageMargins_1sheet_1;
@@ -196,6 +228,14 @@ type
     procedure TestWriteRead_ODS_PageNumber_1sheet;
     procedure TestWriteRead_ODS_PageNumber_2sheets;
     procedure TestWriteRead_ODS_PageNumber_3sheets;
+
+    procedure TestWriteRead_ODS_HeaderFooterRegions_1sheet;
+    procedure TestWriteRead_ODS_HeaderFooterRegions_2sheets;
+    procedure TestWriteRead_ODS_HeaderFooterRegions_3sheets;
+
+    procedure TestWriteRead_ODS_HeaderFooterSymbols_1sheet;
+    procedure TestWriteRead_ODS_HeaderFooterSymbols_2sheets;
+    procedure TestWriteRead_ODS_HeaderFooterSymbols_3sheets;
 
   end;
 
@@ -314,6 +354,7 @@ end;
    3 - Scale n pages to width: sheet 1 n=2, sheet 2 n=3, sheet 3 n=1
    4 - Scale n pages to height: sheet 1 n=2, sheet 2 n=3, sheet 3 n=1
    5 - First page number: sheet 1 - 3, sheet 2 - automatic, sheet 3 - 1
+   6 - Header/footer region test: sheet 1 - header only, sheet 2 - footer only, sheet 3 - both
 -------------------------------------------------------------------------------}
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_PageLayout(
   AFormat: TsSpreadsheetFormat; ANumSheets, ATestMode: Integer);
@@ -370,13 +411,31 @@ begin
            end;
         5: // Page number of first pge
            begin
-             Options := Options + [poPrintHeaders, poUseStartPageNumber];
+             Options := Options + [poUseStartPageNumber];
              case p of
                0: StartPageNumber := 3;
                1: Exclude(Options, poUseStartPageNumber);
                2: StartPageNumber := 1;
              end;
              Headers[HEADER_FOOTER_INDEX_ALL] := '&LPage &P of &N';
+           end;
+        6: // Header/footer region test
+           case p of
+             0: Headers[HEADER_FOOTER_INDEX_ALL] := '&LLeft header&CCenter header&RRight header';
+             1: Footers[HEADER_FOOTER_INDEX_ALL] := '&LLeft foorer&CCenter footer&RRight footer';
+             2: begin
+                  Headers[HEADER_FOOTER_INDEX_ALL] := '&LLeft header&CCenter header&RRight header';
+                  Footers[HEADER_FOOTER_INDEX_ALL] := '&LLeft foorer&CCenter footer&RRight footer';
+                end;
+           end;
+        7: // Header/footer symbol test
+           case p of
+             0: Headers[HEADER_FOOTER_INDEX_ALL] := '&LPage &P / Page count &N&CDate &D - Time &T&RFile &Z&F';
+             1: Footers[HEADER_FOOTER_INDEX_ALL] := '&LSheet "&A"&C100&&';
+             2: begin
+                  Headers[HEADER_FOOTER_INDEX_ALL] := '&LPage &P of &N&C&D &T&R&Z&F';
+                  Footers[HEADER_FOOTER_INDEX_ALL] := '&LSheet "&A"&C100&&';
+                end;
            end;
       end;
     end;
@@ -448,6 +507,13 @@ begin
               '"poUseStartPageNumber" option mismatch, sheet "' + MyWorksheet.name + '"');
             CheckEquals(sollPageLayout[p].StartPageNumber, actualPageLayout.StartPageNumber,
               'StartPageNumber value mismatch, sheet "' + MyWorksheet.Name + '"');
+          end;
+        6, 7: // Header/footer tests
+          begin
+            CheckEquals(sollPageLayout[p].Headers[1], actualPageLayout.Headers[1],
+              'Header value mismatch, sheet "' + MyWorksheet.Name + '"');
+            CheckEquals(sollPageLayout[p].Footers[1], actualPageLayout.Footers[1],
+              'Footer value mismatch, sheet "' + MyWorksheet.Name + '"');
           end;
       end;
     end;
@@ -521,6 +587,38 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_PageMargins_3sheets_3;
 begin
   TestWriteRead_PageMargins(sfExcel2, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterRegions_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 1, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterRegions_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 2, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterRegions_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 3, 6);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 1, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 2, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF2_HeaderFooterSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel2, 3, 7);
 end;
 
 
@@ -685,6 +783,38 @@ begin
 end;
 
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterRegions_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterRegions_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterRegions_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 6);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeaderFooterSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 7);
+end;
+
+
 { Tests for BIFF8 file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageMargins_1sheet_0;
@@ -843,6 +973,38 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageNumber_3sheets;
 begin
   TestWriteRead_PageLayout(sfExcel8, 3, 5);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterRegions_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterRegions_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterRegions_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 6);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 7);
 end;
 
 
@@ -1007,6 +1169,38 @@ begin
 end;
 
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterRegions_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterRegions_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterRegions_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 6);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeaderFooterSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 7);
+end;
+
+
 { Tests for Open Document file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageMargins_1sheet_0;
@@ -1165,6 +1359,38 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageNumber_3sheets;
 begin
   TestWriteRead_PageLayout(sfOpenDocument, 3, 5);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterRegions_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterRegions_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterRegions_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 6);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeaderFooterSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 7);
 end;
 
 
