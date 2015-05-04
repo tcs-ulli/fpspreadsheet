@@ -415,6 +415,7 @@ begin
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
       INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
       INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+      INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
       INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
       INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
@@ -1044,6 +1045,7 @@ begin
       WriteIndex(AStream);
       WritePrintHeaders(AStream);
       WritePrintGridLines(AStream);
+      WriteSheetPR(AStream);
 
       // Page settings block
       WriteHeaderFooter(AStream, true);
