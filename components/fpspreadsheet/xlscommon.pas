@@ -2754,7 +2754,7 @@ begin
   AStream.WriteWord(WordToLE(w));
 
   { Scaling factor in percent }
-  w := Round(FWorksheet.PageLayout.ScalingFactor);
+  w := FWorksheet.PageLayout.ScalingFactor;
   AStream.WriteWord(WordToLE(w));
 
   { Start page number }

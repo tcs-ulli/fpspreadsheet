@@ -71,6 +71,18 @@ type
     procedure TestWriteRead_BIFF5_ScalingFactor_2sheets;
     procedure TestWriteRead_BIFF5_ScalingFactor_3sheets;
 
+    procedure TestWriteRead_BIFF5_WidthToPages_1sheet;
+    procedure TestWriteRead_BIFF5_WidthToPages_2sheets;
+    procedure TestWriteRead_BIFF5_WidthToPages_3sheets;
+
+    procedure TestWriteRead_BIFF5_HeightToPages_1sheet;
+    procedure TestWriteRead_BIFF5_HeightToPages_2sheets;
+    procedure TestWriteRead_BIFF5_HeightToPages_3sheets;
+
+    procedure TestWriteRead_BIFF5_PageNumber_1sheet;
+    procedure TestWriteRead_BIFF5_PageNumber_2sheets;
+    procedure TestWriteRead_BIFF5_PageNumber_3sheets;
+
     { BIFF8 page layout tests }
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_0;
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_1;
@@ -96,6 +108,18 @@ type
     procedure TestWriteRead_BIFF8_ScalingFactor_1sheet;
     procedure TestWriteRead_BIFF8_ScalingFactor_2sheets;
     procedure TestWriteRead_BIFF8_ScalingFactor_3sheets;
+
+    procedure TestWriteRead_BIFF8_WidthToPages_1sheet;
+    procedure TestWriteRead_BIFF8_WidthToPages_2sheets;
+    procedure TestWriteRead_BIFF8_WidthToPages_3sheets;
+
+    procedure TestWriteRead_BIFF8_HeightToPages_1sheet;
+    procedure TestWriteRead_BIFF8_HeightToPages_2sheets;
+    procedure TestWriteRead_BIFF8_HeightToPages_3sheets;
+
+    procedure TestWriteRead_BIFF8_PageNumber_1sheet;
+    procedure TestWriteRead_BIFF8_PageNumber_2sheets;
+    procedure TestWriteRead_BIFF8_PageNumber_3sheets;
 
     { OOXML page layout tests }
     procedure TestWriteRead_OOXML_PageMargins_1sheet_0;
@@ -123,6 +147,18 @@ type
     procedure TestWriteRead_OOXML_ScalingFactor_2sheets;
     procedure TestWriteRead_OOXML_ScalingFactor_3sheets;
 
+    procedure TestWriteRead_OOXML_WidthToPages_1sheet;
+    procedure TestWriteRead_OOXML_WidthToPages_2sheets;
+    procedure TestWriteRead_OOXML_WidthToPages_3sheets;
+
+    procedure TestWriteRead_OOXML_HeightToPages_1sheet;
+    procedure TestWriteRead_OOXML_HeightToPages_2sheets;
+    procedure TestWriteRead_OOXML_HeightToPages_3sheets;
+
+    procedure TestWriteRead_OOXML_PageNumber_1sheet;
+    procedure TestWriteRead_OOXML_PageNumber_2sheets;
+    procedure TestWriteRead_OOXML_PageNumber_3sheets;
+
     { OpenDocument page layout tests }
     procedure TestWriteRead_ODS_PageMargins_1sheet_0;
     procedure TestWriteRead_ODS_PageMargins_1sheet_1;
@@ -148,6 +184,18 @@ type
     procedure TestWriteRead_ODS_ScalingFactor_1sheet;
     procedure TestWriteRead_ODS_ScalingFactor_2sheets;
     procedure TestWriteRead_ODS_ScalingFactor_3sheets;
+
+    procedure TestWriteRead_ODS_WidthToPages_1sheet;
+    procedure TestWriteRead_ODS_WidthToPages_2sheets;
+    procedure TestWriteRead_ODS_WidthToPages_3sheets;
+
+    procedure TestWriteRead_ODS_HeightToPages_1sheet;
+    procedure TestWriteRead_ODS_HeightToPages_2sheets;
+    procedure TestWriteRead_ODS_HeightToPages_3sheets;
+
+    procedure TestWriteRead_ODS_PageNumber_1sheet;
+    procedure TestWriteRead_ODS_PageNumber_2sheets;
+    procedure TestWriteRead_ODS_PageNumber_3sheets;
 
   end;
 
@@ -263,6 +311,9 @@ end;
    0 - Landscape page orientation for sheets 0 und 2, sheet 1 is portrait
    1 - Paper size: sheet 1 "Letter" (8.5" x 11"), sheets 0 and 2 "A5" (148 mm x 210 mm)
    2 - Scaling factor: sheet 1 50%, sheet 2 200%, sheet 3 100%
+   3 - Scale n pages to width: sheet 1 n=2, sheet 2 n=3, sheet 3 n=1
+   4 - Scale n pages to height: sheet 1 n=2, sheet 2 n=3, sheet 3 n=1
+   5 - First page number: sheet 1 - 3, sheet 2 - automatic, sheet 3 - 1
 -------------------------------------------------------------------------------}
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_PageLayout(
   AFormat: TsSpreadsheetFormat; ANumSheets, ATestMode: Integer);
@@ -294,23 +345,51 @@ begin
              PageWidth := 148; PageHeight := 210;
            end;
         2: // Scaling factor: sheet 1 50%, sheet 2 200%, sheet 3 100%
-          begin
-            if p = 0 then ScalingFactor := 50 else
-            if p = 1 then ScalingFactor := 200;
-            Exclude(Options, poFitPages);
-          end;
+           begin
+             if p = 0 then ScalingFactor := 50 else
+             if p = 1 then ScalingFactor := 200;
+             Exclude(Options, poFitPages);
+           end;
+        3: // Scale width to n pages
+           begin
+             case p of
+               0: FitWidthToPages := 2;
+               1: FitWidthToPages := 3;
+               2: FitWidthToPages := 1;
+             end;
+             Include(Options, poFitPages);
+           end;
+        4: // Scale height to n pages
+           begin
+             case p of
+               0: FitHeightToPages := 2;
+               1: FitHeightToPages := 3;
+               2: FitHeightToPages := 1;
+             end;
+             Include(Options, poFitPages);
+           end;
+        5: // Page number of first pge
+           begin
+             Options := Options + [poPrintHeaders, poUseStartPageNumber];
+             case p of
+               0: StartPageNumber := 3;
+               1: Exclude(Options, poUseStartPageNumber);
+               2: StartPageNumber := 1;
+             end;
+             Headers[HEADER_FOOTER_INDEX_ALL] := '&LPage &P of &N';
+           end;
       end;
     end;
   end;
 
   MyWorkbook := TsWorkbook.Create;
   try
-    col := 0;
     for p := 0 to ANumSheets-1 do
     begin
       MyWorkSheet:= MyWorkBook.AddWorksheet(PageLayoutSheet+IntToStr(p+1));
       for row := 0 to 99 do
-        Myworksheet.WriteNumber(row, 0, (row+1)+(col+1)*100+(p+1)*10000 );
+        for col := 0 to 29 do
+          Myworksheet.WriteNumber(row, col, (row+1)+(col+1)*100+(p+1)*10000 );
       MyWorksheet.PageLayout := SollPageLayout[p];
     end;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -348,6 +427,27 @@ begin
               '"poFitPages" option mismatch, sheet "' + MyWorksheet.name + '"');
             CheckEquals(sollPageLayout[p].ScalingFactor, actualPageLayout.ScalingFactor,
               'Scaling factor mismatch, sheet "' + MyWorksheet.Name + '"');
+          end;
+        3: // Fit width to pages
+          begin
+            CheckEquals(poFitPages in sollPageLayout[p].Options, poFitPages in actualPageLayout.Options,
+              '"poFitPages" option mismatch, sheet "' + MyWorksheet.name + '"');
+            CheckEquals(sollPageLayout[p].FitWidthToPages, actualPageLayout.FitWidthToPages,
+              'FitWidthToPages mismatch, sheet "' + MyWorksheet.Name + '"');
+          end;
+        4: // Fit height to pages
+          begin
+            CheckEquals(poFitPages in sollPageLayout[p].Options, poFitPages in actualPageLayout.Options,
+              '"poFitPages" option mismatch, sheet "' + MyWorksheet.name + '"');
+            CheckEquals(sollPageLayout[p].FitHeightToPages, actualPageLayout.FitHeightToPages,
+              'FitWidthToPages mismatch, sheet "' + MyWorksheet.Name + '"');
+          end;
+        5: // Start page number
+          begin
+            CheckEquals(poUseStartPageNumber in sollPageLayout[p].Options, poUseStartPageNumber in actualPageLayout.Options,
+              '"poUseStartPageNumber" option mismatch, sheet "' + MyWorksheet.name + '"');
+            CheckEquals(sollPageLayout[p].StartPageNumber, actualPageLayout.StartPageNumber,
+              'StartPageNumber value mismatch, sheet "' + MyWorksheet.Name + '"');
           end;
       end;
     end;
@@ -536,6 +636,55 @@ begin
   TestWriteRead_PageLayout(sfExcel5, 3, 2);
 end;
 
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_WidthToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_WidthToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_WidthToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeightToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeightToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_HeightToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 4);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PageNumber_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 1, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PageNumber_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 2, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PageNumber_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel5, 3, 5);
+end;
+
+
 { Tests for BIFF8 file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageMargins_1sheet_0;
@@ -647,6 +796,55 @@ procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_ScalingFactor_3she
 begin
   TestWriteRead_PageLayout(sfExcel8, 3, 2);
 end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_WidthToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_WidthToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_WidthToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeightToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeightToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeightToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 4);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageNumber_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 1, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageNumber_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 2, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageNumber_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcel8, 3, 5);
+end;
+
 
 { Tests for OOXML file format }
 
@@ -761,6 +959,54 @@ begin
 end;
 
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_WidthToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_WidthToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_WidthToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeightToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeightToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_HeightToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 4);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PageNumber_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 1, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PageNumber_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 2, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PageNumber_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOOXML, 3, 5);
+end;
+
+
 { Tests for Open Document file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageMargins_1sheet_0;
@@ -871,6 +1117,54 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_ScalingFactor_3sheets;
 begin
   TestWriteRead_PageLayout(sfOpenDocument, 3, 2);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_WidthToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_WidthToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_WidthToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeightToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeightToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_HeightToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 4);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageNumber_1sheet;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 1, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageNumber_2sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 2, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PageNumber_3sheets;
+begin
+  TestWriteRead_PageLayout(sfOpenDocument, 3, 5);
 end;
 
 

@@ -1409,23 +1409,32 @@ begin
   // Scaling factor
   s := GetAttrValue(ANode, 'scale');
   if s <> '' then
+  begin
     AWorksheet.PageLayout.ScalingFactor := StrToInt(s);
+    Exclude(AWorksheet.PageLayout.Options, poFitPages);
+  end;
 
   // Fit print job to pages
   s := GetAttrValue(ANode, 'fitToHeight');
   if s <> '' then
+  begin
     AWorksheet.PageLayout.FitHeightToPages := StrToInt(s);
-  if poFitPages in AWorksheet.PageLayout.Options then
+    Include(AWorksheet.PageLayout.Options, poFitPages);
+  end;
 
   s := GetAttrValue(ANode, 'fitToWidth');
   if s <> '' then
+  begin
     AWorksheet.PageLayout.FitWidthToPages := StrToInt(s);
-
-  if (AWorksheet.PageLayout.FitHeightToPages > 0) or (AWorksheet.PageLayout.FitWidthToPages > 0) then
-    Include(AWorksheet.pageLayout.Options, poFitPages);
+    Include(AWorksheet.PageLayout.Options, poFitPages);
+  end;
 
   // First page number
   s := GetAttrValue(ANode, 'useFirstPageNumber');
+  if s = '1' then
+    Include(AWorksheet.PageLayout.Options, poUseStartPageNumber);
+
+  s := GetAttrValue(ANode, 'firstPageNumber');
   if s <> '' then
     AWorksheet.PageLayout.StartPageNumber := StrToInt(s);
 
@@ -2520,19 +2529,15 @@ begin
       break;
     end;
 
-  // Scaling factor
-  if AWorksheet.PageLayout.ScalingFactor <> 100 then
-    s := Format('%s scale="%.0f" fitToHeight="0" fitToWidth="0"', [
-      s, AWorksheet.PageLayout.ScalingFactor
-    ], FPointSeparatorSettings);
-
-  // Fit width pages
-  if AWorksheet.PageLayout.FitWidthToPages > 0 then
+  if poFitPages in AWorksheet.PageLayout.Options then
+  begin
+    // Fit width to pages
     s := Format('%s fitToWidth="%d"', [s, AWorksheet.PageLayout.FitWidthToPages]);
-
-  // Fit height pages
-  if AWorksheet.PageLayout.FitHeightToPages > 0 then
+    // Fit height to pages
     s := Format('%s fitToHeight="%d"', [s, AWorksheet.PageLayout.FitHeightToPages]);
+  end else
+    // Scaling factor
+    s := Format('%s scale="%d"', [s, AWorksheet.PageLayout.ScalingFactor]);
 
   // Orientation
   s := Format('%s orientation="%s"', [
@@ -2541,7 +2546,9 @@ begin
 
   // First page number
   if poUseStartPageNumber in FWorksheet.PageLayout.Options then
-    s := Format('%s useFirstPageNumber="%d"', [s, AWorksheet.PageLayout.StartPageNumber]);
+    s := Format('%s useFirstPageNumber="1"', [s]);
+
+  s := Format('%s firstPageNumber="%d"', [s, AWorksheet.PageLayout.StartPageNumber]);
 
   // Print order
   if poPrintPagesByRows in AWorksheet.PageLayout.Options then

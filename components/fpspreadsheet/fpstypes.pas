@@ -688,7 +688,7 @@ type
     HeaderMargin: Double;
     FooterMargin: Double;
     StartPageNumber: Integer;
-    ScalingFactor: Double;  // in percent
+    ScalingFactor: Integer;  // in percent
     FitWidthToPages: Integer;
     FitHeightToPages: Integer;
     Copies: Integer;
