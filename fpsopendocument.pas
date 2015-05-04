@@ -943,7 +943,7 @@ begin
           if (s <> '') then
           begin
             if s[Length(s)] = '%' then Delete(s, Length(s), 1);
-            data.PageLayout.ScalingFactor := StrToFloat(s, FPointSeparatorSettings);
+            data.PageLayout.ScalingFactor := round(StrToFloat(s, FPointSeparatorSettings));
             Exclude(data.PageLayout.Options, poFitPages);
           end;
 
@@ -3169,7 +3169,7 @@ procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
       if APageLayout.FitHeightToPages > 0 then
         pageLayoutStr := pageLayoutStr + 'style:scale-to-Y="' + IntToStr(APageLayout.FitHeightToPages) + '" ';
     end else
-      pageLayoutStr := pageLayoutStr + 'style:scale-to="' + IntToStr(round(APageLayout.ScalingFactor)) + '%" ';
+      pageLayoutStr := pageLayoutStr + 'style:scale-to="' + IntToStr(APageLayout.ScalingFactor) + '%" ';
 
     options := 'charts drawings objects zero-values';
     if poPrintGridLines in APageLayout.Options then
