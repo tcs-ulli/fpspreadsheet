@@ -2921,7 +2921,7 @@ begin
       AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
     else
       AStrings.Add     ('  Start page number=automatic');
-    AStrings.Add(Format('  Scaling factor=%.0f%%', [ASheet.PageLayout.ScalingFactor]));
+    AStrings.Add(Format('  Scaling factor=%d%%', [ASheet.PageLayout.ScalingFactor]));
     AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
     if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
     begin
