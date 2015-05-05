@@ -67,6 +67,7 @@ type
     FRowList: TFPList;
     FPageLayoutList: TFPList;
     FMasterPageList: TFPList;
+    FHeaderFooterFontList: TStringList;
     FDateMode: TDateMode;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
@@ -639,6 +640,7 @@ begin
   FRowList := TFPList.Create;
   FPageLayoutList := TFPList.Create;
   FMasterPageList := TFPList.Create;
+  FHeaderFooterFontList := TStringList.Create;
 
   // Set up the default palette in order to have the default color names correct.
   Workbook.UseDefaultPalette;
@@ -668,6 +670,7 @@ begin
   for j := FMasterPageList.Count-1 downto 0 do TObject(FMasterPageList[j]).Free;
   FMasterPageList.Free;
 
+  FHeaderFooterFontList.Free;
   inherited Destroy;
 end;
 
@@ -883,12 +886,13 @@ end;
 procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
 var
   nodeName: String;
-  layoutNode: TDOMNode;
+  layoutNode, fontNode: TDOMNode;
   node, child: TDOMNode;
   s: String;
   data: TPageLayoutData;
   isHeader: Boolean;
   h: Double;
+  idx: Integer;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -896,7 +900,20 @@ begin
   while layoutNode <> nil do
   begin
     nodeName := layoutNode.NodeName;
-    if nodeName = 'style:page-layout' then begin
+    if nodeName = 'style:style' then
+    begin
+      s := GetAttrValue(layoutNode, 'style:family');
+      if s = 'text' then
+      begin
+        s := GetAttrValue(layoutNode, 'style:name');
+        fontNode := layoutNode.FirstChild;
+        idx := ReadFont(fontNode);
+        FHeaderFooterFontList.AddObject(s, TObject(PtrInt(idx)));
+      end;
+    end
+    else
+    if nodeName = 'style:page-layout' then
+    begin
       data := TPageLayoutData.Create;
       InitPageLayout(data.PageLayout);
       data.Name := GetAttrValue(layoutNode, 'style:name');
@@ -1030,8 +1047,12 @@ var
   regionNode, textNode, spanNode: TDOMNode;
   nodeName: String;
   s: String;
+  currFont: TsFont;
+  fnt: TsFont;
+  idx: Integer;
 begin
   Result := '';
+  currFont := FWorkbook.GetDefaultFont;
   regionNode := ANode.FirstChild;
   while regionNode <> nil do
   begin
@@ -1066,6 +1087,46 @@ begin
             end;
           'text:span':
             begin
+              // Extract font parameters used
+              s := GetAttrValue(textNode, 'text:style-name');
+              if s <> '' then
+              begin
+                idx := FHeaderFooterFontList.IndexOf(s);
+                if idx > -1 then
+                begin
+                  fnt := FWorkbook.GetFont(PtrInt(FHeaderFooterFontList.Objects[idx]));
+                  if fnt <> nil then
+                  begin
+                    if (fnt.FontName <> currFont.FontName) then
+                    begin
+                      if (fnt.Size <> currFont.Size) then
+                        Result := Format('%s&"%s,%.1f"', [Result, fnt.FontName, fnt.Size])
+                      else
+                        Result := Format('%s&"%s"', [Result, fnt.FontName]);
+                    end;
+                    if ((fssBold in fnt.Style) and not (fssBold in currFont.Style)) or
+                       (not (fssBold in fnt.Style) and (fssBold in currFont.Style))
+                    then
+                      Result := Result + '&B';
+                    if ((fssItalic in fnt.Style) and not (fssItalic in currFont.Style)) or
+                       (not (fssItalic in fnt.Style) and (fssItalic in currFont.Style))
+                    then
+                      Result := Result + '&I';
+                    if ((fssUnderline in fnt.Style) and not (fssUnderline in currFont.Style)) or
+                       (not (fssUnderline in fnt.Style) and (fssUnderline in currFont.Style))
+                    then
+                      Result := Result + '&U';
+                    if ((fssStrikeout in fnt.Style) and not (fssStrikeout in currFont.Style)) or
+                       (not (fssStrikeout in fnt.Style) and (fssStrikeout in currFont.Style))
+                    then
+                      Result := Result + '&S';
+                    { Currently no support for &E double strikeout, &H shadowed text, &O outlined text, &X superscript, &Y subscript }
+                    currFont := fnt;
+                  end;
+                end;
+              end;
+
+              // Extract text
               spanNode := textNode.FirstChild;
               while spanNode <> nil do
               begin
@@ -1487,8 +1548,10 @@ begin
   end else
   if (APreferredIndex > -1) then
   begin
+    {  --- wp: No more missing font #4 now !!!
     if (APreferredIndex = 4) then
       raise Exception.Create('Cannot replace font #4');
+      }
     FWorkbook.ReplaceFont(APreferredIndex, fntName, fntSize, fntStyles, fntColor);
     Result := APreferredIndex;
   end else

@@ -71,7 +71,6 @@
         <ComponentName Value="MainForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="main"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\shared\scsvparamsform.pas"/>
@@ -101,7 +100,6 @@
         <ComponentName Value="CurrencyForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="scurrencyform"/>
       </Unit5>
       <Unit6>
         <Filename Value="..\shared\shyperlinkform.pas"/>
